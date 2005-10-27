@@ -1,3 +1,0 @@
-Test text
-"Power corrupts, power failure corrupts absolutely" (SysAdmins wisdom).
-
