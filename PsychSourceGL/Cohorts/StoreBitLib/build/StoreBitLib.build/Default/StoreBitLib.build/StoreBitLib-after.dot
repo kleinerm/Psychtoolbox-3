@@ -1,0 +1,41 @@
+digraph StoreBitLib {
+   size = "10.000000,8.500000";
+   concentrate = false;
+
+   node [ shape = box, style = filled, color = "0.3 0.5 0.6", fillcolor = "0.3 0.2 0.9", fontname = "Monaco", fontsize = "9" ];
+   n00001 [ label = "Default/StoreBitLib.bundle\n16676998c3250eefa94d155e89ea0c8e\nDepsUpdated", color = "0.1 0.5 0.5", fillcolor = "0.1 0.2 0.9", peripheries = 3 ];
+   n00002 [ label = "Contents/Info.plist\nae9ef48bb82bb1abadebf62942c4a1d9\nUpToDate" ];
+   n00003 [ label = "StoreBitLib.build/Info.plist\n000000004320b8a90000000000000271\nUpToDate" ];
+   n00004 [ label = "English.lproj/InfoPlist.strings\n5db92c1f88a1988ff716e51df2d382f0\nUpToDate" ];
+   n00005 [ label = "English.lproj/InfoPlist.strings\n00000000431fc1080000000000000108\nUpToDate" ];
+   n00006 [ label = "ppc/StoreBitLib.o\n4d5eb36c02bca32fbacfb57ec271b4ec\nUpToDate" ];
+   n00007 [ label = "StoreBitLib/StoreBitLib_Prefix.pch\n00000000431fc108000000000000009a\nUpToDate" ];
+   n00008 [ label = "StoreBitLib_Prefix-bowuniuvxcsrgfbmpctxgctqxfox/StoreBitLib_Prefix.pch.gch\n5426d2a9135073271b93b3fcca8ca2ac\nUpToDate", peripheries = 3 ];
+   n00009 [ label = "StoreBitLib/StoreBitLib.m\n000000004320b5180000000000000a82\nUpToDate" ];
+   n00010 [ label = "MacOS/StoreBitLib\ndd1781f3f5d5bfbd4d3b2d6ba47bcd39\nMissing", color = "0.1 0.5 0.5", fillcolor = "0.1 0.2 0.9" ];
+   n00011 [ label = "Frameworks/Cocoa.framework[C]\n000000004300166700000000000000cc\nUpToDate" ];
+
+   node [ shape = box, style = "filled,bold", color = "0.7 0.5 0.7", fillcolor = "0.7 0.2 1.0", fontname = "Monaco", fontsize = "9" ];
+   c00001 [ label = "PBXCp Info.plist <wt:0>\nwaitCount: 0\n000000004320b8a90000000000000271\n^ ae9ef48bfb0b0902adebf62942c4a3a8\n= ae9ef48bb82bb1abadebf62942c4a1d9\nDoesNotNeedToRun\n(no 'why' info)" ];
+   c00002 [ label = "CpResource InfoPlist.strings <wt:2>\nwaitCount: 0\n00000000000000000000000000000000\n^ 5db92c1f88a1988ff716e51df2d382f0\n= 5db92c1f88a1988ff716e51df2d382f0\nDoesNotNeedToRun\n(no 'why' info)" ];
+   c00003 [ label = "CompileC StoreBitLib.o <wt:4>\nwaitCount: 0\n5426d2a95070c63f1b93b3fcca8ca82e\n^ 197861c552cc6510a15c068208fd1cc2\n= 4d5eb36c02bca32fbacfb57ec271b4ec\nDoesNotNeedToRun\n(no 'why' info)" ];
+   c00004 [ label = "ProcessPCH StoreBitLib_Prefix.pch.gch <wt:3>\nwaitCount: 0\n00000000431fc108000000000000009a\n^ 5426d2a9504fb22f1b93b3fcca8ca236\n= 5426d2a9135073271b93b3fcca8ca2ac\nDoesNotNeedToRun\n(no 'why' info)" ];
+   c00005 [ label = "Ld StoreBitLib <wt:4>\nwaitCount: 0\n4d5eb36c41bcb548bacfb57ec271b420\n^ 9049329fb4690af5f7f49815660a7919\n= dd1781f3f5d5bfbd4d3b2d6ba47bcd39\nNeedsToRun\n1 output is missing", color = "0.6 0.5 0.7", fillcolor = "0.6 0.2 1.0" ];
+   c00006 [ label = "Touch StoreBitLib.bundle <wt:7>\nwaitCount: 0\n2e305967c55f969917c63e5f146cee10\n^ 385730ff067a9876be8b2b019d86e29e\n= 16676998c3250eefa94d155e89ea0c8e\nIndirectlyNeedsToRun\nNeeds to run because at least one of the inputs to the command are scheduled to be updated.", color = "0.6 0.5 0.7", fillcolor = "0.6 0.2 1.0" ];
+
+   edge [ style = solid, color = black, arrowhead = none, arrowtail = normal ];
+   n00001 -> { c00006 };
+   n00002 -> { c00001 };
+   n00004 -> { c00002 };
+   n00006 -> { c00003 };
+   n00008 -> { c00004 };
+   n00010 -> { c00005 };
+   c00001 -> { n00003 };
+   c00002 -> { n00005 n00005 };
+   c00003 -> { n00008 n00009 };
+   c00004 -> { n00007 };
+   c00005 -> { n00006 n00011 };
+   c00006 -> { n00002 n00004 n00010 };
+
+   edge [ style = solid, color = gray60, arrowhead = none, arrowtail = normal ];
+}

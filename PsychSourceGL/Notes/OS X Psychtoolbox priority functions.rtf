@@ -1,0 +1,75 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica-Bold;\f1\fswiss\fcharset77 Helvetica;\f2\fswiss\fcharset77 Helvetica-BoldOblique;
+\f3\fswiss\fcharset77 Helvetica-Oblique;\f4\fnil\fcharset77 LucidaGrande;}
+{\colortbl;\red255\green255\blue255;}
+\paperw15840\paperh12240\margl1440\margr1440\vieww24760\viewh13560\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\b\fs34 \cf0 \
+
+\f1\b0 This is an early inventory of OS X Psychtoolbox priority functions, revealing what underlies the OS 9 lookalike priority calls. Documentation has been added to PTB .m help files, but this inventory might be useful to developers so I have not thrown it out.  Maybe we should transfer the contents below to the build-in PTB documentation.\
+\
+Allen Ingling\
+28 October 2004\
+\
+\
+\
+
+\f0\b priority stuff
+\f1\b0\fs26 \
+\
+
+\f2\i\b\fs30 mex files (and other compiled C):
+\f1\i0\b0\fs26 \
+\
+
+\f3\i \ul file\ulnone 						\ul scripting API\ulnone 			\ul purpose \
+                                                                                             \
+
+\f1\i0 \ulnone MachSetPriority.mexmac 		PsychScriptingGlue		Sets Darwin "Time Constraint" Priority and restores to normal.\
+TestPriority.mexmac			PsychScriptingGlue		Runs a C timing loop inside a mex file\
+\
+MachSetPriorityMex.mexmac  	MATLAB Mex			Sets  any  Darwin priority setting\
+MachGetPriorityMex.mexmac  	MATLAB Mex			Reports the current Darwin priority setting\
+TestPriorityMex.mexmac		MATLAB Mex			Runs a C timing loop inside a mex file\
+\
+StandaloneTimingProgram		none					Runs a timing loop in a separate process\
+\
+\
+Comments:\
+The functions which use the mex api are more general and more polished than their corresponding scripting glue versions.  They should be rewritten to use scripting glue now that the timing bug is solved.\
+\
+\
+
+\f2\i\b\fs30 m files:\
+\
+
+\f3\b0\fs26 \ul file\ulnone 							\ul uses\ulnone 					\ul purpose\
+
+\f4\i0 \ulnone MachSetTimeConstraintPriority.m		
+\f1 MachSetPriorityMex.mexmac
+\f4 	Wrapper for 
+\f1 MachPriorityMex.mexmac converting units of secs to bus ticks
+\f2\i\b\fs30 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+
+\f4\i0\b0\fs24 \cf0 MachGetPriorityFlavor.m				MachGetPriorityMex.mexmac   Names the current priority flavor without associated paramters\
+MachGetPriorityMex.m					-			                         Help file for MachGetPriority.mexmac\
+MachSetPriorityMex.m					-			                         Help file for MachSetPriority.mexmac\
+MachSetStandardPriority.m				
+\f1\fs26 MachSetPriorityMex.mexmac  Restores normal priority settings\
+\
+TestMATLABTimingOSX.m				MachSetTimeConstraintPriority Runs a scripted timing loop and analyses results.\
+TestStandaloneTimingOSX.m			StandaloneTimingProgram       Launches StandaloneTimingProgram and analyses results 			\
+
+\f4\fs24 				\
+				
+\f2\i\b\fs30 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f1\i0\b0\fs26 \cf0 \
+\
+\
+\
+\
+}

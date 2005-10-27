@@ -1,0 +1,49 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;\f1\fswiss\fcharset77 Helvetica-Oblique;\f2\fnil\fcharset77 LucidaGrande;
+}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww10920\viewh8080\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\fs24 \cf0 \
+There is a conflict between MATLAB and OS X policy about where to Psychtoolbox should be installed.  As of now, the PTB installations instructions instruct the Applications folder, wich agrees with neither.  That was partly because we at the NYU CNS dept MATLAB was an application bundle, which discourages access to the MATLAB/toolboxes directory.\
+\
+The policy should be changed to advocate the MATLAB/toolboxes directory.  Nonethless, for background here is Apple's policy for OS X.  \
+\
+Allen Ingling\
+28 October 2004\
+\
+\
+\
+from \ul Inside MacOSX: System Overview\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f1\i \cf0 \ul \ulc0 \
+\pard\ql\qnatural
+\cf0 \ulnone Application Support Third-party plug-ins, helper applications, templates, and\
+other resources for a specific application in a domain. By\
+convention, these items should be put in a subdirectory\
+named according to the application. Thus third-party\
+resources for the application MyApp would go in\
+Application Support/MyApp. Note that resources created\
+by the developer of an application should go in the\
+application package itself. See 
+\f2\i0 \uc0\u1058 
+\f1\i Application Packaging
+\f2\i0 \uc0\u1059 
+\f1\i \
+(page 117) for more information.\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\i0 \cf0 \
+\
+Where to install the Psychoolbox ?  /Library/Application Support looks like a good place.  Partly because it solves the problem of specifying to mex files where to find dynamic libs.  Though, as with PsychHID, in some cases we can get around that by compiling in the static version of the lib.  \
+\
+Downsides are that MATLAB will not automatically include this on its "default" path and that it conflicts with the Windows installation location.  \
+\
+And if MATLAB (wich it can't) can not handle file paths with spaces then this would not work at all.\
+\
+\
+\
+\
+}

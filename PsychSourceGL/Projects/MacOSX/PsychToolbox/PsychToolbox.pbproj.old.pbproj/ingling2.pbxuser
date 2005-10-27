@@ -1,0 +1,4385 @@
+// !$*UTF8*$!
+{
+	29B97313FDCFA39411CA2CEA = {
+		activeBuildStyle = 4A9504CCFFE6A4B311CA0CBA;
+		activeExecutable = CF639F1B07D7F18000A1A44A;
+		activeTarget = 2FD6171707306668008DA6B4;
+		addToTargets = (
+			CF29B1CB080333DC00723921,
+		);
+		breakpoints = (
+			CF4FD45A07DC3690008FEFD3,
+			CF0513E307DC493B00566A2F,
+			CF29B3600805BF1A00723921,
+		);
+		codeSenseManager = CF639F3C07D7F19000A1A44A;
+		executables = (
+			CF639F0A07D7F18000A1A44A,
+			CF639F0B07D7F18000A1A44A,
+			CF639F0C07D7F18000A1A44A,
+			CF639F0D07D7F18000A1A44A,
+			CF639F0E07D7F18000A1A44A,
+			CF639F0F07D7F18000A1A44A,
+			CF639F1007D7F18000A1A44A,
+			CF639F1107D7F18000A1A44A,
+			CF639F1207D7F18000A1A44A,
+			CF639F1307D7F18000A1A44A,
+			CF639F1407D7F18000A1A44A,
+			CF639F1507D7F18000A1A44A,
+			CF639F1607D7F18000A1A44A,
+			CF639F1707D7F18000A1A44A,
+			CF639F1807D7F18000A1A44A,
+			CF639F1907D7F18000A1A44A,
+			CF639F1A07D7F18000A1A44A,
+			CF639F1B07D7F18000A1A44A,
+			CF639F1E07D7F18000A1A44A,
+			CF639F1F07D7F18000A1A44A,
+			CF639F2007D7F18000A1A44A,
+			CF639F2107D7F18000A1A44A,
+			CF4FD41707DC2790008FEFD3,
+			CF29B1FE080333DC00723921,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXErrorsWarningsDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXErrorsWarningsDataSource_LocationID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					619.8799,
+					332.2085,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXErrorsWarningsDataSource_TypeID,
+					PBXErrorsWarningsDataSource_MessageID,
+					PBXErrorsWarningsDataSource_LocationID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXExecutablesDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXExecutablesDataSource_NameID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					22,
+					614.7974,
+					318.5835,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXExecutablesDataSource_ActiveFlagID,
+					PBXExecutablesDataSource_NameID,
+					PBXExecutablesDataSource_CommentsID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					688,
+					20,
+					122,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXConfiguration.PBXTargetDataSource.PBXTargetDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					596,
+					127,
+					20,
+					127,
+					43,
+					43,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXTargetDataSource_PrimaryAttribute,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 135144271;
+			PBXPrepackagedSmartGroups_v2 = (
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					activationKey = OldTargetSmartGroup;
+					clz = PBXTargetSmartGroup;
+					description = "Displays all targets of the project.";
+					globalID = 1C37FABC04509CD000000102;
+					name = Targets;
+					preferences = {
+						image = Targets;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXTargetSmartGroup2;
+					description = "Displays all targets of the project as well as nested build phases.";
+					globalID = 1C37FBAC04509CD000000102;
+					name = Targets;
+					preferences = {
+						image = Targets;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXExecutablesSmartGroup;
+					description = "Displays all executables of the project.";
+					globalID = 1C37FAAC04509CD000000102;
+					name = Executables;
+					preferences = {
+						image = Executable;
+					};
+				},
+				{
+					" PBXTransientLocationAtTop " = bottom;
+					absolutePathToBundle = "";
+					clz = PBXErrorsWarningsSmartGroup;
+					description = "Displays files with errors or warnings.";
+					globalID = 1C08E77C0454961000C914BD;
+					name = "Errors and Warnings";
+					preferences = {
+						fnmatch = "";
+						image = WarningsErrors;
+						recursive = 1;
+						regex = "";
+						root = "<PROJECT>";
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXFilenameSmartGroup;
+					description = "Filters items in a given group (potentially recursively) based on matching the name with the regular expression of the filter.";
+					globalID = 1CC0EA4004350EF90044410B;
+					name = "Implementation Files";
+					preferences = {
+						canSave = 1;
+						fnmatch = "";
+						image = SmartFolder;
+						isLeaf = 0;
+						recursive = 1;
+						regex = "?*\\.[mcMC]";
+						root = "<PROJECT>";
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXFilenameSmartGroup;
+					description = "This group displays Interface Builder NIB Files.";
+					globalID = 1CC0EA4004350EF90041110B;
+					name = "NIB Files";
+					preferences = {
+						canSave = 1;
+						fnmatch = "*.nib";
+						image = SmartFolder;
+						isLeaf = 0;
+						recursive = 1;
+						regex = "";
+						root = "<PROJECT>";
+					};
+				},
+				{
+					PBXTransientLocationAtTop = no;
+					absolutePathToBundle = "";
+					clz = PBXFindSmartGroup;
+					description = "Displays Find Results.";
+					globalID = 1C37FABC05509CD000000102;
+					name = "Find Results";
+					preferences = {
+						image = spyglass;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = no;
+					absolutePathToBundle = "";
+					clz = PBXBookmarksSmartGroup;
+					description = "Displays Project Bookmarks.";
+					globalID = 1C37FABC05539CD112110102;
+					name = Bookmarks;
+					preferences = {
+						image = Bookmarks;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = XCSCMSmartGroup;
+					description = "Displays files with interesting SCM status.";
+					globalID = E2644B35053B69B200211256;
+					name = SCM;
+					preferences = {
+						image = PBXRepository;
+						isLeaf = 0;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXSymbolsSmartGroup;
+					description = "Displays all symbols for the project.";
+					globalID = 1C37FABC04509CD000100104;
+					name = "Project Symbols";
+					preferences = {
+						image = ProjectSymbols;
+						isLeaf = 1;
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXFilenameSmartGroup;
+					description = "Filters items in a given group (potentially recursively) based on matching the name with the regular expression of the filter.";
+					globalID = PBXTemplateMarker;
+					name = "Simple Filter SmartGroup";
+					preferences = {
+						canSave = 1;
+						fnmatch = "*.nib";
+						image = SmartFolder;
+						isLeaf = 0;
+						recursive = 1;
+						regex = "";
+						root = "<PROJECT>";
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					absolutePathToBundle = "";
+					clz = PBXFilenameSmartGroup;
+					description = "Filters items in a given group (potentially recursively) based on matching the name with the regular expression of the filter.";
+					globalID = PBXTemplateMarker;
+					name = "Simple Regular Expression SmartGroup";
+					preferences = {
+						canSave = 1;
+						fnmatch = "";
+						image = SmartFolder;
+						isLeaf = 0;
+						recursive = 1;
+						regex = "?*\\.[mcMC]";
+						root = "<PROJECT>";
+					};
+				},
+				{
+					PBXTransientLocationAtTop = bottom;
+					clz = XDDesignSmartGroup;
+					description = "Displays Xdesign models";
+					globalID = 2E4A936305E6979E00701470;
+					name = Design;
+					preferences = {
+						image = Design;
+						isLeaf = 0;
+					};
+				},
+			);
+			PBXWorkspaceStateSaveDate = 135144271;
+		};
+		perUserProjectItems = {
+			CF042F8C07DEABA0004976D7 = CF042F8C07DEABA0004976D7;
+			CF05140A07DC4B5900566A2F = CF05140A07DC4B5900566A2F;
+			CF05140B07DC4B5900566A2F = CF05140B07DC4B5900566A2F;
+			CF05141007DC4B5900566A2F = CF05141007DC4B5900566A2F;
+			CF05141107DC4B5900566A2F = CF05141107DC4B5900566A2F;
+			CF05141207DC4B5900566A2F = CF05141207DC4B5900566A2F;
+			CF12362A07F8FA6100F1BE3B = CF12362A07F8FA6100F1BE3B;
+			CF12362B07F8FA6100F1BE3B = CF12362B07F8FA6100F1BE3B;
+			CF1D7A6907E6698B004F308C = CF1D7A6907E6698B004F308C;
+			CF1D7A8207E66C98004F308C = CF1D7A8207E66C98004F308C;
+			CF1D7A8307E66C98004F308C = CF1D7A8307E66C98004F308C;
+			CF1D7BE607E77FC0004F308C = CF1D7BE607E77FC0004F308C;
+			CF1D7BEC07E7808D004F308C = CF1D7BEC07E7808D004F308C;
+			CF1D7C0807E78437004F308C = CF1D7C0807E78437004F308C;
+			CF1D7C2107E78797004F308C = CF1D7C2107E78797004F308C;
+			CF1D7C7407E7CC89004F308C = CF1D7C7407E7CC89004F308C;
+			CF1D7C7507E7CC89004F308C = CF1D7C7507E7CC89004F308C;
+			CF1D7C7D07E7CD62004F308C = CF1D7C7D07E7CD62004F308C;
+			CF1D7CAC07E7DA27004F308C = CF1D7CAC07E7DA27004F308C;
+			CF1D7CEE07EA61E7004F308C = CF1D7CEE07EA61E7004F308C;
+			CF1D7CF007EA61E7004F308C = CF1D7CF007EA61E7004F308C;
+			CF1D7D1B07EA67F8004F308C = CF1D7D1B07EA67F8004F308C;
+			CF1D7D1C07EA67F8004F308C = CF1D7D1C07EA67F8004F308C;
+			CF1D7D9307EF6911004F308C = CF1D7D9307EF6911004F308C;
+			CF1D7DD707F0F442004F308C = CF1D7DD707F0F442004F308C;
+			CF1D7DDB07F0F442004F308C = CF1D7DDB07F0F442004F308C;
+			CF1D7E0C07F11B28004F308C = CF1D7E0C07F11B28004F308C;
+			CF1D7E0E07F11B28004F308C = CF1D7E0E07F11B28004F308C;
+			CF1D7E4E07F1E12A004F308C = CF1D7E4E07F1E12A004F308C;
+			CF1D7E5007F1E12A004F308C = CF1D7E5007F1E12A004F308C;
+			CF22F962080E235C00F08369 = CF22F962080E235C00F08369;
+			CF22F963080E235C00F08369 = CF22F963080E235C00F08369;
+			CF29B2070803344600723921 = CF29B2070803344600723921;
+			CF29B215080335A300723921 = CF29B215080335A300723921;
+			CF29B29F08049F6000723921 = CF29B29F08049F6000723921;
+			CF29B2A008049F6000723921 = CF29B2A008049F6000723921;
+			CF29B2B00804A28F00723921 = CF29B2B00804A28F00723921;
+			CF29B2B10804A28F00723921 = CF29B2B10804A28F00723921;
+			CF29B2B20804A28F00723921 = CF29B2B20804A28F00723921;
+			CF29B2DB0804A4DA00723921 = CF29B2DB0804A4DA00723921;
+			CF29B2DC0804A4DA00723921 = CF29B2DC0804A4DA00723921;
+			CF29B2E70804A5D000723921 = CF29B2E70804A5D000723921;
+			CF29B2F50804ABAD00723921 = CF29B2F50804ABAD00723921;
+			CF29B2F90804ABAD00723921 = CF29B2F90804ABAD00723921;
+			CF29B2FE0804AC4600723921 = CF29B2FE0804AC4600723921;
+			CF29B3060804B2BD00723921 = CF29B3060804B2BD00723921;
+			CF29B3080804B2BD00723921 = CF29B3080804B2BD00723921;
+			CF29B32E0804D9EF00723921 = CF29B32E0804D9EF00723921;
+			CF29B3300804D9EF00723921 = CF29B3300804D9EF00723921;
+			CF29B3580805BD5900723921 = CF29B3580805BD5900723921;
+			CF29B3590805BD5900723921 = CF29B3590805BD5900723921;
+			CF29B36F0805C78400723921 = CF29B36F0805C78400723921;
+			CF29B3800805CAB700723921 = CF29B3800805CAB700723921;
+			CF29B3810805CAB700723921 = CF29B3810805CAB700723921;
+			CF29B3850805CAB700723921 = CF29B3850805CAB700723921;
+			CF29B38D0805CAB700723921 = CF29B38D0805CAB700723921;
+			CF29B38E0805CAB700723921 = CF29B38E0805CAB700723921;
+			CF29B38F0805CAB700723921 = CF29B38F0805CAB700723921;
+			CF29B39A0805CDF400723921 = CF29B39A0805CDF400723921;
+			CF29B3A80805D05500723921 = CF29B3A80805D05500723921;
+			CF29B3AA0805D05500723921 = CF29B3AA0805D05500723921;
+			CF29B3D20805E6FB00723921 = CF29B3D20805E6FB00723921;
+			CF2A3465080AD4C700AE4732 = CF2A3465080AD4C700AE4732;
+			CF2A3466080AD4C700AE4732 = CF2A3466080AD4C700AE4732;
+			CF2A3467080AD4C700AE4732 = CF2A3467080AD4C700AE4732;
+			CF2A3468080AD4C700AE4732 = CF2A3468080AD4C700AE4732;
+			CF2A3469080AD4C700AE4732 = CF2A3469080AD4C700AE4732;
+			CF2A346A080AD4C700AE4732 = CF2A346A080AD4C700AE4732;
+			CF2A346B080AD4C700AE4732 = CF2A346B080AD4C700AE4732;
+			CF2A346C080AD4C700AE4732 = CF2A346C080AD4C700AE4732;
+			CF2A346D080AD4C700AE4732 = CF2A346D080AD4C700AE4732;
+			CF2A346E080AD4C700AE4732 = CF2A346E080AD4C700AE4732;
+			CF2A346F080AD4C700AE4732 = CF2A346F080AD4C700AE4732;
+			CF2A3470080AD4C700AE4732 = CF2A3470080AD4C700AE4732;
+			CF2A3471080AD4C700AE4732 = CF2A3471080AD4C700AE4732;
+			CF2A3472080AD4C700AE4732 = CF2A3472080AD4C700AE4732;
+			CF2A3473080AD4C700AE4732 = CF2A3473080AD4C700AE4732;
+			CF2A3474080AD4C700AE4732 = CF2A3474080AD4C700AE4732;
+			CF2A3475080AD4C700AE4732 = CF2A3475080AD4C700AE4732;
+			CF2A3476080AD4C700AE4732 = CF2A3476080AD4C700AE4732;
+			CF2A3477080AD4C700AE4732 = CF2A3477080AD4C700AE4732;
+			CF2A3478080AD4C700AE4732 = CF2A3478080AD4C700AE4732;
+			CF2A3479080AD4C700AE4732 = CF2A3479080AD4C700AE4732;
+			CF2A347C080AD4C700AE4732 = CF2A347C080AD4C700AE4732;
+			CF2A347D080AD4C700AE4732 = CF2A347D080AD4C700AE4732;
+			CF2A347E080AD4C700AE4732 = CF2A347E080AD4C700AE4732;
+			CF2A347F080AD4C700AE4732 = CF2A347F080AD4C700AE4732;
+			CF2A3480080AD4C700AE4732 = CF2A3480080AD4C700AE4732;
+			CF2A3481080AD4C700AE4732 = CF2A3481080AD4C700AE4732;
+			CF2A3482080AD4C700AE4732 = CF2A3482080AD4C700AE4732;
+			CF2A3483080AD4C700AE4732 = CF2A3483080AD4C700AE4732;
+			CF2A3484080AD4C700AE4732 = CF2A3484080AD4C700AE4732;
+			CF2A3485080AD4C700AE4732 = CF2A3485080AD4C700AE4732;
+			CF2A3486080AD4C700AE4732 = CF2A3486080AD4C700AE4732;
+			CF2A3487080AD4C700AE4732 = CF2A3487080AD4C700AE4732;
+			CF2A3488080AD4C700AE4732 = CF2A3488080AD4C700AE4732;
+			CF2A3489080AD4C700AE4732 = CF2A3489080AD4C700AE4732;
+			CF2A348A080AD4C700AE4732 = CF2A348A080AD4C700AE4732;
+			CF2A348B080AD4C700AE4732 = CF2A348B080AD4C700AE4732;
+			CF2A348C080AD4C700AE4732 = CF2A348C080AD4C700AE4732;
+			CF2A348D080AD4C700AE4732 = CF2A348D080AD4C700AE4732;
+			CF2A348E080AD4C700AE4732 = CF2A348E080AD4C700AE4732;
+			CF2A348F080AD4C700AE4732 = CF2A348F080AD4C700AE4732;
+			CF2A3490080AD4C700AE4732 = CF2A3490080AD4C700AE4732;
+			CF38B720080B61F100C84B8C = CF38B720080B61F100C84B8C;
+			CF38B722080B61F100C84B8C = CF38B722080B61F100C84B8C;
+			CF4FD40D07DC1E87008FEFD3 = CF4FD40D07DC1E87008FEFD3;
+			CF4FD40F07DC1E87008FEFD3 = CF4FD40F07DC1E87008FEFD3;
+			CF4FD43807DC3525008FEFD3 = CF4FD43807DC3525008FEFD3;
+			CF50009D080C384C005A2010 = CF50009D080C384C005A2010;
+			CF5000A2080C3874005A2010 = CF5000A2080C3874005A2010;
+			CF5000A9080C39E0005A2010 = CF5000A9080C39E0005A2010;
+			CF5000B2080D6035005A2010 = CF5000B2080D6035005A2010;
+			CF5000CB080D76F1005A2010 = CF5000CB080D76F1005A2010;
+			CF5000CC080D76F1005A2010 = CF5000CC080D76F1005A2010;
+			CF5000CD080D76F1005A2010 = CF5000CD080D76F1005A2010;
+			CF5000CE080D76F1005A2010 = CF5000CE080D76F1005A2010;
+			CF5000D0080D76F1005A2010 = CF5000D0080D76F1005A2010;
+			CF5000D2080D76F1005A2010 = CF5000D2080D76F1005A2010;
+			CF5000D3080D76F1005A2010 = CF5000D3080D76F1005A2010;
+			CF566E8D07F7D37F00D4957A = CF566E8D07F7D37F00D4957A;
+			CF566E8E07F7D37F00D4957A = CF566E8E07F7D37F00D4957A;
+			CF566E9107F7D37F00D4957A = CF566E9107F7D37F00D4957A;
+			CF566E9207F7D37F00D4957A = CF566E9207F7D37F00D4957A;
+			CF63A02A07D8168C00A1A44A = CF63A02A07D8168C00A1A44A;
+			CF63A02B07D8168C00A1A44A = CF63A02B07D8168C00A1A44A;
+			CF63A04407D8176700A1A44A = CF63A04407D8176700A1A44A;
+			CF63A06B07D81BB800A1A44A = CF63A06B07D81BB800A1A44A;
+			CF6ABB95080AD7A800D4968A = CF6ABB95080AD7A800D4968A;
+			CF6ABB96080AD7A800D4968A = CF6ABB96080AD7A800D4968A;
+			CF6ABB98080AD7A800D4968A = CF6ABB98080AD7A800D4968A;
+			CF6ABB99080AD7A800D4968A = CF6ABB99080AD7A800D4968A;
+			CF6ABB9E080AE7B700D4968A = CF6ABB9E080AE7B700D4968A;
+			CF6ABBA1080AE7B700D4968A = CF6ABBA1080AE7B700D4968A;
+			CF6ABBA2080AE7B700D4968A = CF6ABBA2080AE7B700D4968A;
+			CF6ABBB9080AEA8B00D4968A = CF6ABBB9080AEA8B00D4968A;
+			CFA6833C07F27A0800C57F06 = CFA6833C07F27A0800C57F06;
+			CFA6833D07F27A0800C57F06 = CFA6833D07F27A0800C57F06;
+			CFA6834B07F2810900C57F06 = CFA6834B07F2810900C57F06;
+			CFA6838B07F284D800C57F06 = CFA6838B07F284D800C57F06;
+			CFA6838D07F284D800C57F06 = CFA6838D07F284D800C57F06;
+			CFA683BC07F3878E00C57F06 = CFA683BC07F3878E00C57F06;
+			CFA683C107F3878E00C57F06 = CFA683C107F3878E00C57F06;
+			CFA683C707F3882900C57F06 = CFA683C707F3882900C57F06;
+			CFA683CA07F3882900C57F06 = CFA683CA07F3882900C57F06;
+			CFA6840107F38C5000C57F06 = CFA6840107F38C5000C57F06;
+			CFA6840207F38C5000C57F06 = CFA6840207F38C5000C57F06;
+			CFA6840307F38C5000C57F06 = CFA6840307F38C5000C57F06;
+			CFA6840507F38C5000C57F06 = CFA6840507F38C5000C57F06;
+			CFA684C507F3A5F400C57F06 = CFA684C507F3A5F400C57F06;
+			CFA684FB07F4D1C500C57F06 = CFA684FB07F4D1C500C57F06;
+			CFA684FE07F4D1C500C57F06 = CFA684FE07F4D1C500C57F06;
+			CFA99A09080730D600E1D3DC = CFA99A09080730D600E1D3DC;
+			CFA99A290807335700E1D3DC = CFA99A290807335700E1D3DC;
+			CFA99A2A0807335700E1D3DC = CFA99A2A0807335700E1D3DC;
+			CFA99A2B0807335700E1D3DC = CFA99A2B0807335700E1D3DC;
+			CFA99A2D0807335700E1D3DC = CFA99A2D0807335700E1D3DC;
+			CFA99A2E0807335700E1D3DC = CFA99A2E0807335700E1D3DC;
+			CFA99A2F0807335700E1D3DC = CFA99A2F0807335700E1D3DC;
+			CFA99A300807335700E1D3DC = CFA99A300807335700E1D3DC;
+			CFB6DECA08078C1200C84DAF = CFB6DECA08078C1200C84DAF;
+			CFB6DECB08078C1200C84DAF = CFB6DECB08078C1200C84DAF;
+			CFBF45B607FB1F1300F481AD = CFBF45B607FB1F1300F481AD;
+			CFBF45B707FB1F1300F481AD = CFBF45B707FB1F1300F481AD;
+			CFBF45B907FB1F1300F481AD = CFBF45B907FB1F1300F481AD;
+			CFBF45BA07FB1F1300F481AD = CFBF45BA07FB1F1300F481AD;
+			CFDAABE707FC82EF00E387F9 = CFDAABE707FC82EF00E387F9;
+			CFDAABEF07FC891300E387F9 = CFDAABEF07FC891300E387F9;
+			CFE511CA07DFCFB300D55D72 = CFE511CA07DFCFB300D55D72;
+			CFE511DA07E0E53700D55D72 = CFE511DA07E0E53700D55D72;
+			CFE511DB07E0E53700D55D72 = CFE511DB07E0E53700D55D72;
+			CFE511DD07E0E53700D55D72 = CFE511DD07E0E53700D55D72;
+			CFE511DE07E0E53700D55D72 = CFE511DE07E0E53700D55D72;
+			CFE511DF07E0E53700D55D72 = CFE511DF07E0E53700D55D72;
+			CFE511E007E0E53700D55D72 = CFE511E007E0E53700D55D72;
+			CFE511E107E0E53700D55D72 = CFE511E107E0E53700D55D72;
+			CFE511E207E0E53700D55D72 = CFE511E207E0E53700D55D72;
+			CFE511E307E0E53700D55D72 = CFE511E307E0E53700D55D72;
+			CFE511E407E0E53700D55D72 = CFE511E407E0E53700D55D72;
+			CFE511E507E0E53700D55D72 = CFE511E507E0E53700D55D72;
+			CFE511E607E0E53700D55D72 = CFE511E607E0E53700D55D72;
+			CFE511F107E0E53700D55D72 = CFE511F107E0E53700D55D72;
+			CFE511F207E0E53700D55D72 = CFE511F207E0E53700D55D72;
+			CFE511F307E0E53700D55D72 = CFE511F307E0E53700D55D72;
+			CFE511F407E0E53700D55D72 = CFE511F407E0E53700D55D72;
+			CFE511F507E0E53700D55D72 = CFE511F507E0E53700D55D72;
+			CFE511F607E0E53700D55D72 = CFE511F607E0E53700D55D72;
+			CFE511F707E0E53700D55D72 = CFE511F707E0E53700D55D72;
+			CFE511F807E0E53700D55D72 = CFE511F807E0E53700D55D72;
+			CFE511F907E0E53700D55D72 = CFE511F907E0E53700D55D72;
+			CFE511FB07E0E53700D55D72 = CFE511FB07E0E53700D55D72;
+			CFE511FC07E0E53700D55D72 = CFE511FC07E0E53700D55D72;
+			CFE511FD07E0E53700D55D72 = CFE511FD07E0E53700D55D72;
+			CFE511FE07E0E53700D55D72 = CFE511FE07E0E53700D55D72;
+			CFE511FF07E0E53700D55D72 = CFE511FF07E0E53700D55D72;
+			CFE5122C07E0FB8800D55D72 = CFE5122C07E0FB8800D55D72;
+			CFE5122D07E0FB8800D55D72 = CFE5122D07E0FB8800D55D72;
+			CFE5122E07E0FB8800D55D72 = CFE5122E07E0FB8800D55D72;
+			CFE5122F07E0FB8800D55D72 = CFE5122F07E0FB8800D55D72;
+			CFE5123007E0FB8800D55D72 = CFE5123007E0FB8800D55D72;
+			CFE5123107E0FB8800D55D72 = CFE5123107E0FB8800D55D72;
+			CFE5123207E0FB8800D55D72 = CFE5123207E0FB8800D55D72;
+			CFE5123407E0FB8800D55D72 = CFE5123407E0FB8800D55D72;
+			CFE512BF07E1712800D55D72 = CFE512BF07E1712800D55D72;
+			CFE5134C07E2696100D55D72 = CFE5134C07E2696100D55D72;
+			CFE5135207E2696100D55D72 = CFE5135207E2696100D55D72;
+			CFE5135307E2696100D55D72 = CFE5135307E2696100D55D72;
+			CFE5135407E2696100D55D72 = CFE5135407E2696100D55D72;
+			CFE5135B07E26B1A00D55D72 = CFE5135B07E26B1A00D55D72;
+			CFE5135C07E26B1A00D55D72 = CFE5135C07E26B1A00D55D72;
+		};
+		sourceControlManager = CF639F3B07D7F19000A1A44A;
+		userBuildSettings = {
+		};
+	};
+	2F0B166107788BB500359736 = {
+		activeExec = 0;
+		executables = (
+			CF639F1507D7F18000A1A44A,
+		);
+	};
+	2F1642F6075E5FBF00E4FCB1 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {812, 2196}}";
+			sepNavSelRange = "{5553, 0}";
+			sepNavVisRect = "{{0, 721}, {812, 624}}";
+			sepNavWindowFrame = "{{15, 439}, {750, 558}}";
+		};
+	};
+	2F169D4805FE6B9B009177BC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 550}}";
+			sepNavSelRange = "{638, 4}";
+			sepNavVisRect = "{{0, 0}, {1115, 550}}";
+		};
+	};
+	2F169D4C05FE6BA7009177BC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1058, 3457}}";
+			sepNavSelRange = "{219, 0}";
+			sepNavVisRect = "{{0, 0}, {812, 609}}";
+			sepNavWindowFrame = "{{15, 439}, {750, 558}}";
+		};
+	};
+	2F44AD77056B166A007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 1049}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	2F4A1B3904A3F857007A7274 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {980, 1371}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {980, 614}}";
+		};
+	};
+	2F4A2DEA069CBAFA0005EA67 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1130, 1609}}";
+			sepNavSelRange = "{1261, 10}";
+			sepNavVisRect = "{{0, 620}, {1130, 537}}";
+		};
+	};
+	2F4A2DEB069CBAFA0005EA67 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1034, 8637}}";
+			sepNavSelRange = "{4952, 0}";
+			sepNavVisRect = "{{0, 1736}, {960, 614}}";
+		};
+	};
+	2F4A2DEE069CBAFA0005EA67 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1130, 3457}}";
+			sepNavSelRange = "{2096, 11}";
+			sepNavVisRect = "{{0, 859}, {1130, 537}}";
+		};
+	};
+	2F4A2DEF069CBAFA0005EA67 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1130, 1288}}";
+			sepNavSelRange = "{1236, 11}";
+			sepNavVisRect = "{{0, 0}, {1130, 537}}";
+		};
+	};
+	2F4A57DD053A94E600A80166 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1508, 3261}}";
+			sepNavSelRange = "{12000, 9}";
+			sepNavVisRect = "{{0, 2139}, {1115, 550}}";
+		};
+	};
+	2F4D83D907B8282C00CE685A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1184, 3457}}";
+			sepNavSelRange = "{5977, 36}";
+			sepNavVisRect = "{{0, 2258}, {943, 564}}";
+		};
+	};
+	2F4D83DA07B8282C00CE685A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 601}}";
+			sepNavSelRange = "{915, 119}";
+			sepNavVisRect = "{{0, 42}, {1036, 524}}";
+		};
+	};
+	2F588F27056AC650007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 1119}}";
+			sepNavSelRange = "{1940, 19}";
+			sepNavVisRect = "{{0, 565}, {1395, 527}}";
+		};
+	};
+	2F588F29056AC66D007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 1455}}";
+			sepNavSelRange = "{2028, 0}";
+			sepNavVisRect = "{{0, 397}, {1395, 527}}";
+		};
+	};
+	2F646E6E05BC852C0079EEB6 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1538, 3555}}";
+			sepNavSelRange = "{8439, 19}";
+			sepNavVisRect = "{{0, 2244}, {1130, 537}}";
+		};
+	};
+	2F6B77C3056C74AB007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 1049}}";
+			sepNavSelRange = "{927, 0}";
+			sepNavVisRect = "{{0, 470}, {1056, 454}}";
+		};
+	};
+	2F6FC4AC0739C0FB00B3EB88 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {980, 1772}}";
+			sepNavSelRange = "{85, 0}";
+			sepNavVisRect = "{{0, 0}, {980, 629}}";
+			sepNavWindowFrame = "{{38, 322}, {987, 654}}";
+		};
+	};
+	2F742337068A830200D66E0C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 2183}}";
+			sepNavSelRange = "{2819, 0}";
+			sepNavVisRect = "{{0, 1659}, {1036, 524}}";
+		};
+	};
+	2F74235E068A842B00D66E0C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 951}}";
+			sepNavSelRange = "{1137, 0}";
+			sepNavVisRect = "{{0, 417}, {1036, 524}}";
+		};
+	};
+	2F875A6905F679A3008AC8DE = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1160, 2099}}";
+			sepNavSelRange = "{3632, 12}";
+			sepNavVisRect = "{{0, 992}, {1115, 550}}";
+		};
+	};
+	2F91372C05C39F5100CB5A38 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 1105}}";
+			sepNavSelRange = "{489, 0}";
+			sepNavVisRect = "{{0, 266}, {1036, 524}}";
+		};
+	};
+	2F95014604E8A2EB007A7274 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {986, 2449}}";
+			sepNavSelRange = "{431, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2F95015B04E9AE88007A7274 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 797}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 233}, {943, 564}}";
+		};
+	};
+	2F95015C04E9AE88007A7274 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{825, 23}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FA0CBC405F1596B007B24E1 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 3569}}";
+			sepNavSelRange = "{4840, 0}";
+			sepNavVisRect = "{{0, 3045}, {1036, 524}}";
+		};
+	};
+	2FA80D3306B0569900112E7A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 784}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	2FA82FE9056978E4007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 4731}}";
+			sepNavSelRange = "{16127, 0}";
+			sepNavVisRect = "{{0, 4182}, {1395, 527}}";
+		};
+	};
+	2FACA4C00764D9E400A159D3 = {
+		activeExec = 0;
+		executables = (
+			CF639F0C07D7F18000A1A44A,
+		);
+	};
+	2FB35E44073065570070ABEC = {
+		activeExec = 0;
+		executables = (
+			CF639F1207D7F18000A1A44A,
+		);
+	};
+	2FB35E54073065570070ABEC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FB6EED407B88314000CAF40 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 1315}}";
+			sepNavSelRange = "{407, 143}";
+			sepNavVisRect = "{{0, 112}, {943, 564}}";
+		};
+	};
+	2FC480AE069E457D00EE6B86 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {890, 979}}";
+			sepNavSelRange = "{1585, 0}";
+			sepNavVisRect = "{{0, 370}, {812, 609}}";
+		};
+	};
+	2FC480AF069E457D00EE6B86 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {812, 609}}";
+			sepNavSelRange = "{487, 48}";
+			sepNavVisRect = "{{0, 0}, {812, 609}}";
+		};
+	};
+	2FC84FBE068E7813009B1AF2 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1040, 1707}}";
+			sepNavSelRange = "{5085, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	2FC84FC2068E782A009B1AF2 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 4787}}";
+			sepNavSelRange = "{4665, 6}";
+			sepNavVisRect = "{{0, 988}, {1056, 454}}";
+		};
+	};
+	2FC8979607D04F700042BE63 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 979}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 406}, {1056, 454}}";
+		};
+	};
+	2FC89E42056EC642007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {926, 1385}}";
+			sepNavSelRange = "{529, 0}";
+			sepNavVisRect = "{{0, 74}, {812, 609}}";
+		};
+	};
+	2FD31F1B079E1F89005D8F2D = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 545}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	2FD6145507306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F0A07D7F18000A1A44A,
+		);
+	};
+	2FD6148707306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6148B07306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F0B07D7F18000A1A44A,
+		);
+	};
+	2FD614C707306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD614CB07306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F0D07D7F18000A1A44A,
+		);
+	};
+	2FD614DB07306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD614DF07306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F0E07D7F18000A1A44A,
+		);
+	};
+	2FD6151107306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6151507306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F0F07D7F18000A1A44A,
+		);
+	};
+	2FD6154B07306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6154F07306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1007D7F18000A1A44A,
+		);
+	};
+	2FD6158307306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6158707306666008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1107D7F18000A1A44A,
+		);
+	};
+	2FD615BB07306666008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD615D107306667008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1307D7F18000A1A44A,
+		);
+	};
+	2FD6160307306667008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6160707306667008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1407D7F18000A1A44A,
+		);
+	};
+	2FD6163A07306667008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6163E07306667008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1607D7F18000A1A44A,
+		);
+	};
+	2FD6164F07306667008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6165307306667008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1707D7F18000A1A44A,
+		);
+	};
+	2FD6168507306667008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6168907306667008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1807D7F18000A1A44A,
+		);
+	};
+	2FD6169A07306668008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6169E07306668008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1907D7F18000A1A44A,
+		);
+	};
+	2FD616DD07306668008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD616E107306668008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1A07D7F18000A1A44A,
+		);
+	};
+	2FD6171307306668008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6171707306668008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1B07D7F18000A1A44A,
+		);
+	};
+	2FD6179907306668008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD617CF07306669008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD617E307306669008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD617E707306669008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1E07D7F18000A1A44A,
+		);
+	};
+	2FD6181D0730666A008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD618210730666A008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F1F07D7F18000A1A44A,
+		);
+	};
+	2FD618310730666A008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD618350730666A008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F2007D7F18000A1A44A,
+		);
+	};
+	2FD618670730666B008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FD6186B0730666B008DA6B4 = {
+		activeExec = 0;
+		executables = (
+			CF639F2107D7F18000A1A44A,
+		);
+	};
+	2FD6187B0730666B008DA6B4 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	2FE20DD206093D3500FDE06D = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 524}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	2FE3CC150569E4BA007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 671}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+			sepNavWindowFrame = "{{61, 147}, {943, 808}}";
+		};
+	};
+	2FE3CC170569E4C6007A711C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1130, 3205}}";
+			sepNavSelRange = "{2641, 0}";
+			sepNavVisRect = "{{0, 1312}, {1130, 537}}";
+		};
+	};
+	2FFC1F380790AD1B0056DF76 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 3290}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 579}}";
+		};
+	};
+	CF042F8C07DEABA0004976D7 = {
+		fRef = 2FC84FBE068E7813009B1AF2;
+		isa = PBXTextBookmark;
+		name = "SCREENDrawTexture.c: 111";
+		rLen = 0;
+		rLoc = 5085;
+		rType = 0;
+		vrLen = 1102;
+		vrLoc = 0;
+	};
+	CF0513E107DC493B00566A2F = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.c;
+		name = SCREENDrawText.c;
+		path = /development/PsychSourceGL/Source/Common/Screen/SCREENDrawText.c;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF0513E307DC493B00566A2F = {
+		fileReference = CF0513E107DC493B00566A2F;
+		functionName = "SCREENDrawText()";
+		isa = PBXFileBreakpoint;
+		lineNumber = 284;
+		state = 1;
+	};
+	CF05140A07DC4B5900566A2F = {
+		fRef = 2F4A57DD053A94E600A80166;
+		isa = PBXTextBookmark;
+		name = "SCREENTestTexture.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2926;
+		vrLoc = 11099;
+	};
+	CF05140B07DC4B5900566A2F = {
+		fRef = 2F875A6905F679A3008AC8DE;
+		isa = PBXTextBookmark;
+		name = "SCREENTestTextureTwo.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2601;
+		vrLoc = 3975;
+	};
+	CF05141007DC4B5900566A2F = {
+		fRef = 2F4A57DD053A94E600A80166;
+		isa = PBXTextBookmark;
+		name = "SCREENTestTexture.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2926;
+		vrLoc = 11099;
+	};
+	CF05141107DC4B5900566A2F = {
+		fRef = 2F875A6905F679A3008AC8DE;
+		isa = PBXTextBookmark;
+		name = "SCREENTestTextureTwo.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2601;
+		vrLoc = 3975;
+	};
+	CF05141207DC4B5900566A2F = {
+		fRef = 2FC84FBE068E7813009B1AF2;
+		isa = PBXTextBookmark;
+		name = "SCREENDrawTexture.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2144;
+		vrLoc = 2937;
+	};
+	CF12362A07F8FA6100F1BE3B = {
+		fRef = CF566E6C07F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDObsolete.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 611;
+		vrLoc = 86;
+	};
+	CF12362B07F8FA6100F1BE3B = {
+		fRef = CF566E6C07F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDObsolete.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 611;
+		vrLoc = 86;
+	};
+	CF1D7A6907E6698B004F308C = {
+		fRef = CFE5132707E2642900D55D72;
+		isa = PBXTextBookmark;
+		name = "PsychError SCREENTextBackgroundColor(void) \n";
+		rLen = 44;
+		rLoc = 685;
+		rType = 0;
+		vrLen = 1285;
+		vrLoc = 237;
+	};
+	CF1D7A8207E66C98004F308C = {
+		fRef = F55903750385C81D017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENTextBackgroundColor(void); ";
+		rLen = 33;
+		rLoc = 4086;
+		rType = 0;
+		vrLen = 827;
+		vrLoc = 3518;
+	};
+	CF1D7A8307E66C98004F308C = {
+		fRef = F569F25A038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 170";
+		rLen = 0;
+		rLoc = 7550;
+		rType = 0;
+		vrLen = 1764;
+		vrLoc = 6287;
+	};
+	CF1D7BE607E77FC0004F308C = {
+		fRef = 2F742337068A830200D66E0C;
+		isa = PBXTextBookmark;
+		name = "void PsychPrefStateSet_TextBlendingObeysBlendFunction(Boolean obeyBlendFunction)\n";
+		rLen = 69;
+		rLoc = 2718;
+		rType = 0;
+		vrLen = 800;
+		vrLoc = 2418;
+	};
+	CF1D7BEC07E7808D004F308C = {
+		fRef = 2F74235E068A842B00D66E0C;
+		isa = PBXTextBookmark;
+		name = "ScreenPreferenceState.h: PsychPrefStateGet_DebugMakeTexture";
+		rLen = 0;
+		rLoc = 1170;
+		rType = 0;
+		vrLen = 1045;
+		vrLoc = 256;
+	};
+	CF1D7C0807E78437004F308C = {
+		fRef = 2FA0CBC405F1596B007B24E1;
+		isa = PBXTextBookmark;
+		name = "SCREENPreference.c: 86";
+		rLen = 0;
+		rLoc = 3750;
+		rType = 0;
+		vrLen = 1390;
+		vrLoc = 8845;
+	};
+	CF1D7C2107E78797004F308C = {
+		fRef = 2F4D83DA07B8282C00CE685A;
+		isa = PBXTextBookmark;
+		name = "void PsychGetAlphaBlendingFactorsFromWindow(PsychWindowRecordType *winRec, GLenum *oldSource, GLenum *oldDestination);\n";
+		rLen = 119;
+		rLoc = 915;
+		rType = 0;
+		vrLen = 1249;
+		vrLoc = 25;
+	};
+	CF1D7C7407E7CC89004F308C = {
+		fRef = 2F742337068A830200D66E0C;
+		isa = PBXTextBookmark;
+		name = "ScreenPreferenceState.c: 137";
+		rLen = 0;
+		rLoc = 2819;
+		rType = 0;
+		vrLen = 623;
+		vrLoc = 2514;
+	};
+	CF1D7C7507E7CC89004F308C = {
+		fRef = 2F74235E068A842B00D66E0C;
+		isa = PBXTextBookmark;
+		name = "ScreenPreferenceState.h: PsychPrefStateSet_TextAlphaBlending";
+		rLen = 0;
+		rLoc = 1137;
+		rType = 0;
+		vrLen = 972;
+		vrLoc = 327;
+	};
+	CF1D7C7D07E7CD62004F308C = {
+		fRef = 2FA0CBC405F1596B007B24E1;
+		isa = PBXTextBookmark;
+		name = "SCREENPreference.c: 126";
+		rLen = 0;
+		rLoc = 4840;
+		rType = 0;
+		vrLen = 1251;
+		vrLoc = 8965;
+	};
+	CF1D7CAC07E7DA27004F308C = {
+		fRef = F5D852E203A01BF8017A7028;
+		isa = PBXTextBookmark;
+		name = PsychOpenOnscreenWindow;
+		rLen = 23;
+		rLoc = 6918;
+		rType = 0;
+		vrLen = 1896;
+		vrLoc = 943;
+	};
+	CF1D7CEE07EA61E7004F308C = {
+		fRef = 2FA82FE9056978E4007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENDrawText.c: 289";
+		rLen = 0;
+		rLoc = 14447;
+		rType = 0;
+		vrLen = 2682;
+		vrLoc = 12956;
+	};
+	CF1D7CF007EA61E7004F308C = {
+		fRef = 2FA82FE9056978E4007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENDrawText.c: 289";
+		rLen = 0;
+		rLoc = 14447;
+		rType = 0;
+		vrLen = 2682;
+		vrLoc = 12956;
+	};
+	CF1D7D1B07EA67F8004F308C = {
+		fRef = F5CF277203DA57B901D453F7;
+		isa = PBXTextBookmark;
+		name = PsychOpenOffscreenWindow;
+		rLen = 24;
+		rLoc = 6756;
+		rType = 0;
+		vrLen = 1730;
+		vrLoc = 5413;
+	};
+	CF1D7D1C07EA67F8004F308C = {
+		fRef = F5CF277203DA57B901D453F7;
+		isa = PBXTextBookmark;
+		name = PsychOpenOffscreenWindow;
+		rLen = 24;
+		rLoc = 6756;
+		rType = 0;
+		vrLen = 1730;
+		vrLoc = 5413;
+	};
+	CF1D7D9307EF6911004F308C = {
+		fRef = 2FFC1F380790AD1B0056DF76;
+		isa = PBXTextBookmark;
+		name = "How To Add To Screen.rtf: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 692;
+		vrLoc = 0;
+	};
+	CF1D7DD707F0F442004F308C = {
+		fRef = 2FC8979607D04F700042BE63;
+		isa = PBXTextBookmark;
+		name = "SCREENWindowSize.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1330;
+		vrLoc = 507;
+	};
+	CF1D7DDB07F0F442004F308C = {
+		fRef = 2FC8979607D04F700042BE63;
+		isa = PBXTextBookmark;
+		name = "SCREENWindowSize.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1330;
+		vrLoc = 507;
+	};
+	CF1D7E0C07F11B28004F308C = {
+		fRef = 2F6B77C3056C74AB007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENTextStyle.c: 41";
+		rLen = 0;
+		rLoc = 927;
+		rType = 0;
+		vrLen = 1097;
+		vrLoc = 770;
+	};
+	CF1D7E0E07F11B28004F308C = {
+		fRef = 2F646E6E05BC852C0079EEB6;
+		isa = PBXTextBookmark;
+		name = "SCREENTextBounds.c: 81";
+		rLen = 0;
+		rLoc = 2961;
+		rType = 0;
+		vrLen = 989;
+		vrLoc = 2601;
+	};
+	CF1D7E4C07F1E112004F308C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1136, 1875}}";
+			sepNavSelRange = "{3257, 0}";
+			sepNavVisRect = "{{0, 840}, {943, 564}}";
+		};
+	};
+	CF1D7E4E07F1E12A004F308C = {
+		fRef = F569F252038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENFillRect.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 958;
+		vrLoc = 0;
+	};
+	CF1D7E5007F1E12A004F308C = {
+		fRef = F569F252038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENFillRect.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 958;
+		vrLoc = 0;
+	};
+	CF22F962080E235C00F08369 = {
+		fRef = 2F4A2DEB069CBAFA0005EA67;
+		isa = PBXTextBookmark;
+		name = "PsychFontGlue.c: 174";
+		rLen = 0;
+		rLoc = 4952;
+		rType = 0;
+		vrLen = 1239;
+		vrLoc = 3444;
+	};
+	CF22F963080E235C00F08369 = {
+		fRef = 2F4A2DEB069CBAFA0005EA67;
+		isa = PBXTextBookmark;
+		name = "PsychFontGlue.c: 174";
+		rLen = 0;
+		rLoc = 4952;
+		rType = 0;
+		vrLen = 1239;
+		vrLoc = 3444;
+	};
+	CF29B1CB080333DC00723921 = {
+		activeExec = 0;
+		executables = (
+			CF29B1FE080333DC00723921,
+		);
+	};
+	CF29B1FE080333DC00723921 = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = MachAbsoluteTimeClockFrequency;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF29B2070803344600723921 = {
+		fRef = CF29B2080803344600723921;
+		isa = PBXTextBookmark;
+		name = "(null): 17";
+		rLen = 0;
+		rLoc = 536;
+		rType = 0;
+		vrLen = 1445;
+		vrLoc = 0;
+	};
+	CF29B2080803344600723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.c;
+		name = GetBusFrequencyMex.c;
+		path = "/Local/Users/ingling2/Desktop/From Mario/GetBusFrequencyMex.c";
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B215080335A300723921 = {
+		fRef = F56C69E603DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 728;
+		vrLoc = 0;
+	};
+	CF29B29F08049F6000723921 = {
+		fRef = F56C69E703DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1545;
+		vrLoc = 0;
+	};
+	CF29B2A008049F6000723921 = {
+		fRef = F56C69E303DBF1AE01866A1C;
+		isa = PBXTextBookmark;
+		name = "GetSecs.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 450;
+		vrLoc = 0;
+	};
+	CF29B2B00804A28F00723921 = {
+		fRef = F56C69E303DBF1AE01866A1C;
+		isa = PBXTextBookmark;
+		name = "GetSecs.h: 22";
+		rLen = 0;
+		rLoc = 304;
+		rType = 0;
+		vrLen = 610;
+		vrLoc = 0;
+	};
+	CF29B2B10804A28F00723921 = {
+		fRef = F56C69E703DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 20";
+		rLen = 0;
+		rLoc = 262;
+		rType = 0;
+		vrLen = 703;
+		vrLoc = 0;
+	};
+	CF29B2B20804A28F00723921 = {
+		fRef = F56C69E603DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.h: 19";
+		rLen = 0;
+		rLoc = 259;
+		rType = 0;
+		vrLen = 513;
+		vrLoc = 0;
+	};
+	CF29B2DB0804A4DA00723921 = {
+		fRef = 2F95015B04E9AE88007A7274;
+		isa = PBXTextBookmark;
+		name = "GetBusFrequencyMex.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 916;
+		vrLoc = 436;
+	};
+	CF29B2DC0804A4DA00723921 = {
+		fRef = 2F95015C04E9AE88007A7274;
+		isa = PBXTextBookmark;
+		name = "#include <sys/sysctl.h>";
+		rLen = 23;
+		rLoc = 825;
+		rType = 0;
+		vrLen = 851;
+		vrLoc = 0;
+	};
+	CF29B2E70804A5D000723921 = {
+		fRef = CF29B2080803344600723921;
+		isa = PBXTextBookmark;
+		name = "                2/17/05                 mk              fixed it: Needs to return mach_time_base, *not* bus frequency!!\n";
+		rLen = 120;
+		rLoc = 202;
+		rType = 0;
+		vrLen = 1445;
+		vrLoc = 0;
+	};
+	CF29B2F50804ABAD00723921 = {
+		fRef = CF29B2F60804ABAD00723921;
+		isa = PBXTextBookmark;
+		name = "/*\n\tPsychToolbox3/Source/Common/MachPriorityMex/MachPriorityMex.c\n\t\n\tPLATFORMS:\t\n\t\n\t\tOS X only.  \n\t\t\t\n\t\n\tAUTHORS:\n\t\n\t\tAllen Ingling\t\tawi\t\tAllen.Ingling@nyu.edu\n\n\tHISTORY:\n\t\n\t\t8/08/02\t\t\tawi\t\twrote it.\n\t\t10/29/04\t\tawi\t\tfixed the spelling of \"MachGetPriorityMex\" in help lines.\n                2/17/05                 mk              Added proper error handling / reporting.\n        \n\tDESCRIPTION \n        \n        MachSetPriorityMex is a simplified variant of MachPriority which strips out the Psychtoolbox mex/mx abstraction layer and separates \n        Get from Set.  See also MachGetPriorityMex\n        \n        Legal calls to MachSetPriorityMex:  \n        \n        priority=MachSetPriorityMex(['THREAD_STANDARD_POLICY'] );\n        priority=MachSetPriorityMex(['THREAD_STANDARD_POLICY'], 'default');\n        priority=MachSetPriorityMex(['THREAD_TIME_CONSTRAINT_POLICY', 'period','computation', 'constraint', 'preemptible');\n        priority=MachSetPriorityMex(['THREAD_TIME_CONSTRAINT_POLICY', 'default');\n        priority=MachSetPriorityMex(['THREAD_PRECEDENCE_POLICY', 'importance');\n        priority=MachSetPriorityMex(['THREAD_PRECEDENCE_POLICY', 'default');\n        \n        \n\tNOTES:\n        \n        See MachGetPrioritMex.c notes section.\n\t\t\n\tIMPORTANT:  \n\t\t\n\t\tWe seem to be missing some free statements below.  \n        \n*/\n\n#include \"MachPriorityMex.h\"\n\n\n\t\n\nvoid mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])\n{\n    bool\t\t\t\tisError;\n    thread_policy_flavor_t\t\tflavorConstant;\n    int\t\t\t\t\tkernError;\n    task_t\t\t\t\tthreadID;\n    thread_policy_t\t\t\tthreadPolicy;\n    mach_msg_type_number_t\t\tpolicyCount, policyCountFilled;\n    boolean_t\t\t\t\tisDefault;\n    char\t\t\t\tcommandString[COMMAND_STRING_LENGTH];\n    \n    \n    threadID= mach_thread_self();\n    kernError=0;\n    \n    //get the policy flavor constant specified by the user and the getDefault argument\n    if(nrhs<1)\n        mexErrMsgTxt(\"MachGetPriorityMex requires at least one argument.  See help MachGetPriorityMex.\");\n    if(!mxIsChar(prhs[0]))\n        mexErrMsgTxt(\"First input argument is not a string.  See help MachGetPriorityMex.\");\n    mxGetString(prhs[0], commandString, COMMAND_STRING_LENGTH);\n    isError=GetFlavorConstantFromFlavorString(commandString, mxGetM(prhs[0]) * mxGetN(prhs[0]), &flavorConstant);  //case sensitive.  \n    if(isError)\n        mexErrMsgTxt(\"Unrecognized command.  See help MachGetPriorityMex.\");\n\n\n    //branch according to the first argument\n    switch(flavorConstant){\n        case THREAD_STANDARD_POLICY:\n            if(nrhs>2)\n                mexErrMsgTxt(\"Extra argument(s) detected.  See help MachGetPriorityMex.\");\n            if(nrhs==2){\n                if(!mxIsChar(prhs[1]))\n                    mexErrMsgTxt(\"Expecting string in second argument.  See help MachGetPriorityMex.\");\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n            }\n            threadPolicy=(thread_policy_t)malloc(sizeof(thread_standard_policy_data_t));\n            policyCount=THREAD_STANDARD_POLICY_COUNT;\n            policyCountFilled=policyCount;\n            isDefault=TRUE;\n            kernError=thread_policy_get(threadID, THREAD_STANDARD_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n            if (kernError==0) kernError=thread_policy_set(threadID, THREAD_STANDARD_POLICY, threadPolicy, policyCountFilled);\n            break; \n        case THREAD_TIME_CONSTRAINT_POLICY:\n            if(nrhs==1)\n                mexErrMsgTxt(\"Missing argument detected.  See help MachGetPriorityMex.\");\n            else if(nrhs==2){\n                if(!mxIsChar(prhs[1]))\n                    mexErrMsgTxt(\"Expecting string in second argument.  See help MachGetPriorityMex.\");\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_time_constraint_policy_data_t));\n                policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                isDefault=TRUE;\n                kernError=thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n                if (kernError==0) kernError=thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);        \n                break;\n            }else if(nrhs != 5)\n                mexErrMsgTxt(\"Incorrect number of arguments.  See help MachGetPriorityMex.\");\n            else{\n                if(! (mxIsDouble(prhs[1]) && mxGetM(prhs[1]) * mxGetN(prhs[1]) == 1)) \n                    mexErrMsgTxt(\"Expected double in second argument.  See help MachSetPriorityMex.\");\n                if(! (mxIsDouble(prhs[2]) && mxGetM(prhs[2]) * mxGetN(prhs[2]) == 1)) \n                    mexErrMsgTxt(\"Expected double in third argument.  See help MachSetPriorityMex.\");\n                if(! (mxIsDouble(prhs[3]) && mxGetM(prhs[3]) * mxGetN(prhs[3]) == 1)) \n                    mexErrMsgTxt(\"Expected double in fourth argument.  See help MachGetPriorityMex.\");\n                if(!((mxIsDouble(prhs[4]) || mxIsLogical(prhs[4]) && mxGetM(prhs[4]) * mxGetN(prhs[4]) == 1))) \n                    mexErrMsgTxt(\"Expected double or logical in fifth argument.  See help MachSetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_time_constraint_policy_data_t));\n                ((thread_time_constraint_policy_t)threadPolicy)->period=(uint32_t)mxGetPr(prhs[1])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->computation=(uint32_t)mxGetPr(prhs[2])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->constraint=(uint32_t)mxGetPr(prhs[3])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->preemptible= (boolean_t)(mxIsDouble(prhs[4]) ? mxGetPr(prhs[4])[0] : mxGetLogicals(prhs[4])[0]);\n                policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                kernError=thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);\n                break;\n            }\n        case THREAD_PRECEDENCE_POLICY:\n            if(nrhs>2)\n                mexErrMsgTxt(\"Extra argument(s) detected.  See help MachGetPriorityMex.\");\n            if(nrhs<2)\n                mexErrMsgTxt(\"Missing argument detected.  See help MachGetPriorityMex.\");\n            if(mxIsChar(prhs[1])){  //set the default\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_precedence_policy_data_t));\n                policyCount=THREAD_PRECEDENCE_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                isDefault=TRUE;\n                kernError=thread_policy_get(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n                if (kernError==0) kernError=thread_policy_set(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);\n                break; \n            }else if(mxIsDouble(prhs[1]) && mxGetM(prhs[1]) * mxGetN(prhs[1]) == 1){  //set a specified value\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_precedence_policy_data_t));\n                ((thread_precedence_policy_t)threadPolicy)->importance=(integer_t)mxGetPr(prhs[1])[0];\n                policyCount=THREAD_PRECEDENCE_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                kernError=thread_policy_set(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, policyCountFilled);\n            }\n    }\n\n    // Check for and report errors in thread_policy_set:\n    if (kernError!=0) {\n        mexErrMsgTxt(\"ERROR: Failed to set requested thread scheduling policy! thread_policy_set() failed!\");\n    }\n}\n            \n        \n\n\n\n\n";
+		rLen = 8714;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1282;
+		vrLoc = 81;
+	};
+	CF29B2F60804ABAD00723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.c;
+		name = MachSetPriorityMex.c;
+		path = "/Local/Users/ingling2/Desktop/From Mario/MachSetPriorityMex.c";
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B2F90804ABAD00723921 = {
+		fRef = CF29B2FA0804ABAD00723921;
+		isa = PBXTextBookmark;
+		name = "/*\n\tPsychToolbox3/Source/Common/MachPriorityMex/MachPriorityMex.c\n\t\n\tPLATFORMS:\t\n\t\n\t\tOS X only.  \n\t\t\t\n\t\n\tAUTHORS:\n\t\n\t\tAllen Ingling\t\tawi\t\tAllen.Ingling@nyu.edu\n\n\tHISTORY:\n\t\n\t\t8/08/02\t\t\tawi\t\twrote it.\n\t\t10/29/04\t\tawi\t\tfixed the spelling of \"MachGetPriorityMex\" in help lines.\n                2/17/05                 mk              Added proper error handling / reporting.\n        \n\tDESCRIPTION \n        \n        MachSetPriorityMex is a simplified variant of MachPriority which strips out the Psychtoolbox mex/mx abstraction layer and separates \n        Get from Set.  See also MachGetPriorityMex\n        \n        Legal calls to MachSetPriorityMex:  \n        \n        priority=MachSetPriorityMex(['THREAD_STANDARD_POLICY'] );\n        priority=MachSetPriorityMex(['THREAD_STANDARD_POLICY'], 'default');\n        priority=MachSetPriorityMex(['THREAD_TIME_CONSTRAINT_POLICY', 'period','computation', 'constraint', 'preemptible');\n        priority=MachSetPriorityMex(['THREAD_TIME_CONSTRAINT_POLICY', 'default');\n        priority=MachSetPriorityMex(['THREAD_PRECEDENCE_POLICY', 'importance');\n        priority=MachSetPriorityMex(['THREAD_PRECEDENCE_POLICY', 'default');\n        \n        \n\tNOTES:\n        \n        See MachGetPrioritMex.c notes section.\n\t\t\n\tIMPORTANT:  \n\t\t\n\t\tWe seem to be missing some free statements below.  \n        \n*/\n\n#include \"MachPriorityMex.h\"\n\n\n\t\n\nvoid mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])\n{\n    bool\t\t\t\tisError;\n    thread_policy_flavor_t\t\tflavorConstant;\n    int\t\t\t\t\tkernError;\n    task_t\t\t\t\tthreadID;\n    thread_policy_t\t\t\tthreadPolicy;\n    mach_msg_type_number_t\t\tpolicyCount, policyCountFilled;\n    boolean_t\t\t\t\tisDefault;\n    char\t\t\t\tcommandString[COMMAND_STRING_LENGTH];\n    \n    \n    threadID= mach_thread_self();\n    kernError=0;\n    \n    //get the policy flavor constant specified by the user and the getDefault argument\n    if(nrhs<1)\n        mexErrMsgTxt(\"MachGetPriorityMex requires at least one argument.  See help MachGetPriorityMex.\");\n    if(!mxIsChar(prhs[0]))\n        mexErrMsgTxt(\"First input argument is not a string.  See help MachGetPriorityMex.\");\n    mxGetString(prhs[0], commandString, COMMAND_STRING_LENGTH);\n    isError=GetFlavorConstantFromFlavorString(commandString, mxGetM(prhs[0]) * mxGetN(prhs[0]), &flavorConstant);  //case sensitive.  \n    if(isError)\n        mexErrMsgTxt(\"Unrecognized command.  See help MachGetPriorityMex.\");\n\n\n    //branch according to the first argument\n    switch(flavorConstant){\n        case THREAD_STANDARD_POLICY:\n            if(nrhs>2)\n                mexErrMsgTxt(\"Extra argument(s) detected.  See help MachGetPriorityMex.\");\n            if(nrhs==2){\n                if(!mxIsChar(prhs[1]))\n                    mexErrMsgTxt(\"Expecting string in second argument.  See help MachGetPriorityMex.\");\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n            }\n            threadPolicy=(thread_policy_t)malloc(sizeof(thread_standard_policy_data_t));\n            policyCount=THREAD_STANDARD_POLICY_COUNT;\n            policyCountFilled=policyCount;\n            isDefault=TRUE;\n            kernError=thread_policy_get(threadID, THREAD_STANDARD_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n            if (kernError==0) kernError=thread_policy_set(threadID, THREAD_STANDARD_POLICY, threadPolicy, policyCountFilled);\n            break; \n        case THREAD_TIME_CONSTRAINT_POLICY:\n            if(nrhs==1)\n                mexErrMsgTxt(\"Missing argument detected.  See help MachGetPriorityMex.\");\n            else if(nrhs==2){\n                if(!mxIsChar(prhs[1]))\n                    mexErrMsgTxt(\"Expecting string in second argument.  See help MachGetPriorityMex.\");\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_time_constraint_policy_data_t));\n                policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                isDefault=TRUE;\n                kernError=thread_policy_get(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n                if (kernError==0) kernError=thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);        \n                break;\n            }else if(nrhs != 5)\n                mexErrMsgTxt(\"Incorrect number of arguments.  See help MachGetPriorityMex.\");\n            else{\n                if(! (mxIsDouble(prhs[1]) && mxGetM(prhs[1]) * mxGetN(prhs[1]) == 1)) \n                    mexErrMsgTxt(\"Expected double in second argument.  See help MachSetPriorityMex.\");\n                if(! (mxIsDouble(prhs[2]) && mxGetM(prhs[2]) * mxGetN(prhs[2]) == 1)) \n                    mexErrMsgTxt(\"Expected double in third argument.  See help MachSetPriorityMex.\");\n                if(! (mxIsDouble(prhs[3]) && mxGetM(prhs[3]) * mxGetN(prhs[3]) == 1)) \n                    mexErrMsgTxt(\"Expected double in fourth argument.  See help MachGetPriorityMex.\");\n                if(!((mxIsDouble(prhs[4]) || mxIsLogical(prhs[4]) && mxGetM(prhs[4]) * mxGetN(prhs[4]) == 1))) \n                    mexErrMsgTxt(\"Expected double or logical in fifth argument.  See help MachSetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_time_constraint_policy_data_t));\n                ((thread_time_constraint_policy_t)threadPolicy)->period=(uint32_t)mxGetPr(prhs[1])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->computation=(uint32_t)mxGetPr(prhs[2])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->constraint=(uint32_t)mxGetPr(prhs[3])[0];\n                ((thread_time_constraint_policy_t)threadPolicy)->preemptible= (boolean_t)(mxIsDouble(prhs[4]) ? mxGetPr(prhs[4])[0] : mxGetLogicals(prhs[4])[0]);\n                policyCount=THREAD_TIME_CONSTRAINT_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                kernError=thread_policy_set(threadID, THREAD_TIME_CONSTRAINT_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);\n                break;\n            }\n        case THREAD_PRECEDENCE_POLICY:\n            if(nrhs>2)\n                mexErrMsgTxt(\"Extra argument(s) detected.  See help MachGetPriorityMex.\");\n            if(nrhs<2)\n                mexErrMsgTxt(\"Missing argument detected.  See help MachGetPriorityMex.\");\n            if(mxIsChar(prhs[1])){  //set the default\n                mxGetString(prhs[1], commandString, COMMAND_STRING_LENGTH);\n                commandString[COMMAND_STRING_LENGTH-1]= '\\0';  //guarantee strcmp an end of string character\n                if(strcmp(commandString, \"default\"))\n                    mexErrMsgTxt(\"Unrecognized second argument.  See help MachGetPriorityMex.\");\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_precedence_policy_data_t));\n                policyCount=THREAD_PRECEDENCE_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                isDefault=TRUE;\n                kernError=thread_policy_get(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, &policyCountFilled, &isDefault);\n                if (kernError==0) kernError=thread_policy_set(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, policyCountFilled);\n                free((void*)threadPolicy);\n                break; \n            }else if(mxIsDouble(prhs[1]) && mxGetM(prhs[1]) * mxGetN(prhs[1]) == 1){  //set a specified value\n                threadPolicy=(thread_policy_t)malloc(sizeof(thread_precedence_policy_data_t));\n                ((thread_precedence_policy_t)threadPolicy)->importance=(integer_t)mxGetPr(prhs[1])[0];\n                policyCount=THREAD_PRECEDENCE_POLICY_COUNT;\n                policyCountFilled=policyCount;\n                kernError=thread_policy_set(threadID, THREAD_PRECEDENCE_POLICY, threadPolicy, policyCountFilled);\n            }\n    }\n\n    // Check for and report errors in thread_policy_set:\n    if (kernError!=0) {\n        mexErrMsgTxt(\"ERROR: Failed to set requested thread scheduling policy! thread_policy_set() failed!\");\n    }\n}\n            \n        \n\n\n\n\n";
+		rLen = 8714;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1282;
+		vrLoc = 81;
+	};
+	CF29B2FA0804ABAD00723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.c;
+		name = MachSetPriorityMex.c;
+		path = "/Local/Users/ingling2/Desktop/From Mario/MachSetPriorityMex.c";
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B2FE0804AC4600723921 = {
+		fRef = CF29B2FF0804AC4600723921;
+		isa = PBXTextBookmark;
+		name = "function MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag)\n\n% MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag)\n%\n% Assign the main MATLAB thread \"time constraint\" status, giving it super\n% priority  over other threads on the system.  A thread given \"time\n% constraint\" status  can not be preempted by other threads and cedes CPU\n% time to them on its own terms.  \n%\n%  MachSetTimeConstraintPriority guarantees that within any block of \n% \"periodSecs\" consecutive seconds the MATLAB thread is granted at least\n% computationSecs seconds of CPU time.  \n%\n% Use \"constraintSecs\" to specify how  \"computationSecs\" of CPU time is\n% distributed throughought  the period \"periodSecs\". If the CPU time\n% specified by \"computationSecs\" were broken and spread throught the entire\n% interval \"periodSecs\", then the actual time to complete the\n% calculationSecs of computation will be greater than computationSecs\n% itself;    computationSecs of CPU usage could require up to periodSecs to\n% complete. Argument \"constraintSecs\" specifies a period in which\n% computationSecs of CPU usage  is guranteed  to complete.  Note that\n% constraintSecs must be >= computationSecs because computationSecs of CPU\n% usage can not complete in less than  computationSecs. The maximum latency\n% from the start of a computation to the end is constraintSecs -\n% computationSecs.\n%\n% Setting the preemptibleFlag flag allows MATLAB to be interrupted subject\n% to constraintConstraint.   \n%\n% Granting a thread \"time constraint\" priority status gives it unlimited\n% and uninterruptable   control of the CPU, regardless of the limits\n% specified by arguments to MachSetTimeConstraintPriority.  If a thread\n% exceeds the limits on CPU time usage as specfied  by arguments to\n% MachSetTimeConstraintPriority then the Mach Kernel's task  scheduler will\n% eventually notice a problem and revoke \"time constraint\" priority status.\n% On a dual 1.2 GHz G4 running OS X 10.2 the Mach task scheduler demotes\n% MATLAB to standard priority after 2.5 seconds of uninterrrupted loop\n% execution at \"time constraint\" priority.   \n%\n% For your script to abide  by CPU time usage limits set by arguments to\n% MachSetTimeConstraintPriority it is necessary that it limit its own use\n% of CPU time by calling blocking functions which surrender CPU time to\n% other applications.    Use \"BlockSecsMex\" to surrender a specified period\n% of time or use  Use Screen('Flip') to surrender time until the next video\n% blanking interval. MATLAB when idle at the command line will\n% automatically block.\n%\n% MachSetTimeConstraintPriority is primarily intended to be used with \n% Screen('CopyWindow') animations to avoid interruptions for periods long\n% enough to cause your animation script to miss an entire video frame.  \n% For animations:\n%       periodSecs- should be set to the video frame period as obtained\n%       with 1/Screen('FrameRate').\n%\n%       computationSecs- should exceed the maximum amount of time which\n%       your  script requires to render any single video frame. \n%\n%       constraintSecs need only be greater than computationSecs and less\n%       than or equal to  periodSecs, within those limits should not effect\n%       performance.    \n%\n% MachSetTimeConstraintPriority should be called immediatly before the\n% start of  the animation loop.  To restore standard priority status to\n% MATLAB after the  animation ends use \"MachSetStandardPriority\"\n%\n% MachSetTimeConstraintPriority converts time arguments specified in units\n% of seconds to units of bus ticks and calls MachSetPriorityMex.\n% MachSetPriorityMex, in turn, invokes the OS X call thread_policy_set with\n% the THREAD_TIME_CONSTRAINT_POLICY constant. For more info on\n% thread_policy_set see:\n%   Psychtoolbox3/Source/Common/MachPriorityMex/MachGetPriorityMex.c\n%   http://developer.apple.com/documentation/Darwin/Conceptual/KernelProgramming/scheduler/chapter_8_section_4.html\n%   /usr/include/mach/thread_policy.h \n%\n% SEE ALSO: MachSetStandardPriority, MachSetPriorityMex, BlockSecsMex\n%\n% AUTHORS:\n% Allen Ingling     awi     Allen.Ingling@nyu.edu\n%\n% HISTORY: \n% 8/13/03   awi     Wrote it.\n% 2/17/05   mk      bug-fix: constraintSecs argument was ignored.\n\nif ~(nargin==4 || nargin == 0)\n    error('wrong number of arguments')\nend\nif nargin==0  % ths is not documented in the help.  We use default parameters if no arguments are passed.  \n    MachSetPriorityMex('THREAD_TIME_CONSTRAINT_POLICY', 'default');\n    return\nend\n\n[ticksPerSecond busfreq]= GetBusFrequencyMex; \nperiodTicks = round(periodSecs * ticksPerSecond);\ncomputationTicks = round(computationSecs * ticksPerSecond);\nconstraintTicks = round(constraintSecs * ticksPerSecond);\nMachSetPriorityMex('THREAD_TIME_CONSTRAINT_POLICY', periodTicks, computationTicks, constraintTicks, preemptibleFlag);\n\n\n";
+		rLen = 4872;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1766;
+		vrLoc = 2770;
+	};
+	CF29B2FF0804AC4600723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.objc;
+		name = MachSetTimeConstraintPriority.m;
+		path = "/Local/Users/ingling2/Desktop/From Mario/MachSetTimeConstraintPriority.m";
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B3060804B2BD00723921 = {
+		fRef = 2F95014604E8A2EB007A7274;
+		isa = PBXTextBookmark;
+		name = "MachSetPriorityMex.c: 19";
+		rLen = 0;
+		rLoc = 431;
+		rType = 0;
+		vrLen = 1353;
+		vrLoc = 0;
+	};
+	CF29B3080804B2BD00723921 = {
+		fRef = 2F95014604E8A2EB007A7274;
+		isa = PBXTextBookmark;
+		name = "MachSetPriorityMex.c: 19";
+		rLen = 0;
+		rLoc = 431;
+		rType = 0;
+		vrLen = 1353;
+		vrLoc = 0;
+	};
+	CF29B32E0804D9EF00723921 = {
+		fRef = F56C69E503DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "GetSecs.c: 24";
+		rLen = 0;
+		rLoc = 405;
+		rType = 0;
+		vrLen = 791;
+		vrLoc = 131;
+	};
+	CF29B3300804D9EF00723921 = {
+		fRef = F56C69E503DBF1C301866A1C;
+		isa = PBXTextBookmark;
+		name = "GetSecs.c: 24";
+		rLen = 0;
+		rLoc = 405;
+		rType = 0;
+		vrLen = 791;
+		vrLoc = 131;
+	};
+	CF29B3580805BD5900723921 = {
+		fRef = CF566E6D07F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDKbWait.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1833;
+		vrLoc = 1712;
+	};
+	CF29B3590805BD5900723921 = {
+		fRef = F5CF277603DBE22201D453F7;
+		isa = PBXTextBookmark;
+		name = "void PsychWaitInterval(double seconds);\n\n";
+		rLen = 0;
+		rLoc = 918;
+		rType = 0;
+		vrLen = 1010;
+		vrLoc = 0;
+	};
+	CF29B3600805BF1A00723921 = {
+		fileReference = F5CDBD7803DD18E9017C1EE6;
+		functionName = "WAITSECSWaitSecs()";
+		isa = PBXFileBreakpoint;
+		lineNumber = 42;
+		state = 1;
+	};
+	CF29B36F0805C78400723921 = {
+		fRef = F5CF277403DBE1F301D453F7;
+		isa = PBXTextBookmark;
+		name = "void PsychWaitIntervalSeconds(double delaySecs)\n";
+		rLen = 48;
+		rLoc = 578;
+		rType = 0;
+		vrLen = 1598;
+		vrLoc = 442;
+	};
+	CF29B3740805C9ED00723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.h;
+		name = UTType.h;
+		path = /System/Library/Frameworks/ApplicationServices.framework/Frameworks/LaunchServices.framework/Headers/UTType.h;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B3760805C9F200723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.h;
+		name = TranslationServices.h;
+		path = /System/Library/Frameworks/ApplicationServices.framework/Frameworks/HIServices.framework/Headers/TranslationServices.h;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B3780805C9F300723921 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.h;
+		name = SpeechSynthesis.h;
+		path = /System/Library/Frameworks/ApplicationServices.framework/Frameworks/SpeechSynthesis.framework/Headers/SpeechSynthesis.h;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF29B3800805CAB700723921 = {
+		fRef = CF29B3780805C9F300723921;
+		isa = PBXTextBookmark;
+		name = "#include <CoreServices/CoreServices.h>\n";
+		rLen = 39;
+		rLoc = 467;
+		rType = 0;
+		vrLen = 832;
+		vrLoc = 0;
+	};
+	CF29B3810805CAB700723921 = {
+		fRef = F5CF277603DBE22201D453F7;
+		isa = PBXTextBookmark;
+		name = "double\tPsychGetKernelTimebaseFrequencyHz(void);\n";
+		rLen = 48;
+		rLoc = 448;
+		rType = 0;
+		vrLen = 1062;
+		vrLoc = 0;
+	};
+	CF29B3850805CAB700723921 = {
+		fRef = CF29B3740805C9ED00723921;
+		isa = PBXTextBookmark;
+		name = "#include <CoreServices/CoreServices.h>\n";
+		rLen = 39;
+		rLoc = 460;
+		rType = 0;
+		vrLen = 1135;
+		vrLoc = 0;
+	};
+	CF29B38D0805CAB700723921 = {
+		fRef = CF29B3740805C9ED00723921;
+		isa = PBXTextBookmark;
+		name = "#include <CoreServices/CoreServices.h>\n";
+		rLen = 39;
+		rLoc = 460;
+		rType = 0;
+		vrLen = 1135;
+		vrLoc = 0;
+	};
+	CF29B38E0805CAB700723921 = {
+		fRef = CF29B3760805C9F200723921;
+		isa = PBXTextBookmark;
+		name = "  const FSRef *    inSourceFile,\n";
+		rLen = 33;
+		rLoc = 14024;
+		rType = 0;
+		vrLen = 1470;
+		vrLoc = 13238;
+	};
+	CF29B38F0805CAB700723921 = {
+		fRef = CF29B3780805C9F300723921;
+		isa = PBXTextBookmark;
+		name = "#include <CoreServices/CoreServices.h>\n";
+		rLen = 39;
+		rLoc = 467;
+		rType = 0;
+		vrLen = 832;
+		vrLoc = 0;
+	};
+	CF29B39A0805CDF400723921 = {
+		fRef = CF29B3760805C9F200723921;
+		isa = PBXTextBookmark;
+		name = "  const FSRef *    inSourceFile,\n";
+		rLen = 33;
+		rLoc = 14024;
+		rType = 0;
+		vrLen = 1470;
+		vrLoc = 13238;
+	};
+	CF29B3A80805D05500723921 = {
+		fRef = F5CDBD7803DD18E9017C1EE6;
+		isa = PBXTextBookmark;
+		name = "\tPsychWaitIntervalSeconds(*waitPeriodSecs);\n";
+		rLen = 44;
+		rLoc = 1509;
+		rType = 0;
+		vrLen = 1085;
+		vrLoc = 917;
+	};
+	CF29B3AA0805D05500723921 = {
+		fRef = F5CDBD7803DD18E9017C1EE6;
+		isa = PBXTextBookmark;
+		name = "\tPsychWaitIntervalSeconds(*waitPeriodSecs);\n";
+		rLen = 44;
+		rLoc = 1509;
+		rType = 0;
+		vrLen = 1085;
+		vrLoc = 917;
+	};
+	CF29B3D20805E6FB00723921 = {
+		fRef = CF566E6D07F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDKbWait.c: 18";
+		rLen = 0;
+		rLoc = 221;
+		rType = 0;
+		vrLen = 1095;
+		vrLoc = 0;
+	};
+	CF2A3465080AD4C700AE4732 = {
+		fRef = 2FD6148707306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-DoNothing.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 711;
+		vrLoc = 0;
+	};
+	CF2A3466080AD4C700AE4732 = {
+		fRef = 2FD614C707306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-FontInfo.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A3467080AD4C700AE4732 = {
+		fRef = 2FD614DB07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetBusFrequencyMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A3468080AD4C700AE4732 = {
+		fRef = 2FD6151107306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetBusTicks.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF2A3469080AD4C700AE4732 = {
+		fRef = 2FD6154B07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetChar.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A346A080AD4C700AE4732 = {
+		fRef = 2FD6158307306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetPID.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 708;
+		vrLoc = 0;
+	};
+	CF2A346B080AD4C700AE4732 = {
+		fRef = 2FD615BB07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A346C080AD4C700AE4732 = {
+		fRef = 2FB35E54073065570070ABEC;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 712;
+		vrLoc = 0;
+	};
+	CF2A346D080AD4C700AE4732 = {
+		fRef = 2FD6160307306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecsTick.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF2A346E080AD4C700AE4732 = {
+		fRef = 2FD6163A07306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetTicks.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A346F080AD4C700AE4732 = {
+		fRef = 2FD6164F07306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachGetPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A3470080AD4C700AE4732 = {
+		fRef = 2FD6168507306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachPriority.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 714;
+		vrLoc = 0;
+	};
+	CF2A3471080AD4C700AE4732 = {
+		fRef = 2FD6169A07306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachSetPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A3472080AD4C700AE4732 = {
+		fRef = 2FD616DD07306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-PsychHID.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A3473080AD4C700AE4732 = {
+		fRef = 2FD6171307306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-Rush.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 706;
+		vrLoc = 0;
+	};
+	CF2A3474080AD4C700AE4732 = {
+		fRef = 2FD6179907306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-Screen.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 708;
+		vrLoc = 0;
+	};
+	CF2A3475080AD4C700AE4732 = {
+		fRef = 2FD617CF07306669008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SleepSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 711;
+		vrLoc = 0;
+	};
+	CF2A3476080AD4C700AE4732 = {
+		fRef = 2FD617E307306669008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SleepSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 714;
+		vrLoc = 0;
+	};
+	CF2A3477080AD4C700AE4732 = {
+		fRef = 2FD6181D0730666A008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SysBeep.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A3478080AD4C700AE4732 = {
+		fRef = 2FD618310730666A008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-TestPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 717;
+		vrLoc = 0;
+	};
+	CF2A3479080AD4C700AE4732 = {
+		fRef = 2FD618670730666B008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-WaitSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF2A347C080AD4C700AE4732 = {
+		fRef = 2FD6148707306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-DoNothing.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 711;
+		vrLoc = 0;
+	};
+	CF2A347D080AD4C700AE4732 = {
+		fRef = 2FD614C707306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-FontInfo.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A347E080AD4C700AE4732 = {
+		fRef = 2FD614DB07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetBusFrequencyMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A347F080AD4C700AE4732 = {
+		fRef = 2FD6151107306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetBusTicks.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF2A3480080AD4C700AE4732 = {
+		fRef = 2FD6154B07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetChar.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A3481080AD4C700AE4732 = {
+		fRef = 2FD6158307306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetPID.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 708;
+		vrLoc = 0;
+	};
+	CF2A3482080AD4C700AE4732 = {
+		fRef = 2FD615BB07306666008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A3483080AD4C700AE4732 = {
+		fRef = 2FB35E54073065570070ABEC;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 712;
+		vrLoc = 0;
+	};
+	CF2A3484080AD4C700AE4732 = {
+		fRef = 2FD6160307306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetSecsTick.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF2A3485080AD4C700AE4732 = {
+		fRef = 2FD6163A07306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-GetTicks.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A3486080AD4C700AE4732 = {
+		fRef = 2FD6164F07306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachGetPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A3487080AD4C700AE4732 = {
+		fRef = 2FD6168507306667008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachPriority.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 714;
+		vrLoc = 0;
+	};
+	CF2A3488080AD4C700AE4732 = {
+		fRef = 2FD6169A07306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-MachSetPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 720;
+		vrLoc = 0;
+	};
+	CF2A3489080AD4C700AE4732 = {
+		fRef = 2FD616DD07306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-PsychHID.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 710;
+		vrLoc = 0;
+	};
+	CF2A348A080AD4C700AE4732 = {
+		fRef = 2FD6171307306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-Rush.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 706;
+		vrLoc = 0;
+	};
+	CF2A348B080AD4C700AE4732 = {
+		fRef = 2FD6179907306668008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-Screen.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 708;
+		vrLoc = 0;
+	};
+	CF2A348C080AD4C700AE4732 = {
+		fRef = 2FD617CF07306669008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SleepSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 711;
+		vrLoc = 0;
+	};
+	CF2A348D080AD4C700AE4732 = {
+		fRef = 2FD617E307306669008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SleepSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 714;
+		vrLoc = 0;
+	};
+	CF2A348E080AD4C700AE4732 = {
+		fRef = 2FD6181D0730666A008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-SysBeep.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 709;
+		vrLoc = 0;
+	};
+	CF2A348F080AD4C700AE4732 = {
+		fRef = 2FD618310730666A008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-TestPriorityMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 717;
+		vrLoc = 0;
+	};
+	CF2A3490080AD4C700AE4732 = {
+		fRef = 2FD618670730666B008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-WaitSecs.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF38B720080B61F100C84B8C = {
+		fRef = 2F4A1B3904A3F857007A7274;
+		isa = PBXTextBookmark;
+		name = "GetChar.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1567;
+		vrLoc = 0;
+	};
+	CF38B722080B61F100C84B8C = {
+		fRef = 2F4A1B3904A3F857007A7274;
+		isa = PBXTextBookmark;
+		name = "GetChar.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1567;
+		vrLoc = 0;
+	};
+	CF4FD40707DC1DE1008FEFD3 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1592, 2002}}";
+			sepNavSelRange = "{527, 0}";
+			sepNavVisRect = "{{0, 42}, {980, 614}}";
+		};
+	};
+	CF4FD40807DC1DE1008FEFD3 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {2078, 5264}}";
+			sepNavSelRange = "{893, 0}";
+			sepNavVisRect = "{{0, 199}, {980, 614}}";
+			sepNavWindowFrame = "{{163, 78}, {1382, 827}}";
+		};
+	};
+	CF4FD40D07DC1E87008FEFD3 = {
+		fRef = 2F1642F6075E5FBF00E4FCB1;
+		isa = PBXTextBookmark;
+		name = "How To Release.rtf: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 209;
+		vrLoc = 0;
+	};
+	CF4FD40F07DC1E87008FEFD3 = {
+		fRef = CF4FD40807DC1DE1008FEFD3;
+		isa = PBXTextBookmark;
+		name = "Updated_for_MATLAB701.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 517;
+		vrLoc = 0;
+	};
+	CF4FD41707DC2790008FEFD3 = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+			NO,
+			NO,
+		);
+		argumentStrings = (
+			"-nojvm",
+			"-nosplash",
+		);
+		configStateDict = {
+			"PBXLSLaunchAction-0" = {
+				PBXLSLaunchAction = 0;
+				PBXLSLaunchStartAction = 1;
+				PBXLSLaunchStdioStyle = 2;
+				PBXLSLaunchStyle = 0;
+				class = PBXLSRunLaunchConfig;
+				displayName = "Executable Runner";
+				identifier = com.apple.Xcode.launch.runConfig;
+				remoteHostInfo = "";
+				startActionInfo = "";
+			};
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+			{
+				active = YES;
+				name = MATLAB;
+				value = /Applications/MATLAB701;
+			},
+			{
+				active = YES;
+				name = AUTOMOUNT_MAP;
+				value = "/private ->";
+			},
+			{
+				active = YES;
+				name = ARCH;
+				value = mac;
+			},
+			{
+				active = YES;
+				name = TOOLBOX;
+				value = /Applications/MATLAB701/toolbox;
+			},
+			{
+				active = YES;
+				name = XAPPLRESDIR;
+				value = "/Applications/MATLAB701/X11/app-defaults";
+			},
+			{
+				active = YES;
+				name = XKEYSYMDB;
+				value = "/Applications/MATLAB701/X11/app-defaults/XKeysymDB";
+			},
+			{
+				active = YES;
+				name = MATLAB_DEBUG;
+				value = gdb;
+			},
+			{
+				active = YES;
+				name = MATLABPATH;
+				value = /Applications/MATLAB701/toolbox/local;
+			},
+			{
+				active = YES;
+				name = XFILESEARCHPATH;
+				value = "/System/Library/Frameworks/JavaVM.framework/lib/locale/%L/%T/%N%S:";
+			},
+			{
+				active = YES;
+				name = DYLD_LIBRARY_PATH;
+				value = "/Applications/MATLAB701/sys/os/mac:/Applications/MATLAB701/bin/mac:/Applications/MATLAB701/extern/lib/mac";
+			},
+			{
+				active = YES;
+				name = BASEMATLABPATH;
+			},
+			{
+				active = YES;
+				name = OLDPWD;
+				value = /Applications/MATLAB701;
+			},
+			{
+				active = YES;
+				name = DISPLAY;
+				value = ":0.0";
+			},
+		);
+		isa = PBXExecutable;
+		launchableReference = CF4FD46707DC373D008FEFD3;
+		libgmallocEnabled = 0;
+		name = MATLAB;
+		savedGlobals = {
+		};
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+		startupPath = /Local/Users/ingling2;
+	};
+	CF4FD43807DC3525008FEFD3 = {
+		fRef = CF4FD40707DC1DE1008FEFD3;
+		isa = PBXTextBookmark;
+		name = "References.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2075;
+		vrLoc = 5566;
+	};
+	CF4FD45A07DC3690008FEFD3 = {
+		fileReference = F56C69E503DBF1C301866A1C;
+		functionName = "GETSECSGetSecs()";
+		isa = PBXFileBreakpoint;
+		lineNumber = 39;
+		state = 1;
+	};
+	CF4FD46707DC373D008FEFD3 = {
+		isa = PBXFileReference;
+		lastKnownFileType = "compiled.mach-o.executable";
+		name = MATLAB;
+		path = /Applications/MATLAB701/bin/mac/MATLAB;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF50009D080C384C005A2010 = {
+		fRef = CF4FD40707DC1DE1008FEFD3;
+		isa = PBXTextBookmark;
+		name = "References.h: 30";
+		rLen = 0;
+		rLoc = 527;
+		rType = 0;
+		vrLen = 1928;
+		vrLoc = 19;
+	};
+	CF5000A2080C3874005A2010 = {
+		fRef = 2F6FC4AC0739C0FB00B3EB88;
+		isa = PBXTextBookmark;
+		name = "README.rtf: 4";
+		rLen = 0;
+		rLoc = 85;
+		rType = 0;
+		vrLen = 1869;
+		vrLoc = 0;
+	};
+	CF5000A9080C39E0005A2010 = {
+		fRef = 2F1642F6075E5FBF00E4FCB1;
+		isa = PBXTextBookmark;
+		name = "How To Release.rtf: 101";
+		rLen = 0;
+		rLoc = 5553;
+		rType = 0;
+		vrLen = 2294;
+		vrLoc = 1676;
+	};
+	CF5000B2080D6035005A2010 = {
+		fRef = 2F169D4C05FE6BA7009177BC;
+		isa = PBXTextBookmark;
+		name = "PsychTextureSupport.c: 13";
+		rLen = 0;
+		rLoc = 219;
+		rType = 0;
+		vrLen = 1016;
+		vrLoc = 0;
+	};
+	CF5000B9080D60C3005A2010 = {
+		isa = PBXFileReference;
+		lastKnownFileType = sourcecode.c.objc;
+		name = AlphaImageDemoOSX.m;
+		path = /Local/Users/ingling2/Desktop/foobar/AlphaImageDemoOSX.m;
+		refType = 0;
+		sourceTree = "<absolute>";
+	};
+	CF5000CB080D76F1005A2010 = {
+		fRef = CF5000B9080D60C3005A2010;
+		isa = PBXTextBookmark;
+		name = gray;
+		rLen = 4;
+		rLoc = 2898;
+		rType = 0;
+		vrLen = 2102;
+		vrLoc = 1877;
+	};
+	CF5000CC080D76F1005A2010 = {
+		fRef = 2FC89E42056EC642007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENTextFont.c: useString";
+		rLen = 0;
+		rLoc = 529;
+		rType = 0;
+		vrLen = 1524;
+		vrLoc = 35;
+	};
+	CF5000CD080D76F1005A2010 = {
+		fRef = 2FC480AE069E457D00EE6B86;
+		isa = PBXTextBookmark;
+		name = "ScreenFontGlue.c: 49";
+		rLen = 0;
+		rLoc = 1585;
+		rType = 0;
+		vrLen = 1886;
+		vrLoc = 625;
+	};
+	CF5000CE080D76F1005A2010 = {
+		fRef = 2FC480AF069E457D00EE6B86;
+		isa = PBXTextBookmark;
+		name = PsychSetATSUStyleAttributesFromPsychWindowRecord;
+		rLen = 48;
+		rLoc = 487;
+		rType = 0;
+		vrLen = 608;
+		vrLoc = 0;
+	};
+	CF5000D0080D76F1005A2010 = {
+		fRef = CF5000B9080D60C3005A2010;
+		isa = PBXTextBookmark;
+		name = gray;
+		rLen = 4;
+		rLoc = 2898;
+		rType = 0;
+		vrLen = 2102;
+		vrLoc = 1877;
+	};
+	CF5000D2080D76F1005A2010 = {
+		fRef = 2FC480AE069E457D00EE6B86;
+		isa = PBXTextBookmark;
+		name = "ScreenFontGlue.c: 49";
+		rLen = 0;
+		rLoc = 1585;
+		rType = 0;
+		vrLen = 1886;
+		vrLoc = 625;
+	};
+	CF5000D3080D76F1005A2010 = {
+		fRef = 2FC480AF069E457D00EE6B86;
+		isa = PBXTextBookmark;
+		name = PsychSetATSUStyleAttributesFromPsychWindowRecord;
+		rLen = 48;
+		rLoc = 487;
+		rType = 0;
+		vrLen = 608;
+		vrLoc = 0;
+	};
+	CF566E6607F7D2FC00D4957A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1286, 923}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1005, 434}}";
+		};
+	};
+	CF566E6C07F7D2FC00D4957A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1189, 1049}}";
+			sepNavSelRange = "{80, 0}";
+			sepNavVisRect = "{{0, 0}, {1189, 498}}";
+		};
+	};
+	CF566E6D07F7D2FC00D4957A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 1623}}";
+			sepNavSelRange = "{221, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	CF566E7807F7D2FC00D4957A = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1005, 1791}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1005, 434}}";
+		};
+	};
+	CF566E8D07F7D37F00D4957A = {
+		fRef = CF566E7807F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDGetCollections.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 774;
+		vrLoc = 0;
+	};
+	CF566E8E07F7D37F00D4957A = {
+		fRef = CF566E6607F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDErrors.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1288;
+		vrLoc = 0;
+	};
+	CF566E9107F7D37F00D4957A = {
+		fRef = CF566E6607F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDErrors.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1288;
+		vrLoc = 0;
+	};
+	CF566E9207F7D37F00D4957A = {
+		fRef = CF566E7807F7D2FC00D4957A;
+		isa = PBXTextBookmark;
+		name = "PsychHIDGetCollections.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 774;
+		vrLoc = 0;
+	};
+	CF639F0A07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = DoNothing;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F0B07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = FontInfo;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F0C07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = Gestalt;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F0D07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetBusFrequencyMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F0E07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetBusTicks;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F0F07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetChar;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1007D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetPID;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1107D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetSecs;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1207D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetSecsMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1307D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetSecsTick;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1407D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = GetTicks;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1507D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = IOPort;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1607D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = MachGetPriorityMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1707D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = MachPriority;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1807D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = MachSetPriorityMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1907D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		dylibVariantSuffix = "";
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = PsychHID;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1A07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = Rush;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1B07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = Screen;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1E07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = SysBeep;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F1F07D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = TestPriorityMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F2007D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = WaitSecs;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F2107D7F18000A1A44A = {
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		configStateDict = {
+		};
+		cppStopOnCatchEnabled = 0;
+		cppStopOnThrowEnabled = 0;
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		isa = PBXExecutable;
+		libgmallocEnabled = 0;
+		name = WaitSecsMex;
+		shlibInfoDictList = (
+		);
+		sourceDirectories = (
+		);
+	};
+	CF639F3B07D7F19000A1A44A = {
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		isa = PBXSourceControlManager;
+		scmConfiguration = {
+		};
+		scmType = "";
+	};
+	CF639F3C07D7F19000A1A44A = {
+		indexTemplatePath = "";
+		isa = PBXCodeSenseManager;
+		usesDefaults = 1;
+		wantsCodeCompletion = 1;
+		wantsCodeCompletionAutoSuggestions = 0;
+		wantsCodeCompletionCaseSensitivity = 1;
+		wantsCodeCompletionListAlways = 1;
+		wantsCodeCompletionOnlyMatchingItems = 1;
+		wantsCodeCompletionParametersIncluded = 1;
+		wantsCodeCompletionPlaceholdersInserted = 1;
+		wantsCodeCompletionTabCompletes = 1;
+		wantsIndex = 1;
+	};
+	CF63A02A07D8168C00A1A44A = {
+		fRef = F569F24F038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychGLGlue.c: 180";
+		rLen = 0;
+		rLoc = 5583;
+		rType = 0;
+		vrLen = 961;
+		vrLoc = 5070;
+	};
+	CF63A02B07D8168C00A1A44A = {
+		fRef = F5C3396703F2539D01A80168;
+		isa = PBXTextBookmark;
+		name = "            PsychTestForGLErrors();\n";
+		rLen = 36;
+		rLoc = 8506;
+		rType = 0;
+		vrLen = 1568;
+		vrLoc = 7556;
+	};
+	CF63A04407D8176700A1A44A = {
+		fRef = F5C3396703F2539D01A80168;
+		isa = PBXTextBookmark;
+		name = "            PsychTestForGLErrors();\n";
+		rLen = 36;
+		rLoc = 8917;
+		rType = 0;
+		vrLen = 1568;
+		vrLoc = 7556;
+	};
+	CF63A06B07D81BB800A1A44A = {
+		fRef = F569F24F038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychGLGlue.c: 193";
+		rLen = 0;
+		rLoc = 6051;
+		rType = 0;
+		vrLen = 1029;
+		vrLoc = 5073;
+	};
+	CF6ABB95080AD7A800D4968A = {
+		fRef = 2FD6187B0730666B008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-WaitSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF6ABB96080AD7A800D4968A = {
+		fRef = CF1D7E4C07F1E112004F308C;
+		isa = PBXTextBookmark;
+		name = "SCREENLineStipple.c: 86";
+		rLen = 0;
+		rLoc = 3257;
+		rType = 0;
+		vrLen = 1651;
+		vrLoc = 2051;
+	};
+	CF6ABB98080AD7A800D4968A = {
+		fRef = 2FD6187B0730666B008DA6B4;
+		isa = PBXTextBookmark;
+		name = "Info-WaitSecsMex.plist: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 713;
+		vrLoc = 0;
+	};
+	CF6ABB99080AD7A800D4968A = {
+		fRef = CF1D7E4C07F1E112004F308C;
+		isa = PBXTextBookmark;
+		name = "SCREENLineStipple.c: 86";
+		rLen = 0;
+		rLoc = 3257;
+		rType = 0;
+		vrLen = 1651;
+		vrLoc = 2051;
+	};
+	CF6ABB9E080AE7B700D4968A = {
+		fRef = 2F4D83D907B8282C00CE685A;
+		isa = PBXTextBookmark;
+		name = PsychUpdateAlphaBlendingFactorLazily;
+		rLen = 36;
+		rLoc = 5977;
+		rType = 0;
+		vrLen = 1015;
+		vrLoc = 4333;
+	};
+	CF6ABBA1080AE7B700D4968A = {
+		fRef = 2F4D83D907B8282C00CE685A;
+		isa = PBXTextBookmark;
+		name = PsychUpdateAlphaBlendingFactorLazily;
+		rLen = 36;
+		rLoc = 5977;
+		rType = 0;
+		vrLen = 1015;
+		vrLoc = 4333;
+	};
+	CF6ABBA2080AE7B700D4968A = {
+		fRef = 2F6FC4AC0739C0FB00B3EB88;
+		isa = PBXTextBookmark;
+		name = "README.rtf: 4";
+		rLen = 0;
+		rLoc = 85;
+		rType = 0;
+		vrLen = 1565;
+		vrLoc = 0;
+	};
+	CF6ABBB9080AEA8B00D4968A = {
+		fRef = CF4FD40807DC1DE1008FEFD3;
+		isa = PBXTextBookmark;
+		name = "Updated_for_MATLAB701.h: 27";
+		rLen = 0;
+		rLoc = 893;
+		rType = 0;
+		vrLen = 3223;
+		vrLoc = 154;
+	};
+	CFA6833C07F27A0800C57F06 = {
+		fRef = F569F25A038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 174";
+		rLen = 0;
+		rLoc = 7565;
+		rType = 0;
+		vrLen = 1604;
+		vrLoc = 6413;
+	};
+	CFA6833D07F27A0800C57F06 = {
+		fRef = F55903740385C81D017A7028;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 579;
+		vrLoc = 0;
+	};
+	CFA6834B07F2810900C57F06 = {
+		fRef = F55903750385C81D017A7028;
+		isa = PBXTextBookmark;
+		name = "Screen.h: SCREENLineStipple";
+		rLen = 0;
+		rLoc = 4155;
+		rType = 0;
+		vrLen = 763;
+		vrLoc = 3518;
+	};
+	CFA6838B07F284D800C57F06 = {
+		fRef = 2FC84FC2068E782A009B1AF2;
+		isa = PBXTextBookmark;
+		name = valloc;
+		rLen = 6;
+		rLoc = 4665;
+		rType = 0;
+		vrLen = 2128;
+		vrLoc = 2436;
+	};
+	CFA6838D07F284D800C57F06 = {
+		fRef = 2FC84FC2068E782A009B1AF2;
+		isa = PBXTextBookmark;
+		name = valloc;
+		rLen = 6;
+		rLoc = 4665;
+		rType = 0;
+		vrLen = 2128;
+		vrLoc = 2436;
+	};
+	CFA683BC07F3878E00C57F06 = {
+		fRef = F5AF1EE603B3C6F5017A7028;
+		isa = PBXTextBookmark;
+		name = PsychOpenOffscreenWindow;
+		rLen = 24;
+		rLoc = 1451;
+		rType = 0;
+		vrLen = 1074;
+		vrLoc = 908;
+	};
+	CFA683C107F3878E00C57F06 = {
+		fRef = F5AF1EE603B3C6F5017A7028;
+		isa = PBXTextBookmark;
+		name = PsychOpenOffscreenWindow;
+		rLen = 24;
+		rLoc = 1451;
+		rType = 0;
+		vrLen = 1074;
+		vrLoc = 908;
+	};
+	CFA683C707F3882900C57F06 = {
+		fRef = F5CC1A0B03948070017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychVideoGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1359;
+		vrLoc = 133;
+	};
+	CFA683CA07F3882900C57F06 = {
+		fRef = F5CC1A0B03948070017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychVideoGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1359;
+		vrLoc = 133;
+	};
+	CFA6840107F38C5000C57F06 = {
+		fRef = F5D852E203A01BF8017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENOpenWindow.c: 137";
+		rLen = 0;
+		rLoc = 6918;
+		rType = 0;
+		vrLen = 1533;
+		vrLoc = 6214;
+	};
+	CFA6840207F38C5000C57F06 = {
+		fRef = F569F25B038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = stippleEnabled;
+		rLen = 14;
+		rLoc = 5403;
+		rType = 0;
+		vrLen = 1218;
+		vrLoc = 4433;
+	};
+	CFA6840307F38C5000C57F06 = {
+		fRef = F55903760385C81D017A7028;
+		isa = PBXTextBookmark;
+		name = "WindowBank.h: 123";
+		rLen = 0;
+		rLoc = 3955;
+		rType = 0;
+		vrLen = 1142;
+		vrLoc = 3198;
+	};
+	CFA6840507F38C5000C57F06 = {
+		fRef = F55903760385C81D017A7028;
+		isa = PBXTextBookmark;
+		name = "WindowBank.h: 123";
+		rLen = 0;
+		rLoc = 3955;
+		rType = 0;
+		vrLen = 1142;
+		vrLoc = 3198;
+	};
+	CFA684C507F3A5F400C57F06 = {
+		fRef = F569F23E038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = PsychArgType_boolean;
+		rLen = 20;
+		rLoc = 5663;
+		rType = 0;
+		vrLen = 1454;
+		vrLoc = 2709;
+	};
+	CFA684FB07F4D1C500C57F06 = {
+		fRef = F56F533203EA1A4701A80168;
+		isa = PBXTextBookmark;
+		name = "SCREENLoadNormalizedGammaTable.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1249;
+		vrLoc = 0;
+	};
+	CFA684FE07F4D1C500C57F06 = {
+		fRef = F56F533203EA1A4701A80168;
+		isa = PBXTextBookmark;
+		name = "SCREENLoadNormalizedGammaTable.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1249;
+		vrLoc = 0;
+	};
+	CFA99A09080730D600E1D3DC = {
+		fRef = F5CF277403DBE1F301D453F7;
+		isa = PBXTextBookmark;
+		name = "PsychTimeGlue.c: PsychWaitIntervalSeconds";
+		rLen = 0;
+		rLoc = 1122;
+		rType = 0;
+		vrLen = 1623;
+		vrLoc = 637;
+	};
+	CFA99A21080732BC00E1D3DC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	CFA99A22080732BC00E1D3DC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 1526}}";
+			sepNavSelRange = "{888, 0}";
+			sepNavVisRect = "{{0, 14}, {943, 564}}";
+		};
+	};
+	CFA99A23080732BC00E1D3DC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 741}}";
+			sepNavSelRange = "{134, 0}";
+			sepNavVisRect = "{{0, 142}, {943, 564}}";
+		};
+	};
+	CFA99A24080732BC00E1D3DC = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	CFA99A290807335700E1D3DC = {
+		fRef = CFA99A24080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 484;
+		vrLoc = 0;
+	};
+	CFA99A2A0807335700E1D3DC = {
+		fRef = CFA99A23080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 6";
+		rLen = 0;
+		rLoc = 134;
+		rType = 0;
+		vrLen = 922;
+		vrLoc = 189;
+	};
+	CFA99A2B0807335700E1D3DC = {
+		fRef = CFA99A21080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "MachAbsoluteTimeClockFrequency.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 668;
+		vrLoc = 0;
+	};
+	CFA99A2D0807335700E1D3DC = {
+		fRef = CFA99A21080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "MachAbsoluteTimeClockFrequency.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 668;
+		vrLoc = 0;
+	};
+	CFA99A2E0807335700E1D3DC = {
+		fRef = CFA99A24080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 484;
+		vrLoc = 0;
+	};
+	CFA99A2F0807335700E1D3DC = {
+		fRef = CFA99A23080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "RegisterProject.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 819;
+		vrLoc = 0;
+	};
+	CFA99A300807335700E1D3DC = {
+		fRef = CFA99A22080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "MachAbsoluteTimeClockFrequency.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 2103;
+		vrLoc = 0;
+	};
+	CFB6DECA08078C1200C84DAF = {
+		fRef = CFA99A22080732BC00E1D3DC;
+		isa = PBXTextBookmark;
+		name = "MachAbsoluteTimeClockFrequency.c: 19";
+		rLen = 0;
+		rLoc = 888;
+		rType = 0;
+		vrLen = 2134;
+		vrLoc = 3;
+	};
+	CFB6DECB08078C1200C84DAF = {
+		fRef = 2FFC1F380790AD1B0056DF76;
+		isa = PBXTextBookmark;
+		name = "How To Add To Screen.rtf: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1187;
+		vrLoc = 0;
+	};
+	CFBF45B607FB1F1300F481AD = {
+		fRef = F58524D60421C1A801A80165;
+		isa = PBXTextBookmark;
+		name = "PsychScriptingGlue.c: 1751";
+		rLen = 0;
+		rLoc = 63953;
+		rType = 0;
+		vrLen = 1119;
+		vrLoc = 63171;
+	};
+	CFBF45B707FB1F1300F481AD = {
+		fRef = 2FB6EED407B88314000CAF40;
+		isa = PBXTextBookmark;
+		name = "static char useString[] = \"[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);\";";
+		rLen = 143;
+		rLoc = 407;
+		rType = 0;
+		vrLen = 1786;
+		vrLoc = 95;
+	};
+	CFBF45B907FB1F1300F481AD = {
+		fRef = F58524D60421C1A801A80165;
+		isa = PBXTextBookmark;
+		name = "PsychScriptingGlue.c: 1751";
+		rLen = 0;
+		rLoc = 63953;
+		rType = 0;
+		vrLen = 1119;
+		vrLoc = 63171;
+	};
+	CFBF45BA07FB1F1300F481AD = {
+		fRef = 2FB6EED407B88314000CAF40;
+		isa = PBXTextBookmark;
+		name = "static char useString[] = \"[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);\";";
+		rLen = 143;
+		rLoc = 407;
+		rType = 0;
+		vrLen = 1786;
+		vrLoc = 95;
+	};
+	CFDAABE707FC82EF00E387F9 = {
+		fRef = F569F256038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "ScreenSynopsis.c: 90";
+		rLen = 0;
+		rLoc = 3544;
+		rType = 0;
+		vrLen = 1219;
+		vrLoc = 0;
+	};
+	CFDAABEF07FC891300E387F9 = {
+		fRef = 2FC89E42056EC642007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENTextFont.c: useString";
+		rLen = 0;
+		rLoc = 529;
+		rType = 0;
+		vrLen = 1440;
+		vrLoc = 66;
+	};
+	CFE511CA07DFCFB300D55D72 = {
+		fRef = 2F44AD77056B166A007A711C;
+		isa = PBXTextBookmark;
+		name = "SCREENTextSize.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 761;
+		vrLoc = 0;
+	};
+	CFE511DA07E0E53700D55D72 = {
+		fRef = F569F22A038E2B6B017A7028;
+		isa = PBXTextBookmark;
+		name = "MiniBox.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1285;
+		vrLoc = 0;
+	};
+	CFE511DB07E0E53700D55D72 = {
+		fRef = 2FA80D3306B0569900112E7A;
+		isa = PBXTextBookmark;
+		name = "PsychAuthors.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1057;
+		vrLoc = 0;
+	};
+	CFE511DD07E0E53700D55D72 = {
+		fRef = 2FE20DD206093D3500FDE06D;
+		isa = PBXTextBookmark;
+		name = "PsychInstrument.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 424;
+		vrLoc = 0;
+	};
+	CFE511DE07E0E53700D55D72 = {
+		fRef = F569F23C038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychPlatformConstants.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1041;
+		vrLoc = 0;
+	};
+	CFE511DF07E0E53700D55D72 = {
+		fRef = F569F23F038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychIncludes.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 828;
+		vrLoc = 0;
+	};
+	CFE511E007E0E53700D55D72 = {
+		fRef = F569F23D038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychConstants.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 780;
+		vrLoc = 0;
+	};
+	CFE511E107E0E53700D55D72 = {
+		fRef = F569F237038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "MiniBox.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 994;
+		vrLoc = 0;
+	};
+	CFE511E207E0E53700D55D72 = {
+		fRef = F569F239038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychInit.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 731;
+		vrLoc = 0;
+	};
+	CFE511E307E0E53700D55D72 = {
+		fRef = F569F241038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "ProjectTable.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 598;
+		vrLoc = 0;
+	};
+	CFE511E407E0E53700D55D72 = {
+		fRef = F569F240038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychHelp.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 559;
+		vrLoc = 0;
+	};
+	CFE511E507E0E53700D55D72 = {
+		fRef = F569F238038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychMemory.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 646;
+		vrLoc = 0;
+	};
+	CFE511E607E0E53700D55D72 = {
+		fRef = F5D852DF039EDD7B017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychScriptingGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 837;
+		vrLoc = 0;
+	};
+	CFE511F107E0E53700D55D72 = {
+		fRef = 2F169D4C05FE6BA7009177BC;
+		isa = PBXTextBookmark;
+		name = "PsychTextureSupport.c: 37";
+		rLen = 0;
+		rLoc = 170;
+		rType = 0;
+		vrLen = 1459;
+		vrLoc = 628;
+	};
+	CFE511F207E0E53700D55D72 = {
+		fRef = F569F237038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "MiniBox.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 994;
+		vrLoc = 0;
+	};
+	CFE511F307E0E53700D55D72 = {
+		fRef = F569F22A038E2B6B017A7028;
+		isa = PBXTextBookmark;
+		name = "MiniBox.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1285;
+		vrLoc = 0;
+	};
+	CFE511F407E0E53700D55D72 = {
+		fRef = 2FA80D3306B0569900112E7A;
+		isa = PBXTextBookmark;
+		name = "PsychAuthors.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1057;
+		vrLoc = 0;
+	};
+	CFE511F507E0E53700D55D72 = {
+		fRef = F569F23E038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = PsychError_internal;
+		rLen = 19;
+		rLoc = 4083;
+		rType = 0;
+		vrLen = 1569;
+		vrLoc = 3623;
+	};
+	CFE511F607E0E53700D55D72 = {
+		fRef = 2FE20DD206093D3500FDE06D;
+		isa = PBXTextBookmark;
+		name = "PsychInstrument.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 424;
+		vrLoc = 0;
+	};
+	CFE511F707E0E53700D55D72 = {
+		fRef = F569F23C038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychPlatformConstants.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1041;
+		vrLoc = 0;
+	};
+	CFE511F807E0E53700D55D72 = {
+		fRef = F569F23F038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychIncludes.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 828;
+		vrLoc = 0;
+	};
+	CFE511F907E0E53700D55D72 = {
+		fRef = F569F23D038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychConstants.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 780;
+		vrLoc = 0;
+	};
+	CFE511FB07E0E53700D55D72 = {
+		fRef = F569F239038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychInit.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 731;
+		vrLoc = 0;
+	};
+	CFE511FC07E0E53700D55D72 = {
+		fRef = F569F241038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "ProjectTable.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 598;
+		vrLoc = 0;
+	};
+	CFE511FD07E0E53700D55D72 = {
+		fRef = F569F240038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychHelp.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 559;
+		vrLoc = 0;
+	};
+	CFE511FE07E0E53700D55D72 = {
+		fRef = F569F238038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychMemory.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 646;
+		vrLoc = 0;
+	};
+	CFE511FF07E0E53700D55D72 = {
+		fRef = F5D852DF039EDD7B017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychScriptingGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 837;
+		vrLoc = 0;
+	};
+	CFE5122C07E0FB8800D55D72 = {
+		fRef = F598839503F9A78801A80168;
+		isa = PBXTextBookmark;
+		name = "void PsychFindEnclosingTextureRect(double *rectA, double *enclosingRect)\n";
+		rLen = 73;
+		rLoc = 5493;
+		rType = 0;
+		vrLen = 1137;
+		vrLoc = 4846;
+	};
+	CFE5122D07E0FB8800D55D72 = {
+		fRef = F569F242038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "Psych.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 834;
+		vrLoc = 206;
+	};
+	CFE5122E07E0FB8800D55D72 = {
+		fRef = 2FD31F1B079E1F89005D8F2D;
+		isa = PBXTextBookmark;
+		name = "TimeLists.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 681;
+		vrLoc = 0;
+	};
+	CFE5122F07E0FB8800D55D72 = {
+		fRef = F58524C5042188B601A80165;
+		isa = PBXTextBookmark;
+		name = "PsychVersioning.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1069;
+		vrLoc = 0;
+	};
+	CFE5123007E0FB8800D55D72 = {
+		fRef = F569F23B038E2BE2017A7028;
+		isa = PBXTextBookmark;
+		name = "PsychRegisterProject.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 827;
+		vrLoc = 0;
+	};
+	CFE5123107E0FB8800D55D72 = {
+		fRef = 2FE3CC150569E4BA007A711C;
+		isa = PBXTextBookmark;
+		name = "PsychCellGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 960;
+		vrLoc = 0;
+	};
+	CFE5123207E0FB8800D55D72 = {
+		fRef = F53C23FB0416FB8201A80166;
+		isa = PBXTextBookmark;
+		name = "PsychStructGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 629;
+		vrLoc = 0;
+	};
+	CFE5123407E0FB8800D55D72 = {
+		fRef = F53C23FB0416FB8201A80166;
+		isa = PBXTextBookmark;
+		name = "PsychStructGlue.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 629;
+		vrLoc = 0;
+	};
+	CFE512BF07E1712800D55D72 = {
+		fRef = F598839303F9A74F01A80168;
+		isa = PBXTextBookmark;
+		name = "double \t\t\tPsychGetWidthFromRect(const double *rect);\ndouble \t\t\tPsychGetHeightFromRect(const double *rect);\n";
+		rLen = 107;
+		rLoc = 628;
+		rType = 0;
+		vrLen = 1303;
+		vrLoc = 189;
+	};
+	CFE5132707E2642900D55D72 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 1091}}";
+			sepNavSelRange = "{1485, 24}";
+			sepNavVisRect = "{{0, 441}, {1115, 550}}";
+		};
+	};
+	CFE5134C07E2696100D55D72 = {
+		fRef = 2F91372C05C39F5100CB5A38;
+		isa = PBXTextBookmark;
+		name = "SCREENTextColor.c: useString";
+		rLen = 0;
+		rLoc = 489;
+		rType = 0;
+		vrLen = 1101;
+		vrLoc = 257;
+	};
+	CFE5135207E2696100D55D72 = {
+		fRef = 2F91372C05C39F5100CB5A38;
+		isa = PBXTextBookmark;
+		name = "SCREENTextColor.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1100;
+		vrLoc = 257;
+	};
+	CFE5135307E2696100D55D72 = {
+		fRef = CFE5132707E2642900D55D72;
+		isa = PBXTextBookmark;
+		name = "\"oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);\";";
+		rLen = 82;
+		rLoc = 395;
+		rType = 0;
+		vrLen = 923;
+		vrLoc = 117;
+	};
+	CFE5135407E2696100D55D72 = {
+		fRef = F569F256038E2C77017A7028;
+		isa = PBXTextBookmark;
+		name = "ScreenSynopsis.c: 102";
+		rLen = 0;
+		rLoc = 4348;
+		rType = 0;
+		vrLen = 2378;
+		vrLoc = 3079;
+	};
+	CFE5135B07E26B1A00D55D72 = {
+		fRef = F5CC1A0903947EEF017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENScreens.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1028;
+		vrLoc = 472;
+	};
+	CFE5135C07E26B1A00D55D72 = {
+		fRef = F5CC1A0903947EEF017A7028;
+		isa = PBXTextBookmark;
+		name = "SCREENScreens.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1028;
+		vrLoc = 472;
+	};
+	F53C23FB0416FB8201A80166 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 1203}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F55903740385C81D017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 587}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1056, 454}}";
+		};
+	};
+	F55903750385C81D017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 2100}}";
+			sepNavSelRange = "{4155, 0}";
+			sepNavVisRect = "{{0, 1540}, {1056, 454}}";
+		};
+	};
+	F55903760385C81D017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 2211}}";
+			sepNavSelRange = "{3955, 0}";
+			sepNavVisRect = "{{0, 1366}, {1056, 454}}";
+		};
+	};
+	F569F227038E2B6B017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 6747}}";
+			sepNavSelRange = "{4893, 26}";
+			sepNavVisRect = "{{0, 1298}, {1395, 527}}";
+		};
+	};
+	F569F22A038E2B6B017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 2450}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F237038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 657}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F238038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 825}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F239038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 545}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F23B038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 686}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F23C038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 1035}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F23D038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 1273}}";
+			sepNavSelRange = "{1883, 22}";
+			sepNavVisRect = "{{0, 746}, {1395, 527}}";
+		};
+	};
+	F569F23E038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 3499}}";
+			sepNavSelRange = "{6308, 17}";
+			sepNavVisRect = "{{0, 2390}, {1395, 527}}";
+		};
+	};
+	F569F23F038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1189, 1133}}";
+			sepNavSelRange = "{1116, 28}";
+			sepNavVisRect = "{{0, 520}, {1189, 402}}";
+		};
+	};
+	F569F240038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 727}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F241038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 797}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F569F242038E2BE2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 755}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 221}, {1036, 524}}";
+		};
+	};
+	F569F24F038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {962, 3541}}";
+			sepNavSelRange = "{5602, 0}";
+			sepNavVisRect = "{{0, 2359}, {962, 309}}";
+		};
+	};
+	F569F252038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 1455}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1056, 454}}";
+		};
+	};
+	F569F256038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 2575}}";
+			sepNavSelRange = "{3544, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	F569F25A038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 2785}}";
+			sepNavSelRange = "{7565, 0}";
+			sepNavVisRect = "{{0, 2146}, {1056, 454}}";
+		};
+	};
+	F569F25B038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 5403}}";
+			sepNavSelRange = "{5403, 14}";
+			sepNavVisRect = "{{0, 2430}, {1056, 454}}";
+		};
+	};
+	F569F25C038E2C77017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 1679}}";
+			sepNavSelRange = "{3225, 12}";
+			sepNavVisRect = "{{0, 768}, {1115, 550}}";
+		};
+	};
+	F56C69E303DBF1AE01866A1C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 630}}";
+			sepNavSelRange = "{304, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	F56C69E503DBF1C301866A1C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 728}}";
+			sepNavSelRange = "{405, 0}";
+			sepNavVisRect = "{{0, 152}, {943, 564}}";
+		};
+	};
+	F56C69E603DBF1C301866A1C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 564}}";
+			sepNavSelRange = "{259, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	F56C69E703DBF1C301866A1C = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 853}}";
+			sepNavSelRange = "{262, 0}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	F56F533203EA1A4701A80168 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 1175}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1056, 661}}";
+		};
+	};
+	F5729ACD03CA14490142ADD6 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 755}}";
+			sepNavSelRange = "{1046, 0}";
+			sepNavVisRect = "{{0, 99}, {1115, 550}}";
+		};
+	};
+	F574FA280404446501A80168 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 1847}}";
+			sepNavSelRange = "{3730, 10}";
+			sepNavVisRect = "{{0, 1146}, {1115, 550}}";
+		};
+	};
+	F58524C5042188B601A80165 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 644}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1036, 524}}";
+		};
+	};
+	F58524D60421C1A801A80165 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 25969}}";
+			sepNavSelRange = "{42097, 94}";
+			sepNavVisRect = "{{0, 15629}, {1395, 527}}";
+		};
+	};
+	F598839303F9A74F01A80168 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 825}}";
+			sepNavSelRange = "{628, 107}";
+			sepNavVisRect = "{{0, 274}, {1036, 524}}";
+		};
+	};
+	F598839503F9A78801A80168 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 2995}}";
+			sepNavSelRange = "{5960, 0}";
+			sepNavVisRect = "{{0, 2445}, {1115, 550}}";
+		};
+	};
+	F5AF1EE603B3C6F5017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 825}}";
+			sepNavSelRange = "{1451, 24}";
+			sepNavVisRect = "{{0, 354}, {1056, 454}}";
+		};
+	};
+	F5AF1EE903B3DCBB017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 2407}}";
+			sepNavSelRange = "{4037, 24}";
+			sepNavVisRect = "{{0, 1857}, {1115, 550}}";
+		};
+	};
+	F5C3396703F2539D01A80168 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 2561}}";
+			sepNavSelRange = "{8616, 0}";
+			sepNavVisRect = "{{0, 1615}, {1395, 527}}";
+		};
+	};
+	F5CC19F6039355F6017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1303, 5473}}";
+			sepNavSelRange = "{10625, 0}";
+			sepNavVisRect = "{{0, 5080}, {1303, 354}}";
+		};
+	};
+	F5CC19F9039356E2017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1303, 6747}}";
+			sepNavSelRange = "{9726, 0}";
+			sepNavVisRect = "{{0, 4198}, {1303, 354}}";
+		};
+	};
+	F5CC19FE0394691F017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1395, 3877}}";
+			sepNavSelRange = "{7433, 0}";
+			sepNavVisRect = "{{0, 1979}, {1395, 527}}";
+		};
+	};
+	F5CC1A0903947EEF017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 895}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 371}, {1036, 524}}";
+		};
+	};
+	F5CC1A0B03948070017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 601}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 126}, {1056, 454}}";
+		};
+	};
+	F5CDBD7803DD18E9017C1EE6 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1189, 1330}}";
+			sepNavSelRange = "{1204, 0}";
+			sepNavVisRect = "{{0, 308}, {1189, 498}}";
+		};
+	};
+	F5CF277203DA57B901D453F7 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1036, 2295}}";
+			sepNavSelRange = "{6756, 24}";
+			sepNavVisRect = "{{0, 1502}, {1036, 524}}";
+		};
+	};
+	F5CF277403DBE1F301D453F7 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 2295}}";
+			sepNavSelRange = "{1122, 0}";
+			sepNavVisRect = "{{0, 577}, {943, 564}}";
+		};
+	};
+	F5CF277603DBE22201D453F7 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {943, 727}}";
+			sepNavSelRange = "{448, 48}";
+			sepNavVisRect = "{{0, 0}, {943, 564}}";
+		};
+	};
+	F5D852DF039EDD7B017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1196, 1791}}";
+			sepNavSelRange = "{2834, 0}";
+			sepNavVisRect = "{{0, 717}, {711, 428}}";
+			sepNavWindowFrame = "{{1667, 206}, {750, 558}}";
+		};
+	};
+	F5D852E203A01BF8017A7028 = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1056, 2267}}";
+			sepNavSelRange = "{6918, 0}";
+			sepNavVisRect = "{{0, 1722}, {1056, 454}}";
+		};
+	};
+}

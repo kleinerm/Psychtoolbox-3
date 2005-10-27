@@ -1,0 +1,73 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;\f1\fnil\fcharset77 LucidaGrande;\f2\fnil\fcharset77 LucidaGrande-Bold;
+\f3\fnil\fcharset77 Monaco;}
+{\colortbl;\red255\green255\blue255;\red0\green128\blue0;}
+\margl1440\margr1440\vieww14240\viewh11220\viewkind0
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+
+\f0\fs24 \cf0 \
+Below this section are some early notes (marked "OLD incomplete notes") on how to get the PsychHID function to link against Apple's HID utilities library.  The final outcome was:\
+\
+1- Dynamic linking proved not to work well because PsychHID searches for dynamic libs which it loads relative to MATLAB, not relative to PsychHID itself.  Because we allowed users to install the PTB anywhere, this meant part of the installation procedure was to place libHIDUtilities.dylib in the same folder with the MATLAB binary.  There are always users who don't follow instructions then ask for help, so you just can't distribute software and ask that users move dylibs around.\
+\
+2- The magic secret to getting PsychHID to link against the dynamic version of libHIDUtilities was to modify the libHIDUtilities project to change where it said it was.  Window and OS X have completely different rules about how applications look for dynamic libraries.  For runtime linking, Windows starts in the local directory of the parent app and has a list of standard other places to search down until it finds the first copy of the named lib.  OS X embeds in the application itself where it thinks the library should be, and the application gets that information at link time from the library itself.  (I think there is some way to override this with shell variables. I pointed that out to Paul Fan but have forgotten the details myself).   So to tell PsychHID where to find libHIDUtilites.dylib, first you modify the libHIDUtilities project to change where it things it is. (I think by default its thinks it's part of an application bundle so its path to itself is appropriate for a .app application bundle.) Then you compile PsychHID and it extracts the path to the libHIDUtilities.dylib from libHIDUtilities and compiles it into itself.\
+\
+3- Everything explained in 2 above is no longer relevant here.  For reasons explained in 1 we now compile libHIDUtilites statically  into PsychHID.  How to do that: The obvious thing to try to make PsychHID link against the static version of the lib is to tell the PsychHID Project Builder project that it should use the static, not the dynamic version of the lib.  But nope, there is no way to do that, at least none documented or evident from the controls.   The magic secret is that if you clean the libHIDUtlities project then build only the static version, PsychHID will link against that, because it's the only one it can find.     \
+\
+Allen Ingling\
+28 October 2004\
+\
+\
+OLD incomplete notes:\
+\
+\
+Getting the HID library to link:\
+\
+Notes:\
+\
+\'a5 GDB (within Project Builder) displays useful information about why libHIDUtilities.dylib won't load.\
+\
+\'a5 Linking PsychHID with the static ".a" library still gives dynamic linking errors.  This is strange.\
+\
+\'a5 The link error message indicates that the "@executable_path" means the path of the parent executable, not the path of the child executable.  That is, executable A loads library B which loads library C.  The variable @executable_path specified by B as the root of the path to C is defined to be the location of A, not the location of B.  \
+\
+\'a5 For how to change the specified location of a library see http://developer.apple.com/techpubs/macosx/DeveloperTools/ProjectBuilder/ProjectBuilder.help/Contents/Resources/English.lproj/Frameworks/index.html\
+\
+\'a5 How the locations of dynamic libaries are specified:  A library includes as part of the header embedded within itself a string specifying the location of the library.  You can view  that string by calling the command line utility otool on the library file specifying the -D flag.  In addition to its own location, an executables includes within itself a list of dependencies, the libraries which it loads.  That list of dependencies is extracted from the executable by calling otool on the binary and specifying the -L flag.  The locations of the depenencies specified within the caller which loads them are extracted them from the libraries.  Therefore, to the change the location where a caller looks for the libarary, you change the specification within the library and then recompile the caller.  For Matalb mex files \
+\
+\'a5 otool revealed that changing the location of a libary specified within Project Builder and recompiling does not change the embedded location string unless the project is cleaned before it is built.  This is probably a bug in Project Builder, that it fails to detect detect a change in the build parameters and set a flag checked at build time indicating that relinking is required.  \
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+\cf0 Q:  Where does an executable look for a library which it calls ?\
+\
+A: It compiles in the runtime path to a dynamic library.  The library's path is embedded within itself and extracted when the caller is compiled, then embedded within the caller. \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+
+\f1 \cf0 The path seems to be specified in the  "installation location" field within the Project Builder target settings of the library, not the project of the caller.
+\f0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+\cf0 \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+\cf0 from:\
+http://developer.apple.com/documentation/DeveloperTools/Conceptual/MachORuntime/2rt_mach-o_overview/chapter_2_section_4.html\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+
+\f1 \cf2 The 
+\f2\b install name 
+\f1\b0 is the pathname used by the dynamic linker to find a shared library at runtime. The install name is defined by the shared library and recorded into the client program by the static linker. \
+\
+You can locate private frameworks and shared libraries in an application package using a relative-path install name beginning with 
+\f3\fs22 @executable_path 
+\f1\fs24 , such as 
+\f3\fs22 @executable_path/../Frameworks/MyFramework.framework 
+\f1\fs24 . This is useful for sharing functionality with plug-ins (bundles). \
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+\cf0  \
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+
+\f0 \cf0 \
+}

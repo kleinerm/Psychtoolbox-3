@@ -1,0 +1,7 @@
+//
+// Prefix header for all source files of the 'StoreBitLib' target in the 'StoreBitLib' project.
+//
+
+#ifdef __OBJC__
+    #import <Cocoa/Cocoa.h>
+#endif

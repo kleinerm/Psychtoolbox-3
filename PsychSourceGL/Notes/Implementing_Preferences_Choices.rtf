@@ -1,0 +1,155 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica-Bold;\f1\fswiss\fcharset77 Helvetica;\f2\fswiss\fcharset77 Helvetica-Oblique;
+}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww16500\viewh17620\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\qc
+
+\f0\b\fs24 \cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640
+
+\f1\b0 \cf0 Below are some early  and partly obsolete notes on options for how to implement preferences in the OS X PTB.  We went  with using MATLAB's new built-in preferences and bridging that to legacy calls to Screen('Preferences') using MATLAB callbacks from Screen.  This required a complicated system of inits, because some preferences were retained between MATLAB instantiations whereas others needed to be set by Screen on launch based on hardware state.  This was implemented but ultimately failed because MATLAB's preferences calls have long latencies, so Screen could not check preference state in realtime.  We could have fixed that by adding another layer of state, buffering MATLAB preference state in Screen on a Rush or Priority call.  That that would have created three layers of state (hardware, Screen Preferences, MATLAB preferences) and added another set of  locks and flags.   \
+\
+We backed out to the old system of Screen maintaining state.  However, unlike OS 9 and Win this state is not shared between mex files.  That should be fixed, either by using callbacks and global static variables in MATLAB, or by using shared memory.  Maybe Windows implements the same shared memory POSIX calls as BSD, that would be good because we could write once.  
+\f0\b \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\qc
+\cf0 \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640
+
+\f1\b0 \cf0 Allen Ingling\
+28 October 2004
+\f0\b \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\qc
+\cf0 \
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640
+\cf0 Begin old notes section:\
+\
+\
+Possible Ways to Implement Psychtoolbox Preferences\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\qc
+\cf0 \
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f1\b0 \cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\b \cf0 Use the built-in MATLAB preferences command.
+\f1\b0 \
+\
+
+\f2\i pros:
+\f1\i0 \
+portable between operating systems.\
+MATLAB standard\
+easy shared access between mex files\
+easily extensible\
+stores preferrences between iterations\
+predefined data types\
+\
+
+\f2\i cons:
+\f1\i0 \
+not scripting-language neutral , though could be adapted per scripting language\
+might require disk i/o and be slow\
+\
+\
+
+\f0\b Use schmget and shared memory\
+
+\f2\i\b0 pros:
+\f1\i0 \
+OS neutral\
+shared access between mex files\
+\
+
+\f2\i cons:
+\f1\i0 \
+not MATLAB standard\
+not easily extensible\
+does not store preferrences between iterations\
+no predefined data types\
+\
+
+\f0\b Use native OS X collections
+\f1\b0 \
+
+\f2\i pros:
+\f1\i0 \
+easily extensible\
+stores preferrences between iterations (serialize property lists to XML)\
+predefined data types\
+scripting language neutral.\
+\
+
+\f2\i cons:\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f1\i0 \cf0 not easily shared access between mex files (though could be hacked in with schmget)
+\f2\i \
+
+\f1\i0 portable between operating systems.
+\f2\i \
+
+\f1\i0 not MATLAB standard\
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\b \cf0 Use a global MATLAB variable\
+
+\f2\i\b0 pros:
+\f1\i0 \
+portable between operating systems.\
+easy shared access between mex files\
+easily extensible\
+stores preferrences between iterations\
+predefined data types\
+\
+
+\f2\i cons:
+\f1\i0 \
+not scripting-language neutral , though could be adapted per scripting language\
+not MATLAB standard\
+
+\f0\b \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f1\b0 \cf0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\qc
+
+\f0\b \cf0 Notes on Internal Implementation
+\f1\b0 \
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+\cf0 \
+GetCardinalPreference		-separate versioned preferences set by a version init script ?   \
+GetIntrinsicPreference		-module specific inits which read status from machine state \
+GetScriptingPreference		-used whenever a module needs to know a preference setting.  Alias GetPreferenceSetting \
+\
+SetCardinalPreference		-script which creates cardinal preferences including version\
+SetIntrinsicPreference		-changes internal machine state\
+SetScriptingPreference		-changes the preference setting in the scripting environment.\
+\
+\
+PsychResetDefaultPreferences	-script which copies the default preference settings for the current version to the preferences \
+\
+\
+\
+Every time mex function is called then check an internal flag to see if it has already been loaded.  If not then:\
+	Reads its own internally stored major and minor version numbers.\
+	Checks that preferences exist and that they match the those numbers.\
+		If not then copy the appropriate cardinal preferences to the current preferences.\
+			if cardinal version settings do not exist then call the function which creates those \
+		if not then set any intrinsic preferences\
+	\
+Note that this won't result in intrinsic preferences set by other modules getting set.  Perhaps the init script should do that so long as it does not call its caller.		\
+\
+\
+Functions:\
+DoPreferencesExist\
+GetPreferencesVersion\
+SetCardinalPreferences\
+SetModuleIntrinsicPreferences}

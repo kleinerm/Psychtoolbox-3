@@ -1,0 +1,163 @@
+{\rtf1\mac\ansicpg10000\cocoartf102
+{\fonttbl\f0\fswiss\fcharset77 Helvetica;\f1\fswiss\fcharset77 Helvetica-Bold;\f2\fswiss\fcharset77 Helvetica-Oblique;
+\f3\fnil\fcharset77 LucidaGrande-Bold;}
+{\colortbl;\red255\green255\blue255;}
+\margl1440\margr1440\vieww18880\viewh17920\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+
+\f0\fs24 \cf0 \
+\
+This document an outdated list  of options for how to to implement high-speed blits on OS X, as with PTB 'CopyWindow'  in OS 9.  In the end, the only thing that worked was to preconfigure one screen-sized segment of system memory for DMA block transfers and to implement Psychtoolbox textures as ordinary malloced system RAM.  To blit, we memcpy from the Psychtoolbox texture into the special DMA-configured region and then trigger the DMA block transfer from the special DMA block in system memory over the video bus to video RAM and the onscreen window.  The relevant Apple OpenGL extensions for setting up a DMA block transfer are shown in Apple's TextureRange demo.  Buried somewhere in that documentation it says that underneath the TextureRange stuff reduces to DMA transfers over the AGP bus.\
+\
+It would be faster if we could DMA-enable the Psychtoolbox texture memory directly, and avoid the memcopy, but that didn't work because 1. If we try to enable it per texture on the fly immediately before the blit, it takes too long (longer than a blanking interval) 2. If we try to enable all of it, there is a limit of about 2x the video memory.  So we are stuck with a two-stage process, memcopy to  the DMA block then blit the DMA block.  In the future, we could make special provision for new types of blits in the Psychtoolbox, giving the user the choice between direct blits without the memcopy but with limited total texture memory, or slow blits with the mecopy step but texture memory limited only by system RAM.  \
+\
+We tried hard to stick with offscreen windows calls in the Psychtoolbox by creating shadow textures, but performance sucked and for purposes of rapid blits the PTB supplies textures now.  Unlike QuickDraw which had one class of surface which could both be blitted and rendered on, OpenGL has two classes: The context and the texture.  We can issue drawing commmands to contexts but copying them is very slow. We can copy textures very quickly between surfaces, but we can not issue OpenGL drawing commands to them.  We implemented a system where contexts were shadowed by textures.  Drawing was rendered to the context then, with the Priority of Rush command, copied to the texture prior to movie start.  Flags tracked when the shadow surface was outdated and had to be updated by Rush or Priority.  This gave poor performance because of the (undocumented) memory limitation on textures held in system RAM, and that the copy from contexts to shadow textures by Rush or Priority took way too much time.  \
+\
+Apple provides a render texture extension, which if they ever get around to documenting it, might be useful here.  It allows one to render into a texture.  Though its not clear if that will ever work in conjunction with the DMA block transfer, or only with textures held in video RAM.    \
+\
+As matter of general policy trying to fake QuickDraw using OpenGL is  a bad idea.  The best policy (according to Allen) is to migrate all Psychtoolboxes (Win and Mac) to  OpenGL-style commands.\
+\
+By the way, we tried the carbon copybits calls on OS X for the HIPS viewer.   Useless on OS X.  Slow transfer rates and unreliably and unverifiable video synching.\
+\
+\
+Allen W. Ingling\
+28 October 2004\
+\
+\
+
+\f1\b Option A:
+\f0\b0 \
+\
+1. When we open an onscreen window create a shadow surface which is a glcontext.  Make it the same X & Y size as the onscreen surface and aligned with the onscreen surface.\
+\
+2. When we open an offscreen window create a texture in system RAM.  If the offscreen window is larger than the onscreen window then replace the shadow surface with one larger. \
+\
+3. When we draw to the offscreen window first copy the texture to the shadow surface then issue the drawing command on the shadow surface context then copy it back to the texture. \
+\
+4.  When we copy window from offscreen windows to onscreen windows use the fast DMA blit. \
+\
+
+\f2\i Problems 
+\f0\i0 are that this is ugly. \
+\
+notes:\
+\
+to get the image from the texture to the shadow context just draw a texture rect.\
+to get the image from the shadow surface back to the texture either\
+	treat the texture as a block of memory and use glCopyPixels  \
+		or\
+	treat the texture as a texutre and use glCopyTexSubImage2D or   \
+\
+\
+
+\f1\b Option A2: (the awesome one)\
+\
+
+\f0\b0 1. Offscreen windows can remain as gl contexts.\
+\
+2. Provides  Screen commands 'TexturizeOffscreenWindow' window which converts the glcontext to a texture using glCopyTexImage and stores the texture in the window structure.  It sets a flag in the window structure "isTextureUpToDate" to indicate that the texture contents match the glcontext contents\
+\
+3. If we then draw again to the glcontext we unset the flag\
+\
+4. Copy window checks the  isTextureUpToDate flag.  If the texture is up to date it just copies the texture onto the designated surface.  If the texture is not up to date then it first texturizes the window and sets the isTextureUpToDate flag.\
+\
+5. Rush and Priority call 'TexturizeOffscreenWindows'.  You get fast CopyWindow if you rush or prioritize and slow copies if you don't. \
+\
+
+\f1\b Option A3: (less awesome but feasible)\
+\
+
+\f0\b0 Like A2, except we use glReadPixels instead of glCopyTexImage to move content into a texture.  This works because the texture has dual status both as client memory and as a texture and can be treated as either.\
+\
+There is a problem using glCopyTexImage to move the image from the offscreen context to at texture and then using the texture to draw on the onscreen window.  That problem is that the texture has to be shared between contexts, and to share a texture between contexts the format has to be the same and there seems to be no way to do that except to \
+\
+Like A3 except use glReadPixels to instead of glCopyTexImage to move contents from offscreen gl context to the texture.  This treats the texture as plain old memory when it is loaded instead of treating it as a texture when it is loaded.  This should be ok.  It is unclear how to reload the texture, but the worst case is that we have to reallocated memory, which is not a problem, given that TexturizeOffscreenWindow can take forever.  \
+\
+\
+\
+
+\f1\b \
+Option B:
+\f0\b0 \
+\
+Like 
+\f1\b A
+\f0\b0  except:\
+\
+3. When we draw to the offscreen window  issue the drawing command on the shadow surface then composite then back onto to the shadow surface when we transfer them instead of first copying the texture to the shadow window.    \
+\
+
+\f2\i Problems
+\f0\i0  are that  glReadPixels seems not to do compositing.   Take a look at ARB_texture_env_combine and ATI_texture_env_combine3 extensions but it looks like more trouble than Option A.  \
+\
+
+\f1\b \
+Option C: \
+\
+
+\f0\b0 Grant the same block of memory which holds the texture status as a GL context.  \
+\
+
+\f2\i Problems
+\f0\i0  are that the alignment of GL contexts is opaque.  Check the documentation one more time though.\
+\
+
+\f1\b \
+Option D: \
+\
+
+\f0\b0 1. For each offscreen window Create a gl context/texture using apple's shared pbuffer extension .  Draw into the context and render with the texture.  \
+\
+
+\f2\i Problems
+\f0\i0  are that pbuffers are still poorly documented (see the "Carbon Pbuffer Shared" example) and its not clear if they are held in system RAM or video RAM.\
+\
+\
+
+\f1\b\fs26 References:
+\f0\b0\fs24 \
+\
+APPLE_client_storage:\
+http://oss.sgi.com/projects/ogl-sample/registry/APPLE/client_storage.txt\
+\
+glCopyTexSubImage2D:\
+http://www.3dlabs.com/support/developer/GLmanpages/glcopytexsubimage2d.htm\
+\
+\pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720\ql\qnatural
+\cf0 APPLE_texture_range\
+http://developer.apple.com/opengl/extensions/apple_texture_range.html\
+\
+GL_EXT_bgra
+\f3\b\fs20 \
+
+\f0\b0\fs24 http://developer.apple.com/opengl/extensions.html#GL_EXT_bgra\
+\
+GL_EXT_texture_rectangle\
+http://developer.apple.com/opengl/extensions.html#GL_EXT_texture_rectangle\
+\
+\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\ql\qnatural
+\cf0 \
+To Do:\
+\
+\'a5 Init new fields in the window record structure when we create the window.\
+\
+\'a5 When we open an offscreen window, share the context with the screen context.  Insist (for now) that we open an onscreen context first.  Maybe later we could relax that requirement if the underlying CGL routines will support that.\
+\
+\'a5 When we open an offscreen window, create a texture for it. \
+\
+\'a5 When we texturize an offscreen window, create the texture if it does not exist.  Copy the contents of the window to the texture.\
+\
+* When we copy window, just draw a rect with the texture.\
+\
+
+\f1\b \
+\
+
+\f0\b0 \
+\
+  \
+\
+\
+\
+}
