@@ -1,1 +1,196 @@
-/*	PsychToolbox2/Source/Common/Screen/ScreenSynopsis.cpp	  	AUTHORS:  		Allen.Ingling@nyu.edu               awi                mario.kleiner at tuebingen.mpg.de   mk  	PLATFORMS: 			Only OS X for now.  	PROJECTS:  		08/21/02	awi		Screen on MacOS9		   	HISTORY:		08/21/02	awi		Wrote it.		10/12/04	awi		Added Synopsis strings.                04/22/05        mk              More/Updated Synopsis strings (OpenWindow, DrawingFinished, SelectStereoDrawbuffer, Flip, DrawLines)                5/09/05         mk              Added new command GetFlipInterval, changed Flip's synopsis.                5/13/05         mk              Added synopsis for new rotationAngle argument of "DrawTexture"                5/30/05         mk              Added synopsis for "SkipSyncTests" - preference setting.                7/23/05         mk              Added synopsis for new arguments filterMode and globalAlpha of "DrawTexture"                9/30/05         mk              Added synopsis for "VisualDebugLevel" - preference setting.	        DESCRIPTION:  		Summarize all of screen.  In Matlab this synopsis is given if Screen is		called with now arguments.     	TO DO:  		¥The overall Screen Synopsis is  separate from indivisual function help synopses now.  The identical help strings appear within the Screen 		subfunction files and the overal screen synopsis in this file.  It would be better not to duplicate the synopsis strings between files,		but that gives up the convenience of using the same variable name for the synopsis string in each subfunction file.  There might be a 		clever way to do both using a macro.      		¥Otherwise, the cool way to do help would be to create an XML DTD for describing 		sub functions which includes their name, short synopsis string, 		long synopsis string, and function arguments and their types. 		From an XML file we then-		-Validate arguments at runtime.		-Issue verbose warnings when passed invalid arguments.		-Parse arguments at runtime.		-Automatically generate HTML documentation		-Generate built-in screen help.			¥The error issued in InitializeSynopsis is issued after		the fatal mistake is made not before. Probably not a big deal: because		Screen always does this init there is no test of Screen which would fail to detect the problem. 		*/#include "Screen.h"#define MAX_SYNOPSIS_STRINGS 500  //declare variables local to this file.  static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];void InitializeSynopsis(){	int i=0;	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name	synopsis[i++] = "Usage:";	// Open or close a window or texture:	synopsis[i++] = "\n% Open or close a window or texture:";	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode]);";	        synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix);";		synopsis[i++] = "Screen('Close', windowOrTextureIndex);";	synopsis[i++] = "Screen('CloseAll');";		// Draw lines lines solids like QuickDraw and DirectX (OS 9 and Windows)	synopsis[i++] = "\n%  Draw lines and solids like QuickDraw and DirectX (OS 9 and Windows):";	synopsis[i++] = "Screen('SelectStereoDrawBuffer', windowPtr, bufferid);";	synopsis[i++] = "Screen('DrawLine', windowPtr [,color], fromH, fromV, toH, toV [,penWidth]);";	synopsis[i++] = "Screen('FillRect', windowPtr [,color] [,rect] );";	synopsis[i++] = "Screen('FrameRect', windowPtr [,color] [,rect] [,penWidth]);";	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList);";				// New OpenGL-based functions for OS X	synopsis[i++] = "\n% New OpenGL functions for OS X:";	synopsis[i++] = "Screen('glPoint', windowPtr, color, x, y [,size]);";	synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";	synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";	synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] ,colors [,center] [,smooth]);";        synopsis[i++] = "[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);";	// Draw Text in windows	synopsis[i++] = "\n% Draw Text in windows";	synopsis[i++] = "textModes = Screen('TextModes');";	synopsis[i++] = "oldCopyMode=Screen('TextMode', windowPtr [,textMode]);";	synopsis[i++] = "oldTextSize=Screen('TextSize', windowPtr [,textSize]);";	synopsis[i++] = "oldStyle=Screen('TextStyle', windowPtr [,style]);";	synopsis[i++] = "[oldFontName,oldFontNumber]=Screen(windowPtr,'TextFont' [,fontNameOrNumber]);";	synopsis[i++] = "[normBoundsRect, offsetBoundsRect]=Screen('TextBounds', windowPtr, text);";	synopsis[i++] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color]);";	synopsis[i++] = "oldTextColor=Screen('TextColor', windowPtr [,colorVector]);";	synopsis[i++] = "oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";		// Copy an image, very quickly, between textures and onscreen windows	synopsis[i++] = "\n% Copy an image, very quickly, between textures and onscreen windows.";	synopsis[i++] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha]);";		// Copy an image, slowly, between matrices and windows	synopsis[i++] = "\n% Copy an image, slowly, between matrices and windows :";	synopsis[i++] = "imageArray=Screen('GetImage', windowPtr [,rect] [,bufferName]);";	synopsis[i++] = "Screen('PutImage', windowPtr, imageArray [,rect]);";		// Synchronize with the window's screen (on-screen only):	synopsis[i++] = "\n% Synchronize with the window's screen (on-screen only):";	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('Flip', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";        synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";	// Load color lookup table of the window's screen (on-screen only)	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";	synopsis[i++] = "Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table);";			// Get and set information about a window or screen.	synopsis[i++] = "\n% Get (and set) information about a window or screen:";	synopsis[i++] = "screenNumbers=Screen('Screens);";		synopsis[i++] = "windowPtrs=Screen('Windows');";	synopsis[i++] = "kind=Screen(windowPtr, 'WindowKind');";	synopsis[i++] = "isOffscreen=Screen(windowPtr,'IsOffscreen');";	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber);";		synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber);";		synopsis[i++] = "[ monitorRefreshInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";        synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";		// Get and set information about the environment, computer, and video card (i.e. screen):	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";	synopsis[i++] = "struct=Screen('Version');";	synopsis[i++] = "comp=Screen('Computer');";	synopsis[i++] = "oldBool=Screen('Preference', 'IgnoreCase' [,bool]);";	synopsis[i++] = "tick0Secs=Screen('Preference', 'Tick0Secs', tick0Secs);";	synopsis[i++] = "psychTableVersion=Screen('Preference', 'PsychTableVersion');";	synopsis[i++] = "mexFunctionName=Screen('Preference', 'PsychTableCreator');";	synopsis[i++] = "proc=Screen('Preference', 'Process');";   	synopsis[i++] = "oldBool=Screen('Preference','Backgrounding');";	synopsis[i++] = "oldSecondsMultiplier=Screen('Preference', 'SecondsMultiplier');";	synopsis[i++] = "Screen('Preference','SkipSyncTests', skipTest);";	synopsis[i++] = "Screen('Preference','VisualDebugLevel', level (valid values between 0 and 5));";			//synopsis[i++] = "\n% Set clipping region (on- or off- screen):";		// Helper functions.  Don't call these directly, use eponymous wrappers.	synopsis[i++] = "\n% Helper functions.  Don't call these directly, use eponymous wrappers:";	synopsis[i++] ="[x, y, buttonVector]= Screen('GetMouseHelper', numButtons);";	synopsis[i++] = "Screen('HideCursorHelper', windowPntr);";	synopsis[i++] = "Screen('ShowCursorHelper', windowPntr);";	synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y);";		// Internal testing of Screen	synopsis[i++] = "\n% Internal testing of Screen";	synopsis[i++] =  "timeList= Screen('GetTimelist');";	synopsis[i++] =  "Screen('ClearTimelist');";	synopsis[i++] =  "Screen('Preference','DebugMakeTexture', enableDebugging);";		synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop	if (i > MAX_SYNOPSIS_STRINGS) {		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);	}}PsychError PsychDisplayScreenSynopsis(void){	int i;		for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)		printf("%s\n",synopsisSYNOPSIS[i]);			return(PsychError_none);}
+/*
+	PsychToolbox2/Source/Common/Screen/ScreenSynopsis.cpp	
+  
+	AUTHORS:
+  
+		Allen.Ingling@nyu.edu               awi
+                mario.kleiner at tuebingen.mpg.de   mk
+  
+	PLATFORMS: 
+	
+		Only OS X for now.
+  
+	PROJECTS:
+  
+		08/21/02	awi		Screen on MacOS9
+		
+   
+	HISTORY:
+		08/21/02	awi		Wrote it.
+		10/12/04	awi		Added Synopsis strings.
+                04/22/05        mk              More/Updated Synopsis strings (OpenWindow, DrawingFinished, SelectStereoDrawbuffer, Flip, DrawLines)
+                5/09/05         mk              Added new command GetFlipInterval, changed Flip's synopsis.
+                5/13/05         mk              Added synopsis for new rotationAngle argument of "DrawTexture"
+                5/30/05         mk              Added synopsis for "SkipSyncTests" - preference setting.
+                7/23/05         mk              Added synopsis for new arguments filterMode and globalAlpha of "DrawTexture"
+                9/30/05         mk              Added synopsis for "VisualDebugLevel" - preference setting.
+	
+        DESCRIPTION:
+  
+		Summarize all of screen.  In Matlab this synopsis is given if Screen is
+		called with now arguments. 
+  
+  
+	TO DO:
+  
+
+		¥The overall Screen Synopsis is  separate from indivisual function help synopses now.  The identical help strings appear within the Screen 
+		subfunction files and the overal screen synopsis in this file.  It would be better not to duplicate the synopsis strings between files,
+		but that gives up the convenience of using the same variable name for the synopsis string in each subfunction file.  There might be a 
+		clever way to do both using a macro.    
+  
+		¥Otherwise, the cool way to do help would be to create an XML DTD for describing 
+		sub functions which includes their name, short synopsis string, 
+		long synopsis string, and function arguments and their types. 
+
+		From an XML file we then-
+		-Validate arguments at runtime.
+		-Issue verbose warnings when passed invalid arguments.
+		-Parse arguments at runtime.
+		-Automatically generate HTML documentation
+		-Generate built-in screen help.
+	
+		¥The error issued in InitializeSynopsis is issued after
+		the fatal mistake is made not before. Probably not a big deal: because
+		Screen always does this init there is no test of Screen which would fail to detect the problem. 
+		
+*/
+
+
+#include "Screen.h"
+
+#define MAX_SYNOPSIS_STRINGS 500  
+
+//declare variables local to this file.  
+static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
+
+void InitializeSynopsis()
+{
+	int i=0;
+	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
+
+	synopsis[i++] = "Usage:";
+
+	// Open or close a window or texture:
+	synopsis[i++] = "\n% Open or close a window or texture:";
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode]);";	
+        synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
+	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix);";	
+	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
+	synopsis[i++] = "Screen('CloseAll');";
+	
+	// Draw lines lines solids like QuickDraw and DirectX (OS 9 and Windows)
+	synopsis[i++] = "\n%  Draw lines and solids like QuickDraw and DirectX (OS 9 and Windows):";
+	synopsis[i++] = "Screen('SelectStereoDrawBuffer', windowPtr, bufferid);";
+	synopsis[i++] = "Screen('DrawLine', windowPtr [,color], fromH, fromV, toH, toV [,penWidth]);";
+	synopsis[i++] = "Screen('FillRect', windowPtr [,color] [,rect] );";
+	synopsis[i++] = "Screen('FrameRect', windowPtr [,color] [,rect] [,penWidth]);";
+	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";
+	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";
+	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList);";	
+	
+	
+	// New OpenGL-based functions for OS X
+	synopsis[i++] = "\n% New OpenGL functions for OS X:";
+	synopsis[i++] = "Screen('glPoint', windowPtr, color, x, y [,size]);";
+	synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
+	synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
+	synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] ,colors [,center] [,smooth]);";
+        synopsis[i++] = "[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);";
+
+	// Draw Text in windows
+	synopsis[i++] = "\n% Draw Text in windows";
+	synopsis[i++] = "textModes = Screen('TextModes');";
+	synopsis[i++] = "oldCopyMode=Screen('TextMode', windowPtr [,textMode]);";
+	synopsis[i++] = "oldTextSize=Screen('TextSize', windowPtr [,textSize]);";
+	synopsis[i++] = "oldStyle=Screen('TextStyle', windowPtr [,style]);";
+	synopsis[i++] = "[oldFontName,oldFontNumber]=Screen(windowPtr,'TextFont' [,fontNameOrNumber]);";
+	synopsis[i++] = "[normBoundsRect, offsetBoundsRect]=Screen('TextBounds', windowPtr, text);";
+	synopsis[i++] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color]);";
+	synopsis[i++] = "oldTextColor=Screen('TextColor', windowPtr [,colorVector]);";
+	synopsis[i++] = "oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";
+	
+	// Copy an image, very quickly, between textures and onscreen windows
+	synopsis[i++] = "\n% Copy an image, very quickly, between textures and onscreen windows.";
+	synopsis[i++] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha]);";	
+
+	// Copy an image, slowly, between matrices and windows
+	synopsis[i++] = "\n% Copy an image, slowly, between matrices and windows :";
+	synopsis[i++] = "imageArray=Screen('GetImage', windowPtr [,rect] [,bufferName]);";
+	synopsis[i++] = "Screen('PutImage', windowPtr, imageArray [,rect]);";
+	
+	// Synchronize with the window's screen (on-screen only):
+	synopsis[i++] = "\n% Synchronize with the window's screen (on-screen only):";
+	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('Flip', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
+        synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";
+
+	// Load color lookup table of the window's screen (on-screen only)
+	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
+	synopsis[i++] = "Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";
+	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table);";
+		
+	// Get and set information about a window or screen.
+	synopsis[i++] = "\n% Get (and set) information about a window or screen:";
+	synopsis[i++] = "screenNumbers=Screen('Screens);";	
+	synopsis[i++] = "windowPtrs=Screen('Windows');";
+	synopsis[i++] = "kind=Screen(windowPtr, 'WindowKind');";
+	synopsis[i++] = "isOffscreen=Screen(windowPtr,'IsOffscreen');";
+	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber);";	
+	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber);";	
+	synopsis[i++] = "[ monitorRefreshInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
+        synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
+	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";
+	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";
+	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";
+	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
+
+	
+	// Get and set information about the environment, computer, and video card (i.e. screen):
+	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
+	synopsis[i++] = "struct=Screen('Version');";
+	synopsis[i++] = "comp=Screen('Computer');";
+	synopsis[i++] = "oldBool=Screen('Preference', 'IgnoreCase' [,bool]);";
+	synopsis[i++] = "tick0Secs=Screen('Preference', 'Tick0Secs', tick0Secs);";
+	synopsis[i++] = "psychTableVersion=Screen('Preference', 'PsychTableVersion');";
+	synopsis[i++] = "mexFunctionName=Screen('Preference', 'PsychTableCreator');";
+	synopsis[i++] = "proc=Screen('Preference', 'Process');";   
+	synopsis[i++] = "oldBool=Screen('Preference','Backgrounding');";
+	synopsis[i++] = "oldSecondsMultiplier=Screen('Preference', 'SecondsMultiplier');";
+	synopsis[i++] = "Screen('Preference','SkipSyncTests', skipTest);";
+	synopsis[i++] = "Screen('Preference','VisualDebugLevel', level (valid values between 0 and 5));";
+		
+	//synopsis[i++] = "\n% Set clipping region (on- or off- screen):";
+	
+	// Helper functions.  Don't call these directly, use eponymous wrappers.
+	synopsis[i++] = "\n% Helper functions.  Don't call these directly, use eponymous wrappers:";
+	synopsis[i++] ="[x, y, buttonVector]= Screen('GetMouseHelper', numButtons);";
+	synopsis[i++] = "Screen('HideCursorHelper', windowPntr);";
+	synopsis[i++] = "Screen('ShowCursorHelper', windowPntr);";
+	synopsis[i++] = "Screen('SetMouseHelper', windowPntrOrScreenNumber, x, y);";
+	
+	// Internal testing of Screen
+	synopsis[i++] = "\n% Internal testing of Screen";
+	synopsis[i++] =  "timeList= Screen('GetTimelist');";
+	synopsis[i++] =  "Screen('ClearTimelist');";
+	synopsis[i++] =  "Screen('Preference','DebugMakeTexture', enableDebugging);";
+	
+	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
+	if (i > MAX_SYNOPSIS_STRINGS) {
+		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
+	}
+}
+
+
+PsychError PsychDisplayScreenSynopsis(void)
+{
+	int i;
+	
+	for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)
+		printf("%s\n",synopsisSYNOPSIS[i]);
+		
+	return(PsychError_none);
+}
+
+
+
+
