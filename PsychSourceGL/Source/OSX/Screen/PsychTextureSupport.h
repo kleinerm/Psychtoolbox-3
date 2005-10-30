@@ -27,6 +27,7 @@
 
 void PsychInitWindowRecordTextureFields(PsychWindowRecordType *winRec);
 void PsychCreateTextureForWindow(PsychWindowRecordType *win);
+void PsychCreateTexture(PsychWindowRecordType *win);
 void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win);
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha);
