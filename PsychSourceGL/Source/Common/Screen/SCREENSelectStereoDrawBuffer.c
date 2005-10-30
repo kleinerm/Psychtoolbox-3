@@ -13,7 +13,8 @@
 	HISTORY:
 
 		04/03/05	mk		Created.
-     
+		10/30/05        mk              Synopsis string changed.
+
 	DESCRIPTION:
   
 		Selects the target buffer for drawing commands on a stereoscopic display:
@@ -34,10 +35,8 @@ static char synopsisString[] =
 	"Select the target buffer for draw commands in stereo display windows. "
         "This function only applies to stereo mode. \"windowPtr\" is the pointer to the onscreen "
         "stereo window. \"bufferid\" is either == 0 for selecting the left-eye buffer, == 1 for "
-        "selecting the right-eye buffer or == 2 for selecting both buffers. "
-        "The selection stays active until next Flip - command and gets reset to left-eye then.";
-static char seeAlsoString[] = "OpenWindow Flip";
-	 
+        "selecting the right-eye buffer or == 2 for selecting both buffers. ";
+static char seeAlsoString[] = "OpenWindow Flip";	 
 
 PsychError SCREENSelectStereoDrawBuffer(void) 
 {
