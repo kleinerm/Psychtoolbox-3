@@ -99,16 +99,16 @@
 
 PsychError PsychModuleInit(void)
 {
-	//register the project exit function
-	PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function."); 
+        //register the project exit function
+        PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function.");
 	
 	//register the project function which is called when the module
 	//is invoked with no arguments:
 	PsychErrorExitMsg(PsychRegister(NULL,  &PsychDisplayScreenSynopsis), "Failed to register the Screen synopsis function.");
 
 	//register the module name
-	PsychErrorExitMsg(PsychRegister("Screen", NULL), "Failed to register the Screen module name.");
-	
+ 	PsychErrorExitMsg(PsychRegister("Screen", NULL), "Failed to register the Screen module name.");
+
 	//register named subfunctions
 	
 	//enable for debugging purposes
@@ -170,9 +170,16 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("LineStipple", &SCREENLineStipple));  
 	PsychErrorExit(PsychRegister("SelectStereoDrawBuffer", &SCREENSelectStereoDrawBuffer));
 	PsychErrorExit(PsychRegister("DrawingFinished", &SCREENDrawingFinished));
-	PsychErrorExit(PsychRegister("DrawLines", &SCREENDrawLines));
-	PsychErrorExit(PsychRegister("GetFlipInterval", &SCREENGetFlipInterval));
-	//Experiments
+        PsychErrorExit(PsychRegister("DrawLines", &SCREENDrawLines));
+        PsychErrorExit(PsychRegister("GetFlipInterval", &SCREENGetFlipInterval));
+        PsychErrorExit(PsychRegister("CloseMovie", &SCREENCloseMovie));
+        PsychErrorExit(PsychRegister("OpenMovie", &SCREENOpenMovie));
+        PsychErrorExit(PsychRegister("PlayMovie", &SCREENPlayMovie));
+        PsychErrorExit(PsychRegister("SetMovieTimeIndex", &SCREENSetMovieTimeIndex));
+        PsychErrorExit(PsychRegister("GetMovieTimeIndex", &SCREENGetMovieTimeIndex));
+        PsychErrorExit(PsychRegister("GetMovieImage", &SCREENGetMovieImage));
+        
+ 	//Experiments
 
 
 	//PsychErrorExit(PsychRegister("SetGLSynchronous", &SCREENSetGLSynchronous));

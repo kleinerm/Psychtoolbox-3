@@ -174,7 +174,16 @@ void InitializeSynopsis()
 	synopsis[i++] =  "Screen('ClearTimelist');";
 	synopsis[i++] =  "Screen('Preference','DebugMakeTexture', enableDebugging);";
 	
-	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
+	// Movie and multimedia handling functions:
+	synopsis[i++] = "\n% Movie and multimedia playback functions:";
+	synopsis[i++] =  "[ moviePtr [count] [duration] [fps]]=Screen('OpenMovie', windowPtr, moviefile);";
+	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
+        synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
+	synopsis[i++] =  "Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
+ 	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
+ 	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
+ 
+        synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
 	}

@@ -17,6 +17,7 @@ HISTORY:
         04/22/05  mk            Added new flags to PsychWindowRecordType for stereo mode, skipped frames, IFI estimate and timestamping
                                 - These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
         07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
+        10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
  
 DESCRIPTION:
 
@@ -75,6 +76,7 @@ T0 DO:
 typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
+        CVOpenGLTextureRef      QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
 } PsychTargetSpecificWindowRecordType;
 
 #endif 

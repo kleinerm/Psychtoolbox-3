@@ -116,7 +116,13 @@ void ScreenCloseAllWindows()
 
 
 
-    //close the windows
+    // Shutdown Quicktime subsystem if active:
+
+    PsychExitMovies();
+
+        
+
+    // Close the windows
 
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
 
@@ -128,7 +134,7 @@ void ScreenCloseAllWindows()
 
     
 
-    //release all captured displays
+    // Release all captured displays
 
     numScreens=PsychGetNumDisplays();
 

@@ -25,6 +25,7 @@
                 8/11/05         mk              New texture handling: We now use real OpenGL textures instead of our old "pseudo-texture"
                                                 implementation. This is *way* faster, e.g., drawing times decrease from 35 ms to 3 ms for big
                                                 textures. Some experimental optimizations are implemented but not yet enabled...
+                10/11/05        mk              Support for special Quicktime movie textures added.
         DESCRIPTION:
 	
 		Psychtoolbox functions for dealing with textures.
@@ -57,6 +58,8 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureMemory=NULL;
 	win->textureNumber=0;
 	win->textureMemorySizeBytes=0;
+        // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
+        win->targetSpecific.QuickTimeGLTexture = NULL;
 }
 
 
@@ -314,10 +317,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
             win->textureMemorySizeBytes=0;
         }
         // Texture object ready for future use. Unbind it:
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, NULL);
-		
-		// Reset pixel storage parameter:
-		glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, NULL);
+        // Reset pixel storage parameter:
+        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         
         // Finished!
         return;
@@ -334,7 +336,12 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
     // Destroy OpenGL texture object for windows that have one:
     if((win->windowType==kPsychSingleBufferOnscreen || win->windowType==kPsychDoubleBufferOnscreen || win->windowType==kPsychTexture) &&
        (win->targetSpecific.contextObject)) {
+        // Activate associated OpenGL context:
         PsychSetGLContext(win);
+        // Call special texture release routine for Movie textures: This routine will
+        // check if 'win' is a movie texture and perform the necessary cleanup work, if so:
+        PsychFreeMovieTexture(win);
+        // Perform standard OpenGL texture cleanup:
         glDeleteTextures(1, &win->textureNumber);
     }
 
@@ -375,7 +382,16 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceRect[kPsychRight];
         }
     
-	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
+	// Override for special case: Corevideo texture from Quicktime-subsystem.
+        if (source->targetSpecific.QuickTimeGLTexture) {
+            sourceHeight=PsychGetHeightFromRect(source->rect);
+            sourceX=sourceRect[kPsychLeft];
+            sourceY=sourceRect[kPsychBottom];
+            sourceXEnd=sourceRect[kPsychRight];
+            sourceYEnd=sourceRect[kPsychTop];
+        }
+        
+        // MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
 	// because SCREENDrawText glDisable'd GL_TEXTURE_RECTANGLE_EXT, without this routine reenabling it.
 	glDisable(GL_TEXTURE_2D);
 	glEnable(GL_TEXTURE_RECTANGLE_EXT);
@@ -427,7 +443,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
 	glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
-        if (renderswap) {
+        // Override for special case: Corevideo texture from Quicktime-subsystem.
+        if (renderswap || source->targetSpecific.QuickTimeGLTexture) {
             // NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
             // is the fastest case --> Most common orientation has highest performance.
             //lower left
