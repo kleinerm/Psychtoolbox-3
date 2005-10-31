@@ -26,7 +26,7 @@
                  9/30/05                mk              Added PsychRealtimePriority for improving timing tests in PsychOpenWindow()
                  9/30/05                mk              Added check for Screen('Preference', 'VisualDebugLevel', level) -> Amount of vis. feedback.
                  10/10/05               mk              Important Bugfix for PsychRealtimePriority() - didn't switch back to non-RT priority!!
-				 10/19/05				awi				Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
+		 10/19/05		awi		Cast NULL to CGLPixelFormatAttribute type to make the compiler happy.
  
 	DESCRIPTION:
 	
@@ -319,11 +319,11 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     PsychCopyRect((*windowRecord)->rect, screenSettings->rect);
     (*windowRecord)->depth=PsychGetScreenDepthValue(screenSettings->screenNumber);
  
-    if (false) {
-        printf("\n\nPTB-INFO: This is the 2nd pre-release of PTB 1.0.6 (Build-ID 1.0.5-MK11), intended as update for Psychtoolbox 1.0.5\n\n");
-        // printf("PTB-INFO: Small details may change in the final release for Psychtoolbox 1.0.6 - Use at your own Risk!\n\n\n");
+    if (true) {
+      printf("\n\nPTB-INFO: This is the Screen-Prototype for PTB 1.0.7, intended as update for Psychtoolbox 1.0.6\n");
+      printf("PTB-INFO: Implementation details may change in the final release for Psychtoolbox 1.0.7 - Use at your own Risk!\n\n");
     }
-    
+
     // Check if the graphics hardware supports all required OpenGL-Extensions:
     const GLubyte* gl_extensions = glGetString(GL_EXTENSIONS);    
     if (strstr(gl_extensions, "GL_APPLE_client_storage")==NULL || strstr(gl_extensions, "GL_EXT_texture_rectangle")==NULL ||
