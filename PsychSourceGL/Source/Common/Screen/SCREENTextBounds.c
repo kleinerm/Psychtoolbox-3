@@ -12,7 +12,8 @@
 
     HISTORY:
     
-		1/19/04		awi		Wrote it. 
+		1/19/04		awi		Wrote it.
+                11/1/05         mk              Resynced implementation with changes in SCREENDrawText.
 	
     DESCRIPTION:
   
@@ -73,37 +74,36 @@ PsychError SCREENTextBounds(void)
 	TextEncodingFormat		textEncodingFormat;
 	
 	///////
-    PsychWindowRecordType 	*winRec;
-	char					*textCString;
-	Str255					textPString;
-	UniChar					*textUniString;
-	OSStatus				callError;
-	Rect					resultRect;
+        PsychWindowRecordType           *winRec;
+	char				*textCString;
+	Str255				textPString;
+	UniChar				*textUniString;
+	OSStatus			callError;
 	PsychRectType			resultPsychRect, resultPsychNormRect;
 	ATSUTextLayout			textLayout;				//layout is a pointer to an opaque struct.
-	int						stringLengthChars;
-	int						uniCharBufferLengthElements, uniCharBufferLengthChars, uniCharBufferLengthBytes;
-	ByteCount				uniCharStringLengthBytes;
+	int				stringLengthChars;
+	int				uniCharBufferLengthElements, uniCharBufferLengthChars, uniCharBufferLengthBytes;
+	ByteCount			uniCharStringLengthBytes;
 	TextToUnicodeInfo		textToUnicodeInfo;
 	TextEncoding			textEncoding;
-	ATSUStyle				atsuStyle;
-	Boolean					foundFont;
+	ATSUStyle			atsuStyle;
+	Boolean				foundFont;
 	
 	//for ATSU  style attributes
 	PsychFontStructPtrType  psychFontRecord;
 
     			
-    //all subfunctions should have these two lines.  
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+        //all subfunctions should have these two lines.  
+        PsychPushHelp(useString, synopsisString, seeAlsoString);
+        if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-   //check for correct the number of arguments before getting involved
-    PsychErrorExit(PsychCapNumInputArgs(2));   	
-    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(2));
+        //check for correct the number of arguments before getting involved
+        PsychErrorExit(PsychCapNumInputArgs(2));   	
+        PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+        PsychErrorExit(PsychCapNumOutputArgs(2));
 	
 	//get the window pointer and the text string and check that the window record has a font set
-    PsychAllocInWindowRecordArg(1, kPsychArgRequired, &winRec);
+        PsychAllocInWindowRecordArg(1, kPsychArgRequired, &winRec);
 	foundFont=PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
 	if(!foundFont)
 		PsychErrorExitMsg(PsychError_user, "Attempt to determine the bounds of text with no font or invalid font number");
@@ -122,9 +122,9 @@ PsychError SCREENTextBounds(void)
 	//Using a TextEncoding type describe the encoding of the text to be converteed.  
 	textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
 	//Take apart the encoding we just made to check it:
-		textEncodingBase=GetTextEncodingBase(textEncoding);
-		textEncodingVariant=GetTextEncodingVariant(textEncoding);
-		textEncodingFormat=GetTextEncodingFormat(textEncoding);
+        textEncodingBase=GetTextEncodingBase(textEncoding);
+        textEncodingVariant=GetTextEncodingVariant(textEncoding);
+        textEncodingFormat=GetTextEncodingFormat(textEncoding);
 	//Create a structure holding conversion information from the text encoding type we just created.
 	callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
 	//Convert the text to a unicode string
@@ -149,13 +149,24 @@ PsychError SCREENTextBounds(void)
 	
 	//associate the style with our layout object. This call assigns a style to every character of the string to be displayed.  
 	callError=ATSUSetRunStyle(textLayout, atsuStyle, (UniCharArrayOffset)0, (UniCharCount)stringLengthChars);
-	
-	callError=ATSUMeasureTextImage(textLayout,  kATSUFromTextBeginning, kATSUToTextEnd, (ATSUTextMeasurement)0, (ATSUTextMeasurement)0, &resultRect);
-	
-	resultPsychRect[kPsychLeft]=resultRect.left;
-	resultPsychRect[kPsychTop]=resultRect.top;
-	resultPsychRect[kPsychRight]=resultRect.right;
-	resultPsychRect[kPsychBottom]=resultRect.bottom;
+
+        //Get the bounds for our text so that and create a texture of sufficient size to containt it. 
+        ATSTrapezoid trapezoid;
+        ItemCount oActualNumberOfBounds = 0;
+        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
+        if (callError || oActualNumberOfBounds!=1) {
+            PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+        }
+        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
+        if (callError || oActualNumberOfBounds!=1) {
+            PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+        }
+        
+        resultPsychRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
+        resultPsychRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
+        resultPsychRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
+        resultPsychRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
+
 	PsychNormalizeRect(resultPsychRect, resultPsychNormRect);
 
 	PsychCopyOutRectArg(1, FALSE, resultPsychNormRect);
