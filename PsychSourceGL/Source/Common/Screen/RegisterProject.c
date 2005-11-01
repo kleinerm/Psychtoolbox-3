@@ -178,6 +178,12 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("SetMovieTimeIndex", &SCREENSetMovieTimeIndex));
         PsychErrorExit(PsychRegister("GetMovieTimeIndex", &SCREENGetMovieTimeIndex));
         PsychErrorExit(PsychRegister("GetMovieImage", &SCREENGetMovieImage));
+        PsychErrorExit(PsychRegister("glPushMatrix", &SCREENglPushMatrix));
+        PsychErrorExit(PsychRegister("glPopMatrix", &SCREENglPopMatrix));
+        PsychErrorExit(PsychRegister("glLoadIdentity", &SCREENglLoadIdentity));
+        PsychErrorExit(PsychRegister("glTranslate", &SCREENglTranslate));
+        PsychErrorExit(PsychRegister("glScale", &SCREENglScale));
+        PsychErrorExit(PsychRegister("glRotate", &SCREENglRotate));
         
  	//Experiments
 

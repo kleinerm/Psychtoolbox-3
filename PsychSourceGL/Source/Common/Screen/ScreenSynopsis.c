@@ -183,6 +183,17 @@ void InitializeSynopsis()
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
  
+	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:
+	synopsis[i++] = "\n% Low level direct access to OpenGL-API functions:";
+	synopsis[i++] = "% Online info for each function available by opening a terminal window";
+	synopsis[i++] = "% and typing 'man Functionname' + Enter.\n";
+        synopsis[i++] = "Screen('glPushMatrix', windowPtr);";
+        synopsis[i++] = "Screen('glPopMatrix', windowPtr);";
+        synopsis[i++] = "Screen('glLoadIdentity', windowPtr);";
+        synopsis[i++] = "Screen('glTranslate', windowPtr, tx, ty [, tz]);";
+        synopsis[i++] = "Screen('glScale', windowPtr, sx, sy [, sz]);";
+        synopsis[i++] = "Screen('glRotate', windowPtr, angle, [rx = 0], [ry = 0] ,[rz = 1]);";
+        
         synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);

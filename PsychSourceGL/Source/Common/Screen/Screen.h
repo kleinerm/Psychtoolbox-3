@@ -145,6 +145,12 @@ PsychError      SCREENPlayMovie(void);
 PsychError      SCREENSetMovieTimeIndex(void);
 PsychError      SCREENGetMovieTimeIndex(void);
 PsychError      SCREENGetMovieImage(void);
+PsychError      SCREENglPushMatrix(void);
+PsychError      SCREENglPopMatrix(void);
+PsychError      SCREENglLoadIdentity(void);
+PsychError      SCREENglTranslate(void);
+PsychError      SCREENglScale(void);
+PsychError      SCREENglRotate(void);
 
 
 
