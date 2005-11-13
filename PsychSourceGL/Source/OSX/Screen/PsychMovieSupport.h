@@ -6,7 +6,7 @@
 	AUTHORS:
 
 	HISTORY:
-                        10/31/05    mk      Wrote it.
+        10/31/05    mk      Wrote it.
 	DESCRIPTION:
 	
 	Psychtoolbox functions for dealing with movies.
@@ -27,7 +27,7 @@
 #include "Screen.h"
 
 void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle);
-void PsychGetMovieInfos(int moviehandle, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
+void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
 void PsychDeleteMovie(int moviehandle);
 void PsychDeleteAllMovies(void);
 bool PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp);

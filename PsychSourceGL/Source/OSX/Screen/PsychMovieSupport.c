@@ -19,7 +19,6 @@
 
 */
 
-
 #include "Screen.h"
 
 #define PSYCH_MAX_MOVIES 100
@@ -32,6 +31,8 @@ typedef struct {
     double movieduration;
     int nrframes;
     double fps;
+    int width;
+    int height;
     double last_pts;
     int nr_droppedframes;
 } PsychMovieRecordType;
@@ -158,7 +159,27 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     if (error!=noErr) {
         QTVisualContextRelease(QTMovieContext);
         QTAudioContextRelease(QTAudioContext);
-        PsychErrorExitMsg(PsychError_user, "Couldn't load movie. Possible reason: Wrong filename?");
+        char msgerr[10000];
+        char errdesc[1000];
+        switch(error) {
+            case -2000:
+                sprintf(errdesc, "File not found.");
+            break;
+            
+            case -2048:
+                sprintf(errdesc, "This is not a file that Quicktime understands.");
+            break;
+            
+            case -2003:
+                sprintf(errdesc, "Can't find media handler (codec) for this movie.");
+            break;
+            
+            default:
+                sprintf(errdesc, "Unknown: Check http://developer.apple.com/documentation/QuickTime/APIREF/ErrorCodes.htm#//apple_ref/doc/constant_group/Error_Codes");
+        }
+        
+        sprintf(msgerr, "Couldn't load movie %s! Quicktime error code %i [%s]", moviename, (int) error, errdesc);
+        PsychErrorExitMsg(PsychError_user, msgerr);
     }
     
     SetMovieAudioContext(theMovie, QTAudioContext);
@@ -201,6 +222,12 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Compute expected framerate, assuming a linear spacing between frames:
     movieRecordBANK[slotid].fps = (double) myCount / movieRecordBANK[slotid].movieduration;
     
+    // Determine size of images in movie:
+    Rect movierect;
+    GetMovieBox(theMovie, &movierect);
+    movieRecordBANK[slotid].width = movierect.right - movierect.left;
+    movieRecordBANK[slotid].height = movierect.bottom - movierect.top;
+    
     return;
 }
 
@@ -210,10 +237,12 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
  *  framecount = Total number of video frames in the movie, determined by counting.
  *  durationsecs = Total playback duration of the movie, in seconds.
  *  framerate = Estimated video playback framerate in frames per second (fps).
+ *  width = Width of movie images in pixels.
+ *  height = Height of movie images in pixels.
  *  nrdroppedframes = Total count of videoframes that had to be dropped during last movie playback,
  *                    in order to keep the movie synced with the realtime clock.
  */
-void PsychGetMovieInfos(int moviehandle, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
+void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
@@ -227,7 +256,8 @@ void PsychGetMovieInfos(int moviehandle, int* framecount, double* durationsecs, 
     if (durationsecs) *durationsecs = movieRecordBANK[moviehandle].movieduration;
     if (framerate) *framerate = movieRecordBANK[moviehandle].fps;
     if (nrdroppedframes) *nrdroppedframes = movieRecordBANK[moviehandle].nr_droppedframes;
-
+    if (width) *width = movieRecordBANK[moviehandle].width; 
+    if (height) *height = movieRecordBANK[moviehandle].height; 
     return;
 }
 

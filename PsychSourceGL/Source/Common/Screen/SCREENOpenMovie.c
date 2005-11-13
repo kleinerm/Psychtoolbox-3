@@ -30,13 +30,14 @@
 #include "Screen.h"
 
 
-static char useString[] = "[ moviePtr [count] [duration] [fps]]=Screen('OpenMovie', windowPtr, moviefile);";
+static char useString[] = "[ moviePtr [count] [duration] [fps] [width] [height]]=Screen('OpenMovie', windowPtr, moviefile);";
 static char synopsisString[] = 
 	"Open the named multimediafile 'moviefile' for visual playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on successfull completion. On OS-X, media files are handled by use of "
         "Apples Quicktime-7 API. On other platforms, the playback engine may be different from Quicktime. "
         "'count' Total number of videoframes in the movie. 'duration' Total duration of movie in seconds. "
-        "'fps' Video playback framerate, assuming a linear spacing of videoframes in time.";
+        "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. "
+        "'width' Width of the images contained in the movie. 'height' Height of the images.";
 
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 	 
@@ -49,6 +50,8 @@ PsychError SCREENOpenMovie(void)
         int                                     framecount;
         double                                  durationsecs;
         double                                  framerate;
+        int                                     width;
+        int                                     height;
         
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -56,7 +59,7 @@ PsychError SCREENOpenMovie(void)
 
         PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
         PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-        PsychErrorExit(PsychCapNumOutputArgs(4));           // Max. 4 output args.
+        PsychErrorExit(PsychCapNumOutputArgs(6));           // Max. 6 output args.
         
         // Get the window record from the window record argument and get info from the window record
         PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
@@ -79,10 +82,12 @@ PsychError SCREENOpenMovie(void)
         PsychCopyOutDoubleArg(1, TRUE, (double) moviehandle);
 
         // Retrieve infos about new movie:
-        PsychGetMovieInfos(moviehandle, &framecount, &durationsecs, &framerate, NULL);
+        PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL);
         PsychCopyOutDoubleArg(2, FALSE, (double) framecount);
         PsychCopyOutDoubleArg(3, FALSE, (double) durationsecs);
         PsychCopyOutDoubleArg(4, FALSE, (double) framerate);
+        PsychCopyOutDoubleArg(5, FALSE, (double) width);
+        PsychCopyOutDoubleArg(6, FALSE, (double) height);
         
 	// Ready!
         return(PsychError_none);
