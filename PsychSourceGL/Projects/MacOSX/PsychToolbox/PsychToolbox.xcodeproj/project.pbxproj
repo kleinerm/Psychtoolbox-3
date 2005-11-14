@@ -910,6 +910,16 @@
 		2FE94C9E0767B75600A2EC70 /* GetEthernetAddress.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */; };
 		2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FACAD700766DAB400A159D3 /* GetEthernetAddress.h */; };
 		2FE94D670767B84A00A2EC70 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
+		83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 83C94B00092823A80062DB0A /* PsychMovieSupport.h */; };
+		83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
+		83C94B05092824530062DB0A /* SCREENSetMovieTimeIndex.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */; };
+		83C94B07092824730062DB0A /* SCREENOpenMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B06092824730062DB0A /* SCREENOpenMovie.c */; };
+		83C94B09092824A90062DB0A /* SCREENGetMovieTimeIndex.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */; };
+		83C94B0B092824C90062DB0A /* SCREENPlayMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B0A092824C90062DB0A /* SCREENPlayMovie.c */; };
+		83C94B0D092824E30062DB0A /* SCREENGetMovieImage.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B0C092824E30062DB0A /* SCREENGetMovieImage.c */; };
+		83C94B0F092825020062DB0A /* SCREENCloseMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B0E092825020062DB0A /* SCREENCloseMovie.c */; };
+		83C94B11092825770062DB0A /* SCREENglMatrixFunctionWrappers.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */; };
+		83C94B38092826FF0062DB0A /* QuickTime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83C94B14092826FE0062DB0A /* QuickTime.framework */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		CF29B1CE080333DC00723921 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
@@ -1584,7 +1594,7 @@
 		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
 		2FD6171507306668008DA6B4 /* Rush.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rush.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
-		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
 		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
 		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
@@ -1609,6 +1619,16 @@
 		2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillPoly.c; path = ../../../Source/Common/Screen/SCREENFillPoly.c; sourceTree = SOURCE_ROOT; };
 		2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFramePoly.c; path = ../../../Source/Common/Screen/SCREENFramePoly.c; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
+		83C94B00092823A80062DB0A /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/OSX/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
+		83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/OSX/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
+		83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetMovieTimeIndex.c; path = ../../../Source/Common/Screen/SCREENSetMovieTimeIndex.c; sourceTree = SOURCE_ROOT; };
+		83C94B06092824730062DB0A /* SCREENOpenMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenMovie.c; path = ../../../Source/Common/Screen/SCREENOpenMovie.c; sourceTree = SOURCE_ROOT; };
+		83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetMovieTimeIndex.c; path = ../../../Source/Common/Screen/SCREENGetMovieTimeIndex.c; sourceTree = SOURCE_ROOT; };
+		83C94B0A092824C90062DB0A /* SCREENPlayMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPlayMovie.c; path = ../../../Source/Common/Screen/SCREENPlayMovie.c; sourceTree = SOURCE_ROOT; };
+		83C94B0C092824E30062DB0A /* SCREENGetMovieImage.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetMovieImage.c; path = ../../../Source/Common/Screen/SCREENGetMovieImage.c; sourceTree = SOURCE_ROOT; };
+		83C94B0E092825020062DB0A /* SCREENCloseMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseMovie.c; path = ../../../Source/Common/Screen/SCREENCloseMovie.c; sourceTree = SOURCE_ROOT; };
+		83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENglMatrixFunctionWrappers.c; path = ../../../Source/Common/Screen/SCREENglMatrixFunctionWrappers.c; sourceTree = SOURCE_ROOT; };
+		83C94B14092826FE0062DB0A /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = ../../../../../../../../../Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/QuickTime.framework; sourceTree = SOURCE_ROOT; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
 		CF29B1FD080333DC00723921 /* MachAbsoluteTimeClockFrequency.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF4FD40707DC1DE1008FEFD3 /* References.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = References.h; path = ../../../Notes/References.h; sourceTree = SOURCE_ROOT; };
@@ -1972,6 +1992,7 @@
 				2FACA6780766C96700A159D3 /* System.framework in Frameworks */,
 				2FACA6830766CB0400A159D3 /* SystemConfiguration.framework in Frameworks */,
 				2FE94D670767B84A00A2EC70 /* IOKit.framework in Frameworks */,
+				83C94B38092826FF0062DB0A /* QuickTime.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2075,6 +2096,7 @@
 		29B97314FDCFA39411CA2CEA /* TestPBMex */ = {
 			isa = PBXGroup;
 			children = (
+				83C94B14092826FE0062DB0A /* QuickTime.framework */,
 				2F685925072DD4C1003367CA /* Documentation */,
 				29B97315FDCFA39411CA2CEA /* Psychtoolbox Source */,
 				F559032B0385BAEA017A7028 /* MATLAB Resources */,
@@ -2471,6 +2493,7 @@
 				2F47161707A81674009DDBA2 /* SCREENClearTimeList.c */,
 				F569F254038E2C77017A7028 /* SCREENClose.c */,
 				F575179A03E05D1701A80168 /* SCREENCloseAll.c */,
+				83C94B0E092825020062DB0A /* SCREENCloseMovie.c */,
 				2F62C009043BDE14007A7274 /* SCREENComputer.c */,
 				F574FA280404446501A80168 /* SCREENCopyWindow.c */,
 				2FA28CC60793759E00E81C78 /* SCREENDrawDots.c */,
@@ -2490,6 +2513,8 @@
 				2F56E1D006095AB300A62EA5 /* SCREENGetFlipInterval.c */,
 				F569F25C038E2C77017A7028 /* SCREENGetImage.c */,
 				2FC12E5E07433E3100991CF0 /* SCREENGetMouseHelper.c */,
+				83C94B0C092824E30062DB0A /* SCREENGetMovieImage.c */,
+				83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */,
 				2FC9548F079F3A9C00414619 /* SCREENGetTimeList.c */,
 				2FE448CD0749C5AA003CF1C3 /* SCREENGlobalRect.c */,
 				F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */,
@@ -2497,14 +2522,17 @@
 				CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */,
 				F56F533203EA1A4701A80168 /* SCREENLoadNormalizedGammaTable.c */,
 				2FC84FC2068E782A009B1AF2 /* SCREENMakeTexture.c */,
+				83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */,
 				2FDA7942055F521C007A711C /* SCREENglPoint.c */,
 				2FDA7944055F6430007A711C /* SCREENgluDisk.c */,
 				F5D852D9039ED6E6017A7028 /* SCREENNominalFrameRate.c */,
 				F569F255038E2C77017A7028 /* SCREENNull.c */,
+				83C94B06092824730062DB0A /* SCREENOpenMovie.c */,
 				F5CF277203DA57B901D453F7 /* SCREENOpenOffscreenWindow.c */,
 				F5D852E203A01BF8017A7028 /* SCREENOpenWindow.c */,
 				F569F257038E2C77017A7028 /* SCREENPixelSize.c */,
 				F5BCFE05039D368A017A7028 /* SCREENPixelSizes.c */,
+				83C94B0A092824C90062DB0A /* SCREENPlayMovie.c */,
 				2FA0CBC405F1596B007B24E1 /* SCREENPreference.c */,
 				F5C3396703F2539D01A80168 /* SCREENPutImage.c */,
 				F56F533003EA19E401A80168 /* SCREENReadNormalizedGammaTable.c */,
@@ -2513,6 +2541,7 @@
 				2F66ABBF09063E1100128812 /* SCREENSelectStereoDrawBuffer.c */,
 				F569F251038E2C77017A7028 /* SCREENSetGLSynchronous.c */,
 				F50D529703D4FA79012326C4 /* SCREENSetMouseHelper.c */,
+				83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */,
 				F50D529203D4D6F9012326C4 /* SCREENShowCursorHelper.c */,
 				F57F5DA8041D89A201A80165 /* SCREENTestStructures.c */,
 				CFE5132707E2642900D55D72 /* SCREENTextBackgroundColor.c */,
@@ -2612,6 +2641,7 @@
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
 				2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */,
 				2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */,
+				83C94B00092823A80062DB0A /* PsychMovieSupport.h */,
 			);
 			name = Headers;
 			sourceTree = "<group>";
@@ -2624,6 +2654,7 @@
 				2F588F29056AC66D007A711C /* PsychWindowTextGlue.c */,
 				2F169D4C05FE6BA7009177BC /* PsychTextureSupport.c */,
 				2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */,
+				83C94B02092823C00062DB0A /* PsychMovieSupport.c */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -3259,6 +3290,7 @@
 				2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */,
 				2FD31F1C079E1F89005D8F2D /* TimeLists.h in Headers */,
 				2F4D83DC07B8282C00CE685A /* PsychAlphaBlending.h in Headers */,
+				83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5923,6 +5955,14 @@
 				2F66ABC409063E4E00128812 /* SCREENDrawText.c in Sources */,
 				2F66ABC609063E9B00128812 /* SCREENDrawLines.c in Sources */,
 				2F66ABDE09063FFB00128812 /* SCREENGetFlipInterval.c in Sources */,
+				83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */,
+				83C94B05092824530062DB0A /* SCREENSetMovieTimeIndex.c in Sources */,
+				83C94B07092824730062DB0A /* SCREENOpenMovie.c in Sources */,
+				83C94B09092824A90062DB0A /* SCREENGetMovieTimeIndex.c in Sources */,
+				83C94B0B092824C90062DB0A /* SCREENPlayMovie.c in Sources */,
+				83C94B0D092824E30062DB0A /* SCREENGetMovieImage.c in Sources */,
+				83C94B0F092825020062DB0A /* SCREENCloseMovie.c in Sources */,
+				83C94B11092825770062DB0A /* SCREENglMatrixFunctionWrappers.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -8503,7 +8543,10 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
 				GCC_ENABLE_PASCAL_STRINGS = NO;
@@ -8550,7 +8593,10 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = YES;
 				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -8597,7 +8643,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -9186,6 +9235,7 @@
 		2F57E2DC08CE718C00A5CF85 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				MATLAB_DIR_NAME = MATLAB704;
 			};
 			name = Development;
@@ -9193,6 +9243,7 @@
 		2F57E2DD08CE718C00A5CF85 /* Deployment */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				MATLAB_DIR_NAME = MATLAB704;
 			};
 			name = Deployment;
@@ -9200,6 +9251,7 @@
 		2F57E2DE08CE718C00A5CF85 /* Default */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				MATLAB_DIR_NAME = MATLAB704;
 			};
 			name = Default;
