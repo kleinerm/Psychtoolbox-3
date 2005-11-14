@@ -135,7 +135,7 @@ void PsychCreateTextureForWindow(PsychWindowRecordType *win)
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
 	glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_RGBA, (GLsizei)frameWidth, (GLsizei)frameHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, NULL);  //glColor does not work while a texture is bound.  
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);  //glColor does not work while a texture is bound.  
 }
 
 
@@ -317,7 +317,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
             win->textureMemorySizeBytes=0;
         }
         // Texture object ready for future use. Unbind it:
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, NULL);
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
         // Reset pixel storage parameter:
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
         
@@ -488,7 +488,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         glPopMatrix();
 
         // Unbind texture:
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, NULL);
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
         
         // Finished!
         return;

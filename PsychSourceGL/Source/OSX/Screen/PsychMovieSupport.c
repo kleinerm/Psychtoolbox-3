@@ -65,7 +65,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
             movieRecordBANK[i].theMovie = NULL;
             movieRecordBANK[i].QTMovieContext = NULL;
             movieRecordBANK[i].QTAudioContext = NULL;
-            movieRecordBANK[i].loopflag = NULL;
+            movieRecordBANK[i].loopflag = 0;
         }
         
         firsttime = FALSE;

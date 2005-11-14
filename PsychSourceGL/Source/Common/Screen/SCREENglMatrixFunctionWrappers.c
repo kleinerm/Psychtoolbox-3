@@ -1,5 +1,5 @@
 /*
-	SCREENglMatrixFunctionWrappers.c		
+	Psychtoolbox3/Source/Common/SCREENglMatrixFunctionWrappers.c		
   
 	AUTHORS:
 

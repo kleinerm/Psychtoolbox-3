@@ -27,7 +27,6 @@
 #if PSYCH_SYSTEM == PSYCH_OSX
 
 #include <Quicktime/Movies.h>
-#include <QuartzCore/QuartzCore.h>
 
 #endif
 

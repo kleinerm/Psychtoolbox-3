@@ -22,7 +22,6 @@
 #define PSYCH_IS_INCLUDED_PsychMovieSupport
 
 #include <Quicktime/Movies.h>
-#include <QuartzCore/QuartzCore.h>
 
 #include "Screen.h"
 
