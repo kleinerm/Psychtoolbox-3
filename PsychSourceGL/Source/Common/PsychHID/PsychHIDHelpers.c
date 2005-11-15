@@ -28,7 +28,7 @@
 */
 void PsychHIDVerifyInit(void)
 {
-    if(!HIDHaveDeviceList())HIDBuildDeviceList(NULL, NULL);
+    if(!HIDHaveDeviceList())HIDBuildDeviceList( 0, 0);
 }
 
 
