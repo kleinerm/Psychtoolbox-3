@@ -1,4 +1,4 @@
-function StereoDemo
+function StereoDemo(stereomode)
 % Demo on how to use Psychtoolbox for OS-X to drive stereo-displays
 % that are supported by MacOS-X, e.g., the CrystalEyes products...
 %
@@ -15,6 +15,12 @@ function StereoDemo
 %
 % Author: Mario Kleiner mario.kleiner at tuebingen.mpg.de
 %
+
+% Stereomode defaults to 'OpenGL - Stereo'...
+if nargin<1
+    stereomode=1
+end;
+
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
 	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
@@ -45,7 +51,7 @@ try
 
     % Open a double-buffered stereoscopic full-screen display window:
     % Number of buffers must be set == 2 for selecting this mode.
-    w=Screen('OpenWindow',screenNumber, 0,[],32, 2, 1);
+    w=Screen('OpenWindow',screenNumber, 0,[],32, 2, stereomode);
 
     % Clear image buffers and select clear color as "black":
     Screen('FillRect', w, 0);
@@ -59,7 +65,7 @@ try
     Priority(9)
     
     tb=GetSecs();
-    f=100;
+    f=300;
     j=200;
     while KbCheck == 0
         for i=1:n

@@ -176,6 +176,7 @@ boolean PsychRealtimePriority(boolean enable_realtime)
     0 (default) == Old behaviour -> Monoscopic rendering context.
     >0          == Stereo display, where the number defines the type of stereo algorithm to use.
     =1          == Use OpenGL built-in stereo by creating a context/window with left- and right backbuffer.
+    =2          == Use compressed frame stereo: Put both views into one framebuffer, one in top half, other in lower half.
  
     MK: Calibration/Measurement code was added that estimates the monitor refresh interval and the number of
         the last scanline (End of vertical blank interval). This increases time for opening an onscreen window
@@ -342,11 +343,17 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // printf("\n\nExtensions are: %s\n\n", gl_extensions);
     
     // MK: Assign stereomode: 0 == monoscopic (default) window. >0 Stereo output window, where
-    // the number specifies the type of stereo-algorithm used. Currently only value 1 is
+    // the number specifies the type of stereo-algorithm used. Currently value 1 is
     // supported, which means: Output via OpenGL built-in stereo facilities. This can drive
     // all Stereo display devices that are supported by MacOS-X, e.g., the "Crystal Space"
     // Liquid crystal eye shutter glasses.
-    (*windowRecord)->stereomode = (stereomode == 1) ? 1 : 0;
+    // We also support value 2, which means "compressed" stereo: Only one framebuffer is used,
+    // the left-eyes image is placed in the top half of the framebuffer, the right-eyes image is
+    // placed int the bottom half of the buffer. One looses half of the vertical image resolution,
+    // but both views are encoded in one video frame and can be decoded by external stereo-hardware,
+    // e.g., the one available from CrystalEyes, this allows for potentially faster refresh.
+    // Mode 2 is implemented by simple manipulations to the glViewPort...
+    (*windowRecord)->stereomode = (stereomode>=0 && stereomode<=3) ? stereomode : 0;
     
     // Setup timestamps and pipeline state for 'Flip' and 'DrawingFinished' commands of Screen:
     (*windowRecord)->time_at_last_vbl = 0;
@@ -560,6 +567,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
     printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
     if ((*windowRecord)->stereomode==1) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
+    if ((*windowRecord)->stereomode==2) printf("PTB-INFO: Stereo display via vertical image compression enabled (2-in-1 stereo).\n");
+    if ((*windowRecord)->stereomode==3) printf("PTB-INFO: Stereo display via free fusion enabled (2-in-1 stereo).\n");
     
     // Reliable estimate? These are our minimum requirements...
     if (numSamples<50 || stddev>0.001) {

@@ -18,9 +18,7 @@
 	DESCRIPTION:
   
 		Selects the target buffer for drawing commands on a stereoscopic display:
-                All drawing commands after this command will apply to the selected buffer
-                until the next "Flip" command.
-
+                All drawing commands after this command will apply to the selected buffer.
   
 	TO DO:  
 
@@ -71,19 +69,59 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	// Switch to associated GL-Context:
         PsychSetGLContext(windowRecord);
         
-        // Select target draw buffer:
-        switch(bufferid) {
-            case 0:
-                glDrawBuffer(GL_BACK_LEFT);
-            break;
-            case 1:
-                glDrawBuffer(GL_BACK_RIGHT);
-            break;
-            case 2:
-                glDrawBuffer(GL_BACK);
-            break;
+        // OpenGL native stereo?
+        if (windowRecord->stereomode==1) {
+            // OpenGL native stereo via separate back-buffers: Select target draw buffer:
+            switch(bufferid) {
+                case 0:
+                    glDrawBuffer(GL_BACK_LEFT);
+                    break;
+                case 1:
+                    glDrawBuffer(GL_BACK_RIGHT);
+                    break;
+                case 2:
+                    glDrawBuffer(GL_BACK);
+                    break;
+            }
         }
         
+        // Vertical compression stereo?
+        if (windowRecord->stereomode==2) {
+            // Switch between drawing into top- and bottom-half of the single framebuffer:
+            int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+            int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+
+            switch(bufferid) {
+                case 0:
+                    glViewport(0, screenheight/2, screenwidth, screenheight/2);
+                    break;
+                case 1:
+                    glViewport(0, 0, screenwidth, screenheight/2);
+                    break;
+                case 2:
+                    glViewport(0, 0, screenwidth, screenheight);
+                    break;
+            }
+        }
+
+        // "Free fusion" stereo?
+        if (windowRecord->stereomode==3) {
+            // Switch between drawing into left- and right-half of the single framebuffer:
+            int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+            int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+            
+            switch(bufferid) {
+                case 0:
+                    glViewport(0, 0, screenwidth/2, screenheight);
+                    break;
+                case 1:
+                    glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
+                    break;
+                case 2:
+                    glViewport(0, 0, screenwidth, screenheight);
+                    break;
+            }
+        }
 	return(PsychError_none);
 }
 

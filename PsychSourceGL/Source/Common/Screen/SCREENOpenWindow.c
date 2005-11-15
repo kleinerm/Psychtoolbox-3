@@ -90,7 +90,7 @@ static char synopsisString[] =
 
         "1 means: Stereo output via OpenGL on any stereo hardware that is supported by MacOS-X, e.g., the "
 
-        "shutter glasses from CrystalView. "
+        "shutter glasses from CrystalView. 2 means: Left view compressed into top half, right view into bottom half. "
 
         "Opening or closing a window takes about two to three seconds, depending on type of connected display. ";  
 
@@ -251,11 +251,14 @@ PsychError SCREENOpenWindow(void)
     
 
     // MK: Check for optional spec of stereoscopic display: 0 (the default) = monoscopic viewing.
-
     // 1 == Stereo output via OpenGL built-in stereo facilities: This will drive any kind of
-
     // stereo display hardware that is directly supported by MacOS-X.
-
+    // 2 == Stereo output via compressed frame output: Only one backbuffer is used for both
+    // views: The left view image is put into the top-half of the screen, the right view image
+    // is put into the bottom half of the screen. External hardware demangles this combi-image
+    // again into two separate images. CrystalEyes seems to be able to do this. One looses half
+    // of the vertical resolution, but potentially gains refresh rate...
+    // 3 == Same as 2, but put images side by side, instead of ontop of each other.
     // Future PTB version may include different stereo algorithms with an id > 1, e.g., 
 
     // anaglyph stereo, interlaced stereo, ...
@@ -264,9 +267,7 @@ PsychError SCREENOpenWindow(void)
 
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
 
-    if(stereomode < 0 || stereomode > 1)
-
-        PsychErrorExitMsg(PsychError_user, "Only 'stereomode' values for monoscopic viewing (=0 == default) or stereo via OpenGL (=1) are supported.");
+    if(stereomode < 0 || stereomode > 3) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 3).");
 
     
 
