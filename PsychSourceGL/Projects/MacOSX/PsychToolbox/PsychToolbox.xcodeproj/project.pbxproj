@@ -1594,7 +1594,7 @@
 		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
 		2FD6171507306668008DA6B4 /* Rush.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rush.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
-		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
 		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
 		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
@@ -1628,7 +1628,7 @@
 		83C94B0C092824E30062DB0A /* SCREENGetMovieImage.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetMovieImage.c; path = ../../../Source/Common/Screen/SCREENGetMovieImage.c; sourceTree = SOURCE_ROOT; };
 		83C94B0E092825020062DB0A /* SCREENCloseMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseMovie.c; path = ../../../Source/Common/Screen/SCREENCloseMovie.c; sourceTree = SOURCE_ROOT; };
 		83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENglMatrixFunctionWrappers.c; path = ../../../Source/Common/Screen/SCREENglMatrixFunctionWrappers.c; sourceTree = SOURCE_ROOT; };
-		83C94B14092826FE0062DB0A /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = ../../../../../../../../../Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/QuickTime.framework; sourceTree = SOURCE_ROOT; };
+		83C94B14092826FE0062DB0A /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/QuickTime.framework; sourceTree = "<absolute>"; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
 		CF29B1FD080333DC00723921 /* MachAbsoluteTimeClockFrequency.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF4FD40707DC1DE1008FEFD3 /* References.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = References.h; path = ../../../Notes/References.h; sourceTree = SOURCE_ROOT; };
@@ -2096,7 +2096,6 @@
 		29B97314FDCFA39411CA2CEA /* TestPBMex */ = {
 			isa = PBXGroup;
 			children = (
-				83C94B14092826FE0062DB0A /* QuickTime.framework */,
 				2F685925072DD4C1003367CA /* Documentation */,
 				29B97315FDCFA39411CA2CEA /* Psychtoolbox Source */,
 				F559032B0385BAEA017A7028 /* MATLAB Resources */,
@@ -2812,6 +2811,7 @@
 		F5FCC41903833678017A7028 /* System Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				83C94B14092826FE0062DB0A /* QuickTime.framework */,
 				2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */,
 				2F9E78AF04491002007A7274 /* Kernel.framework */,
 				F5FCC43C038338B4017A7028 /* Carbon.framework */,

@@ -142,7 +142,7 @@ PsychError SCREENDrawText(void)
     //final step when we copy the texture from system RAM onto the screen.
     PsychErrorExit(PsychCapNumInputArgs(6));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(1));  
+    PsychErrorExit(PsychCapNumOutputArgs(2));  
     PsychAllocInWindowRecordArg(1, TRUE, &winRec);
     
     //Get the dimensions of the target window
@@ -342,6 +342,26 @@ PsychError SCREENDrawText(void)
     
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 
+    
+    // Update drawing cursor:
+    if (quadRight >= PsychGetWidthFromRect(winRec->rect)) {
+        // If right border of screen is reached, we carriage-return + linefeed,
+        // start below this line of text, but left adjusted to the text...
+        // Note that this behaviour differs from OS-9 and Win Psychtoolbox. There,
+        // text that leaves the window doesn't wrap around... I think this new
+        // feature is useful, but we need to see what users have to say...
+        winRec->textAttributes.textPositionX = quadLeft;
+        winRec->textAttributes.textPositionY = quadBottom;
+    }
+    else {
+        // Right border not yet reached - Place cursor so that text could
+        // be appended right-hand of the drawn text.
+        winRec->textAttributes.textPositionX = quadRight;
+    }
+    
+    // Copy out new "cursor position":
+    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
+    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
     
     return(PsychError_none);
 }
