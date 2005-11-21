@@ -19,6 +19,7 @@
                                                 -> Disabling CLIENT_STORAGE and removing glFinish() is the proper solution...
                 11/01/05        mk              Finally the real bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5!
                 11/01/05        mk              Removal of dead code + beautification.
+                11/21/05        mk              Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
 
     DESCRIPTION:
   
@@ -343,23 +344,11 @@ PsychError SCREENDrawText(void)
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 
     
-    // Update drawing cursor:
-    if (quadRight >= PsychGetWidthFromRect(winRec->rect)) {
-        // If right border of screen is reached, we carriage-return + linefeed,
-        // start below this line of text, but left adjusted to the text...
-        // Note that this behaviour differs from OS-9 and Win Psychtoolbox. There,
-        // text that leaves the window doesn't wrap around... I think this new
-        // feature is useful, but we need to see what users have to say...
-        winRec->textAttributes.textPositionX = quadLeft;
-        winRec->textAttributes.textPositionY = quadBottom;
-    }
-    else {
-        // Right border not yet reached - Place cursor so that text could
-        // be appended right-hand of the drawn text.
-        winRec->textAttributes.textPositionX = quadRight;
-    }
+    // Update drawing cursor: Place cursor so that text could
+    // be appended right-hand of the drawn text.
+    winRec->textAttributes.textPositionX = quadRight;
     
-    // Copy out new "cursor position":
+    // Copy out new, updated "cursor position":
     PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
     PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
     
