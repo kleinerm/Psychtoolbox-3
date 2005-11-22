@@ -42,6 +42,27 @@ static int numMovieRecords = 0;
 static Boolean firsttime = TRUE;
 
 /*
+ *     PsychMovieInit() -- Initialize movie subsystem.
+ *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
+ *     routine at Screen load-time. It clears out the movieRecordBANK to
+ *     bring the subsystem into a clean initial state.
+ */
+void PsychMovieInit(void)
+{
+    // Initialize movieRecordBANK with NULL-entries:
+    int i;
+    for (i=0; i < PSYCH_MAX_MOVIES; i++) {
+        movieRecordBANK[i].theMovie = NULL;
+        movieRecordBANK[i].QTMovieContext = NULL;
+        movieRecordBANK[i].QTAudioContext = NULL;
+        movieRecordBANK[i].loopflag = 0;
+    }    
+    numMovieRecords = 0;
+    
+    return;
+}
+
+/*
  *      PsychCreateMovie() -- Create a movie object.
  *
  *      This function tries to open a Quicktime-Moviefile and create an
@@ -58,22 +79,13 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     QTAudioContextRef  QTAudioContext = NULL;
     *moviehandle = -1;
     
+    // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
         // Initialize Quicktime-Subsystem:
         OSStatus error = EnterMovies();
         if (error!=noErr) {
             PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
         }
-
-        // Initialize movieRecordBANK:
-        int i;
-        for (i=0; i < PSYCH_MAX_MOVIES; i++) {
-            movieRecordBANK[i].theMovie = NULL;
-            movieRecordBANK[i].QTMovieContext = NULL;
-            movieRecordBANK[i].QTAudioContext = NULL;
-            movieRecordBANK[i].loopflag = 0;
-        }
-
         firsttime = FALSE;
     }
     
@@ -246,7 +258,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
+        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     if (movieRecordBANK[moviehandle].theMovie == NULL) {
@@ -268,7 +280,7 @@ void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecoun
 void PsychDeleteMovie(int moviehandle)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
+        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     if (movieRecordBANK[moviehandle].theMovie == NULL) {
@@ -328,8 +340,10 @@ void PsychDeleteAllMovies(void)
  *              If set to -1, or if in realtime playback mode, this parameter is ignored and the next video frame is returned.
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
+ *
+ *  Returns true (1) on success, false (0) if no new image available, -1 if no new image available and there won't be any in future.
  */
-bool PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
+int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
     TimeValue		myCurrTime;
     TimeValue		myNextTime;
@@ -429,7 +443,21 @@ bool PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int c
     if (checkForImage) MoviesTask(theMovie, 0);
     
     // Should we just check for new image? If so, just return availability status:
-    if (checkForImage) return(QTVisualContextIsNewImageAvailable(theMoviecontext, NULL));
+    if (checkForImage) {
+        if (QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
+            // New frame ready!
+            return(true);
+        }
+        else if (IsMovieDone(theMovie) && movieRecordBANK[moviehandle].loopflag == 0) {
+            // No new frame available and there won't be any in the future, because this is a non-looping
+            // movie that has reached its end.
+            return(-1);
+        }
+        else {
+            // No new frame available yet:
+            return(false);
+        }
+    }
     
     // Try up to 1000 iterations for arrival of requested image data in wait-mode:
     unsigned int failcount=0;
@@ -437,6 +465,12 @@ bool PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int c
         MoviesTask(theMovie, 0);
         PsychWaitIntervalSeconds(0.001);
         failcount++;
+    }
+    
+    // No new frame available and there won't be any in the future, because this is a non-looping
+    // movie that has reached its end.
+    if ((failcount>=1000) && IsMovieDone(theMovie) && (movieRecordBANK[moviehandle].loopflag == 0)) {
+        return(-1);
     }
         
     // Fetch new OpenGL texture with the new movie image frame:
@@ -556,12 +590,14 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
  *                 e.g., 1 = forward, 2 = double speed forward, -1 = backward, ...
  *  loop = 0 = Play once. 1 = Loop, aka rewind at end of movie and restart.
  *  soundvolume = 0 == Mute sound playback, between 0.0 and 1.0 == Set volume to 0 - 100 %.
- *
+ *  Returns Number of dropped frames to keep playback in sync.
  */
-void PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
+int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
+    int dropped = 0;
+    
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
+        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
         
     // Fetch references to objects we need:
@@ -579,7 +615,6 @@ void PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double so
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
         SetMoviePreferredRate(theMovie, FloatToFixed(playbackrate));
         StartMovie(theMovie);
-        
     }
     else {
         // Stop playback of movie:
@@ -587,12 +622,12 @@ void PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double so
         QTVisualContextTask(movieRecordBANK[moviehandle].QTMovieContext);
 
         // Output count of dropped frames:
-        if (movieRecordBANK[moviehandle].nr_droppedframes > 0) {
+        if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
             printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle); 
         }
     }
     
-    return;
+    return(dropped);
 }
 
 /*
@@ -634,7 +669,7 @@ void PsychExitMovies(void)
 double PsychGetMovieTimeIndex(int moviehandle)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
+        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     // Fetch references to objects we need:
@@ -653,7 +688,7 @@ double PsychGetMovieTimeIndex(int moviehandle)
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
 {
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. Valid handles are between 0 and !!!");
+        PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     // Fetch references to objects we need:

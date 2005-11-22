@@ -25,12 +25,13 @@
 
 #include "Screen.h"
 
+void PsychMovieInit(void);
 void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle);
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
 void PsychDeleteMovie(int moviehandle);
 void PsychDeleteAllMovies(void);
-bool PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp);
-void PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume);
+int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp);
+int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume);
 void PsychExitMovies(void);
 double PsychGetMovieTimeIndex(int moviehandle);
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex);

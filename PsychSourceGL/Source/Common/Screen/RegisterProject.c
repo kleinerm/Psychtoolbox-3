@@ -201,7 +201,8 @@ PsychError PsychModuleInit(void)
 	InitializeSynopsis();
 	InitializePsychDisplayGlue();
 	InitWindowBank();
-	
+	PsychMovieInit();
+        
 	PrepareScreenPreferences();
         
 	return(PsychError_none);

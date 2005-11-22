@@ -35,7 +35,8 @@ static char synopsisString[] =
 "Try to fetch a new texture image from movie object 'moviePtr' for visual playback/display in onscreen window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
-"a texturePtr of zero. 'fortimeindex' Don't request the next image, but the image closest to fortimeindex. The (optional) return "
+"a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode. "
+"'fortimeindex' Don't request the next image, but the image closest to fortimeindex. The (optional) return "
 "value 'timeindex' contains the exact time when the returned image should be displayed - a presentation timestamp. "
 "On OS-X, media files are handled by use of Apples Quicktime-7 API. On other platforms, the playback engine may be different "
 "from Quicktime.";
@@ -81,20 +82,29 @@ PsychError SCREENGetMovieImage(void)
     // Get the requested timeindex for the frame. The default is -1, which means: Get the next image,
     // according to current movie playback time.
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
-        
-    // Check if we are in polling mode:
-    if (waitForImage == 0) {
-        // We should just poll once. Check if image available:
-        if (!PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL)) {
-            // No new texture available: Return a null-handle:
-            PsychCopyOutDoubleArg(1, TRUE, 0);
-            // ...and an invalid timestamp:
-            PsychCopyOutDoubleArg(2, FALSE, -1);
-            // Ready!
-            return(PsychError_none);
-        }
-        // New image available. Go ahead...
+    
+    int rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
+    if (rc<0) {
+        // No image available and there won't be any in the future, because the movie has reached
+        // its end and we are not in looped playback mode:
+
+        // No new texture available: Return a negative handle:
+        PsychCopyOutDoubleArg(1, TRUE, -1);
+        // ...and an invalid timestamp:
+        PsychCopyOutDoubleArg(2, FALSE, -1);
+        // Ready!
+        return(PsychError_none);
     }
+    else if (rc==0 && waitForImage == 0) {
+        // We should just poll once and no new texture available: Return a null-handle:
+        PsychCopyOutDoubleArg(1, TRUE, 0);
+        // ...and an invalid timestamp:
+        PsychCopyOutDoubleArg(2, FALSE, -1);
+        // Ready!
+        return(PsychError_none);
+    }
+
+    // New image available or we should do a blocking wait for a new image: Go ahead...
     
     // Create a texture record.  Really just a window record adapted for textures.  
     PsychCreateWindowRecord(&textureRecord);	// This also fills the window index field.

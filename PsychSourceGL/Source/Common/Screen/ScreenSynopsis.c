@@ -179,7 +179,7 @@ void InitializeSynopsis()
 	synopsis[i++] =  "[ moviePtr [count] [duration] [fps] [width] [height]]=Screen('OpenMovie', windowPtr, moviefile);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
         synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
-	synopsis[i++] =  "Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
+	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
  
