@@ -83,28 +83,35 @@ PsychError SCREENGetMovieImage(void)
     // according to current movie playback time.
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
     
-    int rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
-    if (rc<0) {
-        // No image available and there won't be any in the future, because the movie has reached
-        // its end and we are not in looped playback mode:
+    int rc=0;
+    while (rc==0) {
+        rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
+        if (rc<0) {
+            // No image available and there won't be any in the future, because the movie has reached
+            // its end and we are not in looped playback mode:
 
-        // No new texture available: Return a negative handle:
-        PsychCopyOutDoubleArg(1, TRUE, -1);
-        // ...and an invalid timestamp:
-        PsychCopyOutDoubleArg(2, FALSE, -1);
-        // Ready!
-        return(PsychError_none);
-    }
-    else if (rc==0 && waitForImage == 0) {
-        // We should just poll once and no new texture available: Return a null-handle:
-        PsychCopyOutDoubleArg(1, TRUE, 0);
-        // ...and an invalid timestamp:
-        PsychCopyOutDoubleArg(2, FALSE, -1);
-        // Ready!
-        return(PsychError_none);
+            // No new texture available: Return a negative handle:
+            PsychCopyOutDoubleArg(1, TRUE, -1);
+            // ...and an invalid timestamp:
+            PsychCopyOutDoubleArg(2, FALSE, -1);
+            // Ready!
+            return(PsychError_none);
+        }
+        else if (rc==0 && waitForImage == 0) {
+            // We should just poll once and no new texture available: Return a null-handle:
+            PsychCopyOutDoubleArg(1, TRUE, 0);
+            // ...and an invalid timestamp:
+            PsychCopyOutDoubleArg(2, FALSE, -1);
+            // Ready!
+            return(PsychError_none);
+        }
+        else if (rc==0 && waitForImage != 0) {
+            // No new texture available yet. Just sleep a bit and then retry...
+            PsychWaitIntervalSeconds(0.005);
+        }
     }
 
-    // New image available or we should do a blocking wait for a new image: Go ahead...
+    // New image available: Go ahead...
     
     // Create a texture record.  Really just a window record adapted for textures.  
     PsychCreateWindowRecord(&textureRecord);	// This also fills the window index field.

@@ -462,8 +462,8 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     // Try up to 1000 iterations for arrival of requested image data in wait-mode:
     unsigned int failcount=0;
     while ((failcount < 1000) && !QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
+        PsychWaitIntervalSeconds(0.005);
         MoviesTask(theMovie, 0);
-        PsychWaitIntervalSeconds(0.001);
         failcount++;
     }
     
