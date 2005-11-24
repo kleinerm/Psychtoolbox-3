@@ -12,6 +12,7 @@ function rect = RectOfMatrix(mat)
 % 1/29/05   dgp Renamed from RectFromMatrix to RectOfMatrix. 
 % 1/29/05   dgp Timed it. RectOfMatrix is quick, taking about 100 µs, 
 %               independent of matrix size.
+% 11/24/05  mk  Bugfix. Didn't work for multi-layer (3D) matrices.
 
-[m,n]=size(mat);
+[m,n,d]=size(mat);
 rect=[0 0 n m];
