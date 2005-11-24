@@ -24,7 +24,7 @@ wRect=Screen('Rect',w);
 testPlane=repmat(0:255, 256, 1);
 testImage1=repmat(testPlane, [1, 1, 3]);
 testImage2=repmat(rot90(testPlane), [1,1,3]);
-testImageRect=RectFromMatrix(testImage1);
+testImageRect=RectOfMatrix(testImage1);
 
 %calculate expected results
 expectedImage=AlphaSum(testImage1, testImage2);

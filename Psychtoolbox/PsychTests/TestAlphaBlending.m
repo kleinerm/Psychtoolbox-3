@@ -57,7 +57,7 @@ didPass= multMaximumError < 1 & multIndependentFlag;
 fprintf([resultStrings{~didPass + 1} '\n']);
 fprintf(['        Maximum descrepancy between MATLAB double and OpenGL integer multiplication: ' num2str(multMaximumError) '\n']);         
 if strcmp(multRoundTypeStr,  'round')
-    fprintf('        Alpha blending rounds multiplication to the nearest integer.'\n');
+    fprintf('        Alpha blending rounds multiplication to the nearest integer.\n');
 elseif strcmp(multRoundTypeStr,  'floor')
     fprintf('        Alpha blending truncates multiplication.\n');
 elseif strcmp(multRoundTypeStr,  'ceil')

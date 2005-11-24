@@ -5,7 +5,7 @@
 % 7/24/03   awi     Wrote it. 
 
 s=max(Screen('Screens'));
-w=Screen('OpenWindow', 2,[],[],32,2);
+w=Screen('OpenWindow', s,[],[],32,2);
 Screen('FillRect', w, 0);
 
 % Test drawing some frame rects

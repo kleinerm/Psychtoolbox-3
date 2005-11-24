@@ -52,7 +52,7 @@ zerosImage=zeros(16,16,4);
 onesImage=ones(16,16,4);
 allValuesImage=repmat(magic(16)-1, [1,1,3]);
 allValuesImage(:,:,4)=zerosImage(:,:,1);
-imageRect=RectFromMatrix(zerosImage);
+imageRect=RectOfMatrix(zerosImage);
 
 sourceBlendFactors={ 'GL_ZERO', 'GL_ONE', 'GL_DST_COLOR', 'GL_ONE_MINUS_DST_COLOR', 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA', 'GL_DST_ALPHA', 'GL_ONE_MINUS_DST_ALPHA', 'GL_SRC_ALPHA_SATURATE'};
 destinationBlendFactors={'GL_ZERO','GL_ONE', 'GL_SRC_COLOR', 'GL_ONE_MINUS_SRC_COLOR', 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA', 'GL_DST_ALPHA', 'GL_ONE_MINUS_DST_ALPHA'};
@@ -77,6 +77,7 @@ Screen('PutImage',w, newDestinationImage, imageRect);
 Screen('BlendFunction', w, 'GL_ZERO', 'GL_ZERO');
 Screen('PutImage',w, newSourceImage, imageRect);
 readback=Screen('GetImage', w, imageRect);
+size(readback)
 % Test the readback value, which should be all zeros.
 passed=all(all(all(readback==zeros(16,16,3))));
 if ~passed

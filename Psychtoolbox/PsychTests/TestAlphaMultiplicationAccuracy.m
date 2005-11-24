@@ -99,11 +99,11 @@ testPlane1=repmat(0:255, 256, 1);
 testPlane2=rot90(testPlane1);
 testImage1=repmat(testPlane1, [1, 1, 3]);
 testImage2=repmat(testPlane2, [1,1,3]);
-testImageRect=RectFromMatrix(testImage1);
+testImageRect=RectOfMatrix(testImage1);
 imageMat1=testImage1;
 imageMat1(:,:,4)=zeros(256);
 zerosImage=repmat(zeros(256), [1,1,4]);
-matRect=RectFromMatrix(testImage1);
+matRect=RectOfMatrix(testImage1);
 
 
 sourceBlendFactors={ 'GL_ZERO', 'GL_ONE', 'GL_DST_COLOR', 'GL_ONE_MINUS_DST_COLOR', 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA', 'GL_DST_ALPHA', 'GL_ONE_MINUS_DST_ALPHA', 'GL_SRC_ALPHA_SATURATE'};

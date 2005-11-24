@@ -13,7 +13,9 @@
 %  the identical matrix
 
 
-screenNumber=1;
+screenNumber=max(Screen('Screens'));
+% Open and onscreen window on the second display 
+w=Screen('OpenWindow',screenNumber, 0,[],32,2);
 
 %make some textures out of matrices
 gradientVector=[0:255];
@@ -32,22 +34,17 @@ for im=1:256
         end
     end
 end
-tColor=Screen('MakeTexture', screenNumber, gradientMatColor);
-tColorAlpha=Screen('MakeTexture', screenNumber, gradientMatColor);
-a=Screen('MakeTexture', screenNumber, angleMat);
-t=Screen('MakeTexture', screenNumber, gradientMat);
-
-
-% Open and onscreen window on the second display 
-w=Screen('OpenWindow',screenNumber, 0,[],32,2);
-
+tColor=Screen('MakeTexture', w, gradientMatColor);
+tColorAlpha=Screen('MakeTexture', w, gradientMatColor);
+a=Screen('MakeTexture', w, angleMat);
+t=Screen('MakeTexture', w, gradientMat);
 
 % See if drawing works at all
 Screen('FillRect', w, 0);
 Screen('FillRect', w, [255 0 0 255], [600 600 800 800]);
 
-targetRect=RectFromMatrix(gradientMat);
-Screen('DrawTexture', a, w, targetRect, OffsetRect(targetRect, 100, 100));
+targetRect=RectOfMatrix(gradientMat);
+Screen('DrawTexture', w, a, targetRect, OffsetRect(targetRect, 100, 100));
 Screen('Flip', w);
 
 WaitSecs(5);
