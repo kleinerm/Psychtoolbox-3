@@ -17,7 +17,7 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % graphics cards internal clock circuits, as well as some drift and jitter
 % caused by instabilities and change in the power supply and operating
 % temperature of your machine. To be on the safe side, we use a timing-loop
-% to compute the real IFI as an average of the IFI's of 1000 consecutive
+% to compute the real IFI as an average of the IFI's of a number of consecutive
 % monitor refresh intervals.
 %
 % After the calibration you'll see a simple animation: A flashing rectangle
@@ -41,15 +41,16 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 %
 %
 % numifis = Number of monitor refresh intervals (IFIs) between flips:
-% 0 == Flip at each vertical retrace: This is the old PTB 1.0.42 behaviour.
+% 0 == Flip at each vertical retrace: This is the old PTB 1.0.50 behaviour.
 % Values of numifis>0 will cause Screen('Flip') to wait for 'numifis'
-% monitor refresh intervals before flipping the back- and front buffers.
-% 
-% This would be equivalent to the following snippet of code in the old
+% monitor refresh intervals before flipping the back- and front buffers in
+% sync with the vertical retrace.
+%
+% This would be roughly equivalent to the following snippet of code in the old
 % MacOS9-PTB:
 % ...
 % Screen('WaitBlanking', windowPtr, numifis);
-% Screen('Flip', windowPtr);
+% Screen('CopyWindow', windowPtr, myOffscreenWindowwithStimulusPtr);
 % ...
 %
 %
@@ -62,16 +63,22 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 %
 %
 % clearmode = Change the behaviour of Flip after flipping.
-% clearmode = 0 will clear your stimulus image to background color after flip.
-% This is the behaviour as found in PTB 1.0.42. After Flip you start with an
-% empty image and can draw a new stim.
+% clearmode = 0 will clear your stimulus drawing surface to background color after flip.
+% This is the behaviour as found in PTB 1.0.50. After Flip you start with an
+% empty image and can draw a completely new stim.
 % 
-% clearmode = 1 will not clear after a flip but keep the contents of your stimulus
-% image after the Flip: This allows you to incrementally update stimuli.
+% clearmode = 1 will not clear after a flip, but keep the contents of your stimulus
+% image after the Flip: This allows you to incrementally update/draw stimuli.
 %
-% clearmode = 2 will neither clear nor keep the framebuffer after Flip but leave the
-% cleanup work to you. Only use if you know what you're doing.
-%
+% clearmode = 2 will neither clear nor keep the drawing surface after Flip, but leave the
+% cleanup work to you. To be precise: The drawing surface will contain the
+% stimulus image that was *just shown* on the screen. Think of Flip as if it would
+% flip the front- and back-side of a sheet of paper: The current front side
+% shows the stim to your subject, the current back side is where you draw.
+% clearmode 2 will allow you to update the back side, which was the front
+% side before the flip happened! This mode is useful if you want to save
+% about 0.5-2 ms of time needed for mode 1 or 2 if you draw stimuli on very
+% tight deadlines. 
 %
 %
 % stereo = Test timing of display of stereoscopic stimuli.
@@ -142,16 +149,20 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % Lots of randomly distributed values between 0 and 1024 would indicate sync trouble.
 %
 %
-% Figure 3: Shows the measured/estimated frame refresh interval of your
-% monitor. This is the real value as opposed to the nominal value returned
-% by 1/Screen('Framerate'). It's usually a little bit above or below the
-% nominal value ( 1/Screen('FrameRate')) due to manufacturing tolerances in
-% graphics cards oscillators, ageing and temperature effects as well as acts of
-% god.
-%
+% Figure 3: Shows the estimated difference between requested presentation
+% deadline and the real presentation deadline (start of VBL). Positive
+% values indicate a deadline-miss and give you an indication of how much
+% the deadline has been missed. Negative (or zero) values indicate that the
+% deadline has been met. While the sign of this value is useful for assessing
+% timing, the value itself is only meaningful for people who can read and
+% fully understand the C source code and logic of 'Flips' implementation...
 %
 % Figure 4: Shows the difference (in milliseconds) between estimated
-% start of VBL and return of the Flip command to Matlab.
+% start of VBL and return of the Flip command to Matlab. This is some
+% indication of the processing overhead of OpenGL, the Operating system and
+% Psychtoolbox when executing 'Flip'. It's also a lower bound for the
+% timing delay when trying to synchronize start of acquisition devices to
+% VBL.
 %
 % Figure 5: Shows the difference (in milliseconds) between estimated
 % stimulus onset (aka end of vertical retrace, scanning beam starts
@@ -182,7 +193,7 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 
 %
 %
-% Date:   04/11/05
+% Date:   05/09/05
 % Author: Mario Kleiner  (mario.kleiner at tuebingen.mpg.de)
 %
 
@@ -206,18 +217,24 @@ try
     % Query size of screen:
     screenwidth=screensize(3)
     screenheight=screensize(4)
-
+    Screen('Preference', 'SkipSyncTests' ,1);
+    
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
     w=Screen('OpenWindow',screenNumber, 0,[],32,2, stereo);
     
-    % Clear screen to black background color:
+    % Clear screen to black background color: If in stereo mode, we only
+    % clear the left-eye buffer...
     Screen('SelectStereoDrawBuffer', w, 0);
     Screen('FillRect', w, 0);
     Screen('Flip', w);
     
+    % Switch to realtime-priority to reduce timing jitter and interruptions
+    % caused by other applications and the operating system itself:
+    Priority(9);
+
     % Query nominal framerate as returned by Operating system:
-    % If OS returns 0, then we run on a flat-panel with
+    % If OS returns 0, then we assume that we run on a flat-panel with
     % fixed 60 Hz refresh interval.
     framerate=Screen('NominalFramerate', w);
     if (framerate==0)
@@ -227,16 +244,10 @@ try
     ifinominal=1 / framerate;
     fprintf('The refresh interval reported by the operating system is %2.5f ms.\n', ifinominal*1000);
     
-    % Switch to realtime-priority to reduce timing jitter and interruptions
-    % caused by other applications and the operating system itself:
-    Priority(9);
-    
     % Perform a calibration loop to determine the "real" interframe interval
     % for the given gfx-card + monitor combination:
-    % Setting the 'when' argument of Flip == -2 triggers collection of
-    % 1000 samples for computing an estimate:
-    Screen('TextSize', w, 20);
-    Screen('DrawText', w, 'Measuring monitor refresh interval... This takes 10 to 20 seconds...', 10, 10, 255);
+    Screen('TextSize', w, 24);
+    Screen('DrawText', w, 'Measuring monitor refresh interval... This can take up to 20 seconds...', 10, 10, 255);
     
     if (stereo>0)
         % Show something for the right eye as well in stereo mode:
@@ -247,41 +258,47 @@ try
     
     Screen('Flip', w, 0, 1);
     
-    [ dummy dummy dummy dummy ifi] = Screen('Flip', w, -2);
-    fprintf('Measured refresh interval, as reported by "Flip" is %2.5f ms.\n', ifi*1000);
-
+    % Measure monitor refresh interval again, just for fun...
+    % This will trigger a calibration loop of minimum 100 valid samples and return the
+    % estimated ifi in 'ifi': We require an accuracy of 0.05 ms == 0.00005
+    % secs. If this level of accuracy can't be reached, we time out after
+    % 20 seconds...
+    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 20);
+    fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
+    
     % Init data-collection arrays for collection of n samples:
     ts=zeros(1,n);
     beampos=ts;
-    ifiest=ts;
+    missest=ts;
     flipfin=ts;
     td=ts;
     so=ts;
     
     % Compute random load distribution for provided loadjitter value:
-    % wt=random('uniform', 0*ifi, loadjitter*ifi, 1, n);
     wt=rand(1,n)*(loadjitter*ifi);
 
-    % Perform initial Flip to get us in sync with retrace:
+    % Perform some initial Flip to get us in sync with retrace:
     % tvbl is the timestamp (system time in seconds) when the retrace
-    % started. We need it as reference value for WaitBlanking...
+    % started. We need it as a reference value for our WaitBlanking
+    % emulation:
     tvbl=Screen('Flip', w);
     
     % Test-loop: Collects n samples.
     for i=1:n
         % Presentation time calculation for waiting 'numifis' monitor refresh
-        % intervals before flipping front- and backbuffer.
-        % These formulas emulate the old PTB-MacOS9 Screen('WaitBlanking', numifis)
+        % intervals before flipping front- and backbuffer:
+        % This formula emulates the old PTB-MacOS9 Screen('WaitBlanking', numifis)
         % behaviour as closely as possible.
         % The 'Flip' command takes a presentation timestamp 'tdeadline' as
         % optional argument: If tdeadline == 0 or is left out, Flip will
-        % flip at the next retrace (PTB 1.0.5 and earlier behaviour).
+        % flip at the next possible retrace (PTB 1.0.5 and earlier behaviour).
         % If tdeadline is > 0, then Flip will wait until the system time
         % 'tdeadline' is reached and then flip the buffers
-        % at the next VBL. This allows to specify absolute points in time
+        % at the next possible VBL. This allows to specify absolute points in time
         % at which flip should occur. If you want the old behaviour of
         % Screen('WaitBlanking', w, numifis) back, then just calculate a
-        % proper presentation timestamp "tdeadline" as demonstrated here:        
+        % proper presentation timestamp "tdeadline" relative to the time of last flip
+        % 'tvbl', as demonstrated here:        
         tdeadline=tvbl + numifis * ifi - 0.5 * ifi;
         
         % If numifis == 0, flip on next retrace. This should be the same
@@ -289,6 +306,9 @@ try
         % the stimulus is **very** complex and the load for the system is at
         % the limit that it can handle in a single video-refresh interval.
         if numifis==0
+            % If user supplied numifis=0, we force tdeadline=0, so Flip
+            % will actually ignore the deadline and just Flip at the next
+            % possible retrace...
             tdeadline=0;
         end;
         
@@ -296,25 +316,32 @@ try
         % drawing buffer after flip (=0 - default), keep it "as is"
         % for incremental drawing/updating of stims (=1) or don't do
         % anything to the framebuffer at all (=2).
-        % We return the timestamp, where VBL starts in tvbl,
-        % rasterbeam-position (scanline) when the measurement was taken in beampos(i),
-        % the time when flip returned in flipfin(i), estimated stimulus onset time aka
-        % end of VBL in so(i), and an estimate of the real interframe interval in ifiest(i).
+        % We return the timestamp, when VBL starts in tvbl: This is when
+        % the front- and back drawing surfaces get exchanged and it is the
+        % crucial reference value for computing the 'tdeadline'
+        % presentation deadline for the next 'Flip' command.
+        % The rasterbeam-position (scanline) when the measurement was taken is returned in beampos(i),
+        % the time when flip returned to Matlab is returned in flipfin(i),
+        % estimated stimulus onset time aka end of VBL is returned in so(i).
+        %
         % The first value "tvbl" is needed for tdeadline calculation if
         % one wants to emulate WaitBlanking of old PTB - see formula above.
         % beampos > screen height means that flip returned during the VBL
         % interval. Small values << screen height are also ok,
         % they just indicate either a slower machine or some types of flat-panels...
-        [ tvbl so(i) flipfin(i) beampos(i) ifiest(i) ]=Screen('Flip', w, tdeadline, clearmode);
+        [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
 
         % Record timestamp for later use:
         ts(i) = tvbl;
         
         % Draw some simple stim for next frame of animation: We draw a
-        % simple flashing rectangle that moves over the screen...
+        % simple flashing rectangle that moves over the screen. The same
+        % rectangle is drawn with some offset for the right-eye if stereo
+        % display is requested:
         Screen('SelectStereoDrawBuffer', w, 0);
         pos=mod(i, screenheight);
         Screen('FillRect', w, mod(i, 255), [pos+20 pos+20 pos+400 pos+400]);
+        % Screen('FillRect', w, mod(i, 2)*255);
         if (stereo>0)
             % Show something for the right eye as well in stereo mode:
             Screen('SelectStereoDrawBuffer', w, 1);
@@ -326,7 +353,7 @@ try
             % follow before the next Flip-command. This can be used by PTB
             % to optimize drawing of very demanding stimuli in order to decrease the
             % chance of deadline misses due to overload. The "clearmode"
-            % argument should be the same as the one passed to Flip. Its
+            % argument should be the same as the one passed to Flip. It is
             % another hint. If synchronous is set == 1, then
             % DrawingFinished will return an estimate of the time needed by
             % the graphics hardware to draw your stimulus. This is useful
@@ -343,18 +370,21 @@ try
         % Sleep a random amount of time, just to simulate some work being
         % done in the Matlab loop:
         WaitSecs(wt(i));
+        % And give user a chance to abort the test by pressing any key:
         if KbCheck
             break;
         end;
-    end
+    end; % Draw next frame...
 
     % Shutdown realtime scheduling:
     finalprio = Priority(0)
 
     % Close display: If we skipped/missed any presentation deadline during
-    % Flip, Psychtoolbox will display some warning message on the Matlab
+    % Flip, Psychtoolbox will automatically display some warning message on the Matlab
     % console:
     Screen('CloseAll');
+    
+    % Plot all our measurement results:
 
     % Figure 1 shows time deltas between successive flips in milliseconds:
     % This should equal the product numifis * ifi:
@@ -374,12 +404,15 @@ try
     plot(beampos);
     title('Rasterbeam position when timestamp was taken (in scanlines):');
 
-    % Figure 3 shows estimated monitor refresh interval duration in
+    % Figure 3 shows estimated size of presentation deadline-miss in
     % milliseconds:
     figure
-    plot(ifiest*1000);
-    title('Measured monitor refresh interval in milliseconds:');
-
+    hold on
+    plot(missest*1000);
+    plot(zeros(1,n), 'g');
+    title('Estimate of missed deadlines in milliseconds (negative == no miss):');
+    hold off
+    
     % Figure 4 shows difference in ms between finish of Flip and estimated
     % start of VBL time:
     figure
@@ -415,6 +448,8 @@ try
             end;
         end;
     end;
+
+    % Output some summary and say goodbye...
     fprintf('PTB missed %i out of %i stimulus presentation deadlines.\n', numbermisses, n);
     fprintf('One missed deadline is ok and an artifact of the measurement.\n');
     fprintf('Have a look at the plots for more details...\n');
