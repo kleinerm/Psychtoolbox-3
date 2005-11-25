@@ -63,7 +63,8 @@ function DownloadPsychtoolbox(flavor, targetdirectory)
 
 % History:
 %
-% 11/2/05 mk  Created.
+% 11/2/05  mk  Created.
+% 11/25/05 mk  Bugfix for 'targetdirectory' provided by David Fencsik
 
 if nargin < 2
     targetdirectory = pwd;
@@ -88,7 +89,7 @@ fprintf('Target folder for installation: %s\n', targetdirectory);
 fprintf('Requested flavor is: %s\n', flavor);
 fprintf('\n');
 
-checkoutcommand = char([ '/usr/local/bin/svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/' ]);
+checkoutcommand = char([ '/usr/local/bin/svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '/Psychtoolbox' ]);
 
 fprintf('Will execute the following checkout command, please standby...\n');
 fprintf('%s\n', checkoutcommand);
