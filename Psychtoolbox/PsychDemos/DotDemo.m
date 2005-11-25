@@ -1,3 +1,4 @@
+ 
 % dot motion demo using SCREEN('DrawDots') subfunction
 % author: Keith Schneider, 12/13/04
 
@@ -31,6 +32,15 @@
 %                   size for each single dot.
 % 4/23/05   mk      Add call to Screen('BlendFunction') to reenable
 %                   point-smoothing.
+% 4/23/05   fwc     changed color and size specifications to use 'rand',
+%                   rather than 'random'
+%                   differentsizes is now max size value for random size
+%                   assigment. Decrease nr of dots when differentsizes>0
+%                   added option to break out of loop by pressing key or
+%                   mouse button.
+%                   Will now default to max of screens rather than main
+%                   screen.
+% 5/31/05   mk      Some modifications to use new Flip command...
 
 try
 
@@ -42,31 +52,43 @@ try
     mon_width   = 39;   % horizontal dimension of viewable screen (cm)
     v_dist              = 60;   % viewing distance (cm)
     dot_speed   = 7;    % dot speed (deg/sec)
-    ndots               = 20000;        % number of dots
+    ndots               = 2000;        % number of dots
     max_d               = 15;   % maximum radius of  annulus (degrees)
     min_d               = 1;    % minumum
     dot_w       = 0.1;  % width of dot (deg)
     fix_r       = 0.15; % radius of fixation point (deg)
     f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)    
-    differentcolors =0; % Use a different color for each point if == 1. Use common color white if == 0.
-    differentsizes = 0; % Use different sizes for each point if == 1. Use one commons size if == 0.
-
+    differentcolors =1; % Use a different color for each point if == 1. Use common color white if == 0.
+    differentsizes = 3; % Use different sizes for each point if >= 1. Use one common size if == 0.
+    waitframes = 1;     % Show new dot-images at each waitframes'th monitor refresh.
+    
+    if differentsizes>0  % drawing large dots is a bit slower
+        ndots=round(ndots/5);
+    end
+    
     % ---------------
     % open the screen
     % ---------------
 
     doublebuffer=1
-    [w, rect] = Screen('OpenWindow', 0, 0,[],32, doublebuffer+1);
+    screens=Screen('Screens');
+	screenNumber=max(screens);
+    [w, rect] = Screen('OpenWindow', screenNumber, 0,[],32, doublebuffer+1);
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     center = [rect(3) rect(4)]/2;	% coordinates of screen center (pixels)
     fps=Screen('FrameRate',w);      % frames per second
+    ifi=Screen('GetFlipInterval', w);
     black = BlackIndex(w);
     white = WhiteIndex(w);
     Screen('FillRect', w, black)
     HideCursor;	% Hide the mouse cursor
-
+    Priority(9);
+    
+    % Do initial flip...
+    vbl=Screen('Flip', w);
+    
     % ---------------------------------------
     % initialize dot positions and velocities
     % ---------------------------------------
@@ -91,31 +113,32 @@ try
     % Create a vector with different colors for each single dot, if
     % requested:
     if (differentcolors==1)
-        colvect = ones(3, ndots);
-        for i=1:ndots
-            colvect(1, i)= random('uniform', 0, 1);
-            colvect(2, i)= random('uniform', 0, 1);
-            colvect(3, i)= random('uniform', 0, 1);
-        end;
+        colvect = round(rand(3,ndots)*255);
     else
         colvect=white;
     end;
     
     % Create a vector with different point sizes for each single dot, if
     % requested:
-    if (differentsizes==1)
-        s=random('uniform', 1, 5, 1, ndots);
+    if (differentsizes>0)
+        s=(1+rand(1, ndots)*(differentsizes-1))*s;        
     end;
     
         
     % --------------
     % animation loop
-    % --------------
-    tavg=0;
-    
+    % --------------    
     for i = 1:nframes
-
-        Screen('FillOval', w, white, fix_cord);	% draw fixation dot (flip erases it)
+        if (i>1)
+            Screen('FillOval', w, white, fix_cord);	% draw fixation dot (flip erases it)
+            Screen('DrawDots', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw square dots
+            Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
+        end;
+        
+        [mx, my, buttons]=GetMouse(w);
+        if KbCheck | find(buttons) % break out of loop
+            break;
+        end;
 
         xy = xy + dxdy;						% move dots
         r = r + dr;							% update polar coordinates too
@@ -141,20 +164,18 @@ try
             % compute the new cartesian velocities
 
             dxdy(r_out,:) = [dr(r_out) dr(r_out)] .* cs(r_out,:);
-        end
+        end;
         xymatrix = transpose(xy);
         
-        t1=GetSecs;
-        Screen('DrawDots', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw square dots
         if (doublebuffer==1)
-            Screen('Flip', w);
+            vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
         end;
-        tavg=tavg + GetSecs - t1;
-    end
+    end;
+    Priority(0);
     ShowCursor
     Screen('CloseAll');
-    tavg=tavg / nframes
 catch
+    Priority(0);
     ShowCursor
     Screen('CloseAll');
 end
