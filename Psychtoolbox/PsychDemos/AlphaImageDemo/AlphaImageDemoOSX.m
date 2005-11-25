@@ -49,7 +49,6 @@ function AlphaImageDemoOSX
 try
     fprintf('AlphaImageDemo (%s)\n click on key or mouse to stop\n', datestr(now));
 
-    commandwindow; % moves commandwindow up front, handy in case of a break.
     % This script calls Psychtoolbox commands available only in OpenGL-based
     % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
     % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
@@ -205,7 +204,6 @@ catch
     ShowCursor;
     Priority(0);
     rethrow(lasterror);
-    commandwindow; % moves commandwindow up front, handy in case of a break.
 end %try..catch..
 
 
