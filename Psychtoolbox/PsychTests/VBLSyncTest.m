@@ -217,7 +217,6 @@ try
     % Query size of screen:
     screenwidth=screensize(3)
     screenheight=screensize(4)
-    Screen('Preference', 'SkipSyncTests' ,1);
     
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
