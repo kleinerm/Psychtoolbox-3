@@ -66,6 +66,9 @@ void PsychPrefStateSet_SkipSyncTests(Boolean setFlag);
 int PsychPrefStateGet_VisualDebugLevel(void);
 void PsychPrefStateSet_VisualDebugLevel(int level);
 
+int PsychPrefStateGet_ConserveVRAM(void);
+void PsychPrefStateSet_ConserveVRAM(int level);
+
 //Debug preferences.  
 Boolean PsychPrefStateGet_DebugMakeTexture(void);
 void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag);

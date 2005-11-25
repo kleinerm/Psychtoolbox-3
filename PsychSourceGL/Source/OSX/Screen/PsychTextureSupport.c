@@ -50,7 +50,8 @@
 static Boolean renderswap = false;
 
 // If set to true, then the apple client storage extensions are used: I doubt that they have any
-// advantage for the current way PTB is used, but you never know...
+// advantage for the current way PTB is used, but it can be useful to conserve VRAM on very
+// low-mem gfx cards if Screen('Preference', 'ConserveVRAM') is set appropriately.
 static Boolean clientstorage = false;
 
 void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
@@ -151,6 +152,11 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // texture:
 	PsychSetGLContext(win);
 
+        // Check if user requested explicit use of clientstorage + Use of System RAM for
+        // storage of textures instead of VRAM caching in order to conserve VRAM memory on
+        // low-mem gfx-cards. Enable clientstorage, if so...
+        clientstorage = (PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) ? TRUE : FALSE;
+        
 	// Create a unique texture handle for this texture
 	glGenTextures(1, &win->textureNumber);
 
@@ -163,8 +169,11 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 
         // Setup texture parameters like optimization, storage format et al.
 
-	// Choose the texture acceleration extension
-	textureHint= GL_STORAGE_CACHED_APPLE;  //GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE, GL_STORAGE_SHARED_APPLE
+	// Choose the texture acceleration extension out of GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE, GL_STORAGE_SHARED_APPLE
+        // We normally use CACHED storage for caching textures in gfx-cards VRAM for high-perf drawing,
+        // but if user explicitely requests client storage for saving VRAM memory, we do so and
+        // use SHARED storage in system RAM --> Slower but saves VRAM memory.
+	textureHint= (clientstorage) ? GL_STORAGE_SHARED_APPLE : GL_STORAGE_CACHED_APPLE;  
         glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
 
         // Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
@@ -342,6 +351,10 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
         // check if 'win' is a movie texture and perform the necessary cleanup work, if so:
         PsychFreeMovieTexture(win);
         // Perform standard OpenGL texture cleanup:
+        // If we use client-storage textures, we need to wait for completion of texture operations on the
+        // to-be-released texture before deleting it and freeing the RAM backing buffers. Waiting for
+        // completion is done via FinishObjectApple...
+        if ((win->textureMemory) && (win->textureNumber > 0)) FinishObjectAPPLE(GL_TEXTURE_2D, win->textureNumber);
         glDeleteTextures(1, &win->textureNumber);
     }
 

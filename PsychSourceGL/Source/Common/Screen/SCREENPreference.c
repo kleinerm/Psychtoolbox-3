@@ -87,7 +87,8 @@ static char synopsisString[] =
 	"\nproc=Screen('Preference','DebugMakeTexture', enableDebugging);"
 	"\noldEnableFlag=Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
 	"\noldEnableFlag=Screen('Preference', 'SkipSyncTests', [enableFlag]);"
-	"\noldLevel=Screen('Preference', 'VisualDebugLevel', level);";
+	"\noldLevel=Screen('Preference', 'VisualDebugLevel', level);"
+        "\noldMode=Screen('Preference', 'ConserveVRAM', mode);";
 
 	
 static char seeAlsoString[] = "";	
@@ -251,7 +252,15 @@ PsychError SCREENPreference(void)
 				PsychPrefStateSet_VisualDebugLevel(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
-		}else 
+                }else 
+                        if(PsychMatch(preferenceName, "ConserveVRAM")){
+                                PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
+                                if(numInputArgs==2){
+                                    PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+                                    PsychPrefStateSet_ConserveVRAM(tempInt);
+                                }
+                        preferenceNameArgumentValid=TRUE;
+                }else 
 			if(PsychMatch(preferenceName, "TextAlphaBlending")){
 			textAlphaBlendingFlag=PsychPrefStateGet_TextAlphaBlending();
 			PsychCopyOutFlagArg(1, kPsychArgOptional, textAlphaBlendingFlag);

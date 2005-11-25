@@ -203,6 +203,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     bool sync_disaster = false;
     bool skip_synctests = PsychPrefStateGet_SkipSyncTests();
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
+    int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
     
     //First allocate the window recored to store stuff into.  If we exit with an error PsychErrorExit() should
     //call PsychPurgeInvalidWindows which will clean up the window record. 
@@ -219,12 +220,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if(numBuffers>=2){
         // Enable double-buffering:
         attribs[attribcount++]=kCGLPFADoubleBuffer;
-        // MK: Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
-        // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
-        // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
-        attribs[attribcount++]=kCGLPFAAuxBuffers;
-        attribs[attribcount++]=(stereomode==1) ? 2 : 1;
+        if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
+            // MK: Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
+            // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
+            // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
+            attribs[attribcount++]=kCGLPFAAuxBuffers;
+            attribs[attribcount++]=(stereomode==1) ? 2 : 1;
+        }
     }
+
     // MK: Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
     if(stereomode==1) {
@@ -282,7 +286,6 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         //their was insufficient video memory to open a back buffer.  
         isDoubleBuffer=false;
         glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
-        //glDrawBuffer(GL_BACK);
         if(!isDoubleBuffer){
             CGLDestroyPixelFormat((*windowRecord)->targetSpecific.pixelFormatObject);
             CGLSetCurrentContext(NULL);
@@ -1063,7 +1066,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // We need the pixel as "synchronization token", so the following glFinish() really
             // waits for VBL instead of just "falling through" due to the asynchronous nature of
             // OpenGL:
-            glDrawBuffer(GL_BACK);
+            glDrawBuffer(GL_BACK_LEFT);
             // We draw our single pixel with an alpha-value of zero - so effectively it doesn't
             // change the color buffer - just the z-buffer if z-writes are enabled...
             glColor4f(0,0,0,0);
@@ -1332,7 +1335,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Setup context and back-drawbuffer:
         PsychSetGLContext(windowRecord);
-        glDrawBuffer(GL_BACK);
+        glDrawBuffer(GL_BACK_LEFT);
         
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
         tstart = tnew;

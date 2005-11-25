@@ -36,12 +36,12 @@ static char								PsychTableCreator[]="Screen";   //there is no psych table yet
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
 static int								defaultTextStyle=0; // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
-static Boolean							textAlphaBlending=FALSE;
-static Boolean							screenSkipSyncTests=FALSE;
+static Boolean                                                          textAlphaBlending=FALSE;
+static Boolean                                                          screenSkipSyncTests=FALSE;
 //Debug preference state
-static Boolean							TimeMakeTextureFlag=FALSE;
+static Boolean                                                          TimeMakeTextureFlag=FALSE;
 static int								screenVisualDebugLevel=6;
-					
+static int                                                              screenConserveVRAM=0;
 
 
 //All state checking goes through accessors located in this file.  
@@ -159,6 +159,21 @@ int PsychPrefStateGet_VisualDebugLevel(void)
 void PsychPrefStateSet_VisualDebugLevel(int level)
 {
     screenVisualDebugLevel=level;
+}
+
+// Settings for conserving VRAM usage by disabling certain features.
+// Current constants (defined in ScreenTypes.h) that can be or'ed together:
+// kPsychDisableAUXBuffers = Don't use AUX buffers, disable associated features.
+// kPsychDontCacheTextures = Use Client storage for RAM->DMA texturing instead of VRAM texturing.
+// Defaults to zero = Make full use of VRAM.
+int PsychPrefStateGet_ConserveVRAM(void)
+{
+    return(screenConserveVRAM);
+}
+
+void PsychPrefStateSet_ConserveVRAM(int level)
+{
+    screenConserveVRAM = level;
 }
 
 //****************************************************************************************************************
