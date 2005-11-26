@@ -105,54 +105,13 @@ PsychError SCREENDrawingFinished(void)
     //get Sync-Flag:
     PsychCopyInFlagArg(3, FALSE, &syncflag);
     
-    // Switch to associated GL-Context:
-    PsychSetGLContext(windowRecord);
-    
-    // Check if we should do the backbuffer -> AUX buffer backup already here,
-    // so we save valuable time in the Flip-command...
-    if (dontclear==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen) {
-        int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
-        int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
-        
-        // Is this window equipped with a native OpenGL stereo rendering context?
-        // If so, then we need to backup both backbuffers (left-eye and right-eye),
-        // instead of only the monoscopic one.
-        bool stereo_mode=(windowRecord->stereomode == 1) ? true : false;
-        GLint read_buffer, draw_buffer;
+    // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
+    // and special compositing operations for specific stereo algorithms...
+    PsychPreFlipOperations(windowRecord, dontclear);
 
-        // Backup current assignment of read- writebuffers:
-        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
-        glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
-        
-        // Clearing the backbuffer(s) after flip is not enabled,
-        // we need to make a backup-copy of the backbuffer to AUX-buffers:
-        if (stereo_mode) {
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK_LEFT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-            glDrawBuffer(GL_AUX1);
-            glReadBuffer(GL_BACK_RIGHT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-        else {
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-        
-        // Restore assignment of read- writebuffers:
-        glReadBuffer(read_buffer);
-        glDrawBuffer(draw_buffer);
-        
-        // Tell Flip that backbuffer backup has been done already to avoid redundant backups:
-        windowRecord->backBufferBackupDone = true;
-    }
-    
+    // At this point, the GL-context of windowRecord is active due to PsychPreFlipOp....
     if (syncflag) {
-        // Synchronization requested:
+        // Synchronization between CPU (Matlab et al.) and GPU requested:
         glFinish();
         // Compute elapsed time between last VBL and finish'ing of drawing commands:
         if (windowRecord->time_at_last_vbl > 0) {

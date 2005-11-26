@@ -861,7 +861,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     const boolean vblsyncworkaround=false;  // Setting this to 'true' would enable some checking code. Leave it false by default.
     static unsigned char id=1;
     boolean sync_to_vbl;                    // Should we synchronize the CPU to vertical retrace? 
-    boolean stereo_mode;                    // Are we flipping a stereo-context?
     double tremaining;                      // Remaining time to flipwhen - deadline
     CGDirectDisplayID displayID;            // Handle for our display - needed for beampos-query.
     double time_at_vbl=0;                   // Time (in seconds) when last Flip in sync with start of VBL happened.
@@ -902,11 +901,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     PsychGetCGDisplayIDFromScreenNumber(&displayID, windowRecord->screenNumber);
     screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
-        
-    // Is this window equipped with a native OpenGL stereo rendering context?
-    // If so, then we need to backup/restore or clear both backbuffers (left-eye and right-eye),
-    // instead of only the monoscopic one.
-    stereo_mode=(windowRecord->stereomode == 1) ? true : false;
 
     // Should we sync to the onset of vertical retrace?
     // Note: Flipping the front- and backbuffers is nearly always done in sync with VBL on
@@ -948,29 +942,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     glGetIntegerv(GL_READ_BUFFER, &read_buffer);
     glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
     
-    // Do we need to make a backup copy of the backbuffer: Needed in the
-    // dont_clear case if backup hasn't been made already by other routines,
-    // e.g., SCREENDrawingFinished - which would set the backBufferBackupDone - flag.
-    if ((dont_clear==1) && (!windowRecord->backBufferBackupDone)) {
-        // Clearing the backbuffer(s) after flip is not enabled,
-        // we need to make a backup-copy of the backbuffer to AUX-buffers:
-        if (stereo_mode) {
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK_LEFT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-            glDrawBuffer(GL_AUX1);
-            glReadBuffer(GL_BACK_RIGHT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-        else {
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-    }
+    // Perform preflip-operations: Backbuffer backups for the different dontclear-modes
+    // and special compositing operations for specific stereo algorithms...
+    PsychPreFlipOperations(windowRecord, dont_clear);
     
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
@@ -1159,47 +1133,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
     
     // The remaining code will run asynchronously on the GPU again and prepares the back-buffer
-    // for drawing of next stim. Still it can be disabled by passing the value 2 to dont_clear
-    // if one wants to save a few dozen microseconds...    
-    if (dont_clear!=2) {
-        // Reinitialization of back buffer for drawing of next stim requested:
-        if (dont_clear==1) {
-            // We shall not clear the back buffer(s), but restore them to state before "Flip",
-            // so previous stim can be incrementally updated where this makes sense.
-            // Copy back our backup-copy from AUX buffers:
-            
-            if (stereo_mode) {
-                glDrawBuffer(GL_BACK_LEFT);
-                glReadBuffer(GL_AUX0);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-                glDrawBuffer(GL_BACK_RIGHT);
-                glReadBuffer(GL_AUX1);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-            }
-            else {
-                glDrawBuffer(GL_BACK);
-                glReadBuffer(GL_AUX0);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-                
-            }
-        }
-        else {
-            // Clearing the back buffer requested:
-            if (stereo_mode) {
-                glDrawBuffer(GL_BACK_LEFT);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDrawBuffer(GL_BACK_RIGHT);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-            else {
-                glDrawBuffer(GL_BACK);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-        }
-    }
+    // for drawing of next stim.
+    PsychPostFlipOperations(windowRecord, dont_clear);
         
     // Part 2 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
@@ -1224,7 +1159,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     glDrawBuffer(draw_buffer);
     
     // Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
-    // This flags are altered and checked by SCREENDrawingFinished as well:
+    // This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:
     windowRecord->PipelineFlushDone = false;
     windowRecord->backBufferBackupDone = false;
     
@@ -1580,8 +1515,158 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     return;
 }
 
+/*
+ * PsychPreFlipOperations()  -- Prepare windows backbuffer for flip.
+ *
+ * This routine performs all preparatory work to bring the windows backbuffer in its
+ * final state for bufferswap as soon as possible.
+ *
+ * If a special stereo display mode is active, it performs all necessary drawing/setup/
+ * compositing operations to assemble the final stereo display from the content of diverse
+ * stereo backbuffers/AUX buffers/stereo metadata and such.
+ *
+ * If clearmode = Don't clear after flip is selected, the necessary backup copy of the
+ * backbuffers into AUX buffers is made, so backbuffer can be restored to previous state
+ * after Flip.
+ *
+ * This routine is called automatically by PsychFlipWindowBuffers on Screen('Flip') time as
+ * well as by Screen('DrawingFinished') for manually triggered preflip work.
+ *
+ * -> Unifies the code in Flip and DrawingFinished.
+ *
+ */
+void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
+{
+    int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+    int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+    int stereo_mode=windowRecord->stereomode;
+    GLint auxbuffers;
 
+    // Query number of available AUX-buffers:
+    glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+    
+    // Switch to associated GL-Context of windowRecord:
+    PsychSetGLContext(windowRecord);
+    
+    // Check if we should do the backbuffer -> AUX buffer backup, because we use
+    // clearmode 1 aka "Don't clear after flip, but retain backbuffer content"
+    if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen
+        && (!windowRecord->backBufferBackupDone)) {
 
+        // Backup current assignment of read- writebuffers:
+        GLint read_buffer, draw_buffer;
+        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+        glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
 
+        // Is this window equipped with a native OpenGL stereo rendering context?
+        // If so, then we need to backup both backbuffers (left-eye and right-eye),
+        // instead of only the monoscopic one.
+        if (stereo_mode==kPsychOpenGLStereo) {
+            if (auxbuffers<2) {
+                PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
+                "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+            }
+            
+            glDrawBuffer(GL_AUX0);
+            glReadBuffer(GL_BACK_LEFT);
+            glRasterPos2i(0, screenheight);
+            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+            glDrawBuffer(GL_AUX1);
+            glReadBuffer(GL_BACK_RIGHT);
+            glRasterPos2i(0, screenheight);
+            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+        }
+        else {
+            if (auxbuffers<1) {
+                PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
+                                  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+            }
+            glDrawBuffer(GL_AUX0);
+            glReadBuffer(GL_BACK);
+            glRasterPos2i(0, screenheight);
+            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+        }
+        
+        // Restore assignment of read- writebuffers:
+        glReadBuffer(read_buffer);
+        glDrawBuffer(draw_buffer);
+        
+        // Tell Flip that backbuffer backup has been done already to avoid redundant backups:
+        windowRecord->backBufferBackupDone = true;
+    }
 
+    return;
+}
+
+/*
+ * PsychPostFlipOperations()  -- Prepare windows backbuffer after flip.
+ *
+ * This routine performs all preparatory work to bring the windows backbuffer in its
+ * proper state for drawing the next stimulus after bufferswap has completed.
+ *
+ * If a special stereo display mode is active, it performs all necessary setup/
+ * operations to restore the content of diverse stereo backbuffers/AUX buffers/stereo
+ * metadata and such.
+ *
+ * If clearmode = Don't clear after flip is selected, the backbuffer is restored to previous state
+ * after Flip from the AUX buffer copies.
+ *
+ * This routine is called automatically by PsychFlipWindowBuffers on Screen('Flip') time after
+ * the flip has happened.
+ *
+ * -> Unifies the code in Flip and DrawingFinished.
+ *
+ */
+void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
+{
+    int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+    int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+    int stereo_mode=windowRecord->stereomode;
+
+    // Switch to associated GL-Context of windowRecord:
+    PsychSetGLContext(windowRecord);
+    
+    if (clearmode!=2) {
+        // Reinitialization of back buffer for drawing of next stim requested:
+        if (clearmode==1) {
+            // We shall not clear the back buffer(s), but restore them to state before "Flip",
+            // so previous stim can be incrementally updated where this makes sense.
+            // Copy back our backup-copy from AUX buffers:
+
+            // Need to do it on both backbuffers when OpenGL native stereo is enabled:
+            if (stereo_mode==kPsychOpenGLStereo) {
+                glDrawBuffer(GL_BACK_LEFT);
+                glReadBuffer(GL_AUX0);
+                glRasterPos2i(0, screenheight);
+                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+                glDrawBuffer(GL_BACK_RIGHT);
+                glReadBuffer(GL_AUX1);
+                glRasterPos2i(0, screenheight);
+                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+            }
+            else {
+                glDrawBuffer(GL_BACK);
+                glReadBuffer(GL_AUX0);
+                glRasterPos2i(0, screenheight);
+                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+            }
+        }
+        else {
+            // Clearing (both)  back buffer requested:
+            if (stereo_mode==kPsychOpenGLStereo) {
+                glDrawBuffer(GL_BACK_LEFT);
+                glClear(GL_COLOR_BUFFER_BIT);
+                glDrawBuffer(GL_BACK_RIGHT);
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
+            else {
+                glDrawBuffer(GL_BACK);
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
+        }
+    }
+
+    // Done.
+    return;
+}
 

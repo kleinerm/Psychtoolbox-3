@@ -76,6 +76,20 @@ typedef enum {
 	kPsychTexture =					6
 	} PsychWindowType; //naming conventions dictate "PsychWindowTypeType" but that's silly.
 
+typedef enum  {
+        kPsychMonoscopic   = 0,           // Monoscopic display aka non-stereo. This is the default setting.
+        kPsychOpenGLStereo = 1,           // Stereo display via built-in native OpenGL stereo facilities.
+        kPsychCompressedTLBRStereo = 2,   // Vertical compression stereo with assingment top=left-eye, bottom=right-eye.
+        kPsychCompressedTRBLStereo = 3,   // Vertical compression stereo with assingment top=right-eye, bottom=left-eye.
+        kPsychFreeFusionStereo = 4,       // Stereo via free fusion of left and right view on a horizontally split screen.
+        kPsychFreeCrossFusionStereo = 5,  // Stereo via free cross-fusion of left and right view on a horizontally split screen.
+        kPsychAnaglyphRGStereo = 6,       // Stereo via color filter glasses (Anaglyph principle): Red-Green
+        kPsychAnaglyphGRStereo = 7,       // Stereo via color filter glasses (Anaglyph principle): Green-Red
+        kPsychAnaglyphRBStereo = 8,       // Stereo via color filter glasses (Anaglyph principle): Red-Blue
+        kPsychAnaglyphBRStereo = 9,       // Stereo via color filter glasses (Anaglyph principle): Blue-Red
+} PsychStereoDisplayType;
+
+
 
 typedef enum {
 	kPsychUnknownColor = 0,

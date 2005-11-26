@@ -70,7 +70,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         PsychSetGLContext(windowRecord);
         
         // OpenGL native stereo?
-        if (windowRecord->stereomode==1) {
+        if (windowRecord->stereomode==kPsychOpenGLStereo) {
             // OpenGL native stereo via separate back-buffers: Select target draw buffer:
             switch(bufferid) {
                 case 0:

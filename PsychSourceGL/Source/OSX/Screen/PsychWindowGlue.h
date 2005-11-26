@@ -54,7 +54,8 @@ void	PsychSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychUnsetGLContext(void);
 double  PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* numSamples, double* maxsecs, double* stddev, double intervalHint);
 void    PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int belltype);
-
+void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
+void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 //end include once
 #endif
 
