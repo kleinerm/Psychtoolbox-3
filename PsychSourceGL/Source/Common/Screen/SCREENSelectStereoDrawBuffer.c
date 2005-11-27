@@ -30,10 +30,15 @@
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('SelectStereoDrawBuffer', windowPtr, bufferid);";
 static char synopsisString[] = 
-	"Select the target buffer for draw commands in stereo display windows. "
-        "This function only applies to stereo mode. \"windowPtr\" is the pointer to the onscreen "
-        "stereo window. \"bufferid\" is either == 0 for selecting the left-eye buffer, == 1 for "
-        "selecting the right-eye buffer or == 2 for selecting both buffers. ";
+	"Select the target buffer for drawing commands in stereo display mode. "
+        "This function only applies to stereo mode, it does nothing in mono mode. "
+        "\"windowPtr\" is the pointer to the onscreen stereo window. "
+        "\"bufferid\" is either == 0 for selecting the left-eye buffer or == 1 for "
+        "selecting the right-eye buffer. You need to call this command after each "
+        "Screen('Flip') again in order to reestablish your selection of draw buffer, "
+        "otherwise the results of drawing operations will be undefined and most probably "
+        "not what you want.";
+
 static char seeAlsoString[] = "OpenWindow Flip";	 
 
 PsychError SCREENSelectStereoDrawBuffer(void) 
@@ -55,7 +60,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         if(!PsychIsOnscreenWindow(windowRecord))
             PsychErrorExitMsg(PsychError_user, "Tried to select stereo draw buffer on something else than a onscreen window");
             
-	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen || windowRecord->stereomode == 0) {
+	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen || windowRecord->stereomode == kPsychMonoscopic) {
             // Trying to select the draw target buffer on a non-stereo window: We just reset it to monoscopic default.
             glDrawBuffer(GL_BACK);
             return(PsychError_none);
@@ -63,8 +68,8 @@ PsychError SCREENSelectStereoDrawBuffer(void)
             
         // Get the buffer id (0==left, 1==right):
         PsychCopyInIntegerArg(2, TRUE, &bufferid);
-        if (bufferid<0 || bufferid>2)
-            PsychErrorExitMsg(PsychError_user, "Invalid bufferid provided: Must be 0 for left-eye, 1 for right-eye buffer or 2 for both");
+        if (bufferid<0 || bufferid>1)
+            PsychErrorExitMsg(PsychError_user, "Invalid bufferid provided: Must be 0 for left-eye or 1 for right-eye buffer.");
 
 	// Switch to associated GL-Context:
         PsychSetGLContext(windowRecord);
@@ -79,54 +84,203 @@ PsychError SCREENSelectStereoDrawBuffer(void)
                 case 1:
                     glDrawBuffer(GL_BACK_RIGHT);
                     break;
-                case 2:
-                    glDrawBuffer(GL_BACK);
-                    break;
             }
+
+            // Store new assignment:
+            windowRecord->stereodrawbuffer = bufferid;
         }
         
         // Vertical compression stereo?
-        if (windowRecord->stereomode==2) {
-            // Switch between drawing into top- and bottom-half of the single framebuffer:
-            int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
-            int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
-
-            switch(bufferid) {
-                case 0:
-                    glViewport(0, screenheight/2, screenwidth, screenheight/2);
-                    break;
-                case 1:
-                    glViewport(0, 0, screenwidth, screenheight/2);
-                    break;
-                case 2:
-                    glViewport(0, 0, screenwidth, screenheight);
-                    break;
-            }
+        if (windowRecord->stereomode==kPsychCompressedTLBRStereo || windowRecord->stereomode==kPsychCompressedTRBLStereo) {
+            PsychSwitchCompressedStereoDrawBuffer(windowRecord, bufferid);
         }
 
-        // "Free fusion" stereo?
-        if (windowRecord->stereomode==3) {
+        // "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in both dimensions...
+        if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
             // Switch between drawing into left- and right-half of the single framebuffer:
             int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
             int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
             
+            // Store new assignment:
+            windowRecord->stereodrawbuffer = bufferid;
+
+            // Cross fusion instead of fusion requested? Switch left-right if so:
+            if (windowRecord->stereomode==kPsychFreeCrossFusionStereo) bufferid = 1 - bufferid;
+            
             switch(bufferid) {
                 case 0:
-                    glViewport(0, 0, screenwidth/2, screenheight);
+                    // Place viewport in the left half of screen, vertically centered
+                    // and scaled by 0.5 in both dimensions:
+                    glViewport(0, screenheight/4, screenwidth/2, screenheight/2);
                     break;
                 case 1:
-                    glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
-                    break;
-                case 2:
-                    glViewport(0, 0, screenwidth, screenheight);
+                    // Place viewport in the right half of screen, vertically centered
+                    // and scaled by 0.5 in both dimensions:
+                    glViewport(screenwidth/2, screenheight/4, screenwidth/2, screenheight/2);
                     break;
             }
         }
-	return(PsychError_none);
+	
+        // And now for the Anaglyph stereo modes, were the left-eye vs. right-eye images are encoded in
+        // the separate color-channels of the same display. We do this via the OpenGL writemask, which
+        // allows to selectively enable/disable write operations to the different color channels:
+        // The alpha channel is always enabled, the red,gree,blue channels are depending on mode and
+        // bufferid conditionally enabled/disabled:
+        switch (windowRecord->stereomode) {
+            case kPsychAnaglyphRGStereo:
+                glColorMask(bufferid==0, bufferid==1, FALSE, TRUE);
+            break;
+
+            case kPsychAnaglyphGRStereo:
+                glColorMask(bufferid==1, bufferid==0, FALSE, TRUE);
+            break;
+
+            case kPsychAnaglyphRBStereo:
+                glColorMask(bufferid==0, FALSE, bufferid==1, TRUE);
+            break;
+
+            case kPsychAnaglyphBRStereo:
+                glColorMask(bufferid==1, FALSE, bufferid==0, TRUE);
+            break;
+        }
+        
+        
+        return(PsychError_none);
 }
 
+/* 
+ * PsychSwitchCompressedStereoDrawBuffer  -- Handle buffer transitions
+ *
+ * If in stereomode for vertically compressed stereo display, switch between the
+ * two drawing buffers via some AUX buffer copy magic...
+ *
+ * Vertical compressed stereo works as follows:
+ *
+ * The left-eye view is drawn at full resolution into the backbuffer as if it would
+ * be a regular monoscopic stimulus on a full-res mono-display. When user wants to
+ * switch to right-eye drawing, this routine makes a full scale backup copy of the
+ * framebuffer into AUX buffer 0 --> AUX0 contains the full res left-eye image.
+ * Now the right eye image is drawn into the backbuffer. When switch back to left-eye
+ * view occurs, the backbuffer is copied into AUX1 buffer.
+ *
+ * All possible transitions between the two eye buffers are handled by copying data
+ * from backbuffer to AUX0/1 and back. The net result is that at Screen('DrawingFinished')
+ * time or Screen('Flip') time, AUX0 contains the left-eye image, AUX1 contains the right-eye
+ * image. Additional logic in PsychPreFlipOperations() makes sure this is always the case,
+ * regardless what the user does. The content of both AUX buffers is now copied back into
+ * the backbuffer, AUX0 into top half, AUX1 into bottom half of screen (or vice versa, depending
+ * on mode). Both buffers are vertically scaled to half resolution, so both fit onto screen
+ * simultaneously. This is done by PsychComposeCompressedStereoBuffer().
+ *
+ */
+int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer)
+{
+    // Query screen dimension:
+    int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+    int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
 
-	
+    // Query currently active buffer:
+    int oldbuffer = windowRecord->stereodrawbuffer;
+
+    // Transition necessary?
+    if (oldbuffer != newbuffer) {
+        // Real transition requested...
+        
+        glDisable(GL_BLEND);
+        
+        // Set transform matrix to well-defined state:
+        glMatrixMode(GL_MODELVIEW);
+        glPushMatrix();
+        //glLoadIdentity();
+
+        // Do we have a drawbuffer active at the moment?
+        if (oldbuffer!=2) {
+            // Stereo drawbuffer is active: Content of our backbuffer represents
+            // the content of this drawbuffer. We need to save a backup copy in
+            // corresponding AUX-Buffer.
+            glReadBuffer(GL_BACK);
+            glDrawBuffer((oldbuffer==0) ? GL_AUX0 : GL_AUX1);
+            glRasterPos2i(0, screenheight);
+            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+            // Mark this AUX buffer as "dirty" it contains real image content
+            // instead of just background color.
+            windowRecord->auxbuffer_dirty[oldbuffer] = TRUE;
+        }
+        
+        glDrawBuffer(GL_BACK);
+        
+        // Ok, old content backed-up if necessary. Now we switch to new buffer...
+        if (newbuffer!=2) {
+            // Switch to real buffer requested. Check if corresponding AUX buffer
+            // is dirty, aka contains real content instead of just background color.
+            if (windowRecord->auxbuffer_dirty[newbuffer]) {
+                // AUX buffer contains real content. Copy its content back into
+                // backbuffer:
+                glReadBuffer((newbuffer==0) ? GL_AUX0 : GL_AUX1);
+                glRasterPos2i(0, screenheight);
+                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+                glReadBuffer(GL_BACK);
+            }
+            else {
+                // AUX buffer is clean, aka just contains background color. We do
+                // a clear screen as its faster than an AUX->BACK copy.
+                glClear(GL_COLOR_BUFFER_BIT);
+            }
+        }
+        
+        glEnable(GL_BLEND);
+
+        // Restore transform matrix:
+        glPopMatrix();
+        
+        // Store new state:
+        windowRecord->stereodrawbuffer = newbuffer;
+        
+        // Transition finished. Backbuffers content represents new draw buffers content.
+    }
+    
+    // Done. Return id of previous buffer (0=left, 1=right, 2=none).
+    return(oldbuffer);
+}
+
+/*
+ * PsychComposeCompressedStereoBuffer - Final compositing for compressed stereo.
+ *
+ * This routine copies both AUX buffers (0 and 1) back into the backbuffer, each of them
+ * vertically scaled/compressed by a factor of 2. Its called by PsychPreFlipOperations().
+ */
+void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
+{
+    // Query screen dimension:
+    int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+    int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+
+    // When entering this routine, the modelview matrix is already set to identity and
+    // the proper OpenGL context is active.
+    
+    // Set up zoom for vertical compression:
+    glPixelZoom(1, 0.5f);
+    glDrawBuffer(GL_BACK);
+    glDisable(GL_BLEND);
+    
+    // Draw left view aka AUX0:
+    glReadBuffer(GL_AUX0);
+    glRasterPos2i(0, (windowRecord->stereomode==kPsychCompressedTLBRStereo) ? screenheight/2 : screenheight);
+    glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+    
+    // Draw right view aka AUX1:
+    glReadBuffer(GL_AUX1);
+    glRasterPos2i(0, (windowRecord->stereomode==kPsychCompressedTLBRStereo) ? screenheight : screenheight/2);
+    glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+    
+    // Restore settings:
+    glReadBuffer(GL_BACK);
+    glPixelZoom(1,1);
+    glEnable(GL_BLEND);
+    
+    // Done.
+    return;
+}
 	
 
 

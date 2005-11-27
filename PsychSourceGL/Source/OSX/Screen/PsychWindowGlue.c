@@ -205,6 +205,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
     
+    // Child protection: We need 2 AUX buffers for compressed stereo.
+    if ((conserveVRAM & kPsychDisableAUXBuffers) && (stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo)) {
+        printf("ERROR! You tried to disable AUX buffers via Screen('Preference', 'ConserveVRAM')\n while trying to use compressed stereo, which needs AUX-Buffers!\n");
+        return(FALSE);
+    }
+    
     //First allocate the window recored to store stuff into.  If we exit with an error PsychErrorExit() should
     //call PsychPurgeInvalidWindows which will clean up the window record. 
     PsychCreateWindowRecord(windowRecord);  		//this also fills the window index field.
@@ -225,13 +231,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
             // Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
             // the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
             attribs[attribcount++]=kCGLPFAAuxBuffers;
-            attribs[attribcount++]=(stereomode==1) ? 2 : 1;
+            attribs[attribcount++]=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
         }
     }
 
     // MK: Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
-    if(stereomode==1) {
+    if(stereomode==kPsychOpenGLStereo) {
         attribs[attribcount++]=kCGLPFAStereo;
     }
     // Finalize attribute array with NULL.
@@ -242,7 +248,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
     error=CGLChoosePixelFormat(attribs, &((*windowRecord)->targetSpecific.pixelFormatObject), &numVirtualScreens);
     if (error) {
-        ("\nPTB-ERROR[ChoosePixelFormat failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
+        printf("\nPTB-ERROR[ChoosePixelFormat failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
         FreeWindowRecordFromPntr(*windowRecord);
         return(FALSE);
     }
@@ -350,13 +356,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // supported, which means: Output via OpenGL built-in stereo facilities. This can drive
     // all Stereo display devices that are supported by MacOS-X, e.g., the "Crystal Space"
     // Liquid crystal eye shutter glasses.
-    // We also support value 2, which means "compressed" stereo: Only one framebuffer is used,
+    // We also support value 2 and 3, which means "compressed" stereo: Only one framebuffer is used,
     // the left-eyes image is placed in the top half of the framebuffer, the right-eyes image is
     // placed int the bottom half of the buffer. One looses half of the vertical image resolution,
     // but both views are encoded in one video frame and can be decoded by external stereo-hardware,
     // e.g., the one available from CrystalEyes, this allows for potentially faster refresh.
-    // Mode 2 is implemented by simple manipulations to the glViewPort...
-    (*windowRecord)->stereomode = (stereomode>=0 && stereomode<=3) ? stereomode : 0;
+    // Mode 4/5 is implemented by simple manipulations to the glViewPort...
+    (*windowRecord)->stereomode = (stereomode>=0 && stereomode<=9) ? stereomode : 0;
     
     // Setup timestamps and pipeline state for 'Flip' and 'DrawingFinished' commands of Screen:
     (*windowRecord)->time_at_last_vbl = 0;
@@ -569,10 +575,16 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
               ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
     if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
     printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
-    if ((*windowRecord)->stereomode==1) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
-    if ((*windowRecord)->stereomode==2) printf("PTB-INFO: Stereo display via vertical image compression enabled (2-in-1 stereo).\n");
-    if ((*windowRecord)->stereomode==3) printf("PTB-INFO: Stereo display via free fusion enabled (2-in-1 stereo).\n");
-    
+    if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
+    if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
+    if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
+    if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo display via free fusion enabled (2-in-1 stereo).\n");
+    if ((*windowRecord)->stereomode==kPsychFreeCrossFusionStereo) printf("PTB-INFO: Stereo display via free cross-fusion enabled (2-in-1 stereo).\n");
+    if ((*windowRecord)->stereomode==kPsychAnaglyphRGStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Green stereo enabled.\n");
+    if ((*windowRecord)->stereomode==kPsychAnaglyphGRStereo) printf("PTB-INFO: Stereo display via Anaglyph Green-Red stereo enabled.\n");
+    if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
+    if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
+
     // Reliable estimate? These are our minimum requirements...
     if (numSamples<50 || stddev>0.001) {
         sync_disaster = true;
@@ -1542,22 +1554,46 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     int stereo_mode=windowRecord->stereomode;
     GLint auxbuffers;
 
-    // Query number of available AUX-buffers:
-    glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
-    
+    // Early reject: If this flag is set, then there's no need for any processing:
+    if (windowRecord->backBufferBackupDone) return;
+
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
+
+    // Reset viewport to full-screen default:
+    glViewport(0, 0, screenwidth, screenheight);
     
+    // Reset color buffer writemask to "All enabled":
+    glColorMask(TRUE, TRUE, TRUE, TRUE);
+
+    // Query number of available AUX-buffers:
+    glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+
+    // Set transform matrix to well-defined state:
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    //glLoadIdentity();
+    
+    // Check for compressed stereo handling...
+    if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
+        // Compressed stereo mode active. Compositing already done?
+        // Backup backbuffer -> AUX buffer: We trigger this via transition to "no buffer":
+        PsychSwitchCompressedStereoDrawBuffer(windowRecord, 2);
+        
+        // Ok, now both AUX buffers contain the final stereo content: Compose them into
+        // back-buffer:
+        PsychComposeCompressedStereoBuffer(windowRecord);
+    }
+    // Non-compressed stereo case: Mono or other stereo alg. Normal treatment applies...
     // Check if we should do the backbuffer -> AUX buffer backup, because we use
     // clearmode 1 aka "Don't clear after flip, but retain backbuffer content"
-    if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen
-        && (!windowRecord->backBufferBackupDone)) {
-
+    else if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen) {
         // Backup current assignment of read- writebuffers:
         GLint read_buffer, draw_buffer;
         glGetIntegerv(GL_READ_BUFFER, &read_buffer);
         glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
-
+        glDisable(GL_BLEND);
+        
         // Is this window equipped with a native OpenGL stereo rendering context?
         // If so, then we need to backup both backbuffers (left-eye and right-eye),
         // instead of only the monoscopic one.
@@ -1586,14 +1622,18 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
             glRasterPos2i(0, screenheight);
             glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
         }
-        
+
+        glEnable(GL_BLEND);
         // Restore assignment of read- writebuffers:
         glReadBuffer(read_buffer);
-        glDrawBuffer(draw_buffer);
-        
-        // Tell Flip that backbuffer backup has been done already to avoid redundant backups:
-        windowRecord->backBufferBackupDone = true;
+        glDrawBuffer(draw_buffer);        
     }
+
+    // Restore modelview matrix:
+    glPopMatrix();
+    
+    // Tell Flip that backbuffer backup has been done already to avoid redundant backups:
+    windowRecord->backBufferBackupDone = true;
 
     return;
 }
@@ -1625,14 +1665,36 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
-    
-    if (clearmode!=2) {
+
+    // Set transform matrix to well-defined state:
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    //glLoadIdentity();
+
+    // Vertical compression stereo active? This needs special treatment...
+    if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
+        // Yes. We reset the active stereo buffer to 2 == none selected.
+        windowRecord->stereodrawbuffer=2;
+        // In clearmode==1, aka retain we don't do anything. This way the AUX buffers
+        // restore the preflip state automatically. clearmode=2 is undefined by definition ;-)
+        if (clearmode==0) {
+            // clearmode 0 active. Sterobuffers shall be cleared on flip. We just
+            // reset the dirty-flags of the AUX buffers, so backbuffer gets cleared
+            // on first use after selection of a new stereo draw buffer:
+            windowRecord->auxbuffer_dirty[0]=FALSE;
+            windowRecord->auxbuffer_dirty[1]=FALSE;
+        }
+    }
+    // In other stereo modes and mono mode, we don't need to play backbuffer-AUX buffer games,
+    // just treat'em as in mono case...
+    else if (clearmode!=2) {
         // Reinitialization of back buffer for drawing of next stim requested:
         if (clearmode==1) {
             // We shall not clear the back buffer(s), but restore them to state before "Flip",
             // so previous stim can be incrementally updated where this makes sense.
             // Copy back our backup-copy from AUX buffers:
-
+            glDisable(GL_BLEND);
+            
             // Need to do it on both backbuffers when OpenGL native stereo is enabled:
             if (stereo_mode==kPsychOpenGLStereo) {
                 glDrawBuffer(GL_BACK_LEFT);
@@ -1650,6 +1712,8 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
                 glRasterPos2i(0, screenheight);
                 glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
             }
+
+            glEnable(GL_BLEND);
         }
         else {
             // Clearing (both)  back buffer requested:
@@ -1666,7 +1730,10 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         }
     }
 
+    // Restore modelview matrix:
+    glPopMatrix();
+    PsychTestForGLErrors();
+    
     // Done.
     return;
 }
-

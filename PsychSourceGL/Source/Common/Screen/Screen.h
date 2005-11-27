@@ -75,6 +75,9 @@ char		*PsychGetGLErrorNameString(GLenum errorConstant);
 void		PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName);
 GLdouble	*PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdouble *vertex);
 
+// Helper routines for vertically compressed stereo displays: Defined in SCREENSelectStereoDrawBuffer.c
+int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer);
+void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord);
 
 
 
