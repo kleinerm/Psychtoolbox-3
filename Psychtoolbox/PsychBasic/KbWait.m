@@ -1,5 +1,5 @@
-function secs = KbWait
-% secs = KbWait
+function secs = KbWait(deviceNumber)
+% secs = KbWait([deviceNumber])
 % 
 % Waits until any key is down and returns the time in seconds. 
 %
@@ -27,7 +27,7 @@ function secs = KbWait
 %                  Added OS X conditional.   
 % 7/12/04   awi  Cosmetic.  OS 9 Section. Uses IsOSX.
 % 4/11/05   awi  Added to help note about testing kbWait from command line.
-
+% 11/29/05  mk   Fixed really stupid bug: deviceNumber wasn't queried!
 
 if IsOSX
     if nargin==1
@@ -35,7 +35,7 @@ if IsOSX
     elseif nargin == 0
         secs= PsychHID('KbWait');
     elseif nargin > 1
-        error('Too many argument supplied to KbCheck'); 
+        error('Too many arguments supplied to KbWait'); 
     end
 end
 
