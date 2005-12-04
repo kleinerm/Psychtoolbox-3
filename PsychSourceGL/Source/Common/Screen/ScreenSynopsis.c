@@ -137,7 +137,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "isOffscreen=Screen(windowPtr,'IsOffscreen');";
 	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber);";	
 	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber);";	
-	synopsis[i++] = "[ monitorRefreshInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
+	synopsis[i++] = "[ monitorFlipInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
         synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
 	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";
 	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";

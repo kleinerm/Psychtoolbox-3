@@ -126,24 +126,57 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         // allows to selectively enable/disable write operations to the different color channels:
         // The alpha channel is always enabled, the red,gree,blue channels are depending on mode and
         // bufferid conditionally enabled/disabled:
+        Boolean Anaglyph=FALSE;
+        
         switch (windowRecord->stereomode) {
             case kPsychAnaglyphRGStereo:
                 glColorMask(bufferid==0, bufferid==1, FALSE, TRUE);
+                Anaglyph=TRUE;
             break;
 
             case kPsychAnaglyphGRStereo:
                 glColorMask(bufferid==1, bufferid==0, FALSE, TRUE);
+                Anaglyph=TRUE;
             break;
 
             case kPsychAnaglyphRBStereo:
                 glColorMask(bufferid==0, FALSE, bufferid==1, TRUE);
+                Anaglyph=TRUE;
             break;
 
             case kPsychAnaglyphBRStereo:
                 glColorMask(bufferid==1, FALSE, bufferid==0, TRUE);
+                Anaglyph=TRUE;
             break;
         }
         
+        // Anaglyph mode selected?
+        // MK: GL_COLOR matrix doesn't seem to work at all on OS-X 10.4.3 +
+        // Nvidia GeforceFX-Ultra. Therefore this is disabled until the issue
+        // is resolved. We'll need to do the color->luminance->Gain conversion
+        // manually if this doesn't work out :(
+        Anaglyph = FALSE;
+        if (Anaglyph) {
+            // Update the red- versus green/blue- gain for color stereo...
+            float rwgt = 0.3086;
+            float gwgt = 0.6094;
+            float bwgt = 0.0820;
+            PsychTestForGLErrors();
+
+            // Note - You might have to transpose the matrix.
+            float grayscale[4][4] = 
+            {
+                rwgt,   gwgt,   bwgt,   0.0,
+                rwgt,   gwgt,   bwgt,   0.0,
+                rwgt,   gwgt,   bwgt,   0.0,
+                0.0,    0.0,    0.0,    1.0,
+            };
+            
+            glMatrixMode(GL_COLOR);
+            glLoadMatrixf((const GLfloat*)grayscale);
+            glMatrixMode(GL_MODELVIEW);
+            PsychTestForGLErrors();
+        }
         
         return(PsychError_none);
 }

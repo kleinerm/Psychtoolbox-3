@@ -561,11 +561,31 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
         // as invalid so it doesn't get used anywhere:
         sync_trouble = true;
+        ifi_beamestimate = 0;
         printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
     }
     else {
         // Compute ifi from beampos:
         ifi_beamestimate = tsum / tcount;
+    }
+    
+    // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
+    // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
+    // and we would correct it down to half ifi_estimate.
+    (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
+        // Flip frame stereo enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
+        if (ifi_estimate >= 0.9 * 2 * ifi_beamestimate && ifi_estimate <= 1.1 * 2 * ifi_beamestimate) {
+            // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
+            // We "force" ifi_estimate = 0.5 * ifi_estimate, so ifi_estimate roughly equals to ifi_nominal and
+            // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
+            // video refresh interval...
+            ifi_estimate = ifi_estimate * 0.5f;
+            (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+            printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+            printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
+            printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+        }
     }
     
     printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
@@ -593,7 +613,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     
     // Check for mismatch between measured ifi from glFinish() VBLSync method and the value reported by the OS, if any:
     // This would indicate that we have massive trouble syncing to the VBL!
-    if ((ifi_nominal>0) && (ifi_estimate < 0.9 * ifi_nominal || ifi_estimate > 1.1 * ifi_nominal)) {
+    if ((ifi_nominal > 0) && (ifi_estimate < 0.9 * ifi_nominal || ifi_estimate > 1.1 * ifi_nominal)) {
         printf("\nWARNING: Mismatch between measured monitor refresh interval and interval reported by operating system.\nThis indicates massive problems with VBL sync.\n");    
         sync_disaster = true;
     }
@@ -613,6 +633,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         ifi_estimate = (ifi_nominal>0) ? ifi_nominal : (1.0/60.0);
         (*windowRecord)->nrIFISamples=1;
         (*windowRecord)->IFIRunningSum=ifi_estimate;
+        (*windowRecord)->VideoRefreshInterval = ifi_estimate;
         printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
     }
     
@@ -876,7 +897,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double tremaining;                      // Remaining time to flipwhen - deadline
     CGDirectDisplayID displayID;            // Handle for our display - needed for beampos-query.
     double time_at_vbl=0;                   // Time (in seconds) when last Flip in sync with start of VBL happened.
-    double currentestimate;                 // Estimated video refresh interval in seconds at current monitor frame rate.
+    double currentflipestimate;             // Estimated video flip interval in seconds at current monitor frame rate.
+    double currentrefreshestimate;          // Estimated video refresh interval in seconds at current monitor frame rate.
     double tshouldflip;                     // Deadline for a successfull flip. If time_at_vbl > tshouldflip --> Deadline miss!
     double slackfactor;                     // Slack factor for deadline miss detection.
     PsychWindowRecordType **windowRecordArray=NULL;
@@ -887,16 +909,26 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     if(windowRecord->windowType!=kPsychDoubleBufferOnscreen)
         PsychErrorExitMsg(PsychError_internal,"Attempt to swap a single window buffer");
     
-    // Retrieve estimate of interframe interval:
+    // Retrieve estimate of interframe flip-interval:
     if (windowRecord->nrIFISamples > 0) {
-        currentestimate=windowRecord->IFIRunningSum / ((double) windowRecord->nrIFISamples);
+        currentflipestimate=windowRecord->IFIRunningSum / ((double) windowRecord->nrIFISamples);
     }
     else {
         // We don't have a valid estimate! This will screw up all timestamping, checking and waiting code!
         // It also indicates that syncing to VBL doesn't work!
-        currentestimate=0;
-        // We abort - This is to unsafe...
-        PsychErrorExitMsg(PsychError_internal,"Flip called, while estimate of monitor refresh is INVALID -> Syncing trouble -> Aborting!");
+        currentflipestimate=0;
+        // We abort - This is too unsafe...
+        PsychErrorExitMsg(PsychError_internal,"Flip called, while estimate of monitor flip interval is INVALID -> Syncing trouble -> Aborting!");
+    }
+    
+    // Retrieve estimate of monitor refresh interval:
+    if (windowRecord->VideoRefreshInterval > 0) {
+        currentrefreshestimate = windowRecord->VideoRefreshInterval;
+    }
+    else {
+        currentrefreshestimate=0;
+        // We abort - This is too unsafe...
+        PsychErrorExitMsg(PsychError_internal,"Flip called, while estimate of monitor refresh interval is INVALID -> Syncing trouble -> Aborting!");
     }
     
     // Setup reasonable slack-factor for deadline miss detector:
@@ -972,7 +1004,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // Calculate deadline for a successfull flip: If time_at_vbl is later than that,
         // it means that we missed the proper video refresh cycle:
-        tshouldflip = flipwhen + slackfactor * currentestimate;
+        tshouldflip = flipwhen + slackfactor * currentflipestimate;
         
         // Some time left until deadline 'flipwhen'?
         PsychGetAdjustedPrecisionTimerSeconds(&tremaining);
@@ -1006,7 +1038,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         PsychGetAdjustedPrecisionTimerSeconds(&tshouldflip);
         
         // Do we know the exact system time when a VBL happened in the past?
-        if ((windowRecord->time_at_last_vbl > 0) && (currentestimate > 0)) {
+        if ((windowRecord->time_at_last_vbl > 0) && (currentflipestimate > 0)) {
             // Yes! We use this as a base-line time to compute from the current time a virtual deadline,
             // which is exactly in the middle of the current monitor refresh interval, so this deadline
             // is "as good" as a real deadline spec'd by the user via "flipwhen"!
@@ -1015,11 +1047,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // we should have a valid time_at_last_vbl, so this mechanism works.
             // Only on the *very first* invocation of Flip either after PTB-Startup or after a non-blocking
             // Flip, we can't do this because the time_at_last_vbl timestamp isn't available...
-            tshouldflip = windowRecord->time_at_last_vbl + ((0.5 + floor((tshouldflip - windowRecord->time_at_last_vbl) / currentestimate)) * currentestimate);
+            tshouldflip = windowRecord->time_at_last_vbl + ((0.5 + floor((tshouldflip - windowRecord->time_at_last_vbl) / currentflipestimate)) * currentflipestimate);
         }
 
         // Calculate final deadline for the lock on next retrace - case:
-        tshouldflip = tshouldflip + slackfactor * currentestimate;        
+        tshouldflip = tshouldflip + slackfactor * currentflipestimate;        
     }
     
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
@@ -1104,8 +1136,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             }
             
             // From the elapsed number we calculate the elapsed time since VBL start:
-            double vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentestimate; 
-            double onset_time_togo = onset_lines_togo / vbl_endline * currentestimate;
+            double vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
+            double onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
             // Compute of stimulus-onset, aka time when retrace is finished:
             *time_at_onset = time_at_vbl + onset_time_togo;
             // Now we correct our time_at_vbl by this correction value:
@@ -1328,17 +1360,24 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // the "standard-timeslicing quantum" of the MacOS-X scheduler... ...Wonderful world of
                 // operating system design and unintended side-effects for poor psychologists... ;-)
                 fallthroughcount = (tdur < 0.004) ? fallthroughcount+1 : 0;
-                
+
                 // We accept the measurement as valid if either no intervalHint is available as reference or
                 // we are in an interval between +/-20% of the hint.
                 // We also check if interval corresponds to a measured refresh between 25 Hz and 250 Hz. Other
                 // values are considered impossible and are therefore rejected...
-                if ((tdur >= 0.004 && tdur <= 0.040) &&
-                    ((intervalHint<=0) || (intervalHint>0 && (tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)))) {
+                // If we are in OpenGL native stereo display mode, aka temporally interleaved flip-frame stereo,
+                // then we also accept samples that are in a +/-20% rnage around twice the intervalHint. This is,
+                // because in OpenGL stereo mode, ATI hardware doubles the flip-interval: It only flips every 2nd
+                // video refresh, so a doubled flip interval is a legal valid result.
+                if ((tdur >= 0.004 && tdur <= 0.040) && ((intervalHint<=0) || (intervalHint>0 &&
+                    ( ((tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)) ||
+                      ((windowRecord->stereomode==kPsychOpenGLStereo) && (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
+                    )))) {
                     // Valid measurement - Update our estimate:
                     windowRecord->IFIRunningSum = windowRecord->IFIRunningSum + tdur;
                     windowRecord->nrIFISamples = windowRecord->nrIFISamples + 1;
-                    // Update our gliding mean and standard-deviation:
+
+                    // Update our sliding mean and standard-deviation:
                     tavg = tavg + tdur;
                     tavgsq = tavgsq + (tdur * tdur);
                     n=windowRecord->nrIFISamples;
@@ -1353,13 +1392,18 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         PsychRealtimePriority(false);
         
         // Ok, now we should have a pretty good estimate of IFI.
-        
+        if ( windowRecord->nrIFISamples <= 0 ) {
+            printf("PTB-WARNING: Couldn't even collect one single valid flip interval sample! Sanity range checks failed!\n");
+        }
+
         // Some additional check:
         if (fallthroughcount>=10) {
             // Complete sync failure! Invalidate all measurements:
             windowRecord->nrIFISamples = 0;
             n=0;
             tstddev=1000000.0;
+            windowRecord->VideoRefreshInterval = 0;
+            printf("PTB-WARNING: Couldn't collect valid flip interval samples! Fatal VBL sync failure!\n");
         }
         
         *numSamples = n;
@@ -1371,11 +1415,13 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         *stddev = 0;
     }
     
-    // Return the current estimate of monitor refresh interval, if any...
+    // Return the current estimate of flip interval & monitor refresh interval, if any...
     if (windowRecord->nrIFISamples > 0) {
         return(windowRecord->IFIRunningSum / windowRecord->nrIFISamples);
     }
     else {
+        // Invalidate refresh on error.
+        windowRecord->VideoRefreshInterval = 0;
         return(0);
     }
 }

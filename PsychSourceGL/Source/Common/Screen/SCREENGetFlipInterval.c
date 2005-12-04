@@ -14,7 +14,7 @@
  
   DESCRIPTION:
   
-   Returns the estimated/measured monitor refresh (flip) interval for the specified onscreen window surface.
+   Returns the estimated/measured flip interval for the specified onscreen window surface.
    It either returns the value of a previous estimate (e.g., from Screen('OpenWindow',...)) or performs
    a measurement run.
 */
@@ -23,9 +23,9 @@
 #include "Screen.h"
 
 
-static char useString[] = "[ monitorRefreshInterval nrValidSamples stddev ] =Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
+static char useString[] = "[ monitorFlipInterval nrValidSamples stddev ] =Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
 static char synopsisString[] = 
-	"Returns an estimate of the monitor refresh interval for the specified onscreen window."
+	"Returns an estimate of the monitor flip interval for the specified onscreen window."
 	"\"windowPtr\" is the handle of the onscreen window for which info should be returned. "
         "\"nrSamples\" If left out, the estimated interval from previous calls to GetFlipInterval "
         "or from the initial calibration done during Screen('OpenWindow'...) is reported. "
@@ -38,7 +38,9 @@ static char synopsisString[] =
         "standard deviation below 100 microseconds, but timing out after a maximum of 15 seconds. "
         "If you require very high precision, call this routine with values that suit your demands. "
         "The returned monitorRefreshInterval is in seconds, but has sub-millisecond accuracy. "
-        "The real number of valid samples taken and the final standard deviation is returned as well.";
+        "The real number of valid samples taken and the final standard deviation is returned as well. "
+        "CAUTION: When using OpenGL flip-frame stereo (stereomode=1 in OpenWindow) on ATI graphics hardware, "
+        "the flip interval (as reported here) may be twice as long as the monitor refresh interval!";
 
 static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 

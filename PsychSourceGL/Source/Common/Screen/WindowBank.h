@@ -131,6 +131,7 @@ typedef struct _PsychWindowRecordType_{
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.
 	double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
+        double                                  VideoRefreshInterval;   // MK: Estimated video refresh interval of display. Can be different to IFI.
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
         bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
         bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
