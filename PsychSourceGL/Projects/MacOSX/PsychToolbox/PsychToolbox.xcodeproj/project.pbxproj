@@ -910,6 +910,7 @@
 		2FE94C9E0767B75600A2EC70 /* GetEthernetAddress.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */; };
 		2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FACAD700766DAB400A159D3 /* GetEthernetAddress.h */; };
 		2FE94D670767B84A00A2EC70 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
+		83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */ = {isa = PBXBuildFile; fileRef = 83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */; };
 		83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 83C94B00092823A80062DB0A /* PsychMovieSupport.h */; };
 		83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
 		83C94B05092824530062DB0A /* SCREENSetMovieTimeIndex.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */; };
@@ -1619,6 +1620,7 @@
 		2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillPoly.c; path = ../../../Source/Common/Screen/SCREENFillPoly.c; sourceTree = SOURCE_ROOT; };
 		2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFramePoly.c; path = ../../../Source/Common/Screen/SCREENFramePoly.c; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
+		83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPreloadTextures.c; path = ../../../Source/Common/Screen/SCREENPreloadTextures.c; sourceTree = SOURCE_ROOT; };
 		83C94B00092823A80062DB0A /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/OSX/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
 		83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/OSX/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
 		83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetMovieTimeIndex.c; path = ../../../Source/Common/Screen/SCREENSetMovieTimeIndex.c; sourceTree = SOURCE_ROOT; };
@@ -2529,10 +2531,11 @@
 				83C94B06092824730062DB0A /* SCREENOpenMovie.c */,
 				F5CF277203DA57B901D453F7 /* SCREENOpenOffscreenWindow.c */,
 				F5D852E203A01BF8017A7028 /* SCREENOpenWindow.c */,
-				F569F257038E2C77017A7028 /* SCREENPixelSize.c */,
 				F5BCFE05039D368A017A7028 /* SCREENPixelSizes.c */,
 				83C94B0A092824C90062DB0A /* SCREENPlayMovie.c */,
+				F569F257038E2C77017A7028 /* SCREENPixelSize.c */,
 				2FA0CBC405F1596B007B24E1 /* SCREENPreference.c */,
+				83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */,
 				F5C3396703F2539D01A80168 /* SCREENPutImage.c */,
 				F56F533003EA19E401A80168 /* SCREENReadNormalizedGammaTable.c */,
 				F50D529A03D51B64012326C4 /* SCREENRect.c */,
@@ -5963,6 +5966,7 @@
 				83C94B0D092824E30062DB0A /* SCREENGetMovieImage.c in Sources */,
 				83C94B0F092825020062DB0A /* SCREENCloseMovie.c in Sources */,
 				83C94B11092825770062DB0A /* SCREENglMatrixFunctionWrappers.c in Sources */,
+				83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

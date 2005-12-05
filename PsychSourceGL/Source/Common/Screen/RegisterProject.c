@@ -184,6 +184,7 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("glTranslate", &SCREENglTranslate));
         PsychErrorExit(PsychRegister("glScale", &SCREENglScale));
         PsychErrorExit(PsychRegister("glRotate", &SCREENglRotate));
+        PsychErrorExit(PsychRegister("PreloadTextures", &SCREENPreloadTextures));
         
  	//Experiments
 

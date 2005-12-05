@@ -112,6 +112,7 @@ void InitializeSynopsis()
 	
 	// Copy an image, very quickly, between textures and onscreen windows
 	synopsis[i++] = "\n% Copy an image, very quickly, between textures and onscreen windows.";
+        synopsis[i++] = "[resident [texidresident]] = Screen('PreloadTextures', windowPtr [, texids]);";
 	synopsis[i++] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha]);";	
 
 	// Copy an image, slowly, between matrices and windows

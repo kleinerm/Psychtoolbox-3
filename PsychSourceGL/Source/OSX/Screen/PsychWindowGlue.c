@@ -192,11 +192,10 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     CGOpenGLDisplayMask 			displayMask;
     CGDirectDisplayID				cgDisplayID;
     CGLPixelFormatAttribute			attribs[20];
-    //CGLPixelFormatObj 			pixelFormatObj;
-    long							swapInterval, numVirtualScreens;
-    CGLError						error;
-    //CGLRendererInfoObj				rendererInfo;
-    GLboolean						isDoubleBuffer;
+    long					swapInterval, numVirtualScreens;
+    CGLError					error;
+    CGLRendererInfoObj				rendererInfo;
+    GLboolean					isDoubleBuffer;
     int attribcount=0;
     int ringTheBell=-1;
     bool sync_trouble = false;
@@ -302,18 +301,19 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
         
     //get information from the renderer about support for double buffering
-    /*
-    error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
-    if(numRenderers>10) numRenderers=10;
-    for(i=0;i<numRenderers;i++)
-    {
-        CGLDescribeRenderer(rendererInfo, i, kCGLRPBufferModes, &rendererPropertyValue);
-        singleBufferSupport[i]=rendererPropertyValue & kCGLSingleBufferBit;
-        doubleBufferSupport[i]=rendererPropertyValue & kCGLDoubleBufferBit;
-        CGLDescribeRenderer(rendererInfo, i, kCGLRPBackingStore, backingStoreSupport+i);
+    long VRAMTotal=0;
+    long TexmemTotal=0;
+
+    if (true) {
+        long numRenderers, i;
+        error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
+        if(numRenderers>1) numRenderers=1;
+        for(i=0;i<numRenderers;i++) {
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPVideoMemory, &VRAMTotal);
+            CGLDescribeRenderer(rendererInfo, i, kCGLRPTextureMemory, &TexmemTotal);
+        }
         CGLDestroyRendererInfo(rendererInfo);
     }
-    */
     
     //Configure OpenGL here
     gluOrtho2D(screenSettings->rect[kPsychLeft], screenSettings->rect[kPsychRight], screenSettings->rect[kPsychBottom], screenSettings->rect[kPsychTop]);
@@ -589,6 +589,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
     
     printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
+    printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
     printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) PsychGetHeightFromRect((*windowRecord)->rect), VBL_Endline);
     printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
     printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",

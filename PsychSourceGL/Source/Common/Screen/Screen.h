@@ -153,6 +153,7 @@ PsychError      SCREENglLoadIdentity(void);
 PsychError      SCREENglTranslate(void);
 PsychError      SCREENglScale(void);
 PsychError      SCREENglRotate(void);
+PsychError      SCREENPreloadTextures(void);
 
 
 
