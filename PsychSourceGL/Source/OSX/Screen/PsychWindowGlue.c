@@ -799,16 +799,22 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     int                         i, numWindows; 
     
     if(PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord)){
-		CGLSetCurrentContext(NULL);
+                // Make sure that OpenGL pipeline is done & idle for this window:
+                PsychSetGLContext(windowRecord);
+                glFinish();
+                // Disable rendering context:
+                CGLSetCurrentContext(NULL);
                 // MK: Hack, needed to work around a "screen corruption on shutdown" bug.
                 // When closing stereo display windows, it sometimes leads to a completely
                 // messed up and unusable display.
                 if (PsychIsOnscreenWindow(windowRecord)) {
                     PsychReleaseScreen(windowRecord->screenNumber);
+                    // Destroy onscreen window, detach context:
                     CGLClearDrawable(windowRecord->targetSpecific.contextObject);
                     PsychCaptureScreen(windowRecord->screenNumber);
                 }
                 CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
+                // Destroy rendering context:
 		CGLDestroyContext(windowRecord->targetSpecific.contextObject);
                 
                 // We need to NULL-out all references to the - now destroyed - OpenGL context:
@@ -821,13 +827,17 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 }
                 PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
                 windowRecord->targetSpecific.contextObject=NULL;
-                
-                if(PsychIsOffscreenWindow(windowRecord)) free((void*)windowRecord->surface);
-	}else if(windowRecord->windowType==kPsychTexture){
+                if(PsychIsOffscreenWindow(windowRecord)) {
+                    free((void*)windowRecord->surface);
+                }
+    }
+    else if(windowRecord->windowType==kPsychTexture) {
 		PsychFreeTextureForWindowRecord(windowRecord);
-    }else
+    }
+    else {
 		PsychErrorExitMsg(PsychError_internal, "Unrecognized window type");
-
+    }
+    
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>0)) {
         printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline %i times!\n\n", windowRecord->nr_missed_deadlines);
     }

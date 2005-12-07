@@ -347,15 +347,19 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
        (win->targetSpecific.contextObject)) {
         // Activate associated OpenGL context:
         PsychSetGLContext(win);
+        PsychTestForGLErrors();
         // Call special texture release routine for Movie textures: This routine will
         // check if 'win' is a movie texture and perform the necessary cleanup work, if so:
         PsychFreeMovieTexture(win);
-        // Perform standard OpenGL texture cleanup:
         // If we use client-storage textures, we need to wait for completion of texture operations on the
-        // to-be-released texture before deleting it and freeing the RAM backing buffers. Waiting for
+        // to-be-released client texture buffer before deleting it and freeing the RAM backing buffers. Waiting for
         // completion is done via FinishObjectApple...
-        if ((win->textureMemory) && (win->textureNumber > 0)) FinishObjectAPPLE(GL_TEXTURE_2D, win->textureNumber);
+        // We need to use glFinish() here. FinishObjectApple would be better (more async operations) but it doesn't
+        // work for some strange reason :(
+        if ((win->textureMemory) && (win->textureNumber > 0)) glFinish(); // FinishObjectAPPLE(GL_TEXTURE_2D, win->textureNumber);
+        // Perform standard OpenGL texture cleanup:
         glDeleteTextures(1, &win->textureNumber);
+        PsychTestForGLErrors();
     }
 
     // Free system RAM backing memory buffer, if any:
@@ -363,7 +367,6 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
     win->textureMemory=NULL;
     win->textureMemorySizeBytes=0;
     win->textureNumber=0;
-    
     return;
 }
 
