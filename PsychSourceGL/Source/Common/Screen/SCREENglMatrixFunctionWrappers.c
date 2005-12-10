@@ -38,6 +38,8 @@ PsychError SCREENglPushMatrix(void)
         // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
         static char useString[] = "Screen('glPushMatrix', windowPtr);";
         static char synopsisString[] = "Store a backup copy of active current OpenGL matrix on the matrix stack for later reuse. "
+            "The capacity of the matrix backup stack is limited, typically not more than 27 slots. For each call to glPushMatrix "
+            "you need to call glPopMatrix at the appropriate place to avoid overflowing the stack. "
             "See <http://www.opengl.org/documentation/red_book_1.0/> Chapter 4 for detailed information.";
         static char seeAlsoString[] = "";	
     
@@ -57,9 +59,23 @@ PsychError SCREENglPushMatrix(void)
         
         // Switch to windows OpenGL context:
 	PsychSetGLContext(windowRecord); 
-
-        // Execute it:
+        glMatrixMode(GL_MODELVIEW);
+        
+        // Compare current fill level of matrix stack with maximum level: We reserve five
+        // stack-slots for PTB internal use, so at least that needs to be free before push.
+        GLint stack_cur, stack_max;
+        glGetIntegerv(GL_MAX_MODELVIEW_STACK_DEPTH, &stack_max);
+        glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &stack_cur);
+        if (stack_max - stack_cur < 6) {
+            printf("\nCouldn't push OpenGL-Modelview matrix because matrix stack is full! The most common reason is\n");
+            printf("forgetting to call glPopMatrix a matching number of times... \n");
+            printf("The maximum number of pushable matrices is %i -- Please check your code.\n", stack_max - 5);
+            PsychErrorExitMsg(PsychError_user, "Too many calls to glPushMatrix. Imbalance?");
+        }
+        
+        // Execute push op:
         glPushMatrix();        
+        
         PsychTestForGLErrors();
         
  	//All psychfunctions require this.
@@ -90,8 +106,19 @@ PsychError SCREENglPopMatrix(void)
     
     // Switch to windows OpenGL context:
     PsychSetGLContext(windowRecord); 
+    glMatrixMode(GL_MODELVIEW);
     
-    // Execute it:
+    // Compare current fill level of matrix stack with maximum level: We reserve five
+    // stack-slots for PTB internal use, so at least that needs to be free before push.
+    GLint stack_cur;
+    glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &stack_cur);
+    if (stack_cur < 2) {
+        printf("\nCouldn't pop matrix from top of OpenGL-Modelview matrix stack, because matrix stack is empty! The most common reason is\n");
+        printf("that you tried to call glPopMatrix more often than you called glPushMatrix -- Please check your code.\n");
+        PsychErrorExitMsg(PsychError_user, "Too many calls to glPopMatrix. Imbalance?!?");
+    }
+
+    // Execute pop operation:
     glPopMatrix();
     
     PsychTestForGLErrors();
@@ -124,7 +151,6 @@ PsychError SCREENglLoadIdentity(void)
     
     // Switch to windows OpenGL context:
     PsychSetGLContext(windowRecord); 
-    
     // Execute it:
     glLoadIdentity();
     
