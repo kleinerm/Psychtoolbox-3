@@ -154,8 +154,9 @@ PsychError      SCREENglTranslate(void);
 PsychError      SCREENglScale(void);
 PsychError      SCREENglRotate(void);
 PsychError      SCREENPreloadTextures(void);
-
-
+PsychError      SCREENFillArc(void);
+PsychError      SCREENDrawArc(void);
+PsychError      SCREENFrameArc(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

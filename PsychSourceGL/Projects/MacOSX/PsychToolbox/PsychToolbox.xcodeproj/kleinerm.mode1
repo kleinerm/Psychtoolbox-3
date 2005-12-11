@@ -271,16 +271,17 @@
 							<key>PBXSmartGroupTreeModuleOutlineStateSelectionKey</key>
 							<array>
 								<array>
-									<integer>16</integer>
-									<integer>14</integer>
-									<integer>5</integer>
-									<integer>4</integer>
+									<integer>58</integer>
+									<integer>50</integer>
+									<integer>49</integer>
+									<integer>39</integer>
+									<integer>21</integer>
 									<integer>2</integer>
 									<integer>0</integer>
 								</array>
 							</array>
 							<key>PBXSmartGroupTreeModuleOutlineStateVisibleRectKey</key>
-							<string>{{0, 0}, {299, 727}}</string>
+							<string>{{0, 555}, {299, 727}}</string>
 						</dict>
 						<key>PBXTopSmartGroupGIDs</key>
 						<array/>
@@ -299,7 +300,7 @@
 							<real>299</real>
 						</array>
 						<key>RubberWindowFrame</key>
-						<string>11 191 1242 786 0 0 1280 1002 </string>
+						<string>21 133 1242 786 0 0 1280 1002 </string>
 					</dict>
 					<key>Module</key>
 					<string>PBXSmartGroupTreeModule</string>
@@ -334,7 +335,7 @@
 								<key>Frame</key>
 								<string>{{0, 0}, {921, 740}}</string>
 								<key>RubberWindowFrame</key>
-								<string>11 191 1242 786 0 0 1280 1002 </string>
+								<string>21 133 1242 786 0 0 1280 1002 </string>
 							</dict>
 							<key>Module</key>
 							<string>PBXNavigatorGroup</string>
@@ -354,7 +355,7 @@
 								<key>Frame</key>
 								<string>{{0, 745}, {921, 0}}</string>
 								<key>RubberWindowFrame</key>
-								<string>11 191 1242 786 0 0 1280 1002 </string>
+								<string>21 133 1242 786 0 0 1280 1002 </string>
 							</dict>
 							<key>Module</key>
 							<string>XCDetailModule</string>
@@ -378,9 +379,9 @@
 			</array>
 			<key>TableOfContents</key>
 			<array>
-				<string>83836B4409439B93007E4DF5</string>
+				<string>832CE4EA094CAFC400578C09</string>
 				<string>1CE0B1FE06471DED0097A5F4</string>
-				<string>83836B4509439B93007E4DF5</string>
+				<string>832CE4EB094CAFC400578C09</string>
 				<string>1CE0B20306471E060097A5F4</string>
 				<string>1CE0B20506471E060097A5F4</string>
 			</array>
@@ -518,7 +519,7 @@
 		<string>/Users/kleinerm/projects/Psychtoolbox/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
-	<string>11 191 1242 786 0 0 1280 1002 </string>
+	<string>21 133 1242 786 0 0 1280 1002 </string>
 	<key>WindowTools</key>
 	<array>
 		<dict>
@@ -597,7 +598,7 @@
 			<key>TableOfContents</key>
 			<array>
 				<string>83C9491F092819580062DB0A</string>
-				<string>83836B1409439B39007E4DF5</string>
+				<string>832CE4E7094CAFBB00578C09</string>
 				<string>1CD0528F0623707200166675</string>
 				<string>XCMainBuildResultsModuleGUID</string>
 			</array>

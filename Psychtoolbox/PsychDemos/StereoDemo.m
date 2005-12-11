@@ -74,18 +74,23 @@ try
             % Paint image for left eye:
             % Select image buffer for left eye view:
             Screen('SelectStereoDrawBuffer', w, 0);
-            Screen('FillRect', w, [255 255 255], [j+20 j+20 j+20+s*400 j+20+s*400]);
+            Screen('FrameRect', w, [255 255 255], [j+20 j+20 j+20+s*400 j+20+s*400]);
             % Paint image for right eye:
             % Select image buffer for right eye view:
             Screen('SelectStereoDrawBuffer', w, 1);
-            Screen('FillRect', w, [255 255 255], [j+d+20 j+20 j+d+20+s*400 j+20+s*400]);
+            Screen('FrameRect', w, [255 255 255], [j+d+20 j+20 j+d+20+s*400 j+20+s*400]);
 
             % Done with painting both images. Show them to subject on next
             % vertical retrace:
-            Screen('Flip', w, 0, 0);
+            %Screen('Flip', w, 0, 1);
             
+            while(1)
+                Screen('Flip', w, 0, 1);
+                WaitSecs(0.1);
             if (KbCheck)
+                smashit
                 break;
+            end;
             end;
         end;
     end;
