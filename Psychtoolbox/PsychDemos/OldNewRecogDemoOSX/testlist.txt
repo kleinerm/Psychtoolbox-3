@@ -1,0 +1,6 @@
+1 stim1.jpg 1
+2 stim2.jpg 1
+3 stim3.jpg 1
+4 stim4.jpg 2
+5 stim5.jpg 2
+6 stim6.jpg 2
