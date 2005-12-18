@@ -427,11 +427,11 @@ if isempty(kkOSX)
 	end
 
 	% Choose the default table according to the platform
-	if isOS9
+	if IsOS9
 	        kk=kkOS9;
-	elseif isOSX
+	elseif IsOSX
 	    	kk=kkOSX;
-	elseif isWin
+	elseif IsWin
 	        kk=kkWin;
 	end
 	

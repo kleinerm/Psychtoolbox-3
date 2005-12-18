@@ -33,7 +33,7 @@ if nargin < 2
 end;
 
 if nargin < 1
-    moviename = '/Users/kleinerm/Desktop/Testmovie.mpg'
+    moviename = '/Users/kleinerm/Desktop/*.mpg'
 end;
 
 if nargin < 3
@@ -65,15 +65,25 @@ try
     
     abortit=0
     
+    % Return full list of movie files from directory+pattern:
+    moviefiles=dir(moviename);
+    
     % Endless loop:
-    while (abortit==0)
+    while (abortit<2)
         iteration=iteration + 1;
         fprintf('ITER=%i::', iteration);
-    
+        moviename=moviefiles(mod(iteration, size(moviefiles,1))+1).name;
+        
         % Open movie file and retrieve basic info about movie:
-        [movie framecount movieduration fps] = Screen('OpenMovie', win, moviename);
+        if prefetch==1
+            [movie movieduration fps imgw imgh framecount] = Screen('OpenMovie', win, moviename);
+        else
+            [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+            framecount=0;
+        end;
+        
         fprintf('Movie: %s  : %i frames, %f seconds duration, %f fps...\n', moviename, framecount, ...
-            movieduration, fps);
+                movieduration, fps);
         
         if prefetch==1
             % Preallocate texids:
@@ -84,7 +94,6 @@ try
     
         % Seek to start of movie (timeindex 0):
         Screen('SetMovieTimeIndex', movie, 0);
-
         % Start playback of movie if in non-prefetch mode. This will start
         % the realtime playback clock and playback of audio tracks, if any.
         if prefetch==0
@@ -121,9 +130,18 @@ try
 
                 if (prefetch==1)
                      fprintf('Frame %i : tpts= %f  tafter = %f\n', i, pts, Screen('GetMovieTimeIndex', movie));
+                     if KbCheck
+                        abortit=1;
+                        break;
+                     end;
                 end;
             end;
         
+            % Valid texture returned?
+            if tex==-1
+                break;
+            end;
+     
             % Prefetch mode or live streaming playback?
             if prefetch==0
                 % Draw the new texture immediately to screen:
@@ -139,18 +157,28 @@ try
                 % drawing...
                 texids(i)=tex;
             end;
-
+            
             % Check for abortion:
-            if (KbCheck)
-                abortit=1;
+            abortit=0;
+            [keyIsDown,secs,keyCode]=KbCheck;
+            if (keyIsDown==1 & keyCode(KbName('ESCAPE')))
+                abortit=2;
                 break;
             end;
+            
+            if (keyIsDown==1 & keyCode(KbName('SPACE')))
+                break;
+            end;
+            
         end;
     
         telapsed = GetSecs - t1
         finalcount=i
-    
-        if (prefetch==0)
+
+        Screen('Flip', win);
+        while KbCheck; end;
+        
+        if (prefetch==0 || abortit>0)
            % Done. Stop playback:
             Screen('PlayMovie', movie, 0);
 
@@ -191,7 +219,5 @@ try
 catch
     % Error handling: Close all windows and movies, release all ressources.
     Priority(0);
-    Screen('PlayMovie', movie, 0);
-    Screen('CloseMovie', movie);
     Screen('CloseAll');
 end;

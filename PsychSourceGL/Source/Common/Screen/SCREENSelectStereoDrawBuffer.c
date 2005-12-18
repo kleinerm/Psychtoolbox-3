@@ -284,6 +284,34 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
  */
 void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
 {
+    if (TRUE) {
+        // Upload, setup and enable Anaglyph stereo fragment shader:
+        const float redgain=1.0, greengain=0.7, bluegain=0.0;
+        
+        // This is the shader source code:
+        const char anaglyphshader[] =
+        "!!ARBfp1.0 "
+        "PARAM ColorToGrayWeights = { 0.3, 0.59, 0.11, 1.0 }; "
+        "TEMP luminance; "
+        "TEMP incolor;"
+        //"MOV incolor, fragment.color;"
+        "TEX incolor, fragment.texcoord[0], texture[0], RECT;"
+        "DP3 luminance, incolor, ColorToGrayWeights; "
+        "MUL result.color.rgb, luminance, program.env[0]; "
+        "MOV result.color.a, ColorToGrayWeights.a; "
+        //"MOV result.color.a, fragment.color.a; "
+        "END";
+        
+        // Upload and compile shader:
+        PsychTestForGLErrors();
+        glProgramStringARB(GL_FRAGMENT_PROGRAM_ARB, GL_PROGRAM_FORMAT_ASCII_ARB, strlen(anaglyphshader), anaglyphshader);
+        PsychTestForGLErrors();
+        // Setup the rgb-gains as global parameters for the shader:
+        glProgramEnvParameter4fARB(GL_FRAGMENT_PROGRAM_ARB, 0, redgain, greengain, bluegain, 0.0);
+        // Enable the shader:
+//        glEnable(GL_FRAGMENT_PROGRAM_ARB);
+    }
+    
     // Query screen dimension:
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
@@ -300,7 +328,7 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
     glReadBuffer(GL_AUX0);
     glRasterPos2i(0, (windowRecord->stereomode==kPsychCompressedTLBRStereo) ? screenheight/2 : screenheight);
     glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-    
+
     // Draw right view aka AUX1:
     glReadBuffer(GL_AUX1);
     glRasterPos2i(0, (windowRecord->stereomode==kPsychCompressedTLBRStereo) ? screenheight : screenheight/2);
@@ -310,7 +338,10 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
     glReadBuffer(GL_BACK);
     glPixelZoom(1,1);
     glEnable(GL_BLEND);
-    
+
+    // Unconditionally disable fragment shaders:
+    glDisable(GL_FRAGMENT_PROGRAM_ARB);
+
     // Done.
     return;
 }

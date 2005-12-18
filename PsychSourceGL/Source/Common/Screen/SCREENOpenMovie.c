@@ -30,14 +30,23 @@
 #include "Screen.h"
 
 
-static char useString[] = "[ moviePtr [count] [duration] [fps] [width] [height]]=Screen('OpenMovie', windowPtr, moviefile);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile);";
 static char synopsisString[] = 
-	"Open the named multimediafile 'moviefile' for visual playback in onscreen window 'windowPtr' and "
-        "return a handle 'moviePtr' on successfull completion. On OS-X, media files are handled by use of "
+	"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
+        "return a handle 'moviePtr' on success. On OS-X, media files are handled by use of "
         "Apples Quicktime-7 API. On other platforms, the playback engine may be different from Quicktime. "
-        "'count' Total number of videoframes in the movie. 'duration' Total duration of movie in seconds. "
-        "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. "
-        "'width' Width of the images contained in the movie. 'height' Height of the images.";
+        "The following movie properties are optionally returned: 'duration' Total duration of movie in seconds. "
+        "'fps' Video playback framerate, assuming a linear spacing of videoframes in time. There may "
+        "exist exotic movie formats which don't have this linear spacing. In that case, 'fps' would "
+        "return bogus values and the check for skipped frames would report bogus values as well. "
+        "'width' Width of the images contained in the movie. 'height' Height of the images. "
+        "'count' Total number of videoframes in the movie. Determined by counting, so querying 'count' "
+        "can significantly increase the execution time of this command. "
+        "CAUTION: Some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
+        "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
+        "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
+        "with the command: 'matlab -nojvm'. An example command sequence in a terminal window could be: "
+        "/Applications/MATLAB701/bin/matlab -nojvm ";
 
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
 	 
@@ -82,13 +91,23 @@ PsychError SCREENOpenMovie(void)
         PsychCopyOutDoubleArg(1, TRUE, (double) moviehandle);
 
         // Retrieve infos about new movie:
-        PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL);
-        PsychCopyOutDoubleArg(2, FALSE, (double) framecount);
-        PsychCopyOutDoubleArg(3, FALSE, (double) durationsecs);
-        PsychCopyOutDoubleArg(4, FALSE, (double) framerate);
-        PsychCopyOutDoubleArg(5, FALSE, (double) width);
-        PsychCopyOutDoubleArg(6, FALSE, (double) height);
         
+        // Is the "count" output argument (total number of frames) requested by user?
+        if (PsychGetNumOutputArgs() > 5) {
+            // Yes. Query the framecount (expensive!) and return it:
+            PsychGetMovieInfos(moviehandle, &width, &height, &framecount, &durationsecs, &framerate, NULL);
+            PsychCopyOutDoubleArg(6, TRUE, (double) framecount);
+        }
+        else {
+            // No. Don't compute and return it.
+            PsychGetMovieInfos(moviehandle, &width, &height, NULL, &durationsecs, &framerate, NULL);
+        }
+
+        PsychCopyOutDoubleArg(2, FALSE, (double) durationsecs);
+        PsychCopyOutDoubleArg(3, FALSE, (double) framerate);
+        PsychCopyOutDoubleArg(4, FALSE, (double) width);
+        PsychCopyOutDoubleArg(5, FALSE, (double) height);
+
 	// Ready!
         return(PsychError_none);
 }

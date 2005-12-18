@@ -62,6 +62,49 @@ void PsychMovieInit(void)
     return;
 }
 
+/** Internal helper function: Returns fps rate of movie and optionally
+ *  the total number of video frames in the movie. Framecount is determined
+ *  by stepping through the whole movie and counting frames. This can take
+ *  significant time on big movie files.
+ *
+ *  Always returns fps as a double. Only counts and returns full framecount,
+ *  if *nrframes is non-NULL.
+ */
+double PsychDetermineMovieFramecountAndFps(Movie theMovie, int* nrframes)
+{
+    // Count total number of videoframes: This code is derived from Apple
+    // example code.
+    long		myCount = -1;
+    short		myFlags;
+    TimeValue           myTime = 0;
+    TimeValue           myDuration = 0;
+    OSType		myTypes[1];
+    // We want video samples.
+    myTypes[0] = VisualMediaCharacteristic;
+    // We want to begin with the first frame in the movie:
+    myFlags = nextTimeStep + nextTimeEdgeOK;
+    
+    // We count either the first 3 frames if nrframes==NULL aka only
+    // fps requested, or if framecount is requested, we count all frames.
+    while (myTime >= 0 && (myCount<2 || nrframes!=NULL)) {
+        myCount++;        
+        // look for the next frame in the track; when there are no more frames,
+        // myTime is set to -1, so we'll exit the while loop
+        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myTime, FloatToFixed(1), &myTime, &myDuration);        
+        // after the first interesting time, don't include the time we're currently at
+        myFlags = nextTimeStep;
+    }    
+    
+    // Return optional count of frames:
+    if (nrframes) *nrframes = (int) myCount;
+    
+    GoToBeginningOfMovie(theMovie);
+    MoviesTask(theMovie, 0);
+    
+    // Compute and return frame rate in fps as (Ticks per second / Duration of single frame in ticks): 
+    return((double) GetMovieTimeScale(theMovie) / (double) myDuration);    
+}
+
 /*
  *      PsychCreateMovie() -- Create a movie object.
  *
@@ -198,6 +241,15 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     CFRelease(movieLocation);
 
+    // Preload first second of movie into system RAM for faster playback:
+    LoadMovieIntoRam(theMovie, 0, 1*GetMovieTimeScale(theMovie),  keepInRam);
+
+    // We don't preroll: Didn't help for async playback, but leads to failure in
+    // manual playback mode: PrerollMovie(theMovie, 0, FloatToFixed(1));
+
+    // MoviesTask() it to make sure start of plaback will be as stutter-free as possible:
+    MoviesTask(theMovie, 10000);
+    
     // Assign new record in moviebank:
     movieRecordBANK[slotid].theMovie=theMovie;    
     movieRecordBANK[slotid].QTMovieContext=QTMovieContext;    
@@ -208,38 +260,24 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Increase counter:
     numMovieRecords++;
 
-    // Compute basic movie properties - total framecount, duration and fps:
+    // Compute basic movie properties - Duration and fps as well as image size:
     
     // Compute duration in seconds:
     movieRecordBANK[slotid].movieduration = (double) GetMovieDuration(theMovie) / (double) GetMovieTimeScale(theMovie);
-    
-    // Count total number of videoframes:
-    long		myCount = -1;
-    short		myFlags;
-    TimeValue           myTime = 0;
-    OSType		myTypes[1];
-    myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
-    // We want to begin with the first frame in the movie:
-    myFlags = nextTimeStep + nextTimeEdgeOK;
-    
-    while (myTime >= 0) {
-        myCount++;        
-        // look for the next frame in the track; when there are no more frames,
-        // myTime is set to -1, so we'll exit the while loop
-        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myTime, FloatToFixed(1), &myTime, NULL);        
-        // after the first interesting time, don't include the time we're currently at
-        myFlags = nextTimeStep;
-    }    
-    movieRecordBANK[slotid].nrframes = (int) myCount;
 
-    // Compute expected framerate, assuming a linear spacing between frames:
-    movieRecordBANK[slotid].fps = (double) myCount / movieRecordBANK[slotid].movieduration;
-    
+    // Compute expected framerate, assuming a linear spacing between frames: It is derived as
+    // reciprocal of the duration of the first video frame in the movie:
+    movieRecordBANK[slotid].fps = PsychDetermineMovieFramecountAndFps(theMovie, NULL);
+
     // Determine size of images in movie:
     Rect movierect;
     GetMovieBox(theMovie, &movierect);
     movieRecordBANK[slotid].width = movierect.right - movierect.left;
     movieRecordBANK[slotid].height = movierect.bottom - movierect.top;
+    
+    // We set nrframes == -1 to indicate that this value is not yet available.
+    // Will do counting on first query for this parameter as it is very time-consuming:
+    movieRecordBANK[slotid].nrframes = -1;
     
     return;
 }
@@ -265,7 +303,18 @@ void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecoun
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
 
-    if (framecount) *framecount = movieRecordBANK[moviehandle].nrframes;
+    // Framecount requested?
+    if (framecount) {
+        // Try to fetch from internal data:
+        *framecount = movieRecordBANK[moviehandle].nrframes;
+        // Internal entry invalid?
+        if (*framecount<0) {
+            // Framecount unavailable: We need to trigger active counting:
+            PsychDetermineMovieFramecountAndFps(movieRecordBANK[moviehandle].theMovie, &(movieRecordBANK[moviehandle].nrframes));
+            *framecount = movieRecordBANK[moviehandle].nrframes;
+        }
+    }
+
     if (durationsecs) *durationsecs = movieRecordBANK[moviehandle].movieduration;
     if (framerate) *framerate = movieRecordBANK[moviehandle].fps;
     if (nrdroppedframes) *nrdroppedframes = movieRecordBANK[moviehandle].nr_droppedframes;
@@ -615,6 +664,7 @@ int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double sou
         movieRecordBANK[moviehandle].nr_droppedframes = 0;
         SetMoviePreferredRate(theMovie, FloatToFixed(playbackrate));
         StartMovie(theMovie);
+        MoviesTask(theMovie, 10000);
     }
     else {
         // Stop playback of movie:
@@ -712,6 +762,8 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
         }
     }
         
+    MoviesTask(theMovie, 0);
+    
     // Return old value:
     return(oldtime);
 }
