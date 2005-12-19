@@ -7,6 +7,71 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0E92E862095726FE002687D9 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
+		0E92E863095726FE002687D9 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
+		0E92E864095726FE002687D9 /* PsychInit.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F239038E2BE2017A7028 /* PsychInit.h */; };
+		0E92E865095726FE002687D9 /* PsychRegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F23B038E2BE2017A7028 /* PsychRegisterProject.h */; };
+		0E92E866095726FE002687D9 /* PsychPlatformConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F23C038E2BE2017A7028 /* PsychPlatformConstants.h */; };
+		0E92E867095726FE002687D9 /* PsychConstants.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F23D038E2BE2017A7028 /* PsychConstants.h */; };
+		0E92E868095726FE002687D9 /* PsychError.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F23E038E2BE2017A7028 /* PsychError.h */; };
+		0E92E869095726FE002687D9 /* PsychIncludes.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F23F038E2BE2017A7028 /* PsychIncludes.h */; };
+		0E92E86A095726FE002687D9 /* PsychHelp.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F240038E2BE2017A7028 /* PsychHelp.h */; };
+		0E92E86B095726FE002687D9 /* ProjectTable.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F241038E2BE2017A7028 /* ProjectTable.h */; };
+		0E92E86C095726FE002687D9 /* Psych.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F242038E2BE2017A7028 /* Psych.h */; };
+		0E92E86D095726FE002687D9 /* PsychPlatform.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F272038E2D68017A7028 /* PsychPlatform.h */; };
+		0E92E86E095726FE002687D9 /* PsychScriptingGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = F5D852DF039EDD7B017A7028 /* PsychScriptingGlue.h */; };
+		0E92E86F095726FE002687D9 /* PsychTimeGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = F5CF277603DBE22201D453F7 /* PsychTimeGlue.h */; };
+		0E92E870095726FE002687D9 /* PsychStructGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = F53C23FB0416FB8201A80166 /* PsychStructGlue.h */; };
+		0E92E871095726FE002687D9 /* PsychVersioning.h in Headers */ = {isa = PBXBuildFile; fileRef = F58524C5042188B601A80165 /* PsychVersioning.h */; };
+		0E92E874095726FE002687D9 /* PsychAuthors.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FA80D3306B0569900112E7A /* PsychAuthors.h */; };
+		0E92E876095726FE002687D9 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C165CFE840E0CC02AAC07 /* InfoPlist.strings */; };
+		0E92E878095726FE002687D9 /* PsychError.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F227038E2B6B017A7028 /* PsychError.c */; };
+		0E92E879095726FE002687D9 /* PsychRegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F228038E2B6B017A7028 /* PsychRegisterProject.c */; };
+		0E92E87A095726FE002687D9 /* PsychHelp.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F229038E2B6B017A7028 /* PsychHelp.c */; };
+		0E92E87B095726FE002687D9 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
+		0E92E87C095726FE002687D9 /* PsychMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22B038E2B6B017A7028 /* PsychMemory.c */; };
+		0E92E87D095726FE002687D9 /* ProjectTable.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22C038E2B6B017A7028 /* ProjectTable.c */; };
+		0E92E87E095726FE002687D9 /* PsychInit.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22D038E2B6B017A7028 /* PsychInit.c */; };
+		0E92E87F095726FE002687D9 /* PsychTimeGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277403DBE1F301D453F7 /* PsychTimeGlue.c */; };
+		0E92E880095726FE002687D9 /* PsychStructGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F544E4E803C2336A01FD10C2 /* PsychStructGlue.c */; };
+		0E92E881095726FE002687D9 /* PsychVersioning.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524C30421889A01A80165 /* PsychVersioning.c */; };
+		0E92E882095726FE002687D9 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
+		0E92E883095726FE002687D9 /* PsychScriptingGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524D60421C1A801A80165 /* PsychScriptingGlue.c */; };
+		0E92E884095726FE002687D9 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
+		0E92E887095726FE002687D9 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
+		0E92E889095726FE002687D9 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
+		0E92E88A095726FE002687D9 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
+		0E92E88B095726FE002687D9 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
+		0E92E88D095726FE002687D9 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
+		0E92E8C009572831002687D9 /* EyelinkInitWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */; };
+		0E92E8C109572831002687D9 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = 0E92E8AE09572831002687D9 /* RegisterProject.h */; };
+		0E92E8C209572831002687D9 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AF09572831002687D9 /* RegisterProject.c */; };
+		0E92E8C309572831002687D9 /* EyelinkCreateDataStructs.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */; };
+		0E92E8C409572831002687D9 /* EyelinkCommand.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B109572831002687D9 /* EyelinkCommand.c */; };
+		0E92E8C509572831002687D9 /* EyelinkInitialize.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B209572831002687D9 /* EyelinkInitialize.c */; };
+		0E92E8C609572831002687D9 /* EyelinkStartRecording.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B309572831002687D9 /* EyelinkStartRecording.c */; };
+		0E92E8C709572831002687D9 /* EyelinkNewestFloatSample.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B409572831002687D9 /* EyelinkNewestFloatSample.c */; };
+		0E92E8C809572831002687D9 /* EyelinkStartSetup.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B509572831002687D9 /* EyelinkStartSetup.c */; };
+		0E92E8C909572831002687D9 /* PsychEyelink.h in Headers */ = {isa = PBXBuildFile; fileRef = 0E92E8B609572831002687D9 /* PsychEyelink.h */; };
+		0E92E8CA09572831002687D9 /* EyelinkCurrentMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B709572831002687D9 /* EyelinkCurrentMode.c */; };
+		0E92E8CB09572831002687D9 /* EyelinkSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B809572831002687D9 /* EyelinkSynopsis.c */; };
+		0E92E8CC09572831002687D9 /* EyelinkButtonStates.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B909572831002687D9 /* EyelinkButtonStates.c */; };
+		0E92E8CD09572831002687D9 /* EyelinkStopRecording.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BA09572831002687D9 /* EyelinkStopRecording.c */; };
+		0E92E8CE09572831002687D9 /* PsychEyelink.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BB09572831002687D9 /* PsychEyelink.c */; };
+		0E92E8CF09572831002687D9 /* EyelinkShutdown.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BC09572831002687D9 /* EyelinkShutdown.c */; };
+		0E92E8D009572831002687D9 /* EyelinkIsConnected.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */; };
+		0E92E8D109572831002687D9 /* EyelinkSendKeyButton.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */; };
+		0E92E8D209572831002687D9 /* EyelinkImageModeDisplay.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */; };
+		0E92E8E00957291D002687D9 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
+		0E92E8E10957292F002687D9 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
+		0E92E8E209572930002687D9 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
+		0E92E8E409572A61002687D9 /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
+		0E92E8E509572A62002687D9 /* Events.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F29D90104B911AF007A7274 /* Events.h */; };
+		0E92E8E809572A86002687D9 /* matrix.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F19007804A03C62007A7274 /* matrix.h */; };
+		0E92E8E909572A88002687D9 /* mex.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F19007704A03C39007A7274 /* mex.h */; };
+		0E92E8EA09572AF7002687D9 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		0E92E8EB09572AF8002687D9 /* PsychCellGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FE3CC150569E4BA007A711C /* PsychCellGlue.h */; };
+		0E92E94309572E39002687D9 /* eyelink_core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E92E92709572E2C002687D9 /* eyelink_core.framework */; };
 		2F0B166307788BB500359736 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		2F0B166407788BB500359736 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
 		2F0B166507788BB500359736 /* PsychInit.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F239038E2BE2017A7028 /* PsychInit.h */; };
@@ -1047,6 +1112,22 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
+		0E92E890095726FE002687D9 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.gcc.3_3;
+			fileType = sourcecode.asm;
+			isEditable = 1;
+			outputFiles = (
+			);
+		};
+		0E92E891095726FE002687D9 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.gcc.3_3;
+			fileType = sourcecode.c;
+			isEditable = 1;
+			outputFiles = (
+			);
+		};
 		2F48C1E708D53ED200BF33BE /* PBXBuildRule */ = {
 			isa = PBXBuildRule;
 			compilerSpec = com.apple.compilers.gcc.3_3;
@@ -1492,6 +1573,28 @@
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
+		0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkInitWindow.c; path = ../../../Source/Common/Eyelink/EyelinkInitWindow.c; sourceTree = SOURCE_ROOT; };
+		0E92E8AE09572831002687D9 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Eyelink/RegisterProject.h; sourceTree = SOURCE_ROOT; };
+		0E92E8AF09572831002687D9 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Eyelink/RegisterProject.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCreateDataStructs.c; path = ../../../Source/Common/Eyelink/EyelinkCreateDataStructs.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B109572831002687D9 /* EyelinkCommand.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCommand.c; path = ../../../Source/Common/Eyelink/EyelinkCommand.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B209572831002687D9 /* EyelinkInitialize.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkInitialize.c; path = ../../../Source/Common/Eyelink/EyelinkInitialize.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B309572831002687D9 /* EyelinkStartRecording.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkStartRecording.c; path = ../../../Source/Common/Eyelink/EyelinkStartRecording.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B409572831002687D9 /* EyelinkNewestFloatSample.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkNewestFloatSample.c; path = ../../../Source/Common/Eyelink/EyelinkNewestFloatSample.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B509572831002687D9 /* EyelinkStartSetup.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkStartSetup.c; path = ../../../Source/Common/Eyelink/EyelinkStartSetup.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B609572831002687D9 /* PsychEyelink.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychEyelink.h; path = ../../../Source/Common/Eyelink/PsychEyelink.h; sourceTree = SOURCE_ROOT; };
+		0E92E8B709572831002687D9 /* EyelinkCurrentMode.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCurrentMode.c; path = ../../../Source/Common/Eyelink/EyelinkCurrentMode.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B809572831002687D9 /* EyelinkSynopsis.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSynopsis.c; path = ../../../Source/Common/Eyelink/EyelinkSynopsis.c; sourceTree = SOURCE_ROOT; };
+		0E92E8B909572831002687D9 /* EyelinkButtonStates.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkButtonStates.c; path = ../../../Source/Common/Eyelink/EyelinkButtonStates.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BA09572831002687D9 /* EyelinkStopRecording.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkStopRecording.c; path = ../../../Source/Common/Eyelink/EyelinkStopRecording.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BB09572831002687D9 /* PsychEyelink.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychEyelink.c; path = ../../../Source/Common/Eyelink/PsychEyelink.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BC09572831002687D9 /* EyelinkShutdown.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkShutdown.c; path = ../../../Source/Common/Eyelink/EyelinkShutdown.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkIsConnected.c; path = ../../../Source/Common/Eyelink/EyelinkIsConnected.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSendKeyButton.c; path = ../../../Source/Common/Eyelink/EyelinkSendKeyButton.c; sourceTree = SOURCE_ROOT; };
+		0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkImageModeDisplay.c; path = ../../../Source/Common/Eyelink/EyelinkImageModeDisplay.c; sourceTree = SOURCE_ROOT; };
+		0E92E92709572E2C002687D9 /* eyelink_core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = eyelink_core.framework; path = /System/Library/Frameworks/eyelink_core.framework; sourceTree = "<absolute>"; };
 		2F02A85705F0735800C19AA2 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/GetPID/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F02A85805F0735800C19AA2 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/GetPID/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F02A85905F0735800C19AA2 /* GetPID.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetPID.h; path = ../../../Source/Common/GetPID/GetPID.h; sourceTree = SOURCE_ROOT; };
@@ -1857,6 +1960,21 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		0E92E888095726FE002687D9 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E92E889095726FE002687D9 /* OpenGL.framework in Frameworks */,
+				0E92E88A095726FE002687D9 /* ApplicationServices.framework in Frameworks */,
+				0E92E88B095726FE002687D9 /* libstdc++.a in Frameworks */,
+				0E92E88D095726FE002687D9 /* CoreServices.framework in Frameworks */,
+				0E92E8E00957291D002687D9 /* Carbon.framework in Frameworks */,
+				0E92E8E10957292F002687D9 /* System.framework in Frameworks */,
+				0E92E8E209572930002687D9 /* SystemConfiguration.framework in Frameworks */,
+				0E92E94309572E39002687D9 /* eyelink_core.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2F0B168B07788BB500359736 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -2187,6 +2305,32 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		0E92E8AC095727BC002687D9 /* Eyelink */ = {
+			isa = PBXGroup;
+			children = (
+				0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */,
+				0E92E8AE09572831002687D9 /* RegisterProject.h */,
+				0E92E8AF09572831002687D9 /* RegisterProject.c */,
+				0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */,
+				0E92E8B109572831002687D9 /* EyelinkCommand.c */,
+				0E92E8B209572831002687D9 /* EyelinkInitialize.c */,
+				0E92E8B309572831002687D9 /* EyelinkStartRecording.c */,
+				0E92E8B409572831002687D9 /* EyelinkNewestFloatSample.c */,
+				0E92E8B509572831002687D9 /* EyelinkStartSetup.c */,
+				0E92E8B609572831002687D9 /* PsychEyelink.h */,
+				0E92E8B709572831002687D9 /* EyelinkCurrentMode.c */,
+				0E92E8B809572831002687D9 /* EyelinkSynopsis.c */,
+				0E92E8B909572831002687D9 /* EyelinkButtonStates.c */,
+				0E92E8BA09572831002687D9 /* EyelinkStopRecording.c */,
+				0E92E8BB09572831002687D9 /* PsychEyelink.c */,
+				0E92E8BC09572831002687D9 /* EyelinkShutdown.c */,
+				0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */,
+				0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */,
+				0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */,
+			);
+			name = Eyelink;
+			sourceTree = "<group>";
+		};
 		19C28FACFE9D520D11CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
@@ -2215,6 +2359,7 @@
 				2F57E38308CEB64200A5CF85 /* StoreBit.mexmac.app */,
 				2F54335C090431DC0051D6CC /* DoNothing.mexmac.app */,
 				832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */,
+				0E92E896095726FE002687D9 /* Eyelink.mexmac.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2300,6 +2445,7 @@
 		2F1A1CBC069C8FF800907C00 /* Mex Targets */ = {
 			isa = PBXGroup;
 			children = (
+				0E92E8AC095727BC002687D9 /* Eyelink */,
 				2F4A1B3504A3DDAC007A7274 /* CocoaEventBridge */,
 				2F550B2804B7AE8F007A7274 /* DoNothing */,
 				2FCF7C7805A7772000C96ADD /* FontInfo */,
@@ -2721,6 +2867,7 @@
 				2F5432B6090415800051D6CC /* Info-DoNothing copy.plist */,
 				2F54335E090431DC0051D6CC /* Info-DoNothing copy 2.plist */,
 				832CE62D094CE8C300578C09 /* Info-DoNothing copy.plist */,
+				0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */,
 			);
 			name = "info.plist files";
 			sourceTree = "<group>";
@@ -2981,6 +3128,7 @@
 		F5FCC41903833678017A7028 /* System Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				0E92E92709572E2C002687D9 /* eyelink_core.framework */,
 				83C94B14092826FE0062DB0A /* QuickTime.framework */,
 				2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */,
 				2F9E78AF04491002007A7274 /* Kernel.framework */,
@@ -3001,6 +3149,36 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		0E92E861095726FE002687D9 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E92E862095726FE002687D9 /* MiniBox.h in Headers */,
+				0E92E863095726FE002687D9 /* PsychMemory.h in Headers */,
+				0E92E864095726FE002687D9 /* PsychInit.h in Headers */,
+				0E92E865095726FE002687D9 /* PsychRegisterProject.h in Headers */,
+				0E92E866095726FE002687D9 /* PsychPlatformConstants.h in Headers */,
+				0E92E867095726FE002687D9 /* PsychConstants.h in Headers */,
+				0E92E868095726FE002687D9 /* PsychError.h in Headers */,
+				0E92E869095726FE002687D9 /* PsychIncludes.h in Headers */,
+				0E92E86A095726FE002687D9 /* PsychHelp.h in Headers */,
+				0E92E86B095726FE002687D9 /* ProjectTable.h in Headers */,
+				0E92E86C095726FE002687D9 /* Psych.h in Headers */,
+				0E92E86D095726FE002687D9 /* PsychPlatform.h in Headers */,
+				0E92E86E095726FE002687D9 /* PsychScriptingGlue.h in Headers */,
+				0E92E86F095726FE002687D9 /* PsychTimeGlue.h in Headers */,
+				0E92E870095726FE002687D9 /* PsychStructGlue.h in Headers */,
+				0E92E871095726FE002687D9 /* PsychVersioning.h in Headers */,
+				0E92E874095726FE002687D9 /* PsychAuthors.h in Headers */,
+				0E92E8C109572831002687D9 /* RegisterProject.h in Headers */,
+				0E92E8C909572831002687D9 /* PsychEyelink.h in Headers */,
+				0E92E8E509572A62002687D9 /* Events.h in Headers */,
+				0E92E8E809572A86002687D9 /* matrix.h in Headers */,
+				0E92E8E909572A88002687D9 /* mex.h in Headers */,
+				0E92E8EB09572AF8002687D9 /* PsychCellGlue.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2F0B166207788BB500359736 /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
@@ -3599,6 +3777,66 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		0E92E860095726FE002687D9 /* Eyelink */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0E92E892095726FE002687D9 /* Build configuration list for PBXNativeTarget "Eyelink" */;
+			buildPhases = (
+				0E92E861095726FE002687D9 /* Headers */,
+				0E92E875095726FE002687D9 /* Resources */,
+				0E92E877095726FE002687D9 /* Sources */,
+				0E92E888095726FE002687D9 /* Frameworks */,
+				0E92E88E095726FE002687D9 /* ShellScript */,
+				0E92E88F095726FE002687D9 /* ShellScript */,
+			);
+			buildRules = (
+				0E92E890095726FE002687D9 /* PBXBuildRule */,
+				0E92E891095726FE002687D9 /* PBXBuildRule */,
+			);
+			buildSettings = {
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
+					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-DoNothing.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = DoNothing.mexmac;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+				);
+				WRAPPER_EXTENSION = app;
+			};
+			dependencies = (
+			);
+			name = Eyelink;
+			productName = TestPBMex;
+			productReference = 0E92E896095726FE002687D9 /* Eyelink.mexmac.app */;
+			productType = "com.apple.product-type.application";
+		};
 		2F0B166107788BB500359736 /* IOPort */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2F57E2AB08CE718C00A5CF85 /* Build configuration list for PBXNativeTarget "IOPort" */;
@@ -5148,11 +5386,20 @@
 				2FD618210730666A008DA6B4 /* TestPriorityMex */,
 				2FD618350730666A008DA6B4 /* WaitSecs */,
 				2FD6186B0730666B008DA6B4 /* WaitSecsMex */,
+				0E92E860095726FE002687D9 /* Eyelink */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		0E92E875095726FE002687D9 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E92E876095726FE002687D9 /* InfoPlist.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2F0B167807788BB500359736 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -5356,6 +5603,24 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		0E92E88E095726FE002687D9 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Copy Foo.mexmac which we built into Applications/Psychtoolbox/PsychBar directory.   \ncp \"$TARGET_BUILD_DIR/$TARGET_NAME.mexmac.app/Contents/MacOS/$TARGET_NAME.mexmac\" \"$SYSTEM_APPS_DIR/Psychtoolbox/$PSYCHTOOLBOX_SUBFOLDER\"\n";
+		};
+		0E92E88F095726FE002687D9 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "touch ../../../Source/Common/Base/PsychVersioning.c";
+		};
 		2F0B169107788BB500359736 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -5755,6 +6020,46 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		0E92E877095726FE002687D9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0E92E878095726FE002687D9 /* PsychError.c in Sources */,
+				0E92E879095726FE002687D9 /* PsychRegisterProject.c in Sources */,
+				0E92E87A095726FE002687D9 /* PsychHelp.c in Sources */,
+				0E92E87B095726FE002687D9 /* MiniBox.c in Sources */,
+				0E92E87C095726FE002687D9 /* PsychMemory.c in Sources */,
+				0E92E87D095726FE002687D9 /* ProjectTable.c in Sources */,
+				0E92E87E095726FE002687D9 /* PsychInit.c in Sources */,
+				0E92E87F095726FE002687D9 /* PsychTimeGlue.c in Sources */,
+				0E92E880095726FE002687D9 /* PsychStructGlue.c in Sources */,
+				0E92E881095726FE002687D9 /* PsychVersioning.c in Sources */,
+				0E92E882095726FE002687D9 /* MODULEVersion.c in Sources */,
+				0E92E883095726FE002687D9 /* PsychScriptingGlue.c in Sources */,
+				0E92E884095726FE002687D9 /* mexversion.c in Sources */,
+				0E92E887095726FE002687D9 /* PsychAuthors.c in Sources */,
+				0E92E8C009572831002687D9 /* EyelinkInitWindow.c in Sources */,
+				0E92E8C209572831002687D9 /* RegisterProject.c in Sources */,
+				0E92E8C309572831002687D9 /* EyelinkCreateDataStructs.c in Sources */,
+				0E92E8C409572831002687D9 /* EyelinkCommand.c in Sources */,
+				0E92E8C509572831002687D9 /* EyelinkInitialize.c in Sources */,
+				0E92E8C609572831002687D9 /* EyelinkStartRecording.c in Sources */,
+				0E92E8C709572831002687D9 /* EyelinkNewestFloatSample.c in Sources */,
+				0E92E8C809572831002687D9 /* EyelinkStartSetup.c in Sources */,
+				0E92E8CA09572831002687D9 /* EyelinkCurrentMode.c in Sources */,
+				0E92E8CB09572831002687D9 /* EyelinkSynopsis.c in Sources */,
+				0E92E8CC09572831002687D9 /* EyelinkButtonStates.c in Sources */,
+				0E92E8CD09572831002687D9 /* EyelinkStopRecording.c in Sources */,
+				0E92E8CE09572831002687D9 /* PsychEyelink.c in Sources */,
+				0E92E8CF09572831002687D9 /* EyelinkShutdown.c in Sources */,
+				0E92E8D009572831002687D9 /* EyelinkIsConnected.c in Sources */,
+				0E92E8D109572831002687D9 /* EyelinkSendKeyButton.c in Sources */,
+				0E92E8D209572831002687D9 /* EyelinkImageModeDisplay.c in Sources */,
+				0E92E8E409572A61002687D9 /* Events.c in Sources */,
+				0E92E8EA09572AF7002687D9 /* PsychCellGlue.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		2F0B167A07788BB500359736 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -6392,6 +6697,142 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		0E92E893095726FE002687D9 /* Development */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "/SourceCode/osxptb/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-Eyelink.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
+				PREBINDING = NO;
+				PRODUCT_NAME = Eyelink.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = Development;
+		};
+		0E92E894095726FE002687D9 /* Deployment */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "/SourceCode/osxptb/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-Eyelink.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
+				PREBINDING = NO;
+				PRODUCT_NAME = Eyelink.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+				);
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = Deployment;
+		};
+		0E92E895095726FE002687D9 /* Default */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "/SourceCode/osxptb/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-Eyelink.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Eyelink.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = (
+					"-Wmost",
+					"-Wno-four-char-constants",
+					"-Wno-unknown-pragmas",
+				);
+				WRAPPER_EXTENSION = app;
+			};
+			name = Default;
+		};
 		2F543359090431DC0051D6CC /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -9867,6 +10308,16 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0E92E892095726FE002687D9 /* Build configuration list for PBXNativeTarget "Eyelink" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0E92E893095726FE002687D9 /* Development */,
+				0E92E894095726FE002687D9 /* Deployment */,
+				0E92E895095726FE002687D9 /* Default */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Default;
+		};
 		2F543358090431DC0051D6CC /* Build configuration list for PBXNativeTarget "DoNothing" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
