@@ -1,5 +1,11 @@
 // !$*UTF8*$!
 {
+	0E92E860095726FE002687D9 /* Eyelink */ = {
+		activeExec = 0;
+		executables = (
+			838D5EBF095F016200D4CF89 /* Eyelink */,
+		);
+	};
 	29B97313FDCFA39411CA2CEA /* Project object */ = {
 		activeBuildConfigurationName = Development;
 		activeBuildStyle = 4A9504CCFFE6A4B311CA0CBA /* Development */;
@@ -36,6 +42,7 @@
 			83C948FD092818C90062DB0A /* WaitSecs */,
 			83C948FE092818C90062DB0A /* WaitSecsMex */,
 			832CE62C094CE8C300578C09 /* PsychSound */,
+			838D5EBF095F016200D4CF89 /* Eyelink */,
 		);
 		perUserDictionary = {
 			PBXConfiguration.PBXFileTableDataSource3.PBXErrorsWarningsDataSource = {
@@ -96,8 +103,8 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 156034549;
-			PBXWorkspaceStateSaveDate = 156034549;
+			PBXPerProjectTemplateStateSaveDate = 157221218;
+			PBXWorkspaceStateSaveDate = 157221218;
 		};
 		sourceControlManager = 83C94918092818FF0062DB0A /* Source Control */;
 		userBuildSettings = {
@@ -208,16 +215,16 @@
 	};
 	2F66ABBF09063E1100128812 /* SCREENSelectStereoDrawBuffer.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {874, 4522}}";
-			sepNavSelRange = "{6665, 0}";
-			sepNavVisRect = "{{0, 1756}, {874, 708}}";
+			sepNavIntBoundsRect = "{{0, 0}, {912, 4956}}";
+			sepNavSelRange = "{14194, 0}";
+			sepNavVisRect = "{{0, 4203}, {912, 753}}";
 		};
 	};
 	2F66ABC109063E3B00128812 /* SCREENDrawingFinished.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {874, 1932}}";
+			sepNavIntBoundsRect = "{{0, 0}, {912, 1932}}";
 			sepNavSelRange = "{5566, 0}";
-			sepNavVisRect = "{{0, 0}, {874, 708}}";
+			sepNavVisRect = "{{0, 1152}, {912, 753}}";
 		};
 	};
 	2F66ABC309063E4E00128812 /* SCREENDrawText.c */ = {
@@ -239,6 +246,13 @@
 			sepNavIntBoundsRect = "{{0, 0}, {874, 1106}}";
 			sepNavSelRange = "{1562, 0}";
 			sepNavVisRect = "{{0, 398}, {874, 708}}";
+		};
+	};
+	2F84D0F608D731E9005D5FE5 /* COCOAEVENTBRIDGEGetChar.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1148, 2534}}";
+			sepNavSelRange = "{8594, 0}";
+			sepNavVisRect = "{{0, 0}, {912, 753}}";
 		};
 	};
 	2FA0CBC405F1596B007B24E1 /* SCREENPreference.c */ = {
@@ -300,6 +314,13 @@
 			sepNavIntBoundsRect = "{{0, 0}, {944, 5054}}";
 			sepNavSelRange = "{7865, 0}";
 			sepNavVisRect = "{{0, 652}, {874, 708}}";
+		};
+	};
+	2FD0646E08D928B6005BD6CD /* CocoaEventBridgeHelpers.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1070, 2100}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 167}, {912, 753}}";
 		};
 	};
 	2FD6148B07306666008DA6B4 /* FontInfo */ = {
@@ -494,6 +515,29 @@
 			sepNavSelRange = "{4042, 0}";
 			sepNavVisRect = "{{0, 1000}, {874, 708}}";
 		};
+	};
+	838D5EBF095F016200D4CF89 /* Eyelink */ = {
+		isa = PBXExecutable;
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = Eyelink;
+		sourceDirectories = (
+		);
 	};
 	83C948E7092818C80062DB0A /* CocoaEventBridge */ = {
 		isa = PBXExecutable;
@@ -1068,16 +1112,16 @@
 	};
 	83C94B00092823A80062DB0A /* PsychMovieSupport.h */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1094, 708}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1094, 753}}";
 			sepNavSelRange = "{936, 0}";
-			sepNavVisRect = "{{0, 0}, {874, 708}}";
+			sepNavVisRect = "{{0, 0}, {912, 753}}";
 		};
 	};
 	83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1088, 10052}}";
-			sepNavSelRange = "{18820, 0}";
-			sepNavVisRect = "{{0, 9344}, {874, 708}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1088, 10780}}";
+			sepNavSelRange = "{9149, 0}";
+			sepNavVisRect = "{{0, 2587}, {912, 753}}";
 		};
 	};
 	83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */ = {
@@ -1089,9 +1133,9 @@
 	};
 	83C94B06092824730062DB0A /* SCREENOpenMovie.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {899, 1386}}";
-			sepNavSelRange = "{0, 0}";
-			sepNavVisRect = "{{0, 0}, {899, 708}}";
+			sepNavIntBoundsRect = "{{0, 0}, {912, 1652}}";
+			sepNavSelRange = "{2300, 0}";
+			sepNavVisRect = "{{0, 0}, {912, 753}}";
 		};
 	};
 	83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */ = {
@@ -1243,8 +1287,8 @@
 	F569F256038E2C77017A7028 /* ScreenSynopsis.c */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {1028, 3108}}";
-			sepNavSelRange = "{3753, 0}";
-			sepNavVisRect = "{{0, 924}, {874, 708}}";
+			sepNavSelRange = "{10182, 0}";
+			sepNavVisRect = "{{0, 2254}, {912, 753}}";
 		};
 	};
 	F569F25A038E2C77017A7028 /* RegisterProject.c */ = {
@@ -1299,8 +1343,8 @@
 	F5CC19FE0394691F017A7028 /* PsychWindowGlue.c */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {1364, 25158}}";
-			sepNavSelRange = "{49084, 0}";
-			sepNavVisRect = "{{0, 11094}, {874, 708}}";
+			sepNavSelRange = "{95246, 0}";
+			sepNavVisRect = "{{0, 23901}, {912, 753}}";
 		};
 	};
 	F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */ = {

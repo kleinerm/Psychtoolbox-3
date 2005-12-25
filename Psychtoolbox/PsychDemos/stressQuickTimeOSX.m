@@ -124,9 +124,9 @@ try
                 % will just return the next frame in the movie. tex is
                 % either the texture handle or zero if no new frame is
                 % ready yet. pts = Presentation timestamp in seconds.
-                [tex pts] = Screen('GetMovieImage', win, movie, 0); % , Screen('GetMovieTimeIndex', movie));
+                [tex pts] = Screen('GetMovieImage', win, movie, 1); % , Screen('GetMovieTimeIndex', movie));
                 % We'll sleep 4 ms in order to not overload the machine.
-                WaitSecs(0.004);
+                %WaitSecs(0.004);
 
                 if (prefetch==1)
                      fprintf('Frame %i : tpts= %f  tafter = %f\n', i, pts, Screen('GetMovieTimeIndex', movie));

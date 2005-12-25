@@ -218,8 +218,6 @@
 			<key>Layout</key>
 			<array>
 				<dict>
-					<key>BecomeActive</key>
-					<true/>
 					<key>ContentConfiguration</key>
 					<dict>
 						<key>PBXBottomSmartGroupGIDs</key>
@@ -257,19 +255,32 @@
 							<array>
 								<string>29B97314FDCFA39411CA2CEA</string>
 								<string>29B97315FDCFA39411CA2CEA</string>
+								<string>F55904F60385DC89017A7028</string>
+								<string>F5555A960389F883017A7028</string>
+								<string>F5555A9B0389FA3A017A7028</string>
+								<string>F5555A9C0389FA46017A7028</string>
 								<string>2F1A1CBC069C8FF800907C00</string>
+								<string>F559032C0385BB22017A7028</string>
+								<string>F55903330385BC2C017A7028</string>
+								<string>2FA8DC3C06A360FD0031AE12</string>
+								<string>2FC12E7E0743F36800991CF0</string>
 								<string>1C37FBAC04509CD000000102</string>
 								<string>1C37FABC05509CD000000102</string>
 							</array>
 							<key>PBXSmartGroupTreeModuleOutlineStateSelectionKey</key>
 							<array>
 								<array>
-									<integer>1</integer>
+									<integer>53</integer>
+									<integer>45</integer>
+									<integer>44</integer>
+									<integer>42</integer>
+									<integer>23</integer>
+									<integer>4</integer>
 									<integer>0</integer>
 								</array>
 							</array>
 							<key>PBXSmartGroupTreeModuleOutlineStateVisibleRectKey</key>
-							<string>{{0, 0}, {299, 828}}</string>
+							<string>{{0, 306}, {299, 828}}</string>
 						</dict>
 						<key>PBXTopSmartGroupGIDs</key>
 						<array/>
@@ -288,7 +299,7 @@
 							<real>299</real>
 						</array>
 						<key>RubberWindowFrame</key>
-						<string>0 115 1280 887 0 0 1280 1002 </string>
+						<string>-1 115 1280 887 0 0 1280 1002 </string>
 					</dict>
 					<key>Module</key>
 					<string>PBXSmartGroupTreeModule</string>
@@ -321,14 +332,14 @@
 							<key>GeometryConfiguration</key>
 							<dict>
 								<key>Frame</key>
-								<string>{{0, 0}, {959, 619}}</string>
+								<string>{{0, 0}, {959, 785}}</string>
 								<key>RubberWindowFrame</key>
-								<string>0 115 1280 887 0 0 1280 1002 </string>
+								<string>-1 115 1280 887 0 0 1280 1002 </string>
 							</dict>
 							<key>Module</key>
 							<string>PBXNavigatorGroup</string>
 							<key>Proportion</key>
-							<string>619pt</string>
+							<string>785pt</string>
 						</dict>
 						<dict>
 							<key>ContentConfiguration</key>
@@ -341,14 +352,14 @@
 							<key>GeometryConfiguration</key>
 							<dict>
 								<key>Frame</key>
-								<string>{{0, 624}, {959, 222}}</string>
+								<string>{{0, 790}, {959, 56}}</string>
 								<key>RubberWindowFrame</key>
-								<string>0 115 1280 887 0 0 1280 1002 </string>
+								<string>-1 115 1280 887 0 0 1280 1002 </string>
 							</dict>
 							<key>Module</key>
 							<string>XCDetailModule</string>
 							<key>Proportion</key>
-							<string>222pt</string>
+							<string>56pt</string>
 						</dict>
 					</array>
 					<key>Proportion</key>
@@ -367,9 +378,9 @@
 			</array>
 			<key>TableOfContents</key>
 			<array>
-				<string>832CE653094CE9C200578C09</string>
+				<string>831565F30954C5A10059F63A</string>
 				<string>1CE0B1FE06471DED0097A5F4</string>
-				<string>832CE654094CE9C200578C09</string>
+				<string>831565F40954C5A10059F63A</string>
 				<string>1CE0B20306471E060097A5F4</string>
 				<string>1CE0B20506471E060097A5F4</string>
 			</array>
@@ -507,7 +518,7 @@
 		<string>/Users/kleinerm/projects/Psychtoolbox/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
-	<string>0 115 1280 887 0 0 1280 1002 </string>
+	<string>-1 115 1280 887 0 0 1280 1002 </string>
 	<key>WindowTools</key>
 	<array>
 		<dict>
@@ -545,8 +556,6 @@
 							<string>350pt</string>
 						</dict>
 						<dict>
-							<key>BecomeActive</key>
-							<true/>
 							<key>ContentConfiguration</key>
 							<dict>
 								<key>PBXBuildLogShowsTranscriptDefaultKey</key>
@@ -588,7 +597,7 @@
 			<key>TableOfContents</key>
 			<array>
 				<string>83C9491F092819580062DB0A</string>
-				<string>832CE731094CECB700578C09</string>
+				<string>8315668D09555A7C0059F63A</string>
 				<string>1CD0528F0623707200166675</string>
 				<string>XCMainBuildResultsModuleGUID</string>
 			</array>
