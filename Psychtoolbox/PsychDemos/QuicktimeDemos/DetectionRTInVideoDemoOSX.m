@@ -159,7 +159,6 @@ try
                 % screen: This should be accurate in the sub-millisecond
                 % range.
                 vbl=Screen('Flip', win);
-                
                 % Is this the event video frame we've been waiting for? 
                 if (onsettime==-1 && pts >= timeOfEvent)
                     % Yes: This is the first frame with a pts timestamp that is
@@ -272,5 +271,5 @@ catch
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
     Screen('CloseAll');
-    rethrow(lasterr);
+    rethrow(lasterror);
 end;
