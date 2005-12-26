@@ -396,6 +396,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 {
     TimeValue		myCurrTime;
     TimeValue		myNextTime;
+    TimeValue           nextFramesTime=0;
     short		myFlags;
     OSType		myTypes[1];
     OSErr		myErr = noErr;
@@ -464,7 +465,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Retrieve timeindex of the closest image sample after myCurrTime:
         myFlags = nextTimeStep + nextTimeEdgeOK;	// We want the next frame in the movie's media.
         myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
-        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, NULL);
+        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, &nextFramesTime);
         myErr = GetMoviesError();
         if (myErr != noErr) {
             PsychErrorExitMsg(PsychError_internal, "Failed to fetch texture from movie for given timeindex!");
@@ -472,16 +473,27 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         
         // Set movies current time to myNextTime, so the next frame will be fetched from there:
         SetMovieTimeValue(theMovie, myNextTime);
+        // nextFramesTime is the timeindex to which we need to advance for retrieval of next frame: (see code below)
+        nextFramesTime=myNextTime + nextFramesTime;
+    }
+    else {
+        // myNextTime unavailable if in autoplayback-mode:
+        myNextTime=-1;
     }
     
+    // Presentation timestamp requested?
     if (presentation_timestamp) {
-        // Retrieve the exact presentation timestamp of the retrieved frame (in movietime):
-        myFlags = nextTimeStep + nextTimeEdgeOK;            // We want the next frame in the movie's media.
-        myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
-        // We search backward for the closest available image for the current time. Either we get the current time
-        // if we happen to fetch a frame exactly when it becomes ready, or we get a bit earlier timestamp, which is
-        // the optimal presentation timestamp for this frame:
-        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, GetMovieTime(theMovie, NULL), FloatToFixed(-1), &myNextTime, NULL);
+        // Already available?
+        if (myNextTime==-1) {
+            // Retrieve the exact presentation timestamp of the retrieved frame (in movietime):
+            myFlags = nextTimeStep + nextTimeEdgeOK;            // We want the next frame in the movie's media.
+            myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
+                                                                // We search backward for the closest available image for the current time. Either we get the current time
+                                                                // if we happen to fetch a frame exactly when it becomes ready, or we get a bit earlier timestamp, which is
+                                                                // the optimal presentation timestamp for this frame:
+            GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, GetMovieTime(theMovie, NULL), FloatToFixed(-1), &myNextTime, NULL);
+        }
+        // Convert pts (in Quicktime ticks) to pts in seconds since start of movie and return it:
         *presentation_timestamp = (double) myNextTime / (double) GetMovieTimeScale(theMovie);
     }
 
@@ -581,18 +593,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     if (0 == GetMovieRate(theMovie)) {
         // We are in manual fetch mode: Need to manually advance movie time to next
         // media sample:
-        myFlags = nextTimeStep;                         // We want the next frame in the movie's media.
-        myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
-        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, NULL);
-        myErr = GetMoviesError();
-        if (myErr != noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to advance movie timeindex!");
-        }
-        
-        // Set movies current time to myNextTime, so the next frame will be fetched from there:
-        SetMovieTimeValue(theMovie, myNextTime);        
+        SetMovieTimeValue(theMovie, nextFramesTime);        
     }
-
+    
     // Check if end of movie is reached. Rewind, if so...
     if (IsMovieDone(theMovie) && movieRecordBANK[moviehandle].loopflag > 0) {
         if (GetMovieRate(theMovie)>0) {
