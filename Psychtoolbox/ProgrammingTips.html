@@ -1,0 +1,996 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+
+<!--Converted with jLaTeX2HTML 2002 (1.62) JA patch-1.4
+patched version by:  Kenshi Muto, Debian Project.
+LaTeX2HTML 2002 (1.62),
+original version by:  Nikos Drakos, CBLU, University of Leeds
+* revised and updated by:  Marcus Hennecke, Ross Moore, Herb Swan
+* with significant contributions from:
+  Jens Lippmann, Marek Rouchal, Martin Wilck and others -->
+<HTML>
+<HEAD>
+<TITLE>Performance &amp; Timing - HOWTO for Psychtoolbox on OS-X
+Draft - Version 0.1 - PTB 1.0.5-MK4 and later</TITLE>
+<META NAME="description" CONTENT="Performance &amp; Timing - HOWTO for Psychtoolbox on OS-X
+Draft - Version 0.1 - PTB 1.0.5-MK4 and later">
+<META NAME="keywords" CONTENT="PTB2005">
+<META NAME="resource-type" CONTENT="document">
+<META NAME="distribution" CONTENT="global">
+
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=iso-8859-1">
+<META NAME="Generator" CONTENT="jLaTeX2HTML v2002 JA patch-1.4">
+<META HTTP-EQUIV="Content-Style-Type" CONTENT="text/css">
+
+<LINK REL="STYLESHEET" HREF="PTB2005.css">
+
+</HEAD>
+
+<BODY >
+<!--Navigation Panel-->
+<IMG WIDTH="81" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next_inactive"
+ SRC="file:/usr/share/latex2html/icons/nx_grp_g.png"> 
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up_g.png"> 
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev_g.png">   
+<BR>
+<BR>
+<BR>
+<!--End of Navigation Panel-->
+
+<P>
+
+<P>
+
+<P>
+<H1 ALIGN="CENTER">Performance &amp; Timing - HOWTO for Psychtoolbox on OS-X
+<BR><I>Draft - Version 0.1 - PTB 1.0.5-MK4 and later</I></H1>
+<P ALIGN="CENTER"><STRONG>Mario Kleiner</STRONG></P>
+
+<H3>Abstract:</H3>
+<DIV>
+This document is a collection of tips and explanation on how to achieve
+high drawing performance, accurate visual stimulus presentation timing
+and accurate presentation timestamps under Psychtoolbox for Mac OS-X,
+Versions 1.0.5-MK4, 1.0.6 and later. It explains on how to setup your
+machine for a well running experiment, how to structure your code
+for maximum performance, how to achieve timed presentation of stimuli
+and how to check for proper presentation timing. A short introduction
+into how PTB works internally is also provided. This document is not
+meant as a comprehensive manual about the Psychtoolbox - Look at the
+demos and examples provided with PTB or ask your colleagues for a
+basic introduction.
+
+<P>
+This document was &#34;hacked together&#34; in a hurry by
+a person who doesn't like writing user-manuals and is not a native
+english speaker, so please apologize the bad english and poor structure
+of this document - after all, it's free.
+</DIV>
+<P>
+<BR>
+
+<H2><A NAME="SECTION00010000000000000000">
+Contents</A>
+</H2>
+<!--Table of Contents-->
+
+<UL>
+<LI><A NAME="tex2html21"
+  HREF="PTB2005.html">1 Introduction</A>
+<LI><A NAME="tex2html22"
+  HREF="PTB2005.html#SECTION00030000000000000000">2 System design</A>
+<UL>
+<LI><A NAME="tex2html23"
+  HREF="PTB2005.html#SECTION00031000000000000000">2.1 MacOS-X is not a realtime operating system</A>
+<LI><A NAME="tex2html24"
+  HREF="PTB2005.html#SECTION00032000000000000000">2.2 Screen's use of OpenGL and why you should care...</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html25"
+  HREF="PTB2005.html#SECTION00040000000000000000">3 Optimal machine setup for experiments</A>
+<LI><A NAME="tex2html26"
+  HREF="PTB2005.html#SECTION00050000000000000000">4 Programming tips</A>
+<UL>
+<LI><A NAME="tex2html27"
+  HREF="PTB2005.html#SECTION00051000000000000000">4.1 Optimal structure of the code</A>
+<LI><A NAME="tex2html28"
+  HREF="PTB2005.html#SECTION00052000000000000000">4.2 Special commands and their usage</A>
+<LI><A NAME="tex2html29"
+  HREF="PTB2005.html#SECTION00053000000000000000">To be continued - Stay tuned...</A>
+</UL>
+<BR>
+<LI><A NAME="tex2html30"
+  HREF="PTB2005.html#SECTION00060000000000000000">About this document ...</A>
+</UL>
+<!--End of Table of Contents-->
+
+<P>
+
+<H1><A NAME="SECTION00020000000000000000">
+1 Introduction</A>
+</H1>
+
+<P>
+The explanations in this document only apply to the Psychtoolbox for
+MacOS-X version 1.0.5 with the updated Screen.mexmac file from Mario
+Kleiner et al. (Version &#34;Build-1.0.5-MK4R1&#34; or later)
+and all official Psychtoolbox Versions starting at release 1.0.6 or
+later. The document is in a <I>Draft</I> state, not finished or polished
+at all and subject to updates in the future, but it should be already
+useful for your daily work.
+
+<P>
+The rest of the document is structured as follows: Section <A HREF="PTB2005.html#sec:System-design-and">2</A>
+gives a brief overview about technical details of the implementation
+of MacOS-X and of Psychtoolbox and the consequences this will have
+for your experiments. Section <A HREF="PTB2005.html#sec:Optimal-machine-setup">3</A> describes
+how to setup your machine for optimal presentation timing. Section
+<A HREF="PTB2005.html#sub:Optimal-structure">4.1</A> describes how you should structure your
+code for maximum performance and timing accuracy. Section <A HREF="PTB2005.html#sub:Special-commands">4.2</A>
+describes commands that have been added to PTB 1.0.6 and section <A HREF="PTB2005.html#sub:Screen_Flip_">4.2.3</A>
+finally explains how to do timed stimulus presentation and how to
+use the various timestamps returned for proper checking of presentation
+timing.
+
+<P>
+Limitation of liability: This document is provided <I>&#34;as
+is&#34;</I> without any implicit or explicit guarantees for correctness.
+I made the best effort to summarize what i believe to know (from the
+internal design of PTB's relevant routines and OS-X, as well as from
+my own testing) about the optimal way to do things, but in the end
+you never know what kind of bugs, changes in implementation and side-effects
+in Psychtoolbox itself, Matlab, MacOS-X and your specific graphics
+card will interact with each other and the bugs of your experiment
+to screw up things. So, check your presentation timing carefully and
+ask at the forum if you get stuck. Good luck!
+
+<P>
+
+<H1><A NAME="SECTION00030000000000000000"></A><A NAME="sec:System-design-and"></A>
+<BR>
+2 System design
+</H1>
+
+<P>
+
+<H2><A NAME="SECTION00031000000000000000">
+2.1 MacOS-X is not a realtime operating system</A>
+</H2>
+
+<P>
+MacOS-X is designed by Apple as a <I>general purpose operating
+system (GP-OS).</I> All existing GP-OS'es have two things in common:
+
+<P>
+
+<UL>
+<LI>They are easy to use by the user, allow relatively pain-free, easy
+and fast development of very powerful applications by software developers
+and provide a wide range of functionality and hardware support.
+</LI>
+<LI>They are *not* capable of hard-realtime operation by design!
+</LI>
+</UL>
+While the first item is a big advantage for users and programmers,
+item two is a problem if you try to perform visual psychophysics with
+highly controlled presentation timing at millisecond accuracy. A modern
+multitasking OS always executes multiple tasks in parallel to your
+Matlab experiment script: e-mail clients periodically check for -
+or receive e-mails for you, iTunes has to fetch data over the network
+or from your harddisk and feed it into the sound driver to play your
+mp3's or to stream them to other users on the network if &#34;Music
+sharing&#34; is enabled, virus scanners scan for viruses in the
+background, the system software update process checks for new updates
+on the Apple website, the desktop interface has to update the digital
+clock display every second, any mouse movement triggers the graphics
+server in order to move the mouse cursor accordingly, Matlab has to
+blink its cursor, check the current working directory for changed
+files and check its license if you have a license server installed
+at your place. And there are multiple internal system processes that
+have to do background work to keep your system running, e.g., check
+keyboard and mouse for activity, process network data packets from
+other computers, manage the virtual memory, write out data to disk
+so it doesn't get lost on a power failure or system crash. All these
+processes run in parallel to your experiment and compete for system
+ressources like memory, processor time and also ressources on your
+graphics adaptor. If some of these processes win the race for system
+ressources shortly before the scheduled time of your stimulus onset,
+it will delay execution of your code and the system will miss the
+presentation deadline, which leads to skipped frames or screwed up
+timing, finally to a spoiled trial.
+
+<P>
+Psychtoolbox tries to reduce interruptions of your Matlab script by
+other processes as much as possible by switching the Matlab process
+to <I>realtime priority scheduling -</I> It asks the operating system
+to give your code as much processing time as it needs, immediately
+whenever it needs it, prioritizing the needs for processing time of
+your experiment over the needs of <I>all other</I> system processes.
+While this mechanism (enabled by use of the <I>Priority() and Rush()</I>
+commands) significantly reduces the amount of timing jitter and unwanted
+interruptions, the protection of your script is not perfect - that's
+why this mode of operation is called <I>soft-realtime</I> in engineering
+terms. There are multiple ways how the timing of a realtime-script
+can be screwed up. If your script either <I>voluntarily pauses</I>,
+e.g., by use of the <I>WaitSecs()</I> command, or if it <I>has
+to pause</I> because it has to wait for some specific event or activity
+to happen or complete, e.g., reading of data from harddisk, waiting
+for the vertical retrace of the display until stimulus-onset can happen,
+responses from keyboard or mouse, the system will give other processes
+a bit of processing time, so they can execute while your application
+is &#34;sleeping&#34;. During this slice of time, they can
+perform actions that will interfere with the execution timing of your
+script, as soon as it &#34;wakes up&#34; again:
+
+<P>
+
+<UL>
+<LI>Other applications can allocate large amounts of system memory while
+your application sleeps: If more memory is needed than is free, the
+OS will move out bits of your scripts memory to the disk drive (so
+called &#34;paging&#34; or &#34;swapping&#34;)
+to free up memory for the application that requests memory. If your
+application wakes up, it has to reclaim its data by reading it back
+from disk. This can takes multiple dozen milliseconds of time.
+</LI>
+<LI>Other applications can <I>lock</I> internal system ressources. If
+your script (or Matlab itself) happens to need these ressources, it
+will be delayed until &#34;the other application&#34; voluntarily
+releases the lock.
+</LI>
+<LI>Other applications can trigger complex graphics operations on the
+graphics hardware GPU: They steal GPU computation ressources and video
+RAM that is urgently needed by your script for stimulus drawing and
+display.
+</LI>
+</UL>
+Another problem of the <I>soft-realtime</I> mode: If your script doesn't
+give up the CPU sometimes for some milliseconds, releasing it to other
+applications and the operating system, you can interfere with low
+level system functions that are <I>needed</I> by your script to work
+properly. E.g., if you don't sleep enough via Screen('Flip') or WaitSecs(),
+you will prevent the mouse- and keyboard handling routines of the
+OS from running, so subjects mouse or keyboard responses don't get
+reported to your script - or they get reported with <I>large random
+delay</I>, screwing up reaction time measurements!
+
+<P>
+There is no easy and automatic way that would allow PTB to protect
+you from any of these sources of timing delays<A NAME="tex2html1"
+  HREF="#foot369"><SUP>1</SUP></A>. Only <I>careful setup and preparation</I> of your computer and Matlab
+before the experiment and sticking to some <I>programming rules</I>
+when writing your experiment can reduce these effects to a minimum,
+minimizing the number of trials that need to be rejected due to messed
+up presentation timing.
+
+<P>
+
+<H2><A NAME="SECTION00032000000000000000">
+2.2 Screen's use of OpenGL and why you should care...</A>
+</H2>
+
+<P>
+The &#34;old&#34; Psychtoolboxes for <I>MacOS9</I> and <I>Windows</I>
+don't utilize modern graphics hardware. All drawing routines are mostly
+implemented in code written in the programming language C, that is
+executing on the computer's main processor (<I>CPU</I>), so the speed
+of drawing operations is mostly determined by the speed of your computers
+CPU. The <I>Screen</I> command of the new Psychtoolbox for OS-X (<I>PTB</I>)
+uses the plattform independent graphics library <I>OpenGL</I> for
+all drawing operations and for control of stimulus onset. This has
+three advantages compared to the old implementations:
+
+<P>
+
+<UL>
+<LI><I>Portability</I>: As OpenGL is available and well supported as a
+&#34;built-in&#34; feature for all major operating systems
+(MacOS-X, GNU/Linux, FreeBSD, Unix'es in general, Microsoft Windows)
+it will be easier and therefore faster to create versions of the new
+Psychtoolbox for other operating systems, as soon as the OS-X version
+has stabilized and reached a level of maturity as the old MacOS-9
+version.
+</LI>
+<LI><I>Performance:</I> OpenGL is a 3D computer graphics API used by 3D
+applications like 3D graphics design packages, Scientifc data visualization,
+virtual reality simulators - and most importantly, as they are the
+driving market forces - video games. Most OpenGL functions are directly
+implemented in the graphics processing units (<I>GPU's</I>) of modern
+graphics adaptors by highly specialized and extremely fast electronic
+circuitry. Using OpenGL for drawing allows PTB to make optimal use
+of the fast GPU's of modern graphics cards. This allows for much faster
+drawing speeds compared to the old PTB's as well as a lot of new drawing
+functions that weren't available in the old PTB's
+</LI>
+<LI><I>Parallelism:</I> The GPU executes most drawing commands <I>independently</I>
+and <I>in parallel</I> to the execution of other PTB functions and
+your MATLAB code on the CPU. This allows your MATLAB script to execute
+commands other than the SCREEN drawing commands, e.g., checking for
+keyboard presses, mouse button presses, taking of timestamps, execution
+of your experiment code, while the GPU is drawing your stimulus in
+the background. So more work can be done in each iteration of your
+experiment loop.
+</LI>
+</UL>
+This technical advantages should allow you to:
+
+<P>
+
+<UL>
+<LI>Draw the same stimuli at higher monitor refresh rates without skipping
+presentation deadlines.
+</LI>
+<LI>Draw more complex stimuli and bigger images at a given monitor refresh
+rate.
+</LI>
+<LI>Create a lot of stimuli &#34;on-the-fly&#34; that you had
+to precompute into Offscreen-Windows under the old PTB. This saves
+you trial setup time and costly memory upgrades for some experiments.
+</LI>
+</UL>
+There are also a few consequences associated with the parallel nature
+of drawing in PTB:
+
+<P>
+
+<UL>
+<LI>The order of commands in your stimulus presentation loop matters:
+Depending on where you place your commands with respect to the Screen('Flip')
+command, speed and timing accuracy of your script can either largely
+improve, or get worse.
+</LI>
+<LI>Simple timing of the duration of drawing commands with <I>tic,
+toc or GetSecs</I> doesn't work anymore or gives wrong and confusing
+results, because these commands only measure how long it takes Matlab+PTB
+to <I>submit</I> those drawing commands to the GPU for execution,
+<I>not</I> how long it takes the GPU to execute the drawing commands!
+You need to use special timing functions for performing these measurements.
+</LI>
+<LI>Your graphics card matters: The more recent (and therefore more advanced
+and faster) your graphics adaptor, the better. Also the amount of
+local video memory (<I>VRAM</I>) that is installed can decide, what
+you can do quickly. The speed and memory size of your graphics hardware
+can be much more important than the speed of your CPU, especially
+when drawing many images or long &#34;movies&#34; with the
+Screen('DrawTexture'...) command!
+</LI>
+</UL>
+In order to let the GPU do as much drawing work as possible in parallel
+to the CPU, you need to submit all drawing commands early in the presentation
+loop (immediately after the Screen('Flip') command) and you need to
+tell the GPU when all drawing commands are submitted for the current
+stimulus. How to do this? See section <A HREF="PTB2005.html#sub:Screen__DrawingFinished__">4.2.4</A>.
+
+<P>
+
+<H1><A NAME="SECTION00040000000000000000"></A><A NAME="sec:Optimal-machine-setup"></A>
+<BR>
+3 Optimal machine setup for experiments
+</H1>
+
+<P>
+As explained in section <A HREF="PTB2005.html#sec:System-design-and">2</A>, a lot of other
+applications and system processes can interfere with proper execution
+of your experiment script, despite the use of Priority() and Rush().
+The <I>only way to avoid or reduce</I> this interference is by <I>eliminating</I>
+as many of the distractors as possible:
+
+<P>
+
+<UL>
+<LI>Buy and install enough RAM! Enough is a matter of your specific experiment:
+512 MB are recommended as a minimum for any kind of experiment if
+you want to be safe, 256 MB <I>may</I> be enough for experiments with
+very simple stimuli and <I>none</I> or <I>very few</I> images. If
+you create a lot of images via Screen('MakeTexture'), more memory
+(1 GB?) might be appropriate: You can calculate the amount of memory
+consumed by <I>n</I> images of width <I>w</I> and height <I>h</I>
+pixels as:
+<BR><I>m=n*w*h*d</I>
+<BR>
+where <I>d=1</I> for pure gray images and <I>d=4</I> for anything
+else (gray + transparency, true color RGB and RGB + transparency).
+You should have at least that amount of memory plus 200 MB to be on
+the safe side. Otherwise the system could decide to page out memory
+to harddisk when you create your textures. Reading them back from
+disk during your trial will certainly spoil the timing of your presentation.
+</LI>
+<LI>Quit all applications and tools on your machine that are not absolutely
+necessary for your experiment, especially: Disable <I>automatic
+software updates</I> of MacOS-X - they could start in the middle of an
+experiment, <I>disable virus scanners</I> - they create a lot of disc
+activity and CPU load if they decide to scan anything during your
+session, <I>disable the file indexing service and the new Spotlight</I>
+search mechanism of OS-X 10.4 - see <I>virus scanners</I> for explanation.
+Close all unnecessary desktop applications like Safari, iTunes, Microsoft
+Office, ... - Matlab should be the only running application
+on your desktop.
+</LI>
+<LI>Matlab: Try to run with a local license installed instead of a network
+license server, this prevents periodic checks for network licenses
+which could spoil your trials. Under the &#34;Desktop&#34;
+menu in the menu bar, disable the view of the &#34;Current Directory&#34;.
+This prevents Matlab from checking the content of the current working
+directory at 1 second intervals.
+</LI>
+<LI>If possible, use a local license server instead of a network license
+server and <I>disconnect</I> your machine from the network: Any kind
+of network traffic that reaches the network adaptor of your machine
+will be processed by the OS and cause load and possible delays. This
+is especially true for Apple's music sharing over the network, license
+server checks, other machines that have mounted your local disk via
+SMB or AFP network filesystem, and viruses or worms that spread over
+the network and can create an immense load on the system.
+</LI>
+<LI>Try to use a <I>single display setup</I> if your experiment only needs
+to show monoscopic stimuli to the subject. If you want to use a dual
+display setup for convenience, do so for development and debugging
+of your code, but for running the study, either use a single display
+setup or <I>switch all connected displays into mirror mode</I>, so
+they show the same stimulus. <I>Mirror mode</I> can be enabled by
+setting all displays to the same resolution, color depth/settings
+and then checking the &#34;mirror&#34; checkbox in the Display
+preferences panel of OS-X. If you want to present <I>two different
+visual stimuli via two different PTB Onscreen-Windows on two different
+attached displays</I>, e.g., for display of stereoscopic displays or
+binocular rivalry stims, that's fine! The only thing that matters:
+PTB needs <I>full control and coverage over all attached displays</I>.
+But in case you want to drive two displays with different stims, make
+sure you have a fast graphics adaptor with plenty of VRAM installed
+(minimum 128 MB recommended).
+<BR><I>A<SMALL>FTER ANY CHANGE OF DISPLAY SETTINGS, DO A</SMALL></I> <I>clear
+all</I> or <I>clear Screen</I> <SMALL>ON THE </SMALL>M<SMALL>ATLAB PROMPT TO REINITIALIZE
+</SMALL>PTB!!!
+<BR>
+The reason: If only one display shows the Psychtoolbox screen with
+your stimulus, but the other display shows the OS-X desktop with the
+Dock, the menu bar and the Matlab window as well as other applications
+windows, all these applications will consume valuable computational
+ressources and Video memory on your graphics adaptor for maintaining
+and updating their displays. First they use up VRAM for their own
+framebuffers, textures and 3D data: VRAM is needed by PTB for storing
+the textures created with Screen('MakeTexture') and other temporary
+data for drawing, this will slow down the execution of Screen('DrawTexture'),
+because the textures need to be fetched from slow system memory if
+they cannot by cached in VRAM. Then the drawing engine of your GPU
+is needed to update the display of other windows, so it is not available
+for drawing of stimuli. Allocation of the drawing engine happens on
+a &#34;First come, first served&#34; bases, so you could
+be the last! Creating two onscreen windows, one on each display, or
+switching to mirror mode effectively prevents other applications than
+PTB from using ressources on the graphics hardware.
+</LI>
+</UL>
+If you stick to this list of configuration tips, you should get a
+system with minimum timing interference.
+
+<P>
+
+<H1><A NAME="SECTION00050000000000000000"></A><A NAME="sec:Programming-tips"></A>
+<BR>
+4 Programming tips
+</H1>
+
+<P>
+
+<H2><A NAME="SECTION00051000000000000000"></A><A NAME="sub:Optimal-structure"></A>
+<BR>
+4.1 Optimal structure of the code
+</H2>
+
+<P>
+In order to get the highest drawing performance you should structure
+your experimental loop to allow for maximum parallelism between CPU
+and GPU: Stimulus onset is triggered by the <I>Screen('Flip')</I>
+command. It tells PTB to show the result of all previous drawing operations
+- your stimulus - to the subject, either at the <I>next possible
+vertical retrace</I> of the display, or at a specified point in time
+(actually the <I>closest retrace after</I> that point in time). In
+that sense, <I>Flip</I> also marks the <I>beginning</I> of the sequence
+of drawing commands for the next stimulus to show. Therefore you should
+submit all drawing commands for the next stimulus <I>immediately</I>
+after the <I>Flip</I> command and <I>before</I> all commands that
+are unrelated to drawing, e.g., keyboard and mouse checks, Matlab
+code for experiment logic. This way the GPU can execute drawing as
+soon as possible and draw your stim while Matlab is executing the
+remaining commands of your script on the CPU. It also helps if you
+tell the <I>GPU</I> after the last drawing command that this <I>was</I>
+the last drawing command to come. That allows PTB and the GPU some
+further optimizations.
+
+<P>
+In short, your presentation code in the trial-loop should look roughly
+like this (How to do it in a loop, e.g., for movie/moving stims, is
+left as an exercise to the reader)<A NAME="tex2html2"
+  HREF="#foot156"><SUP>2</SUP></A>:
+
+<P>
+
+<OL>
+<LI><I>vbl=Screen('Flip', windowPtr, ...)</I> for showing the previously
+drawn stimulus.
+</LI>
+<LI>All Matlab commands that <I>need to be synchronized with stimulus
+onset</I>, e.g., triggering of an acquisition device like fMRI, MEG,
+EEG, ... or start of sound playback in sync with stimulus onset.
+</LI>
+<LI>All <I>Screen('xxxxxx', windowPtr, ...)</I> commands for drawing
+the next stimulus.
+</LI>
+<LI><I>Screen('DrawingFinished', windowPtr, ...)</I> to mark <I>the
+End</I> of all drawing commands - Helps PTB to optimize drawing.
+</LI>
+<LI>All Matlab commands that are not drawing related, e.g., <I>KbCheck,
+GetMouse, WaitSecs</I>, experiment control logic...
+</LI>
+<LI><I>vbl=Screen('Flip', windowPtr, ...)</I> for showing the new
+stimulus.
+</LI>
+</OL>
+Many simple experiments can do with a different structure (and without
+step 4) as well. This is just the optimal structure if you want to
+draw complex, demanding stimuli at high refresh rates and with reliable
+timing.
+
+<P>
+The generic layout of your experiment script should look like this:
+
+<P>
+
+<OL>
+<LI><I>clear Screen</I> or <I>clear all</I> for clearing out all junk
+left over from previous runs and to force reinit of Screen.
+</LI>
+<LI><I>try</I>
+
+<P>
+
+<OL>
+<LI><I>AssertOpenGL</I> - Check if PTB is properly installed on your system.
+</LI>
+<LI><I>windowPtr = Screen('OpenWindow', screennumber, 0, [], 32,
+2);</I>
+</LI>
+<LI>All kind of generic setup code for your experiment.
+</LI>
+<LI><I>Priority(9);</I> Enable realtime-scheduling
+</LI>
+<LI>ifi = <I>Screen('GetFlipInterval', windowPtr, 200);</I>
+</LI>
+<LI><I>Priority(0);</I> Disable realtime-scheduling
+</LI>
+<LI>Compute intense setup work, e.g., loading of images from disk, precomputing
+stuff
+</LI>
+<LI><I>Priority(9);</I> Enable realtime-scheduling for real trial
+</LI>
+<LI><I>vbl = Screen('Flip', windowPtr, ...);</I> Initially synchronize
+with retrace, take base time in <I>vbl</I>
+</LI>
+<LI>for - loop for stimulus presentation or your trial code (see above
+for optimal code layout)
+</LI>
+<LI><I>Screen('CloseAll');</I> Close display windows
+</LI>
+<LI><I>Priority(0);</I> Shutdown realtime mode.
+</LI>
+<LI>Remaining cleanup code, e.g., writing of result file.
+</LI>
+</OL>
+</LI>
+<LI><I>catch</I>
+
+<P>
+
+<OL>
+<LI><I>Screen('CloseAll');</I> Close display windows
+</LI>
+<LI><I>Priority(0);</I> Shutdown realtime mode.
+</LI>
+<LI><I>ShowCursor;</I> Show cursor again, if it has been disabled.
+</LI>
+</OL>
+</LI>
+<LI><I>end;</I>
+</LI>
+<LI>End of experiment.
+</LI>
+</OL>
+Step 1 makes sure that PTB gets reset to a well defined state and
+that you don't waste Matlab memory with junk from previous activity.
+Steps 2,3-a,3-b,3-c and 4 make sure that you get your Matlab window
+back and things properly cleaned up in case of an error. 2-b Opens
+the window in the recommended way. Steps 2def are optional, they allow
+to do an extra calibration run to get an extra accurate estimate of
+the real monitor refresh interval in the variable <I>ifi</I>.
+
+<P>
+The following subsection will explain specific commands that are relevant
+for experiment setup and for control of presentation timing. Please
+see the example code and the online-help of Screen<A NAME="tex2html3"
+  HREF="#foot355"><SUP>3</SUP></A> for more detailed usage info.
+
+<P>
+Another special consideration: Put text drawing commands (<I>Screen('DrawText',
+...)</I>) at the end of all drawing commands. They are the slowest
+and could stall the faster commands, because they involve significant
+processing by the CPU as well.
+
+<P>
+
+<H2><A NAME="SECTION00052000000000000000"></A><A NAME="sub:Special-commands"></A>
+<BR>
+4.2 Special commands and their usage
+</H2>
+
+<P>
+
+<H3><A NAME="SECTION00052100000000000000">
+4.2.1 Screen('OpenWindow')</A>
+</H3>
+
+<P>
+The <I>windowPtr=Screen('OpenWindow', screennr, [,color] [,rect][,depth][,buffers][,stereo]);</I>
+has multiple functions in PTB:
+
+<P>
+
+<OL>
+<LI>It opens a fullscreen window on the physical display with the logical
+number <I>screennr.</I> It will also make sure that no other application
+can do any drawing operations on that physical display. The window
+would have a background color <I>color</I>, a size <I>rect</I> and
+a color depth of <I>depth</I> bits per pixel, in reality the <I>color</I>
+and <I>rect</I> arguments are ignored and specifying anything else
+than <I>32</I> as <I>depth</I> argument will return an error. The
+<I>buffers</I> argument defines on how many drawing surfaces to use.
+Any value except <I>2</I> - which is the default - will trigger a
+warning on the Matlab window and a visual flashing yellow warning
+sign to tell you that you should use other values only for debugging
+if you are a developer of the PTB itself. The <I>stereo</I> argument
+allows you to enable a stereoscopic display mode: The default value
+of <I>0</I> will just show a monoscopic display window. A value of
+<I>1</I> will enable MacOS-X's built-in stereo display facilities
+- <I>Field sequential stereo</I>. OS-X will automatically flip the
+display at each video refresh between the stimulus for the left-eye
+and the stimulus for the right-eye, while simultaneously generating
+appropriate control signals for stereo-goggles and other stereo display
+hardware supported by Apple. See subsection TODO for information on
+how to specify the content for left- vs. right eye. This mode only
+works on some models of graphics hardware - you'll have to try it
+out. In the future, values greater than one might be implemented to
+support other stereo display modes like anaglyph stereo and such.
+</LI>
+<LI>It performs a measurement loop for estimating the real monitor refresh
+interval: The refresh rate reported by <I>Screen('FrameRate') and
+Screen('NominalFrameRate')</I> is the value returned by the operating
+systems. On flat-panels, this values is pretty often unavailable (=reported
+as zero). On any kind of display, this value may deviate a bit from
+the real value due to manufacturing tolerances of graphics hardware
+and multiple other factors. Therefore the measurement loop measures
+the duration of at least 50 valid consecutive monitor refresh intervals
+and computes an average. The monitor refresh interval that results
+from this measurement can be queried via <I>Screen('GetFlipInterval')</I>.
+</LI>
+<LI>It performs a couple of checks to make sure that synchronization to
+the vertical retrace, queries of rasterbeam positions and a couple
+of other timing related functions work properly on your specific setup.
+You will see a blue screen for multiple seconds while this checks
+are performed. If a check fails or gives potentially troublesome results,
+PTB will flash a big yellow or red warning triangle on your display
+and provide a detailled trouble report on the Matlab command window,
+together with troubleshooting tips.
+<BR>
+On multi-display setups where the displays run at the same monitor
+refresh interval, some of these crucial checks can fail! In order
+to make still sure that synchronization to the vertical retrace works
+properly, a perceptual test is automatically run for 10 seconds, whenever
+a multi-display setup is detected. You should see something like in
+figure TODO on your stimulus display, if syncing properly works: The
+huge gray area flickers in a homogenous way, you don't see any yellow
+horizontal lines at the right border of the display, or only a few
+isolated lines, or a couple of dense yellow lines at the top of the
+display. If syncing doesn't work properly<A NAME="tex2html4"
+  HREF="#foot359"><SUP>4</SUP></A>, you should instead see something like in figure TODO: Many yellow
+lines spread over the middle or bottom part of the display or even
+over the whole height of the display. The gray area is flickering
+in a very inhomogenous way - showing massive tearing artifacts. This
+means that syncing to retrace is broken and you need to perform the
+troubleshooting tips that PTB outputs to the Matlab window - or set
+your displays to different refresh rates and rerun, in case PTB doesn't
+detect trouble, or contact the forum if you're unsure what to do.
+</LI>
+</OL>
+
+<P>
+
+<H3><A NAME="SECTION00052200000000000000"></A><A NAME="sub:Screen__GetFlipInterval__"></A>
+<BR>
+4.2.2 Screen('GetFlipInterval')
+</H3>
+
+<P>
+The <I>ifi = Screen('GetFlipInterval', windowPtr[, numSamples][,stddev][,timeout]);</I>
+command allows you to query a measured estimate of the real monitor
+refresh interval that was computed when opening the window, or to
+rerun the measurement loop with more samples or tighter constraints
+if you want the best possible estimate. If called as <I>ifi=Screen('GetFlipInterval',
+windowPtr);</I> it just returns the estimated <I>interframe-intervall
+ifi</I> from initial calibration. If called with the <I>numSamples</I>
+argument greater than zero, it will rerun the calibration loop, trying
+to take at least <I>numSamples</I> valid samples of monitor refresh,
+with a maximum standard deviation from the mean smaller than <I>stddev</I>
+(default is 50 microseconds). The loop will abort after at most <I>timeout</I>
+seconds, in case your system is too noisy to allow a measurement satisfying
+the given constraints. <I>ifi</I> plays a special role for timed stimulus
+presentation via the <I>Screen('Flip')</I> command.
+
+<P>
+
+<H3><A NAME="SECTION00052300000000000000"></A><A NAME="sub:Screen_Flip_"></A>
+<BR>
+4.2.3 Screen('Flip')
+</H3>
+
+<P>
+The <I>[vbltime sostime fliptime missed beampos] = Screen('Flip',
+windowPtr [,when] [,clearmode] [,dontsync]);</I> command
+has five functions in PTB:
+
+<P>
+
+<UL>
+<LI>Presentation of a - previously drawn - stimulus to the subject at
+a <I>well defined</I> point in time and in sync with the vertical
+retrace of the display.
+</LI>
+<LI>Synchronization of Matlab to the stimulus onset.
+</LI>
+<LI>Acquisition of <I>stimulus presentation timestamps</I> that allow
+you to check and record your presentation timing.
+</LI>
+<LI>Automatic <I>checking</I> for proper presentation timing.
+</LI>
+<LI>Preparation of the drawing surface (the <I>Backbuffer</I>) for drawing
+of the next stimulus.
+</LI>
+</UL>
+Timed stimulus presentation can be done in two ways, depending on
+the <I>when</I> argument passed to <I>Flip</I>:
+
+<P>
+
+<OL>
+<LI>If you set <I>when=0</I> or leave it away, <I>Flip</I> will try to
+show your stimulus at the next possible vertical retrace of your display.
+This is the behaviour of all Psychtoolboxes up to (and including)
+version 1.0.5. Stimulus onset is <I>always</I> in sync with the vertical
+retrace, as this is a built-in feature of modern graphics hardware,
+completely independent of any possible timing delays in the rest of
+the system. But you can still <I>miss</I> stimulus onset on the next
+possible retrace (skipped frame) if you tried to draw too much in
+a single monitor refresh interval, so PTB cannot complete drawing
+of your stimulus in time. In that case, the stimulus will be shown
+at the first possible vertical retrace after the stimulus is ready
+for presentation.
+</LI>
+<LI>If you set <I>when</I> to a value greater than zero, <I>Flip</I> will
+pause execution until the system time reaches the value <I>when</I>
+(specified in seconds). Then it will try to show your stimulus in
+sync with the next possible vertical retrace. It will also perform
+some internal optimizations to try its best to meet the requested
+stimulus presentation deadline <I>when</I>. Method 2 is the recommended
+way of using <I>Flip</I>, method 1 is only available for backward-compatibility
+with old versions.
+<BR>
+Use of the <I>when</I> value allows you to recover the functionality
+of the Screen('WaitBlanking', windowPtr, waitframes) command known
+from the old MacOS-9 PTB. The following snippet of code would show
+a new stimulus exactly 10 monitor refresh intervals after onset of
+the last stimulus:
+<BR><I>ifi=Screen('GetFlipInterval', windowPtr);</I>
+<BR><I>% Record current system time as a reference time:</I>
+<BR><I>starttime=GetSecs();</I>
+<BR><I>% Draw first stimulus...</I>
+<BR><I>...</I>
+<BR><I>% Show first stimulus approximately 30 seconds after time 'starttime',
+record time of real stimulus onset in vbl:</I>
+<BR><I>vbl=Screen('Flip', windowPtr, starttime + 30);</I>
+<BR><I>% Draw second stimulus</I>
+<BR><I>...</I>
+<BR><I>% Show second stimulus *exactly* 10 monitor refresh intervals
+after onset of first stimulus:</I>
+<BR><I>vbl=Screen('Flip', windowPtr, vbl + 10*ifi - 0.5*ifi);</I>
+<BR><I>% Real time of onset of second stimulus is returned in 'vbl'</I>
+<BR>
+<BR>
+The <I>when</I> parameter therefore allows you timing in absolute
+time units (seconds of system time) or relative to some point in time
+(<I>starttime + 30</I> seconds), or some number of monitor refresh
+intervals after the last stimulus onset via the formula:
+<BR><I>when=vbl + (waitframes - 0.5)*ifi</I>
+<BR>
+<P>
+</LI>
+</OL>
+Synchronization of Matlabs execution to the stimulus onset is enabled
+by default: <I>Flip</I> waits for stimulus onset to happen - Matlab
+is paused during this time. Synchronization of Matlab to stimulus
+onset can be disabled by setting the <I>dontsync</I> value to 1 -
+Stimulus onset will still happen in sync with retrace, but Matlab
+won't wait for it to happen and all reported timestamps will be invalid.
+The value <I>dontsync=2</I> will completely disable any synchronization
+of drawing or execution to the retrace - Fast, but will likely create
+severe flicker and tearing artifacts.
+
+<P>
+The <I>clearmode</I> flag allows you to specify what should happen
+after a <I>Flip</I>:
+
+<P>
+
+<OL>
+<LI>A value of <I>clearmode=0</I> (the default setting) will clear the
+drawing surface to the background color, so you can draw a completely
+new stimulus.
+</LI>
+<LI>A value of <I>clearmode=1</I> will restore the drawing surface to
+exactly the same state as before the flip, so you can incrementally
+update your stimulus.
+</LI>
+<LI>A value of <I>clearmode=2</I> will save you some millisecond(s) of
+time by leaving the drawing surface in an undefined state - and leaving
+the job of reinitializing the surface to you.
+</LI>
+</OL>
+<I>Flip</I> will also take and (optionally) return multiple time stamps
+that allow you to measure the time of stimulus onset:
+
+<P>
+
+<UL>
+<LI><I>vbltime</I> is the time (in seconds) when flip flipped the drawing
+surfaces. This is the time when the vertical retrace interval started,
+you need to supply this value if you want to perform a <I>Waitblanking</I>
+via the formula mentioned above.
+</LI>
+<LI><I>sostime</I> is the time when your stimulus starts to get drawn
+on the display. This is the time when the vertical retrace interval
+ended - the display starts drawing the topmost line of your display.
+</LI>
+<LI><I>fliptime</I> is the time when Flip returns to Matlab. This is always
+after <I>vbltime</I> but can be before or slightly after <I>sostime</I>,
+depending on the speed of your graphics card and computer.
+</LI>
+</UL>
+For calculation of <I>vbltime</I> and <I>sostime</I>, PTB takes a
+high-resolution measurement of system time and of the current vertical
+position of your display's rasterbeam. It then corrects the timestamp
+by some correction value calculated from the beam-position, the height
+of your display and the exact monitor refresh interval. This way,
+<I>vbltime</I> is always locked to the time of start of vertical retrace,
+independent of possible timing jitter caused by Matlab or the operating
+system.
+
+<P>
+These timestamps should allow you to accurately check your stimulus
+presentation timing. <I>Flip</I> also contains a built-in check for
+missed presentation deadlines (<I>when</I> value) and skipped frames.
+This detector will spot skipped frames and deadlines reliably if you
+provide a <I>when</I> value greater zero, it will spot many, but not
+all, skipped frames if you don't provide a <I>when</I> value. The
+result of the check for skipped frames is returned in the <I>missed</I>
+value: Positive <I>missed</I> values indicate a missed <I>when</I>
+deadline or skipped frame - <I>Flip</I> couldn't flip at the vertical
+retrace closest to the specified <I>when</I> value. A summary of skipped
+frames is also printed to the Matlab command window at the end of
+your experiment. P<SMALL>LEASE NOTE THAT THE SKIPPED FRAME DETECTOR
+IS ONLY AN ADDITIONAL SAFEGUARD FOR DETECTING TIMING PROBLEMS.</SMALL> You
+are responsible for checking your timing by your own independent tests
+as well, if frame-accurate timing matters for your study.
+
+<P>
+
+<H3><A NAME="SECTION00052400000000000000"></A><A NAME="sub:Screen__DrawingFinished__"></A>
+<BR>
+4.2.4 Screen('DrawingFinished')
+</H3>
+
+<P>
+See VBLSyncTest.m and online help <I>Screen DrawingFinished?</I> for
+now...
+
+<P>
+
+<H3><A NAME="SECTION00052500000000000000"></A><A NAME="sub:Screen__SelectStereoDrawbuffer__"></A>
+<BR>
+4.2.5 Screen('SelectStereoDrawbuffer') 
+</H3>
+
+<P>
+The <I>Screen('SelectStereoDrawbuffer', windowPtr, bufferid)</I> command
+selects the drawing surface for drawing stimuli when stereo display
+mode is enabled. In stereo display mode, you have to draw two stimulus
+images each time before calling <I>Screen('Flip')</I>, one for the
+left-eye, one for the right-eye. The <I>bufferid</I> argument selects
+the target buffer for following drawing operations: <I>bufferid=0</I>
+- Left eye , <I>bufferid=1</I> - Right Eye. The selection stays
+active until the next <I>Flip</I> command and is reset to the left-eye
+after a flip.
+
+<P>
+
+<H2><A NAME="SECTION00053000000000000000">
+To be continued - Stay tuned...</A>
+</H2>
+
+<H1><A NAME="SECTION00060000000000000000">
+About this document ...</A>
+</H1>
+ <STRONG>Performance &amp; Timing - HOWTO for Psychtoolbox on OS-X
+<BR><I>Draft - Version 0.1 - PTB 1.0.5-MK4 and later</I></STRONG><P>
+This document was generated using the
+<A HREF="http://www.latex2html.org/"><STRONG>LaTeX</STRONG>2<tt>HTML</tt></A> translator Version 2002 (1.62)
+<P>
+Copyright &#169; 1993, 1994, 1995, 1996,
+<A HREF="http://cbl.leeds.ac.uk/nikos/personal.html">Nikos Drakos</A>, 
+Computer Based Learning Unit, University of Leeds.
+<BR>
+Copyright &#169; 1997, 1998, 1999,
+<A HREF="http://www.maths.mq.edu.au/~ross/">Ross Moore</A>, 
+Mathematics Department, Macquarie University, Sydney.
+<P>
+The command line arguments were: <BR>
+ <STRONG>latex2html</STRONG> <TT>-no_subdir -split 0 -show_section_numbers /tmp/lyx_tmpdir5791OnE22c/lyx_tmpbuf0/PTB2005.tex</TT>
+<P>
+The translation was initiated by Mario Kleiner on 2005-05-18
+<BR><HR><H4>Footnotes</H4>
+<DL>
+<DT><A NAME="foot369">... delays</A><A
+ HREF="PTB2005.html#tex2html1"><SUP>1</SUP></A></DT>
+<DD>BTW: The same applies to the old PTB on Microsoft Windows and to a
+smaller degree on MacOS-9. Only some specially configured versions
+of <I>GNU/Linux (&#34;Realtime Linux&#34;)</I> and some
+commercial - and hard to program - realtime operating systems like,
+e.g., <I>QNX</I>, would be able to avoid these problems and provide
+real <I>hard-realtime</I>, but PTB is currently not available for
+Linux or such systems...
+
+</DD>
+<DT><A NAME="foot156">...</A><A
+ HREF="PTB2005.html#tex2html2"><SUP>2</SUP></A></DT>
+<DD>A perfect, well documented, albeit extremely simple example is the
+VBLSyncTest script. Run it, read its sourcecode carefully.
+
+</DD>
+<DT><A NAME="foot355">... Screen</A><A
+ HREF="PTB2005.html#tex2html3"><SUP>3</SUP></A></DT>
+<DD>Online help for Screen subcommand <I>foo</I> is displayed when typing
+<I>Screen foo?</I> at the Matlab command prompt, e.g., <I>Screen
+Flip?</I>
+
+</DD>
+<DT><A NAME="foot359">... properly</A><A
+ HREF="PTB2005.html#tex2html4"><SUP>4</SUP></A></DT>
+<DD>This can easily happen with all ATI graphics adaptors when run under
+MacOS-X 10.3 &#34;Panther&#34; or under MacOS-X 10.4.0 &#34;Tiger&#34;
+due to a bug in the ATI display drivers.
+
+</DD>
+</DL><HR>
+<!--Navigation Panel-->
+<IMG WIDTH="81" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="next_inactive"
+ SRC="file:/usr/share/latex2html/icons/nx_grp_g.png"> 
+<IMG WIDTH="26" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="up"
+ SRC="file:/usr/share/latex2html/icons/up_g.png"> 
+<IMG WIDTH="63" HEIGHT="24" ALIGN="BOTTOM" BORDER="0" ALT="previous"
+ SRC="file:/usr/share/latex2html/icons/prev_g.png">   
+<BR>
+<!--End of Navigation Panel-->
+<ADDRESS>
+Mario Kleiner
+2005-05-18
+</ADDRESS>
+</BODY>
+</HTML>
