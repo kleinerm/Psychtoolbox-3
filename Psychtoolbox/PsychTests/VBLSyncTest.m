@@ -230,7 +230,7 @@ try
     
     % Switch to realtime-priority to reduce timing jitter and interruptions
     % caused by other applications and the operating system itself:
-    Priority(9);
+    Priority(MaxPriority(w));
 
     % Query nominal framerate as returned by Operating system:
     % If OS returns 0, then we assume that we run on a flat-panel with
@@ -255,7 +255,7 @@ try
         Screen('DrawText', w, 'Stereo yeah!!!', 10, 40, 255);
     end;
     
-    Screen('Flip', w, 0, 1);
+%    Screen('Flip', w, 0, 1);
     
     % Measure monitor refresh interval again, just for fun...
     % This will trigger a calibration loop of minimum 100 valid samples and return the

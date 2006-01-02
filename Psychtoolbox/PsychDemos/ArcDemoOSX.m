@@ -17,8 +17,8 @@ function ArcDemoOSX
 %   - the circle is then partially covered by another arc
 %
 
-% Make sure we run on OS-X Psychtoolbox
-AssertOSX;
+% Make sure we run on OpenGL Psychtoolbox
+AssertOpenGL;
 
 try
     fprintf('ArcDemoOSX - Donated by Kerstin Preuschoff\n');
@@ -31,7 +31,7 @@ try
 
     % Open onscreen window with default settings:
     screenNumber = max(Screen('Screens'));
-    [window,screenRect] = Screen('OpenWindow', screenNumber);
+    [window,screenRect] = Screen('OpenWindow', screenNumber, 0, []);
 
     HideCursor;
     

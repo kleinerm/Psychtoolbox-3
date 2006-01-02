@@ -44,7 +44,8 @@ function AlphaImageDemoOSX
 %                     default.
 %  4/23/05    mk      Small modifications to make it compatible with
 %                     "normal" Screen.mexmac.
-
+%
+%  12/31/05   mk      Small modifications to make it compatible with Matlab-5
 
 try
     fprintf('AlphaImageDemo (%s)\n click on key or mouse to stop\n', datestr(now));
@@ -122,7 +123,7 @@ try
     ms=100;
     transLayer=2;
     [x,y]=meshgrid(-ms:ms, -ms:ms);
-    maskblob=ones(2*ms+1, 2*ms+1, transLayer, 'uint8') * gray;
+    maskblob=uint8(ones(2*ms+1, 2*ms+1, transLayer) * gray);
     size(maskblob);
     % Layer 2 (Transparency aka Alpha) is filled with gaussian transparency
     % mask.
@@ -140,12 +141,12 @@ try
     Screen('Flip', w);
 
     [a,b]=WindowCenter(w);
-    WaitSetMouse(a,b,w); % set cursor and wait for it to take effect
+    WaitSetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
     
     HideCursor;
     buttons=0;
 
-    priorityLevel=MaxPriority(w);
+	 priorityLevel=MaxPriority(w);
     Priority(priorityLevel);
     % "pre-load" textures
     Screen('DrawTexture', w, imagetex);
@@ -156,14 +157,12 @@ try
     Screen('Flip', w); % would be useful 
     mxold=0;
     myold=0;
-    
-    while 1        
+    while (1)
         % We wait at least 10 ms each loop-iteration so that we
         % don't overload the system in realtime-priority:
         WaitSecs(0.01);
         
-        [mx, my, buttons]=GetMouse(w);
-
+        [mx, my, buttons]=GetMouse(screenNumber);
         % We only redraw if mouse has been moved:
         if (mx~=mxold | my~=myold)            
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
@@ -203,13 +202,5 @@ catch
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
-    rethrow(lasterror);
-end %try..catch..
-
-
-
-
-
-
-
-
+    rethrow(lasterr);
+end %try..catch.
