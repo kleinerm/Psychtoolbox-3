@@ -1,0 +1,19 @@
+<html>
+<body>
+<pre>
+<h1>Erstellungsprotokoll</h1>
+<h3>
+--------------------Konfiguration: Screen - Win32 Debug--------------------
+</h3>
+
+Der Befehl "nmake" ist entweder falsch geschrieben oder
+konnte nicht gefunden werden.
+Fehler beim Ausführen von c:\winnt\system32\cmd.exe.
+
+
+
+<h3>Ergebnisse</h3>
+Screen.exe - 1 Fehler, 0 Warnung(en)
+</pre>
+</body>
+</html>
