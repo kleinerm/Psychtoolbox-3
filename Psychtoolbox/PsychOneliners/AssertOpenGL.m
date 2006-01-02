@@ -1,18 +1,16 @@
 function AssertOpenGL
-
 % AssertOpenGL
 %
-% OSX and OS9: ___________________________________________________________________
-%
 % Break and issue an eror message if the installed Psychtoolbox is not
-% based on OpenGL.  To date there are three versions of the Psychtoolbox,
+% based on OpenGL.  To date there are four versions of the Psychtoolbox,
 % each based on a different graphics library:
 %
 %  OS9: QuickDraw
-%  Win: Direct X and GDI
+%  Win: Direct X and GDI for the old Windows Psychtoolbox.
+%  Win: OpenGL for the ported OSX-Psychtoolbox.
 %  OSX: OpenGL
 %
-%  The Psychtoolboxes based on OpenGL are incompatible (see below)
+%  The Psychtoolboxes based on OpenGL are partially incompatible (see below)
 %  with previous Psychtoolboxes.  A script which relies on the OpenGL
 %  Psychtoolbox should call AssertOpenGL so that it will issue the
 %  appropriate warning if a user tries to run it on a computer with a
@@ -34,19 +32,27 @@ function AssertOpenGL
 %   Screen('WaitBlanking',...);
 %   Screen('CopyWindow');
 %
-% WIN: ________________________________________________________________
-% 
-% AssertOpenGL does not yet exist in Windows.
-% 
-% _________________________________________________________________________
-%
 % See also: IsOSX, IsOS9 , IsWin
 
 % HISTORY
 % 7/10/04   awi     wrote it.
 % 7/13/04   awi     Fixed documentation.
-% 10/6/05   awi		Note here cosmetic changes by dgp between 7/13/04 and 10/6/05
+% 10/6/05   awi	  Note here cosmetic changes by dgp between 7/13/04 and 10/6/05
+% 12/31/05  mk      Detection code modified to really query type of Screen command (OpenGL?)
+%                   instead of OS type, as PTB-OpenGL is now available for Windows as well.
 
-if ~IsOSX 
-    error('This script or function is designated to run only an Psychtoolbox based on OpenGL.  See AssertOpenGL.');
-end
+% We put the detection code into a try-catch-end statement: The old Screen command on windows
+% doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
+% We catch this error in the catch-branch and output the "non-OpenGL" error message...
+try
+   % Query the version struct of new Screen command (if any).
+   c=Screen('Version');
+   % This string is the final say on OpenGL-PTB or not.
+   if (~streq(c.project, 'OpenGL Psychtoolbox'))
+      error('This script or function is designated to run only an Psychtoolbox based on OpenGL.  See AssertOpenGL.');
+   end
+   return;
+catch
+   % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
+   error('This script or function is designated to run only an Psychtoolbox based on OpenGL.  See AssertOpenGL.')   
+end;
