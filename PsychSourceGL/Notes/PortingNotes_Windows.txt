@@ -1,0 +1,22 @@
+Files that are platform independent and should be moved to Common/Screen:
+
+PsychAlphaBlending.h/c
+
+
+Files that are mostly platform independent and should be refactored into OS dependent,
+OS independent accordingly:
+
+PsychMovieSupport.h/c -- Same for OS-X and Windows?
+PsychTextureSupport.h/c
+PsychWindowTextGlue.h/c
+
+
+
+In Screen.h auch noch PsychWindowSupport.h includen!!!!
+
+Im QuicktimeSDK/CIncludes/MacTypes.h -- Zeile 277-280 Auskommentiert!!!
+
+Following Files are completely useless and should be removed:
+SCREENUpdateShadow.c
+SCREENInitIntrinsicPreferences.c
+SCREENXXXXX_OLD.cXXX
