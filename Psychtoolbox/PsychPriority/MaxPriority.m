@@ -80,7 +80,11 @@ function priorityLevel=MaxPriority(varargin);
 % WINDOWS: ________________________________________________________________
 %
 % Priority levels returned by MaxPriority are 0, 1 and 2.
-%
+% Although use of priority levels > 1 is possible and allowed by MaxPriority
+% if you don't try to acquire input from keyboard or mouse, it is discouraged
+% to use levels > 1 as this can interfere with execution of a lot of
+% important system processes and severely reduce the stability of
+% Windows execution.
 % _________________________________________________________________________
 %
 % See RUSH, Priority, MovieDemo, ScreenTest, SCREEN Preference MaxPriorityForBlankingInterrupt,
@@ -115,6 +119,9 @@ function priorityLevel=MaxPriority(varargin);
 % 7/17/04 awi Added OS X condition.  Partitioned help platformwise.
 % 3/12/05 dgp Changed "strcmp" to "streq".
 % 10/10/05 awi Noted changes by dgp on 3/12/05 
+% 12 /31/05 mk Bugfix for windows part. Never worked when passing in a windowPtrOrScreenNumber
+%              instead of keywords. Even if passing in keywords, the priority matching gave
+%              wrong results (possibly too high priority) when multiple keywords were supplied.
 
 % NOTES
 % 7/17/04 awi
@@ -339,15 +346,23 @@ if IsOS9
 %The Windows Part
 
 elseif IsWin
-    
+	if nargin<1
+		error(['Usage: priorityLevel=MaxPriority([windowPtrOrScreenNumber],[''WaitBlanking''],[''PeekBlanking''],...' ...
+		char(13) '                        [''BlankingInterrupt''],[''SetClut''],...'...
+		char(13) '                        [''SND''],[''sound''],[''speak''],...'...
+		char(13) '                        [''GetSecs''],[''WaitSecs''],[''cputime''],...'...
+		char(13) '                        [''KbCheck''],[''KbWait''],[''CharAvail''],[''GetChar''],...'...
+		char(13) '                        [''EventAvail''],[''GetClicks''],[''GetMouse''],[''GetTicks''])']);
+	end
+   
+   match=0;
+   priorityLevel = 2;    
 	for i=1:nargin
-		match=0;
 		if ~ischar(varargin{i}) & ~isnumeric(varargin{i})
 			error([ 'argument ' num2str(i) ' is of wrong type']);
 		end
 		if ischar(varargin{i})
 			name=lower(varargin{i});
-            priorityLevel = 2; 
             %****cases which change the priority****
 			if streq(name,lower('CharAvail'))
 				priorityLevel=min(priorityLevel,1);
@@ -367,12 +382,15 @@ elseif IsWin
 			end
             %****cases which are just here to check for valid arguments****
             if streq(name,lower('SND'))
+				priorityLevel=min(priorityLevel,0);
 				match=1;
 			end
 			if streq(name,lower('sound'))
+				priorityLevel=min(priorityLevel,0);
 				match=1;
 			end
 			if streq(name,lower('speak'))
+				priorityLevel=min(priorityLevel,0);
 				match=1;
 			end
 			if streq(name,lower('CopyWindow'))
@@ -403,9 +421,11 @@ elseif IsWin
 				match=1;
 			end
 			if streq(name,lower('KbCheck'))
+				priorityLevel=min(priorityLevel,1);
 				match=1;
 			end
 			if streq(name,lower('KbWait'))
+				priorityLevel=min(priorityLevel,1);
 				match=1;
 			end
 			if streq(name,lower('fopen'))
@@ -420,7 +440,11 @@ elseif IsWin
         end
 		if isnumeric(varargin{i})
 			w=varargin{i};
-			match=1;
+         % If a generic windowPtrOrScreenNumber argument is supplied, instead of the
+         % more specific keywords, we lower priority to 1. This may be a bit
+         % strict, but better safe than sorry...
+         priorityLevel=min(priorityLevel,1);
+         match=1;
 		end
 		if ~match
 			error(['Unknown function ''' varargin{i} '''']);
