@@ -775,7 +775,6 @@
 		2FD6173407306668008DA6B4 /* PsychWindowTextGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F588F27056AC650007A711C /* PsychWindowTextGlue.h */; };
 		2FD6173507306668008DA6B4 /* mex.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F19007704A03C39007A7274 /* mex.h */; };
 		2FD6173607306668008DA6B4 /* matrix.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F19007804A03C62007A7274 /* matrix.h */; };
-		2FD6173707306668008DA6B4 /* PsychTextureSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */; };
 		2FD6173807306668008DA6B4 /* PsychInstrument.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FE20DD206093D3500FDE06D /* PsychInstrument.h */; };
 		2FD6173907306668008DA6B4 /* ScreenPreferenceState.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F74235E068A842B00D66E0C /* ScreenPreferenceState.h */; };
 		2FD6173A07306668008DA6B4 /* WindowBank.h in Headers */ = {isa = PBXBuildFile; fileRef = F55903760385C81D017A7028 /* WindowBank.h */; };
@@ -845,7 +844,6 @@
 		2FD6177D07306668008DA6B4 /* SCREENTextFont.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC89E42056EC642007A711C /* SCREENTextFont.c */; };
 		2FD6177F07306668008DA6B4 /* SCREENTextBounds.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F646E6E05BC852C0079EEB6 /* SCREENTextBounds.c */; };
 		2FD6178007306668008DA6B4 /* SCREENTextColor.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F91372C05C39F5100CB5A38 /* SCREENTextColor.c */; };
-		2FD6178107306668008DA6B4 /* PsychTextureSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F169D4C05FE6BA7009177BC /* PsychTextureSupport.c */; };
 		2FD6178307306668008DA6B4 /* SCREENPreference.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA0CBC405F1596B007B24E1 /* SCREENPreference.c */; };
 		2FD6178407306668008DA6B4 /* ScreenPreferenceState.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F742337068A830200D66E0C /* ScreenPreferenceState.c */; };
 		2FD6178507306668008DA6B4 /* SCREENDrawTexture.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FC84FBE068E7813009B1AF2 /* SCREENDrawTexture.c */; };
@@ -1034,6 +1032,10 @@
 		832CE7EB094D03D100578C09 /* aluttypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7D9094D03D100578C09 /* aluttypes.h */; };
 		832CE7EC094D03D100578C09 /* alutypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7DA094D03D100578C09 /* alutypes.h */; };
 		832CE7ED094D03D100578C09 /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
+		8370C6F70969F23000BD4C8C /* PsychWindowSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */; };
+		8370C6FC0969F28100BD4C8C /* PsychWindowSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */; };
+		8370C71D096A013600BD4C8C /* PsychTextureSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C71C096A013600BD4C8C /* PsychTextureSupport.h */; };
+		8370C71F096A014E00BD4C8C /* PsychTextureSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */; };
 		83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */ = {isa = PBXBuildFile; fileRef = 83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */; };
 		83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 83C94B00092823A80062DB0A /* PsychMovieSupport.h */; };
 		83C94B03092823C00062DB0A /* PsychMovieSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */; };
@@ -1609,8 +1611,6 @@
 		2F0B17D50778976600359736 /* IOPORTInit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTInit.c; path = ../../../Source/Common/IOPort/IOPORTInit.c; sourceTree = SOURCE_ROOT; };
 		2F0B17D60778976600359736 /* IOPORTSetPort.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTSetPort.c; path = ../../../Source/Common/IOPort/IOPORTSetPort.c; sourceTree = SOURCE_ROOT; };
 		2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Release.rtf"; path = "../../../Notes/How To Release.rtf"; sourceTree = SOURCE_ROOT; };
-		2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychTextureSupport.h; path = ../../../Source/OSX/Screen/PsychTextureSupport.h; sourceTree = SOURCE_ROOT; };
-		2F169D4C05FE6BA7009177BC /* PsychTextureSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychTextureSupport.c; path = ../../../Source/OSX/Screen/PsychTextureSupport.c; sourceTree = SOURCE_ROOT; };
 		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB704/extern/include/mex.h; sourceTree = "<absolute>"; };
 		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB704/extern/include/matrix.h; sourceTree = "<absolute>"; };
 		2F1EB81D05447D4A00A80166 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
@@ -1825,6 +1825,10 @@
 		832CE7D9094D03D100578C09 /* aluttypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = aluttypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/aluttypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DA094D03D100578C09 /* alutypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = alutypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/alutypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
+		8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychWindowSupport.c; path = ../../../Source/Common/Screen/PsychWindowSupport.c; sourceTree = SOURCE_ROOT; };
+		8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychWindowSupport.h; path = ../../../Source/Common/Screen/PsychWindowSupport.h; sourceTree = SOURCE_ROOT; };
+		8370C71C096A013600BD4C8C /* PsychTextureSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychTextureSupport.h; path = ../../../Source/Common/Screen/PsychTextureSupport.h; sourceTree = SOURCE_ROOT; };
+		8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychTextureSupport.c; path = ../../../Source/Common/Screen/PsychTextureSupport.c; sourceTree = SOURCE_ROOT; };
 		83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPreloadTextures.c; path = ../../../Source/Common/Screen/SCREENPreloadTextures.c; sourceTree = SOURCE_ROOT; };
 		83C94B00092823A80062DB0A /* PsychMovieSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychMovieSupport.h; path = ../../../Source/OSX/Screen/PsychMovieSupport.h; sourceTree = SOURCE_ROOT; };
 		83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychMovieSupport.c; path = ../../../Source/OSX/Screen/PsychMovieSupport.c; sourceTree = SOURCE_ROOT; };
@@ -2687,6 +2691,8 @@
 				F569F256038E2C77017A7028 /* ScreenSynopsis.c */,
 				F569F253038E2C77017A7028 /* ScreenExit.c */,
 				F569F24F038E2C77017A7028 /* PsychGLGlue.c */,
+				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
+				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
 			);
 			name = Common;
 			sourceTree = "<group>";
@@ -2955,7 +2961,6 @@
 				F5AF1EE603B3C6F5017A7028 /* PsychWindowGlue.h */,
 				F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */,
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
-				2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */,
 				2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */,
 				83C94B00092823A80062DB0A /* PsychMovieSupport.h */,
 			);
@@ -2968,7 +2973,6 @@
 				F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */,
 				F5CC19FE0394691F017A7028 /* PsychWindowGlue.c */,
 				2F588F29056AC66D007A711C /* PsychWindowTextGlue.c */,
-				2F169D4C05FE6BA7009177BC /* PsychTextureSupport.c */,
 				2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */,
 				83C94B02092823C00062DB0A /* PsychMovieSupport.c */,
 			);
@@ -3065,6 +3069,8 @@
 			children = (
 				F55903740385C81D017A7028 /* RegisterProject.h */,
 				F598839303F9A74F01A80168 /* PsychRects.h */,
+				8370C71C096A013600BD4C8C /* PsychTextureSupport.h */,
+				8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */,
 				F55903780385C81D017A7028 /* ScreenTypes.h */,
 				F5CC1B2103949058017A7028 /* ScreenArguments.h */,
 				F55903760385C81D017A7028 /* WindowBank.h */,
@@ -3627,7 +3633,6 @@
 				2FD6173407306668008DA6B4 /* PsychWindowTextGlue.h in Headers */,
 				2FD6173507306668008DA6B4 /* mex.h in Headers */,
 				2FD6173607306668008DA6B4 /* matrix.h in Headers */,
-				2FD6173707306668008DA6B4 /* PsychTextureSupport.h in Headers */,
 				2FD6173807306668008DA6B4 /* PsychInstrument.h in Headers */,
 				2FD6173907306668008DA6B4 /* ScreenPreferenceState.h in Headers */,
 				2FD6173A07306668008DA6B4 /* WindowBank.h in Headers */,
@@ -3639,6 +3644,8 @@
 				2FD31F1C079E1F89005D8F2D /* TimeLists.h in Headers */,
 				2F4D83DC07B8282C00CE685A /* PsychAlphaBlending.h in Headers */,
 				83C94B01092823A80062DB0A /* PsychMovieSupport.h in Headers */,
+				8370C6FC0969F28100BD4C8C /* PsychWindowSupport.h in Headers */,
+				8370C71D096A013600BD4C8C /* PsychTextureSupport.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -6521,7 +6528,6 @@
 				2FD6177D07306668008DA6B4 /* SCREENTextFont.c in Sources */,
 				2FD6177F07306668008DA6B4 /* SCREENTextBounds.c in Sources */,
 				2FD6178007306668008DA6B4 /* SCREENTextColor.c in Sources */,
-				2FD6178107306668008DA6B4 /* PsychTextureSupport.c in Sources */,
 				2FD6178307306668008DA6B4 /* SCREENPreference.c in Sources */,
 				2FD6178407306668008DA6B4 /* ScreenPreferenceState.c in Sources */,
 				2FD6178507306668008DA6B4 /* SCREENDrawTexture.c in Sources */,
@@ -6561,6 +6567,8 @@
 				83C94B11092825770062DB0A /* SCREENglMatrixFunctionWrappers.c in Sources */,
 				83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */,
 				832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */,
+				8370C6F70969F23000BD4C8C /* PsychWindowSupport.c in Sources */,
+				8370C71F096A014E00BD4C8C /* PsychTextureSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

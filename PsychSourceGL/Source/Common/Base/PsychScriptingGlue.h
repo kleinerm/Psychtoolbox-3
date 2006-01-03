@@ -31,8 +31,8 @@
 #include "Psych.h"
 
 
-#define OPTIONAL				FALSE
-#define REQUIRED				TRUE
+//#define OPTIONAL				FALSE
+//#define REQUIRED				TRUE
 #define kPsychUseDefaultArgPosition		-1   //see ScreenArguments.h for more argument position defaults.  We should get rid of this.  
 #define kPsychNoArgReturn			-1
 

@@ -3,7 +3,7 @@
 	
 	PLATFORMS:	
 	
-		This is the OS X Core Graphics version only.  
+		This is the OS-X Coregraphics version only.  
 				
 	AUTHORS:
 	
@@ -43,20 +43,15 @@
 
 #include "Screen.h"
 
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode);
-boolean PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
-void	PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
-void	PsychCloseWindow(PsychWindowRecordType *windowRecord);
-void	PsychCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
-void	PsychFlushGL(PsychWindowRecordType *windowRecord);
-double	PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip, int vbl_synclevel, int dont_clear, double flipwhen, int* beamPosAtFlip, double* miss_estimate, double* time_at_flipend, double* time_at_onset);
-void	PsychSetGLContext(PsychWindowRecordType *windowRecord);
-void	PsychUnsetGLContext(void);
-double  PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* numSamples, double* maxsecs, double* stddev, double intervalHint);
-void    PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int belltype);
-void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
-void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
+boolean PsychRealtimePriority(boolean enable_realtime);
+boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM);
+boolean PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
+void	PsychOSCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
+void	PsychOSCloseWindow(PsychWindowRecordType *windowRecord);
+void	PsychOSCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
+void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
+void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
+void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
+void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 //end include once
 #endif
-
-

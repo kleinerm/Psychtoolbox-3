@@ -85,7 +85,8 @@ PsychError SCREENDrawDots(void)
 	int                                     depthValue, whiteValue, colorPlaneSize, numColorPlanes, m,n,p,mc,nc,pc,idot_type;
         int                                     i, nrpoints, nrsize;
 	boolean                                 isArgThere, usecolorvector;
-	double					*xy, *size, *center, *dot_type, *colors, *tmpcolors;
+	double					*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
+	const double convfactor = 1/255.0;
     
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -150,10 +151,8 @@ PsychError SCREENDrawDots(void)
                 // This is inefficient, as it burns some cpu-cycles, but necessary to keep color
                 // specifications consistent in the PTB - API.
                 tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
-                int i;
-                double* pcolors = colors;
-                double* tcolors = tmpcolors;
-                double convfactor = 1/255.0;
+                pcolors = colors;
+                tcolors = tmpcolors;
                 for (i=0; i<(nc*mc); i++) {
                     *(tcolors++)=(*pcolors++) * convfactor;
                 }

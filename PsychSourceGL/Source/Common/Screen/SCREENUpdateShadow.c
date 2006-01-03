@@ -44,7 +44,7 @@ PsychError SCREENUpdateShadow(void)
     PsychErrorExit(PsychRequireNumInputArgs(1)); 	
 
 	PsychAllocInWindowRecordArg(1, TRUE, &sourceWin);
-	PsychUpdateShadow(sourceWin);				//update will allocate if necessary
+	//	PsychUpdateShadow(sourceWin);				//update will allocate if necessary
 	
     return(PsychError_none);
 

@@ -42,7 +42,7 @@ void PsychtcbVertex(void *data)
     glVertex3dv((GLdouble *)data);
 }
 
-void PsychtcbEnd()
+void PsychtcbEnd(void)
 {
     glEnd();
 }
@@ -77,7 +77,12 @@ PsychError SCREENFillPoly(void)
 	boolean					isArgThere;
 	double					*pointList;
         double                                  isConvex=-1;
+	double*                                 tempv;
         static GLUtesselator                    *tess = NULL;
+	int j,k;
+	int flag = 0;
+	double z;
+	isConvex=0;
 
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -127,12 +132,7 @@ PsychError SCREENFillPoly(void)
 	//
 	// -> This webpage explains the mathematical principle behind the test and provides
 	// a C-Source file which has been adapted for use here.
-	//
-	int j,k;
-	int flag = 0;
-	double z;
-	isConvex=0;
-	
+	//	
 	for (i=0;i<mSize;i++) {
 		j = (i + 1) % mSize;
 		k = (i + 2) % mSize;
@@ -163,44 +163,48 @@ PsychError SCREENFillPoly(void)
 	
 	////// Switch between fast path and slow path, depending on convexity of polygon:
 	if (isConvex>0.5) {
-		// Convex, non-self-intersecting polygon - Take the fast-path:
-		//draw the rect
-		glBegin(GL_POLYGON);
-	for(i=0;i<mSize;i++) glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
-		glEnd();
+	  // Convex, non-self-intersecting polygon - Take the fast-path:
+	  //draw the rect
+	  glBegin(GL_POLYGON);
+	  for(i=0;i<mSize;i++) glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
+	  glEnd();
 	}
 	else {
-		// Possibly concave and/or self-intersecting polygon - At least we couldn't prove it is convex.
-		// Take the slow, but safe, path using GLU-Tesselators to break it up into a couple of convex, simple
-		// polygons:
-
-		// Create and initialize a new GLU-Tesselator object:
-		tess = gluNewTess();
-		// Assign our callback-functions:
-		gluTessCallback(tess, GLU_TESS_BEGIN, PsychtcbBegin);
-		gluTessCallback(tess, GLU_TESS_VERTEX, PsychtcbVertex);
-		gluTessCallback(tess, GLU_TESS_END, PsychtcbEnd);
-		gluTessCallback(tess, GLU_TESS_COMBINE, PsychtcbCombine);
-		
-		// We need to hold the values in a temporary array:
-		double* tempv=(double*) PsychMallocTemp(sizeof(double)*3*mSize);
-
-		// Now submit our Polygon for tesselation:
-		gluTessBeginPolygon(tess, NULL);
-		gluTessBeginContour(tess);
-		for(i=0;i<mSize;i++) {
-			tempv[i*3]=(GLdouble) pointList[i];
-			tempv[i*3+1]=(GLdouble) pointList[i+mSize];
-			tempv[i*3+2]=0;
-			gluTessVertex(tess, (GLdouble*) &(tempv[i*3]), (void*) &(tempv[i*3]));
-		}            
-		gluTessEndContour(tess);
-		// Process, finalize and render it by calling our callback-functions:
-		gluTessEndPolygon (tess);
-		gluDeleteTess(tess);
-		tess=NULL;
-		
-		// Done with drawing the filled polygon. (Slow-Path)
+	  // Possibly concave and/or self-intersecting polygon - At least we couldn't prove it is convex.
+	  // Take the slow, but safe, path using GLU-Tesselators to break it up into a couple of convex, simple
+	  // polygons:
+	  
+	  // Create and initialize a new GLU-Tesselator object:
+	  tess = gluNewTess();
+	  // Assign our callback-functions:
+#if PSYCH_SYSTEM == PSYCH_OSX
+	  gluTessCallback(tess, GLU_TESS_BEGIN, PsychtcbBegin);
+	  gluTessCallback(tess, GLU_TESS_VERTEX, PsychtcbVertex);
+	  gluTessCallback(tess, GLU_TESS_END, PsychtcbEnd);
+	  gluTessCallback(tess, GLU_TESS_COMBINE, PsychtcbCombine);
+#else
+          // FIXME: Fucking M$ Compiler to dumb to compile this!
+	  return(PsychError_unimplemented);
+#endif
+	  // We need to hold the values in a temporary array:
+	  tempv=(double*) PsychMallocTemp(sizeof(double)*3*mSize);
+	  
+	  // Now submit our Polygon for tesselation:
+	  gluTessBeginPolygon(tess, NULL);
+	  gluTessBeginContour(tess);
+	  for(i=0;i<mSize;i++) {
+	    tempv[i*3]=(GLdouble) pointList[i];
+	    tempv[i*3+1]=(GLdouble) pointList[i+mSize];
+	    tempv[i*3+2]=0;
+	    gluTessVertex(tess, (GLdouble*) &(tempv[i*3]), (void*) &(tempv[i*3]));
+	  }            
+	  gluTessEndContour(tess);
+	  // Process, finalize and render it by calling our callback-functions:
+	  gluTessEndPolygon (tess);
+	  gluDeleteTess(tess);
+	  tess=NULL;
+	  
+	  // Done with drawing the filled polygon. (Slow-Path)
 	}
         
 	return(PsychError_none);

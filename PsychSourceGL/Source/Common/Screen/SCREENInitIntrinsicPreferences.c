@@ -15,12 +15,14 @@
   
   Initiailize all the Psychtoolbox preferences which Screen intialises.
   
+  This File is completely useless and should be removed! (MK)
+  
 */
 
 
 #include "Screen.h"
 
-
+void PsychSetIntrinsicScreenPreferences(void);
 
 
 static char useString[] = "Screen('InitIntrinsicPreferences')";
@@ -43,7 +45,7 @@ PsychError SCREENInitIntrinsicPreferences(void)
 	//check for superfluous or missing arguments
 	PsychErrorExit(PsychCapNumInputArgs(0));			
 
-	PsychSetIntrinsicScreenPreferences();
+	//	PsychSetIntrinsicScreenPreferences();
 	
 	return(PsychError_none);
 }

@@ -58,9 +58,11 @@ PsychError SCREENTextSize(void)
     
     //Fetch and set the new size if it is specified. 
     doSetSize= PsychCopyInIntegerArg(2, FALSE, &newTextSize);
-    if(doSetSize)
-        windowRecord->textAttributes.textSize=newTextSize;
-        
+    if(doSetSize) {
+      windowRecord->textAttributes.textSize=newTextSize;
+      windowRecord->textAttributes.needsRebuild=TRUE;
+    }
+
     return(PsychError_none);
 
 }

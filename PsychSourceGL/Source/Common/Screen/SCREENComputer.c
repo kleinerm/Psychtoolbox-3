@@ -130,16 +130,11 @@ struct clockinfo {
 
 */
 
-
-
-
-
 #include "Screen.h"
 
 //special includes for sysctl calls
-
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include <sys/types.h>
-
 #include <sys/sysctl.h>
 
 //special include for SCDynamicStoreCopySpecific* functions
@@ -685,10 +680,11 @@ PsychError SCREENComputer(void)
 }
 
 
+#else
 
+PsychError SCREENComputer(void)
+{
+  return(PsychError_unimplemented);
+}
 
-
-
-
-
-
+#endif

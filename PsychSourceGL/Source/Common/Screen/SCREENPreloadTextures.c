@@ -49,14 +49,15 @@ PsychError SCREENPreloadTextures(void)
 	boolean                                 isArgThere;
         int                                     *texhandles;
         PsychWindowRecordType                   **windowRecordArray;        
-        int                                     i, n, numWindows; 
+        int                                     i, n, numWindows, myhandle; 
         double                                  *success;
-        Boolean*                                residency;
+        boolean*                                residency;
         GLuint*                                 texids;
         GLboolean*                              texresident;
         Boolean                                 failed = false;
         GLclampf                                maxprio = 1.0f;
-        
+        GLenum                                  target;
+
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -77,7 +78,11 @@ PsychError SCREENPreloadTextures(void)
         // Setup texturing for no-op texturing:
         PsychSetGLContext(windowRecord);
         glDisable(GL_TEXTURE_2D);
-        glEnable(GL_TEXTURE_RECTANGLE_EXT);
+
+	// Fetch global texturing mode:
+	target=PsychGetTextureTarget(windowRecord);
+
+        glEnable(target);
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
         glColor4f(0, 0, 0, 0);
 	// Setup identity modelview matrix:
@@ -97,7 +102,7 @@ PsychError SCREENPreloadTextures(void)
                     // Prioritize this texture:
                     glPrioritizeTextures(1, (GLuint*) &(windowRecordArray[i]->textureNumber), &maxprio);
                     // Bind this texture:
-                    glBindTexture(GL_TEXTURE_RECTANGLE_EXT, windowRecordArray[i]->textureNumber);
+                    glBindTexture(target, windowRecordArray[i]->textureNumber);
                     // Render a single textured point, thereby enforcing a texture upload:
                     glBegin(GL_QUADS);
                     glTexCoord2f(0,0); glVertex2i(10,10);
@@ -123,7 +128,7 @@ PsychError SCREENPreloadTextures(void)
             // Vector with texture handles provided: Just preload them.
             texids = (GLuint*) PsychMallocTemp(sizeof(GLuint) * n);
             texresident = (GLboolean*) PsychMallocTemp(sizeof(GLboolean) * n);
-            int myhandle=0;
+            myhandle=0;
             for (i=0; i<n; i++) {
                 myhandle = texhandles[i];
                 texwin = NULL;
@@ -132,7 +137,7 @@ PsychError SCREENPreloadTextures(void)
                     // Prioritize this texture:
                     glPrioritizeTextures(1, (GLuint*) &(texwin->textureNumber), &maxprio);
                     // Bind this texture:
-                    glBindTexture(GL_TEXTURE_RECTANGLE_EXT, texwin->textureNumber);
+                    glBindTexture(target, texwin->textureNumber);
                     // Render a single textured point, thereby enforcing a texture upload:
                     glBegin(GL_QUADS);
                     glTexCoord2f(0,0); glVertex2i(10,10);
@@ -155,7 +160,7 @@ PsychError SCREENPreloadTextures(void)
         glPopMatrix();
         // Disable texture engine:
         glDisable(GL_TEXTURE_2D);
-        glDisable(GL_TEXTURE_RECTANGLE_EXT);
+        glDisable(target);
 
         // Wait for prefetch completion:
         glFinish();

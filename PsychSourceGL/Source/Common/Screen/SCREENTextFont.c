@@ -45,10 +45,11 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextFont(void) 
 {
-
     boolean			doSetByName, doSetByNumber, foundFont;
     PsychWindowRecordType	*windowRecord;
+#if PSYCH_SYSTEM == PSYCH_OSX
     PsychFontStructType		*fontRecord;
+#endif
     int				oldTextFontNumber, inputTextFontNumber;
     char			*oldTextFontName, *inputTextFontName;
     
@@ -76,6 +77,7 @@ PsychError SCREENTextFont(void)
     doSetByNumber= PsychCopyInIntegerArg(2, kPsychArgAnything, &inputTextFontNumber);
     doSetByName= PsychAllocInCharArg(2, kPsychArgAnything, &inputTextFontName);
     foundFont=0;
+#if PSYCH_SYSTEM == PSYCH_OSX
     if(doSetByNumber)
         foundFont=PsychGetFontRecordFromFontNumber(inputTextFontNumber, &fontRecord);
     if(doSetByName)
@@ -86,6 +88,18 @@ PsychError SCREENTextFont(void)
     }
     
     return(PsychError_none);
+#else
+    // Special case for M$-Windows:
+    if(doSetByNumber) printf("PTB-WARNING: Sorry, selecting font by number in Screen('TextFont') is not yet supported on Windows. Command ignored.\n");
+    if(doSetByName) {
+      strncpy(windowRecord->textAttributes.textFontName, inputTextFontName, 255);
+      windowRecord->textAttributes.textFontNumber= 0;
+      // Set the rebuild flag:
+      windowRecord->textAttributes.needsRebuild=TRUE;
+    }
+
+    return(PsychError_none);
+#endif
 
 }
 

@@ -52,6 +52,7 @@ PsychError SCREENGetMovieImage(void)
     int                                 waitForImage = TRUE;
     double                              requestedTimeIndex = -1;
     double                              presentation_timestamp = 0;
+    int rc=0;
     
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -83,7 +84,6 @@ PsychError SCREENGetMovieImage(void)
     // according to current movie playback time.
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
     
-    int rc=0;
     while (rc==0) {
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
         if (rc<0) {

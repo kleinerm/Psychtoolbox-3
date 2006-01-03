@@ -36,13 +36,14 @@ void PsychGLFlush(void)
 
 static char useString[] = "synchFlagRead = SCREEN('SetGLSynchronous', [synchFlagSet]);";
 static char synopsisString[] =
-	"Each Psychtoolbox command which draws into a window issues a command  ";  
-	
+	"This command is useless, Don't use it! ";  
+static char seeAlsoString[] = "";
+
 PsychError SCREENSetGLSynchronous(void) 
 {
 
 	//all sub functions should have these two lines
-	PsychPushHelp(useString, synopsisString);
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//get argument values from inputs. 

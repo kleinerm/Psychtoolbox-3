@@ -105,7 +105,7 @@ PsychError SCREENDrawLines(void)
             size[0] = 1;
 	} else {
 		PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, &size);
-		if(p!=1|n!=1|m!=1)
+		if(p!=1 || n!=1 || m!=1)
 			PsychErrorExitMsg(PsychError_user, "size must be a scalar");
 	}
 	
@@ -135,7 +135,7 @@ PsychError SCREENDrawLines(void)
 		center[1] = 0;
 	} else {
 		PsychAllocInDoubleMatArg(5, TRUE, &m, &n, &p, &center);
-		if(p!=1|n!=2|m!=1)
+		if(p!=1 || n!=2 || m!=1)
 			PsychErrorExitMsg(PsychError_user, "center must be a 1-by-2 vector");
 	}
 	
@@ -146,7 +146,7 @@ PsychError SCREENDrawLines(void)
 	} else {
 		PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
 		smooth = (int) dot_type[0];
-		if(p!=1|n!=1|m!=1|(smooth!=0 & smooth!=1))
+		if(p!=1 || n!=1 || m!=1 || (smooth!=0 && smooth!=1))
 			PsychErrorExitMsg(PsychError_user, "smooth must be 0 or 1");
 	}
 
@@ -161,7 +161,7 @@ PsychError SCREENDrawLines(void)
 		PsychErrorExitMsg(PsychError_user, "No xy argument supplied");
 	}
 	PsychAllocInDoubleMatArg(2, TRUE, &m, &n, &p, &xy);
-	if(p!=1|m!=2)
+	if(p!=1 || m!=2)
 		PsychErrorExitMsg(PsychError_user, "xy must be a 2-row vector");
 	
 	//get colors coordinates argument
@@ -170,7 +170,7 @@ PsychError SCREENDrawLines(void)
 		PsychErrorExitMsg(PsychError_user, "No color array argument supplied");
 	}
 	PsychAllocInDoubleMatArg(4, TRUE, &m, &n, &p, &colors);
-	if(p!=1|m<3|m>4)
+	if(p!=1 || m<3 || m>4)
 		PsychErrorExitMsg(PsychError_user, "colors must be a 3- or 4-row vector");
 
 #ifdef OLD

@@ -60,8 +60,11 @@ typedef struct {
         int							textStyle;  // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend		
         Str255						textFontName;
         int							textFontNumber;
-		PsychColorType				textColor;
-		PsychColorType				textBackgroundColor;
+        PsychColorType				textColor;
+	PsychColorType				textBackgroundColor;
+        GLuint                          DisplayList;         // Base-Id for font display lists: Handle for ASCII character zero.
+        boolean                         needsRebuild;  // If set to true, the display lists need to be rebuild becaue font has changed.
+
 } PsychTextAttributes;
 
 

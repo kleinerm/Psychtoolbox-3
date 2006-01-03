@@ -64,11 +64,12 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENGetMouseHelper(void) 
 {
-
+  // FIXME: Unimplemented!!!!
+#if PSYCH_SYSTEM == PSYCH_OSX
 	Point		mouseXY;
 	UInt32		buttonState;
 	double		numButtons, *buttonArray;
-	int			i;
+	int		i;
 	boolean		doButtonArray;
 	
 	
@@ -80,7 +81,7 @@ PsychError SCREENGetMouseHelper(void)
 	PsychErrorExit(PsychCapNumInputArgs(1));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(3));  //The maximum number of outputs
 	
-    //Buttons.  
+	//Buttons.  
 	// The only way I know to detect the  number number of mouse buttons is directly via HID.  The device reports
 	//that information but OS X seems to ignore it above the level of the HID driver, that is, no OS X API above the HID driver
 	//exposes it.  So GetMouse.m function calls PsychHID detect the number of buttons and then passes that value to GetMouseHelper 
@@ -101,6 +102,14 @@ PsychError SCREENGetMouseHelper(void)
 	GetMouse(&mouseXY);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
+#else
+	double numButtons;
+	double* buttonArray;
+	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
+	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)0);
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)0);
+#endif
 	
 	return(PsychError_none);
 	

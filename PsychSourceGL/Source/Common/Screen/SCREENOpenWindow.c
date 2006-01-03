@@ -125,8 +125,7 @@ PsychError SCREENOpenWindow(void)
     
 
     //just for debugging
-
-    //printf("Entering SCREENOpen\n");
+    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering SCREENOpen\n");
 
     
 
@@ -228,11 +227,8 @@ PsychError SCREENOpenWindow(void)
 
     PsychGetScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
 
-    if(!kPsychAllWindowsFull)
-
-        isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
-
-    
+    // Override it with a user supplied rect, if one was supplied:
+    isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
 
     //find the number of specified buffers. 
 
@@ -298,7 +294,9 @@ PsychError SCREENOpenWindow(void)
 
     }
 
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode);
+    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
+
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect);
 
     if(!didWindowOpen){
 
@@ -314,11 +312,12 @@ PsychError SCREENOpenWindow(void)
 
     }
 
+    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychCreateTextureForWindow\n");
     
 
     //create the shadow texture for this window
 
-    PsychCreateTextureForWindow(windowRecord);
+    // MK: Not needed anymore! PsychCreateTextureForWindow(windowRecord);
 
     
 
@@ -334,13 +333,15 @@ PsychError SCREENOpenWindow(void)
 
 
 
+    //if (PSYCH_DEBUG == PSYCH_ON) printf("Finalizing SCREENOpen\n");
     
+    PsychTestForGLErrors();
 
     //Return the window index and the rect argument.
 
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
-    PsychCopyOutRectArg(2, FALSE, rect);
+    PsychCopyOutRectArg(2, FALSE, windowRecord->rect);
 
     return(PsychError_none);    
 

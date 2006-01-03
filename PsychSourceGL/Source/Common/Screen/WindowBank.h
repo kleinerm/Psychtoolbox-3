@@ -8,8 +8,8 @@ AUTHORS:
 
 PLATFORMS: 
 
-	Only OS X for now
-
+	OS X and Microsoft Windows. Only the PsychTargetSpecificWindowRecordType struct
+	is different for the different operating systems.
 
 HISTORY:
 	
@@ -18,7 +18,8 @@ HISTORY:
                                 - These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
         07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
         10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
- 
+	12/27/05  mk            Added new targetSpecific - struct for the Win32 port of PTB.
+
 DESCRIPTION:
 
 	WindowBank contains functions for storing records of open  onscreen and offscreen windows.
@@ -61,8 +62,7 @@ T0 DO:
 #define PSYCH_MAX_SCREENS				10		//the total possible number of screens
 #define PSYCH_LAST_SCREEN				9		//the highest possible screen index
 #define PSYCH_FIRST_SCREEN				0		//the lowest possible screen index
-#define PSYCH_ALLOC_SCREEN_RECORDS		10		//length of static array allocated to hold screen pointers.
-
+#define PSYCH_ALLOC_SCREEN_RECORDS		        10		//length of static array allocated to hold screen pointers.
 #define PSYCH_FIRST_WINDOW				10		//the lowest possible windox index
 					
 
@@ -72,13 +72,24 @@ T0 DO:
 
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-
+// Definition of OS-X core graphics and Core OpenGL handles:
 typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
         CVOpenGLTextureRef      QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
 } PsychTargetSpecificWindowRecordType;
+#endif 
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Definition of Win32 Window handles, device handles and OpenGL contexts
+typedef struct{
+  HGLRC		          contextObject;      // OpenGL rendering context.
+  HDC                     deviceContext;      // Device context of the window.
+  HWND                    windowHandle;       // The window handle.
+  PIXELFORMATDESCRIPTOR   pixelFormatObject;  // The context's pixel format object.
+  CVOpenGLTextureRef      QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
+  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
+} PsychTargetSpecificWindowRecordType;
 #endif 
 
 

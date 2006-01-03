@@ -53,7 +53,8 @@ PsychError SCREENGetFlipInterval(void)
     double maxsecs=10;         // Time-out after ten seconds by default.
     double stddev=0.00005;     // Require a std-deviation less than 50 microseconds by default..
     int nrSamples=0;
-    
+    double ifi_hint;
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -88,7 +89,7 @@ PsychError SCREENGetFlipInterval(void)
     }
  
     // Query framerate / ifi-estimate from operating system:
-    double ifi_hint = PsychGetNominalFramerate(windowRecord->screenNumber);
+    ifi_hint = PsychGetNominalFramerate(windowRecord->screenNumber);
     if (ifi_hint > 0) ifi_hint = 1.0 / (double) ifi_hint;
 
     ifi_estimate = PsychGetMonitorRefreshInterval(windowRecord, &nrSamples, &maxsecs, &stddev, ifi_hint);    

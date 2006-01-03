@@ -65,6 +65,7 @@ static char synopsisString[] =
     "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin.";
 static char seeAlsoString[] = "";
 
+#if PSYCH_SYSTEM == PSYCH_OSX
 
 PsychError SCREENTextBounds(void) 
 {
@@ -262,3 +263,11 @@ PsychSetATSUTStyleAttributesFromPsychAttributes(ATSUStyle style, PsychTextAttrib
 	
 }
 */
+
+#else
+PsychError SCREENTextBounds(void)
+{
+  return(PsychError_unimplemented);
+}
+
+#endif

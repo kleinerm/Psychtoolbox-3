@@ -44,6 +44,7 @@ PsychError SCREENglPushMatrix(void)
         static char seeAlsoString[] = "";	
     
 	PsychWindowRecordType	*windowRecord;
+        GLint stack_cur, stack_max;
     
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -63,7 +64,7 @@ PsychError SCREENglPushMatrix(void)
         
         // Compare current fill level of matrix stack with maximum level: We reserve five
         // stack-slots for PTB internal use, so at least that needs to be free before push.
-        GLint stack_cur, stack_max;
+
         glGetIntegerv(GL_MAX_MODELVIEW_STACK_DEPTH, &stack_max);
         glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &stack_cur);
         if (stack_max - stack_cur < 6) {
@@ -91,6 +92,7 @@ PsychError SCREENglPopMatrix(void)
     static char seeAlsoString[] = "";	
     
     PsychWindowRecordType	*windowRecord;
+    GLint stack_cur;
     
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -110,7 +112,7 @@ PsychError SCREENglPopMatrix(void)
     
     // Compare current fill level of matrix stack with maximum level: We reserve five
     // stack-slots for PTB internal use, so at least that needs to be free before push.
-    GLint stack_cur;
+
     glGetIntegerv(GL_MODELVIEW_STACK_DEPTH, &stack_cur);
     if (stack_cur < 2) {
         printf("\nCouldn't pop matrix from top of OpenGL-Modelview matrix stack, because matrix stack is empty! The most common reason is\n");

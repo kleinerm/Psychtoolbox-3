@@ -20,6 +20,7 @@
                 11/01/05        mk              Finally the real bugfix for "Descenders of letters get cut/eaten away" bug introduced in PTB 1.0.5!
                 11/01/05        mk              Removal of dead code + beautification.
                 11/21/05        mk              Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
+		01/01/06        mk              Code branch for M$-Windoze implementation of DrawText added.
 
     DESCRIPTION:
   
@@ -65,19 +66,22 @@
 
 #include "Screen.h"
 
-#define CHAR_TO_UNICODE_LENGTH_FACTOR		4			//Apple recommends 3 or 4 even though 2 makes more sense.
-#define USE_ATSU_TEXT_RENDER			1
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
 static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor]);";
-//                                                        1          2      3    4    5        6       
+static char seeAlsoString[] = "";
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+#define CHAR_TO_UNICODE_LENGTH_FACTOR		4			//Apple recommends 3 or 4 even though 2 makes more sense.
+#define USE_ATSU_TEXT_RENDER			1
+
 static char synopsisString[] = 
     "Draw text. \"text\" may include two-byte (16 bit) characters (e.g. Chinese). "
     "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
     "g b] triplet) that you want to poke into each pixel; default produces black with "
     "the standard CLUT for this window's pixelSize. \"newX, newY\" return the final pen "
     "location.";
-static char seeAlsoString[] = "";
 
 
 //Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 
@@ -355,3 +359,226 @@ PsychError SCREENDrawText(void)
     return(PsychError_none);
 }
 
+#else
+
+// Microsoft-Windows implementation of DrawText...
+// The code below will need to be restructured and moved to the proper
+// places in PTB's source tree when things have stabilized a bit...
+
+#include <gl/glaux.h>
+
+/* PsychOSBuildFont
+ *
+ * (Re)Build a font for the specified winRec, based on OpenGL display lists.
+ *
+ * This routine examines the font settings for winRec and builds proper
+ * OpenGL display lists that represent a font as close as possible to the
+ * requested font. These routines are specific to Microsoft Windows, so they
+ * need to be reimplemented for other OS'es...
+ */
+boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
+{
+  GLYPHMETRICSFLOAT	gmf[256];	// Address Buffer For Font Storage
+  HFONT	font, oldfont;			// Windows Font ID
+  GLuint base;
+  int i;
+
+  // Does font need to be rebuild?
+  if (!winRec->textAttributes.needsRebuild) {
+    // No rebuild needed. We don't have anything to do.
+    return(TRUE);
+  }
+
+  // Rebuild needed. Do we have already a display list?
+  if (winRec->textAttributes.DisplayList > 0) {
+    // Yep. Destroy it...
+    glDeleteLists(winRec->textAttributes.DisplayList, 256);
+    winRec->textAttributes.DisplayList=0;
+  }
+
+  // Create Windows font object with requested properties:
+  font = NULL;
+  font = CreateFont(	((int) (-1 * winRec->textAttributes.textSize)),				// Height Of Font, aka textSize
+			0,							                // Width Of Font: 0=Match to height
+			0,							                // Angle Of Escapement
+			0,							                // Orientation Angle
+			((winRec->textAttributes.textStyle & 1) ? FW_BOLD : FW_NORMAL),		// Font Weight
+			((winRec->textAttributes.textStyle & 2) ? TRUE : FALSE),		// Italic
+			((winRec->textAttributes.textStyle & 4) ? TRUE : FALSE),		// Underline
+			FALSE,		                // Strikeout: Set it to false until we know what it actually means...
+			ANSI_CHARSET,			// Character Set Identifier: Would need to be set different for "WingDings" fonts...
+			OUT_TT_PRECIS,			// Output Precision:   We try to get TrueType fonts if possible, but allow fallback to low-quality...
+			CLIP_DEFAULT_PRECIS,		// Clipping Precision: Use system default.
+			ANTIALIASED_QUALITY,		// Output Quality:     We want antialiased smooth looking fonts.
+			FF_DONTCARE|DEFAULT_PITCH,	// Family And Pitch:   Use system default.
+			winRec->textAttributes.textFontName);		// Font Name as requested by user.
+  
+  // Child-protection:
+  if (font==NULL) {
+    // Something went wrong...
+    PsychErrorExitMsg(PsychError_user, "Couldn't select the requested font with the requested font settings from Windows-OS! ");
+    return(FALSE);
+  }
+
+  // Select the font we created: Retain old font handle for restore below...
+  oldfont=SelectObject(winRec->targetSpecific.deviceContext, font);		// Selects The Font We Created
+
+  // Activate OpenGL context:
+  PsychSetGLContext(winRec);
+
+  // Generate 256 display lists, one for each ASCII character:
+  base = glGenLists(256);
+  
+  // Build the display lists from the font: We want an outline font instead of a bitmapped one.
+  // Characters of outline fonts are build as real OpenGL 3D objects (meshes of connected polygons)
+  // with normals, texture coordinates and so on, so they can be rendered and transformed in 3D, including
+  // proper texturing and lighting...
+  wglUseFontOutlines(winRec->targetSpecific.deviceContext,			// Select The Current DC
+		     0,								// Starting Character is ASCII char zero.
+		     256,							// Number Of Display Lists To Build: 256 for all 256 chars.
+		     base,							// Starting Display List handle.
+		     0.0f,							// Deviation From The True Outlines: Smaller value=Smoother, but more geometry.
+		     0.2f,							// Font Thickness In The Z Direction for 3D rendering.
+		     ((winRec->textAttributes.textStyle & 8) ? WGL_FONT_LINES : WGL_FONT_POLYGONS),	    // Type of rendering: Filled polygons or just outlines?
+		     gmf);							// Address Of Buffer To receive font metrics data.
+
+  // Assign new display list:
+  winRec->textAttributes.DisplayList = base;
+  // Clear the rebuild flag:
+  winRec->textAttributes.needsRebuild = FALSE;
+
+  // Copy glyph geometry info into winRec:
+  for(i=0; i<256; i++) {
+    winRec->textAttributes.glyphWidth[i]=(float) gmf[i].gmfCellIncX;
+    winRec->textAttributes.glyphHeight[i]=(float) gmf[i].gmfCellIncY;
+  }
+
+  // Clean up after font creation:
+  SelectObject(winRec->targetSpecific.deviceContext, oldfont);		        // Restores current font selection to previous setting.
+  DeleteObject(font); // Delete the now orphaned font object.
+
+  // Our new font is ready to rock!
+  return(TRUE);
+}
+
+
+// Synopsis string for Windows DrawText is different from OS-X...
+static char synopsisString[] = 
+    "Draw text. \"text\" may consist of one-byte (8 bit) ASCII-Characters. "
+    "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
+    "g b] triplet) that you want to poke into each pixel; default produces black with "
+    "the standard CLUT for this window's pixelSize. \"newX, newY\" return the final pen "
+    "location.";
+
+PsychError SCREENDrawText(void)
+{
+    PsychWindowRecordType 	*winRec;
+    PsychRectType		windowRect;
+    char			*textString;
+    int                         stringl;
+    Boolean			doSetColor, doSetBackgroundColor;
+    PsychColorType		colorArg, backgroundColorArg;
+    int				depthValue, whiteValue, colorPlaneSize, numColorPlanes, i;
+    float accumWidth, maxHeight;
+
+    static GLuint	        base=0;	     // Base Display List For The Font Set
+    
+    // All subfunctions should have these two lines.  
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    PsychErrorExit(PsychCapNumInputArgs(6));   	
+    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+    PsychErrorExit(PsychCapNumOutputArgs(2));  
+
+    //Get the window structure for the onscreen window.
+    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
+    
+    //Get the dimensions of the target window
+    PsychGetRectFromWindowRecord(windowRect, winRec);
+    
+    //Get the text string (it is required)
+    PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+    
+    //Get the X and Y positions.
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
+    
+    //Get the depth from the window, we need this to interpret the color argument.
+    depthValue=PsychGetWindowDepthValueFromWindowRecord(winRec);
+    numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
+    colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
+
+    //Get the new color record, coerce it to the correct mode, and store it.  
+    doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
+    if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
+    if(!doSetColor){
+      whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+      PsychLoadColorStruct(&colorArg, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+    }
+    PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &colorArg);
+
+    // Same for background color: FIXME This is currently a no-op. Don't know yet how to
+    // map this to the Windows way of font rendering...
+    doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
+    if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
+
+    PsychSetGLContext(winRec);
+    PsychSetGLColor(&colorArg, depthValue);
+
+    // Does the font (better, its display list) need to be build or rebuild, because
+    // font name, size or settings have changed?
+    // This routine will check it and perform all necessary ops if so...
+    PsychOSRebuildFont(winRec);
+
+    // Compute text-bounds as x and y increments:
+    stringl=strlen(textString);
+    accumWidth=0;
+    maxHeight=0;
+    for (i=0; i<stringl; i++) {
+      accumWidth+=winRec->textAttributes.glyphWidth[textString[i]];
+      maxHeight=(winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
+    }
+    accumWidth*=winRec->textAttributes.textSize;
+    maxHeight*=winRec->textAttributes.textSize;
+
+    // Draw the text string to window by execution the display lists in
+    // proper order:
+
+    // Backup modelview matrix:
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    // Position our "cursor":
+    //    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize, -0.5f);
+    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + maxHeight, -0.5f);
+
+    // Scale to final size:
+    glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
+
+    // Backup display list state:
+    glPushAttrib(GL_LIST_BIT);
+
+    // Sets The Base Character to the start of our font display list:
+    glListBase(winRec->textAttributes.DisplayList);
+
+    // Render it...
+    glCallLists(strlen(textString), GL_UNSIGNED_BYTE, textString);
+
+    // Restore state:
+    glPopAttrib();
+    glPopMatrix();
+
+    // Update drawing cursor: Place cursor so that text could
+    // be appended right-hand of the drawn text.
+    winRec->textAttributes.textPositionX += accumWidth;
+    winRec->textAttributes.textPositionY += maxHeight;
+
+    // Copy out new, updated "cursor position":
+    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
+    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
+
+    return(PsychError_none);
+}
+
+#endif

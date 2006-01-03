@@ -124,7 +124,7 @@ PsychError SCREENFrameOval(void)
 		xScale=rectX/rectY;
 		outerRadius=rectY/2;
 	}
-	numSlices=pi*2*outerRadius;
+	numSlices=3.14159265358979323846  * 2 * outerRadius;
 	innerRadius=outerRadius- 2*penSize;
 	innerRadius= innerRadius < 0 ? 0 : innerRadius;         
 	

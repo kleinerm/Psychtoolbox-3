@@ -24,23 +24,21 @@
 #ifndef PSYCH_IS_INCLUDED_Screen
 #define PSYCH_IS_INCLUDED_Screen
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-#include <Quicktime/Movies.h>
-
-#endif
-
-
 //project includes includes for screen foundation
 #include "Psych.h"
 #include "PsychRects.h"
 #include "ScreenTypes.h"
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+#include <Quicktime/Movies.h>
+#endif
 
 #include "PsychVideoGlue.h"
 #include "PsychScreenGlue.h"
 #include "PsychWindowTextGlue.h"
 #include "WindowBank.h"
 #include "PsychWindowGlue.h"
+#include "PsychWindowSupport.h"
 #include "PsychMovieSupport.h"
 #include "PsychTextureSupport.h"
 #include "PsychAlphaBlending.h"
@@ -48,9 +46,13 @@
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
 #include "WindowHelpers.h"
+
+// The windows version is without any font or text drawing support :(
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include "PsychFontGlue.h"
 #include "ScreenFontGlue.h"
 #include "FontInfo.h"
+#endif
 
 
 #include "ScreenPreferenceState.h"
@@ -66,8 +68,8 @@ void InitializeSynopsis();				//ScreenExit.c
 void ScreenCloseAllWindows();           //SCREENCloseAll.c
 
 //PsychGLGlue.c
-int			PsychConvertColorAndDepthToDoubleVector(PsychColorType *color, int depthValue, GLdouble *valueArray);
-int			PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
+int		PsychConvertColorAndDepthToDoubleVector(PsychColorType *color, int depthValue, GLdouble *valueArray);
+int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
 void		PsychSetGLColor(PsychColorType *color, int depthValue);
 void		PsychGLRect(double *psychRect);
 char		*PsychGetGLErrorNameString(GLenum errorConstant);
@@ -162,17 +164,9 @@ PsychError      SCREENFrameArc(void);
 PsychError SCREENGetMouseHelper(void);
 
 
-
-
-
-
-
-
 //PsychError SCREENGetImage(void);			//SCREENGetImage.c
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 
 
 //end include once
 #endif
-
-	

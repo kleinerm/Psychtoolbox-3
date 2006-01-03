@@ -1,7 +1,7 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychTextureSupport.h
+	PsychToolbox3/Source/Common/Screen/PsychTextureSupport.h
 	
-	PLATFORMS:	This is the OS X Core Graphics version.  
+	PLATFORMS:	This is the OS independent version.  
 				
 	AUTHORS:
 	Allen Ingling		awi		Allen.Ingling@nyu.edu
@@ -31,6 +31,7 @@ void PsychCreateTexture(PsychWindowRecordType *win);
 void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win);
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha);
+GLenum PsychGetTextureTarget(PsychWindowRecordType *win);
 
 //end include once
 #endif

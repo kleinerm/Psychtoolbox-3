@@ -43,10 +43,10 @@ PsychError SCREENFillOval(void)
 	
 	PsychColorType			color;
 	PsychRectType			rect;
-	double					numSlices, radius, xScale, yScale, xTranslate, yTranslate, rectY, rectX;
-	PsychWindowRecordType	*windowRecord;
-	int						depthValue, whiteValue, colorPlaneSize, numColorPlanes;
-	boolean					isArgThere;
+	double				numSlices, radius, xScale, yScale, xTranslate, yTranslate, rectY, rectX;
+	PsychWindowRecordType	        *windowRecord;
+	int				depthValue, whiteValue, colorPlaneSize, numColorPlanes;
+	boolean				isArgThere;
 	GLUquadricObj			*diskQuadric;
     
 	//all sub functions should have these two lines
@@ -98,7 +98,7 @@ PsychError SCREENFillOval(void)
 		xScale=rectX/rectY;
 		radius=rectY/2;
 	}
-	numSlices=pi*2*radius;
+	numSlices=3.14159265358979323846 * 2 * radius;
         
         
 	//Set the context & color

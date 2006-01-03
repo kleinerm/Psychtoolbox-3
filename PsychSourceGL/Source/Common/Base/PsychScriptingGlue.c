@@ -1292,8 +1292,9 @@ boolean PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired
 	matchError=PsychMatchDescriptors(); 
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
-		*mxpp = mxCreateLogicalMatrix(1,1);
-		*value = mxGetLogicals(*mxpp);
+		mxpp = PsychGetOutArgMxPtr(position);
+		(*mxpp) = mxCreateLogicalMatrix(1,1);
+		*value = mxGetLogicals((*mxpp));
 	}else{
 		mxpp = PsychGetOutArgMxPtr(position);
 		*value= (PsychNativeBooleanType *)mxMalloc(sizeof(PsychNativeBooleanType));

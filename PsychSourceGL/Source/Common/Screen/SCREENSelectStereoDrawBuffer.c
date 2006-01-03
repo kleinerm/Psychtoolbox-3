@@ -45,7 +45,9 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 {
 	PsychWindowRecordType *windowRecord;
         int bufferid=2;
-    
+	int screenwidth, screenheight;
+	Boolean Anaglyph;
+
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -98,8 +100,8 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         // "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in both dimensions...
         if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
             // Switch between drawing into left- and right-half of the single framebuffer:
-            int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
-            int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+            screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+            screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
             
             // Store new assignment:
             windowRecord->stereodrawbuffer = bufferid;
@@ -126,7 +128,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         // allows to selectively enable/disable write operations to the different color channels:
         // The alpha channel is always enabled, the red,gree,blue channels are depending on mode and
         // bufferid conditionally enabled/disabled:
-        Boolean Anaglyph=FALSE;
+        Anaglyph=FALSE;
         
         switch (windowRecord->stereomode) {
             case kPsychAnaglyphRGStereo:
@@ -156,6 +158,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
         // is resolved. We'll need to do the color->luminance->Gain conversion
         // manually if this doesn't work out :(
         Anaglyph = FALSE;
+	/*
         if (Anaglyph) {
             // Update the red- versus green/blue- gain for color stereo...
             float rwgt = 0.3086;
@@ -177,7 +180,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
             glMatrixMode(GL_MODELVIEW);
             PsychTestForGLErrors();
         }
-        
+        */
         return(PsychError_none);
 }
 
@@ -284,7 +287,8 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
  */
 void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
 {
-    if (TRUE) {
+  /*
+    if (FALSE) {
         // Upload, setup and enable Anaglyph stereo fragment shader:
         const float redgain=1.0, greengain=0.7, bluegain=0.0;
         
@@ -309,9 +313,9 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
         // Setup the rgb-gains as global parameters for the shader:
         glProgramEnvParameter4fARB(GL_FRAGMENT_PROGRAM_ARB, 0, redgain, greengain, bluegain, 0.0);
         // Enable the shader:
-//        glEnable(GL_FRAGMENT_PROGRAM_ARB);
+        glEnable(GL_FRAGMENT_PROGRAM_ARB);
     }
-    
+  */
     // Query screen dimension:
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
@@ -340,7 +344,7 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
     glEnable(GL_BLEND);
 
     // Unconditionally disable fragment shaders:
-    glDisable(GL_FRAGMENT_PROGRAM_ARB);
+    // glDisable(GL_FRAGMENT_PROGRAM_ARB);
 
     // Done.
     return;

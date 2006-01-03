@@ -53,18 +53,19 @@ static char seeAlsoString[] = "DrawTexture BlendFunction";
 	 
 PsychError SCREENMakeTexture(void) 
 {
-    int									ix;
-    PsychWindowRecordType				*textureRecord;
-    PsychWindowRecordType			*windowRecord;
-    PsychRectType						rect;
-    Boolean								isImageMatrixBytes, isImageMatrixDoubles;
-    int									numMatrixPlanes, xSize, ySize; 
-    unsigned char						*byteMatrix;
-    double								*doubleMatrix;
+    int					ix;
+    PsychWindowRecordType		*textureRecord;
+    PsychWindowRecordType		*windowRecord;
+    PsychRectType			rect;
+    Boolean				isImageMatrixBytes, isImageMatrixDoubles;
+    int					numMatrixPlanes, xSize, ySize, iters; 
+    unsigned char			*byteMatrix;
+    double				*doubleMatrix;
     GLuint                              *texturePointer;
     GLubyte                             *texturePointer_b;
-    
-    
+    double *rp, *gp, *bp, *ap;    
+    GLubyte *rpb, *gpb, *bpb, *apb;    
+
     if(PsychPrefStateGet_DebugMakeTexture())	//MARK #1
         StoreNowTime();
     
@@ -111,7 +112,7 @@ PsychError SCREENMakeTexture(void)
     // MK: Allocate memory page-aligned... -> Helps Apple texture range extensions et al.
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #2
         StoreNowTime();
-    textureRecord->textureMemory=valloc(textureRecord->textureMemorySizeBytes);
+    textureRecord->textureMemory=malloc(textureRecord->textureMemorySizeBytes);
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #3
         StoreNowTime();	
     texturePointer=textureRecord->textureMemory;
@@ -129,12 +130,12 @@ PsychError SCREENMakeTexture(void)
             }
         }
     }
-*/	
+    */	
     
     // Improved implementation: Takes 13 ms on a 800x800 texture...
     if(isImageMatrixDoubles && numMatrixPlanes==1){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
+        iters=xSize*ySize;
         for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= (GLubyte) *(doubleMatrix++);  
         }
@@ -165,14 +166,13 @@ PsychError SCREENMakeTexture(void)
         memcpy((void*) texturePointer, (void*) byteMatrix, xSize*ySize);
         textureRecord->depth=8;
     }
-    
+
     // New version: Takes 33 ms on a 800x800 texture...
     if(isImageMatrixDoubles && numMatrixPlanes==2){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        double *rp, *ap;
-        rp=(double*) ((unsigned long long) doubleMatrix);
-        ap=(double*) ((unsigned long long) doubleMatrix + (unsigned long long) iters*sizeof(double));
+        iters=xSize*ySize;
+        rp=(double*) ((psych_uint64) doubleMatrix);
+        ap=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
         for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= (GLubyte) *(rp++);  
             *(texturePointer_b++)= (GLubyte) *(ap++);  
@@ -183,13 +183,12 @@ PsychError SCREENMakeTexture(void)
     // New version: Takes 20 ms on a 800x800 texture...
     if(isImageMatrixBytes && numMatrixPlanes==2){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        GLubyte *rp, *ap;
-        rp=(GLubyte*) ((unsigned long long) byteMatrix);
-        ap=(GLubyte*) ((unsigned long long) byteMatrix + (unsigned long long) iters);
+        iters=xSize*ySize;
+        rpb=(GLubyte*) ((psych_uint64) byteMatrix);
+        apb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
         for(ix=0;ix<iters;ix++){
-            *(texturePointer_b++)= *(rp++);  
-            *(texturePointer_b++)= *(ap++);  
+            *(texturePointer_b++)= *(rpb++);  
+            *(texturePointer_b++)= *(apb++);  
         }
         textureRecord->depth=16;
     }
@@ -212,14 +211,14 @@ PsychError SCREENMakeTexture(void)
     textureRecord->depth=24;
     }
 */	
+
     // Improved version: Takes 43 ms on a 800x800 texture...
     if(isImageMatrixDoubles && numMatrixPlanes==3){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        double *rp, *gp, *bp;
-        rp=(double*) ((unsigned long long) doubleMatrix);
-        gp=(double*) ((unsigned long long) doubleMatrix + (unsigned long long) iters*sizeof(double));
-        bp=(double*) ((unsigned long long) gp + (unsigned long long) iters*sizeof(double));
+        iters=xSize*ySize;
+        rp=(double*) ((psych_uint64) doubleMatrix);
+        gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
+        bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
         for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= (GLubyte) *(rp++);  
             *(texturePointer_b++)= (GLubyte) *(gp++);  
@@ -248,15 +247,15 @@ PsychError SCREENMakeTexture(void)
     // Improved version: Takes 25 ms on a 800x800 texture...
     if(isImageMatrixBytes && numMatrixPlanes==3){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        GLubyte *rp, *gp, *bp;
-        rp=(GLubyte*) ((unsigned long long) byteMatrix);
-        gp=(GLubyte*) ((unsigned long long) byteMatrix + (unsigned long long) iters);
-        bp=(GLubyte*) ((unsigned long long) gp + (unsigned long long) iters);
+        iters=xSize*ySize;
+
+        rpb=(GLubyte*) ((psych_uint64) byteMatrix);
+        gpb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
+        bpb=(GLubyte*) ((psych_uint64) gpb + (psych_uint64) iters);
         for(ix=0;ix<iters;ix++){
-            *(texturePointer_b++)= *(rp++);  
-            *(texturePointer_b++)= *(gp++);  
-            *(texturePointer_b++)= *(bp++);  
+            *(texturePointer_b++)= *(rpb++);  
+            *(texturePointer_b++)= *(gpb++);  
+            *(texturePointer_b++)= *(bpb++);  
         }
         textureRecord->depth=24;
     }
@@ -283,12 +282,12 @@ PsychError SCREENMakeTexture(void)
     // Improved version: Takes 55 ms on a 800x800 texture...
     if(isImageMatrixDoubles && numMatrixPlanes==4){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        double *rp, *gp, *bp, *ap;
-        rp=(double*) ((unsigned long long) doubleMatrix);
-        gp=(double*) ((unsigned long long) doubleMatrix + (unsigned long long) iters*sizeof(double));
-        bp=(double*) ((unsigned long long) gp + (unsigned long long) iters*sizeof(double));
-        ap=(double*) ((unsigned long long) bp + (unsigned long long) iters*sizeof(double));
+        iters=xSize*ySize;
+
+        rp=(double*) ((psych_uint64) doubleMatrix);
+        gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
+        bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
+        ap=(double*) ((psych_uint64) bp + (psych_uint64) iters*sizeof(double));
         for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= (GLubyte) *(rp++);  
             *(texturePointer_b++)= (GLubyte) *(gp++);  
@@ -316,21 +315,21 @@ PsychError SCREENMakeTexture(void)
         }
     }
 */
-    
+
     // Improved version: Takes 33 ms on a 800x800 texture...
     if(isImageMatrixBytes && numMatrixPlanes==4){
         texturePointer_b=(GLubyte*) texturePointer;
-        int iters=xSize*ySize;
-        GLubyte *rp, *gp, *bp, *ap;
-        rp=(GLubyte*) ((unsigned long long) byteMatrix);
-        gp=(GLubyte*) ((unsigned long long) byteMatrix + (unsigned long long) iters);
-        bp=(GLubyte*) ((unsigned long long) gp + (unsigned long long) iters);
-        ap=(GLubyte*) ((unsigned long long) bp + (unsigned long long) iters);
+        iters=xSize*ySize;
+
+        rpb=(GLubyte*) ((psych_uint64) byteMatrix);
+        gpb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
+        bpb=(GLubyte*) ((psych_uint64) gpb + (psych_uint64) iters);
+        apb=(GLubyte*) ((psych_uint64) bpb + (psych_uint64) iters);
         for(ix=0;ix<iters;ix++){
-            *(texturePointer_b++)= *(rp++);  
-            *(texturePointer_b++)= *(gp++);  
-            *(texturePointer_b++)= *(bp++);  
-            *(texturePointer_b++)= *(ap++);  
+            *(texturePointer_b++)= *(rpb++);  
+            *(texturePointer_b++)= *(gpb++);  
+            *(texturePointer_b++)= *(bpb++);  
+            *(texturePointer_b++)= *(apb++);  
         }
         textureRecord->depth=32;
     }

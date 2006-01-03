@@ -40,7 +40,6 @@
 
 #include "Screen.h"
 
-
 static char useString[] =  "Screen('CopyWindow',srcWindowPtr,dstWindowPtr,[srcRect],[dstRect],[copyMode])";
 static char synopsisString[] = "Copy images, very quickly, between two windows (on- or off- screen).";
 
@@ -49,6 +48,8 @@ static char seeAlsoString[] = "PutImage, GetImage";
 
 PsychError SCREENCopyWindow(void) 
 {
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 	PsychRectType			sourceRect, targetRect, targetRectInverted;
 	PsychWindowRecordType	*sourceWin, *targetWin;
 	GLdouble				sourceVertex[2], targetVertex[2]; 
@@ -126,6 +127,12 @@ PsychError SCREENCopyWindow(void)
 
 
 	return(PsychError_none);
+#else
+
+	return(PsychError_unimplemented);
+
+#endif
+
 }
 
 

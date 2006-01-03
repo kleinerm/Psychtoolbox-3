@@ -28,8 +28,22 @@
 
 
 #include "Screen.h"
-#include <sys/types.h>			//for getpid()
-#include <unistd.h>				//for getpid()
+
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+
+#include <sys/types.h>			// for getpid()
+#include <unistd.h>			// for getpid()
+
+#else
+
+// Windows doesn't have getpid() - We create a pseudo-getpid:
+psych_uint64 getpid(void)
+{
+  HANDLE p;
+  p=GetCurrentProcess();
+  return((psych_uint64) p);
+}
+#endif
 
 /*
 OS 9 Psychtoolbox preferences:
