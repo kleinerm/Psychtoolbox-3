@@ -66,7 +66,7 @@ try
         Screen('Flip', w);
     end;
 
-    pause(10);
+    KbWait;
 
     %The same commands wich close onscreen and offscreen windows also close
     %textures.

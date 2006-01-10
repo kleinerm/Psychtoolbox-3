@@ -127,6 +127,9 @@
 	#define EXP  //nothing
 #endif
 	
+#ifndef APIENTRY
+#define APIENTRY
+#endif
 
 //end include once
 #endif

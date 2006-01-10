@@ -32,22 +32,22 @@
 #include "Screen.h"
 
 // Callback-Routines for the GLU-Tesselator functions used on the FillPoly - Slow - path:
-void PsychtcbBegin(GLenum prim)
+void APIENTRY PsychtcbBegin(GLenum prim)
 {
     glBegin(prim);
 }
 
-void PsychtcbVertex(void *data)
+void APIENTRY PsychtcbVertex(void *data)
 {
     glVertex3dv((GLdouble *)data);
 }
 
-void PsychtcbEnd(void)
+void APIENTRY PsychtcbEnd(void)
 {
     glEnd();
 }
 
-void PsychtcbCombine(GLdouble c[3], void *d[4], GLfloat w[4], void **out)
+void APIENTRY PsychtcbCombine(GLdouble c[3], void *d[4], GLfloat w[4], void **out)
 {
     GLdouble *nv = (GLdouble *) PsychMallocTemp((unsigned long) sizeof(GLdouble)*3);
     nv[0] = c[0];
@@ -177,15 +177,11 @@ PsychError SCREENFillPoly(void)
 	  // Create and initialize a new GLU-Tesselator object:
 	  tess = gluNewTess();
 	  // Assign our callback-functions:
-#if PSYCH_SYSTEM == PSYCH_OSX
 	  gluTessCallback(tess, GLU_TESS_BEGIN, PsychtcbBegin);
 	  gluTessCallback(tess, GLU_TESS_VERTEX, PsychtcbVertex);
 	  gluTessCallback(tess, GLU_TESS_END, PsychtcbEnd);
 	  gluTessCallback(tess, GLU_TESS_COMBINE, PsychtcbCombine);
-#else
-          // FIXME: Fucking M$ Compiler to dumb to compile this!
-	  return(PsychError_unimplemented);
-#endif
+
 	  // We need to hold the values in a temporary array:
 	  tempv=(double*) PsychMallocTemp(sizeof(double)*3*mSize);
 	  
