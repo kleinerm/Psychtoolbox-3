@@ -84,7 +84,7 @@ try
     white = WhiteIndex(w);
     Screen('FillRect', w, black)
     HideCursor;	% Hide the mouse cursor
-    Priority(9);
+    %Priority(MaxPriority(w));
     
     % Do initial flip...
     vbl=Screen('Flip', w);
@@ -135,7 +135,7 @@ try
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;
         
-        [mx, my, buttons]=GetMouse(w);
+        [mx, my, buttons]=GetMouse(screenNumber);
         if KbCheck | find(buttons) % break out of loop
             break;
         end;

@@ -134,7 +134,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
 
     // Retrieve final vbl_startline, aka physical height of the display in pixels:
-    PsychGetScreenSize((*windowRecord)->screenNumber, &dummy_width, &vbl_startline);
+    PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
 
     // Configure OpenGL here: This sets up the OpenGL coordinate to window coordinate mapping for a
     // orthonormal projection:

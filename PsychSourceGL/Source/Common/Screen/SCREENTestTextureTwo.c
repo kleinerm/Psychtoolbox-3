@@ -52,6 +52,8 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTestTextureTwo(void) 
 {
+#if PSYCH_SYSTEM == PSYCH_OSX
+
     PsychWindowRecordType 	*sourceWinRec, *destWinRec;
     unsigned int			memorySizeBytes;
     UInt32					*textureMemory;
@@ -137,6 +139,8 @@ PsychError SCREENTestTextureTwo(void)
 
     //Close  up shop.  Unlike with normal textures is important to release the context before deallocating the memory which glTexImage2D() was given. 
     //First release the GL context, then the CG context, then free the memory.
+#endif
+
     return(PsychError_none);
 
 }

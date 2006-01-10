@@ -26,9 +26,9 @@ try
 	screenNumber=max(screens);
 	w=Screen('OpenWindow', screenNumber,[],[],32,2);
 	Screen('FillRect', w);
-	Screen('TextFont',w, 'Courier');
+	Screen('TextFont',w, 'Courier New');
 	Screen('TextSize',w, 50);
-	Screen('TextStyle', w, 0);
+	Screen('TextStyle', w, 1+2);
 	Screen('DrawText', w, 'Hello World!', 100, 100, [0, 0, 255, 255]);
 	Screen('TextFont',w, 'Times');
 	Screen('TextSize',w, 30);

@@ -52,6 +52,9 @@ static HINSTANCE hInstance = 0;
 // Number of currently open onscreen windows:
 static int win32_windowcount = 0;
 
+// Definitions for dynamic binding of VSYNC extension:
+typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
+PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT = NULL;
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
@@ -433,6 +436,18 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
     }
 
+    // Dynamically bind the VSYNC extension:
+    if (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")) {
+      // Bind it:
+      wglSwapIntervalEXT=(PFNWGLEXTSWAPCONTROLPROC) wglGetProcAddress("wglSwapIntervalEXT");
+    }
+    else {
+      printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
+      printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
+      printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somewhere in the display settings\n");
+      printf("PTB-WARNING: tab of your machine.\n");
+    }
+
     // Ok, we should be ready for OS independent setup...
 
     //printf("\nPTB-INFO: Low-level (Windoze) setup of onscreen window finished!\n");
@@ -561,7 +576,11 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
-  // FIXME: No-Op!
+  // Enable rendering context of window:
+  PsychSetGLContext(windowRecord);
+  // Try to set requested swapInterval if swap-control extension is supported on
+  // this windows machine. Otherwise this will be a no-op...
+  if (wglSwapIntervalEXT) wglSwapIntervalEXT(swapInterval);
   return;
 }
 

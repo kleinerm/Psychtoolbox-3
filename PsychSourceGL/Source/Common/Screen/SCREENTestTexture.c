@@ -125,6 +125,8 @@ static char seeAlsoString[] = "";
 	 
 PsychError SCREENTestTexture(void) 
 {
+#if PSYCH_SYSTEM == PSYCH_OSX
+
     PsychWindowRecordType 	*winRec;
     CGContextRef			cgContext;
     unsigned int			memoryTotalSizeBytes, memoryRowSizeBytes;
@@ -218,6 +220,7 @@ PsychError SCREENTestTexture(void)
     glDeleteTextures(1, &myTexture);	//Remove references from gl to the texture memory  & free gl's associated resources   
     if(useQuartz) CGContextRelease(cgContext);	//Remove references from Core Graphics to the texture memory & free Core Graphics' associated resources.
     free((void *)textureMemory);	//Free the memory
+#endif
     return(PsychError_none);
 
 }
