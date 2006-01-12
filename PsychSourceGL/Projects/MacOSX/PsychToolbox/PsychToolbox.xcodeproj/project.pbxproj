@@ -6740,7 +6740,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = Eyelink.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -6876,7 +6875,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = DoNothing.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7012,7 +7010,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = FontInfo.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7148,7 +7145,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = Gestalt.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7284,7 +7280,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetBusFrequencyMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -7420,7 +7415,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetBusTicks.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7556,7 +7550,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = CocoaEventBridge.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7692,7 +7685,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetPID.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7828,7 +7820,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetSecs.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -7966,7 +7957,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetSecsMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -8098,7 +8088,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetSecsTick.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -8234,7 +8223,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = GetTicks.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -8370,7 +8358,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = IOPort.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
@@ -8506,7 +8493,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = MachGetPriorityMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
@@ -8642,7 +8628,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = MachPriority.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -8778,7 +8763,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = MachSetPriorityMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
@@ -8914,7 +8898,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = MachAbsoluteTimeClockFrequency.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -9056,7 +9039,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = PsychHID.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychHardware;
@@ -9202,7 +9184,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = Rush.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
@@ -9342,7 +9323,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = Screen.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -9486,7 +9466,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = SysBeep.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -9622,7 +9601,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = TestPriorityMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -9758,7 +9736,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = WaitSecs.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
@@ -9896,7 +9873,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = WaitSecsMex.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
@@ -10056,7 +10032,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = StoreBit.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
@@ -10200,7 +10175,6 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
 				PREBINDING = NO;
 				PRODUCT_NAME = PsychSound.mexmac;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
