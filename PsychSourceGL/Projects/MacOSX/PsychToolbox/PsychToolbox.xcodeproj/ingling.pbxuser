@@ -7,6 +7,12 @@
 			sepNavVisRect = "{{0, 0}, {949, 325}}";
 		};
 	};
+	0E92E860095726FE002687D9 /* Eyelink */ = {
+		activeExec = 0;
+		executables = (
+			2F806E83097599CD0080AFEF /* Eyelink */,
+		);
+	};
 	29B97313FDCFA39411CA2CEA /* Project object */ = {
 		activeBuildConfigurationName = Development;
 		activeBuildStyle = 4A9504CCFFE6A4B311CA0CBA /* Development */;
@@ -49,6 +55,7 @@
 			2F57E38408CEB64300A5CF85 /* StoreBit */,
 			2F54335D090431DC0051D6CC /* DoNothing */,
 			2F72B9F6094F9513008AC7D8 /* PsychSound */,
+			2F806E83097599CD0080AFEF /* Eyelink */,
 		);
 		expressions = (
 			"*(sourceRect)",
@@ -127,7 +134,7 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Errors_ColumnID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
-					785,
+					793,
 					20,
 					138,
 					43,
@@ -161,9 +168,9 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXSymbolsDataSource_SymbolNameID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					16,
-					364.8008,
-					394.0356,
-					371.2085,
+					364,
+					394,
+					315.2085,
 				);
 				PBXFileTableDataSourceColumnsKey = (
 					PBXSymbolsDataSource_SymbolTypeIconID,
@@ -178,7 +185,7 @@
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
 					20,
-					836,
+					779,
 					20,
 					128,
 					43,
@@ -218,7 +225,7 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 158193257;
+			PBXPerProjectTemplateStateSaveDate = 158722465;
 			PBXPrepackagedSmartGroups_v2 = (
 				{
 					PBXTransientLocationAtTop = bottom;
@@ -1594,7 +1601,7 @@
 				PBXModuleWindowStatusBarHidden = YES;
 				RubberWindowFrame = "435 383 745 464 0 0 1600 1002 ";
 			};
-			PBXWorkspaceStateSaveDate = 158193257;
+			PBXWorkspaceStateSaveDate = 158722465;
 		};
 		perUserProjectItems = {
 			2F44A9E008DB8EBC00F0A627 = 2F44A9E008DB8EBC00F0A627 /* PBXTextBookmark */;
@@ -1701,6 +1708,8 @@
 			2F66ABE40906403800128812 = 2F66ABE40906403800128812 /* PBXTextBookmark */;
 			2F66ABF30906482700128812 = 2F66ABF30906482700128812 /* PBXTextBookmark */;
 			2F66ABFB09081B2200128812 = 2F66ABFB09081B2200128812 /* PBXTextBookmark */;
+			2F66AEDC0975E42900F8F1AB = 2F66AEDC0975E42900F8F1AB /* PBXTextBookmark */;
+			2F66AEDD0975E42900F8F1AB = 2F66AEDD0975E42900F8F1AB /* PBXTextBookmark */;
 			2F70C38A08E04D1E00A04813 = 2F70C38A08E04D1E00A04813 /* PBXTextBookmark */;
 			2F70C38C08E04D1E00A04813 = 2F70C38C08E04D1E00A04813 /* PBXTextBookmark */;
 			2F70C38D08E04D1E00A04813 = 2F70C38D08E04D1E00A04813 /* PBXTextBookmark */;
@@ -1719,38 +1728,11 @@
 			2F70C3DD08E08EB500A04813 = 2F70C3DD08E08EB500A04813 /* PBXTextBookmark */;
 			2F70C3DE08E08EB500A04813 = 2F70C3DE08E08EB500A04813 /* PBXTextBookmark */;
 			2F70C3E408E08EB500A04813 = 2F70C3E408E08EB500A04813 /* PBXTextBookmark */;
-			2F72BB5009505634008AC7D8 = 2F72BB5009505634008AC7D8 /* PBXTextBookmark */;
 			2F84D0FA08D73205005D5FE5 = 2F84D0FA08D73205005D5FE5 /* PBXTextBookmark */;
 			2F84D0FC08D73205005D5FE5 = 2F84D0FC08D73205005D5FE5 /* PBXTextBookmark */;
 			2F84D10708D73330005D5FE5 = 2F84D10708D73330005D5FE5 /* PBXTextBookmark */;
 			2F84D10908D73330005D5FE5 = 2F84D10908D73330005D5FE5 /* PBXTextBookmark */;
 			2F951E8008D90CAF0050170B = 2F951E8008D90CAF0050170B /* PBXTextBookmark */;
-			2FBE3AD4096CD2120022D64F = 2FBE3AD4096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AD5096CD2120022D64F = 2FBE3AD5096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AD6096CD2120022D64F = 2FBE3AD6096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AD7096CD2120022D64F = 2FBE3AD7096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AD8096CD2120022D64F = 2FBE3AD8096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AD9096CD2120022D64F = 2FBE3AD9096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3ADA096CD2120022D64F = 2FBE3ADA096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3ADB096CD2120022D64F = 2FBE3ADB096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3ADC096CD2120022D64F = 2FBE3ADC096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3ADD096CD2120022D64F = 2FBE3ADD096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3ADE096CD2120022D64F = 2FBE3ADE096CD2120022D64F /* PBXBookmark */;
-			2FBE3ADF096CD2120022D64F = 2FBE3ADF096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE0096CD2120022D64F = 2FBE3AE0096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE1096CD2120022D64F = 2FBE3AE1096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE2096CD2120022D64F = 2FBE3AE2096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE3096CD2120022D64F = 2FBE3AE3096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE4096CD2120022D64F = 2FBE3AE4096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE5096CD2120022D64F = 2FBE3AE5096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE6096CD2120022D64F = 2FBE3AE6096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE7096CD2120022D64F = 2FBE3AE7096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE8096CD2120022D64F = 2FBE3AE8096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AE9096CD2120022D64F = 2FBE3AE9096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AEA096CD2120022D64F = 2FBE3AEA096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AEB096CD2120022D64F = 2FBE3AEB096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AEC096CD2120022D64F = 2FBE3AEC096CD2120022D64F /* PBXTextBookmark */;
-			2FBE3AED096CD2120022D64F = 2FBE3AED096CD2120022D64F /* PBXTextBookmark */;
 			2FC681EA08DA05ED00F554CE = 2FC681EA08DA05ED00F554CE /* PBXTextBookmark */;
 			2FC681F808DA05ED00F554CE = 2FC681F808DA05ED00F554CE /* PBXTextBookmark */;
 			2FC6826708DA83DC00F554CE = 2FC6826708DA83DC00F554CE /* PBXTextBookmark */;
@@ -1765,7 +1747,6 @@
 			2FD0651A08D93C4F005BD6CD = 2FD0651A08D93C4F005BD6CD /* PBXTextBookmark */;
 			2FD0654008D9404E005BD6CD = 2FD0654008D9404E005BD6CD /* PBXTextBookmark */;
 			2FD0654C08D9404E005BD6CD = 2FD0654C08D9404E005BD6CD /* PBXTextBookmark */;
-			2FDD8C2C0951A40C00BDDA89 = 2FDD8C2C0951A40C00BDDA89 /* PBXTextBookmark */;
 			2FE9DEAA08D735E0007C7572 = 2FE9DEAA08D735E0007C7572 /* PBXTextBookmark */;
 			2FF33BD30900D15600EF5714 = 2FF33BD30900D15600EF5714 /* PBXTextBookmark */;
 			2FF6C558090F470B00E7F32B = 2FF6C558090F470B00E7F32B /* PBXTextBookmark */;
@@ -1932,22 +1913,6 @@
 			sepNavIntBoundsRect = "{{0, 0}, {1073, 2340}}";
 			sepNavSelRange = "{64, 0}";
 			sepNavVisRect = "{{0, 0}, {1073, 705}}";
-		};
-	};
-	2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */ = {
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1076, 532}}";
-			sepNavSelRange = "{633, 25}";
-			sepNavVisRect = "{{0, 0}, {1076, 530}}";
-			sepNavWindowFrame = "{{627, 430}, {750, 558}}";
-		};
-	};
-	2F169D4C05FE6BA7009177BC /* PsychTextureSupport.c */ = {
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {2384, 6720}}";
-			sepNavSelRange = "{18641, 0}";
-			sepNavVisRect = "{{0, 3962}, {1010, 704}}";
-			sepNavWindowFrame = "{{271, 136}, {1049, 833}}";
 		};
 	};
 	2F19007704A03C39007A7274 /* mex.h */ = {
@@ -3256,7 +3221,6 @@
 	};
 	2F66AB800906396700128812 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
-		fRef = 2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */;
 		name = PsychBlitTextureToDisplay;
 		rLen = 25;
 		rLoc = 633;
@@ -3346,7 +3310,6 @@
 	};
 	2F66AB8E0906396700128812 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
-		fRef = 2F169D4805FE6B9B009177BC /* PsychTextureSupport.h */;
 		name = PsychBlitTextureToDisplay;
 		rLen = 25;
 		rLoc = 633;
@@ -3517,6 +3480,33 @@
 		rType = 0;
 		vrLen = 1132;
 		vrLoc = 0;
+	};
+	2F66AEDC0975E42900F8F1AB /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F806EBE0975E27B0080AFEF /* ingling.pbxuser */;
+		name = "ingling.pbxuser: 6632";
+		rLen = 0;
+		rLoc = 196455;
+		rType = 0;
+		vrLen = 1945;
+		vrLoc = 0;
+	};
+	2F66AEDD0975E42900F8F1AB /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F66AEDE0975E42900F8F1AB /* ingling.pbxuser */;
+		name = "(null): 6632";
+		rLen = 0;
+		rLoc = 196455;
+		rType = 0;
+		vrLen = 1945;
+		vrLoc = 0;
+	};
+	2F66AEDE0975E42900F8F1AB /* ingling.pbxuser */ = {
+		isa = PBXFileReference;
+		lastKnownFileType = text;
+		name = ingling.pbxuser;
+		path = /Source/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox.xcodeproj/ingling.pbxuser;
+		sourceTree = "<absolute>";
 	};
 	2F6B77C3056C74AB007A711C /* SCREENTextStyle.c */ = {
 		uiCtxt = {
@@ -3742,16 +3732,6 @@
 		sourceDirectories = (
 		);
 	};
-	2F72BB5009505634008AC7D8 /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = CF566E6D07F7D2FC00D4957A /* PsychHIDKbWait.c */;
-		name = PsychWaitIntervalSeconds;
-		rLen = 24;
-		rLoc = 3604;
-		rType = 0;
-		vrLen = 1691;
-		vrLoc = 2651;
-	};
 	2F742337068A830200D66E0C /* ScreenPreferenceState.c */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {1131, 2534}}";
@@ -3767,6 +3747,36 @@
 			sepNavVisRect = "{{0, 519}, {1081, 530}}";
 			sepNavWindowFrame = "{{84, 430}, {750, 558}}";
 		};
+	};
+	2F806E83097599CD0080AFEF /* Eyelink */ = {
+		isa = PBXExecutable;
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = Eyelink;
+		sourceDirectories = (
+		);
+	};
+	2F806EBE0975E27B0080AFEF /* ingling.pbxuser */ = {
+		isa = PBXFileReference;
+		lastKnownFileType = text;
+		name = ingling.pbxuser;
+		path = /Source/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/PsychToolbox.xcodeproj/ingling.pbxuser;
+		sourceTree = "<absolute>";
 	};
 	2F84D0F608D731E9005D5FE5 /* COCOAEVENTBRIDGEGetChar.c */ = {
 		uiCtxt = {
@@ -4112,260 +4122,6 @@
 			sepNavSelRange = "{324, 0}";
 			sepNavVisRect = "{{0, 0}, {1076, 530}}";
 		};
-	};
-	2FBE3AD4096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FD31F1B079E1F89005D8F2D /* TimeLists.h */;
-		name = "void ClearTimingArray(void);";
-		rLen = 29;
-		rLoc = 476;
-		rType = 0;
-		vrLen = 681;
-		vrLoc = 0;
-	};
-	2FBE3AD5096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F242038E2BE2017A7028 /* Psych.h */;
-		name = "#include \"PsychConstants.h\"  //can include this alone";
-		rLen = 54;
-		rLoc = 330;
-		rType = 0;
-		vrLen = 833;
-		vrLoc = 0;
-	};
-	2FBE3AD6096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23E038E2BE2017A7028 /* PsychError.h */;
-		name = "PsychError.h: PsychError_extraInputArg";
-		rLen = 0;
-		rLoc = 3367;
-		rType = 0;
-		vrLen = 1560;
-		vrLoc = 2709;
-	};
-	2FBE3AD7096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FE20DD206093D3500FDE06D /* PsychInstrument.h */;
-		name = PsychPushClock;
-		rLen = 14;
-		rLoc = 342;
-		rType = 0;
-		vrLen = 424;
-		vrLoc = 0;
-	};
-	2FBE3AD8096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23C038E2BE2017A7028 /* PsychPlatformConstants.h */;
-		name = "PsychPlatformConstants.h: 1";
-		rLen = 0;
-		rLoc = 0;
-		rType = 0;
-		vrLen = 1052;
-		vrLoc = 0;
-	};
-	2FBE3AD9096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23F038E2BE2017A7028 /* PsychIncludes.h */;
-		name = "#include \"mex.h\"";
-		rLen = 18;
-		rLoc = 1046;
-		rType = 0;
-		vrLen = 1220;
-		vrLoc = 493;
-	};
-	2FBE3ADA096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FA80D3306B0569900112E7A /* PsychAuthors.h */;
-		name = PsychSetModuleAuthorByInitials;
-		rLen = 30;
-		rLoc = 1308;
-		rType = 0;
-		vrLen = 1392;
-		vrLoc = 0;
-	};
-	2FBE3ADB096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */;
-		name = "How To Release.rtf: 8";
-		rLen = 0;
-		rLoc = 64;
-		rType = 0;
-		vrLen = 1940;
-		vrLoc = 0;
-	};
-	2FBE3ADC096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F6FC4AC0739C0FB00B3EB88 /* README.rtf */;
-		name = "README.rtf: 32";
-		rLen = 0;
-		rLoc = 1459;
-		rType = 0;
-		vrLen = 2296;
-		vrLoc = 352;
-	};
-	2FBE3ADD096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */;
-		name = "How To Add To Screen.rtf: 22";
-		rLen = 0;
-		rLoc = 405;
-		rType = 0;
-		vrLen = 1336;
-		vrLoc = 0;
-	};
-	2FBE3ADE096CD2120022D64F /* PBXBookmark */ = {
-		isa = PBXBookmark;
-		fRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */;
-	};
-	2FBE3ADF096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F6FC4AC0739C0FB00B3EB88 /* README.rtf */;
-		name = "README.rtf: 32";
-		rLen = 0;
-		rLoc = 1459;
-		rType = 0;
-		vrLen = 1792;
-		vrLoc = 511;
-	};
-	2FBE3AE0096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FA80D3306B0569900112E7A /* PsychAuthors.h */;
-		name = PsychSetModuleAuthorByInitials;
-		rLen = 30;
-		rLoc = 1308;
-		rType = 0;
-		vrLen = 743;
-		vrLoc = 770;
-	};
-	2FBE3AE1096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F242038E2BE2017A7028 /* Psych.h */;
-		name = "#include \"PsychConstants.h\"  //can include this alone";
-		rLen = 54;
-		rLoc = 330;
-		rType = 0;
-		vrLen = 837;
-		vrLoc = 203;
-	};
-	2FBE3AE2096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FD31F1B079E1F89005D8F2D /* TimeLists.h */;
-		name = "void ClearTimingArray(void);";
-		rLen = 29;
-		rLoc = 476;
-		rType = 0;
-		vrLen = 681;
-		vrLoc = 0;
-	};
-	2FBE3AE3096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F242038E2BE2017A7028 /* Psych.h */;
-		name = "#include \"PsychConstants.h\"  //can include this alone";
-		rLen = 54;
-		rLoc = 330;
-		rType = 0;
-		vrLen = 833;
-		vrLoc = 0;
-	};
-	2FBE3AE4096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FA80D3306B0569900112E7A /* PsychAuthors.h */;
-		name = PsychSetModuleAuthorByInitials;
-		rLen = 30;
-		rLoc = 1308;
-		rType = 0;
-		vrLen = 1134;
-		vrLoc = 0;
-	};
-	2FBE3AE5096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23E038E2BE2017A7028 /* PsychError.h */;
-		name = "PsychError.h: PsychError_extraInputArg";
-		rLen = 0;
-		rLoc = 3367;
-		rType = 0;
-		vrLen = 1560;
-		vrLoc = 2709;
-	};
-	2FBE3AE6096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FE20DD206093D3500FDE06D /* PsychInstrument.h */;
-		name = PsychPushClock;
-		rLen = 14;
-		rLoc = 342;
-		rType = 0;
-		vrLen = 424;
-		vrLoc = 0;
-	};
-	2FBE3AE7096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23C038E2BE2017A7028 /* PsychPlatformConstants.h */;
-		name = "PsychPlatformConstants.h: 1";
-		rLen = 0;
-		rLoc = 0;
-		rType = 0;
-		vrLen = 1052;
-		vrLoc = 0;
-	};
-	2FBE3AE8096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = F569F23F038E2BE2017A7028 /* PsychIncludes.h */;
-		name = "#include \"mex.h\"";
-		rLen = 18;
-		rLoc = 1046;
-		rType = 0;
-		vrLen = 1220;
-		vrLoc = 493;
-	};
-	2FBE3AE9096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FA80D3306B0569900112E7A /* PsychAuthors.h */;
-		name = PsychSetModuleAuthorByInitials;
-		rLen = 30;
-		rLoc = 1308;
-		rType = 0;
-		vrLen = 1392;
-		vrLoc = 0;
-	};
-	2FBE3AEA096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */;
-		name = "How To Release.rtf: 8";
-		rLen = 0;
-		rLoc = 64;
-		rType = 0;
-		vrLen = 1940;
-		vrLoc = 0;
-	};
-	2FBE3AEB096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F6FC4AC0739C0FB00B3EB88 /* README.rtf */;
-		name = "README.rtf: 32";
-		rLen = 0;
-		rLoc = 1459;
-		rType = 0;
-		vrLen = 2296;
-		vrLoc = 352;
-	};
-	2FBE3AEC096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */;
-		name = "How To Add To Screen.rtf: 22";
-		rLen = 0;
-		rLoc = 405;
-		rType = 0;
-		vrLen = 1336;
-		vrLoc = 0;
-	};
-	2FBE3AED096CD2120022D64F /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 83C94B02092823C00062DB0A /* PsychMovieSupport.c */;
-		name = "PsychMovieSupport.c: 1";
-		rLen = 0;
-		rLoc = 0;
-		rType = 0;
-		vrLen = 1050;
-		vrLoc = 0;
 	};
 	2FC12E5E07433E3100991CF0 /* SCREENGetMouseHelper.c */ = {
 		uiCtxt = {
@@ -5388,16 +5144,6 @@
 			sepNavSelRange = "{299, 0}";
 			sepNavVisRect = "{{0, 0}, {1172, 629}}";
 		};
-	};
-	2FDD8C2C0951A40C00BDDA89 /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F6FC4AC0739C0FB00B3EB88 /* README.rtf */;
-		name = "README.rtf: 32";
-		rLen = 0;
-		rLoc = 1459;
-		rType = 0;
-		vrLen = 1792;
-		vrLoc = 511;
 	};
 	2FE20DD206093D3500FDE06D /* PsychInstrument.h */ = {
 		uiCtxt = {
