@@ -1,7 +1,7 @@
 function UpdatePsychtoolbox()
 % UpdatePsychtoolbox
 %
-% Updates the working copy of Psychtoolbox for OS-X via the Subversion
+% Updates the working copy of Psychtoolbox via the Subversion
 % client from the Subversion master repository.
 %
 % This function will update your working copy of the Psychtoolbox with the
@@ -21,9 +21,13 @@ function UpdatePsychtoolbox()
 % History:
 %
 % 11/2/05 mk  Created.
+% 1/13/06 mk  Added support for Microsoft Windows. 
+
+% Windows system?
+isWin = strcmp(computer, 'PCWIN');
 
 % Check if subversion client is properly installed:
-if exist('/usr/local/bin/svn', 'file')~=2
+if ~isWin & exist('/usr/local/bin/svn', 'file')~=2
     fprintf('Could not find the Subversion client "svn" in its\n');
     fprintf('expected location /usr/local/bin/svn ! Please download\n');
     fprintf('and install the most recent Subversion client from...\n\n');
@@ -32,16 +36,27 @@ if exist('/usr/local/bin/svn', 'file')~=2
     return;
 end;
 
-fprintf('Trying to update working copy of Psychtoolbox-OSX.\n');
+fprintf('Trying to update working copy of OpenGL-Psychtoolbox.\n');
 
-updatecommand = char([ '/usr/local/bin/svn update ./' ]);
-
+if ~isWin
+    updatecommand = char([ '/usr/local/bin/svn update ./' ]);
+else
+    updatecommand = char([ 'svn update ./' ]);
+end;
+ 
 fprintf('Will execute the following update command, please standby...\n');
 fprintf('%s\n', updatecommand);
 
-[status, result] = system(updatecommand);
+if ~isWin
+    [status, result] = system(updatecommand);
+else
+    [status, result] = dos(updatecommand);
+end;
+ 
 if (status>0)
     fprintf('Operation failed for some reason. Sorry...\n');
+    fprintf('%s\n', result);
+    return;   
 end;
 
 fprintf('Operation finished! The following list shows all modifications\n');
@@ -56,8 +71,8 @@ fprintf('List of modifications:\n');
 fprintf('======================\n');
 fprintf('%s\n', result);
 
-fprintf('\n\n\nYou are ready to use the updated Psychtoolbox - Enjoy!\n\n');
+fprintf('\n\n\nPlease delete and add the Psychtoolbox folder and its subfolders\n');
+fprintf('to your Matlab path again to account for possible new subfolders...\n');
+fprintf('After doing that, you will be ready to use the updated Psychtoolbox - Enjoy!\n\n')
 
-
-
-
+return;

@@ -1,11 +1,11 @@
 function DownloadPsychtoolbox(flavor, targetdirectory)
-% DownloadPsychtoolbox(branchid, targetdirectory)
+% DownloadPsychtoolbox(flavor, targetdirectory)
 %
-% Download the Psychtoolbox for OS-X via the Subversion client from the
-% Subversion master repository and create a working copy suitable for
-% automatic software updates.
+% Download the Psychtoolbox for OS-X or the Microsoft Windows prototype of
+% the OS-X toolbox via the Subversion client from the Subversion master
+% repository and create a working copy suitable for automatic software updates.
 %
-% This function will download a working copy of the Psychtoolbox for OS-X,
+% This function will download a working copy of the Psychtoolbox,
 % either into the current working directory, or into 'targetdirectory' at
 % your option.
 %
@@ -24,8 +24,9 @@ function DownloadPsychtoolbox(flavor, targetdirectory)
 % branch and finally into the next official release.
 %
 % flavor == 'Psychtoolbox-1.x.y' - Download the code which corresponds
-% to official release Psychtoolbox-1.x.y . This is identical to the
-% packages that can be downloaded from www.psychtoolbox.org.
+% to official release Psychtoolbox-1.x.y . This is nearly identical to the
+% packages that can be downloaded from www.psychtoolbox.org. The difference
+% is that critical bugs get fixed in this version.
 %
 % We recommend to either use the 'stable' flavor, or the 'beta' flavor if
 % you like pre-release code with early access to bug fixes, enhancements
@@ -35,6 +36,10 @@ function DownloadPsychtoolbox(flavor, targetdirectory)
 %
 % 1. Download the latest MacOS-X Subversion client from:
 % http://metissian.com/projects/macosx/subversion/
+%
+% If you want to download the Microsoft Windows prototype,
+% you'll need the Windows Subversion client from:
+% http://subversion.tigris.org/files/documents/15/25364/svn-1.2.3-setup.exe
 %
 % 2. Install it on your machine by double-clicking the installer and
 % following the instructions.
@@ -55,7 +60,7 @@ function DownloadPsychtoolbox(flavor, targetdirectory)
 %
 % 1. Change your Matlab current directory to the Psychtoolbox - folder.
 %
-% 2. Call the script: 'UpdatePsychtoolboxFromSVN'.
+% 2. Call the script: 'UpdatePsychtoolbox'.
 %
 % 3. Your working copy will get updated to the latest release.
 %
@@ -63,8 +68,9 @@ function DownloadPsychtoolbox(flavor, targetdirectory)
 
 % History:
 %
-% 11/2/05  mk  Created.
-% 11/25/05 mk  Bugfix for 'targetdirectory' provided by David Fencsik
+% 11/02/05 mk Created.
+% 11/25/05 mk Bugfix for 'targetdirectory' provided by David Fencsik.
+% 01/13/06 mk Added support for download of Windows OpenGL-PTB.
 
 if nargin < 2
     targetdirectory = pwd;
@@ -74,8 +80,12 @@ if nargin < 1
     flavor = 'stable';
 end;
 
-% Check if subversion client is properly installed:
-if exist('/usr/local/bin/svn', 'file')~=2
+% Windows system?
+isWin = strcmp(computer, 'PCWIN');
+
+% Check if subversion client is properly installed on OS-X
+% We can't easily check on Windows...:
+if ~isWin & exist('/usr/local/bin/svn', 'file')~=2
     fprintf('Could not find the Subversion client "svn" in its\n');
     fprintf('expected location /usr/local/bin/svn ! Please download\n');
     fprintf('and install the most recent Subversion client from...\n\n');
@@ -84,28 +94,47 @@ if exist('/usr/local/bin/svn', 'file')~=2
     return;
 end;
 
-fprintf('Trying to download the latest working copy of Psychtoolbox-OSX.\n');
+if ~isWin
+   fprintf('Trying to download the latest working copy of Psychtoolbox-OSX.\n');
+else
+   fprintf('Trying to download the latest working copy of OpenGL Psychtoolbox for Windoze.\n');
+end;
+
 fprintf('Target folder for installation: %s\n', targetdirectory);
 fprintf('Requested flavor is: %s\n', flavor);
 fprintf('\n');
 
-checkoutcommand = char([ '/usr/local/bin/svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '/Psychtoolbox' ]);
+if ~isWin
+   checkoutcommand = char([ '/usr/local/bin/svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '/Psychtoolbox' ]);
+else
+   checkoutcommand = char([ 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '\Psychtoolbox' ]);
+end;
 
 fprintf('Will execute the following checkout command, please standby...\n');
 fprintf('%s\n', checkoutcommand);
 
-[status, result] = system(checkoutcommand);
+if ~isWin
+    [status, result] = system(checkoutcommand);
+else
+    [status, result] = dos(checkoutcommand);
+end;
+
 if (status>0)
     fprintf('Operation failed for some reason. Sorry...\n');
+    fprintf('%s\n', result);
+    return;
 end;
 
 fprintf('Operation finished! Output of svn is as follows...\n');
 fprintf('%s\n', result);
 
 fprintf('Please adapt your Matlab path to include the folder\n');
-fprintf('%s/Psychtoolbox\n', targetdirectory);
+if ~isWin
+   fprintf('%s/Psychtoolbox\n', targetdirectory);
+else
+   fprintf('%s\\Psychtoolbox\n', targetdirectory);
+end;
+
 fprintf('and all its subfolders. Then you are ready to use the Psychtoolbox - Enjoy!\n');
 
-
-
-
+return;
