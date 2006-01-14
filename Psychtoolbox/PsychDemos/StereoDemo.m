@@ -1,104 +1,144 @@
-function StereoDemo(stereomode)
-% Demo on how to use Psychtoolbox for OS-X to drive stereo-displays
-% that are supported by MacOS-X, e.g., the CrystalEyes products...
+function StereoDemo(stereoMode)
+% StereoDemo(stereoMode)
 %
-% Press any key to abort demo.
+% Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli.
 %
-% Draws a rectangle into view for left-eye and a displaced rectangle
-% into the view for the right-eye, thereby creating some disparity
-% between both eyes.
+% Press any key to abort demo any time.
 %
-% This is a quick & dirty hack that shows how to use PTB for this,
-% but is by no means correct with respect to binocular vision.
+% stereoMode specifies the type of stereo display algorithm to use:
 %
-% Use this as a starting point... ;-)
+% 0 == Mono display - No stereo at all.
 %
-% Author: Mario Kleiner mario.kleiner at tuebingen.mpg.de
+% 1 == Flip frame stereo (temporally interleaved) - You'll need shutter
+% glasses that are supported by the operating system, e.g., the
+% CrystalEyes-Shutterglasses.
+%
+% 2 == Top/bottom image stereo with lefteye=top also for use with special
+% CrystalEyes-hardware.
+%
+% 3 == Same, but with lefteye=bottom.
+%
+% 4 == Free fusion (lefteye=left, righteye=right)
+%
+% 5 == Cross fusion (lefteye=right ...)
+%
+% 6-9 == Different modes of anaglyph stereo for color filter glasses:
+%
+% 6 == Red-Green
+% 7 == Green-Red
+% 8 == Red-Blue
+% 9 == Blue-Red
+%
+%
+% Authors:
+% Finnegan Calabro  - fcalabro@bu.edu
+% Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
 %
 
-% Stereomode defaults to 'OpenGL - Stereo'...
-if nargin<1
-    stereomode=1
+if nargin < 1
+    stereoMode=1;
 end;
 
-WaitSecs(1);
+% This script calls Psychtoolbox commands available only in OpenGL-based
+% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
+% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
+% an error message if someone tries to execute this script on a computer without
+% an OpenGL Psychtoolbox
+AssertOpenGL;
 
 try
-	% This script calls Psychtoolbox commands available only in OpenGL-based 
-	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-	% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
-	% an error message if someone tries to execute this script on a computer without
-	% an OpenGL Psychtoolbox
-	AssertOpenGL;
-	
-	% Get the list of Screens and choose the one with the highest screen number.
-	% Screen 0 is, by definition, the display with the menu bar. Often when 
-	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest dislay number is 
-	% a best guess about where you want the stimulus displayed.  
-	screens=Screen('Screens');
-	screenNumber=max(screens);
-    screensize=Screen('Rect', screenNumber);
+    % Get the list of Screens and choose the one with the highest screen number.
+    % Screen 0 is, by definition, the display with the menu bar. Often when
+    % two monitors are connected the one without the menu bar is used as
+    % the stimulus display.  Chosing the display with the highest dislay number is
+    % a best guess about where you want the stimulus displayed.
+    scrnNum = max(Screen('Screens'));
 
-    white=WhiteIndex(screenNumber);
-	black=BlackIndex(screenNumber);
-	gray=(white+black)/2;
-	if round(gray)==white
-		gray=black;
+    % Stimulus settings:
+    numDots = 1000;
+    vel = 1;   % pix/frames
+    dotSize = 4;
+    dots = zeros(3, numDots);
+
+    xmax = 300;
+    ymax = xmax;
+
+    f = 4*pi/xmax;
+    amp = 16;
+
+    dots(1, :) = 2*(xmax)*rand(1, numDots) - xmax;
+    dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
+
+    % Open double-buffered onscreen window with the requested stereo mode:
+    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode);
+
+    % Initially fill left- and right-eye image buffer with black background
+    % color:
+    Screen('SelectStereoDrawBuffer', windowPtr, 0);
+    Screen('FillRect', windowPtr, BlackIndex(scrnNum));
+    Screen('SelectStereoDrawBuffer', windowPtr, 1);
+    Screen('FillRect', windowPtr, BlackIndex(scrnNum));
+
+    % Show cleared start screen:
+    Screen('Flip', windowPtr);
+
+    % Set up alpha-blending for smooth (anti-aliased) drawing of dots:
+    Screen('BlendFunction', windowPtr, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
+
+    col1 = WhiteIndex(scrnNum);
+    col2 = col1;
+    i = 1;
+    keyIsDown = 0;
+    center = [0 0];
+    sigma = 50;
+    xvel = 2*vel*rand(1,1)-vel;
+    yvel = 2*vel*rand(1,1)-vel;
+
+    % Perform a flip to sync us to vbl and take start-timestamp in t:
+    t = Screen('Flip', windowPtr);
+
+    % Run until a key is pressed:
+    while ~KbCheck
+        % Compute dot positions and offsets for this frame:
+        center = center + [xvel yvel];
+        if center(1) > xmax | center(1) < -xmax
+            xvel = -xvel;
+        end
+
+        if center(2) > ymax | center(2) < -ymax
+            yvel = -yvel;
+        end
+
+        dots(3, :) = -amp.*exp(-(dots(1, :) - center(1)).^2 / (2*sigma*sigma)).*exp(-(dots(2, :) - center(2)).^2 / (2*sigma*sigma));
+
+        % Select left-eye image buffer for drawing:
+        Screen('SelectStereoDrawBuffer', windowPtr, 0);
+        % Draw left stim:
+        Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, [windowRect(3:4)/2], 1);
+
+        % Select right-eye image buffer for drawing:
+        Screen('SelectStereoDrawBuffer', windowPtr, 1);
+        % Draw right stim:
+        Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
+
+        % Take timestamp of stimulus-onset after displaying the new stimulus
+        % and record it in vector t:
+        onset = Screen('Flip', windowPtr);
+        t = [t onset];
     end
 
-    % Query size of screen:
-    screenwidth=screensize(3)
-    screenheight=screensize(4)
+    % Done. Close the onscreen window:
+    Screen('CloseAll')
 
-    % Open a double-buffered stereoscopic full-screen display window:
-    % Number of buffers must be set == 2 for selecting this mode.
-    w=Screen('OpenWindow',screenNumber, 0,[],32, 2, stereomode);
+    % Compute and show timing statistics:
+    dt = t(2:end) - t(1:end-1);
+    disp(sprintf('N.Dots\tMean (s)\tMax (s)\t%%>20ms\t%%>30ms\n'));
+    disp(sprintf('%d\t%5.3f\t%5.3f\t%5.2f\t%5.2f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt), sum(dt > 0.030)/length(dt)));
 
-    % Clear image buffers and select clear color as "black":
-    Screen('FillRect', w, 0);
-    
-    % Initial double-buffer flip for synching to vertical retrace:
-    Screen('Flip',w,0,0);
-    Screen('Flip',w,0,0);
-    
-    n=1000
-        
-    tb=GetSecs;
-    f=300;
-    j=200;
-    while KbCheck == 0
-        for i=1:n
-            d=f * sin(i / 100);
-            s=1.1 + 0.2*sin(i/100);
-            % Paint image for left eye:
-            % Select image buffer for left eye view:
-            Screen('SelectStereoDrawBuffer', w, 0);
-            Screen('FrameRect', w, [255 255 255], [j+20 j+20 j+20+s*400 j+20+s*400]);
-            % Paint image for right eye:
-            % Select image buffer for right eye view:
-            Screen('SelectStereoDrawBuffer', w, 1);
-            Screen('FrameRect', w, [255 255 255], [j+d+20 j+20 j+d+20+s*400 j+20+s*400]);
+    % We're done.
 
-            % Done with painting both images. Show them to subject on next
-            % vertical retrace:
-            Screen('Flip', w);
-	        if KbCheck
-            	break;
-            end;
-        end;
-    end;
-
-    finalprio = Priority(0)
-
-    Screen('CloseAll');
-    
 catch
-    %this "catch" section executes in case of an error in the "try" section
-    %above.  Importantly, it closes the onscreen window if its open.
-    finalprio = Priority(0)
+    % Executes in case of an error: Closes onscreen window:
     Screen('CloseAll');
     rethrow(lasterror);
-end %try..catch..
-
-return
+end;
