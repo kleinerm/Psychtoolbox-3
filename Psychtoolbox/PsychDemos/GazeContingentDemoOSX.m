@@ -71,7 +71,7 @@ try
 
     % Open a double buffered fullscreen window.
     [w, wRect]=Screen('OpenWindow',screenNumber, 0,[],32,2);
-
+    
     % Find the color values which correspond to white and black.  Though on OS
     % X we currently only support true color and thus, for scalar color
     % arguments,
@@ -94,7 +94,9 @@ try
     %     in maketexture
     [iy, ix, id]=size(imdata);
     [wW, wH]=WindowSize(w);
-    if ix>wW | iy>wH
+	% wW=wRect(3);
+	% wH=wRect(4);
+	 if ix>wW | iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
     end
@@ -182,8 +184,8 @@ try
     % The mouse-cursor position will define gaze-position (center of
     % fixation) to simulate (x,y) input from an eyetracker. Set cursor
     % initially to center of screen:
-    [a,b]=WindowCenter(w);
-    WaitSetMouse(a,b,w); % set cursor and wait for it to take effect
+    [a,b]=RectCenter(wRect);
+    WaitSetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
     
     HideCursor;
     buttons=0;
@@ -208,7 +210,7 @@ try
         % Query current mouse cursor position (our "pseudo-eyetracker") -
         % (mx,my) is our gaze position.
         if (hurryup==0)
-            [mx, my, buttons]=GetMouse(w);
+            [mx, my, buttons]=GetMouse; %(w);
         else
             % In benchmark mode, we just do a quick sinusoidal motion
             % without query of the mouse:
@@ -233,7 +235,7 @@ try
                 % center of gaze according to a gaussian function and
                 % approach 255 at the border of the aperture...
                 Screen('BlendFunction', w, GL_ONE, GL_ZERO);
-                Screen('DrawTexture', w, masktex, [], myrect, 0, 0);
+                Screen('DrawTexture', w, masktex, [], myrect);
 
                 % Step 2: Draw peripheral image. It is only drawn where
                 % the alpha-value in the backbuffer is 255 or high, leaving
@@ -242,7 +244,7 @@ try
                 % with the corresponding alpha-value in the backbuffer
                 % (GL_DST_ALPHA).
                 Screen('BlendFunction', w, GL_DST_ALPHA, GL_ZERO);
-                Screen('DrawTexture', w, nonfoveatex, [], ctRect, 0);
+                Screen('DrawTexture', w, nonfoveatex, [], ctRect);
 
                 % Step 3: Draw foveated image, but only where the
                 % alpha-value in the backbuffer is zero or low: This is
@@ -250,7 +252,7 @@ try
                 % corresponding alpha-value in the backbuffer
                 % (GL_ONE_MINUS_DST_ALPHA).
                 Screen('BlendFunction', w, GL_ONE_MINUS_DST_ALPHA, GL_ONE);
-                Screen('DrawTexture', w, foveatex, sRect, dRect, 0, 0);
+                Screen('DrawTexture', w, foveatex, sRect, dRect);
 
                 % Show final result on screen. This also clears the drawing
                 % surface back to black background color and a zero alpha
@@ -294,7 +296,7 @@ try
     Priority(0);
     tavg = tavg / ncount * 1000;
     fprintf('End of GazeContingentDemo. Avg. redraw time is %f ms = %f Hz.\n\n', tavg, 1000 / tavg);
-
+	 return;
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
@@ -303,11 +305,3 @@ catch
     Priority(0);
     rethrow(lasterror);
 end %try..catch..
-
-
-
-
-
-
-
-

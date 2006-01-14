@@ -50,11 +50,11 @@ try
 
     nframes     = 1000; % number of animation frames in loop
     mon_width   = 39;   % horizontal dimension of viewable screen (cm)
-    v_dist              = 60;   % viewing distance (cm)
+    v_dist      = 60;   % viewing distance (cm)
     dot_speed   = 7;    % dot speed (deg/sec)
-    ndots               = 2000;        % number of dots
-    max_d               = 15;   % maximum radius of  annulus (degrees)
-    min_d               = 1;    % minumum
+    ndots       = 5000;        % number of dots
+    max_d       = 15;   % maximum radius of  annulus (degrees)
+    min_d       = 1;    % minumum
     dot_w       = 0.1;  % width of dot (deg)
     fix_r       = 0.15; % radius of fixation point (deg)
     f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)    
@@ -73,18 +73,24 @@ try
     doublebuffer=1
     screens=Screen('Screens');
 	screenNumber=max(screens);
+    % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],32, doublebuffer+1);
     [w, rect] = Screen('OpenWindow', screenNumber, 0,[],32, doublebuffer+1);
+
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    center = [rect(3) rect(4)]/2;	% coordinates of screen center (pixels)
-    fps=Screen('FrameRate',w);      % frames per second
+    [center(1), center(2)] = RectCenter(rect);
+	 fps=Screen('FrameRate',w);      % frames per second
     ifi=Screen('GetFlipInterval', w);
+    if fps==0
+       fps=1/ifi;
+    end;
+    
     black = BlackIndex(w);
     white = WhiteIndex(w);
     Screen('FillRect', w, black)
     HideCursor;	% Hide the mouse cursor
-    %Priority(MaxPriority(w));
+    Priority(MaxPriority(w));
     
     % Do initial flip...
     vbl=Screen('Flip', w);
@@ -93,7 +99,7 @@ try
     % initialize dot positions and velocities
     % ---------------------------------------
 
-    ppd = pi * rect(3) / atan(mon_width/v_dist/2) / 360;    % pixels per degree
+    ppd = pi * (rect(3)-rect(1)) / atan(mon_width/v_dist/2) / 360;    % pixels per degree
     pfs = dot_speed * ppd / fps;                            % dot speed (pixels/frame)
     s = dot_w * ppd;                                        % dot size (pixels)
     fix_cord = [center-fix_r*ppd center+fix_r*ppd];
@@ -124,6 +130,7 @@ try
         s=(1+rand(1, ndots)*(differentsizes-1))*s;        
     end;
     
+    buttons=0;
         
     % --------------
     % animation loop
@@ -169,7 +176,9 @@ try
         
         if (doublebuffer==1)
             vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
-        end;
+         end;
+         %pause(0.001);
+         %pause;
     end;
     Priority(0);
     ShowCursor

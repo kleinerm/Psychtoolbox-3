@@ -67,8 +67,8 @@ try
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,255);
     Screen('Flip', theWindow);
     while (1)
-        [x,y,buttons] = GetMouse(theWindow);
-        if buttons(1)
+        [x,y,buttons] = GetMouse(whichScreen);
+        if buttons(1) | KbCheck
           break;
         end
     end
@@ -76,7 +76,7 @@ try
     %Screen(theWindow,'DrawText','Release button to finish',50,50,255);
 
     % Loop and track the mouse, drawing the contour
-    [theX,theY] = GetMouse(theWindow);
+    [theX,theY] = GetMouse(whichScreen);
     thePoints = [theX theY];
     Screen(theWindow,'DrawLine',255,theX,theY,theX,theY);
     Screen('Flip', theWindow);
@@ -84,7 +84,7 @@ try
     startTime = GetSecs;
     nextTime = startTime+sampleTime;
     while (1)
-        [x,y,buttons] = GetMouse(theWindow);	
+        [x,y,buttons] = GetMouse(whichScreen);	
         if ~buttons(1)
             break;
         end
@@ -112,7 +112,7 @@ try
     drawnow;
     figure(gcf);
 catch
-    rethrow(lasterror);
     Screen('CloseAll')
     Screen('ShowCursor');
+    rethrow(lasterror);
 end %try..catch..

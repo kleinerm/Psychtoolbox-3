@@ -1,6 +1,4 @@
 function OldNewRecogExp(subNo,hand)
-
-
 %
 % sample old/new recognition experiment
 % 05/24/05

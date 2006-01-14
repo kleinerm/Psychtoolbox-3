@@ -21,6 +21,8 @@ if nargin<1
     stereomode=1
 end;
 
+WaitSecs(1);
+
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
 	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
@@ -61,10 +63,8 @@ try
     Screen('Flip',w,0,0);
     
     n=1000
-    
-    Priority(9)
-    
-    tb=GetSecs();
+        
+    tb=GetSecs;
     f=300;
     j=200;
     while KbCheck == 0
@@ -82,15 +82,9 @@ try
 
             % Done with painting both images. Show them to subject on next
             % vertical retrace:
-            %Screen('Flip', w, 0, 1);
-            
-            while(1)
-                Screen('Flip', w, 0, 1);
-                WaitSecs(0.1);
-            if (KbCheck)
-                smashit
-                break;
-            end;
+            Screen('Flip', w);
+	        if KbCheck
+            	break;
             end;
         end;
     end;
