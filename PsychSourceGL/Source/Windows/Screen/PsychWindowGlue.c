@@ -264,7 +264,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       width=PsychGetWidthFromRect(windowRecord->rect);
       height=PsychGetHeightFromRect(windowRecord->rect);
 
-      if (x==0 && y==0) {
+      if (FALSE && x==0 && y==0) {
 	// Try to see if we can make it a fullscreen window of
 	// requested size by switching to different display mode:
 	fullscreen = ChangeScreenResolution(width, height, 32, 0);
@@ -278,6 +278,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     if (fullscreen) {
       windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window)
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
+      // PsychWaitIntervalSeconds(5);
     }
 
     // Register our own window class for Psychtoolbox onscreen windows:
@@ -442,6 +443,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       wglSwapIntervalEXT=(PFNWGLEXTSWAPCONTROLPROC) wglGetProcAddress("wglSwapIntervalEXT");
     }
     else {
+      wglSwapIntervalEXT = NULL;
       printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
       printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
       printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somewhere in the display settings\n");
