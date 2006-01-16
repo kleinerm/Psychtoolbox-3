@@ -103,6 +103,9 @@ PsychError SCREENFillOval(void)
         
 	//Set the context & color
 	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, depthValue);
         

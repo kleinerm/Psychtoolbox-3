@@ -159,8 +159,12 @@ PsychError SCREENPutImage(void)
                  }
             }
 
+            // Enable GL-Context of current onscreen window:
             PsychSetGLContext(windowRecord);
-			PsychUpdateAlphaBlendingFactorLazily(windowRecord);
+            // Enable this windowRecords framebuffer as current drawingtarget:
+            PsychSetDrawingTarget(windowRecord);
+            
+            PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
             glRasterPos2i((GLint)(positionRect[kPsychLeft]), (GLint)(positionRect[kPsychTop]));
             PsychTestForGLErrors();
@@ -172,8 +176,6 @@ PsychError SCREENPutImage(void)
             free((void *)compactMat);
             PsychTestForGLErrors();
             PsychFlushGL(windowRecord);  //OS X: This does nothing if we are multi buffered, otherwise it glFlushes
-						
-			
             PsychTestForGLErrors();
         }else if(numPlanes==3)
             PsychErrorExitMsg(PsychError_unimplemented, "PutImage found hardware without an alpha channel.");	

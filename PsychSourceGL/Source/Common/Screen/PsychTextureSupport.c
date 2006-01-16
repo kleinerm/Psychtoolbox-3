@@ -466,7 +466,10 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
         // Setup texture-target if not already done:
         PsychDetectTextureTarget(target);
-
+        
+        // Enable target's framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(target);
+        
         // This code allows the application of sourceRect, as it is meant to be:
         // CAUTION: This calculation with sourceHeight - xxxx  depends on if GPU texture swapping
         // is on or off!!!!

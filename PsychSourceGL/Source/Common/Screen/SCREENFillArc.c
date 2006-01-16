@@ -172,6 +172,9 @@ void PsychRenderArc(unsigned int mode)
         
         // Setup OpenGL context:
 	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, depthValue);
         

@@ -77,6 +77,9 @@ PsychError SCREENPreloadTextures(void)
         
         // Setup texturing for no-op texturing:
         PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
         glDisable(GL_TEXTURE_2D);
 
 	// Fetch global texturing mode:

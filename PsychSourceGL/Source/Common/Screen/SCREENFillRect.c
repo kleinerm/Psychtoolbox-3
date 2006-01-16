@@ -80,7 +80,10 @@ PsychError SCREENFillRect(void)
 	isScreenRect=FALSE;
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 	isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->rect);
-	PsychSetGLContext(windowRecord); 
+	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	if(isScreenRect){
 		//fullscreen rect fill which in GL is a special case which may be accelerated.

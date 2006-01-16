@@ -70,7 +70,10 @@ PsychError SCREENglPoint(void)
 	PsychCopyInDoubleArg(5, FALSE, &dotSize);
 
 	//Set the color and draw the rect.  Note that all GL drawing commands should be sandwiched between	 
-	PsychSetGLContext(windowRecord); 
+	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, depthValue);
 	glEnable(GL_POINT_SMOOTH);

@@ -72,6 +72,9 @@ PsychError SCREENgluDisk(void)
 
 	//Set the color and draw the rect.  Note that all GL drawing commands should be sandwiched between 
 	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, depthValue);
 	glPushMatrix();

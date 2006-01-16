@@ -76,10 +76,13 @@ PsychError SCREENFrameRect(void)
 	//get the pen size
 	penSize=1;
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &penSize);
-	glLineWidth((GLfloat)penSize);
 	
 	//draw the rect
-	PsychSetGLContext(windowRecord); 
+	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
+	glLineWidth((GLfloat)penSize);
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, depthValue);
 	glBegin(GL_LINE_LOOP);

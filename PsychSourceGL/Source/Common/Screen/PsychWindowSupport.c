@@ -136,6 +136,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Retrieve final vbl_startline, aka physical height of the display in pixels:
     PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
 
+    // Enable GL-Context of current onscreen window:
+    PsychSetGLContext(*windowRecord);
+
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(*windowRecord);
+    
+    
     // Configure OpenGL here: This sets up the OpenGL coordinate to window coordinate mapping for a
     // orthonormal projection:
     gluOrtho2D((*windowRecord)->rect[kPsychLeft], (*windowRecord)->rect[kPsychRight], (*windowRecord)->rect[kPsychBottom], (*windowRecord)->rect[kPsychTop]);
@@ -572,14 +579,16 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 /*
     PsychOpenOffscreenWindow()
     
-    Accept specifications for the offscreen window in the platform-neutral structures, convert to native CoreGraphics structures,
-    create the surface, allocate a window record and record the window specifications and memory location there.
-	
-	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
+    Accept specifications for the offscreen window in the platform-neutral structures, convert to native OpenGL structures,
+    create the texture, allocate a window record and record the window specifications and memory location there.
+    TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
 */
 boolean PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
 {
-    return(PsychOSOpenOffscreenWindow(rect, depth, windowRecord));
+    // This is a complete no-op as everything is implemented in SCREENOpenOffscreenWindow at the moment.
+    return(TRUE);
+    
+    //    return(PsychOSOpenOffscreenWindow(rect, depth, windowRecord));
 }
 
 
@@ -748,6 +757,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
     vbl_startline = (int) sch;
 
+    // Enable GL-Context of current onscreen window:
+    PsychSetGLContext(windowRecord);
+
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(windowRecord);
+    
     // Should we sync to the onset of vertical retrace?
     // Note: Flipping the front- and backbuffers is nearly always done in sync with VBL on
     // a double-buffered setup. sync_to_vbl specs, if the application should wait for
@@ -772,9 +787,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             }
         }
     }
-    
-    // Enable GL-Context of current onscreen window:
-    PsychSetGLContext(windowRecord);
     
     // Backup current assignment of read- writebuffers:
     glGetIntegerv(GL_READ_BUFFER, &read_buffer);
@@ -1034,7 +1046,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 */
 void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 {
-  PsychOSSetGLContext(windowRecord);
+    // Call OS - specific context switching code:
+    PsychOSSetGLContext(windowRecord);
 }
 
 /*
@@ -1096,6 +1109,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
         // Setup context and back-drawbuffer:
         PsychSetGLContext(windowRecord);
+
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
         glDrawBuffer(GL_BACK_LEFT);
         
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
@@ -1248,6 +1265,9 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
     
     // Setup context:
     PsychSetGLContext(windowRecord);
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(windowRecord);
+
     w=PsychGetWidthFromRect(windowRecord->rect);
     h=PsychGetHeightFromRect(windowRecord->rect);
     
@@ -1390,6 +1410,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
 
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(windowRecord);
+    
     // Reset viewport to full-screen default:
     glViewport(0, 0, screenwidth, screenheight);
     
@@ -1572,3 +1595,74 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // Done.
     return;
 }
+
+/* PsychSetDrawingTarget - Set the target window for following drawing ops.
+ *
+ * Set up 'windowRecord' as the target window for all drawing operations.
+ * If windowRecord corresponds to an onscreen window, the standard framebuffer is
+ * selected as drawing target. If 'windowRecord' corresponds to a Psychtoolbox
+ * texture (aka Offscreen Window), we bind the texture as OpenGL framebuffer object,
+ * so we have render-to-texture functionality.
+ *
+ * This routine only performs state-transitions if necessary to save expensive
+ * state switches. Calling the routine with a NULL-Ptr doesn't change the rendertarget
+ * but signals render-completion.
+ *
+ * This routine requires support for OpenGL Framebuffer objects, aka OpenGL 1.5 with
+ * extension or OpenGL 2 or later. As a consequence it requires OS-X 10.4.3 or later or
+ * a Windows system with proper support. It is a no-op on all other systems.
+ *
+ */
+void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
+{
+#define ENABLE_FBOS YES
+    // We keep track of the current active rendertarget in order to
+    // avoid needless state changes:
+    static PsychWindowRecordType* currentRendertarget = NULL;
+    static GLuint framebufferobject = 0;
+    
+    if (windowRecord) {
+        // State transition requested?
+        if (currentRendertarget != windowRecord) {
+            #ifdef ENABLE_FBOS
+            glFinish();
+            // Yes! Transition to offscreen rendertarget?
+            if (windowRecord->windowType == kPsychTexture) {
+                // Need to bind a texture as framebuffer object:
+                if (framebufferobject == 0) {
+                    // Need to create a framebuffer object first:
+                    glGenFramebuffersEXT(1, &framebufferobject);
+                }
+                // Bind our own framebuffer:
+                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject);
+                // Make sure our texture is not bound to a texture unit:
+                glBindTexture(PsychGetTextureTarget(windowRecord), 0);
+                // Assign our texture to our framebufferobject:
+                glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                                          PsychGetTextureTarget(windowRecord), windowRecord->textureNumber, 0);
+                // Check for success:
+                if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
+                    // Failed!
+                    printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
+                    PsychTestForGLErrors();
+                    return;
+                }
+            }
+            else {
+                // Need to bind standard framebuffer (which has id 0):
+                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+            }
+            glFinish();
+            #endif
+            // Update our bookkeeping:
+            currentRendertarget = windowRecord;
+        }
+    }
+    else {
+        // Render completion for the current rendertarget signalled.
+        // Don't know yet what to do with this info...
+    }
+
+    return;
+}
+

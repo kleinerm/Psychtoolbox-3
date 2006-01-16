@@ -277,6 +277,9 @@ PsychError SCREENDrawText(void)
     
     //Convert the CG graphics bitmap into a GL texture.  
     PsychSetGLContext(winRec);
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(winRec);
+
     if(!PsychPrefStateGet_TextAlphaBlending()){
         PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
         PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -524,6 +527,9 @@ PsychError SCREENDrawText(void)
     if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
 
     PsychSetGLContext(winRec);
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(windowRecord);
+
     PsychSetGLColor(&colorArg, depthValue);
 
     // Does the font (better, its display list) need to be build or rebuild, because

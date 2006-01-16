@@ -121,6 +121,8 @@ PsychError SCREENFillPoly(void)
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 		 
 	PsychSetGLColor(&color, depthValue);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
 
 	///////// Test for convexity ////////
 	// This algorithm checks, if the polygon is definitely convex, or not.

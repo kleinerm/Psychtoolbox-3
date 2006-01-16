@@ -65,7 +65,12 @@ PsychError SCREENGetImage(void)
         glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	
         PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+
+        // Enable GL-Context of current onscreen window:
         PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+        
         numPlanes=PsychGetNumPlanesFromWindowRecord(windowRecord);
         bitsPerColor=PsychGetColorSizeFromWindowRecord(windowRecord);
         PsychGetRectFromWindowRecord(windowRect, windowRecord);

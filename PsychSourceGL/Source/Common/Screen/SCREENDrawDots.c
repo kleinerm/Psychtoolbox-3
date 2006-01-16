@@ -164,7 +164,10 @@ PsychError SCREENDrawDots(void)
             }
         }
         
-	PsychSetGLContext(windowRecord); 
+	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
  	// Set up common color for all dots if no color vector has been provided:

@@ -114,7 +114,10 @@ PsychError SCREENDrawLines(void)
 	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
 	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
 
-	PsychSetGLContext(windowRecord); 
+	PsychSetGLContext(windowRecord);
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
 #if OLDCOLOR	
