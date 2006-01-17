@@ -254,6 +254,9 @@ PsychError SCREENDrawLines(void)
         glLineWidth(1);
        	//DisposePtr((char *)colors);
  
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
  	//All psychfunctions require this.
 	return(PsychError_none);
 	}

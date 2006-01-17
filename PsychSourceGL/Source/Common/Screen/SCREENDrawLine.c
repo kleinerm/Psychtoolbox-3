@@ -94,6 +94,9 @@ PsychError SCREENDrawLine(void)
 		glVertex2d((GLdouble)dX, (GLdouble)dY);
 	glEnd();
 	
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
 	return(PsychError_none);
 }
 

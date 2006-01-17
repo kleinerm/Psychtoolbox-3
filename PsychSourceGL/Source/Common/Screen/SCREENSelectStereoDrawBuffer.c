@@ -76,6 +76,9 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	// Switch to associated GL-Context:
         PsychSetGLContext(windowRecord);
         
+        // Enable this windowRecords framebuffer as current drawingtarget:
+        PsychSetDrawingTarget(windowRecord);
+        
         // OpenGL native stereo?
         if (windowRecord->stereomode==kPsychOpenGLStereo) {
             // OpenGL native stereo via separate back-buffers: Select target draw buffer:

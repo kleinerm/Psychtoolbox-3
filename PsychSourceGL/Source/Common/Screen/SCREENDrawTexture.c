@@ -110,6 +110,9 @@ PsychError SCREENDrawTexture(void)
     PsychUpdateAlphaBlendingFactorLazily(target);
     PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
 
+    // Mark end of drawing op. This is needed for single buffered drawing:
+    PsychFlushGL(target);
+
     return(PsychError_none);
 
 }

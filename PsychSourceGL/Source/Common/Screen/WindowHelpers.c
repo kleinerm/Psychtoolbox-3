@@ -125,7 +125,8 @@ boolean PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord)
 
 boolean PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord)
 {
-    return(windowRecord->windowType==kPsychVideoMemoryOffscreen || windowRecord->windowType==kPsychSystemMemoryOffscreen);
+    return(windowRecord->windowType==kPsychVideoMemoryOffscreen || windowRecord->windowType==kPsychSystemMemoryOffscreen ||
+           windowRecord->windowType==kPsychTexture);
 }
 
 

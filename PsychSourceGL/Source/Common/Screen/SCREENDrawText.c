@@ -575,6 +575,9 @@ PsychError SCREENDrawText(void)
     glPopAttrib();
     glPopMatrix();
 
+    // Mark end of drawing op. This is needed for single buffered drawing:
+    PsychFlushGL(windowRecord);
+
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
     winRec->textAttributes.textPositionX += accumWidth;

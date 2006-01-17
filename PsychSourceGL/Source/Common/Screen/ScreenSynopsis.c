@@ -114,9 +114,10 @@ void InitializeSynopsis()
 	synopsis[i++] = "oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";
 	
 	// Copy an image, very quickly, between textures and onscreen windows
-	synopsis[i++] = "\n% Copy an image, very quickly, between textures and onscreen windows.";
+	synopsis[i++] = "\n% Copy an image, very quickly, between textures, offscreen windows and onscreen windows.";
         synopsis[i++] = "[resident [texidresident]] = Screen('PreloadTextures', windowPtr [, texids]);";
 	synopsis[i++] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha]);";	
+        synopsis[i++] = "Screen('CopyWindow', srcWindowPtr, dstWindowPtr, [srcRect], [dstRect], [copyMode])";
 
 	// Copy an image, slowly, between matrices and windows
 	synopsis[i++] = "\n% Copy an image, slowly, between matrices and windows :";

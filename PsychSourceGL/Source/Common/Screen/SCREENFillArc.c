@@ -208,6 +208,9 @@ void PsychRenderArc(unsigned int mode)
         // Restore old matrix:
         glPopMatrix();
 
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
 	return;
 }
 

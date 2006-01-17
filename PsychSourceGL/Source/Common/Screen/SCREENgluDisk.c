@@ -83,9 +83,10 @@ PsychError SCREENgluDisk(void)
 	gluDisk(diskQuadric, 0, dotSize, 30, 30);
 	gluDeleteQuadric(diskQuadric);
 	glPopMatrix();
-	//PsychGLRect(rect);
-	PsychFlushGL(windowRecord);  //OS X: This does nothing if we are multi buffered, otherwise it glFlushes
-       
+
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
  	//All psychfunctions require this.
 	return(PsychError_none);
 }

@@ -205,5 +205,8 @@ PsychError SCREENFillPoly(void)
 	  // Done with drawing the filled polygon. (Slow-Path)
 	}
         
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
 	return(PsychError_none);
 }

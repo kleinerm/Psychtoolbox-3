@@ -99,7 +99,10 @@ PsychError SCREENFramePoly(void)
 		for(i=0;i<mSize;i++)
 			glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
 	glEnd();
-	
+
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
 	return(PsychError_none);
 }
 

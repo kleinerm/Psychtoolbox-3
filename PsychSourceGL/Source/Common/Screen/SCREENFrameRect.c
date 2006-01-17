@@ -91,7 +91,10 @@ PsychError SCREENFrameRect(void)
 		glVertex2d(rect[kPsychRight], rect[kPsychTop]);
 		glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
 	glEnd();
-	
+
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+
 	return(PsychError_none);
 }
 

@@ -648,16 +648,29 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 /*
     PsychFlushGL()
     
-    Render the queue of GL drawing commands onto the window.  
+    Enforce rendering of all pending OpenGL drawing commands and wait for render completion.
+    This routine is called at the end of each Screen drawing subfunction. A call to it signals
+    the end of a single Matlab drawing command.
+ 
+    -If this is a single-buffered window then we call glFinish().
 
-    -If single-buffered window then set the context to the specified window and call glFlush().
-    -If double-buffered window then don't do anything because CGLFlushDrawable which is called by PsychFlipWindowBuffers()
+    -If this is a double-buffered window then we don't do anything because CGLFlushDrawable which is called by PsychFlipWindowBuffers()
     implicitley calls glFlush() before flipping the buffers. Apple warns of lowered perfomance if glFlush() is called 
     immediately before CGLFlushDrawable().
+ 
+    Note that a glFinish() after each drawing command can significantly impair overall drawing performance and
+    execution speed of Matlab Psychtoolbox scripts, because the parallelism between CPU and GPU breaks down completely
+    and we can run out of DMA command buffers, effectively stalling the CPU!
+ 
+    We need to do this on single buffered contexts though, because
+    single buffered contexts are used to provide backward compatibility for old PTB code from OS-9 or Win PTB, where
+    synchronization to VBL is done via WaitBlanking: After a WaitBlanking, all drawing commands must execute as soon
+    as possible and a GetSecs - call after *any* drawing command must return a useful timestamp for stimulus onset
+    time. We can only achieve a compatible semantic by using a glFinish() after each drawing op.
 */
 void PsychFlushGL(PsychWindowRecordType *windowRecord)
 {
-    if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) glFlush();            
+    if(windowRecord->windowType==kPsychSingleBufferOnscreen) glFinish();            
 }
 
 /*
@@ -1615,7 +1628,10 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
  */
 void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
+#if PSYCH_SYSTEM == PSYCH_OSX
 #define ENABLE_FBOS YES
+#endif
+
     // We keep track of the current active rendertarget in order to
     // avoid needless state changes:
     static PsychWindowRecordType* currentRendertarget = NULL;
@@ -1625,7 +1641,6 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
         // State transition requested?
         if (currentRendertarget != windowRecord) {
             #ifdef ENABLE_FBOS
-            glFinish();
             // Yes! Transition to offscreen rendertarget?
             if (windowRecord->windowType == kPsychTexture) {
                 // Need to bind a texture as framebuffer object:
@@ -1640,6 +1655,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 // Assign our texture to our framebufferobject:
                 glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
                                           PsychGetTextureTarget(windowRecord), windowRecord->textureNumber, 0);
+                
                 // Check for success:
                 if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
                     // Failed!
@@ -1647,12 +1663,23 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                     PsychTestForGLErrors();
                     return;
                 }
+
+                // Enable attached texture as drawing target:
+                glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+                // Setup viewport to fit dimensions of framebuffer:
+                glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                
+                // Don't know yet if this is needed:
+                //            glMatrixMode(GL_MODELVIEW);
+                //            glLoadIdentity();
+                //            gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
             }
             else {
                 // Need to bind standard framebuffer (which has id 0):
                 glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+                // Setup viewport to fit dimensions of framebuffer:
+                glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
             }
-            glFinish();
             #endif
             // Update our bookkeeping:
             currentRendertarget = windowRecord;

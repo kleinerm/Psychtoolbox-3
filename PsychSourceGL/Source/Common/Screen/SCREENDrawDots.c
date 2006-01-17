@@ -276,6 +276,9 @@ PsychError SCREENDrawDots(void)
         // Reset pointsize to 1.0
         glPointSize(1);
         
+        // Mark end of drawing op. This is needed for single buffered drawing:
+        PsychFlushGL(windowRecord);
+        
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
