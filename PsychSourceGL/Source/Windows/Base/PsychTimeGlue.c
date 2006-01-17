@@ -59,27 +59,40 @@ static Boolean          firstTime=TRUE;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
-  // FIXME: We need a better way to do this than busy-waiting!
-  // Lookup windows doc when online again.
   double now=0.0;
-  // Busy wait until 'whenSecs' reached:
+
+  // Waiting stage 1: If we have more than 2.5 milliseconds left
+  // until the deadline, we call the OS Sleep(2) function, so the
+  // CPU gets released for 2 ms to other processes and threads.
+  // -> Good for general system behaviour and for lowered
+  // power-consumption (longer battery runtime for Laptops) as
+  // the CPU can go idle if nothing else to do...
+  PsychGetPrecisionTimerSeconds(&now);
+  while(whenSecs - now > 0.0025) {
+    Sleep(2);
+    PsychGetPrecisionTimerSeconds(&now);
+  }
+
+  // Waiting stage 2: We are less than 2.5 ms away from deadline.
+  // Perform busy-waiting until deadline reached:
   while(now < whenSecs) PsychGetPrecisionTimerSeconds(&now);
+
+  // Check for deadline-miss of more than 500 microseconds:
+  if (now - whenSecs > 0.0005) printf("PTB-WARNING: Wait-Deadline missed by %lf ms.\n", (now - whenSecs)*1000.0f);
+
+  // Ready.
   return;
 }
 
 void PsychWaitIntervalSeconds(double delaySecs)
 {
-  // FIXME: We need a better way to do this than busy-waiting!
-  // Lookup windows doc when online again.
-
-  double deadline, now;
-  now=0.0;
+  double deadline;
   // Get current time:
   PsychGetPrecisionTimerSeconds(&deadline);
   // Compute deadline in absolute system time:
   deadline+=delaySecs;
-  // Busy wait until deadline reached:
-  while(now < deadline) PsychGetPrecisionTimerSeconds(&now);
+  // Wait until deadline reached:
+  PsychWaitUntilSeconds(deadline);
   return;
 }
 
