@@ -24,13 +24,13 @@ function [gamepadIndices, productNames]= GetGamepadIndices;
 % HISTORY
 % 7/6/03    awi     Wrote it.
 % 7/13/04   awi     Improved documentation
-
+% 1/20/05   mk      Added fix for Logitech joystick (Forum msg. 4149)
 
 gamepadIndices=[];
 productNames=cell(0);
 d=PsychHID('Devices');
 for i =1:length(d);
-    if d(i).usagePageValue==1 && d(i).usageValue == 5
+    if d(i).usagePageValue==1 && (d(i).usageValue == 5 || d(i).usageValue == 4)
         gamepadIndices(end+1)=i;
         productNames{end+1}=d(i).product;
     end
