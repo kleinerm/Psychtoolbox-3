@@ -187,17 +187,14 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Setup associated OpenGL context:
     windowRecord->targetSpecific.contextObject = targetWindow->targetSpecific.contextObject;
     
+    // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
+    windowRecord->textureOrientation = 2;
+    
     // Let's create and bind a new texture object and fill it with our new texture data.
     PsychCreateTexture(windowRecord);
     
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);
-    
-    // Open the window:
-//    didWindowOpen=PsychOpenOffscreenWindow(rect, depth, &windowRecord);
-//    if(!didWindowOpen) {
-//        PsychErrorExitMsg(PsychError_internal, "Failed to open offscreen window. There could be insufficient memory.");
-//    }
     
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);

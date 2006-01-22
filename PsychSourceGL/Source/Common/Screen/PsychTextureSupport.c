@@ -101,6 +101,10 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureMemorySizeBytes=0;
         // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
         win->targetSpecific.QuickTimeGLTexture = NULL;
+        // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
+        // This number defines how the height and width of a texture need to be interpreted and how
+        // texture coordinates are assigned in PsychBlitTextureToDisplay().
+        win->textureOrientation=0;
 }
 
 
@@ -253,8 +257,19 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // The texture object is ready for use: Assign it our texture data:
         
         // Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
-	sourceHeight=PsychGetWidthFromRect(win->rect);
-	sourceWidth=PsychGetHeightFromRect(win->rect);
+        if (win->textureOrientation==0 || win->textureOrientation==1) {
+            // Transposed case: Optimized for fast MakeTexture from Matlab image matrix.
+            // This is true for all calls from MakeTexure.
+            sourceHeight=PsychGetWidthFromRect(win->rect);
+            sourceWidth=PsychGetHeightFromRect(win->rect);
+        }
+        else {
+            // Non-transposed upright case: This is used for textures created by 'OpenOffscreenWindow'
+            // One can directly draw to these textures as rendertargets aka OpenGL framebuffer objects...
+            sourceHeight=PsychGetHeightFromRect(win->rect);
+            sourceWidth=PsychGetWidthFromRect(win->rect);
+        }
+
         glPixelStorei(GL_UNPACK_ROW_LENGTH, sourceWidth);
 
         // We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
@@ -265,7 +280,10 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
         // are capable of handling the other formats natively in hardware :-(
 	if (texturetarget==GL_TEXTURE_2D) {
-	  // Compute smallest power of two dimension that fits the texture.
+          // This hardware doesn't support rectangle textures. We create and use power of two
+          // textures to emulate rectangle textures...
+	  
+          // Compute smallest power of two dimension that fits the texture.
 	  twidth=1;
 	  while (twidth<sourceWidth) twidth*=2;
 	  theight=1;
@@ -274,7 +292,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	  texmemptr=NULL;
 	}
 	else {
-	  // Use texture as-is:
+	  // Hardware supports rectangular textures: Use texture as-is:
 	  twidth=sourceWidth;
 	  theight=sourceHeight;
 	  texmemptr=win->textureMemory;
@@ -350,8 +368,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         }
         
         ///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
-        
-        if (renderswap) {
+        if (win->textureOrientation == 1 && renderswap) {
             // Turn off alpha-blending - We want the texture "as is", overwriting any previous
             // framebuffer content completely!
             glDisable(GL_BLEND);
@@ -473,7 +490,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // This code allows the application of sourceRect, as it is meant to be:
         // CAUTION: This calculation with sourceHeight - xxxx  depends on if GPU texture swapping
         // is on or off!!!!
-        if (renderswap) {
+        // 0 == Transposed as from Matlab image array aka renderswap off. 1 == Renderswapped
+        // texture (currently not yet enabled). 2 == Offscreen window in normal orientation.
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2) {
             sourceHeight=PsychGetHeightFromRect(source->rect);
             sourceWidth=PsychGetWidthFromRect(source->rect);
 
@@ -579,7 +598,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
         // Override for special case: Corevideo texture from Quicktime-subsystem.
-        if (renderswap || source->targetSpecific.QuickTimeGLTexture) {
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture) {
 	  // NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
 	  // is the fastest case --> Most common orientation has highest performance.
 	  //lower left

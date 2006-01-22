@@ -127,6 +127,7 @@ typedef struct _PsychWindowRecordType_{
 	GLuint					*textureMemory;
 	size_t					textureMemorySizeBytes;
 	GLuint					textureNumber;
+        int                                     textureOrientation;     // Orientation of texture data in internal storage. Defines texcoord assingment.  
         
 	//Used only when this structure holds a window:
 	PsychTextAttributes                     textAttributes;

@@ -341,6 +341,9 @@ PsychError SCREENMakeTexture(void)
     // MK: Is this the proper way to do it???
     textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
     
+    // Texture orientation is zero aka transposed aka non-renderswapped.
+    textureRecord->textureOrientation = 0;
+    
     // Let's create and bind a new texture object and fill it with our new texture data.
     PsychCreateTexture(textureRecord);
     

@@ -242,6 +242,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	
 	//Initialize the fields used to store alpha blending factors as set by glBlendFunc()
 	PsychInitWindowRecordAlphaBlendingFactors(*winRec);
+        
+        // Initialize the fields used for texture mapping:
+        PsychInitWindowRecordTextureFields(*winRec);
 	
 	//Initialize line stipple values
 	(*winRec)->stipplePattern=0xAAAA;		//alternating pixels stipple pattern

@@ -139,13 +139,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Enable GL-Context of current onscreen window:
     PsychSetGLContext(*windowRecord);
 
-    // Enable this windowRecords framebuffer as current drawingtarget:
+    // Perform a full reset of the framebuffer-object switching code:
+    PsychSetDrawingTarget(NULL);
+    
+    // Enable this windowRecords framebuffer as current drawingtarget. This will also setup
+    // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
-    
-    
-    // Configure OpenGL here: This sets up the OpenGL coordinate to window coordinate mapping for a
-    // orthonormal projection:
-    gluOrtho2D((*windowRecord)->rect[kPsychLeft], (*windowRecord)->rect[kPsychRight], (*windowRecord)->rect[kPsychBottom], (*windowRecord)->rect[kPsychTop]);
     
     //TO DO: set the clear color to be the color passed as the window background color.
       
@@ -598,9 +597,13 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     int                         i, numWindows; 
     
     if(PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord)){
+                // Free possible shadow textures:
+                PsychFreeTextureForWindowRecord(windowRecord);        
+                
                 // Make sure that OpenGL pipeline is done & idle for this window:
                 PsychSetGLContext(windowRecord);
                 glFinish();
+                
                 // Disable rendering context:
                 PsychOSUnsetGLContext(windowRecord);
 
@@ -1418,13 +1421,17 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     GLint auxbuffers;
 
     // Early reject: If this flag is set, then there's no need for any processing:
-    if (windowRecord->backBufferBackupDone) return;
+    // We only continue processing textures, aka offscreen windows...
+    if (windowRecord->windowType!=kPsychTexture && windowRecord->backBufferBackupDone) return;
 
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
 
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(windowRecord);
+    
+    // We stop processing here if window is a texture, aka offscreen window...
+    if (windowRecord->windowType==kPsychTexture) return;
     
     // Reset viewport to full-screen default:
     glViewport(0, 0, screenwidth, screenheight);
@@ -1628,68 +1635,227 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
  */
 void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
+    // The ENABLE_FBOS is a master-switch for use of the fast-path with OpenGL Framebuffer
+    // objects: This requires OS-X 10.4.3 or higher to work.
+    // The dynamic binding code is currently missing that will be needed for the Windows version.
 #if PSYCH_SYSTEM == PSYCH_OSX
-#define ENABLE_FBOS YES
+#define ENABLE_FBOS 0
+#else
+#define ENABLE_FBOS 0    
 #endif
 
     // We keep track of the current active rendertarget in order to
     // avoid needless state changes:
     static PsychWindowRecordType* currentRendertarget = NULL;
     static GLuint framebufferobject = 0;
+    static Boolean fbo_workaround_needed = FALSE;
+    static GLuint framebufferobject2 = 0;
+    static GLuint renderbuffer = 0;
+    static unsigned int recursionLevel = 0;
+    static int use_framebuffer_objects = -1;
+    int texid;
+    
+    // Increase recursion level count:
+    recursionLevel++;
+    
+    // Is this a recursive call?
+    if (recursionLevel>1) {
+        // Yep. Then we just do nothing:
+        recursionLevel--;
+        return;
+    }
+    
+    // First time invocation?
+    if (use_framebuffer_objects==-1) {
+        // FBO extension available on this hardware?
+        if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_object") && (ENABLE_FBOS == 1)) {
+            // Yes it is :)
+            use_framebuffer_objects = 1;
+        }
+        else {
+            // Nope :( -- We use some slow-path that only uses OpenGL 1.1 functionality and
+            // should therefore work on old gfx-hardware, albeit at some significant speed
+            // penalty.
+            use_framebuffer_objects = 0;
+        }
+    }
     
     if (windowRecord) {
         // State transition requested?
         if (currentRendertarget != windowRecord) {
-            #ifdef ENABLE_FBOS
-            // Yes! Transition to offscreen rendertarget?
-            if (windowRecord->windowType == kPsychTexture) {
-                // Need to bind a texture as framebuffer object:
-                if (framebufferobject == 0) {
-                    // Need to create a framebuffer object first:
-                    glGenFramebuffersEXT(1, &framebufferobject);
+            // Need to do a switch between drawing target windows:
+            if (use_framebuffer_objects == 1 && ENABLE_FBOS == 1) {
+                // Use OpenGL framebuffer objects: This is the fast-path!
+                #if ENABLE_FBOS == 1
+                // Yes! Transition to offscreen rendertarget?
+                if (windowRecord->windowType == kPsychTexture) {
+                    // Need to bind a texture as framebuffer object:
+                    if (framebufferobject == 0) {
+                        // Need to create a framebuffer object first:
+                        glGenFramebuffersEXT(1, &framebufferobject);
+                        
+                        // Check if this is a buggy renderer which needs the FBO hack:
+                        // At least the GeForceFX 5200 Ultra on OS-X 10.4.4 has trouble with
+                        // not properly initializing the FBO when a texture is bound as rendertarget,
+                        // which can lead to junk in the offscreen windows under some circumstance.
+                        if (strstr(glGetString(GL_RENDERER), "GeForce FX 5200")) {
+                            // Yes it is :(
+                            fbo_workaround_needed = TRUE;
+                            
+                            // Create a 2nd framebuffer-object which will be needed for the hack:
+                            glGenFramebuffersEXT(1, &framebufferobject2);
+                            glGenRenderbuffersEXT(1, &renderbuffer);
+                        }
+                    }
+                    
+                    if (fbo_workaround_needed) {
+                        // Bind our scratch framebuffer and attach our renderbuffer to it as a
+                        // color-buffer:
+                        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject2);
+                        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, renderbuffer);
+                        glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA8, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect)); 
+                        glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, renderbuffer);
+                        // Setup viewport and such for rendering:
+                        glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                        // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
+                        glMatrixMode(GL_PROJECTION);
+                        glLoadIdentity();
+                        gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+                        glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);                    
+                        // Switch back to modelview matrix, but leave it unaltered:
+                        glMatrixMode(GL_MODELVIEW);
+                        // Blit our texture into the framebuffer:
+                        PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+                        // Unbind any bound texture:
+                        glBindTexture(PsychGetTextureTarget(windowRecord), 0);                    
+                        // Copy the framebuffer, aka our texture into dummy texture object zero:
+                        glCopyTexImage2D(PsychGetTextureTarget(windowRecord), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect), 0); 
+                        // Ok, now we have a copy of our texture in texture zero.
+                    }
+                    
+                    // Bind our own framebuffer:
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject);
+                    // Make sure our texture is not bound to a texture unit:
+                    glBindTexture(PsychGetTextureTarget(windowRecord), 0);
+                    // Assign our texture to our framebufferobject:
+                    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
+                                              PsychGetTextureTarget(windowRecord), windowRecord->textureNumber, 0);
+                    
+                    // Check for success:
+                    if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
+                        // Failed!
+                        printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
+                        PsychTestForGLErrors();
+                        recursionLevel--;
+                        return;
+                    }
+                    
+                    if (fbo_workaround_needed) {
+                        // This renderer doesn't initialize properly when binding a texture as
+                        // framebuffer. Need to do it manually...
+                        // Setup viewport and such for rendering:
+                        glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                        glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);                    
+                        // Blit texture zero to our rendertarget:
+                        texid=windowRecord->textureNumber;
+                        windowRecord->textureNumber = 0;
+                        PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+                        windowRecord->textureNumber = texid;
+                        // Ok, the framebuffer has been initialized with the content of our texture.
+                    }
+                    
+                    // Check for success:
+                    if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
+                        // Failed!
+                        printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
+                        PsychTestForGLErrors();
+                        recursionLevel--;
+                        return;
+                    }
+                    
+                    // Enable attached texture as drawing target:
+                    glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
                 }
-                // Bind our own framebuffer:
-                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject);
-                // Make sure our texture is not bound to a texture unit:
-                glBindTexture(PsychGetTextureTarget(windowRecord), 0);
-                // Assign our texture to our framebufferobject:
-                glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-                                          PsychGetTextureTarget(windowRecord), windowRecord->textureNumber, 0);
-                
-                // Check for success:
-                if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
-                    // Failed!
-                    printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
-                    PsychTestForGLErrors();
-                    return;
+                else {
+                    // Need to bind standard framebuffer (which has id 0):
+                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
                 }
-
-                // Enable attached texture as drawing target:
-                glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-                // Setup viewport to fit dimensions of framebuffer:
-                glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-                
-                // Don't know yet if this is needed:
-                //            glMatrixMode(GL_MODELVIEW);
-                //            glLoadIdentity();
-                //            gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+                #endif
             }
             else {
-                // Need to bind standard framebuffer (which has id 0):
-                glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-                // Setup viewport to fit dimensions of framebuffer:
-                glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                // Use standard OpenGL without framebuffer objects for drawing target switch:
+                
+                // Whatever is bound at the moment needs to be backed-up into a texture...
+                // If currentRendertarget is NULL then we've got nothing to back up.
+                if (currentRendertarget) {
+                    // There is a bound render target.
+                    if (currentRendertarget->windowType == kPsychTexture || windowRecord->windowType == kPsychTexture) {
+                        // Ok we transition from- or to a texture. We need to backup the old content:
+                        if (currentRendertarget->textureNumber == 0) {
+                            // This one doesn't have a shadow-texture yet. Create a suitable one.
+                            glGenTextures(1, &(currentRendertarget->textureNumber));
+                            glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
+                            glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+                        }
+                        else {
+                            // Texture for this one already exist: Bind and update it:
+                            glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
+                            // This would be appropriate but crashes for no good reason: glCopyTexSubimage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
+                            glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+                        }
+                    }
+                }
+
+                // We only blit when a texture was involved, either as previous rendertarget or as new rendertarget:
+                if (windowRecord->windowType == kPsychTexture || (currentRendertarget && currentRendertarget->windowType == kPsychTexture)) {
+                    // Now we need to blit the new rendertargets texture into the framebuffer:                    
+                    PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+                    // Ok, the framebuffer has been initialized with the content of our texture.                    
+                }
+                
+                // At this point we should have the image of our drawing target in the framebuffer.
+                // If this transition didn't involve a switch from- or to a texture aka offscreen window,
+                // then the whole switching up to now was a no-op... This way, we optimize for the common
+                // case: No drawing to Offscreen windows at all, but proper use of other drawing functions
+                // or of MakeTexture.
             }
-            #endif
+            
+            // Setup viewport to fit dimensions of framebuffer:
+            glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+
+            // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
+            glMatrixMode(GL_PROJECTION);
+            glLoadIdentity();
+            gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+
+            // Switch back to modelview matrix, but leave it unaltered:
+            glMatrixMode(GL_MODELVIEW);
+            
             // Update our bookkeeping:
             currentRendertarget = windowRecord;
         }
     }
     else {
-        // Render completion for the current rendertarget signalled.
-        // Don't know yet what to do with this info...
+        // Reset of currentRendertarget and framebufferobject requested:
+        currentRendertarget = NULL;
+        if (framebufferobject != 0) {
+#if ENABLE_FBOS == 1
+            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+            glDeleteFramebuffersEXT(1, &framebufferobject);
+            if (framebufferobject2 != 0) {
+                glDeleteRenderbuffersEXT(1, &renderbuffer);
+                glDeleteFramebuffersEXT(1, &framebufferobject2);
+            }
+#endif
+            framebufferobject = 0;
+            framebufferobject2 = 0;
+            renderbuffer = 0;
+        }
     }
 
+    // Decrease recursion level tracker:
+    recursionLevel--;
+    
     return;
 }
 
