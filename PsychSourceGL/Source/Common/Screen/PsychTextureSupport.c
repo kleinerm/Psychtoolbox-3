@@ -643,6 +643,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
         // Unbind texture:
 	glBindTexture(texturetarget, 0);
+        glDisable(texturetarget);
         
         // Finished!
         return;

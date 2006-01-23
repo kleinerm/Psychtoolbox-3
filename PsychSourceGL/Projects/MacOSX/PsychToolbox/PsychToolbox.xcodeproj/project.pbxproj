@@ -973,6 +973,7 @@
 		2FE94C9E0767B75600A2EC70 /* GetEthernetAddress.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */; };
 		2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FACAD700766DAB400A159D3 /* GetEthernetAddress.h */; };
 		2FE94D670767B84A00A2EC70 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
+		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
 		832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */ = {isa = PBXBuildFile; fileRef = 832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */; };
 		832CE5F7094CE8C300578C09 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		832CE5F8094CE8C300578C09 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
@@ -6569,6 +6570,7 @@
 				832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */,
 				8370C6F70969F23000BD4C8C /* PsychWindowSupport.c in Sources */,
 				8370C71F096A014E00BD4C8C /* PsychTextureSupport.c in Sources */,
+				830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

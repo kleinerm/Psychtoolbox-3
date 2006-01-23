@@ -140,7 +140,7 @@ if IsOSX
         surroundingQuoteIndices=strfind(rawName,'"');
         modelName=rawName(surroundingQuoteIndices(1)+1:surroundingQuoteIndices(end)-1);
     else
-        modelName='';
+        modelName='Unknown';
     end
     if modelName(end-1)=='\'
         modelName=modelName([1:end-2 end]);

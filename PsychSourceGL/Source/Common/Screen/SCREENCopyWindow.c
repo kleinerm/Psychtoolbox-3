@@ -16,7 +16,7 @@
 		 1/11/05	awi		Cosmetic
 		 1/14/05	awi		added glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE) at mk's suggestion;
 		 1/25/05	awi		Relocated glTexEnvf below glBindTexture.  Fix provided by mk.  
-
+                 1/22/05        mk              Completely rewritten for the new OffscreenWindow implementation.
  
 	TO DO:
 
@@ -26,13 +26,6 @@
 		Accept the copy mode argument.  We use alpha blending so we don't really need it, 
 		but we should detect if someone tries to use one.  
 
-		Add another field to the window record for specifying the texture target screen instread
-		of using the screen number for that.   It doesn't really work to share the same field
-		to mean both the screen on which an onscreen window appears and the destination to which 
-		screen to which its copied.  'WindowScreenNumber' should be changed so that it returns
-		two values, the display number which for offscreen windows will alwyas be NaN or -1,
-		and the accellerated target window.  
-
 */
 
 
@@ -41,23 +34,24 @@
 #include "Screen.h"
 
 static char useString[] =  "Screen('CopyWindow',srcWindowPtr,dstWindowPtr,[srcRect],[dstRect],[copyMode])";
-static char synopsisString[] = "Copy images, very quickly, between two windows (on- or off- screen).";
+static char synopsisString[] =  "Copy images, quickly, between two windows (on- or off- screen). "
+                                "srcRect and dstRect are set to the size of srcWindowPtr and dstWindowPtr "
+                                "by default. [copyMode] is accepted as input but currently ignored. "
+                                "CopyWindow is mostly here for compatibility to OS-9 PTB. If you want to "
+                                "copy images really quickly into an onscreen window, then use the 'MakeTexture' "
+                                "and 'DrawTexture' commands. They also allow for rotated drawing and advanced "
+                                "blending operations.";
 
-static char seeAlsoString[] = "PutImage, GetImage";
-	
+static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
 
 PsychError SCREENCopyWindow(void) 
 {
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-	PsychRectType			sourceRect, targetRect, targetRectInverted;
+	PsychRectType		sourceRect, targetRect, targetRectInverted;
 	PsychWindowRecordType	*sourceWin, *targetWin;
-	GLdouble				sourceVertex[2], targetVertex[2]; 
+	GLdouble		sourceVertex[2], targetVertex[2]; 
 	double  t1;
-	double					sourceRectWidth, sourceRectHeight;
+	double			sourceRectWidth, sourceRectHeight;
         
-    
-    
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -76,63 +70,72 @@ PsychError SCREENCopyWindow(void)
 	PsychCopyRect(targetRect, targetWin->rect);
 	PsychCopyInRectArg(4, FALSE, targetRect);
 
-	//Check that the windows agree in depth.  They don't have to agree in format because we convert to the correct format for the target when we 
-	//create the texture.
-	if(sourceWin->depth != targetWin->depth)
-		PsychErrorExitMsg(PsychError_user, "Source and target windows must have the same bit depth");
-            
-	//We need to unbind the source window texture from any previous target contexts if it is bound.  There can be only one binding at a time.
-	//We could augment the Psychtoolbox to support shared contexts and multiple bindings.
-	PsychRetargetWindowToWindow(sourceWin, targetWin);
-		
-		
-	//each of these next three commands makes changes only when neccessary, they can be called generously 
-	//when there is a possibility that any are necessary.
-	  
-	//PsychGetPrecisionTimerSeconds(&t1);
-	PsychUpdateShadow(sourceWin);			//passive if already up to date.
-	PsychBindShadowAsTexture(sourceWin);
-	//PsychGetPrecisionTimerSeconds(&t2);
-	//mexPrintf("texture checking copywindow took %f seconds\n", t2-t1);
+	// We have four possible combinations for copy ops:
+        // Onscreen -> Onscreen
+        // Onscreen -> Texture
+        // Texture  -> Texture
+        // Texture  -> Onscreen
+        
+        // Texture -> something copy?
+        if (sourceWin->windowType == kPsychTexture) {
+            // Bind targetWin (texture or onscreen windows framebuffer) as
+            // drawing target and just blit texture into it:
+            PsychSetGLContext(sourceWin);
 
-	//PsychGetPrecisionTimerSeconds(&t1);
-	PsychGetPrecisionTimerSeconds(&t1);
-	PsychSetGLContext(targetWin);
-	
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, sourceWin->glTexture);
-	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-	sourceRectWidth= PsychGetWidthFromRect(sourceWin->rect);
-	sourceRectHeight= PsychGetHeightFromRect(sourceWin->rect);
-	glTexSubImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, 0, 0, (GLsizei)sourceRectWidth, (GLsizei)sourceRectHeight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, sourceWin->textureMemory);
-	
-	PsychInvertRectY(targetRectInverted, targetRect, targetWin->rect);
-	//PsychGetPrecisionTimerSeconds(&t1);
-    glBegin(GL_QUADS);
-		glTexCoord2dv(PsychExtractQuadVertexFromRect(sourceRect, 0, sourceVertex));
-		glVertex2dv(PsychExtractQuadVertexFromRect(sourceRect, 3, targetVertex));
-		
-		glTexCoord2dv(PsychExtractQuadVertexFromRect(sourceRect, 1, sourceVertex));
-		glVertex2dv(PsychExtractQuadVertexFromRect(sourceRect, 2, targetVertex));
+            // We use filterMode == 1 aka Bilinear filtering, so we get nice texture copies
+            // if size of sourceRect and targetRect don't match and some scaling is needed.
+            // We maybe could map the copyMode argument into some filterMode settings, but
+            // i don't know the spec of copyMode, so ...
+            PsychBlitTextureToDisplay(sourceWin, targetWin, sourceRect, targetRect, 0, 1, 1);
+            // That's it.
+        }
+        
+        // Onscreen to texture copy?
+        if (PsychIsOnscreenWindow(sourceWin) && PsychIsOffscreenWindow(targetWin)) {
+            // Update selected textures content:
+            PsychSetGLContext(targetWin);
 
-		glTexCoord2dv(PsychExtractQuadVertexFromRect(sourceRect, 2, sourceVertex));
-		glVertex2dv(PsychExtractQuadVertexFromRect(sourceRect, 1, targetVertex));
+            // Looks weird but we need the framebuffer of sourceWin:
+            PsychSetDrawingTarget(sourceWin);
+            glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
 
-		glTexCoord2dv(PsychExtractQuadVertexFromRect(sourceRect, 3, sourceVertex));
-		glVertex2dv(PsychExtractQuadVertexFromRect(sourceRect, 0, targetVertex));
-    glEnd();
-    glFinish();
-	//PsychGetPrecisionTimerSeconds(&t2);
-	//mexPrintf("copywindow took %f seconds\n", t2-t1);
-	PsychUnbindTextureOfShadow(sourceWin);
+            // Readbuffer is backbuffer:
+            glReadBuffer(GL_BACK);
 
+            // Zoom factor if rectangle sizes don't match:
+            glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
 
-	return(PsychError_none);
-#else
+            // Copy into texture:
+            glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, targetRect[kPsychLeft], targetRect[kPsychTop], sourceRect[kPsychLeft], sourceRect[kPsychBottom],
+                                (int) PsychGetWidthFromRect(targetRect), (int) PsychGetHeightFromRect(targetRect));
 
-	return(PsychError_unimplemented);
+            // Unbind texture object:
+            glBindTexture(PsychGetTextureTarget(targetWin), 0);
 
-#endif
+            // That's it.
+            glPixelZoom(1,1);
+        }
+        
+        // Onscreen to Onscreen copy?
+        if (PsychIsOnscreenWindow(sourceWin) && PsychIsOnscreenWindow(targetWin)) {
+            // Enable OpenGL context of source window:
+            PsychSetGLContext(sourceWin);
+            // Set target windows framebuffer as drawing target:
+            PsychSetDrawingTarget(targetWin);
+            // Readbuffer is backbuffer:
+            glReadBuffer(GL_BACK);
+            // Start position for pixel write is:
+            glRasterPos2i((int) targetRect[kPsychLeft], (int) targetRect[kPsychTop]);
+            // Zoom factor if rectangle sizes don't match:
+            glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
+            // Perform pixel copy operation:
+            glCopyPixels(sourceRect[kPsychLeft], sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+            // That's it.
+            glPixelZoom(1,1);
+        }
 
+        // Done.
+        return(PsychError_none);
 }
 
 
