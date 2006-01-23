@@ -46,11 +46,12 @@ static char seeAlsoString[] = "OpenWindow Flip";
 PsychError SCREENWaitBlanking(void) 
 {
 	PsychWindowRecordType *windowRecord;
-        int waitFrames, framesWaited;
-        double tvbl, ifi;
+   int waitFrames, framesWaited;
+   double tvbl, ifi;
 	long screenwidth, screenheight;
-        int vbl_startline, beampos, oldbeampos;
-        CGDirectDisplayID	cgDisplayID;
+   int vbl_startline, beampos, oldbeampos;
+   CGDirectDisplayID	cgDisplayID;
+   GLint read_buffer, draw_buffer;
 
 
 	// All subfunctions should have these two lines.  
@@ -133,7 +134,6 @@ PsychError SCREENWaitBlanking(void)
             }
             
             // Setup buffers for copy op:
-            GLint read_buffer, draw_buffer;
             glGetIntegerv(GL_READ_BUFFER, &read_buffer);
             glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
             glReadBuffer(GL_FRONT);

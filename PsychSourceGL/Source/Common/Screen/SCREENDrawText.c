@@ -528,7 +528,7 @@ PsychError SCREENDrawText(void)
 
     PsychSetGLContext(winRec);
     // Enable this windowRecords framebuffer as current drawingtarget:
-    PsychSetDrawingTarget(windowRecord);
+    PsychSetDrawingTarget(winRec);
 
     PsychSetGLColor(&colorArg, depthValue);
 
@@ -576,7 +576,7 @@ PsychError SCREENDrawText(void)
     glPopMatrix();
 
     // Mark end of drawing op. This is needed for single buffered drawing:
-    PsychFlushGL(windowRecord);
+    PsychFlushGL(winRec);
 
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
