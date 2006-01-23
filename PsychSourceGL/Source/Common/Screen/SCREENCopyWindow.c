@@ -88,6 +88,9 @@ PsychError SCREENCopyWindow(void)
             // i don't know the spec of copyMode, so ...
             PsychBlitTextureToDisplay(sourceWin, targetWin, sourceRect, targetRect, 0, 1, 1);
             // That's it.
+
+            // Flush drawing commands and wait for render-completion in single-buffer mode:
+            PsychFlushGL(targetWin);
         }
         
         // Onscreen to texture copy?
@@ -132,8 +135,10 @@ PsychError SCREENCopyWindow(void)
             glCopyPixels(sourceRect[kPsychLeft], sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
             // That's it.
             glPixelZoom(1,1);
+            // Flush drawing commands and wait for render-completion in single-buffer mode:
+            PsychFlushGL(sourceWin);
         }
-
+        
         // Done.
         return(PsychError_none);
 }

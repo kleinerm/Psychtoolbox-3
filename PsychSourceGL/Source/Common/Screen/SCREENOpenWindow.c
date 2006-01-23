@@ -237,14 +237,8 @@ PsychError SCREENOpenWindow(void)
     //		Therefore the value is held by a window record and not a screen record.    
 
     numWindowBuffers=2;	
-
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
-
-    if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers)
-
-        PsychErrorExit(PsychError_invalidNumberBuffersArg);
-
-    
+    if(numWindowBuffers < 0 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
 
     // MK: Check for optional spec of stereoscopic display: 0 (the default) = monoscopic viewing.
     // 1 == Stereo output via OpenGL built-in stereo facilities: This will drive any kind of
@@ -259,19 +253,12 @@ PsychError SCREENOpenWindow(void)
     // anaglyph stereo, interlaced stereo, ...
 
     stereomode=0;
-
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
-
     if(stereomode < 0 || stereomode > 9) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 9).");
 
-    
-
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
-
     PsychGetScreenSettings(screenNumber, &screenSettings);    
-
     PsychInitDepthStruct(&(screenSettings.depth));
-
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
 
     

@@ -159,7 +159,7 @@ PsychError      SCREENPreloadTextures(void);
 PsychError      SCREENFillArc(void);
 PsychError      SCREENDrawArc(void);
 PsychError      SCREENFrameArc(void);
-
+PsychError      SCREENWaitBlanking(void);
 //experimental
 PsychError SCREENGetMouseHelper(void);
 

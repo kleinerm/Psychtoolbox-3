@@ -189,7 +189,8 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("DrawArc", &SCREENDrawArc));
         PsychErrorExit(PsychRegister("FrameArc", &SCREENFrameArc));
         PsychErrorExit(PsychRegister("CopyWindow", &SCREENCopyWindow));
-        
+        PsychErrorExit(PsychRegister("WaitBlanking", &SCREENWaitBlanking));
+
  	//Experiments
 
 

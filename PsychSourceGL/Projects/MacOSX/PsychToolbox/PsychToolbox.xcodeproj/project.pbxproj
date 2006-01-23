@@ -974,6 +974,7 @@
 		2FE94C9F0767B75A00A2EC70 /* GetEthernetAddress.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FACAD700766DAB400A159D3 /* GetEthernetAddress.h */; };
 		2FE94D670767B84A00A2EC70 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
 		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
+		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
 		832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */ = {isa = PBXBuildFile; fileRef = 832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */; };
 		832CE5F7094CE8C300578C09 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		832CE5F8094CE8C300578C09 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
@@ -1799,6 +1800,7 @@
 		2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillPoly.c; path = ../../../Source/Common/Screen/SCREENFillPoly.c; sourceTree = SOURCE_ROOT; };
 		2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFramePoly.c; path = ../../../Source/Common/Screen/SCREENFramePoly.c; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
+		830572260984860000EB51EE /* SCREENWaitBlanking.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENWaitBlanking.c; path = ../../../Source/Common/Screen/SCREENWaitBlanking.c; sourceTree = SOURCE_ROOT; };
 		832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillArc.c; path = ../../../Source/Common/Screen/SCREENFillArc.c; sourceTree = SOURCE_ROOT; };
 		832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PsychSound.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		832CE62D094CE8C300578C09 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
@@ -2837,6 +2839,7 @@
 				2F6B77C3056C74AB007A711C /* SCREENTextStyle.c */,
 				2F4A57DD053A94E600A80166 /* SCREENTestTexture.c */,
 				2F875A6905F679A3008AC8DE /* SCREENTestTextureTwo.c */,
+				830572260984860000EB51EE /* SCREENWaitBlanking.c */,
 				F5E3BE5C03E120DB01A80168 /* SCREENWindowKind.c */,
 				2FC8979607D04F700042BE63 /* SCREENWindowSize.c */,
 				F5E3BE5803E1148601A80168 /* SCREENWindows.c */,
@@ -6571,6 +6574,7 @@
 				8370C6F70969F23000BD4C8C /* PsychWindowSupport.c in Sources */,
 				8370C71F096A014E00BD4C8C /* PsychTextureSupport.c in Sources */,
 				830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */,
+				830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

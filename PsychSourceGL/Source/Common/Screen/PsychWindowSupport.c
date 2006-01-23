@@ -116,6 +116,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
 
+    // If numBuffers is zero then the user wants us to switch to OS-9 PTB compatibility mode:
+    if (numBuffers == 0) {
+        numBuffers = 2;
+        (*windowRecord)->EmulateOS9 = TRUE;
+    }
+    else {
+        (*windowRecord)->EmulateOS9 = FALSE;        
+    }
+    
     // Call the OS specific low-level Window & Context setup routine:
     if (!PsychOSOpenOnscreenWindow(screenSettings, (*windowRecord), numBuffers, stereomode, conserveVRAM)) {
         printf("\nPTB-ERROR[Low-Level setup of window failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
@@ -379,11 +388,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  // Update global maximum with current sample:
 	  if (maxline > VBL_Endline) VBL_Endline = maxline;
         }
+
+        // Setup reasonable timestamp for time of last vbl:
+        (*windowRecord)->time_at_last_vbl = tnew;
       }        
       
       // Switch to previous scheduling mode after timing tests:
       PsychRealtimePriority(false);
-      
+
       // Is the VBL endline >= VBL startline, aka screen height?
       if (VBL_Endline < (int) vbl_startline) {
         // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
@@ -570,6 +582,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Ring the visual bell if anything demands this:
     if (ringTheBell>=0 && !skip_synctests) PsychVisualBell((*windowRecord), 4, ringTheBell);
 
+    if ((*windowRecord)->EmulateOS9) {
+        // Perform all drawing and reading in the front-buffer:
+        glReadBuffer(GL_FRONT);
+        glDrawBuffer(GL_FRONT);
+    }
+
     // Done.
     return(TRUE);
 }
@@ -673,7 +691,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 */
 void PsychFlushGL(PsychWindowRecordType *windowRecord)
 {
-    if(windowRecord->windowType==kPsychSingleBufferOnscreen) glFinish();            
+    if(PsychIsOnscreenWindow(windowRecord) && (windowRecord->EmulateOS9)) glFinish();            
 }
 
 /*
