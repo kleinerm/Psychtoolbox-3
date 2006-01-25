@@ -102,9 +102,6 @@ PsychError SCREENCopyWindow(void)
             PsychSetDrawingTarget(sourceWin);
             glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
 
-            // Readbuffer is backbuffer:
-            glReadBuffer(GL_BACK);
-
             // Zoom factor if rectangle sizes don't match:
             glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
 
@@ -125,8 +122,6 @@ PsychError SCREENCopyWindow(void)
             PsychSetGLContext(sourceWin);
             // Set target windows framebuffer as drawing target:
             PsychSetDrawingTarget(targetWin);
-            // Readbuffer is backbuffer:
-            glReadBuffer(GL_BACK);
             // Start position for pixel write is:
             glRasterPos2i((int) targetRect[kPsychLeft], (int) targetRect[kPsychTop]);
             // Zoom factor if rectangle sizes don't match:
