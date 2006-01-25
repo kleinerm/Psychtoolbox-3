@@ -144,18 +144,6 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
     // Retrieve final vbl_startline, aka physical height of the display in pixels:
     PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
-
-    // Enable GL-Context of current onscreen window:
-    PsychSetGLContext(*windowRecord);
-
-    // Perform a full reset of the framebuffer-object switching code:
-    PsychSetDrawingTarget(NULL);
-    
-    // Enable this windowRecords framebuffer as current drawingtarget. This will also setup
-    // the projection and modelview matrices, viewports and such to proper values:
-    PsychSetDrawingTarget(*windowRecord);
-    
-    //TO DO: set the clear color to be the color passed as the window background color.
       
     //Fill in the window record.
     (*windowRecord)->screenNumber=screenSettings->screenNumber;
@@ -167,13 +155,6 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
 
     (*windowRecord)->depth=PsychGetScreenDepthValue(screenSettings->screenNumber);
- 
-    if (true) {
-      printf("\n\nPTB-INFO: This is the Screen-Prototype for PTB 1.0.7, intended as update for Psychtoolbox 1.0.6\n");
-      printf("PTB-INFO: Implementation details may change in the final release for Psychtoolbox 1.0.7 - Use at your own Risk!\n\n");
-    }
-
-    printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
     
     // MK: Assign stereomode: 0 == monoscopic (default) window. >0 Stereo output window, where
     // the number specifies the type of stereo-algorithm used. Currently value 1 is
@@ -196,6 +177,25 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     (*windowRecord)->IFIRunningSum = 0;
     (*windowRecord)->nrIFISamples = 0;
     (*windowRecord)->VBL_Endline = -1;
+
+    // Enable GL-Context of current onscreen window:
+    PsychSetGLContext(*windowRecord);
+
+    // Perform a full reset of the framebuffer-object switching code:
+    PsychSetDrawingTarget(NULL);
+    
+    // Enable this windowRecords framebuffer as current drawingtarget. This will also setup
+    // the projection and modelview matrices, viewports and such to proper values:
+    PsychSetDrawingTarget(*windowRecord);
+    
+    //TO DO: set the clear color to be the color passed as the window background color.
+
+    if (true) {
+      printf("\n\nPTB-INFO: This is the Screen-Prototype for PTB 1.0.7, intended as update for Psychtoolbox 1.0.6\n");
+      printf("PTB-INFO: Implementation details may change in the final release for Psychtoolbox 1.0.7 - Use at your own Risk!\n\n");
+    }
+
+    printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
     
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
@@ -1672,7 +1672,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     static unsigned int recursionLevel = 0;
     static int use_framebuffer_objects = -1;
     int texid;
-    
+
     // Increase recursion level count:
     recursionLevel++;
     
@@ -1809,6 +1809,20 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                     // There is a bound render target.
                     if (currentRendertarget->windowType == kPsychTexture || windowRecord->windowType == kPsychTexture) {
                         // Ok we transition from- or to a texture. We need to backup the old content:
+								if (TRUE || windowRecord->EmulateOS9) {
+									// OS-9 emulation: frontbuffer = framebuffer, backbuffer = offscreen scratchpad
+									if (PsychIsOnscreenWindow(currentRendertarget)) {
+										// Need to read the content of the frontbuffer to create the backup copy:
+										glReadBuffer(GL_FRONT);
+										glDrawBuffer(GL_FRONT);
+									}
+									else {
+										// Need to read the content of the backbuffer (scratch buffer for offscreen windows) to create the backup copy:
+										glReadBuffer(GL_BACK);
+										glDrawBuffer(GL_BACK);
+									}
+								}
+
                         if (currentRendertarget->textureNumber == 0) {
                             // This one doesn't have a shadow-texture yet. Create a suitable one.
                             glGenTextures(1, &(currentRendertarget->textureNumber));
@@ -1824,11 +1838,37 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                     }
                 }
 
+	             // Setup viewport to fit dimensions of framebuffer:
+//   	          glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+//
+	             // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
+//   	          glMatrixMode(GL_PROJECTION);
+//      	       glLoadIdentity();
+//         	    gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+
+	             // Switch back to modelview matrix, but leave it unaltered:
+//   	          glMatrixMode(GL_MODELVIEW);
+
                 // We only blit when a texture was involved, either as previous rendertarget or as new rendertarget:
                 if (windowRecord->windowType == kPsychTexture || (currentRendertarget && currentRendertarget->windowType == kPsychTexture)) {
-                    // Now we need to blit the new rendertargets texture into the framebuffer:                    
-                    PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-                    // Ok, the framebuffer has been initialized with the content of our texture.                    
+								// OS-9 emulation: frontbuffer = framebuffer, backbuffer = offscreen scratchpad
+								if (TRUE || windowRecord->EmulateOS9) {
+									// OS-9 emulation: frontbuffer = framebuffer, backbuffer = offscreen scratchpad
+									if (PsychIsOnscreenWindow(windowRecord)) {
+										// Need to write the content to the frontbuffer to restore from the backup copy:
+										glReadBuffer(GL_FRONT);
+										glDrawBuffer(GL_FRONT);
+									}
+									else {
+										// Need to write the content to the backbuffer (scratch buffer for offscreen windows) to restore from the backup copy:
+										glReadBuffer(GL_BACK);
+										glDrawBuffer(GL_BACK);
+									}
+								}
+
+	                    // Now we need to blit the new rendertargets texture into the framebuffer:                    
+   	                 PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+      	              // Ok, the framebuffer has been initialized with the content of our texture.                    
                 }
                 
                 // At this point we should have the image of our drawing target in the framebuffer.
@@ -1838,17 +1878,19 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 // or of MakeTexture.
             }
             
-            // Setup viewport to fit dimensions of framebuffer:
-            glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+//				if (PsychIsOnscreenWindow(windowRecord)) {
+	            // Setup viewport to fit dimensions of framebuffer:
+   	         glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
 
-            // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
-            glMatrixMode(GL_PROJECTION);
-            glLoadIdentity();
-            gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+	            // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
+   	         glMatrixMode(GL_PROJECTION);
+      	      glLoadIdentity();
+         	   gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
 
-            // Switch back to modelview matrix, but leave it unaltered:
-            glMatrixMode(GL_MODELVIEW);
-            
+	            // Switch back to modelview matrix, but leave it unaltered:
+   	         glMatrixMode(GL_MODELVIEW);
+//      		}
+      
             // Update our bookkeeping:
             currentRendertarget = windowRecord;
         }
