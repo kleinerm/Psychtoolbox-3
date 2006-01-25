@@ -81,7 +81,7 @@ PsychError SCREENPutImage(void)
         numPlanes=PsychGetNumPlanesFromWindowRecord(windowRecord);
         bitsPerColor=PsychGetColorSizeFromWindowRecord(windowRecord);
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
-	if(PsychCopyInRectArg(3, FALSE, positionRect)){
+		  if(PsychCopyInRectArg(3, FALSE, positionRect)){
             positionRectWidth=(int)PsychGetWidthFromRect(positionRect);
             positionRectHeight=(int)PsychGetHeightFromRect(positionRect);
             if(inputP != 1 && inputP != 3 && inputP != 4)
@@ -106,7 +106,7 @@ PsychError SCREENPutImage(void)
             PsychErrorExitMsg(PsychError_unimplemented, "Put Image does not yet support indexed mode");
             //remember to test here for inputP==3 because that would be wrong. 
         }else if(numPlanes==4){
-            compactMat=(GLuint *)mxMalloc(sizeof(GLuint) * inputN * inputM);
+            compactMat=(GLuint *) PsychMallocTemp(sizeof(GLuint) * inputN * inputM);
             for(ix=0;ix<inputN;ix++){
                 for(iy=0;iy<inputM;iy++){
                     if(inputP==1){
@@ -136,10 +136,10 @@ PsychError SCREENPutImage(void)
                         compactPixelValue= ((matrixRedValue<<8 | matrixGreenValue )<<8 | matrixBlueValue)<<8 | matrixAlphaValue; 
                         compactMat[iy*inputN+ix]=compactPixelValue; 
                     }else if(inputP==4){
-                        matrixRedIndex=PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 0);
-                        matrixGreenIndex=PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 1);
-                        matrixBlueIndex=PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 2);
-                        matrixAlphaIndex=PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 3);
+                        matrixRedIndex=PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 0);
+                        matrixGreenIndex=PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 1);
+                        matrixBlueIndex=PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 2);
+                        matrixAlphaIndex=PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 3);
                         if(inputMatrixType==PsychArgType_uint8){  
                             matrixRedValue=(GLuint)inputMatrixByte[matrixRedIndex];
                             matrixGreenValue=(GLuint)inputMatrixByte[matrixGreenIndex];
@@ -152,10 +152,8 @@ PsychError SCREENPutImage(void)
                             matrixAlphaValue=(GLuint)inputMatrixDouble[matrixAlphaIndex];
                         }
                         compactPixelValue= ((matrixRedValue<<8 | matrixGreenValue )<<8 | matrixBlueValue)<<8 | matrixAlphaValue; 
-                        compactMat[iy*inputN+ix]=compactPixelValue; 
-
+                        compactMat[iy*inputN+ix]=compactPixelValue;
                     }
-
                  }
             }
 
@@ -173,7 +171,6 @@ PsychError SCREENPutImage(void)
             glPixelZoom(xZoom,yZoom);
             PsychTestForGLErrors();            
             glDrawPixels(inputN, inputM, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, compactMat);
-            free((void *)compactMat);
             PsychTestForGLErrors();
             PsychFlushGL(windowRecord);  //OS X: This does nothing if we are multi buffered, otherwise it glFlushes
             PsychTestForGLErrors();
