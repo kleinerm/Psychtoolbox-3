@@ -71,6 +71,10 @@ void InitializeSynopsis()
 
 	synopsis[i++] = "Usage:";
 
+        // OS-9 PTB emulation:
+        synopsis[i++] = "\n% Activate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:";
+        synopsis[i++] = "oldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);";
+
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode]);";	

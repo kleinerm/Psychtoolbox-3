@@ -102,7 +102,10 @@ static char synopsisString[] =
 	"\noldEnableFlag=Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
 	"\noldEnableFlag=Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel=Screen('Preference', 'VisualDebugLevel', level);"
-        "\noldMode=Screen('Preference', 'ConserveVRAM', mode);";
+        "\noldMode=Screen('Preference', 'ConserveVRAM', mode);"
+        "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
+        "\noldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);";
+
 
 	
 static char seeAlsoString[] = "";	
@@ -275,7 +278,15 @@ PsychError SCREENPreference(void)
                                 }
                         preferenceNameArgumentValid=TRUE;
                 }else 
-			if(PsychMatch(preferenceName, "TextAlphaBlending")){
+                    if(PsychMatch(preferenceName, "EmulateOldPTB")){
+                        PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_EmulateOldPTB());
+                        if(numInputArgs==2){
+                            PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
+                            PsychPrefStateSet_EmulateOldPTB(tempFlag);
+                        }
+                        preferenceNameArgumentValid=TRUE;
+                }else 
+                        if(PsychMatch(preferenceName, "TextAlphaBlending")){
 			textAlphaBlendingFlag=PsychPrefStateGet_TextAlphaBlending();
 			PsychCopyOutFlagArg(1, kPsychArgOptional, textAlphaBlendingFlag);
 			if(numInputArgs==2){

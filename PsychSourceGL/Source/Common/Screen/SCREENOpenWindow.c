@@ -61,38 +61,28 @@ static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScre
 static char synopsisString[] =
 
 	"Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
-
 	"the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
-
 	"triplet) that you want to poke into each pixel; default is white. If supplied, "
-
 	"\"rect\" must contain at least one pixel. If a windowPtr is supplied then \"rect\" "
-
 	"is in the window's coordinates (origin at upper left), and defaults to the whole "
-
 	"window. If a screenNumber is supplied then \"rect\" is in screen coordinates "
-
 	"(origin at upper left), and defaults to the whole screen. (In all cases, "
-
 	"subsequent references to this new window will use its coordinates: origin at its "
-
 	"upper left.) The Windows and OS-X version accepts \"rect\" but disregards it, the window is "
-
 	"always the size of the display on which it appears. \"pixelSize\" sets the depth "
-
 	"(in bits) of each pixel; default is to leave depth unchanged. "
-
         "\"numberOfBuffers\" is the number of buffers to use. Setting anything else than 2 will be "
-
         "useful for development/debugging of PTB itself but will mess up any real experiment. "
-
         "\"stereomode\" Type of stereo display algorithm to use: 0 (default) means: Monoscopic viewing. "
-
         "1 means: Stereo output via OpenGL on any stereo hardware that is supported by MacOS-X, e.g., the "
-
         "shutter glasses from CrystalView. 2 means: Left view compressed into top half, right view into bottom half. "
-
-        "Opening or closing a window takes about two to three seconds, depending on type of connected display. ";  
+        "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
+        "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
+        "Psychtoolbox, you can switch into a compatibility mode by adding the command "
+        "Screen('Preference', 'EmulateOldPTB', 1) at the very top of your script. This will restore "
+        "Offscreen windows and WaitBlanking functionality, but at the same time disable most of the new "
+        "features of the OpenGL Psychtoolbox. Please do not write new experiment code in the old style! "
+        "Emulation mode is pretty new and may contain significant bugs, so use with great caution!";  
 
 static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
 
@@ -238,7 +228,7 @@ PsychError SCREENOpenWindow(void)
 
     numWindowBuffers=2;	
     PsychCopyInIntegerArg(5,FALSE,&numWindowBuffers);
-    if(numWindowBuffers < 0 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
+    if(numWindowBuffers < 1 || numWindowBuffers > kPsychMaxNumberWindowBuffers) PsychErrorExit(PsychError_invalidNumberBuffersArg);
 
     // MK: Check for optional spec of stereoscopic display: 0 (the default) = monoscopic viewing.
     // 1 == Stereo output via OpenGL built-in stereo facilities: This will drive any kind of

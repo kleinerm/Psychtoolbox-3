@@ -69,6 +69,9 @@ void PsychPrefStateSet_VisualDebugLevel(int level);
 int PsychPrefStateGet_ConserveVRAM(void);
 void PsychPrefStateSet_ConserveVRAM(int level);
 
+Boolean PsychPrefStateGet_EmulateOldPTB(void);
+void PsychPrefStateSet_EmulateOldPTB(Boolean level);
+
 //Debug preferences.  
 Boolean PsychPrefStateGet_DebugMakeTexture(void);
 void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag);

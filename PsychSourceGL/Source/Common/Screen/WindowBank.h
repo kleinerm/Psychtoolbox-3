@@ -148,7 +148,6 @@ typedef struct _PsychWindowRecordType_{
         bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
         bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
-        bool                                    EmulateOS9;             // If set to true, then try to behave like the old OS-9 PTB.
 	//Used only when this structure holds a window:
 	//platform spedific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c
 	//Only use abstracted accessors on this structure, otherwise you will break platform portability.
