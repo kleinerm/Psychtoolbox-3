@@ -33,16 +33,6 @@
 
 
 #include "Psych.h"
-//#include <windows.h>
-//#include <windowsx.h>
-//#include <windows.h>
-//#include <windowsx.h>
-//#include <ddraw.h>
-//#define DIRECTINPUT_VERSION 0x0500
-//#include <dinput.h>
-//#include <winbase.h>
-//#include <dsetup.h>
-
 
 /*
 
@@ -61,19 +51,19 @@ void PsychWaitUntilSeconds(double whenSecs)
 {
   double now=0.0;
 
-  // Waiting stage 1: If we have more than 2.5 milliseconds left
+  // Waiting stage 1: If we have more than 10 milliseconds left
   // until the deadline, we call the OS Sleep(2) function, so the
-  // CPU gets released for 2 ms to other processes and threads.
+  // CPU gets released for difference - 10 ms to other processes and threads.
   // -> Good for general system behaviour and for lowered
   // power-consumption (longer battery runtime for Laptops) as
   // the CPU can go idle if nothing else to do...
   PsychGetPrecisionTimerSeconds(&now);
-  while(whenSecs - now > 0.0025) {
-    Sleep(2);
+  while(whenSecs - now > 0.01) {
+    Sleep((int)((whenSecs - now - 0.01) * 1000.0f));
     PsychGetPrecisionTimerSeconds(&now);
   }
 
-  // Waiting stage 2: We are less than 2.5 ms away from deadline.
+  // Waiting stage 2: We are less than 10 ms away from deadline.
   // Perform busy-waiting until deadline reached:
   while(now < whenSecs) PsychGetPrecisionTimerSeconds(&now);
 
