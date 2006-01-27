@@ -52,6 +52,8 @@ void CocoaStoreBit(Boolean newValue)
 		 [numberObject release];
 	numberObject=[[NSNumber alloc] initWithBool:newValue];
 	
+
+/*
 	//superfluous window stuff
 	if(windowObject == NULL){
 		windowObject=[KeyRecorderWindow alloc];
@@ -75,7 +77,7 @@ void CocoaStoreBit(Boolean newValue)
 		nextResponder=[windowObject nextResponder];
 		
 	}
-
+*/
     [pool release];
 }
 
@@ -95,6 +97,7 @@ Boolean CocoaGetBit(void)
 	return(returnValue);
 }
 
+/*
 void CocoaGetWindowCharacter(char *charStringLen2, double *readTime)
 {
 	NSDictionary		*characterDictionary;
@@ -119,6 +122,7 @@ void CocoaGetWindowCharacter(char *charStringLen2, double *readTime)
 
 	[pool release];
 }
+*/
 
 
 void CocoaFreeBit(void)
