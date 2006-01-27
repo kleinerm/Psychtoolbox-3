@@ -7,19 +7,19 @@
 			sepNavVisRect = "{{0, 0}, {949, 325}}";
 		};
 	};
-	0E92E860095726FE002687D9 /* Eyelink */ = {
+	0E92E860095726FE002687D9 /* Eyelink_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F806E83097599CD0080AFEF /* Eyelink */,
+			2F806E83097599CD0080AFEF /* Eyelink_OLD */,
 		);
 	};
 	29B97313FDCFA39411CA2CEA /* Project object */ = {
 		activeBuildConfigurationName = Development;
 		activeBuildStyle = 4A9504CCFFE6A4B311CA0CBA /* Development */;
 		activeExecutable = F5555AA3038A0C1F017A7028 /* MATLAB */;
-		activeTarget = 2FD6151507306666008DA6B4 /* CocoaEventBridge */;
+		activeTarget = 2FEBA675098862E300F4165F /* PsychSound */;
 		addToTargets = (
-			2FD6171707306668008DA6B4 /* Screen */,
+			2FEBA5AB0988626300F4165F /* IOPort */,
 		);
 		breakpoints = (
 			2FF6C59E090F532800E7F32B /* PsychHIDHelpers.c:31 */,
@@ -28,34 +28,34 @@
 		codeSenseManager = 2F1C7FE305B67AC9005E5F7F /* Code sense */;
 		executables = (
 			F5555AA3038A0C1F017A7028 /* MATLAB */,
-			2FB35E56073065570070ABEC /* GetSecsMex */,
-			2FD614CA07306666008DA6B4 /* FontInfo */,
-			2FD614DE07306666008DA6B4 /* GetBusFrequencyMex */,
-			2FD6151407306666008DA6B4 /* GetBusTicks */,
-			2FD6154E07306666008DA6B4 /* CocoaEventBridge */,
-			2FD6158607306666008DA6B4 /* GetPID */,
-			2FD615BD07306667008DA6B4 /* GetSecs */,
-			2FD6160607306667008DA6B4 /* GetSecsTick */,
-			2FD6163D07306667008DA6B4 /* GetTicks */,
-			2FD6165207306667008DA6B4 /* MachGetPriorityMex */,
-			2FD6168807306667008DA6B4 /* MachPriority */,
-			2FD6169D07306668008DA6B4 /* MachSetPriorityMex */,
-			2FD616E007306668008DA6B4 /* PsychHID */,
-			2FD6171607306668008DA6B4 /* Rush */,
-			2FD6179C07306669008DA6B4 /* Screen */,
+			2FB35E56073065570070ABEC /* GetSecsMex_OLD */,
+			2FD614CA07306666008DA6B4 /* FontInfo_OLD */,
+			2FD614DE07306666008DA6B4 /* GetBusFrequencyMex_OLD */,
+			2FD6151407306666008DA6B4 /* GetBusTicks_OLD */,
+			2FD6154E07306666008DA6B4 /* CocoaEventBridge_OLD */,
+			2FD6158607306666008DA6B4 /* GetPID_OLD */,
+			2FD615BD07306667008DA6B4 /* GetSecs_OLD */,
+			2FD6160607306667008DA6B4 /* GetSecsTick_OLD */,
+			2FD6163D07306667008DA6B4 /* GetTicks_OLD */,
+			2FD6165207306667008DA6B4 /* MachGetPriorityMex_OLD */,
+			2FD6168807306667008DA6B4 /* MachPriority_OLD */,
+			2FD6169D07306668008DA6B4 /* MachSetPriorityMex_OLD */,
+			2FD616E007306668008DA6B4 /* PsychHID_OLD */,
+			2FD6171607306668008DA6B4 /* Rush_OLD */,
+			2FD6179C07306669008DA6B4 /* Screen_OLD */,
 			2FD617D207306669008DA6B4 /* SleepSecs */,
 			2FD617E607306669008DA6B4 /* SleepSecsMex */,
-			2FD618200730666A008DA6B4 /* SysBeep */,
-			2FD618340730666A008DA6B4 /* TestPriorityMex */,
-			2FD6186A0730666B008DA6B4 /* WaitSecs */,
-			2FD6187E0730666B008DA6B4 /* WaitSecsMex */,
-			2FACA4F80764D9E400A159D3 /* Gestalt */,
-			2F0B169407788BB500359736 /* IOPort */,
-			2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency */,
-			2F57E38408CEB64300A5CF85 /* StoreBit */,
-			2F54335D090431DC0051D6CC /* DoNothing */,
-			2F72B9F6094F9513008AC7D8 /* PsychSound */,
-			2F806E83097599CD0080AFEF /* Eyelink */,
+			2FD618200730666A008DA6B4 /* SysBeep_OLD */,
+			2FD618340730666A008DA6B4 /* TestPriorityMex_OLD */,
+			2FD6186A0730666B008DA6B4 /* WaitSecs_OLD */,
+			2FD6187E0730666B008DA6B4 /* WaitSecsMex_OLD */,
+			2FACA4F80764D9E400A159D3 /* Gestalt_OLD */,
+			2F0B169407788BB500359736 /* IOPort_OLD */,
+			2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency_OLD */,
+			2F57E38408CEB64300A5CF85 /* StoreBit_OLD */,
+			2F54335D090431DC0051D6CC /* DoNothing_OLD */,
+			2F72B9F6094F9513008AC7D8 /* PsychSound_OLD */,
+			2F806E83097599CD0080AFEF /* Eyelink_OLD */,
 		);
 		expressions = (
 			"*(sourceRect)",
@@ -108,8 +108,8 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXErrorsWarningsDataSource_LocationID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
-					761,
-					175,
+					997,
+					74,
 				);
 				PBXFileTableDataSourceColumnsKey = (
 					PBXErrorsWarningsDataSource_TypeID,
@@ -122,7 +122,7 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXExecutablesDataSource_NameID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					22,
-					971,
+					685,
 				);
 				PBXFileTableDataSourceColumnsKey = (
 					PBXExecutablesDataSource_ActiveFlagID,
@@ -134,7 +134,7 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Errors_ColumnID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
-					793,
+					403,
 					20,
 					138,
 					43,
@@ -185,7 +185,7 @@
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
 					20,
-					779,
+					777,
 					20,
 					128,
 					43,
@@ -208,12 +208,14 @@
 				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
 				PBXFileTableDataSourceColumnWidthsKey = (
 					20,
-					722,
-					77,
+					293,
+					185,
 					20,
-					152,
+					118,
 					43,
 					43,
+					20,
+					20,
 				);
 				PBXFileTableDataSourceColumnsKey = (
 					PBXFileDataSource_FiletypeID,
@@ -223,9 +225,11 @@
 					PBXFileDataSource_ObjectSize_ColumnID,
 					PBXFileDataSource_Errors_ColumnID,
 					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_SCM_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 158722465;
+			PBXPerProjectTemplateStateSaveDate = 159929774;
 			PBXPrepackagedSmartGroups_v2 = (
 				{
 					PBXTransientLocationAtTop = bottom;
@@ -1601,7 +1605,7 @@
 				PBXModuleWindowStatusBarHidden = YES;
 				RubberWindowFrame = "435 383 745 464 0 0 1600 1002 ";
 			};
-			PBXWorkspaceStateSaveDate = 158722465;
+			PBXWorkspaceStateSaveDate = 159929774;
 		};
 		perUserProjectItems = {
 			2F44A9E008DB8EBC00F0A627 = 2F44A9E008DB8EBC00F0A627 /* PBXTextBookmark */;
@@ -1748,6 +1752,23 @@
 			2FD0654008D9404E005BD6CD = 2FD0654008D9404E005BD6CD /* PBXTextBookmark */;
 			2FD0654C08D9404E005BD6CD = 2FD0654C08D9404E005BD6CD /* PBXTextBookmark */;
 			2FE9DEAA08D735E0007C7572 = 2FE9DEAA08D735E0007C7572 /* PBXTextBookmark */;
+			2FEBA91F0989922F00F4165F /* PBXTextBookmark */ = 2FEBA91F0989922F00F4165F /* PBXTextBookmark */;
+			2FEBA9200989922F00F4165F /* PBXTextBookmark */ = 2FEBA9200989922F00F4165F /* PBXTextBookmark */;
+			2FEBA9210989922F00F4165F /* PBXBookmark */ = 2FEBA9210989922F00F4165F /* PBXBookmark */;
+			2FEBA9220989922F00F4165F /* PBXTextBookmark */ = 2FEBA9220989922F00F4165F /* PBXTextBookmark */;
+			2FEBA9230989922F00F4165F /* PBXTextBookmark */ = 2FEBA9230989922F00F4165F /* PBXTextBookmark */;
+			2FEBA9240989922F00F4165F /* PBXTextBookmark */ = 2FEBA9240989922F00F4165F /* PBXTextBookmark */;
+			2FEBA9560989AAB000F4165F /* PBXTextBookmark */ = 2FEBA9560989AAB000F4165F /* PBXTextBookmark */;
+			2FEBA9E10989AE2400F4165F /* PBXTextBookmark */ = 2FEBA9E10989AE2400F4165F /* PBXTextBookmark */;
+			2FEBA9E20989AE2400F4165F /* PBXTextBookmark */ = 2FEBA9E20989AE2400F4165F /* PBXTextBookmark */;
+			2FEBAA330989B82800F4165F /* PBXTextBookmark */ = 2FEBAA330989B82800F4165F /* PBXTextBookmark */;
+			2FEBAA3E0989B8D200F4165F /* PBXTextBookmark */ = 2FEBAA3E0989B8D200F4165F /* PBXTextBookmark */;
+			2FEBAA6A0989BA8B00F4165F /* PBXBookmark */ = 2FEBAA6A0989BA8B00F4165F /* PBXBookmark */;
+			2FEBAA890989BBDF00F4165F /* PBXTextBookmark */ = 2FEBAA890989BBDF00F4165F /* PBXTextBookmark */;
+			2FEBAA8A0989BBDF00F4165F /* PBXBookmark */ = 2FEBAA8A0989BBDF00F4165F /* PBXBookmark */;
+			2FEBAA8B0989BBDF00F4165F /* PBXTextBookmark */ = 2FEBAA8B0989BBDF00F4165F /* PBXTextBookmark */;
+			2FEBAA8C0989BBDF00F4165F /* PBXTextBookmark */ = 2FEBAA8C0989BBDF00F4165F /* PBXTextBookmark */;
+			2FEBAA8F0989BBDF00F4165F /* PBXTextBookmark */ = 2FEBAA8F0989BBDF00F4165F /* PBXTextBookmark */;
 			2FF33BD30900D15600EF5714 = 2FF33BD30900D15600EF5714 /* PBXTextBookmark */;
 			2FF6C558090F470B00E7F32B = 2FF6C558090F470B00E7F32B /* PBXTextBookmark */;
 			2FF6C559090F470B00E7F32B = 2FF6C559090F470B00E7F32B /* PBXTextBookmark */;
@@ -1790,6 +1811,8 @@
 		};
 		sourceControlManager = 2F1C7FE205B67AC9005E5F7F /* Source Control */;
 		userBuildSettings = {
+			OBJROOT = "$(SYMROOT)";
+			SYMROOT = "~$(USER)/PsychtoolboxBuildProducts/build";
 		};
 	};
 	2F02A85705F0735800C19AA2 /* RegisterProject.h */ = {
@@ -1822,13 +1845,13 @@
 			sepNavWindowFrame = "{{596, 620}, {750, 558}}";
 		};
 	};
-	2F0B166107788BB500359736 /* IOPort */ = {
+	2F0B166107788BB500359736 /* IOPort_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F0B169407788BB500359736 /* IOPort */,
+			2F0B169407788BB500359736 /* IOPort_OLD */,
 		);
 	};
-	2F0B169407788BB500359736 /* IOPort */ = {
+	2F0B169407788BB500359736 /* IOPort_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -1847,7 +1870,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = IOPort;
+		name = IOPort_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -1879,20 +1902,6 @@
 			sepNavVisRect = "{{0, 0}, {0, 0}}";
 		};
 	};
-	2F0B17BA0778931700359736 /* IOWarriorLib.h */ = {
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {2732, 3149}}";
-			sepNavSelRange = "{0, 0}";
-			sepNavVisRect = "{{0, 0}, {939, 653}}";
-		};
-	};
-	2F0B17BB0778931700359736 /* IOWarriorLib.c */ = {
-		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1760, 10570}}";
-			sepNavSelRange = "{19370, 21}";
-			sepNavVisRect = "{{0, 6700}, {1256, 67}}";
-		};
-	};
 	2F0B17D50778976600359736 /* IOPORTInit.c */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {958, 910}}";
@@ -1903,9 +1912,9 @@
 	};
 	2F0B17D60778976600359736 /* IOPORTSetPort.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {958, 924}}";
-			sepNavSelRange = "{410, 0}";
-			sepNavVisRect = "{{0, 256}, {958, 398}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1179, 924}}";
+			sepNavSelRange = "{328, 26}";
+			sepNavVisRect = "{{0, 381}, {1179, 151}}";
 		};
 	};
 	2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */ = {
@@ -1943,7 +1952,7 @@
 		isa = PBXCodeSenseManager;
 		indexTemplatePath = "";
 	};
-	2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency */ = {
+	2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -1962,7 +1971,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = MachAbsoluteTimeClockFrequency;
+		name = MachAbsoluteTimeClockFrequency_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -2435,13 +2444,13 @@
 		vrLen = 570;
 		vrLoc = 0;
 	};
-	2F543326090431DC0051D6CC /* DoNothing */ = {
+	2F543326090431DC0051D6CC /* DoNothing_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F54335D090431DC0051D6CC /* DoNothing */,
+			2F54335D090431DC0051D6CC /* DoNothing_OLD */,
 		);
 	};
-	2F54335D090431DC0051D6CC /* DoNothing */ = {
+	2F54335D090431DC0051D6CC /* DoNothing_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -2460,7 +2469,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = DoNothing;
+		name = DoNothing_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -2971,13 +2980,13 @@
 			sepNavVisRect = "{{0, 0}, {1076, 530}}";
 		};
 	};
-	2F57E34B08CEB64200A5CF85 /* StoreBit */ = {
+	2F57E34B08CEB64200A5CF85 /* StoreBit_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F57E38408CEB64300A5CF85 /* StoreBit */,
+			2F57E38408CEB64300A5CF85 /* StoreBit_OLD */,
 		);
 	};
-	2F57E38408CEB64300A5CF85 /* StoreBit */ = {
+	2F57E38408CEB64300A5CF85 /* StoreBit_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -2996,7 +3005,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = StoreBit;
+		name = StoreBit_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -3389,7 +3398,7 @@
 	};
 	2F66ABA409063AD000128812 /* MATLAB */ = {
 		isa = PBXFileReference;
-		lastKnownFileType = "compiled.mach-o.executable";
+		explicitFileType = "compiled.mach-o.executable";
 		name = MATLAB;
 		path = /Applications/MATLAB704/bin/mac/MATLAB;
 		sourceTree = "<absolute>";
@@ -3709,7 +3718,7 @@
 		vrLen = 958;
 		vrLoc = 0;
 	};
-	2F72B9F6094F9513008AC7D8 /* PsychSound */ = {
+	2F72B9F6094F9513008AC7D8 /* PsychSound_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -3728,7 +3737,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = PsychSound;
+		name = PsychSound_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -3748,7 +3757,7 @@
 			sepNavWindowFrame = "{{84, 430}, {750, 558}}";
 		};
 	};
-	2F806E83097599CD0080AFEF /* Eyelink */ = {
+	2F806E83097599CD0080AFEF /* Eyelink_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -3767,7 +3776,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = Eyelink;
+		name = Eyelink_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -3979,13 +3988,13 @@
 			sepNavVisRect = "{{0, 217}, {944, 665}}";
 		};
 	};
-	2FACA4C00764D9E400A159D3 /* Gestalt */ = {
+	2FACA4C00764D9E400A159D3 /* Gestalt_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FACA4F80764D9E400A159D3 /* Gestalt */,
+			2FACA4F80764D9E400A159D3 /* Gestalt_OLD */,
 		);
 	};
-	2FACA4F80764D9E400A159D3 /* Gestalt */ = {
+	2FACA4F80764D9E400A159D3 /* Gestalt_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4005,7 +4014,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = Gestalt;
+		name = Gestalt_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -4052,10 +4061,10 @@
 			sepNavWindowFrame = "{{335, 326}, {750, 558}}";
 		};
 	};
-	2FB35E44073065570070ABEC /* GetSecsMex */ = {
+	2FB35E44073065570070ABEC /* GetSecsMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FB35E56073065570070ABEC /* GetSecsMex */,
+			2FB35E56073065570070ABEC /* GetSecsMex_OLD */,
 		);
 	};
 	2FB35E54073065570070ABEC /* Info-GetSecsMex.plist */ = {
@@ -4065,7 +4074,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FB35E56073065570070ABEC /* GetSecsMex */ = {
+	2FB35E56073065570070ABEC /* GetSecsMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4084,7 +4093,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetSecsMex;
+		name = GetSecsMex_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -4422,10 +4431,10 @@
 			sepNavWindowFrame = "{{15, 439}, {750, 558}}";
 		};
 	};
-	2FD6148B07306666008DA6B4 /* FontInfo */ = {
+	2FD6148B07306666008DA6B4 /* FontInfo_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD614CA07306666008DA6B4 /* FontInfo */,
+			2FD614CA07306666008DA6B4 /* FontInfo_OLD */,
 		);
 	};
 	2FD614C707306666008DA6B4 /* Info-FontInfo.plist */ = {
@@ -4435,7 +4444,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD614CA07306666008DA6B4 /* FontInfo */ = {
+	2FD614CA07306666008DA6B4 /* FontInfo_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4454,14 +4463,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = FontInfo;
+		name = FontInfo_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD614CB07306666008DA6B4 /* GetBusFrequencyMex */ = {
+	2FD614CB07306666008DA6B4 /* GetBusFrequencyMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD614DE07306666008DA6B4 /* GetBusFrequencyMex */,
+			2FD614DE07306666008DA6B4 /* GetBusFrequencyMex_OLD */,
 		);
 	};
 	2FD614DB07306666008DA6B4 /* Info-GetBusFrequencyMex.plist */ = {
@@ -4471,7 +4480,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD614DE07306666008DA6B4 /* GetBusFrequencyMex */ = {
+	2FD614DE07306666008DA6B4 /* GetBusFrequencyMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4490,14 +4499,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetBusFrequencyMex;
+		name = GetBusFrequencyMex_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD614DF07306666008DA6B4 /* GetBusTicks */ = {
+	2FD614DF07306666008DA6B4 /* GetBusTicks_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6151407306666008DA6B4 /* GetBusTicks */,
+			2FD6151407306666008DA6B4 /* GetBusTicks_OLD */,
 		);
 	};
 	2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {
@@ -4507,7 +4516,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6151407306666008DA6B4 /* GetBusTicks */ = {
+	2FD6151407306666008DA6B4 /* GetBusTicks_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4526,14 +4535,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetBusTicks;
+		name = GetBusTicks_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6151507306666008DA6B4 /* CocoaEventBridge */ = {
+	2FD6151507306666008DA6B4 /* CocoaEventBridge_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6154E07306666008DA6B4 /* CocoaEventBridge */,
+			2FD6154E07306666008DA6B4 /* CocoaEventBridge_OLD */,
 		);
 	};
 	2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {
@@ -4543,7 +4552,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6154E07306666008DA6B4 /* CocoaEventBridge */ = {
+	2FD6154E07306666008DA6B4 /* CocoaEventBridge_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4562,14 +4571,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = CocoaEventBridge;
+		name = CocoaEventBridge_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6154F07306666008DA6B4 /* GetPID */ = {
+	2FD6154F07306666008DA6B4 /* GetPID_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6158607306666008DA6B4 /* GetPID */,
+			2FD6158607306666008DA6B4 /* GetPID_OLD */,
 		);
 	};
 	2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {
@@ -4579,7 +4588,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6158607306666008DA6B4 /* GetPID */ = {
+	2FD6158607306666008DA6B4 /* GetPID_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4598,14 +4607,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetPID;
+		name = GetPID_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6158707306666008DA6B4 /* GetSecs */ = {
+	2FD6158707306666008DA6B4 /* GetSecs_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD615BD07306667008DA6B4 /* GetSecs */,
+			2FD615BD07306667008DA6B4 /* GetSecs_OLD */,
 		);
 	};
 	2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {
@@ -4615,7 +4624,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD615BD07306667008DA6B4 /* GetSecs */ = {
+	2FD615BD07306667008DA6B4 /* GetSecs_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4634,14 +4643,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetSecs;
+		name = GetSecs_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD615D107306667008DA6B4 /* GetSecsTick */ = {
+	2FD615D107306667008DA6B4 /* GetSecsTick_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6160607306667008DA6B4 /* GetSecsTick */,
+			2FD6160607306667008DA6B4 /* GetSecsTick_OLD */,
 		);
 	};
 	2FD6160307306667008DA6B4 /* Info-GetSecsTick.plist */ = {
@@ -4651,7 +4660,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6160607306667008DA6B4 /* GetSecsTick */ = {
+	2FD6160607306667008DA6B4 /* GetSecsTick_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4670,14 +4679,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetSecsTick;
+		name = GetSecsTick_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6160707306667008DA6B4 /* GetTicks */ = {
+	2FD6160707306667008DA6B4 /* GetTicks_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6163D07306667008DA6B4 /* GetTicks */,
+			2FD6163D07306667008DA6B4 /* GetTicks_OLD */,
 		);
 	};
 	2FD6163A07306667008DA6B4 /* Info-GetTicks.plist */ = {
@@ -4687,7 +4696,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6163D07306667008DA6B4 /* GetTicks */ = {
+	2FD6163D07306667008DA6B4 /* GetTicks_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4706,14 +4715,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = GetTicks;
+		name = GetTicks_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6163E07306667008DA6B4 /* MachGetPriorityMex */ = {
+	2FD6163E07306667008DA6B4 /* MachGetPriorityMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6165207306667008DA6B4 /* MachGetPriorityMex */,
+			2FD6165207306667008DA6B4 /* MachGetPriorityMex_OLD */,
 		);
 	};
 	2FD6164F07306667008DA6B4 /* Info-MachGetPriorityMex.plist */ = {
@@ -4723,7 +4732,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6165207306667008DA6B4 /* MachGetPriorityMex */ = {
+	2FD6165207306667008DA6B4 /* MachGetPriorityMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4742,14 +4751,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = MachGetPriorityMex;
+		name = MachGetPriorityMex_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6165307306667008DA6B4 /* MachPriority */ = {
+	2FD6165307306667008DA6B4 /* MachPriority_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6168807306667008DA6B4 /* MachPriority */,
+			2FD6168807306667008DA6B4 /* MachPriority_OLD */,
 		);
 	};
 	2FD6168507306667008DA6B4 /* Info-MachPriority.plist */ = {
@@ -4759,7 +4768,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6168807306667008DA6B4 /* MachPriority */ = {
+	2FD6168807306667008DA6B4 /* MachPriority_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4778,14 +4787,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = MachPriority;
+		name = MachPriority_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6168907306667008DA6B4 /* MachSetPriorityMex */ = {
+	2FD6168907306667008DA6B4 /* MachSetPriorityMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6169D07306668008DA6B4 /* MachSetPriorityMex */,
+			2FD6169D07306668008DA6B4 /* MachSetPriorityMex_OLD */,
 		);
 	};
 	2FD6169A07306668008DA6B4 /* Info-MachSetPriorityMex.plist */ = {
@@ -4795,7 +4804,7 @@
 			sepNavVisRect = "{{0, 0}, {793, 606}}";
 		};
 	};
-	2FD6169D07306668008DA6B4 /* MachSetPriorityMex */ = {
+	2FD6169D07306668008DA6B4 /* MachSetPriorityMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4814,14 +4823,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = MachSetPriorityMex;
+		name = MachSetPriorityMex_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6169E07306668008DA6B4 /* PsychHID */ = {
+	2FD6169E07306668008DA6B4 /* PsychHID_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD616E007306668008DA6B4 /* PsychHID */,
+			2FD616E007306668008DA6B4 /* PsychHID_OLD */,
 		);
 	};
 	2FD616DD07306668008DA6B4 /* Info-PsychHID.plist */ = {
@@ -4831,7 +4840,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD616E007306668008DA6B4 /* PsychHID */ = {
+	2FD616E007306668008DA6B4 /* PsychHID_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4850,14 +4859,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = PsychHID;
+		name = PsychHID_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD616E107306668008DA6B4 /* Rush */ = {
+	2FD616E107306668008DA6B4 /* Rush_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6171607306668008DA6B4 /* Rush */,
+			2FD6171607306668008DA6B4 /* Rush_OLD */,
 		);
 	};
 	2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {
@@ -4867,7 +4876,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6171607306668008DA6B4 /* Rush */ = {
+	2FD6171607306668008DA6B4 /* Rush_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4886,14 +4895,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = Rush;
+		name = Rush_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6171707306668008DA6B4 /* Screen */ = {
+	2FD6171707306668008DA6B4 /* Screen_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6179C07306669008DA6B4 /* Screen */,
+			2FD6179C07306669008DA6B4 /* Screen_OLD */,
 		);
 	};
 	2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {
@@ -4903,7 +4912,7 @@
 			sepNavVisRect = "{{0, 0}, {1076, 530}}";
 		};
 	};
-	2FD6179C07306669008DA6B4 /* Screen */ = {
+	2FD6179C07306669008DA6B4 /* Screen_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -4922,7 +4931,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = Screen;
+		name = Screen_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -4986,10 +4995,10 @@
 		sourceDirectories = (
 		);
 	};
-	2FD617E707306669008DA6B4 /* SysBeep */ = {
+	2FD617E707306669008DA6B4 /* SysBeep_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD618200730666A008DA6B4 /* SysBeep */,
+			2FD618200730666A008DA6B4 /* SysBeep_OLD */,
 		);
 	};
 	2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {
@@ -4999,7 +5008,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD618200730666A008DA6B4 /* SysBeep */ = {
+	2FD618200730666A008DA6B4 /* SysBeep_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -5018,14 +5027,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = SysBeep;
+		name = SysBeep_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD618210730666A008DA6B4 /* TestPriorityMex */ = {
+	2FD618210730666A008DA6B4 /* TestPriorityMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD618340730666A008DA6B4 /* TestPriorityMex */,
+			2FD618340730666A008DA6B4 /* TestPriorityMex_OLD */,
 		);
 	};
 	2FD618310730666A008DA6B4 /* Info-TestPriorityMex.plist */ = {
@@ -5035,7 +5044,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD618340730666A008DA6B4 /* TestPriorityMex */ = {
+	2FD618340730666A008DA6B4 /* TestPriorityMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -5054,14 +5063,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = TestPriorityMex;
+		name = TestPriorityMex_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD618350730666A008DA6B4 /* WaitSecs */ = {
+	2FD618350730666A008DA6B4 /* WaitSecs_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6186A0730666B008DA6B4 /* WaitSecs */,
+			2FD6186A0730666B008DA6B4 /* WaitSecs_OLD */,
 		);
 	};
 	2FD618670730666B008DA6B4 /* Info-WaitSecs.plist */ = {
@@ -5071,7 +5080,7 @@
 			sepNavVisRect = "{{0, 0}, {1014, 384}}";
 		};
 	};
-	2FD6186A0730666B008DA6B4 /* WaitSecs */ = {
+	2FD6186A0730666B008DA6B4 /* WaitSecs_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -5091,14 +5100,14 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = WaitSecs;
+		name = WaitSecs_OLD;
 		sourceDirectories = (
 		);
 	};
-	2FD6186B0730666B008DA6B4 /* WaitSecsMex */ = {
+	2FD6186B0730666B008DA6B4 /* WaitSecsMex_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2FD6187E0730666B008DA6B4 /* WaitSecsMex */,
+			2FD6187E0730666B008DA6B4 /* WaitSecsMex_OLD */,
 		);
 	};
 	2FD6187B0730666B008DA6B4 /* Info-WaitSecsMex.plist */ = {
@@ -5108,7 +5117,7 @@
 			sepNavVisRect = "{{0, 0}, {1156, 777}}";
 		};
 	};
-	2FD6187E0730666B008DA6B4 /* WaitSecsMex */ = {
+	2FD6187E0730666B008DA6B4 /* WaitSecsMex_OLD */ = {
 		isa = PBXExecutable;
 		activeArgIndex = 2147483647;
 		activeArgIndices = (
@@ -5127,7 +5136,7 @@
 		executableSystemSymbolLevel = 0;
 		executableUserSymbolLevel = 0;
 		libgmallocEnabled = 0;
-		name = WaitSecsMex;
+		name = WaitSecsMex_OLD;
 		sourceDirectories = (
 		);
 	};
@@ -5232,6 +5241,251 @@
 		rType = 0;
 		vrLen = 957;
 		vrLoc = 0;
+	};
+	2FEBA43009885B4700F4165F /* DoNothing */ = {
+		activeExec = 0;
+	};
+	2FEBA4600988613400F4165F /* FontInfo */ = {
+		activeExec = 0;
+	};
+	2FEBA482098861FB00F4165F /* CocoaEventBridge */ = {
+		activeExec = 0;
+	};
+	2FEBA4A30988620100F4165F /* Gestalt */ = {
+		activeExec = 0;
+	};
+	2FEBA4C40988620800F4165F /* GetBusFrequencyMex */ = {
+		activeExec = 0;
+	};
+	2FEBA4E50988621900F4165F /* GetBusTicks */ = {
+		activeExec = 0;
+	};
+	2FEBA5060988622700F4165F /* GetPID */ = {
+		activeExec = 0;
+	};
+	2FEBA5270988623200F4165F /* GetSecs */ = {
+		activeExec = 0;
+	};
+	2FEBA5480988623C00F4165F /* GetSecsMex */ = {
+		activeExec = 0;
+	};
+	2FEBA5690988624800F4165F /* GetSecsTick */ = {
+		activeExec = 0;
+	};
+	2FEBA58A0988625400F4165F /* GetTicks */ = {
+		activeExec = 0;
+	};
+	2FEBA5AB0988626300F4165F /* IOPort */ = {
+		activeExec = 0;
+	};
+	2FEBA5CC0988627100F4165F /* MachGetPriorityMex */ = {
+		activeExec = 0;
+	};
+	2FEBA5ED0988627E00F4165F /* MachPriority */ = {
+		activeExec = 0;
+	};
+	2FEBA612098862C400F4165F /* MachSetPriorityMex */ = {
+		activeExec = 0;
+	};
+	2FEBA633098862CE00F4165F /* MachAbsoluteTimeClockFrequency */ = {
+		activeExec = 0;
+	};
+	2FEBA654098862D800F4165F /* PsychHID */ = {
+		activeExec = 0;
+	};
+	2FEBA675098862E300F4165F /* PsychSound */ = {
+		activeExec = 0;
+	};
+	2FEBA696098862FE00F4165F /* Rush */ = {
+		activeExec = 0;
+	};
+	2FEBA6B70988630A00F4165F /* Screen */ = {
+		activeExec = 0;
+	};
+	2FEBA6D80988631600F4165F /* StoreBit */ = {
+		activeExec = 0;
+	};
+	2FEBA6F90988632100F4165F /* SysBeep */ = {
+		activeExec = 0;
+	};
+	2FEBA71A0988632D00F4165F /* TestPriorityMex */ = {
+		activeExec = 0;
+	};
+	2FEBA73B0988633B00F4165F /* WaitSecs */ = {
+		activeExec = 0;
+	};
+	2FEBA75C0988634800F4165F /* WaitSecsMex */ = {
+		activeExec = 0;
+	};
+	2FEBA77D0988635400F4165F /* Eyelink */ = {
+		activeExec = 0;
+	};
+	2FEBA79E0988641C00F4165F /* GenericMexTarget */ = {
+		activeExec = 0;
+	};
+	2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1760, 10570}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1079, 93}}";
+		};
+	};
+	2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {2732, 3150}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 0}, {1079, 93}}";
+		};
+	};
+	2FEBA91F0989922F00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		name = "#include \"IOWarriorLib.h\"";
+		rLen = 26;
+		rLoc = 328;
+		rType = 0;
+		vrLen = 147;
+		vrLoc = 264;
+	};
+	2FEBA9200989922F00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */;
+		name = "IOWarriorLib.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBA9210989922F00F4165F /* PBXBookmark */ = {
+		isa = PBXBookmark;
+		fRef = 2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */;
+	};
+	2FEBA9220989922F00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		name = "#include \"IOWarriorLib.h\"";
+		rLen = 26;
+		rLoc = 328;
+		rType = 0;
+		vrLen = 147;
+		vrLoc = 264;
+	};
+	2FEBA9230989922F00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */;
+		name = "IOWarriorLib.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBA9240989922F00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */;
+		name = "IOWarriorLib.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBA9560989AAB000F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */;
+		name = "IOWarriorLib.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBA9E10989AE2400F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		comments = "IOWarriorLib.h: No such file or directory";
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		rLen = 1;
+		rLoc = 29;
+		rType = 1;
+	};
+	2FEBA9E20989AE2400F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		name = "#include \"IOWarriorLib.h\"";
+		rLen = 26;
+		rLoc = 328;
+		rType = 0;
+		vrLen = 243;
+		vrLoc = 265;
+	};
+	2FEBAA330989B82800F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		name = "#include \"IOWarriorLib.h\"";
+		rLen = 26;
+		rLoc = 328;
+		rType = 0;
+		vrLen = 243;
+		vrLoc = 265;
+	};
+	2FEBAA3E0989B8D200F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */;
+		name = "#include \"IOWarriorLib.h\"";
+		rLen = 26;
+		rLoc = 328;
+		rType = 0;
+		vrLen = 243;
+		vrLoc = 265;
+	};
+	2FEBAA6A0989BA8B00F4165F /* PBXBookmark */ = {
+		isa = PBXBookmark;
+		fRef = 832CE658094CE9F600578C09 /* PsychSound.c */;
+	};
+	2FEBAA890989BBDF00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */;
+		name = "IOWarriorLib.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBAA8A0989BBDF00F4165F /* PBXBookmark */ = {
+		isa = PBXBookmark;
+		fRef = 832CE658094CE9F600578C09 /* PsychSound.c */;
+	};
+	2FEBAA8B0989BBDF00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */;
+		name = "IOWarriorLib.h: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 150;
+		vrLoc = 0;
+	};
+	2FEBAA8C0989BBDF00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 832CE658094CE9F600578C09 /* PsychSound.c */;
+		name = "PsychSound.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 104;
+		vrLoc = 0;
+	};
+	2FEBAA8F0989BBDF00F4165F /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 832CE658094CE9F600578C09 /* PsychSound.c */;
+		name = "PsychSound.c: 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 3123;
+		vrLoc = 4007;
 	};
 	2FF33BD30900D15600EF5714 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
@@ -5656,11 +5910,18 @@
 		vrLen = 513;
 		vrLoc = 0;
 	};
-	832CE5F5094CE8C300578C09 /* PsychSound */ = {
+	832CE5F5094CE8C300578C09 /* PsychSound_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F72B9F6094F9513008AC7D8 /* PsychSound */,
+			2F72B9F6094F9513008AC7D8 /* PsychSound_OLD */,
 		);
+	};
+	832CE658094CE9F600578C09 /* PsychSound.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1320, 8456}}";
+			sepNavSelRange = "{0, 0}";
+			sepNavVisRect = "{{0, 1642}, {1320, 773}}";
+		};
 	};
 	83C94B02092823C00062DB0A /* PsychMovieSupport.c */ = {
 		uiCtxt = {
@@ -5669,10 +5930,10 @@
 			sepNavVisRect = "{{0, 0}, {1073, 690}}";
 		};
 	};
-	CF29B1CB080333DC00723921 /* MachAbsoluteTimeClockFrequency */ = {
+	CF29B1CB080333DC00723921 /* MachAbsoluteTimeClockFrequency_OLD */ = {
 		activeExec = 0;
 		executables = (
-			2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency */,
+			2F1CDAF2088EAA7500E3583F /* MachAbsoluteTimeClockFrequency_OLD */,
 		);
 	};
 	CF4FD40807DC1DE1008FEFD3 /* Updated_for_MATLAB701.h */ = {
