@@ -180,6 +180,7 @@
 				8D5B49B1048680CD000E48DA /* Sources */,
 				8D5B49B3048680CD000E48DA /* Frameworks */,
 				2F4E3CAD08D0F85300D94D0E /* Rez */,
+				2FBF20820989EEA5000756E1 /* ShellScript */,
 			);
 			buildRules = (
 				2FCCD8D108D10377008B5E1D /* PBXBuildRule */,
@@ -248,6 +249,22 @@
 		};
 /* End PBXRezBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		2FBF20820989EEA5000756E1 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\n# Copy out only the files in the bundle, not the entire bundle.\n# If we copy out the entire bundle, then it erases the hidden Subversion directories.\n\ncp \"$TARGET_BUILD_DIR/$TARGET_NAME.bundle/Contents/Info.plist\" \"$SYSTEM_APPS_DIR/Psychtoolbox/$PSYCHTOOLBOX_SUBFOLDER/$TARGET_NAME.bundle/Contents/\"\ncp \"$TARGET_BUILD_DIR/$TARGET_NAME.bundle/Contents/MacOS/StoreBitLib\" \"$SYSTEM_APPS_DIR/Psychtoolbox/$PSYCHTOOLBOX_SUBFOLDER/$TARGET_NAME.bundle/Contents/MacOS/\"\ncp \"$TARGET_BUILD_DIR/$TARGET_NAME.bundle/Contents/Resources/English.lproj/InfoPlist.strings\" \"$SYSTEM_APPS_DIR/Psychtoolbox/$PSYCHTOOLBOX_SUBFOLDER/$TARGET_NAME.bundle/Contents/Resources/English.lproj/\"";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		8D5B49B1048680CD000E48DA /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -275,6 +292,7 @@
 		2F1ED46C08CFF8A7004D1478 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CONFIGURATION_TEMP_DIR = "$(PROJECT_TEMP_DIR)/$(CONFIGURATION)";
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
@@ -334,6 +352,9 @@
 		2F1ED47008CFF8A7004D1478 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CONFIGURATION_BUILD_DIR = "$(BUILD_DIR)/$(CONFIGURATION)";
+				CONFIGURATION_TEMP_DIR = "$(PROJECT_TEMP_DIR)/$(CONFIGURATION)";
+				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
 			};
 			name = Debug;
 		};
