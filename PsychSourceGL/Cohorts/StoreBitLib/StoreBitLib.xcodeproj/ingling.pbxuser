@@ -72,7 +72,7 @@
 					20,
 					727,
 					20,
-					48.1626,
+					48,
 					43,
 					43,
 					20,
@@ -110,19 +110,18 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 160035671;
-			PBXWorkspaceStateSaveDate = 160035671;
+			PBXPerProjectTemplateStateSaveDate = 160036734;
+			PBXWorkspaceStateSaveDate = 160036734;
 		};
 		perUserProjectItems = {
 			2F48C21208D544EB00BF33BE = 2F48C21208D544EB00BF33BE /* PBXTextBookmark */;
 			2F48C21508D544EB00BF33BE = 2F48C21508D544EB00BF33BE /* PBXTextBookmark */;
 			2FBF20950989F296000756E1 = 2FBF20950989F296000756E1 /* PBXTextBookmark */;
 			2FBF20960989F296000756E1 = 2FBF20960989F296000756E1 /* PBXTextBookmark */;
-			2FBF20980989F296000756E1 = 2FBF20980989F296000756E1 /* PBXTextBookmark */;
-			2FBF20990989F296000756E1 = 2FBF20990989F296000756E1 /* PBXTextBookmark */;
-			2FBF209A0989F296000756E1 = 2FBF209A0989F296000756E1 /* PBXTextBookmark */;
 			2FBF209B0989F296000756E1 = 2FBF209B0989F296000756E1 /* PBXTextBookmark */;
-			2FBF209D0989F296000756E1 = 2FBF209D0989F296000756E1 /* PBXTextBookmark */;
+			2FBF20B50989F446000756E1 = 2FBF20B50989F446000756E1 /* PBXTextBookmark */;
+			2FBF20B60989F446000756E1 = 2FBF20B60989F446000756E1 /* PBXTextBookmark */;
+			2FBF20B70989F446000756E1 = 2FBF20B70989F446000756E1 /* PBXTextBookmark */;
 			2FF4200D08D1529100A15F99 = 2FF4200D08D1529100A15F99 /* PBXTextBookmark */;
 			2FF420B308D26E9E00A15F99 = 2FF420B308D26E9E00A15F99 /* PBXTextBookmark */;
 			2FF420D908D274F800A15F99 = 2FF420D908D274F800A15F99 /* PBXTextBookmark */;
@@ -208,36 +207,6 @@
 		path = /Source/PsychSourceGL/Cohorts/StoreBitLib/StoreBitLib.xcodeproj/ingling.pbxuser;
 		sourceTree = "<absolute>";
 	};
-	2FBF20980989F296000756E1 /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F1ED47708CFF944004D1478 /* StoreBitLib.m */;
-		name = "StoreBitLib.m: 2";
-		rLen = 0;
-		rLoc = 17;
-		rType = 0;
-		vrLen = 993;
-		vrLoc = 0;
-	};
-	2FBF20990989F296000756E1 /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F1ED48F08D0EA94004D1478 /* StoreBitLib.h */;
-		name = "StoreBitLib.h: 7";
-		rLen = 0;
-		rLoc = 74;
-		rType = 0;
-		vrLen = 202;
-		vrLoc = 0;
-	};
-	2FBF209A0989F296000756E1 /* PBXTextBookmark */ = {
-		isa = PBXTextBookmark;
-		fRef = 2F1ED47708CFF944004D1478 /* StoreBitLib.m */;
-		name = "StoreBitLib.m: 80";
-		rLen = 0;
-		rLoc = 2038;
-		rType = 0;
-		vrLen = 1151;
-		vrLoc = 967;
-	};
 	2FBF209B0989F296000756E1 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
 		fRef = 2FBF209C0989F296000756E1 /* ingling.pbxuser */;
@@ -255,7 +224,7 @@
 		path = /Source/PsychSourceGL/Cohorts/StoreBitLib/StoreBitLib.xcodeproj/ingling.pbxuser;
 		sourceTree = "<absolute>";
 	};
-	2FBF209D0989F296000756E1 /* PBXTextBookmark */ = {
+	2FBF20B50989F446000756E1 /* PBXTextBookmark */ = {
 		isa = PBXTextBookmark;
 		fRef = 2F1ED47708CFF944004D1478 /* StoreBitLib.m */;
 		name = "StoreBitLib.m: 2";
@@ -264,6 +233,33 @@
 		rType = 0;
 		vrLen = 993;
 		vrLoc = 0;
+	};
+	2FBF20B60989F446000756E1 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2F1ED47708CFF944004D1478 /* StoreBitLib.m */;
+		name = "StoreBitLib.m: 2";
+		rLen = 0;
+		rLoc = 17;
+		rType = 0;
+		vrLen = 993;
+		vrLoc = 0;
+	};
+	2FBF20B70989F446000756E1 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = 2FBF20B80989F446000756E1 /* ingling.pbxuser */;
+		name = "(null): 1";
+		rLen = 0;
+		rLoc = 0;
+		rType = 0;
+		vrLen = 1456;
+		vrLoc = 0;
+	};
+	2FBF20B80989F446000756E1 /* ingling.pbxuser */ = {
+		isa = PBXFileReference;
+		lastKnownFileType = text;
+		name = ingling.pbxuser;
+		path = /Source/PsychSourceGL/Cohorts/StoreBitLib/StoreBitLib.xcodeproj/ingling.pbxuser;
+		sourceTree = "<absolute>";
 	};
 	2FF41FB008D1400D00A15F99 /* KeyRecorderWindow.h */ = {
 		uiCtxt = {
