@@ -29,8 +29,13 @@
 #define PSYCHTOOLBOX_MINOR_VERSION				0
 #define PSYCHTOOLBOX_POINT_VERSION				6
 #define PSYCHTOOLBOX_PROJECT_NAME				"OpenGL Psychtoolbox"       //If you fork my source please change this name.  - awi 
-#define PSYCHTOOLBOX_OS_NAME					"Apple OS X"				//Placeholder for the OS X version at build time.  
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	"MATLAB"					//Placeholder for the MATLAB version at build time.
+#if PSYCH_SYSTEM == PSYCH_OSX
+#define PSYCHTOOLBOX_OS_NAME					"Apple OS X"		    //Placeholder for the OS X version at build time.  
+#endif
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#define PSYCHTOOLBOX_OS_NAME					"Microsoft Windows"         //Placeholder for the M$-Windows version at build time.  
+#endif
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	"MATLAB"				    //Placeholder for the MATLAB version at build time.
 
 	
 char *PsychGetBuildDate(void);
