@@ -104,7 +104,8 @@ static char synopsisString[] =
 	"\noldLevel=Screen('Preference', 'VisualDebugLevel', level);"
         "\noldMode=Screen('Preference', 'ConserveVRAM', mode);"
         "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
-        "\noldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);";
+        "\noldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
+        "\noldEnableFlag=Screen('Preference', 'Enable3DGraphics', [enableFlag]);";
 
 
 	
@@ -286,7 +287,15 @@ PsychError SCREENPreference(void)
                         }
                         preferenceNameArgumentValid=TRUE;
                 }else 
-                        if(PsychMatch(preferenceName, "TextAlphaBlending")){
+                    if(PsychMatch(preferenceName, "Enable3DGraphics")){
+                        PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_3DGfx());
+                        if(numInputArgs==2){
+                            PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
+                            PsychPrefStateSet_3DGfx(tempFlag);
+                        }
+                        preferenceNameArgumentValid=TRUE;
+                }else 
+                    if(PsychMatch(preferenceName, "TextAlphaBlending")){
 			textAlphaBlendingFlag=PsychPrefStateGet_TextAlphaBlending();
 			PsychCopyOutFlagArg(1, kPsychArgOptional, textAlphaBlendingFlag);
 			if(numInputArgs==2){

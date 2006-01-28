@@ -44,7 +44,8 @@ static int								screenVisualDebugLevel=6;
 static int                                                              screenConserveVRAM=0;
 // If EmulateOldPTB is set to true, then try to behave like the old OS-9 PTB:
 static Boolean                                                          EmulateOldPTB=FALSE;
-
+// Support for real 3D rendering enabled?
+static Boolean                                                          Enable_3d_gfx=FALSE;
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)
 {
@@ -195,6 +196,20 @@ Boolean PsychPrefStateGet_EmulateOldPTB(void)
 void PsychPrefStateSet_EmulateOldPTB(Boolean level)
 {
     EmulateOldPTB = level;
+}
+
+// Enable switch for 3D graphics support. If set to true, PTB will allocate stencil-
+// and depth-buffers additionally to the AUX and Colorbuffers and perform additional
+// bookkeeping to make sure we can do real 3D rendering and interface to external
+// OpenGL mexfiles like, e.g., moglcore...
+Boolean PsychPrefStateGet_3DGfx(void)
+{
+    return(Enable_3d_gfx);
+}
+
+void PsychPrefStateSet_3DGfx(Boolean level)
+{
+    Enable_3d_gfx = level;
 }
 
 //****************************************************************************************************************

@@ -199,6 +199,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     attribs[attribcount++]=kCGLPFAFullScreen;
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
+    // Support for 3D rendering requested?
+    if (PsychPrefStateGet_3DGfx()) {
+        // Yes. Allocate a 24-Bit depth and 8-Bit stencilbuffer for this purpose:
+        attribs[attribcount++]=kCGLPFADepthSize;
+        attribs[attribcount++]=24;
+        attribs[attribcount++]=kCGLPFAStencilSize;
+        attribs[attribcount++]=8;
+    }
     if(numBuffers>=2){
         // Enable double-buffering:
         attribs[attribcount++]=kCGLPFADoubleBuffer;

@@ -169,6 +169,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('Preference','SkipSyncTests', skipTest);";
 	synopsis[i++] = "Screen('Preference','VisualDebugLevel', level (valid values between 0 and 5));";
         synopsis[i++] = "Screen('Preference', 'ConserveVRAM', mode (valid values between 0 and 3));";
+        synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);";
+
 		
 	//synopsis[i++] = "\n% Set clipping region (on- or off- screen):";
 	
