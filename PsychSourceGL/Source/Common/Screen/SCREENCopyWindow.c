@@ -67,7 +67,10 @@ PsychError SCREENCopyWindow(void)
 
 	//get paramters for the target window:
 	PsychAllocInWindowRecordArg(2, TRUE, &targetWin);
+        // By default, the targetRect is equal to the sourceRect, but centered in
+        // the target window.
 	PsychCopyRect(targetRect, targetWin->rect);
+        PsychCenterRect(sourceRect, targetRect, targetRect);
 	PsychCopyInRectArg(4, FALSE, targetRect);
 
 	// We have four possible combinations for copy ops:

@@ -46,5 +46,6 @@ void    PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, in
 void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 void    PsychSetDrawingTarget(PsychWindowRecordType *windowRecord);
+void    PsychSetupView(PsychWindowRecordType *windowRecord);
 //end include once
 #endif

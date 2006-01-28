@@ -172,6 +172,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     (*windowRecord)->nrIFISamples = 0;
     (*windowRecord)->VBL_Endline = -1;
 
+    // Set the textureOrientation of onscreen windows to 2 aka "Normal, upright, non-transposed".
+    // Textures of onscreen windows are created on demand as backup of the content of the onscreen
+    // windows framebuffer. This happens in PsychSetDrawingTarget() if a switch from onscreen to
+    // offscreen drawing target happens and the slow-path is used due to lack of Framebuffer-objects.
+    // See code in PsychDrawingTarget()...
+    (*windowRecord)->textureOrientation=2;
+
     // Enable GL-Context of current onscreen window:
     PsychSetGLContext(*windowRecord);
 
@@ -190,8 +197,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
 
     if (PsychPrefStateGet_EmulateOldPTB()) {
-        printf("PTB-WARNING: Psychtoolbox is running in compatibility mode to old MacOS-9 PTB. This is an experimental feature with\n");
-        printf("PTB-WARNING: significant limitations and possibly significant bugs! Use with great caution and avoid if you can!\n");
+        printf("PTB-INFO: Psychtoolbox is running in compatibility mode to old MacOS-9 PTB. This is an experimental feature with\n");
+        printf("PTB-INFO: limited support and possibly significant bugs hidden in it! Use with great caution and avoid if you can!\n");
+        printf("PTB-INFO: Currently implemented: Screen('OpenOffscreenWindow'), Screen('CopyWindow') and Screen('WaitBlanking')\n");
     }
     
     printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
@@ -235,7 +243,10 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         // Unconditionally flash our visual warning bell in "Testsheet mode": This will also show some
         // test-pattern for visually testing if syncing and beamqueries work properly.
         // We skip the test-sheet if user asked us to skip sync-tests...
-        if (!skip_synctests) PsychVisualBell((*windowRecord), 10, 3);
+        // MK: Changed. We disable the visual test-sheet for now. Having it for 10 secs each startup
+        // on a multi-display system is just annoying. Plus it created much confusion for users :(
+        // We'll provide a separate Matlab M-Testfile in the PsychTests folder as a replacement.
+        //if (!skip_synctests) PsychVisualBell((*windowRecord), 10, 3);
     }
     
     if (multidisplay && (!CGDisplayIsInMirrorSet(cgDisplayID) || PsychGetNumDisplays()>1)) {
@@ -388,8 +399,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  if (maxline > VBL_Endline) VBL_Endline = maxline;
         }
 
-        // Setup reasonable timestamp for time of last vbl:
-        (*windowRecord)->time_at_last_vbl = tnew;
+        // Setup reasonable timestamp for time of last vbl in emulation mode:
+        if (PsychPrefStateGet_EmulateOldPTB()) (*windowRecord)->time_at_last_vbl = tnew;
       }        
       
       // Switch to previous scheduling mode after timing tests:
@@ -410,7 +421,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
     else {
       // We don't have beamposition queries on this system:
-      ifi_beamestimate = 0;
+        ifi_beamestimate = 0;
+      // Setup fake-timestamp for time of last vbl in emulation mode:
+      if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
     }
 
     // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
@@ -562,13 +575,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if ((strstr(glGetString(GL_VENDOR), "ATI")!=NULL) && multidisplay) {
         // ATI card detected -> Give hint to be extra cautious about beampos...
         printf("\n\nPTB-HINT: Your graphics card is KNOWN TO HAVE TROUBLE with beamposition queries on some dual display setups\n");
-        printf("PTB-HINT: due to an ATI driver bug in all versions of MacOS-X 10.3.x and in early versions of MacOS-X 10.4!\n");
+        printf("PTB-HINT: due to an ATI driver bug in all versions of MacOS-X 10.3.x and in versions of MacOS-X before 10.4.3!\n");
         printf("PTB-HINT: Please *double-check* this by setting different monitor refresh rates for the different displays.\n");
         printf("PTB-HINT: If you then get a warning about SYNCHRONIZATION TROUBLE, it might help to *physically*\n");
         printf("PTB-HINT: reconnect your displays: Swap, which display is plugged into which socket at the back-side\n");
         printf("PTB-HINT: of your computer! If that doesn't help, you'll have to switch to a single display configuration\n");
         printf("PTB-HINT: for getting highest possible timing accuracy.\n");
-        printf("PTB-HINT: ATI is working on a fix for their drivers. Please check the Psychtoolbox forum regularly for updates.\n");
     }
 
     // Assign our best estimate of the scanline which marks end of vertical blanking interval:
@@ -1654,6 +1666,9 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     // The ENABLE_FBOS is a master-switch for use of the fast-path with OpenGL Framebuffer
     // objects: This requires OS-X 10.4.3 or higher to work.
     // The dynamic binding code is currently missing that will be needed for the Windows version.
+    // We leave this switch off for now, as we still want to support OS-X 10.3 at least until the
+    // next official release. Also this code still contains bugs -- although bugs of OX-X not our
+    // bugs ;) -- Let's wait for OS-X 10.4.5 before using it...
 #if PSYCH_SYSTEM == PSYCH_OSX
 #define ENABLE_FBOS 0
 #else
@@ -1822,31 +1837,25 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                             }
                         }
                         
-                        if (currentRendertarget->textureNumber == 0) {
-                            // This one doesn't have a shadow-texture yet. Create a suitable one.
-                            glGenTextures(1, &(currentRendertarget->textureNumber));
-                            glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-                            glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
-                        }
-                        else {
-                            // Texture for this one already exist: Bind and update it:
-                            glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-                            // This would be appropriate but crashes for no good reason: glCopyTexSubimage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-                            glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+                        // In emulation mode for old PTB, we only need to back up offscreen windows, as they
+                        // share the backbuffer as scratchpad. Each onscreen window has its own frontbuffer, so
+                        // it will be unaffected by the switch --> No need to backup & restore.
+                        if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(currentRendertarget))) {
+                            if (currentRendertarget->textureNumber == 0) {
+                                // This one is an onscreen window that doesn't have a shadow-texture yet. Create a suitable one.
+                                glGenTextures(1, &(currentRendertarget->textureNumber));
+                                glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
+                                glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+                            }
+                            else {
+                                // Texture for this one already exist: Bind and update it:
+                                glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
+                                // This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubimage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
+                                glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+                            }
                         }
                     }
                 }
-
-	             // Setup viewport to fit dimensions of framebuffer:
-//   	          glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-//
-	             // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
-//   	          glMatrixMode(GL_PROJECTION);
-//      	       glLoadIdentity();
-//         	    gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
-
-	             // Switch back to modelview matrix, but leave it unaltered:
-//   	          glMatrixMode(GL_MODELVIEW);
 
                 // We only blit when a texture was involved, either as previous rendertarget or as new rendertarget:
                 if (windowRecord->windowType == kPsychTexture || (currentRendertarget && currentRendertarget->windowType == kPsychTexture)) {
@@ -1864,10 +1873,18 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                             glDrawBuffer(GL_BACK);
                         }
                     }
-                    
-                    // Now we need to blit the new rendertargets texture into the framebuffer:                    
-                    PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-                    // Ok, the framebuffer has been initialized with the content of our texture.                    
+                                        
+                    // In emulation mode for old PTB, we only need to restore offscreen windows, as they
+                    // share the backbuffer as scratchpad. Each onscreen window has its own frontbuffer, so
+                    // it will be unaffected by the switch --> No need to backup & restore.
+                    if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(windowRecord))) {
+                        // Setup viewport and projections to fit new dimensions of new rendertarget:
+                        PsychSetupView(windowRecord);
+
+                        // Now we need to blit the new rendertargets texture into the framebuffer:                    
+                        PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+                        // Ok, the framebuffer has been initialized with the content of our texture.
+                    }
                 }
                 
                 // At this point we should have the image of our drawing target in the framebuffer.
@@ -1877,18 +1894,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 // or of MakeTexture.
             }
             
-//				if (PsychIsOnscreenWindow(windowRecord)) {
-	            // Setup viewport to fit dimensions of framebuffer:
-   	         glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-
-	            // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
-   	         glMatrixMode(GL_PROJECTION);
-      	      glLoadIdentity();
-         	   gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
-
-	            // Switch back to modelview matrix, but leave it unaltered:
-   	         glMatrixMode(GL_MODELVIEW);
-//      		}
+            // Setup viewport and projections to fit new dimensions of new drawingtarget:
+            PsychSetupView(windowRecord);
       
             // Update our bookkeeping:
             currentRendertarget = windowRecord;
@@ -1918,3 +1925,20 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     return;
 }
 
+/* PsychSetupView()  -- Setup proper viewport, clip rectangle and projection
+ * matrix for specified window.
+ */
+void PsychSetupView(PsychWindowRecordType *windowRecord)
+{
+    // Set viewport to windowsize:
+    glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+    
+    // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+    
+    // Switch back to modelview matrix, but leave it unaltered:
+    glMatrixMode(GL_MODELVIEW);
+    return;
+}
