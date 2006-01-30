@@ -31,11 +31,11 @@ try
 
     w=Screen('OpenWindow', screenNumber,0,[],32,2);
     Screen('FillRect', w, [0, 0, 0]);
-    Screen('TextFont',w, 'Courier');
-    Screen('TextStyle', w, 0);
+    Screen('TextFont',w, 'Courier New');
+    Screen('TextStyle', w, 1);
 
     % Loop through all text sized from 20 to 80 pixels...
-    for mysize=20:80
+    for mysize=20:5:80
         % Setup text size:
         Screen('TextSize',w, mysize);
         % Draw text 'normal'
@@ -43,7 +43,7 @@ try
 
         % Paint a green frame around it, just to demonstrate the
         % 'TextBounds' command:
-        textbox = Screen('TextBounds', w, text);
+        [textbox , textbox2] = Screen('TextBounds', w, text);
         textbox = OffsetRect(textbox, x, y);
         Screen('FrameRect', w, [0, 255, 0, 255], textbox);
 

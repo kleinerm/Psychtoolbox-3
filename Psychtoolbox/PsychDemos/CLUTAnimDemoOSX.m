@@ -16,6 +16,13 @@ function CLUTAnimDemoOSX
 %                   in catch section, test if OrigLut exists before
 %                   applying it.
 
+% This doesn't work under M$-Windows, as Screen('LoadNormalizedGammaTable') doesn't
+% allow us to set the kind of LUTs needed for this demo to work :(
+try
+   AssertOSX;
+catch
+	error('CLUTAnimDemoOSX does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
+end
 
 try
     % We disable the sync tests at startup. They are not necessary for this
@@ -67,10 +74,10 @@ try
     Screen('FillRect',w, black);
     % Single static gray-level ramp drawn as texture.
     Screen('DrawTexture', w, tex(1));
-    % Show it by flipping the buffers, don't clear the backbuffer
-    % after flip, but keep it "as is" --> Now both the front- and
-    % backbuffer contain the identical image of the gray-level ramp:
-    Screen('Flip', w, 0, 1);
+    % Show it by flipping the buffers:
+    Screen('Flip', w);
+    % Draw same image into backbuffer, so they're identical:
+    Screen('DrawTexture', w, tex(1));
 
     i=0;
     tavg=0;
@@ -91,14 +98,14 @@ try
         newLUT(2:255, :)=newLUT(3:256, :);
         newLUT(256, :)=backupLUT;
         % This 'Flip' waits for vertical retrace...
-        Screen('Flip', w, 0, 1);
+        Screen('Flip', w, 0, 2);
         % Update the hardware CLUT with our newLUT:
         Screen('LoadNormalizedGammaTable', screenNumber, newLUT);
         t1=GetSecs;
         tavg=tavg+(t1-t0);
         t0=t1;
         i=i+1;
-
+        
         % Abort after 1000 video refresh intervals or on a key-press:
         if KbCheck | (i>1000)
             break;

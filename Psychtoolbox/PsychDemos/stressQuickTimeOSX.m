@@ -28,6 +28,13 @@ function stressQuickTimeOSX(moviename, prefetch, durationSecs)
 % History:
 % 10/30/05  mk  Wrote it.
 
+try
+   AssertOSX;
+catch
+	error('This demo does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
+end
+
+
 if nargin < 2
     prefetch=0
 end;

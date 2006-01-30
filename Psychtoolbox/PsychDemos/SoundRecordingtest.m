@@ -38,6 +38,13 @@ function SoundRecordingtest(duration)
 % voice triggers, feedback of recorded sound to sound output and such.
 %
 
+try
+   AssertOSX;
+catch
+	error('This demo does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
+end
+
+
 % Initialize PsychSound for audio recording: We select a sampling frequency
 % of 44100 Hz, (which would be also the default if left away) and a capture
 % buffer size of 5 seconds. The 'recorderHandle' has the same function as
