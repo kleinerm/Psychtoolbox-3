@@ -1684,7 +1684,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
     static GLuint renderbuffer = 0;
     static unsigned int recursionLevel = 0;
     static int use_framebuffer_objects = -1;
-    int texid;
+    int texid, twidth, theight;
     Boolean EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
     
     // Increase recursion level count:
@@ -1845,13 +1845,31 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                                 // This one is an onscreen window that doesn't have a shadow-texture yet. Create a suitable one.
                                 glGenTextures(1, &(currentRendertarget->textureNumber));
                                 glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-                                glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+										  // If this system only supports power-of-2 textures, then we'll need a little trick:
+										  if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
+											  // Ok, we need to create an empty texture of suitable power-of-two size:
+											  // Now we can do subimage texturing...
+											  twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
+											  theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
+											  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+											  glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
+										  }
+										  else {
+											  // Supports rectangle textures. Just create texture as copy of framebuffer:
+	                                glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+										  }
                             }
                             else {
                                 // Texture for this one already exist: Bind and update it:
                                 glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-                                // This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubimage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-                                glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+										  if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
+											  // Special case for power-of-two textures:
+											  glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
+                                }
+                                else {
+                                	  // This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
+                                	  glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+										  }
                             }
                         }
                     }
