@@ -153,14 +153,13 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
       // We resize the viewport accordingly and then trigger a repaint-op.
       glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
       PostMessage(hWnd, WM_PAINT, 0, 0);
-      printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
+      // printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
       return 0;
 
     case WM_CLOSE:
       // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
       // -> Manually closing an onscreen window does the same as pressing the Abort-key.
       wParam='@';
-      //      return(0);
     case WM_CHAR:
       // Character received. We only care about one key, the '@' key.
       // Pressing '@' will immediately close all onscreen windows, show
@@ -207,7 +206,7 @@ boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps
 /*
     PsychOSOpenOnscreenWindow()
     
-    Creates the CGL pixel format and the CGL context objects and then instantiates the context onto the screen.
+    Creates the pixel format and the context objects and then instantiates the context onto the screen.
     
     -The pixel format and the context are stored in the target specific field of the window recored.  Close
     should clean up by destroying both the pixel format and the context.
@@ -361,6 +360,13 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     pfd.iPixelType   = PFD_TYPE_RGBA; // Want a RGBA pixel format.
     pfd.cColorBits   = 32;            // 32 bpp at least...
     pfd.cAlphaBits   = 8;             // Want a 8 bit alpha-buffer.
+    
+    // Support for OpenGL 3D rendering requested?
+    if (PsychPrefStateGet_3DGfx()) {
+		// Yes. Allocate and attach a 24bit depth buffer and 8 bit stencil buffer:
+		pfd.cDepthBits = 24;
+		pfd.cStencilBits = 8;
+    }
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Choosing pixelformat\n");
 
