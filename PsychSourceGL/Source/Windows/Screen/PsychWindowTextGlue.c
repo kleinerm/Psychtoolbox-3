@@ -1,18 +1,20 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychWindowTextGlue.c
+	PsychToolbox3/Source/Windows/Screen/PsychWindowTextGlue.c
 	
 	PLATFORMS:	
 	
-		This is the OS X Core Graphics version.  
+		This is the Windows version.  
 				
 	AUTHORS:
 
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
+		Mario Kleiner     mk       mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 		
 		11/18/03		awi		Wrote it 
-							
+		12/30/05    mk       Ported to Windows. Derived from Allen's OS-X version.					
+
 	DESCRIPTION:
         
 	NOTES: 
@@ -38,7 +40,7 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
-	char tryFontName[]="Geneva";
+	char tryFontName[]="Courier New";
 	Boolean foundFont;
 	// FIXME	PsychFontStructType	*initFontRecord;
 

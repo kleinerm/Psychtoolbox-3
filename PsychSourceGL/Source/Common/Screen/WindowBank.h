@@ -76,7 +76,8 @@ T0 DO:
 typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
-        CVOpenGLTextureRef      QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
+        CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
+        void*              deviceContext;          // Dummy pointer, just here for compatibility to Windows-Port (simplifies code)
 } PsychTargetSpecificWindowRecordType;
 #endif 
 

@@ -370,7 +370,7 @@ PsychError SCREENDrawText(void)
 
 #include <gl/glaux.h>
 
-/* PsychOSBuildFont
+/* PsychOSReBuildFont
  *
  * (Re)Build a font for the specified winRec, based on OpenGL display lists.
  *
@@ -475,14 +475,14 @@ static char synopsisString[] =
 
 PsychError SCREENDrawText(void)
 {
-    PsychWindowRecordType 	*winRec;
-    PsychRectType		windowRect;
-    char			*textString;
-    int                         stringl;
-    Boolean			doSetColor, doSetBackgroundColor;
-    PsychColorType		colorArg, backgroundColorArg;
-    int				depthValue, whiteValue, colorPlaneSize, numColorPlanes, i;
-    float accumWidth, maxHeight;
+    PsychWindowRecordType *winRec;
+    PsychRectType		     windowRect;
+    char			           *textString;
+    int                   stringl;
+    Boolean			        doSetColor, doSetBackgroundColor;
+    PsychColorType		  colorArg, backgroundColorArg;
+    int				        depthValue, whiteValue, colorPlaneSize, numColorPlanes, i;
+    float                 accumWidth, maxHeight;
 
     static GLuint	        base=0;	     // Base Display List For The Font Set
     
@@ -556,8 +556,7 @@ PsychError SCREENDrawText(void)
     glPushMatrix();
 
     // Position our "cursor":
-    //    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize, -0.5f);
-    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + maxHeight, -0.5f);
+    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize, -0.5f);
 
     // Scale to final size:
     glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
@@ -581,7 +580,6 @@ PsychError SCREENDrawText(void)
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
     winRec->textAttributes.textPositionX += accumWidth;
-    winRec->textAttributes.textPositionY += maxHeight;
 
     // Copy out new, updated "cursor position":
     PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
