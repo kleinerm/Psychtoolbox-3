@@ -287,12 +287,10 @@ boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
     The caller must allocate and initialize the depth struct. 
 */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
-{
-    
+{    
     if(screenNumber>=numDisplays)
         PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
-    // FIXME:     PsychAddValueToDepthStruct((int)CGDisplayBitsPerPixel(displayCGIDs[screenNumber]),depth);
-    PsychAddValueToDepthStruct(32, depth);
+    PsychAddValueToDepthStruct((int) GetDeviceCaps(displayCGIDs[screenNumber], BITSPIXEL), depth);
 }
 
 int PsychGetScreenDepthValue(int screenNumber)
@@ -554,31 +552,50 @@ void PsychPositionCursor(int screenNumber, int x, int y)
 */
 void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
-  /*
     CGDirectDisplayID	cgDisplayID;
-    static float localRed[1024], localGreen[1024], localBlue[1024];
-    CGDisplayErr error; 
-    CGTableCount sampleCount; 
-        
-    *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue; 
+    static  float localRed[256], localGreen[256], localBlue[256];
+
+	 // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
+    // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
+	 psych_uint16	gammaTable[256 * 3]; 
+    BOOL    ok;
+	 int     i;        
+
+    // Query OS for gamma table:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    error=CGGetDisplayTransferByTable(cgDisplayID, (CGTableCount)1024, *redTable, *greenTable, *blueTable, &sampleCount);
-    *numEntries=(int)sampleCount;
-    */
-  // FIXME: Needs to be implemented
-  PsychErrorExit(PsychError_unimplemented);
+    ok=GetDeviceGammaRamp(cgDisplayID, &gammaTable);
+	 if (!ok) PsychErrorExitMsg(PsychError_internal, "Failed to query the hardware gamma table from graphics adapter!");
+
+	 // Convert concatenated table into three separate tables, map 16-bit values into
+    // 0-1 normalized floats
+    *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
+    for (i=0; i<256; i++) localRed[i]   = ((float) gammaTable[i]) / 65535.0f;
+    for (i=0; i<256; i++) localGreen[i] = ((float) gammaTable[i+256]) / 65535.0f;
+    for (i=0; i<256; i++) localBlue[i]  = ((float) gammaTable[i+512]) / 65535.0f;
+
+	 // The LUT's always have 256 slots for the 8-bit framebuffer:
+    *numEntries= 256;
 }
 
 void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-  /*
-    CGDisplayErr 	error; 
+    BOOL 	ok; 
     CGDirectDisplayID	cgDisplayID;
-    
-    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    error=CGSetDisplayTransferByTable(cgDisplayID, (CGTableCount)numEntries, redTable, greenTable, blueTable);
-  */
+	 int     i;        
+	 // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
+    // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
+	 psych_uint16	gammaTable[256 * 3]; 
 
-  // FIXME: Needs to be implemented
-  PsychErrorExit(PsychError_unimplemented);
+	 // Table must have 256 slots!
+	 if (numEntries!=256) PsychErrorExitMsg(PsychError_user, "Loadable hardware gamma tables must have 256 slots!");    
+
+	 // Convert input table to Windows specific gammaTable:
+    for (i=0; i<256; i++) gammaTable[i]     = (int)(redTable[i]   * 65535.0f + 0.5f);
+    for (i=0; i<256; i++) gammaTable[i+256] = (int)(greenTable[i] * 65535.0f + 0.5f);
+    for (i=0; i<256; i++) gammaTable[i+512] = (int)(blueTable[i]  * 65535.0f + 0.5f);
+
+	 // Set new gammaTable:
+    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
+    ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
+	 if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
 }
