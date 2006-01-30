@@ -3,20 +3,20 @@
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu		     awi 
+      Mario.Kleiner@tuebingen.mpg.de  mk
 	PLATFORMS:	
 		
-		So far only OS X.  For now other platforms have different versions of this file.  
+		All.  
     
 	HISTORY:
 	
-		02/19/03  	awi		Created.
+		02/19/03 awi		Created.
 		03/11/04	awi		Modified for textures
 		 1/11/05	awi		Cosmetic
 		 1/14/05	awi		added glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE) at mk's suggestion;
 		 1/25/05	awi		Relocated glTexEnvf below glBindTexture.  Fix provided by mk.  
-                 1/22/05        mk              Completely rewritten for the new OffscreenWindow implementation.
+       1/22/05 mk       Completely rewritten for the new OffscreenWindow implementation.
  
 	TO DO:
 
@@ -40,7 +40,11 @@ static char synopsisString[] =  "Copy images, quickly, between two windows (on- 
                                 "CopyWindow is mostly here for compatibility to OS-9 PTB. If you want to "
                                 "copy images really quickly into an onscreen window, then use the 'MakeTexture' "
                                 "and 'DrawTexture' commands. They also allow for rotated drawing and advanced "
-                                "blending operations.";
+                                "blending operations. "
+											"The current CopyWindow implementation has a couple of restrictions: "
+											"One can't copy from an offscreen window into the -same- offscreen window. "
+											"One can't copy from an onscreen window into a -different- onscreen window. "
+											"Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy. ";
 
 static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
 
@@ -67,11 +71,31 @@ PsychError SCREENCopyWindow(void)
 
 	//get paramters for the target window:
 	PsychAllocInWindowRecordArg(2, TRUE, &targetWin);
-        // By default, the targetRect is equal to the sourceRect, but centered in
-        // the target window.
+   // By default, the targetRect is equal to the sourceRect, but centered in
+   // the target window.
 	PsychCopyRect(targetRect, targetWin->rect);
-        PsychCenterRect(sourceRect, targetRect, targetRect);
+   //PsychCenterRect(sourceRect, targetRect, targetRect);
 	PsychCopyInRectArg(4, FALSE, targetRect);
+
+	if (0) {
+		printf("SourceRect: %f %f %f %f  ---> TargetRect: %f %f %f %f\n", sourceRect[0], sourceRect[1],
+             sourceRect[2], sourceRect[3], targetRect[0], targetRect[1],targetRect[2],targetRect[3]);
+	}
+
+   // Validate rectangles:
+	if (!ValidatePsychRect(sourceRect) || sourceRect[kPsychLeft]<sourceWin->rect[kPsychLeft] ||
+       sourceRect[kPsychTop]<sourceWin->rect[kPsychTop] || sourceRect[kPsychRight]>sourceWin->rect[kPsychRight] ||
+		 sourceRect[kPsychBottom]>sourceWin->rect[kPsychBottom]) {
+		PsychErrorExitMsg(PsychError_user, "Invalid source rectangle specified - (Partially) outside of source window.");
+   }
+
+	if (!ValidatePsychRect(targetRect) || targetRect[kPsychLeft]<targetWin->rect[kPsychLeft] ||
+       targetRect[kPsychTop]<targetWin->rect[kPsychTop] || targetRect[kPsychRight]>targetWin->rect[kPsychRight] ||
+		 targetRect[kPsychBottom]>targetWin->rect[kPsychBottom]) {
+		PsychErrorExitMsg(PsychError_user, "Invalid target rectangle specified - (Partially) outside of target window.");
+   }
+
+	PsychTestForGLErrors();
 
 	// We have four possible combinations for copy ops:
         // Onscreen -> Onscreen
@@ -79,7 +103,7 @@ PsychError SCREENCopyWindow(void)
         // Texture  -> Texture
         // Texture  -> Onscreen
         
-        // Texture -> something copy?
+        // Texture -> something copy? (Offscreen to Offscreen or Offscreen to Onscreen)
         if (sourceWin->windowType == kPsychTexture) {
             // Bind targetWin (texture or onscreen windows framebuffer) as
             // drawing target and just blit texture into it:
@@ -98,6 +122,14 @@ PsychError SCREENCopyWindow(void)
         
         // Onscreen to texture copy?
         if (PsychIsOnscreenWindow(sourceWin) && PsychIsOffscreenWindow(targetWin)) {
+				// With the current implemenation we can't zoom if sizes of sourceRect and targetRect don't
+				// match: Only one-to-one copy possible...
+				if(PsychGetWidthFromRect(sourceRect) != PsychGetWidthFromRect(targetRect) ||
+					PsychGetHeightFromRect(sourceRect) != PsychGetHeightFromRect(targetRect)) {
+					// Non-matching sizes. We can't perform requested scaled copy :(
+					PsychErrorExitMsg(PsychError_user, "Size mismatch of sourceRect and targetRect. Matching size is required for Onscreen to Offscreen copies. Sorry.");
+				}
+
             // Update selected textures content:
             PsychSetGLContext(targetWin);
 
@@ -105,12 +137,9 @@ PsychError SCREENCopyWindow(void)
             PsychSetDrawingTarget(sourceWin);
             glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
 
-            // Zoom factor if rectangle sizes don't match:
-            glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
-
             // Copy into texture:
-            glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, targetRect[kPsychLeft], targetRect[kPsychTop], sourceRect[kPsychLeft], sourceRect[kPsychBottom],
-                                (int) PsychGetWidthFromRect(targetRect), (int) PsychGetHeightFromRect(targetRect));
+            glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom],
+                                (int) PsychGetWidthFromRect(sourceRect)+1, (int) PsychGetHeightFromRect(sourceRect)+1);
 
             // Unbind texture object:
             glBindTexture(PsychGetTextureTarget(targetWin), 0);
@@ -126,17 +155,20 @@ PsychError SCREENCopyWindow(void)
             // Set target windows framebuffer as drawing target:
             PsychSetDrawingTarget(targetWin);
             // Start position for pixel write is:
-            glRasterPos2i((int) targetRect[kPsychLeft], (int) targetRect[kPsychTop]);
-            // Zoom factor if rectangle sizes don't match:
+            glRasterPos2f(targetRect[kPsychLeft], targetRect[kPsychBottom]);
+				// Zoom factor if rectangle sizes don't match:
             glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
             // Perform pixel copy operation:
-            glCopyPixels(sourceRect[kPsychLeft], sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
+				glCopyPixels(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect)+1, (int) PsychGetHeightFromRect(sourceRect)+1, GL_COLOR);
             // That's it.
             glPixelZoom(1,1);
             // Flush drawing commands and wait for render-completion in single-buffer mode:
             PsychFlushGL(sourceWin);
         }
         
+		  // Just to make sure we catch invalid values:
+	     PsychTestForGLErrors();
+
         // Done.
         return(PsychError_none);
 }
