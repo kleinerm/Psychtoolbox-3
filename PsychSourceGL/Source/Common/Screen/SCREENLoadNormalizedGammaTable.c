@@ -25,18 +25,14 @@
 
 
 		1/27/03  awi		Created. 
-
+      1/30/06  mk       Improved online help text.
  
 
 	DESCRIPTION:
 
-  
+	Interface to the operating systems hardware gamma-table functions.    
 
-  
-
-	TO DO:
-
-  
+	TO DO:  
 
 */
 
@@ -54,7 +50,21 @@ static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenN
 
 static char synopsisString[] = 
 
-        "Load the gamma table of the specified screen";
+        "Load the gamma table of the specified screen or windowPtr. You need to pass the new "
+			"hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
+			"a single color index value in the framebuffer and contains the Red- green- and blue values "
+			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
+			"the blue value. Values have to be in range between 0.0 (for dark pixel) and 1.0 (for maximum intensity). "
+			"Example: table(127,1)=0.67 would mean that the red color value 127 should be displayed with 67% of "
+         "the maximum red-gun intensity, table(32, 3)=0.11 means that blue color value 32 should be displayed "
+			"with 11% of the maximum blue-gun intensity. The range of values 0-1 gets mapped to the hardware with "
+			"the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits. "
+			"On MacOS-X, this function takes arbitrary gamma-tables which makes it suitable for fast CLUT animation. "
+			"On Microsoft Windows, only tables with monotonically increasing values are considered valid. Other tables "
+			"get rejected by the operating system -- there's nothing we can do about this incredibly wise decision "
+			"of the Microsoft system designers :( , so this is not suitable for CLUT animation, but only for linearizing "
+			"or calibrating display devices. "
+			"The function returns the old gamma table as optional return argument. ";
 
 static char seeAlsoString[] = "ReadNormalizedGammaTable";
 

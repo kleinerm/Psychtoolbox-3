@@ -3,17 +3,19 @@
   
     AUTHORS:
     
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu		     awi 
+		Mario.Kleiner@tuebingen.mpg.de  mk
   
     PLATFORMS:	
 	
-		Only OS X for now.
+		Contains separate implementations for OS-X and M$-Windows.
     
 
     HISTORY:
     
 		1/19/04		awi		Wrote it.
-                11/1/05         mk              Resynced implementation with changes in SCREENDrawText.
+      11/1/05     mk       Resynced implementation with changes in SCREENDrawText.
+      1/29/06     mk       Implemented Windows-Version of it. 
 	
     DESCRIPTION:
   
@@ -265,9 +267,78 @@ PsychSetATSUTStyleAttributesFromPsychAttributes(ATSUStyle style, PsychTextAttrib
 */
 
 #else
+
+// M$-Windows version of TextBounds:
+
+// This function PsychOSRebuildFont() is implemented in the Windows-portion
+// of SCREENDrawText.c
+boolean PsychOSRebuildFont(PsychWindowRecordType *winRec);
+
 PsychError SCREENTextBounds(void)
 {
-  return(PsychError_unimplemented);
+   PsychWindowRecordType  *winRec;
+   char			           *textString;
+   int                    stringl, i;
+	PsychRectType			  resultPsychRect, resultPsychNormRect;
+   float                  accumWidth, maxHeight;
+
+    // All subfunctions should have these two lines.  
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    PsychErrorExit(PsychCapNumInputArgs(2));   	
+    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+    PsychErrorExit(PsychCapNumOutputArgs(2));  
+
+    //Get the window structure for the onscreen window.
+    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
+    
+    //Get the text string (it is required)
+    PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+
+	 // Enable GL context of this window - we might need it:
+    PsychSetGLContext(winRec);
+
+    // Does the font (== it's display list) need to be build or rebuild, because
+    // font name, size or settings have changed?
+    // This routine will check it and perform all necessary ops if so...
+    PsychOSRebuildFont(winRec);
+
+    // Top-Left bounds of text are current (x,y) position of text drawing cursor:
+    resultPsychRect[kPsychLeft] = winRec->textAttributes.textPositionX;
+    resultPsychRect[kPsychTop]  = winRec->textAttributes.textPositionY;
+
+    // Compute text x and y increments:
+    stringl=strlen(textString);
+    accumWidth=0;
+    maxHeight=0;
+    for (i=0; i<stringl; i++) {
+      accumWidth+=winRec->textAttributes.glyphWidth[textString[i]];
+      maxHeight=(fabs(winRec->textAttributes.glyphHeight[textString[i]]) > maxHeight) ? fabs(winRec->textAttributes.glyphHeight[textString[i]]) : maxHeight;
+    }
+    accumWidth*=winRec->textAttributes.textSize;
+    maxHeight*=winRec->textAttributes.textSize;
+
+    resultPsychRect[kPsychRight]  = winRec->textAttributes.textPositionX + accumWidth;
+
+    // MK: This should work according to spec, but f%$!*g Windows only returns zero values for
+	 // for glyphHeight, so maxHeight is always zero :(
+    // resultPsychRect[kPsychBottom] = winRec->textAttributes.textPositionY + maxHeight;
+
+    // As fallback, we use this: It gives correct Bottom-Bound for character strings with characters that
+    // don't contain descenders. The extra height of characters with descenders is not taken into account.
+    resultPsychRect[kPsychBottom] = winRec->textAttributes.textPositionY + winRec->textAttributes.textSize;
+
+
+    // Compute normalized version which just encodes text bounding box, not text position box:
+	 PsychNormalizeRect(resultPsychRect, resultPsychNormRect);
+
+    // Return optional values:
+	 PsychCopyOutRectArg(1, FALSE, resultPsychNormRect);
+	 PsychCopyOutRectArg(2, FALSE, resultPsychRect);
+
+    // Done.
+    return(PsychError_none);
 }
 
 #endif

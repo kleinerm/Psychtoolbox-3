@@ -43,30 +43,26 @@ static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',window
 //                                                                        1                         2        3       4                  
 
 static char synopsisString[] =
-    "Open an offscreen window, which Apple calls a GWorld. This is simply an area in "
-    "memory that is treated as a window. Offscreen windows are very useful for "
-    "creating images for subsequent display, because copying between windows is very "
-    "fast (e.g. 36 MB/s on a PowerMac 7500/100, or 180 MB/s on a G4/800). You may "
-    "specify a screen (any windowPtr or a screenNumber>=0) or no screen "
-    "(screenNumber=-1). If you do designate a screen then the offscreen window is "
-    "aligned (in memory) for the fastest possible copying to the specified rect of "
-    "that screen. You may specify no screen (screenNumber=-1), but any real screen "
+    "Open an offscreen window. This is simply an OpenGL texture that is treated "
+    "as a window, so you can draw to it. Offscreen windows should be only used "
+    "to keep old code from OS-9 Psychtoolbox working or if you need to draw to them "
+    "fast. For quickly displaying images, please use the 'MakeTexture' and 'DrawTexture' "
+    "commands. They allow for significantly higher drawing speeds. You can specify a screen "
+    "(any windowPtr or a screenNumber>=0) or no screen(screenNumber=-1), but any real screen "
     "must already have an open Screen window when you call OpenOffscreenWindow. "
-    "\"color\" is the clut index (scalar or [r g b] triplet) that you want to poke into "
-    "each pixel; default is white. \"rect\" specifies the size of the offscreen window "
-    "and what part of the screen the offscreen window is aligned with. If supplied, "
-    "\"rect\" must contain at least one pixel. If a windowPtr is supplied, then \"rect\" "
-    "is in the window's coordinates (origin at upper left), and defaults to the whole "
-    "window. If a screenNumber is supplied then \"rect\" is in screen coordinates "
-    "(origin at upper left), and defaults to the whole screen. If a screenNumber of "
+    "\"color\" is the clut index (scalar or [r g b] triplet or [r g b a] quadruple) that you want to poke into "
+    "each pixel as initial background color; default is white. \"rect\" specifies the size of the offscreen window "
+    "If supplied, \"rect\" must contain at least one pixel. If a windowPtr is supplied, "
+    "then \"rect\" defaults to the whole window. "
+    "If a screenNumber is supplied then \"rect\" defaults to the whole screen. If a screenNumber of "
     "-1 is supplied, then \"rect\" defaults to the size of the main screen. (In all "
     "cases, subsequent references to this new offscreen window will use its "
     "coordinates: origin at its upper left.) \"pixelSize\" sets the depth (in bits) of "
-    "each pixel. If you specify a screen (screenNumber>=0) and a pixelSize>0 then "
-    "they must be consistent. If you specify no screen (screenNumber=-1) then the "
-    "default pixelSize is 8, but you can specify any legal depth: 1, 2, 4, 8, 16, 32. "
-    "A pixelSize of 0 or [] is replaced by the default. "
-    "NOTE: Screen's windows are known only to Screen and must be closed by it, eg "
+    "each pixel. If you specify no screen (screenNumber=-1) then the "
+    "default pixelSize is 32, but you can specify any legal depth: 8, 16, 24, 32. "
+    "A pixelSize of 0 or [] is replaced by the default of 32 bits per pixel. If you specify "
+    "a screen number of windowPtr, then the default depth is that of the screen or window. "
+    "NOTE: Screen's windows are known only to Screen and must be closed by it, e.g., "
     "Screen(w,'Close'). Matlab knows nothing about Screen's windows, so the Matlab "
     "CLOSE command won't work on Screen's windows. ";
 static char seeAlsoString[] = "OpenWindow";
@@ -105,10 +101,10 @@ PsychError SCREENOpenOffscreenWindow(void)
         targetScreenNumber=screenNumber;
         targetWindow=NULL;
     } else if(PsychIsUnaffiliatedScreenNumberArg(1)){  //that means -1 or maybe also NaN if we add that option.  
-        //we require both the rect and the depth because there's no example from which to inherit those examples is provided.
-        PsychCopyInRectArg(3, TRUE, rect);
-        PsychCopyInDepthValueArg(4, TRUE, &depth);
+		  // Default to a depth of 32 bpp:
+		  depth=32;
         targetScreenNumber=PSYCH_FIRST_SCREEN; // We assign the first screen in the system.
+        PsychGetScreenRect(targetScreenNumber, rect);
         targetWindow=NULL;
     } else {
         PsychErrorExit(PsychError_invalidNumdex);
@@ -120,9 +116,18 @@ PsychError SCREENOpenOffscreenWindow(void)
     }
     
     //Depth and rect argument supplied as arguments override those inherited from reference screen or window.
-    //not that PsychCopyIn* prefix means that value will not be overwritten if the arguments are not present.
+    //Note that PsychCopyIn* prefix means that value will not be overwritten if the arguments are not present.
     PsychCopyInRectArg(3,FALSE, rect);
     PsychCopyInDepthValueArg(4,FALSE, &depth); 
+
+	 // If any of the no longer supported values 0, 1, 2, 4 or 16 is provided, we
+	 // silently switch to 32 bits per pixel, which is the safest and fastest setting:
+	 if (depth==0 || depth==1 || depth==2 || depth==4 || depth==16) depth=32;
+
+    // Final sanity check:
+	 if (depth!=8 && depth!=16 && depth!=24 && depth!=32) {
+		PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp!");
+	 }
 
     //find the color for the window background.  
     wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
@@ -186,7 +191,8 @@ PsychError SCREENOpenOffscreenWindow(void)
     
     // Setup associated OpenGL context:
     windowRecord->targetSpecific.contextObject = targetWindow->targetSpecific.contextObject;
-    
+	 windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
+
     // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
     windowRecord->textureOrientation = 2;
     
