@@ -132,6 +132,21 @@ struct clockinfo {
 
 #include "Screen.h"
 
+// If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
+
+static char useString[]= "comp=Screen('Computer')";
+static char synopsisString[] =
+        "Get information about the computer.  The result is a struct holding information about your computer. "
+        "Top-level flags in the returned struct are available on all operating systems and identify the operating "
+        "operating system: 'macintosh', 'windows', 'osx'.  All other fields in the returned struct are platform-dependent. \n"
+        "\n"
+        "OS X: results contains a hierarchial struct with major and minor fields names as with BSD's sysctl(3) MIB fields. \n"
+        "\n"
+        "SCREEN 'Computer' not longer supports the  obsolete usage: \n"
+        "[model,owner,system,processor,cache,fpu,hz,busHz,vm,pci,emulating]=SCREEN('Computer')\n";
+static char seeAlsoString[] = "";
+
+
 //special includes for sysctl calls
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <sys/types.h>
@@ -150,38 +165,6 @@ struct clockinfo {
 //for getting the ethernet MAC address
 
 #include "GetEthernetAddress.h"
-
-
-
-
-
-// If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-
-static char useString[]= "comp=Screen('Computer')";
-
-static char synopsisString[] = 
-
-        "Get information about the computer.  The result is a struct holding information about your computer. "
-
-        "Top-level flags in the returned struct are available on all operating systems and identify the operating "
-
-        "operating system: 'macintosh', 'windows', 'osx'.  All other fields in the returned struct are platform-dependent. \n"
-
-        "\n"
-
-        "OS X: results contains a hierarchial struct with major and minor fields names as with BSD's sysctl(3) MIB fields. \n"
-
-        "\n"
-
-        "SCREEN 'Computer' not longer supports the  obsolete usage: \n"
-
-        "[model,owner,system,processor,cache,fpu,hz,busHz,vm,pci,emulating]=SCREEN('Computer')\n";
-
-static char seeAlsoString[] = "";
-
-	 
-
-
 
 static void ReportSysctlError(int errorValue)
 
