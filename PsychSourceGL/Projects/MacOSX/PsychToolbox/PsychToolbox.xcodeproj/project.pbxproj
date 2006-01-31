@@ -15298,7 +15298,7 @@
 				);
 				PREBINDING = NO;
 				PRODUCT_NAME = StoreBit;
-				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
+				PSYCHTOOLBOX_SUBFOLDER = PsychDemos;
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
