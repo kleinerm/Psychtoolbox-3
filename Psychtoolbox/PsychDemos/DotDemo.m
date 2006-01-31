@@ -42,6 +42,8 @@
 %                   screen.
 % 5/31/05   mk      Some modifications to use new Flip command...
 
+AssertOpenGL;
+
 try
 
     % ------------------------
@@ -52,7 +54,7 @@ try
     mon_width   = 39;   % horizontal dimension of viewable screen (cm)
     v_dist      = 60;   % viewing distance (cm)
     dot_speed   = 7;    % dot speed (deg/sec)
-    ndots       = 5000;        % number of dots
+    ndots       = 2000; % number of dots
     max_d       = 15;   % maximum radius of  annulus (degrees)
     min_d       = 1;    % minumum
     dot_w       = 0.1;  % width of dot (deg)

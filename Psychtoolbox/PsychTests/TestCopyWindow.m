@@ -43,16 +43,16 @@ x=200;
 y=200;
 
 Screen('Textfont', w, 'Courier New');
-Screen('TextSize', w, 24);
+Screen('TextSize', w, 30);
 Screen('TextStyle', w, 1);
-Screen('DrawText', w, 'Rect drawn to onscreen window at topleft=100,100:', 0, 0);
+Screen('DrawText', w, 'Rect drawn to onscreen window at topleft=100,100:', 0, 0, [255 255 255]);
 
 % Draw initial rect to onscreen window:
 DrawRect(w, 100, 100);
 % Show it:
 Screen('Flip', w);
 % Wait
-WaitKey
+WaitKey;
 Screen('Flip', w);
 
 % Draw same rect into an offscreen window:
@@ -80,7 +80,7 @@ Screen('Flip',w);
 woff2 = Screen('OpenOffscreenWindow', w);
 Screen('FillRect', woff2, 0);
 Screen('Textfont', woff2, 'Courier New');
-Screen('TextSize', woff2, 24);
+Screen('TextSize', woff2, 18);
 
 % Replicate image across the full offscreen-window:
 for yi=1:5
