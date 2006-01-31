@@ -4,7 +4,6 @@
 */
 #include <Carbon/Carbon.h>
 #include <Cocoa/Cocoa.h>
-#import "KeyRecorderWindow.h"
 
 
 //local function prototypes
@@ -13,7 +12,6 @@ static OSStatus LoadFrameworkBundle(CFStringRef framework, CFBundleRef *bundlePt
 
 //file static variables
 static NSNumber					*numberObject=NULL;
-static KeyRecorderWindow		*windowObject=NULL;
 
 
 /*
@@ -38,13 +36,6 @@ void	InitializeCocoa()
 
 void CocoaStoreBit(Boolean newValue)
 {
-	NSRect			windowRect;
-	NSWindow		*parentWindow;
-	NSString		*parentWindowTitle;
-	NSArray			*childWindows;
-	id				nextResponder;
-	unsigned int	windowStyleMask;
-
 
 	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 	 
@@ -52,32 +43,6 @@ void CocoaStoreBit(Boolean newValue)
 		 [numberObject release];
 	numberObject=[[NSNumber alloc] initWithBool:newValue];
 	
-
-/*
-	//superfluous window stuff
-	if(windowObject == NULL){
-		windowObject=[KeyRecorderWindow alloc];
-		windowRect.origin.x=100;
-		windowRect.origin.y=100;
-		windowRect.size.width=400;
-		windowRect.size.height=400;
-		windowStyleMask= NSTitledWindowMask | NSResizableWindowMask;
-		windowObject= [windowObject initWithContentRect:windowRect 
-									styleMask:windowStyleMask 
-									backing:NSBackingStoreBuffered 
-									defer:YES];
-		[windowObject orderFront:NULL];
-		[windowObject makeKeyWindow];
-		[windowObject enableGather];
-//		[windowObject makeMainWindow];  //this causes a big crash.
-//		[windowObject makeKeyWindow];
-		parentWindow=[windowObject parentWindow];
-		parentWindowTitle=[parentWindow title];
-		childWindows=[parentWindow childWindows];
-		nextResponder=[windowObject nextResponder];
-		
-	}
-*/
     [pool release];
 }
 
@@ -97,48 +62,17 @@ Boolean CocoaGetBit(void)
 	return(returnValue);
 }
 
-/*
-void CocoaGetWindowCharacter(char *charStringLen2, double *readTime)
-{
-	NSDictionary		*characterDictionary;
-	NSNumber			*charTime;
-	NSString			*charString;
-	const char			*charStringC;
-
-
-	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-
-	characterDictionary=[windowObject getNextChar];
-	if(characterDictionary != NULL){
-		charString=[characterDictionary objectForKey:@"character"];
-		charStringC= [charString UTF8String]; 
-		charTime=[characterDictionary objectForKey:@"time"];
-		strncpy(charStringLen2, charStringC, 2);
-		*readTime= [charTime doubleValue];
-	}else{
-		strncpy(charStringLen2, "", 2);
-		*readTime=0;
-	}
-
-	[pool release];
-}
-*/
 
 
 void CocoaFreeBit(void)
 {
 	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
 
-	if(numberObject==NULL){
+	if(numberObject!=NULL){
 		[numberObject release];
 		numberObject=NULL;
 	}
 	
-	//superfluous window stuff
-	if(windowObject != NULL){
-		[windowObject release];
-		windowObject=NULL;
-	}
 	[pool release];
 }
 
