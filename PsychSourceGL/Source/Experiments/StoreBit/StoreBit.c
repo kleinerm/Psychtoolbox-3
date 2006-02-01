@@ -65,6 +65,7 @@ PsychError STOREBITStoreBit(void)
 	CFStringRef					stringArray[3];
 	CFArrayRef					stringCFArray;
 
+
 	if(failedToLoadFlag){
 		//In case we re-enter this mex file and the previous call failed to the load the bundle, then notifiy and exit.
 		//The user will have to clear mex to reset, but that's not too high a penalty for a rare and serious problem like a missing library.
@@ -124,7 +125,7 @@ PsychError STOREBITStoreBit(void)
 			CocoaFreeBit= (CocoaFreeBitProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("CocoaFreeBit"));
 			CocoaGetWindowCharacter= (CocoaGetWindowCharacterProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("CocoaGetWindowCharacter"));
 		}//  if(firstTime){
-			
+					
 		//check to see if the user supplied superfluous arguments
 		PsychErrorExit(PsychCapNumOutputArgs(1));
 		PsychErrorExit(PsychCapNumInputArgs(1));
@@ -197,6 +198,9 @@ PsychError StoreBitExitFunction(void)
 {
 	if(CocoaFreeBit != NULL)
 		CocoaFreeBit();
+		
+	if(gStoreBitLibBundle!=NULL)
+		CFBundleUnloadExecutable(gStoreBitLibBundle);
 }
 
 
