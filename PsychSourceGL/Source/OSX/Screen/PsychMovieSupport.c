@@ -21,12 +21,20 @@
 
 #include "Screen.h"
 
+// MK: Experimental switch: If set to 1, then we use old-style
+// GWorlds for Quicktime rendering and manually convert them
+// into OpenGL textures. This should default to zero for releases
+// This is a test to find out if we can enable QT support on M$-Windows
+// despite the braindamage of Apples Windows QT-7 SDK...
+#define PSYCH_USE_QT_GWORLDS 0
+
 #define PSYCH_MAX_MOVIES 100
 
 typedef struct {
     Movie   theMovie;
     QTVisualContextRef  QTMovieContext;
     QTAudioContextRef   QTAudioContext;
+    GWorldPtr           QTMovieGWorld;
     int loopflag;
     double movieduration;
     int nrframes;
@@ -55,6 +63,7 @@ void PsychMovieInit(void)
         movieRecordBANK[i].theMovie = NULL;
         movieRecordBANK[i].QTMovieContext = NULL;
         movieRecordBANK[i].QTAudioContext = NULL;
+        movieRecordBANK[i].QTMovieGWorld = NULL;
         movieRecordBANK[i].loopflag = 0;
     }    
     numMovieRecords = 0;
@@ -121,6 +130,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     QTVisualContextRef QTMovieContext = NULL;
     QTAudioContextRef  QTAudioContext = NULL;
     *moviehandle = -1;
+    OSErr error;
     
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
@@ -161,17 +171,20 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     movieRecordBANK[slotid].theMovie=NULL;    
     movieRecordBANK[slotid].QTMovieContext=NULL;    
     movieRecordBANK[slotid].QTAudioContext=NULL;
-
-    // Create QTGLTextureContext:
-    OSErr error = QTOpenGLTextureContextCreate (kCFAllocatorDefault,
-                                           win->targetSpecific.contextObject,
-                                           win->targetSpecific.pixelFormatObject,
-                                           NULL,
-                                           &QTMovieContext);
-    if (error!=noErr) {
-        PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!");
+    movieRecordBANK[slotid].QTMovieGWorld=NULL;
+    
+    if (!PSYCH_USE_QT_GWORLDS) {
+        // Create QTGLTextureContext:
+        error = QTOpenGLTextureContextCreate (kCFAllocatorDefault,
+                                                    win->targetSpecific.contextObject,
+                                                    win->targetSpecific.pixelFormatObject,
+                                                    NULL,
+                                                    &QTMovieContext);
+        if (error!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!");
+        }        
     }
-        
+    
     // Create QTAudioContext for default CoreAudio device:
     CFStringRef coreAudioDeviceUID = NULL; // Use default audio-output device.
     error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault,
@@ -184,33 +197,35 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     boolean trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
-
+    int propcount = 0;
     // The Movie location 
-    newMovieProperties[0].propClass = kQTPropertyClass_DataLocation;
-    newMovieProperties[0].propID = kQTDataLocationPropertyID_CFStringPosixPath;
-    newMovieProperties[0].propValueSize = sizeof(CFStringRef);
-    newMovieProperties[0].propValueAddress = &movieLocation;
+    newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
+    newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
+    newMovieProperties[propcount].propValueSize = sizeof(CFStringRef);
+    newMovieProperties[propcount++].propValueAddress = &movieLocation;
     
-    // The Movie visual context
-    newMovieProperties[1].propClass = kQTPropertyClass_Context;
-    newMovieProperties[1].propID = kQTContextPropertyID_VisualContext;
-    newMovieProperties[1].propValueSize = sizeof(QTVisualContextRef);
-    newMovieProperties[1].propValueAddress = &QTMovieContext;
+    if (!PSYCH_USE_QT_GWORLDS) {
+        // The Movie visual context
+        newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
+        newMovieProperties[propcount].propID = kQTContextPropertyID_VisualContext;
+        newMovieProperties[propcount].propValueSize = sizeof(QTVisualContextRef);
+        newMovieProperties[propcount++].propValueAddress = &QTMovieContext;
+    }
     
     // The Movie audio context
-    newMovieProperties[2].propClass = kQTPropertyClass_Context;
-    newMovieProperties[2].propID = kQTContextPropertyID_AudioContext;
-    newMovieProperties[2].propValueSize = sizeof(QTAudioContextRef);
-    newMovieProperties[2].propValueAddress = &QTAudioContext;
+    newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
+    newMovieProperties[propcount].propID = kQTContextPropertyID_AudioContext;
+    newMovieProperties[propcount].propValueSize = sizeof(QTAudioContextRef);
+    newMovieProperties[propcount++].propValueAddress = &QTAudioContext;
 
     // The Movie active
-    newMovieProperties[3].propClass = kQTPropertyClass_NewMovieProperty;
-    newMovieProperties[3].propID = kQTNewMoviePropertyID_Active;
-    newMovieProperties[3].propValueSize = sizeof(trueValue);
-    newMovieProperties[3].propValueAddress = &trueValue;
+    newMovieProperties[propcount].propClass = kQTPropertyClass_NewMovieProperty;
+    newMovieProperties[propcount].propID = kQTNewMoviePropertyID_Active;
+    newMovieProperties[propcount].propValueSize = sizeof(trueValue);
+    newMovieProperties[propcount++].propValueAddress = &trueValue;
     
     // Instantiate the Movie
-    error = NewMovieFromProperties(4, newMovieProperties, 0, NULL, &theMovie);
+    error = NewMovieFromProperties(propcount, newMovieProperties, 0, NULL, &theMovie);
     if (error!=noErr) {
         QTVisualContextRelease(QTMovieContext);
         QTAudioContextRelease(QTAudioContext);
@@ -241,6 +256,25 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     CFRelease(movieLocation);
 
+    if (PSYCH_USE_QT_GWORLDS) {
+        // Determine size of images in movie:
+        Rect movierect;
+        GetMovieBox(theMovie, &movierect);
+        
+        // Create GWorld for this movie object:
+        // error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, k32ABGRPixelFormat, &movierect,  NULL, NULL, 0);
+        error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, 0, &movierect,  NULL, NULL, 0);
+        if (error!=noErr) {
+            QTAudioContextRelease(QTAudioContext);
+            DisposeMovie(movieRecordBANK[slotid].theMovie);
+            movieRecordBANK[slotid].theMovie=NULL;    
+            PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!");
+        }
+                            
+        // Attach this GWorld as rendering target for Quicktime:
+        SetMovieGWorld(theMovie, movieRecordBANK[slotid].QTMovieGWorld, NULL);
+    }
+    
     // Preload first second of movie into system RAM for faster playback:
     LoadMovieIntoRam(theMovie, 0, 1*GetMovieTimeScale(theMovie),  keepInRam);
 
@@ -344,16 +378,17 @@ void PsychDeleteMovie(int moviehandle)
     MoviesTask(movieRecordBANK[moviehandle].theMovie, 0);
     QTVisualContextTask(movieRecordBANK[moviehandle].QTMovieContext);
     glFinish();
-
-    //SetMovieVisualContext(movieRecordBANK[moviehandle].theMovie, NULL);
-    //SetMovieAudioContext(movieRecordBANK[moviehandle].theMovie, NULL);
-    
+        
     // Delete movieobject for this handle:
     DisposeMovie(movieRecordBANK[moviehandle].theMovie);
     movieRecordBANK[moviehandle].theMovie=NULL;    
 
+    // Delete GWorld if any:
+    if (movieRecordBANK[moviehandle].QTMovieGWorld) DisposeGWorld(movieRecordBANK[moviehandle].QTMovieGWorld);
+    movieRecordBANK[moviehandle].QTMovieGWorld = NULL;
+
     // Delete visual context for this movie:
-    QTVisualContextRelease(movieRecordBANK[moviehandle].QTMovieContext);
+    if (movieRecordBANK[moviehandle].QTMovieContext) QTVisualContextRelease(movieRecordBANK[moviehandle].QTMovieContext);
     movieRecordBANK[moviehandle].QTMovieContext = NULL;
 
     // Delete audio context for this movie:
@@ -498,13 +533,28 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     }
 
     // Allow quicktime visual context task to do its internal bookkeeping and cleanup work:
-    QTVisualContextTask(theMoviecontext);
+    if (theMoviecontext) QTVisualContextTask(theMoviecontext);
 
     // Perform decompress-operation:
     if (checkForImage) MoviesTask(theMovie, 0);
     
     // Should we just check for new image? If so, just return availability status:
     if (checkForImage) {
+        if (PSYCH_USE_QT_GWORLDS) {
+            // We use GWorlds. In this case we either suceed immediately due to the
+            // synchronous nature of GWorld rendering, or we fail completely at end
+            // of non-looping movie:
+            if (IsMovieDone(theMovie) && movieRecordBANK[moviehandle].loopflag == 0) {
+                // No new frame available and there won't be any in the future, because this is a non-looping
+                // movie that has reached its end.
+                return(-1);
+            }
+            
+            // Success!
+            return(true);
+        }
+        
+        // Code which uses QTVisualContextTasks...
         if (QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
             // New frame ready!
             return(true);
@@ -520,45 +570,100 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         }
     }
     
-    // Try up to 1000 iterations for arrival of requested image data in wait-mode:
-    unsigned int failcount=0;
-    while ((failcount < 1000) && !QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
-        PsychWaitIntervalSeconds(0.005);
-        MoviesTask(theMovie, 0);
-        failcount++;
-    }
-    
-    // No new frame available and there won't be any in the future, because this is a non-looping
-    // movie that has reached its end.
-    if ((failcount>=1000) && IsMovieDone(theMovie) && (movieRecordBANK[moviehandle].loopflag == 0)) {
-        return(-1);
-    }
+    if (!PSYCH_USE_QT_GWORLDS) {
+        // Blocking wait-code for non-GWorld mode:
+        // Try up to 1000 iterations for arrival of requested image data in wait-mode:
+        unsigned int failcount=0;
+        while ((failcount < 1000) && !QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
+            PsychWaitIntervalSeconds(0.005);
+            MoviesTask(theMovie, 0);
+            failcount++;
+        }
         
-    // Fetch new OpenGL texture with the new movie image frame:
-    OSErr error = QTVisualContextCopyImageForTime(theMoviecontext, kCFAllocatorDefault, NULL, &newImage);
-    if ((error!=noErr) || newImage == NULL) {
-        PsychErrorExitMsg(PsychError_internal, "OpenGL<->Quicktime texture fetch failed!!!");
+        // No new frame available and there won't be any in the future, because this is a non-looping
+        // movie that has reached its end.
+        if ((failcount>=1000) && IsMovieDone(theMovie) && (movieRecordBANK[moviehandle].loopflag == 0)) {
+            return(-1);
+        }
+        
+        // Fetch new OpenGL texture with the new movie image frame:
+        OSErr error = QTVisualContextCopyImageForTime(theMoviecontext, kCFAllocatorDefault, NULL, &newImage);
+        if ((error!=noErr) || newImage == NULL) {
+            PsychErrorExitMsg(PsychError_internal, "OpenGL<->Quicktime texture fetch failed!!!");
+        }
+    
+        // Disable client storage, if it was enabled:
+        glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+        
+        // Build a standard PTB texture record:    
+        float lowerLeft[2];
+        float lowerRight[2];    
+        float upperRight[2];    
+        float upperLeft[2];
+        CVOpenGLTextureGetCleanTexCoords (newImage, lowerLeft, lowerRight, upperRight, upperLeft);
+        int texid = CVOpenGLTextureGetName(newImage);
+        
+        // Assign texture rectangle:
+        PsychMakeRect(out_texture->rect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
+        
+        // Assign OpenGL texture id:
+        out_texture->textureNumber = texid;
+        
+        // Store special texture object as part of the PTB texture record:
+        out_texture->targetSpecific.QuickTimeGLTexture = newImage;
     }
-    
-    // Disable client storage, if it was enabled:
-    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-    
-    // Build a standard PTB texture record:    
-    float lowerLeft[2];
-    float lowerRight[2];    
-    float upperRight[2];    
-    float upperLeft[2];
-    CVOpenGLTextureGetCleanTexCoords (newImage, lowerLeft, lowerRight, upperRight, upperLeft);
-    int texid = CVOpenGLTextureGetName(newImage);
-    
-    // Assign texture rectangle:
-    PsychMakeRect(out_texture->rect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
-    
-    // Assign OpenGL texture id:
-    out_texture->textureNumber = texid;
+    else {
+        // Synchronous texture fetch code for GWorld rendering mode:
+        // At this point, the GWorld should contain the source image for creating a
+        // standard OpenGL texture:
+        
+        // Disable client storage, if it was enabled:
+        glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+        
+        // Build a standard PTB texture record:    
 
-    // Store special texture object as part of the PTB texture record:
-    out_texture->targetSpecific.QuickTimeGLTexture = newImage;
+        // Assign texture rectangle:
+        Rect rect;
+        GetMovieBox(theMovie, &rect);
+
+        // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
+        // image row padding:
+        rect.right = rect.right + 4;
+        PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
+        
+        // Set NULL - special texture object as part of the PTB texture record:
+        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
+
+        // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+        out_texture->textureOrientation = 3;
+        
+        // Setup a pointer to our GWorld as texture data pointer:
+        out_texture->textureMemorySizeBytes = 0;
+
+        // Lock GWorld:
+        if(!LockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld))) {
+            // Locking surface failed! We abort.
+            PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromMovie(): Locking GWorld pixmap surface failed!!!");
+        }
+        
+        // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
+        out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
+            
+        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+        // filling an OpenGL texture with GWorlds content:
+        PsychCreateTexture(out_texture);
+        
+        // Undo hack from above after texture creation: Now we need the real width of the
+        // texture for proper texture coordinate assignments in drawing code et al.
+        rect.right = rect.right - 4;
+        PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
+
+        // Unlock GWorld surface. We do a glFinish() before, for safety reasons...
+        //glFinish();
+        UnlockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
+
+        // Ready to use the texture... We're done.
+    }
     
     float rate = FixedToFloat(GetMovieRate(theMovie));
     

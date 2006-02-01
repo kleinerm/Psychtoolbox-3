@@ -340,6 +340,7 @@ PsychError SCREENMakeTexture(void)
     // Assign proper OpenGL-Renderingcontext to texture:
     // MK: Is this the proper way to do it???
     textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
+    textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
     
     // Texture orientation is zero aka transposed aka non-renderswapped.
     textureRecord->textureOrientation = 0;

@@ -254,6 +254,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // width or height is not divisible by 4.
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         
+        // Override for 4-Byte aligned Quicktime textures created via GWorlds:
+        if (win->textureOrientation==3) glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+        
         // The texture object is ready for use: Assign it our texture data:
         
         // Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
@@ -421,15 +424,17 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                 
         // Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
         if (!clientstorage) {
-            if (win->textureMemory) free(win->textureMemory);
+            if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
             win->textureMemory=NULL;
             win->textureMemorySizeBytes=0;
         }
+        
         // Texture object ready for future use. Unbind it:
 	glBindTexture(texturetarget, 0);
         // Reset pixel storage parameter:
         glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  
         // Finished!
         return;
 }
@@ -510,8 +515,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceYEnd=sourceRect[kPsychRight];
         }
     
-	// Override for special case: Corevideo texture from Quicktime-subsystem.
-        if (source->targetSpecific.QuickTimeGLTexture) {
+	// Override for special case: Corevideo texture from Quicktime-subsystem or upside-down
+        // texture from Quicktime GWorld or Sequence-Grabber...
+        if (source->targetSpecific.QuickTimeGLTexture || source->textureOrientation == 3) {
             sourceHeight=PsychGetHeightFromRect(source->rect);
 	    sourceWidth=PsychGetWidthFromRect(source->rect);
 	    sourceX=sourceRect[kPsychLeft];
@@ -598,7 +604,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
         // Override for special case: Corevideo texture from Quicktime-subsystem.
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture) {
+        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+            source->textureOrientation == 3) {
 	  // NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
 	  // is the fastest case --> Most common orientation has highest performance.
 	  //lower left
