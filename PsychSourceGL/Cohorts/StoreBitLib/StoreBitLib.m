@@ -52,7 +52,7 @@ Boolean CocoaGetBit(void)
 	Boolean				returnValue;
 	
 	NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
-	
+		
 	if(numberObject == NULL)
 		returnValue=FALSE;
 	else

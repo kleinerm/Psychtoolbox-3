@@ -7,9 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		2F1ED47808CFF944004D1478 /* StoreBitLib.m in Sources */ = {isa = PBXBuildFile; fileRef = 2F1ED47708CFF944004D1478 /* StoreBitLib.m */; };
-		2FF41FB208D1400D00A15F99 /* KeyRecorderWindow.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FF41FB008D1400D00A15F99 /* KeyRecorderWindow.h */; };
-		2FF41FB308D1400D00A15F99 /* KeyRecorderWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 2FF41FB108D1400D00A15F99 /* KeyRecorderWindow.m */; };
+		2FDBD2CF099059FA0035A0BC /* StoreBitLib.m in Sources */ = {isa = PBXBuildFile; fileRef = 2FDBD2CE099059F90035A0BC /* StoreBitLib.m */; };
+		2FDBD2D609905A260035A0BC /* StoreBitLib.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FDBD2D509905A260035A0BC /* StoreBitLib.h */; };
 		8D5B49B0048680CD000E48DA /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C167DFE841241C02AAC07 /* InfoPlist.strings */; };
 		8D5B49B4048680CD000E48DA /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */; };
 /* End PBXBuildFile section */
@@ -62,10 +61,8 @@
 		089C167EFE841241C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		089C167FFE841241C02AAC07 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
 		1058C7ADFEA557BF11CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
-		2F1ED47708CFF944004D1478 /* StoreBitLib.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = StoreBitLib.m; sourceTree = SOURCE_ROOT; };
-		2F1ED48F08D0EA94004D1478 /* StoreBitLib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = StoreBitLib.h; sourceTree = SOURCE_ROOT; };
-		2FF41FB008D1400D00A15F99 /* KeyRecorderWindow.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = KeyRecorderWindow.h; sourceTree = SOURCE_ROOT; };
-		2FF41FB108D1400D00A15F99 /* KeyRecorderWindow.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = KeyRecorderWindow.m; sourceTree = SOURCE_ROOT; };
+		2FDBD2CE099059F90035A0BC /* StoreBitLib.m */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.objc; path = StoreBitLib.m; sourceTree = SOURCE_ROOT; };
+		2FDBD2D509905A260035A0BC /* StoreBitLib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = StoreBitLib.h; sourceTree = SOURCE_ROOT; };
 		32DBCF630370AF2F00C91783 /* StoreBitLib_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = StoreBitLib_Prefix.pch; sourceTree = "<group>"; };
 		8D5B49B6048680CD000E48DA /* StoreBitLib.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = StoreBitLib.bundle; sourceTree = BUILT_PRODUCTS_DIR; };
 		8D5B49B7048680CD000E48DA /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -86,7 +83,6 @@
 		089C166AFE841209C02AAC07 /* StoreBitLib */ = {
 			isa = PBXGroup;
 			children = (
-				08FB77AFFE84173DC02AAC07 /* Classes */,
 				32C88E010371C26100C91783 /* Other Sources */,
 				089C167CFE841241C02AAC07 /* Resources */,
 				089C1671FE841209C02AAC07 /* Frameworks and Libraries */,
@@ -111,17 +107,6 @@
 				089C167DFE841241C02AAC07 /* InfoPlist.strings */,
 			);
 			name = Resources;
-			sourceTree = "<group>";
-		};
-		08FB77AFFE84173DC02AAC07 /* Classes */ = {
-			isa = PBXGroup;
-			children = (
-				2F1ED48F08D0EA94004D1478 /* StoreBitLib.h */,
-				2F1ED47708CFF944004D1478 /* StoreBitLib.m */,
-				2FF41FB008D1400D00A15F99 /* KeyRecorderWindow.h */,
-				2FF41FB108D1400D00A15F99 /* KeyRecorderWindow.m */,
-			);
-			name = Classes;
 			sourceTree = "<group>";
 		};
 		1058C7ACFEA557BF11CA2CBB /* Linked Frameworks */ = {
@@ -152,6 +137,8 @@
 		32C88E010371C26100C91783 /* Other Sources */ = {
 			isa = PBXGroup;
 			children = (
+				2FDBD2D509905A260035A0BC /* StoreBitLib.h */,
+				2FDBD2CE099059F90035A0BC /* StoreBitLib.m */,
 				32DBCF630370AF2F00C91783 /* StoreBitLib_Prefix.pch */,
 			);
 			name = "Other Sources";
@@ -164,7 +151,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FF41FB208D1400D00A15F99 /* KeyRecorderWindow.h in Headers */,
+				2FDBD2D609905A260035A0BC /* StoreBitLib.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -270,8 +257,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2F1ED47808CFF944004D1478 /* StoreBitLib.m in Sources */,
-				2FF41FB308D1400D00A15F99 /* KeyRecorderWindow.m in Sources */,
+				2FDBD2CF099059FA0035A0BC /* StoreBitLib.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
