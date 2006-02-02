@@ -26,7 +26,24 @@
 // into OpenGL textures. This should default to zero for releases
 // This is a test to find out if we can enable QT support on M$-Windows
 // despite the braindamage of Apples Windows QT-7 SDK...
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// We typedef all missing functions on Windows away...
+typedef void* QTVisualContextRef;
+Boolean QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
+OSErr QTVisualContextCopyImageForTime(void* a, void* b, void* c) { return(noErr) };
+void QTVisualContextRelease(void* a) { return; }
+void QTVisualContextTask(void *a) { return; }
+void CVOpenGLTextureRelease(void* a) { return; }
+GLuint CVOpenGLTextureGetName(void* a) { return(0); }
+void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, float* e) { return; }
+
+// ... and enable old style GWorld rendering, so this doesn't do any harm...
+#define PSYCH_USE_QT_GWORLDS 1
+
+#else
+// OS-X: We don't use GWorlds but the new and shiny QTVisualcontexts and such...
 #define PSYCH_USE_QT_GWORLDS 0
+#endif 
 
 #define PSYCH_MAX_MOVIES 100
 
@@ -130,12 +147,30 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     QTVisualContextRef QTMovieContext = NULL;
     QTAudioContextRef  QTAudioContext = NULL;
     *moviehandle = -1;
+    int i, slotid;
     OSErr error;
+    CFStringRef movieLocation;
+    CFStringRef coreAudioDeviceUID;
+    boolean trueValue = TRUE;
+    QTNewMoviePropertyElement newMovieProperties[4] = {0};
+    int propcount = 0;
+    char msgerr[10000];
+    char errdesc[1000];
+    Rect movierect;
     
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Initialize Quicktime for Windows compatibility layer: This will fail if
+        // QT isn't installed on the Windows machine...
+        error = InitializeQTML(0);
+        if (error!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+        }
+#endif
+
         // Initialize Quicktime-Subsystem:
-        OSStatus error = EnterMovies();
+        error = EnterMovies();
         if (error!=noErr) {
             PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
         }
@@ -155,17 +190,16 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     }
 
     // Search first free slot in movieRecordBANK:
-    int i;
     for (i=0; (i < PSYCH_MAX_MOVIES) && (movieRecordBANK[i].theMovie); i++);
     if (i>=PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!");
     }
 
     // Slot slotid will contain the movie record for our new movie object:
-    int slotid=i;
+    slotid=i;
     
     // Create name-string for moviename:
-    CFStringRef movieLocation = CFStringCreateWithCString (kCFAllocatorDefault, moviename, kCFStringEncodingASCII);
+    movieLocation = CFStringCreateWithCString (kCFAllocatorDefault, moviename, kCFStringEncodingASCII);
     
     // Zero-out new record in moviebank:
     movieRecordBANK[slotid].theMovie=NULL;    
@@ -175,29 +209,28 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     if (!PSYCH_USE_QT_GWORLDS) {
         // Create QTGLTextureContext:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
         error = QTOpenGLTextureContextCreate (kCFAllocatorDefault,
                                                     win->targetSpecific.contextObject,
                                                     win->targetSpecific.pixelFormatObject,
                                                     NULL,
                                                     &QTMovieContext);
+#endif
         if (error!=noErr) {
             PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!");
         }        
     }
     
     // Create QTAudioContext for default CoreAudio device:
-    CFStringRef coreAudioDeviceUID = NULL; // Use default audio-output device.
+    coreAudioDeviceUID = NULL; // Use default audio-output device.
     error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault,
-                                                        coreAudioDeviceUID,
-                                                        NULL,
-                                                        &QTAudioContext);
+                                                coreAudioDeviceUID,
+                                                NULL,
+                                                &QTAudioContext);
     if (error!=noErr) {
         PsychErrorExitMsg(PsychError_internal, "Quicktime audio context creation failed!!!");
     }
     
-    boolean trueValue = TRUE;
-    QTNewMoviePropertyElement newMovieProperties[4] = {0};
-    int propcount = 0;
     // The Movie location 
     newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
     newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
@@ -229,8 +262,6 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     if (error!=noErr) {
         QTVisualContextRelease(QTMovieContext);
         QTAudioContextRelease(QTAudioContext);
-        char msgerr[10000];
-        char errdesc[1000];
         switch(error) {
             case -2000:
             case -50:
@@ -258,7 +289,6 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
 
     if (PSYCH_USE_QT_GWORLDS) {
         // Determine size of images in movie:
-        Rect movierect;
         GetMovieBox(theMovie, &movierect);
         
         // Create GWorld for this movie object:
@@ -304,7 +334,6 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     movieRecordBANK[slotid].fps = PsychDetermineMovieFramecountAndFps(theMovie, NULL);
 
     // Determine size of images in movie:
-    Rect movierect;
     GetMovieBox(theMovie, &movierect);
     movieRecordBANK[slotid].width = movierect.right - movierect.left;
     movieRecordBANK[slotid].height = movierect.bottom - movierect.top;
@@ -434,10 +463,20 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     TimeValue           nextFramesTime=0;
     short		myFlags;
     OSType		myTypes[1];
-    OSErr		myErr = noErr;
-    
+    OSErr		error = noErr;
+    Movie               theMovie;
     CVOpenGLTextureRef newImage = NULL;
-
+    QTVisualContextRef  theMoviecontext;
+    unsigned int failcount=0;
+    float lowerLeft[2];
+    float lowerRight[2];    
+    float upperRight[2];    
+    float upperLeft[2];
+    GLuint texid;
+    Rect rect;
+    float rate;
+    double targetdelta, realdelta, frames;
+   
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
     }
@@ -461,8 +500,8 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     }
     
     // Fetch references to objects we need:
-    Movie   theMovie = movieRecordBANK[moviehandle].theMovie;
-    QTVisualContextRef  theMoviecontext = movieRecordBANK[moviehandle].QTMovieContext;
+    theMovie = movieRecordBANK[moviehandle].theMovie;
+    theMoviecontext = movieRecordBANK[moviehandle].QTMovieContext;
 
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle.");
@@ -501,8 +540,8 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         myFlags = nextTimeStep + nextTimeEdgeOK;	// We want the next frame in the movie's media.
         myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
         GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, &nextFramesTime);
-        myErr = GetMoviesError();
-        if (myErr != noErr) {
+        error = GetMoviesError();
+        if (error != noErr) {
             PsychErrorExitMsg(PsychError_internal, "Failed to fetch texture from movie for given timeindex!");
         }
         
@@ -573,7 +612,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     if (!PSYCH_USE_QT_GWORLDS) {
         // Blocking wait-code for non-GWorld mode:
         // Try up to 1000 iterations for arrival of requested image data in wait-mode:
-        unsigned int failcount=0;
+        failcount=0;
         while ((failcount < 1000) && !QTVisualContextIsNewImageAvailable(theMoviecontext, NULL)) {
             PsychWaitIntervalSeconds(0.005);
             MoviesTask(theMovie, 0);
@@ -587,7 +626,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         }
         
         // Fetch new OpenGL texture with the new movie image frame:
-        OSErr error = QTVisualContextCopyImageForTime(theMoviecontext, kCFAllocatorDefault, NULL, &newImage);
+        error = QTVisualContextCopyImageForTime(theMoviecontext, kCFAllocatorDefault, NULL, &newImage);
         if ((error!=noErr) || newImage == NULL) {
             PsychErrorExitMsg(PsychError_internal, "OpenGL<->Quicktime texture fetch failed!!!");
         }
@@ -596,12 +635,8 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
         
         // Build a standard PTB texture record:    
-        float lowerLeft[2];
-        float lowerRight[2];    
-        float upperRight[2];    
-        float upperLeft[2];
         CVOpenGLTextureGetCleanTexCoords (newImage, lowerLeft, lowerRight, upperRight, upperLeft);
-        int texid = CVOpenGLTextureGetName(newImage);
+        texid = CVOpenGLTextureGetName(newImage);
         
         // Assign texture rectangle:
         PsychMakeRect(out_texture->rect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
@@ -623,7 +658,6 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Build a standard PTB texture record:    
 
         // Assign texture rectangle:
-        Rect rect;
         GetMovieBox(theMovie, &rect);
 
         // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
@@ -665,17 +699,16 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Ready to use the texture... We're done.
     }
     
-    float rate = FixedToFloat(GetMovieRate(theMovie));
+    rate = FixedToFloat(GetMovieRate(theMovie));
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     if (rate) {
         // Try to check for dropped frames in playback mode:
 
         // Expected delta between successive presentation timestamps:
-        double targetdelta = 1.0f / (movieRecordBANK[moviehandle].fps * rate);
+        targetdelta = 1.0f / (movieRecordBANK[moviehandle].fps * rate);
 
         // Compute real delta, given rate and playback direction:
-        double realdelta;
         if (rate>0) {
             realdelta = *presentation_timestamp - movieRecordBANK[moviehandle].last_pts;
             if (realdelta<0) realdelta = 0;
@@ -685,7 +718,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
             if (realdelta<0) realdelta = 0;
         }
         
-        double frames = realdelta / targetdelta;
+        frames = realdelta / targetdelta;
         // Dropped frames?
         if (frames > 1 && movieRecordBANK[moviehandle].last_pts>=0) {
             movieRecordBANK[moviehandle].nr_droppedframes += (int) (frames - 1 + 0.5);
@@ -752,13 +785,14 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
 int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume)
 {
     int dropped = 0;
+    Movie   theMovie;
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
         
     // Fetch references to objects we need:
-    Movie   theMovie = movieRecordBANK[moviehandle].theMovie;    
+    theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
@@ -818,6 +852,14 @@ void PsychExitMovies(void)
     // and for some reason it reliably hangs Matlab, so one has to force-quit it :-(
     // Don't do this: ExitMovies();
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // Shutdown Quicktime core system:
+    ExitMovies();
+    
+    // Shutdown Quicktime for Windows compatibility layer:
+    TerminateQTML();
+#endif
+    
     return;
 }
 
@@ -826,12 +868,14 @@ void PsychExitMovies(void)
  */
 double PsychGetMovieTimeIndex(int moviehandle)
 {
+    Movie   theMovie;
+    
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     // Fetch references to objects we need:
-    Movie   theMovie = movieRecordBANK[moviehandle].theMovie;    
+    theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
@@ -845,18 +889,21 @@ double PsychGetMovieTimeIndex(int moviehandle)
  */
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
 {
+    Movie   theMovie;
+    double  oldtime;
+    
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
     }
     
     // Fetch references to objects we need:
-    Movie   theMovie = movieRecordBANK[moviehandle].theMovie;    
+    theMovie = movieRecordBANK[moviehandle].theMovie;    
     if (theMovie == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided. No movie associated with this handle !!!");
     }
     
     // Retrieve current timeindex:
-    double oldtime = (double) GetMovieTime(theMovie, NULL) / (double) GetMovieTimeScale(theMovie);
+    oldtime = (double) GetMovieTime(theMovie, NULL) / (double) GetMovieTimeScale(theMovie);
     
     // Set new timeindex:
     SetMovieTimeValue(theMovie, (TimeValue) (((timeindex * (double) GetMovieTimeScale(theMovie))) + 0.5f));
