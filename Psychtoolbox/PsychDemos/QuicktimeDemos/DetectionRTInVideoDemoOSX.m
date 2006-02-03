@@ -39,6 +39,7 @@ function DetectionRTInVideoDemoOSX(moviename, timeOfEvent, trials)
 
 % History:
 % 12/19/05  mk  Wrote it.
+% 02/03/06  mk  Adapted for use on Windows.
 
 if nargin < 1
     % Default movie is our own disc collision movie:
@@ -57,6 +58,16 @@ fprintf('Loading probe movie %s ...\n', moviename);
 fprintf('Time locked probe event will happen at time %f secs after start of movie.\n', timeOfEvent);
 fprintf('Will run %i trials or until ESCape key is pressed.\n', trials);
 
+if IsOSX
+	esc=KbName('ESCAPE');
+   space=KbName('SPACE');
+end;
+
+if IsWin
+	esc=KbName('esc');
+   space=KbName('space');
+end;
+            
 try
     % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
     % Abort if we don't:
@@ -70,7 +81,7 @@ try
     screen=max(Screen('Screens'));
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen);
+    win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
     
     % Hide the mouse cursor:
     HideCursor;
@@ -106,7 +117,7 @@ try
         % the movie: Computing 'framecount' takes long, so avoid to query
         % this property if you don't need it!
         [movie movieduration fps imgw imgh framecount] = Screen('OpenMovie', win, moviename);
-    
+        
         % Start playback of the movie:
         % Play 'movie', at a playbackrate = 1 (normal speed forward),
         % play it once, aka with loopflag = 0,
@@ -123,7 +134,7 @@ try
         onsettime=-1;       % Realtime at which the event was shown to the subject.
         rejecttrial=0;      % Flag which is set to 1 to reject an invalid trial.
         
-        while(movietexture>=0 && reactiontime==-1)
+        while(movietexture>=0 & reactiontime==-1)
             % Check if a new movie video frame is ready for visual
             % presentation: This call polls for arrival of a new frame. If
             % a new frame is ready, it converts the video frame into a
@@ -160,7 +171,7 @@ try
                 % range.
                 vbl=Screen('Flip', win);
                 % Is this the event video frame we've been waiting for? 
-                if (onsettime==-1 && pts >= timeOfEvent)
+                if (onsettime==-1 & pts >= timeOfEvent)
                     % Yes: This is the first frame with a pts timestamp that is
                     % equal or greater than the timeOfEvent, so 'vbl' is
                     % the exact time when the event was presented to the
@@ -190,7 +201,7 @@ try
             [keyIsDown, secs, keyCode]=KbCheck;
             if (keyIsDown==1)
                 % Abort requested?
-                if keyCode(KbName('ESCAPE'))
+                if keyCode(esc)
                     % This signals abortion:
                     rejecttrial=-1;
                     % Break out of display loop:
@@ -198,7 +209,7 @@ try
                 end;
                 
                 % Space key pressed to indicate detection of event?
-                if keyCode(KbName('SPACE'))
+                if keyCode(space)
                     % Response too early (before event happened?)
                     if (onsettime==-1)
                         % Reject this trial:
@@ -209,7 +220,8 @@ try
                         reactiontime=secs - onsettime;
                     end;
                 end;
-            end;
+             
+             end;
         end; % ...of display loop...
         
         % Stop movie playback, in case it isn't already stopped. We do this
@@ -232,7 +244,7 @@ try
             break;
         end;
         
-        if (reactiontime==-1 && rejecttrial==0)
+        if (reactiontime==-1 & rejecttrial==0)
             rejecttrial=3;
         end;
         

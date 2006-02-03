@@ -37,6 +37,25 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime)
 
 % History:
 % 12/25/05  mk  Wrote it.
+% 02/03/06  mk  Adapted for use on Windows.
+
+% Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
+% Abort if we don't:
+AssertOpenGL;
+
+if IsOSX
+   esc=KbName('ESCAPE');
+   space=KbName('SPACE');
+   right=KbName('RightArrow');
+   left=KbName('LeftArrow');
+end;
+
+if IsWin
+   esc=KbName('esc');
+   space=KbName('space');
+   right=KbName('right');
+   left=KbName('left');
+end;
 
 if nargin < 1
     % Default movie is our own disc collision movie:
@@ -54,12 +73,7 @@ if nargin < 3
 end;
 
 fprintf('Loading movie %s ...\n', moviename);
-
-try
-    % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
-    % Abort if we don't:
-    AssertOpenGL;
-    
+try    
     % Background color will be a grey one:
     background=[128, 128, 128];
 
@@ -68,7 +82,7 @@ try
     screen=max(Screen('Screens'));
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
-    win = Screen('OpenWindow', screen);
+    win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
     
     % Hide the mouse cursor:
     HideCursor;
@@ -96,7 +110,7 @@ try
     count=0;            % Number of loaded movie frames.
     
     % Movie to texture conversion loop:
-    while(movietexture>=0 && pts < toTime)
+    while(movietexture>=0 & pts < toTime)
             % This call waits for arrival of a new frame from the movie. If
             % a new frame is ready, it converts the video frame into a
             % Psychtoolbox texture image and returns a handle in
@@ -117,7 +131,7 @@ try
             % lastpts then we would have ran over the end of movie - in
             % that case, the time will automatically wrap around to zero.
             % If we don't check for this, we'll have an infinite loop!
-            if (movietexture>0 && pts>lastpts)
+            if (movietexture>0 & pts>lastpts)
                 % Store its texture handle and exact movie timestamp in
                 % arrays for later use:
                 count=count + 1;
@@ -166,24 +180,25 @@ try
         % Check for key press:
         [keyIsDown, secs, keyCode]=KbCheck;
         if keyIsDown
-            if (keyCode(KbName('ESCAPE')))
+            if (keyCode(esc))
                 % Exit
                 break;
-            end;
-
-            if (keyCode(KbName('SPACE')))
+             end;
+             
+            if (keyCode(space))
                 % Toggle playback on space.
                 autoplay=1-autoplay;
             end;
 
-            if (keyCode(KbName('RightArrow')) && currentindex<count)
+            if (keyCode(right) & currentindex<count)
                 % One frame forward:
                 currentindex=currentindex+1;
             end;
-            if (keyCode(KbName('LeftArrow')) && currentindex>1)
+            if (keyCode(left) & currentindex>1)
                 % One frame backward:
                 currentindex=currentindex-1;
             end;
+            
             % Wait for key-release:
             while KbCheck; WaitSecs(0.01); end;
         end;
@@ -205,9 +220,9 @@ try
     fprintf('Done. Bye!\n');
     return;
 
-catch
+%catch
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
     Screen('CloseAll');
     rethrow(lasterror);
-end;
+%end;
