@@ -21,6 +21,12 @@
 #ifndef PSYCH_IS_INCLUDED_PsychMovieSupport
 #define PSYCH_IS_INCLUDED_PsychMovieSupport
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#include <Movies.h>
+#else
+#include <Quicktime/Movies.h>
+#endif
+
 #include "Screen.h"
 
 void PsychMovieInit(void);
@@ -33,7 +39,7 @@ int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double sou
 void PsychExitMovies(void);
 double PsychGetMovieTimeIndex(int moviehandle);
 double PsychSetMovieTimeIndex(int moviehandle, double timeindex);
-void PsychFreeMovieTexture(PsychWindowRecordType *win);
+
 //end include once
 #endif
 
