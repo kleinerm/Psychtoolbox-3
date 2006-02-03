@@ -220,9 +220,9 @@ try
     fprintf('Done. Bye!\n');
     return;
 
-%catch
+catch
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
     Screen('CloseAll');
     rethrow(lasterror);
-%end;
+end;

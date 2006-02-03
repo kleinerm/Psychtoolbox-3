@@ -99,12 +99,18 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureMemory=NULL;
 	win->textureNumber=0;
 	win->textureMemorySizeBytes=0;
-        // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
-        win->targetSpecific.QuickTimeGLTexture = NULL;
-        // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
-        // This number defines how the height and width of a texture need to be interpreted and how
-        // texture coordinates are assigned in PsychBlitTextureToDisplay().
-        win->textureOrientation=0;
+   // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
+   win->targetSpecific.QuickTimeGLTexture = NULL;
+   // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
+   // This number defines how the height and width of a texture need to be interpreted and how
+   // texture coordinates are assigned in PsychBlitTextureToDisplay().
+   win->textureOrientation=0;
+	// Set to default 0-value: Meaning of this field is specific for source of texture. It should
+	// somehow identify the cache data structure for textures of specifif origin in a unique way.
+	// If this is a cached texture for use by the PsychMovieSupport Quicktime subsystem and we
+	// use GWorld rendering, then this points to the movieRecord of the movie which is associated
+	// with this texture...
+	win->texturecache_slot=0;
 }
 
 
@@ -194,6 +200,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long screenWidth, screenHeight;
         int twidth, theight;
 	void* texmemptr;
+	bool recycle = FALSE;
 
         // Enable the proper OpenGL rendering context for the window associated with this
         // texture:
@@ -207,8 +214,21 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // low-mem gfx-cards. Enable clientstorage, if so...
         clientstorage = (PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) ? TRUE : FALSE;
         
-	// Create a unique texture handle for this texture
-	glGenTextures(1, &win->textureNumber);
+	// Create a unique texture handle for this texture:
+	// If the texture already has a handle assigned then this means that we shouldn't
+	// create and setup a new OpenGL texture from scratch, but bind and recycle the
+	// given texture object. Just bind it and update its content via glTexSubImage()... calls.
+	// Updating textures is potentially faster than recreating them -> Quicktime movie playback
+	// and the Videocapture code et al. will benefit from this...
+	if (win->textureNumber == 0) {
+		glGenTextures(1, &win->textureNumber);
+		recycle = FALSE;
+		//printf("CREATING NEW TEX %i\n", win->textureNumber);
+	}
+	else {
+		recycle = TRUE;
+		//printf("RECYCLING TEX %i\n", win->textureNumber);
+	}
 
 	// Setup texturing:
 	glDisable(GL_TEXTURE_2D);
@@ -301,6 +321,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	  texmemptr=win->textureMemory;
 	}
 
+	// We only execute this pass for really new textures, not for recycled ones:
+	if (!recycle) {
         switch(win->depth) {
             case 8:
                 glinternalFormat=GL_LUMINANCE8;
@@ -325,10 +347,13 @@ void PsychCreateTexture(PsychWindowRecordType *win)
                 break;
         }
 
-	if (texturetarget==GL_TEXTURE_2D) {
+	}
+
+	if (texturetarget==GL_TEXTURE_2D || recycle) {
 	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
 	  // unused border contains all zero == black.
+	  // The same path is used for efficient refilling existing textures that are to be recycled:
 	  switch(win->depth) {
 	  case 8:
 	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, win->textureMemory);
@@ -349,7 +374,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
         
         // New internal format requested?
-        if (gl_lastrequestedinternalFormat != glinternalFormat) {
+        if (gl_lastrequestedinternalFormat != glinternalFormat && !recycle) {
             // Seems so...
             gl_lastrequestedinternalFormat = glinternalFormat;
             

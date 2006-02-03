@@ -65,6 +65,7 @@ typedef struct {
     int height;
     double last_pts;
     int nr_droppedframes;
+	 GLuint cached_texture;
 } PsychMovieRecordType;
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
@@ -87,6 +88,7 @@ void PsychMovieInit(void)
         movieRecordBANK[i].QTAudioContext = NULL;
         movieRecordBANK[i].QTMovieGWorld = NULL;
         movieRecordBANK[i].loopflag = 0;
+        movieRecordBANK[i].cached_texture = 0;
     }    
     numMovieRecords = 0;
     
@@ -221,6 +223,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     movieRecordBANK[slotid].QTMovieContext=NULL;    
     movieRecordBANK[slotid].QTAudioContext=NULL;
     movieRecordBANK[slotid].QTMovieGWorld=NULL;
+    movieRecordBANK[slotid].cached_texture = 0;
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
@@ -335,7 +338,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         GetMovieBox(theMovie, &movierect);
         
         // Create GWorld for this movie object:
-        // error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, k32ABGRPixelFormat, &movierect,  NULL, NULL, 0);
+        // error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, kYUVSPixelFormat, &movierect,  NULL, NULL, 0);
         error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, 0, &movierect,  NULL, NULL, 0);
         if (error!=noErr) {
             if (QTAudioContext) QTAudioContextRelease(QTAudioContext);
@@ -461,6 +464,13 @@ void PsychDeleteMovie(int moviehandle)
     QTVisualContextTask(movieRecordBANK[moviehandle].QTMovieContext);
     glFinish();
         
+	 // Recycled texture in texture cache?
+    if (PSYCH_USE_QT_GWORLDS && movieRecordBANK[moviehandle].cached_texture > 0) {
+		// Yes. Release it.
+		glDeleteTextures(1, &(movieRecordBANK[moviehandle].cached_texture));
+		movieRecordBANK[moviehandle].cached_texture = 0;
+	 }
+
     // Delete movieobject for this handle:
     DisposeMovie(movieRecordBANK[moviehandle].theMovie);
     movieRecordBANK[moviehandle].theMovie=NULL;    
@@ -707,10 +717,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Synchronous texture fetch code for GWorld rendering mode:
         // At this point, the GWorld should contain the source image for creating a
         // standard OpenGL texture:
-        
-        // Disable client storage, if it was enabled:
-        // glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-        
+               
         // Build a standard PTB texture record:    
 
         // Assign texture rectangle:
@@ -741,10 +748,24 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
             
+		  // Assign a reference to our movieHandle - slot for the caching mechanism.
+		  // This is used by PsychFreeMovieTexture() to find the texture cache of our
+		  // movie object:
+		  out_texture->texturecache_slot = moviehandle;
+
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-        // filling an OpenGL texture with GWorlds content:
+        // filling an OpenGL texture with GWorlds content. We assign the texid from our
+		  // our texture cache, if any, so it gets possibly reused.
+		  out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+
         PsychCreateTexture(out_texture);
-        
+
+		  // After PsychCreateTexture() the cached texture object from our cache is used
+		  // and no longer available for recycling. We mark the cache as empty:
+		  // It will be filled with a new textureid for recycling if a texture gets
+        // deleted in PsychMovieDeleteTexture()....
+		  movieRecordBANK[moviehandle].cached_texture = 0;
+
         // Undo hack from above after texture creation: Now we need the real width of the
         // texture for proper texture coordinate assignments in drawing code et al.
         rect.right = rect.right - padding;
@@ -812,20 +833,40 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
  */
 void PsychFreeMovieTexture(PsychWindowRecordType *win)
 {
-    // Fetch special Quicktime texture handle...
-    CVOpenGLTextureRef theTexture = win->targetSpecific.QuickTimeGLTexture;
+	if (!PSYCH_USE_QT_GWORLDS) { 
+	   // Fetch special Quicktime texture handle...
+ 		CVOpenGLTextureRef theTexture = win->targetSpecific.QuickTimeGLTexture;
 
-    // ...is this a quicktime movietexture? If not, just skip this routine.
-    if (win->windowType!=kPsychTexture || NULL == theTexture) return;
+    	// ...is this a quicktime movietexture? If not, just skip this routine.
+    	if (win->windowType!=kPsychTexture || NULL == theTexture) return;
     
-    // Quicktime movie texture: Release it via special CoreVideo release function:
-    CVOpenGLTextureRelease(theTexture);
-    win->targetSpecific.QuickTimeGLTexture = NULL;
+    	// Quicktime movie texture: Release it via special CoreVideo release function:
+    	CVOpenGLTextureRelease(theTexture);
+    	win->targetSpecific.QuickTimeGLTexture = NULL;
     
-    // 0-out the textureNumber so our standard cleanup routine (glDeleteTextures) gets
-    // skipped - if we don't do this, Quicktime & CoreVideo will leak memory like hell!!!
-    win->textureNumber = 0;
+    	// 0-out the textureNumber so our standard cleanup routine (glDeleteTextures) gets
+    	// skipped - if we don't do this, Quicktime & CoreVideo will leak memory like hell!!!
+    	win->textureNumber = 0;
+	}
+   else {
+		// Special path for Microsoft Windows:
+    	// ...is this a Quicktime movietexture? If not, just skip this routine.
+    	if (win->windowType!=kPsychTexture || win->textureOrientation!=3) return;
 
+		// Quicktime movie texture: Check if we can move it into our recycler cache
+		// for later reuse...
+		if (movieRecordBANK[win->texturecache_slot].cached_texture == 0) {
+			// Cache free. Put this texture object into it for later reuse:
+			movieRecordBANK[win->texturecache_slot].cached_texture = win->textureNumber;
+	    	// 0-out the textureNumber so our standard cleanup routine (glDeleteTextures) gets
+   	 	// skipped - if we wouldn't do this, our caching scheme would screw up.
+	    	win->textureNumber = 0;
+      }
+		else {
+			// Cache already occupied. We don't do anything but leave the cleanup work for
+			// this texture to the standard PsychDeleteTexture() routine...
+		}
+   }
     return;
 }
 
