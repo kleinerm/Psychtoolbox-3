@@ -62,9 +62,8 @@
 #define GL_UNSIGNED_INT_8_8_8_8_REV 0x8367
 #endif
 #ifndef GL_CLAMP_TO_EDGE
-#define GL_CLAMP_TO_EDGE GL_CLAMP
+#define GL_CLAMP_TO_EDGE 0x812F
 #endif
-
 
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS

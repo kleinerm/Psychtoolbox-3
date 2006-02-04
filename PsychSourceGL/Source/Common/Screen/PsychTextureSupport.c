@@ -565,6 +565,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	  // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
 	  // mapping to accomodate for roundoff-error in the power-of-two gfx
 	  // hardware...
+	  // For a good intro into the issue of texture border seams, due to interpolation
+	  // problems at texture borders, see:
+     // http://home.planet.nl/~monstrous/skybox.html
 	  //sourceX-=0.5f;
 	  //sourceY-=0.5f;
 	  sourceXEnd-=0.5f;

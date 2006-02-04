@@ -180,27 +180,33 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 
 boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
 {
-  DEVMODE dmScreenSettings; // Device mode.
+  DEVMODE dmScreenSettings; // Device mode structure
 
-  // Clear struct:
+  // Clear structure:
   memset (&dmScreenSettings, 0, sizeof (DEVMODE));
-  // Init struct with our settings:
   dmScreenSettings.dmSize		= sizeof (DEVMODE);
-  dmScreenSettings.dmPelsWidth		= width;		// Select Screen Width
-  dmScreenSettings.dmPelsHeight		= height;		// Select Screen Height
-  dmScreenSettings.dmBitsPerPel		= bitsPerPixel;		// Select Bits Per Pixel
-  if (fps>0) {
-    dmScreenSettings.dmDisplayFrequency   = fps;                  // Select display refresh rate in Hz
-    dmScreenSettings.dmFields		= DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
-  }
-  else {
-    dmScreenSettings.dmFields		= DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT;
+  dmScreenSettings.dmDriverExtra	= 0;
+
+  // Query current display settings and init struct with them:
+  EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dmScreenSettings);
+
+  // Override current settings with the requested settings, if any:
+  if (width>0)  dmScreenSettings.dmPelsWidth  = width;  // Select Screen Width
+  if (height>0) dmScreenSettings.dmPelsHeight = height; // Select Screen Height
+  if (bitsPerPixel>0) dmScreenSettings.dmBitsPerPel = bitsPerPixel; // Select Bits Per Pixel
+  if (fps>0) dmScreenSettings.dmDisplayFrequency = fps; // Select display refresh rate in Hz
+  
+  // All provided values should be honored: We need to spec the refresh explicitely,
+  // because otherwise the system will select the lowest fps for a given display mode.
+  dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
+
+  // Perform the change:
+  if (ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
+    return(FALSE);	// Display Change Failed, Return False
   }
 
-  if (ChangeDisplaySettings (&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
-    return FALSE;	// Display Change Failed, Return False
-  }
-  return TRUE;		// Display Change Was Successful, Return True
+  // Display Change Was Successful, Return True
+  return(TRUE);
 }
 
 /*
@@ -252,39 +258,29 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       width=PsychGetWidthFromRect(screenrect);
       height=PsychGetHeightFromRect(screenrect);      
 
-      // Switch system to fullscreen-mode:
-      fullscreen = ChangeScreenResolution(width, height, 32, 0);
+      // Switch system to fullscreen-mode without changing any settings:
+      fullscreen = ChangeScreenResolution(0, 0, 0, 0);
     }
     else {
       // Window size different from current screen size:
+		// A regular desktop window with borders and control icons is requested, e.g., for debugging:
       // Extract settings:
       x=windowRecord->rect[kPsychLeft];
       y=windowRecord->rect[kPsychTop];
       width=PsychGetWidthFromRect(windowRecord->rect);
       height=PsychGetHeightFromRect(windowRecord->rect);
-
-      if (FALSE && x==0 && y==0) {
-	// Try to see if we can make it a fullscreen window of
-	// requested size by switching to different display mode:
-	fullscreen = ChangeScreenResolution(width, height, 32, 0);
-      }
-      else {
-	// A regular desktop window with borders and control icons is requested, e.g., for debugging:
-	fullscreen = FALSE;
-      }      
+		fullscreen = FALSE;
     }
 
     if (fullscreen) {
       windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window)
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
-      // PsychWaitIntervalSeconds(5);
     }
 
     // Register our own window class for Psychtoolbox onscreen windows:
     // Only register the window class once - use hInstance as a flag.
     if (!hInstance) {
       hInstance = GetModuleHandle(NULL);
-      //hInstance = (HINSTANCE) GetWindowLong(GetFocus(), GWL_HINSTANCE);
       wc.style         = CS_OWNDC;
       wc.lpfnWndProc   = WndProc;
       wc.cbClsExtra    = 0;

@@ -172,6 +172,7 @@ PsychError SCREENDrawText(void)
     //read in the string and get its length and convert it to a unicode string.
     PsychAllocInCharArg(2, kPsychArgRequired, &textCString);
     stringLengthChars=strlen(textCString);
+	 if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.
     if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
     CopyCStringToPascal(textCString, textPString);
     uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
@@ -354,7 +355,9 @@ PsychError SCREENDrawText(void)
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
     winRec->textAttributes.textPositionX = quadRight;
-    
+
+// We jump directly to this position in the code if the textstring is empty --> No op.
+drawtext_skipped:    
     // Copy out new, updated "cursor position":
     PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
     PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);

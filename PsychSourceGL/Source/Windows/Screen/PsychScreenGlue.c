@@ -274,12 +274,9 @@ boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSetti
 */
 boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 {
-        CFDictionaryRef cgMode;
-        
+        CFDictionaryRef cgMode;       
         return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
 }
-
-
 
 /*
     PsychGetScreenDepth()
@@ -464,7 +461,8 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
         
     //Change the display mode.   
-
+	 // FIXME: Not yet implemented. We do this in PsychOSOpenWindow() if necessary for fullscreen-mode...
+	 // Would be better to do it here though...
     
     return(true);
 }
@@ -499,7 +497,8 @@ boolean PsychRestoreScreenSettings(int screenNumber)
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
     // Restore video settings from the defaults in the Windows registry:
-    ChangeDisplaySettings(NULL, CDS_RESET);
+    // CDS_RESET is not necessary... ChangeDisplaySettings(NULL, CDS_RESET);
+    ChangeDisplaySettings(NULL, 0);
             
     return(true);
 }
@@ -522,24 +521,9 @@ void PsychShowCursor(int screenNumber)
 
 void PsychPositionCursor(int screenNumber, int x, int y)
 {
-  /*
-
-  FIXME:
-
-  Disabled for now. Not a problem as the SetMouse() Mexfile of the
-  old WinPTB does a perfect job in doing this.
-
-    CGDisplayErr 	error;
-    CGDirectDisplayID	cgDisplayID;
-    CGPoint 		point;
-    
-    PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    point.x=(float)x;
-    point.y=(float)y;
-    error=CGDisplayMoveCursorToPoint(cgDisplayID, point); 
-    if(error)
-        PsychErrorExit(PsychError_internal);
-  */
+  // Reposition the mouse cursor: We ignore the screenNumber as Windows
+  // doesn't allow to set the cursor per screen anyway.
+  if (SetCursorPos(x,y) == 0) PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (SetCursorPos() failed).");
 }
 
 /*

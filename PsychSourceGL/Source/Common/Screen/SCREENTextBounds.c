@@ -115,8 +115,8 @@ PsychError SCREENTextBounds(void)
 	//read in the string and get its length and convert it to a unicode string.
 	PsychAllocInCharArg(2, kPsychArgRequired, &textCString);
 	stringLengthChars=strlen(textCString);
-	if(stringLengthChars > 255)
-		PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
+	if(stringLengthChars < 1) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
+	if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
 	CopyCStringToPascal(textCString, textPString);
 	uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
 	uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
