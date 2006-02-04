@@ -208,7 +208,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
     CGLError					error;
-    
+
+    displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
+
     if (true) {
         long numRenderers, i;
         error= CGLQueryRendererInfo(displayMask, &rendererInfo, &numRenderers);
@@ -246,7 +248,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         // MK: Changed. We disable the visual test-sheet for now. Having it for 10 secs each startup
         // on a multi-display system is just annoying. Plus it created much confusion for users :(
         // We'll provide a separate Matlab M-Testfile in the PsychTests folder as a replacement.
-        //if (!skip_synctests) PsychVisualBell((*windowRecord), 10, 3);
+        if (!skip_synctests) PsychVisualBell((*windowRecord), 10, 3);
     }
     
     if (multidisplay && (!CGDisplayIsInMirrorSet(cgDisplayID) || PsychGetNumDisplays()>1)) {
