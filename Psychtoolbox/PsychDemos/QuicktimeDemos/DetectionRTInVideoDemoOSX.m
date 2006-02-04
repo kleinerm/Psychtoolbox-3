@@ -116,7 +116,8 @@ try
         % width and height of video frames and the total count of frames in
         % the movie: Computing 'framecount' takes long, so avoid to query
         % this property if you don't need it!
-        [movie movieduration fps imgw imgh framecount] = Screen('OpenMovie', win, moviename);
+        [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+        framecount = movieduration * fps;
         
         % Start playback of the movie:
         % Play 'movie', at a playbackrate = 1 (normal speed forward),
