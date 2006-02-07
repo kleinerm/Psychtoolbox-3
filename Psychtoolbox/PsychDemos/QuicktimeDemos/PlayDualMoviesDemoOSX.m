@@ -35,7 +35,7 @@ end;
 
 if IsOSX
    space=KbName('SPACE');
-   esc=KbName('ESC');
+   esc=KbName('ESCAPE');
    right=KbName('RightArrow');
    left=KbName('LeftArrow');
    up=KbName('UpArrow');
