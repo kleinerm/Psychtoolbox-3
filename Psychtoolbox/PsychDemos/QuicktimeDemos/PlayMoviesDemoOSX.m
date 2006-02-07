@@ -23,6 +23,26 @@ if nargin < 1
     moviename = '*.mov'
 end;
 
+if IsWin
+   space=KbName('space');
+   esc=KbName('esc');
+   right=KbName('right');
+   left=KbName('left');
+   up=KbName('up');
+   down=KbName('down');
+   shift=KbName('right_shift');
+end;
+
+if IsOSX
+   space=KbName('SPACE');
+   esc=KbName('ESC');
+   right=KbName('RightArrow');
+   left=KbName('LeftArrow');
+   up=KbName('UpArrow');
+   down=KbName('DownArrow');
+   shift=KbName('RightShift');
+end;
+
 try
     % Child protection
     AssertOpenGL;
@@ -100,30 +120,30 @@ try
             % Check for abortion:
             abortit=0;
             [keyIsDown,secs,keyCode]=KbCheck;
-            if (keyIsDown==1 & keyCode(KbName('ESCAPE')))
+            if (keyIsDown==1 & keyCode(esc))
                 % Set the abort-demo flag.
                 abortit=2;
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(KbName('SPACE')))
+            if (keyIsDown==1 & keyCode(space))
                 % Exit while-loop: This will load the next movie...
                 break;
             end;
             
-            if (keyIsDown==1 & keyCode(KbName('RightArrow')))
+            if (keyIsDown==1 & keyCode(right))
                 % Advance movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) + 1);
             end;
 
-            if (keyIsDown==1 & keyCode(KbName('LeftArrow')))
+            if (keyIsDown==1 & keyCode(left))
                 % Rewind movietime by one second:
                 Screen('SetMovieTimeIndex', movie, Screen('GetMovieTimeIndex', movie) - 1);
             end;
 
-            if (keyIsDown==1 & keyCode(KbName('UpArrow')))
+            if (keyIsDown==1 & keyCode(up))
                 % Increase playback rate by 1 unit.
-                if (keyCode(KbName('RightShift')))
+                if (keyCode(shift))
                     rate=rate+0.1;
                 else
                     while KbCheck; WaitSecs(0.01); end;
@@ -132,9 +152,9 @@ try
                 Screen('PlayMovie', movie, rate, 1, 1.0);
             end;
 
-            if (keyIsDown==1 & keyCode(KbName('DownArrow')))
+            if (keyIsDown==1 & keyCode(down))
                 % Decrease playback rate by 1 unit.
-                if (keyCode(KbName('RightShift')))
+                if (keyCode(shift))
                     rate=rate-0.1;
                 else
                     while KbCheck; WaitSecs(0.01); end;

@@ -113,10 +113,11 @@ try
     % Main trial loop: Do 'trials' trials...
     for i=1:trials
         % Open the moviefile and query some infos like duration, framerate,
-        % width and height of video frames and the total count of frames in
-        % the movie: Computing 'framecount' takes long, so avoid to query
+        % width and height of video frames. We could also query the total count of frames in
+        % the movie, but computing 'framecount' takes long, so avoid to query
         % this property if you don't need it!
         [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
+        % We estimate framecount instead of querying it - faster:
         framecount = movieduration * fps;
         
         % Start playback of the movie:
