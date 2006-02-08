@@ -42,6 +42,7 @@
 #include "PsychMovieSupport.h"
 #include "PsychTextureSupport.h"
 #include "PsychAlphaBlending.h"
+#include "PsychVideoCaptureSupport.h"
 
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
@@ -160,6 +161,14 @@ PsychError      SCREENFillArc(void);
 PsychError      SCREENDrawArc(void);
 PsychError      SCREENFrameArc(void);
 PsychError      SCREENWaitBlanking(void);
+PsychError      SCREENSetOpenGLTexture(void); 
+PsychError      SCREENGetOpenGLTexture(void); 
+PsychError      SCREENOpenVideoCapture(void); 
+PsychError      SCREENCloseVideoCapture(void); 
+PsychError      SCREENStartVideoCapture(void); 
+PsychError      SCREENStopVideoCapture(void); 
+PsychError      SCREENGetCapturedImage(void); 
+
 //experimental
 PsychError SCREENGetMouseHelper(void);
 

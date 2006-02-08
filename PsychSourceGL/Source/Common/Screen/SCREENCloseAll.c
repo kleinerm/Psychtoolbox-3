@@ -79,8 +79,9 @@ void ScreenCloseAllWindows()
     PsychWindowRecordType	**windowRecordArray;
     int						i, numWindows, numScreens; 
 
-    // Shutdown Quicktime subsystem if active:
+    // Shutdown Quicktime subsystems if active:
     PsychExitMovies();
+    PsychExitVideoCapture();
 
     // Close the windows: We do it reverse (descending) order so textures get closed
     // before the onscreen windows. In theory this shouldn't matter, but in practice,

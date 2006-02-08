@@ -190,6 +190,13 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("FrameArc", &SCREENFrameArc));
         PsychErrorExit(PsychRegister("CopyWindow", &SCREENCopyWindow));
         PsychErrorExit(PsychRegister("WaitBlanking", &SCREENWaitBlanking));
+        PsychErrorExit(PsychRegister("GetOpenGLTexture", &SCREENGetOpenGLTexture));
+        PsychErrorExit(PsychRegister("SetOpenGLTexture", &SCREENSetOpenGLTexture));
+        PsychErrorExit(PsychRegister("OpenVideoCapture", &SCREENOpenVideoCapture));
+        PsychErrorExit(PsychRegister("CloseVideoCapture", &SCREENCloseVideoCapture));
+        PsychErrorExit(PsychRegister("StartVideoCapture", &SCREENStartVideoCapture));
+        PsychErrorExit(PsychRegister("StopVideoCapture", &SCREENStopVideoCapture));
+        PsychErrorExit(PsychRegister("GetCapturedImage", &SCREENGetCapturedImage));
 
  	//Experiments
 
@@ -208,6 +215,7 @@ PsychError PsychModuleInit(void)
 	InitializePsychDisplayGlue();
 	InitWindowBank();
 	PsychMovieInit();
+        PsychVideoCaptureInit();
         
 	PrepareScreenPreferences();
         

@@ -1658,6 +1658,14 @@
 		832CE7EB094D03D100578C09 /* aluttypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7D9094D03D100578C09 /* aluttypes.h */; };
 		832CE7EC094D03D100578C09 /* alutypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7DA094D03D100578C09 /* alutypes.h */; };
 		832CE7ED094D03D100578C09 /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
+		8365A77F09991D69006FF0F4 /* SCREENOpenVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */; };
+		8365A78109991DAB006FF0F4 /* SCREENCloseVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */; };
+		8365A78309991E06006FF0F4 /* SCREENStartVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */; };
+		8365A78509991E29006FF0F4 /* SCREENStopVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78409991E29006FF0F4 /* SCREENStopVideoCapture.c */; };
+		8365A787099921A9006FF0F4 /* SCREENGetCapturedImage.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A786099921A9006FF0F4 /* SCREENGetCapturedImage.c */; };
+		8365A7890999223B006FF0F4 /* SCREENGetOpenGLTexture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A7880999223B006FF0F4 /* SCREENGetOpenGLTexture.c */; };
+		8365A78B09992279006FF0F4 /* SCREENSetOpenGLTexture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78A09992279006FF0F4 /* SCREENSetOpenGLTexture.c */; };
+		8365A79D09992499006FF0F4 /* PsychVideoCaptureSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */; };
 		8370C6F70969F23000BD4C8C /* PsychWindowSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */; };
 		8370C6FC0969F28100BD4C8C /* PsychWindowSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */; };
 		8370C71D096A013600BD4C8C /* PsychTextureSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C71C096A013600BD4C8C /* PsychTextureSupport.h */; };
@@ -2911,6 +2919,15 @@
 		832CE7D9094D03D100578C09 /* aluttypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = aluttypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/aluttypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DA094D03D100578C09 /* alutypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = alutypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/alutypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
+		8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenVideoCapture.c; path = ../../../Source/Common/Screen/SCREENOpenVideoCapture.c; sourceTree = SOURCE_ROOT; };
+		8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseVideoCapture.c; path = ../../../Source/Common/Screen/SCREENCloseVideoCapture.c; sourceTree = SOURCE_ROOT; };
+		8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENStartVideoCapture.c; path = ../../../Source/Common/Screen/SCREENStartVideoCapture.c; sourceTree = SOURCE_ROOT; };
+		8365A78409991E29006FF0F4 /* SCREENStopVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENStopVideoCapture.c; path = ../../../Source/Common/Screen/SCREENStopVideoCapture.c; sourceTree = SOURCE_ROOT; };
+		8365A786099921A9006FF0F4 /* SCREENGetCapturedImage.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetCapturedImage.c; path = ../../../Source/Common/Screen/SCREENGetCapturedImage.c; sourceTree = SOURCE_ROOT; };
+		8365A7880999223B006FF0F4 /* SCREENGetOpenGLTexture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetOpenGLTexture.c; path = ../../../Source/Common/Screen/SCREENGetOpenGLTexture.c; sourceTree = SOURCE_ROOT; };
+		8365A78A09992279006FF0F4 /* SCREENSetOpenGLTexture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTexture.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTexture.c; sourceTree = SOURCE_ROOT; };
+		8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupport.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupport.c; sourceTree = SOURCE_ROOT; };
+		8365A79E099924B0006FF0F4 /* PsychVideoCaptureSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychVideoCaptureSupport.h; path = ../../../Source/Common/Screen/PsychVideoCaptureSupport.h; sourceTree = SOURCE_ROOT; };
 		8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychWindowSupport.c; path = ../../../Source/Common/Screen/PsychWindowSupport.c; sourceTree = SOURCE_ROOT; };
 		8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychWindowSupport.h; path = ../../../Source/Common/Screen/PsychWindowSupport.h; sourceTree = SOURCE_ROOT; };
 		8370C71C096A013600BD4C8C /* PsychTextureSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychTextureSupport.h; path = ../../../Source/Common/Screen/PsychTextureSupport.h; sourceTree = SOURCE_ROOT; };
@@ -4144,6 +4161,7 @@
 				F569F253038E2C77017A7028 /* ScreenExit.c */,
 				F569F24F038E2C77017A7028 /* PsychGLGlue.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
+				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
 				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
 			);
 			name = Common;
@@ -4226,6 +4244,7 @@
 				F569F254038E2C77017A7028 /* SCREENClose.c */,
 				F575179A03E05D1701A80168 /* SCREENCloseAll.c */,
 				83C94B0E092825020062DB0A /* SCREENCloseMovie.c */,
+				8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */,
 				2F62C009043BDE14007A7274 /* SCREENComputer.c */,
 				F574FA280404446501A80168 /* SCREENCopyWindow.c */,
 				2FA28CC60793759E00E81C78 /* SCREENDrawDots.c */,
@@ -4243,11 +4262,13 @@
 				2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */,
 				2FE9BD3306B1C24B00DB1E5A /* SCREENFrameRect.c */,
 				F56F552003EDF2F101A80168 /* SCREENGamma.c */,
+				8365A786099921A9006FF0F4 /* SCREENGetCapturedImage.c */,
 				2F56E1D006095AB300A62EA5 /* SCREENGetFlipInterval.c */,
 				F569F25C038E2C77017A7028 /* SCREENGetImage.c */,
 				2FC12E5E07433E3100991CF0 /* SCREENGetMouseHelper.c */,
 				83C94B0C092824E30062DB0A /* SCREENGetMovieImage.c */,
 				83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */,
+				8365A7880999223B006FF0F4 /* SCREENGetOpenGLTexture.c */,
 				2FC9548F079F3A9C00414619 /* SCREENGetTimeList.c */,
 				2FE448CD0749C5AA003CF1C3 /* SCREENGlobalRect.c */,
 				F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */,
@@ -4262,6 +4283,7 @@
 				F569F255038E2C77017A7028 /* SCREENNull.c */,
 				83C94B06092824730062DB0A /* SCREENOpenMovie.c */,
 				F5CF277203DA57B901D453F7 /* SCREENOpenOffscreenWindow.c */,
+				8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */,
 				F5D852E203A01BF8017A7028 /* SCREENOpenWindow.c */,
 				F5BCFE05039D368A017A7028 /* SCREENPixelSizes.c */,
 				83C94B0A092824C90062DB0A /* SCREENPlayMovie.c */,
@@ -4276,7 +4298,10 @@
 				F569F251038E2C77017A7028 /* SCREENSetGLSynchronous.c */,
 				F50D529703D4FA79012326C4 /* SCREENSetMouseHelper.c */,
 				83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */,
+				8365A78A09992279006FF0F4 /* SCREENSetOpenGLTexture.c */,
 				F50D529203D4D6F9012326C4 /* SCREENShowCursorHelper.c */,
+				8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */,
+				8365A78409991E29006FF0F4 /* SCREENStopVideoCapture.c */,
 				F57F5DA8041D89A201A80165 /* SCREENTestStructures.c */,
 				CFE5132707E2642900D55D72 /* SCREENTextBackgroundColor.c */,
 				2F646E6E05BC852C0079EEB6 /* SCREENTextBounds.c */,
@@ -4523,6 +4548,7 @@
 				F55903740385C81D017A7028 /* RegisterProject.h */,
 				F598839303F9A74F01A80168 /* PsychRects.h */,
 				8370C71C096A013600BD4C8C /* PsychTextureSupport.h */,
+				8365A79E099924B0006FF0F4 /* PsychVideoCaptureSupport.h */,
 				8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */,
 				F55903780385C81D017A7028 /* ScreenTypes.h */,
 				F5CC1B2103949058017A7028 /* ScreenArguments.h */,
@@ -10048,6 +10074,14 @@
 				2FEBA9DD0989AD1B00F4165F /* TimeLists.c in Sources */,
 				2FEBA9DE0989AD1C00F4165F /* WindowBank.c in Sources */,
 				2FEBA9DF0989AD1D00F4165F /* WindowHelpers.c in Sources */,
+				8365A77F09991D69006FF0F4 /* SCREENOpenVideoCapture.c in Sources */,
+				8365A78109991DAB006FF0F4 /* SCREENCloseVideoCapture.c in Sources */,
+				8365A78309991E06006FF0F4 /* SCREENStartVideoCapture.c in Sources */,
+				8365A78509991E29006FF0F4 /* SCREENStopVideoCapture.c in Sources */,
+				8365A787099921A9006FF0F4 /* SCREENGetCapturedImage.c in Sources */,
+				8365A7890999223B006FF0F4 /* SCREENGetOpenGLTexture.c in Sources */,
+				8365A78B09992279006FF0F4 /* SCREENSetOpenGLTexture.c in Sources */,
+				8365A79D09992499006FF0F4 /* PsychVideoCaptureSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
