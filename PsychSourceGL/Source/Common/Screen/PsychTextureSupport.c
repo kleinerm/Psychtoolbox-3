@@ -105,12 +105,12 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
    // This number defines how the height and width of a texture need to be interpreted and how
    // texture coordinates are assigned in PsychBlitTextureToDisplay().
    win->textureOrientation=0;
-	// Set to default 0-value: Meaning of this field is specific for source of texture. It should
+	// Set to default minus 1-value (== disabled): Meaning of this field is specific for source of texture. It should
 	// somehow identify the cache data structure for textures of specifif origin in a unique way.
 	// If this is a cached texture for use by the PsychMovieSupport Quicktime subsystem and we
 	// use GWorld rendering, then this points to the movieRecord of the movie which is associated
 	// with this texture...
-	win->texturecache_slot=0;
+	win->texturecache_slot=-1;
 }
 
 

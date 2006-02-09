@@ -1,17 +1,18 @@
 function VideoCaptureDemoOSX
 
-AssertOSX;
+AssertOpenGL;
 screen=max(Screen('Screens'));
 
 try
-    win=Screen('OpenWindow', screen);
+    win=Screen('OpenWindow', screen); %, 0, [0 0 800 600]);
+    Screen('TextSize', win, 30);
+    Screen('TextStyle', win, 1);
     Screen('FillRect', win, 0);
     Screen('Flip',win);
-
+    
     [grabber fps width height]=Screen('OpenVideoCapture', win, 0);
-    fprintf('Grabber running at %i Hz width x height = %i x %i', fps, width, height);
-    fps
-    width
+    fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
+    
     Screen('StartVideoCapture', grabber);
 
     oldpts = 0;
@@ -21,9 +22,9 @@ try
         if KbCheck
             break;
         end;
-
+        
         [tex pts ]=Screen('GetCapturedImage', win, grabber, 0);
-        % fprintf('tex = %i ::', tex);
+        % fprintf('tex = %i  pts = %f\n', tex, pts);
         
         if (tex>0)
             % Print pts:
@@ -40,19 +41,15 @@ try
             Screen('Flip', win, 0, 0, 2);
             Screen('Close', tex);
             tex=0;
-        end;
-        
-        % WaitSecs(0.1);
-        
+        end;        
         count = count + 1;
     end;
     telapsed = GetSecs - t
     
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
-
     Screen('CloseAll');
 
 catch
-    Screen('CloseAll');
+   Screen('CloseAll');
 end;

@@ -73,7 +73,7 @@ PsychError SCREENGetCapturedImage(void)
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
     
     while (rc==0) {
-        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
+        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, &presentation_timestamp);
         if (rc<0) {
             // No image available and there won't be any in the future, because capture has been stopped.
 
@@ -87,8 +87,8 @@ PsychError SCREENGetCapturedImage(void)
         else if (rc==0 && waitForImage == 0) {
             // We should just poll once and no new texture available: Return a null-handle:
             PsychCopyOutDoubleArg(1, TRUE, 0);
-            // ...and an invalid timestamp:
-            PsychCopyOutDoubleArg(2, FALSE, -1);
+            // ...and the current timestamp:
+            PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
             // Ready!
             return(PsychError_none);
         }
@@ -133,7 +133,7 @@ PsychError SCREENGetCapturedImage(void)
 
     // Return presentation timestamp for this image:
     PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
-    
+
     // Ready!
     return(PsychError_none);
 }

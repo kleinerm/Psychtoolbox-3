@@ -851,7 +851,7 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
    else {
 		// Special path for Microsoft Windows:
     	// ...is this a Quicktime movietexture? If not, just skip this routine.
-    	if (win->windowType!=kPsychTexture || win->textureOrientation!=3) return;
+    	if (win->windowType!=kPsychTexture || win->textureOrientation!=3 || win->texturecache_slot<0) return;
 
 		// Quicktime movie texture: Check if we can move it into our recycler cache
 		// for later reuse...

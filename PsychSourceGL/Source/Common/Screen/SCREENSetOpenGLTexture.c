@@ -38,9 +38,9 @@ PsychError SCREENSetOpenGLTexture(void)
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
     int texid, w, h, d;
-    texid=w=h=d=-1;
     GLenum target = 0;
     GLboolean flag=FALSE;
+    texid=w=h=d=-1;
     
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);

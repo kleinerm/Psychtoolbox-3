@@ -21,7 +21,14 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#include <QTML.h>
+#include <QuickTimeComponents.h>
+#endif
 
 //#if PSYCH_SYSTEM == PSYCH_WINDOWS
 // We typedef all missing functions on Windows away...
@@ -67,13 +74,15 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
     
     // Retrieve handle to our capture data structure:
     handle = (int) chRefCon;
-    
+
+	 // printf("Count = %i , Callback-Handle = %i\n", count, handle);    
+
     // Compute capture timestamp:
     err = SGGetChannelTimeScale(c, &timeScale);
     vidcapRecordBANK[handle].current_pts = (double) time / (double) timeScale;
     
     // GWorld for offscreen rendering available?
-    if (vidcapRecordBANK[handle].gworld) {
+    if (vidcapRecordBANK[handle].gworld && vidcapRecordBANK[handle].grabber_active) {
         // Yes.
         
         // First time invocation for this sequence grabber?
@@ -86,7 +95,6 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
             // retrieve a channelÕs current sample description, the channel returns a sample description that is
             // appropriate to the type of data being captured
             err = SGGetChannelSampleDescription(c, (Handle)imageDesc);
-            //BailErr(err);
             
             /***** IMPORTANT NOTE *****
                 
@@ -138,10 +146,13 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
                                           NULL,					// flags
                                           codecNormalQuality, 	// accuracy in decompression
                                           bestSpeedCodec);		// compressor identifier or special identifiers ie. bestSpeedCodec
-            //BailErr(err);
+	        if (err!=noErr) {
+   	         printf("PTB-ERROR: Error in Video capture callback!!!");
+      	      fflush(NULL);
+        		}
             
             DisposeHandle((Handle)imageDesc);         
-            
+            // printf("DECOMPRESS-ONE_TIME!\n"); fflush(NULL);
             // One-Time setup of decompression engine done.
         }
         
@@ -161,6 +172,7 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
         // Now we should have the required texture data in our GWorld...
         // Increment the newimage - flag:
         vidcapRecordBANK[handle].frame_ready++;
+		  count++;
     }
     
     
@@ -200,8 +212,7 @@ void PsychVideoCaptureInit(void)
  */
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle)
 {
-    #define BailErr(x) {error = x; if(error != noErr) goto bail;}    
-    *capturehandle = -1;
+    SGChannel testc = 0;
     int i, slotid;
     OSErr error;
     char msgerr[10000];
@@ -209,10 +220,11 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Rect movierect;
     SeqGrabComponent seqGrab = NULL;
     SGChannel *sgchanptr = NULL;
-    error=noErr;
     ImageDescriptionHandle imageDesc;
     Fixed framerate;
- 
+    *capturehandle = -1;
+    error=noErr;
+
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -255,6 +267,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     
     // Zero-out new record:
     vidcapRecordBANK[slotid].gworld=NULL;
+    vidcapRecordBANK[slotid].decomSeq=NULL;    
+    vidcapRecordBANK[slotid].grabber_active = 0;
         
     // Open sequence grabber:
     // ======================
@@ -267,31 +281,66 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     
     // Initialize the sequence grabber component:
     error=noErr;
+
     error = SGInitialize(seqGrab);
-    
     if (error != noErr) {
         if (seqGrab) CloseComponent(seqGrab);
         PsychErrorExitMsg(PsychError_internal, "SGInitialize() for capture device failed!"); 
     }
 
-    // specify the destination data reference for a record operation
+    // Specify the destination data reference for a record operation
     // tell it we're not making a movie
     // if the flag seqGrabDontMakeMovie is used, the sequence grabber still calls
     // your data function, but does not write any data to the movie file
     // writeType will always be set to seqGrabWriteAppend
     error = SGSetDataRef(seqGrab, 0, 0, seqGrabDontMakeMovie);
     if (error !=noErr) {
-        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
-        vidcapRecordBANK[slotid].gworld = NULL;
         if (seqGrab) CloseComponent(seqGrab);
         PsychErrorExitMsg(PsychError_internal, "SGSetDataRef for capture device failed!");            
     }
 
-    sgchanptr = &(vidcapRecordBANK[slotid].sgchanVideo);
+	 // Set dummy GWorld - we need this to prevent SGNewChannel from crashing on Windoze.
+	 SGSetGWorld(seqGrab, 0, 0);
+
     // Create and setup video channel on sequence grabber:
+    sgchanptr = &(vidcapRecordBANK[slotid].sgchanVideo);
     error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
     if (error == noErr) {
+	     // Retrieve size of the capture rectangle - and therefore size of
+        // our GWorld for offscreen rendering:
         SGGetSrcVideoBounds(*sgchanptr, &movierect);
+
+        // Now that we know the movierect of our video device,
+        // destroy the channel, assign a properly sized GWorld
+        // and recreate the channel:
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+
+        // Create GWorld for this grabber object:
+        error = QTNewGWorld(&vidcapRecordBANK[slotid].gworld, 0, &movierect,  NULL, NULL, 0);
+        if (error!=noErr) {
+          CloseComponent(seqGrab);
+          PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation for capture device failed!");
+        }
+    
+        // Set grabbers graphics world to our GWorld:
+        error = SGSetGWorld(seqGrab, vidcapRecordBANK[slotid].gworld, NULL );
+        if (error !=noErr) {
+          DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+          vidcapRecordBANK[slotid].gworld = NULL;
+          CloseComponent(seqGrab);
+          PsychErrorExitMsg(PsychError_internal, "Assignment of GWorld to capture device failed!");            
+        }
+
+        // Create and setup video channel on sequence grabber:
+        error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
+        if (error !=noErr) {
+          DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+          vidcapRecordBANK[slotid].gworld = NULL;
+          CloseComponent(seqGrab);
+          PsychErrorExitMsg(PsychError_internal, "Assignment of GWorld to capture device failed!");            
+        }
+
         error = SGSetChannelBounds(*sgchanptr, &movierect);
         if (error == noErr) {
             // set usage for new video channel to avoid playthrough
@@ -310,62 +359,70 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         }
     }
     else {
-bail:
         // clean up on failure
         *sgchanptr = NULL;
-        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
-        vidcapRecordBANK[slotid].gworld = NULL;
         if (seqGrab) CloseComponent(seqGrab);
         PsychErrorExitMsg(PsychError_internal, "SGNewChannel() for capture device failed!");            
     }
 
-    // Retrieve a channelÕs current sample description, the channel returns a sample description that is
+    // Retrieve a channels current sample description, the channel returns a sample description that is
     // appropriate to the type of data being captured
-//    imageDesc = (ImageDescriptionHandle) NewHandle(0);
-//    error = SGGetChannelSampleDescription(vidcapRecordBANK[slotid].sgchanVideo, (Handle)imageDesc);
+    //    imageDesc = (ImageDescriptionHandle) NewHandle(0);
+    //    error = SGGetChannelSampleDescription(vidcapRecordBANK[slotid].sgchanVideo, (Handle)imageDesc);
+    //    movierect.left = 0;
+    //    movierect.top = 0;
+    //    movierect.right = (**imageDesc).width;
+    //    movierect.bottom = (**imageDesc).height 
+    //    DisposeHandle((Handle)imageDesc);
     
-//    movierect.left = 0;
-//    movierect.top = 0;
-//    movierect.right = (**imageDesc).width;
-//    movierect.bottom = (**imageDesc).height;
-    
-//    DisposeHandle((Handle)imageDesc);
-    
-    // Create GWorld for this grabber object:
-    error = QTNewGWorld(&vidcapRecordBANK[slotid].gworld, 0, &movierect,  NULL, NULL, 0);
-    if (error!=noErr) {
-        if (seqGrab) CloseComponent(seqGrab);
-        PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation for capture device failed!");
-    }
-    
-    // Set grabbers graphics world to our GWorld:
-    error = SGSetGWorld(seqGrab, vidcapRecordBANK[slotid].gworld, NULL );
-    
+    // Specify a data callback function: Gets called whenever a new frame is ready...
+    error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), NULL);
     if (error !=noErr) {
         DisposeGWorld(vidcapRecordBANK[slotid].gworld);
         vidcapRecordBANK[slotid].gworld = NULL;
-        if (seqGrab) CloseComponent(seqGrab);
-        PsychErrorExitMsg(PsychError_internal, "Assignment of GWorld to capture device failed!");            
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+        CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "Assignment of capture callback fcn. to capture device failed!");            
     }
-    
-    // Specify a data callback function:
-    error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), NULL);
-    BailErr(error);
     
     // Store a reference to our slotid for this channel. This gets passed to the
     // videocapture callback fcn. so it knows to which capture object to relate to...
-    SGSetChannelRefCon(vidcapRecordBANK[slotid].sgchanVideo, slotid);
+    error = SGSetChannelRefCon(vidcapRecordBANK[slotid].sgchanVideo, slotid);
+    if (error !=noErr) {
+        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+        vidcapRecordBANK[slotid].gworld = NULL;
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+        CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "Assignment of Refcon to capture device failed!");            
+    }
     
+    error = SGSetDataOutput(seqGrab, NULL, seqGrabDontMakeMovie);
+    if (error !=noErr) {
+        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+        vidcapRecordBANK[slotid].gworld = NULL;
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+        CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "Assignment of SGSetDataOutput() to capture device failed!");            
+    }
+
     // Get ready!
     error = SGPrepare(seqGrab, false, true);
-    BailErr(error); 
+    if (error !=noErr) {
+        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+        vidcapRecordBANK[slotid].gworld = NULL;
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+        CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "SGPrepare() for capture device failed!");            
+    }
     
     // Grabber should be ready now.
     
     // Assign new record:
     vidcapRecordBANK[slotid].seqGrab=seqGrab;    
-    vidcapRecordBANK[slotid].decomSeq=NULL;    
-    vidcapRecordBANK[slotid].grabber_active = 0;
 
     // Assign final handle:
     *capturehandle = slotid;
@@ -373,7 +430,8 @@ bail:
     // Increase counter:
     numCaptureRecords++;
 
-    // Query capture framerate:
+    // Query capture framerate: MK This doesn't return meaningful results for
+    // some reason :(
     SGGetFrameRate(vidcapRecordBANK[slotid].sgchanVideo, &framerate);
     vidcapRecordBANK[slotid].fps = (double) FixedToFloat(framerate);
 
@@ -384,7 +442,9 @@ bail:
     // We set nrframes == -1 to indicate that this value is not yet available.
     // Will do counting on first query for this parameter as it is very time-consuming:
     vidcapRecordBANK[slotid].nrframes = -1;
+
     printf("W x h = %i x  %i at %lf fps...", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
+
     return(TRUE);
 }
 
@@ -447,12 +507,8 @@ void PsychDeleteAllCaptureDevices(void)
  */
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
-    TimeValue		myCurrTime;
-    TimeValue		myNextTime;
-    TimeValue           nextFramesTime=0;
     OSErr		error = noErr;
     GLuint texid;
-    Rect rect;
     int w, h;
     double targetdelta, realdelta, frames;
     Boolean newframe = FALSE;
@@ -474,7 +530,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
     
     // Grant some processing time to the sequence grabber engine:
-    SGIdle(vidcapRecordBANK[capturehandle].seqGrab);
+    if (SGIdle(vidcapRecordBANK[capturehandle].seqGrab)!=noErr) {
+		PsychErrorExitMsg(PsychError_internal, "SGIdle() failed!!!");
+	 }
     
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
@@ -503,28 +561,33 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 
     // Synchronous texture fetch code for GWorld rendering mode:
         
-    // Disable client storage, if it is enabled for some reason:
-    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+    // Disable client storage on OS-X, if it is enabled for some reason:
+    #if PSYCH_SYSTEM == PSYCH_OSX
+      glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+    #endif
     
     // Build a standard PTB texture record:    
     
     // Assign texture rectangle:
     w=vidcapRecordBANK[capturehandle].width;
     h=vidcapRecordBANK[capturehandle].height;
-    SetRect(&rect, 0, 0, w, h);
-    
+
     // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
     // image row padding:
-    rect.right = rect.right + 4;
-    PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
+    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
     
     // Set NULL - special texture object as part of the PTB texture record:
     out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-    
+
+	 // Set textureNumber to zero, which means "Not cached, don't recycle"
+    // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
+    out_texture->textureNumber = 0;
+
     // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
     out_texture->textureOrientation = 3;
     
-    // Setup a pointer to our GWorld as texture data pointer:
+    // Setup a pointer to our GWorld as texture data pointer: Settin memsize to zero
+    // prevents unwanted free() operation in PsychDeleteTexture...
     out_texture->textureMemorySizeBytes = 0;
     
     // Lock GWorld:
@@ -540,32 +603,32 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     // filling an OpenGL texture with GWorlds content:
     PsychCreateTexture(out_texture);
     
-    // Undo hack from above after texture creation: Now we need the real width of the
-    // texture for proper texture coordinate assignments in drawing code et al.
-    //rect.right = rect.right - 4;
-    PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
-    
     // Unlock GWorld surface.
     UnlockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
-    
-    // Ready to use the texture... We're done.
+
+    // Undo hack from above after texture creation: Now we need the real width of the
+    // texture for proper texture coordinate assignments in drawing code et al.
+    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
+       
+    // Ready to use the texture...
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     
     // Expected delta between successive presentation timestamps:
+	 // MK: FIXME Hardcoded to 25 fps as fps code in Open.. doesn't work as supposed to...
     targetdelta = 1.0f / 25; // vidcapRecordBANK[capturehandle].fps;
     
     // Compute real delta, given rate and playback direction:
     realdelta = *presentation_timestamp - vidcapRecordBANK[capturehandle].last_pts;
     if (realdelta<0) realdelta = 0;
-    
     frames = realdelta / targetdelta;
 
     // Dropped frames?
     if (frames > 1 && vidcapRecordBANK[capturehandle].last_pts>=0) {
         vidcapRecordBANK[capturehandle].nr_droppedframes += (int) (frames - 1 + 0.5);
     }
-    
+
+	 // Record timestamp as reference for next check:    
     vidcapRecordBANK[capturehandle].last_pts = *presentation_timestamp;
     
     // We're successfully done!
@@ -604,8 +667,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
         
         SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
-
-
+        printf("FRAMERATE: %f\n", vidcapRecordBANK[capturehandle].fps);
     }
     else {
         // Stop capture:
@@ -644,6 +706,7 @@ void PsychExitVideoCapture(void)
     // Shutdown Quicktime for Windows compatibility layer:
     TerminateQTML();
 #endif
-    
+
+    firsttime = TRUE;
     return;
 }
