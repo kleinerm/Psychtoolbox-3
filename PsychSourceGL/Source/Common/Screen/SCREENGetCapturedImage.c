@@ -21,14 +21,17 @@ Psychtoolbox3/Source/Common/SCREENGetCapturedImage.c
 
 #include "Screen.h"
 
-static char useString[] = "[ texturePtr [timeindex]]=Screen('GetCapturedImage', windowPtr, capturePtr, [waitForImage=1], [fortimeindex]);";
+static char useString[] = "[ texturePtr [timeindex] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr, [waitForImage=1], [fortimeindex]);";
 static char synopsisString[] = 
 "Try to fetch a new texture image from video capture device 'capturePtr' for visual playback/display in onscreen window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
 "a texturePtr of zero, or -1 if none will become ready because capture has been stopped. "
 "'fortimeindex' Don't request the next image, but the image closest to fortimeindex. The (optional) return "
-"value 'timeindex' contains the exact time when the returned image was captured. ";
+"value 'timeindex' contains the exact time when the returned image was captured. The (optional) return "
+"value 'summed_intensity' contains the sum of all pixel intensity values of all channels of the image - "
+"some measure of overall brightness. Only query this value if you need it, computation is expensive.";
+
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 
 PsychError SCREENGetCapturedImage(void) 
@@ -36,6 +39,7 @@ PsychError SCREENGetCapturedImage(void)
     PsychWindowRecordType		*windowRecord;
     PsychWindowRecordType		*textureRecord;
     PsychRectType			rect;
+    double                              summed_intensity;
     int                                 moviehandle = -1;
     int                                 waitForImage = TRUE;
     double                              requestedTimeIndex = -1;
@@ -48,7 +52,7 @@ PsychError SCREENGetCapturedImage(void)
     
     PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(2));           // Max. 2 output args.
+    PsychErrorExit(PsychCapNumOutputArgs(3));           // Max. 3 output args.
     
     // Get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
@@ -73,7 +77,7 @@ PsychError SCREENGetCapturedImage(void)
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
     
     while (rc==0) {
-        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, &presentation_timestamp);
+        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, &presentation_timestamp, NULL);
         if (rc<0) {
             // No image available and there won't be any in the future, because capture has been stopped.
 
@@ -81,6 +85,7 @@ PsychError SCREENGetCapturedImage(void)
             PsychCopyOutDoubleArg(1, TRUE, -1);
             // ...and an invalid timestamp:
             PsychCopyOutDoubleArg(2, FALSE, -1);
+            PsychCopyOutDoubleArg(3, FALSE, 0);
             // Ready!
             return(PsychError_none);
         }
@@ -89,6 +94,7 @@ PsychError SCREENGetCapturedImage(void)
             PsychCopyOutDoubleArg(1, TRUE, 0);
             // ...and the current timestamp:
             PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
+            PsychCopyOutDoubleArg(3, FALSE, 0);
             // Ready!
             return(PsychError_none);
         }
@@ -124,7 +130,14 @@ PsychError SCREENGetCapturedImage(void)
     textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
     
     // Try to fetch an image from the movie object and return it as texture:
-    PsychGetTextureFromCapture(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp);
+    if (PsychGetNumOutputArgs() > 2) {
+        // Return sum of pixel intensities for all channels of this image:
+        PsychGetTextureFromCapture(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp, &summed_intensity);
+        PsychCopyOutDoubleArg(3, FALSE, summed_intensity);
+    }
+    else {
+        PsychGetTextureFromCapture(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp, NULL);
+    }
 
     // Texture ready for consumption. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(textureRecord);

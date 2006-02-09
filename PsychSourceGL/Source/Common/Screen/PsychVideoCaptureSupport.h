@@ -29,7 +29,7 @@ void PsychVideoCaptureInit(void);
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle);
 void PsychCloseVideoCaptureDevice(int capturehandle);
 void PsychDeleteAllCaptureDevices(void);
-int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp);
+int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop);
 void PsychExitVideoCapture(void);
 

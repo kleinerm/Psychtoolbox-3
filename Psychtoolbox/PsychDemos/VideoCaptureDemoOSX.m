@@ -4,7 +4,8 @@ AssertOpenGL;
 screen=max(Screen('Screens'));
 
 try
-    win=Screen('OpenWindow', screen); %, 0, [0 0 800 600]);
+    win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
+    %win=Screen('OpenWindow', screen);
     Screen('TextSize', win, 30);
     Screen('TextStyle', win, 1);
     Screen('FillRect', win, 0);
@@ -18,7 +19,7 @@ try
     oldpts = 0;
     count = 0;
     t=GetSecs;
-    while (GetSecs - t) < 60 
+    while (GetSecs - t) < 600 
         if KbCheck
             break;
         end;

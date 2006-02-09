@@ -502,15 +502,18 @@ void PsychDeleteAllCaptureDevices(void)
  *              If set to -1, or if in realtime playback mode, this parameter is ignored and the next video frame is returned.
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
- *
+ *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
  *  Returns true (1) on success, false (0) if no new image available, -1 if no new image available and there won't be any in future.
  */
-int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
+int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
 {
     OSErr		error = noErr;
     GLuint texid;
     int w, h;
     double targetdelta, realdelta, frames;
+	 unsigned int intensity = 0;
+    unsigned int count, i;
+    unsigned char* pixptr;
     Boolean newframe = FALSE;
         
     // Activate OpenGL context of target window: We'll need it for texture fetch...
@@ -598,11 +601,23 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     
     // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
     out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+    pixptr = (unsigned char*) out_texture->textureMemory;
     
     // Let PsychCreateTexture() do the rest of the job of creating, setting up and
     // filling an OpenGL texture with GWorlds content:
     PsychCreateTexture(out_texture);
-    
+   
+    // Sum of pixel intensities requested?
+    if(summed_intensity) {
+      *summed_intensity=0.0;
+      count = (w*h*4);
+      for (i=0; i<count; i++) {
+        // if (i % 1000 == 0) { printf("CurCount = %i\n", i); fflush(NULL); }
+        intensity+=(unsigned int) pixptr[i];
+      }
+      *summed_intensity = (double) intensity;
+    }
+
     // Unlock GWorld surface.
     UnlockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
 
