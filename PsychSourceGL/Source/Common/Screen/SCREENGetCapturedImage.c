@@ -26,8 +26,8 @@ static char synopsisString[] =
 "Try to fetch a new texture image from video capture device 'capturePtr' for visual playback/display in onscreen window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
-"a texturePtr of zero, or -1 if none will become ready because capture has been stopped. "
-"'fortimeindex' Don't request the next image, but the image closest to fortimeindex. The (optional) return "
+"a texturePtr of zero, or -1 if none will become ready because capture has been stopped. Set to 2 if you just want to get the "
+"summed intensity of the image. 'fortimeindex' Don't request the next image, but the image closest to fortimeindex. The (optional) return "
 "value 'timeindex' contains the exact time when the returned image was captured. The (optional) return "
 "value 'summed_intensity' contains the sum of all pixel intensity values of all channels of the image - "
 "some measure of overall brightness. Only query this value if you need it, computation is expensive.";
@@ -105,30 +105,35 @@ PsychError SCREENGetCapturedImage(void)
     }
 
     // New image available: Go ahead...
-    
-    // Create a texture record.  Really just a window record adapted for textures.  
-    PsychCreateWindowRecord(&textureRecord);	// This also fills the window index field.
-    // Set mode to 'Texture':
-    textureRecord->windowType=kPsychTexture;
-    // We need to assign the screen number of the onscreen-window.
-    textureRecord->screenNumber=windowRecord->screenNumber;
-    // It is always a 32 bit texture for captured images:
-    textureRecord->depth=32;
+    if (waitForImage!=2) {
+        // Create a texture record.  Really just a window record adapted for textures.  
+        PsychCreateWindowRecord(&textureRecord);	// This also fills the window index field.
+                                                        // Set mode to 'Texture':
+        textureRecord->windowType=kPsychTexture;
+        // We need to assign the screen number of the onscreen-window.
+        textureRecord->screenNumber=windowRecord->screenNumber;
+        // It is always a 32 bit texture for captured images:
+        textureRecord->depth=32;
+        
+        // Create default rectangle which describes the dimensions of the image. Will be overwritten
+        // later on.
+        PsychMakeRect(rect, 0, 0, 10, 10);
+        PsychCopyRect(textureRecord->rect, rect);
+        
+        // Other setup stuff:
+        textureRecord->textureMemorySizeBytes= 0;
+        textureRecord->textureMemory=NULL;
+        
+        // Assign proper OpenGL-Renderingcontext to texture:
+        // MK: Is this the proper way to do it???
+        textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
+        textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+    }
+    else {
+        // Just want to return summed_intensity and timestamp, not real texture...
+        textureRecord = NULL;
+    }
 
-    // Create default rectangle which describes the dimensions of the image. Will be overwritten
-    // later on.
-    PsychMakeRect(rect, 0, 0, 10, 10);
-    PsychCopyRect(textureRecord->rect, rect);
-    
-    // Other setup stuff:
-    textureRecord->textureMemorySizeBytes= 0;
-    textureRecord->textureMemory=NULL;
-
-    // Assign proper OpenGL-Renderingcontext to texture:
-    // MK: Is this the proper way to do it???
-    textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
-    textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
-    
     // Try to fetch an image from the movie object and return it as texture:
     if (PsychGetNumOutputArgs() > 2) {
         // Return sum of pixel intensities for all channels of this image:
@@ -139,11 +144,16 @@ PsychError SCREENGetCapturedImage(void)
         PsychGetTextureFromCapture(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp, NULL);
     }
 
-    // Texture ready for consumption. Mark it valid and return handle to userspace:
-    PsychSetWindowRecordValid(textureRecord);
-
-    PsychCopyOutDoubleArg(1, TRUE, textureRecord->windowIndex);
-
+    // Real texture requested?
+    if (textureRecord) {
+        // Texture ready for consumption. Mark it valid and return handle to userspace:
+        PsychSetWindowRecordValid(textureRecord);
+        PsychCopyOutDoubleArg(1, TRUE, textureRecord->windowIndex);
+    }
+    else {
+        PsychCopyOutDoubleArg(1, TRUE, 0);
+    }
+    
     // Return presentation timestamp for this image:
     PsychCopyOutDoubleArg(2, FALSE, presentation_timestamp);
 

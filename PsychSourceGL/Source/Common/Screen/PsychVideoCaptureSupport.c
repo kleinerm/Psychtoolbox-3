@@ -136,16 +136,16 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
             // for more information see Ice Floe #8 http://developer.apple.com/quicktime/icefloe/dispatch008.html
             // the destination is specified as the GWorld
             err = DecompressSequenceBegin(&(vidcapRecordBANK[handle].decomSeq),	// pointer to field to receive unique ID for sequence
-                                          imageDesc,			// handle to image description structure
-                                          vidcapRecordBANK[handle].gworld,   // port for the DESTINATION image
+                                          imageDesc,                            // handle to image description structure
+                                          vidcapRecordBANK[handle].gworld,      // port for the DESTINATION image
                                           NULL,					// graphics device handle, if port is set, set to NULL
                                           NULL,					// source rectangle defining the portion of the image to decompress 
-                                          NULL, //&scaleMatrix,			// transformation matrix
+                                          NULL,                                 // transformation matrix
                                           srcCopy,				// transfer mode specifier
-                                          (RgnHandle)NULL,		// clipping region in dest. coordinate system to use as a mask
-                                          NULL,					// flags
-                                          codecNormalQuality, 	// accuracy in decompression
-                                          bestSpeedCodec);		// compressor identifier or special identifiers ie. bestSpeedCodec
+                                          (RgnHandle)NULL,                      // clipping region in dest. coordinate system to use as a mask
+                                          0,					// flags
+                                          codecNormalQuality,                   // accuracy in decompression
+                                          bestSpeedCodec);                      // compressor identifier or special identifiers ie. bestSpeedCodec
 	        if (err!=noErr) {
    	         printf("PTB-ERROR: Error in Video capture callback!!!");
       	      fflush(NULL);
@@ -192,7 +192,7 @@ void PsychVideoCaptureInit(void)
     for (i=0; i < PSYCH_MAX_CAPTUREDEVICES; i++) {
         vidcapRecordBANK[i].gworld = (GWorldPtr) NULL;
         vidcapRecordBANK[i].seqGrab = (SeqGrabComponent) NULL;
-        vidcapRecordBANK[i].decomSeq = NULL;
+        vidcapRecordBANK[i].decomSeq = 0;
         vidcapRecordBANK[i].grabber_active = 0;
     }    
     numCaptureRecords = 0;
@@ -212,7 +212,6 @@ void PsychVideoCaptureInit(void)
  */
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle)
 {
-    SGChannel testc = 0;
     int i, slotid;
     OSErr error;
     char msgerr[10000];
@@ -267,7 +266,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     
     // Zero-out new record:
     vidcapRecordBANK[slotid].gworld=NULL;
-    vidcapRecordBANK[slotid].decomSeq=NULL;    
+    vidcapRecordBANK[slotid].decomSeq=0;    
     vidcapRecordBANK[slotid].grabber_active = 0;
         
     // Open sequence grabber:
@@ -348,6 +347,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
             error = SGSetChannelUsage(*sgchanptr, seqGrabRecord );
         }
         
+        error = SGGetChannelBounds(*sgchanptr, &movierect);
+
         if (error != noErr) {
             // clean up on failure
             SGDisposeChannel(seqGrab, *sgchanptr);
@@ -362,6 +363,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         // clean up on failure
         *sgchanptr = NULL;
         if (seqGrab) CloseComponent(seqGrab);
+        
+        if (error == -9400 || error== -9405) PsychErrorExitMsg(PsychError_user, "Couldn't connect to video capture device! Device offline or disconnected?");
         PsychErrorExitMsg(PsychError_internal, "SGNewChannel() for capture device failed!");            
     }
 
@@ -376,7 +379,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     //    DisposeHandle((Handle)imageDesc);
     
     // Specify a data callback function: Gets called whenever a new frame is ready...
-    error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), NULL);
+    error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
     if (error !=noErr) {
         DisposeGWorld(vidcapRecordBANK[slotid].gworld);
         vidcapRecordBANK[slotid].gworld = NULL;
@@ -509,9 +512,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 {
     OSErr		error = noErr;
     GLuint texid;
-    int w, h;
+    int w, h, padding;
     double targetdelta, realdelta, frames;
-	 unsigned int intensity = 0;
+    unsigned int intensity = 0;
     unsigned int count, i;
     unsigned char* pixptr;
     Boolean newframe = FALSE;
@@ -527,15 +530,11 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     if ((timeindex!=-1) && (timeindex < 0 || timeindex >= 10000.0)) {
         PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
     }
-    
-    if (NULL == out_texture && !checkForImage) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of out_texture ptr passed!!!");
-    }
-    
+
     // Grant some processing time to the sequence grabber engine:
     if (SGIdle(vidcapRecordBANK[capturehandle].seqGrab)!=noErr) {
-		PsychErrorExitMsg(PsychError_internal, "SGIdle() failed!!!");
-	 }
+        PsychErrorExitMsg(PsychError_internal, "SGIdle() failed!!!");
+    }
     
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
@@ -577,21 +576,29 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 
     // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
     // image row padding:
-    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
+#if PSYCH_SYSTEM == PSYCH_OSX
+    padding = 4 + (4 - (w % 4)) % 4;
+#else
+    padding= 0;
+#endif
     
-    // Set NULL - special texture object as part of the PTB texture record:
-    out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-
-	 // Set textureNumber to zero, which means "Not cached, don't recycle"
-    // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
-    out_texture->textureNumber = 0;
-
-    // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
-    out_texture->textureOrientation = 3;
-    
-    // Setup a pointer to our GWorld as texture data pointer: Settin memsize to zero
-    // prevents unwanted free() operation in PsychDeleteTexture...
-    out_texture->textureMemorySizeBytes = 0;
+    if (out_texture) {
+        PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
+        
+        // Set NULL - special texture object as part of the PTB texture record:
+        out_texture->targetSpecific.QuickTimeGLTexture = NULL;
+        
+        // Set textureNumber to zero, which means "Not cached, don't recycle"
+        // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
+        out_texture->textureNumber = 0;
+        
+        // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+        out_texture->textureOrientation = 3;
+        
+        // Setup a pointer to our GWorld as texture data pointer: Settin memsize to zero
+        // prevents unwanted free() operation in PsychDeleteTexture...
+        out_texture->textureMemorySizeBytes = 0;
+    }
     
     // Lock GWorld:
     if(!LockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld))) {
@@ -599,33 +606,33 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromCapture(): Locking GWorld pixmap surface failed!!!");
     }
     
-    // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
-    out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
-    pixptr = (unsigned char*) out_texture->textureMemory;
+    if (out_texture) {
+        // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
+        out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+        
+        // Let PsychCreateTexture() do the rest of the job of creating, setting up and
+        // filling an OpenGL texture with GWorlds content:
+        PsychCreateTexture(out_texture);
+
+        // Undo hack from above after texture creation: Now we need the real width of the
+        // texture for proper texture coordinate assignments in drawing code et al.
+        PsychMakeRect(out_texture->rect, 0, 0, w-padding, h);    
+        // Ready to use the texture...
+    }
     
-    // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-    // filling an OpenGL texture with GWorlds content:
-    PsychCreateTexture(out_texture);
-   
     // Sum of pixel intensities requested?
     if(summed_intensity) {
-      *summed_intensity=0.0;
-      count = (w*h*4);
-      for (i=0; i<count; i++) {
-        // if (i % 1000 == 0) { printf("CurCount = %i\n", i); fflush(NULL); }
-        intensity+=(unsigned int) pixptr[i];
-      }
-      *summed_intensity = (double) intensity;
+        pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+        count = (w*h*4);
+        for (i=0; i<count; i++) {
+            // if (i % 1000 == 0) { printf("CurCount = %i\n", i); fflush(NULL); }
+            intensity+=(unsigned int) pixptr[i];
+        }
+        *summed_intensity = ((double) intensity - w * h * 255) / w / h / 3;
     }
 
     // Unlock GWorld surface.
     UnlockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
-
-    // Undo hack from above after texture creation: Now we need the real width of the
-    // texture for proper texture coordinate assignments in drawing code et al.
-    PsychMakeRect(out_texture->rect, 0, 0, w, h);    
-       
-    // Ready to use the texture...
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     

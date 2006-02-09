@@ -1,11 +1,18 @@
-function VideoCaptureDemoOSX
+function VideoCaptureDemoOSX(fullscreen)
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
+if nargin < 1
+    fullscreen=0;
+end;
 
 try
-    win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
-    %win=Screen('OpenWindow', screen);
+    if fullscreen<1
+        win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
+    else
+        win=Screen('OpenWindow', screen);
+    end;
+    
     Screen('TextSize', win, 30);
     Screen('TextStyle', win, 1);
     Screen('FillRect', win, 0);
