@@ -18,7 +18,7 @@ try
     Screen('FillRect', win, 0);
     Screen('Flip',win);
     
-    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);
+    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);%, [00 00 200 200]);
     fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
     
     Screen('StartVideoCapture', grabber);
@@ -31,7 +31,7 @@ try
             break;
         end;
         
-        [tex pts ]=Screen('GetCapturedImage', win, grabber, 0);
+        [tex pts]=Screen('GetCapturedImage', win, grabber, 0);
         % fprintf('tex = %i  pts = %f\n', tex, pts);
         
         if (tex>0)

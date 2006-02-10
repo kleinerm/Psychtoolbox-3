@@ -65,11 +65,9 @@ try
     Screen('Flip',win);
     
     % Open default video capture device:
-    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);
+    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);%, [0 0 200 200]);
     fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
     
-    Priority(MaxPriority(win));
-    Priority(0);
     % Start video capture:
     Screen('StartVideoCapture', grabber);
     
@@ -172,14 +170,12 @@ try
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
-    Priority(0);
 
     tavgdelay = tavgdelay / ntrials;
     tavgdelay
     return;
     
 catch
-   Priority(0);
    Screen('CloseAll');
    rethrow(lasterror);
 end;

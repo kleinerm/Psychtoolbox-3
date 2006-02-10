@@ -58,6 +58,10 @@ typedef struct {
     int nr_droppedframes;
     int frame_ready;
     int grabber_active;
+    Rect roirect;
+    double avg_decompresstime;
+    double avg_gfxtime;
+    int nrgfxframes;
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -67,15 +71,15 @@ static Boolean firsttime = TRUE;
 OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long chRefCon, TimeValue time, short writeType, long refCon)
 {
     int handle;
-    static unsigned int count = 0;
     OSErr err = noErr;
     CodecFlags	ignore;
     TimeScale 	timeScale;
+    double tstart, tend;
+    
+    PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
     // Retrieve handle to our capture data structure:
     handle = (int) chRefCon;
-
-	 // printf("Count = %i , Callback-Handle = %i\n", count, handle);    
 
     // Compute capture timestamp:
     err = SGGetChannelTimeScale(c, &timeScale);
@@ -88,47 +92,12 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
         // First time invocation for this sequence grabber?
         if (vidcapRecordBANK[handle].decomSeq == 0) {
             // Need to do one-time setup of decompression sequence:
-            Rect		sourceRect = { 0, 0 };
-            MatrixRecord        scaleMatrix;
             ImageDescriptionHandle imageDesc = (ImageDescriptionHandle) NewHandle(0);
             
             // retrieve a channelÕs current sample description, the channel returns a sample description that is
             // appropriate to the type of data being captured
             err = SGGetChannelSampleDescription(c, (Handle)imageDesc);
-            
-            /***** IMPORTANT NOTE *****
-                
-                Previous versions of this sample code made an incorrect decompression
-                request.  Intending to draw the DV frame at quarter-size into a quarter-size
-                offscreen GWorld, it made the call
-                
-                err = DecompressSequenceBegin(..., &rect, nil, ...);
-            
-            passing a quarter-size rectangle as the source rectangle.  The correct
-                interpretation of this request is to draw the top-left corner of the DV
-                frame cropped at normal size.  Unfortunately, a DV-specific bug in QuickTime
-                5 caused it to misinterpret this request and scale the frame to fit.
-                
-                This bug will be fixed in QuickTime 6.  If your code behaves as intended
-                because of the bug, you should fix your code to pass a matrix scaling the
-                frame to fit the offscreen gworld:
-                
-                RectMatrix( & scaleMatrix, &dvFrameRect, &gworldBounds );
-            err = DecompressSequenceBegin(..., nil, &scaleMatrix, ...);
-            
-            This approach will work in all versions of QuickTime.
-                
-                **************************/
-            
-            // make a scaling matrix for the sequence
-            //sourceRect.right = (**imageDesc).width;
-            //sourceRect.bottom = (**imageDesc).height;
-            vidcapRecordBANK[handle].width = (**imageDesc).width;
-            vidcapRecordBANK[handle].height = (**imageDesc).height;
-            
-            
-            //RectMatrix(&scaleMatrix, &sourceRect, &gMungData->boundsRect);
-            
+                        
             // begin the process of decompressing a sequence of frames
             // this is a set-up call and is only called once for the sequence - the ICM will interrogate different codecs
             // and construct a suitable decompression chain, as this is a time consuming process we don't want to do this
@@ -139,17 +108,17 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
                                           imageDesc,                            // handle to image description structure
                                           vidcapRecordBANK[handle].gworld,      // port for the DESTINATION image
                                           NULL,					// graphics device handle, if port is set, set to NULL
-                                          NULL,					// source rectangle defining the portion of the image to decompress 
+                                          &(vidcapRecordBANK[handle].roirect),	// source rectangle defining the portion of the image to decompress 
                                           NULL,                                 // transformation matrix
                                           srcCopy,				// transfer mode specifier
                                           (RgnHandle)NULL,                      // clipping region in dest. coordinate system to use as a mask
                                           0,					// flags
                                           codecNormalQuality,                   // accuracy in decompression
                                           bestSpeedCodec);                      // compressor identifier or special identifiers ie. bestSpeedCodec
-	        if (err!=noErr) {
-   	         printf("PTB-ERROR: Error in Video capture callback!!!");
-      	      fflush(NULL);
-        		}
+            if (err!=noErr) {
+                printf("PTB-ERROR: Error in Video capture callback!!!\n");
+                fflush(NULL);
+            }
             
             DisposeHandle((Handle)imageDesc);         
             // printf("DECOMPRESS-ONE_TIME!\n"); fflush(NULL);
@@ -165,14 +134,18 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
                                        NULL);				// async completion proc
         
         if (err!=noErr) {
-            printf("PTB-ERROR: Error in Video capture callback!!!");
+            printf("PTB-ERROR: Error in Video capture callback code %i!!!\n", (int) err);
             fflush(NULL);
         }
         
         // Now we should have the required texture data in our GWorld...
         // Increment the newimage - flag:
         vidcapRecordBANK[handle].frame_ready++;
-		  count++;
+    
+        PsychGetAdjustedPrecisionTimerSeconds(&tend);
+        vidcapRecordBANK[handle].avg_decompresstime+=(tend - tstart);
+        // Update framecounter:
+        vidcapRecordBANK[handle].nrframes++;
     }
     
     
@@ -209,14 +182,15 @@ void PsychVideoCaptureInit(void)
  *      win = Pointer to window record of associated onscreen window.
  *      deviceIndex = Index of the grabber device. (Currently ignored)
  *      capturehandle = handle to the new capture object.
+ *      capturerectangle = If non-NULL a ptr to a PsychRectangle which contains the ROI for capture.
  */
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle)
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle)
 {
     int i, slotid;
     OSErr error;
     char msgerr[10000];
     char errdesc[1000];
-    Rect movierect;
+    Rect movierect, newrect;
     SeqGrabComponent seqGrab = NULL;
     SGChannel *sgchanptr = NULL;
     ImageDescriptionHandle imageDesc;
@@ -305,11 +279,55 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     sgchanptr = &(vidcapRecordBANK[slotid].sgchanVideo);
     error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
     if (error == noErr) {
-	     // Retrieve size of the capture rectangle - and therefore size of
+        // Retrieve size of the capture rectangle - and therefore size of
         // our GWorld for offscreen rendering:
         SGGetSrcVideoBounds(*sgchanptr, &movierect);
-
-        // Now that we know the movierect of our video device,
+        
+        // Capture-Rectangle (ROI) specified?
+        if (capturerectangle) {
+            // Yes. Try to set it up...
+            // Assign new requested ROI:
+            newrect.left=(short) capturerectangle[kPsychLeft];
+            newrect.top=(short)  capturerectangle[kPsychTop];
+            newrect.right=(short)  capturerectangle[kPsychRight];
+            newrect.bottom=(short) capturerectangle[kPsychBottom];
+            
+            printf("PTB-INFO: Selected video capture ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+            
+            if ((int) capturerectangle[kPsychLeft]<movierect.left || (int) capturerectangle[kPsychTop]<movierect.top ||
+                (int) capturerectangle[kPsychRight]>movierect.right || (int) capturerectangle[kPsychBottom]>movierect.bottom) {
+                // ROI is not a subrectangle of video digitizers maximum ROI!
+                SGDisposeChannel(seqGrab, *sgchanptr);
+                *sgchanptr = NULL;
+                CloseComponent(seqGrab);
+                PsychErrorExitMsg(PsychError_user, "Invalid video region of interest (not inside image) specified!");
+            }
+            
+            // Try to set our own custom video capture rectangle for the digitizer hardware:
+            error=SGSetVideoRect(*sgchanptr, &newrect);
+            if (error!=noErr) {
+                // Grabber didn't accept new rectangle :(
+                printf("PTB-INFO: Video capture device didn't accept new capture area. Reverting to full hardware capture area,\n");
+                printf("PTB-INFO: Trying to only process specified ROI by restricting conversion to ROI in software...\n");
+                movierect.left=(int) capturerectangle[kPsychLeft];
+                movierect.top=(int) capturerectangle[kPsychTop];
+                movierect.right=(int) capturerectangle[kPsychRight];
+                movierect.bottom=(int) capturerectangle[kPsychBottom];
+            }
+            else {
+                // Retrieve new capture rectangle settings:
+                error = SGGetVideoRect(*sgchanptr, &movierect);
+            }
+        }
+        
+        // Store our roirect in structure:
+        vidcapRecordBANK[slotid].roirect = movierect;
+        movierect.right-=movierect.left;
+        movierect.bottom-=movierect.top;
+        movierect.left=0;
+        movierect.top=0;
+        
+        // Now that we know the movierect of our ROI,
         // destroy the channel, assign a properly sized GWorld
         // and recreate the channel:
         SGDisposeChannel(seqGrab, *sgchanptr);
@@ -340,14 +358,21 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
           PsychErrorExitMsg(PsychError_internal, "Assignment of GWorld to capture device failed!");            
         }
 
+        // Try to set our own custom video capture rectangle:
+        error=SGSetVideoRect(*sgchanptr, &movierect);
+        if (error!=noErr) {
+            // Grabber didn't accept new rectangle :(
+            printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full area...\n"); fflush(NULL);
+        }
+
         error = SGSetChannelBounds(*sgchanptr, &movierect);
         if (error == noErr) {
             // set usage for new video channel to avoid playthrough
             // note we don't set seqGrabPlayDuringRecord
-            error = SGSetChannelUsage(*sgchanptr, seqGrabRecord );
+            error = SGSetChannelUsage(*sgchanptr, seqGrabRecord | seqGrabLowLatencyCapture);
         }
         
-        error = SGGetChannelBounds(*sgchanptr, &movierect);
+        //if (error==noErr) error = SGGetChannelBounds(*sgchanptr, &movierect);
 
         if (error != noErr) {
             // clean up on failure
@@ -356,7 +381,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
             DisposeGWorld(vidcapRecordBANK[slotid].gworld);
             vidcapRecordBANK[slotid].gworld = NULL;
             if (seqGrab) CloseComponent(seqGrab);
-            PsychErrorExitMsg(PsychError_internal, "SGSetChannelBounds() or SGSetChannelUsage for capture device failed!");            
+            PsychErrorExitMsg(PsychError_internal, "SGSetChannelBounds() or SGSetChannelUsage() for capture device failed!");            
         }
     }
     else {
@@ -442,11 +467,10 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     vidcapRecordBANK[slotid].width = movierect.right - movierect.left;
     vidcapRecordBANK[slotid].height = movierect.bottom - movierect.top;
     
-    // We set nrframes == -1 to indicate that this value is not yet available.
-    // Will do counting on first query for this parameter as it is very time-consuming:
-    vidcapRecordBANK[slotid].nrframes = -1;
+    // Reset framecounter:
+    vidcapRecordBANK[slotid].nrframes = 0;
 
-    printf("W x h = %i x  %i at %lf fps...", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
+    printf("W x h = %i x  %i at %lf fps...\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
 
     return(TRUE);
 }
@@ -518,12 +542,15 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     unsigned int count, i;
     unsigned char* pixptr;
     Boolean newframe = FALSE;
-        
+    double tstart, tend;
+    
+    PsychGetAdjustedPrecisionTimerSeconds(&tstart);
+    
     // Activate OpenGL context of target window: We'll need it for texture fetch...
     PsychSetGLContext(win);
     
     // Sanity checks:
-    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+    if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || vidcapRecordBANK[capturehandle].gworld == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
     }
     
@@ -553,6 +580,11 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
             // Grabber stopped. We'll never get a new image:
             return(-1);
         }
+
+        // Timestamping:
+        PsychGetAdjustedPrecisionTimerSeconds(&tend);
+        vidcapRecordBANK[capturehandle].nrgfxframes++;
+        vidcapRecordBANK[capturehandle].avg_gfxtime+=(tend - tstart);
 
         // Grabber active. Just return availability status:
         return(newframe);
@@ -653,6 +685,11 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	 // Record timestamp as reference for next check:    
     vidcapRecordBANK[capturehandle].last_pts = *presentation_timestamp;
     
+    // Timestamping:
+    PsychGetAdjustedPrecisionTimerSeconds(&tend);
+    vidcapRecordBANK[capturehandle].nrgfxframes++;
+    vidcapRecordBANK[capturehandle].avg_gfxtime+=(tend - tstart);
+    
     // We're successfully done!
     return(TRUE);
 }
@@ -701,7 +738,17 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
         if ((dropped=vidcapRecordBANK[capturehandle].nr_droppedframes) > 0) {
             printf("PTB-INFO: Video capture dropped %i frames on device %i to keep pipe running.\n", vidcapRecordBANK[capturehandle].nr_droppedframes, capturehandle); 
         }
+        if (vidcapRecordBANK[capturehandle].nrframes>0)  vidcapRecordBANK[capturehandle].avg_decompresstime/= (double)vidcapRecordBANK[capturehandle].nrframes;
+        printf("PTB-INFO: Average time spent in video decompressor was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_decompresstime * 1000.0f);
+        if (vidcapRecordBANK[capturehandle].nrgfxframes>0)  vidcapRecordBANK[capturehandle].avg_gfxtime/= (double)vidcapRecordBANK[capturehandle].nrgfxframes;
+        printf("PTB-INFO: Average time spent in GetCapturedImage was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_gfxtime * 1000.0f);
     }
+    
+    // Reset framecounter:
+    vidcapRecordBANK[capturehandle].nrframes = 0;
+    vidcapRecordBANK[capturehandle].avg_decompresstime = 0;
+    vidcapRecordBANK[capturehandle].nrgfxframes = 0;
+    vidcapRecordBANK[capturehandle].avg_gfxtime = 0;
     
     return(dropped);
 }

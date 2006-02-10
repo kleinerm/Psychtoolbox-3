@@ -29,7 +29,7 @@
 #include "Screen.h"
 
 
-static char useString[] = "[ videoPtr [fps] [width] [height]]=Screen('OpenVideoCapture', windowPtr, deviceIndex);";
+static char useString[] = "[ videoPtr [fps] [width] [height]]=Screen('OpenVideoCapture', windowPtr [, deviceIndex] [roirectangle]);";
 static char synopsisString[] = 
 	"Try to open the video source 'deviceIndex' for capture into onscreen window 'windowPtr' and "
         "return a handle 'videoPtr' on success. On OS-X and Windows, video capture is handled by use of "
@@ -48,13 +48,15 @@ PsychError SCREENOpenVideoCapture(void)
         double                                  framerate;
         int                                     width;
         int                                     height;
+        PsychRectType                           roirectangle;
+        Boolean                                 roiassigned;
         
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
-        PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
+        PsychErrorExit(PsychCapNumInputArgs(3));            // Max. 3 input args.
+        PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(4));           // Max. 4 output args.
         
         // Get the window record from the window record argument and get info from the window record
@@ -68,9 +70,17 @@ PsychError SCREENOpenVideoCapture(void)
         deviceIndex=0;
         PsychCopyInIntegerArg(2, FALSE, &deviceIndex);
 
+        // Get the optional roi rectangle:
+        roiassigned = PsychCopyInRectArg(3, FALSE, roirectangle);
+
 	// Try to open the capture device and create & initialize a corresponding capture object.
         // A MATLAB handle to the movie object is returned upon successfull operation.
-        PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle);
+        if (roiassigned) {
+            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, roirectangle);
+        }
+        else {
+            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, NULL);
+        }
         
         // Upon sucessfull completion, we'll have a valid handle in 'capturehandle'.
         // Return it to Matlab-world:
