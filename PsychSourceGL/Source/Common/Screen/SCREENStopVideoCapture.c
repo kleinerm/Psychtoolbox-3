@@ -23,20 +23,21 @@
 
 #include "Screen.h"
 
-static char useString[] = "Screen('StopVideoCapture', capturePtr);";
+static char useString[] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
 static char synopsisString[] = "Stop video capture device specified by 'capturePtr'.";
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 
 PsychError SCREENStopVideoCapture(void) 
 {
     int capturehandle = -1;
+    int dropped;
     
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
     PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 1 input args.
     PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(0));           // No output args.
+    PsychErrorExit(PsychCapNumOutputArgs(1));           // One output arg.
     
     // Get the handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
@@ -45,7 +46,9 @@ PsychError SCREENStopVideoCapture(void)
     }
     
     // Try to stop capture:
-    PsychVideoCaptureRate(capturehandle, 0, 0);
+    dropped = PsychVideoCaptureRate(capturehandle, 0, 0);
+
+    PsychCopyOutDoubleArg(1, FALSE, dropped);
     
     // Ready!    
     return(PsychError_none);

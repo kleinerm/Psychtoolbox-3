@@ -30,44 +30,38 @@
 #include <QuickTimeComponents.h>
 #endif
 
-//#if PSYCH_SYSTEM == PSYCH_WINDOWS
-// We typedef all missing functions on Windows away...
-//typedef void* QTVisualContextRef;
-//Boolean QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
-//OSErr QTVisualContextCopyImageForTime(void* a, void* b, void* c) { return(noErr) };
-//void QTVisualContextRelease(void* a) { return; }
-//void QTVisualContextTask(void *a) { return; }
-//void CVOpenGLTextureRelease(void* a) { return; }
-//GLuint CVOpenGLTextureGetName(void* a) { return(0); }
-//void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, float* e) { return; }
-//#endif 
+#define PSYCH_MAX_CAPTUREDEVICES 10
 
-#define PSYCH_MAX_CAPTUREDEVICES 100
-
+// Record which defines all state for a capture device:
 typedef struct {
-    GWorldPtr           gworld;
-    SeqGrabComponent 	seqGrab;	// Sequence grabber.
-    SGChannel           sgchanVideo;    // Video channel of sequence grabber.
-    ImageSequence 	decomSeq;	// unique identifier for our decompression sequence
-    int nrframes;
-    double fps;
-    int width;
+    GWorldPtr           gworld;       // Offscreen GWorld into which captured frame is decompressed.
+    SeqGrabComponent 	seqGrab;	     // Sequence grabber handle.
+    SGChannel           sgchanVideo;  // Handle for video channel of sequence grabber.
+    ImageSequence 	decomSeq;	     // unique identifier for our video decompression sequence
+    int nrframes;                     // Total count of decompressed images.
+    double fps;                       // Acquisition framerate of capture device.
+    int width;                        // Width x height of captured images.
     int height;
-    double last_pts;
-    double current_pts;
-    int nr_droppedframes;
-    int frame_ready;
-    int grabber_active;
-    Rect roirect;
-    double avg_decompresstime;
-    double avg_gfxtime;
-    int nrgfxframes;
+    double last_pts;                  // Capture timestamp of previous frame.
+    double current_pts;               // Capture timestamp of current frame
+    int nr_droppedframes;             // Counter for dropped frames.
+    int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
+    int grabber_active;               // Grabber running?
+    Rect roirect;                     // Region of interest rectangle - denotes subarea of full video capture area.
+    double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
+    double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
+    int nrgfxframes;                  // Count of fetched textures.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 static Boolean firsttime = TRUE;
 
+/** PsychVideoCaptureDataProc
+ *  This callback is called by the SequenceGrabber subsystem whenever a new frame arrives from
+ *  the framegrabber hardware. It performs first-time setup of decompression sequence/codecs and
+ *  decompression/conversion of grabbed raw data into a bitmap image -> GWorld.
+ */
 OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long chRefCon, TimeValue time, short writeType, long refCon)
 {
     int handle;
@@ -460,8 +454,16 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 
     // Query capture framerate: MK This doesn't return meaningful results for
     // some reason :(
-    SGGetFrameRate(vidcapRecordBANK[slotid].sgchanVideo, &framerate);
-    vidcapRecordBANK[slotid].fps = (double) FixedToFloat(framerate);
+    error=SGGetFrameRate(vidcapRecordBANK[slotid].sgchanVideo, &framerate);
+    if (error==noErr) {
+      // Query worked: Assign it.
+	   vidcapRecordBANK[slotid].fps = (double) FixedToFloat(framerate);
+	 }
+    else {
+      // Query failed: Assign a dummy value of 25 Hz and output a warning.
+      vidcapRecordBANK[slotid].fps = 25;
+      printf("PTB-WARNING: Couldn't determine real capture framerate of grabber device %i. Assigning dummy value of 25 fps.\n", slotid);
+    }
 
     // Determine size of images in movie:
     vidcapRecordBANK[slotid].width = movierect.right - movierect.left;
@@ -543,7 +545,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     unsigned char* pixptr;
     Boolean newframe = FALSE;
     double tstart, tend;
-    
+    unsigned int pixval, alphacount;
+
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
     // Activate OpenGL context of target window: We'll need it for texture fetch...
@@ -656,11 +659,18 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     if(summed_intensity) {
         pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
         count = (w*h*4);
+        alphacount = 0;
         for (i=0; i<count; i++) {
-            // if (i % 1000 == 0) { printf("CurCount = %i\n", i); fflush(NULL); }
-            intensity+=(unsigned int) pixptr[i];
+            pixval=(unsigned int) pixptr[i];
+            // Is this the alpha-channel component which is fixed to 255? If so, count it.
+            if (pixval==255) alphacount++;
+            intensity+=pixval;
         }
-        *summed_intensity = ((double) intensity - w * h * 255) / w / h / 3;
+        // Try to discount the w*h*255 alpha channel values, if alpha channel is fixed to 255:
+        // Some video digitizers set alpha component correctly to 255, some leave it at the
+        // false value of zero :(
+        if (alphacount >= w*h) intensity = intensity - (w * h * 255);
+        *summed_intensity = ((double) intensity) / w / h / 3;
     }
 
     // Unlock GWorld surface.
@@ -669,8 +679,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     
     // Expected delta between successive presentation timestamps:
-	 // MK: FIXME Hardcoded to 25 fps as fps code in Open.. doesn't work as supposed to...
-    targetdelta = 1.0f / 25; // vidcapRecordBANK[capturehandle].fps;
+    targetdelta = 1.0f / vidcapRecordBANK[capturehandle].fps;
     
     // Compute real delta, given rate and playback direction:
     realdelta = *presentation_timestamp - vidcapRecordBANK[capturehandle].last_pts;
@@ -723,7 +732,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
         vidcapRecordBANK[capturehandle].nr_droppedframes = 0;
         vidcapRecordBANK[capturehandle].frame_ready = 0;
         vidcapRecordBANK[capturehandle].grabber_active = 1;
-        
+        framerate = FloatToFixed((float) capturerate);
+        SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
         printf("FRAMERATE: %f\n", vidcapRecordBANK[capturehandle].fps);
@@ -750,7 +760,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     vidcapRecordBANK[capturehandle].nrgfxframes = 0;
     vidcapRecordBANK[capturehandle].avg_gfxtime = 0;
     
-    return(dropped);
+    // Return either real capture framerate (at start of capture) or count of dropped frames - at end of capture.
+    return((capturerate!=0) ? (int) (vidcapRecordBANK[capturehandle].fps + 0.5) : dropped);
 }
 
 /*

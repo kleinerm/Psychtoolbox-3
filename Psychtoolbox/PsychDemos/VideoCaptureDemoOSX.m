@@ -18,7 +18,7 @@ try
     Screen('FillRect', win, 0);
     Screen('Flip',win);
     
-    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);%, [00 00 200 200]);
+    [grabber fps width height]=Screen('OpenVideoCapture', win, 0); %, [0 0 320 280]);
     fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
     
     Screen('StartVideoCapture', grabber);

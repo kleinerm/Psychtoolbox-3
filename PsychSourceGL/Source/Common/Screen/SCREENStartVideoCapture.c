@@ -23,20 +23,23 @@
 
 #include "Screen.h"
 
-static char useString[] = "Screen('StartVideoCapture', capturePtr);";
-static char synopsisString[] = "Start video capture device specified by 'capturePtr'.";
+static char useString[] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS]);";
+static char synopsisString[] = "Start video capture device specified by 'capturePtr'. If 'captureRateFPS' "
+                               "is provided, the device is requested to capture at that rate. Otherwise it "
+                               "is requested to operate at 25 Hz. ";
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
 PsychError SCREENStartVideoCapture(void) 
 {
     int capturehandle = -1;
+    double captureFPS = 25;
     
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-    PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 1 input args.
+    PsychErrorExit(PsychCapNumInputArgs(2));            // Max. 2 input args.
     PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(0));           // No output args.
+    PsychErrorExit(PsychCapNumOutputArgs(1));           // One output arg.
     
     // Get the handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
@@ -44,8 +47,15 @@ PsychError SCREENStartVideoCapture(void)
         PsychErrorExitMsg(PsychError_user, "StartVideoCapture called without valid handle to a capture object.");
     }
     
+    PsychCopyInDoubleArg(2, FALSE, &captureFPS);
+    if (captureFPS<=0) {
+        PsychErrorExitMsg(PsychError_user, "StartVideoCapture called with a negative capture rate.");
+    }
+
     // Try to start capture:
-    PsychVideoCaptureRate(capturehandle, 1, 0);
+    captureFPS = (double) PsychVideoCaptureRate(capturehandle, captureFPS, 0);
+
+    PsychCopyOutDoubleArg(1, FALSE, captureFPS);
 
     // Ready!    
     return(PsychError_none);

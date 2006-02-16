@@ -110,15 +110,18 @@ try
     % we can start the latency measurement procedure:
     ntrials = 10;
     tavgdelay = 0;
+    threshold = 0;
     
     for i=1:ntrials
         % Make screen black:
         Screen('FillRect', win, 0);
         Screen('Flip', win);
         
-        % Wait a second:
-        WaitSecs(1);
-        
+        for j=1:50
+           Screen('GetCapturedImage', win, grabber, 2);
+           %WaitSecs(0.02);
+        end;
+       
         % Capture a black frame:
         tex=0;
         while (tex==0)
@@ -127,9 +130,11 @@ try
 
         if (tex>0) Screen('Close', tex); end;
     
-        blackintensity = intensity;
-        threshold = blackintensity * 1.25;
-        
+        if threshold==0
+          blackintensity = intensity;
+          threshold = blackintensity * 1.1;
+        end;
+     
         % Make display white:
         Screen('FillRect', win, 255);
         % Show it and take onset timestamp:
@@ -138,6 +143,8 @@ try
         % Now we loop and capture until intensity exceeds threshold:
         tex=0;
         intensity=0;
+        lagframes=0;
+        
         while (tex>=0 & intensity < threshold)
             if texfetch>0
                 waitmode=0;
@@ -146,23 +153,27 @@ try
             end;
             
             [tex pts intensity]=Screen('GetCapturedImage', win, grabber, waitmode);
+            
             % Captured! Take timestamp:
             tdelay=(GetSecs - tonset) * 1000;
         
-            if texfetch>1 & intensity>=threshold
-                Screen('DrawTexture',win,tex);
-                tdelay = (Screen('Flip',win) - tonset) * 1000;
-            end;
-            
-            if (tex>0) 
+            if tex>0
+               lagframes=lagframes+1;
+               if texfetch>1 & intensity>=threshold
+                  Screen('DrawTexture',win,tex);
+                  tdelay = (Screen('Flip',win) - tonset) * 1000;
+               end;
+               
                 Screen('Close', tex);
                 tex=0;
             end;
         end;
                 
         tdelay
-
+        lagframes
+        
         tavgdelay=tavgdelay + tdelay;
+      
         % Next trial...
     end;
     
