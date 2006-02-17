@@ -733,7 +733,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
         vidcapRecordBANK[capturehandle].frame_ready = 0;
         vidcapRecordBANK[capturehandle].grabber_active = 1;
         framerate = FloatToFixed((float) capturerate);
-        SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
+        SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
         SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
         printf("FRAMERATE: %f\n", vidcapRecordBANK[capturehandle].fps);

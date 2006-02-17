@@ -79,7 +79,10 @@ PsychError SCREENGetOpenGLTexture(void)
     if (x!=-1 || y!=-1) {
         if (x==-1) x=0;
         if (y==-1) y=0;
-        // TODO: Texture coordinate remapping...
+
+        // Remap texture coordinates:
+        PsychMapTexCoord(textureRecord, &x, &y);
+        
         PsychCopyOutDoubleArg(3, FALSE, x);
         PsychCopyOutDoubleArg(4, FALSE, y);
     }

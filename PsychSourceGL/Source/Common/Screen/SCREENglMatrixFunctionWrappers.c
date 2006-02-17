@@ -25,6 +25,9 @@
                 of the corresponding glXXX functions as closely as possible, so users can
                 read about proper usage of this functions in any OpenGL textbook.
  
+                The file also contains the interface code for 'BeginOpenGL' and 'EndOpenGL'.
+                This probably needs to be moved somewhere else in the future.
+ 
 	TO DO:
   
 
@@ -32,6 +35,95 @@
 
 
 #include "Screen.h"
+
+PsychError SCREENBeginOpenGL(void)
+{
+    static char useString[] = "Screen('BeginOpenGL', windowPtr);";
+    static char synopsisString[] = "Prepare window 'windowPtr' for OpenGL rendering by external OpenGL code. "
+                                   "This allows to use OpenGL drawing routines other than the ones implemented "
+        "in Screen() to draw to a Psychtoolbox onscreen- or offscreen window via execution of "
+        "OpenGL commands. Typical clients of this function are mogl (Richard F. Murrays OpenGL for Matlab wrapper), "
+        "the new Eyelink-Toolbox and third party Matlab Mex-Files which contain OpenGL rendering routines. "
+        "You have to call this command once before using any of those external drawing commands. After drawing, you "
+        "switch back to PTB's rendering via the Screen('EndOpenGL', windowPtr); command. ";
+    static char seeAlsoString[] = "EndOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
+
+    PsychWindowRecordType	*windowRecord;
+    
+    //all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    //check for superfluous arguments
+    PsychErrorExit(PsychCapNumInputArgs(1));        // The maximum number of inputs
+    PsychErrorExit(PsychRequireNumInputArgs(1));    // Number of required inputs.
+    PsychErrorExit(PsychCapNumOutputArgs(0));       // The maximum number of outputs
+    
+    //get the window record from the window record argument and get info from the window record
+    PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+    
+    // Switch to windows OpenGL context:
+    PsychSetGLContext(windowRecord); 
+    
+    // Set it as drawing target:
+    PsychSetDrawingTarget(windowRecord);
+    
+    // Backup all available OpenGL state:
+    // TODO!!!
+    
+    PsychTestForGLErrors();
+    
+    return(PsychError_none);
+}
+
+PsychError SCREENEndOpenGL(void)
+{
+    static char useString[] = "Screen('EndOpenGL', windowPtr);";
+    static char synopsisString[] = "Prepare window 'windowPtr' for OpenGL rendering by external OpenGL code. "
+        "This allows to use OpenGL drawing routines other than the ones implemented "
+        "in Screen() to draw to a Psychtoolbox onscreen- or offscreen window via execution of "
+        "OpenGL commands. Typical clients of this function are mogl (Richard F. Murrays OpenGL for Matlab wrapper), "
+        "the new Eyelink-Toolbox and third party Matlab Mex-Files which contain OpenGL rendering routines. "
+        "You have to call this command once before using any of those external drawing commands. After drawing, you "
+        "switch back to PTB's rendering via the Screen('EndOpenGL', windowPtr); command. ";
+    static char seeAlsoString[] = "EndOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
+    
+    PsychWindowRecordType	*windowRecord;
+    GLenum error;
+    
+    //all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    //check for superfluous arguments
+    PsychErrorExit(PsychCapNumInputArgs(1));        // The maximum number of inputs
+    PsychErrorExit(PsychRequireNumInputArgs(1));    // Number of required inputs.
+    PsychErrorExit(PsychCapNumOutputArgs(0));       // The maximum number of outputs
+    
+    //get the window record from the window record argument and get info from the window record
+    PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+    
+    // Check for OpenGL errors in external code:
+    if ((error=glGetError())!=GL_NO_ERROR) {
+        printf("PTB-ERROR: Some of your external OpenGL code executed between last invocation of Screen('BeginOpenGL') and\n");
+        printf("PTB-ERROR: Screen('EndOpenGL') produced an OpenGL error condition. Please check your code. The reported GL\n");
+        printf("PTB-ERROR: error was: %s\n\n", (const char*) gluErrorString(error)); 
+        PsychErrorExitMsg(PsychError_user, "Failure in external OpenGL code.");
+    }
+    
+    // Switch to windows OpenGL context:
+    PsychSetGLContext(windowRecord); 
+    
+    // Set it as drawing target:
+    PsychSetDrawingTarget(windowRecord);
+    
+    // Restore all available OpenGL state:
+    // TODO!!!
+    
+    PsychTestForGLErrors();
+    
+    return(PsychError_none);
+}
 
 PsychError SCREENglPushMatrix(void)  
 {

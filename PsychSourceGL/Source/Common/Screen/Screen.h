@@ -168,6 +168,8 @@ PsychError      SCREENCloseVideoCapture(void);
 PsychError      SCREENStartVideoCapture(void); 
 PsychError      SCREENStopVideoCapture(void); 
 PsychError      SCREENGetCapturedImage(void); 
+PsychError      SCREENBeginOpenGL(void);
+PsychError      SCREENEndOpenGL(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

@@ -22,12 +22,13 @@
 
 #include "Screen.h"
 
-static char useString[] = "Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid [, glWidth] [, glHeight] [, glDepth]);";
+static char useString[] = "Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
 static char synopsisString[] = 
 "Provides information about an external OpenGL texture to make it acessible for PTB as PTB texture."
 "\"windowPtr\" is the handle of the onscreen window for which texture should be attached. "
 "'textureHandle' is the Psychtoolbox handle for the requested texture. glTexid is the OpenGL texture "
-"id of a valid OpenGL texture object. Optionally you can pass in the intended width and height as well "
+"id of a valid OpenGL texture object. 'target' is the type of texture (e.g., GL_TEXTURE_2D) "
+"Optionally you can pass in the intended width and height as well "
 "as pixeldepth of the texture if they should be different from the values that PTB can autodetect from "
 "the given texture object. This routine allows external OpenGL code to inject textures into PTB for use "
 "with it. For more info about OpenGL textures, read an OpenGL book. ";
@@ -39,15 +40,14 @@ PsychError SCREENSetOpenGLTexture(void)
     PsychWindowRecordType *windowRecord, *textureRecord;
     int texid, w, h, d;
     GLenum target = 0;
-    GLboolean flag=FALSE;
     texid=w=h=d=-1;
     
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(6));     //The maximum number of inputs
-    PsychErrorExit(PsychRequireNumInputArgs(3)); //The required number of inputs	
+    PsychErrorExit(PsychCapNumInputArgs(7));     //The maximum number of inputs
+    PsychErrorExit(PsychRequireNumInputArgs(4)); //The required number of inputs	
     PsychErrorExit(PsychCapNumOutputArgs(0));    //The maximum number of outputs
     
     // Get the window record from the window record argument and get info from the window record
@@ -62,38 +62,48 @@ PsychError SCREENSetOpenGLTexture(void)
     // Query texid:
     PsychCopyInIntegerArg(3, TRUE, &texid);
     
+    // Query texture target:
+    PsychCopyInIntegerArg(4, TRUE, (int*) &target);
+
     // Query optional width:
-    PsychCopyInIntegerArg(4, FALSE, &w);
+    PsychCopyInIntegerArg(5, FALSE, &w);
 
     // Query optional height:
-    PsychCopyInIntegerArg(5, FALSE, &h);
+    PsychCopyInIntegerArg(6, FALSE, &h);
 
     // Query optional depth:
-    PsychCopyInIntegerArg(6, FALSE, &d);
+    PsychCopyInIntegerArg(7, FALSE, &d);
 
     // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
     PsychSetGLContext(windowRecord);
     PsychSetDrawingTarget(windowRecord);
     
-    // Query texture target type:
-    glGetBooleanv(GL_TEXTURE_2D, &flag);
-    if (flag) target=GL_TEXTURE_2D;
-    glGetBooleanv(GL_TEXTURE_RECTANGLE_EXT, &flag);
-    if (flag) target=GL_TEXTURE_RECTANGLE_EXT;
-    glGetBooleanv(GL_TEXTURE_RECTANGLE_NV, &flag);
-    if (flag) target=GL_TEXTURE_RECTANGLE_NV;
-    if (target==0) {
-        PsychErrorExitMsg(PsychError_invalidArg_type, "Provided texture is not one of the supported types GL_TEXTURE_2D, GL_TEXTURE_RECTANGLE_EXT or GL_TEXTURE_RECTANGLE_NV");
-    }
-    
     // Bind it:
+    PsychTestForGLErrors();
     glBindTexture(target, texid);
     PsychTestForGLErrors();
     
     // Binding worked. Query its size and format:
     // AND SO ON....
     
+    if (w==-1) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_WIDTH, (GLint*) &w);
+    if (h==-1) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_HEIGHT, (GLint*) &h);
+    if (d==-1) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_DEPTH, (GLint*) &d);
+    
+    // Ok, setup texture record for texture:
+    PsychInitWindowRecordTextureFields(textureRecord);
+    textureRecord->depth = d;
+    PsychMakeRect(textureRecord->rect, 0, 0, w, h);
+
+    textureRecord->texturetarget = target;
+    // Orientation is set to 2 - like an upright Offscreen window texture:
+    textureRecord->textureOrientation = 2;
+    textureRecord->textureNumber = texid;
+
+    // Unbind texture:
     glBindTexture(target, 0);
+
+    // printf("id %i target: %i w %i h %i", texid, target, w, h);
     
     // Done.
     return(PsychError_none);

@@ -32,6 +32,7 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win);
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha);
 GLenum PsychGetTextureTarget(PsychWindowRecordType *win);
+void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty);
 
 //end include once
 #endif

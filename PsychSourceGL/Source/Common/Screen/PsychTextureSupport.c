@@ -99,18 +99,20 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->textureMemory=NULL;
 	win->textureNumber=0;
 	win->textureMemorySizeBytes=0;
-   // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
-   win->targetSpecific.QuickTimeGLTexture = NULL;
-   // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
-   // This number defines how the height and width of a texture need to be interpreted and how
-   // texture coordinates are assigned in PsychBlitTextureToDisplay().
-   win->textureOrientation=0;
+        // NULL-Out special texture handle for Quicktime Movie textures (see PsychMovieSupport.c)
+        win->targetSpecific.QuickTimeGLTexture = NULL;
+        // Setup initial texture orientation: 0 = Transposed texture == Format of Matlab image matrices.
+        // This number defines how the height and width of a texture need to be interpreted and how
+        // texture coordinates are assigned in PsychBlitTextureToDisplay().
+        win->textureOrientation=0;
 	// Set to default minus 1-value (== disabled): Meaning of this field is specific for source of texture. It should
 	// somehow identify the cache data structure for textures of specifif origin in a unique way.
 	// If this is a cached texture for use by the PsychMovieSupport Quicktime subsystem and we
 	// use GWorld rendering, then this points to the movieRecord of the movie which is associated
 	// with this texture...
 	win->texturecache_slot=-1;
+        // Explicit storage of the type of texture target for this texture: Zero means - Autodetect.
+        win->texturetarget=0;
 }
 
 
@@ -507,12 +509,16 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         GLdouble       			 sourceWidth, sourceHeight, tWidth, tHeight;
         GLdouble                         sourceX, sourceY, sourceXEnd, sourceYEnd;
 	double                           transX, transY;
+        GLenum                           texturetarget;
 
         // Activate rendering context of target window:
 	PsychSetGLContext(target);
 
         // Setup texture-target if not already done:
         PsychDetectTextureTarget(target);
+        
+        // Query target for this specific texture:
+        texturetarget = PsychGetTextureTarget(source);
         
         // Enable target's framebuffer as current drawingtarget:
         PsychSetDrawingTarget(target);
@@ -705,6 +711,91 @@ GLenum PsychGetTextureTarget(PsychWindowRecordType *win)
     PsychSetGLContext(win);
     PsychDetectTextureTarget(win);
 
-    // Just return value of our internal variable:
-    return(texturetarget);
+    // If texturetaget field for this texture isn't yet initialized, then
+    // init it now from our global setting:
+    if (win->texturetarget == 0) win->texturetarget = texturetarget;
+    
+    // Return texturetarget for this window:
+    return(win->texturetarget);
+}
+
+void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
+{
+    GLdouble       sourceWidth, sourceHeight, tWidth, tHeight;
+    GLdouble       sourceX, sourceY, sourceXEnd, sourceYEnd;
+    GLenum         texturetarget;
+    
+    if (!PsychIsTexture(tex)) {
+        PsychErrorExitMsg(PsychError_user, "Tried to map (x,y) texel position to texture coordinate for something else than a texture!");
+    }
+    
+    if (tx==NULL || ty==NULL) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr passed as tx or ty into PsychMapTexCoord()!!!");
+    
+    // Perform mapping: This mostly duplicates code in PsychBlitTextureToDisplay():
+
+    // Setup texture-target if not already done:
+    PsychDetectTextureTarget(tex);
+
+    // Assign proper texturetarget for mapping:
+    texturetarget = PsychGetTextureTarget(tex);
+    
+    // Basic mapping for rectangular textures:
+    // 0 == Transposed as from Matlab image array aka renderswap off. 1 == Renderswapped
+    // texture (currently not yet enabled). 2 == Offscreen window in normal orientation.
+    if ((tex->textureOrientation == 1 && renderswap) || tex->textureOrientation == 2) {
+        sourceHeight=PsychGetHeightFromRect(tex->rect);
+        sourceWidth=PsychGetWidthFromRect(tex->rect);
+        
+        sourceX=*tx;
+        sourceY=sourceHeight - *ty;
+    }
+    else {
+        // Transposed, non-renderswapped texture from Matlab:
+        sourceHeight=PsychGetWidthFromRect(tex->rect);
+        sourceWidth=PsychGetHeightFromRect(tex->rect);
+        sourceX=*tx;
+        sourceY=*ty;
+    }
+    
+    // Override for special case: Corevideo texture from Quicktime-subsystem or upside-down
+    // texture from Quicktime GWorld or Sequence-Grabber...
+    if (tex->targetSpecific.QuickTimeGLTexture || tex->textureOrientation == 3) {
+        sourceHeight=PsychGetHeightFromRect(tex->rect);
+        sourceWidth=PsychGetWidthFromRect(tex->rect);
+        sourceX=*tx;
+        sourceY=*ty;
+    }
+    
+    // Special case handling for GL_TEXTURE_2D textures. We need to map the
+    // absolute texture coordinates (in pixels) to the interval 0.0 - 1.0 where
+    // 1.0 == full extent of power of two texture...
+    if (texturetarget==GL_TEXTURE_2D) {
+        // Find size of real underlying texture (smallest power of two which is
+        // greater than or equal to the image size:
+        tWidth=1;
+        while (tWidth < sourceWidth) tWidth*=2;
+        tHeight=1;
+        while (tHeight < sourceHeight) tHeight*=2;
+        
+        // Remap texcoords into 0-1 subrange: We subtract 0.5 pixel-units before
+        // mapping to accomodate for roundoff-error in the power-of-two gfx
+        // hardware...
+        // For a good intro into the issue of texture border seams, due to interpolation
+        // problems at texture borders, see:
+        // http://home.planet.nl/~monstrous/skybox.html
+
+        sourceX-=0.5f;
+        sourceY-=0.5f;
+
+        // Remap:
+        sourceX=sourceX / tWidth;
+        sourceY=sourceY / tHeight;
+    }
+    
+    // Return mapped coords:
+    *tx = sourceX;
+    *ty = sourceY;
+    
+    // Done.
+    return;
 }

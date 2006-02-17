@@ -195,6 +195,14 @@ void InitializeSynopsis()
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
+        
+        // Video capture support:
+	synopsis[i++] = "\n% Video capture functions:";
+        synopsis[i++] = "[ videoPtr [fps] [width] [height]]=Screen('OpenVideoCapture', windowPtr [, deviceIndex] [roirectangle]);";
+        synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
+        synopsis[i++] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS]);";
+        synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
+        synopsis[i++] = "[ texturePtr [timeindex] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr, [waitForImage=1], [fortimeindex]);";
  
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:
 	synopsis[i++] = "\n% Low level direct access to OpenGL-API functions:";
@@ -206,6 +214,14 @@ void InitializeSynopsis()
         synopsis[i++] = "Screen('glTranslate', windowPtr, tx, ty [, tz]);";
         synopsis[i++] = "Screen('glScale', windowPtr, sx, sy [, sz]);";
         synopsis[i++] = "Screen('glRotate', windowPtr, angle, [rx = 0], [ry = 0] ,[rz = 1]);";
+        
+        // Interfacing with external OpenGL rendering code (MOGL and external OpenGL Mexfiles):
+	synopsis[i++] = "\n% Support for 3D graphics rendering and for interfacing with external OpenGL code:";
+        synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);  % Enable 3D gfx support.";
+        synopsis[i++] = "Screen('BeginOpenGL', windowPtr);  % Prepare window for external OpenGL drawing.";
+        synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
+        synopsis[i++] = "Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
+        synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
         
         synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
