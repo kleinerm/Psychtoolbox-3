@@ -69,7 +69,8 @@ try
     fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
     
     % Start video capture:
-    Screen('StartVideoCapture', grabber);
+    fps=Screen('StartVideoCapture', grabber);
+    fps
     
     oldpts = 0;
     count = 0;
@@ -119,7 +120,6 @@ try
         
         for j=1:50
            Screen('GetCapturedImage', win, grabber, 2);
-           %WaitSecs(0.02);
         end;
        
         % Capture a black frame:
@@ -135,6 +135,13 @@ try
           threshold = blackintensity * 1.1;
         end;
      
+        % Eat up all enqueued images, if any.
+        tex=1;
+        while (tex>0)
+            [tex pts]=Screen('GetCapturedImage', win, grabber, 0);
+            if (tex>0) Screen('Close', tex); end;
+        end;
+
         % Make display white:
         Screen('FillRect', win, 255);
         % Show it and take onset timestamp:
@@ -144,6 +151,7 @@ try
         tex=0;
         intensity=0;
         lagframes=0;
+        ptsblack = pts;
         
         while (tex>=0 & intensity < threshold)
             if texfetch>0
@@ -171,6 +179,7 @@ try
                 
         tdelay
         lagframes
+        ptslag = (pts - ptsblack) * 1000
         
         tavgdelay=tavgdelay + tdelay;
       
