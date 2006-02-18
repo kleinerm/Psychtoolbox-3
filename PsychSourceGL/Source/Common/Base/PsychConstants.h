@@ -65,6 +65,10 @@
 #define GL_CLAMP_TO_EDGE 0x812F
 #endif
 
+#ifndef GL_TEXTURE_DEPTH
+#define GL_TEXTURE_DEPTH 0x8071
+#endif
+
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // typedef BOOL                            boolean;  //Windows already defines this.  

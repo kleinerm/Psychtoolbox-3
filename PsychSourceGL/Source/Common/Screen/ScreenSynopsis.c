@@ -220,7 +220,7 @@ void InitializeSynopsis()
         synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);  % Enable 3D gfx support.";
         synopsis[i++] = "Screen('BeginOpenGL', windowPtr);  % Prepare window for external OpenGL drawing.";
         synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
-        synopsis[i++] = "Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
+        synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
         synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
         
         synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop

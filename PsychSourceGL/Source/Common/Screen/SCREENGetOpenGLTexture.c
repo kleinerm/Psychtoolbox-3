@@ -75,17 +75,16 @@ PsychError SCREENGetOpenGLTexture(void)
     // Return type of texture target:
     PsychCopyOutDoubleArg(2, FALSE, (double) PsychGetTextureTarget(textureRecord));
     
-    // Return mapped texcoords:
-    if (x!=-1 || y!=-1) {
-        if (x==-1) x=0;
-        if (y==-1) y=0;
+    // If no texcoords provided, we'll let them default to full texture size:
+    if (x==-1) x=PsychGetWidthFromRect(textureRecord->rect);
+    if (y==-1) y=PsychGetHeightFromRect(textureRecord->rect);
 
-        // Remap texture coordinates:
-        PsychMapTexCoord(textureRecord, &x, &y);
+    // Remap texture coordinates:
+    PsychMapTexCoord(textureRecord, &x, &y);
         
-        PsychCopyOutDoubleArg(3, FALSE, x);
-        PsychCopyOutDoubleArg(4, FALSE, y);
-    }
+    // Return mapped texture coordinates:
+    PsychCopyOutDoubleArg(3, FALSE, x);
+    PsychCopyOutDoubleArg(4, FALSE, y);
     
     // Done.
     return(PsychError_none);

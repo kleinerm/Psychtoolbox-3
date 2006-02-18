@@ -473,7 +473,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
     if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
 
-    
+    // Autodetect and setup type of texture extension to use for high-perf texture mapping:
+    PsychDetectTextureTarget(*windowRecord);
+
     // Reliable estimate? These are our minimum requirements...
     if (numSamples<50 || stddev>0.001) {
         sync_disaster = true;
