@@ -112,7 +112,7 @@ try
     drawnow;
     figure(gcf);
 catch
-    rethrow(lasterror);
     Screen('CloseAll')
     Screen('ShowCursor');
+    rethrow(lasterr);
 end %try..catch..

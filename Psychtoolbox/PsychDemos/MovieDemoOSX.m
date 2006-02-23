@@ -204,7 +204,7 @@ try
 	fprintf('%s\n',WrapString(s));
 	
 	doPlotInput=input('Plot frame intervals [y/n]? ','s');
-	if streq(upper(doPlotInput), 'Y') || strcmp(upper(doPlotInput), 'YES')
+	if streq(upper(doPlotInput), 'Y') | strcmp(upper(doPlotInput), 'YES')
         plot(s2Diffs);
         xlabel('frame number');
         ylabel('interval (seconds)');

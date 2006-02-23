@@ -13,7 +13,7 @@
 s=max(Screen('Screens'));
 w=Screen('OpenWindow', s, [], [], 32, 2);
 [wWidth, wHeight]=Screen('WindowSize', w);
-screen('FillRect', w, 180);
+Screen('FillRect', w, 180);
 
 % Make up test values
 numDemoLines=10;
