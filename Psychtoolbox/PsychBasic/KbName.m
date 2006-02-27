@@ -124,7 +124,8 @@ function kbNameResult = KbName(arg)
 %   that keyboards do not distinquish between left and right versions of
 %   keys though the standard specifies different keycodes, the problem with the 'a' key.  
 
-persistent kkOSX kkOS9 kkWin kk
+persistent kkOSX kkOS9 kkWin kkLinux kk
+
 
 %_________________________________________________________________________
 % Windows part
@@ -132,14 +133,20 @@ persistent kkOSX kkOS9 kkWin kk
 % is the code of the old KbName command of the old Windows Psychtoolbox.
 %
 %
-    % These Key names are shared between Mac and Windows
-    
-
+% These Key names are shared between Mac and Windows
 
 if isempty(kkOSX)
 	kkOSX = cell(1,256);
 	kkOS9 = cell(1,256);
 	kkWin = cell(1,256);
+   
+   % MK: Until we have a PsychHID for GNU/Linux, we query Screen for the
+   % scancode to keychar mapping table:
+   if IsLinux   
+    kkLinux = Screen('GetMouseHelper', -3);
+   else
+    kkLinux = cell(1,256);
+   end;
    
    % MK: Until we have a PsychHID for windows, we use this table for the
    % Windows keycode mappings. I stole it from the old WinPTB ;)
@@ -581,6 +588,8 @@ if isempty(kkOSX)
 	    	kk=kkOSX;
 	elseif IsWin
 	        kk=kkWin;
+    elseif IsLinux
+            kk=kkLinux;
 	end
 	
 

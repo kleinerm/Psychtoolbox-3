@@ -40,6 +40,9 @@
 #elif PSYCH_SYSTEM == PSYCH_OSX
         #define FALSE   0
         #define TRUE    1
+#elif PSYCH_SYSTEM == PSYCH_LINUX
+        #define FALSE   0
+        #define TRUE    1
 #endif 
 
 #ifndef GL_TABLE_TOO_LARGE
@@ -70,6 +73,34 @@
 #endif
 
 //abstract up simple data types. 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+        typedef bool                            boolean;
+        typedef unsigned long long              psych_uint64;
+        typedef unsigned int                    psych_uint32;
+        typedef unsigned char                   psych_uint8;
+        typedef unsigned short                  psych_uint16;
+        typedef GLubyte                         ubyte;          
+        typedef boolean                         mxLogical;
+        typedef boolean                         Boolean;
+        typedef char                            Str255[255];
+        // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
+        #ifndef mxLOGICAL_CLASS
+        #define mxLOGICAL_CLASS mxUINT8_CLASS
+        #endif
+        #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
+        mxArray* mxCreateNativeBooleanMatrix3D(int m, int n, int p);
+        #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
+
+        // We don't have Quicktime for Linux, so we provide a little hack to
+        // make the compiler happy:
+        typedef void*                           CVOpenGLTextureRef;
+        typedef int CGDisplayCount;
+        // CGDirectDisplayID is typedef'd to a X11 display connection handle:
+        typedef Display* CGDirectDisplayID;
+        typedef int CGDisplayErr;
+        typedef unsigned int CFDictionaryRef;
+#endif
+
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // typedef BOOL                            boolean;  //Windows already defines this.  
         typedef LONG                            psych_uint64;

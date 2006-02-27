@@ -42,9 +42,9 @@ Screen('FillRect', w, 0);
 x=200;
 y=200;
 
-Screen('Textfont', w, 'Courier New');
-Screen('TextSize', w, 30);
-Screen('TextStyle', w, 1);
+%Screen('Textfont', w, 'Courier New');
+%Screen('TextSize', w, 30);
+%Screen('TextStyle', w, 1);
 Screen('DrawText', w, 'Rect drawn to onscreen window at topleft=100,100:', 0, 0, [255 255 255]);
 
 % Draw initial rect to onscreen window:
@@ -59,9 +59,9 @@ Screen('Flip', w);
 [woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 101 101]);
 srcRect=srcRect*sf
 DrawRect(woff1, 0, 1);
-Screen('Textfont', woff1, 'Courier New');
-Screen('TextSize', woff1, 60);
-Screen('TextStyle', woff1, 1);
+%Screen('Textfont', woff1, 'Courier New');
+%Screen('TextSize', woff1, 60);
+%Screen('TextStyle', woff1, 1);
 Screen('DrawText', woff1, ';-)', 0, 0, [255 255 0]);
 
 % Test offscreen -> onscreen copy:
@@ -79,8 +79,8 @@ Screen('Flip',w);
 % Test offscreen -> offscreen copy:
 woff2 = Screen('OpenOffscreenWindow', w);
 Screen('FillRect', woff2, 0);
-Screen('Textfont', woff2, 'Courier New');
-Screen('TextSize', woff2, 18);
+%Screen('Textfont', woff2, 'Courier New');
+%Screen('TextSize', woff2, 18);
 
 % Replicate image across the full offscreen-window:
 for yi=1:5

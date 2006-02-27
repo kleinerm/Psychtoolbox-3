@@ -42,7 +42,10 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister(NULL,  &GETSECSGetSecs));
         
         //report the version
+
+        #if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
+        #endif
 
 	//register the module name
 	PsychErrorExit(PsychRegister("GetSecs", NULL));

@@ -30,7 +30,10 @@
 static char useString[] ="oldTextSize=Screen('TextSize', windowPtr [,textSize]);";
 //                                            0          1           2
 static char synopsisString[] = 
-    "Read/Set the text size for the specified window";
+    "Read/Set the text size for the specified window. The OS-X and M$-Windows versions accept "
+    "any text size as they use TrueType fonts for representing text. The GNU/Linux version "
+    "currently is pretty picky. You need to supply one of a limited number of available text "
+    "sizes for the current font, otherwise Screen('DrawText') will fail with an error message. ";
 static char seeAlsoString[] = "";
 
 PsychError SCREENTextSize(void) 

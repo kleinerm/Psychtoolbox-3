@@ -638,7 +638,9 @@ PsychError SCREENComputer(void)
 }
 
 
-#else
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
 
 // M$-Windows implementation of Screen('Computer'): This is very rudimentary for now.
 // We only report the operating sytem type (="Windows") but don't report any more useful
@@ -665,6 +667,40 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("macintosh", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("windows", 0, 1, majorStruct);
     PsychSetStructArrayDoubleElement("linux", 0, 0, majorStruct);
+    PsychSetStructArrayDoubleElement("osx", 0, 0, majorStruct);
+    
+    return(PsychError_none);
+}
+
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+
+// GNU/Linux implementation of Screen('Computer'): This is very rudimentary for now.
+// We only report the operating sytem type (="Linux") but don't report any more useful
+// information.
+PsychError SCREENComputer(void)
+{
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
+        "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
+    const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
+    const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
+    int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
+    int numMajorStructFieldNames=4, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    
+    PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
+    //all subfunctions should have these two lines
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(0));
+    
+    //fill the major struct 
+    PsychAllocOutStructArray(1, FALSE, numMajorStructDimensions, numMajorStructFieldNames, majorStructFieldNames, &majorStruct);
+    PsychSetStructArrayDoubleElement("macintosh", 0, 0, majorStruct);
+    PsychSetStructArrayDoubleElement("windows", 0, 0, majorStruct);
+    PsychSetStructArrayDoubleElement("linux", 0, 1, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 0, majorStruct);
     
     return(PsychError_none);

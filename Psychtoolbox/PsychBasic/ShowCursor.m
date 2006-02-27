@@ -51,6 +51,6 @@ function oldType = ShowCursor(type)
 
 
 % OSX: Use Screen to emulate ShowCursor.mex
-if IsOSX 
+if IsOSX | IsLinux
     Screen('ShowCursorHelper',0);
 end 

@@ -96,3 +96,12 @@ if IsOSX
         error('Too many arguments supplied to KbCheck'); 
     end
 end
+
+if IsLinux
+    % We use the built-in KbCheck facility of Screen on GNU/LInux for KbChecks until
+    % a PsychHID implementation for Linux is ready.
+    if nargin > 1
+        error('Too many arguments supplied to KbCheck'); 
+    end;
+    [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
+end;

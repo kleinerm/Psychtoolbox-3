@@ -35,6 +35,9 @@
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #define PSYCHTOOLBOX_OS_NAME					"Microsoft Windows"         //Placeholder for the M$-Windows version at build time.  
 #endif
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"             //Placeholder for the GNU/Linux version at build time.
+#endif
 #define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	"MATLAB"				    //Placeholder for the MATLAB version at build time.
 
 	

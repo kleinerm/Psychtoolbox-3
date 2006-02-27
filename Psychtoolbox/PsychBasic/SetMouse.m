@@ -60,11 +60,12 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 % 10/12/04  awi     Cosmetic changes to help.  This file should be modified 
 %                   after the great mouse shift to state SetMouse is depricated.
 % 11/18/04  awi     Renamed "PositionCursor" to "PositionCursorHelper".
+% 02/21/06  mk      Added Linux support.
 
-%on OS X the Screen.mexmac positions the cursor, not 
+%on OS X and Linux the Screen.mexmac positions the cursor, not 
 %SetMouse.mexmac.  SetMouse.m wraps the 
 %Screen('PositionCursor',..) call to emulate SetMouse.mex
-if IsOSX
+if IsOSX | IsLinux
     if(nargin==2)
         windowPtrOrScreenNumber=0;
     end

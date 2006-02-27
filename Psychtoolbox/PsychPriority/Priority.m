@@ -286,89 +286,88 @@ function oldPriority=Priority(newPriority)
 %                When raising priority, issue error and return if we fail
 %                to kill the update process.  Do not set time contstraint
 %                priority.   
+% 2/21/06   mk   Updated for Linux.
 
-   
-persistent didPriorityKillUpdate;
-
-%Get the current settings.
-[flavorNameString, priorityStruct] = MachGetPriorityFlavor;
-if strcmp('THREAD_STANDARD_POLICY', flavorNameString)
+if IsLinux
+    % Not yet implemented on Linux. Just return zero.
     oldPriority=0;
-else % strcmp('THREAD_TIME_CONSTRAINT_POLICY', flavorNameString)
-    %Values in priority struct returned by MachGetPriorityFlavor are in ticks but should be in seconds
-    %it does not matter here because we are only concerned with the ratio
-    if priorityStruct.policy.period == 0 | priorityStruct.policy.computation == 0
-        %this is an illegitimate setting, so restore to standard priority
-        %and go from there.
+end;
+
+if IsOSX
+    
+    persistent didPriorityKillUpdate;
+    
+    %Get the current settings.
+    [flavorNameString, priorityStruct] = MachGetPriorityFlavor;
+    if strcmp('THREAD_STANDARD_POLICY', flavorNameString)
+        oldPriority=0;
+    else % strcmp('THREAD_TIME_CONSTRAINT_POLICY', flavorNameString)
+        %Values in priority struct returned by MachGetPriorityFlavor are in ticks but should be in seconds
+        %it does not matter here because we are only concerned with the ratio
+        if priorityStruct.policy.period == 0 | priorityStruct.policy.computation == 0
+            %this is an illegitimate setting, so restore to standard priority
+            %and go from there.
+            MachSetStandardPriority;
+            oldPriority=0;      
+        else
+            oldPriorityRatio= priorityStruct.policy.computation / priorityStruct.policy.period;
+            oldPriority=oldPriorityRatio * 10;
+        end
+    end
+    
+    
+    %if no new setting is given then return
+    if nargin==0
+        return
+    end
+    
+    %bounds check the input argument
+    if newPriority > 9
+        error('"newPriority" value exceeds maximum allowable value of 9');
+    elseif newPriority < 0
+        error('"newPriority" value is less than the minimum allowable value of 0');
+    end
+    
+    %if the priority level calls for time constraint priority...
+    if newPriority > 0
+        
+        tempWasKilledByUs=KillUpdateProcess;    
+        if isnan(tempWasKilledByUs)
+            error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
+        else
+            didPriorityKillUpdate=tempWasKilledByUs;
+        end
+        
+        % Find the frame periods.  FrameRate returns the nominal frame rate, which
+        % for LCD displays is 0.  We assume 60 in that case.
+        defaultFrameRate=60;    %Hz
+        screenNumbers=Screen('Screens');
+        for i = 1:length(screenNumbers)
+            frameRates(i)=Screen('FrameRate', screenNumbers(i));
+        end
+        [zeroRates, zeroRateIndices]=find(frameRates==0);
+        frameRates(zeroRateIndices)=defaultFrameRate;
+        framePeriods=1./frameRates;
+        
+        % MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag) 
+        periodSecs=min(framePeriods);
+        computationSecs = newPriority/10 * periodSecs;
+        constraintSecs=computationSecs;
+        preemptibleFlag=1;
+        
+        
+        %set the prioirity
+        MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag);
+        
+        %if the priority level calls for standard priority then ..
+    else    %priority==0
+        %restore standard priority
         MachSetStandardPriority;
-        oldPriority=0;      
-    else
-        oldPriorityRatio= priorityStruct.policy.computation / priorityStruct.policy.period;
-        oldPriority=oldPriorityRatio * 10;
+        
+        %restore the update process if it was Priority which killed it.  
+        if didPriorityKillUpdate        
+            StartUpdateProcess;
+            didPriorityKillUpdate=0;
+        end
     end
-end
-
-
-%if no new setting is given then return
-if nargin==0
-    return
-end
-
-%bounds check the input argument
-if newPriority > 9
-    error('"newPriority" value exceeds maximum allowable value of 9');
-elseif newPriority < 0
-    error('"newPriority" value is less than the minimum allowable value of 0');
-end
-
-%if the priority level calls for time constraint priority...
-if newPriority > 0
-
-    tempWasKilledByUs=KillUpdateProcess;    
-    if isnan(tempWasKilledByUs)
-        error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
-    else
-        didPriorityKillUpdate=tempWasKilledByUs;
-    end
-
-    % Find the frame periods.  FrameRate returns the nominal frame rate, which
-	% for LCD displays is 0.  We assume 60 in that case.
-	defaultFrameRate=60;    %Hz
-	screenNumbers=Screen('Screens');
-	for i = 1:length(screenNumbers)
-        frameRates(i)=Screen('FrameRate', screenNumbers(i));
-	end
-	[zeroRates, zeroRateIndices]=find(frameRates==0);
-	frameRates(zeroRateIndices)=defaultFrameRate;
-	framePeriods=1./frameRates;
-	
-	% MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag) 
-	periodSecs=min(framePeriods);
-	computationSecs = newPriority/10 * periodSecs;
-	constraintSecs=computationSecs;
-	preemptibleFlag=1;
-	
-    
-    %set the prioirity
-    MachSetTimeConstraintPriority(periodSecs,computationSecs, constraintSecs, preemptibleFlag);
-    
-%if the priority level calls for standard priority then ..
-else    %priority==0
-    %restore standard priority
-    MachSetStandardPriority;
-    
-    %restore the update process if it was Priority which killed it.  
-    if didPriorityKillUpdate        
-        StartUpdateProcess;
-        didPriorityKillUpdate=0;
-    end
-end
-
-
-
-
-    
-    
-
-
-    
+end;

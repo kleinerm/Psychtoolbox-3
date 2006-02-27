@@ -64,7 +64,6 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENGetMouseHelper(void) 
 {
-  // FIXME: Unimplemented!!!!
 #if PSYCH_SYSTEM == PSYCH_OSX
 	Point		mouseXY;
 	UInt32		buttonState;
@@ -102,7 +101,9 @@ PsychError SCREENGetMouseHelper(void)
 	GetMouse(&mouseXY);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
-#else
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
 	double numButtons;
 	double* buttonArray;
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
@@ -111,15 +112,155 @@ PsychError SCREENGetMouseHelper(void)
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)0);
 #endif
 	
-	return(PsychError_none);
-	
+#if PSYCH_SYSTEM == PSYCH_LINUX
+	char keys_return[32];
+	char* keystring;
+	PsychGenericScriptType *kbNames;
+	CGDirectDisplayID dpy;
+	Window rootwin, childwin;
+	int i, j, mx, my, dx, dy;
+	unsigned int mask_return;
+	double numButtons, timestamp;
+	double* buttonArray;
+	PsychNativeBooleanType* buttonStates;
+	int keysdown;
+	XEvent event_return;
+	XKeyPressedEvent keypressevent;
+
+	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
+
+	// We currently don't take the screenNumber or windowPtr as argument to Screen('GetMouseHelper'),
+	// so no way of spec'ing target screen and display. We therefore just query screen zero on the
+	// default display:
+	PsychGetCGDisplayIDFromScreenNumber(&dpy, 0);
+
+
+	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
+	if (numButtons>=0) {
+	  // Mouse pointer query mode:
+	  XQueryPointer(dpy, DefaultRootWindow(dpy), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
+	  
+	  // Copy out mouse x and y position:
+	  PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);
+	  PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) my);
+	  
+	  // Copy out mouse button state:
+	  PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
+
+	  // Bits 8, 9 and 10 of mask_return seem to correspond to mouse buttons
+	  // 1, 2 and 3 of a mouse for some weird reason. Bits 0-7 describe keyboard modifier keys
+	  // like Alt, Ctrl, Shift, ScrollLock, NumLock, CapsLock...
+	  // We remap here, so the first three returned entries correspond to the mouse buttons and
+	  // the rest is attached behind, if requested...
+	  
+	  // Mouse buttons: Left, Middle, Right == 0, 1, 2, aka 1,2,3 in Matlab space...
+	  for (i=0; i<numButtons && i<3; i++) {
+	    buttonArray[i] = (mask_return & (1<<(i+8))) ? 1 : 0; 
+	  }
+	  // Modifier keys 0 to 7 appended:
+	  for (i=3; i<numButtons && i<3+8; i++) {
+	    buttonArray[i] = (mask_return & (1<<(i-3))) ? 1 : 0; 
+	  }
+	  // Everything else appended:
+	  for (i=11; i<numButtons; i++) {
+	    buttonArray[i] = (mask_return & (1<<i)) ? 1 : 0; 
+	  }
+	}
+	else {
+	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
+	  // This is a hack to provide keyboard queries until a PsychHID() implementation
+	  // for Linux is available...
+
+	  if (numButtons==-1 || numButtons==-2) {
+	    // KbCheck()/KbWait() mode:
+
+	    // Switch X-Server into synchronous mode: We need this to get
+	    // a higher timing precision.
+	    XSynchronize(dpy, TRUE);
+
+	    do {
+	      // Reset overall key state to "none pressed":
+	      keysdown=0;
+
+	      // Request current keyboard state from X-Server:
+	      XQueryKeymap(dpy, keys_return);
+
+	      // Request current time of query:
+	      PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
+
+	      // Any key down?
+	      for (i=0; i<32; i++) keysdown+=(int) keys_return[i];
+	      
+	      // We repeat until any key pressed if in KbWait() mode, otherwise we
+	      // exit the loop after first iteration in KbCheck mode.
+	      if ((numButtons==-1) || ((numButtons==-2) && (keysdown>0))) break;
+
+	      // Sleep for a few milliseconds before next KbWait loop iteration:
+	      PsychWaitIntervalSeconds(0.01);
+	    } while(1);
+
+	    if (numButtons==-2) {
+	      // Copy out time:
+	      PsychCopyOutDoubleArg(1, kPsychArgOptional, timestamp);
+	    }
+	    else {
+	      // KbCheck mode:
+	      
+	      // Copy out overall keystate:
+	      PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown>0) ? 1 : 0);
+	      // copy out timestamp:
+	      PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);	      
+	      // Copy keyboard state:
+	      PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+
+	      // Map 32 times 8 bitvector to 256 element return vector:
+	      for(i=0; i<32; i++) {
+		for(j=0; j<8; j++) {
+		  buttonStates[i*8 + j] = (PsychNativeBooleanType)(keys_return[i] & (1<<j)) ? 1 : 0;
+		}
+	      }
+	    }
+	  }
+	  else if (numButtons == -3) {
+	    // numButtons == -3 --> KbName mapping mode:
+	    // Return the full keyboard keycode to ASCII character code mapping table...
+	    PsychAllocOutCellVector(1, kPsychArgOptional, 256, &kbNames);
+
+	    for(i=0; i<256; i++) {
+	      // Map keyboard scan code to KeySym:
+	      keystring = XKeysymToString(XKeycodeToKeysym(dpy, i, 0));
+	      if (keystring) {
+		// Character found: Return its ASCII name string:
+		PsychSetCellVectorStringElement(i, keystring, kbNames);
+	      }
+	      else {
+		// No character for this keycode:
+		PsychSetCellVectorStringElement(i, "", kbNames);
+	      }
+	    }
+	  }
+	  else if (numButtons == -4) {
+	    // GetChar() emulation.
+
+/* 	    do { */
+/* 	      // Fetch next keypress event from queue, block if none is available... */
+/* 	      keystring = NULL; */
+/* 	      XNextEvent(dpy, &event_return); */
+/* 	      // Check for valid keypress event and extract character: */
+/* 	      if (event_return.type == KeyPress) { */
+/* 		keypressevent = (XKeyPressedEvent) event_return; */
+/* 		keystring = NULL; */
+/* 		keystring = XKeysymToString(XKeycodeToKeysym(dpy, keypressevent.keycode, 0)); */
+/* 	      } */
+/* 	      // Repeat until a valid char is returned. */
+/* 	    } while (keystring == NULL); */
+
+/* 	    // Copy out character: */
+/* 	    PsychCopyOutCharArg(1, kPsychArgOptional, (char) keystring); */
+/* 	    // Copy out time: */
+/* 	    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) keypressevent.time); */
+	  }
+	}
+#endif
+	return(PsychError_none);	
 }
-
-
-	
-	
-
-
-
-
-

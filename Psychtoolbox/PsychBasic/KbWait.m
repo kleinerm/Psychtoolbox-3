@@ -28,6 +28,7 @@ function secs = KbWait(deviceNumber)
 % 7/12/04   awi  Cosmetic.  OS 9 Section. Uses IsOSX.
 % 4/11/05   awi  Added to help note about testing kbWait from command line.
 % 11/29/05  mk   Fixed really stupid bug: deviceNumber wasn't queried!
+% 02/22/06  mk   Modified for Linux: Currently a hack.
 
 if IsOSX
     if nargin==1
@@ -39,3 +40,8 @@ if IsOSX
     end
 end
 
+if IsLinux
+    % This is a hack: Until we have KbWait implemented via PsychHID, we use
+    % Screen's built-in KbWait emulation:
+    secs=Screen('GetMouseHelper', -2);
+end;

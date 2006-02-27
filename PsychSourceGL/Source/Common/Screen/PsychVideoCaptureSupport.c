@@ -19,7 +19,11 @@
 
 */
 
+
 #include "Screen.h"
+
+// Linux isn't yet supported:
+#if PSYCH_SYSTEM != PSYCH_LINUX
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>
@@ -790,3 +794,37 @@ void PsychExitVideoCapture(void)
     firsttime = TRUE;
     return;
 }
+
+#endif
+// End of non-Linux branch
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// Linux branch - This is just dummy implementations to make the compiler & linker happy.
+// In the future we may support the Video4Linux API...
+
+void PsychVideoCaptureInit(void) { return; }
+
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle)
+{
+  // No no...
+  PsychErrorExitMsg(PsychError_unimplemented, "ERROR: Video capture support isn't yet implemented on GNU/Linux.");
+  return(FALSE);
+}
+
+void PsychCloseVideoCaptureDevice(int capturehandle) { return; }
+
+void PsychDeleteAllCaptureDevices(void) { return; }
+
+int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
+			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
+{
+  // No no...
+  PsychErrorExitMsg(PsychError_unimplemented, "ERROR: Video capture support isn't yet implemented on GNU/Linux.");
+  return(-1);
+}
+
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop) { return(0); }
+
+void PsychExitVideoCapture(void) { return; }
+
+#endif

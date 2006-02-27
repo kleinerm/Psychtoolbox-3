@@ -38,8 +38,16 @@ static char synopsisString[] =
     "containing one string, e.g. {'Helvetica'}. The default font (set by the Mac OS) "
     "is 1 (the \"application\" font, typically Geneva) for an on-screen window and 0 "
     "(the \"system\" font, typically Charcoal) for an off-screen window. It's ok to "
-    "request a non-existent font; this will have no effect. If you care, call "
-    "TextFont again to find out whether you got the font you requested. See FontDemo. ";
+    "request a non-existent font on OS-X; this will have no effect. If you care, call "
+    "TextFont again to find out whether you got the font you requested. See FontDemo. "
+    "On M$-Windows and GNU/Linux you can only pass font names. Font numbers are ignored."
+    "On Linux you can either provide a font name - PTB will select a matching font with "
+    "that name that also fullfills the size and style requirements - or you can supply "
+    "a full X-Windows font specifier string which encodes all kinds of properties. The "
+    "xfontsel -print command under Linux allows you to query all available fonts and "
+    "provides such a spec-string on request. Linux is picky about the supplied fonts "
+    "- if you request a non-existent font, the DrawText command will fail with an "
+    "error message. This limitation will be removed in a future release of PTB.";
 
 static char seeAlsoString[] = "";
 

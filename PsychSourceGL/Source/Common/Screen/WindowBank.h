@@ -93,6 +93,17 @@ typedef struct{
 } PsychTargetSpecificWindowRecordType;
 #endif 
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// Definition of Linux/X11 specific information:
+typedef struct{
+  GLXContext		contextObject;       // GLX OpenGL rendering context.
+  int             	pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
+  Display*              deviceContext;       // Pointer to the X11 display connection.
+  Window                windowHandle;        // Handle to the onscreen window.  
+  CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
+  // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
+} PsychTargetSpecificWindowRecordType;
+#endif 
 
 #define kPsychUnaffiliatedWindow	-1		// valid value for screenNumber field of a window record meaning that that pixel format
 											// and alignment of the window are not set to match those of any display surface.

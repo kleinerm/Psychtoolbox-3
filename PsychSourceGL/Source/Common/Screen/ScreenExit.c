@@ -30,6 +30,7 @@
 
 PsychError ScreenExitFunction(void)
 {
+	CGDirectDisplayID dpy;
 
 	//The timing array holds time values set by Screen internal diagnostics.  It allocates memory with 
 	//malloc to hold the array of times.  This call frees the memory prior to unloading Screen
@@ -39,6 +40,18 @@ PsychError ScreenExitFunction(void)
 	// -> Perform exactly the same cleanup that Screen('CloseAll') would do.
 	ScreenCloseAllWindows();
 	CloseWindowBank();
+
+	#if PSYCH_SYSTEM == PSYCH_LINUX
+	// Linux specific hack. Close display connection to X-Server. This is a bit unclean.
+	// If we ever get around supporting multiple display connections to multiple X11
+	// displays, we should create a dedicated cleanup routine in Linux/Screen/PsychScreenGlue.c,
+	// but for now this seems to be a bit overkill.
+	// As the X11-display is the same for all screens in the current implementation, we
+	// just query screen 0 to get a hold on the Display handle...
+	PsychGetCGDisplayIDFromScreenNumber(&dpy, 0);
+	XCloseDisplay(dpy);
+	#endif
+
 	return(PsychError_none);
 }
 

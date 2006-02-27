@@ -64,7 +64,10 @@ static char useString[] = "[normBoundsRect, offsetBoundsRect]= Screen('TextBound
 //                          1               2                                      1          2         
 static char synopsisString[] = 
     "Accept a window pointer and a string.  Return in normBoundsRect a rect defining the size of the text "
-    "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin.";
+    "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin, assuming "
+    "that the text will be drawn at the current position of the text drawing cursor. Currently, only the "
+    "OS-X version returns a perfect bounding box. The M$-Windows and GNU/Linux versions return a bounding "
+    "box which doesn't take letters with descenders into account - Descenders are outside the returned box. ";
 static char seeAlsoString[] = "";
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -268,7 +271,7 @@ PsychSetATSUTStyleAttributesFromPsychAttributes(ATSUStyle style, PsychTextAttrib
 
 #else
 
-// M$-Windows version of TextBounds:
+// M$-Windows and Linux/X11 version of TextBounds:
 
 // This function PsychOSRebuildFont() is implemented in the Windows-portion
 // of SCREENDrawText.c
@@ -316,8 +319,9 @@ PsychError SCREENTextBounds(void)
       accumWidth+=winRec->textAttributes.glyphWidth[textString[i]];
       maxHeight=(fabs(winRec->textAttributes.glyphHeight[textString[i]]) > maxHeight) ? fabs(winRec->textAttributes.glyphHeight[textString[i]]) : maxHeight;
     }
-    accumWidth*=winRec->textAttributes.textSize;
-    maxHeight*=winRec->textAttributes.textSize;
+
+    accumWidth*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+    maxHeight*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
 
     resultPsychRect[kPsychRight]  = winRec->textAttributes.textPositionX + accumWidth;
 

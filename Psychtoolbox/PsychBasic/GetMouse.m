@@ -89,6 +89,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 %               Carbon on OS X so that we could still support this.
 % 11/18/04 awi  Added support for OS X
 % 09/03/05 mk   Add caching for 'numMouseButtons' to get 10-fold speedup.
+% 02/21/06 mk   Added Linux support.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -97,21 +98,26 @@ persistent numMouseButtons;
 if isempty(numMouseButtons)
     % Exit with an error if we don't find the a mex file on Windows or OS 9.
     AssertMex('MAC2', 'PCWIN');
-
-    % On OS X we execute this sript, otherwise either MATLAB found the mex file
-    % file and exuted this, or else this  file was exucuted and exited with
-    % error on the AssertMex command above.
-
-    %get the number of mouse buttons from PsychHID
-    mousedices=GetMouseIndices;
-    numMice = length(mousedices);
-    if numMice > 1
-        error('GetMouse detected more than one mouse connected to your computer and got confused');
-    elseif numMice == 0
-        error('GetMouse could not find any mice connected to your computer');
-    end
-    allHidDevices=PsychHID('Devices');
-    numMouseButtons=allHidDevices(mousedices).buttons;
+    
+    if IsOSX
+        % On OS X we execute this sript, otherwise either MATLAB found the mex file
+        % file and exuted this, or else this  file was exucuted and exited with
+        % error on the AssertMex command above.
+        
+        %get the number of mouse buttons from PsychHID
+        mousedices=GetMouseIndices;
+        numMice = length(mousedices);
+        if numMice > 1
+            error('GetMouse detected more than one mouse connected to your computer and got confused');
+        elseif numMice == 0
+            error('GetMouse could not find any mice connected to your computer');
+        end
+        allHidDevices=PsychHID('Devices');
+        numMouseButtons=allHidDevices(mousedices).buttons;
+    else
+        % Linux: We don't need numMouseButtons so we assign a dummy value of 32
+        numMouseButtons = 32;
+    end;
 end;
 
 %read the mouse position and  buttons

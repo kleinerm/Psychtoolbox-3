@@ -29,7 +29,9 @@ static char useString[] ="oldStyle=Screen('TextStyle', windowPtr [,style]);";
 //                                         0           1           2
 static char synopsisString[] = 
     "Get/set the font style for future text draws in this window. Useful values for "
-    "style follow; they may be OR'd. See Inside Mac TextFace() for more. "
+    "style follow; they may be OR'd. See Inside Mac TextFace() for more. On M$-Windows "
+    "and GNU/Linux, only a subset of these settings is honored - All settings are accepted, "
+    "but some of them are silently ignored on Windows and Linux. "
     "0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend.";
 static char seeAlsoString[] = "";
 

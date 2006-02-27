@@ -29,6 +29,19 @@
 #include "PsychPlatform.h"
 
 //platform dependent includes stage 1
+#if PSYCH_SYSTEM == PSYCH_LINUX
+	#include "mex.h"
+	#include <GL/gl.h>
+	#include <GL/glu.h>
+	#include <GL/glx.h>
+	#include <GL/glext.h>
+        #include <X11/Xlib.h>
+        #include <X11/keysym.h>
+        #include <sys/time.h>
+        #include <unistd.h>
+        #include <stdarg.h>
+#endif
+
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	#include "mex.h"
 	#include <windows.h>

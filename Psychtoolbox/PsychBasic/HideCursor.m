@@ -56,7 +56,7 @@ function HideCursor
 %on OS X the Screen.mexmac hides the cursor, not 
 %HideCursor.mexmac.  HideCursor.m wraps the 
 %Screen call to emulate HideCursor.mex
-if IsOSX
+if IsOSX | IsLinux
     Screen('HideCursorHelper',0);
 end 
 

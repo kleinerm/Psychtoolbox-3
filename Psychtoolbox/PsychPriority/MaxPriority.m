@@ -487,8 +487,10 @@ elseif IsOSX
     priorityLevel=9;
 
 %_______________________________________________________________________________________________________________________________
+elseif IsLinux
+    % We only differentiante between 0 = Normal priority, 1 = High Priority, 2 = Realtime Priority, 3 = mlocked Realtime, 4 = Take
+    % all conceivable measures to be fast.
+    priorityLevel=4;
 else
     error('OS not supported by Psychtoolbox MaxPriority.m');
 end
-
-    

@@ -367,6 +367,10 @@ drawtext_skipped:
 
 #else
 
+// Implementations for Windows and Linux/X11:
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+
 // Microsoft-Windows implementation of DrawText...
 // The code below will need to be restructured and moved to the proper
 // places in PTB's source tree when things have stabilized a bit...
@@ -467,14 +471,129 @@ boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
   return(TRUE);
 }
 
+#endif
 
-// Synopsis string for Windows DrawText is different from OS-X...
+#if PSYCH_SYSTEM == PSYCH_LINUX
+
+// Linux/X11 implementation of PsychOSRebuildFont():
+
+// Include of tolower() function:
+#include <ctype.h>
+
+boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
+{
+  char fontname[256];
+  char** fontnames=NULL;
+  Font font;
+  XFontStruct* fontstruct=NULL;
+  GLuint base;
+  int i, actual_count_return;
+
+  // Does font need to be rebuild?
+  if (!winRec->textAttributes.needsRebuild) {
+    // No rebuild needed. We don't have anything to do.
+    return(TRUE);
+  }
+
+  // Rebuild needed. Do we have already a display list?
+  if (winRec->textAttributes.DisplayList > 0) {
+    // Yep. Destroy it...
+    glDeleteLists(winRec->textAttributes.DisplayList, 256);
+    winRec->textAttributes.DisplayList=0;
+  }
+
+  // Create X11 font object with requested properties:
+  if (winRec->textAttributes.textFontName[0] == '-') {
+    // Fontname supplied in X11 font name format. Just take it as is,
+    // the user seems to know how to handle X11 fonts...
+    snprintf(fontname, sizeof(fontname)-1, "*%s*", winRec->textAttributes.textFontName); 
+  }
+  else {
+    // Standard Psychtoolbox font name spec: Use all the text settings that we have and
+    // try to synthesize a X11 font spec string.
+    snprintf(fontname, sizeof(fontname)-1, "-*-%s-%s-%s-*--%i-*-*-*", winRec->textAttributes.textFontName, ((winRec->textAttributes.textStyle & 1) ? "bold" : "regular"),
+	     ((winRec->textAttributes.textStyle & 2) ? "i" : "r"), winRec->textAttributes.textSize); 
+  }
+
+  fontname[sizeof(fontname)-1]=0;
+  // Convert fontname to lower-case characters:
+  for(i=0; i<strlen(winRec->textAttributes.textFontName); i++) fontname[i]=tolower(fontname[i]);
+
+  // Try to load font:
+  font = XLoadFont(winRec->targetSpecific.deviceContext, fontname);
+
+  // Successfull?
+  fontstruct = XQueryFont(winRec->targetSpecific.deviceContext, font); 
+
+  // Child-protection:
+  if (fontstruct == NULL) {
+    // Something went wrong...
+    printf("Failed to load X11 font with name %s.\n\n", winRec->textAttributes.textFontName);
+    fontnames = XListFonts(winRec->targetSpecific.deviceContext, "*", 1000, &actual_count_return);
+    if (fontnames) {
+      printf("Available X11 fonts are:\n");
+      for (i=0; i<actual_count_return; i++) printf("%s\n", (char*) fontnames[i]);
+      printf("\n\n");
+      XFreeFontNames(fontnames);
+      fontnames=NULL;
+    }
+
+    printf("Failed to load X11 font with name %s.\n\n", fontname);
+    PsychErrorExitMsg(PsychError_user, "Couldn't select the requested font with the requested font settings from X11 system!");
+    return(FALSE);
+  }
+
+  // Activate OpenGL context:
+  PsychSetGLContext(winRec);
+
+  // Generate 256 display lists, one for each ASCII character:
+  base = glGenLists(256);
+
+  // Build the display lists from the font:
+  glXUseXFont(font,
+	      0,                   // Starting Character is ASCII char zero.
+              256,                 // Number Of Display Lists To Build: 256 for all 256 chars.
+              base                 // Starting Display List handle.
+	      );
+  
+  // Assign new display list:
+  winRec->textAttributes.DisplayList = base;
+
+  // Clear the rebuild flag:
+  winRec->textAttributes.needsRebuild = FALSE;
+
+  // Copy glyph geometry info into winRec:
+  for(i=0; i<256; i++) {
+    fontname[0]=(char) i;
+    fontname[1]=0;
+    winRec->textAttributes.glyphWidth[i]=(float) XTextWidth(fontstruct, fontname, 1);
+    winRec->textAttributes.glyphHeight[i]=(float) winRec->textAttributes.textSize;
+  }
+
+  // Release font and associated font info:
+  XFreeFontInfo(NULL, fontstruct, 1);
+  fontstruct=NULL;
+  XUnloadFont(winRec->targetSpecific.deviceContext, font);
+
+  // Our new font is ready to rock!
+  return(TRUE);
+}
+#endif
+
+
+// The DrawText implementation itself is identical on Windows and Linux:
+
+// Synopsis string for Windows & Linux DrawText is different from OS-X...
 static char synopsisString[] = 
     "Draw text. \"text\" may consist of one-byte (8 bit) ASCII-Characters. "
     "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
     "g b] triplet) that you want to poke into each pixel; default produces black with "
     "the standard CLUT for this window's pixelSize. \"newX, newY\" return the final pen "
-    "location.";
+    "location. On M$-Windows, fonts are represented as 3D geometry, so one can scale, translate "
+    "and rotate them in 3D space, apply textures and lighting effects and such. On GNU/Linux "
+    "the font renderer is currently a very simple bitmap renderer which doesn't allow for 3D "
+    "rendering or anti-aliasing. It will get replaced in a future PTB release by something more "
+    "decent. ";
 
 PsychError SCREENDrawText(void)
 {
@@ -548,21 +667,31 @@ PsychError SCREENDrawText(void)
       accumWidth+=winRec->textAttributes.glyphWidth[textString[i]];
       maxHeight=(winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
     }
-    accumWidth*=winRec->textAttributes.textSize;
-    maxHeight*=winRec->textAttributes.textSize;
 
-    // Draw the text string to window by execution the display lists in
+    accumWidth*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+    maxHeight*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+
+    // Draw the text string to window by execution of the display lists in
     // proper order:
 
     // Backup modelview matrix:
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
-    // Position our "cursor":
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
     glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize, -0.5f);
 
     // Scale to final size:
     glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
+    #endif
+
+    #if PSYCH_SYSTEM == PSYCH_LINUX
+    // Position our "cursor": The X11 implementation uses glBitmap()'ed fonts, so we need to position
+    // the rasterposition cursor...
+    glRasterPos2f(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize);
+    glPixelZoom(1,1);
+    #endif
 
     // Backup display list state:
     glPushAttrib(GL_LIST_BIT);
