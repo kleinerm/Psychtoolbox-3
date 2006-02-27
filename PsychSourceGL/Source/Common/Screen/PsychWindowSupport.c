@@ -632,7 +632,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
     
-    if(PsychIsOnscreenWindow(windowRecord) || PsychIsOffscreenWindow(windowRecord)){
+    if(PsychIsOnscreenWindow(windowRecord)){
                 // Free possible shadow textures:
                 PsychFreeTextureForWindowRecord(windowRecord);        
                 
@@ -643,10 +643,8 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 // Disable rendering context:
                 PsychOSUnsetGLContext(windowRecord);
 
-                if (PsychIsOnscreenWindow(windowRecord)) {
-		  // Call OS specific low-level window close routine:
-		  PsychOSCloseWindow(windowRecord);
-                }
+		// Call OS specific low-level window close routine:
+		PsychOSCloseWindow(windowRecord);
 
                 // We need to NULL-out all references to the - now destroyed - OpenGL context:
                 PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
@@ -658,9 +656,6 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 }
                 PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
                 windowRecord->targetSpecific.contextObject=NULL;
-                if(PsychIsOffscreenWindow(windowRecord)) {
-                    free((void*)windowRecord->surface);
-                }
     }
     else if(windowRecord->windowType==kPsychTexture) {
 		PsychFreeTextureForWindowRecord(windowRecord);
