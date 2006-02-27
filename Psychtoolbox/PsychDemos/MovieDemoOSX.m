@@ -137,11 +137,11 @@ try
 	white=WhiteIndex(window);
 	Screen(window, 'FillRect', white);
 	Screen(window,'TextColor', black);
-	Screen(window, 'TextFont', 'Courier');
-	Screen(window,'TextSize',24);
+	%Screen(window, 'TextFont', 'Courier');
+	%Screen(window,'TextSize',24);
 	for(i=1:2)
         Screen(window, 'FillRect', white);
-        Screen(window,'DrawText','Showing movie at priority 0 ...',10,30);
+        Screen(window,'DrawText','Showing movie at priority 0 ...',10,30,black);
         Screen(window,'Flip');
 	end
 	WaitSecs(2)
@@ -159,7 +159,7 @@ try
 	s1Diffs=diff(s);
 	
 	Screen(window, 'FillRect', white);
-	Screen(window,'DrawText','Showing movie at priority 9 ...',10,30);
+	Screen(window,'DrawText','Showing movie at priority 9 ...',10,30,black);
 	Screen(window,'Flip');
 	WaitSecs(2);
 	priorityLevel=MaxPriority(window);

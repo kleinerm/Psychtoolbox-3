@@ -141,12 +141,9 @@ try
     % Query duration of monitor refresh interval:
     ifi=Screen('GetFlipInterval', w);
     
-    % We want to redraw the grating at most every 40 milliseconds, so we
-    % can be sure that older gfx-hardware can handle it. Calculate a proper
-    % waitframes-value and corresponding duration of one drawn grating.
-    waitframes = ceil(0.040 / ifi);
+    waitframes = 1;
     waitduration = waitframes * ifi;
-
+    
     % Translate requested speed of the grating (in cycles per second)
     % into a shift value in "pixels per frame", assuming given
     % waitduration: This is the amount of pixels to shift our "aperture" at

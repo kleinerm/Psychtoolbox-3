@@ -62,8 +62,8 @@ try
 
     % Wait for a click and hide the cursor
     Screen(theWindow,'FillRect',0);
-    Screen(theWindow,'TextFont','Arial');
-    Screen(theWindow,'TextSize',18);
+    %Screen(theWindow,'TextFont','Arial');
+    %Screen(theWindow,'TextSize',18);
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,255);
     Screen('Flip', theWindow);
     while (1)

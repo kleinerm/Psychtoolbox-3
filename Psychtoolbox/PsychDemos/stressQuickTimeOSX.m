@@ -185,7 +185,7 @@ try
         Screen('Flip', win);
         while KbCheck; end;
         
-        if (prefetch==0 || abortit>0)
+        if (prefetch==0 | abortit>0)
            % Done. Stop playback:
             Screen('PlayMovie', movie, 0);
 

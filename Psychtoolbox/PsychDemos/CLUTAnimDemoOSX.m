@@ -18,11 +18,15 @@ function CLUTAnimDemoOSX
 
 % This doesn't work under M$-Windows, as Screen('LoadNormalizedGammaTable') doesn't
 % allow us to set the kind of LUTs needed for this demo to work :(
-try
-   AssertOSX;
-catch
-	error('CLUTAnimDemoOSX does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
-end
+
+% Are we running OpenGL PTB?
+AssertOpenGL;
+
+% Is this the M$-Windows version? This demo doesn't work under Windows...
+if IsWin
+    error('CLUTAnimDemoOSX does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
+    return;
+end;
 
 try
     % We disable the sync tests at startup. They are not necessary for this
