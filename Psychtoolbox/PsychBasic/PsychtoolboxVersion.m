@@ -52,7 +52,7 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 
 global Psychtoolbox
 
-if IsOS9 || IsWin
+if IsOS9
 	if ~isfield(Psychtoolbox,'version')
 		% Get version and date of Psychtoolbox from Psychtoolbox:Contents.m
 		Psychtoolbox.version=0;
@@ -66,7 +66,7 @@ if IsOS9 || IsWin
 		Psychtoolbox.date=ss(min(find(ss-' ')):end);
 	end
 	v=Psychtoolbox.version;
-elseif IsOSX
+elseif IsOSX | IsLinux | IsWin
     if ~isfield(Psychtoolbox,'version')
         Psychtoolbox.version.major=0;
         Psychtoolbox.version.minor=0;
