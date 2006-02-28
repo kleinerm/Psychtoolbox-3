@@ -513,10 +513,12 @@ mxArray *mxCreateNativeBooleanMatrix3D(int m, int n, int p)
 	newArray=mxCreateNumericArray(numDims, dimArray, mxLOGICAL_CLASS, mxREAL);
 
 	#if mxLOGICAL_CLASS == mxUINT8_CLASS
+        #if PSYCH_SYSTEM == PSYCH_LINUX
 	// Manually set the flag to logical for Matlab versions < 6.5
 	mxSetLogical(newArray);
 	#endif
-
+        #endif
+        
 	return(newArray);		
 }
 
