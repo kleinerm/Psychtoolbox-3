@@ -39,7 +39,7 @@ end;
 % Are we in nice mode?
 nice = 1;
 
-% Amount of secs to wait in nice-mode to avoid overloading
+% Amount of secs to wait in nice-mode between each poll to avoid overloading
 % the system.
 if IsLinux | IsWin
     rtwait = 0.020; % Win and Linux: For now, conservative 20 msecs.
@@ -56,16 +56,19 @@ end;
 
 % Wait for first mouse button press:
 while ~any(buttons)
-    if nargin < 1
+    if nargin < 1 | IsWin
+        % Don't pass windowPtr argument if either none supplied or we are
+        % on Windows, where this currently doesn't work with GetMouse.dll
         [x,y,buttons] = GetMouse;
     else
+        % Pass windowPtr argumetn to GetMouse for proper remapping.
         [x,y,buttons] = GetMouse(w);
     end;
     if (nice>0) WaitSecs(rtwait); end;
 end;
 
 % First mouse click done. (x,y) is our returned mouse position.
-% Wait for further clicks in the timeout interval.
+% Wait for further click in the timeout interval.
 clicks = 1;
 tend=GetSecs + ptb_mouseclick_timeout;
 
@@ -86,10 +89,11 @@ while GetSecs < tend
     if any(buttons) & GetSecs < tend
         % Mouse click. Count it.
         clicks=clicks+1;
+        % Extend timeout for the next mouse click:
+        tend=GetSecs + ptb_mouseclick_timeout;
     end;
 end;
 
 % At this point, (x,y) contains the mouse-position of the first click
-% and clicks should contain the total number of distinctive mouse clicks
-% in the time interval ptb_mouseclick_timeout.
+% and clicks should contain the total number of distinctive mouse clicks.
 return;

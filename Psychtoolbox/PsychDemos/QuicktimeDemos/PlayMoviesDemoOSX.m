@@ -77,7 +77,7 @@ try
         
         % Open movie file and retrieve basic info about movie:
         [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
-        fprintf('Movie: %s  : %f seconds duration, %f fps...\n', moviename, movieduration, fps);
+        fprintf('Movie: %s  : %f seconds duration, %f fps, w x h = %i x %i...\n', moviename, movieduration, fps, imgw, imgh);
         
         i=0;
     
