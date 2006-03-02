@@ -24,7 +24,7 @@ try
     % a best guess about where you want the stimulus displayed.
     screens=Screen('Screens');
     screenNumber=max(screens);
-    w=Screen('OpenWindow', screenNumber,[],[],32,2);
+    w=Screen('OpenWindow', screenNumber);
     Screen('FillRect', w);
     if IsLinux==0
         Screen('TextFont',w, 'Courier New');

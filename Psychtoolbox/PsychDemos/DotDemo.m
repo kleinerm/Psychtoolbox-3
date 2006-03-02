@@ -75,8 +75,8 @@ try
     doublebuffer=1
     screens=Screen('Screens');
 	screenNumber=max(screens);
-    % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],32, doublebuffer+1);
-    [w, rect] = Screen('OpenWindow', screenNumber, 0,[],32, doublebuffer+1);
+    % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
+    [w, rect] = Screen('OpenWindow', screenNumber, 0,[],[], doublebuffer+1);
 
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:

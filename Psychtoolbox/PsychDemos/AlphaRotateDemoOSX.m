@@ -57,7 +57,7 @@ try
 	screenNumber=max(screens);
 
     % Open a double-buffered fullscreen window:
-	w=Screen('OpenWindow',screenNumber, 0,[],32, 2);
+	w=Screen('OpenWindow',screenNumber);
     [width, height]=Screen('WindowSize', w);
 
     % Enable alpha blending with proper blend-function. We need it

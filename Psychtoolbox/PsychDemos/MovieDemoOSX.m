@@ -118,7 +118,7 @@ try
 	
 	% Open a window.  Note the new argument to OpenWindow with value 2,
 	% specifying the number of buffers to the onscreen window.  
-	[window,windowRect]=Screen(screenNumber,'OpenWindow',0,[],32,2);
+	[window,windowRect]=Screen(screenNumber,'OpenWindow',0,[],[],2);
 	
 	
 	% Give the display a moment to recover from the change of display mode when

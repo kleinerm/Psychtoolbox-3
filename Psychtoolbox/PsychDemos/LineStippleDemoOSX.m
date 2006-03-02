@@ -11,7 +11,7 @@
 
 % Open a window
 s=max(Screen('Screens'));
-w=Screen('OpenWindow', s, [], [], 32, 2);
+w=Screen('OpenWindow', s);
 [wWidth, wHeight]=Screen('WindowSize', w);
 Screen('FillRect', w, 180);
 

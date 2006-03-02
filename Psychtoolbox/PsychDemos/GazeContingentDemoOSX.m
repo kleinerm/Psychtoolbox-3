@@ -70,7 +70,7 @@ try
     screenNumber=max(Screen('Screens'));
 
     % Open a double buffered fullscreen window.
-    [w, wRect]=Screen('OpenWindow',screenNumber, 0,[],32,2);
+    [w, wRect]=Screen('OpenWindow',screenNumber);
     
     % Find the color values which correspond to white and black.  Though on OS
     % X we currently only support true color and thus, for scalar color
