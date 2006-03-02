@@ -54,6 +54,10 @@ void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInte
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 int     CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
+
+// Special query function, only defined on Linux/X11:
+int PsychGetXScreenIdForScreen(int screenNumber);
+
 //end include once
 #endif
 

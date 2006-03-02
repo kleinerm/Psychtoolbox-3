@@ -51,27 +51,37 @@ static CFDictionaryRef	        displayOverlayedCGSettings[kPsychMaxPossibleDispl
 static boolean			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 
-// MK: This doesn't currently exist on X11: static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
+// displayCGIDs stores the X11 Display* handles to the display connections of each PTB logical screen:
+static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
+// displayX11Screens stores the mapping of PTB screenNumber's to corresponding X11 screen numbers:
+static int                      displayX11Screens[kPsychMaxPossibleDisplays];
+
 // X11 has a different - and much more powerful and flexible - concept of displays than OS-X or Windows:
 // One can have multiple X11 connections to different logical displays. A logical display corresponds
 // to a specific X-Server. This X-Server could run on the same machine as Matlab+PTB or on a different
 // machine connected via network somewhere in the building or the world. A single machine can even run
-// multiple X-Servers. Anyway, each display itself can consist of multiple screens. Each screen represents
-// a single display surface. E.g., a dual-head gfx-adaptor could be driven by a single X-Server and have
+// multiple X-Servers. Each display itself can consist of multiple screens. Each screen represents
+// a single physical display device. E.g., a dual-head gfx-adaptor could be driven by a single X-Server and have
 // two screens for each physical output. A single X-Server could also drive multiple different gfx-cards
 // and therefore have many screens. A Linux render-cluster could consist of multiple independent machines,
 // each with multiple screens aka gfx heads connected to each machine (aka X11 display).
 //
-// Anyway this doesn't currently fit into PTB's representation, so we just have a single CGDirectDisplayId
-// statically allocated that connects to the default X11 display, which can be set by the $DISPLAY environment
-// variable or as "-display" option for Matlab. The default setting is the local machine on which the user
-// is logged in. The screenNumbers correspond to the screen-number of this display.
+// By default, PTB just connects to the same display as the one that Matlab is running on and tries to
+// detect and enumerate all physical screens connected to that display. The default display is set either
+// via Matlab command option "-display" or via the Shell environment variable $DISPLAY. Typically, it
+// is simply $DISPLAY=:0.0, which means the local gfx-adaptor attached to the machine the user is logged into.
 //
-// In the future we could add a new Screen - subfunction that allows to provide a list of X11 displays to
-// PTB. PTB would then connect to all these displays, probe for all their screens and build a composite
-// list of all screens on all displays...
-
-static CGDirectDisplayID x11_dpy = NULL;
+// If a user wants to make use of other displays than the one Matlab is running on, (s)he can set the
+// environment variable $PSYCHTOOLBOX_DISPLAYS to a list of all requested displays. PTB will then try
+// to connect to each of the listed displays, enumerate all attached screens and build its list of
+// available screens as a merge of all screens of all displays.
+// E.g., export PSYCHTOOLBOX_DISPLAYS=":0.0,kiwi.kyb.local:0.0,coriander.kyb.local:0.0" would enumerate
+// all screens of all gfx-adaptors on the local machine ":0.0", and the network connected machines
+// "kiwi.kyb.local" and "coriander.kyb.local".
+//
+// Possible applications: Multi-display setups on Linux, possibly across machines, e.g., render-clusters
+// Weird experiments with special setups. Show stimulus on display 1, query mouse or keyboard from
+// different machine... 
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -97,28 +107,105 @@ void InitializePsychDisplayGlue(void)
 }
 
 void InitCGDisplayIDList(void)
-{
-  // Build a connection to the default X11 display. The default display is the one
-  // provided in the users $DISPLAY environment variable or as "-display" override
-  // provided to Matlab. We could specify a specific X11 display instead of the NULL
-  // parameter, but PTB currently lacks a proper concept to handle such flexibility.
-  x11_dpy = XOpenDisplay(NULL);
-  if (x11_dpy == NULL) {
-    // We're screwed :(
-    PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Couldn't open default X11 display connection to X-Server!!!");
+{  
+  int i, j, k, count, scrnid;
+  char* ptbdisplays = NULL;
+  char displayname[1000];
+  CGDirectDisplayID x11_dpy = NULL;
+ 
+  // NULL-out array of displays:
+  for(i=0;i<kPsychMaxPossibleDisplays;i++) displayCGIDs[i]=NULL;
+
+  // Initial count of screens is zero:
+  numDisplays = 0;
+
+  // Multiple X11 display specifier strings provided in the environment variable
+  // $PSYCHTOOLBOX_DISPLAYS? If so, we connect to all of them and enumerate all
+  // available screens on them.
+  ptbdisplays = getenv("PSYCHTOOLBOX_DISPLAYS");
+  if (ptbdisplays) {
+    // Displays explicitely specified. Parse the string and connect to all of them:
+    j=0;
+    for (i=0; i<=strlen(ptbdisplays) && j<1000; i++) {
+      // Accepted separators are ',', '"', white-space and end of string...
+      if (ptbdisplays[i]==',' || ptbdisplays[i]=='"' || ptbdisplays[i]==' ' || i==strlen(ptbdisplays)) {
+	// Separator or end of string detected. Try to connect to display:
+	displayname[j]=0;
+	printf("PTB-INFO: Trying to connect to X-Display %s ...", displayname);
+
+	x11_dpy = XOpenDisplay(displayname);
+	if (x11_dpy == NULL) {
+	  // Failed.
+	  printf(" ...Failed! Skipping this display...\n");
+	}
+	else {
+	  // Query number of available screens on this X11 display:
+	  count=ScreenCount(x11_dpy);
+	  scrnid=0;
+
+	  // Set the screenNumber --> X11 display mappings up:
+	  for (k=numDisplays; (k<numDisplays + count) && (k<kPsychMaxPossibleDisplays); k++) {
+	    // Mapping of logical screenNumber to X11 Display:
+	    displayCGIDs[k]= x11_dpy;
+	    // Mapping of logical screenNumber to X11 screenNumber for X11 Display:
+	    displayX11Screens[k]=scrnid++;
+	  }
+
+	  printf(" ...success! Added %i new physical display screens of %s as PTB screens %i to %i.\n",
+		 scrnid, displayname, numDisplays, k-1);
+
+	  // Update total count:
+	  numDisplays = k;
+	}
+
+	// Reset idx:
+	j=0;
+      }
+      else {
+	// Add character to display name:
+	displayname[j++]=ptbdisplays[i];
+      }
+    }
+    
+    // At least one screen enumerated?
+    if (numDisplays < 1) {
+      // We're screwed :(
+      PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Couldn't open any X11 display connection to any X-Server!!!");
+    }
+  }
+  else {
+    // User didn't setup env-variable with any special displays. We just use
+    // the default $DISPLAY or -display of Matlab:
+    x11_dpy = XOpenDisplay(NULL);
+    if (x11_dpy == NULL) {
+      // We're screwed :(
+      PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Couldn't open default X11 display connection to X-Server!!!");
+    }
+    
+    // Query number of available screens on this X11 display:
+    count=ScreenCount(x11_dpy);
+
+    // Set the screenNumber --> X11 display mappings up:
+    for (i=0; i<count && i<kPsychMaxPossibleDisplays; i++) { displayCGIDs[i]= x11_dpy; displayX11Screens[i]=i; }
+    numDisplays=i;
   }
 
-  // Query number of available screens on this X11 display:
-  numDisplays=ScreenCount(x11_dpy);
+  if (numDisplays>1) printf("PTB-Info: A total of %i physical X-Windows display screens is available for use.\n", numDisplays);
+  fflush(NULL);
 
   return;
+}
+
+int PsychGetXScreenIdForScreen(int screenNumber)
+{
+  if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+  return(displayX11Screens[screenNumber]);
 }
 
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
 {
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    //    *displayID=displayCGIDs[screenNumber];
-    *displayID=x11_dpy;
+    *displayID=displayCGIDs[screenNumber];
 }
 
 
@@ -160,7 +247,7 @@ void PsychCaptureScreen(int screenNumber)
 
     // MK: We could do this to get exclusive access to the X-Server, but i'm too
     // scared of doing it at the moment:
-    // XGrabServer(x11_dpy);
+    // XGrabServer(displayCGIDs[screenNumber]);
 
     if(error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
     PsychLockScreenSettings(screenNumber);
@@ -176,7 +263,7 @@ void PsychReleaseScreen(int screenNumber)
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     // MK: We could do this to release exclusive access to the X-Server, but i'm too
     // scared of doing it at the moment:
-    // XUngrabServer(x11_dpy);
+    // XUngrabServer(displayCGIDs[screenNumber]);
 
     // On Windows we restore the original display settings of the to be released screen:
     PsychRestoreScreenSettings(screenNumber);
@@ -203,11 +290,25 @@ int PsychGetNumDisplays(void)
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber); //also checked within SCREENPixelSizes
+  int* x11_depths;
+  int  i, count;
 
-    // MK: FIXME: This just always returns a depth of 32 bits per pixel!
-    PsychAddValueToDepthStruct((int) 32, depths);
+  if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
+
+  x11_depths = XListDepths(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &count);
+  if (depths && count>0) {
+    // Query successful: Add all values to depth struct:
+    for(i=0; i<count; i++) PsychAddValueToDepthStruct(x11_depths[i], depths);
+    XFree(x11_depths);
+  }
+  else {
+    // Query failed: Assume at least 32 bits is available.
+    printf("PTB-WARNING: Couldn't query available display depths values! Returning a made up list...\n");
+    fflush(NULL);
+    PsychAddValueToDepthStruct(32, depths);
+    PsychAddValueToDepthStruct(24, depths);
+    PsychAddValueToDepthStruct(16, depths); 
+  }
 }
 
 
@@ -242,11 +343,8 @@ boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 */
 void PsychGetScreenDepth(int screenNumber, PsychDepthType *depth)
 {    
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
-    //    PsychAddValueToDepthStruct((int) GetDeviceCaps(displayCGIDs[screenNumber], BITSPIXEL), depth);
-    // MK: TODO - Implement this...
-    PsychAddValueToDepthStruct(32, depth); 
+  if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); //also checked within SCREENPixelSizes
+  PsychAddValueToDepthStruct(DefaultDepth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), depth);
 }
 
 int PsychGetScreenDepthValue(int screenNumber)
@@ -271,11 +369,16 @@ int PsychGetNominalFramerate(int screenNumber)
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
 
+  if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
+    // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+    return(0);
+  }
+
   // Query vertical refresh rate. If it fails we default to the last known good value...
   // A problem of our current (int) return type is the limitation to integral numbers (Hz), although real displays can
   // run at non-integral refresh rates on Linux.
 
-  if (XF86VidModeGetModeLine(x11_dpy, screenNumber, &dot_clock, &mode_line)) {
+  if (XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
     // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
     // number of scanlines per videoframe.
     vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / mode_line.vtotal;
@@ -294,8 +397,8 @@ int PsychGetNominalFramerate(int screenNumber)
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
-  *width=XDisplayWidth(x11_dpy, screenNumber);
-  *height=XDisplayHeight(x11_dpy, screenNumber);
+  *width=XDisplayWidth(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
+  *height=XDisplayHeight(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
 }
 
 
@@ -501,21 +604,21 @@ void PsychHideCursor(int screenNumber)
     GC gc;
     XColor dummycolour;
 
-    cursormask = XCreatePixmap(x11_dpy, RootWindow(x11_dpy, screenNumber), 1, 1, 1/*depth*/);
+    cursormask = XCreatePixmap(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 1, 1, 1/*depth*/);
     xgc.function = GXclear;
-    gc = XCreateGC(x11_dpy, cursormask, GCFunction, &xgc );
-    XFillRectangle(x11_dpy, cursormask, gc, 0, 0, 1, 1 );
+    gc = XCreateGC(displayCGIDs[screenNumber], cursormask, GCFunction, &xgc );
+    XFillRectangle(displayCGIDs[screenNumber], cursormask, gc, 0, 0, 1, 1 );
     dummycolour.pixel = 0;
     dummycolour.red   = 0;
     dummycolour.flags = 04;
-    nullCursor = XCreatePixmapCursor(x11_dpy, cursormask, cursormask, &dummycolour, &dummycolour, 0, 0 );
-    XFreePixmap(x11_dpy, cursormask );
-    XFreeGC(x11_dpy, gc );
+    nullCursor = XCreatePixmapCursor(displayCGIDs[screenNumber], cursormask, cursormask, &dummycolour, &dummycolour, 0, 0 );
+    XFreePixmap(displayCGIDs[screenNumber], cursormask );
+    XFreeGC(displayCGIDs[screenNumber], gc );
   }
 
   // Attach nullCursor to our onscreen window:
-  XDefineCursor(x11_dpy, RootWindow(x11_dpy, screenNumber), nullCursor );
-  XFlush(x11_dpy);
+  XDefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), nullCursor );
+  XFlush(displayCGIDs[screenNumber]);
 
   return;
 }
@@ -525,17 +628,17 @@ void PsychShowCursor(int screenNumber)
   // Check for valid screenNumber:
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychHideCursor() is out of range"); //also checked within SCREENPixelSizes
   // Reset to default system cursor, which is a visible one.
-  XUndefineCursor(x11_dpy, RootWindow(x11_dpy, screenNumber));
-  XFlush(x11_dpy);
+  XUndefineCursor(displayCGIDs[screenNumber], RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)));
+  XFlush(displayCGIDs[screenNumber]);
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y)
 {
   // Reposition the mouse cursor:
-  if (XWarpPointer(x11_dpy, None, RootWindow(x11_dpy, screenNumber), 0, 0, 0, 0, x, y)==BadWindow) {
+  if (XWarpPointer(displayCGIDs[screenNumber], None, RootWindow(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber)), 0, 0, 0, 0, x, y)==BadWindow) {
     PsychErrorExitMsg(PsychError_internal, "Couldn't position the mouse cursor! (XWarpPointer() failed).");
   }
-  XFlush(x11_dpy);
+  XFlush(displayCGIDs[screenNumber]);
 }
 
 /*
@@ -560,7 +663,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
 
   // Query OS for gamma table:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-  XF86VidModeGetGammaRamp(cgDisplayID, screenNumber, 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+  XF86VidModeGetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
 
   // Convert tables:Map 16-bit values into 0-1 normalized floats:
   *redTable=localRed; *greenTable=localGreen; *blueTable=localBlue;
@@ -594,6 +697,6 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
   
   // Set new gammaTable:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-  XF86VidModeSetGammaRamp(cgDisplayID, screenNumber, 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+  XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
   return;
 }

@@ -53,12 +53,14 @@
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons);";
-//                          1  2  3                                           1  
+static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber]);";
+//                          1  2  3                                           1          2
 static char synopsisString[] = 
 	"This is a helper function called by GetMouse.  Do not call Screen(\'GetMouseHelper\'), use "
 	"GetMouse instead.\n"
-	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32.";
+	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32."
+        "\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
+        "This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.";
 static char seeAlsoString[] = "";
 	 
 
@@ -126,19 +128,21 @@ PsychError SCREENGetMouseHelper(void)
 	int keysdown;
 	XEvent event_return;
 	XKeyPressedEvent keypressevent;
+	int screenNumber;
 
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
 
-	// We currently don't take the screenNumber or windowPtr as argument to Screen('GetMouseHelper'),
-	// so no way of spec'ing target screen and display. We therefore just query screen zero on the
-	// default display:
-	PsychGetCGDisplayIDFromScreenNumber(&dpy, 0);
+	// Retrieve optional screenNumber argument:
+	screenNumber = 0;
+	PsychCopyInScreenNumberArg(2, FALSE, &screenNumber);
 
+	// Map screenNumber to X11 display handle and screenid:
+	PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
 
 	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
 	if (numButtons>=0) {
 	  // Mouse pointer query mode:
-	  XQueryPointer(dpy, DefaultRootWindow(dpy), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
+	  XQueryPointer(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), &rootwin, &childwin, &mx, &my, &dx, &dy, &mask_return);
 	  
 	  // Copy out mouse x and y position:
 	  PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) mx);

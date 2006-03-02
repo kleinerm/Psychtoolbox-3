@@ -231,14 +231,19 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   Window win;
   GLXContext ctx;
   XVisualInfo *visinfo;
-  int x, y, width, height;
+  int i, x, y, width, height;
   boolean fullscreen = FALSE;
   int attrib[30];
   int attribcount=0;
+  int depth;
+
+  // Which display depth is requested?
+  depth = PsychGetValueFromDepthStruct(0, &(screenSettings->depth));
 
   // Map the logical screen number to the corresponding X11 display connection handle
   // for the corresponding X-Server connection.
   PsychGetCGDisplayIDFromScreenNumber(&dpy, screenSettings->screenNumber);
+  scrnum = PsychGetXScreenIdForScreen(screenSettings->screenNumber);
 
   // Check if this should be a fullscreen window, and if not, what its dimensions
   // should be:
@@ -267,14 +272,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
   // Setup pixelformat descriptor for selection of GLX visual:
   attrib[attribcount++]= GLX_RGBA;       // Use RGBA true-color visual.
-  attrib[attribcount++]= GLX_RED_SIZE;   // At least 8 bits per RGBA component...
-  attrib[attribcount++]= 8;
+  attrib[attribcount++]= GLX_RED_SIZE;   // Setup requested minimum depth of each color channel:
+  attrib[attribcount++]= (depth > 16) ? 8 : 1;
   attrib[attribcount++]= GLX_GREEN_SIZE;
-  attrib[attribcount++]= 8;
+  attrib[attribcount++]= (depth > 16) ? 8 : 1;
   attrib[attribcount++]= GLX_BLUE_SIZE;
-  attrib[attribcount++]= 8;
+  attrib[attribcount++]= (depth > 16) ? 8 : 1;
   attrib[attribcount++]= GLX_ALPHA_SIZE;
-  attrib[attribcount++]= 8;
+  attrib[attribcount++]= (depth > 16) ? 8 : 0; // In 16 bit mode, we don't request an alpha-channel.
 
   // Stereo display support: If stereo display output is requested with OpenGL native stereo,
   // we request a stereo-enabled rendering context.
@@ -312,7 +317,6 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // Finalize attric array:
   attrib[attribcount++]= None;
 
-  scrnum = screenSettings->screenNumber; // Original: DefaultScreen(cgDisplayID);
   root = RootWindow( dpy, scrnum );
 
   // Select matching visual for our pixelformat:
@@ -322,20 +326,36 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers
     // and output a proper warning instead of failing. For 99% of all applications one can
     // do without AUX buffers anyway...
+    printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
+    fflush(NULL);
 
     // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
     attrib[attribcount-3] = None;
+
     // Retry...
     visinfo = glXChooseVisual( dpy, scrnum, attrib );
-    if (!visinfo) {
-      printf("\nPTB-ERROR[glXChooseVisual() failed]: Couldn't get a suitable visual from X-Server.\n\n");
-      return(FALSE);
-    }
-    else {
-      // Suceeded without AUX buffers...
-      printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
+    if (!visinfo && PsychPrefStateGet_3DGfx()) {
+      // Ok, retry with a 16 bit depth buffer...
+      for (i=0; i<attribcount && attrib[i]!=GLX_DEPTH_SIZE; i++);
+      if (attrib[i]==GLX_DEPTH_SIZE && i<attribcount) attrib[i+1]=16;
+      printf("PTB-WARNING: Have to use 16 bit depth buffer instead of 24 bit buffer due to limitations of your gfx-hardware or driver. Accuracy of 3D-Gfx may be limited...\n");
       fflush(NULL);
+
+      visinfo = glXChooseVisual( dpy, scrnum, attrib );
+      if (!visinfo) {
+	// Failed again. Retry with disabled stencil buffer:
+	printf("PTB-WARNING: Have to disable stencil buffer due to limitations of your gfx-hardware or driver. Some 3D Gfx algorithms may fail...\n");
+	fflush(NULL);
+	for (i=0; i<attribcount && attrib[i]!=GLX_STENCIL_SIZE; i++);
+	if (attrib[i]==GLX_STENCIL_SIZE && i<attribcount) attrib[i+1]=0;
+	visinfo = glXChooseVisual( dpy, scrnum, attrib );
+      }
     }
+  }
+
+  if (!visinfo) {
+    printf("\nPTB-ERROR[glXChooseVisual() failed]: Couldn't get any suitable visual from X-Server.\n\n");
+    return(FALSE);
   }
 
   // Setup window attributes:
@@ -383,7 +403,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
   // Show our new window:
   XMapWindow(dpy, win);
-  
+
   // Activate the associated rendering context:
   PsychOSSetGLContext(windowRecord);
 
