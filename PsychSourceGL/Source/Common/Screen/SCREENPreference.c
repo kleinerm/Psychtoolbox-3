@@ -31,8 +31,9 @@
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 
-#include <sys/types.h>			// for getpid()
-#include <unistd.h>			// for getpid()
+// for getpid()
+#include <sys/types.h>
+#include <unistd.h>
 
 #else
 

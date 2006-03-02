@@ -38,6 +38,7 @@ else
 	pixelSize=Screen(windowPtrOrScreenNumber,'PixelSize');
 	switch pixelSize
 	case 32;black=0;
+    case 24;black=0;
 	case 16;black=0;
 	case 8;black=black8;
 	case 4;black=15;

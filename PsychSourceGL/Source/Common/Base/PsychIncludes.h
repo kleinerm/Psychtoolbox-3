@@ -45,8 +45,8 @@
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	#include "mex.h"
 	#include <windows.h>
-	#include <gl/gl.h>  //do we need the windows specific versions of this ?
-	#include <gl/glu.h> //do we need the windows specific versions of this ?
+	#include <gl/gl.h>
+	#include <gl/glu.h>
         #include <Movies.h>
         #include <CoreVideo.h>
         #include <GXMath.h>
@@ -88,7 +88,7 @@
 //SDL.h only after the standard includes above. 
 //platform dependent includes stage 2
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-//	#include "sdl.h"  
+
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	#include "SDL.h"
 #endif 

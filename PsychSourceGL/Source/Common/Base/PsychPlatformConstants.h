@@ -67,7 +67,9 @@
 
 //define the windowing API.  
 #define PSYCH_NO_WINDOW		0 
-#define PSYCH_SDL_WINDOW    	1  //Simple Direct Media Layer (SDL)
-#define PSYCH_CGL_WINDOW	2  //Apple's Core Graphics Direct Display and CGL
+//Simple Direct Media Layer (SDL)
+#define PSYCH_SDL_WINDOW    	1
+//Apple's Core Graphics Direct Display and CGL
+#define PSYCH_CGL_WINDOW	2
 
  

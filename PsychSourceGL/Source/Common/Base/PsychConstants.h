@@ -28,6 +28,7 @@
 #ifndef PSYCH_IS_INCLUDED_PsychConstants
 #define PSYCH_IS_INCLUDED_PsychConstants
 
+
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
@@ -57,7 +58,7 @@
 #ifndef GL_UNSIGNED_INT_8_8_8_8
 #define GL_UNSIGNED_INT_8_8_8_8  0x8035
 #endif
-// Define GL_BGRA as GL_BGRA_EXT aka 0x80E1 if it isn't defined already
+// Define GL_BGRA as GL_BGRA_EXT aka 0x80E1 if it isn''t defined already
 #ifndef GL_BGRA
 #define GL_BGRA              0x80E1
 #endif

@@ -74,7 +74,7 @@ typedef enum {
 	kPsychVideoMemoryOffscreen = 	4,
 	kPsychSystemMemoryOffscreen = 	5,
 	kPsychTexture =					6
-	} PsychWindowType; //naming conventions dictate "PsychWindowTypeType" but that's silly.
+	} PsychWindowType; //naming conventions dictate "PsychWindowTypeType" but thats silly.
 
 typedef enum  {
         kPsychMonoscopic   = 0,           // Monoscopic display aka non-stereo. This is the default setting.
@@ -149,9 +149,9 @@ typedef struct {
 #define kPsychAlphaPlane	3
 #define kPsychIndexPlane	0
 
-// Constants that can be or'ed together for the "ConserveVRAM"
+// Constants that can be ored together for the "ConserveVRAM"
 // Screen Preference setting:
-// Don't use AUX buffers, disable associated features.
+// Do not use AUX buffers, disable associated features.
 #define kPsychDisableAUXBuffers 1
 // Use Client storage for RAM->DMA texturing instead of VRAM texturing.
 #define kPsychDontCacheTextures 2

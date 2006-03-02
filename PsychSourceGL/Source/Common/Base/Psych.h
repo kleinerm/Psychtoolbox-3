@@ -24,11 +24,11 @@
 #ifndef PSYCH_IS_INCLUDED_Psych
 #define PSYCH_IS_INCLUDED_Psych
 
-#include "PsychConstants.h"  //can include this alone
+//can include this alone
+#include "PsychConstants.h"
 
-//#include "PsychLinkMatlab.h" //can include this alone which includes PsychConstants
-
-#include "MiniBox.h"		//if useing any of below include Psych.h
+//if using any of below include Psych.h
+#include "MiniBox.h"
 #include "ProjectTable.h"
 #include "PsychError.h"
 #include "PsychScriptingGlue.h"
@@ -42,12 +42,9 @@
 #include "PsychMemory.h"
 #include "PsychTimeGlue.h"
 #include "PsychInstrument.h"	
-#include "RegisterProject.h"  //This is provided by the project.
+
+//This is provided by the project.
+#include "RegisterProject.h"
 #include "TimeLists.h"
-//#include "PsychPreferences.h"
-
-
-
-
 //end include once
 #endif
