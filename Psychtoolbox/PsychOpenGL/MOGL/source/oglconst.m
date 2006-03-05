@@ -1,0 +1,122 @@
+function oglconst(glheaderpath, aglheaderpath)
+
+% OGLCONST  Collect GL, GLU, and AGL constants from C header files, and
+%           store them in oglconst.mat
+%
+% usage:  oglconst
+
+% 09-Dec-2005 -- created (RFM)
+% 23-Jan-2005 -- constants saved in both struct and OpenGL style (RFM)
+% 05-Mar-2006 -- ability to spec. system header file path added (MK)
+
+% Alternate path to header files specified?
+if nargin < 1
+    glheaderpath = '/System/Library/Frameworks/OpenGL.framework/Headers';
+end;
+
+if nargin < 2
+    aglheaderpath = '/System/Library/Frameworks/AGL.framework/Headers';
+end;
+
+fprintf('Parsing OpenGL, GLU and AGL header files in %s and %s ...\n',glheaderpath, aglheaderpath);
+
+% get constants from the OpenGL header files.  the 'parsefile' routine
+% defines the constants in the calling workspace, as variables with the
+% same names as the #defined OpenGL constants, e.g., GL_COLOR_BUFFER_BIT.
+% the return argument contains all the constants as fields of a structure,
+% e.g., GL.COLOR_BUFFER_BIT.  (note that the first underscore has been
+% changed to a period.)  the first style is more like the C convention,
+% and the second style prevents the workspace from being swamped with
+% hundreds of global variables.  later on, we can load whichever style
+% we want from the file where they're all saved.
+GL= parsefile(sprintf('%s/gl.h', glheaderpath), 'GL_');
+GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_');
+AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
+
+% save OpenGL-style constants
+fname='oglconst.mat';
+save(fname,'GL_*','GLU_*','AGL_*');
+
+% save structure-style constants to same file
+save(fname,'GL','GLU','AGL','-append');
+
+% put a copy into the 'core' directory
+copyfile(fname,'../core');
+
+return
+
+
+% function to parse header files
+function S = parsefile( fname, prefix )
+
+% initialize return argument
+S=[];
+
+% check size of prefix (GL, GLU, or AGL)
+nprefix=length(prefix);
+
+% open input file
+fid=fopen(fname,'r');
+
+% step through lines of input file
+while ~feof(fid),
+
+    % read a line and parse it as '#define SYMBOL VALUE'
+    codeline=fgets(fid);
+    r=regexp(codeline,'^\s*#define\s+(?<symbol>\S+)\s*(?<value>\S*)','names');
+
+    % if it's not a #define statement, then skip it
+    if isempty(r),
+        continue
+    end
+
+    % if the symbol doesn't have the required prefix, (GL_, GLU_, or AGL_),
+	% then skip it
+    if ~strncmp(r.symbol,prefix,nprefix),
+        continue
+    end
+
+    % remove prefix from symbol
+	fieldname=r.symbol((nprefix+1):end);
+    
+    % if remainder of symbol name begins with a digit, then add 'N' to make
+    % it a valid field name
+    if ismember(fieldname(1),'0123456789'),
+        fieldname=[ 'N' fieldname ];
+    end
+
+    % convert value to a numeric value
+    if ~isempty(r.value),
+        if strncmp(r.value,'0x',2),
+			% convert hex value
+            nvalue=hex2dec(r.value(3:end));
+		else
+			% convert decimal value
+            nvalue=str2num(r.value);
+        end
+        % assign value of zero if conversion failed, e.g., if symbol was
+		% defined using another #define, as in #define GL_THIS GL_THAT.
+		% if anything important is #defined this way, we'll have to fix
+		% up this part.
+        if isempty(nvalue),
+            warning('error converting numeric value from line:  %s',codeline);
+            nvalue=0;
+        end
+	else
+		% assign zero if symbol has no value, e.g., #define GL_I_WAS_HERE
+        nvalue=0;
+    end
+
+    % add numeric value to struct
+    fprintf(1,'%s\t%-20s\t%s\t%.0f\n',prefix,fieldname,r.value,nvalue);
+    S=setfield(S,fieldname,nvalue);
+    
+    % define OpenGL-style variable in calling workspace
+	evalin('caller',sprintf('%s=%d;',r.symbol,nvalue));
+
+end
+
+% close file
+fclose(fid);
+
+return

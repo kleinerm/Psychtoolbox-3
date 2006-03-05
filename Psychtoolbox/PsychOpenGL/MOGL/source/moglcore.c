@@ -1,0 +1,93 @@
+/*
+ *
+ * moglcore.c -- MATLAB MEX file interface to OpenGL under OS X
+ *
+ * 08-May-2005 -- created (RFM)
+ * 08-Dec-2005 -- reworked into direct interface to gl, glu, and glm functions (RFM)
+ * 05-Mar-2006 -- reworked to make inclusion of glm optional (for Psychtoolbox) (MK)
+ *
+ */
+
+#include "mogltypes.h"
+
+/* Build and include support for glm if BUILD_GLM is defined.
+   Otherwise, only build OpenGL wrappers.
+*/
+
+#ifdef BUILD_GLM
+extern int glm_map_count;
+extern cmdhandler glm_map[];
+#endif
+
+extern int gl_manual_map_count, gl_auto_map_count;
+extern cmdhandler gl_manual_map[], gl_auto_map[];
+
+// command string
+#define CMDLEN 64
+char cmd[CMDLEN];
+
+// binary search routine
+int binsearch(cmdhandler *map, int mapsize, char *str);
+
+// error handler
+void mogl_usageerr();
+
+// MEX interface function
+void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
+    
+    int i;
+    
+    // see whether there's a string command
+    if( nrhs<1 | !mxIsChar(prhs[0]) )
+        mogl_usageerr();
+    
+    // get string command
+    mxGetString(prhs[0],cmd,CMDLEN);
+
+    #ifdef BUILD_GLM
+
+    // look for command in glm command map
+    if( (i=binsearch(glm_map,glm_map_count,cmd))>=0 ) {
+        glm_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
+        return;
+    }
+
+    #endif
+
+    // look for command in manual command map
+    if( (i=binsearch(gl_manual_map,gl_manual_map_count,cmd))>=0 ) {
+        gl_manual_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
+        return;
+    }
+    
+    // look for command in auto command map
+    if( (i=binsearch(gl_auto_map,gl_auto_map_count,cmd))>=0 ) {
+        gl_auto_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
+        return;
+    }
+    
+    // no match
+    mogl_usageerr();
+    
+}
+
+// do binary search in a command map for a command string
+int binsearch(cmdhandler *map, int mapsize, char *str) {
+    int m=0,n=mapsize-1,i,k;
+    while( m<=n ) {
+        i=floor((m+n)/2);
+        k=strcmp(str,map[i].cmdstr);
+        if( k==0 )
+            return( i );
+        else if( k<0 )
+            n=i-1;
+        else
+            m=i+1;
+    }
+    return( -1 );
+}
+
+// error handler
+void mogl_usageerr() {
+    mexErrMsgTxt("invalid moglcore command");
+}
