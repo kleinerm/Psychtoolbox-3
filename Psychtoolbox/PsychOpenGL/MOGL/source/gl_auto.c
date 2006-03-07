@@ -2855,7 +2855,7 @@ void gl_samplecoverage( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs
 
 void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
-	glSamplePass((GLenum)mxGetScalar(prhs[0]));
+  //glSamplePass((GLenum)mxGetScalar(prhs[0]));
 
 }
 

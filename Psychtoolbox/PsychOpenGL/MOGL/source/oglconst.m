@@ -11,14 +11,26 @@ function oglconst(glheaderpath, aglheaderpath)
 
 % Alternate path to header files specified?
 if nargin < 1
-    glheaderpath = '/System/Library/Frameworks/OpenGL.framework/Headers';
+    if IsOSX
+        glheaderpath = '/System/Library/Frameworks/OpenGL.framework/Headers';
+    end;
+
+    if IsLinux
+        glheaderpath = '/usr/include/GL';
+    end;
 end;
 
 if nargin < 2
-    aglheaderpath = '/System/Library/Frameworks/AGL.framework/Headers';
+    if IsOSX
+        aglheaderpath = '/System/Library/Frameworks/AGL.framework/Headers';
+    end;
 end;
 
-fprintf('Parsing OpenGL, GLU and AGL header files in %s and %s ...\n',glheaderpath, aglheaderpath);
+if IsOSX
+    fprintf('Parsing OpenGL, GLU and AGL header files in %s and %s ...\n',glheaderpath, aglheaderpath);
+else
+    fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
+end;
 
 % get constants from the OpenGL header files.  the 'parsefile' routine
 % defines the constants in the calling workspace, as variables with the
@@ -31,14 +43,24 @@ fprintf('Parsing OpenGL, GLU and AGL header files in %s and %s ...\n',glheaderpa
 % we want from the file where they're all saved.
 GL= parsefile(sprintf('%s/gl.h', glheaderpath), 'GL_');
 GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_');
-AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
+if IsOSX
+    AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
+end;
 
 % save OpenGL-style constants
-fname='oglconst.mat';
-save(fname,'GL_*','GLU_*','AGL_*');
+if IsOSX
+    fname='oglconst.mat';
+    save(fname,'GL_*','GLU_*','AGL_*');
+    % save structure-style constants to same file
+    save(fname,'GL','GLU','AGL','-append');
+end;
 
-% save structure-style constants to same file
-save(fname,'GL','GLU','AGL','-append');
+if IsLinux
+    fname='oglconst_linux.mat';
+    save(fname,'GL_*','GLU_*','-V6');
+    % save structure-style constants to same file
+    save(fname,'GL','GLU','-append','-V6');
+end;
 
 % put a copy into the 'core' directory
 copyfile(fname,'../core');

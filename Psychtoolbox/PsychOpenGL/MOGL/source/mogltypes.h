@@ -26,7 +26,19 @@
 
 #endif
 
-/* To do: M$-Windows and GNU/Linux specific includes... */
+/* Includes specific to GNU/Linux version of mogl: */
+#ifdef LINUX
+
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
+#include <GL/gl.h>
+#include <GL/glu.h>
+#include <GL/glut.h>
+
+#endif
+
+/* To do: M$-Windows specific includes... */
 
 // typedef for command map entries
 typedef struct cmdhandler {

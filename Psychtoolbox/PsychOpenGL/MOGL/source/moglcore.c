@@ -73,9 +73,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 
 // do binary search in a command map for a command string
 int binsearch(cmdhandler *map, int mapsize, char *str) {
-    int m=0,n=mapsize-1,i,k;
-    while( m<=n ) {
-        i=floor((m+n)/2);
+    int m=0,n=mapsize-1,i,k,count=0;
+    while( m<=n && count < 100) {
+      count++;
+        i=(int)((m+n)/2);
         k=strcmp(str,map[i].cmdstr);
         if( k==0 )
             return( i );

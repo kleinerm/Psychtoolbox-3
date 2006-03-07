@@ -21,7 +21,7 @@ function ptbmoglinit(opengl_c_style)
 AssertOpenGL
 
 % Is Mogl properly installed?
-if ~exist('glmGetconst.m','file'),
+if ~exist('glmGetConst.m','file'),
     error('Failed to initialize OpenGL for Matlab: Add the ''core'' and ''wrap'' directories of mogl to the MATLAB search path!');
 end;
 
@@ -33,7 +33,13 @@ end;
 % load constants as fields of a struct, e.g., GL.COLOR_BUFFER_BIT
 evalin('caller','global AGL GL GLU');
 if opengl_c_style > 0
-    evalin('caller','load oglconst.mat');
+    if IsOSX
+        evalin('caller','load oglconst.mat');    
+    end;
+    
+    if IsLinux
+        evalin('caller','load oglconst_linux.mat');    
+    end;
 end;
 
 % Enable support for OpenGL 3D graphics rendering in Psychtoolbox.
