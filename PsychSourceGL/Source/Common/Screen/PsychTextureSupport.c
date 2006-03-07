@@ -14,20 +14,22 @@
 	
 		3/9/04		awi		Wrote it 
 		7/27/04		awi		Removed commented-out code.
-		1/4/05		mk              Performance optimizations, some bug-fixes.
+		1/4/05		mk		Performance optimizations, some bug-fixes.
 		1/13/05		awi		Merged in Mario's changes of 1/4/05 into the psychtoolbox.org master.
 		1/23/05		awi		Merged mk's update which adds glEnable(GL_TEXTURE_RECTANGLE_EXT) call.  Fixes DrawText and DrawTexture
-                                                interference reported by Frans Cornelissen and others;
-                1/30/05         mk              Small bugfix: Now specifying sourceRect in DrawTexture really works as expected.
-		5/13/05         mk              Support for rotated drawing of textures. Switched to bilinear texture filtering instead of nearest neighbour.
-                6/07/05         mk              Change definition of texture coords from GLint to GLflot -> Allows subpixel accurate texturing.
-                7/23/05         mk              New options filterMode and globalAlpha for PsychBlitTextureToDisplay().
-                8/11/05         mk              New texture handling: We now use real OpenGL textures instead of our old "pseudo-texture"
-                                                implementation. This is *way* faster, e.g., drawing times decrease from 35 ms to 3 ms for big
-                                                textures. Some experimental optimizations are implemented but not yet enabled...
-                10/11/05        mk              Support for special Quicktime movie textures added.
-                01/02/05        mk              Moved from OSX folder to Common folder. Contains nearly only shared code.
-        DESCRIPTION:
+								interference reported by Frans Cornelissen and others;
+		1/30/05     mk			Small bugfix: Now specifying sourceRect in DrawTexture really works as expected.
+		5/13/05		mk		Support for rotated drawing of textures. Switched to bilinear texture filtering instead of nearest neighbour.
+		6/07/05		mk		Change definition of texture coords from GLint to GLflot -> Allows subpixel accurate texturing.
+		7/23/05		mk		New options filterMode and globalAlpha for PsychBlitTextureToDisplay().
+		8/11/05		mk		New texture handling: We now use real OpenGL textures instead of our old "pseudo-texture"
+								implementation. This is *way* faster, e.g., drawing times decrease from 35 ms to 3 ms for big
+								textures. Some experimental optimizations are implemented but not yet enabled...
+		10/11/05	mk		Support for special Quicktime movie textures added.
+		01/02/05	mk		Moved from OSX folder to Common folder. Contains nearly only shared code.
+		3/07/06		awi		Print warnings conditionally according to PsychPrefStateGet_SuppressAllWarnings(). 
+	
+	DESCRIPTION:
 	
 		Psychtoolbox functions for dealing with textures.
 	
@@ -70,22 +72,26 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
         if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
 	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-	    printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
+	    if(!PsychPrefStateGet_SuppressAllWarnings())
+			printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
         }
         else if (strstr(glGetString(GL_EXTENSIONS), "GL_NV_texture_rectangle") && GL_TEXTURE_RECTANGLE_NV != GL_TEXTURE_2D){
 	    // Try NVidia specific texture rectangle extension:
 	    texturetarget = GL_TEXTURE_RECTANGLE_NV;
-	    printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
+	    if(!PsychPrefStateGet_SuppressAllWarnings())
+			printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
         }
         else {
 	    // No texture rectangle extension available :(
 	    // We fall back to standard power of two textures...
-	    printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
-	    printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
-	    printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");
-	    printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, Quicktime movies)\n");
-	    printf("PTB-WARNING: and you are unhappy with the performance, then please upgrade your graphics driver and possibly\n");
-	    printf("PTB-WARNING: your gfx hardware if you need higher performance...\n");
+		if(!PsychPrefStateGet_SuppressAllWarnings()){
+			printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
+			printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
+			printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");
+			printf("PTB-WARNING: If you use a lot of image stimuli (DrawTexture, Offscreen windows, Stereo display, Quicktime movies)\n");
+			printf("PTB-WARNING: and you are unhappy with the performance, then please upgrade your graphics driver and possibly\n");
+			printf("PTB-WARNING: your gfx hardware if you need higher performance...\n");
+		}
 	    //printf("%s", glGetString(GL_EXTENSIONS));
 	    fflush(NULL);
 	    texturetarget = GL_TEXTURE_2D;

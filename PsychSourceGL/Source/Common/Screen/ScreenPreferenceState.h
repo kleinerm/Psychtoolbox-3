@@ -12,8 +12,9 @@
 	HISTORY:
 	
 		2/28/04  awi		Created.   
-                5/30/05  mk             New preference setting screenSkipSyncTests.
-                5/30/05  mk             New preference setting screenVisualDebugLevel.
+		5/30/05  mk         New preference setting screenSkipSyncTests.
+		5/30/05  mk         New preference setting screenVisualDebugLevel.
+		3/7/06   awi        Added state for new preference flag SuppressAllWarnings. 
 
 
 	DESCRIPTION:
@@ -79,6 +80,10 @@ void PsychPrefStateSet_3DGfx(Boolean level);
 //Debug preferences.  
 Boolean PsychPrefStateGet_DebugMakeTexture(void);
 void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag);
+
+Boolean PsychPrefStateGet_SuppressAllWarnings(void);
+void PsychPrefStateSet_SuppressAllWarnings(Boolean setFlag);
+
 
 //end include once
 #endif

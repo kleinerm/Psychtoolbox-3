@@ -16,6 +16,7 @@
 		1/20/05		awi		Added a preference for debugging MakeTexture 
 		5/30/05		mk		New preference setting screenSkipSyncTests -- allow skipping/shortening of some internal tests.
 		5/30/05		mk		New preference setting screenVisualDebugLevel.
+		3/07/05		awi		New preference SuppressAllWarnings.
  
 	DESCRIPTION:
   
@@ -147,8 +148,8 @@ PsychError SCREENPreference(void)
 	PsychArgFormatType		arg1Type;
 	char					*preferenceName, *newFontName;
 	const char				*tableCreator, *oldDefaultFontName;
-	Boolean					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag;
-	int					numInputArgs, i, newFontStyleNumber, newFontSize, tempInt;
+	Boolean					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
+	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt;
 	double					returnDoubleValue, inputDoubleValue;
 	
 	//all sub functions should have these two lines
@@ -271,39 +272,48 @@ PsychError SCREENPreference(void)
 				PsychPrefStateSet_VisualDebugLevel(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
-                }else 
-                        if(PsychMatch(preferenceName, "ConserveVRAM")){
-                                PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
-                                if(numInputArgs==2){
-                                    PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
-                                    PsychPrefStateSet_ConserveVRAM(tempInt);
-                                }
-                        preferenceNameArgumentValid=TRUE;
-                }else 
-                    if(PsychMatch(preferenceName, "EmulateOldPTB")){
-                        PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_EmulateOldPTB());
-                        if(numInputArgs==2){
-                            PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
-                            PsychPrefStateSet_EmulateOldPTB(tempFlag);
-                        }
-                        preferenceNameArgumentValid=TRUE;
-                }else 
-                    if(PsychMatch(preferenceName, "Enable3DGraphics")){
-                        PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_3DGfx());
-                        if(numInputArgs==2){
-                            PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
-                            PsychPrefStateSet_3DGfx(tempFlag);
-                        }
-                        preferenceNameArgumentValid=TRUE;
-                }else 
-                    if(PsychMatch(preferenceName, "TextAlphaBlending")){
-			textAlphaBlendingFlag=PsychPrefStateGet_TextAlphaBlending();
-			PsychCopyOutFlagArg(1, kPsychArgOptional, textAlphaBlendingFlag);
-			if(numInputArgs==2){
-				PsychCopyInFlagArg(2, kPsychArgRequired, &booleanInput);
-				PsychPrefStateSet_TextAlphaBlending(booleanInput);
-			}
+		}else 
+			if(PsychMatch(preferenceName, "ConserveVRAM")){
+					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
+					if(numInputArgs==2){
+						PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+						PsychPrefStateSet_ConserveVRAM(tempInt);
+					}
 			preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "EmulateOldPTB")){
+				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_EmulateOldPTB());
+				if(numInputArgs==2){
+					PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
+					PsychPrefStateSet_EmulateOldPTB(tempFlag);
+				}
+				preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "Enable3DGraphics")){
+				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_3DGfx());
+				if(numInputArgs==2){
+					PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
+					PsychPrefStateSet_3DGfx(tempFlag);
+				}
+				preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "TextAlphaBlending")){
+				textAlphaBlendingFlag=PsychPrefStateGet_TextAlphaBlending();
+				PsychCopyOutFlagArg(1, kPsychArgOptional, textAlphaBlendingFlag);
+				if(numInputArgs==2){
+					PsychCopyInFlagArg(2, kPsychArgRequired, &booleanInput);
+					PsychPrefStateSet_TextAlphaBlending(booleanInput);
+				}
+				preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "SuppressAllWarnings")){
+				suppressAllWarningsFlag=PsychPrefStateGet_SuppressAllWarnings();
+				PsychCopyOutFlagArg(1, kPsychArgOptional, suppressAllWarningsFlag);
+				if(numInputArgs==2){
+					PsychCopyInFlagArg(2, kPsychArgRequired, &booleanInput);
+					PsychPrefStateSet_SuppressAllWarnings(booleanInput);
+				}
+				preferenceNameArgumentValid=TRUE;
 		}else 
 			PsychErrorExit(PsychError_unrecognizedPreferenceName);
 	}

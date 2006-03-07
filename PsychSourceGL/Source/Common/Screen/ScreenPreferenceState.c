@@ -1,23 +1,29 @@
 /*
-  ScreenPreferenceState.c		
+	ScreenPreferenceState.c		
   
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+	AUTHORS:
+
+		Allen.Ingling@nyu.edu		awi 
   
-  PLATFORMS:	Mac OS X MATLAB only.
+	PLATFORMS:	
+	
+		Mac OS X MATLAB only.
     
 
-  HISTORY:
-  2/28/04  awi		Created.   
-  5/30/05  mk           New preference setting screenSkipSyncTests: If set to TRUE, self-test and calibration will be as
-                        short and sloppy as possible and some problematic conditions will not cause an abort.
-                        One can trade-off correctness and accuracy of stimulus presentation against level of annoyance
-                        during development/debugging of new experiments.
-  9/30/05  mk           new setting VisualDebugLevel: Defines how much visual feedback PTB should give about errors and
-                        state: 0=none, 1=only errors, 2=also warnings, 3=also infos, 4=also blue bootup screen, 5=also visual test sheets.
-  DESCRIPTION:
+	HISTORY:
+
+		2/28/04  awi		Created.   
+		5/30/05  mk           New preference setting screenSkipSyncTests: If set to TRUE, self-test and calibration will be as
+							short and sloppy as possible and some problematic conditions will not cause an abort.
+							One can trade-off correctness and accuracy of stimulus presentation against level of annoyance
+							during development/debugging of new experiments.
+		9/30/05  mk           new setting VisualDebugLevel: Defines how much visual feedback PTB should give about errors and
+							state: 0=none, 1=only errors, 2=also warnings, 3=also infos, 4=also blue bootup screen, 5=also visual test sheets.
+		3/7/06   awi        Added state for new preference flag SuppressAllWarnings. 
   
-  This file holds state for the Screen Preference command.
+	DESCRIPTION:
+  
+		This file holds state for the Screen Preference command.
   
    
   
@@ -53,6 +59,7 @@ void PrepareScreenPreferences(void)
 	psychTableVersion=20;
 	
 }
+static Boolean							suppressAllWarnings=FALSE;
 
 
 //Accessors
@@ -223,6 +230,18 @@ Boolean PsychPrefStateGet_DebugMakeTexture(void)
 void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag)
 {
 	TimeMakeTextureFlag=setFlag;
+}
+
+
+
+Boolean PsychPrefStateGet_SuppressAllWarnings(void)
+{
+	return(suppressAllWarnings);
+}
+
+void PsychPrefStateSet_SuppressAllWarnings(Boolean setFlag)
+{
+	suppressAllWarnings=setFlag;
 }
 
 
