@@ -1,19 +1,23 @@
 /*
-  PsychToolbox2/Source/OSX/Fonts/FONTSSynopsis.cpp	
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS: All OS
-  
-  PROJECTS:
-  08/21/02	awi		OS X version
-   
+	PsychToolbox2/Source/OSX/FontInfo/FONTSSynopsis.cpp	
 
-  HISTORY:
-  08/21/02  awi		Wrote it.  
-  
-  DESCRIPTION:
+	AUTHORS:
+	
+		Allen.Ingling@nyu.edu		awi 
+
+	PLATFORMS: 
+	
+
+	PROJECTS:
+	
+		08/21/02	awi		OS X version
+
+	HISTORY:
+	
+		08/21/02	awi		Wrote it.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.		  
+
+	DESCRIPTION:
   
 
 */
@@ -32,9 +36,9 @@ void InitializeSynopsis()
 	synopsis[i++] = "Usage:";
 
 
-        synopsis[i++] = "numFonts=Fonts('NumFonts')";
-	synopsis[i++] = "fontInfoStructArray=Fonts('Fonts')";
-        synopsis[i++] = "versionInfo=Fonts('Version')";
+        synopsis[i++] = "numFonts=FontInfo('NumFonts')";
+	synopsis[i++] = "fontInfoStructArray=FontInfo('Fonts')";
+        synopsis[i++] = "versionInfo=FontInfo('Version')";
 
 
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop

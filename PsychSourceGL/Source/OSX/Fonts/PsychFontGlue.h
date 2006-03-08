@@ -1,13 +1,19 @@
 /*
-	PsychToolbox2/Source/OSX/Fonts/PsychFontGlue.h
+	PsychToolbox2/Source/OSX/FontInfo/PsychFontGlue.h
 	
-	PLATFORMS:	This is the OS X  version.  
+	PLATFORMS:	
+	
+		OS X  
 				
 	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
+	
+		Allen Ingling		awi		Allen.Ingling@nyu.edu
+		
 
 	HISTORY:
-	11/24/03		awi		Wrote it 
+	
+		11/24/03	awi		Wrote it.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated. 
 							
 	DESCRIPTION:
         
@@ -67,7 +73,7 @@ typedef struct _PsychFontStructType_{
         
         //Retain the the Font Manager (FM) and Apple Type Services (ATS) references to the font.
         //We could use these to tie font families to font names, for example 
-        // Fonts('GetFontsFromFontFamilyName') or Fonts('GetFontFamilyFromFont');
+        // FontInfo('GetFontsFromFontFamilyName') or FontInfo('GetFontFamilyFromFont');
         ATSFontRef					fontATSRef;
         FMFont						fontFMRef;
         ATSFontFamilyRef			fontFamilyATSRef;

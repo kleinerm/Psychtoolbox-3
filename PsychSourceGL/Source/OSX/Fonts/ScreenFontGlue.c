@@ -1,5 +1,5 @@
 /*
-	PsychToolbox2/Source/OSX/Fonts/ScreenFontGlue.c
+	PsychToolbox2/Source/OSX/FontInfo/ScreenFontGlue.c
 	
 	PLATFORMS:	This is the OS X  version.  
 				
@@ -9,8 +9,9 @@
 
 	HISTORY:
 	
-		7/8/04		awi		Split it of from PsychFontGlue because PsychWindowRecordType in PsychSetATSUStyleAttributes
+		7/8/04		awi		Split it off from PsychFontGlue because PsychWindowRecordType in PsychSetATSUStyleAttributes
 							was causing trouble for the FontInfo project
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.
 							
 	DESCRIPTION:
         

@@ -1,13 +1,18 @@
 /*
-	PsychToolbox2/Source/OSX/Fonts/PsychFontGlue.c
+	PsychToolbox2/Source/OSX/FontInfo/PsychFontGlue.c
 	
-	PLATFORMS:	This is the OS X version.  
+	PLATFORMS:	
+	
+		OS X
 				
 	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
+	
+		Allen Ingling		awi		Allen.Ingling@nyu.edu
 
 	HISTORY:
-	11/24/03		awi		Wrote it 
+	
+		11/24/03		awi		Wrote it 
+		3/7/06			awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.		
 							
 	DESCRIPTION:
         

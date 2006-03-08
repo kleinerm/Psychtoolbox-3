@@ -1,30 +1,24 @@
 /*
-	PsychToolbox2/Source/OSX/Fonts/RegisterProject.h		
+	PsychToolbox2/Source/OSX/FontInfo/RegisterProject.h		
   
-	PROJECTS: Fonts only.  
+	PROJECTS: FontInfo only.  
   
 	AUTHORS:
+	
 		Allen.Ingling@nyu.edu		awi 
   
-	PLATFORMS:	Mac OS X
+	PLATFORMS:	
+	
+		Mac OS X
     
-
 	HISTORY:
 
 		10/23/03  	awi		Created. 
-		7/07/04		awi		Cosmetic
+		7/07/04		awi		Cosmetic.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.		
  
 	DESCRIPTION: 
 
-    TARGET LOCATION:
-
-		Fonts.mexmac resides in:
-			PsychToolbox/PsychBeta/PsychBasic/
-			
-		To change the target location modify the script:
-			Psychtoolbox/Tools/Scripts/CopyOutMexFiles/Fonts_CopyOut.sh
-
-  
 */ 
 
 //begin include once 

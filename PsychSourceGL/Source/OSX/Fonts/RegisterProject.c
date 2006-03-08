@@ -1,27 +1,33 @@
 /*
-  PsychToolbox2/Source/OSX/Fonts/RegisterProject.c		
-  
-  PROJECTS: Screen only.  
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	Mac OS X
-    
+	PsychToolbox2/Source/OSX/FontInfo/RegisterProject.c		
 
-  HISTORY:
-  10/23/03  	awi		Created. 
- 
-  
-  DESCRIPTION: 
-  
-  NOTES:
-  
-  Fonts uses PsychFontGlue to enumerate fonts and store information in a native font list.  However, PsychFontGlue does not share the same
-  list between modules.  So the font list maintained by Screen and that maintained by Fonts will in fact be different lists, though 
-  they should be identical lists and immutable.  This is wasteful but it should work until we consolidate the two by sharing
-  memory between Psychtoolbox modules.
-  
+	PROJECTS: 
+	
+		Screen only.  
+
+	AUTHORS:
+	
+		Allen.Ingling@nyu.edu		awi 
+
+	PLATFORMS:	
+	
+		Mac OS X
+
+	HISTORY:
+	
+		10/23/03  	awi		Created.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.
+
+	DESCRIPTION:
+		
+
+	NOTES:
+
+		FontInfo uses PsychFontGlue to enumerate fonts and store information in a native font list.  However, PsychFontGlue does not share the same
+		list between modules.  So the font list maintained by Screen and that maintained by FontInfo will in fact be different lists, though 
+		they should be identical lists and immutable.  This is wasteful but it should work until we consolidate the two by sharing
+		memory between Psychtoolbox mex files.
+
   */ 
 
 #include "RegisterProject.h"
@@ -42,7 +48,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExitMsg(PsychRegister(NULL,  &PsychDisplayATSSynopsis), NULL);
 
 	//register the module name
-	PsychErrorExitMsg(PsychRegister("Fonts", NULL),NULL);
+	PsychErrorExitMsg(PsychRegister("FontInfo", NULL),NULL);
 	
 	//register named subfunctions
 	PsychErrorExit(PsychRegister("Fonts",  &FONTSFonts));

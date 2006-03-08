@@ -1,28 +1,32 @@
 /*
-  PsychToolbox2/Source/OSX/Fonts/FONTSNumFonts.c		
-  
-  PROJECTS: Fonts only.  
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	Mac OS X Only
-    
+	PsychToolbox2/Source/OSX/FontInfo/FONTSNumFonts.c		
 
-  HISTORY:
-  10/23/03  	awi		Created. 
- 
-  
-  DESCRIPTION: 
-  
-  Common functions used by 
-  
+	PROJECTS: 
+	
+		FontInfo only.  
+
+	AUTHORS:
+	
+		Allen.Ingling@nyu.edu		awi 
+
+	PLATFORMS:
+	
+		Mac OS X Only
+
+	HISTORY:
+	
+		10/23/03  	awi		Created.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.		 
+
+	DESCRIPTION: 
+
+	  
 */ 
 
 #include "FontInfo.h"
 
 
-static char useString[] = "numFonts=Fonts('NumFonts')";
+static char useString[] = "numFonts=FontInfo('NumFonts')";
 static char synopsisString[] = 
 	"Returns the number of available fonts on this system.";
 static char seeAlsoString[] = "FontFamilies";

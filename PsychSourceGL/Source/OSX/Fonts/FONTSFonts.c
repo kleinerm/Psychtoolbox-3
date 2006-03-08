@@ -1,25 +1,30 @@
 /*
-  PsychToolbox2/Source/OSX/Fonts/FONTSFonts.c		
-  
-  PROJECTS: Fonts only.  
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	Mac OS X Only
-    
+	PsychToolbox2/Source/OSX/FontInfo/FONTSFonts.c		
 
-  HISTORY:
-  1/07/04	awi		Created. Derived from the earlier ATS incarnation.
- 
-  
-  DESCRIPTION: 
-  
-  NOTES:
-  
-  It's not clear with what to fill the "Name" field of the returned struct because a font has so many names.  Ultimately we want the names
-  to match on all platforms, so perhaps we should wait to see which names are available in Windows and then choose one wich is available on both
-  platforms.  For now we use the Font Manager name.
+	PROJECTS: 
+	
+		FontInfo only.  
+
+	AUTHORS:
+	
+		Allen.Ingling@nyu.edu		awi 
+
+	PLATFORMS:	
+	
+		Mac OS X Only
+
+	HISTORY:
+
+		1/07/04		awi		Created. Derived from my earlier ATS incarnation.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated. 		
+
+	DESCRIPTION: 
+
+	NOTES:
+
+		It's not clear with what to fill the "Name" field of the returned struct because a font has so many names.  Ultimately we want the names
+		to match on all platforms, so perhaps we should wait to see which names are available in Windows and then choose one wich is available on both
+		platforms.  For now we use the Font Manager name.
   
 
 */ 
@@ -27,7 +32,7 @@
 #include "FontInfo.h"
 
 
-static char useString[] = "fontList=Fonts('Fonts')";
+static char useString[] = "fontList=FontInfo('Fonts')";
 static char synopsisString[] = 
 	"Returns a list struct holding ";
 static char seeAlsoString[] = "NumFonts";
@@ -83,7 +88,7 @@ typedef struct _PsychFontStructType_{
         
         //Retain the the Font Manager (FM) and Apple Type Services (ATS) references to the font.
         //We could use these to tie font families to font names, for example 
-        // Fonts('GetFontsFromFontFamilyName') or Fonts('GetFontFamilyFromFont');
+        // FontInfo('GetFontsFromFontFamilyName') or FontInfo('GetFontFamilyFromFont');
         ATSFontRef				fontATSRef;
         FMFont                                 	fontFMRef;
         ATSFontFamilyRef			fontFamilyATSRef;

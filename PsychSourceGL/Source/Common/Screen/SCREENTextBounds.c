@@ -14,8 +14,9 @@
     HISTORY:
     
 		1/19/04		awi		Wrote it.
-      11/1/05     mk       Resynced implementation with changes in SCREENDrawText.
-      1/29/06     mk       Implemented Windows-Version of it. 
+		11/1/05     mk       Resynced implementation with changes in SCREENDrawText.
+		1/29/06     mk       Implemented Windows-Version of it.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated.   
 	
     DESCRIPTION:
   
@@ -220,7 +221,7 @@ typedef struct _PsychFontStructType_{
         
         //Retain the the Font Manager (FM) and Apple Type Services (ATS) references to the font.
         //We could use these to tie font families to font names, for example 
-        // Fonts('GetFontsFromFontFamilyName') or Fonts('GetFontFamilyFromFont');
+        // FontInfo('GetFontsFromFontFamilyName') or FontInfo('GetFontFamilyFromFont');
         ATSFontRef					fontATSRef;
         FMFont						fontFMRef;
         ATSFontFamilyRef			fontFamilyATSRef;

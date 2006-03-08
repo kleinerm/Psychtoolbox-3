@@ -1,21 +1,25 @@
 /*
-  PsychToolbox2/Source/OSX/Fonts/Fonts.c		
-  
-  PROJECTS: ATS only.  
-  
-  AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS:	Mac OS X Only
-    
+	PsychToolbox2/Source/OSX/FontInfo/Fonts.c		
 
-  HISTORY:
-  10/23/03  	awi		Created. 
- 
-  
-  DESCRIPTION: 
-  
-  Common functions used by ATS library.  
+	PROJECTS: 
+	
+	
+
+	AUTHORS:
+	
+		Allen.Ingling@nyu.edu		awi 
+
+	PLATFORMS:	
+	
+		OS X
+
+	HISTORY:
+	
+		10/23/03  	awi		Created.
+		3/7/06		awi		Changed references from "Font" to "FontInfo".  The function had been previously renamed, but not all references updated. 
+
+	DESCRIPTION: 
+
   
 */ 
 
