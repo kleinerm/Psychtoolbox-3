@@ -7,6 +7,23 @@
  * Derived from Sun's Java demo KeyEventDemo.java available here:
  * http://java.sun.com/docs/books/tutorial/uiswing/events/example-1dot4/KeyEventDemo.java
  */
+ 
+ 
+ /*
+ 
+	 To Do:
+ 
+	1. Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
+	2. Complete the ring buffer implementation.
+	3. Test it under priority to see if it disturbs blit timing.
+	4. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
+	5. Try to set Alpha to make the window invisible.  Or to that some other way.
+	6. Remove the window's contents, it does not need to display that.
+	7. Return a timestamp and reconcile units with GetSecs.
+	8. Right an installer to set the Java path instead of issuing instructions. 
+ 
+ 
+ */
 
 import javax.swing.*;
 import java.awt.event.*;
