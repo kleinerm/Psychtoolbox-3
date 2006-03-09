@@ -120,16 +120,38 @@ function [char,when] = GetChar
 %                   it ignores.  Retains OS 9-specific comments.    
 % 1/27/04 awi   Issue an error when calling GetChar and suggest KbWait. 
 % 1/19/05 awi   Implemented GetChar on OS X.  Added AssertMex for OS 9 and OS X conditional block.
-% 7/20/05 awi   Wrote OS X documentation section.  
+% 7/20/05 awi   Wrote OS X documentation section.
+% 2/2/06  awi   Tested to see if this works when the MATLAB text editing
+%               window is minimized. It does not.
+% 2/22/06 awi  Commented out Cocoa wrapper and wrote Java wrapper.
 
 
 AssertMex('OS9');
 
 if(IsOSX)
-    InitCocoaEventBridge;
-    [char, when]=CocoaEventBridge('GetChar');
-    [callStack, stackIndex]=dbstack;
-    if(length(callStack) == 1)
-       CocoaEventBridge('RevertKeyWindow');
+    ListenChar;
+    global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW; %contents of var previosly instantiated by ListenChar.
+    charValue=0;
+    while charValue==0
+        char=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getChar();
+        charValue=double(char);
     end
 end
+    
+
+
+
+
+
+% This is the OLD version of MacOSX GetChar.  It used Cocoa events but did
+% not work, apparently because of interference with the MATLAB editor
+% window.  Left here as fallback until the Java version is complete. - awi
+%
+% if(IsOSX)
+%     InitCocoaEventBridge;
+%     [char, when]=CocoaEventBridge('GetChar');
+%     [callStack, stackIndex]=dbstack;
+%     if(length(callStack) == 1)
+%        CocoaEventBridge('RevertKeyWindow');
+%     end
+% end

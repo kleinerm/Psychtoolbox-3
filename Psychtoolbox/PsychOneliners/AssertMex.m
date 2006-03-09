@@ -4,34 +4,33 @@ function callStack=AssertMex(varargin)
 %
 % OSX and OS9: _____________________________________________________________
 %
-% AssertMex is used to detect missing mex files.  Calling AssertMex from
-% your program, say foo.m, asserts the existence of a mex file, e.g.
-% foo.mex, with the same name as the function from which AssertMex is
-% invoked.  If no such mex file exists AssertMex will exit with an error. 
-% If no argument is supplied then AssertMex will issue an error on any
-% platform on which it cannot find a mex file.  If any platform names are
-% supplied then AssertMex will issue errors only if MATLAB fails to find
-% the mex file on the named platforms.
+% AssertMex detects missing mex files.  Calling AssertMex from
+% your help file, e.g. foo.m, asserts the existence of a mex file foo.mex.
+% If no such mex file exists then AssertMex will exit with an error.
 %
-% If one tries to call a missing mex file, e.g. foo.mex, MATLAB instead 
-% executes the corresponding .m help file, foo.m, leading to mysterious failures. 
-% To avoid that problem, use AssertMex within your help or platform-specific 
-% .m file to safely detect that a mex file is missing. 
-% 
-% AssertMex makes sure that the script that invoked it is not running on
-% any of the platforms named. MATLAB should have found a .mex file with
-% the same name and executed that instead of the script that invoked
-% AssertMex.  If a violation is found, AssertMex will exit with an error.
+% You may specify on which platforms your help file expects a corresponding
+% mex file by using optional "platform" arguments. If no arguments are
+% supplied then AssertMex will issue an error on any platform on which it
+% cannot find a mex file.  If any platform names are supplied then
+% AssertMex will issue errors only if MATLAB fails to find the mex file on
+% the named platforms.
+%
+% Assert Mex is useful for detecting the error condition when a .m help
+% file is mistakenly executed because the correspondig .mex file is
+% missing. When foo.mex is missing, MATLAB silently executes the help file
+% foo.m instead.  Calling AssertMex within foo.m detects and reports that
+% error. 
 % 
 % AssertMex accepts platform names as returned by Matlab's COMPUTER
 % command:
 % 'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86',
 % 'MAC', 'MAC2'
 %
-% NOTE: Counterintuitively, "MAC2" refers to OS9 and "MAC" refers to OSX.
+% NOTE: Counterintuitively, "MAC" refers to OS X and "MAC2" refers to its 
+% predecessor, OS9.
 %
 % AssertMex also accepts these synonyms in place of MATLAB's names:
-%  'OSX', 'OS9', and 'Windows'
+%  'OSX', 'OS9', 'Win' and 'Windows'
 %
 % WIN: ________________________________________________________________
 % 
@@ -59,6 +58,7 @@ function callStack=AssertMex(varargin)
 % 03/08/05  dgp     Add support for 'WIN'.
 % 10/06/05	awi     Fixed bug: Changed "okSupNameMatches"  to match addition of  'WIN' to 
 %								to "okSupNames"
+% 3/3/06    awi     Rewrote help for improved clarity.   
 
 okNames=          {'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
 mexExtensions=    {'dll',   '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};

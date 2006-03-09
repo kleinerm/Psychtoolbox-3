@@ -23,6 +23,7 @@
 %    MakeBeep                - Compute a beep of specified frequency and duration, for Snd.
 %    NameBytes               * Nicely format memory size for human readers.
 %    NameFrequency           * Nicely format clock rate for human readers.
+%    OSName                  * Convential English-language name of your operating system.
 %    PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
 %    Stopwatch               - Time intervals.
 %    streq                   - strcmp.

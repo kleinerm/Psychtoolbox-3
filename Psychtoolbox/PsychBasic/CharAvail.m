@@ -18,9 +18,7 @@ function avail = CharAvail
 % 
 % 	Screen('Preference','Backgrounding',0); % Until Matlab 5.2.1, this call required a disk access, which is slow.
 % 
-
-
-% See also: EventAvail, GetChar, KbCheck, KbWait, KbDemo, Screen Preference Backgrounding.
+% See also: GetChar, ListenChar, FlushEvents, KbCheck, KbWait, KbDemo, Screen Preference Backgrounding.
 
 % 11/5/94   dhb Added caveat about delay.
 % 1/22/97   dhb Added comment and pointer to TIMER routines.
@@ -35,13 +33,37 @@ function avail = CharAvail
 % 9/20/05   awi Removed outdated notice in help mentioning problems with
 %                   CharAvail on Windows.  The Problem was fixed.
 %               Added platform conditional for OS X ('MAC').
+% 1/22/06   awi Commented out Cocoa wrapper version and wrote Java wrapper.
 
 
-if strcmp(computer,'MAC2')
-   avail=EventAvail('keyDown');
-elseif strcmp(computer, 'MAC')
-    InitCocoaEventBridge;
-    avail=CocoaEventBridge('CharAvail');
+if IsOS9
+    avail=EventAvail('keyDown');
+elseif IsOSX
+    AssertGetCharJava;
+    global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW  
+    if isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
+        avail=0;
+    else
+        numCharsAvail=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.numChars();
+        if numCharsAvail
+            avail=1;
+        else
+            avail=0;
+        end
+    end
 end
+
+
+
+
+
+% This is the old Cocoa wrapper version. Retained here in case we have to resort to it.
+% 
+% if strcmp(computer,'MAC2')
+%    avail=EventAvail('keyDown');
+% elseif strcmp(computer, 'MAC')
+%     InitCocoaEventBridge;
+%     avail=CocoaEventBridge('CharAvail');
+% end
     
 

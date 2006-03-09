@@ -27,6 +27,7 @@ function DescribeComputer
 % 6/23/02 dgp Remove initial '\n'.
 % 12/20/04 awi  Added OS X section.
 % 1/29/05 dgp  Cosmetic.
+% 3/05/06 awi Fixed a case error in GetSecs call. 
  
 if IsWin
     cpuNumNames={'Single', 'Dual', 'Triple', 'Quad', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve' ...
@@ -231,7 +232,7 @@ return
 function r=fps(n)
 % r=fps(n)
 f=0;
-t=getsecs;fft2(1);  % load functions into memory
+t=GetSecs;fft2(1);  % load functions into memory
 x=magic(n);
 if exist('flops','builtin')
     f=flops;
