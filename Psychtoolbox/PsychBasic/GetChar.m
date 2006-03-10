@@ -135,6 +135,10 @@ if(IsOSX)
     while charValue==0
         char=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getChar();
         charValue=double(char);
+        if ~PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.isWindowFocused()
+            PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.windowFocusOn();
+            PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.typingAreaFocusOn()
+        end
     end
 end
     

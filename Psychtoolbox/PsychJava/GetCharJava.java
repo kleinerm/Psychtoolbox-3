@@ -13,7 +13,7 @@
  
 	 To Do:
  
-	1. Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
+	1. *COMPLETE* Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
 	2. Complete the ring buffer implementation.
 	3. Test it under priority to see if it disturbs blit timing.
 	4. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
@@ -24,6 +24,22 @@
  
  
  */
+ 
+ /*
+ 
+	NOTES
+	
+	3/9/2006	awi		It looks like we can wire straight into the queue without using a window.  See documentation for KeyEventDispater here:
+						http://java.sun.com/j2se/1.5.0/docs/api/java/awt/KeyEventDispatcher.html
+						
+	3/9/2006	awi		Useful documentation:
+	
+						JFrame:
+						http://java.sun.com/j2se/1.5.0/docs/api/java/awt/Frame.html
+						
+						
+						
+*/ 
 
 import javax.swing.*;
 import java.awt.event.*;
@@ -101,6 +117,10 @@ public class GetCharJava extends JPanel
 
 	public void windowFocusOn(){
 		frame.toFront();
+	}
+	
+	public void typingAreaFocusOn(){
+		typingArea.requestFocusInWindow();
 	}
 	
 	public void windowFocusOff(){
@@ -217,6 +237,10 @@ public class GetCharJava extends JPanel
 	
 	public void flushChars(){
 		characterBufferTail=characterBufferHead;
+	}
+	
+	public boolean isWindowFocused(){
+		return(frame.isFocused());
 	}
 	
 	
