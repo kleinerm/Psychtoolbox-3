@@ -110,8 +110,8 @@ try
                 % ready yet.
                 tex=0;
                 tex2=0;
-                tex = Screen('GetMovieImage', win, movie, 0);
-                tex2 = Screen('GetMovieImage', win, movie2, 0);
+                tex = Screen('GetMovieImage', win, movie, 1);
+                tex2 = Screen('GetMovieImage', win, movie2, 1);
 
                 % Valid texture returned?
                 if tex>0
@@ -191,7 +191,9 @@ try
         telapsed = GetSecs - t1
         finalcount=i
 
+        Screen('Flip', win);        
         Screen('Flip', win);
+        
         while KbCheck; end;
         
         % Done. Stop playback:
