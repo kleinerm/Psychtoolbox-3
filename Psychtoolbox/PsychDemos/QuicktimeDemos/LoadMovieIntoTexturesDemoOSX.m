@@ -1,6 +1,6 @@
-function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime)
+function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 %
-% LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime)
+% LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 %
 % A demo implementation on how to load a Quicktime movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
@@ -16,6 +16,11 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime)
 % toTime - End time (in seconds) upto which the movie should be read
 % into textures. Defaults to end of movie, if not provided.
 %
+% benchmark - If you set this parameter to 1, the demo will compute the
+% time it takes to load the movie and the maximum display speed without
+% syncing to vertical refresh. All visual progress feedback is disabled.
+% This is mostly useful to benchmark different movie file formats and
+% codecs for their relative efficiency on a given machine.
 %
 % How the demo works: Read the source code - its well documented ;-)
 %
@@ -72,6 +77,10 @@ if nargin < 3
     toTime=100000;
 end;
 
+if nargin < 4
+    benchmark=0;
+end;
+
 fprintf('Loading movie %s ...\n', moviename);
 try    
     % Background color will be a grey one:
@@ -108,6 +117,8 @@ try
     lastpts=-1;          % Presentation timestamp of last frame.
     pts=-1;
     count=0;            % Number of loaded movie frames.
+    
+    tloadstart=GetSecs;
     
     % Movie to texture conversion loop:
     while(movietexture>=0 & pts < toTime)
@@ -147,11 +158,22 @@ try
                 break;
             end;
             
-            % Show the progress text:
-            [x, y]=Screen('DrawText', win, ['Loaded texture ' num2str(count) '...'],40, 100);
-            Screen('Flip',win);    
+            if (benchmark==0)
+                % Show the progress text:
+                [x, y]=Screen('DrawText', win, ['Loaded texture ' num2str(count) '...'],40, 100);
+                Screen('Flip',win);
+            end;
     end;
     
+    if (benchmark>0)
+        % Compute movie load & conversion rate in frames per second.
+        loadrate = count / (GetSecs - tloadstart);
+        % Compute same rate in Megapixels per second:
+        loadvolume = loadrate * imgw * imgh / 1024 / 1024;
+
+        fprintf('Movie to texture conversion speed is %f frames per second == %f Megapixels/second.\n', loadrate, loadvolume);
+    end;
+
     % Ok, now the requested part of the movie has been (hopefully) loaded
     % and converted into standard PTB textures. We can simply use the
     % 'DrawTexture' command in a loop to show the textures...
@@ -162,45 +184,59 @@ try
     currentindex=1;
     autoplay=0;
     
+    totalcount = 0;
+    tstart=GetSecs;
+    
     % Browse and Draw loop:
     while(count>0)
         % Draw texture 'currentindex'
         Screen('DrawTexture', win, texids(currentindex));
 
-        % Draw some help text:
-        [x, y]=Screen('DrawText', win, 'Press left-/right cursor key to navigate in movie, SPACE to toggle playback, ESC to exit.',10, 40);
-        [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs)' num2str(movieduration)],10, y+10+tsize);
-        
-        % Draw info on current position in movie:
-        [x, y]=Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);
+        if (benchmark==0)
+            % Draw some help text:
+            [x, y]=Screen('DrawText', win, 'Press left-/right cursor key to navigate in movie, SPACE to toggle playback, ESC to exit.',10, 40);
+            [x, y]=Screen('DrawText', win, ['Framerate(fps): ' num2str(fps) ', total duration of movie (secs)' num2str(movieduration)],10, y+10+tsize);
 
-        % Show drawn stuff:
-        Screen('Flip', win);
-        
-        % Check for key press:
-        [keyIsDown, secs, keyCode]=KbCheck;
-        if keyIsDown
-            if (keyCode(esc))
-                % Exit
-                break;
-             end;
-             
-            if (keyCode(space))
-                % Toggle playback on space.
-                autoplay=1-autoplay;
-            end;
+            % Draw info on current position in movie:
+            [x, y]=Screen('DrawText', win, ['Frame ' num2str(currentindex) ' of ' num2str(count) ' : Timeindex(secs) = ' num2str(texpts(currentindex))], 10, y + 10 + tsize);
 
-            if (keyCode(right) & currentindex<count)
-                % One frame forward:
-                currentindex=currentindex+1;
+            % Show drawn stuff:
+            Screen('Flip', win);
+
+            % Check for key press:
+            [keyIsDown, secs, keyCode]=KbCheck;
+            if keyIsDown
+                if (keyCode(esc))
+                    % Exit
+                    break;
+                end;
+
+                if (keyCode(space))
+                    % Toggle playback on space.
+                    autoplay=1-autoplay;
+                end;
+
+                if (keyCode(right) & currentindex<count)
+                    % One frame forward:
+                    currentindex=currentindex+1;
+                end;
+                if (keyCode(left) & currentindex>1)
+                    % One frame backward:
+                    currentindex=currentindex-1;
+                end;
+
+                % Wait for key-release:
+                while KbCheck; WaitSecs(0.01); end;
             end;
-            if (keyCode(left) & currentindex>1)
-                % One frame backward:
-                currentindex=currentindex-1;
-            end;
+        else
+            % Benchmark mode: Repeat until Keypress.
+            Screen('Flip', win, 0, 2, 2);
+            totalcount=totalcount + 1;
+            autoplay=1;
             
-            % Wait for key-release:
-            while KbCheck; WaitSecs(0.01); end;
+            if KbCheck
+                break;
+            end;
         end;
         
         % Update frameindex if in autoplay mode:
@@ -211,6 +247,12 @@ try
     
     % Done. Flip a last time to show grey background:
     Screen('Flip', win);
+    
+    if (benchmark>0)
+        playbackrate = totalcount / (GetSecs - tstart);
+        playbackvolume = playbackrate * imgw * imgh / 1024 / 1024;
+        fprintf('Movietexture playback rate is %f frames per second == %f Megapixels/second.\n', playbackrate, playbackvolume);
+    end;
     
     % Close movie file. This will also release all textures...
     Screen('CloseMovie', movie);
