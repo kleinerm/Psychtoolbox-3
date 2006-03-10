@@ -14,13 +14,15 @@
 	 To Do:
  
 	1. *COMPLETE* Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
+	
 	2. Complete the ring buffer implementation.
 	3. Test it under priority to see if it disturbs blit timing.
 	4. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
 	5. Try to set Alpha to make the window invisible.  Or to that some other way.
 	6. Remove the window's contents, it does not need to display that.
 	7. Return a timestamp and reconcile units with GetSecs.
-	8. Right an installer to set the Java path instead of issuing instructions. 
+	8. Right an installer to set the Java path instead of issuing instructions.
+	9. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character.  
  
  
  */
