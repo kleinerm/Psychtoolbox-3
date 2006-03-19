@@ -18,7 +18,7 @@ p.full=str;
 
 % make list of data types
 ctypes='void|char|unsigned char|signed char|short|unsigned short|signed short|short int|unsigned short int|signed short int|int|unsigned int|signed int|long|unsigned long|signed long|long int|unsigned long int|signed long int|float|double';
-ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint|GLsizei|GLubyte|GLushort|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator';
+ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint|GLsizei|GLubyte|GLushort|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB';
 types=[ ctypes '|' ogltypes ];
 
 % parse full declaration

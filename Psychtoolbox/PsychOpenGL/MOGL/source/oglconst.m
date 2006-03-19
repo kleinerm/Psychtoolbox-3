@@ -42,6 +42,7 @@ end;
 % hundreds of global variables.  later on, we can load whichever style
 % we want from the file where they're all saved.
 GL= parsefile(sprintf('%s/gl.h', glheaderpath), 'GL_');
+GL= parsefile(sprintf('%s/glext.h', glheaderpath), 'GL_', GL);
 GLU=parsefile(sprintf('%s/glu.h', glheaderpath),'GLU_');
 if IsOSX
     AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
@@ -69,10 +70,14 @@ return
 
 
 % function to parse header files
-function S = parsefile( fname, prefix )
+function S = parsefile( fname, prefix, origin )
 
 % initialize return argument
-S=[];
+if nargin < 3
+    S=[];
+else
+    S=origin;
+end;
 
 % check size of prefix (GL, GLU, or AGL)
 nprefix=length(prefix);

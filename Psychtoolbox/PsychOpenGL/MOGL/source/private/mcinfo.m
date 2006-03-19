@@ -82,7 +82,7 @@ for j=1:numel(funcp.argin.args),
 				mcast='single';
 			case { 'GLint' 'GLsizei' }
 				mcast='int32';
-			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric' }
+			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric'}
 				mcast='uint32';
 			case { 'GLshort' }
 				mcast='int16';
@@ -94,6 +94,8 @@ for j=1:numel(funcp.argin.args),
 				mcast='uint8';
 			case { 'GLvoid' 'void' }
 				mcast='';
+            case { 'GLhandleARB' 'GLhandle'}
+                mcast='void*';
 			otherwise
 				error(sprintf('don''t know how to handle pointer type %s',funcp.argin.args(j).type.full));
 		end
