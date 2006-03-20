@@ -65,9 +65,6 @@ function SpinningCubeDemo
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
 
-% Is it the OS-X version? MOGL is currently only available on OS-X...
-AssertOSX;
-
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
 

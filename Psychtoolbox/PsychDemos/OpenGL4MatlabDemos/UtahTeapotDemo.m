@@ -64,10 +64,6 @@ function UtahTeapotDemo
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
 
-if IsWin
-    error('Sorry, this demo does not run on M$-Windows yet.');
-end;
-
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
 

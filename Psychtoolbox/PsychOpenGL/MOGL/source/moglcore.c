@@ -40,7 +40,24 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
     int i;
     GLenum err;
+       
+    // see whether there's a string command
+    if( nrhs<1 || !mxIsChar(prhs[0]) )
+        mogl_usageerr();
     
+    // get string command
+    mxGetString(prhs[0],cmd,CMDLEN);
+
+	 // Special case. If we're called with the special command "PREINIT", then
+	 // we return immediately. moglcore('PREINIT') is called by ptbmoglinit.m
+	 // on M$-Windows in order to preload the moglcore Mex-file into Matlab while
+	 // the current working directory is set to ..MOGL/core/ . This way, the dynamic
+	 // linker can find our own local version of glut32.dll and link it against moglcore.
+	 // Without this trick, we would need to install glut32.dll into the Windows system
+    // folder which requires admin privileges and makes installation of Psychtoolbox
+    // more complicated on M$-Windows...
+	 if (strcmp(cmd, "PREINIT")==0) return;
+
     // Is this the first invocation of moglcore?
     if (firsttime) {
         // Yes. Initialize GLEW, the GL Extension Wrangler Library. This will
@@ -49,21 +66,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         err = glewInit();
         if (GLEW_OK != err) {
             // Failed! Something is seriously wrong - We have to abort :(
-            printf("Error: %s\n", glewGetErrorString(err)); fflush(NULL);
+				printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
+            printf("GLEW reported the following error: %s\n", glewGetErrorString(err)); fflush(NULL);
             return;
         }
         // Success. Ready to go...
-        printf("MOGL - OpenGL for Matlab initialized - MOGL is (c) 2006 Richard F. Murray, released to you under GPL.\n");
+        printf("MOGL - OpenGL for Matlab initialized - MOGL is (c) 2006 Richard F. Murray, licensed to you under GPL.\n");
         fflush(NULL);
         firsttime = 0;
     }   
-    
-    // see whether there's a string command
-    if( nrhs<1 | !mxIsChar(prhs[0]) )
-        mogl_usageerr();
-    
-    // get string command
-    mxGetString(prhs[0],cmd,CMDLEN);
 
     #ifdef BUILD_GLM
 

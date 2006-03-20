@@ -41,8 +41,10 @@ moviename
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
 
-% Is it the OS-X version? MOGL is currently only available on OS-X...
-AssertOSX;
+% Is it the Linux version? This demo doesn't run on Linux due to lack of Quicktime support.
+if IsLinux
+   error('Sorry, SpinningMovieCube demo does not run on GNU/Linux yet.');
+end;
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
@@ -197,7 +199,6 @@ end
 Screen('EndOpenGL', win);
 
 % Stop movie playback and close movie:
-Screen('PlayMovie', movie, 0);
 Screen('CloseMovie', movie);
 
 % Close onscreen window and release all ressources:
