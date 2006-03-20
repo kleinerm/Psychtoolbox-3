@@ -51,9 +51,9 @@ end;
 % save OpenGL-style constants
 if IsOSX
     fname='oglconst.mat';
-    save(fname,'GL_*','GLU_*','AGL_*');
+    save(fname,'GL_*','GLU_*','AGL_*', '-V6');
     % save structure-style constants to same file
-    save(fname,'GL','GLU','AGL','-append');
+    save(fname,'GL','GLU','AGL','-append', '-V6');
 end;
 
 if IsLinux

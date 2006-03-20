@@ -10,7 +10,7 @@ GLM=-DBUILD_GLM
 #GLM=
 
 MEXCC=-I${MATLABHOME}/extern/include \
-	${GLM} ${TARGETOS} \
+	${GLM} ${TARGETOS} -DGLEW_STATIC\
 	-DMATLAB_MEX_FILE -DNDEBUG -fno-common -fexceptions -O3 \
 	-no-cpp-precomp -bundle -undefined suppress -flat_namespace \
 	-exported_symbols_list ${MATLABHOME}/extern/lib/mac/mexFunction.map
@@ -26,9 +26,9 @@ CC=gcc
 
 all:  moglcore.mexmac
 
-moglcore.mexmac:  moglcore.o glm.o gl_auto.o gl_manual.o
+moglcore.mexmac:  moglcore.o glm.o gl_auto.o gl_manual.o glew.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.mexmac moglcore.o glm.o gl_auto.o gl_manual.o
+		-o moglcore.mexmac moglcore.o glm.o gl_auto.o gl_manual.o glew.o
 	cp moglcore.mexmac ../core
 
 .c.o:

@@ -11,7 +11,7 @@ TARGETOS=-DLINUX
 GLM=
 
 MEXCC=-I${MATLABHOME}/extern/include \
-	${GLM} ${TARGETOS} \
+	${GLM} ${TARGETOS} -DGLEW_STATIC\
 	-DMATLAB_MEX_FILE -DNDEBUG -fno-common -fexceptions -O3
 
 MEXLD=-L${MATLABHOME}/bin/glnx86 -shared -lmx -lmex -lmat -lstdc++ \
@@ -24,9 +24,9 @@ CC=gcc
 
 all:  moglcore.mexglx
 
-moglcore.mexglx:  moglcore.o gl_auto.o gl_manual.o
+moglcore.mexglx:  moglcore.o gl_auto.o gl_manual.o glew.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.mexglx moglcore.o gl_auto.o gl_manual.o
+		-o moglcore.mexglx moglcore.o gl_auto.o gl_manual.o glew.o
 	cp moglcore.mexglx ../core
 
 .c.o:
