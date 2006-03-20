@@ -9,6 +9,10 @@ function oglconst(glheaderpath, aglheaderpath)
 % 23-Jan-2005 -- constants saved in both struct and OpenGL style (RFM)
 % 05-Mar-2006 -- ability to spec. system header file path added (MK)
 
+if IsWin
+    error('Parsing of GL header files on Windows not yet supported.');
+end;
+
 % Alternate path to header files specified?
 if nargin < 1
     if IsOSX
@@ -48,16 +52,16 @@ if IsOSX
     AGL=parsefile(sprintf('%s/agl.h', aglheaderpath),'AGL_');
 end;
 
+fname='oglconst.mat';
+
 % save OpenGL-style constants
 if IsOSX
-    fname='oglconst.mat';
     save(fname,'GL_*','GLU_*','AGL_*', '-V6');
     % save structure-style constants to same file
     save(fname,'GL','GLU','AGL','-append', '-V6');
 end;
 
 if IsLinux
-    fname='oglconst_linux.mat';
     save(fname,'GL_*','GLU_*','-V6');
     % save structure-style constants to same file
     save(fname,'GL','GLU','-append','-V6');
