@@ -64,6 +64,9 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
 
 #endif
 
+// Function prototype for error handler for unsupported gl-Functions.
+void mogl_glunsupported(const char* fname);
+
 // typedef for command map entries
 typedef struct cmdhandler {
     char *cmdstr;

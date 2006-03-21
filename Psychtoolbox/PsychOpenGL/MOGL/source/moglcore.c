@@ -124,3 +124,23 @@ int binsearch(cmdhandler *map, int mapsize, char *str) {
 void mogl_usageerr() {
     mexErrMsgTxt("invalid moglcore command");
 }
+
+// Error handler for unsupported core OpenGL functions or extensions.
+// This handler gets called by the subroutines in gl_auto.c and gl_manual.c
+// whenever a gl function is not bound == not supported by current OS/driver/gfx-hardware.
+// As we use the GLEW library to dynamically detect and bind all OpenGL functions, we can
+// easily check if a function is supported, e.g.,
+// if (glCreateShader == NULL) mogl_glunsupported("glCreateShader");
+//
+void mogl_glunsupported(const char* fname)
+{
+    char errtxt[1000];
+    sprintf(errtxt, "MOGL-Error: Your Matlab code tried to call the OpenGL function %s(), which is not supported\n"
+                    "MOGL-Error: by your combination of graphics hardware + graphics device driver.\n"
+                    "MOGL-Error: You'll have to download+install the latest gfx-drivers for your gfx-hardware\n"
+                    "MOGL-Error: or upgrade your gfx-hardware with more recent one to use this function. Aborted.\n\n", fname);
+
+    // Exit to Matlab prompt with error message:
+    mexErrMsgTxt(errtxt);
+}
+
