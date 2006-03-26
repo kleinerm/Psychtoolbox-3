@@ -6,16 +6,16 @@ function mask = glGetPolygonStipple
 %
 % C function:  void glGetPolygonStipple(GLubyte* mask)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=0,
     error('invalid number of arguments');
 end
 
-mask = uint8(0);
-
+mask = uint8(zeros(128,1));
 moglcore( 'glGetPolygonStipple', mask );
 
 return

@@ -6,9 +6,10 @@ function data = gluGetNurbsProperty( nurb, property )
 %
 % C function:  void gluGetNurbsProperty(GLUnurbs* nurb, GLenum property, GLfloat* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
@@ -19,7 +20,6 @@ if ~strcmp(class(nurb),'uint32'),
 end
 
 data = single(0);
-
 moglcore( 'gluGetNurbsProperty', nurb, property, data );
 
 return

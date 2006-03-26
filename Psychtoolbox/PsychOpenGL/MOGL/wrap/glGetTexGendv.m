@@ -6,16 +6,17 @@ function params = glGetTexGendv( coord, pname )
 %
 % C function:  void glGetTexGendv(GLenum coord, GLenum pname, GLdouble* params)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = double(0);
-
+params = double(NaN(4,1));
 moglcore( 'glGetTexGendv', coord, pname, params );
+params = params(find(~isnan(params)));
 
 return

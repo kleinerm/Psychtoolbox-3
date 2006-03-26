@@ -6,9 +6,10 @@ function data = gluGetTessProperty( tess, which )
 %
 % C function:  void gluGetTessProperty(GLUtesselator* tess, GLenum which, GLdouble* data)
 
-% 05-Mar-2006 -- created (generated automatically from header files)
+% 24-Jan-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
@@ -19,7 +20,6 @@ if ~strcmp(class(tess),'uint32'),
 end
 
 data = double(0);
-
 moglcore( 'gluGetTessProperty', tess, which, data );
 
 return
