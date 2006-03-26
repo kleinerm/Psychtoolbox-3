@@ -23,3 +23,5 @@ gluNurbsCallbackDataEXT
 gluQuadricCallback
 gluTessCallback
 
+- these are not defined yet in the GLEW library - need to manually implement interface
+glSamplePass        - implemented manually
