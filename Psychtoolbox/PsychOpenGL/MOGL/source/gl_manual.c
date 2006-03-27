@@ -50,11 +50,15 @@ void glu_getstring( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 }
 
 void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	// MK: Need to define interface manually, as GLEW doesn't know this function, so
-    // trouble with autocode.m and gl_auto.c
-	glSamplePass((GLenum)mxGetScalar(prhs[0]));
-
+    // MK: For some reason, glSamplePass() seems to be only available on MacOS-X.
+    // GLEW doesn't know this function and i couldn't find any definition of it
+    // anywhere on the internet. We handle this manually by only exposing it on
+    // MacOS-X:
+    #ifdef MACOSX
+	    glSamplePass((GLenum)mxGetScalar(prhs[0]));
+    #else
+        mogl_glunsupported("glSamplePass");
+    #endif
 }
 
 // command map:  moglcore string commands and functions that handle them
