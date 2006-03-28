@@ -15,10 +15,10 @@ if nargin~=3,
 end
 
 % copy data to a persistent variable
-persistent ppointer
-ppointer=pointer;
+%persistent ppointer
+%ppointer=pointer;
 
-moglcore( 'glNormalPointer', type, stride, ppointer );
+moglcore( 'glNormalPointer', type, stride, pointer );
 
 return
 

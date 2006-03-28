@@ -15,10 +15,10 @@ if nargin~=4,
 end
 
 % copy data to a persistent variable
-persistent ppointer
-ppointer=pointer;
+%persistent ppointer
+%ppointer=pointer;
 
-moglcore( 'glVertexPointer', size, type, stride, ppointer );
+moglcore( 'glVertexPointer', size, type, stride, pointer );
 
 return
 
