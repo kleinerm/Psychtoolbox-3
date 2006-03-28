@@ -71,7 +71,6 @@ cmdhandler gl_manual_map[] = {
 { "glGetPointerv",                  gl_getpointerv                      },
 { "glGetString",                    gl_getstring                        },
 { "glGetVertexAttribPointerv",      gl_getvertexattribpointerv          },
+{ "glSamplePass",                   gl_samplepass                       },
 { "gluErrorString",                 glu_errorstring                     },
-{ "gluGetString",                   glu_getstring                       },
-{ "glSamplePass",                   gl_samplepass                       }};
-
+{ "gluGetString",                   glu_getstring                       }};
