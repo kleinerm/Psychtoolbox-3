@@ -34,6 +34,7 @@ function avail = CharAvail
 %                   CharAvail on Windows.  The Problem was fixed.
 %               Added platform conditional for OS X ('MAC').
 % 1/22/06   awi Commented out Cocoa wrapper version and wrote Java wrapper.
+% 3/28/06   awi Detect buffer overflow.
 
 
 if IsOS9
@@ -45,11 +46,10 @@ elseif IsOSX
         avail=0;
     else
         numCharsAvail=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.numChars();
-        if numCharsAvail
-            avail=1;
-        else
-            avail=0;
+        if numCharsAvail==-1
+            error('GetChar buffer overflow. Use "FlushEvents(''KeyDown'')" to clear error'); 
         end
+        avail= numCharsAvail > 0;
     end
 end
 

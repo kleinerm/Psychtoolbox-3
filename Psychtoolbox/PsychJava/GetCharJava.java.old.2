@@ -9,30 +9,20 @@
  */
  
  
- /* HISTORY
- 
-	2/2006		awi		Wrote it.
-	3/28/2006	awi		Added circular buffer and buffer overflow detection. 
-	
- 
  /*
  
 	 To Do:
  
 	1. *COMPLETE* Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
-	2. *COMPLETE* the ring buffer implementation; Modify .m wrappers to handle -1 overflow flag returned by numChars, peekChar and getChar methods.
 	
-	3. Test that it works during WaitSecs.  Add that test to GetCharTest.
-	4. Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
-	5. Write EventAvail. Check svn logs to see if its gone missing, or never existed in OS X.    
-	6. Test it under priority to see if it disturbs blit timing.
-	7. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
-	8. Try to set Alpha to make the window invisible.  Or to that some other way.
-	9. Remove the window's contents, it does not need to display that.
-	10. Return a timestamp and reconcile units with GetSecs.
-	11. Right an installer to set the Java path instead of issuing instructions.
-	12. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character. A general-purpose cocoa mex file might
-		work for this.
+	2. Complete the ring buffer implementation.
+	3. Test it under priority to see if it disturbs blit timing.
+	4. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
+	5. Try to set Alpha to make the window invisible.  Or to that some other way.
+	6. Remove the window's contents, it does not need to display that.
+	7. Return a timestamp and reconcile units with GetSecs.
+	8. Right an installer to set the Java path instead of issuing instructions.
+	9. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character.  
  
  
  */
@@ -66,12 +56,9 @@ public class GetCharJava extends JPanel
     static final String newline = "\n";
 	static JFrame frame;
 	static char[] characterBuffer;
-	int characterBufferTail=0;
 	int characterBufferHead=0;
-	int characterBufferHeadStepped=0;
-	boolean bufferOverflowFlag=false;	
+	int characterBufferTail=0;
 	char emptyChar='\0';
-	int	queueSizeChars=100; //make this small to test the ring buffer and overflow warnings
 
     public GetCharJava() {
         super(new BorderLayout());
@@ -100,7 +87,7 @@ public class GetCharJava extends JPanel
         add(button, BorderLayout.PAGE_END);
 		
 		//setup the ring buffer by allocating memory
-		characterBuffer= new char[queueSizeChars];   
+		characterBuffer= new char[1000]; 
     }
 
     /** Handle the key typed event from the text field. */
@@ -216,85 +203,46 @@ public class GetCharJava extends JPanel
     }
 	
 
-	//we add new characters to the head and remove them from the tail
+
 	protected void recordKey(KeyEvent e){
         int id = e.getID();
         if (id == KeyEvent.KEY_TYPED) {
-			characterBuffer[characterBufferHead]= e.getKeyChar();
-			characterBufferHeadStepped= (characterBufferHead+1) % queueSizeChars; 
-			if(characterBufferHeadStepped == characterBufferTail)
-				bufferOverflowFlag=true;
-			else
-				characterBufferHead= characterBufferHeadStepped;																		
+			characterBuffer[characterBufferTail]= e.getKeyChar();
+			characterBufferTail= characterBufferTail+1;
 		}
 	}
-									 
+	
 
-
-	public double numChars(){
-		if(bufferOverflowFlag)
-			return(-1.0);
-		else
-			return((double)numCharsLocal());
-	}
- 
-
-
-	public int numCharsLocal(){
-		if(characterBufferTail > characterBufferHead)
-			return(queueSizeChars-characterBufferTail);
-		else
-			return(characterBufferHead-characterBufferTail);
+	public int numChars(){
+		return(characterBufferTail-characterBufferHead);
 	}
 
 
-
-	public double peekChar(){
-		if(bufferOverflowFlag)
-			return(-1.0);
-		else if(numCharsLocal() > 0){
-			return((double)characterBuffer[characterBufferTail]);
+	public char peekChar(){
+		if(numChars() > 0){
+			return(characterBuffer[characterBufferHead]);
 		}else{
-			return((double)emptyChar);		
+			return(emptyChar);		
 		}	
     }
 	
 	
-/*
 	public char getChar(){
 		if(numChars() > 0){
-			char tempChar= characterBuffer[characterBufferTail];
-			characterBufferTail= characterBufferTail+1;
+			char tempChar= characterBuffer[characterBufferHead];
+			characterBufferHead= characterBufferHead+1;
 			return(tempChar);
 		}else{
 			return(emptyChar);		
 		}	
     }
-*/
-	public double getChar(){
-		if(bufferOverflowFlag)
-			return(-1.0);
-		else if(numCharsLocal() > 0){
-			char tempChar= characterBuffer[characterBufferTail];
-			characterBufferTail= (characterBufferTail+1) % queueSizeChars;
-			return((double)tempChar);
-		}else{
-			return((double)emptyChar);		
-		}	
-    }
-
 	
 	public void flushChars(){
-		bufferOverflowFlag=false;
-		characterBufferHead=characterBufferTail;
+		characterBufferTail=characterBufferHead;
 	}
 	
 	public boolean isWindowFocused(){
 		return(frame.isFocused());
-	}
-	
-	public double getQueueLength(){
-		return((double)(queueSizeChars-1));
 	}
 	
 	
@@ -329,6 +277,7 @@ public class GetCharJava extends JPanel
 		return(0.1);
 	}
 	
+
 	 public static JComponent createAndShowGUI() {
 	 		
 		//Make sure we have nice window decorations.
