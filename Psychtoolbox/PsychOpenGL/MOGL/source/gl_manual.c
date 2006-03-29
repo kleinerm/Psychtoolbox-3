@@ -61,16 +61,80 @@ void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     #endif
 }
 
+void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+    char* sourcestring;
+    char** srcstrings;
+    GLuint handle;
+    int i, count, savedlength;
+    count = 0;
+    
+    // Ok, glShaderSource needs a list of one-line strings for the single lines
+    // of code in a shader program. We take a single big string of newline-
+    // separated lines of code and break it up into a list of strings.
+    
+    // Retrieve handle to shader:
+    handle = (GLuint) mxGetScalar(prhs[0]);
+    // Retrieve shader source code string:
+    sourcestring = mxArrayToString(prhs[1]);
+    // Count number of lines in string:
+    savedlength = strlen(sourcestring);
+    for (i=0; i<savedlength; i++) if(sourcestring[i]=='\n') count++;
+    count++;
+    // printf("COUNT %i\n", count); fflush(NULL);
+    // Allocate char* array of proper capacity:
+    srcstrings=(char**) malloc(count * sizeof(char*));
+    // Initialize array of char-ptrs and setup string:
+    count=0;
+    srcstrings[0]=(char*) sourcestring;
+    count++;
+    for (i=0; i<savedlength; i++) if(sourcestring[i]=='\n') {
+        // NULL-out the end-of-line terminator to create a null-terminated piece of
+        // substring:
+        sourcestring[i]=0;
+        // Setup a new char* that points behind the sourcestring[i]:
+        i++;
+        srcstrings[count]=(char*) &(sourcestring[i]);
+        count++;
+    }
+
+    if (NULL == glShaderSource || mxGetScalar(prhs[2])>0) {
+        printf("\n\n");
+        for(i=0; i<count; i++) printf("Shader Line %i: %s\n", i, srcstrings[i]);
+        printf("\n\n");
+        fflush(NULL);
+        // Free the sourcestring:
+        mxFree(sourcestring);
+        // Free our array:
+        free(srcstrings);
+        // Abort with error:
+        mogl_glunsupported("glShaderSource");
+    }
+    
+    // Ok, now srcstrings should be an array of count char*'s to single line, null-terminated
+    // strings, suitable for glShaderSource. Call it.
+    glGetError();
+    glShaderSource(handle, count, (const char**) srcstrings, NULL);
+    
+    // Free the sourcestring:
+    mxFree(sourcestring);
+    // Free our array:
+    free(srcstrings);
+    
+    // Done.
+    return;
+}
+
 // command map:  moglcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=7;
+int gl_manual_map_count=8;
 cmdhandler gl_manual_map[] = {
 { "glGetBufferPointerv",            gl_getbufferpointerv                },
 { "glGetPointerv",                  gl_getpointerv                      },
 { "glGetString",                    gl_getstring                        },
 { "glGetVertexAttribPointerv",      gl_getvertexattribpointerv          },
 { "glSamplePass",                   gl_samplepass                       },
+{ "glShaderSource",                 gl_shadersource                     },
 { "gluErrorString",                 glu_errorstring                     },
 { "gluGetString",                   glu_getstring                       }};

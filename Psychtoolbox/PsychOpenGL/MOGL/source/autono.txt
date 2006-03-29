@@ -12,9 +12,10 @@ gluGetString			- implemented manually
 glGetBufferPointerv		- implemented manually
 glGetPointerv			- implemented manually
 glGetVertexAttribPointerv	- implemented manually
-glMultiDrawElements		- need alternate interface to these two functions, as they
-glShaderSource			  involve arrays of pointers, whereas we normally don't have
-				  access to pointers to a matrix's data in MATLAB
+glShaderSource          - special interface implemented manually
+glMultiDrawElements		- need alternate interface to this function, as it
+            			  involves arrays of pointers, whereas we normally don't have
+				          access to pointers to a matrix's data in MATLAB
 
 - these involve C callback functions
 gluNurbsCallback
