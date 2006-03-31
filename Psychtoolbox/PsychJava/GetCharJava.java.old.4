@@ -16,24 +16,23 @@
 	
  
  /*
-	Done:
-	1.  *COMPLETE* Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
-	2.  *COMPLETE* the ring buffer implementation; Modify .m wrappers to handle -1 overflow flag returned by numChars, peekChar and getChar methods.
-	7.  *COMPLETE* Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
-	8.  *COMPLETE* Try to set Alpha to make the window invisible.  Or to that some other way. 
-	9.  *COMPLETE* Remove the window's contents, it does not need to display that.
-	13. *UNNECESSARY* Try changing the frame thickness of the window.  This might reduce its size, seems larger than it needs to be to hold the text box.   
-
-
-	To Do:
+ 
+	 To Do:
+ 
+	1. *COMPLETE* Add a method wich detects focus loss so that we can restore focus within the GetChar.m wrapper when it is lost.
+	2. *COMPLETE* the ring buffer implementation; Modify .m wrappers to handle -1 overflow flag returned by numChars, peekChar and getChar methods.
+	
 	3. Test that it works during WaitSecs.  Add that test to GetCharTest.
 	4. Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
 	5. Write EventAvail. Check svn logs to see if its gone missing, or never existed in OS X.    
 	6. Test it under priority to see if it disturbs blit timing.
+	7. Change the window style to get rid of the close button because that kills MATLAB instantly without prompting for file save. 
+	8. Try to set Alpha to make the window invisible.  Or to that some other way.
+	9. Remove the window's contents, it does not need to display that.
 	10. Return a timestamp and reconcile units with GetSecs.
 	11. Right an installer to set the Java path instead of issuing instructions.
 	12. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character. A general-purpose cocoa mex file might
-		work for this or perhaps Java offers something useful. 
+		work for this.
  
  
  */
@@ -62,11 +61,6 @@ import javax.swing.*;
 import java.awt.event.*;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.Font;
-import java.awt.GraphicsConfiguration;
-import java.awt.GraphicsDevice;
-import java.awt.GraphicsEnvironment;
-import java.awt.Rectangle;
 
 public class GetCharJava extends JPanel 
                           implements KeyListener,
@@ -83,21 +77,13 @@ public class GetCharJava extends JPanel
 	char emptyChar='\0';
 	int	queueSizeChars=100; //make this small to test the ring buffer and overflow warnings
 
-
     public GetCharJava() {
         super(new BorderLayout());
 
-//        JButton button = new JButton("Clear");
-//        button.addActionListener(this);
+        JButton button = new JButton("Clear");
+        button.addActionListener(this);
 
-//      typingArea = new JTextField(20);
-//        typingArea = new JTextField(1);
-        typingArea = new JTextField(0);
-		Font typingAreaFont= new Font("Times", 0, 1);
-		typingArea.setFont(typingAreaFont);
-
-		//typingArea.getFont();
-//		typingArea.setSize(1,1);
+        typingArea = new JTextField(20);
         typingArea.addKeyListener(this);
 
         //Uncomment this if you wish to turn off focus
@@ -108,14 +94,14 @@ public class GetCharJava extends JPanel
         //become available to the key event listener.
         typingArea.setFocusTraversalKeysEnabled(false);
 
-//        displayArea = new JTextArea();
-//        displayArea.setEditable(false);
-//        JScrollPane scrollPane = new JScrollPane(displayArea);
-//        scrollPane.setPreferredSize(new Dimension(375, 125));
+        displayArea = new JTextArea();
+        displayArea.setEditable(false);
+        JScrollPane scrollPane = new JScrollPane(displayArea);
+        scrollPane.setPreferredSize(new Dimension(375, 125));
 
         add(typingArea, BorderLayout.PAGE_START);
-//        add(scrollPane, BorderLayout.CENTER);
-//        add(button, BorderLayout.PAGE_END);
+        add(scrollPane, BorderLayout.CENTER);
+        add(button, BorderLayout.PAGE_END);
 		
 		//setup the ring buffer by allocating memory
 		characterBuffer= new char[queueSizeChars];   
@@ -123,24 +109,24 @@ public class GetCharJava extends JPanel
 
     /** Handle the key typed event from the text field. */
     public void keyTyped(KeyEvent e) {
-//        displayInfo(e, "KEY TYPED: ");
+        displayInfo(e, "KEY TYPED: ");
 		recordKey(e);	
     }
 
     /** Handle the key pressed event from the text field. */
     public void keyPressed(KeyEvent e) {
-//        displayInfo(e, "KEY PRESSED: ");
+        displayInfo(e, "KEY PRESSED: ");
     }
 
     /** Handle the key released event from the text field. */
     public void keyReleased(KeyEvent e) {
-//        displayInfo(e, "KEY RELEASED: ");
+        displayInfo(e, "KEY RELEASED: ");
     }
 
     /** Handle the button click. */
     public void actionPerformed(ActionEvent e) {
         //Clear the text components.
-//        displayArea.setText("");
+        displayArea.setText("");
         typingArea.setText("");
 
         //Return the focus to the typing area.
@@ -177,7 +163,6 @@ public class GetCharJava extends JPanel
      * but if you put them in a String, the characters
      * afterward won't show up in the text area.)
      */
-/*
     protected void displayInfo(KeyEvent e, String s){
         String keyString, modString, tmpString,
                actionString, locationString;
@@ -233,7 +218,6 @@ public class GetCharJava extends JPanel
                            + "    " + locationString + newline);
         displayArea.setCaretPosition(displayArea.getDocument().getLength());
     }
-*/
 	
 
 	//we add new characters to the head and remove them from the tail
@@ -351,36 +335,24 @@ public class GetCharJava extends JPanel
 	
 	 public static JComponent createAndShowGUI() {
 	 		
-		// Make sure we have nice window decorations.
-		// JFrame.setDefaultLookAndFeelDecorated(true);
+		//Make sure we have nice window decorations.
+		//JFrame.setDefaultLookAndFeelDecorated(true);
 		JFrame.setDefaultLookAndFeelDecorated(false);
 
-		// Create and set up the window.
+		//Create and set up the window.
 		frame = new JFrame("GetCharJava");
 		
-		// note: it seems necessary to both use "setDefaultLookAndFeelDecorated(false)" and setUndecorated(true) to get a plain window
-		// sans border and close buttons. 
 		frame.setUndecorated(true);
 		
-		// hide the frame  beneath the menu bar.    
-		GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-		GraphicsDevice[] gs = ge.getScreenDevices();
-		GraphicsDevice gd = gs[0];		//graphics device 0 is the primary display.
-		GraphicsConfiguration gc = gd.getDefaultConfiguration();
-		Rectangle gcRectBounds = gc.getBounds();
-//		frame.setBounds(100, 100, 1, 1);
-		frame.setBounds((int)gcRectBounds.getX(), (int)gcRectBounds.getY(), 1, 1);     
-		
-		// frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		// This should not longer be necessary because we did away with the close button, but it does not seem to hurt.  
+//		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frame.setDefaultCloseOperation(WindowConstants.DO_NOTHING_ON_CLOSE);
 		
-		// Create and set up the content pane.
+		//Create and set up the content pane.
 		JComponent newContentPane = new GetCharJava();
 		newContentPane.setOpaque(true); //content panes must be opaque
 		frame.setContentPane(newContentPane);
 
-		// Display the window.
+		//Display the window.
 		frame.pack();
 		frame.setVisible(true);
 
