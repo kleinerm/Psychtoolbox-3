@@ -1,40 +1,65 @@
-function [Vertices,Faces,Texcoords,Normals,QuadFaces]=LoadOBJMesh(modelname, debug)
-% [Vertices,Faces,Texcoords,Normals,QuadFaces]=LoadOBJMesh(modelname, debug)
+function objobject=LoadOBJFile(modelname, debug)
+% objobject=LoadOBJFile(modelname, debug)
 %
-% Load a Wavefront/Alias OBJ file and return description of corresponding 3D
-% model. This routine will only consider polygons with 3 or 4 vertices per polygon,
-% corresponding to OpenGL GL_TRIANGLES or GL_QUADS. The routine can only parse
-% ASCII OBJ files, not the (more disc space efficient) binary files. It will
-% also ignore any part of the OBJ specification that is not a polygon mesh,
-% e.g., NURBS. It will also ignore any kind of .mtl material/texture definition files.
+% Load an Alias/Wavefront ASCII-OBJ file and return description of corresponding 3D
+% models in 'objobject'. The current implementation will only consider polygons
+% with 3 or 4 vertices per polygon, corresponding to OpenGL GL_TRIANGLES or GL_QUADS.
+% The routine can only parse ASCII OBJ files, not the (more disk space efficient)
+% binary files. It will also ignore any part of the OBJ specification that is not a
+% polygon mesh, e.g., NURBS. It will also ignore any kind of .mtl material/texture
+% definition files.
 %
 % Parameters:
 % 'modelname' Filename of the OBJ file to read.
 % 'debug' (Optional) If set to non-zero, some debug output is written to the Matlab prompt.
 %
 % Return values:
-% Vertices == A m-by-n vector of vertex position definitions: Each of the n columns
+% 'objobject' objobject is a cell array of structs. For each mesh in the
+% OBJ file, a single cell is created in objobject. Each cell contains a
+% struct whose subfields contain all information about the mesh. A struct
+% consists of the following fields:
+%
+% faces == 3-by-count or 4-by-count elements index matrix: Each of the 'count' columns
+% defines one of 'count' polygons. Each polygon is defined by an integer index into
+% the vertices, normals, texcoords arrays. Polygons can be triangles or quadrilaterals.
+%
+% vertices == A m-by-n vector of vertex position definitions: Each of the n columns
 % defines the position of one of n vertices. m Can be 2 for 2D points, 3 for 3D points
 % or 4 for 3D points with additional 'w' component.
 %
-% Faces == 3-by-count or 4-by-count elements index matrix: Each of the 'count' columns
-% defines one of 'count' polygons. Each polygon is defined by an integer index into
-% the Vertices, Normals, Texcoords arrays. Polygons can be triangles or quadrilaterals.
+% texcoords == Optional 2-by-n vector of texture coordinates.
 %
-% Texcoords == Optional 2-by-n vector of texture coordinates.
-% Normals == Optional 3-by-n vector of surface normals.
+% normals == Optional 3-by-n vector of surface normals.
 %
-% If the OBJ file contains triangle-definitions and quad-definitions, the triangle
-% definitions will be returned in 'Faces' whereas the Quads will be returned in
-% 'QuadFaces'. If only one type of primitives is defined, it will always be returned
-% in 'Faces'. It is possible but uncommon for a OBJ file to not contain 'Faces' at all.
+% If a mesh contains triangle-definitions and quad-definitions, the triangle
+% definitions will be returned in 'faces' whereas the Quads will be returned in
+% 'quadfaces'. If only one type of primitives is defined, it will always be returned
+% in 'faces'. It is possible but uncommon for a OBJ file to not contain 'faces' at all.
 %
+% Example: Assuming the OBJ file contains exactly one triangle mesh, you'll
+% be able to access its data as: objobject{1}.faces --> faces of the mesh,
+% objobject{1}.vertices --> vertex definitions, ...
+%
+% nobjects = length(objobject); Will return the number of meshes in the OBJ
+% file in 'nobjects'. objobject{i}.vertices would return the vertex
+% definition array of the i'th mesh in the OBJ file.
+%
+% LIMITATIONS:
 % This loader is slooow and may be replaced in the far future by an optimized C-Loader.
 %
 % This loader is an improved/modified version of the loader from MATLAB-Central, written by:
 % W.S. Harwin, University Reading, 2006
 
-% (w)2006, Mario Kleiner.
+% TODO:
+% Currently only a single cell is supported: All geometry definition is put
+% into index 1 of objobject --> objobject{1}.vertices contains all vertices
+% in an OBJ file, objobject{i} for i>1 is always undefined. We need to
+% write proper parsing code for such flexibility, but the interface is
+% already here, so users will not need to rewrite their code when
+% LoadOBJFile is extended in the future.
+%
+% HISTORY
+% 31/03/06, written by Mario Kleiner, derived from W.S. Harwins code.
 
 if nargin <1 
   error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
@@ -55,10 +80,11 @@ f4num=1;
 vtnum=1;
 vnnum=1;
 gnum=1;
+meshcount=1;
 
 Vertices=[];
 Faces=Vertices;
-TexCoords=Vertices;
+Texcoords=Vertices;
 Normals=Vertices;
 QuadFaces=Vertices;
 
@@ -158,17 +184,14 @@ else
     end;
 end;
 
-% plot if no output arguments are given
-if nargout ==0
-  if exist('Faces','var') 
-    patch('Vertices',Vertices','Faces',Faces','FaceColor','g');
-  end
-  if exist('F4','var')
-    patch('Vertices',Vertices','Faces',F4','FaceColor','b');
-  end
-  axis('equal')
-  clear Vertices Faces F4
+% Assign variables to proper slot in output-cell-struct:
+objobject{meshcount}.faces = Faces;
+if exist('QuadFaces', 'var')
+    objobject{meshcount}.quadfaces = QuadFaces;
 end;
+objobject{meshcount}.vertices = Vertices;
+objobject{meshcount}.normals = Normals;
+objobject{meshcount}.texcoords = Texcoords;
 
 % Done.
 return;

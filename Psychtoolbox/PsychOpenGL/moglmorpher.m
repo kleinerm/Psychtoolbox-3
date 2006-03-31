@@ -18,6 +18,17 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % Available subcommands and their meaning:
 % ----------------------------------------
 %
+% meshid = moglmorpher('addMesh', obj);
+% -- Add a new shape to the collection of shapes to be morphed. 'obj'
+% is a single struct that defines the object: Subfields are obj.faces,
+% obj.vertices, obj.texcoords, obj.normals. Their meaning is the same as
+% the corresponding parameters in the following 'addMesh' subcommand. The
+% 'obj' syntax is provided for convenience, as 'obj' in the same format as
+% provided by LoadOBJFile, i.e. obj = LoadOBJFile('myfile.obj') will load
+% the geometry in 'myfile.obj' into obj, which can then be passed to
+% moglmorpher via moglmorpher('addMesh', obj{1}); to add the first mesh
+% from 'myfile.obj' into the morpher.
+%
 % meshid = moglmorpher('addMesh', faces, vertices [, texcoords] [, normals]);
 % -- Add a new shape to the collection of shapes to be morphed. faces == Index
 % list that defines the topology of the shape: faces is a 3 by n vector. Each of
@@ -50,14 +61,25 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % For 'count' shapes, weight is a vector of length 'count'. The i'th scalar entry of weight
 % is the coefficient used to integrate the i'th shape into the morph.
 %
+% moglmorpher('computeMorph', weights [,morphnormals=1]);
+% -- Same as 'renderMorph', just that rendering of the morphed shape is
+% omitted. You can render the shape later by calling the 'render' subcommand.
+%
 % finalresult = sum_for_i=1_to_count(shape(i) * weights(i));
 % The shape (vertices) and normal vectors are linearly combined. The texture coordinates are
 % not altered by the morph. If you set the optional argument morphnormals to zero, then
 % normals are not touched by morphing either.
 %
-% moglmorpher('rerender');
-% Renders the last shape again. This is either the last rendered mesh or the last linear
+% moglmorpher('render');
+% -- Renders the last shape again. This is either the last rendered mesh or the last linear
 % combination.
+%
+% glListHandle = moglmorpher('renderToDisplaylist');
+% -- Same as subcommand 'render', but the shape is not rendered as an image to the
+% framebuffer, but stored to a new OpenGL display list. A unique 'glListHandle' to
+% the new list is returned. Using this handle one can render the object
+% later on via the command glCallList(glListHandle); and delete it via
+% glDeleteLists(glListHandle, 1);
 %
 % count = moglmorpher('getMeshCount');
 % Returns number of stored shapes.
@@ -149,8 +171,32 @@ end;
 if strcmp(cmd, 'addMesh')
     % A new mesh should be added as keyshape to the collection of key-meshes.
 
+    if nargin <2
+        error('Need to supply at least an obj mesh object!');
+    end;
+
+    argcount = nargin;
+    
+    % Struct instead of separate variables provided?
+    if isstruct(arg1)
+        % Yes. Split it up into single ones.
+        argcount = 3;
+        obj = arg1;
+        arg1 = obj.faces;
+        arg2 = obj.vertices;
+        if ~isempty(obj.texcoords)
+            argcount = 4;
+            arg3 = obj.texcoords;
+        end;
+        
+        if ~isempty(obj.normals)
+            argcount = 5;
+            arg4 = obj.normals;
+        end;
+    end;
+    
     % Sanity checks:
-    if nargin < 3
+    if argcount < 3
         error('Need to supply at least a vector of face indices and vertices!');
     end;
 
@@ -167,11 +213,11 @@ if strcmp(cmd, 'addMesh')
             error('Mismatch between size of current vertex coords. array and array of new mesh!');
         end;
 
-        if usetextures & (nargin<4 | (size(texcoords)~=size(arg3)))
+        if usetextures & (argcount<4 | isempty(arg3) | (size(texcoords)~=size(arg3)))
             error('Mismatch between size of current texture coords. array and array of new mesh or missing texcoords array!');
         end;
         
-        if usenormals & (nargin<5 | (size(normals)~=size(arg4)))
+        if usenormals & (argcount<5 | isempty(arg4) | (size(normals)~=size(arg4)))
             error('Mismatch between size of current normals array and array of new mesh or missing normals array!');
         end;
     end;
@@ -189,7 +235,7 @@ if strcmp(cmd, 'addMesh')
     end;
 
     % 3rd (optional) argument is texture coordinate array:
-    if nargin>3    
+    if argcount>3 & ~isempty(arg3)
         if usetype==GL.FLOAT
             texcoords = single(arg3);
         else
@@ -199,7 +245,7 @@ if strcmp(cmd, 'addMesh')
     end;
     
     % 4th (optional) argument is normal vectors array:
-    if nargin>4
+    if argcount>4 & ~isempty(arg4)
         if usetype==GL.FLOAT
             normals = single(arg4);
         else
@@ -239,10 +285,10 @@ if strcmp(cmd, 'renderMesh')
     updatecount = updatecount + 1;
 
     % Set command code for rendering current content of renderbuffers:
-    cmd = 'rerender';
+    cmd = 'render';
 end;
 
-if strcmp(cmd, 'renderMorph')
+if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
     % A morph (linear combination) of all meshes should be computed and then rendered.
     if nargin < 2
         error('You need to supply the morph-weight vector!');
@@ -284,16 +330,32 @@ if strcmp(cmd, 'renderMorph')
     
     updatecount = updatecount + 1;
     
-    % Set command code for rendering current content of renderbuffers:
-    cmd = 'rerender';
+    % Just morph or render as well?
+    if strcmp(cmd, 'renderMorph')
+        % Set command code for rendering current content of renderbuffers:
+        cmd = 'render';
+    else
+        % Only morphing requested, not rendering. Morph can be rendered via
+        % 'rerender' command later.
+        return;
+    end;
 end;
 
-if strcmp(cmd, 'rerender')
+if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
     % Render current content of renderbuffers via OpenGL:
     if updatecount < 1
-        error('Tried to rerender content of renderbuffers, but renderbuffers not yet filled!');
+        error('Tried to render content of renderbuffers, but renderbuffers not yet filled!');
     end;
-    
+
+    if strcmp(cmd, 'renderToDisplaylist')
+        % Create new display list and direct all rendering into it:
+        rc = glGenLists(1);
+        glNewList(rc, GL.COMPILE);
+    else
+        % Just render, don't create display list.
+        rc = -1;
+    end;
+
     % Enable client-side vertex arrays:
     glEnableClientState(GL.VERTEX_ARRAY);
     % Set pointer to start of vertex array:
@@ -326,6 +388,12 @@ if strcmp(cmd, 'rerender')
     glDisableClientState(GL.VERTEX_ARRAY);
     glDisableClientState(GL.NORMAL_ARRAY);
     glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+
+    if rc>-1
+        % Finalize our new display list:
+        glEndList;
+    end;
+    
     return;
 end;
 

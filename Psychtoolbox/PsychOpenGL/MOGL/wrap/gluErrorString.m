@@ -14,7 +14,7 @@ function r = gluErrorString( err )
 % ---protected---
 
 if nargin==0,
-    err=gl_geterror;
+    err=glGetError;
 elseif nargin~=1,
     error('invalid number of arguments');
 end
