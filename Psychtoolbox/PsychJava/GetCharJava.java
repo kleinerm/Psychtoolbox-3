@@ -24,13 +24,24 @@
 	9.  *COMPLETE* Remove the window's contents, it does not need to display that.
 	13. *UNNECESSARY* Try changing the frame thickness of the window.  This might reduce its size, seems larger than it needs to be to hold the text box.   
 	3.  *COMPLETE* Test that it works during WaitSecs.  Add that test to GetCharTest.
-	4. *UNNECESSARY* Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
+	4.  *UNNECESSARY* Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
 
 
 	To Do:
 	5. Write EventAvail. Check svn logs to see if its gone missing, or never existed in OS X.    
 	6. Test it under priority to see if it disturbs blit timing.
-	10. Return a timestamp and reconcile units with GetSecs.
+	10. Return a timestamp and reconcile units with GetSecs.  The second returns argument of GetChar in OS 9 looks like this:
+	
+					ticks: 5760808
+					secs: 1.4681e+05
+					address: 2
+					mouseButton: 0
+					alphaLock: 0
+					commandKey: 0
+					controlKey: 0
+					optionKey: 0
+					shiftKey: 0
+
 	11. Right an installer to set the Java path instead of issuing instructions.
 	12. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character. A general-purpose cocoa mex file might
 		work for this or perhaps Java offers something useful. 
