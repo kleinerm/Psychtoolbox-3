@@ -23,11 +23,11 @@
 	8.  *COMPLETE* Try to set Alpha to make the window invisible.  Or to that some other way. 
 	9.  *COMPLETE* Remove the window's contents, it does not need to display that.
 	13. *UNNECESSARY* Try changing the frame thickness of the window.  This might reduce its size, seems larger than it needs to be to hold the text box.   
+	3.  *COMPLETE* Test that it works during WaitSecs.  Add that test to GetCharTest.
+	4. *UNNECESSARY* Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
 
 
 	To Do:
-	3. Test that it works during WaitSecs.  Add that test to GetCharTest.
-	4. Complete the final section of Getchar Test which tests for interaction with mouse clicks on fsw.
 	5. Write EventAvail. Check svn logs to see if its gone missing, or never existed in OS X.    
 	6. Test it under priority to see if it disturbs blit timing.
 	10. Return a timestamp and reconcile units with GetSecs.
