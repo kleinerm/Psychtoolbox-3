@@ -77,7 +77,10 @@ PsychError SCREENGetCapturedImage(void)
     PsychCopyInDoubleArg(4, FALSE, &requestedTimeIndex);
     
     while (rc==0) {
-        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, &presentation_timestamp, NULL);
+      // This is slightly ugly: We pass the waitForImage flag in the requestedTimeIndex field, which is currently
+      // unused otherwise. This way we can signal if we are in polling or blocking mode. On Linux this allows to
+      // do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
+        rc = PsychGetTextureFromCapture(windowRecord, moviehandle, TRUE, (double) ((waitForImage>0) ? 1.0 : 0.0), NULL, &presentation_timestamp, NULL);
         if (rc<0) {
             // No image available and there won't be any in the future, because capture has been stopped.
 
@@ -112,7 +115,8 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord->windowType=kPsychTexture;
         // We need to assign the screen number of the onscreen-window.
         textureRecord->screenNumber=windowRecord->screenNumber;
-        // It is always a 32 bit texture for captured images:
+        // It defaults to a 32 bit texture for captured images. On Linux, this will be overriden,
+	// if optimized formats exist for our purpose:
         textureRecord->depth=32;
         
         // Create default rectangle which describes the dimensions of the image. Will be overwritten
