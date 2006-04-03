@@ -44,6 +44,7 @@ ar=winRect(4)/winRect(3);
 % Turn on OpenGL local lighting model: The lighting model supported by
 % OpenGL is a local Phong model with Gouraud shading.
 glEnable(GL_LIGHTING);
+glEnable(GL_NORMALIZE);
 
 % Enable the first local light source GL_LIGHT_0. Each OpenGL
 % implementation is guaranteed to support at least 8 light sources. 

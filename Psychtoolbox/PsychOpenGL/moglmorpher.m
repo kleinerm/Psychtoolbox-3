@@ -81,6 +81,11 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % later on via the command glCallList(glListHandle); and delete it via
 % glDeleteLists(glListHandle, 1);
 %
+% moglmorpher('renderNormals' [,normalLength=1]);
+% -- Renders the surface normal vectors of the last shape in green, either at unit-length,
+% or at 'normalLength' if this argument is provided. This is a helper function for
+% checking the correctness of computed normals. It is very slow!
+%
 % count = moglmorpher('getMeshCount');
 % Returns number of stored shapes.
 %
@@ -339,6 +344,34 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         % 'rerender' command later.
         return;
     end;
+end;
+
+if strcmp(cmd, 'renderNormals')
+    if updatecount < 1
+        error('Tried to render normals in renderbuffer, but renderbuffer not yet filled!');
+    end;
+
+    if (size(vertices,2)~=size(normals,2))
+        error('renderNormals: Sorry this function only works if count of normals equals count of vertices. Aborted!');
+    end;
+
+    if nargin < 2
+        arg1 = 1;
+    end;
+    
+    % Loop over all vertices and draw their corresponding normals:
+    % This is OpenGL immediate-mode rendering, so it will be slow...
+    glBegin(GL.LINES);
+    for i=1:size(vertices,2)
+        % Start position of normal is vertex position:
+        glVertex3dv(vertices(:,i));
+        % End position is defined by scaled normal vector: Argument 1 defines length of normal:
+        glVertex3dv(vertices(:,i) + (normals(:,i)/norm(normals(:,i)))*arg1);
+    end;
+    glEnd;
+    
+    % Done.
+    return;
 end;
 
 if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
