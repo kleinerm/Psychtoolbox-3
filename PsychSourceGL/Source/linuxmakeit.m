@@ -6,7 +6,7 @@ if nargin < 1
 end;
 
 if mode==0
-    mex -v -outdir ../Projects/Linux/build/ -output Screen -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lGL -lX11 -lXext /usr/X11R6/lib/libXxf86vm.a /usr/X11R6/lib/libGLU.a /usr/local/lib/libdc1394_control.a /usr/local/lib/libraw1394.a
+    mex -v -outdir ../Projects/Linux/build/ -output Screen -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lGL -lX11 -lXext /usr/X11R6/lib/libXxf86vm.a /usr/X11R6/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a
     unix('cp /mnt/home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/Screen.mexglx /mnt/home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/');
 end;
 
