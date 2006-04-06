@@ -164,7 +164,14 @@ void CountReports(char *string)
 			r->next=&(allocatedReports[i+1]);
 		}
 		r->next=NULL;
-		for(i=0;i<MAXDEVICEINDEXS;i++)deviceReportsPtr[i]=NULL;
+                // MK: Adding initialization of source and ready arrays.
+                // Does this resolve the bugreports about crashes from the forum?
+                // Messages of Ben Heasley and Maria McKinley, Bugid 5522?
+		for(i=0;i<MAXDEVICEINDEXS;i++) {
+                    deviceReportsPtr[i]=NULL;
+                    source[i]=NULL;
+                    ready[i]=0;
+                }
 	}
 	
 	n=0;
@@ -508,7 +515,7 @@ PsychError PsychHIDReceiveReportsCleanup(void)
 	int deviceIndex;
 	
 	//printf("Clean up before PsychHID is flushed.\n");
-	for(deviceIndex=1;deviceIndex<MAXDEVICEINDEXS;deviceIndex++) if(source[deviceIndex]!=NULL){
+	for(deviceIndex=0;deviceIndex<MAXDEVICEINDEXS;deviceIndex++) if(source[deviceIndex]!=NULL) {
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode);// kCFRunLoopDefaultMode
 		CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
 		if(0 && optionsPrintCrashers)printf("%d: source %4.4lx validity %d, CFRunLoopContainsSource is %d.\n",deviceIndex,(unsigned long)source[deviceIndex]
@@ -521,7 +528,7 @@ PsychError PsychHIDReceiveReportsCleanup(void)
 					,CFRunLoopContainsSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode));
 		ready[deviceIndex]=0;
 		CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
-		source[deviceIndex]=0;
+		source[deviceIndex]=NULL;
 	}			
 	return 0;
 }
