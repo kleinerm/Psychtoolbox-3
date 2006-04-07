@@ -516,8 +516,8 @@ PsychError PsychHIDReceiveReportsCleanup(void)
 	
 	//printf("Clean up before PsychHID is flushed.\n");
 	for(deviceIndex=0;deviceIndex<MAXDEVICEINDEXS;deviceIndex++) if(source[deviceIndex]!=NULL) {
+                CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
 		CFRunLoopRemoveSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode);// kCFRunLoopDefaultMode
-		CheckRunLoopSource(deviceIndex,"PsychHIDReceiveReportsCleanup",__LINE__);
 		if(0 && optionsPrintCrashers)printf("%d: source %4.4lx validity %d, CFRunLoopContainsSource is %d.\n",deviceIndex,(unsigned long)source[deviceIndex]
 					,CFRunLoopSourceIsValid(source[deviceIndex])
 					,CFRunLoopContainsSource(CFRunLoopGetCurrent(),source[deviceIndex],myRunLoopMode));
