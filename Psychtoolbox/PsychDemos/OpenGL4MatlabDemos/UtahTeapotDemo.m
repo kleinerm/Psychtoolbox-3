@@ -8,7 +8,7 @@ function UtahTeapotDemo
 % Stop the demo by pressing any key.
 %
 % Notable implementation details:
-% The call ptbmoglinit(1) at the top of the script initializes the
+% The call InitializeMatlabOpenGL(1) at the top of the script initializes the
 % Matlab-OpenGL toolbox and enables the 3D gfx support in Psychtoolbox to
 % allow proper interfacing between the OpenGL toolbox and Psychtoolbox.
 %
@@ -72,7 +72,7 @@ Screen('Preference','SkipSyncTests',1);
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper:
-ptbmoglinit(1);
+InitializeMatlabOpenGL(1);
 
 % Open a double-buffered full-screen window on the main displays screen.
 [win , winRect] = Screen('OpenWindow', screenid);

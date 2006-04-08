@@ -1,8 +1,8 @@
-function ptbmoglinit(opengl_c_style)
-% ptbmoglinit -- Initialize the OpenGL for Matlab wrapper 'mogl'
+function InitializeMatlabOpenGL(opengl_c_style)
+% InitializeMatlabOpenGL -- Initialize the OpenGL for Matlab wrapper 'mogl'.
 %
 % Call this function at the beginning of your experiment script before
-% calling *any other* Psychtoolbox command if you intend to use low-level
+% calling *any* Psychtoolbox Screen() command, if you intend to use low-level
 % OpenGL drawing commands in your script as provided by Richard Murrays
 % moglcore extension.
 %
@@ -10,12 +10,12 @@ function ptbmoglinit(opengl_c_style)
 % OpenGL constants into your Matlab workspace. It will also set up
 % Psychtoolbox for interfacing with external OpenGL code.
 %
-% If you call ptbmoglinit or ptbmoglinit(0), all constants will be loaded
-% in structs in order to avoid cluttering the Matlab workspace too much.
-% You'll have to replace all GL_xxx calls by GL.xxx calls, e.g., GL_LIGHTING
-% becomes GL.LIGHTING
-% If you call ptbmoglinit(1), then all constants will also be provided in
-% standard C-Style, aka GL_LIGHTING.
+% If you call InitializeMatlabOpenGL or InitializeMatlabOpenGL(0), all
+% constants will be loaded in structs in order to avoid cluttering the
+% Matlab workspace too much. You'll have to replace all GL_xxx calls by
+% GL.xxx calls, e.g., GL_LIGHTING becomes GL.LIGHTING .
+% If you call InitializeMatlabOpenGL(1), then all constants will additionally
+% be provided in standard C-Style syntax, aka GL_LIGHTING.
 %
 % The 'OpenGL for Matlab' low level wrapper mogl was developed, implemented
 % and generously contributed to Psychtoolbox under GPL license by

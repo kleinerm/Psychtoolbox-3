@@ -51,7 +51,7 @@ screenid=max(Screen('Screens'));
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper:
-ptbmoglinit(1);
+InitializeMatlabOpenGL(1);
 
 % Open a double-buffered full-screen window on the main displays screen.
 [win , winRect] = Screen('OpenWindow', screenid);

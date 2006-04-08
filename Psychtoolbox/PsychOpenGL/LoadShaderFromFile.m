@@ -15,7 +15,7 @@ function handle = LoadShaderFromFile(filename, shadertype, debug)
 global GL;
 
 if isempty(GL)
-    ptbmoglinit;
+    InitializeMatlabOpenGL;
 end;
 
 % Make sure we run on a GLSL capable system.

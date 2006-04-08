@@ -2,17 +2,48 @@ function GLSLDemo
 % GLSLDemo - Demonstrate use of the GLSL OpenGL Shading language in the
 % Psychtoolbox.
 %
-% The demo loads a collection of shaders. It applies the shaders to a
-% collection of objects.
+% The OpenGL shading language (GLSL) allows to write specialized programs
+% which are uploaded into the graphics hardware itself. These programs
+% are then executed very efficiently in the grahpics hardware. So called
+% Vertex-Shaders are executed on a per-vertex basis. They calculate and
+% manipulate per-vertex properties, e.g., displacement, color, normal
+% vectors. So called Fragment-Shaders are executed for each single fragment
+% or pixel that is drawn into the backbuffer. They allow, e.g., to implement
+% your own lighting model or perform image processing on your image.
+%
+% GLSL programs are very similar in their syntax to the C programming language,
+% its basically C, extended by functions for matrix and vector math and for
+% typical graphics purpose.
+%
+% A specific piece of graphics hardware may only support either vertex-shaders,
+% or fragment-shaders or none at all, as these features are pretty new in the
+% world of computer-graphics, so this demo may not run at all or at least some
+% shaders will either fail or give unexpected results. If you want to make
+% use of GLSL you'll need to equip your computer with up to date graphics
+% hardware.
+%
+% This demo loads a collection of shaders. It applies the shaders to a
+% collection of objects, demonstrating some visual effects. This is early
+% beta code, so don't expect too much. It mostly demonstrates how to get
+% started with shader-programming in Psychtoolbox.
+%
 % Press the 'n' key to toggle between different objects.
 % Press the SPACE key to toggle between the different shaders.
 % Stop the demo by pressing any other key.
 
+% Online specs for GLSL can be found under:
+% <http://www.opengl.org/documentation/glsl/>
 %
-% 15-Dec-2005 -- created (RFM)
-% 21-Jan-2006 -- Modified for use with OpenGL-Psychtoolbox (MK)
-% 16-Feb-2006 -- Modified for use with new MOGL (MK)
-% 05-Mar-2006 -- Cleaned up for public consumption (MK)
+% This:
+% <http://www.lighthouse3d.com/opengl/glsl/index.php?intro>
+% is a very nice introduction into GLSL.
+%
+% Apart from that, theres the standard book on GLSL by Addison Wesley:
+% "OpenGL(R) Shading Language (2nd Edition)" this is also known as
+% "The Orange book".
+%
+
+% Written by Mario Kleiner.
 
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
@@ -25,7 +56,7 @@ Screen('Preference','SkipSyncTests',1);
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper:
-ptbmoglinit(1);
+InitializeMatlabOpenGL(1);
 
 % Open a double-buffered full-screen window on the main displays screen.
 [win , winRect] = Screen('OpenWindow', screenid);
@@ -114,7 +145,11 @@ glLightfv(GL_LIGHT1,GL_AMBIENT, [ .0 .0 .9 1 ]);
 glGetError;
 
 % Load all pairs of GLSL shaders from the directory of demo shaders and
-% create GLSL programs for them:
+% create GLSL programs for them: LoadGLSLProgramFromFiles is a convenience
+% function. It loads single shaders or multiple shaders from text files,
+% compiles and links them into a GLSL program, checks for errors and - if
+% everything is fine - returns a handle that can be used to enable the
+% GLSL program via glUseProgram():
 shaderpath = [PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/GLSLDemoShaders/'];
 glsl(1)=LoadGLSLProgramFromFiles([shaderpath 'Flattenshader'],1);
 glsl(2)=LoadGLSLProgramFromFiles([shaderpath 'Pointlightshader'],1);

@@ -137,7 +137,7 @@ end;
 
 % Initialize MOGL if it didn't happen already in a different module:
 if isempty(GL)
-    ptbmoglinit;
+    InitializeMatlabOpenGL;
 end;
 
 % Initialize count of keyshapes:

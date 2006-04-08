@@ -26,7 +26,7 @@ function handle = LoadGLSLProgramFromFiles(filenames, debug)
 global GL;
 
 if isempty(GL)
-    ptbmoglinit;
+    InitializeMatlabOpenGL;
 end;
 
 if nargin < 2
