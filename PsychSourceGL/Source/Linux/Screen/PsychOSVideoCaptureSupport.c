@@ -49,6 +49,7 @@
 typedef struct {
   int valid;                        // Is this a valid device record? zero == Invalid.
   dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
+  int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
   int dc_imageformat;               // Encodes image size and pixelformat.
   int pixeldepth;                   // Depth of single pixel in bits.
   int nrframes;                     // Total count of decompressed images.
@@ -274,10 +275,6 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     free(cameras);
     cameras=NULL;
     
-    // Hack to fix a bug in libdc: This pointer doesn't get NULL initialized, so
-    // it can be accidentally non-NULL due to garbage in memory!
-    //    capdev->camera->capture.dma_device_file = NULL;
-
     // Report cameras features:
     if (dc1394_get_camera_feature_set(capdev->camera, &features) !=DC1394_SUCCESS) {
       printf("PTB-WARNING: Unable to query feature set of camera.\n");
@@ -301,7 +298,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     numCaptureRecords++;
     
     // Set dummy value for framerate for now:
-    capdev->fps = 25;
+    capdev->fps = 0;
 
     // Set image size:
     capdev->width = 640;
@@ -311,7 +308,6 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
     
-    printf("W x h = %i x  %i at %lf fps...\n", capdev->width, capdev->height, capdev->fps);
     fflush(NULL);
 
     return(TRUE);
@@ -327,9 +323,12 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
 {
   int dropped = 0;
-  int framerate = 0;
+  float framerate = 0;
   unsigned int speed;
-  int mode;
+  int mode, i;
+  dc1394framerate_t dc1394_framerate;
+  dc1394framerates_t supported_framerates;
+  int allow_nondma_fallback = 1; // Use of non-DMA mode allowed if DMA mode fails?
 
   // Retrieve device record for handle:
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
@@ -344,13 +343,6 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     capdev->nr_droppedframes = 0;
     capdev->frame_ready = 0;
     
-    // Set capture framerate:
-    framerate = (int) capturerate;
-
-    // MK: TODO!!!
-
-    // Setup capture hardware and DMA engine:
-
     // Select mode for requested image size and pixel format:
 /*     switch (palette) { */
 /*     case VIDEO_PALETTE_RGB24: */
@@ -372,22 +364,98 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     capdev->dc_imageformat = mode;
     capdev->pixeldepth = 8;
 
+    // Set capture framerate:
+    // We probe all available non mode-7 framerates of camera for the best match, aka
+    // the slowest framerate equal or faster to the requested framerate:
+    dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
+    for (i = 0; i < supported_framerates.num; i++) {
+      dc1394_framerate = supported_framerates.framerates[i];
+      dc1394_framerate_as_float(dc1394_framerate, &framerate);
+      if (framerate >= capturerate) break;
+    }
+    dc1394_framerate_as_float(dc1394_framerate, &framerate);
+    
+    // Ok, we've got the closest match we could get. Good enough?
+    if (fabs(framerate - capturerate) < 0.5) {
+      // Perfect match of delivered and requested framerate. Nothing to do so far...
+    }
+    else {
+      // No perfect match :(.
+      if(framerate < capturerate) {
+	printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
+	       (float) capturerate, framerate);
+	fflush(NULL);
+      }
+    }
+
+    // Setup capture hardware and DMA engine:
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
-      PsychErrorExitMsg(PsychError_internal, "Unable to query bus-speed - Start of video capture failed!");
+      PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
     }
 	
     // Setup DMA engine:
-    // We use a framerate of 60 fps with frame dropping enabled:
-    if (dc1394_dma_setup_capture(capdev->camera, mode, speed, DC1394_FRAMERATE_60,
-				 DC1394_BUFFERS, DROP_FRAMES) != DC1394_SUCCESS) {
-      PsychErrorExitMsg(PsychError_internal, "Unable to setup and start DMA capture engine - Start of video capture failed!");
+    if (dc1394_dma_setup_capture(capdev->camera, mode, speed, dc1394_framerate,
+				 DC1394_BUFFERS, DROP_FRAMES) != DC1394_SUCCESS) {      
+      // Failed! We clean up and either fail or retry in non-DMA mode:
+
+      // Shutdown DMA engine:
+      dc1394_dma_unlisten(capdev->camera);
+
+      // Release DMA engine:
+      dc1394_dma_release_camera(capdev->camera);
+
+      // We release the cams iso channel and bandwidth allocation in the hope that this
+      // will get us ready again...
+      dc1394_free_iso_channel_and_bandwidth(capdev->camera);
+
+      // Are we allowed to use non-DMA capture if DMA capture doesn't work?
+      if (allow_nondma_fallback) {
+	// Yes. Try to activate non-DMA capture. Less efficient...
+	printf("PTB-WARNING: Could not setup DMA capture engine! Trying non-DMA capture engine as a slow, inefficient and limited fallback.\n");
+	if (dc1394_setup_capture(capdev->camera, mode, speed, dc1394_framerate) != DC1394_SUCCESS) {
+	  // Non-DMA setup failed as well. That's the end my friend...
+
+	  // We release the cams iso channel and bandwidth allocation in the hope that this
+	  // will get us ready again...
+	  dc1394_free_iso_channel_and_bandwidth(capdev->camera);
+	  PsychErrorExitMsg(PsychError_user, "Unable to setup and start non-DMA capture engine as well - Start of video capture failed!");
+	}
+	else {
+	  // Signal use of non-DMA mode:
+	  capdev->dma_mode = 0;
+	}
+      }
+      else {
+	// Nope! Exit with error-message:
+	PsychErrorExitMsg(PsychError_user, "Unable to setup and start DMA capture engine and not allowed to use non-DMA fallback path - Start of video capture failed!");
+      }
+    }
+    else {
+      // Signal use of DMA engine:
+      capdev->dma_mode = 1;
     }
 
     // Start DMA driven isochronous data transfer:
     if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
-      PsychErrorExitMsg(PsychError_internal, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
+      if (capdev->dma_mode > 0) {
+	// Shutdown DMA engine:
+	dc1394_dma_unlisten(capdev->camera);
+	// Release DMA engine:
+	dc1394_dma_release_camera(capdev->camera);
+      }
+      else {
+	dc1394_release_camera(capdev->camera);
+      }
+
+      // We release the cams iso channel and bandwidth allocation in the hope that this
+      // will get us ready again...
+      dc1394_free_iso_channel_and_bandwidth(capdev->camera);
+      
+      PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
     }
     
+    // Map framerate enum to floating point value and assign it:
+    dc1394_framerate_as_float(dc1394_framerate, &framerate);
     capdev->fps = (double) framerate;
 
     // Ok, capture is now started:
@@ -398,27 +466,21 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
   else {
     // Stop capture:
     if (capdev->grabber_active) {
-
-      // Wait for 2 seconds before really stopping capture. This - for some reason -
-      // prevents Kernel Ooops or even crashes under Linux 2.4.19.
-      // PsychWaitIntervalSeconds(2);
-
       // Stop isochronous data transfer from camera:
       if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
-	PsychErrorExitMsg(PsychError_internal, "Unable to stop video transfer on camera! (dc1394_video_set_transmission(DC_OFF) failed)!");
+	PsychErrorExitMsg(PsychError_user, "Unable to stop video transfer on camera! (dc1394_video_set_transmission(DC_OFF) failed)!");
       }
 
-      // Wait for 500 msecs so data-transfer is really off.
-      // PsychWaitIntervalSeconds(0.5);
-
-      // Shutdown DMA engine:
-      dc1394_dma_unlisten(capdev->camera);
-
-      // Wait for 500 msecs so engine is really stopped.
-      // PsychWaitIntervalSeconds(0.5);
-
-      // Release DMA engine:
-      dc1394_dma_release_camera(capdev->camera);
+      if (capdev->dma_mode > 0) {
+	// Shutdown DMA engine:
+	dc1394_dma_unlisten(capdev->camera);
+	
+	// Release DMA engine:
+	dc1394_dma_release_camera(capdev->camera);
+      }
+      else {
+	dc1394_release_camera(capdev->camera);
+      }
 
       // Ok, capture is now stopped.
       capdev->frame_ready = 0;
@@ -474,6 +536,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     Boolean newframe = FALSE;
     double tstart, tend;
     unsigned int pixval, alphacount;
+    dc1394error_t error;
 
     int waitforframe = (timeindex > 0) ? 1:0; // We misuse the timeindex as flag for blocking- non-blocking mode.
 
@@ -498,18 +561,34 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       if (waitforframe) {
 	// Check for image in blocking mode: We actually try to capture a frame in
 	// blocking mode, so we will wait here until a new frame arrives.
-      	if (dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_WAIT) == DC1394_SUCCESS) {
-	  // if (dc1394_capture(&(capdev->camera), 1) == DC1394_SUCCESS) {
+	if (capdev->dma_mode > 0) {
+	  // DMA wait & capture:
+	  error = dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_WAIT);
+	}
+	else {
+	  // Non-DMA wait & capture:
+	  error = dc1394_capture(&(capdev->camera), 1);
+	}
+
+	if (error == DC1394_SUCCESS) {	  
 	  // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
 	  capdev->frame_ready = 1;
 	}
 	else {
-	  // Blocking wait failed!
+	  // Blocking wait failed! Somethings seriously wrong:
 	  PsychErrorExitMsg(PsychError_internal, "Blocking wait for new frame failed!!!");
 	}
       }
       else {
-	// Check for image in polling mode: We capture in non-blocking mode:
+	// Check for image in polling mode: We capture in non-blocking mode:	
+	if (capdev->dma_mode <= 0) {
+	  // Oops. Tried to use polling mode in non-DMA capture. This is not supported.
+	  printf("PTB-ERROR: Tried to call Screen('GetCapturedImage') in polling mode during non-DMA capture\n");
+	  printf("PTB-ERROR: This is not supported. Will return error code -1...\n");
+	  fflush(NULL);
+	  return(-1);
+	}
+
 	if (dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_POLL) == DC1394_SUCCESS) {
 	  // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
 	  capdev->frame_ready = 1;
@@ -528,8 +607,15 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	capdev->nrframes++;
 	// Update avg. decompress time:
 	capdev->avg_decompresstime+=(tend - tstart);
-	// Query capture timestamp from Firewire subsystem and convert to seconds:
-	capdev->current_pts = ((double) capdev->camera->capture.filltime.tv_sec) + (((double) capdev->camera->capture.filltime.tv_usec) / 1000000.0f);
+
+	if (capdev->dma_mode > 0) {
+	  // Query capture timestamp from Firewire subsystem and convert to seconds:
+	  capdev->current_pts = ((double) capdev->camera->capture.filltime.tv_sec) + (((double) capdev->camera->capture.filltime.tv_usec) / 1000000.0f);
+	}
+	else {
+	  // We do not get a timestamp from firewire subsystem in non-DMA mode: Use the best we have, which should still be pretty good:
+	  capdev->current_pts = tend;
+	}
       }
 
       // Return availability status:
@@ -605,16 +691,16 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
 
     // Release the capture buffer. Return it to the DMA ringbuffer pool:
-    dc1394_dma_done_with_buffer(capdev->camera);
+    if (capdev->dma_mode > 0) dc1394_dma_done_with_buffer(capdev->camera);
 
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
-    if (1) {
+    if (capdev->dma_mode < 1) {
       // Old style: Heuristic based on comparison of capture timestamps:
       // Expected delta between successive presentation timestamps:
       targetdelta = 1.0f / capdev->fps;
     
       // Compute real delta:
-      realdelta = *presentation_timestamp - capdev->last_pts;
+      realdelta = capdev->current_pts - capdev->last_pts;
       if (realdelta<0) realdelta = 0;
       frames = realdelta / targetdelta;
       
@@ -624,11 +710,11 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       }
 
       // Record timestamp as reference for next check:    
-      capdev->last_pts = *presentation_timestamp;
+      capdev->last_pts = capdev->current_pts;
     }
     else {
-      // New style: Just take values from Firewire subsystem:
-      // MK: This wont work - look at framesbehind instead! capdev->nr_droppedframes += (int) capdev->camera->capture.drop_frames;
+      // New style - Only works with DMA capture engine. Just take values from Firewire subsystem:
+      capdev->nr_droppedframes += (int) capdev->camera->capture.num_dma_buffers_behind;
     }
     
     // Timestamping:
