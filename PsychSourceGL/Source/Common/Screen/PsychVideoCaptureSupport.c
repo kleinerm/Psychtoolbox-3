@@ -184,8 +184,13 @@ void PsychVideoCaptureInit(void)
  *      deviceIndex = Index of the grabber device. (Currently ignored)
  *      capturehandle = handle to the new capture object.
  *      capturerectangle = If non-NULL a ptr to a PsychRectangle which contains the ROI for capture.
+ *      The following arguments are currently ignored on Windows and OS-X:
+ *      reqdepth = Number of layers for captured output textures. (0=Don't care, 1=LUMINANCE8, 2=LUMINANCE8_ALPHA8, 3=RGB8, 4=RGBA8)
+ *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
+ *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
  */
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle)
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback))
 {
     int i, slotid;
     OSErr error;
@@ -715,9 +720,10 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  *
  *  capturehandle = Grabber to start-/stop.
  *  playbackrate = zero == Stop capture, non-zero == Capture
+ *  dropframes = Currently ignored.
  *  Returns Number of dropped frames during capture.
  */
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
 {
     int dropped = 0;
     OSErr error = noErr;
@@ -732,8 +738,10 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No movie associated with this handle !!!");
     }
     
-    if (capturerate != 0) {
+    if (capturerate > 0) {
         // Start capture:
+        if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
+
         error = SGStartRecord(vidcapRecordBANK[capturehandle].seqGrab);
         vidcapRecordBANK[capturehandle].last_pts = -1.0;
         vidcapRecordBANK[capturehandle].nr_droppedframes = 0;

@@ -20,9 +20,9 @@
 	Psychtoolbox functions for dealing with video capture devices on GNU/Linux.
 
 	For now, we only support machine vision cameras that are connected via the IEEE-1394
-	Firewire-bus and that conform to the IDDC-1.0 (and later) standard for firewire
+	Firewire-bus and that conform to the IIDC-1.0 (and later) standard for firewire
 	machine vision cameras. These cameras are handled on Linux via the (statically linked)
-	libdc1394 in combination with libraw1394. They provide high performance streaming of
+	libdc1394-2.0 in combination with libraw1394. They provide high performance streaming of
 	uncompressed camera data over firewire and a lot of features (e.g., external sync.
 	triggers) not useful for consumer cameras, but very useful for computer vision
 	applications and things like eye-trackers, ...
@@ -38,11 +38,6 @@
 #include <dc1394/dc1394_control.h>
 #include <syslog.h>
 
-// Set DROP_FRAMES 1  for framedropping enabled. Set to 0 for queueing.
-#define DROP_FRAMES 1
-// Number of DMA ringbuffers to use:
-#define DC1394_BUFFERS 8
-
 #define PSYCH_MAX_CAPTUREDEVICES 10
 
 // Record which defines all state for a capture device:
@@ -50,8 +45,11 @@ typedef struct {
   int valid;                        // Is this a valid device record? zero == Invalid.
   dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
   int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
+  int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
   int dc_imageformat;               // Encodes image size and pixelformat.
-  int pixeldepth;                   // Depth of single pixel in bits.
+  int reqpixeldepth;                // Requested depth of single pixel in output texture.
+  int pixeldepth;                   // Depth of single pixel from grabber in bits.
+  int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
   int nrframes;                     // Total count of decompressed images.
   double fps;                       // Acquisition framerate of capture device.
   int width;                        // Width x height of captured images.
@@ -61,7 +59,7 @@ typedef struct {
   int nr_droppedframes;             // Counter for dropped frames.
   int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
   int grabber_active;               // Grabber running?
-  //  Rect roirect;                     // Region of interest rectangle - denotes subarea of full video capture area.
+  PsychRectType roirect;            // Region of interest rectangle - denotes subarea of full video capture area.
   double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
   double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
   int nrgfxframes;                  // Count of fetched textures.
@@ -175,8 +173,13 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
  *      deviceIndex = Index of the grabber device. (Currently ignored)
  *      capturehandle = handle to the new capture object.
  *      capturerectangle = If non-NULL a ptr to a PsychRectangle which contains the ROI for capture.
+ *      reqdepth = Number of layers for captured output textures. (0=Don't care, 1=LUMINANCE8, 2=LUMINANCE8_ALPHA8, 3=RGB8, 4=RGBA8)
+ *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
+ *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
+ *
  */
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle)
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback)
 {
     PsychVidcapRecordType* capdev = NULL;
     dc1394camera_t **cameras=NULL;
@@ -284,25 +287,37 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
       dc1394_print_feature_set(&features);
       fflush(NULL);
     }
-    
-    //     vidcapRecordBANK[slotid].roirect = movierect;
-    //     movierect.right-=movierect.left;
-    //     movierect.bottom-=movierect.top;
-    //     movierect.left=0;
-    //     movierect.top=0;
-    
+
+    // ROI rectangle specified?
+    if (capturerectangle) {
+      PsychCopyRect(capdev->roirect, capturerectangle);
+    }
+    else {
+      // Create empty pseudo-rect, which means "don't care":
+      PsychMakeRect(capdev->roirect, 0, 0, 1 , 1);
+    }
+
     // Our camera should be ready: Assign final handle.
     *capturehandle = slotid;
 
     // Increase counter of open capture devices:
     numCaptureRecords++;
     
-    // Set dummy value for framerate for now:
+    // Set zero framerate:
     capdev->fps = 0;
-
+    
     // Set image size:
-    capdev->width = 640;
-    capdev->height = 480;
+    capdev->width = 0;
+    capdev->height = 0;
+    
+    // Requested output texture pixel depth in layers:
+    capdev->reqpixeldepth = reqdepth;
+    
+    // Number of DMA ringbuffers to use in DMA capture mode:
+    capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
+    
+    // Use of low-performance non-DMA fallback path allowed in case of trouble with DMA engine?
+    capdev->allow_nondma_fallback = allow_lowperf_fallback;
 
     // Reset framecounter:
     capdev->nrframes = 0;
@@ -318,23 +333,31 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
  *
  *  capturehandle = Grabber to start-/stop.
  *  playbackrate = zero == Stop capture, non-zero == Capture
+ *  dropframes = 0 - Always deliver oldest frame in DMA ringbuffer. 1 - Always deliver newest frame.
+ *               --> 1 == drop frames in ringbuffer if behind -- low-latency capture.
  *  Returns Number of dropped frames during capture.
  */
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
 {
   int dropped = 0;
   float framerate = 0;
+  int maximgarea = 0;
   unsigned int speed;
-  int mode, i;
+  int maximgmode, mode, i, j, w, h;
+  unsigned int mw, mh;
   dc1394framerate_t dc1394_framerate;
   dc1394framerates_t supported_framerates;
-  int allow_nondma_fallback = 1; // Use of non-DMA mode allowed if DMA mode fails?
+  dc1394video_modes_t video_modes;
+  dc1394color_coding_t color_code;
+  float bpp;
+  int framerate_matched = false;
+  int roi_matched = false;
 
   // Retrieve device record for handle:
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
 
   // Start- or stop capture?
-  if (capturerate != 0) {
+  if (capturerate > 0) {
     // Start capture:
     if (capdev->grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
@@ -343,28 +366,121 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     capdev->nr_droppedframes = 0;
     capdev->frame_ready = 0;
     
-    // Select mode for requested image size and pixel format:
-/*     switch (palette) { */
-/*     case VIDEO_PALETTE_RGB24: */
-/*       mode = DC1394_VIDEO_MODE_640x480_RGB8; */
-/*       break; */
-      
-/*     case VIDEO_PALETTE_YUV422: */
-/*     case VIDEO_PALETTE_YUV422P: */
-/*     case VIDEO_PALETTE_YUV420P: */
-/*       mode = DC1394_VIDEO_MODE_640x480_YUV422; */
-/*       break; */
-      
-/*     default: */
-/*       return 0; */
-/*     } */
+    // Select best matching mode for requested image size and pixel format:
 
-    // For now we hardcode to 640x480 pixels greyscale:
-    mode = DC1394_VIDEO_MODE_640x480_MONO8;
+    // Query supported video modes for this camera:
+    dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
+    w = PsychGetWidthFromRect(capdev->roirect);
+    h = PsychGetHeightFromRect(capdev->roirect);
+    maximgmode = 0;
+
+    for (i = 0; i < video_modes.num; i++) {
+      // Query properties of this mode and match them against our requirements:
+      mode = video_modes.modes[i];
+
+      // We first check non-format 7 types: Skip format-7 types...
+      if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
+
+      // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
+      // and RGB8 for color formats.
+      dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+      if (capdev->reqpixeldepth > 0) {
+	// Specific pixelsize requested:
+	if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+	if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+      }
+      else {
+	// No specific pixelsize req. check our minimum requirements:
+	if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+      }
+      
+      // ROI specified?
+      dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
+      if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
+	// No. Just find biggest one:
+	if (mw*mh < maximgarea) continue;
+	maximgarea = mw * mh;
+	maximgmode = mode;
+	roi_matched = true;
+      }
+      else {
+	// Yes. Check for exact match, reject everything else:
+	if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w!=mw || h!=mh) continue;	
+	roi_matched = true;
+
+	// Ok, this is a valid mode wrt. reqpixeldepth and exact image size. Check for matching framerate:
+	dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
+	for (j = 0; j < supported_framerates.num; j++) {
+	  dc1394_framerate = supported_framerates.framerates[j];
+	  dc1394_framerate_as_float(dc1394_framerate, &framerate);
+	  if (framerate >= capturerate) break;
+	}
+	dc1394_framerate_as_float(dc1394_framerate, &framerate);
+
+	// Compare whatever framerate we've got as closest match against current fastest one:
+	if (framerate > maximgarea) {
+	  maximgarea = (int) framerate;
+	  maximgmode = mode;
+	}
+      }
+    }
+
+    // Sanity check: Any valid mode found?
+    if (maximgmode == 0) {
+      // None found!
+      PsychErrorExitMsg(PsychError_user, "Couldn't find any capture mode settings for your camera which satisfy your minimum requirements! Aborted.");
+    }
+
+    // maximgmode contains the best matching non-format-7 mode for our specs:
+    mode = maximgmode;
     capdev->dc_imageformat = mode;
-    capdev->pixeldepth = 8;
 
-    // Set capture framerate:
+    // Query final color format and therefore pixel-depth:
+    dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+
+    // This is the pixeldepth delivered by the capture engine:
+    capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_RGB8) ? 24 : 8;
+
+    // Match this against requested pixeldepth:
+    if (capdev->reqpixeldepth == 0) {
+      // No specific depth requested: Just use native depth of captured image:
+      capdev->reqpixeldepth = capdev->pixeldepth;
+    }
+    else {
+      // Specific depth requested: Match it against native format:
+      switch (capdev->reqpixeldepth) {
+      case 1:
+	// Pure LUMINANCE8 requested:
+      case 2:
+	// LUMINANCE8+ALPHA8 requested: This is not yet supported.
+	if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for capture images, but capture device delivers\n"
+					    "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+					    capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+	capdev->reqpixeldepth = capdev->pixeldepth;
+	break;
+      case 3:
+	// RGB8 requested:
+      case 4:
+	// RGBA8 requested: This is not yet supported.
+	if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for capture images, but capture device delivers\n"
+					    "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+					    capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+	capdev->reqpixeldepth = capdev->pixeldepth;
+	break;
+      default:
+	capdev->reqpixeldepth = 0;
+	PsychErrorExitMsg(PsychError_user, "You requested a in invalid capture image format (more than 4 layers). Aborted.");
+      }
+    }
+
+    // Query final image size and therefore ROI:
+    dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
+    capdev->roirect[kPsychLeft] = 0;
+    capdev->roirect[kPsychTop] = 0;
+    capdev->roirect[kPsychRight] = mw;
+    capdev->roirect[kPsychBottom] = mh;
+
+    // Recheck capture framerate:
     // We probe all available non mode-7 framerates of camera for the best match, aka
     // the slowest framerate equal or faster to the requested framerate:
     dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
@@ -378,15 +494,27 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     // Ok, we've got the closest match we could get. Good enough?
     if (fabs(framerate - capturerate) < 0.5) {
       // Perfect match of delivered and requested framerate. Nothing to do so far...
+      framerate_matched=true;
     }
     else {
       // No perfect match :(.
+      framerate_matched=false;
       if(framerate < capturerate) {
 	printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
 	       (float) capturerate, framerate);
 	fflush(NULL);
       }
     }
+
+    // Check if we need a format-7 mode:
+    if (!framerate_matched || !roi_matched) {
+      // Ok, we're not happy with either framerate or ROI. Try if we can get a
+      // format-7 mode to do the job:
+      printf("PTB-WARNING: Could not setup camera for requested parameters (Framerate %s , ROI %s) in non-Format-7 mode.\n",
+	     (framerate_matched) ? "matched" : "mismatch", (roi_matched) ? "matched" : "mismatch");
+      fflush(NULL);
+    }
+
 
     // Setup capture hardware and DMA engine:
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
@@ -395,7 +523,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
 	
     // Setup DMA engine:
     if (dc1394_dma_setup_capture(capdev->camera, mode, speed, dc1394_framerate,
-				 DC1394_BUFFERS, DROP_FRAMES) != DC1394_SUCCESS) {      
+				 capdev->num_dmabuffers, dropframes) != DC1394_SUCCESS) {      
       // Failed! We clean up and either fail or retry in non-DMA mode:
 
       // Shutdown DMA engine:
@@ -409,7 +537,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
       dc1394_free_iso_channel_and_bandwidth(capdev->camera);
 
       // Are we allowed to use non-DMA capture if DMA capture doesn't work?
-      if (allow_nondma_fallback) {
+      if (capdev->allow_nondma_fallback) {
 	// Yes. Try to activate non-DMA capture. Less efficient...
 	printf("PTB-WARNING: Could not setup DMA capture engine! Trying non-DMA capture engine as a slow, inefficient and limited fallback.\n");
 	if (dc1394_setup_capture(capdev->camera, mode, speed, dc1394_framerate) != DC1394_SUCCESS) {
@@ -458,10 +586,15 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop)
     dc1394_framerate_as_float(dc1394_framerate, &framerate);
     capdev->fps = (double) framerate;
 
+    // Setup size and position:
+    capdev->width  = PsychGetWidthFromRect(capdev->roirect);
+    capdev->height = PsychGetHeightFromRect(capdev->roirect);
+
     // Ok, capture is now started:
     capdev->grabber_active = 1;
     
-    printf("PTB-INFO: Capture started on device %i - Framerate: %f fps.\n", capturehandle, capdev->fps);
+    printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle,
+	   capdev->width, capdev->height, capdev->fps);
   }
   else {
     // Stop capture:
@@ -666,8 +799,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       // prevents unwanted free() operation in PsychDeleteTexture...
       out_texture->textureMemorySizeBytes = 0;
 
-      // Set texture depth: Could be 8 bits for mono formats, or 24 for RGB formats.
-      out_texture->depth = capdev->pixeldepth;
+      // Set texture depth: Could be 8, 16, 24 or 32 bpp.
+      out_texture->depth = capdev->reqpixeldepth;
     
       // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
       out_texture->textureMemory = (GLuint*) (capdev->camera->capture.capture_buffer);

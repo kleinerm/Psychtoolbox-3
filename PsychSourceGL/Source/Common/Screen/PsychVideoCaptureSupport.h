@@ -26,11 +26,11 @@
 #include "Screen.h"
 
 void PsychVideoCaptureInit(void);
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle);
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback);
 void PsychCloseVideoCaptureDevice(int capturehandle);
 void PsychDeleteAllCaptureDevices(void);
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int loop);
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes);
 void PsychExitVideoCapture(void);
 
 //end include once

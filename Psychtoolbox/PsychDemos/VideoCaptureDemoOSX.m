@@ -13,15 +13,12 @@ try
         win=Screen('OpenWindow', screen);
     end;
     
-    Screen('TextSize', win, 30);
-    Screen('TextStyle', win, 1);
     Screen('FillRect', win, 0);
     Screen('Flip',win);
     
-    [grabber fps width height]=Screen('OpenVideoCapture', win, 0); %, [0 0 320 280]);
-    fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
     
-    Screen('StartVideoCapture', grabber);
+    Screen('StartVideoCapture', grabber, 60, 1);
 
     oldpts = 0;
     count = 0;
@@ -31,12 +28,34 @@ try
             break;
         end;
         
-        [tex pts]=Screen('GetCapturedImage', win, grabber, 0);
+        [tex pts]=Screen('GetCapturedImage', win, grabber, 1);
         % fprintf('tex = %i  pts = %f\n', tex, pts);
         
         if (tex>0)
+            % Setup mirror transformation for horizontal flipping:
+            
+            % xc, yc is the geometric center of the text.
+            [xc, yc] = RectCenter(Screen('Rect', win));
+            
+            % Make a backup copy of the current transformation matrix for later
+            % use/restoration of default state:
+            Screen('glPushMatrix', win);
+            % Translate origin into the geometric center of text:
+            Screen('glTranslate', win, xc, 0, 0);
+            % Apple a scaling transform which flips the diretion of x-Axis,
+            % thereby mirroring the drawn text horizontally:
+            Screen('glScale', win, -1, 1, 1);
+            % We need to undo the translations...
+            Screen('glTranslate', win, -xc, 0, 0);
+            % The transformation is ready for mirrored drawing:
+
+            % Draw new texture from framegrabber.
+            Screen('DrawTexture', win, tex, [], Screen('Rect', win));
+
+            Screen('glPopMatrix', win);
+
             % Print pts:
-            Screen('DrawText', win, num2str(pts), 0, 0, 255);
+            Screen('DrawText', win, num2str(pts - t), 0, 0, 255);
             if count>0
                 % Compute delta:
                 delta = (pts - oldpts) * 1000;
@@ -44,16 +63,15 @@ try
                 Screen('DrawText', win, num2str(delta), 0, 20, 255);
             end;
             
-            % New texture from framegrabber.
-            Screen('DrawTexture', win, tex);
-            Screen('Flip', win, 0, 0, 2);
+            % Show it.
+            Screen('Flip', win);
             Screen('Close', tex);
             tex=0;
         end;        
         count = count + 1;
     end;
     telapsed = GetSecs - t
-    
+    %WaitSecs(1);
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');

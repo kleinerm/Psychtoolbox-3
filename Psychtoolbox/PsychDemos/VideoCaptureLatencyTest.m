@@ -46,7 +46,7 @@ end;
 
 fullscreen
 
-try
+%try
     % Open display with default settings:
     if fullscreen<1
 	    win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
@@ -57,8 +57,8 @@ try
     [w h]=Screen('WindowSize', win);
     
     % Setup font and textsize:
-    Screen('TextSize', win, 30);
-    Screen('TextStyle', win, 1);
+%    Screen('TextSize', win, 30);
+%    Screen('TextStyle', win, 1);
     
     % Clear out and show black display:
     Screen('FillRect', win, 0);
@@ -68,8 +68,8 @@ try
     [grabber fps width height]=Screen('OpenVideoCapture', win, 0);%, [0 0 200 200]);
     fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
     
-    % Start video capture:
-    fps=Screen('StartVideoCapture', grabber);
+    % Start video capture: We request at least a 60 Hz capture rate and lowlatency (=1) mode:
+    fps=Screen('StartVideoCapture', grabber, 60, 1);
     fps
     
     oldpts = 0;
@@ -138,8 +138,11 @@ try
         % Eat up all enqueued images, if any.
         tex=1;
         while (tex>0)
-            [tex pts]=Screen('GetCapturedImage', win, grabber, 0);
-            if (tex>0) Screen('Close', tex); end;
+            [tex newpts]=Screen('GetCapturedImage', win, grabber, 0);
+            if (tex>0)
+                Screen('Close', tex);
+                pts = newpts;
+            end;
         end;
 
         % Make display white:
@@ -155,7 +158,7 @@ try
         
         while (tex>=0 & intensity < threshold)
             if texfetch>0
-                waitmode=0;
+                waitmode=1;
             else
                 waitmode=2;
             end;
@@ -168,12 +171,11 @@ try
             if tex>0
                lagframes=lagframes+1;
                if texfetch>1 & intensity>=threshold
-                  Screen('DrawTexture',win,tex);
+                  Screen('DrawTexture',win,tex,[],[],[],0);
                   tdelay = (Screen('Flip',win) - tonset) * 1000;
                end;
-               
-                Screen('Close', tex);
-                tex=0;
+               Screen('Close', tex);
+               tex=0;
             end;
         end;
                 
@@ -185,7 +187,7 @@ try
       
         % Next trial...
     end;
-    
+        
     % Done. Stop and shutdown capture loop:
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
@@ -193,9 +195,10 @@ try
 
     tavgdelay = tavgdelay / ntrials;
     tavgdelay
+
     return;
     
-catch
-   Screen('CloseAll');
-   rethrow(lasterror);
+    %catch
+   %Screen('CloseAll');
+   %rethrow(lasterror);
 end;

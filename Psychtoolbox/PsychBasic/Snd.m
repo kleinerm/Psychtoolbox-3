@@ -194,7 +194,6 @@ if IsWin | IsOSX
         end
        	WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
         sound(signal',rate,sampleSize);
-        fprintf('return from sound play\n');
 		endTime=GetSecs+length(signal)/rate;
 	elseif streq(command,'Wait')
 		if nargin>1
