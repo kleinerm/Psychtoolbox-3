@@ -35,6 +35,9 @@ int binsearch(cmdhandler *map, int mapsize, char *str);
 // error handler
 void mogl_usageerr();
 
+// Dynamic extension rebinding:
+void mogl_rebindARBExtensionsToCore(void);
+
 // MEX interface function
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
@@ -91,6 +94,11 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         // Success. Ready to go...
         printf("MOGL - OpenGL for Matlab initialized - MOGL is (c) 2006 Richard F. Murray, licensed to you under GPL.\n");
         fflush(NULL);
+        
+        // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
+        mogl_rebindARBExtensionsToCore();
+        
+        // Done with first time initialization:
         firsttime = 0;
     }   
 
@@ -152,3 +160,27 @@ void mogl_glunsupported(const char* fname)
     mexErrMsgTxt(errtxt);
 }
 
+// Dynamic rebinding of ARB extensions to core routines:
+// This is a trick to get GLSL working on current OS-X (10.4.4). MacOS-X supports the OpenGL
+// shading language on all graphics cards as an ARB extension. But as OS-X only supports
+// OpenGL versions < 2.0 as of now, the functionality is not available as core functions, but
+// only as their ARB counterparts. e.g., glCreateProgram() is always a NULL-Ptr on OS-X, but
+// glCreateProgramObjectARB() is supported with exactly the same syntax and behaviour. By
+// binding glCreateProgram as glCreateProgramObjectARB, we allow users to write Matlab code
+// that uses glCreateProgram -- which is cleaner code than using glCreateProgramObjectARB,
+// and it saves us from parsing tons of additional redundant function definitions anc code
+// generation...
+// In this function, we try to detect such OS dependent quirks and try to work around them...
+void mogl_rebindARBExtensionsToCore(void)
+{
+    // Remap unsupported OpenGL 2.0 core functions for GLSL to supported ARB extension counterparts:
+    if (NULL == glCreateProgram) glCreateProgram = glCreateProgramObjectARB;
+    if (NULL == glCreateShader) glCreateShader = glCreateShaderObjectARB;
+    if (NULL == glShaderSource) glShaderSource = glShaderSourceARB;
+    if (NULL == glCompileShader) glCompileShader = glCompileShaderARB;
+    if (NULL == glAttachShader) glAttachShader = glAttachObjectARB;
+    if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
+    if (NULL == glUseProgram) glUseProgram = glUseProgramObjectcdARB;
+
+    return;
+}
