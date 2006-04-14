@@ -47,6 +47,7 @@ typedef struct {
   int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
   int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
   int dc_imageformat;               // Encodes image size and pixelformat.
+  dc1394framerate_t dc_framerate;   // Encodes framerate.
   int reqpixeldepth;                // Requested depth of single pixel in output texture.
   int pixeldepth;                   // Depth of single pixel from grabber in bits.
   int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
@@ -328,6 +329,423 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     return(TRUE);
 }
 
+/* Internal function: Find best matching non-Format 7 mode:
+ */
+int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
+{
+  int maximgarea = 0;
+  int maximgmode, mode, i, j, w, h;
+  unsigned int mw, mh;
+  float framerate;
+  dc1394framerate_t dc1394_framerate;
+  dc1394framerates_t supported_framerates;
+  dc1394video_modes_t video_modes;
+  dc1394color_coding_t color_code;
+  float bpp;
+  int framerate_matched = false;
+  int roi_matched = false;
+  
+  // Query supported video modes for this camera:
+  dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
+  w = PsychGetWidthFromRect(capdev->roirect);
+  h = PsychGetHeightFromRect(capdev->roirect);
+  maximgmode = 0;
+
+  for (i = 0; i < video_modes.num; i++) {
+    // Query properties of this mode and match them against our requirements:
+    mode = video_modes.modes[i];
+    
+    // We first check non-format 7 types: Skip format-7 types...
+    if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
+    
+    // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
+    // and RGB8 for color formats.
+    dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+    if (capdev->reqpixeldepth > 0) {
+      // Specific pixelsize requested:
+      if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+      if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+    }
+    else {
+      // No specific pixelsize req. check our minimum requirements:
+      if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+    }
+    
+    // ROI specified?
+    dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
+    if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
+      // No. Just find biggest one:
+      if (mw*mh < maximgarea) continue;
+      maximgarea = mw * mh;
+      maximgmode = mode;
+      roi_matched = true;
+    }
+    else {
+      // Yes. Check for exact match, reject everything else:
+      if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w!=mw || h!=mh) continue;	
+      roi_matched = true;
+      
+      // Ok, this is a valid mode wrt. reqpixeldepth and exact image size. Check for matching framerate:
+      dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
+      for (j = 0; j < supported_framerates.num; j++) {
+	dc1394_framerate = supported_framerates.framerates[j];
+	dc1394_framerate_as_float(dc1394_framerate, &framerate);
+	if (framerate >= capturerate) break;
+      }
+      dc1394_framerate_as_float(dc1394_framerate, &framerate);
+      
+      // Compare whatever framerate we've got as closest match against current fastest one:
+      if (framerate > maximgarea) {
+	maximgarea = (int) framerate;
+	maximgmode = mode;
+      }
+    }
+  }
+  
+  // Sanity check: Any valid mode found?
+  if (maximgmode == 0) {
+    // None found!
+    PsychErrorExitMsg(PsychError_user, "Couldn't find any capture mode settings for your camera which satisfy your minimum requirements! Aborted.");
+  }
+  
+  // maximgmode contains the best matching non-format-7 mode for our specs:
+  mode = maximgmode;
+  capdev->dc_imageformat = mode;
+  
+  // Query final color format and therefore pixel-depth:
+  dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+  
+  // This is the pixeldepth delivered by the capture engine:
+  capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_RGB8) ? 24 : 8;
+  
+  // Match this against requested pixeldepth:
+  if (capdev->reqpixeldepth == 0) {
+    // No specific depth requested: Just use native depth of captured image:
+    capdev->reqpixeldepth = capdev->pixeldepth;
+  }
+  else {
+    // Specific depth requested: Match it against native format:
+    switch (capdev->reqpixeldepth) {
+    case 1:
+      // Pure LUMINANCE8 requested:
+    case 2:
+      // LUMINANCE8+ALPHA8 requested: This is not yet supported.
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+								capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      capdev->reqpixeldepth = capdev->pixeldepth;
+      break;
+    case 3:
+      // RGB8 requested:
+    case 4:
+      // RGBA8 requested: This is not yet supported.
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+								capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      capdev->reqpixeldepth = capdev->pixeldepth;
+      break;
+    default:
+      capdev->reqpixeldepth = 0;
+      PsychErrorExitMsg(PsychError_user, "You requested a invalid capture image format (more than 4 layers). Aborted.");
+    }
+  }
+  
+  // Query final image size and therefore ROI:
+  dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
+  capdev->roirect[kPsychLeft] = 0;
+  capdev->roirect[kPsychTop] = 0;
+  capdev->roirect[kPsychRight] = mw;
+  capdev->roirect[kPsychBottom] = mh;
+  
+  // Recheck capture framerate:
+  // We probe all available non mode-7 framerates of camera for the best match, aka
+  // the slowest framerate equal or faster to the requested framerate:
+  dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
+  for (i = 0; i < supported_framerates.num; i++) {
+    dc1394_framerate = supported_framerates.framerates[i];
+    dc1394_framerate_as_float(dc1394_framerate, &framerate);
+    if (framerate >= capturerate) break;
+  }
+  dc1394_framerate_as_float(dc1394_framerate, &framerate);
+  
+  // Ok, we've got the closest match we could get. Good enough?
+  if (fabs(framerate - capturerate) < 0.5) {
+    // Perfect match of delivered and requested framerate. Nothing to do so far...
+    framerate_matched=true;
+  }
+  else {
+    // No perfect match :(.
+    framerate_matched=false;
+    if(framerate < capturerate) {
+      printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
+	     (float) capturerate, framerate);
+      fflush(NULL);
+    }
+  }
+
+  // Return framerate:
+  capdev->dc_framerate = dc1394_framerate;
+
+  // Success! 
+  return(true);
+}
+
+/* Internal function: Find best matching Format 7 mode:
+ * Returns calculated optimal iso-packet size.
+ */
+int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
+{
+  float mindiff = 1000000;
+  float mindifframerate = 0;
+  int minpacket_size = 0;
+  int minimgmode, mode, i, j, w, h;
+  unsigned int mw, mh, pbmin, pbmax, speed;
+  int num_packets, packet_size, depth;
+  float framerate;
+  dc1394framerate_t dc1394_framerate;
+  dc1394framerates_t supported_framerates;
+  dc1394video_modes_t video_modes;
+  dc1394color_coding_t color_code;
+  float bpp;
+  int framerate_matched = false;
+  int roi_matched = false;
+  float bus_period;
+
+  // Query IEEE1394 bus speed code and map it to bus_period:
+  if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
+    PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
+  }
+
+  switch(speed) {
+    case DC1394_ISO_SPEED_100:
+      bus_period = 0.000500f;
+      break;
+    case DC1394_ISO_SPEED_200:
+      bus_period = 0.000250f;
+      break;
+    case DC1394_ISO_SPEED_400:
+      bus_period = 0.000125f;
+      break;
+    case DC1394_ISO_SPEED_800:
+      bus_period = 0.0000625f;
+      break;
+    case DC1394_ISO_SPEED_1600:
+      bus_period = 0.00003125f;
+      break;
+    case DC1394_ISO_SPEED_3200:
+      bus_period = 0.000015625f;
+      break;
+    default:
+    PsychErrorExitMsg(PsychError_user, "Unknown bus speed specification! Start of video capture failed!");
+  }
+
+  printf("PTB-INFO: IEEE-1394 Firewire bus speed is %i Megabit/second --> Bus period is %f usecs.\n",
+	 (int) (100 << speed), bus_period * 1000000.0f);
+
+  
+  // Query supported video modes for this camera:
+  dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
+  minimgmode = 0;
+
+  for (i = 0; i < video_modes.num; i++) {
+    // Query properties of this mode and match them against our requirements:
+    mode = video_modes.modes[i];
+    
+    // Skip non-format-7 types...
+    if (mode < DC1394_VIDEO_MODE_FORMAT7_MIN || mode > DC1394_VIDEO_MODE_FORMAT7_MAX) continue;
+
+    printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
+
+    // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
+    // and RGB8 for color formats.
+    dc1394_format7_get_color_coding(capdev->camera, mode, &color_code);
+    if (capdev->reqpixeldepth > 0) {
+      // Specific pixelsize requested:
+      if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+      if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+    }
+    else {
+      // No specific pixelsize req. check our minimum requirements:
+      if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+    }
+    
+    // ROI specified?
+    w = PsychGetWidthFromRect(capdev->roirect);
+    h = PsychGetHeightFromRect(capdev->roirect);
+
+    if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
+      // No. Just set biggest one for this mode:
+
+      // Query maximum size for mode:
+      if(dc1394_format7_get_max_image_size(capdev->camera, mode, &mw, &mh)!=DC1394_SUCCESS) continue;
+      // Set zero position offset:
+      if (dc1394_format7_set_image_position(capdev->camera, mode, 0, 0)!=DC1394_SUCCESS) continue;
+      // Set maximum size:
+      if (dc1394_format7_set_image_size(capdev->camera, mode, mw, mh)!=DC1394_SUCCESS) continue;
+      w=mw; h=mh;
+      roi_matched = true;
+    }
+    else {
+      // Yes. Check for exact match, reject everything else:
+      if(dc1394_format7_get_max_image_size(capdev->camera, mode, &mw, &mh)!=DC1394_SUCCESS) continue;
+      if (w > mw || h > mh) continue;
+
+      // This mode allows for a ROI as big as the one we request. Try to set it up:
+
+      // First set zero position offset:
+      if (dc1394_format7_set_image_position(capdev->camera, mode, 0, 0)!=DC1394_SUCCESS) continue;
+      
+      // Reject mode if size isn't supported:
+      if (dc1394_format7_set_image_size(capdev->camera, mode, (unsigned int) w, (unsigned int) h)!=DC1394_SUCCESS) continue;
+      
+      // Now set real position:
+      if (dc1394_format7_set_image_position(capdev->camera, mode, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop])!=DC1394_SUCCESS) continue;
+
+      // If we reach this point, then we should have exactly the ROI we wanted.
+      roi_matched = true;
+    }
+
+    // Try to set the requested framerate as well:
+    // We need to calculate the ISO packet size depending on wanted framerate, Firewire bus speed,
+    // image size and image depth + some IIDC spec. restrictions...
+
+    // First we query the range of available packet sizes:
+    if (dc1394_format7_get_packet_para(capdev->camera, mode, &pbmin, &pbmax)!=DC1394_SUCCESS) continue;
+    // Special case handling:
+    if (pbmin==0) pbmin = pbmax;
+    
+    // Compute number of ISO-Packets, assuming a 400 MBit bus (125 usec cycle time):
+    num_packets = (int) (1.0/(bus_period * capturerate) + 0.5);
+    if (num_packets < 1 || num_packets > 4095) {
+      // Invalid num_packets. Adapt it to fit IIDC constraints:
+      if (num_packets < 1) {
+	num_packets = 1;
+      }
+      else {
+	num_packets = 4095;
+      }
+    }
+    num_packets*=8;
+    if (dc1394_format7_get_data_depth(capdev->camera, mode, &depth)!=DC1394_SUCCESS) continue;
+
+    packet_size = (int)((w * h * depth + num_packets - 1) /  num_packets);
+    
+    // Make sure that packet_size is an integral multiple of pbmin (IIDC constraint):
+    if (packet_size < pbmin) packet_size = pbmin;
+    if (packet_size % pbmin != 0) {
+      packet_size = packet_size - (packet_size % pbmin);
+    }
+    
+    // Make sure that packet size is smaller than pbmax:
+    while (packet_size > pbmax) packet_size=packet_size - pbmin;
+    
+    // Ok, we should now have the closest valid packet size for the given ROI and framerate:
+    // Inverse compute framerate for this packetsize:
+    num_packets = (int) ((w * h * depth + (packet_size*8) - 1)/(packet_size*8));
+    framerate = 1.0/(bus_period * (float) num_packets);
+      
+    // Compare whatever framerate we've got as closest match against current fastest one:
+    if (fabs(capturerate - framerate) < mindiff) {
+      mindiff = fabs(capturerate - framerate);
+      mindifframerate = framerate;
+      minimgmode = mode;
+      minpacket_size = packet_size;
+    }
+
+    if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || capdev->roirect[kPsychRight]!=1 || capdev->roirect[kPsychBottom]!=1) {
+      printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=%f t=%f r=%f b=%f] , FPS = %f\n", mode, (float) capdev->roirect[kPsychLeft], (float) capdev->roirect[kPsychTop],
+	     (float) capdev->roirect[kPsychRight], (float) capdev->roirect[kPsychBottom], framerate);
+    }
+    else {
+      printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=0 t=0 r=%i b=%i] , FPS = %f\n", mode, w, h, framerate);
+    }
+
+    // Test next mode...
+  }
+  
+  // Sanity check: Any valid mode found?
+  if (minimgmode == 0) {
+    // None found!
+    printf("PTB-INFO: Couldn't find any Format-7 capture mode settings for your camera which satisfy your minimum requirements!\n");
+    printf("PTB-INFO: Will now try standard (non Format-7) capture modes for the best match and try to use that...\n");
+    return(0);
+  }
+
+  // Success (more or less...):
+  
+  // minimgmode contains the best matching Format-7 mode for our specs:
+  mode = minimgmode;
+  capdev->dc_imageformat = mode;
+  capdev->dc_framerate = 0;
+  packet_size = minpacket_size;
+  framerate = mindifframerate;
+
+  // Query final color format and therefore pixel-depth:
+  dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+  
+  // This is the pixeldepth delivered by the capture engine:
+  capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_RGB8) ? 24 : 8;
+  
+  // Match this against requested pixeldepth:
+  if (capdev->reqpixeldepth == 0) {
+    // No specific depth requested: Just use native depth of captured image:
+    capdev->reqpixeldepth = capdev->pixeldepth;
+  }
+  else {
+    // Specific depth requested: Match it against native format:
+    switch (capdev->reqpixeldepth) {
+    case 1:
+      // Pure LUMINANCE8 requested:
+    case 2:
+      // LUMINANCE8+ALPHA8 requested: This is not yet supported.
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+								capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      capdev->reqpixeldepth = capdev->pixeldepth;
+      break;
+    case 3:
+      // RGB8 requested:
+    case 4:
+      // RGBA8 requested: This is not yet supported.
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+								capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      capdev->reqpixeldepth = capdev->pixeldepth;
+      break;
+    default:
+      capdev->reqpixeldepth = 0;
+      PsychErrorExitMsg(PsychError_user, "You requested a invalid capture image format (more than 4 layers). Aborted.");
+    }
+  }
+  
+  // Query final image size and therefore ROI:
+  dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
+  capdev->roirect[kPsychRight]  = capdev->roirect[kPsychLeft] + mw;
+  capdev->roirect[kPsychBottom] = capdev->roirect[kPsychTop]  + mh;
+  
+  // Ok, we've got the closest match we could get. Good enough?
+  if (mindiff < 0.5) {
+    // Perfect match of delivered and requested framerate. Nothing to do so far...
+    framerate_matched=true;
+  }
+  else {
+    // No perfect match :(.
+    framerate_matched=false;
+    if(framerate < capturerate) {
+      printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps at given ROI setting. Using %f fps instead.\n",
+	     (float) capturerate, framerate);
+      fflush(NULL);
+    }
+  }
+
+  // Assign computed framerate as best guess for real framerate, in case frame-interval query fails...
+  capdev->fps = framerate;
+
+  // Return packet_size:
+  return(packet_size);
+}
+
+
 /*
  *  PsychVideoCaptureRate() - Start- and stop video capture.
  *
@@ -341,9 +759,9 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
 {
   int dropped = 0;
   float framerate = 0;
-  int maximgarea = 0;
+
   unsigned int speed;
-  int maximgmode, mode, i, j, w, h;
+  int maximgmode, mode, i, j, w, h, packetsize;
   unsigned int mw, mh;
   dc1394framerate_t dc1394_framerate;
   dc1394framerates_t supported_framerates;
@@ -352,6 +770,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
   float bpp;
   int framerate_matched = false;
   int roi_matched = false;
+  dc1394error_t err;
 
   // Retrieve device record for handle:
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
@@ -367,163 +786,65 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     capdev->frame_ready = 0;
     
     // Select best matching mode for requested image size and pixel format:
+    // ====================================================================
 
-    // Query supported video modes for this camera:
-    dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
     w = PsychGetWidthFromRect(capdev->roirect);
     h = PsychGetHeightFromRect(capdev->roirect);
-    maximgmode = 0;
 
-    for (i = 0; i < video_modes.num; i++) {
-      // Query properties of this mode and match them against our requirements:
-      mode = video_modes.modes[i];
+    // Can we (potentially) get along with a non-Format-7 mode?
+    // Check minimum requirements for non-Format-7 mode:
+    if (!((capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0) &&
+	((capdev->roirect[kPsychRight]==1 && capdev->roirect[kPsychBottom]==1) || (w==640 && h==480) ||
+	 (w==800 && h==600) || (w==1024 && h==768) || (w==1280 && h==960) || (w==1600 && h==1200)) &&
+	(capturerate==1.875 || capturerate==3.75 || capturerate==7.5 || capturerate==15 || capturerate==30 ||
+	 capturerate==60 || capturerate==120 || capturerate==240))) {
 
-      // We first check non-format 7 types: Skip format-7 types...
-      if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
-
-      // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
-      // and RGB8 for color formats.
-      dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
-      if (capdev->reqpixeldepth > 0) {
-	// Specific pixelsize requested:
-	if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
-	if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+      // Ok, the requested ROI and/or framerate is not directly supported by non-Format7 capture modes.
+      // Try to find a good format-7 mode, fall back to NF-7 if format 7 doesn't work out:
+      if ((packetsize=PsychVideoFindFormat7Mode(capdev, capturerate))==0) {
+	// Could not find good Format-7 mode! Try NF-7: This function will exit if we don't find
+	// a useful match at all:
+	PsychVideoFindNonFormat7Mode(capdev, capturerate);
       }
-      else {
-	// No specific pixelsize req. check our minimum requirements:
-	if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
-      }
-      
-      // ROI specified?
-      dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
-      if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
-	// No. Just find biggest one:
-	if (mw*mh < maximgarea) continue;
-	maximgarea = mw * mh;
-	maximgmode = mode;
-	roi_matched = true;
-      }
-      else {
-	// Yes. Check for exact match, reject everything else:
-	if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || w!=mw || h!=mh) continue;	
-	roi_matched = true;
-
-	// Ok, this is a valid mode wrt. reqpixeldepth and exact image size. Check for matching framerate:
-	dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
-	for (j = 0; j < supported_framerates.num; j++) {
-	  dc1394_framerate = supported_framerates.framerates[j];
-	  dc1394_framerate_as_float(dc1394_framerate, &framerate);
-	  if (framerate >= capturerate) break;
-	}
-	dc1394_framerate_as_float(dc1394_framerate, &framerate);
-
-	// Compare whatever framerate we've got as closest match against current fastest one:
-	if (framerate > maximgarea) {
-	  maximgarea = (int) framerate;
-	  maximgmode = mode;
-	}
-      }
-    }
-
-    // Sanity check: Any valid mode found?
-    if (maximgmode == 0) {
-      // None found!
-      PsychErrorExitMsg(PsychError_user, "Couldn't find any capture mode settings for your camera which satisfy your minimum requirements! Aborted.");
-    }
-
-    // maximgmode contains the best matching non-format-7 mode for our specs:
-    mode = maximgmode;
-    capdev->dc_imageformat = mode;
-
-    // Query final color format and therefore pixel-depth:
-    dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
-
-    // This is the pixeldepth delivered by the capture engine:
-    capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_RGB8) ? 24 : 8;
-
-    // Match this against requested pixeldepth:
-    if (capdev->reqpixeldepth == 0) {
-      // No specific depth requested: Just use native depth of captured image:
-      capdev->reqpixeldepth = capdev->pixeldepth;
+      // Ok either we have a format-7 mode ready to go (packetsize>0) or we have a default
+      // non-format-7 mode ready (packetsize==0)...
     }
     else {
-      // Specific depth requested: Match it against native format:
-      switch (capdev->reqpixeldepth) {
-      case 1:
-	// Pure LUMINANCE8 requested:
-      case 2:
-	// LUMINANCE8+ALPHA8 requested: This is not yet supported.
-	if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for capture images, but capture device delivers\n"
-					    "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-					    capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
-	capdev->reqpixeldepth = capdev->pixeldepth;
-	break;
-      case 3:
-	// RGB8 requested:
-      case 4:
-	// RGBA8 requested: This is not yet supported.
-	if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for capture images, but capture device delivers\n"
-					    "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-					    capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
-	capdev->reqpixeldepth = capdev->pixeldepth;
-	break;
-      default:
-	capdev->reqpixeldepth = 0;
-	PsychErrorExitMsg(PsychError_user, "You requested a in invalid capture image format (more than 4 layers). Aborted.");
-      }
+      // The requested combo of ROI and framerate should be supported by standard non-format-7 capture:
+      // Try it and exit in case of non-match:
+      PsychVideoFindNonFormat7Mode(capdev, capturerate);
+      packetsize = 0;
     }
-
-    // Query final image size and therefore ROI:
-    dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
-    capdev->roirect[kPsychLeft] = 0;
-    capdev->roirect[kPsychTop] = 0;
-    capdev->roirect[kPsychRight] = mw;
-    capdev->roirect[kPsychBottom] = mh;
-
-    // Recheck capture framerate:
-    // We probe all available non mode-7 framerates of camera for the best match, aka
-    // the slowest framerate equal or faster to the requested framerate:
-    dc1394_video_get_supported_framerates(capdev->camera, mode, &supported_framerates);
-    for (i = 0; i < supported_framerates.num; i++) {
-      dc1394_framerate = supported_framerates.framerates[i];
-      dc1394_framerate_as_float(dc1394_framerate, &framerate);
-      if (framerate >= capturerate) break;
-    }
-    dc1394_framerate_as_float(dc1394_framerate, &framerate);
-    
-    // Ok, we've got the closest match we could get. Good enough?
-    if (fabs(framerate - capturerate) < 0.5) {
-      // Perfect match of delivered and requested framerate. Nothing to do so far...
-      framerate_matched=true;
-    }
-    else {
-      // No perfect match :(.
-      framerate_matched=false;
-      if(framerate < capturerate) {
-	printf("PTB-WARNING: Camera does not support requested capture framerate of %f fps. Using maximum of %f fps instead.\n",
-	       (float) capturerate, framerate);
-	fflush(NULL);
-      }
-    }
-
-    // Check if we need a format-7 mode:
-    if (!framerate_matched || !roi_matched) {
-      // Ok, we're not happy with either framerate or ROI. Try if we can get a
-      // format-7 mode to do the job:
-      printf("PTB-WARNING: Could not setup camera for requested parameters (Framerate %s , ROI %s) in non-Format-7 mode.\n",
-	     (framerate_matched) ? "matched" : "mismatch", (roi_matched) ? "matched" : "mismatch");
-      fflush(NULL);
-    }
-
 
     // Setup capture hardware and DMA engine:
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
       PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
     }
 	
+    // Assign final mode and framerate:
+    dc1394_framerate = capdev->dc_framerate;
+    mode = capdev->dc_imageformat;
+    
     // Setup DMA engine:
-    if (dc1394_dma_setup_capture(capdev->camera, mode, speed, dc1394_framerate,
-				 capdev->num_dmabuffers, dropframes) != DC1394_SUCCESS) {      
+    // =================
+
+    // Format-7 capture?
+    if (packetsize > 0) {
+      // Format-7 capture DMA setup:
+      dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+      err = dc1394_dma_setup_format7_capture(capdev->camera, mode, color_code, speed, packetsize,
+					     (unsigned int) capdev->roirect[kPsychLeft],
+					     (unsigned int) capdev->roirect[kPsychTop],
+					     (unsigned int) PsychGetWidthFromRect(capdev->roirect),
+					     (unsigned int) PsychGetHeightFromRect(capdev->roirect),
+					     capdev->num_dmabuffers, dropframes);
+    }
+    else {
+      // Non-Format-7 capture DMA setup:
+      err = dc1394_dma_setup_capture(capdev->camera, mode, speed, dc1394_framerate, capdev->num_dmabuffers, dropframes);
+    }
+
+    if (err != DC1394_SUCCESS) {      
       // Failed! We clean up and either fail or retry in non-DMA mode:
 
       // Shutdown DMA engine:
@@ -583,7 +904,14 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     }
     
     // Map framerate enum to floating point value and assign it:
-    dc1394_framerate_as_float(dc1394_framerate, &framerate);
+    if (packetsize == 0) {
+      dc1394_framerate_as_float(dc1394_framerate, &framerate);
+    }
+    else {
+      dc1394_format7_get_frame_interval(capdev->camera, mode, &framerate);
+      if (framerate == 0) framerate = capdev->fps;
+    }
+
     capdev->fps = (double) framerate;
 
     // Setup size and position:

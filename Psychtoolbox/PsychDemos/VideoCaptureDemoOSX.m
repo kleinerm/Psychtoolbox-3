@@ -18,7 +18,7 @@ try
     
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
     
-    Screen('StartVideoCapture', grabber, 60, 1);
+    Screen('StartVideoCapture', grabber, 100, 1);
 
     oldpts = 0;
     count = 0;
@@ -71,11 +71,10 @@ try
         count = count + 1;
     end;
     telapsed = GetSecs - t
-    %WaitSecs(1);
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
-
+    avgfps = count / telapsed
 catch
    Screen('CloseAll');
 end;
