@@ -75,7 +75,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // debuglevel > 1 --> Output GLSL diagnostic messages as well.
     // debuglevel > 2 --> Be very verbose!
     if (strcmp(cmd, "DEBUGLEVEL")==0) {
-        if (nrhs<2 || !mxIsScalar(prhs[1]) || mxGetScalar(prhs[1])<0) {
+        if (nrhs<2 || mxGetScalar(prhs[1])<0) {
             mexErrMsgTxt("MOGL-ERROR: No debuglevel or invalid debuglevel (<0) given for subcommand DEBUGLEVEL!");
         }
 
