@@ -9,8 +9,6 @@
 // See 3Dlabs-License.txt for license information
 //
 
-uniform vec3 LightPosition;
-
 const float SpecularContribution = 0.3;
 const float DiffuseContribution  = 1.0 - SpecularContribution;
 
@@ -21,7 +19,7 @@ void main()
 {
     vec3 ecPosition = vec3(gl_ModelViewMatrix * gl_Vertex);
     vec3 tnorm      = normalize(gl_NormalMatrix * gl_Normal);
-    vec3 lightVec   = normalize(gl_LightSource[0].position - ecPosition);
+    vec3 lightVec   = normalize(gl_LightSource[0].position.xyz - ecPosition);
     vec3 reflectVec = reflect(-lightVec, tnorm);
     vec3 viewVec    = normalize(-ecPosition);
     float diffuse   = max(dot(lightVec, tnorm), 0.0);

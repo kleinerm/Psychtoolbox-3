@@ -1,4 +1,4 @@
-//
+/*
 // Fragment shader for procedural bricks
 //
 // Authors: Dave Baldwin, Steve Koren, Randi Rost
@@ -8,16 +8,16 @@
 //
 // See 3Dlabs-License.txt for license information
 //
+*/
 
-const vec3  BrickColor = {0.8,0.2,0.2};
-const vec3  MortarColor = {1, 1, 1};
-const vec2  BrickSize = { 0.1, 0.05};
-const vec2  BrickPct = {0.8,0.8};
-
+const vec3  BrickColor = vec3( 0.8, 0.2, 0.2 );
+const vec3  MortarColor = vec3( 1, 1, 1 );
+const vec2  BrickSize = vec2( 0.1, 0.05 );
+const vec2  BrickPct = vec2( 0.8, 0.8 );
 varying vec2  MCposition;
 varying float LightIntensity;
 
-void main()
+void main() 
 {
     vec3  color;
     vec2  position, useBrick;

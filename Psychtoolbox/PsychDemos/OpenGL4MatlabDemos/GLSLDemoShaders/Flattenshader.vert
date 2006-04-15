@@ -12,7 +12,7 @@ void main()
     vec4 va = ftransform();
 	vec4 v = gl_Vertex;
     
-	v.y = v.y * (1 + sin(va.x * 6)*0.3);	
+	v.y = v.y * (1.0 + sin(va.x * 6.0)*0.3);	
 	gl_Position = gl_ModelViewProjectionMatrix * v;
     ecPos = gl_ModelViewMatrix * v;
 

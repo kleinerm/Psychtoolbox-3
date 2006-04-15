@@ -23,7 +23,11 @@ extern cmdhandler glm_map[];
 extern int gl_manual_map_count, gl_auto_map_count;
 extern cmdhandler gl_manual_map[], gl_auto_map[];
 
+// Flag that signals first real invocation of moglcore:
 static int firsttime = 1;
+
+// Debuglevel: Defines if moglcore should check for errors and how to respond to them.
+static int debuglevel = 1;
 
 // command string
 #define CMDLEN 64
@@ -38,6 +42,9 @@ void mogl_usageerr();
 // Dynamic extension rebinding:
 void mogl_rebindARBExtensionsToCore(void);
 
+// Automatic checking and handling for glError's and GLSL errors.
+void mogl_checkerrors(const char* cmd, const mxArray *prhs[]);
+
 // MEX interface function
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
@@ -51,15 +58,31 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // get string command
     mxGetString(prhs[0],cmd,CMDLEN);
 
-	 // Special case. If we're called with the special command "PREINIT", then
-	 // we return immediately. moglcore('PREINIT') is called by ptbmoglinit.m
-	 // on M$-Windows in order to preload the moglcore Mex-file into Matlab while
-	 // the current working directory is set to ..MOGL/core/ . This way, the dynamic
-	 // linker can find our own local version of glut32.dll and link it against moglcore.
-	 // Without this trick, we would need to install glut32.dll into the Windows system
+    // Special case. If we're called with the special command "PREINIT", then
+    // we return immediately. moglcore('PREINIT') is called by ptbmoglinit.m
+    // on M$-Windows in order to preload the moglcore Mex-file into Matlab while
+    // the current working directory is set to ..MOGL/core/ . This way, the dynamic
+    // linker can find our own local version of glut32.dll and link it against moglcore.
+    // Without this trick, we would need to install glut32.dll into the Windows system
     // folder which requires admin privileges and makes installation of Psychtoolbox
     // more complicated on M$-Windows...
-	 if (strcmp(cmd, "PREINIT")==0) return;
+	if (strcmp(cmd, "PREINIT")==0) return;
+    
+    // Special command to set MOGL debug level:
+    // debuglevel = 0 --> Shut up in any case, leave error-handling to higher-level code.
+    // debuglevel > 0 --> Check for OpenGL error conditions.
+    // debuglevel > 0 --> Output glError()'s in clear-text and abort. Output GLSL errors and abort.
+    // debuglevel > 1 --> Output GLSL diagnostic messages as well.
+    // debuglevel > 2 --> Be very verbose!
+    if (strcmp(cmd, "DEBUGLEVEL")==0) {
+        if (nrhs<2 || !mxIsScalar(prhs[1]) || mxGetScalar(prhs[1])<0) {
+            mexErrMsgTxt("MOGL-ERROR: No debuglevel or invalid debuglevel (<0) given for subcommand DEBUGLEVEL!");
+        }
+
+        debuglevel = (int) mxGetScalar(prhs[1]);
+        return;
+    }
+    
 
     #ifdef BUILD_GLM
     // GLM module is included and supported in moglcore: This is necessary if
@@ -87,7 +110,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         err = glewInit();
         if (GLEW_OK != err) {
             // Failed! Something is seriously wrong - We have to abort :(
-				printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
+            printf("MOGL: Failed to initialize! Probably you called an OpenGL command *before* opening an onscreen window?!?\n");
             printf("GLEW reported the following error: %s\n", glewGetErrorString(err)); fflush(NULL);
             return;
         }
@@ -102,15 +125,21 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         firsttime = 0;
     }   
 
+    // Reset OpenGL error state so we can be sure that any of our error queries really
+    // relate to errors caused by us:
+    glGetError();
+    
     // look for command in manual command map
     if( (i=binsearch(gl_manual_map,gl_manual_map_count,cmd))>=0 ) {
         gl_manual_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
+        if (debuglevel > 0) mogl_checkerrors(cmd, prhs);
         return;
     }
     
     // look for command in auto command map
     if( (i=binsearch(gl_auto_map,gl_auto_map_count,cmd))>=0 ) {
         gl_auto_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
+        if (debuglevel > 0) mogl_checkerrors(cmd, prhs);
         return;
     }
     
@@ -172,7 +201,7 @@ void mogl_glunsupported(const char* fname)
 // generation...
 // In this function, we try to detect such OS dependent quirks and try to work around them...
 void mogl_rebindARBExtensionsToCore(void)
-{
+{   
     // Remap unsupported OpenGL 2.0 core functions for GLSL to supported ARB extension counterparts:
     if (NULL == glCreateProgram) glCreateProgram = glCreateProgramObjectARB;
     if (NULL == glCreateShader) glCreateShader = glCreateShaderObjectARB;
@@ -180,7 +209,92 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glCompileShader) glCompileShader = glCompileShaderARB;
     if (NULL == glAttachShader) glAttachShader = glAttachObjectARB;
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
-    if (NULL == glUseProgram) glUseProgram = glUseProgramObjectcdARB;
+    if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
+    if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
+    if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;
+    if (NULL == glUniform1f) glUniform1f = glUniform1fARB;
+    if (NULL == glUniform2f) glUniform2f = glUniform2fARB;
+    if (NULL == glUniform3f) glUniform3f = glUniform3fARB;
+    if (NULL == glUniform4f) glUniform4f = glUniform4fARB;
+    if (NULL == glUniform1fv) glUniform1fv = glUniform1fvARB;
+    if (NULL == glUniform2fv) glUniform2fv = glUniform2fvARB;
+    if (NULL == glUniform3fv) glUniform3fv = glUniform3fvARB;
+    if (NULL == glUniform4fv) glUniform4fv = glUniform4fvARB;
+    if (NULL == glUniform1i) glUniform1i = glUniform1iARB;
+    if (NULL == glUniform2i) glUniform2i = glUniform2iARB;
+    if (NULL == glUniform3i) glUniform3i = glUniform3iARB;
+    if (NULL == glUniform4i) glUniform4i = glUniform4iARB;
+    if (NULL == glUniform1iv) glUniform1iv = glUniform1ivARB;
+    if (NULL == glUniform2iv) glUniform2iv = glUniform2ivARB;
+    if (NULL == glUniform3iv) glUniform3iv = glUniform3ivARB;
+    if (NULL == glUniform4iv) glUniform4iv = glUniform4ivARB;
+    if (NULL == glUniformMatrix2fv) glUniformMatrix2fv = glUniformMatrix2fvARB;
+    if (NULL == glUniformMatrix3fv) glUniformMatrix3fv = glUniformMatrix3fvARB;
+    if (NULL == glUniformMatrix4fv) glUniformMatrix4fv = glUniformMatrix4fvARB;
+    if (NULL == glGetShaderiv) glGetShaderiv = glGetObjectParameterivARB;
+    if (NULL == glGetProgramiv) glGetProgramiv = glGetObjectParameterivARB;
+    if (NULL == glGetShaderInfoLog) glGetShaderInfoLog = glGetInfoLogARB;
+    if (NULL == glGetProgramInfoLog) glGetProgramInfoLog = glGetInfoLogARB;
+    if (NULL == glValidateProgram) glValidateProgram = glValidateProgramARB;
+    return;
+}
+
+void mogl_checkerrors(const char* cmd, const mxArray *prhs[]) 
+{
+    char errtxt[10000];
+    int err, status, handle;
+    
+    // Reject no-op calls:
+    if (debuglevel<=0) return;
+    
+    // Check for glErrors():
+    if ((err=glGetError())>0) {
+        // Last command caused an OpenGL error condition: Report it and abort.
+        sprintf(errtxt, "MOGL-Error: Your OpenGL command %s() caused the following OpenGL error: %s. Aborted.\n", cmd, gluErrorString(err));
+        // Exit to Matlab prompt with error message:
+        mexErrMsgTxt(errtxt);
+    }
+    
+    // No OpenGL core system errors. Check if a special GLSL command was executed:
+    if (strcmp(cmd, "glCompileShader")==0) {
+        // A GLSL shader got just compiled. Check its compile status...
+        handle = (int) mxGetScalar(prhs[1]);
+        glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
+        if (status!=GL_TRUE) printf("MOGL-ERROR: Compilation of the GLSL shader object %i via glCompileShader(%i) failed!\n", handle, handle);
+        if (debuglevel>1 || status!=GL_TRUE) {
+            // Output shader info-log:
+            glGetShaderInfoLog(handle, 9999, NULL, &errtxt);
+            printf("The shader info log for shader %i tells us the following:\n", handle);
+            printf("%s \n\n", errtxt);
+        }
+        
+        // Exit to Matlab prompt with error message if an error happened.
+        if (status!=GL_TRUE) mexErrMsgTxt("Shader compilation failed!"); else return;
+    }
+        
+    if (strcmp(cmd, "glLinkProgram")==0) {
+        // A GLSL shader got just compiled. Check its compile status...
+        handle = (int) mxGetScalar(prhs[1]);
+        glGetProgramiv(handle, GL_LINK_STATUS, &status);
+        if (status!=GL_TRUE) printf("MOGL-ERROR: Linking of the GLSL shader program %i via glLinkProgram(%i) failed!\n", handle, handle);
+        if (debuglevel>1 || status!=GL_TRUE) {
+            // Output shader info-log:
+            glGetProgramInfoLog(handle, 9999, NULL, &errtxt);
+            printf("The program info log for program %i tells us the following:\n", handle);
+            printf("%s \n\n", errtxt);
+        }
+        
+        if (debuglevel>1) {
+            // Output shader info-log after program validation:
+            glValidateProgram(handle);
+            glGetProgramInfoLog(handle, 9999, NULL, &errtxt);
+            printf("The program info log for program %i tells us the following after calling glValidateProgram():\n", handle);
+            printf("%s \n\n", errtxt);
+        }
+        
+        // Exit to Matlab prompt with error message if an error happened.
+        if (status!=GL_TRUE) mexErrMsgTxt("GLSL link operation failed!"); else return;
+    }
 
     return;
 }
