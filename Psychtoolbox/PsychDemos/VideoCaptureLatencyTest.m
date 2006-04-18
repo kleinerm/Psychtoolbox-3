@@ -65,11 +65,10 @@ fullscreen
     Screen('Flip',win);
     
     % Open default video capture device:
-    [grabber fps width height]=Screen('OpenVideoCapture', win, 0);%, [0 0 200 200]);
-    fprintf('Grabber running at %i Hz width x height = %i x %i\n', fps, width, height);
+    grabber = Screen('OpenVideoCapture', win, 0);%, [0 0 200 200]);
     
-    % Start video capture: We request at least a 60 Hz capture rate and lowlatency (=1) mode:
-    fps=Screen('StartVideoCapture', grabber, 60, 1);
+    % Start video capture: We request at least a 100 Hz capture rate and lowlatency (=1) mode:
+    fps=Screen('StartVideoCapture', grabber, 100, 1);
     fps
     
     oldpts = 0;

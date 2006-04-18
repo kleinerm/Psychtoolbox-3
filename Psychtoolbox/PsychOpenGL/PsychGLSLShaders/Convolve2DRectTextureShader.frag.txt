@@ -1,0 +1,30 @@
+/* Generic 2D convolution fragment shader for 2D rectangle textures.
+// OpenGL program has to setup the Offset-Array with
+// (dx,dy) offsets for sampling locations in the input rectangle
+// texture. It also has to setup the KernelValue-Array with the
+// weight values for each sample. Offset+KernelValue uniquely
+// define a specific type of 2D convolution filter.
+// The filter is of fixed size 'KernelSize':
+//
+// (w)2006 by Mario Kleiner.
+*/
+
+const int KernelSize = 25;
+uniform vec2 Offset[KernelSize];
+uniform float KernelValue[KernelSize];
+uniform sampler2DRect Image;
+
+void main()
+{
+    int i;
+    vec4 sum = vec4(0.0);
+    vec4 tmp;
+
+    for (i = 0; i < KernelSize; i++)
+    {
+        tmp = texture2DRect(Image, gl_TexCoord[0].st + Offset[i]);
+        sum += tmp * KernelValue[i];
+    }
+
+    gl_FragColor = sum;
+}

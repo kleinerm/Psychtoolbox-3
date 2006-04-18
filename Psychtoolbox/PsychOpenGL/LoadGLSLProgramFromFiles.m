@@ -49,6 +49,12 @@ if ischar(filenames)
     if debug>1
         fprintf('Compiling all shaders matching %s * into a GLSL program...\n', filenames);
     end;
+
+    % Add default shader path if no path is specified as part of
+    % 'filenames':
+    if isempty(fileparts(filenames))
+        filenames = [ PsychtoolboxRoot 'PsychOpenGL/PsychGLSLShaders/' filenames ];
+    end;
     
     shaderobjs=dir([filenames '*']);
     shaderobjpath = [fileparts([filenames '*']) '/'];

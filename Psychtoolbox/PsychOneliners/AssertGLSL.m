@@ -9,9 +9,16 @@ function AssertGLSL
 % HISTORY
 % 3/29/06   mk     wrote it.
 
+persistent alreadycalled;
 global GL
 if isempty(GL)
-    ptbmoglinit
+    InitializeMatlabOpenGL;
+end;
+
+if isempty(alreadycalled)
+    alreadycalled=1;
+else
+    return;
 end;
 
 try
@@ -26,10 +33,10 @@ end;
 
 if isempty(findstr(extensions, 'GL_ARB_shading_language')) | isempty(findstr(extensions, 'GL_ARB_shader_objects'))
     Screen('CloseAll');
-    error('Sorry, this M-File can not execute on your combination of graphics hardware and driver due to lack of GLSL support.'); 
+    error('Sorry, this M-File can not execute on your combination of graphics hardware and driver due to complete lack of GLSL support.'); 
 end;
 
 if isempty(findstr(extensions, 'GL_ARB_fragment_shader'))
-   fprintf('AssertGLSL: Warning. Your graphics hardware does not support fragment shaders. This will severely limit the use of GLSL.\n');
-   fprintf('AssertGLSL: Many image processing functions will fail.\n');
+   fprintf('AssertGLSL: Warning! Your graphics hardware does not support fragment shaders. This will severely limit the use of GLSL.\n');
+   fprintf('AssertGLSL: Many image processing functions will fail with MOGL errors about unsupported functions.\n');
 end;

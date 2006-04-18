@@ -1,4 +1,6 @@
-function InitializeMatlabOpenGL(opengl_c_style)
+function InitializeMatlabOpenGL(opengl_c_style, debuglevel)
+% InitializeMatlabOpenGL(opengl_c_style, debuglevel)
+%
 % InitializeMatlabOpenGL -- Initialize the OpenGL for Matlab wrapper 'mogl'.
 %
 % Call this function at the beginning of your experiment script before
@@ -10,6 +12,8 @@ function InitializeMatlabOpenGL(opengl_c_style)
 % OpenGL constants into your Matlab workspace. It will also set up
 % Psychtoolbox for interfacing with external OpenGL code.
 %
+% Options:
+% opengl_c_style = 0 / 1:
 % If you call InitializeMatlabOpenGL or InitializeMatlabOpenGL(0), all
 % constants will be loaded in structs in order to avoid cluttering the
 % Matlab workspace too much. You'll have to replace all GL_xxx calls by
@@ -17,8 +21,14 @@ function InitializeMatlabOpenGL(opengl_c_style)
 % If you call InitializeMatlabOpenGL(1), then all constants will additionally
 % be provided in standard C-Style syntax, aka GL_LIGHTING.
 %
+% debuglevel = 0 to 3: Setting debuglevel == 0 will disable debug-output.
+% A level of 1 will cause MOGL to output error messages and abort your
+% scripts execution if it detects any OpenGL error. A level of 2 provides
+% additional information that may help you to optimize your code. level 3
+% means to be very verbose.
+%
 % The 'OpenGL for Matlab' low level wrapper mogl was developed, implemented
-% and generously contributed to Psychtoolbox under GPL license by
+% and contributed to Psychtoolbox under GPL license by
 % Prof. Richard F. Murray, University of York, Canada.
 
 % History:
@@ -33,8 +43,12 @@ if ~exist('glmGetConst.m','file'),
 end;
 
 % We default to non-C-Style constants if not requested otherwise.
-if nargin < 1
+if nargin < 1 | isempty(opengl_c_style)
    opengl_c_style = 0;
+end;
+
+if nargin < 2 | isempty(debuglevel)
+    debuglevel = 1;
 end;
 
 % Load all GL constants:
@@ -66,6 +80,9 @@ if IsWin
    % directory to its previous setting:
    cd(olddir);
 end;
+
+% Set moglcores debuglevel:
+moglcore('DEBUGLEVEL', debuglevel);
 
 % Enable support for OpenGL 3D graphics rendering in Psychtoolbox.
 Screen('Preference', 'Enable3DGraphics', 1);

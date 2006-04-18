@@ -8,10 +8,12 @@ function r = glGetUniformLocation( program, name )
 
 % 05-Mar-2006 -- created (generated automatically from header files)
 
+% ---protected---
+
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-r = moglcore( 'glGetUniformLocation', program, uint8(name) );
+r = moglcore( 'glGetUniformLocation', program, [uint8(name) 0]);
 
 return
