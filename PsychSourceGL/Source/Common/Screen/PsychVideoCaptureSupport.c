@@ -190,7 +190,7 @@ void PsychVideoCaptureInit(void)
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
  */
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback))
+				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback)
 {
     int i, slotid;
     OSErr error;
