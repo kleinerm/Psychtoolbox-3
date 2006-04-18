@@ -103,8 +103,7 @@ AssertOSX;
 % not a perfect test, because someone could modify /etc/sudoers without
 % deleting the /etc/sudoers_pre_psychtoolbox file. However, we can not
 % examine the contents of sudoers without root.
-[s,r]=unix('ls /etc/sudoers_pre_psychtoolbox');
-if ~streq(r(1:end-1), '/etc/sudoers_pre_psychtoolbox')
+if exist('/etc/sudoers_pre_psychtoolbox')~=2
     Screen('CloseAll');
     fprintf(' This message has been triggered by an attempt to raise priority of the MATLAB \n');
     fprintf(' process above level 0.  If you did not call "Priority" or "Rush" directly from the\n');
