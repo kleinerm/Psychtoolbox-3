@@ -168,14 +168,14 @@ PsychError      SCREENCloseVideoCapture(void);
 PsychError      SCREENStartVideoCapture(void); 
 PsychError      SCREENStopVideoCapture(void); 
 PsychError      SCREENGetCapturedImage(void); 
+PsychError      SCREENSetVideoCaptureParameter(void); 
 PsychError      SCREENBeginOpenGL(void);
 PsychError      SCREENEndOpenGL(void);
+PsychError      SCREENLoadCLUT(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);
 
-
-//PsychError SCREENGetImage(void);			//SCREENGetImage.c
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 
 

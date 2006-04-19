@@ -199,6 +199,8 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("StartVideoCapture", &SCREENStartVideoCapture));
         PsychErrorExit(PsychRegister("StopVideoCapture", &SCREENStopVideoCapture));
         PsychErrorExit(PsychRegister("GetCapturedImage", &SCREENGetCapturedImage));
+	PsychErrorExit(PsychRegister("SetVideoCaptureParameter", &SCREENSetVideoCaptureParameter));
+	PsychErrorExit(PsychRegister("LoadCLUT", &SCREENLoadCLUT));
 
  	//Experiments
 

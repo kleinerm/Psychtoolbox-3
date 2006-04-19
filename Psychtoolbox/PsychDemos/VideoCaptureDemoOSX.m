@@ -17,6 +17,11 @@ try
     Screen('Flip',win);
     
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
+    brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness')
+    exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure')
+    gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
+    shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter')
+    Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
     
     Screen('StartVideoCapture', grabber, 100, 1);
 

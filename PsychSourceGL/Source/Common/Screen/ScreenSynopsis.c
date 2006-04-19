@@ -138,7 +138,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
 	synopsis[i++] = "Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";
 	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table);";
-		
+	synopsis[i++] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber, clut [, startEntry=0] [, bits=8]);";
+
 	// Get and set information about a window or screen.
 	synopsis[i++] = "\n% Get (and set) information about a window or screen:";
 	synopsis[i++] = "screenNumbers=Screen('Screens);";	
@@ -198,12 +199,13 @@ void InitializeSynopsis()
         
         // Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
-        synopsis[i++] = "[ videoPtr [fps] [width] [height]]=Screen('OpenVideoCapture', windowPtr [, deviceIndex] [roirectangle]);";
+        synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback]);";
         synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
-        synopsis[i++] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS]);";
+        synopsis[i++] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0]);";
         synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
         synopsis[i++] = "[ texturePtr [timeindex] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr, [waitForImage=1], [fortimeindex]);";
- 
+	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
+
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:
 	synopsis[i++] = "\n% Low level direct access to OpenGL-API functions:";
 	synopsis[i++] = "% Online info for each function available by opening a terminal window";

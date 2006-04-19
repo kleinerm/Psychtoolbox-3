@@ -24,6 +24,7 @@
 
 
 #include "Screen.h"
+#include <float.h>
 
 // Linux support is implemented in the ../Linux/Screen/... subfolder of Psychtoolbox.
 #if PSYCH_SYSTEM != PSYCH_LINUX
@@ -777,6 +778,16 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     
     // Return either real capture framerate (at start of capture) or count of dropped frames - at end of capture.
     return((capturerate!=0) ? (int) (vidcapRecordBANK[capturehandle].fps + 0.5) : dropped);
+}
+
+/* Set capture device specific parameters:
+ * On OS-X and Windows (and therefore in this implementation) this is currently a no-op, until
+ * we find out how to do this with the Sequence-Grabber API.
+ */
+double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
+{
+  // Just return the "not supported" value DBL_MAX:
+  return(DBL_MAX);
 }
 
 /*

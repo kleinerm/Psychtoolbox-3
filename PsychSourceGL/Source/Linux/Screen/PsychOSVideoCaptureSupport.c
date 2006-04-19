@@ -33,6 +33,7 @@
 
 
 #include "Screen.h"
+#include <float.h>
 
 #include <libraw1394/raw1394.h>
 #include <dc1394/dc1394_control.h>
@@ -185,7 +186,6 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     PsychVidcapRecordType* capdev = NULL;
     dc1394camera_t **cameras=NULL;
     uint_t numCameras;
-    dc1394featureset_t features;
     int err;
 
     int i, slotid;
@@ -279,16 +279,6 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     free(cameras);
     cameras=NULL;
     
-    // Report cameras features:
-    if (dc1394_get_camera_feature_set(capdev->camera, &features) !=DC1394_SUCCESS) {
-      printf("PTB-WARNING: Unable to query feature set of camera.\n");
-    }
-    else {
-      printf("PTB-INFO: The camera provides the following feature set:\n");
-      dc1394_print_feature_set(&features);
-      fflush(NULL);
-    }
-
     // ROI rectangle specified?
     if (capturerectangle) {
       PsychCopyRect(capdev->roirect, capturerectangle);
@@ -1187,4 +1177,124 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     
     // We're successfully done!
     return(TRUE);
+}
+
+/* Set capture device specific parameters:
+ * Currently, the named parameters are a subset of the parameters supported by the
+ * IIDC specification, mapped to more convenient names.
+ *
+ * Input: pname = Name string to specify the parameter.
+ *        value = Either DBL_MAX to not set but only query the parameter, or some other
+ *                value, that we try to set in the Firewire camera.
+ *
+ * Returns: Old value of the setting
+ */
+double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
+{
+  dc1394featureset_t features;
+  dc1394feature_t feature;
+  dc1394bool_t present;
+  unsigned int minval, maxval, intval, oldintval;
+
+  double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
+  boolean assigned = false;
+
+  // Retrieve device record for handle:
+  PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
+
+  oldintval = 0xFFFFFFFF;
+
+  // Round value to integer:
+  intval = (int) (value + 0.5);
+
+  // Check parameter name pname and call the appropriate subroutine:
+  if (strcmp(pname, "PrintParameters")==0) {
+    // Special command: List and print all features...
+    if (dc1394_get_camera_feature_set(capdev->camera, &features) !=DC1394_SUCCESS) {
+      printf("PTB-WARNING: Unable to query feature set of camera.\n");
+    }
+    else {
+      printf("PTB-INFO: The camera provides the following feature set:\n");
+      dc1394_print_feature_set(&features);
+    }
+
+    fflush(NULL);    
+    return(0);
+  }
+
+  if (strcmp(pname, "Brightness")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_BRIGHTNESS;    
+  }
+
+  if (strcmp(pname, "Gain")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_GAIN;    
+  }
+
+  if (strcmp(pname, "Exposure")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_EXPOSURE;    
+  }
+
+  if (strcmp(pname, "Shutter")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_SHUTTER;    
+  }
+
+  // Check if feature is present on this camera:
+  if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
+    printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
+    fflush(NULL);
+  }
+  else if (present) {
+    // Feature is available:
+
+    // Retrieve current value:
+    if (dc1394_feature_get_value(capdev->camera, feature, &oldintval)!=DC1394_SUCCESS) {
+      printf("PTB-WARNING: Failed to query value of feature %s on camera %i! Ignored.\n", pname, capturehandle);
+      fflush(NULL);
+    }
+    else {      
+      // Do we want to set the value?
+      if (value != DBL_MAX) {
+	// Query allowed bounds for its value:
+	if (dc1394_feature_get_boundaries(capdev->camera, feature, &minval, &maxval)!=DC1394_SUCCESS) {
+	  printf("PTB-WARNING: Failed to query valid value range for feature %s on camera %i! Ignored.\n", pname, capturehandle);
+	  fflush(NULL);
+	}
+	else {
+	  // Sanity check against range:
+	  if (intval < minval || intval > maxval) {
+	    printf("PTB-WARNING: Requested setting %i for parameter %s not in allowed range (%i - %i) for camera %i. Ignored.\n",
+		   intval, pname, minval, maxval, capturehandle);
+	    fflush(NULL);      
+	  }
+	  else {
+	    // Ok intval is valid for this feature: Try to set it.
+	    if (dc1394_feature_set_value(capdev->camera, feature, intval)!=DC1394_SUCCESS) {
+	      printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle, intval);
+	      fflush(NULL);
+	    }
+	  }
+	}
+      }
+    }
+  }
+  else {
+    printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
+    fflush(NULL);
+  }
+
+  // Output a warning on unknown parameters:
+  if (!assigned) {
+    printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n",
+	   pname);
+    fflush(NULL);
+  }
+
+  if (assigned && oldintval!=0xFFFFFFFF) oldvalue = (double) oldintval;
+
+  // Return the old value. Could be DBL_MAX if parameter was unknown or not accepted for some reason.
+  return(oldvalue);
 }

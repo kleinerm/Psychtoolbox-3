@@ -129,6 +129,9 @@ persistent usetype;
 persistent keyvertices;
 persistent keynormals;
 
+% glDrawRangeElements() command supported?
+persistent drawrangeelements;
+
 % Sanity check:
 if nargin < 1
     help moglmorpher;
@@ -139,6 +142,18 @@ end;
 if isempty(GL)
     InitializeMatlabOpenGL;
 end;
+
+% Check if hardware supports glDrawRangeElements():
+if isempty(drawrangeelements)
+    if isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_draw_range_elements'))
+        % No glDrawRangeElements() support.
+        drawrangeelements = 0;
+    else
+        % glDrawRangeElements() supported.
+        drawrangeelements = 1;
+    end;
+end;
+
 
 % Initialize count of keyshapes:
 if isempty(objcount)
@@ -409,14 +424,26 @@ if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
     end;
 
     % Render mesh, using topology given by 'faces':
-    if (size(faces,1)==3)
-        glDrawRangeElements(GL.TRIANGLES, minvertex, maxvertex, size(faces,2) * 3, GL.UNSIGNED_INT, faces);
-    elseif size(faces,1)==4
-        glDrawRangeElements(GL.QUADS, minvertex, maxvertex, size(faces,2) * 4, GL.UNSIGNED_INT, faces);        
+    if drawrangeelements
+        % Faster rendering-path, needs OpenGL-1.2 or higher:
+        if (size(faces,1)==3)
+            glDrawRangeElements(GL.TRIANGLES, minvertex, maxvertex, size(faces,2) * 3, GL.UNSIGNED_INT, faces);
+        elseif size(faces,1)==4
+            glDrawRangeElements(GL.QUADS, minvertex, maxvertex, size(faces,2) * 4, GL.UNSIGNED_INT, faces);        
+        else
+            error('Invalid number of rows in face index array!');
+        end;
     else
-        error('Invalid number of rows in face index array!');
+        % Slower rendering path, needed to support OpenGL-1.1 renderers as well:
+        if (size(faces,1)==3)
+            glDrawElements(GL.TRIANGLES, size(faces,2) * 3, GL.UNSIGNED_INT, faces);
+        elseif size(faces,1)==4
+            glDrawElements(GL.QUADS, size(faces,2) * 4, GL.UNSIGNED_INT, faces);        
+        else
+            error('Invalid number of rows in face index array!');
+        end;
     end;
-        
+
     % Disable client-side vertex, normals and texcoord arrays:
     glDisableClientState(GL.VERTEX_ARRAY);
     glDisableClientState(GL.NORMAL_ARRAY);

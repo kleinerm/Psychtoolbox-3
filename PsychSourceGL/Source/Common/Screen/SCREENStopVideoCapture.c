@@ -24,7 +24,9 @@
 #include "Screen.h"
 
 static char useString[] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
-static char synopsisString[] = "Stop video capture device specified by 'capturePtr'.";
+static char synopsisString[] = "Stop video capture device specified by 'capturePtr'. The function returns the "
+                               "number of captured frames it had to drop from its internal buffers in order to "
+                               "keep synchronization with realtime or because it ran out of internal buffer space. ";
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 
 PsychError SCREENStopVideoCapture(void) 
