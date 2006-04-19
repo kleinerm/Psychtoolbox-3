@@ -101,8 +101,8 @@ PsychError SCREENOpenOffscreenWindow(void)
         targetScreenNumber=screenNumber;
         targetWindow=NULL;
     } else if(PsychIsUnaffiliatedScreenNumberArg(1)){  //that means -1 or maybe also NaN if we add that option.  
-		  // Default to a depth of 32 bpp:
-		  depth=32;
+        // Default to a depth of 32 bpp:
+        depth=32;
         targetScreenNumber=PSYCH_FIRST_SCREEN; // We assign the first screen in the system.
         PsychGetScreenRect(targetScreenNumber, rect);
         targetWindow=NULL;
@@ -118,21 +118,21 @@ PsychError SCREENOpenOffscreenWindow(void)
     //Depth and rect argument supplied as arguments override those inherited from reference screen or window.
     //Note that PsychCopyIn* prefix means that value will not be overwritten if the arguments are not present.
     PsychCopyInRectArg(3,FALSE, rect);
-    PsychCopyInDepthValueArg(4,FALSE, &depth); 
+    PsychCopyInIntegerArg(4,FALSE, &depth); 
 
-	 // If any of the no longer supported values 0, 1, 2, 4 or 16 is provided, we
-	 // silently switch to 32 bits per pixel, which is the safest and fastest setting:
-	 if (depth==0 || depth==1 || depth==2 || depth==4 || depth==16) depth=32;
+    // If any of the no longer supported values 0, 1, 2 or 4 is provided, we
+    // silently switch to 32 bits per pixel, which is the safest and fastest setting:
+    if (depth==0 || depth==1 || depth==2 || depth==4) depth=32;
 
     // Final sanity check:
-	 if (depth!=8 && depth!=16 && depth!=24 && depth!=32) {
-		PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp!");
-	 }
+    if (depth!=8 && depth!=16 && depth!=24 && depth!=32) {
+      PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp!");
+    }
 
     //find the color for the window background.  
     wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
-    if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthValue(depth)); // Use the default    
-    PsychCoerceColorModeFromSizes(PsychGetNumPlanesFromDepthValue(depth), PsychGetColorSizeFromDepthValue(depth), &color);
+    if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthValue(32)); // Use the default    
+    PsychCoerceColorModeFromSizes(PsychGetNumPlanesFromDepthValue(32), PsychGetColorSizeFromDepthValue(32), &color);
     // printf("R=%i G=%i B=%i A=%i I=%i", color.value.rgba.r, color.value.rgba.g,color.value.rgba.b,color.value.rgba.a,color.value.index); 
     // First allocate the offscreen window record to store stuff into. If we exit with an error PsychErrorExit() should
     // call PsychPurgeInvalidWindows which will clean up the window record. 
@@ -209,4 +209,3 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Ready.
     return(PsychError_none);
 }
-

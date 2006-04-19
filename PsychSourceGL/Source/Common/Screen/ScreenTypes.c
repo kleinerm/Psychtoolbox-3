@@ -116,9 +116,9 @@ switch(PsychGetValueFromDepthStruct(0, depth)){
         case 8:	
             return(kPsychIndexColor);
         case 16:
-            return(kPsychRGBColor);
+	    return(kPsychRGBAColor);    // MK: Changed. We always want RGBA mode. OpenGL can handle this even for 16-bit and 24-bit case.
         case 24:
-            return(kPsychRGBColor);
+            return(kPsychRGBAColor);    // MK: Changed. We always want RGBA mode. OpenGL can handle this even for 16-bit and 24-bit case.
         case 32:
             return(kPsychRGBAColor);
         default:
@@ -171,7 +171,7 @@ int PsychGetColorSizeFromDepthValue(int depthValue)
         case 8:	
             return(8);
         case 16:
-            return(5);
+	    return(8);    // MK: Changed. We always assume RGBA8 pixel formats. OpenGL can handle this in 16-bit case.
         case 24:
             return(8);
         case 32:
@@ -192,9 +192,9 @@ int PsychGetNumPlanesFromDepthValue(int depthValue)
         case 8:	
             return(1);
         case 16:
-            return(3);
+	    return(4); // MK: Changed from 3 to 4. OpenGL can handle this by itself.
         case 24:
-            return(3);
+            return(4); // MK: Changed from 3 to 4. OpenGL can handle this by itself.
         case 32:
             return(4); 
         default:
@@ -300,6 +300,8 @@ void PsychCoerceColorModeFromSizes(int numColorPlanes, int colorPlaneSize, Psych
         ;
     else if(numColorPlanes==4 && color->mode==kPsychRGBAColor)
         ;
+    else if(numColorPlanes==3 && color->mode==kPsychRGBAColor)
+      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
     else
         PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
 }
@@ -331,12 +333,20 @@ void PsychCoerceColorMode(PsychColorModeType mode, PsychColorType *color)
         color->value.rgba.g=index;
         color->value.rgba.b=index;
         color->value.rgba.a=index;
+    }else if(mode==kPsychRGBAColor && color->mode==kPsychRGBColor){
+        color->mode=kPsychRGBAColor;
+        color->value.rgba.r=color->value.rgb.r;
+        color->value.rgba.g=color->value.rgb.g;
+        color->value.rgba.b=color->value.rgb.b;
+        color->value.rgba.a=255;
    }else if(mode==kPsychRGBColor && color->mode==kPsychRGBColor)
         ;
     else if(mode==kPsychIndexColor && color->mode==kPsychIndexColor)
         ;
     else if(mode==kPsychRGBAColor && color->mode==kPsychRGBAColor)
         ;
+    else if(mode==kPsychRGBColor && color->mode==kPsychRGBAColor)
+      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
     else
         PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
 }
@@ -382,9 +392,8 @@ void PsychCoerceColorModeWithDepthValue(PsychColorModeType mode, int depthValue,
         ;
     else if(mode==kPsychRGBAColor && color->mode==kPsychRGBAColor)
         ;
+    else if(mode==kPsychRGBColor && color->mode==kPsychRGBAColor)
+      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
     else
         PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
 }
-
-
-

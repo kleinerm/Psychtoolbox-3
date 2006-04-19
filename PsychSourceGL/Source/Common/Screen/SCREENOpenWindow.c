@@ -95,20 +95,13 @@ PsychError SCREENOpenWindow(void)
 {
 
     int					screenNumber, numWindowBuffers, stereomode;
-
     PsychRectType 			rect;
-
     PsychColorType			color;
-
     PsychColorModeType  		mode; 
-
     boolean				isArgThere, settingsMade, didWindowOpen;
-
     PsychScreenSettingsType		screenSettings;
-
     PsychWindowRecordType		*windowRecord;
-
-    
+    double dVals[4];
 
     PsychDepthType		specifiedDepth, possibleDepths, currentDepth, useDepth;
 
@@ -289,35 +282,20 @@ PsychError SCREENOpenWindow(void)
 
     }
 
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychCreateTextureForWindow\n");
-    
 
-    //create the shadow texture for this window
+    // Set the clear color and perform a backbuffer-clear:
+    PsychSetGLContext(windowRecord);
+    PsychConvertColorAndDepthToDoubleVector(&color, PsychGetValueFromDepthStruct(0, &useDepth), dVals);
+    glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
+    glClear(GL_COLOR_BUFFER_BIT);
 
-    // MK: Not needed anymore! PsychCreateTextureForWindow(windowRecord);
+    // Mark end of drawing op. This is needed for single buffered drawing:
+    PsychFlushGL(windowRecord);
 
-    
-
-    //set the alpha blending rule   
-
-    PsychSetGLContext(windowRecord); 
-
-    // glEnable(GL_BLEND);
-
-    // glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-    //			sFactor		   dFactor
-
-
-
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Finalizing SCREENOpen\n");
-    
     PsychTestForGLErrors();
 
     //Return the window index and the rect argument.
-
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
-
     PsychCopyOutRectArg(2, FALSE, windowRecord->rect);
 
     return(PsychError_none);    
