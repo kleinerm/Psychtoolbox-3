@@ -140,7 +140,7 @@ end
 % well, the best aproximation one can do with 3 lines of code ;-)
 glMatrixMode(GL_PROJECTION);
 glLoadIdentity;
-% Field of view is +/- 45 degrees from line of sight. Objects close than
+% Field of view is 25 degrees from line of sight. Objects closer than
 % 0.1 distance units or farther away than 100 distance units get clipped
 % away, aspect ratio is adapted to the monitors aspect ratio:
 gluPerspective(25,1/ar,0.1,100);
@@ -243,20 +243,21 @@ n=cross(v(:,i(2))-v(:,i(1)),v(:,i(3))-v(:,i(2)));
 glBindTexture(GL.TEXTURE_2D,tx);
 % Begin drawing of a new polygon:
 glBegin(GL.POLYGON);
+
 % Assign n as normal vector for this polygons surface normal:
 glNormal3dv(n);
 
 % Define vertex 1 by assigning a texture coordinate and a 3D position:
-glTexCoord3dv([ 0 0 ]);
+glTexCoord2dv([ 0 0 ]);
 glVertex3dv(v(:,i(1)));
 % Define vertex 2 by assigning a texture coordinate and a 3D position:
-glTexCoord3dv([ 1 0 ]);
+glTexCoord2dv([ 1 0 ]);
 glVertex3dv(v(:,i(2)));
 % Define vertex 3 by assigning a texture coordinate and a 3D position:
-glTexCoord3dv([ 1 1 ]);
+glTexCoord2dv([ 1 1 ]);
 glVertex3dv(v(:,i(3)));
 % Define vertex 4 by assigning a texture coordinate and a 3D position:
-glTexCoord3dv([ 0 1 ]);
+glTexCoord2dv([ 0 1 ]);
 glVertex3dv(v(:,i(4)));
 % Done with this polygon:
 glEnd;

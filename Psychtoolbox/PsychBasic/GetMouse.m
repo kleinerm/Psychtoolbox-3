@@ -54,8 +54,6 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % Even if your mouse has more than three buttons, GetMouse will return as
 % many values as your mouse has buttons, 
 %
-% GetMouse can not cope if your computer has more than one mouse connected. 
-% It exits with an error.  
 % _________________________________________________________________________
 %
 % See also: GetClicks, SetMouse
@@ -90,6 +88,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % 11/18/04 awi  Added support for OS X
 % 09/03/05 mk   Add caching for 'numMouseButtons' to get 10-fold speedup.
 % 02/21/06 mk   Added Linux support.
+% 18/04/06 fwc  fixed bug that prevented use of multiple mice (tested with 3)
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
@@ -100,20 +99,23 @@ if isempty(numMouseButtons)
     AssertMex('MAC2', 'PCWIN');
     
     if IsOSX
-        % On OS X we execute this sript, otherwise either MATLAB found the mex file
-        % file and exuted this, or else this  file was exucuted and exited with
+        % On OS X we execute this script, otherwise either MATLAB found the mex file
+        % file and exuted this, or else this file was exucuted and exited with
         % error on the AssertMex command above.
         
         %get the number of mouse buttons from PsychHID
         mousedices=GetMouseIndices;
         numMice = length(mousedices);
-        if numMice > 1
-            error('GetMouse detected more than one mouse connected to your computer and got confused');
-        elseif numMice == 0
+        if numMice == 0
             error('GetMouse could not find any mice connected to your computer');
         end
+
         allHidDevices=PsychHID('Devices');
-        numMouseButtons=allHidDevices(mousedices).buttons;
+        numMouseButtons=-1;
+        for i=1:numMice
+            b=allHidDevices(mousedices(i)).buttons;
+            numMouseButtons=max(b, numMouseButtons);
+        end
     else
         % Linux: We don't need numMouseButtons so we assign a dummy value of 32
         numMouseButtons = 32;

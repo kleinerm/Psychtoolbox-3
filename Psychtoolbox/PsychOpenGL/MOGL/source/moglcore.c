@@ -6,7 +6,8 @@
  * 08-Dec-2005 -- reworked into direct interface to gl, glu, and glm functions (RFM)
  * 05-Mar-2006 -- reworked to make inclusion of glm optional (for Psychtoolbox) (MK)
  * 20-Mar-2006 -- Included support for GLEW lib for auto-detection of OpenGL extensions. (MK)
- *
+ * 15-Apr-2006 -- Dynamic rebinding of OpenGL-2 core functions to ARB extensions. (MK)
+ * 16-Apr-2006 -- Built-in error detection and handling via the debuglevel parameter.
  */
 
 #include "mogltypes.h"
@@ -28,6 +29,11 @@ static int firsttime = 1;
 
 // Debuglevel: Defines if moglcore should check for errors and how to respond to them.
 static int debuglevel = 1;
+
+// This flag is > 0 if we are in a section started by glBegin() in that case we are
+// not allowed to call glGetError() as that itself is an error, until the corresponding
+// glEnd gets executed.
+static int glBeginLevel = 0;
 
 // command string
 #define CMDLEN 64
@@ -66,7 +72,10 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Without this trick, we would need to install glut32.dll into the Windows system
     // folder which requires admin privileges and makes installation of Psychtoolbox
     // more complicated on M$-Windows...
-	if (strcmp(cmd, "PREINIT")==0) return;
+	if (strcmp(cmd, "PREINIT")==0) {
+        glBeginLevel=0;
+        return;
+    }
     
     // Special command to set MOGL debug level:
     // debuglevel = 0 --> Shut up in any case, leave error-handling to higher-level code.
@@ -125,10 +134,14 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         firsttime = 0;
     }   
 
+    // If glBeginLevel >  1 then most probably the script was aborted after execution of glBegin() but
+    // before execution of glEnd(). In that case, we reset the level to zero.
+    if (glBeginLevel > 1) glBeginLevel = 0;
+
     // Reset OpenGL error state so we can be sure that any of our error queries really
     // relate to errors caused by us:
-    glGetError();
-    
+    if (glBeginLevel == 0 && debuglevel > 0) glGetError();
+        
     // look for command in manual command map
     if( (i=binsearch(gl_manual_map,gl_manual_map_count,cmd))>=0 ) {
         gl_manual_map[i].cmdfn(nlhs,plhs,nrhs-1,prhs+1);
@@ -167,6 +180,7 @@ int binsearch(cmdhandler *map, int mapsize, char *str) {
 
 // error handler
 void mogl_usageerr() {
+    glBeginLevel = 0;
     mexErrMsgTxt("invalid moglcore command");
 }
 
@@ -185,6 +199,8 @@ void mogl_glunsupported(const char* fname)
                     "MOGL-Error: You'll have to download+install the latest gfx-drivers for your gfx-hardware\n"
                     "MOGL-Error: or upgrade your gfx-hardware with more recent one to use this function. Aborted.\n\n", fname);
 
+    glBeginLevel = 0;
+    
     // Exit to Matlab prompt with error message:
     mexErrMsgTxt(errtxt);
 }
@@ -247,11 +263,20 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
     // Reject no-op calls:
     if (debuglevel<=0) return;
     
+    // Accounting for glBegin and glEnd calls...
+    if (strcmp(cmd, "glBegin")==0) glBeginLevel++;
+    if (strcmp(cmd, "glEnd")==0 && glBeginLevel > 0) glBeginLevel--;
+    
+    // Skip error-checking if we are in the middle of a glBegin(), glEnd() pair.
+    // Calling glGetError() in between these two commands itself is an error!
+    if (glBeginLevel > 0) return;
+    
     // Check for glErrors():
     if ((err=glGetError())>0) {
         // Last command caused an OpenGL error condition: Report it and abort.
         sprintf(errtxt, "MOGL-Error: Your OpenGL command %s() caused the following OpenGL error: %s. Aborted.\n", cmd, gluErrorString(err));
         // Exit to Matlab prompt with error message:
+        glBeginLevel = 0;
         mexErrMsgTxt(errtxt);
     }
     

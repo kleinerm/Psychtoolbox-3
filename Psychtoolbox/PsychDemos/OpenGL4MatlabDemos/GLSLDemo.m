@@ -141,6 +141,8 @@ glLightfv(GL_LIGHT1,GL_SPECULAR, [ 1 1 1 1 ]);
 % ambient light present:
 glLightfv(GL_LIGHT1,GL_AMBIENT, [ .0 .0 .9 1 ]);
 
+glEnable(GL_NORMALIZE);
+
 % GLSL setup:
 glGetError;
 

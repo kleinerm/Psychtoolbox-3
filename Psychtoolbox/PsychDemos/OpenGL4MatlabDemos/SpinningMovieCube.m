@@ -94,7 +94,7 @@ glMaterialfv(GL_FRONT_AND_BACK,GL_SHININESS,27.8);
 % well, the best aproximation one can do with 3 lines of code ;-)
 glMatrixMode(GL_PROJECTION);
 glLoadIdentity;
-% Field of view is +/- 45 degrees from line of sight. Objects close than
+% Field of view is 25 degrees from line of sight. Objects close than
 % 0.1 distance units or farther away than 100 distance units get clipped
 % away, aspect ratio is adapted to the monitors aspect ratio:
 gluPerspective(25,1/ar,0.1,100);
