@@ -138,7 +138,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
 	synopsis[i++] = "Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";
 	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table);";
-	synopsis[i++] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber, clut [, startEntry=0] [, bits=8]);";
+	synopsis[i++] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber [, clut] [, startEntry=0] [, bits=8]);";
 
 	// Get and set information about a window or screen.
 	synopsis[i++] = "\n% Get (and set) information about a window or screen:";
