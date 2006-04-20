@@ -142,7 +142,7 @@ int PsychGetWhiteValueFromDepthStruct(PsychDepthType *depth)
         case 8:	
             return(255);
         case 16:
-            return(31);
+            return(255);
         case 24:
             return(255);
         case 32:

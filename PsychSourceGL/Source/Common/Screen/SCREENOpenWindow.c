@@ -282,7 +282,16 @@ PsychError SCREENOpenWindow(void)
 
     }
 
-
+    // Sufficient display depth for full alpha-blending ans such?
+    if (PsychGetScreenDepthValue(screenNumber) < 24) {
+        // Nope. Output a little warning.
+        printf("PTB-WARNING: Your display screen %i is not running at 24 bit color depth or higher.\n", screenNumber);
+        printf("PTB-WARNING: This could cause failure to work correctly or visual artifacts in stimuli\n");
+        printf("PTB-WARNING: that involve Alpha-Blending. Please try to switch your display to 'True Color' (Windows)\n");
+        printf("PTB-WARNING: our 'Millions of Colors' (MacOS-X) to get rid of this warning and the visual artifacts.\n");
+        fflush(NULL);
+    }
+    
     // Set the clear color and perform a backbuffer-clear:
     PsychSetGLContext(windowRecord);
     PsychConvertColorAndDepthToDoubleVector(&color, PsychGetValueFromDepthStruct(0, &useDepth), dVals);

@@ -91,13 +91,17 @@ PsychError SCREENOpenOffscreenWindow(void)
     if(PsychIsWindowIndexArg(1)){
         PsychAllocInWindowRecordArg(1, TRUE, &exampleWindowRecord);
         PsychCopyRect(rect, exampleWindowRecord->rect);
-        depth=exampleWindowRecord->depth;
+        // We copy depth only from exampleWindow if it is a offscreen window (=texture). Copying from
+        // onscreen windows doesn't make sense, e.g. depth=16 for onscreen means RGBA8 window, but it
+        // would map onto a LUMINANCE+ALPHA texture for the offscreen window! We always use 32 bit RGBA8
+        // in such a case.
+        depth=(PsychIsOffscreenWindow(exampleWindowRecord)) ? exampleWindowRecord->depth : 32;
         targetScreenNumber=exampleWindowRecord->screenNumber;
         targetWindow=exampleWindowRecord;
     } else if(PsychIsScreenNumberArg(1)){
         PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
         PsychGetScreenRect(screenNumber, rect);
-        depth=PsychGetScreenDepthValue(screenNumber);
+        depth=32; // Always use RGBA8 in this case! See above...
         targetScreenNumber=screenNumber;
         targetWindow=NULL;
     } else if(PsychIsUnaffiliatedScreenNumberArg(1)){  //that means -1 or maybe also NaN if we add that option.  
@@ -131,7 +135,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 
     //find the color for the window background.  
     wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
-    if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthValue(32)); // Use the default    
+    if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthValue(32)); // Use the default 32 bpp!!!  
     PsychCoerceColorModeFromSizes(PsychGetNumPlanesFromDepthValue(32), PsychGetColorSizeFromDepthValue(32), &color);
     // printf("R=%i G=%i B=%i A=%i I=%i", color.value.rgba.r, color.value.rgba.g,color.value.rgba.b,color.value.rgba.a,color.value.index); 
     // First allocate the offscreen window record to store stuff into. If we exit with an error PsychErrorExit() should

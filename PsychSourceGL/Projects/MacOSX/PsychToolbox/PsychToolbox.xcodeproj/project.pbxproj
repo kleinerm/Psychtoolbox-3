@@ -1658,6 +1658,8 @@
 		832CE7EB094D03D100578C09 /* aluttypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7D9094D03D100578C09 /* aluttypes.h */; };
 		832CE7EC094D03D100578C09 /* alutypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7DA094D03D100578C09 /* alutypes.h */; };
 		832CE7ED094D03D100578C09 /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
+		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
+		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		8365A77F09991D69006FF0F4 /* SCREENOpenVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */; };
 		8365A78109991DAB006FF0F4 /* SCREENCloseVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */; };
 		8365A78309991E06006FF0F4 /* SCREENStartVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */; };
@@ -2919,6 +2921,8 @@
 		832CE7D9094D03D100578C09 /* aluttypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = aluttypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/aluttypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DA094D03D100578C09 /* alutypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = alutypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/alutypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
+		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
+		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
 		8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenVideoCapture.c; path = ../../../Source/Common/Screen/SCREENOpenVideoCapture.c; sourceTree = SOURCE_ROOT; };
 		8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseVideoCapture.c; path = ../../../Source/Common/Screen/SCREENCloseVideoCapture.c; sourceTree = SOURCE_ROOT; };
 		8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENStartVideoCapture.c; path = ../../../Source/Common/Screen/SCREENStartVideoCapture.c; sourceTree = SOURCE_ROOT; };
@@ -4274,6 +4278,7 @@
 				F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */,
 				F5682A9E03E5D45701A80168 /* SCREENIsOffscreen.c */,
 				CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */,
+				83495CD909F701B8003973EA /* SCREENLoadCLUT.c */,
 				F56F533203EA1A4701A80168 /* SCREENLoadNormalizedGammaTable.c */,
 				2FC84FC2068E782A009B1AF2 /* SCREENMakeTexture.c */,
 				83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */,
@@ -4299,6 +4304,7 @@
 				F50D529703D4FA79012326C4 /* SCREENSetMouseHelper.c */,
 				83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */,
 				8365A78A09992279006FF0F4 /* SCREENSetOpenGLTexture.c */,
+				83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */,
 				F50D529203D4D6F9012326C4 /* SCREENShowCursorHelper.c */,
 				8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */,
 				8365A78409991E29006FF0F4 /* SCREENStopVideoCapture.c */,
@@ -10082,6 +10088,8 @@
 				8365A7890999223B006FF0F4 /* SCREENGetOpenGLTexture.c in Sources */,
 				8365A78B09992279006FF0F4 /* SCREENSetOpenGLTexture.c in Sources */,
 				8365A79D09992499006FF0F4 /* PsychVideoCaptureSupport.c in Sources */,
+				83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */,
+				83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
