@@ -79,7 +79,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Open or close a window or texture:";
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode]);";	
         synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
-	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix);";	
+	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0]);";	
 	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
 	synopsis[i++] = "Screen('CloseAll');";
 	
@@ -203,7 +203,7 @@ void InitializeSynopsis()
         synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
         synopsis[i++] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0]);";
         synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
-        synopsis[i++] = "[ texturePtr [timeindex] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr, [waitForImage=1], [fortimeindex]);";
+        synopsis[i++] = "[texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture]);";
 	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
 
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:

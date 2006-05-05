@@ -967,13 +967,14 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
  *
  *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
  *  capturehandle = Handle to the capture object.
- *  checkForImage = true == Just check if new image available, false == really retrieve the image, blocking if necessary.
- *  timeindex = When not in playback mode, this allows specification of a requested frame by presentation time.
- *              If set to -1, or if in realtime playback mode, this parameter is ignored and the next video frame is returned.
+ *  checkForImage = >0 == Just check if new image available, 0 == really retrieve the image, blocking if necessary.
+ *                   2 == Check for new image, block inside this function (if possible) if no image available.
+ *
+ *  timeindex = This parameter is currently ignored and reserved for future use.
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
  *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
- *  Returns true (1) on success, false (0) if no new image available, -1 if no new image available and there won't be any in future.
+ *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
  */
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
 			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
@@ -988,8 +989,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     double tstart, tend;
     unsigned int pixval, alphacount;
     dc1394error_t error;
+    int nrdropped;
 
-    int waitforframe = (timeindex > 0) ? 1:0; // We misuse the timeindex as flag for blocking- non-blocking mode.
+    int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
@@ -997,15 +999,11 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     // Take start timestamp for timing stats:
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
         
-    if ((timeindex!=-1) && (timeindex < 0 || timeindex >= 10000.0)) {
-      PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
-    }
-    
     // Should we just check for new image?
     if (checkForImage) {
       if (capdev->grabber_active == 0) {
 	// Grabber stopped. We'll never get a new image:
-	return(-1);
+	return(-2);
       }
 
       // Grabber active: Polling mode or wait for new frame mode?
@@ -1035,9 +1033,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	if (capdev->dma_mode <= 0) {
 	  // Oops. Tried to use polling mode in non-DMA capture. This is not supported.
 	  printf("PTB-ERROR: Tried to call Screen('GetCapturedImage') in polling mode during non-DMA capture\n");
-	  printf("PTB-ERROR: This is not supported. Will return error code -1...\n");
+	  printf("PTB-ERROR: This is not supported. Will return error code -2...\n");
 	  fflush(NULL);
-	  return(-1);
+	  return(-2);
 	}
 
 	if (dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_POLL) == DC1394_SUCCESS) {
@@ -1069,8 +1067,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	}
       }
 
-      // Return availability status:
-      return(capdev->frame_ready);
+      // Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
+      return((capdev->frame_ready) ? 0 : -1);
     }
     
     // This point is only reached if checkForImage == FALSE, which only happens
@@ -1091,13 +1089,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     w=capdev->width;
     h=capdev->height;
     
-    // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
-    // image row padding:
-#if PSYCH_SYSTEM == PSYCH_OSX
-    padding = 4 + (4 - (w % 4)) % 4;
-#else
     padding= 0;
-#endif
     
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
@@ -1105,10 +1097,6 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       
       // Set NULL - special texture object as part of the PTB texture record:
       out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-      
-      // Set textureNumber to zero, which means "Not cached, don't recycle"
-      // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
-      out_texture->textureNumber = 0;
       
       // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
       out_texture->textureOrientation = 3;
@@ -1129,7 +1117,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       
       // Undo hack from above after texture creation: Now we need the real width of the
       // texture for proper texture coordinate assignments in drawing code et al.
-      PsychMakeRect(out_texture->rect, 0, 0, w-padding, h);    
+      PsychMakeRect(out_texture->rect, 0, 0, w, h);    
       // Ready to use the texture...
     }
     
@@ -1157,7 +1145,10 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       
       // Dropped frames?
       if (frames > 1 && capdev->last_pts>=0) {
-        capdev->nr_droppedframes += (int) (frames - 1 + 0.5);
+	nrdropped = (int) (frames - 1 + 0.5);
+      }
+      else {
+	nrdropped = 0;
       }
 
       // Record timestamp as reference for next check:    
@@ -1165,18 +1156,23 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
     else {
       // New style - Only works with DMA capture engine. Just take values from Firewire subsystem:
-      capdev->nr_droppedframes += (int) capdev->camera->capture.num_dma_buffers_behind;
+      nrdropped = (int) capdev->camera->capture.num_dma_buffers_behind;
     }
     
+    // Update total count of dropped (or pending) frames:
+    capdev->nr_droppedframes += nrdropped;
+
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
+
     // Increase counter of retrieved textures:
     capdev->nrgfxframes++;
+
     // Update average time spent in texture conversion:
     capdev->avg_gfxtime+=(tend - tstart);
     
-    // We're successfully done!
-    return(TRUE);
+    // We're successfully done! Return number of dropped (or pending in DMA ringbuffer) frames:
+    return(nrdropped);
 }
 
 /* Set capture device specific parameters:

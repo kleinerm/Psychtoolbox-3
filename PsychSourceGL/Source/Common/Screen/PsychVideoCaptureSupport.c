@@ -539,13 +539,13 @@ void PsychDeleteAllCaptureDevices(void)
  *
  *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
  *  capturehandle = Handle to the capture object.
- *  checkForImage = true == Just check if new image available, false == really retrieve the image, blocking if necessary.
- *  timeindex = When not in playback mode, this allows specification of a requested frame by presentation time.
- *              If set to -1, or if in realtime playback mode, this parameter is ignored and the next video frame is returned.
+ *  checkForImage = >0 == Just check if new image available, 0 == really retrieve the image, blocking if necessary.
+ *                   2 == Check for new image, block inside this function (if possible) if no image available.
+ *  timeindex = This parameter is currently ignored and reserved for future use.
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
  *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
- *  Returns true (1) on success, false (0) if no new image available, -1 if no new image available and there won't be any in future.
+ *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
  */
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
 {
@@ -559,6 +559,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     Boolean newframe = FALSE;
     double tstart, tend;
     unsigned int pixval, alphacount;
+    int nrdropped;
 
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
@@ -570,10 +571,6 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
     }
     
-    if ((timeindex!=-1) && (timeindex < 0 || timeindex >= 10000.0)) {
-        PsychErrorExitMsg(PsychError_user, "Invalid timeindex provided.");
-    }
-
     // Grant some processing time to the sequence grabber engine:
     if (SGIdle(vidcapRecordBANK[capturehandle].seqGrab)!=noErr) {
         PsychErrorExitMsg(PsychError_internal, "SGIdle() failed!!!");
@@ -594,7 +591,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     if (checkForImage) {
         if (vidcapRecordBANK[capturehandle].grabber_active == 0) {
             // Grabber stopped. We'll never get a new image:
-            return(-1);
+            return(-2);
         }
 
         // Timestamping:
@@ -602,8 +599,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         vidcapRecordBANK[capturehandle].nrgfxframes++;
         vidcapRecordBANK[capturehandle].avg_gfxtime+=(tend - tstart);
 
-        // Grabber active. Just return availability status:
-        return(newframe);
+        // Grabber active. Just return availability status: -1 = none avail. yet, 0 = At least one avail.
+        return((newframe) ? 0 : -1);
     }
     
     // This point is only reached if checkForImage == FALSE, which only happens
@@ -635,10 +632,6 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         
         // Set NULL - special texture object as part of the PTB texture record:
         out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-        
-        // Set textureNumber to zero, which means "Not cached, don't recycle"
-        // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
-        out_texture->textureNumber = 0;
         
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = 3;
@@ -701,10 +694,14 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 
     // Dropped frames?
     if (frames > 1 && vidcapRecordBANK[capturehandle].last_pts>=0) {
-        vidcapRecordBANK[capturehandle].nr_droppedframes += (int) (frames - 1 + 0.5);
+      nrdropped = (int) (frames - 1 + 0.5);
+      vidcapRecordBANK[capturehandle].nr_droppedframes += nrdropped;
+    }
+    else {
+      nrdropped = 0;
     }
 
-	 // Record timestamp as reference for next check:    
+    // Record timestamp as reference for next check:    
     vidcapRecordBANK[capturehandle].last_pts = *presentation_timestamp;
     
     // Timestamping:
@@ -712,8 +709,9 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     vidcapRecordBANK[capturehandle].nrgfxframes++;
     vidcapRecordBANK[capturehandle].avg_gfxtime+=(tend - tstart);
     
-    // We're successfully done!
-    return(TRUE);
+    // We're successfully done. Return number of frames that had to be dropped, or are
+    // pending in internal ringbuffers:
+    return(nrdropped);
 }
 
 /*

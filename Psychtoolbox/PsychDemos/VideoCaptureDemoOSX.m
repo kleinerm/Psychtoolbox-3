@@ -10,20 +10,23 @@ try
     if fullscreen<1
         win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
     else
-        win=Screen('OpenWindow', screen);
+        win=Screen('OpenWindow', screen, 0);
     end;
-    
-    Screen('FillRect', win, 0);
+
+    % Initial flip to a blank screen:
     Screen('Flip',win);
+
+    % Set text size for info text. 24 pixels is also good for Linux.
+    Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win); %, 0, [0 0 640 480]);
     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness')
     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure')
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
     shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter')
     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
     
-    Screen('StartVideoCapture', grabber, 100, 1);
+    Screen('StartVideoCapture', grabber, 60, 1);
 
     oldpts = 0;
     count = 0;
@@ -33,8 +36,8 @@ try
             break;
         end;
         
-        [tex pts]=Screen('GetCapturedImage', win, grabber, 1);
-        % fprintf('tex = %i  pts = %f\n', tex, pts);
+        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1);
+        % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
         
         if (tex>0)
             % Setup mirror transformation for horizontal flipping:
