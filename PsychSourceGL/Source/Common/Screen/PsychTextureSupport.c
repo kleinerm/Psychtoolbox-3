@@ -200,6 +200,7 @@ void PsychCreateTextureForWindow(PsychWindowRecordType *win)
 
 void PsychCreateTexture(PsychWindowRecordType *win)
 {
+        GLenum                          texturetarget;
 	GLenum				textureHint;
 	double				sourceWidth, sourceHeight;
         GLint                           glinternalFormat, gl_realinternalformat = 0;
@@ -217,6 +218,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         // Setup texture-target if not already done:
         PsychDetectTextureTarget(win);
         
+	// Assign proper texturetarget for creation:
+	texturetarget = PsychGetTextureTarget(win);
+
         // Check if user requested explicit use of clientstorage + Use of System RAM for
         // storage of textures instead of VRAM caching in order to conserve VRAM memory on
         // low-mem gfx-cards. Enable clientstorage, if so...
@@ -610,10 +614,22 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                 break;
         }
                         
-        // Setup texture wrap-mode:
-        glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        
+        // Setup texture wrap-mode: We usually default to clamping - the best we can do
+	// for the rectangle textures we usually use. Special case is the intentional
+	// use of power-of-two textures with a real power-of-two size. In that case we
+	// enable wrapping mode to allow for scrolling effects -- useful for drifting
+	// gratings.
+	if (texturetarget==GL_TEXTURE_2D && tWidth==sourceWidth && tHeight==sourceHeight) {
+	  // Special case: Scrollable real power-of-two textures. Enable wrapping.
+	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_REPEAT);	  
+	}
+	else {
+	  // Default: Clamp to edge.
+	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+        }
+
         // We use GL_MODULATE texture application mode together with the special rectangle color
         // (1,1,1,globalAlpha) -- This way, the alpha blending value is the product of the alpha-
         // value of each texel and the globalAlpha value. --> Can apply global alpha value for

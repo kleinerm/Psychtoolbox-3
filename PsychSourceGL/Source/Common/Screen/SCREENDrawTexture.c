@@ -87,10 +87,10 @@ PsychError SCREENDrawTexture(void)
     //Read in arguments
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &target);
     PsychAllocInWindowRecordArg(2, kPsychArgRequired, &source);
-    if(source->windowType!=kPsychTexture)
-        PsychErrorExitMsg(PsychError_user, "The first argument supplied was a window pointer, not a texture pointer");
-    if(target->windowType==kPsychTexture)
-        PsychErrorExitMsg(PsychError_user, "The second argument supplied was a texture pointer, not a window pointer");    
+    if(source->windowType!=kPsychTexture) {
+      PsychErrorExitMsg(PsychError_user, "The first argument supplied was a window pointer, not a texture pointer");
+    }
+
     PsychCopyRect(sourceRect,source->rect);
     PsychCopyRect(targetRect,source->rect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
@@ -101,6 +101,7 @@ PsychError SCREENDrawTexture(void)
     if (filterMode!=0 && filterMode!=1) {
         PsychErrorExitMsg(PsychError_user, "filterMode needs to be 0 for nearest neighbour filter, or 1 for bilinear filter.");    
     }
+
     PsychCopyInDoubleArg(7, kPsychArgOptional, &globalAlpha);
     if (globalAlpha<0 || globalAlpha>1) {
         PsychErrorExitMsg(PsychError_user, "globalAlpha needs to be in range 0 for fully transparent to 1 for fully opaque.");    
