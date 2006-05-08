@@ -1,38 +1,19 @@
 
 /*
-  PsychToolbox2/Source/Common/PsychScriptingGlue.c		
+  PsychToolbox2/Source/Common/PsychOctaveScriptingGlue.c		
   
   AUTHORS:
   Allen.Ingling@nyu.edu		awi 
   
-  PLATFORMS: All - For the MATLAB runtime environment.
+  PLATFORMS: All -- Glue layer for GNU/Octave runtime environment.
   
-  PROJECTS:
-  08/12/02	awi		Screen on MacOS9
-   
-
   HISTORY:
-  08/12/02 	awi	wrote it.  
-  01/30/03	awi	Changed mxGetP to return 1 for two dimensional arrays instead of zero.  
-  03/14/03	awi	Changed case where named subfunctions are enabled and first argument is present but not text and second
-                        is absent to call the function registered as the unnamed function.  This is to enable the MODULEVersion function
-                        with WaitSecs. 
-  04/14/03	awi	Replaced error condition K with a call to the unnamed project base function.
-  07/07/03	awi	Replaced error states E & G with a call to the unnmed project base function to fix EventAvail()
-  07/07/03	awi	Changed specified arg descriptor for PsychAllocInCharArg. 
-  1/16/04   awi Collapsed the kPsychArgAnything case in PsychMatchDescriptors() into the kPsychArgOptional case.  Allowing
-				the PsychArgAnything case is now the job of the AllocIn*, CopyIn*, AllocOut*, CopyOut* layer of functions.  
-				PsychMatchDescriptors() now also returns an error constant giving the reason why provided and specified arguments
-				do not match.  This was done so that the functions which retrieve arguments could handle the PsychArgAnything 
-				condition.  
-  12/1/04	awi Fixed a bug in PsychAllocOutBooleanMatArg where it failed to get the output variable pointer before assigning its contents.
-				This solves a problem with PsychHID in the 1.0.3 release.  
-  
+  05/07/06 	mk	Derived from Allen's PsychScriptingGlue
   
   DESCRIPTION:
   
 	ScriptingGlue defines abstracted functions to pass values 
-	between the calling environment and the PsychToolbox. 
+	between the calling GNU/Octave environment and the PsychToolbox. 
   
   NOTES:
   
@@ -95,8 +76,75 @@
 
 #include "Psych.h"
 
-// This is the scripting glue for use with Matlab.
-#ifndef PTBOCTAVE
+// Special hacks to allow Psychtoolbox to build for GNU-OCTAVE:
+#ifdef PTBOCTAVE
+
+// Pseudo-Definitions for constants that get ignored anyway.
+#define mxUINT8_CLASS 0
+#define mxDOUBLE_CLASS 1
+
+// Our implementation: Only accepts 2D matrices. Aborts on anything else. Always creates
+// double matrices of real type.
+mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int realorcomplex)
+{
+  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateNumericArray: 3D Matrices are not supported yet on GNU/Octave build!");
+  return(mxCreateDoubleMatrix(dimArray[0], dimArray[1], mxREAL));
+}
+
+int* mxGetDimensions(const mxArray* arrayPtr)
+{
+  int* dims = mxMalloc(3*sizeof(int));
+  dims[0] = mxGetM(arrayPtr);
+  dims[1] = mxGetN(arrayPtr);
+  dims[2] = 1;
+  return(dims);
+}
+
+mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const char** fieldNames)
+{
+  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: 3D Arrays are not supported yet on GNU/Octave build!");
+  return(mxCreateStructMatrix(ArrayDims[0], (numDims>1) ? ArrayDims[1] : 1, numFields, fieldNames));
+}
+
+mxArray* mxCreateCellArray(int numDims, int* ArrayDims)
+{
+  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Arrays are not supported yet on GNU/Octave build!");
+  return(mxCreateStructMatrix(ArrayDims[0], (numDims>1) ? ArrayDims[1] : 1, 1, "CAF"));
+}
+
+Boolean mxIsCell(PsychGenericScriptType *cellVector)
+{
+  return(mxIsStruct((mxArray*) cellVector));
+}
+
+void mxSetCell(PsychGenericScriptType *cellVector, int index, mxArray* mxFieldValue)
+{
+  if (!mxIsStruct((mxArray*) cellVector)) {
+    PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
+  }
+
+  if (mxGetNumberOfFields((mxArray*) cellVector) <= index) {
+    PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate invalid index in a cell-vector!");
+  }
+
+  mxSetField((mxArray*) cellVector, index, "CAF", mxFieldValue);
+}
+
+void mxSetLogical(mxArray* dummy)
+{
+  return;
+}
+
+Boolean mxIsLogical(mxArray* a)
+{
+  return(mxIsNumeric(a));
+}
+
+void* mxGetData(mxArray* a)
+{
+  return((void*) mxGetPr(a));
+}
+
 
 ////Static functions local to ScriptingGlue.c.  
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
@@ -124,6 +172,19 @@ static Boolean nameFirstGLUE;
 static Boolean subfunctionsEnabledGLUE=FALSE;
 static Boolean baseFunctionInvoked=FALSE;
 static void PsychExitGlue(void);
+
+#ifdef PTBOCTAVE
+
+// Currently we do not have a hook into Octave that would allow invocation of our
+// cleanup routines, so we provide this dummy implementation to at least warn about the issue.
+void mexAtExit(void (*fcn)(void))
+{
+  printf("PTB-WARNING: mexAtExit() handler not implemented in GNU/Octave -- clear all, clear mex and friends will fail!!!\n");
+  printf("Registering our cleanup routine via atexit(): Result is %i\n", (int) atexit(fcn));
+  fflush(NULL);
+}
+
+#endif
 
 //local function declarations
 static Boolean PsychIsEmptyMat(CONSTmxArray *mat);
@@ -562,7 +623,15 @@ void PsychErrMsgTxt(char *s)
 static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
 {
 	PsychArgFormatType format;
-
+#ifdef PTBOCTAVE
+	if (mxIsNumeric(mxPtr))
+	  format = PsychArgType_double;
+	else if (mxIsChar(mxPtr))
+	  format = PsychArgType_char;
+	else
+	  format = PsychArgType_unclassified;
+	return format;
+#else
 	if(PsychIsDefaultMat(mxPtr))
 		format = PsychArgType_default;
 	else if(mxIsUint8(mxPtr))
@@ -587,8 +656,9 @@ static PsychArgFormatType PsychGetTypeFromMxPtr(const mxArray *mxPtr)
 		format = PsychArgType_boolean;  // This is tricky because MATLAB abstracts "logicals" conditionally on platform. Depending on OS, MATLAB implements booleans with either 8-bit or 64-bit values.  
 	else 
 		format = PsychArgType_unclassified;
-
-	return format;			
+#endif
+	return format;	
+			
 }
 
 

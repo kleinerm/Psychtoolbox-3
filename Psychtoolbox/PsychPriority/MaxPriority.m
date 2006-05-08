@@ -327,7 +327,7 @@ if IsOS9
 		priorityLevel=min(priorityLevel,0.0);
 		s=warning;
 		if streq(s,'backtrace')
-			warning on;
+			warning('on');
 		end
 		if isempty(VMWarning)
 			warning('MaxPriority is 0 because you''re using Virtual Memory, which might need to access the disk.');

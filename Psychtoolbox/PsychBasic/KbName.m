@@ -191,7 +191,7 @@ if isempty(kkOSX)
    kkWin{222} = char(39);       % single quote
    kkWin{75} = 'k';
    kkWin{186} = ';';
-   kkWin{220} = '\';
+   kkWin{220} = '\\';
    kkWin{188} = ',';
    kkWin{191} = '/?';
    kkWin{78} = 'n';

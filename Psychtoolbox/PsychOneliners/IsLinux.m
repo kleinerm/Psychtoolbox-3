@@ -9,4 +9,4 @@ function resultFlag = IsLinux
 % 
 % See also: IsOS9, IsWin
 
-resultFlag= streq(computer,'GLNX86');
+resultFlag= streq(computer,'GLNX86') | ~isempty(strfind(computer, 'linux-gnu'));

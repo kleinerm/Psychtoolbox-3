@@ -46,6 +46,14 @@
         #define TRUE    1
 #endif 
 
+#ifndef false
+#define false FALSE
+#endif
+
+#ifndef true
+#define true TRUE
+#endif
+
 #ifndef GL_TABLE_TOO_LARGE
 #define GL_TABLE_TOO_LARGE   0x8031  
 #endif

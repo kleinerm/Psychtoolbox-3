@@ -28,9 +28,19 @@
 
 #include "PsychPlatform.h"
 
+//Includes dependent on runtime environment:
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+// File with Matlab interface API definitions:
+        #include "mex.h"
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+// File with GNU-Octave interface API definitions:
+        #include <octave/oct.h>
+#endif
+
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	#include "mex.h"
 	#include <GL/gl.h>
 	#include <GL/glu.h>
 	#include <GL/glx.h>
@@ -43,7 +53,6 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	#include "mex.h"
 	#include <windows.h>
 	#include <gl/gl.h>
 	#include <gl/glu.h>
@@ -55,7 +64,6 @@
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	#include <Types.h>
 	#include <MacTypes.h>
-	#include "mex.h"
 	#include <Events.h>
 	#include <stdarg.h>
 	#include <string.h>
@@ -63,8 +71,6 @@
 	#include "gl.h"
 	#include "glu.h"
 #elif PSYCH_SYSTEM == PSYCH_OSX
-	//includes for Matlab API
-	#include "mex.h"
 	//includes for Apple OpenGL
 	#include <sys/time.h>
 	#include <Carbon/Carbon.h>

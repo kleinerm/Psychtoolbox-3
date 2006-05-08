@@ -45,12 +45,9 @@ function AssertOpenGL
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
 % We catch this error in the catch-branch and output the "non-OpenGL" error message...
 try
-   % Query the version struct of new Screen command (if any).
-   c=Screen('Version');
-   % This string is the final say on OpenGL-PTB or not.
-   if (~streq(c.project, 'OpenGL Psychtoolbox'))
-      error('This script or function is designated to run only an Psychtoolbox based on OpenGL.  See AssertOpenGL.');
-   end
+   % Query a Screen subfunction that only exists in the new Screen command If this is not
+   % OpenGL PTB,we will get thrown into the catch-branch...
+   value=Screen('Preference', 'SkipSyncTests');
    return;
 catch
    % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.

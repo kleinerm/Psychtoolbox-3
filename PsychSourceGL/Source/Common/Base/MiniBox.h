@@ -27,8 +27,10 @@
 
 //define mex-derived data types.
 //typedef	const mxArray	CONSTmxArray;
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
 typedef void (*MexFunctionPtr)(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
- 
+#endif
+
 extern int PrintfExit(const char *format,...);
 char *BreakLines(char *string,long lineLength);
 Boolean PsychMatch(char *s1,char *s2);
