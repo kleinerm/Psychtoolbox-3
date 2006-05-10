@@ -19,6 +19,8 @@
 	07/17/02 awi  "numbdex" which is a field of ProjectTable is of type CONSTmxArray,
 	               , should be changed for use with Non-Matlab stuff.   
 	 
+
+	FIXME: THIS FILE IS COMPLETELY UNUSED -- REMOVE IT!
 */
 
 
@@ -35,7 +37,7 @@
 */
 
 typedef struct ProjectTable{
-	CONSTmxArray	*numdex;   
+  //	CONSTmxArray	*numdex;   
 	boolean			giveHelp; 
 	boolean			ignoreCase;
 } ProjectTable;

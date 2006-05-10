@@ -38,7 +38,7 @@ void PsychSetCellVectorDoubleElement(int index, double value, PsychGenericScript
 void PsychSetCellVectorNativeElement(int index, PsychGenericScriptType *pNativeElement,  PsychGenericScriptType *cellVector);
 boolean PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector);
 boolean PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString);
-void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType *nativeCellArray,  const PsychGenericScriptType **nativeString);
+void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType *nativeCellArray, PsychGenericScriptType **nativeString);
          
                                                                              
 

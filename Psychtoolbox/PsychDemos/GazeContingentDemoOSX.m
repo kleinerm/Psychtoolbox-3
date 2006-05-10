@@ -303,5 +303,5 @@ catch
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
-    rethrow(lasterror);
+    rethrow(lasterr);
 end %try..catch..

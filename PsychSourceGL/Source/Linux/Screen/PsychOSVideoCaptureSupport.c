@@ -37,7 +37,10 @@
 
 #include <libraw1394/raw1394.h>
 #include <dc1394/dc1394_control.h>
+#include <dc1394/dc1394_utils.h>
 #include <syslog.h>
+
+dc1394error_t dc1394_free_iso_channel_and_bandwidth(dc1394camera_t *);
 
 #define PSYCH_MAX_CAPTUREDEVICES 10
 
@@ -47,7 +50,7 @@ typedef struct {
   dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
   int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
   int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
-  int dc_imageformat;               // Encodes image size and pixelformat.
+  dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
   dc1394framerate_t dc_framerate;   // Encodes framerate.
   int reqpixeldepth;                // Requested depth of single pixel in output texture.
   int pixeldepth;                   // Depth of single pixel from grabber in bits.
@@ -324,7 +327,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 {
   int maximgarea = 0;
-  int maximgmode, mode, i, j, w, h;
+  dc1394video_mode_t maximgmode, mode;
+  int i, j, w, h;
   unsigned int mw, mh;
   float framerate;
   dc1394framerate_t dc1394_framerate;
@@ -337,9 +341,9 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   
   // Query supported video modes for this camera:
   dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
-  w = PsychGetWidthFromRect(capdev->roirect);
-  h = PsychGetHeightFromRect(capdev->roirect);
-  maximgmode = 0;
+  w = (int) PsychGetWidthFromRect(capdev->roirect);
+  h = (int) PsychGetHeightFromRect(capdev->roirect);
+  maximgmode = DC1394_VIDEO_MODE_MIN;
 
   for (i = 0; i < video_modes.num; i++) {
     // Query properties of this mode and match them against our requirements:
@@ -488,9 +492,11 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   float mindiff = 1000000;
   float mindifframerate = 0;
   int minpacket_size = 0;
-  int minimgmode, mode, i, j, w, h;
-  unsigned int mw, mh, pbmin, pbmax, speed;
-  int num_packets, packet_size, depth;
+  dc1394video_mode_t minimgmode, mode;
+  int i, j, w, h;
+  dc1394speed_t speed;
+  unsigned int mw, mh, pbmin, pbmax, depth;
+  int num_packets, packet_size;
   float framerate;
   dc1394framerate_t dc1394_framerate;
   dc1394framerates_t supported_framerates;
@@ -535,7 +541,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   
   // Query supported video modes for this camera:
   dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
-  minimgmode = 0;
+  minimgmode = DC1394_VIDEO_MODE_MIN;
 
   for (i = 0; i < video_modes.num; i++) {
     // Query properties of this mode and match them against our requirements:
@@ -560,8 +566,8 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     }
     
     // ROI specified?
-    w = PsychGetWidthFromRect(capdev->roirect);
-    h = PsychGetHeightFromRect(capdev->roirect);
+    w = (int) PsychGetWidthFromRect(capdev->roirect);
+    h = (int) PsychGetHeightFromRect(capdev->roirect);
 
     if (capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0 && w==1 && h==1) {
       // No. Just set biggest one for this mode:
@@ -666,7 +672,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   // minimgmode contains the best matching Format-7 mode for our specs:
   mode = minimgmode;
   capdev->dc_imageformat = mode;
-  capdev->dc_framerate = 0;
+  capdev->dc_framerate = DC1394_FRAMERATE_MIN;
   packet_size = minpacket_size;
   framerate = mindifframerate;
 
@@ -749,9 +755,9 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
 {
   int dropped = 0;
   float framerate = 0;
-
-  unsigned int speed;
-  int maximgmode, mode, i, j, w, h, packetsize;
+  dc1394speed_t speed;
+  dc1394video_mode_t maximgmode, mode;
+  int i, j, w, h, packetsize;
   unsigned int mw, mh;
   dc1394framerate_t dc1394_framerate;
   dc1394framerates_t supported_framerates;
@@ -778,8 +784,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     // Select best matching mode for requested image size and pixel format:
     // ====================================================================
 
-    w = PsychGetWidthFromRect(capdev->roirect);
-    h = PsychGetHeightFromRect(capdev->roirect);
+    w = (int) PsychGetWidthFromRect(capdev->roirect);
+    h = (int) PsychGetHeightFromRect(capdev->roirect);
 
     // Can we (potentially) get along with a non-Format-7 mode?
     // Check minimum requirements for non-Format-7 mode:
@@ -905,8 +911,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     capdev->fps = (double) framerate;
 
     // Setup size and position:
-    capdev->width  = PsychGetWidthFromRect(capdev->roirect);
-    capdev->height = PsychGetHeightFromRect(capdev->roirect);
+    capdev->width  = (int) PsychGetWidthFromRect(capdev->roirect);
+    capdev->height = (int) PsychGetHeightFromRect(capdev->roirect);
 
     // Ok, capture is now started:
     capdev->grabber_active = 1;

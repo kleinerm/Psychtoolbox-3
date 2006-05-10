@@ -38,7 +38,7 @@
 static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
 static Boolean		isKernelTimebaseFrequencyHzInitialized=FALSE;
-static long double	kernelTimebaseFrequencyHz;
+static double	        kernelTimebaseFrequencyHz;
 static double           sleepwait_threshold = 0.01;
 
 void PsychWaitUntilSeconds(double whenSecs)
@@ -119,19 +119,6 @@ void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
 
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency)
 {
-  /*
-  LARGE_INTEGER	                counterFreq;
-
-  // High precision timer available?
-  if (QueryPerformanceFrequency(&counterFreq)) {
-    // Yes. Returns its operating frequency:
-    *frequency=(double) counterFreq.QuadPart;
-  }
-  else {
-    // No. Return the 1 khZ tickfreq of the system tick.
-    *frequency=1000.0f;
-  }
-  */
   // MK: TODO Implement this properly...
   *frequency=100.0f;
   return;
