@@ -36,6 +36,8 @@ void *PsychMallocTemp(unsigned long n);
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 	#define PsychFreeTemp 			mxFree
 	//void mxFree(void *ptr);
+#else
+void PsychFreeTemp(void* ptr);
 #endif
 
 //allocate memory which is valid while the module is loaded

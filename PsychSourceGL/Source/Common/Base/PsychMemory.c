@@ -27,30 +27,58 @@
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 
+// If running on Matlab, we use Matlab's memory manager...
 void *PsychCallocTemp(unsigned long n, unsigned long size)
 {
-    void *ret;
-	
-//    if(NULL==(ret=mxCallocPtr((size_t)n, (size_t)size))){
-    if(NULL==(ret=mxCalloc((size_t)n, (size_t)size))){
-        if(size * n != 0)
-            PsychErrorExitMsg(PsychError_outofMemory, NULL);
-    }
-    return(ret);
+  void *ret;
+  
+  if(NULL==(ret=mxCalloc((size_t)n, (size_t)size))){
+    if(size * n != 0)
+      PsychErrorExitMsg(PsychError_outofMemory, NULL);
+  }
+  return(ret);
 }
 
 void *PsychMallocTemp(unsigned long n)
 {
-    void *ret;
-	
-//    if(NULL==(ret=mxMallocPtr((size_t)n))){
-	  if(NULL==(ret=mxMalloc((size_t)n))){
-        if(n!=0)
-            PsychErrorExitMsg(PsychError_outofMemory,NULL);
-    }
-    return(ret);
+  void *ret;
+  
+  if(NULL==(ret=mxMalloc((size_t)n))){
+    if(n!=0)
+      PsychErrorExitMsg(PsychError_outofMemory,NULL);
+  }
+  return(ret);
 }
 
+#else
 
+// If not running on Matlab, we use our own allocator...
+void *PsychCallocTemp(unsigned long n, unsigned long size)
+{
+  void *ret;
+  
+  if(NULL==(ret=calloc((size_t)n, (size_t)size))){
+    if(size * n != 0)
+      PsychErrorExitMsg(PsychError_outofMemory, NULL);
+  }
+  return(ret);
+}
+
+void *PsychMallocTemp(unsigned long n)
+{
+  void *ret;
+  
+  if(NULL==(ret=malloc((size_t)n))){
+    if(n!=0)
+      PsychErrorExitMsg(PsychError_outofMemory,NULL);
+  }
+  return(ret);
+}
+
+void PsychFreeTemp(void* ptr)
+{
+  free(ptr);
+}
 
 #endif
+

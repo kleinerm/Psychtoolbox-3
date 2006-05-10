@@ -1,5 +1,5 @@
 /*
-  PsychToolbox2/Source/Common/PsychConstants.h		
+  PsychToolbox2/Source/Common/PsychPlatformConstants.h		
   
   AUTHORS:
   Allen.Ingling@nyu.edu		awi 
@@ -73,3 +73,10 @@
 #define PSYCH_CGL_WINDOW	2
 
  
+// Is this a build for GNU/Octave? If the special compiler flag PTBOCTAVE
+// is defined, then it is the octave build and we set the language already
+// here, at the lowest layer: Otherwise the PsychPlatform.h file will select
+// an appropriate language.
+#ifdef PTBOCTAVE
+#define PSYCH_LANGUAGE          PSYCH_OCTAVE
+#endif

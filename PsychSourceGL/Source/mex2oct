@@ -97,8 +97,8 @@ fi
 
 cat <<EOF >> mex_$name.cc
 {
-  octave_value_list $invoke(const octave_value_list &, const int);
-  return $invoke(args, nargout);
+  octave_value_list octFunction(const octave_value_list &, const int);
+  return octFunction(args, nargout);
 }
 EOF
 
@@ -110,6 +110,7 @@ fi
 
 
 set -x
-./mkoctfile -Doctave_idx_type=int -DHAVE_OCTAVE_21 -v -o $name.oct mex_$name.cc $MEXPATH/mex.o -I$MEXPATH $*
+#./mkoctfile -Doctave_idx_type=int -DHAVE_OCTAVE_21 -v -o $name.oct mex_$name.cc $MEXPATH/mex.o -I$MEXPATH $*
+./mkoctfile -Doctave_idx_type=int -DHAVE_OCTAVE_21 -v -o $name.oct mex_$name.cc -I$MEXPATH $*
 rm mex_$name.o
 rm mex_$name.cc

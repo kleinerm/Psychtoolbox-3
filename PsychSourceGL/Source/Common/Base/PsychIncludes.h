@@ -30,13 +30,15 @@
 
 //Includes dependent on runtime environment:
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
-// File with Matlab interface API definitions:
+        // Include File with Matlab interface API definitions:
         #include "mex.h"
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-// File with GNU-Octave interface API definitions:
-        #include <octave/oct.h>
+        // File with pseudo MATLAB interface API definitions:
+        // Emulates missing Matlab functions and structures...
+        // Stored in the Source/Octave subfolder...
+        #include <octavemex.h>
 #endif
 
 //platform dependent includes stage 1

@@ -334,29 +334,6 @@ if [ -n "$f77files" ]; then
   done
 fi
 
-if [ -n "$cfiles" ]; then
-  for f in $cfiles; do
-    if [ -n  "$CC" ]; then
-      b=`echo $f | $SED 's,\.c$,,'`
-      if [ -n "$outputfile" ]; then
-	if $link; then
-	  o=$b.o
-	else
-	  o=$outputfile
-	fi
-      else
-	o=$b.o
-      fi
-      objfiles="$objfiles $o"
-      cmd="$CC -c $CPPFLAGS $CPICFLAG $ALL_CFLAGS $pass_on_options $incflags $defs $f -o $o"
-      $dbg $cmd
-      eval $cmd
-    else
-      echo "mkoctfile: no way to compile C++ file $f" 1>&2
-    fi
-  done
-fi
-
 if [ -n "$ccfiles" ]; then
   for f in $ccfiles; do
     if [ -n "$CXX" ]; then
@@ -382,6 +359,29 @@ if [ -n "$ccfiles" ]; then
       fi
       objfiles="$objfiles $o"
       cmd="$CXX -c $CPPFLAGS $CXXPICFLAG $ALL_CXXFLAGS $pass_on_options $incflags $defs $f -o $o"
+      $dbg $cmd
+      eval $cmd
+    else
+      echo "mkoctfile: no way to compile C++ file $f" 1>&2
+    fi
+  done
+fi
+
+if [ -n "$cfiles" ]; then
+  for f in $cfiles; do
+    if [ -n  "$CC" ]; then
+      b=`echo $f | $SED 's,\.c$,,'`
+      if [ -n "$outputfile" ]; then
+	if $link; then
+	  o=$b.o
+	else
+	  o=$outputfile
+	fi
+      else
+	o=$b.o
+      fi
+      objfiles="$objfiles $o"
+      cmd="$CC -c $CPPFLAGS $CPICFLAG $ALL_CFLAGS $pass_on_options $incflags $defs $f -o $o"
       $dbg $cmd
       eval $cmd
     else
