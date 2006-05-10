@@ -109,10 +109,8 @@ try
 
     % Plot the contour in a Matlab figure
     plot(thePoints(:,1),theRect(RectBottom)-thePoints(:,2));
-    drawnow;
-    figure(gcf);
 catch
-    Screen('CloseAll')
+    Screen('CloseAll');
     Screen('ShowCursor');
-    rethrow(lasterror);
+    rethrow(lasterr);
 end %try..catch..

@@ -60,6 +60,11 @@ function callStack=AssertMex(varargin)
 %								to "okSupNames"
 % 3/3/06    awi     Rewrote help for improved clarity.   
 
+% Do not do anything on Octave build.
+if IsOctave
+    return;
+end;
+
 okNames=          {'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
 mexExtensions=    {'dll',   '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
 okSupNames=       {'WINDOWS', 'WIN', 'OS9', 'OSX'};

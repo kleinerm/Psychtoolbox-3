@@ -200,7 +200,7 @@ catch
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
     Priority(0);
-    rethrow(lasterror);
+    rethrow(lasterr);
 end %try..catch..
 
 

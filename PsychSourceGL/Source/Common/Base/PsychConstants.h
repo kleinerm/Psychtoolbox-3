@@ -45,7 +45,7 @@ typedef unsigned char bool;
 
 #endif
 
-#if PSYCH_LANGUAGE == PSYCH_MATLAB
+#if PSYCH_LANGUAGE == PSYCH_MATLAB | PSYCH_LANGUAGE == PSYCH_OCTAVE
 	#undef printf
 	#define printf mexPrintf
 #endif

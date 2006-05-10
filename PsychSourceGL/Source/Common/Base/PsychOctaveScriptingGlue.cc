@@ -73,7 +73,7 @@
 
 */
 
-// I dont know why, byt it is absolutely critical that octave/oct.h is included
+// I dont know why, but it is *absolutely critical* that octave/oct.h is included
 // before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
 // completely!
 #include <octave/oct.h>
@@ -82,24 +82,11 @@
 
 #ifdef PTBOCTAVE
 
-#if defined(__cplusplus)
-//extern "C" {
-#endif
-
-
 // Special hacks to allow Psychtoolbox to build for GNU-OCTAVE:
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
 #include <string.h>
 #include <setjmp.h>
-
-//#include <octave/ov-scalar.h>
-//#include <octave/parse.h>
-//#include <octave/Array.h>
-//#include <octave/mx-base.h>
-//#include <octave/ov-base.h>
-////#include <octave/ov-typeinfo.h>
-////#include <octave/ov-int8.h>
 
 // This jump-buffer stores CPU- and stackstate at the position
 // where our octFunction() dispatcher actually starts executing
@@ -108,7 +95,7 @@
 jmp_buf jmpbuffer;
 
 // Error exit handler: Replacement for Matlabs MEX-handler:
-// Prints the error-string with Octaves printing facilities,
+// Prints the error-string with Octaves error printing facilities,
 // sets Octave error state and longjmp's to the cleanup routine
 // at the end of our octFunction dispatcher...
 void mexErrMsgTxt(const char* s) {
@@ -121,6 +108,7 @@ void mexErrMsgTxt(const char* s) {
   longjmp(jmpbuffer, 1);
 }
 
+// Interface to Octave's printf...
 void mexPrintf(const char* fmt, ...)
 {
   va_list args;
@@ -132,17 +120,17 @@ void mexPrintf(const char* fmt, ...)
 
 void* mxMalloc(int size)
 {
-  return(malloc(size));
+  return(PsychMallocTemp((unsigned long) size));
 }
 
 void* mxCalloc(int size, int numelements)
 {
-  return(calloc(size, numelements));
+  return(PsychCallocTemp((unsigned long) size, (unsigned long) numelements));
 }
 
 void mxFree(void* p)
 {
-  free(p);
+  PsychFreeTemp(p);
 }
 
 // Our implementation: Only accepts 2D matrices. Aborts on anything else. Always creates
@@ -762,7 +750,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 octFunctionCleanup:
 
 	// Release our own prhsGLUE array...
-	// FIXME: Release memory for scalar types... -- Malloc cleanup handler should take care of this...
+	// Release memory for scalar types is done by PsychFreeAllTempMemory(); 
 	for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) if(prhsGLUE[i]) {
 	  delete(((octave_value*)(prhsGLUE[i]->o)));
 	  free(prhsGLUE[i]);
@@ -788,7 +776,7 @@ octFunctionCleanup:
 	}
 
 	// Release all memory allocated via PsychMallocTemp():
-	// MK: FIXME TODO...
+	PsychFreeAllTempMemory();
 
 	// Is this a successfull return?
 	if (errorcondition) {
@@ -2319,12 +2307,8 @@ double PsychGetNanValue(void)
 
 
 
-//end of Matlab only stuff.
+//end of Matlab & Octave only stuff.
 #endif 
-
-#if defined(__cplusplus)
-//}
-#endif
 
 // end of PTBOCTAVE master-switch...
 #endif

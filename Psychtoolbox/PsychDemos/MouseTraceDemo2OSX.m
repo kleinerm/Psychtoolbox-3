@@ -61,7 +61,6 @@ try
     theX = theRect(RectRight)/2;
     theY = theRect(RectBottom)/2;
     SetMouse(theX,theY);
-    ShowCursor(0);
 
     % Wait for a click and hide the cursor
     Screen(theWindow,'FillRect',0);
@@ -77,6 +76,8 @@ try
     end
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,0);
     %Screen(theWindow,'DrawText','Release button to finish',50,50,255);
+
+    HideCursor;
 
     % Loop and track the mouse, drawing the contour
     [theX,theY] = GetMouse(theWindow);
@@ -109,8 +110,6 @@ try
 
     % Plot the contour in a Matlab figure
     plot(thePoints(:,1),theRect(RectBottom)-thePoints(:,2));
-    drawnow;
-    figure(gcf);
 catch
     Screen('CloseAll')
     Screen('ShowCursor');
