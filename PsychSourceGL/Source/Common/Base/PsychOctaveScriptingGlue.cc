@@ -77,6 +77,8 @@
 // before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
 // completely!
 #include <octave/oct.h>
+#include <octave/Cell.h>
+#include <octave/parse.h>
 
 #include "Psych.h"
 
@@ -139,22 +141,36 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
 {
   mxArray* retval;
   int rows, cols, layers;
-  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateNumericArray: > 3D Matrices are not supported yet on GNU/Octave build!");
+  if (numDims>3) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateNumericArray: Tried to create matrix with more than 3 dimensions!");
   rows = dimArray[0];
   cols = (numDims>1) ? dimArray[1] : 1;
   layers = (numDims>2) ? dimArray[2] : 1;
+  dim_vector mydims((numDims>2) ? dim_vector(rows, cols, layers) : dim_vector(rows, cols));
 
   // Allocate our mxArray-Struct:
   retval = (mxArray*) malloc(sizeof(mxArray));
   if (retval==NULL) PsychErrorExitMsg(PsychError_outofMemory, "");
 
   if (arraytype==mxUINT8_CLASS) {
-    PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateNumericArray: UINT8 matrices not yet implemented on Octave.");
+    printf("NEW UINT8 MATRIX: %i,%i,%i\n", rows, cols, layers); fflush(NULL);
+    // Create empty uint8ND-Array of type mxREAL...
+    uint8NDArray m(mydims);
+    // Retrieve a pointer to internal representation. As m is new
+    // this won't trigger a deep-copy.
+    retval->d = (void*) m.data();
+    printf("M-DATA %p\n", retval->d); fflush(NULL);
+    // Build a new oct_value object from Matrix m: This is a
+    // shallow-copy.
+    octave_value* ovp = new octave_value();
+    *ovp = m;
+    retval->o = (void*) ovp;
+    // At this point we can safely destroy Matrix m, as the new
+    // octave_object holds a reference to its representation.    
   }
   else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers > 1) {
-    printf("NEW MATRIX: %i,%i,%i\n", rows, cols, layers); fflush(NULL);
-    // Create empty double-matrix of type mxREAL...
-    Matrix m(rows, cols);
+    printf("NEW DOUBLE MATRIX: %i,%i,%i\n", rows, cols, layers); fflush(NULL);
+    // Create empty ND-Array of type mxREAL...
+    NDArray m(mydims);
     // Retrieve a pointer to internal representation. As m is new
     // this won't trigger a deep-copy.
     retval->d = (void*) m.data();
@@ -174,9 +190,17 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
     double* dp = (double*) PsychMallocTemp(sizeof(double));
     retval->d = (void*) dp;
   }
+  else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers == 0) {
+    // Special case: Empty matrix.
+    printf("NEW EMPTY DOUBLE MATRIX:\n"); fflush(NULL);
+    retval->o = (void*) new octave_value(Matrix(0,0));
+    retval->d = NULL;
+  }
   else if (arraytype==mxLOGICAL_CLASS) {
     printf("NEW BOOLMATRIX: %i, %i\n", rows, cols, layers); fflush(NULL);
     // Create empty double-matrix of type mxREAL...
+    if (layers>1) PsychErrorExitMsg(PsychError_internal, "In mxCreateNumericArray: Tried to allocate a 3D boolean matrix!?! Unsupported.");
+
     boolMatrix m(rows, cols);
     // Retrieve a pointer to internal representation. As m is new
     // this won't trigger a deep-copy.
@@ -240,6 +264,7 @@ Boolean* mxGetLogicals(const mxArray* arrayPtr)
   return((Boolean*) mxGetData(arrayPtr));
 }
 #define GETOCTPTR(x) ((octave_value*) (x)->o)
+
 int mxGetM(const mxArray* arrayPtr)
 {
   return(GETOCTPTR(arrayPtr)->rows());
@@ -279,30 +304,44 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
   return(NULL);
 }
 
-// MK: FIXME TODO!
 mxArray* mxCreateCellArray(int numDims, int* ArrayDims)
 {
-  //  char dummyname[4] = "CAF";
-  //char* dummynameptr = &dummyname;
-  //char** dummyptr = &dummynameptr;
-  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Arrays are not supported yet on GNU/Octave build!");
-  //  return(mxCreateStructMatrix(ArrayDims[0], (numDims>1) ? ArrayDims[1] : 1, 1, dummyptr));
-  return(NULL);
+  mxArray* retval;
+
+  // Allocate our mxArray-Struct:
+  retval = (mxArray*) malloc(sizeof(mxArray));
+  if (retval==NULL) PsychErrorExitMsg(PsychError_outofMemory, "");
+  if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Cell Arrays are not supported yet on GNU/Octave build!");
+
+  // Create dimension vector:
+  dim_vector mydims((numDims>1) ? dim_vector(ArrayDims[0], ArrayDims[1]) : dim_vector(ArrayDims[0]));
+  
+  // Create Cell object:
+  Cell myCell(mydims);
+  retval->o = (void*) new octave_value(myCell);
+  retval->d = NULL;
+
+  // Done.
+  return(retval);
 }
 
 void mxSetCell(PsychGenericScriptType *cellVector, int index, mxArray* mxFieldValue)
 {
-  return;
-
-  if (!mxIsStruct((mxArray*) cellVector)) {
+  if (!mxIsCell((mxArray*) cellVector)) {
     PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate something other than a cell-vector!");
   }
 
-  if (mxGetM((mxArray*) cellVector) * mxGetN((mxArray*) cellVector) <= index) {
-    PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxSetCell: Tried to manipulate invalid index in a cell-vector!");
-  }
+  // Get a local (shallow) copy of the current real cellVector:
+  octave_value* cv = (octave_value*) cellVector->o;
+  Cell mycell = cv->cell_value();
 
-  mxSetField((mxArray*) cellVector, index, "CAF", mxFieldValue);
+  // Assign new mxFieldValue:
+  mycell(index)=*((octave_value*) mxFieldValue->o);
+
+  // Assign modified vector:
+  *cv = mycell;
+
+  return;
 }
 
 void mxSetLogical(mxArray* dummy)
@@ -338,7 +377,8 @@ int mxIsDouble(const mxArray* a)
 
 int mxIsUint8(const mxArray* a)
 {
-  // printf("BYTESIZE %i NUMEL %i\n", GETOCTPTR(a)->byte_size(), GETOCTPTR(a)->numel());
+  printf("BYTESIZE %i NUMEL %i --> mxIsUint8 = %s\n", GETOCTPTR(a)->byte_size(), GETOCTPTR(a)->numel(),
+	 ((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 1))) ? "TRUE":"FALSE");
 
   return((mxIsNumeric(a) && (GETOCTPTR(a)->byte_size() / GETOCTPTR(a)->numel() == 1)) ? TRUE : FALSE);
 }
@@ -526,6 +566,9 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 
 	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
 
+	// NULL-init our pointer array of call value pointers prhsGLUE:
+	memset(&prhsGLUE[0], 0, sizeof(prhsGLUE));
+
 	// Setup our prhsGLUE array of call argument pointers:
 	// We make copies of prhs to simplify the rest of PsychScriptingGlue. This copy is not
 	// as expensive as it might look, because Octave objects are all implemented via
@@ -541,43 +584,85 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	  if (prhsGLUE[i]==NULL) PsychErrorExitMsg(PsychError_outofMemory, "");
 
 
-	  // Extract data-pointer to each prhs(i) octave_value:
+	  // Extract data-pointer to each prhs(i) octave_value and store a type-casted version
+	  // which is optimal for us.
 	  if (prhs(i).is_string() || prhs(i).is_char_matrix()) {
-	    printf("INPUT %i: STRING\n", i); fflush(NULL);
 	    // A string object:
+	    printf("INPUT %i: STRING\n", i); fflush(NULL);
+
 	    // Strings do not have a need for a data-ptr. Just copy the octave_value object...
 	    prhsGLUE[i]->d = NULL;
 	    prhsGLUE[i]->o = (void*) new octave_value(prhs(i));  // Refcont now >= 2
 	    // Done.
 	  } 
 	  else if (prhs(i).is_real_type() && !prhs(i).is_scalar_type()) {
-	    // A double input matrix:               // Refcount now >=1
-	    printf("INPUT %i: MATRIX\n", i); fflush(NULL);
+	    // A N-Dimensional Array:
+	    printf("TYPE NAME %s\n", prhs(i).type_name().c_str()); fflush(NULL);
 
-	    // Create intermediate representation m: This is a shallow-copy...
-	    const Matrix m(prhs(i).matrix_value()); // Refcount now >=2
+	    // Is it an uint8 or int8 NDArray?
+	    if (strstr(prhs(i).type_name().c_str(), "int8")) {
+	      // Seems to be an uint8 or int8 NDArray: Create an optimized uint8 object of it:
+	      printf("INPUT %i: UINT8-MATRIX\n", i); fflush(NULL);
 
-	    // Get internal dataptr from it:        // This triggers a deep-copy :(
-	    prhsGLUE[i]->d = (void*) m.data();      // Refcount now == 1
-	    
-	    // Create a shallow backup copy of corresponding octave_value...
-	    octave_value* ovptr = new octave_value();
-	    *ovptr = m;
-	    prhsGLUE[i]->o = (void*) ovptr;  // Refcont now == 2
-	    
-	    // As soon as m gets destructed by leaving this if-branch,
-	    // the refcount will drop to == 1...
+	      // Create intermediate representation m: This is a shallow-copy...
+	      const uint8NDArray m(prhs(i).uint8_array_value()); // Refcount now >=2
 
-	    // Done.
+	      // Get internal dataptr from it:        // This triggers a deep-copy :(
+	      prhsGLUE[i]->d = (void*) m.data();      // Refcount now == 1
+	      
+	      // Create a shallow backup copy of corresponding octave_value...
+	      octave_value* ovptr = new octave_value();
+	      *ovptr = m;
+	      prhsGLUE[i]->o = (void*) ovptr;  // Refcont now == 2
+	      
+	      // As soon as m gets destructed by leaving this if-branch,
+	      // the refcount will drop to == 1...
+	      
+	      // Done.
+	    }
+	    else {
+	      // Seems to be a non-uint8 NDArray, i.e. boolean type or double type.
+	      printf("INPUT %i: DOUBLE-MATRIX\n", i); fflush(NULL);
+
+	      // We create a generic double NDArray from it...
+
+	      // Create intermediate representation m: This is a shallow-copy...
+	      const NDArray m(prhs(i).array_value()); // Refcount now >=2
+
+	      // Get internal dataptr from it:        // This triggers a deep-copy :(
+	      prhsGLUE[i]->d = (void*) m.data();      // Refcount now == 1
+	      
+	      // Create a shallow backup copy of corresponding octave_value...
+	      octave_value* ovptr = new octave_value();
+	      *ovptr = m;
+	      prhsGLUE[i]->o = (void*) ovptr;  // Refcont now == 2
+	      
+	      // As soon as m gets destructed by leaving this if-branch,
+	      // the refcount will drop to == 1...
+	      
+	      // Done.
+	    }
 	  } else if (prhs(i).is_real_type() && prhs(i).is_scalar_type()) {
-	    // A double scalar:
+
+	    // A double or integer scalar value:
 	    printf("INPUT %i: SCALAR\n", i); fflush(NULL);
 	    prhsGLUE[i]->o = (void*) new octave_value(prhs(i));
+	    // Special case: We allocate our own double value and store a
+	    // copy of the value in it.
 	    double* m = (double*) PsychMallocTemp(sizeof(double));
 	    *m = prhs(i).double_value();
 	    prhsGLUE[i]->d = (void*) m;
 	  }
-
+	  else {
+	    // Unkown argument type that we can't handle :(
+	    // We abort with a reasonable error message:
+	    free(prhsGLUE[i]); prhsGLUE[i]=NULL;
+	    // We do, however, give an extra warning, as this could be Octave related...
+	    printf("PTB-WARNING: One of the values in the argument list was not recognized.\n");
+	    printf("PTB-WARNING: If your script runs well on Matlab then this may be a limitation or\n");
+	    printf("PTB-WARNING: bug in the GNU/Octave version of Psychtoolbox :( ...\n");
+	    PsychErrorExitMsg(PsychError_unimplemented, "Unrecognized argument in list of command parameters.");
+	  }
 	}
 
 	// NULL-out our pointer array of return value pointers plhsGLUE:
@@ -602,7 +687,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		//assess the nature of first and second arguments for finding the name of the sub function.  
 		for(i=0;i<2;i++)
 		{
-			isArgThere[i] = nrhs>i;
+			isArgThere[i] = (nrhs>i) && (prhsGLUE[i]);
 			#if PSYCH_LANGUAGE == PSYCH_MATLAB
 			if (isArgThere[i]) tmparg = prhs[i]; else tmparg = NULL;
 			#endif
@@ -780,10 +865,17 @@ octFunctionCleanup:
 
 	// Is this a successfull return?
 	if (errorcondition) {
-	  // Nope - Error return!
-	  std::string cleancommand("Screen('CloseAll');");
-	  int parse_status=0;
-	  // FIXME! eval_string(cleancommand, TRUE, parse_status);
+	  // Nope - Error return, either due to some PTB detected error or due to
+	  // the user pressing the CTRL+C key combo. Try to call PTB's
+	  // Screen('CloseAll') command to close the display...
+
+	  // This does not work at all :( Reason unknown...
+	  //std::string cleancommandargs("CloseAll");
+	  //octave_value_list cleanargs;
+	  //cleanargs(0)=octave_value(cleancommandargs);
+
+	  // Execute Screen('CloseAll')
+	  // feval("Screen", cleanargs, 0);
 	}
 
 	// Return it:

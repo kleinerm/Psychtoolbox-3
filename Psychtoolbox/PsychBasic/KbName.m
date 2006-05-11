@@ -336,8 +336,8 @@ if isempty(kkOSX)
 	kkOSX{47} = '[{';                               kkOS9{34}='[{'; 
 	kkOSX{48} = ']}';                               kkOS9{31}=']}'; 
 	kkOSX{49} = '\|';                               kkOS9{43}='\|';
-	
-	% Typical language mappings: US: \| Belg: µ`£ FrCa: <}> Dan:’* Dutch: <> Fren:*µ Ger: #’ Ital: ù§ LatAm: }`] Nor:,* Span: }Ç Swed: ,* Swiss: $£ UK: #~.
+
+        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:’* Dutch: <> Fren:*µ Ger: #’ Ital: ù§ LatAm: }`] Nor:,* Span: }Ç Swed: ,* Swiss: $£ UK: #~.
 	kkOSX{50} = '#-';                               
 	
 	kkOSX{51} = ';:';                               kkOS9{42}=';:';   
@@ -391,7 +391,7 @@ if isempty(kkOSX)
 	kkOSX{99} = '.';                                kkOS9{66}='.';
 	
 	% Non-US.  
-	% Typical language mappings: Belg:<\> FrCa:«°» Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\| Brazil: \|.
+	% Typical language mappings: Belg:<\> FrCa:«°» Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
 	% Typically near the Left-Shift key in AT-102 implementations.
 	kkOSX{100} = 'NonUS\|';                              
 	
@@ -644,7 +644,17 @@ elseif ischar(arg)      % argument is a character, so find the code
 	elseif strcmpi(arg, 'KeyNamesOS9') 
 		kbNameResult=kkOS9; 
 	else
-        kbNameResult=find(strcmpi(kk, arg));
+	if IsOctave
+	  % GNU/Octave does not support index mode for strcmpi, need to do it manually...
+	  for i=1:length(kk)
+            if strcmpi(char(kk(i)), arg)
+              kbNameResult = i;
+              break;
+            end
+          end
+	else
+          kbNameResult=find(strcmpi(kk, arg));
+        end
         if isempty(kbNameResult)
             error(['Key name "' arg '" not recognized.']);
         end
