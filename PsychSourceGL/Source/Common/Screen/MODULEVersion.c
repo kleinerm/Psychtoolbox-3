@@ -18,24 +18,10 @@
 
   
 */
-/*
-#define PSYCHTOOLBOX_MAJOR_VERSION  		0
-#define PSYCHTOOLBOX_MINOR_VERSION 		1
-#define PSYCHTOOLBOX_PROJECT_NAME 		"OpenGL Psychtoolbox"
-#define PSYCHTOOLBOX_OS_NAME			"Apple OS X"
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	"Matlab"    
-*/
-/*
-char *PsychGetBuildDate(void);
-char *PsychGetBuildTime(void);
-*/
 
 #include "Screen.h"
 
 
-//static char useString[] = "struct=Screen('Version')";
-//static char synopsisString[] = 
-//	"return the version of Screen in a struct";
 static char seeAlsoString[] = "";
 	 
 

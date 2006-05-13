@@ -121,6 +121,7 @@ extern "C" {
   void mxSetField(mxArray* ptr, int index, const char *key, mxArray* val);
   int mxGetNumberOfFields(const mxArray* ptr);
   const char* mxGetFieldNameByNumber(const mxArray* ptr, int key_num);
+  //  int mxGetFieldNumber(const mxArray* ptr, const char *key);
   int mxGetFieldNumber(const mxArray* ptr, const char *key);
   mxArray* mxGetFieldByNumber(const mxArray* ptr, int index, int key_num);
   void mxSetFieldByNumber(mxArray* ptr, int index, int key_num, mxArray* val);

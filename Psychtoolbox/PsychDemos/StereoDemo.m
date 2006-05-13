@@ -140,5 +140,5 @@ try
 catch
     % Executes in case of an error: Closes onscreen window:
     Screen('CloseAll');
-    rethrow(lasterror);
+    rethrow(lasterr);
 end;

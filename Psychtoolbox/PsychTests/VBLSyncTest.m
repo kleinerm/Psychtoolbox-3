@@ -461,7 +461,7 @@ catch
     Screen('CloseAll');
     % Disable realtime-priority in case of errors.
     finalprio = Priority(0)
-    rethrow(lasterror);
+    rethrow(lasterr);
 end %try..catch..
 
 return

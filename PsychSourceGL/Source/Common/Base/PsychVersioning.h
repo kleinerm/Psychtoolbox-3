@@ -42,8 +42,15 @@
 //Placeholder for the GNU/Linux version at build time.
 #define PSYCHTOOLBOX_OS_NAME                                    "GNU/Linux X11"
 #endif
+
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
 //Placeholder for the MATLAB version at build time.
-#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	"MATLAB"
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "Matlab"
+#endif
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+//Placeholder for the Octave version at build time.
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave"
+#endif
 	
 char *PsychGetBuildDate(void);
 char *PsychGetBuildTime(void);
