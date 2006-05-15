@@ -28,19 +28,6 @@
 
 #include "PsychPlatform.h"
 
-//Includes dependent on runtime environment:
-#if PSYCH_LANGUAGE == PSYCH_MATLAB
-        // Include File with Matlab interface API definitions:
-        #include "mex.h"
-#endif
-
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        // File with pseudo MATLAB interface API definitions:
-        // Emulates missing Matlab functions and structures...
-        // Stored in the Source/Octave subfolder...
-        #include <octavemex.h>
-#endif
-
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
 	#include <GL/gl.h>
@@ -75,14 +62,29 @@
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
 	#include <sys/time.h>
-	#include <Carbon/Carbon.h>
-	#include <ApplicationServices/ApplicationServices.h>
-	#include <OpenGL/OpenGL.h>
+
+        // If we are included from PsychScriptingGlue.cc, which
+        // is indicated by PTBINSCRIPTINGGLUE, then we must only
+        // include MacTypes.h, not the rest of Carbon, ApplicationServices
+        // et al. -> Some of the Octave header files conflict with Apple
+        // system header files --> do not include the Apple headers when
+        // building Scriptingglue - they are not needed but would prevent
+        // the build.
+        #ifndef PTBINSCRIPTINGGLUE
+        // File included during compile of some PTB file other than ScriptingGlue...
+        #include <Carbon/Carbon.h>
+        #include <CoreServices/CoreServices.h>
+        #include <ApplicationServices/ApplicationServices.h>
+        #include <CoreAudio/HostTime.h>
+        #else
+        // File included from ScriptingGlue - only import minimal amount of headers...
+        #include <CoreServices/../Frameworks/CarbonCore.framework/Headers/MacTypes.h>
+        #endif
+
+        #include <OpenGL/OpenGL.h>
 	#include <OpenGL/gl.h>
 	#include <OpenGL/glext.h>
 	#include <OpenGL/glu.h>
-	#include <CoreAudio/HostTime.h>
-	#include <CoreServices/CoreServices.h>
 #endif 
 
 //C standard library headers
@@ -102,6 +104,17 @@
 	#include "SDL.h"
 #endif 
 
- 
+//Includes dependent on runtime environment:
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+    // Include File with Matlab interface API definitions:
+    #include "mex.h"
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+    // File with pseudo MATLAB interface API definitions:
+    // Emulates missing Matlab functions and structures...
+    // Stored in the Source/Octave subfolder...
+    #include <octavemex.h>
+#endif
 
 

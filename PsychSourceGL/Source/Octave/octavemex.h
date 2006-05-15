@@ -114,7 +114,7 @@ extern "C" {
   double* mxGetPr (const mxArray* ptr);
   void* mxGetData(const mxArray* arrayPtr);
   mxArray* mxCreateLogicalMatrix(int rows, int cols);
-  bool* mxGetLogicals(const mxArray* arrayPtr);
+  Boolean* mxGetLogicals(const mxArray* arrayPtr);
   /* structure support */
   int mxIsStruct (const mxArray* ptr);
   mxArray* mxGetField(const mxArray* ptr, int index, const char *key);

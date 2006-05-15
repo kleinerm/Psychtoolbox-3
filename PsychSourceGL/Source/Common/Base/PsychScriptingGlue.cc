@@ -78,6 +78,7 @@
 // Definition will happen a few lines downwards in Psych.h, but we can't reorder code
 // here :(
 #ifdef PTBOCTAVE
+
 // I dont know why, but it is *absolutely critical* that octave/oct.h is included
 // before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
 // completely!
@@ -85,9 +86,16 @@
 #include <octave/parse.h>
 #include <octave/ov-struct.h>
 #include <octave/ov-cell.h>
+
 #endif 
 
-#include "Psych.h"
+// During inclusion of Psych.h, we define the special flag PTBINSCRIPTINGGLUE. This
+// will cause some of the system headers in Psych.h not to be included during build
+// of PsychScriptingGlue.cc - They are not needed for this and they conflict with
+// GNU/Octave header files!
+#define PTBINSCRIPTINGGLUE 1
+    #include "Psych.h"
+#undef PTBINSCRIPTINGGLUE
 
 // Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
 #define DEBUG_PTBOCTAVEGLUE 0
@@ -141,6 +149,18 @@ void* mxCalloc(int size, int numelements)
 void mxFree(void* p)
 {
   PsychFreeTemp(p);
+}
+
+int mexCallMATLAB(const int nargout, mxArray* argout[], 
+		  const int nargin, const mxArray* argin[],
+		  const char* fname)
+{
+  PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: Internal call to mexCallMATLAB(), which is not yet implemented on GNU/Octave port!");
+}
+
+double mxGetNaN(void)
+{
+  PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: Internal call to mxGetNan(), which is not yet implemented on GNU/Octave port!");
 }
 
 mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int realorcomplex)

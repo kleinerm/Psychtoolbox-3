@@ -4,6 +4,7 @@
 # Octave.
 
 # Exit immediately on any error.
+linkonly=0
 
 set -e
 
@@ -13,7 +14,7 @@ set -e
 : ${SED="/usr/bin/sed"}
 
 : ${CPPFLAGS=""}
-: ${INCFLAGS="-I/usr/local/include/octave-2.1.73 -I/usr/local/include/octave-2.1.73/octave -I/usr/local/include"}
+: ${INCFLAGS="-I/usr/local/include/octave-2.1.73 -I/usr/local/include/octave-2.1.73/octave -I/usr/local/include -F/Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks "}
 : ${F2C=""}
 : ${F2CFLAGS=""}
 : ${F77="g77"}
@@ -23,7 +24,7 @@ set -e
 : ${CFLAGS="-g -O2"}
 : ${CPICFLAG=""}
 : ${CXX="g++"}
-: ${CXXFLAGS="-g -O2"}
+: ${CXXFLAGS="-g -O2 "}
 : ${CXXPICFLAG=""}
 : ${XTRA_CFLAGS=""}
 : ${XTRA_CXXFLAGS=""}
@@ -40,12 +41,12 @@ set -e
 : ${LIBOCTINTERP=-loctinterp}
 : ${LIBREADLINE=-lreadline}
 : ${LIBCRUFT=-lcruft}
-: ${BLAS_LIBS="-framework vecLib"}
+: ${BLAS_LIBS=""}
 : ${FFTW_LIBS=""}
-: ${LIBS="-lreadline  -lncurses -lm -framework ApplicationServices -framework Carbon -framework CoreServices -framework CoreAudio -framework IOKit -framework libstdc++ -framework OpenGL -framework QuickTime -framework System -framework SystemConfiguration "}
-: ${FLIBS="-L/usr/local/lib/gcc/powerpc-apple-darwin7.9.0/3.4.4 -L/usr/local/lib/gcc/powerpc-apple-darwin7.9.0/3.4.4/../../.. -lcc_dynamic -lm -lfrtbegin -lg2c -lgcc_s -lSystem"}
+: ${LIBS="-lreadline  -lncurses -lm -framework ApplicationServices -framework CoreServices -framework CoreAudio -framework IOKit -framework QuartzCore -framework OpenGL -framework QuickTime -framework System -framework SystemConfiguration "}
+: ${FLIBS="-lm -lfrtbegin -lg2c -lSystem"}
 : ${LD_CXX="g++"}
-: ${LDFLAGS="-lcc_dynamic"}
+: ${LDFLAGS=""}
 : ${LD_STATIC_FLAG=""}
 : ${LFLAGS="-L/usr/local/lib/octave-2.1.73"}
 
@@ -227,7 +228,7 @@ EOF
     ;;
     *)
       echo "mkoctfile: unrecognized argument $1" 1>&2
-      exit 1
+      #exit 1
     ;;
   esac
   if [ -n "$file" ]; then
@@ -290,6 +291,12 @@ if $depend; then
   fi
   # If generating dependencies, that's all we do.
   exit 0
+fi
+
+if $linkonly; then
+CC=/bin/echo
+CXX=/bin/echo
+F77=/bin/echo
 fi
 
 # Compile Fortran, C, and C++ files.  Add the name of each object file

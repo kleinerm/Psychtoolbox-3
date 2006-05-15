@@ -48,9 +48,14 @@ extern "C" {
 #include "PsychTimeGlue.h"
 #include "PsychInstrument.h"	
 
-//This is provided by the project.
+#ifndef PTBINSCRIPTINGGLUE
+// This is provided by the project. We do not
+// include it when building PsychScriptingGlue.cc
+// in order to prevent build-failure due to some
+// broken header dependencies...
 #include "RegisterProject.h"
 #include "TimeLists.h"
+#endif
 
 #if defined(__cplusplus)
 }
