@@ -29,7 +29,7 @@
 #define PSYCH_IS_INCLUDED_PsychConstants
 
 #if !defined(__cplusplus)
-#if PSYCH_LANGUAGE != PSYCH_MATLAB
+#ifdef PTBOCTAVE
 typedef unsigned char bool;
 #endif
 #endif

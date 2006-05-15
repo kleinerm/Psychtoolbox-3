@@ -96,6 +96,7 @@
 #include "Psych.h"
 
 // This is the scripting glue for use with Matlab.
+#ifdef BLOBBER
 #ifndef PTBOCTAVE
 
 ////Static functions local to ScriptingGlue.c.  
@@ -1857,4 +1858,5 @@ double PsychGetNanValue(void)
 //end of Matlab only stuff.
 #endif 
 
+#endif
 #endif

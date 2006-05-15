@@ -89,6 +89,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <limits.h>
+#include <string.h>
 
 //SDL_getenv.h includes a macro which redefines getenv() to be
 //SDL getenv().   This then conflicts with the statement "using 

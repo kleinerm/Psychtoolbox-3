@@ -73,19 +73,19 @@
 
 */
 
+#ifdef PTBOCTAVE
 // I dont know why, but it is *absolutely critical* that octave/oct.h is included
 // before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
 // completely!
 #include <octave/oct.h>
-//#include <octave/Cell.h>
-//#include <octave/oct-map.h>
 #include <octave/parse.h>
 #include <octave/ov-struct.h>
 #include <octave/ov-cell.h>
+#endif 
 
 #include "Psych.h"
 
-#ifdef PTBOCTAVE
+//#ifdef PTBOCTAVE
 
 // Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
 #define DEBUG_PTBOCTAVEGLUE 0
@@ -604,7 +604,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	PsychFunctionPtr fArg[2], baseFunction;
 	char argString[2][MAX_CMD_NAME_LENGTH];
 	int i; 
-	mxArray* tmparg = NULL; // mxArray is mxArray under MATLAB but #defined to octave_value on OCTAVE build.
+	const mxArray* tmparg = NULL; // mxArray is mxArray under MATLAB but #defined to octave_value on OCTAVE build.
 	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
 	  // plhs is our octave_value_list of return values:
 	  octave_value tmpval;      // Temporary, needed in parser below...
@@ -984,7 +984,9 @@ octFunctionCleanup:
 	  // the user pressing the CTRL+C key combo. Try to call PTB's
 	  // Screen('CloseAll') command to close the display, at least if this is
 	  // the Screen module.
+	  #ifdef PTBMODULE_Screen
 	  if (strcmp(PsychGetModuleName(), "Screen")==0) ScreenCloseAllWindows();
+	  #endif
 	}
 
 	// Return it:
@@ -2537,4 +2539,4 @@ double PsychGetNanValue(void)
 #endif 
 
 // end of PTBOCTAVE master-switch...
-#endif
+//#endif
