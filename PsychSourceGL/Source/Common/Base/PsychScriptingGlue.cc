@@ -1,11 +1,12 @@
 
 /*
-  PsychToolbox2/Source/Common/PsychOctaveScriptingGlue.c		
+  PsychToolbox2/Source/Common/PsychOctaveScriptingGlue.cc		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
-  
-  PLATFORMS: All -- Glue layer for GNU/Octave runtime environment.
+  Allen.Ingling@nyu.edu		     awi 
+  mario kleiner at tuebingen.mpg.de  mk
+ 
+  PLATFORMS: All -- Glue layer for GNU/Octave and Matlab runtime environment.
   
   HISTORY:
   05/07/06 	mk	Derived from Allen's PsychScriptingGlue
@@ -13,7 +14,7 @@
   DESCRIPTION:
   
 	ScriptingGlue defines abstracted functions to pass values 
-	between the calling GNU/Octave environment and the PsychToolbox. 
+	between the calling Matlab- or GNU/Octave environment and the PsychToolbox. 
   
   NOTES:
   
@@ -73,6 +74,9 @@
 
 */
 
+// We have to use #ifdef PTBOCTAVE here, because PSYCH_LANGUAGE is not yet defined.
+// Definition will happen a few lines downwards in Psych.h, but we can't reorder code
+// here :(
 #ifdef PTBOCTAVE
 // I dont know why, but it is *absolutely critical* that octave/oct.h is included
 // before *any* other header file, esp. Psych.h, otherwise the C++ compiler f%%2!s up
@@ -84,8 +88,6 @@
 #endif 
 
 #include "Psych.h"
-
-//#ifdef PTBOCTAVE
 
 // Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
 #define DEBUG_PTBOCTAVEGLUE 0
@@ -2536,7 +2538,4 @@ double PsychGetNanValue(void)
 
 
 //end of Matlab & Octave only stuff.
-#endif 
-
-// end of PTBOCTAVE master-switch...
-//#endif
+#endif
