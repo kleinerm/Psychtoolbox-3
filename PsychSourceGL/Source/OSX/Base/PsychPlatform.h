@@ -43,7 +43,9 @@
 
 //these control build switches
 #define PSYCH_SYSTEM							PSYCH_OSX
+#ifndef PSYCH_LANGUAGE
 #define PSYCH_LANGUAGE							PSYCH_MATLAB
+#endif
 #define PSYCH_WINDOWING							PSYCH_CGL_WINDOW
 #define PSYCH_DEBUG								PSYCH_ON
 

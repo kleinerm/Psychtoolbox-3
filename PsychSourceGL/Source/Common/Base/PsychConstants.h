@@ -176,7 +176,10 @@ typedef unsigned char bool;
         typedef GLubyte				psych_uint8;
         typedef GLubyte				ubyte;
         typedef UInt32				psych_uint32;
-        typedef unsigned long long		psych_uint64;		
+        typedef unsigned long long		psych_uint64;
+        #if PSYCH_LANGUAGE == PSYCH_OCTAVE
+        typedef boolean                         mxLogical;
+        #endif
 #endif
  
 
