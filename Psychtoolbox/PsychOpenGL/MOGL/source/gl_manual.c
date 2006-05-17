@@ -225,7 +225,7 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
 
   // Retrieve pointer to output matrix:
   dst = (GLfloat*) mxGetData(plhs[0]);
-  printf("nmax %i n %i dims %i\n", nmax, n, dims);
+
   // Do the copy:
   memcpy(dst, src, n);
 }
