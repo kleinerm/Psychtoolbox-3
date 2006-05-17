@@ -7,7 +7,9 @@
  * 05-Mar-2006 -- reworked to make inclusion of glm optional (for Psychtoolbox) (MK)
  * 20-Mar-2006 -- Included support for GLEW lib for auto-detection of OpenGL extensions. (MK)
  * 15-Apr-2006 -- Dynamic rebinding of OpenGL-2 core functions to ARB extensions. (MK)
- * 16-Apr-2006 -- Built-in error detection and handling via the debuglevel parameter.
+ * 16-Apr-2006 -- Built-in error detection and handling via the debuglevel parameter. (MK)
+ * 16-May-2006 -- Implementation of a buffer memory manager for dynamic buffer allocation and such.
+ *                This is needed for commands like glFeedbackBuffer() to work properly.
  */
 
 #include "mogltypes.h"
@@ -50,6 +52,12 @@ void mogl_rebindARBExtensionsToCore(void);
 
 // Automatic checking and handling for glError's and GLSL errors.
 void mogl_checkerrors(const char* cmd, const mxArray *prhs[]);
+
+void mexExitFunction(void)
+{
+  PsychFreeAllTempMemory();
+  firsttime = 1;
+}
 
 // MEX interface function
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
@@ -124,12 +132,15 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
             return;
         }
         // Success. Ready to go...
-        printf("MOGL - OpenGL for Matlab initialized - MOGL is (c) 2006 Richard F. Murray, licensed to you under GPL.\n");
+        printf("MOGL - OpenGL for Matlab initialized - MOGL is (c) 2006 Richard F. Murray & Mario Kleiner, licensed to you under GPL.\n");
         fflush(NULL);
         
         // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
         mogl_rebindARBExtensionsToCore();
         
+	// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
+	mexAtExit(&mexExitFunction);
+
         // Done with first time initialization:
         firsttime = 0;
     }   
@@ -326,3 +337,220 @@ void mogl_checkerrors(const char* cmd, const mxArray *prhs[])
 
     return;
 }
+
+// Our memory buffer allocator, adapted from Psychtoolboxs PsychMemory.c
+// allocator:
+
+#define PTBTEMPMEMDEC(n) totalTempMemAllocated -=(n)
+
+// Enqueues a new record into our linked list of temp. memory buffers.
+// Returns the memory pointer to be passed to rest of Psychtoolbox.
+void* PsychEnqueueTempMemory(void* p, unsigned long n)
+{
+  // Add current buffer-head ptr as next-pointer to our new buffer:
+  *((unsigned int*) p) = (unsigned int) PsychTempMemHead;
+
+  // Set our buffer as new head of list:
+  PsychTempMemHead = p;
+
+  // Add allocated buffer size as 2nd element:
+  p = (unsigned char*) p + sizeof(PsychTempMemHead);
+  *((unsigned long*) p) = n;
+
+  // Accounting:
+  totalTempMemAllocated += n;
+
+  // Increment p again to get real start of user-visible buffer:
+  p = (unsigned char*) p + sizeof(n);
+
+  if (debuglevel > 1) mexPrintf("MOGL: Allocated new buffer %p of %i Bytes,  new total = %i.\n", p, n, totalTempMemAllocated); fflush(NULL);
+
+  // Return ptr:
+  return(p);
+}
+
+void *PsychCallocTemp(unsigned long n, unsigned long size)
+{
+  void *ret;
+  // MK: This could create an overflow if product n * size is
+  // bigger than length of a unsigned long int --> Only
+  // happens if more than 4 GB of RAM are allocated at once.
+  // --> Improbable for PTB, unless someones trying a buffer
+  // overflow attack -- PTB would lose there badly anyway...
+  unsigned long realsize = n * size + sizeof(void*) + sizeof(realsize);
+
+  // realsize has extra bytes allocated for our little header...  
+  if(NULL==(ret=calloc((size_t) 1, (size_t) realsize))) {
+    mexErrMsgTxt("MOGL-FATAL ERROR: Out of memory in PsychCallocTemp!\n");
+  }
+
+  // Need to enqueue memory buffer...
+  return(PsychEnqueueTempMemory(ret, realsize));
+}
+
+void *PsychMallocTemp(unsigned long n)
+{
+  void *ret;
+
+  // Allocate some extra bytes for our little header...
+  n=n + sizeof(void*) + sizeof(n);
+  if(NULL==(ret=malloc((size_t) n))){
+    mexErrMsgTxt("MOGL-FATAL ERROR: Out of memory in PsychMallocTemp!\n");
+  }
+
+  // Need to enqueue memory buffer...
+  return(PsychEnqueueTempMemory(ret, n));
+}
+
+// Free a single spec'd temp memory buffer.
+// TODO Note: The current implementation of our allocator
+// uses a single-linked list, which has O(1) cost for
+// allocating memory (Optimal!) and O(n) cost for freeing
+// all allocated memory (Optimal!), but it has up to
+// O(n) cost for deleting a single memory buffer as well,
+// be n the total number of allocated buffers. This is
+// worst-case upper bound. If PsychFreeTemp() is used a
+// lot on long buffer lists, this will incur significant
+// overhead! A better implementation would use a double-
+// linked list or even a binary tree or hash structure,
+// but for now this has to be good enough(TM).
+void PsychFreeTemp(void* ptr)
+{
+  void* ptrbackup = ptr;
+  unsigned long* psize = NULL;
+  unsigned int* next = PsychTempMemHead;
+  unsigned int* prevptr = NULL;
+
+  if (ptr == NULL) return;
+ 
+  // Convert ptb supplied pointer ptr into real start
+  // of our buffer, including our header:
+  ptr = (unsigned char*) ptr - sizeof((unsigned char*) ptr) - sizeof(unsigned long);
+  if (ptr == NULL) return;
+
+  if (PsychTempMemHead == ptr) {
+    // Special case: ptr is first buffer in queue. Dequeue:
+    PsychTempMemHead = (unsigned int*) *PsychTempMemHead;
+
+    // Some accounting:
+    PTBTEMPMEMDEC(((unsigned int*)ptr)[1]);
+    if (debuglevel > 1) mexPrintf("MOGL: Freed buffer at %p, new total = %i.\n", ptrbackup, totalTempMemAllocated); fflush(NULL);
+
+    // Release it:
+    free(ptr);
+
+    return;
+  }
+
+  // ptr valid and not first buffer in queue.
+  // Walk the whole buffer list until we encounter our buffer:
+  while (next != NULL && next!=ptr) {
+    prevptr = next;
+    next = (unsigned int*) *next;
+  }
+
+  // Done with search loop. Did we find our buffer?
+  if (next == ptr) {
+    // Found it! Set next-ptr of previous buffer to next-ptr
+    // of this buffer to dequeue from list:
+    *prevptr = *next;
+
+    // Some accounting:
+    PTBTEMPMEMDEC(next[1]);
+    if (debuglevel > 1) mexPrintf("MOGL: Freed buffer at %p, new total = %i.\n", ptrbackup, totalTempMemAllocated); fflush(NULL);
+    
+    // Release:
+    free(ptr);
+
+    // Done.
+    return;
+  }
+
+  // Oops.: Did not find matching buffer to pointer --> Trouble!
+  printf("MOGL-BUG: In PsychFreeTemp: Tried to free non-existent temporary membuffer %p!!! Ignored.\n", ptrbackup);
+  fflush(NULL);
+  return;
+}
+
+// Master cleanup routine: Frees all allocated memory:
+void PsychFreeAllTempMemory(void)
+{
+  unsigned int* p = NULL;
+  unsigned long* psize = NULL;
+  unsigned int* next = PsychTempMemHead;
+
+  // Walk our whole buffer list and release all buffers on it:
+  while (next != NULL) {
+    // next points to current buffer to release. Make a copy of
+    // next:
+    p = next;
+
+    // Update next to point to the next buffer to release:
+    next = (unsigned int*) *p;
+
+    // Some accounting:
+    PTBTEMPMEMDEC(p[1]);
+
+    // Release buffer p:
+    free(p);
+    
+    // We're done with this buffer, next points to next one to release
+    // or is NULL if all released...
+  }
+
+  // Done. NULL-out the list start ptr:
+  PsychTempMemHead = NULL;
+
+  // Sanity check:
+  if (totalTempMemAllocated != 0) {
+    printf("MOGL-CRITICAL BUG: Inconsistency detected in temporary memory allocator!\n");
+    printf("MOGL-CRITICAL BUG: totalTempMemAllocated = %i after PsychFreeAllTempMemory()!!!!\n",
+	   totalTempMemAllocated);
+    fflush(NULL);
+
+    // Reset to defined state.
+    totalTempMemAllocated = 0;
+  }
+
+  if (debuglevel > 1) printf("MOGL: Freed all internal memory buffers.\n"); fflush(NULL);
+
+  return;
+}
+
+// Convert a double value (which encodes a memory address) into a ptr:
+void*  PsychDoubleToPtr(double dptr)
+{
+  psych_uint64* iptr = (psych_uint64*) &dptr;
+  psych_uint64 ival = *iptr;
+  return((void*) ival);
+}
+
+// Convert a memory address pointer into a double value:
+double PsychPtrToDouble(void* ptr)
+{
+  psych_uint64 ival = (psych_uint64) ptr;
+  double* dptr = (double*) &ival;
+  double outval = *dptr;
+  return(outval);
+}
+
+// Return the size of the buffer pointed to by ptr in bytes.
+// CAUTION: Only works with buffers allocated via PsychMallocTemp()
+// or PsychCallocTemp(). Will segfault, crash & burn with other pointers!
+// The routine returns the net-size of the buffer (the size useable by
+// code), not the allocated size (which would be a few additional bytes
+// for the buffer-header).
+unsigned int PsychGetBufferSizeForPtr(void* ptr)
+{
+  unsigned long mysize;
+
+  // Decrement pointer to let it point to our size field in the buffer-header:
+  ptr = (unsigned char*) ptr - sizeof(unsigned long);
+
+  // Retrieve size value in header, subtract size of header itself:
+  mysize = (*((unsigned long*) ptr)) - sizeof(void*) - sizeof(unsigned long);
+
+  // Return it:
+  return((unsigned int) mysize);
+}
+

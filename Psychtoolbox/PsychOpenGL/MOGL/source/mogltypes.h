@@ -73,4 +73,45 @@ typedef struct cmdhandler {
     void (*cmdfn)(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]);
 } cmdhandler;
 
+// Our own little buffer memory manager: This code is adapted from
+// Psychtoolbox's PsychMemory.h/.c routines:
+
+// Definition of unsigned int 64 bit datatype for Windows vs. Unix
+#ifndef WINDOWS
+typedef unsigned long long int psych_uint64;
+#else
+typedef LONG psych_uint64;
+#endif
+
+// Convert a double value (which encodes a memory address) into a ptr:
+void*  PsychDoubleToPtr(double dptr);
+
+// Convert a memory address pointer into a double value:
+double PsychPtrToDouble(void* ptr);
+
+// Return the size of the buffer pointed to by ptr in bytes.
+// CAUTION: Only works with buffers allocated via PsychMallocTemp()
+// or PsychCallocTemp(). Will segfault, crash & burn with other pointers!
+unsigned int PsychGetBufferSizeForPtr(void* ptr);
+
+// Allocate and zero-out n elements of memory, each size bytes big.
+void *PsychCallocTemp(unsigned long n, unsigned long size);
+
+// Allocate n bytes of memory:
+void *PsychMallocTemp(unsigned long n);
+
+// PsychFreeTemp frees memory allocated with PsychM(C)allocTemp().
+// This is not strictly needed as our memory manager will free
+// the memory anyway when this file is flushed:
+void PsychFreeTemp(void* ptr);
+
+// Master cleanup routine: Frees all allocated memory.
+void PsychFreeAllTempMemory(void);
+
+// Pointer to the start of our list of allocated temporary memory buffers:
+static unsigned int* PsychTempMemHead = NULL;
+
+// Total count of allocated memory in Bytes:
+static int totalTempMemAllocated = 0;
+
 #endif

@@ -26,3 +26,7 @@ gluTessCallback
 
 - these are not defined yet in the GLEW library - need to manually implement interface
 glSamplePass        - implemented manually
+
+- these need our special malloc(),calloc(),free() buffer management to work on Matlab & Octave:
+glFeedbackBuffer    - implemented manually
+glSelectBuffer      - implemented manually

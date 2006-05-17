@@ -124,17 +124,149 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
     return;
 }
 
+void gl_feedbackbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+  // Retrieve memory ptr from double argument:
+  GLfloat* ptr = (GLfloat*) PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[2]));
+
+  if (NULL == glFeedbackBuffer) mogl_glunsupported("glFeedbackBuffer");
+
+  glFeedbackBuffer((GLsizei)mxGetScalar(prhs[0]),
+		   (GLenum)mxGetScalar(prhs[1]),
+		   ptr);
+}
+
+void gl_selectbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+  // Retrieve memory ptr from double argument:
+  GLuint* ptr = (GLuint*) PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[1]));
+
+  if (NULL == glSelectBuffer) mogl_glunsupported("glSelectBuffer");
+  glSelectBuffer((GLsizei)mxGetScalar(prhs[0]), ptr);
+}
+
+void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
+  void* ptr = PsychMallocTemp((unsigned long) mxGetScalar(prhs[0]));
+
+  // Convert ptr into a double value and assign it as first return argument:
+  plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+  *((GLdouble*) mxGetPr(plhs[0])) = PsychPtrToDouble(ptr);
+}
+
+void moglcalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
+  void* ptr = PsychCallocTemp((unsigned long) mxGetScalar(prhs[0]), (unsigned long) mxGetScalar(prhs[1]));
+
+  // Convert ptr into a double value and assign it as first return argument:
+  plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+  *((GLdouble*) mxGetPr(plhs[0])) = PsychPtrToDouble(ptr);
+}
+
+void moglfree(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  // Retrieve ptr to membuffer, encoded as double and convert it into a void*
+  void* ptr = PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[0]));
+
+  // Free memory buffer:
+  PsychFreeTemp(ptr);
+}
+
+void moglfreeall(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  PsychFreeAllTempMemory();
+}
+
+void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  int dims, type;
+  GLenum mattype;
+  GLfloat* dst;
+
+  // Retrieve ptr to membuffer, encoded as double and convert it into a void*
+  void* src = PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[0]));
+
+  // Retrieve size of buffer pointed to by src:
+  unsigned int n = PsychGetBufferSizeForPtr(src);
+
+  // Retrieve max number of bytes to copy:
+  unsigned int nmax = (unsigned int) mxGetScalar(prhs[2]);
+
+  if (nmax < n) n = nmax;
+
+  // Retrieve type of matrix to create:
+  mattype = (GLenum) mxGetScalar(prhs[1]);
+
+  switch(mattype)
+    {
+    case GL_DOUBLE:
+      type = mxDOUBLE_CLASS;
+      dims = n / sizeof(double);
+      if (dims * sizeof(double) < n) dims++;
+      break;
+    case GL_FLOAT:
+      type = mxSINGLE_CLASS;
+      dims = n / sizeof(float);
+      if (dims * sizeof(float) < n) dims++;
+      break;
+    case GL_UNSIGNED_INT:
+      type = mxUINT32_CLASS;
+      dims = n / sizeof(unsigned int);
+      if (dims * sizeof(unsigned int) < n) dims++;
+      break;
+    case GL_UNSIGNED_BYTE:
+      type = mxUINT8_CLASS;
+      dims = n / sizeof(unsigned char);
+      if (dims * sizeof(unsigned char) < n) dims++;
+      break;
+    default:
+      mexErrMsgTxt("MOGL-ERROR: Unknown matrix type requested in moglgetbuffer()! Ignored.");
+    }
+
+  // Allocate the beast:
+  plhs[0] = mxCreateNumericArray(1, &dims, type, mxREAL);
+
+  // Retrieve pointer to output matrix:
+  dst = (GLfloat*) mxGetData(plhs[0]);
+  printf("nmax %i n %i dims %i\n", nmax, n, dims);
+  // Do the copy:
+  memcpy(dst, src, n);
+}
+
+void moglcopymatrixtobuffer(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+  // Retrieve ptr to membuffer, encoded as double and convert it into a void*
+  void* dst = PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[1]));
+
+  // Retrieve pointer to input matrix:
+  GLfloat* src = (GLfloat*) mxGetData(prhs[0]);
+
+  // Retrieve size of buffer pointed to by dst:
+  unsigned int nmax = PsychGetBufferSizeForPtr(dst);
+
+  // Set final size of data to copy:
+  unsigned int nin = (unsigned int) mxGetScalar(prhs[2]);
+  if (nin > nmax) nin = nmax;
+
+  // Do the copy:
+  memcpy(dst, src, nin);
+}
+
 // command map:  moglcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=8;
+int gl_manual_map_count=16;
 cmdhandler gl_manual_map[] = {
+{ "glFeedbackBuffer",               gl_feedbackbuffer                   },
 { "glGetBufferPointerv",            gl_getbufferpointerv                },
 { "glGetPointerv",                  gl_getpointerv                      },
 { "glGetString",                    gl_getstring                        },
 { "glGetVertexAttribPointerv",      gl_getvertexattribpointerv          },
 { "glSamplePass",                   gl_samplepass                       },
+{ "glSelectBuffer",                 gl_selectbuffer                     },
 { "glShaderSource",                 gl_shadersource                     },
 { "gluErrorString",                 glu_errorstring                     },
-{ "gluGetString",                   glu_getstring                       }};
+{ "gluGetString",                   glu_getstring                       },
+{ "moglcalloc",                     moglcalloc                          },
+{ "moglcopybuffertomatrix",         moglcopybuffertomatrix              },
+{ "moglcopymatrixtobuffer",         moglcopymatrixtobuffer              },
+{ "moglfree",                       moglfree                            },
+{ "moglfreeall",                    moglfreeall                         },
+{ "moglmalloc",                     moglmalloc                          }};

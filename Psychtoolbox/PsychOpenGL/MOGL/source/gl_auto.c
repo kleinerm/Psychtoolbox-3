@@ -944,15 +944,6 @@ void gl_evalpoint2( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 }
 
-void gl_feedbackbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glFeedbackBuffer) mogl_glunsupported("glFeedbackBuffer");
-	glFeedbackBuffer((GLsizei)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLfloat*)mxGetData(prhs[2]));
-
-}
-
 void gl_finish( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glFinish) mogl_glunsupported("glFinish");
@@ -2458,14 +2449,6 @@ void gl_scissor( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 		(GLint)mxGetScalar(prhs[1]),
 		(GLsizei)mxGetScalar(prhs[2]),
 		(GLsizei)mxGetScalar(prhs[3]));
-
-}
-
-void gl_selectbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glSelectBuffer) mogl_glunsupported("glSelectBuffer");
-	glSelectBuffer((GLsizei)mxGetScalar(prhs[0]),
-		(GLuint*)mxGetData(prhs[1]));
 
 }
 
@@ -5625,7 +5608,7 @@ void glut_solidicosahedron( int nlhs, mxArray *plhs[], int nrhs, const mxArray *
 
 }
 
-int gl_auto_map_count=641;
+int gl_auto_map_count=639;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveTexture",                 gl_activetexture                    },
@@ -5761,7 +5744,6 @@ cmdhandler gl_auto_map[] = {
 { "glEvalMesh2",                     gl_evalmesh2                        },
 { "glEvalPoint1",                    gl_evalpoint1                       },
 { "glEvalPoint2",                    gl_evalpoint2                       },
-{ "glFeedbackBuffer",                gl_feedbackbuffer                   },
 { "glFinish",                        gl_finish                           },
 { "glFlush",                         gl_flush                            },
 { "glFogCoordPointer",               gl_fogcoordpointer                  },
@@ -6033,7 +6015,6 @@ cmdhandler gl_auto_map[] = {
 { "glSecondaryColor3us",             gl_secondarycolor3us                },
 { "glSecondaryColor3usv",            gl_secondarycolor3usv               },
 { "glSecondaryColorPointer",         gl_secondarycolorpointer            },
-{ "glSelectBuffer",                  gl_selectbuffer                     },
 { "glSeparableFilter2D",             gl_separablefilter2d                },
 { "glShadeModel",                    gl_shademodel                       },
 { "glStencilFunc",                   gl_stencilfunc                      },
