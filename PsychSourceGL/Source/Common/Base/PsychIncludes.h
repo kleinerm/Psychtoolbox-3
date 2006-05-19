@@ -28,6 +28,19 @@
 
 #include "PsychPlatform.h"
 
+//Includes dependent on runtime environment:
+#if PSYCH_LANGUAGE == PSYCH_MATLAB
+    // Include File with Matlab interface API definitions:
+    #include "mex.h"
+#endif
+
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+    // File with pseudo MATLAB interface API definitions:
+    // Emulates missing Matlab functions and structures...
+    // Stored in the Source/Octave subfolder...
+    #include <octavemex.h>
+#endif
+
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
 	#include <GL/gl.h>
@@ -102,19 +115,4 @@
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	#include "SDL.h"
-#endif 
-
-//Includes dependent on runtime environment:
-#if PSYCH_LANGUAGE == PSYCH_MATLAB
-    // Include File with Matlab interface API definitions:
-    #include "mex.h"
 #endif
-
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-    // File with pseudo MATLAB interface API definitions:
-    // Emulates missing Matlab functions and structures...
-    // Stored in the Source/Octave subfolder...
-    #include <octavemex.h>
-#endif
-
-
