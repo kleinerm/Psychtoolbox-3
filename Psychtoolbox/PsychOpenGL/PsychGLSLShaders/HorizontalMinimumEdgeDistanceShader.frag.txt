@@ -1,0 +1,33 @@
+/* HorizontalMinimumEdgeDistanceShader
+ * Scans along a horizontal line in bound rectangle texture zero.
+ * Detects the first steep increase in luminance between two
+ * consecutive texels and writes its value and position into
+ * the output fragment color.
+ *
+ * This shader computes the minimum distance to an intensity edge.
+ * (w)2006 by Mario Kleiner.
+*/
+
+const float threshold = 0.05;
+const vec4 ColorToGrayWeights = { 0.3, 0.59, 0.11, 0.0 }; 
+uniform sampler2DRect Image;
+
+void main()
+{
+    vec4  leftcolor;
+    vec4  rightcolor;
+    float rlum, llum;
+    int pos;
+    float minposition = 1;
+
+    for(pos = 0; pos<255; pos++) {
+      leftcolor  = texture2DRect(Image, gl_TexCoord[0].st + vec2(pos, 0.0));
+      rightcolor = texture2DRect(Image, gl_TexCoord[0].st + vec2(pos + 5.0, 0.0));
+      llum = dot(leftcolor, ColorToGrayWeights);
+      rlum = dot(rightcolor, ColorToGrayWeights);
+	if ((llum - rlum) > threshold) minposition=min(minposition, pos/255.0);
+    }
+
+    gl_FragColor.a = 255.0;
+    gl_FragColor.rgb = minposition;
+}

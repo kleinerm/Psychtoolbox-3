@@ -1,0 +1,21 @@
+/* Shader for conversion of RGB textures into Grayscale textures.
+ * Uses standard formula for conversion:
+ * (w)2006 by Mario Kleiner.
+*/
+
+const int maxSamples = 255;
+uniform sampler2DRect Image;
+
+void main()
+{
+    int i;
+    vec4 sum = vec4(0.0);
+    vec2 texcoord = vec2(gl_FragCoord.x * float(maxSamples), gl_FragCoord.y);
+    
+    for (i=0; i<maxSamples; i++) {
+	sum+=texture2DRect(Image, texcoord)*0.001;
+	texcoord.s += 1.0;
+    }
+
+    gl_FragColor = sum;
+}

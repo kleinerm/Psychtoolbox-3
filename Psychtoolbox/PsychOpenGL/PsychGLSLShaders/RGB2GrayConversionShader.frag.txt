@@ -1,0 +1,15 @@
+/* Shader for conversion of RGB textures into Grayscale textures.
+ * Uses standard formula for conversion:
+ * (w)2006 by Mario Kleiner.
+*/
+
+const vec4 ColorToGrayWeights = { 0.3, 0.59, 0.11, 0.0 }; 
+uniform sampler2DRect Image;
+
+void main()
+{
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    float luminance = dot(incolor, ColorToGrayWeights);
+    gl_FragColor.a = incolor.a;
+    gl_FragColor.rgb = luminance;
+}
