@@ -86,6 +86,14 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % or at 'normalLength' if this argument is provided. This is a helper function for
 % checking the correctness of computed normals. It is very slow!
 %
+% vpos = moglmorpher('getVertexPositions', windowPtr [, startidx=1] [, endidx]);
+% -- Compute and return a matrix which contains the projected screen space coordinates of all
+% vertices that would be rendered when calling moglmorpher('render'). windowPtr is the handle
+% of the window into which we render. Optional arguments startidx and endidx define the
+% index of the first vertex, resp. the last vertex to transform. The returned 'vpos' is a
+% vcount-by-3 matrix, where vcount is the number of returned vertices, and row i contains the
+% projected 3D position of the i'th vertex vcount(i,:) = (screen_x, screen_y, depth_z);
+%
 % count = moglmorpher('getMeshCount');
 % Returns number of stored shapes.
 %
@@ -132,6 +140,10 @@ persistent keynormals;
 % glDrawRangeElements() command supported?
 persistent drawrangeelements;
 
+% Pointer to and size of current memory feedback buffer:
+persistent feedbackptr;
+persistent feedbacksize;
+
 % Sanity check:
 if nargin < 1
     help moglmorpher;
@@ -141,6 +153,16 @@ end;
 % Initialize MOGL if it didn't happen already in a different module:
 if isempty(GL)
     InitializeMatlabOpenGL;
+end;
+
+% Initialize feedback memory pointers:
+if isempty(feedbackptr)
+   feedbackptr  = 0;
+   feedbacksize = 0;
+   
+   % Assign GL_3D manually - Little hack...
+   GL.GL_3D = 1537;
+   GL.GL_2D = 1536;
 end;
 
 % Check if hardware supports glDrawRangeElements():
@@ -177,9 +199,18 @@ end;
 
 % Subcommand dispatcher:
 if strcmp(cmd, 'reset')
-    % Reset ourselves. We just clear ourselves out of memory.
-    clear moglmorpher;
-    return;
+   % Reset ourselves:
+   
+   % Release memory buffer, if any:
+   if feedbackptr~=0
+      moglfree(feedbackptr);
+      feedbackptr=0;
+      feedbacksize=0;
+   end;
+   
+   % Clear ourselves -> Release everything else.
+   clear moglmorpher;
+   return;
 end;
 
 if strcmp(cmd, 'getMeshCount')
@@ -455,6 +486,91 @@ if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
     end;
     
     return;
+end;
+
+if strcmp(cmd, 'getVertexPositions')   
+   % Calling routine wants projected screen space vertex positions of all vertices
+   % in our current renderbuffer.
+   
+   if nargin < 2 | isempty(arg1)
+      error('win Windowhandle missing in call to getVertexPositions!')
+   end;
+   
+   if nargin < 3 | isempty(arg2)
+      startidx = 1;
+   else
+      startidx = arg2;
+   end;
+   
+   if nargin < 4 | isempty(arg3)
+      endidx = size(vertices,2);
+   else
+      endidx = arg3;
+   end;
+   
+   % Correct for 0-start of OpenGL/C vs. 1-start of Matlab:
+   startidx = startidx - 1;
+   endidx = endidx - 1;
+   
+   % Total count of vertices to handle:
+   ntotal = endidx - startidx + 1;
+   
+   % We put OpenGL into feedback mode, do a pure point rendering pass, switch back to
+   % normal mode and return the content of the feedback buffer in an easy format.
+   
+   % Compute needed capacity of feedbackbuffer, assuming all vertices in the buffer
+   % get transformed and none gets clipped away:
+   reqbuffersize = ntotal * 4 * 4; % numVertices * 4 float/vertex * 4 bytes/float.
+   
+   % Feedback buffer already allocated in proper size?
+   if feedbackptr~=0 & feedbacksize < reqbuffersize
+      % Allocated, but too small for our purpose. Delete & Reallocate:
+      moglfree(feedbackptr);
+      feedbackptr=0;
+      feedbacksize=0;
+   end;
+   
+   % Feedback buffer ready?
+   if feedbackptr==0
+      % Nope. Need to allocate a new one:
+      feedbackptr=moglmalloc(reqbuffersize);
+      feedbacksize=reqbuffersize;
+   end;
+   
+   % Our feedback memory buffer is ready. Assign it to the GL: We request the
+   % full transformed 3D pos of the vertex:
+   glFeedbackBuffer(reqbuffersize/4, GL.GL_3D, feedbackptr);
+   
+   % Enable client-side vertex arrays:
+   glEnableClientState(GL.VERTEX_ARRAY);
+   
+   % Set pointer to start of vertex array:
+   glVertexPointer(size(vertices,1), usetype, 0, vertices);
+   
+   % Put OpenGL into feedback mode:
+   glRenderMode(GL.FEEDBACK);
+   
+   % Render all vertices: This does not draw, but just transform the vertices
+   % into projected screen space and returns their 3D positions in the feedback-buffer:
+   glDrawArrays(GL.POINTS, startidx, ntotal);
+   
+   % Disable client-side vertex arrays:
+   glDisableClientState(GL.VERTEX_ARRAY);
+   
+   % Put OpenGL back into normal mode and get number of items:
+   nritems = glRenderMode(GL.RENDER);
+   
+   % Copy content of buffer into a linear matrix:
+   tmpbuffer = moglgetbuffer(feedbackptr, GL.FLOAT, nritems * 4);
+   % Reshape it to be a n-by-4 matrix:
+   tmpbuffer = transpose(reshape(tmpbuffer, 4, floor(nritems / 4)));
+   % Cast to double, throw away token column:
+   rc(:,1:3) = double(tmpbuffer(:,2:4));
+   % Invert y-coordinates so they match again:
+   rc(:,2)   = RectHeight(Screen('Rect', arg1)) - rc(:,2);
+   
+   % Done. Return array in rc:
+   return;
 end;
 
 error('Invalid subcommand specified!');

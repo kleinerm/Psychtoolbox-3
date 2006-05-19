@@ -21,7 +21,8 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 %
 % dotson = If set to 0 (default), just show surface. If set to 1, some dots are
 % plotted to visualize the vertices of the underlying mesh. If set to 2, the
-% mesh itself is superimposed onto the shape.
+% mesh itself is superimposed onto the shape. If set to 3 or 4, then the projected
+% vertex 2D coordinates are also visualized in a standard Matlab figure window.
 %
 % normalson = If set to 1, then the surface normal vectors will get visualized as
 % small green lines on the surface.
@@ -34,6 +35,8 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 %
 % This demo and the morpheable OBJ shapes were contributed by
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
+
+global win;
 
 % Is the script running in OpenGL Psychtoolbox?
 AssertOpenGL;
@@ -84,11 +87,17 @@ Screen('Preference','SkipSyncTests',1);
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper. We need to do this before the first call
 % to any OpenGL function:
-InitializeMatlabOpenGL;
+InitializeMatlabOpenGL(0,1);
 
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
-[win , winRect] = Screen('OpenWindow', screenid, [], [], [], [], stereomode);
+if dotson~=3 & dotson~=4
+   rect = [];
+else
+   rect = [0 0 500 500];
+end;
+
+[win , winRect] = Screen('OpenWindow', screenid, [], rect, [], [], stereomode);
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -373,6 +382,7 @@ function drawShape(ang, theta, rotatev, dotson, normalson)
 % GL needs to be defined as "global" in each subfunction that
 % executes OpenGL commands:
 global GL
+global win
 
 % Backup modelview matrix:
 glPushMatrix;
@@ -389,7 +399,7 @@ glScalef(a,a,a);
 moglmorpher('render');
 
 % Some extra visualizsation code for normals, mesh and vertices:
-if (dotson == 1)
+if (dotson == 1 | dotson == 3)
     % Draw some dot-markers at positions of vertices:
     % We disable lighting for this purpose:
     glDisable(GL.LIGHTING);
@@ -431,6 +441,16 @@ if (normalson > 0)
     % Reset settings for shape rendering:
     glEnable(GL.LIGHTING);
     glColor3f(0,0,1);
+ end;
+ 
+if (dotson == 3 | dotson == 4)
+   % Compute and retrieve projected screen-space vertex positions:
+   vpos = moglmorpher('getVertexPositions', win);
+   
+   % Plot the projected 2D points into a Matlab figure window:
+   vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
+	plot(vpos(:,1), vpos(:,2), '.');
+   drawnow;
 end;
 
 % Restore modelview matrix:
