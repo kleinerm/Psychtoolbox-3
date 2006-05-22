@@ -154,6 +154,11 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
   // Stop capture immediately if it is still running:
   PsychVideoCaptureRate(capturehandle, 0, 0);
 
+  // Initiate a power-down cycle to bring camera into standby mode:
+  if (dc1394_set_camera_power(capdev->camera, DC1394_OFF)!=DC1394_SUCCESS) {
+    printf("PTB-WARNING: Tried to power down camera %i, but powerdown-cycle failed for some reason!\n", capturehandle); fflush(NULL);
+  }
+
   // Close & Shutdown camera, release ressources:
   dc1394_free_camera(capdev->camera);
   capdev->camera = NULL;
@@ -319,6 +324,16 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     
     fflush(NULL);
 
+    // Initiate a power-up cycle in case the camera is in standby mode:
+    if (dc1394_set_camera_power(capdev->camera, DC1394_ON)!=DC1394_SUCCESS) {
+      printf("PTB-WARNING: Tried to power up camera %i, but powerup-cycle failed for some reason!\n", deviceIndex); fflush(NULL);
+    }
+
+    // Initiate a reset-cycle on the camera to bring it into a clean state to start with:
+    if (dc1394_reset_camera(capdev->camera)!=DC1394_SUCCESS) {
+      printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
+    }
+
     return(TRUE);
 }
 
@@ -338,7 +353,8 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   float bpp;
   int framerate_matched = false;
   int roi_matched = false;
-  
+  int mode_found = false;
+
   // Query supported video modes for this camera:
   dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
   w = (int) PsychGetWidthFromRect(capdev->roirect);
@@ -372,6 +388,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
       if (mw*mh < maximgarea) continue;
       maximgarea = mw * mh;
       maximgmode = mode;
+      mode_found = true;
       roi_matched = true;
     }
     else {
@@ -392,12 +409,13 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
       if (framerate > maximgarea) {
 	maximgarea = (int) framerate;
 	maximgmode = mode;
+	mode_found = true;
       }
     }
   }
   
   // Sanity check: Any valid mode found?
-  if (maximgmode == 0) {
+  if (!mode_found) {
     // None found!
     PsychErrorExitMsg(PsychError_user, "Couldn't find any capture mode settings for your camera which satisfy your minimum requirements! Aborted.");
   }
@@ -480,6 +498,9 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   // Return framerate:
   capdev->dc_framerate = dc1394_framerate;
 
+  printf("PTB-INFO: Will use non-Format7 mode %i: Width x Height = %i x %i, fps=%f, colormode=%i ...\n",
+	 (int) mode, mw, mh, framerate, (int) color_code); fflush(NULL);
+
   // Success! 
   return(true);
 }
@@ -493,7 +514,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   float mindifframerate = 0;
   int minpacket_size = 0;
   dc1394video_mode_t minimgmode, mode;
-  int i, j, w, h;
+  int i, j, w, h, numF7Available=0;
   dc1394speed_t speed;
   unsigned int mw, mh, pbmin, pbmax, depth;
   int num_packets, packet_size;
@@ -510,6 +531,14 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   // Query IEEE1394 bus speed code and map it to bus_period:
   if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
     PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
+  }
+
+  // Special hack for Unibrain Fire-i: This camera can do 400 Megabit/second, but reports
+  // a speed of 100 MBit after a cold-start! We enforce a 400 Megabit speed if this is a
+  // Unibrain Fire-i:
+  if (strstr(capdev->camera->vendor, "Unibrain") && strstr(capdev->camera->model, "Fire-i")) {
+    // Unibrain Fire-i: Enforce correct speed:
+    speed = DC1394_ISO_SPEED_400;
   }
 
   switch(speed) {
@@ -549,6 +578,9 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     
     // Skip non-format-7 types...
     if (mode < DC1394_VIDEO_MODE_FORMAT7_MIN || mode > DC1394_VIDEO_MODE_FORMAT7_MAX) continue;
+
+    // Increment count of available Format-7 modes:
+    numF7Available++;
 
     printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
 
@@ -660,9 +692,14 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
   }
   
   // Sanity check: Any valid mode found?
-  if (minimgmode == 0) {
+  if (minimgmode == DC1394_VIDEO_MODE_MIN || numF7Available == 0) {
     // None found!
-    printf("PTB-INFO: Couldn't find any Format-7 capture mode settings for your camera which satisfy your minimum requirements!\n");
+    if (numF7Available > 0) {
+      printf("PTB-INFO: Couldn't find any Format-7 capture mode settings for your camera which satisfy your minimum requirements!\n");
+    }
+    else {
+      printf("PTB-INFO: This camera does not support *any* Format-7 capture modes.\n");
+    }
     printf("PTB-INFO: Will now try standard (non Format-7) capture modes for the best match and try to use that...\n");
     return(0);
   }
@@ -816,7 +853,15 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
       PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
     }
-	
+
+    // Special hack for Unibrain Fire-i: This camera can do 400 Megabit/second, but reports
+    // a speed of 100 MBit after a cold-start! We enforce a 400 Megabit speed if this is a
+    // Unibrain Fire-i:
+    if (strstr(capdev->camera->vendor, "Unibrain") && strstr(capdev->camera->model, "Fire-i")) {
+      // Unibrain Fire-i: Enforce correct speed:
+      speed = DC1394_ISO_SPEED_400;
+    }
+
     // Assign final mode and framerate:
     dc1394_framerate = capdev->dc_framerate;
     mode = capdev->dc_imageformat;
@@ -1212,6 +1257,14 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   // Check parameter name pname and call the appropriate subroutine:
   if (strcmp(pname, "PrintParameters")==0) {
     // Special command: List and print all features...
+    if (dc1394_get_camera_info(capdev->camera) !=DC1394_SUCCESS) {
+      printf("PTB-WARNING: Unable to query general information about camera.\n");
+    }
+    else {
+      printf("PTB-INFO: The camera provides the following generic information:\n");
+      dc1394_print_camera_info(capdev->camera);
+    }
+
     if (dc1394_get_camera_feature_set(capdev->camera, &features) !=DC1394_SUCCESS) {
       printf("PTB-WARNING: Unable to query feature set of camera.\n");
     }
@@ -1221,6 +1274,18 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     }
 
     fflush(NULL);    
+    return(0);
+  }
+
+  // Return vendor name string:
+  if (strcmp(pname, "GetVendorname")==0) {
+    PsychCopyOutCharArg(1, FALSE, capdev->camera->vendor);
+    return(0);
+  }
+
+  // Return model name string:
+  if (strcmp(pname, "GetModelname")==0) {
+    PsychCopyOutCharArg(1, FALSE, capdev->camera->model);
     return(0);
   }
 

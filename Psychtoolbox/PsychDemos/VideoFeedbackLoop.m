@@ -22,22 +22,22 @@ if IsWin
 end;
 
 % Assign defaults for our function arguments:
-if nargin < 1 || isempty(fps)
+if nargin < 1 | isempty(fps)
     fps = 60; % Default to 60 frames per second capture rate.
 end;
 fps
 
-if nargin < 2 || isempty(fifodelay)
+if nargin < 2 | isempty(fifodelay)
     fifodelay = 0; % Default to zero delay. Show as fast as possible.
 end;
 fifodelay=round(fifodelay)
 
-if nargin < 3 || isempty(mirrored)
+if nargin < 3 | isempty(mirrored)
     mirrored = 0; % Default to non-mirrored video view.
 end;
 mirrored
 
-if nargin < 4 || isempty(fullscreen)
+if nargin < 4 | isempty(fullscreen)
     fullscreen=1; % Default to fullscreen view.
 end;
 fullscreen

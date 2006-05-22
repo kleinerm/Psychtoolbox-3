@@ -114,7 +114,12 @@ extern "C" {
   double* mxGetPr (const mxArray* ptr);
   void* mxGetData(const mxArray* arrayPtr);
   mxArray* mxCreateLogicalMatrix(int rows, int cols);
+#if PSYCH_SYSTEM == PSYCH_LINUX
+  bool* mxGetLogicals(const mxArray* arrayPtr);
+#else
   Boolean* mxGetLogicals(const mxArray* arrayPtr);
+#endif
+
   /* structure support */
   int mxIsStruct (const mxArray* ptr);
   mxArray* mxGetField(const mxArray* ptr, int index, const char *key);

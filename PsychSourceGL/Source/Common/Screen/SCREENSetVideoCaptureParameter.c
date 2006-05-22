@@ -69,11 +69,13 @@ PsychError SCREENSetVideoCaptureParameter(void)
     // Copy in (optional) value for parameter:
     PsychCopyInDoubleArg(3, FALSE, &value);
 
-    // Try to start capture:
+    // Try to set parameter:
     oldvalue = PsychVideoCaptureSetParameter(capturehandle, pname, value);
 
     // Return old value of capture parameter:
-    PsychCopyOutDoubleArg(1, FALSE, oldvalue);
+    if (strstr(pname, "Get")==NULL) {
+      PsychCopyOutDoubleArg(1, FALSE, oldvalue);
+    }
 
     // Ready!    
     return(PsychError_none);
