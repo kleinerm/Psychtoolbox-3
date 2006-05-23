@@ -38,6 +38,7 @@
 #include <libraw1394/raw1394.h>
 #include <dc1394/dc1394_control.h>
 #include <dc1394/dc1394_utils.h>
+#include <dc1394/dc1394_conversions.h>
 #include <syslog.h>
 
 dc1394error_t dc1394_free_iso_channel_and_bandwidth(dc1394camera_t *);
@@ -52,6 +53,8 @@ typedef struct {
   int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
   dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
   dc1394framerate_t dc_framerate;   // Encodes framerate.
+  dc1394color_coding_t colormode;   // Encodes color encoding of cameras data.
+  unsigned char* scratchbuffer;     // Scratch buffer for YUV->RGB conversion.
   int reqpixeldepth;                // Requested depth of single pixel in output texture.
   int pixeldepth;                   // Depth of single pixel from grabber in bits.
   int num_dmabuffers;               // Number of DMA ringbuffers to use in DMA capture.
@@ -238,7 +241,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 
     capdev->camera = NULL;
     capdev->grabber_active = 0;
-        
+    capdev->scratchbuffer = NULL;        
+
     // Query a list of all available (connected) Firewire cameras:
     err=dc1394_find_cameras(&cameras, &numCameras);
 
@@ -350,6 +354,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   dc1394framerates_t supported_framerates;
   dc1394video_modes_t video_modes;
   dc1394color_coding_t color_code;
+  int nonyuvbonus;
   float bpp;
   int framerate_matched = false;
   int roi_matched = false;
@@ -369,16 +374,18 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     if (mode >= DC1394_VIDEO_MODE_FORMAT7_MIN) continue;
     
     // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
-    // and RGB8 for color formats.
+    // and RGB8, YUV444, YUV422, YUV411 for color formats.
     dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
     if (capdev->reqpixeldepth > 0) {
       // Specific pixelsize requested:
       if (capdev->reqpixeldepth < 3 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
-      if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8) continue;
+      if (capdev->reqpixeldepth > 2 && color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_YUV444 &&
+	  color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
     }
     else {
       // No specific pixelsize req. check our minimum requirements:
-      if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8) continue;
+      if (color_code!=DC1394_COLOR_CODING_RGB8 && color_code!=DC1394_COLOR_CODING_RAW8 && color_code!=DC1394_COLOR_CODING_MONO8
+	  && color_code!=DC1394_COLOR_CODING_YUV444 && color_code!=DC1394_COLOR_CODING_YUV422 && color_code!=DC1394_COLOR_CODING_YUV411) continue;
     }
     
     // ROI specified?
@@ -404,9 +411,17 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
 	if (framerate >= capturerate) break;
       }
       dc1394_framerate_as_float(dc1394_framerate, &framerate);
-      
+
+      // nonyuvbonus is true, if a color capture mode is requested and the given mode
+      // allows for RGB8 transfer instead of a YUV format. We try to prefer non-YUV
+      // modes in selection of final mode, because YUV modes need a computationally
+      // expensive conversion YUVxxx --> RGB8, whereas RGB8 doesn't need that.
+      nonyuvbonus = (capdev->reqpixeldepth == 0 || capdev->reqpixeldepth > 2) && (color_code == DC1394_COLOR_CODING_RGB8);
+
       // Compare whatever framerate we've got as closest match against current fastest one:
-      if (framerate > maximgarea) {
+      if ((framerate > maximgarea) ||
+	  (framerate == capturerate && nonyuvbonus) ||
+	  (framerate == maximgarea  && nonyuvbonus)) {
 	maximgarea = (int) framerate;
 	maximgmode = mode;
 	mode_found = true;
@@ -428,7 +443,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
   
   // This is the pixeldepth delivered by the capture engine:
-  capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_RGB8) ? 24 : 8;
+  capdev->pixeldepth = (color_code == DC1394_COLOR_CODING_MONO8 || color_code == DC1394_COLOR_CODING_RAW8) ? 8 : 24;
   
   // Match this against requested pixeldepth:
   if (capdev->reqpixeldepth == 0) {
@@ -462,6 +477,13 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     }
   }
   
+  if (capdev->reqpixeldepth > 8 && color_code != DC1394_COLOR_CODING_RGB8) {
+    // Color capture with a non RGB8 mode aka a YUV mode -- expensive.
+    printf("PTB-INFO: Using a YUV color format instead of a RGB color format. This requires expensive YUV->RGB conversion and\n");
+    printf("PTB-INFO: can lead to higher cpu load and longer latencies. You may be able to avoid this with different settings\n");
+    printf("PTB-INFO: for ROI, color depth and framerate...\n"); fflush(NULL);
+  }
+
   // Query final image size and therefore ROI:
   dc1394_get_image_size_from_video_mode(capdev->camera, mode, &mw, &mh);
   capdev->roirect[kPsychLeft] = 0;
@@ -828,7 +850,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     // Check minimum requirements for non-Format-7 mode:
     if (!((capdev->roirect[kPsychLeft]==0 && capdev->roirect[kPsychTop]==0) &&
 	((capdev->roirect[kPsychRight]==1 && capdev->roirect[kPsychBottom]==1) || (w==640 && h==480) ||
-	 (w==800 && h==600) || (w==1024 && h==768) || (w==1280 && h==960) || (w==1600 && h==1200)) &&
+	 (w==800 && h==600) || (w==1024 && h==768) || (w==1280 && h==960) || (w==1600 && h==1200) ||
+	 (w==320 && h==240) || (w==160 && h==120)) &&
 	(capturerate==1.875 || capturerate==3.75 || capturerate==7.5 || capturerate==15 || capturerate==30 ||
 	 capturerate==60 || capturerate==120 || capturerate==240))) {
 
@@ -865,14 +888,17 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     // Assign final mode and framerate:
     dc1394_framerate = capdev->dc_framerate;
     mode = capdev->dc_imageformat;
-    
+
+    // Query final color format of captured data:
+    dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
+    capdev->colormode = color_code;
+
     // Setup DMA engine:
     // =================
 
     // Format-7 capture?
     if (packetsize > 0) {
       // Format-7 capture DMA setup:
-      dc1394_get_color_coding_from_video_mode(capdev->camera, mode, &color_code);
       err = dc1394_dma_setup_format7_capture(capdev->camera, mode, color_code, speed, packetsize,
 					     (unsigned int) capdev->roirect[kPsychLeft],
 					     (unsigned int) capdev->roirect[kPsychTop],
@@ -962,6 +988,12 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
     // Ok, capture is now started:
     capdev->grabber_active = 1;
     
+    // Allocate conversion buffer if needed for YUV->RGB conversions.
+    if (capdev->pixeldepth == 24 && color_code!=DC1394_COLOR_CODING_RGB8) {
+      // Software conversion of YUV -> RGB needed. Allocate a proper scratch-buffer:
+      capdev->scratchbuffer = malloc(capdev->width * capdev->height * 3);
+    }
+
     printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle,
 	   capdev->width, capdev->height, capdev->fps);
   }
@@ -988,6 +1020,12 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
       capdev->frame_ready = 0;
       capdev->grabber_active = 0;
     
+      if (capdev->scratchbuffer) {
+	// Release scratch-buffer:
+	free(capdev->scratchbuffer);
+	capdev->scratchbuffer = NULL;
+      }
+
       // Output count of dropped frames:
       if ((dropped=capdev->nr_droppedframes) > 0) {
 	printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
@@ -1161,7 +1199,18 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     
       // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
       out_texture->textureMemory = (GLuint*) (capdev->camera->capture.capture_buffer);
-      
+
+      // Software conversion form YUV -> RGB color format needed?
+      if (capdev->scratchbuffer) {
+	// Yes. Call libDC's conversion routine. It shall copy & convert into the
+	// scratch buffer:
+	out_texture->textureMemory = capdev->scratchbuffer;
+	dc1394_convert_to_RGB8((unsigned char*) (capdev->camera->capture.capture_buffer),
+			       capdev->scratchbuffer, capdev->width, capdev->height,
+			       DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
+	// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer...
+      }
+
       // Let PsychCreateTexture() do the rest of the job of creating, setting up and
       // filling an OpenGL texture with content:
       PsychCreateTexture(out_texture);

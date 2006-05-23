@@ -19,13 +19,15 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win); %, 0, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 3);
     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness')
     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure')
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
     shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter')
     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
-    
+    vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
+    model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
+
     Screen('StartVideoCapture', grabber, 60, 1);
 
     oldpts = 0;
