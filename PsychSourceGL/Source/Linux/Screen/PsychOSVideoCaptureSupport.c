@@ -1079,6 +1079,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     unsigned int pixval, alphacount;
     dc1394error_t error;
     int nrdropped;
+    unsigned char* input_image = NULL;
 
     int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
 
@@ -1179,7 +1180,25 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     h=capdev->height;
     
     padding= 0;
-    
+
+    // input_image points to the image buffer in our cam:
+    input_image = (unsigned char*) (capdev->camera->capture.capture_buffer);
+
+    // Do we want to do something with the image data and have a
+    // scratch buffer for color conversion alloc'ed?
+    if ((capdev->scratchbuffer) && ((out_texture) || (summed_intensity))) {
+      // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
+      // into the scratch buffer and set scratch buffer as source for
+      // all further operations:
+
+      dc1394_convert_to_RGB8(input_image, capdev->scratchbuffer, capdev->width,
+			     capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
+
+      // Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
+      // Set scratch buffer as our new image source for all further processing:
+      input_image = (unsigned char*) capdev->scratchbuffer;
+    }
+
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
       PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
@@ -1198,18 +1217,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       out_texture->depth = capdev->reqpixeldepth;
     
       // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
-      out_texture->textureMemory = (GLuint*) (capdev->camera->capture.capture_buffer);
-
-      // Software conversion form YUV -> RGB color format needed?
-      if (capdev->scratchbuffer) {
-	// Yes. Call libDC's conversion routine. It shall copy & convert into the
-	// scratch buffer:
-	out_texture->textureMemory = capdev->scratchbuffer;
-	dc1394_convert_to_RGB8((unsigned char*) (capdev->camera->capture.capture_buffer),
-			       capdev->scratchbuffer, capdev->width, capdev->height,
-			       DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
-	// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer...
-      }
+      out_texture->textureMemory = (GLuint*) input_image;
 
       // Let PsychCreateTexture() do the rest of the job of creating, setting up and
       // filling an OpenGL texture with content:
@@ -1223,7 +1231,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     
     // Sum of pixel intensities requested?
     if(summed_intensity) {
-      pixptr = (unsigned char*) (capdev->camera->capture.capture_buffer);
+      pixptr = (unsigned char*) input_image;
       count = (w*h*((capdev->pixeldepth == 24) ? 3 : 1));
       for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
       *summed_intensity = ((double) intensity) / w / h / ((capdev->pixeldepth == 24) ? 3 : 1);

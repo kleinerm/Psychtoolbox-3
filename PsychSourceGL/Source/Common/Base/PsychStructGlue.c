@@ -158,8 +158,7 @@ void PsychSetStructArrayStringElement(	char *fieldName,
     //do stuff
     mxFieldValue=mxCreateString(text);
     mxSetField(pStruct, index, fieldName, mxFieldValue); 
-    //mxDestroyArray(mxFieldValue);
-
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
@@ -192,7 +191,7 @@ void PsychSetStructArrayDoubleElement(	char *fieldName,
     mxFieldValue= mxCreateDoubleMatrix(1, 1, mxREAL);
     mxGetPr(mxFieldValue)[0]= value;
     mxSetField(pStruct, index, fieldName, mxFieldValue); 
-    //mxDestroyArray(mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
     
 }
 
@@ -226,7 +225,7 @@ void PsychSetStructArrayBooleanElement(	char *fieldName,
     mxFieldValue=mxCreateLogicalMatrix(1, 1);
     mxGetLogicals(mxFieldValue)[0]= state;
     mxSetField(pStruct, index, fieldName, mxFieldValue); 
-    //mxDestroyArray(mxFieldValue);
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
     
 }
 
@@ -261,7 +260,7 @@ void PsychSetStructArrayStructElement(	char *fieldName,
         
     //do stuff
     mxSetField(pStructOuter, index, fieldName, pStructInner); 
-    
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(pStructInner);    
 }
 
 
@@ -294,11 +293,3 @@ void PsychSetStructArrayNativeElement(	char *fieldName,
     mxSetField(pStructArray, index, fieldName, pNativeElement); 
     
 }
-
-
-                                    
-
-
-
-
-

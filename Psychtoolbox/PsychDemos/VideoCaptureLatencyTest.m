@@ -1,4 +1,4 @@
-function VideoCaptureLatencyTest(texfetch, fullscreen)
+function VideoCaptureLatencyTest(texfetch, fullscreen, depth)
 % VideoCaptureLatencyTest
 %
 % This routine tests the latency of Videocapture for
@@ -46,6 +46,11 @@ end;
 
 fullscreen
 
+if nargin < 3
+   depth = 1;
+end;
+depth
+
 %try
     % Open display with default settings:
     if fullscreen<1
@@ -64,7 +69,7 @@ fullscreen
     Screen('Flip',win);
     
     % Open default video capture device:
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 1);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], depth);
     
     % Start video capture: We request at least a 100 Hz capture rate and lowlatency (=1) mode:
     fps=Screen('StartVideoCapture', grabber, 100, 1);
@@ -84,19 +89,19 @@ fullscreen
             % Print instructions:
             Screen('DrawText', win, 'Point camera to center of Display - Then press any key', 10, h-50);
             % Print pts:
-            Screen('DrawText', win, ['Capture timestamp (s): ' num2str(pts)], 0, 0, 255);
+            Screen('DrawText', win, ['Capture timestamp (s): ' sprintf('%.4f', pts)], 0, 0, 255);
             if count>0
                 % Compute delta:
                 delta = (pts - oldpts) * 1000;
                 oldpts = pts;
-                Screen('DrawText', win, ['Delta since last frame (ms): ' num2str(delta)], 0, 24, 255);
+                Screen('DrawText', win, ['Delta since last frame (ms): ' sprintf('%.4f', delta)], 0, 24, 255);
             end;
             
             % Compute and print intensity:
-            Screen('DrawText', win, ['Mean intensity: ' num2str(intensity)], 0, 48, 255);
+            Screen('DrawText', win, ['Mean intensity: ' sprintf('%.2f', intensity)], 0, 48, 255);
            
             % Print count of dropped frames since last fetch:
-            Screen('DrawText', win, ['Dropped frames: ' num2str(nrdropped)], 0, 72, 255);
+            Screen('DrawText', win, ['Dropped frames: ' sprintf('%i', nrdropped)], 0, 72, 255);
 
             % New texture from framegrabber.
             Screen('DrawTexture', win, tex);

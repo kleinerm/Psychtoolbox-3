@@ -131,7 +131,7 @@ void PsychSetCellVectorStringElement(  int index,
     //do stuff
     mxFieldValue=mxCreateString(text);
     mxSetCell(cellVector, index, mxFieldValue);    
-
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
@@ -159,6 +159,7 @@ void PsychSetCellVectorDoubleElement(	int index,
     mxFieldValue= mxCreateDoubleMatrix(1, 1, mxREAL);
     mxGetPr(mxFieldValue)[0]= value;
     mxSetCell(cellVector, index, mxFieldValue); 
+    if (PSYCH_LANGUAGE == PSYCH_OCTAVE) mxDestroyArray(mxFieldValue);
 }
 
 
@@ -219,10 +220,3 @@ void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType *nat
     *nativeString=outputs[0];
     
 }
- 
-
-  
-
-
-
-

@@ -323,6 +323,21 @@ int mxGetString(const mxArray* arrayPtr, char* outstring, int outstringsize)
   return(((snprintf(outstring, outstringsize, "%s", GETOCTPTR(arrayPtr)->string_value().c_str()))>0) ? 0 : 1);
 }
 
+void mxDestroyArray(mxArray *arrayPtr)
+{
+  // Destroy a mxArray:
+  if (arrayPtr == NULL) return;
+
+  // We only need to destroy the octave_value object referenced by arrayPtr,
+  // because possible data buffers referenced by the ->d field and the
+  // mxArray struct itself are allocted via PsychMallocTemp() anyway, so
+  // they get automatically released when exiting our octFile...
+  octave_value* ov = (octave_value*) arrayPtr->o;
+  if (ov) delete(ov);
+  arrayPtr->o = NULL;
+  return;
+}
+
 mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const char** fieldNames)
 {
   mxArray* retval;
@@ -980,11 +995,13 @@ octFunctionCleanup:
 	  prhsGLUE[i]=NULL;	  
 	}
 
-	// Return our octave_value_list of returned values in any case and yield control
-	// back to Octave:
-
-	// "Copy" our octave-value's into the output array:
-	for(i=0; i<nlhs && i<MAX_OUTPUT_ARGS; i++) {
+	// "Copy" our octave-value's into the output array: If nlhs should be
+	// zero (Octave-Script does not expect any return arguments), but our
+	// subfunction has assigned a return argument in slot 0 anyway, then
+	// we return that argument and release our own temp-memory. This
+	// provides Matlab-semantic, where unsolicited return arguments are
+	// printed anyway as content of the "ans" variable.
+	for(i=0; (i==0 && plhsGLUE[0]!=NULL) || (i<nlhs && i<MAX_OUTPUT_ARGS); i++) {
 	  if (plhsGLUE[i]) {
 	    plhs(i) = *((octave_value*)(plhsGLUE[i]->o));
 	    if (plhs(i).is_scalar_type()) {
@@ -993,6 +1010,13 @@ octFunctionCleanup:
 	      plhs(i) = octave_value((double) *svalue);
 	    }
 
+	    // Delete our own octave_value object. All relevant data has been
+	    // copied via "copy-on-write" into plhs(i) already:
+ 	    delete(((octave_value*)(plhsGLUE[i]->o)));
+
+	    // We don't need to free() the PsychMallocTemp()'ed object pointed to
+	    // by the d-Ptr, nor do we need to free the mxArray-Struct. This is done
+	    // below in PsychFreeAllTempMemory(). Just NULL-out the array slot:
 	    plhsGLUE[i]=NULL;
 	  }
 	}
@@ -1011,7 +1035,8 @@ octFunctionCleanup:
 	  #endif
 	}
 
-	// Return it:
+	// Return our octave_value_list of returned values in any case and yield control
+	// back to Octave:
 	return(plhs);
 #endif
 }

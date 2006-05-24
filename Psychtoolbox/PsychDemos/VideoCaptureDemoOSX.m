@@ -20,8 +20,8 @@ try
     Screen('TextSize', win, 24);
     
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 3);
-    brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness')
-    exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure')
+    brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness', 200)
+    exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure', 200)
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
     shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter')
     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
@@ -52,7 +52,7 @@ try
             Screen('glPushMatrix', win);
             % Translate origin into the geometric center of text:
             Screen('glTranslate', win, xc, 0, 0);
-            % Apple a scaling transform which flips the diretion of x-Axis,
+            % Apple a scaling transform which flips the direction of x-Axis,
             % thereby mirroring the drawn text horizontally:
             Screen('glScale', win, -1, 1, 1);
             % We need to undo the translations...
@@ -65,12 +65,12 @@ try
             Screen('glPopMatrix', win);
 
             % Print pts:
-            Screen('DrawText', win, num2str(pts - t), 0, 0, 255);
-            if count>0
+            Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
+             if count>0
                 % Compute delta:
                 delta = (pts - oldpts) * 1000;
                 oldpts = pts;
-                Screen('DrawText', win, num2str(delta), 0, 20, 255);
+                Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
             end;
             
             % Show it.
