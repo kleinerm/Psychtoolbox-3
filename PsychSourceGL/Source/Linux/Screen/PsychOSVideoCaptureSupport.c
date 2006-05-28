@@ -1366,6 +1366,21 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     feature = DC1394_FEATURE_SHUTTER;    
   }
 
+  if (strcmp(pname, "Sharpness")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_SHARPNESS;    
+  }
+
+  if (strcmp(pname, "Saturation")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_SATURATION;    
+  }
+
+  if (strcmp(pname, "Gamma")==0) {
+    assigned = true;
+    feature = DC1394_FEATURE_GAMMA;    
+  }
+
   // Check if feature is present on this camera:
   if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
     printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
@@ -1395,10 +1410,18 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 	    fflush(NULL);      
 	  }
 	  else {
-	    // Ok intval is valid for this feature: Try to set it.
-	    if (dc1394_feature_set_value(capdev->camera, feature, intval)!=DC1394_SUCCESS) {
-	      printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle, intval);
+	    // Ok intval is valid for this feature: Can we manually set this feature?
+	    // Switch feature to manual control mode:
+	    if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_MANUAL)!=DC1394_SUCCESS) {
+	      printf("PTB-WARNING: Failed to set feature %s on camera %i to manual control! Ignored.\n", pname, capturehandle);
 	      fflush(NULL);
+	    }
+	    else {
+	      // Ok, try to set the features new value:
+	      if (dc1394_feature_set_value(capdev->camera, feature, intval)!=DC1394_SUCCESS) {
+		printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle, intval);
+		fflush(NULL);
+	      }
 	    }
 	  }
 	}

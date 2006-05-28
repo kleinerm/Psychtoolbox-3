@@ -20,10 +20,11 @@ try
     Screen('TextSize', win, 24);
     
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 3);
-    brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness', 200)
-    exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure', 200)
+    brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
+    exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
-    shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter')
+    gamma = Screen('SetVideoCaptureParameter', grabber, 'Gamma')
+    shutter = Screen('SetVideoCaptureParameter', grabber, 'Shutter',7)
     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')

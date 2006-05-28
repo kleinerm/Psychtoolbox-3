@@ -78,7 +78,7 @@ screen=max(Screen('Screens'));
     ifi = Screen('GetFlipInterval', win);
 
     % Translate latency in frames into latency in milliseconds:
-    latencymillisecs = fifodelay * ifi * 1000.0;
+    latencymillisecs = fifodelay * 1/fps * 1000.0;
     fprintf('Requested latency in milliseconds: %f\n', latencymillisecs);
 
     displayfps = 1.0 / ifi
