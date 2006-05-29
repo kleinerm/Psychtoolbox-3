@@ -287,10 +287,19 @@ function oldPriority=Priority(newPriority)
 %                to kill the update process.  Do not set time contstraint
 %                priority.   
 % 2/21/06   mk   Updated for Linux.
+% 5/29/06   mk   Merged a fix for properly restarting update process.
+%                Bug found & fix provided by Michael Ross.
 
 if IsLinux
     % Not yet implemented on Linux. Just return zero.
     oldPriority=0;
+    return;
+end;
+
+if IsOSX & IsOctave
+    % Not yet implemented on MacOS-X + GNU/Octave. Just return zero.
+    oldPriority=0;
+    return;
 end;
 
 if IsOSX
@@ -330,12 +339,15 @@ if IsOSX
     
     %if the priority level calls for time constraint priority...
     if newPriority > 0
-        
+        if isempty(didPriorityKillUpdate)
+            didPriorityKillUpdate = 0;
+        end
+
         tempWasKilledByUs=KillUpdateProcess;    
         if isnan(tempWasKilledByUs)
             error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
         else
-            didPriorityKillUpdate=tempWasKilledByUs;
+            didPriorityKillUpdate=tempWasKilledByUs || didPriorityKillUpdate;
         end
         
         % Find the frame periods.  FrameRate returns the nominal frame rate, which

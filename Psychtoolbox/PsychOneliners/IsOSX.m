@@ -9,4 +9,4 @@ function resultFlag = IsOSX
 % 
 % See also: IsOS9, IsWin
 
-resultFlag= streq(computer,'MAC');
+resultFlag= streq(computer,'MAC') | ~isempty(findstr(computer, 'apple-darwin'));
