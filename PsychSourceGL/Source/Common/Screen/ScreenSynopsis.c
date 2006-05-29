@@ -154,8 +154,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";
 	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
+        synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
 
-	
 	// Get and set information about the environment, computer, and video card (i.e. screen):
 	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
 	synopsis[i++] = "struct=Screen('Version');";

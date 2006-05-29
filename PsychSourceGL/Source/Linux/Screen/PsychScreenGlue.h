@@ -62,6 +62,7 @@ int						PsychGetNominalFramerate(int screenNumber);
 void						PsychGetScreenSize(int screenNumber, long *width, long *height);
 void						PsychGetGlobalScreenRect(int screenNumber, double *rect);
 void						PsychGetScreenRect(int screenNumber, double *rect);
+void                                            PsychGetDisplaySize(int screenNumber, int *width, int *height);
 PsychColorModeType			        PsychGetScreenMode(int screenNumber);
 int						PsychGetDacBitsFromDisplay(int screenNumber);		//from display, not from preferences
 void						PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings);

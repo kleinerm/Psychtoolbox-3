@@ -172,48 +172,30 @@ int PsychGetNumDisplays(void)
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 {
-    CFDictionaryRef currentMode, tempMode;
-    CFArrayRef modeList;
-    CFNumberRef n;
-    int i, numPossibleModes;
-    long currentWidth, currentHeight, tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
+    int i, rc;
+    DEVMODE result;
     
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber); //also checked within SCREENPixelSizes
-    /* 
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
-    FIXME This just always returns a depth of 32 bits per pixel!
-     
-    //Get the current display mode.  We will want to match against width and hz when looking for available depths. 
-    currentMode = CGDisplayCurrentMode(displayCGIDs[screenNumber]);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayWidth);
-    CFNumberGetValue(n,kCFNumberLongType, &currentWidth);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayHeight);
-    CFNumberGetValue(n,kCFNumberLongType, &currentHeight);
-    n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate );
-    CFNumberGetValue(n, kCFNumberLongType, &currentFrequency ) ;
+    // Query all available modes for this display device and retrieve their
+    // depth values:
+    i=0;
+    do {
+        // Query next setting (i) for current (NULL) display:
+        result.dmSize = sizeof(DEVMODE);
+        result.dmDriverExtra = 0;
+        rc = EnumDisplaySettings(NULL, i, &result);
+        i++;
 
-    //get a list of avialable modes for the specified display
-    modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
-    numPossibleModes= CFArrayGetCount(modeList);
-    for(i=0;i<numPossibleModes;i++){
-        tempMode = CFArrayGetValueAtIndex(modeList,i);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
-        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
-        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
-        n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
-        CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
-        if(currentWidth==tempWidth && currentHeight==tempHeight && currentFrequency==tempFrequency){
-            n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
-            CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
-            PsychAddValueToDepthStruct((int)tempDepth, depths);
+        // Valid setting returned?
+        if (rc) {
+            // Yes. Add its depth-value to our depth struct:
+            PsychAddValueToDepthStruct((int) result.dmBitsPerPel);
         }
-    }
-    */
+    } while (rc!=0);
 
-    // MK: FIXME: This just always returns a depth of 32 bits per pixel!
-    PsychAddValueToDepthStruct((int) 32, depths);
+    // Old hard-coded setting: PsychAddValueToDepthStruct((int) 32, depths);
+    return;    
 }
 
 
@@ -305,6 +287,15 @@ int PsychGetNominalFramerate(int screenNumber)
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
   return(GetDeviceCaps(displayCGIDs[screenNumber], VREFRESH));
+}
+
+/* Returns the physical display size as reported by Windows: */
+void PsychGetDisplaySize(int screenNumber, int *width, int *height)
+{
+    if(screenNumber>=numDisplays)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
+    *width = (int) GetDeviceCaps(displayCGIDs[screenNumber], HORZSIZE);
+    *height = (int) GetDeviceCaps(displayCGIDs[screenNumber], VERTSIZE); 
 }
 
 void PsychGetScreenSize(int screenNumber, long *width, long *height)

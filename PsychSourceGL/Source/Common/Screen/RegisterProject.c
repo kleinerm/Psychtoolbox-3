@@ -201,7 +201,7 @@ PsychError PsychModuleInit(void)
         PsychErrorExit(PsychRegister("GetCapturedImage", &SCREENGetCapturedImage));
 	PsychErrorExit(PsychRegister("SetVideoCaptureParameter", &SCREENSetVideoCaptureParameter));
 	PsychErrorExit(PsychRegister("LoadCLUT", &SCREENLoadCLUT));
-
+        PsychErrorExit(PsychRegister("DisplaySize", &SCREENDisplaySize));
  	//Experiments
 
 

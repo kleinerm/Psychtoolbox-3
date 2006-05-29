@@ -394,6 +394,15 @@ int PsychGetNominalFramerate(int screenNumber)
   return(vrefresh);
 }
 
+/* Returns the physical display size as reported by X11: */
+void PsychGetDisplaySize(int screenNumber, int *width, int *height)
+{
+    if(screenNumber>=numDisplays)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
+    *width = (int) XDisplayWidthMM(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
+    *height = (int) XDisplayHeightMM(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber));
+}
+
 void PsychGetScreenSize(int screenNumber, long *width, long *height)
 {
   if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 

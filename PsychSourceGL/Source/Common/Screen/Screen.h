@@ -172,6 +172,7 @@ PsychError      SCREENSetVideoCaptureParameter(void);
 PsychError      SCREENBeginOpenGL(void);
 PsychError      SCREENEndOpenGL(void);
 PsychError      SCREENLoadCLUT(void);
+PsychError      SCREENDisplaySize(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

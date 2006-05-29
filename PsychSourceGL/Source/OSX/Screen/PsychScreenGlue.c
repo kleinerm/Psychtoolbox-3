@@ -365,6 +365,16 @@ void PsychGetScreenSize(int screenNumber, long *width, long *height)
 
 }
 
+/* Returns the physical display size as reported by OS-X: */
+void PsychGetDisplaySize(int screenNumber, int *width, int *height)
+{
+    CGSize physSize;
+    if(screenNumber>=numDisplays)
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDisplaySize() is out of range");
+    physSize = CGDisplayScreenSize(displayCGIDs[screenNumber]);
+    *width = (int) physSize.width;
+    *height = (int) physSize.height;
+}
 
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 {
