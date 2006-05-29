@@ -73,6 +73,13 @@ PsychError SCREENMakeTexture(void)
     GLubyte *rpb, *gpb, *bpb, *apb;    
     int                                 usepoweroftwo;
     double                              optimized_orientation;
+    Boolean                             bigendian;
+
+    // Detect endianity (byte-order) of machine:
+    ix=255;
+    rpb=(GLubyte*) &ix;
+    bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
+    ix = 0; rpb = NULL;
 
     if(PsychPrefStateGet_DebugMakeTexture())	//MARK #1
         StoreNowTime();
@@ -328,12 +335,25 @@ PsychError SCREENMakeTexture(void)
         gp=(double*) ((psych_uint64) doubleMatrix + (psych_uint64) iters*sizeof(double));
         bp=(double*) ((psych_uint64) gp + (psych_uint64) iters*sizeof(double));
         ap=(double*) ((psych_uint64) bp + (psych_uint64) iters*sizeof(double));
-        for(ix=0;ix<iters;ix++){
+	if (bigendian) {
+	  // Code for big-endian machines like PowerPC:
+	  for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= (GLubyte) *(ap++);  
             *(texturePointer_b++)= (GLubyte) *(rp++);  
             *(texturePointer_b++)= (GLubyte) *(gp++);  
             *(texturePointer_b++)= (GLubyte) *(bp++);  
-        }
+	  }
+	}
+	else {
+	  // Code for little-endian machines like Intel Pentium:
+	  for(ix=0;ix<iters;ix++){
+            *(texturePointer_b++)= (GLubyte) *(bp++);  
+            *(texturePointer_b++)= (GLubyte) *(gp++);  
+            *(texturePointer_b++)= (GLubyte) *(rp++);  
+            *(texturePointer_b++)= (GLubyte) *(ap++);  
+	  }
+	}
+
         textureRecord->depth=32;
     }
     
@@ -365,12 +385,25 @@ PsychError SCREENMakeTexture(void)
         gpb=(GLubyte*) ((psych_uint64) byteMatrix + (psych_uint64) iters);
         bpb=(GLubyte*) ((psych_uint64) gpb + (psych_uint64) iters);
         apb=(GLubyte*) ((psych_uint64) bpb + (psych_uint64) iters);
-        for(ix=0;ix<iters;ix++){
+	if (bigendian) {
+	  // Code for big-endian machines like PowerPC:
+	  for(ix=0;ix<iters;ix++){
             *(texturePointer_b++)= *(apb++);  
             *(texturePointer_b++)= *(rpb++);  
             *(texturePointer_b++)= *(gpb++);  
             *(texturePointer_b++)= *(bpb++);  
-        }
+	  }
+	}
+	else {
+	  // Code for little-endian machines like Intel Pentium:
+	  for(ix=0;ix<iters;ix++){
+            *(texturePointer_b++)= *(bpb++);  
+            *(texturePointer_b++)= *(gpb++);  
+            *(texturePointer_b++)= *(rpb++);  
+            *(texturePointer_b++)= *(apb++);  
+	  }
+	}
+
         textureRecord->depth=32;
     }
     
