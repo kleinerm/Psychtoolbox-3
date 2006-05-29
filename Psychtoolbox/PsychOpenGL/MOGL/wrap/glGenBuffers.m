@@ -9,12 +9,13 @@ function buffers = glGenBuffers( n )
 % 05-Mar-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=1,
     error('invalid number of arguments');
 end
 
-buffers = uint32(0);
+buffers = uint32(n);
 
 moglcore( 'glGenBuffers', n, buffers );
 

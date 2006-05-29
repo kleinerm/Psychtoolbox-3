@@ -2,7 +2,7 @@
 /*
  * gl_auto.c
  *
- * 27-Mar-2006 -- created (moglgen)
+ * 30-May-2006 -- created (moglgen)
  *
  */
 
@@ -5608,11 +5608,916 @@ void glut_solidicosahedron( int nlhs, mxArray *plhs[], int nrhs, const mxArray *
 
 }
 
-int gl_auto_map_count=639;
+void gl_isrenderbufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glIsRenderbufferEXT) mogl_glunsupported("glIsRenderbufferEXT");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glIsRenderbufferEXT((GLuint)mxGetScalar(prhs[0]));
+
+}
+
+void gl_bindrenderbufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glBindRenderbufferEXT) mogl_glunsupported("glBindRenderbufferEXT");
+	glBindRenderbufferEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]));
+
+}
+
+void gl_deleterenderbuffersext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glDeleteRenderbuffersEXT) mogl_glunsupported("glDeleteRenderbuffersEXT");
+	glDeleteRenderbuffersEXT((GLsizei)mxGetScalar(prhs[0]),
+		(const GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_genrenderbuffersext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGenRenderbuffersEXT) mogl_glunsupported("glGenRenderbuffersEXT");
+	glGenRenderbuffersEXT((GLsizei)mxGetScalar(prhs[0]),
+		(GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_renderbufferstorageext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glRenderbufferStorageEXT) mogl_glunsupported("glRenderbufferStorageEXT");
+	glRenderbufferStorageEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(GLsizei)mxGetScalar(prhs[3]));
+
+}
+
+void gl_getrenderbufferparameterivext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetRenderbufferParameterivEXT) mogl_glunsupported("glGetRenderbufferParameterivEXT");
+	glGetRenderbufferParameterivEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLint*)mxGetData(prhs[2]));
+
+}
+
+void gl_isframebufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glIsFramebufferEXT) mogl_glunsupported("glIsFramebufferEXT");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glIsFramebufferEXT((GLuint)mxGetScalar(prhs[0]));
+
+}
+
+void gl_bindframebufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glBindFramebufferEXT) mogl_glunsupported("glBindFramebufferEXT");
+	glBindFramebufferEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]));
+
+}
+
+void gl_deleteframebuffersext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glDeleteFramebuffersEXT) mogl_glunsupported("glDeleteFramebuffersEXT");
+	glDeleteFramebuffersEXT((GLsizei)mxGetScalar(prhs[0]),
+		(const GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_genframebuffersext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGenFramebuffersEXT) mogl_glunsupported("glGenFramebuffersEXT");
+	glGenFramebuffersEXT((GLsizei)mxGetScalar(prhs[0]),
+		(GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_checkframebufferstatusext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCheckFramebufferStatusEXT) mogl_glunsupported("glCheckFramebufferStatusEXT");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glCheckFramebufferStatusEXT((GLenum)mxGetScalar(prhs[0]));
+
+}
+
+void gl_framebuffertexture1dext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glFramebufferTexture1DEXT) mogl_glunsupported("glFramebufferTexture1DEXT");
+	glFramebufferTexture1DEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLuint)mxGetScalar(prhs[3]),
+		(GLint)mxGetScalar(prhs[4]));
+
+}
+
+void gl_framebuffertexture2dext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glFramebufferTexture2DEXT) mogl_glunsupported("glFramebufferTexture2DEXT");
+	glFramebufferTexture2DEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLuint)mxGetScalar(prhs[3]),
+		(GLint)mxGetScalar(prhs[4]));
+
+}
+
+void gl_framebuffertexture3dext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glFramebufferTexture3DEXT) mogl_glunsupported("glFramebufferTexture3DEXT");
+	glFramebufferTexture3DEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLuint)mxGetScalar(prhs[3]),
+		(GLint)mxGetScalar(prhs[4]),
+		(GLint)mxGetScalar(prhs[5]));
+
+}
+
+void gl_framebufferrenderbufferext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glFramebufferRenderbufferEXT) mogl_glunsupported("glFramebufferRenderbufferEXT");
+	glFramebufferRenderbufferEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLuint)mxGetScalar(prhs[3]));
+
+}
+
+void gl_getframebufferattachmentparameterivext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetFramebufferAttachmentParameterivEXT) mogl_glunsupported("glGetFramebufferAttachmentParameterivEXT");
+	glGetFramebufferAttachmentParameterivEXT((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLint*)mxGetData(prhs[3]));
+
+}
+
+void gl_generatemipmapext( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGenerateMipmapEXT) mogl_glunsupported("glGenerateMipmapEXT");
+	glGenerateMipmapEXT((GLenum)mxGetScalar(prhs[0]));
+
+}
+
+void gl_combinerparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerParameterfvNV) mogl_glunsupported("glCombinerParameterfvNV");
+	glCombinerParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(const GLfloat*)mxGetData(prhs[1]));
+
+}
+
+void gl_combinerparameterfnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerParameterfNV) mogl_glunsupported("glCombinerParameterfNV");
+	glCombinerParameterfNV((GLenum)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]));
+
+}
+
+void gl_combinerparameterivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerParameterivNV) mogl_glunsupported("glCombinerParameterivNV");
+	glCombinerParameterivNV((GLenum)mxGetScalar(prhs[0]),
+		(const GLint*)mxGetData(prhs[1]));
+
+}
+
+void gl_combinerparameterinv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerParameteriNV) mogl_glunsupported("glCombinerParameteriNV");
+	glCombinerParameteriNV((GLenum)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]));
+
+}
+
+void gl_combinerinputnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerInputNV) mogl_glunsupported("glCombinerInputNV");
+	glCombinerInputNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]),
+		(GLenum)mxGetScalar(prhs[4]),
+		(GLenum)mxGetScalar(prhs[5]));
+
+}
+
+void gl_combineroutputnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerOutputNV) mogl_glunsupported("glCombinerOutputNV");
+	glCombinerOutputNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]),
+		(GLenum)mxGetScalar(prhs[4]),
+		(GLenum)mxGetScalar(prhs[5]),
+		(GLenum)mxGetScalar(prhs[6]),
+		(GLboolean)mxGetScalar(prhs[7]),
+		(GLboolean)mxGetScalar(prhs[8]),
+		(GLboolean)mxGetScalar(prhs[9]));
+
+}
+
+void gl_finalcombinerinputnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glFinalCombinerInputNV) mogl_glunsupported("glFinalCombinerInputNV");
+	glFinalCombinerInputNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]));
+
+}
+
+void gl_getcombinerinputparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetCombinerInputParameterfvNV) mogl_glunsupported("glGetCombinerInputParameterfvNV");
+	glGetCombinerInputParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]),
+		(GLfloat*)mxGetData(prhs[4]));
+
+}
+
+void gl_getcombinerinputparameterivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetCombinerInputParameterivNV) mogl_glunsupported("glGetCombinerInputParameterivNV");
+	glGetCombinerInputParameterivNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]),
+		(GLint*)mxGetData(prhs[4]));
+
+}
+
+void gl_getcombineroutputparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetCombinerOutputParameterfvNV) mogl_glunsupported("glGetCombinerOutputParameterfvNV");
+	glGetCombinerOutputParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLfloat*)mxGetData(prhs[3]));
+
+}
+
+void gl_getcombineroutputparameterivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetCombinerOutputParameterivNV) mogl_glunsupported("glGetCombinerOutputParameterivNV");
+	glGetCombinerOutputParameterivNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLint*)mxGetData(prhs[3]));
+
+}
+
+void gl_getfinalcombinerinputparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetFinalCombinerInputParameterfvNV) mogl_glunsupported("glGetFinalCombinerInputParameterfvNV");
+	glGetFinalCombinerInputParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_getfinalcombinerinputparameterivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetFinalCombinerInputParameterivNV) mogl_glunsupported("glGetFinalCombinerInputParameterivNV");
+	glGetFinalCombinerInputParameterivNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLint*)mxGetData(prhs[2]));
+
+}
+
+void gl_combinerstageparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glCombinerStageParameterfvNV) mogl_glunsupported("glCombinerStageParameterfvNV");
+	glCombinerStageParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(const GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_getcombinerstageparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetCombinerStageParameterfvNV) mogl_glunsupported("glGetCombinerStageParameterfvNV");
+	glGetCombinerStageParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_bindprogramnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glBindProgramNV) mogl_glunsupported("glBindProgramNV");
+	glBindProgramNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]));
+
+}
+
+void gl_deleteprogramsnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glDeleteProgramsNV) mogl_glunsupported("glDeleteProgramsNV");
+	glDeleteProgramsNV((GLsizei)mxGetScalar(prhs[0]),
+		(const GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_executeprogramnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glExecuteProgramNV) mogl_glunsupported("glExecuteProgramNV");
+	glExecuteProgramNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(const GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_genprogramsnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGenProgramsNV) mogl_glunsupported("glGenProgramsNV");
+	glGenProgramsNV((GLsizei)mxGetScalar(prhs[0]),
+		(GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_areprogramsresidentnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glAreProgramsResidentNV) mogl_glunsupported("glAreProgramsResidentNV");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glAreProgramsResidentNV((GLsizei)mxGetScalar(prhs[0]),
+		(const GLuint*)mxGetData(prhs[1]),
+		(GLboolean*)mxGetData(prhs[2]));
+
+}
+
+void gl_requestresidentprogramsnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glRequestResidentProgramsNV) mogl_glunsupported("glRequestResidentProgramsNV");
+	glRequestResidentProgramsNV((GLsizei)mxGetScalar(prhs[0]),
+		(GLuint*)mxGetData(prhs[1]));
+
+}
+
+void gl_getprogramparameterfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetProgramParameterfvNV) mogl_glunsupported("glGetProgramParameterfvNV");
+	glGetProgramParameterfvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLfloat*)mxGetData(prhs[3]));
+
+}
+
+void gl_getprogramparameterdvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetProgramParameterdvNV) mogl_glunsupported("glGetProgramParameterdvNV");
+	glGetProgramParameterdvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLdouble*)mxGetData(prhs[3]));
+
+}
+
+void gl_getprogramivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetProgramivNV) mogl_glunsupported("glGetProgramivNV");
+	glGetProgramivNV((GLuint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLint*)mxGetData(prhs[2]));
+
+}
+
+void gl_getprogramstringnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetProgramStringNV) mogl_glunsupported("glGetProgramStringNV");
+	glGetProgramStringNV((GLuint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLubyte*)mxGetData(prhs[2]));
+
+}
+
+void gl_gettrackmatrixivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetTrackMatrixivNV) mogl_glunsupported("glGetTrackMatrixivNV");
+	glGetTrackMatrixivNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLint*)mxGetData(prhs[3]));
+
+}
+
+void gl_getvertexattribdvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetVertexAttribdvNV) mogl_glunsupported("glGetVertexAttribdvNV");
+	glGetVertexAttribdvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_getvertexattribfvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetVertexAttribfvNV) mogl_glunsupported("glGetVertexAttribfvNV");
+	glGetVertexAttribfvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_getvertexattribivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glGetVertexAttribivNV) mogl_glunsupported("glGetVertexAttribivNV");
+	glGetVertexAttribivNV((GLuint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLint*)mxGetData(prhs[2]));
+
+}
+
+void gl_isprogramnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glIsProgramNV) mogl_glunsupported("glIsProgramNV");
+	plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
+	*mxGetPr(plhs[0])=(double)glIsProgramNV((GLuint)mxGetScalar(prhs[0]));
+
+}
+
+void gl_loadprogramnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glLoadProgramNV) mogl_glunsupported("glLoadProgramNV");
+	glLoadProgramNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(const GLubyte*)mxGetData(prhs[3]));
+
+}
+
+void gl_programparameter4fnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameter4fNV) mogl_glunsupported("glProgramParameter4fNV");
+	glProgramParameter4fNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]),
+		(GLfloat)mxGetScalar(prhs[3]),
+		(GLfloat)mxGetScalar(prhs[4]),
+		(GLfloat)mxGetScalar(prhs[5]));
+
+}
+
+void gl_programparameter4dnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameter4dNV) mogl_glunsupported("glProgramParameter4dNV");
+	glProgramParameter4dNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLdouble)mxGetScalar(prhs[2]),
+		(GLdouble)mxGetScalar(prhs[3]),
+		(GLdouble)mxGetScalar(prhs[4]),
+		(GLdouble)mxGetScalar(prhs[5]));
+
+}
+
+void gl_programparameter4dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameter4dvNV) mogl_glunsupported("glProgramParameter4dvNV");
+	glProgramParameter4dvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(const GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_programparameter4fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameter4fvNV) mogl_glunsupported("glProgramParameter4fvNV");
+	glProgramParameter4fvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(const GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_programparameters4dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameters4dvNV) mogl_glunsupported("glProgramParameters4dvNV");
+	glProgramParameters4dvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLuint)mxGetScalar(prhs[2]),
+		(const GLdouble*)mxGetData(prhs[3]));
+
+}
+
+void gl_programparameters4fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glProgramParameters4fvNV) mogl_glunsupported("glProgramParameters4fvNV");
+	glProgramParameters4fvNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLuint)mxGetScalar(prhs[2]),
+		(const GLfloat*)mxGetData(prhs[3]));
+
+}
+
+void gl_trackmatrixnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glTrackMatrixNV) mogl_glunsupported("glTrackMatrixNV");
+	glTrackMatrixNV((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]));
+
+}
+
+void gl_vertexattribpointernv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribPointerNV) mogl_glunsupported("glVertexAttribPointerNV");
+	glVertexAttribPointerNV((GLuint)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLsizei)mxGetScalar(prhs[3]),
+		(const GLvoid*)mxGetData(prhs[4]));
+
+}
+
+void gl_vertexattrib1snv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1sNV) mogl_glunsupported("glVertexAttrib1sNV");
+	glVertexAttrib1sNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort)mxGetScalar(prhs[1]));
+
+}
+
+void gl_vertexattrib1fnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1fNV) mogl_glunsupported("glVertexAttrib1fNV");
+	glVertexAttrib1fNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]));
+
+}
+
+void gl_vertexattrib1dnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1dNV) mogl_glunsupported("glVertexAttrib1dNV");
+	glVertexAttrib1dNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble)mxGetScalar(prhs[1]));
+
+}
+
+void gl_vertexattrib2snv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2sNV) mogl_glunsupported("glVertexAttrib2sNV");
+	glVertexAttrib2sNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort)mxGetScalar(prhs[1]),
+		(GLshort)mxGetScalar(prhs[2]));
+
+}
+
+void gl_vertexattrib2fnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2fNV) mogl_glunsupported("glVertexAttrib2fNV");
+	glVertexAttrib2fNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]));
+
+}
+
+void gl_vertexattrib2dnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2dNV) mogl_glunsupported("glVertexAttrib2dNV");
+	glVertexAttrib2dNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble)mxGetScalar(prhs[1]),
+		(GLdouble)mxGetScalar(prhs[2]));
+
+}
+
+void gl_vertexattrib3snv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3sNV) mogl_glunsupported("glVertexAttrib3sNV");
+	glVertexAttrib3sNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort)mxGetScalar(prhs[1]),
+		(GLshort)mxGetScalar(prhs[2]),
+		(GLshort)mxGetScalar(prhs[3]));
+
+}
+
+void gl_vertexattrib3fnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3fNV) mogl_glunsupported("glVertexAttrib3fNV");
+	glVertexAttrib3fNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]),
+		(GLfloat)mxGetScalar(prhs[3]));
+
+}
+
+void gl_vertexattrib3dnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3dNV) mogl_glunsupported("glVertexAttrib3dNV");
+	glVertexAttrib3dNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble)mxGetScalar(prhs[1]),
+		(GLdouble)mxGetScalar(prhs[2]),
+		(GLdouble)mxGetScalar(prhs[3]));
+
+}
+
+void gl_vertexattrib4snv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4sNV) mogl_glunsupported("glVertexAttrib4sNV");
+	glVertexAttrib4sNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort)mxGetScalar(prhs[1]),
+		(GLshort)mxGetScalar(prhs[2]),
+		(GLshort)mxGetScalar(prhs[3]),
+		(GLshort)mxGetScalar(prhs[4]));
+
+}
+
+void gl_vertexattrib4fnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4fNV) mogl_glunsupported("glVertexAttrib4fNV");
+	glVertexAttrib4fNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat)mxGetScalar(prhs[1]),
+		(GLfloat)mxGetScalar(prhs[2]),
+		(GLfloat)mxGetScalar(prhs[3]),
+		(GLfloat)mxGetScalar(prhs[4]));
+
+}
+
+void gl_vertexattrib4dnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4dNV) mogl_glunsupported("glVertexAttrib4dNV");
+	glVertexAttrib4dNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble)mxGetScalar(prhs[1]),
+		(GLdouble)mxGetScalar(prhs[2]),
+		(GLdouble)mxGetScalar(prhs[3]),
+		(GLdouble)mxGetScalar(prhs[4]));
+
+}
+
+void gl_vertexattrib4ubnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4ubNV) mogl_glunsupported("glVertexAttrib4ubNV");
+	glVertexAttrib4ubNV((GLuint)mxGetScalar(prhs[0]),
+		(GLubyte)mxGetScalar(prhs[1]),
+		(GLubyte)mxGetScalar(prhs[2]),
+		(GLubyte)mxGetScalar(prhs[3]),
+		(GLubyte)mxGetScalar(prhs[4]));
+
+}
+
+void gl_vertexattrib1svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1svNV) mogl_glunsupported("glVertexAttrib1svNV");
+	glVertexAttrib1svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib1fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1fvNV) mogl_glunsupported("glVertexAttrib1fvNV");
+	glVertexAttrib1fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib1dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib1dvNV) mogl_glunsupported("glVertexAttrib1dvNV");
+	glVertexAttrib1dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib2svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2svNV) mogl_glunsupported("glVertexAttrib2svNV");
+	glVertexAttrib2svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib2fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2fvNV) mogl_glunsupported("glVertexAttrib2fvNV");
+	glVertexAttrib2fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib2dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib2dvNV) mogl_glunsupported("glVertexAttrib2dvNV");
+	glVertexAttrib2dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib3svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3svNV) mogl_glunsupported("glVertexAttrib3svNV");
+	glVertexAttrib3svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib3fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3fvNV) mogl_glunsupported("glVertexAttrib3fvNV");
+	glVertexAttrib3fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib3dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib3dvNV) mogl_glunsupported("glVertexAttrib3dvNV");
+	glVertexAttrib3dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib4svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4svNV) mogl_glunsupported("glVertexAttrib4svNV");
+	glVertexAttrib4svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLshort*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib4fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4fvNV) mogl_glunsupported("glVertexAttrib4fvNV");
+	glVertexAttrib4fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLfloat*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib4dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4dvNV) mogl_glunsupported("glVertexAttrib4dvNV");
+	glVertexAttrib4dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLdouble*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattrib4ubvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttrib4ubvNV) mogl_glunsupported("glVertexAttrib4ubvNV");
+	glVertexAttrib4ubvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLubyte*)mxGetData(prhs[1]));
+
+}
+
+void gl_vertexattribs1svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs1svNV) mogl_glunsupported("glVertexAttribs1svNV");
+	glVertexAttribs1svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLshort*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs1fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs1fvNV) mogl_glunsupported("glVertexAttribs1fvNV");
+	glVertexAttribs1fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs1dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs1dvNV) mogl_glunsupported("glVertexAttribs1dvNV");
+	glVertexAttribs1dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs2svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs2svNV) mogl_glunsupported("glVertexAttribs2svNV");
+	glVertexAttribs2svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLshort*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs2fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs2fvNV) mogl_glunsupported("glVertexAttribs2fvNV");
+	glVertexAttribs2fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs2dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs2dvNV) mogl_glunsupported("glVertexAttribs2dvNV");
+	glVertexAttribs2dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs3svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs3svNV) mogl_glunsupported("glVertexAttribs3svNV");
+	glVertexAttribs3svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLshort*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs3fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs3fvNV) mogl_glunsupported("glVertexAttribs3fvNV");
+	glVertexAttribs3fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs3dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs3dvNV) mogl_glunsupported("glVertexAttribs3dvNV");
+	glVertexAttribs3dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs4svnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs4svNV) mogl_glunsupported("glVertexAttribs4svNV");
+	glVertexAttribs4svNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLshort*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs4fvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs4fvNV) mogl_glunsupported("glVertexAttribs4fvNV");
+	glVertexAttribs4fvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLfloat*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs4dvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs4dvNV) mogl_glunsupported("glVertexAttribs4dvNV");
+	glVertexAttribs4dvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLdouble*)mxGetData(prhs[2]));
+
+}
+
+void gl_vertexattribs4ubvnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribs4ubvNV) mogl_glunsupported("glVertexAttribs4ubvNV");
+	glVertexAttribs4ubvNV((GLuint)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLubyte*)mxGetData(prhs[2]));
+
+}
+
+void gl_pointparameterinv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glPointParameteriNV) mogl_glunsupported("glPointParameteriNV");
+	glPointParameteriNV((GLenum)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]));
+
+}
+
+void gl_pointparameterivnv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glPointParameterivNV) mogl_glunsupported("glPointParameterivNV");
+	glPointParameterivNV((GLenum)mxGetScalar(prhs[0]),
+		(const GLint*)mxGetData(prhs[1]));
+
+}
+
+void gl_samplemasksgis( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glSampleMaskSGIS) mogl_glunsupported("glSampleMaskSGIS");
+	glSampleMaskSGIS((GLclampf)mxGetScalar(prhs[0]),
+		(GLboolean)mxGetScalar(prhs[1]));
+
+}
+
+void gl_samplepatternsgis( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glSamplePatternSGIS) mogl_glunsupported("glSamplePatternSGIS");
+	glSamplePatternSGIS((GLenum)mxGetScalar(prhs[0]));
+
+}
+
+int gl_auto_map_count=738;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveTexture",                 gl_activetexture                    },
 { "glAlphaFunc",                     gl_alphafunc                        },
+{ "glAreProgramsResidentNV",         gl_areprogramsresidentnv            },
 { "glAreTexturesResident",           gl_aretexturesresident              },
 { "glArrayElement",                  gl_arrayelement                     },
 { "glAttachShader",                  gl_attachshader                     },
@@ -5620,6 +6525,9 @@ cmdhandler gl_auto_map[] = {
 { "glBeginQuery",                    gl_beginquery                       },
 { "glBindAttribLocation",            gl_bindattriblocation               },
 { "glBindBuffer",                    gl_bindbuffer                       },
+{ "glBindFramebufferEXT",            gl_bindframebufferext               },
+{ "glBindProgramNV",                 gl_bindprogramnv                    },
+{ "glBindRenderbufferEXT",           gl_bindrenderbufferext              },
 { "glBindTexture",                   gl_bindtexture                      },
 { "glBitmap",                        gl_bitmap                           },
 { "glBlendColor",                    gl_blendcolor                       },
@@ -5631,6 +6539,7 @@ cmdhandler gl_auto_map[] = {
 { "glBufferSubData",                 gl_buffersubdata                    },
 { "glCallList",                      gl_calllist                         },
 { "glCallLists",                     gl_calllists                        },
+{ "glCheckFramebufferStatusEXT",     gl_checkframebufferstatusext        },
 { "glClear",                         gl_clear                            },
 { "glClearAccum",                    gl_clearaccum                       },
 { "glClearColor",                    gl_clearcolor                       },
@@ -5678,6 +6587,13 @@ cmdhandler gl_auto_map[] = {
 { "glColorTable",                    gl_colortable                       },
 { "glColorTableParameterfv",         gl_colortableparameterfv            },
 { "glColorTableParameteriv",         gl_colortableparameteriv            },
+{ "glCombinerInputNV",               gl_combinerinputnv                  },
+{ "glCombinerOutputNV",              gl_combineroutputnv                 },
+{ "glCombinerParameterfNV",          gl_combinerparameterfnv             },
+{ "glCombinerParameterfvNV",         gl_combinerparameterfvnv            },
+{ "glCombinerParameteriNV",          gl_combinerparameterinv             },
+{ "glCombinerParameterivNV",         gl_combinerparameterivnv            },
+{ "glCombinerStageParameterfvNV",    gl_combinerstageparameterfvnv       },
 { "glCompileShader",                 gl_compileshader                    },
 { "glCompressedTexImage1D",          gl_compressedteximage1d             },
 { "glCompressedTexImage2D",          gl_compressedteximage2d             },
@@ -5705,9 +6621,12 @@ cmdhandler gl_auto_map[] = {
 { "glCreateShader",                  gl_createshader                     },
 { "glCullFace",                      gl_cullface                         },
 { "glDeleteBuffers",                 gl_deletebuffers                    },
+{ "glDeleteFramebuffersEXT",         gl_deleteframebuffersext            },
 { "glDeleteLists",                   gl_deletelists                      },
 { "glDeleteProgram",                 gl_deleteprogram                    },
+{ "glDeleteProgramsNV",              gl_deleteprogramsnv                 },
 { "glDeleteQueries",                 gl_deletequeries                    },
+{ "glDeleteRenderbuffersEXT",        gl_deleterenderbuffersext           },
 { "glDeleteShader",                  gl_deleteshader                     },
 { "glDeleteTextures",                gl_deletetextures                   },
 { "glDepthFunc",                     gl_depthfunc                        },
@@ -5744,6 +6663,8 @@ cmdhandler gl_auto_map[] = {
 { "glEvalMesh2",                     gl_evalmesh2                        },
 { "glEvalPoint1",                    gl_evalpoint1                       },
 { "glEvalPoint2",                    gl_evalpoint2                       },
+{ "glExecuteProgramNV",              gl_executeprogramnv                 },
+{ "glFinalCombinerInputNV",          gl_finalcombinerinputnv             },
 { "glFinish",                        gl_finish                           },
 { "glFlush",                         gl_flush                            },
 { "glFogCoordPointer",               gl_fogcoordpointer                  },
@@ -5755,12 +6676,20 @@ cmdhandler gl_auto_map[] = {
 { "glFogfv",                         gl_fogfv                            },
 { "glFogi",                          gl_fogi                             },
 { "glFogiv",                         gl_fogiv                            },
+{ "glFramebufferRenderbufferEXT",    gl_framebufferrenderbufferext       },
+{ "glFramebufferTexture1DEXT",       gl_framebuffertexture1dext          },
+{ "glFramebufferTexture2DEXT",       gl_framebuffertexture2dext          },
+{ "glFramebufferTexture3DEXT",       gl_framebuffertexture3dext          },
 { "glFrontFace",                     gl_frontface                        },
 { "glFrustum",                       gl_frustum                          },
 { "glGenBuffers",                    gl_genbuffers                       },
+{ "glGenFramebuffersEXT",            gl_genframebuffersext               },
 { "glGenLists",                      gl_genlists                         },
+{ "glGenProgramsNV",                 gl_genprogramsnv                    },
 { "glGenQueries",                    gl_genqueries                       },
+{ "glGenRenderbuffersEXT",           gl_genrenderbuffersext              },
 { "glGenTextures",                   gl_gentextures                      },
+{ "glGenerateMipmapEXT",             gl_generatemipmapext                },
 { "glGetActiveAttrib",               gl_getactiveattrib                  },
 { "glGetActiveUniform",              gl_getactiveuniform                 },
 { "glGetAttachedShaders",            gl_getattachedshaders               },
@@ -5772,13 +6701,21 @@ cmdhandler gl_auto_map[] = {
 { "glGetColorTable",                 gl_getcolortable                    },
 { "glGetColorTableParameterfv",      gl_getcolortableparameterfv         },
 { "glGetColorTableParameteriv",      gl_getcolortableparameteriv         },
+{ "glGetCombinerInputParameterfvNV", gl_getcombinerinputparameterfvnv    },
+{ "glGetCombinerInputParameterivNV", gl_getcombinerinputparameterivnv    },
+{ "glGetCombinerOutputParameterfvNV",gl_getcombineroutputparameterfvnv   },
+{ "glGetCombinerOutputParameterivNV",gl_getcombineroutputparameterivnv   },
+{ "glGetCombinerStageParameterfvNV", gl_getcombinerstageparameterfvnv    },
 { "glGetCompressedTexImage",         gl_getcompressedteximage            },
 { "glGetConvolutionFilter",          gl_getconvolutionfilter             },
 { "glGetConvolutionParameterfv",     gl_getconvolutionparameterfv        },
 { "glGetConvolutionParameteriv",     gl_getconvolutionparameteriv        },
 { "glGetDoublev",                    gl_getdoublev                       },
 { "glGetError",                      gl_geterror                         },
+{ "glGetFinalCombinerInputParameterfvNV",gl_getfinalcombinerinputparameterfvnv },
+{ "glGetFinalCombinerInputParameterivNV",gl_getfinalcombinerinputparameterivnv },
 { "glGetFloatv",                     gl_getfloatv                        },
+{ "glGetFramebufferAttachmentParameterivEXT",gl_getframebufferattachmentparameterivext },
 { "glGetHistogram",                  gl_gethistogram                     },
 { "glGetHistogramParameterfv",       gl_gethistogramparameterfv          },
 { "glGetHistogramParameteriv",       gl_gethistogramparameteriv          },
@@ -5798,10 +6735,15 @@ cmdhandler gl_auto_map[] = {
 { "glGetPixelMapusv",                gl_getpixelmapusv                   },
 { "glGetPolygonStipple",             gl_getpolygonstipple                },
 { "glGetProgramInfoLog",             gl_getprograminfolog                },
+{ "glGetProgramParameterdvNV",       gl_getprogramparameterdvnv          },
+{ "glGetProgramParameterfvNV",       gl_getprogramparameterfvnv          },
+{ "glGetProgramStringNV",            gl_getprogramstringnv               },
 { "glGetProgramiv",                  gl_getprogramiv                     },
+{ "glGetProgramivNV",                gl_getprogramivnv                   },
 { "glGetQueryObjectiv",              gl_getqueryobjectiv                 },
 { "glGetQueryObjectuiv",             gl_getqueryobjectuiv                },
 { "glGetQueryiv",                    gl_getqueryiv                       },
+{ "glGetRenderbufferParameterivEXT", gl_getrenderbufferparameterivext    },
 { "glGetSeparableFilter",            gl_getseparablefilter               },
 { "glGetShaderInfoLog",              gl_getshaderinfolog                 },
 { "glGetShaderSource",               gl_getshadersource                  },
@@ -5816,12 +6758,16 @@ cmdhandler gl_auto_map[] = {
 { "glGetTexLevelParameteriv",        gl_gettexlevelparameteriv           },
 { "glGetTexParameterfv",             gl_gettexparameterfv                },
 { "glGetTexParameteriv",             gl_gettexparameteriv                },
+{ "glGetTrackMatrixivNV",            gl_gettrackmatrixivnv               },
 { "glGetUniformLocation",            gl_getuniformlocation               },
 { "glGetUniformfv",                  gl_getuniformfv                     },
 { "glGetUniformiv",                  gl_getuniformiv                     },
 { "glGetVertexAttribdv",             gl_getvertexattribdv                },
+{ "glGetVertexAttribdvNV",           gl_getvertexattribdvnv              },
 { "glGetVertexAttribfv",             gl_getvertexattribfv                },
+{ "glGetVertexAttribfvNV",           gl_getvertexattribfvnv              },
 { "glGetVertexAttribiv",             gl_getvertexattribiv                },
+{ "glGetVertexAttribivNV",           gl_getvertexattribivnv              },
 { "glHint",                          gl_hint                             },
 { "glHistogram",                     gl_histogram                        },
 { "glIndexMask",                     gl_indexmask                        },
@@ -5840,9 +6786,12 @@ cmdhandler gl_auto_map[] = {
 { "glInterleavedArrays",             gl_interleavedarrays                },
 { "glIsBuffer",                      gl_isbuffer                         },
 { "glIsEnabled",                     gl_isenabled                        },
+{ "glIsFramebufferEXT",              gl_isframebufferext                 },
 { "glIsList",                        gl_islist                           },
 { "glIsProgram",                     gl_isprogram                        },
+{ "glIsProgramNV",                   gl_isprogramnv                      },
 { "glIsQuery",                       gl_isquery                          },
+{ "glIsRenderbufferEXT",             gl_isrenderbufferext                },
 { "glIsShader",                      gl_isshader                         },
 { "glIsTexture",                     gl_istexture                        },
 { "glLightModelf",                   gl_lightmodelf                      },
@@ -5861,6 +6810,7 @@ cmdhandler gl_auto_map[] = {
 { "glLoadMatrixd",                   gl_loadmatrixd                      },
 { "glLoadMatrixf",                   gl_loadmatrixf                      },
 { "glLoadName",                      gl_loadname                         },
+{ "glLoadProgramNV",                 gl_loadprogramnv                    },
 { "glLoadTransposeMatrixd",          gl_loadtransposematrixd             },
 { "glLoadTransposeMatrixf",          gl_loadtransposematrixf             },
 { "glLogicOp",                       gl_logicop                          },
@@ -5941,7 +6891,9 @@ cmdhandler gl_auto_map[] = {
 { "glPointParameterf",               gl_pointparameterf                  },
 { "glPointParameterfv",              gl_pointparameterfv                 },
 { "glPointParameteri",               gl_pointparameteri                  },
+{ "glPointParameteriNV",             gl_pointparameterinv                },
 { "glPointParameteriv",              gl_pointparameteriv                 },
+{ "glPointParameterivNV",            gl_pointparameterivnv               },
 { "glPointSize",                     gl_pointsize                        },
 { "glPolygonMode",                   gl_polygonmode                      },
 { "glPolygonOffset",                 gl_polygonoffset                    },
@@ -5951,6 +6903,12 @@ cmdhandler gl_auto_map[] = {
 { "glPopMatrix",                     gl_popmatrix                        },
 { "glPopName",                       gl_popname                          },
 { "glPrioritizeTextures",            gl_prioritizetextures               },
+{ "glProgramParameter4dNV",          gl_programparameter4dnv             },
+{ "glProgramParameter4dvNV",         gl_programparameter4dvnv            },
+{ "glProgramParameter4fNV",          gl_programparameter4fnv             },
+{ "glProgramParameter4fvNV",         gl_programparameter4fvnv            },
+{ "glProgramParameters4dvNV",        gl_programparameters4dvnv           },
+{ "glProgramParameters4fvNV",        gl_programparameters4fvnv           },
 { "glPushAttrib",                    gl_pushattrib                       },
 { "glPushClientAttrib",              gl_pushclientattrib                 },
 { "glPushMatrix",                    gl_pushmatrix                       },
@@ -5990,11 +6948,15 @@ cmdhandler gl_auto_map[] = {
 { "glRects",                         gl_rects                            },
 { "glRectsv",                        gl_rectsv                           },
 { "glRenderMode",                    gl_rendermode                       },
+{ "glRenderbufferStorageEXT",        gl_renderbufferstorageext           },
+{ "glRequestResidentProgramsNV",     gl_requestresidentprogramsnv        },
 { "glResetHistogram",                gl_resethistogram                   },
 { "glResetMinmax",                   gl_resetminmax                      },
 { "glRotated",                       gl_rotated                          },
 { "glRotatef",                       gl_rotatef                          },
 { "glSampleCoverage",                gl_samplecoverage                   },
+{ "glSampleMaskSGIS",                gl_samplemasksgis                   },
+{ "glSamplePatternSGIS",             gl_samplepatternsgis                },
 { "glScaled",                        gl_scaled                           },
 { "glScalef",                        gl_scalef                           },
 { "glScissor",                       gl_scissor                          },
@@ -6076,6 +7038,7 @@ cmdhandler gl_auto_map[] = {
 { "glTexSubImage1D",                 gl_texsubimage1d                    },
 { "glTexSubImage2D",                 gl_texsubimage2d                    },
 { "glTexSubImage3D",                 gl_texsubimage3d                    },
+{ "glTrackMatrixNV",                 gl_trackmatrixnv                    },
 { "glTranslated",                    gl_translated                       },
 { "glTranslatef",                    gl_translatef                       },
 { "glUniform1f",                     gl_uniform1f                        },
@@ -6125,23 +7088,41 @@ cmdhandler gl_auto_map[] = {
 { "glVertex4s",                      gl_vertex4s                         },
 { "glVertex4sv",                     gl_vertex4sv                        },
 { "glVertexAttrib1d",                gl_vertexattrib1d                   },
+{ "glVertexAttrib1dNV",              gl_vertexattrib1dnv                 },
 { "glVertexAttrib1dv",               gl_vertexattrib1dv                  },
+{ "glVertexAttrib1dvNV",             gl_vertexattrib1dvnv                },
 { "glVertexAttrib1f",                gl_vertexattrib1f                   },
+{ "glVertexAttrib1fNV",              gl_vertexattrib1fnv                 },
 { "glVertexAttrib1fv",               gl_vertexattrib1fv                  },
+{ "glVertexAttrib1fvNV",             gl_vertexattrib1fvnv                },
 { "glVertexAttrib1s",                gl_vertexattrib1s                   },
+{ "glVertexAttrib1sNV",              gl_vertexattrib1snv                 },
 { "glVertexAttrib1sv",               gl_vertexattrib1sv                  },
+{ "glVertexAttrib1svNV",             gl_vertexattrib1svnv                },
 { "glVertexAttrib2d",                gl_vertexattrib2d                   },
+{ "glVertexAttrib2dNV",              gl_vertexattrib2dnv                 },
 { "glVertexAttrib2dv",               gl_vertexattrib2dv                  },
+{ "glVertexAttrib2dvNV",             gl_vertexattrib2dvnv                },
 { "glVertexAttrib2f",                gl_vertexattrib2f                   },
+{ "glVertexAttrib2fNV",              gl_vertexattrib2fnv                 },
 { "glVertexAttrib2fv",               gl_vertexattrib2fv                  },
+{ "glVertexAttrib2fvNV",             gl_vertexattrib2fvnv                },
 { "glVertexAttrib2s",                gl_vertexattrib2s                   },
+{ "glVertexAttrib2sNV",              gl_vertexattrib2snv                 },
 { "glVertexAttrib2sv",               gl_vertexattrib2sv                  },
+{ "glVertexAttrib2svNV",             gl_vertexattrib2svnv                },
 { "glVertexAttrib3d",                gl_vertexattrib3d                   },
+{ "glVertexAttrib3dNV",              gl_vertexattrib3dnv                 },
 { "glVertexAttrib3dv",               gl_vertexattrib3dv                  },
+{ "glVertexAttrib3dvNV",             gl_vertexattrib3dvnv                },
 { "glVertexAttrib3f",                gl_vertexattrib3f                   },
+{ "glVertexAttrib3fNV",              gl_vertexattrib3fnv                 },
 { "glVertexAttrib3fv",               gl_vertexattrib3fv                  },
+{ "glVertexAttrib3fvNV",             gl_vertexattrib3fvnv                },
 { "glVertexAttrib3s",                gl_vertexattrib3s                   },
+{ "glVertexAttrib3sNV",              gl_vertexattrib3snv                 },
 { "glVertexAttrib3sv",               gl_vertexattrib3sv                  },
+{ "glVertexAttrib3svNV",             gl_vertexattrib3svnv                },
 { "glVertexAttrib4Nbv",              gl_vertexattrib4nbv                 },
 { "glVertexAttrib4Niv",              gl_vertexattrib4niv                 },
 { "glVertexAttrib4Nsv",              gl_vertexattrib4nsv                 },
@@ -6151,16 +7132,38 @@ cmdhandler gl_auto_map[] = {
 { "glVertexAttrib4Nusv",             gl_vertexattrib4nusv                },
 { "glVertexAttrib4bv",               gl_vertexattrib4bv                  },
 { "glVertexAttrib4d",                gl_vertexattrib4d                   },
+{ "glVertexAttrib4dNV",              gl_vertexattrib4dnv                 },
 { "glVertexAttrib4dv",               gl_vertexattrib4dv                  },
+{ "glVertexAttrib4dvNV",             gl_vertexattrib4dvnv                },
 { "glVertexAttrib4f",                gl_vertexattrib4f                   },
+{ "glVertexAttrib4fNV",              gl_vertexattrib4fnv                 },
 { "glVertexAttrib4fv",               gl_vertexattrib4fv                  },
+{ "glVertexAttrib4fvNV",             gl_vertexattrib4fvnv                },
 { "glVertexAttrib4iv",               gl_vertexattrib4iv                  },
 { "glVertexAttrib4s",                gl_vertexattrib4s                   },
+{ "glVertexAttrib4sNV",              gl_vertexattrib4snv                 },
 { "glVertexAttrib4sv",               gl_vertexattrib4sv                  },
+{ "glVertexAttrib4svNV",             gl_vertexattrib4svnv                },
+{ "glVertexAttrib4ubNV",             gl_vertexattrib4ubnv                },
 { "glVertexAttrib4ubv",              gl_vertexattrib4ubv                 },
+{ "glVertexAttrib4ubvNV",            gl_vertexattrib4ubvnv               },
 { "glVertexAttrib4uiv",              gl_vertexattrib4uiv                 },
 { "glVertexAttrib4usv",              gl_vertexattrib4usv                 },
 { "glVertexAttribPointer",           gl_vertexattribpointer              },
+{ "glVertexAttribPointerNV",         gl_vertexattribpointernv            },
+{ "glVertexAttribs1dvNV",            gl_vertexattribs1dvnv               },
+{ "glVertexAttribs1fvNV",            gl_vertexattribs1fvnv               },
+{ "glVertexAttribs1svNV",            gl_vertexattribs1svnv               },
+{ "glVertexAttribs2dvNV",            gl_vertexattribs2dvnv               },
+{ "glVertexAttribs2fvNV",            gl_vertexattribs2fvnv               },
+{ "glVertexAttribs2svNV",            gl_vertexattribs2svnv               },
+{ "glVertexAttribs3dvNV",            gl_vertexattribs3dvnv               },
+{ "glVertexAttribs3fvNV",            gl_vertexattribs3fvnv               },
+{ "glVertexAttribs3svNV",            gl_vertexattribs3svnv               },
+{ "glVertexAttribs4dvNV",            gl_vertexattribs4dvnv               },
+{ "glVertexAttribs4fvNV",            gl_vertexattribs4fvnv               },
+{ "glVertexAttribs4svNV",            gl_vertexattribs4svnv               },
+{ "glVertexAttribs4ubvNV",           gl_vertexattribs4ubvnv              },
 { "glVertexPointer",                 gl_vertexpointer                    },
 { "glViewport",                      gl_viewport                         },
 { "glWindowPos2d",                   gl_windowpos2d                      },
