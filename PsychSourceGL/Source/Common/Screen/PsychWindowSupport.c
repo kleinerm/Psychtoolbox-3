@@ -366,9 +366,21 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Now we try if CGDisplayBeamPosition works and try to estimate monitor refresh from it
     // as well...
     
+    // Check if a beamposition of 0 is returned at two points in time on OS-X:
+    i = 0;
+    if (((int) CGDisplayBeamPosition(cgDisplayID) == 0) && (PSYCH_SYSTEM == PSYCH_OSX)) {
+        // Recheck after 2 ms on OS-X:
+        PsychWaitIntervalSeconds(0.002);
+        if ((int) CGDisplayBeamPosition(cgDisplayID) == 0) {
+            // A constant value of zero is reported on OS-X -> Beam position queries unsupported
+            // on this combo of gfx-driver and hardware :(
+            i=12345;
+        }
+    }
+    
     // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
     // are not available on this system: This always happens on M$-Windows as that feature is unavailable.
-    if (-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) {
+    if ((-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) && (i!=12345)) {
       // Switch to RT scheduling for timing tests:
       PsychRealtimePriority(true);
     
@@ -431,7 +443,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
     else {
       // We don't have beamposition queries on this system:
-        ifi_beamestimate = 0;
+      ifi_beamestimate = 0;
       // Setup fake-timestamp for time of last vbl in emulation mode:
       if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
     }
@@ -564,7 +576,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Check for mismatch between measured ifi from beamposition and from glFinish() VBLSync method.
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
-    if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (-1 != ((int) CGDisplayBeamPosition(cgDisplayID)))) {
+    if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
         if(!PsychPrefStateGet_SuppressAllWarnings())
 			printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
         sync_trouble = true;
