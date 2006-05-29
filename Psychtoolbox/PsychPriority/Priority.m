@@ -347,7 +347,7 @@ if IsOSX
         if isnan(tempWasKilledByUs)
             error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
         else
-            didPriorityKillUpdate=tempWasKilledByUs || didPriorityKillUpdate;
+            didPriorityKillUpdate=tempWasKilledByUs + didPriorityKillUpdate;
         end
         
         % Find the frame periods.  FrameRate returns the nominal frame rate, which
