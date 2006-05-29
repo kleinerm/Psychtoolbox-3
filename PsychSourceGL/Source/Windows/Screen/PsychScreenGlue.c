@@ -190,7 +190,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         // Valid setting returned?
         if (rc) {
             // Yes. Add its depth-value to our depth struct:
-            PsychAddValueToDepthStruct((int) result.dmBitsPerPel);
+            PsychAddValueToDepthStruct((int) result.dmBitsPerPel, depths);
         }
     } while (rc!=0);
 
