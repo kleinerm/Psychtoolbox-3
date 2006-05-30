@@ -15,7 +15,7 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-framebuffers = uint32(n);
+framebuffers = uint32(zeros(1,n));
 
 moglcore( 'glGenFramebuffersEXT', n, framebuffers );
 
