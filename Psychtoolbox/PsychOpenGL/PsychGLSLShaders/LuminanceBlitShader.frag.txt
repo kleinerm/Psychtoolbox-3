@@ -1,0 +1,13 @@
+/* Shader for conversion of RGB textures into Grayscale textures.
+ * Uses standard formula for conversion:
+ * (w)2006 by Mario Kleiner.
+*/
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    gl_FragColor.a = incolor.a;
+    gl_FragColor.rgb = incolor.r;
+}

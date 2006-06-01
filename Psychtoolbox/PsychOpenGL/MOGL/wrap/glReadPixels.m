@@ -19,15 +19,12 @@ end
 
 % check format and type
 global GL
-if format~=GL.RGB || type~=GL.UNSIGNED_BYTE,
-    error('glReadPixels only implemented for format=GL_RGB, type=GL_UNSIGNED_BYTE');
-end
 
-if x < 0 || y<0
+if x < 0 | y<0
     error('Invalid (negative) (x,y) offset passed to glReadPixels.');
 end;
 
-if width <= 0 || height<=0
+if width <= 0 | height<=0
     error('Invalid (negative or zero) (width, height) passed to glReadPixels.');
 end;
 

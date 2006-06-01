@@ -1,0 +1,60 @@
+/* Shader for performing update of the GVF flow field during a GVF iteration:
+ *
+ * Input: Texture unit 0:
+ *        RED   = Current dx gradient field  u.
+ *        GREEN = Current dy gradient field  v.
+ *
+ * Input: Texture unit 1:
+ *        RED   = b = 1 - mag(dx,dy) field.
+ *        GREEN = c1 = dx * mag field.
+ *        BLUE  = c2 = dy * mag field.
+ *
+ * Output:
+ *        RED   = u' = Updated dx gradient field.
+ *        GREEN = v' = Updated dy gradient field.
+ *
+ * (w)2006 by Mario Kleiner.
+*/
+
+uniform sampler2DRect ingradient;
+uniform sampler2DRect bc1c2field;
+uniform float fourmu;
+
+void main()
+{
+    float b;
+    vec2 lv, rv, tv, bv, oldflow, L, c12, newflow;
+    vec3 b_c1_c2;
+    /* We want to compute updated value for uv'(x,y):
+     * First compute the Laplacian of the input flow field
+     * at (x,y):
+     */
+
+    /* Read texels for Laplace operator centered at (x,y)==(s,t): */
+    lv = texture2DRect(ingradient, gl_TexCoord[0].st + vec2(-1,0)).rg;
+    rv = texture2DRect(ingradient, gl_TexCoord[0].st + vec2(+1,0)).rg;
+    tv = texture2DRect(ingradient, gl_TexCoord[0].st + vec2(0,-1)).rg;
+    bv = texture2DRect(ingradient, gl_TexCoord[0].st + vec2(0,+1)).rg;
+    oldflow = texture2DRect(ingradient, gl_TexCoord[0].st).rg;
+
+    /* Laplacian: */
+    L = 0.25 * (lv + rv + tv + bv) - oldflow;
+
+    /* Lookup b, c1, c2 : */
+    b_c1_c2 = texture2DRect(bc1c2field, gl_TexCoord[0].st).rgb;
+    b = b_c1_c2.r;
+    c12 = b_c1_c2.gb;
+
+    /* Compute updated flow vector values:
+    /* newflow = (b * oldflow) + (fourmu * L) + c12; */
+    newflow = (b * oldflow) + (fourmu * L) + c12;
+
+    /* Write them out: */
+    /* gl_FragColor.rg = newflow; */
+    gl_FragColor.rg = newflow;
+
+    /* Ignore blue and alpha channel: */
+    gl_FragColor.ba = vec2(0);
+
+    /* Done with update for this fragment. */
+}

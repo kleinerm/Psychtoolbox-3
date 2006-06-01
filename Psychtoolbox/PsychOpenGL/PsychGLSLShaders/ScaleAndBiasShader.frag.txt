@@ -1,0 +1,20 @@
+/* Shader for applying a bias and scale factor to a rectangle texture during drawing.
+ * Can be used to apply f(g)=(g + prescaleoffset)*scalefactor + postscaleoffset;
+ * (w)2006 by Mario Kleiner.
+*/
+
+/* We currently only support rectangular textures: */
+uniform sampler2DRect Image;
+
+uniform float prescaleoffset;
+uniform float postscaleoffset;
+uniform float scalefactor;
+
+void main()
+{
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    /* Just pass-through the alpha value, do not modify it: */
+    gl_FragColor.a = incolor.a;
+    /* Apply mapping to RGB channels... */
+    gl_FragColor.rgb = ((incolor.rgb + vec3(prescaleoffset)) * scalefactor) + vec3(postscaleoffset);
+}

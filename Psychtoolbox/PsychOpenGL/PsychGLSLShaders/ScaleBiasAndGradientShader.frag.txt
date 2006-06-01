@@ -1,0 +1,52 @@
+/* Shader for applying a bias and scale factor to a rectangle texture during drawing.
+ * Can be used to apply f(g)=(g + prescaleoffset)*scalefactor + postscaleoffset;
+ * After remapping, the gradient image of the rescaled image is computed by taking
+ * central derivatives in horizontal and vertical direction.
+ *
+ * Input:  Intensity image in RED channel of texture.
+ * Output: RED channel   = gradient dx.
+ *         GREEN channel = gradient dy.
+ *         BLUE  channel = Remapped intensity image whose gradient was computed.
+ *
+ * (w)2006 by Mario Kleiner.
+*/
+
+/* We currently only support rectangular textures: */
+uniform sampler2DRect Image;
+
+/* Input parameter constants to specify pre- post-scale bias and scaling factor:*/
+uniform float prescaleoffset;
+uniform float postscaleoffset;
+uniform float scalefactor;
+
+void main()
+{
+    float v1, v2;
+    vec2 incolor;
+    /* Need to lookup two texture values for output position dx(x,y) == (s,t): */
+    v1 = texture2DRect(Image, gl_TexCoord[0].st + vec2(-1,0)).r;
+    v2 = texture2DRect(Image, gl_TexCoord[0].st + vec2(+1,0)).r;
+    /* Remap: */
+    v1 = ((v1 + prescaleoffset) * scalefactor) + postscaleoffset;
+    v2 = ((v2 + prescaleoffset) * scalefactor) + postscaleoffset;
+    /* Derivative dx into RED channel: */
+    gl_FragColor.r = 0.5 * (v2 - v1);
+
+    /* Need to lookup two texture values for output position dy(x,y) == (s,t): */
+    v1 = texture2DRect(Image, gl_TexCoord[0].st + vec2(0,-1)).r;
+    v2 = texture2DRect(Image, gl_TexCoord[0].st + vec2(0,+1)).r;
+    /* Remap: */
+    v1 = ((v1 + prescaleoffset) * scalefactor) + postscaleoffset;
+    v2 = ((v2 + prescaleoffset) * scalefactor) + postscaleoffset;
+    /* Derivative dy into GREEN channel: */
+    gl_FragColor.g = 0.5 * (v2 - v1);
+
+    /* Remapped input intensity into BLUE channel: */
+    incolor.rg = texture2DRect(Image, gl_TexCoord[0].st).ra;
+    gl_FragColor.b = ((incolor.r + prescaleoffset) * scalefactor) + postscaleoffset;
+
+    /* Just pass-through the alpha value, do not modify it: */
+    gl_FragColor.a = incolor.g;
+
+    /* Done. */
+}

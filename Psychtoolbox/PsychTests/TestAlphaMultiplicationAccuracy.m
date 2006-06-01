@@ -207,10 +207,10 @@ independentFlag=isempty(find(equalityMat ~= 1));
 % one mode and know that those results apply to all others.
 predictedReadbackAll=AlphaSourceTerm(sourceBlendVariableFactors{1}, sourceImagesA{1}, destinationImagesA{1});
 predictedReadback=predictedReadbackAll(:,:,1:3);
-maxFloatDiff=max(max(max(predictedReadback-double(sourceReadbacks{1}))));
-maxRoundDiff=max(max(max(round(predictedReadback)-double(sourceReadbacks{1}))));
-maxFloorDiff=max(max(max(floor(predictedReadback)-double(sourceReadbacks{1}))));
-maxCeilDiff=max(max(max(ceil(predictedReadback)-double(sourceReadbacks{1}))));
+maxFloatDiff=max(max(max(abs(predictedReadback-double(sourceReadbacks{1})))));
+maxRoundDiff=max(max(max(abs(round(predictedReadback)-double(sourceReadbacks{1})))));
+maxFloorDiff=max(max(max(abs(floor(predictedReadback)-double(sourceReadbacks{1})))));
+maxCeilDiff=max(max(max(abs(ceil(predictedReadback)-double(sourceReadbacks{1})))));
 
 maximumError=maxFloatDiff;
 if maxRoundDiff==0

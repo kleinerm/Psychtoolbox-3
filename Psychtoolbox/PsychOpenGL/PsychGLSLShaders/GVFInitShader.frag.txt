@@ -1,0 +1,36 @@
+/* Shader for performing initialization of the constant arrays b, c1 and c2
+ * as part of GVF initialization:
+ *
+ * Input: RED   = dx gradient field.
+ *        GREEN = dy gradient field.
+ *
+ * Output: RED   = b = 1 - mag(dx,dy) field.
+ *         GREEN = c1 = dx * mag field.
+ *         BLUE  = c2 = dy * mag field.
+ *
+ * (w)2006 by Mario Kleiner.
+*/
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    float m, c1, c2;
+
+    /* Read gradient - texel for position (x,y)==(s,t): */
+    vec2 g = texture2DRect(Image, gl_TexCoord[0].st).rg;
+    /* Compute magnitude m : */
+    m = (g.x * g.x + g.y * g.y);
+
+    /* b = 1-m to RED channel: */
+    gl_FragColor.r = 1 - m;
+
+    /* c1 = m * dx to GREEN channel: */
+    gl_FragColor.g = m * g.x;
+
+    /* c2 = m * dy to BLUE channel: */
+    gl_FragColor.b = m * g.y;
+
+    /* Ignore alpha channel: */
+    gl_FragColor.a = 0;
+}

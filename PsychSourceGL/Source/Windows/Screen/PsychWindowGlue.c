@@ -543,7 +543,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   ReleaseCapture();
 
   // Restore video settings from the defaults in the Windows registry:
-  ChangeDisplaySettings(NULL, CDS_RESET);
+  ChangeDisplaySettings(NULL, 0);
 
   // Close & Destroy the window:
   DestroyWindow(windowRecord->targetSpecific.windowHandle);

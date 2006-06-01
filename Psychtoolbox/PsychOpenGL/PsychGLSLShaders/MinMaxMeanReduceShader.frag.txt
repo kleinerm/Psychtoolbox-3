@@ -1,0 +1,53 @@
+/* Reduction shader to compute a 2D rectangle textures global
+// maximum, minimum and mean value.
+//
+// For each output fragment (x,y), the shader computes the local
+// average, minimum and maximum of the red (or luminance) channel
+// of the input texture in the 2x2 neighbourhood around (2*x,2*y),
+// effectively reducing the problem size to a quarter sized texture.
+//
+// One needs to iteratively run this shader on its own output for
+// log2(imagesize) runs to get a final single pixel with the global
+// result. This is known as reduction operation.
+//
+// (w)2006 by Mario Kleiner.
+*/
+
+const int neighboursize = 2;
+uniform sampler2DRect Image;
+
+void main()
+{
+    int dx, dy;
+    float sum = 0.0;
+    float maximum = 0.0;
+    float minimum = 1000.0; 
+    vec4 tmp;
+    vec2 basepos;
+
+    /* Compute base lookup position in texture: It is the
+     * position of the current fragment multiplied by 2: */
+    basepos = vec2(floor(gl_FragCoord)) * neighboursize;
+
+    /* Iterate over a 'neighboursize' by 'neighboursize' neighbourship: */
+    for (dx = 0; dx < neighboursize; dx++) {
+        for (dy = 0; dy < neighboursize; dy++) {
+            /* Lookup texel color value at current sampling position: */
+            tmp = texture2DRect(Image, basepos + vec2(dx, dy));
+
+            /* Update local average: */
+            sum += tmp.r;
+
+            /* Update local minimum: */
+            minimum = min(tmp.b, minimum);
+
+            /* Update local maximum: */
+            maximum = max(tmp.g, maximum);
+        }
+    }
+
+    gl_FragColor.r = sum / (float)neighboursize / (float) neighboursize;
+    gl_FragColor.g = maximum;
+    gl_FragColor.b = minimum;
+    gl_FragColor.a = 0;
+}
