@@ -41,11 +41,25 @@ void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, flo
 #define PSYCH_USE_QT_GWORLDS 1
 
 #else
+
 // OS-X: We don't use GWorlds but the new and shiny QTVisualcontexts and such...
 #define PSYCH_USE_QT_GWORLDS 0
+#include <pthread.h>
+#include <sched.h>
+
 #endif 
 
 #define PSYCH_MAX_MOVIES 100
+
+typedef struct {
+    unsigned char asyncstate;
+    char* moviename;
+    PsychWindowRecordType windowRecord;
+    int moviehandle;
+#if PSYCH_SYSTEM == PSYCH_OSX
+    pthread_t pid;
+#endif
+} asyncmovieinfo;
 
 typedef struct {
     Movie   theMovie;
@@ -132,6 +146,49 @@ double PsychDetermineMovieFramecountAndFps(Movie theMovie, int* nrframes)
 }
 
 /*
+ *      PsychAsyncCreateMovie() -- Open a movie file in the background.
+ *
+ *      This function is called by SCREENOpenMovie as main-function of
+ *      a new Posix-Thread for background movie loading. It simply calls
+ *      PsychCreateMovie(), waiting for it to return a new moviehandle.
+ *      Then it returns those info and terminates.
+ *      -> By calling PsychCreateMovie from the run-function of a dedicated
+ *      Posix-Thread which runs independent of the main Matlab/PTB Thread with
+ *      non-realtime priority, we can do the work of opening a Quicktime movie
+ *      in the background, hopefully not affecting the timing of the main PTB
+ *      thread too much.
+ */
+void* PsychAsyncCreateMovie(void* mi)
+{
+    struct sched_param sp;
+    int rc;
+    
+    // Get a pointer to the info-struct:
+    asyncmovieinfo* movieinfo = (asyncmovieinfo*) mi;
+    // The special value -1000 tells PsychCreateMovie to not output any error-
+    // messages as this could easily crash Matlab.
+    int mymoviehandle=-1000;
+    
+    // Reduce our scheduling priority to the minimum value of zero, so
+    // we do not interfere too much with the PTB main thread:
+    sp.sched_priority = 0;
+    if ((rc=pthread_setschedparam(pthread_self(), SCHED_RR, &sp))!=0) {
+        printf("PTHREAD ERROR %i ...", rc);
+    }
+    
+    // Execute our normal OpenMovie function: This does the hard work:
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, &mymoviehandle);
+    
+    // Ok, either we have a moviehandle to a valid movie, or we failed, which would
+    // be signalled to the calling function via some negative moviehandle:
+    movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
+    movieinfo->asyncstate = 2; // Set state to "Completed"
+    
+    // Exit from the routine. This will automatically terminate our Posix-Thread.
+    return(NULL);
+}
+
+/*
  *      PsychCreateMovie() -- Create a movie object.
  *
  *      This function tries to open a Quicktime-Moviefile and create an
@@ -146,7 +203,6 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
     QTAudioContextRef  QTAudioContext = NULL;
-    *moviehandle = -1;
     int i, slotid;
     OSErr error;
     CFStringRef movieLocation;
@@ -157,7 +213,16 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     char msgerr[10000];
     char errdesc[1000];
     Rect movierect;
+    Boolean printErrors;
+
+    // Suppress output of error-messages if moviehandle == 1000. That means we
+    // run in our own Posix-Thread, not in the Matlab-Thread. Printing via Matlabs
+    // printing facilities would likely cause a terrible crash.
+    printErrors = (*moviehandle == -1000) ? FALSE : TRUE;
     
+    // Set movie handle to "failed" initially:
+    *moviehandle = -1;
+
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -165,34 +230,39 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         // QT isn't installed on the Windows machine...
         error = InitializeQTML(0);
         if (error!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+            if (printErrors) {
+                PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+            } else return;
+
         }
 #endif
 
         // Initialize Quicktime-Subsystem:
         error = EnterMovies();
         if (error!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
+            if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!"); else return;
         }
         firsttime = FALSE;
     }
     
     if (!PsychIsOnscreenWindow(win)) {
-        PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
+        if (printErrors) PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window."); else return;
     }
 
     if (NULL==moviename) {
-        PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!");
+        if (printErrors) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of moviename passed!"); else return;
     }
 
     if (numMovieRecords >= PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!");
+        *moviehandle = -2;
+        if (printErrors) PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!"); else return;
     }
 
     // Search first free slot in movieRecordBANK:
     for (i=0; (i < PSYCH_MAX_MOVIES) && (movieRecordBANK[i].theMovie); i++);
     if (i>=PSYCH_MAX_MOVIES) {
-        PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!");
+        *moviehandle = -2;
+        if (printErrors) PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open movies exceeded!"); else return;
     }
 
     // Slot slotid will contain the movie record for our new movie object:
@@ -217,20 +287,10 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
                                                     &QTMovieContext);
 #endif
         if (error!=noErr) {
-            PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!");
+            if (printErrors) PsychErrorExitMsg(PsychError_internal, "OpenGL Quicktime visual context creation failed!!!"); else return;
         }        
     }
-    
-    // Create QTAudioContext for default CoreAudio device:
-    coreAudioDeviceUID = NULL; // Use default audio-output device.
-    error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault,
-                                                coreAudioDeviceUID,
-                                                NULL,
-                                                &QTAudioContext);
-    if (error!=noErr) {
-        PsychErrorExitMsg(PsychError_internal, "Quicktime audio context creation failed!!!");
-    }
-    
+
     // The Movie location 
     newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
     newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
@@ -245,12 +305,24 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         newMovieProperties[propcount++].propValueAddress = &QTMovieContext;
     }
     
-    // The Movie audio context
-    newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
-    newMovieProperties[propcount].propID = kQTContextPropertyID_AudioContext;
-    newMovieProperties[propcount].propValueSize = sizeof(QTAudioContextRef);
-    newMovieProperties[propcount++].propValueAddress = &QTAudioContext;
-
+    if (TRUE) {
+        // Create QTAudioContext for default CoreAudio device:
+        coreAudioDeviceUID = NULL; // Use default audio-output device.
+        error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault,
+                                                   coreAudioDeviceUID,
+                                                   NULL,
+                                                   &QTAudioContext);
+        if (error!=noErr) {
+            if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime audio context creation failed!!!"); else return;
+        }
+        
+        // The Movie audio context
+        newMovieProperties[propcount].propClass = kQTPropertyClass_Context;
+        newMovieProperties[propcount].propID = kQTContextPropertyID_AudioContext;
+        newMovieProperties[propcount].propValueSize = sizeof(QTAudioContextRef);
+        newMovieProperties[propcount++].propValueAddress = &QTAudioContext;
+    }
+    
     // The Movie active
     newMovieProperties[propcount].propClass = kQTPropertyClass_NewMovieProperty;
     newMovieProperties[propcount].propID = kQTNewMoviePropertyID_Active;
@@ -282,7 +354,8 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         }
         
         sprintf(msgerr, "Couldn't load movie %s! Quicktime error code %i [%s]", moviename, (int) error, errdesc);
-        PsychErrorExitMsg(PsychError_user, msgerr);
+        *moviehandle = (int) error;
+        if (printErrors) PsychErrorExitMsg(PsychError_user, msgerr); else return;
     }
     
     CFRelease(movieLocation);
@@ -298,7 +371,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
             QTAudioContextRelease(QTAudioContext);
             DisposeMovie(movieRecordBANK[slotid].theMovie);
             movieRecordBANK[slotid].theMovie=NULL;    
-            PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!");
+            if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!"); else return;
         }
                             
         // Attach this GWorld as rendering target for Quicktime:

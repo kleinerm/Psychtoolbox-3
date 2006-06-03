@@ -190,7 +190,7 @@ void InitializeSynopsis()
 	
 	// Movie and multimedia handling functions:
 	synopsis[i++] = "\n% Movie and multimedia playback functions:";
-	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile);";
+	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0]);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
         synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
