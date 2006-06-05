@@ -247,6 +247,7 @@ else
             'a location where you have write permission, or ask a user with administrator \n'...
             'privileges to run DownloadPsychtoolbox for you.\n\n'],targetdirectory);
             error('Need administrator privileges for requested installation into folder: %s.',targetdirectory);
+        end
     else
         error(mm,m);
     end
