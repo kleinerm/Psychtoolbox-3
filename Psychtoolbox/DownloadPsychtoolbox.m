@@ -177,7 +177,7 @@ if nargin<2
         % as commandline argument:
         fprintf('You did not provide the full path to the directory where Psychtoolbox should get\n');
         fprintf('installed. This is required for Microsoft Windows installation. Please enter a full\n');
-        fprintf('path as second argument to this script, e.g. DownloadPsychtoolbox(''beta'', ''C:\Toolboxes\'').\n');
+        fprintf('path as second argument to this script, e.g. DownloadPsychtoolbox(''beta'', ''C:\\Toolboxes\\'').\n');
         error('Full install path specification on Windows missing.');
     end     
 end
@@ -185,7 +185,7 @@ end
 if nargin<1
     flavor='stable';
 end
-fprintf(['DownloadPsychtoolbox(''' flavor ''',''' targetdirectory ''')\n']);
+fprintf('DownloadPsychtoolbox('' %s '','' %s '')\n', flavor, targetdirectory);
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
@@ -255,7 +255,8 @@ end
 fprintf('Good. Your privileges suffice for the requested installation into folder %s.\n\n',targetdirectory);
 
 % Delete old Psychtoolbox
-while exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbox'),'dir')
+skipdelete = 0;
+while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbox'),'dir')) && (skipdelete == 0)
     fprintf('Hmm. You already have an old Psychtoolbox folder.\n');
     p=fullfile(targetdirectory,'Psychtoolbox');
     if ~exist(p,'dir')
@@ -283,6 +284,7 @@ while exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbo
 
     s=input('Shall I delete the old Psychtoolbox folder and all its contents (recommended in most cases), \n (yes or no)? ','s');
     if strcmp(s,'yes')
+        skipdelete = 0;
         fprintf('Now we delete "Psychtoolbox" itself.\n');
         [success,m,mm]=rmdir(p,'s');
         if success
@@ -292,6 +294,8 @@ while exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbo
             fprintf('If you want, you can delete the Psychtoolbox folder manually and rerun this script to recover.\n');
             error(mm,m);
         end
+    else
+        skipdelete = 1;
     end
 end
 
@@ -352,11 +356,18 @@ end
 if err
     fprintf('Sorry, CHECKOUT failed with error code %d: \n',err);
     fprintf('%s\n',result);
-    fprintf('One reason for failure could be temporary network- or server problems, so maybe you want to retry in a\n');
-    fprintf('couple of minutes...\n');
+    if err == 1
+        fprintf('Checkout failed because the Subversion client executable svn.exe could not be found.\n');
+        fprintf('Either you have to modify your system path, so Windows can find it, or (more likely)\n');
+        fprintf('you did not install the Subversion client for Windows. Please read "help DownloadPsychtoolbox"\n');
+        fprintf('for instructions on how to get and install the Subversion client for Windows.\n');
+    else
+        fprintf('One reason for failure could be temporary network- or server problems, so maybe you want to retry in a\n');
+        fprintf('couple of minutes...\n');
+    end
     error('CHECKOUT failed.');
 end
-fprintf('Download Success!\n');
+fprintf('Download Success!\n\n\n');
 
 % Add Psychtoolbox to MATLAB path
 fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB path.\n');
@@ -369,10 +380,10 @@ if err
     fprintf('but i could not save the updated Matlab path, probably due to insufficient permissions.\n');
     fprintf('You will either need to fix this manually via use of the path-browser (Menu: File -> Set Path),\n');
     fprintf('or by manual invocation of the savepath command (See help savepath). The third option is, of course,\n');
-    fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart Matlab.\n');
+    fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart Matlab.\n\n\n');
 else 
     fprintf('Success.\n\n');
-    fprintf('Psychtoolbox is now installed and configured for use on your Computer,\n\n');
+    fprintf('Psychtoolbox is now installed and configured for use on your Computer,\n\n\n');
 end
 
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
@@ -384,12 +395,12 @@ else
 end
 
 if s
-    fprintf('Success.\n');
+    fprintf('Success.\n\n');
 else
     fprintf('FILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
-    fprintf('The error message of FILEATTRIB was: %s\n', m);
+    fprintf('The error message of FILEATTRIB was: %s\n\n', m);
 end
 fprintf('\n');
 
