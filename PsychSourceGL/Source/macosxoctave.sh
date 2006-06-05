@@ -1,11 +1,11 @@
 # Build GetSecs.oct ...
-#ls Linux/Base/*.c Common/Base/*.c Common/GetSecs/*.c | xargs ./mex2oct Octave/GetSecs.c -DPTBOCTAVE -ICommon/Base -ILinux/Base -ICommon/GetSecs -lc 
+./osx2oct Octave/GetSecs.cc -ICommon/Base -IOSX/Base -IOSX/GetSecs -IOSX/DictionaryGlue Common/Base/*.cc ../Projects/MacOSX/PsychToolbox/build/PsychToolbox.build/Development-Octavebuild/GetSecs.build/Objects-normal/ppc/*.o -v
 
 # Build WaitSecs.oct ...
-#ls Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c | xargs ./mex2oct Octave/WaitSecs.c -DPTBOCTAVE -ICommon/Base -ILinux/Base -ICommon/WaitSecs -lc 
+./osx2oct Octave/WaitSecs.cc -ICommon/Base -IOSX/Base -IOSX/WaitSecs -IOSX/DictionaryGlue Common/Base/*.cc ../Projects/MacOSX/PsychToolbox/build/PsychToolbox.build/Development-Octavebuild/WaitSecs.build/Objects-normal/ppc/*.o -v
 
 # Build Screen.oct ...
-./osx2oct Octave/Screen.cc -ICommon/Base -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/Gestalt -IOSX/DictionaryGlue -IOSX/EthernetAddress -ICommon/Screen Common/Base/*.cc OSX/Base/*.c Common/Base/*.c OSX/Screen/*.c OSX/EthernetAddress/*.c OSX/Fonts/*.c OSX/DictionaryGlue/*.c OSX/Gestalt/*.c Common/Screen/*.c -v
+./osx2oct Octave/Screen.cc -ICommon/Base -IOSX/Base -IOSX/Screen -IOSX/Fonts -IOSX/Gestalt -IOSX/DictionaryGlue -IOSX/EthernetAddress -ICommon/Screen Common/Base/*.cc ../Projects/MacOSX/PsychToolbox/build/PsychToolbox.build/Development-Octavebuild/Screen.build/Objects-normal/ppc/*.o -v
 
 # Copy all oct files to the PsychBasic folder:
 /bin/cp -f ./*.oct ./../../Psychtoolbox/PsychBasic/

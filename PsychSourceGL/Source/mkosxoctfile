@@ -20,10 +20,10 @@ set -e
 : ${F77="g77"}
 : ${FFLAGS="-O"}
 : ${FPICFLAG=""}
-: ${CC="gcc"}
+: ${CC="gcc-3.3"}
 : ${CFLAGS="-g -O2"}
 : ${CPICFLAG=""}
-: ${CXX="g++"}
+: ${CXX="g++-3.3"}
 : ${CXXFLAGS="-g -O2 "}
 : ${CXXPICFLAG=""}
 : ${XTRA_CFLAGS=""}
@@ -32,7 +32,7 @@ set -e
 : ${DEPEND_FLAGS="-M"}
 : ${DEPEND_EXTRA_SED_PATTERN=""}
 
-: ${DL_LD="g++"}
+: ${DL_LD="g++-3.3"}
 : ${DL_LDFLAGS="-bundle -bundle_loader /usr/local/bin/octave-2.1.73"}
 
 : ${RLD_FLAG=""}
@@ -43,9 +43,9 @@ set -e
 : ${LIBCRUFT=-lcruft}
 : ${BLAS_LIBS=""}
 : ${FFTW_LIBS=""}
-: ${LIBS="-lreadline  -lncurses -lm -framework ApplicationServices -framework CoreServices -framework CoreAudio -framework IOKit -framework QuartzCore -framework OpenGL -framework QuickTime -framework System -framework SystemConfiguration "}
-: ${FLIBS="-lm -lfrtbegin -lg2c -lSystem"}
-: ${LD_CXX="g++"}
+: ${LIBS="-lreadline  -lncurses -lm -framework ApplicationServices -framework CoreServices -framework CoreAudio -framework IOKit -framework QuartzCore -framework OpenGL -framework QuickTime -framework System -framework SystemConfiguration -framework Carbon "}
+: ${FLIBS="-lm -lfrtbegin -lSystem"}
+: ${LD_CXX="g++-3.3"}
 : ${LDFLAGS=""}
 : ${LD_STATIC_FLAG=""}
 : ${LFLAGS="-L/usr/local/lib/octave-2.1.73"}
@@ -298,6 +298,9 @@ CC=/bin/echo
 CXX=/bin/echo
 F77=/bin/echo
 fi
+
+CC=/bin/echo
+F77=/bin/echo
 
 # Compile Fortran, C, and C++ files.  Add the name of each object file
 # that is produced to the overall list of object files.
