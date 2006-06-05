@@ -341,7 +341,7 @@ void mxDestroyArray(mxArray *arrayPtr)
 mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const char** fieldNames)
 {
   mxArray* retval;
-
+#if PSYCH_SYSTEM != PSYCH_OSX
   if (numDims>2 || numDims<1) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Anything else than 1D or 2D Struct-Arrays is not supported!");
   if (numFields<1) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateStructArray: numFields < 1 ?!?");
 
@@ -350,7 +350,7 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
 
   // Create cell array of requested dimensionality and size as template. This
   // will be cloned numFields - times to create one such array per field.
-  Cell myCell(mydims);
+  class Cell myCell(mydims);
 
   // Create an Octave_map(): A Octave_map is an associative map that associates keys (namestrings)
   // with values (which are Cell-Arrays). For each named field in our struct array, we insert a
@@ -371,7 +371,10 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
   octave_value* ovp = new octave_value(mymap);
   retval->o = (void*) ovp;
   retval->d = NULL;
-
+#else
+  PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Not implemented on OS-X!");
+#endif
+  
   return(retval);
 }
 

@@ -34,13 +34,6 @@
     #include "mex.h"
 #endif
 
-#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-    // File with pseudo MATLAB interface API definitions:
-    // Emulates missing Matlab functions and structures...
-    // Stored in the Source/Octave subfolder...
-    #include <octavemex.h>
-#endif
-
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
 	#include <GL/gl.h>
@@ -105,6 +98,13 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+
+#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+// File with pseudo MATLAB interface API definitions:
+// Emulates missing Matlab functions and structures...
+// Stored in the Source/Octave subfolder...
+    #include <octavemex.h>
+#endif
 
 //SDL_getenv.h includes a macro which redefines getenv() to be
 //SDL getenv().   This then conflicts with the statement "using 

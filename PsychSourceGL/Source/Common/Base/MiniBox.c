@@ -55,7 +55,7 @@ int PrintfExit(const char *format,...)
 	va_start(args,format);
 	i=vsprintf(s,format,args);
 	va_end(args);
-	if(i+1>4000)
+	if(i+1>MAX_PRINTFEXIT_LEN)
 		printf("buffer overrun in PrintfExit\n");
 	PsychErrMsgTxt(s); //mexErrMsgTxt(s);
 
