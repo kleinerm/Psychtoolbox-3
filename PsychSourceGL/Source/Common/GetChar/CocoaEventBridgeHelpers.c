@@ -57,8 +57,10 @@ Boolean LoadCocoaBundle(void)
 	if(firstTime){
 		firstTime=FALSE;
 		GetPathToBundleString(&localPathToCocoaBundleStr);
-		if(!strcmp(localPathToCocoaBundleStr, ""))
+		if(!strcmp(localPathToCocoaBundleStr, "")) {
+                        mexPrintf("CEB: GetPathToBundleString() failed!");
 			return(TRUE);
+                }
 		localPathToCocoaBundle= CFStringCreateWithBytes(kCFAllocatorDefault, 
 														localPathToCocoaBundleStr, 
 														strlen(localPathToCocoaBundleStr), 
@@ -67,12 +69,14 @@ Boolean LoadCocoaBundle(void)
 		LoadPrivateFrameworkBundle( localPathToCocoaBundle, &gStoreBitLibBundle );
 		CFRelease(localPathToCocoaBundle);
 //		LoadPrivateFrameworkBundle( CFSTR("/GetCharWindow.bundle"), &gStoreBitLibBundle );
-		if ( gStoreBitLibBundle != NULL ){
+		if ( gStoreBitLibBundle != NULL ) {
 			InitializeCocoa	= (InitializeCocoaProc) CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("InitializeCocoa") );
-			if(InitializeCocoa != NULL) 
+                    if(InitializeCocoa != NULL)
 				InitializeCocoa();
-			else
-				return(TRUE);
+                    else {
+                        mexPrintf("CEB: CFBundleGetFunctionPointerForName('InitializeCocoa') failed!");
+                        return(TRUE);
+                    }
 			OpenGetCharWindow= (OpenGetCharWindowProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("OpenGetCharWindow"));
 			CloseGetCharWindow= (CloseGetCharWindowProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("CloseGetCharWindow"));
 			MakeGetCharWindowVisible= (MakeGetCharWindowVisibleProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("MakeGetCharWindowVisible"));
@@ -88,11 +92,15 @@ Boolean LoadCocoaBundle(void)
 			ClearKeypressList= (ClearKeypressListProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("ClearKeypressList"));
 			GetNumKeypresses= (GetNumKeypressesProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("GetNumKeypresses"));
 			IsKeyWindow= (IsKeyWindowProc)CFBundleGetFunctionPointerForName(gStoreBitLibBundle, CFSTR("IsKeyWindow"));
-		}else
-			return(TRUE);
+		}else {
+                    mexPrintf("CEB: LoadPrivateFrameworkBundle(%s) failed!", localPathToCocoaBundleStr);
+                    return(TRUE);
+                }
+                
 		foundAllFunctions= OpenGetCharWindow && CloseGetCharWindow && MakeGetCharWindowVisible && MakeGetCharWindowInvisible && StartKeyGathering && StopKeyGathering 
 							&& MakeKeyWindow && CopyReadKeypressList && CopyPeekKeypressList && CopyReadNextKeypress 
 							&& CopyPeekNextKeypress && ClearKeypressList && GetNumKeypresses && IsKeyWindow && RevertKeyWindow;
+                if (!foundAllFunctions) mexPrintf("CEB: Could not retrieve function pointers to all bundle-functions!");
 	}
 	return(!foundAllFunctions);
 }

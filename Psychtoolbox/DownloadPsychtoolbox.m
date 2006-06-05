@@ -1,140 +1,407 @@
-function DownloadPsychtoolbox(flavor, targetdirectory)
-% DownloadPsychtoolbox(flavor, targetdirectory)
+function DownloadPsychtoolbox(flavor,targetdirectory)
+% DownloadPsychtoolbox(flavor,targetdirectory)
 %
-% Download the Psychtoolbox for OS-X or the Microsoft Windows prototype of
-% the OS-X toolbox via the Subversion client from the Subversion master
-% repository and create a working copy suitable for automatic software updates.
+% This script downloads the latest Mac OSX or Windows Psychtoolbox from the
+% Subversion master server to your disk, creating your working copy, ready
+% to use as a new toolbox in your MATLAB application. Subject to your
+% permission, any old installation of the Psychtoolbox is first removed.
+% It's a careful program, checking for all required resources and
+% privileges before it starts.
 %
-% This function will download a working copy of the Psychtoolbox,
-% either into the current working directory, or into 'targetdirectory' at
-% your option.
+% On OS-X, your working copy of the Psychtoolbox will be placed in either your
+% /Applications or your /Users/Shared folder (depending on permissions and
+% your preference), or you may specify a 'targetdirectory', as you prefer.
+% Unless you have a strong reason to do otherwise, we recommend that you
+% accept the default, and put your Psychtoolbox in the Applications folder.
 %
-% You can specify the flavor of Psychtoolbox release via the flavor -
-% parameter:
+% On Microsoft Windows, you will have to specify the full path, including
+% the drive name where Psychtoolbox should be installed, e.g.,
+% 'C:\MyToolboxes\n'.
 %
-% flavor == 'stable' - Download the most recent fully tested production
-% release. This is the code that will constitute the next official PTB
-% release - well tested by developers and by users in real world
-% application.
+% You must specify the desired flavor of Psychtoolbox release via the
+% "flavor" parameter: 'stable', 'beta', or 'Psychtoolbox-x.y.z'.
 %
-% flavor == 'beta' - Download the most recent beta release. This is code
-% that has been successfully tested by the developers and is ready for
-% testing and feedback by end users. Beta-code that has received
-% enough positive feedback from end users will be promoted to the 'stable'
-% branch and finally into the next official release.
+% 'stable' - Download the most recent fully tested release. This will
+% become the next official Psychtoolbox release. It has been tested by
+% developers and users in real world applications. Choose the 'stable'
+% flavor if you don't like surprises. Stable releases are usually multiple
+% months behind the Beta releases, so this is for the really anxious.
 %
-% flavor == 'Psychtoolbox-1.x.y' - Download the code which corresponds
-% to official release Psychtoolbox-1.x.y . This is nearly identical to the
-% packages that can be downloaded from www.psychtoolbox.org. The difference
-% is that critical bugs get fixed in this version.
+% 'beta' - Download the most recent beta release. This code has been tested
+% by a few developers and is ready for testing by end users. Beta code that
+% passes testing by end users will be promoted to the 'stable' branch and
+% finally into the next official release. Choose the 'beta' flavor to get
+% pre-release code with early access to bug fixes, enhancements, and new
+% features.
 %
-% We recommend to either use the 'stable' flavor, or the 'beta' flavor if
-% you like pre-release code with early access to bug fixes, enhancements
-% and new features.
+% 'Psychtoolbox-x.y.z' - Download the code that corresponds to official
+% release "Psychtoolbox-x.y.z", where "x.y.z" is the version number. This
+% is nearly identical to the packages that can be downloaded from
+% www.psychtoolbox.org. The difference is that critical bugs get fixed in
+% this version.
 %
-% How to use:
+% INSTALLATION INSTRUCTIONS:
 %
-% 1. Download the latest MacOS-X Subversion client from:
-% http://metissian.com/projects/macosx/subversion/
+% 1. If you don't already have it, you must install the Subversion client.
+% For Mac OSX, download the latest Mac OSX Subversion client from:
+% web http://metissian.com/projects/macosx/subversion/
+% For Windows, download the Windows Subversion client from:
+% web http://subversion.tigris.org/files/documents/15/25364/svn-1.2.3-setup.exe
+% Install the Subversion client on your machine by double-clicking the
+% installer and following the instructions. (You can ignore the Subversion
+% README file. If you do read it, you can skip the instruction to manually
+% add /usr/local/bin to your unix path. That's tricky to do, and not needed
+% for installation and updates because we always specify the full path.)
 %
-% If you want to download the Microsoft Windows prototype,
-% you'll need the Windows Subversion client from:
-% http://subversion.tigris.org/files/documents/15/25364/svn-1.2.3-setup.exe
+% 2. We strongly recommend that you install the Psychtoolbox in the
+% default location (/Applications or, failing that, /Users/Shared). Just
+% type:
+% DownloadPsychtoolbox('stable')
+% or
+% DownloadPsychtoolbox('beta')
+% as you prefer. We recommend the Applications folder, but note that, as
+% with installation of any software, you'll need administrator privileges.
+% If you must install without access to an administrator, we offer the
+% option of installing into the /Users/Shared/ folder instead. If you must
+% install the Psychtoolbox in some other folder, then specify it in the
+% second argument of your call.
 %
-% 2. Install it on your machine by double-clicking the installer and
-% following the instructions.
+% That's it. Any pre-existing installation of the Psychtoolbox will be
+% removed (if you approve). The program will then download the latest
+% Psychtoolbox and update your MATLAB path. Enjoy! If you're new to this,
+% you might start by typing "help Psychtoolbox".
 %
-% 3. Change your Matlab working directory to the location where you want to
-% install Psychtoolbox.
+% P.S. If you get stuck, post your question to the forum by email or web:
+% web mailto:psychtoolbox@yahoogroups.com
+% web http://groups.yahoo.com/group/psychtoolbox/messages/
+% web http://groups.yahoo.com/group/psychtoolbox/post/
+% Please specify your full name and the version of your operating system,
+% MATLAB, and psychtoolbox.
 %
-% 4. Run this file, either as DownloadPsychtoolbox('stable') or as
-% DownloadPsychtoolbox('beta') at your choice.
+% UPGRADE INSTRUCTIONS:
 %
-% 5. After sucessfull installation, setup your Matlab path properly, so
-% this working copy of Psychtoolbox gets used.
+% To upgrade your copy of Psychtoolbox, at any time, to incorporate the
+% latest bug fixes, enhancements, and new features, just type:
+% UpdatePsychtoolbox
 %
-% 6. You are done for now. Enjoy!
+% UpdatePsychtoolbox cannot change the stable-vs-beta flavor of your
+% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox.
 %
-% If you want to upgrade your copy of Psychtoolbox in the future to incorporate the
-% latest bug fixes, enhancements and new features, please do the following:
+% PERMISSIONS:
 %
-% 1. Change your Matlab current directory to the Psychtoolbox - folder.
+% There's a thorny issue with permissions. It may not be possible to
+% install into /Applications (or whatever the targetdirectory is) with the
+% user's existing privileges. The normal situation on Mac OSX is that a few
+% users have "administrator" privileges, and many don't. By default,
+% writing to the /Applications folder requires administrator privileges.
+% Thus all OSX installers routinely demand an extra authorization (if
+% needed), asking the user to type in the name and password of an
+% administrator before proceeding. We haven't yet figured out how to do
+% that, but we want to offer that option. This conforms to normal
+% installation of an application under Mac OS X.
 %
-% 2. Call the script: 'UpdatePsychtoolbox'.
+% DownloadPsychtoolbox creates the Psychtoolbox folder with permissions set
+% to allow writing by everyone. Our hope is that this will allow updating
+% (by UpdatePsychtoolbox) without need for administrator privileges.
 %
-% 3. Your working copy will get updated to the latest release.
+% Some labs that may want to be able to install without access to an
+% administrator. For them we offer the fall back of installing Psychtoolbox
+% in /Users/Shared/, instead of /Applications/, because, by default,
+% /Users/Shared/ is writeable by all users.
 %
-% 4. Enjoy the new version.
+% SAVEPATH
+%
+% Normally all users of MATLAB use the same path. This path is normally
+% saved in MATLABROOT/toolbox/local/pathdef.m, where "MATLABROOT" stands
+% for the result returned by running that function in MATLAB, e.g.
+% '/Applications/MATLAB.app/Contents/Matlab14.1'. Since pathdef.m is inside
+% the MATLAB package, which is normally in the Applications folder,
+% ordinary users (not administrators) cannot write to pathdef.m. They'll
+% get an error message whenever they try to save the path, e.g. by typing
+% "savepath". Most users will find this an unacceptable limitation. The
+% solution is very simple, ask an administrator to use File Get Info to set
+% the pathdef.m file permissions to allow write by everyone. This needs to
+% be done only once, after installing MATLAB.
+% web
+% http://www.mathworks.com/access/helpdesk/help/techdoc/matlab_env/ws_pat18.html
 
 % History:
 %
-% 11/02/05 mk Created.
-% 11/25/05 mk Bugfix for 'targetdirectory' provided by David Fencsik.
-% 01/13/06 mk Added support for download of Windows OpenGL-PTB.
+% 11/02/05 mk  Created.
+% 11/25/05 mk  Bug fix for 'targetdirectory' provided by David Fencsik.
+% 01/13/06 mk  Added support for download of Windows OpenGL-PTB.
+% 03/10/06 dgp Expanded the help text, above, incorporating suggestions
+%              from Daniel Shima.
+% 03/11/06 dgp Check OS. Remove old Psychtoolbox from path and from disk.
+%              After downloading, add new Psychtoolbox to path.
+% 03/12/06 dgp Polished error message regarding missing svn.
+% 03/13/06 dgp Changed default targetdirectory from PWD to ~/Documents/.
+% 03/14/06 dgp Changed default targetdirectory to /Applications/, and
+%              if not sufficiently privileged, then /Users/Shared/.
+%              Check privilege to create folder. Check SAVEPATH.
+% 06/05/06 mk  On Windows, we require the user to pass the full path to
+%              the installation folder, because there is no well-defined
+%              equivalent of OS-X /Applications/ . Also, the order of
+%              operations was changed to maximize the chance of getting a
+%              working PTB installation despite minor failures of commands
+%              like savepath, or fileattrib. We leave it up to the user if
+%              he really wants to delete its old Psychtoolbox folders or if
+%              he wants to retain multiple copies of PTB (e.g., Beta and Stable)
+%              so each user can decide on which copy to use for his study.
+%              Copying of UpdatePsychtoolbox was removed: After a successfull
+%              checkout from Subversion, the Psychtoolbox folder will already
+%              contain the latest version of UpdatePsychtoolbox.m 
 
-if nargin < 2
-    targetdirectory = pwd;
-end;
+% Check OS
+isWin=strcmp(computer,'PCWIN');
+isOSX=strcmp(computer,'MAC');
+if ~isWin && ~isOSX
+os=computer;
+if strcmp(os,'MAC2')
+os='Mac OS9';
+end
+fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
+fprintf([mfilename ' can only install the new (OSX and Windows) \n'...
+    'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
+        'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
+                                                                    'web http://psychtoolbox.org/download.html\n']);
+error(['Your operating system is not supported by ' mfilename '.']);
+end
 
-if nargin < 1
-    flavor = 'stable';
-end;
+if nargin<2
+    if isOSX
+        % Set default path for OS-X install:
+        targetdirectory=fullfile(filesep,'Applications');
+    else
+        % We do not have a default path on Windows and require the user to pass one
+        % as commandline argument:
+        fprintf('You did not provide the full path to the directory where Psychtoolbox should get\n');
+        fprintf('installed. This is required for Microsoft Windows installation. Please enter a full\n');
+        fprintf('path as second argument to this script, e.g. DownloadPsychtoolbox(''beta'', ''C:\Toolboxes\'').\n');
+        error('Full install path specification on Windows missing.');
+    end     
+end
 
-% Windows system?
-isWin = strcmp(computer, 'PCWIN');
-
-% Check if subversion client is properly installed on OS-X
-% We can't easily check on Windows...:
-if ~isWin & exist('/usr/local/bin/svn', 'file')~=2
-    fprintf('Could not find the Subversion client "svn" in its\n');
-    fprintf('expected location /usr/local/bin/svn ! Please download\n');
-    fprintf('and install the most recent Subversion client from...\n\n');
-    fprintf('http://metissian.com/projects/macosx/subversion/\n\n');
-    fprintf('... and then retry. Ciao.\n');
-    return;
-end;
-
-if ~isWin
-   fprintf('Trying to download the latest working copy of Psychtoolbox-OSX.\n');
-else
-   fprintf('Trying to download the latest working copy of OpenGL Psychtoolbox for Windoze.\n');
-end;
-
-fprintf('Target folder for installation: %s\n', targetdirectory);
-fprintf('Requested flavor is: %s\n', flavor);
+if nargin<1
+    flavor='stable';
+end
+fprintf(['DownloadPsychtoolbox(''' flavor ''',''' targetdirectory ''')\n']);
+fprintf('Requested flavor is: %s\n',flavor);
+fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
 
-if ~isWin
-   checkoutcommand = char([ '/usr/local/bin/svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '/Psychtoolbox' ]);
+% Check that Subversion client is installed.
+% Currently, we only know how to check this for Mac OSX.
+if isOSX && exist('/usr/local/bin/svn','file')~=2
+    fprintf('The Subversion client "svn" is not in its expected\n');
+    fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
+    fprintf('download and install the most recent Subversion client from:\n');
+    fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
+    fprintf('and then run %s again.\n',mfilename);
+    error('Subversion client is missing. Please install it.');
+end
+
+% Does SAVEPATH work?
+err=savepath;
+if err
+    p=fullfile(matlabroot,'toolbox','local','pathdef.m');
+    fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
+        'Please ask a user with administrator privileges to enable \n'...
+        'write by everyone for the file:\n''%s''\n'],p);
+    fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
+    fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
+    fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n');
+    answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
+    if ~strcmp(answer,'yes')
+        error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
+    end
+end
+
+% Do we have sufficient privileges to install at the requested location?
+p='Psychtoolbox123test';
+[success,m,mm]=mkdir(targetdirectory,p);
+if success
+    rmdir(fullfile(targetdirectory,p));
 else
-   checkoutcommand = char([ 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' targetdirectory '\Psychtoolbox' ]);
-end;
+    if strcmp(m,'Permission denied')
+        if isOSX
+            fprintf([
+            'Sorry. You would need administrator privileges to install the \n'...
+            'Psychtoolbox into the ''%s'' folder. You can either quit now \n'...
+            '(say "no", below) and get a user with administrator privileges to run \n'...
+            'DownloadPsychtoolbox for you, or you can install now into the \n'...
+            '/Users/Shared/ folder, which doesn''t require special privileges. We \n'...
+            'recommend installing into the /Applications/ folder, because it''s the \n'...
+            'normal place to store programs. \n\n'],targetdirectory);
+            answer=input('Even so, do you want to install the Psychtoolbox into the \n/Users/Shared/ folder (yes or no)? ','s');
+            if ~strcmp(answer,'yes')
+                fprintf('You didn''t say yes, so I cannot proceed.\n');
+                error('Need administrator privileges for requested installation into folder: %s.',targetdirectory);
+            end
+            targetdirectory='/Users/Shared';
+        else
+            % Windows: We simply fail in this case:
+            fprintf([
+            'Sorry. You would need administrator privileges to install the \n'...
+            'Psychtoolbox into the ''%s'' folder. Please rerun the script, choosing \n'...
+            'a location where you have write permission, or ask a user with administrator \n'...
+            'privileges to run DownloadPsychtoolbox for you.\n\n'],targetdirectory);
+            error('Need administrator privileges for requested installation into folder: %s.',targetdirectory);
+    else
+        error(mm,m);
+    end
+end
+fprintf('Good. Your privileges suffice for the requested installation into folder %s.\n\n',targetdirectory);
 
-fprintf('Will execute the following checkout command, please standby...\n');
-fprintf('%s\n', checkoutcommand);
+% Delete old Psychtoolbox
+while exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolbox'),'dir')
+    fprintf('Hmm. You already have an old Psychtoolbox folder.\n');
+    p=fullfile(targetdirectory,'Psychtoolbox');
+    if ~exist(p,'dir')
+        p=fileparts(which(fullfile('Psychtoolbox','Contents.m')));
+        if length(p)==0
+            w=what('Psychtoolbox');
+            p=w(1).path;
+        end
+    end
+    fprintf('%s\n',p);
+    fprintf('The old one should be removed before we can install a new one.\n');
+    if ~exist(fullfile(p,'Contents.m'))
+        fprintf(['WARNING: Your old Psychtoolbox folder lacks a Contents.m file. \n'...
+            'Maybe it contains stuff you want to keep. Here''s a DIR:\n']);
+        dir(p)
+    end
 
-if ~isWin
-    [status, result] = system(checkoutcommand);
+    fprintf('First we remove "Psychtoolbox" from the MATLAB path.\n');
+    pp=genpath(p);
+    warning('off','MATLAB:rmpath:DirNotFound');
+    rmpath(pp);
+    warning('on','MATLAB:rmpath:DirNotFound');
+    savepath;
+    fprintf('Success.\n');
+
+    s=input('Shall I delete the old Psychtoolbox folder and all its contents (recommended in most cases), \n (yes or no)? ','s');
+    if strcmp(s,'yes')
+        fprintf('Now we delete "Psychtoolbox" itself.\n');
+        [success,m,mm]=rmdir(p,'s');
+        if success
+            fprintf('Success.\n\n');
+        else
+            fprintf('Error in RMDIR: %s\n',m);
+            fprintf('If you want, you can delete the Psychtoolbox folder manually and rerun this script to recover.\n');
+            error(mm,m);
+        end
+    end
+end
+
+% Remove "Psychtoolbox" from path
+while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+    fprintf('Your old Psychtoolbox appears in the MATLAB path:\n');
+    paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
+    fprintf('Your old Psychtoolbox appears %d times in the MATLAB path.\n',length(paths));
+    answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
+    if ~strcmp(answer,'yes')
+        fprintf('You didn''t say "yes", so I''m taking it as no.\n');
+    else
+        for p=paths
+            s=char(p);
+            if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+                fprintf('%s\n',s);
+            end
+        end
+    end
+    answer=input('Shall I delete all those instances from the MATLAB path (yes or no)? ','s');
+    if ~strcmp(answer,'yes')
+        fprintf('You didn''t say yes, so I cannot proceed.\n');
+        fprintf('Please use the MATLAB "File:Set Path" command to remove all instances of "Psychtoolbox" from the path.\n');
+        error('Please remove Psychtoolbox from MATLAB path.');
+    end
+    for p=paths
+        s=char(p);
+        if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+            % fprintf('rmpath(''%s'')\n',s);
+            rmpath(s);
+        end
+    end
+    savepath;
+    fprintf('Success.\n\n');
+end
+
+% Download Psychtoolbox
+if isOSX
+    fprintf('Will now download the latest Psychtoolbox for OSX.\n');
 else
-    [status, result] = dos(checkoutcommand);
-end;
-
-if (status>0)
-    fprintf('Operation failed for some reason. Sorry...\n');
-    fprintf('%s\n', result);
-    return;
-end;
-
-fprintf('Operation finished! Output of svn is as follows...\n');
-fprintf('%s\n', result);
-
-fprintf('Please adapt your Matlab path to include the folder\n');
-if ~isWin
-   fprintf('%s/Psychtoolbox\n', targetdirectory);
+    fprintf('Will now download the latest Psychtoolbox for Windows.\n');
+end
+fprintf('Requested flavor is: %s\n',flavor);
+fprintf('Target folder for installation: %s\n',targetdirectory);
+p=fullfile(targetdirectory,'Psychtoolbox');
+checkoutcommand=['svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' p];
+if isOSX
+    checkoutcommand=[ '/usr/local/bin/' checkoutcommand];
+end
+fprintf('The following CHECKOUT command asks the Subversion client to download the Psychtoolbox:\n');
+fprintf('%s\n',checkoutcommand);
+fprintf('Downloading. It''s nearly 100 MB, which can take several minutes without any output to the Matlab window, so please standby ...\n');
+if isOSX
+    [err,result]=system(checkoutcommand);
 else
-   fprintf('%s\\Psychtoolbox\n', targetdirectory);
-end;
+    [err,result]=dos(checkoutcommand);
+end
+if err
+    fprintf('Sorry, CHECKOUT failed with error code %d: \n',err);
+    fprintf('%s\n',result);
+    fprintf('One reason for failure could be temporary network- or server problems, so maybe you want to retry in a\n');
+    fprintf('couple of minutes...\n');
+    error('CHECKOUT failed.');
+end
+fprintf('Download Success!\n');
 
-fprintf('and all its subfolders. Then you are ready to use the Psychtoolbox - Enjoy!\n');
+% Add Psychtoolbox to MATLAB path
+fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your MATLAB path.\n');
+p=fullfile(targetdirectory,'Psychtoolbox');
+pp=genpath(p);
+addpath(pp);
+err=savepath;
+if err
+    fprintf('SAVEPATH failed. Psychtoolbox is now already installed and configured for use on your Computer,\n');
+    fprintf('but i could not save the updated Matlab path, probably due to insufficient permissions.\n');
+    fprintf('You will either need to fix this manually via use of the path-browser (Menu: File -> Set Path),\n');
+    fprintf('or by manual invocation of the savepath command (See help savepath). The third option is, of course,\n');
+    fprintf('to add the path to the Psychtoolbox folder and all of its subfolders whenever you restart Matlab.\n');
+else 
+    fprintf('Success.\n\n');
+    fprintf('Psychtoolbox is now installed and configured for use on your Computer,\n\n');
+end
 
-return;
+fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
+    'allow future updates by every user on this machine without requiring administrator privileges.\n']);
+if isOSX
+    [s,m,mm]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+else
+    [s,m,mm]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+end
+
+if s
+    fprintf('Success.\n');
+else
+    fprintf('FILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+    fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
+    fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
+    fprintf('The error message of FILEATTRIB was: %s\n', m);
+end
+fprintf('\n');
+
+% Goodbye
+fprintf('You can now use your newly installed Psychtoolbox. Enjoy!\n');
+fprintf('Whenever you want to upgrade your copy of Psychtoolbox, simply\n');
+fprintf('change into the Psychtoolbox root folder %s,\n', p);
+fprintf('and execute the UpdatePsychtoolbox - script.\n\n');
+fprintf('If you are new to this, you might try this: \nhelp Psychtoolbox\n');
+fprintf('Useful websites with information about Psychtoolbox are:\n');
+fprintf('http://www.psychtoolbox.org  and http://en.wikibooks.org/wiki/Matlab:Psychtoolbox\n');
+fprintf('An archive of official announcements regarding Psychtoolbox is available under:\n');
+fprintf('http://lists.berlios.de/pipermail/osxptb-announce/ \n');
+
+% Puuh, we are done :)
+return

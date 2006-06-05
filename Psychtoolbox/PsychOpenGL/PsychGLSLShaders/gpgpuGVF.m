@@ -46,6 +46,8 @@ inputtex = Screen('MakeTexture', win, inputimage);
 % Retrieve an OpenGL handle to it:
 texin = Screen('GetOpenGLTexture', win, inputtex);
 
+maxattachnr = glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)
+
 % Use 
 if glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)<2 | singlefbo==0
     singlefbo=0;
@@ -99,6 +101,8 @@ glUseProgram(0);
 % red, green and blue contain the same content. We read it back to make
 % sure we can compare Matlabs results to the GPU results:
 inputimage = glReadPixels(0, 0, msize, msize, GL_RED, GL_FLOAT);
+imshow(inputimage);
+figure;
 
 % Unbind FBO, reset to normal framebuffer:
 moglChooseFBO(0);

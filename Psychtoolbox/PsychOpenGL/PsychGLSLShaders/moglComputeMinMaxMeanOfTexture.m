@@ -195,6 +195,7 @@ end;
 
 % Ok, pixel (0,0) of our currently bound FBO should contain the final
 % result. Read it out:
+if singlefbo == 0, bufferid = 0; end;
 glReadBuffer(GL.COLOR_ATTACHMENT0_EXT + bufferid);
 resultpixel = double(glReadPixels(0, 0, 1, 1, GL.RGB, GL.FLOAT));
 meanv = resultpixel(1);

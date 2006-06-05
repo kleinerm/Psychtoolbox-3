@@ -13,12 +13,12 @@
 // (w)2006 by Mario Kleiner.
 */
 
-const int neighboursize = 2;
+float neighboursize = 2.0;
 uniform sampler2DRect Image;
 
 void main()
 {
-    int dx, dy;
+    float dx, dy;
     float sum = 0.0;
     float maximum = 0.0;
     float minimum = 1000.0; 
@@ -30,8 +30,8 @@ void main()
     basepos = vec2(floor(gl_FragCoord)) * neighboursize;
 
     /* Iterate over a 'neighboursize' by 'neighboursize' neighbourship: */
-    for (dx = 0; dx < neighboursize; dx++) {
-        for (dy = 0; dy < neighboursize; dy++) {
+    for (dx = 0.0; dx < neighboursize; dx++) {
+        for (dy = 0.0; dy < neighboursize; dy++) {
             /* Lookup texel color value at current sampling position: */
             tmp = texture2DRect(Image, basepos + vec2(dx, dy));
 
@@ -46,8 +46,8 @@ void main()
         }
     }
 
-    gl_FragColor.r = sum / (float)neighboursize / (float) neighboursize;
+    gl_FragColor.r = sum / neighboursize / neighboursize;
     gl_FragColor.g = maximum;
     gl_FragColor.b = minimum;
-    gl_FragColor.a = 0;
+    gl_FragColor.a = 0.0;
 }
