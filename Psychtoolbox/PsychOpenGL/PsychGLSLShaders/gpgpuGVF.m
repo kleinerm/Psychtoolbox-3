@@ -32,15 +32,26 @@ impath = [PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']
 inputimage = imread(impath);
 % ...convert into grayscale image...
 inputimage = transpose(rgb2gray(inputimage));
-% inputimage = inputimage(1:256,1:256);
-
+%inputimage = inputimage(1:128, 1:128);
 % Pad it to be a square, power-of-two image:
 msize = pow2(ceil(log2(max(size(inputimage)))))
 tmpimage = zeros(msize, msize);
-tmpimage(1:size(inputimage,1), 1:size(inputimage,2)) = inputimage(:,:);
+xpad = int16(floor((msize - size(inputimage,1))/2))+1;
+ypad = int16(floor((msize - size(inputimage,2))/2))+1;
+tmpimage(xpad:xpad+size(inputimage,1)-1, ypad:ypad+size(inputimage,2)-1) = inputimage(:,:);
 inputimage = tmpimage;
 
+% Compute edge-map:
+inputimage = uint8(edge(inputimage, 'canny'));
+
+% TEST TEST TEST
+%inputimage(:,:)=0;
+%inputimage(100:105,:)=255;
+
+
+
 % ...and convert it to texture:
+size(inputimage)
 inputtex = Screen('MakeTexture', win, inputimage);
 
 % Retrieve an OpenGL handle to it:
@@ -135,6 +146,19 @@ fprintf('Minimum   CPU = %f  , OpenGL = %f\n', minc, minv);
 fprintf('Maximum   CPU = %f  , OpenGL = %f\n', maxc, maxv);
 fprintf('Mean      CPU = %f  , OpenGL = %f\n', meanc, meanv);
 fprintf('Time/pass CPU = %f ms, OpenGL = %f ms\n', durationcpu * 1000, durationgpu * 1000);
+
+
+% Compute GVF in C-Code:
+mu = 0.1
+numiters = 100
+
+% GVFC needs double input, not float input!
+gvfcinput = double(inputimage);
+
+tic
+[gvfc_v,gvfc_u] = GVFC(gvfcinput, mu, numiters);
+gvfcduration = toc
+gvfcdurationperiter = gvfcduration / numiters
 
 % This performs stage 1 of GVF initialization: Normalize all edge map
 % values, remapping it so they span the whole range of 
@@ -232,12 +256,16 @@ figure
 
 % Load GVF Update shader:
 glslGVFUpdateshader = LoadGLSLProgramFromFiles('GVFUpdateShader');
+ingradient = glGetUniformLocation(glslGVFUpdateshader, 'ingradient');
+bc1c2field = glGetUniformLocation(glslGVFUpdateshader, 'bc1c2field');
 
 % Activate update shader:
 glUseProgram(glslGVFUpdateshader);
 
+glUniform1i(ingradient, 0);
+glUniform1i(bc1c2field, 1);
+
 % Retrieve handle to mu constant and set it to reasonable value:
-mu = 0.1
 fourmu = glGetUniformLocation(glslGVFUpdateshader, 'fourmu');
 glUniform1f(fourmu, 4 * mu);
 
@@ -283,7 +311,6 @@ glActiveTexture(GL.TEXTURE0);
 glDisable(GL.TEXTURE_2D);
 glEnable(GL.TEXTURE_RECTANGLE_EXT);
 
-numiters = 10;
 inputtex = buffertex(1);
 
 glFinish;
@@ -364,5 +391,22 @@ Screen('EndOpenGL', win);
 % Close onscreen window and release all other ressources:
 Screen('CloseAll');
 
+minu = min(min(gvfc_u))
+minu = min(min(gvf_finalimg(:,:,1)))
+maxu = max(max(gvfc_u))
+maxu = max(max(gvf_finalimg(:,:,1)))
+
+imagesc(gvfc_u);
+figure;
+imagesc(gvfc_v);
+figure;
+diff_u = gvfc_u - gvf_finalimg(:,:,1);
+diff_v = gvfc_v - gvf_finalimg(:,:,2);
+imagesc(diff_u);
+figure;
+imagesc(diff_v);
+
+maxdiff=max(max(abs(diff_u) + abs(diff_v)))
+avgdiff=mean(mean(abs(diff_u) + abs(diff_v)))
 % Well done!
 return

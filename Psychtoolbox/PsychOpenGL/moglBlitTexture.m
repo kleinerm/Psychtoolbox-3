@@ -89,17 +89,13 @@ end;
 
 % Blit it:
 glBegin(GL.QUADS)
-glTexCoord2f(0, h);
-%glMultiTexCoord2f(GL.TEXTURE1, 0, h);
-glVertex2f(x, y);
 glTexCoord2f(0, 0);
-%glMultiTexCoord2f(GL.TEXTURE1, 0, 0);
+glVertex2f(x, y);
+glTexCoord2f(0, h);
 glVertex2f(x, y+h);
-glTexCoord2f(w, 0);
-%glMultiTexCoord2f(GL.TEXTURE1, w, 0);
-glVertex2f(x+w, y+h );
 glTexCoord2f(w, h);
-%glMultiTexCoord2f(GL.TEXTURE1, w, h);
+glVertex2f(x+w, y+h );
+glTexCoord2f(w, 0);
 glVertex2f(x+w, y);
 glEnd;
 

@@ -25,6 +25,7 @@ void main()
     float b;
     vec2 lv, rv, tv, bv, oldflow, L, c12, newflow;
     vec3 b_c1_c2;
+
     /* We want to compute updated value for uv'(x,y):
      * First compute the Laplacian of the input flow field
      * at (x,y):
@@ -50,7 +51,6 @@ void main()
     newflow = (b * oldflow) + (fourmu * L) + c12;
 
     /* Write them out: */
-    /* gl_FragColor.rg = newflow; */
     gl_FragColor.rg = newflow;
 
     /* Ignore blue and alpha channel: */
