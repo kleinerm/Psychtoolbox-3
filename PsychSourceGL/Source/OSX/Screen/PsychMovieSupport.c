@@ -172,8 +172,8 @@ void* PsychAsyncCreateMovie(void* mi)
     // Reduce our scheduling priority to the minimum value of zero, so
     // we do not interfere too much with the PTB main thread:
     sp.sched_priority = 0;
-    if ((rc=pthread_setschedparam(pthread_self(), SCHED_RR, &sp))!=0) {
-        printf("PTHREAD ERROR %i ...", rc);
+    if ((rc=pthread_setschedparam(pthread_self(), SCHED_OTHER, &sp))!=0) {
+        printf("PTB-ERROR: In PsychAsyncCreateMovie(): PTHREAD ERROR %i ...", rc);
     }
     
     // Execute our normal OpenMovie function: This does the hard work:

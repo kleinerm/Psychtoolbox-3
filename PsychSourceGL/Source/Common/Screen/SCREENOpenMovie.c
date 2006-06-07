@@ -83,7 +83,10 @@ PsychError SCREENOpenMovie(void)
         int                                     height;
         int                                     asyncFlag = 0;
         static Boolean                          firstTime = TRUE;
-        
+#if PSYCH_SYSTEM == PSYCH_OSX
+        struct sched_param sp;
+        int rc;
+#endif
         if (firstTime) {
             // Setup asyncopeninfo on first invocation:
             firstTime = FALSE;
@@ -130,6 +133,20 @@ PsychError SCREENOpenMovie(void)
                     asyncmovieinfo.moviename = strdup(moviefile);
                     memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     asyncmovieinfo.moviehandle = -1;
+
+                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
+                    // printf("MATLAB-PTHREAD PREPOL %i at priority %i...", asyncFlag, sp.sched_priority);
+
+                    // Increase our scheduling priority to maximum FIFO priority: This way we should get
+                    // more cpu time for our PTB main thread than the async. background prefetch-thread:
+                    sp.sched_priority = 127;
+                    if ((rc=pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp))!=0) {
+                        printf("PTB-ERROR: In OpenMovie(): PTHREAD ERROR %i at priority %i...", rc, sp.sched_priority);
+                    }
+
+                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
+                    // printf("MATLAB-PTHREAD POSTPOL %i at priority %i...", asyncFlag, sp.sched_priority);
+                        
                     // Start our own movie loader Posix-Thread:
                     pthread_create(&asyncmovieinfo.pid, NULL, PsychAsyncCreateMovie, (void*) &asyncmovieinfo);
                     
@@ -152,6 +169,18 @@ PsychError SCREENOpenMovie(void)
                     // completes:
                     pthread_join(asyncmovieinfo.pid, NULL);                        
 
+                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
+                    // printf("MATLAB-PTHREAD PREPOL %i at priority %i...", asyncFlag, sp.sched_priority);
+
+                    // Reset our priority to "normal" after async prefetch completion:
+                    sp.sched_priority = 32;
+                    if ((rc=pthread_setschedparam(pthread_self(), SCHED_OTHER, &sp))!=0) {
+                        printf("PTB-ERROR: In OpenMovie(): PTHREAD ERROR %i at priority %i...", rc, sp.sched_priority);
+                    }
+                        
+                    // pthread_getschedparam(pthread_self(), &asyncFlag, &sp);
+                    // printf("MATLAB-PTHREAD POSTPOL %i at priority %i...", asyncFlag, sp.sched_priority);
+                        
                     asyncmovieinfo.asyncstate = 0; // Reset state to idle:
                     moviehandle = asyncmovieinfo.moviehandle;
                     
