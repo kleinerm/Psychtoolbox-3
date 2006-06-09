@@ -96,7 +96,12 @@ typedef unsigned char bool;
 #ifndef GL_CLAMP_TO_EDGE
 #define GL_CLAMP_TO_EDGE 0x812F
 #endif
-
+#ifndef GL_SAMPLES_ARB
+#define GL_SAMPLES_ARB   0x80A9 
+#endif
+#ifndef GL_SAMPLE_BUFFERS_ARB
+#define GL_SAMPLE_BUFFERS_ARB   0x80A8 
+#endif
 #ifndef GL_TEXTURE_DEPTH
 #define GL_TEXTURE_DEPTH 0x8071
 #endif

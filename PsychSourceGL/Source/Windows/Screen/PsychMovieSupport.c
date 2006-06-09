@@ -952,10 +952,10 @@ void PsychExitMovies(void)
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Shutdown Quicktime core system:
-    ExitMovies();
+    // ExitMovies();
     
     // Shutdown Quicktime for Windows compatibility layer:
-    TerminateQTML();
+    // TerminateQTML();
 #endif
 
 	 // Reset the firsttime flag, so system gets restarted properly in PsychCreateMovie():
