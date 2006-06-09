@@ -126,7 +126,8 @@ typedef struct _PsychWindowRecordType_{
 	int					greenSize;
 	int					blueSize;
 	int					alphaSize;
-	
+        int                                     multiSample;            // Number of samples to use for anti-aliasing of each drawn pixel:
+                                                                        // 0=Standard GL, n>0 : Use Multisampling, try to get at least n samples/pixel.
 	//used only when this structure holds a window
 	Boolean					actualEnableBlending;
 	GLenum					actualSourceAlphaBlendingFactor;

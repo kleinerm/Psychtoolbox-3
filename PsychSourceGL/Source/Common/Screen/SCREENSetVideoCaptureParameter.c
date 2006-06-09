@@ -26,16 +26,19 @@
 
 static char useString[] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);";
 static char synopsisString[] = "Set video capture parameter 'parameterName' on video capture device 'capturePtr'. "
-                               "If 'value' is provided, then the parameter is set to 'value'. If 'value' is left "
-                               "out, then the current setting of 'parameterName' is queried and returned. In any "
+                               "If 'value' is provided, then the parameter is set to 'value' and the parameter is "
+                               "switched to manual control mode. If 'value' is left out, then the current setting "
+                               "of 'parameterName' is queried and returned. If 'parameterName' starts with the word "
+                               "'Auto' then the parameter is switched to automatic control, if supported. In any "
                                "case, the old value is returned. Type and range of supported capture parameters "
                                "varies between different capture devices and operating systems. Your specific device "
                                "may only support a subset (or none) of the available parameters. If you specify an "
                                "unsupported 'parameterName', your request will be silently ignored, except that the "
                                "return value is set to DBL_MAX - a very high number. The following settings are "
                                "currently available on devices that support them: 'Brightness', 'Gain', "
-                               "'Exposure', 'Shutter'. The special setting 'PrintParameters' prints all features to "
-                               "the Matlab command window. ";
+                               "'Exposure', 'Shutter', 'Sharpness', 'Saturation', 'Gamma'. The special setting "
+                               "'PrintParameters' prints all features to the command window. 'GetVendor' and 'GetModel' "
+                               "return the name of the device vendor, resp. the device model name. ";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 

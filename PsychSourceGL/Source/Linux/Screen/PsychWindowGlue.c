@@ -287,6 +287,16 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     attrib[attribcount++]= GLX_STEREO;
   }
 
+  // Multisampling support:
+  if (windowRecord->multiSample > 0) {
+    // Request a multisample buffer:
+    attrib[attribcount++]= GLX_SAMPLE_BUFFERS_ARB;
+    attrib[attribcount++]= 1;
+    // Request at least multiSample samples per pixel:
+    attrib[attribcount++]= GLX_SAMPLES_ARB;
+    attrib[attribcount++]= windowRecord->multiSample;
+  }
+
   // Support for OpenGL 3D rendering requested?
   if (PsychPrefStateGet_3DGfx()) {
     // Yes. Allocate and attach a 24 bit depth buffer and 8 bit stencil buffer:
@@ -322,33 +332,58 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // Select matching visual for our pixelformat:
   visinfo = glXChooseVisual( dpy, scrnum, attrib );
   if (!visinfo) {
-    // Failed to find matching visual: This can happen if we request AUX buffers on a system
-    // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers
-    // and output a proper warning instead of failing. For 99% of all applications one can
-    // do without AUX buffers anyway...
-    printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
-    fflush(NULL);
-
-    // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
-    attrib[attribcount-3] = None;
-
-    // Retry...
-    visinfo = glXChooseVisual( dpy, scrnum, attrib );
-    if (!visinfo && PsychPrefStateGet_3DGfx()) {
-      // Ok, retry with a 16 bit depth buffer...
-      for (i=0; i<attribcount && attrib[i]!=GLX_DEPTH_SIZE; i++);
-      if (attrib[i]==GLX_DEPTH_SIZE && i<attribcount) attrib[i+1]=16;
-      printf("PTB-WARNING: Have to use 16 bit depth buffer instead of 24 bit buffer due to limitations of your gfx-hardware or driver. Accuracy of 3D-Gfx may be limited...\n");
-      fflush(NULL);
-
-      visinfo = glXChooseVisual( dpy, scrnum, attrib );
-      if (!visinfo) {
-	// Failed again. Retry with disabled stencil buffer:
-	printf("PTB-WARNING: Have to disable stencil buffer due to limitations of your gfx-hardware or driver. Some 3D Gfx algorithms may fail...\n");
-	fflush(NULL);
-	for (i=0; i<attribcount && attrib[i]!=GLX_STENCIL_SIZE; i++);
-	if (attrib[i]==GLX_STENCIL_SIZE && i<attribcount) attrib[i+1]=0;
+    // Failed to find matching visual: Could it be related to multisampling?
+    if (windowRecord->multiSample > 0) {
+      // Multisampling requested: Let's see if we can get a visual by
+      // lowering our demand:
+      for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLES_ARB; i++);
+      while(!visinfo && windowRecord->multiSample > 0) {
+	attrib[i+1]--;
+	windowRecord->multiSample--;
 	visinfo = glXChooseVisual( dpy, scrnum, attrib );
+      }
+
+      // Either we have a valid visual at this point or we still fail despite
+      // requesting zero samples.
+      if (!visinfo) {
+	// We still fail. Disable multisampling by requesting zero multisample buffers:
+	for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLE_BUFFERS_ARB; i++);
+	windowRecord->multiSample = 0;
+	attrib[i+1]=0;
+	visinfo = glXChooseVisual( dpy, scrnum, attrib );
+      }
+    }
+
+    // Break out of this if we finally got one...
+    if (!visinfo) {
+      // Failed to find matching visual: This can happen if we request AUX buffers on a system
+      // that doesn't support AUX-buffers. In that case we retry without requesting AUX buffers
+      // and output a proper warning instead of failing. For 99% of all applications one can
+      // do without AUX buffers anyway...
+      printf("PTB-WARNING: Couldn't enable AUX buffers on onscreen window due to limitations of your gfx-hardware or driver. Some features may be disabled or limited...\n");
+      fflush(NULL);
+      
+      // Terminate attrib array where the GLX_AUX_BUFFERS entry used to be...
+      attrib[attribcount-3] = None;
+      
+      // Retry...
+      visinfo = glXChooseVisual( dpy, scrnum, attrib );
+      if (!visinfo && PsychPrefStateGet_3DGfx()) {
+	// Ok, retry with a 16 bit depth buffer...
+	for (i=0; i<attribcount && attrib[i]!=GLX_DEPTH_SIZE; i++);
+	if (attrib[i]==GLX_DEPTH_SIZE && i<attribcount) attrib[i+1]=16;
+	printf("PTB-WARNING: Have to use 16 bit depth buffer instead of 24 bit buffer due to limitations of your gfx-hardware or driver. Accuracy of 3D-Gfx may be limited...\n");
+	fflush(NULL);
+	
+	visinfo = glXChooseVisual( dpy, scrnum, attrib );
+	if (!visinfo) {
+	  // Failed again. Retry with disabled stencil buffer:
+	  printf("PTB-WARNING: Have to disable stencil buffer due to limitations of your gfx-hardware or driver. Some 3D Gfx algorithms may fail...\n");
+	  fflush(NULL);
+	  for (i=0; i<attribcount && attrib[i]!=GLX_STENCIL_SIZE; i++);
+	  if (attrib[i]==GLX_STENCIL_SIZE && i<attribcount) attrib[i+1]=0;
+	  visinfo = glXChooseVisual( dpy, scrnum, attrib );
+	}
       }
     }
   }

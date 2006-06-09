@@ -75,7 +75,7 @@
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
  
 */
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect)
+boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample)
 {
     double ifi_nominal=0;    
     double ifi_estimate = 0;
@@ -118,6 +118,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Assign the passed windowrect 'rect' to the new window:
     PsychCopyRect((*windowRecord)->rect, rect);
     
+    // Assign requested level of multisampling for hardware Anti-Aliasing: 0 means - No hw-AA,
+    // n>0 means: use hw-AA and try to get multisample buffers for at least n samples per pixel.
+    // Todays hardware (as of mid 2006) typically supports 2x and 4x AA, Radeons support 6x AA.
+    // If a request for n samples/pixel can't be satisfied by the hardware/OS, then we fall back
+    // to the highest possible value. Worst case: We fall back to non-multisampled mode.
+    // We pass in the requested value, after opening the window, the windowRecord contains
+    // the real value used.
+    (*windowRecord)->multiSample = multiSample;
+
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:
@@ -133,6 +142,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("OSOpenOnscreenWindow done.\n");
+
+    // Retrieve real number of samples/pixel for multisampling:
+    (*windowRecord)->multiSample = 0;
+    while(glGetError()!=GL_NO_ERROR);
+    glGetIntegerv(GL_SAMPLES_ARB, (int*) &((*windowRecord)->multiSample));
+    while(glGetError()!=GL_NO_ERROR);
 
     // Retrieve display handle for beamposition queries:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
@@ -495,6 +510,18 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		  printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
 		}
 		if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
+		if (multiSample>0) {
+		  if ((*windowRecord)->multiSample == multiSample) {
+		    printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
+		  }
+		  if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
+		    printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
+			   (*windowRecord)->multiSample, multiSample);
+		  }
+		  if ((*windowRecord)->multiSample == 0) {
+		    printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
+		  }
+		}
 	}
 
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:

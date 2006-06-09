@@ -1026,6 +1026,10 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
 	capdev->scratchbuffer = NULL;
       }
 
+      // MK: FIXME: Need to undo reqpixeldepth = reqpixeldepth * 8 in start capture!
+      // Need to rethink definition of reqpixeldepth...
+      capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
+
       // Output count of dropped frames:
       if ((dropped=capdev->nr_droppedframes) > 0) {
 	printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
@@ -1346,37 +1350,37 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     return(0);
   }
 
-  if (strcmp(pname, "Brightness")==0) {
+  if (strstr(pname, "Brightness")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_BRIGHTNESS;    
   }
 
-  if (strcmp(pname, "Gain")==0) {
+  if (strstr(pname, "Gain")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_GAIN;    
   }
 
-  if (strcmp(pname, "Exposure")==0) {
+  if (strstr(pname, "Exposure")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_EXPOSURE;    
   }
 
-  if (strcmp(pname, "Shutter")==0) {
+  if (strstr(pname, "Shutter")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_SHUTTER;    
   }
 
-  if (strcmp(pname, "Sharpness")==0) {
+  if (strstr(pname, "Sharpness")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_SHARPNESS;    
   }
 
-  if (strcmp(pname, "Saturation")==0) {
+  if (strstr(pname, "Saturation")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_SATURATION;    
   }
 
-  if (strcmp(pname, "Gamma")==0) {
+  if (strstr(pname, "Gamma")!=0) {
     assigned = true;
     feature = DC1394_FEATURE_GAMMA;    
   }
@@ -1423,6 +1427,22 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 		fflush(NULL);
 	      }
 	    }
+	  }
+	}
+      }
+      else {
+	// Don't want to set new value. Do we want to reset feature into auto-mode?
+	// Prefixing a parameter name with "Auto"
+	// does not switch the parameter into manual
+	// control mode + set its value, as normal,
+	// but it switches the parameter into automatic
+	// mode, if automatic mode is supported by the
+	// device.
+	if (strstr(pname, "Auto")!=0) {
+	  // Switch to automatic control requested - Try it:
+	  if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_AUTO)!=DC1394_SUCCESS) {
+	    printf("PTB-WARNING: Failed to set feature %s on camera %i to automatic control! Ignored.\n", pname, capturehandle);
+	    fflush(NULL);
 	  }
 	}
       }

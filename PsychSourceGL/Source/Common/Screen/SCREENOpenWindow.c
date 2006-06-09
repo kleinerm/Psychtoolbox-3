@@ -54,9 +54,9 @@
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode]);";
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample]);";
 
-//                                                               1                         2        3      4           5                 6
+//                                                               1                         2        3      4           5                 6            7
 
 static char synopsisString[] =
 
@@ -76,6 +76,16 @@ static char synopsisString[] =
         "\"stereomode\" Type of stereo display algorithm to use: 0 (default) means: Monoscopic viewing. "
         "1 means: Stereo output via OpenGL on any stereo hardware that is supported by MacOS-X, e.g., the "
         "shutter glasses from CrystalView. 2 means: Left view compressed into top half, right view into bottom half. "
+        "3 means left view compressed into bottom half, right view compressed into top half. 4 and 5 allow split "
+        "screen display where left view is shown in left half, right view is shown in right half or the display. "
+        "A value of 5 does the opposite (cross-fusion). Values of 6,7,8 and 9 enable Anaglyph stereo rendering "
+        "of types left=Red, right=Green, vice versa and left=Red, right=Blue and vice versa. "
+        "\"multisample\" This parameter, if provided and set to a value greater than zero, enables automatic "
+        "hardware anti-aliasing of the display: For each pixel, 'multisample' color samples are computed and "
+        "combined into a single output pixel color. Higher numbers provide better quality but consume more "
+        "video memory and lead to a reduction in framerate due to the higher computational demand. The maximum "
+        "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
+        "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
         "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
         "Psychtoolbox, you can switch into a compatibility mode by adding the command "
@@ -94,7 +104,7 @@ PsychError SCREENOpenWindow(void)
 
 {
 
-    int					screenNumber, numWindowBuffers, stereomode;
+    int					screenNumber, numWindowBuffers, stereomode, multiSample;
     PsychRectType 			rect;
     PsychColorType			color;
     PsychColorModeType  		mode; 
@@ -122,7 +132,7 @@ PsychError SCREENOpenWindow(void)
 
     //cap the number of inputs
 
-    PsychErrorExit(PsychCapNumInputArgs(6));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(7));   //The maximum number of inputs
 
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
@@ -239,6 +249,10 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
     if(stereomode < 0 || stereomode > 9) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 9).");
 
+    multiSample=0;
+    PsychCopyInIntegerArg(7,FALSE,&multiSample);
+    if(multiSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid multisample value provided (Valid are positive numbers >= 0).");
+
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
     PsychGetScreenSettings(screenNumber, &screenSettings);    
     PsychInitDepthStruct(&(screenSettings.depth));
@@ -266,7 +280,7 @@ PsychError SCREENOpenWindow(void)
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
 
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect);
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
 
     if(!didWindowOpen){
 

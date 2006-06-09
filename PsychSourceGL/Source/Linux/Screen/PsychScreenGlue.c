@@ -83,12 +83,33 @@ static int                      displayX11Screens[kPsychMaxPossibleDisplays];
 // Weird experiments with special setups. Show stimulus on display 1, query mouse or keyboard from
 // different machine... 
 
+static int x11_errorval = 0;
+static int x11_errorbase = 0;
+static int (*x11_olderrorhandler)(Display*, XErrorEvent*);
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 boolean PsychCheckScreenSettingsLock(int screenNumber);
 //boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+
+// Error callback handler for X11 errors:
+static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
+{
+  // If x11_errorbase not yet setup, simply return and ignore this error:
+  if (x11_errorbase == 0) return(0);
+
+  // Setup: Check if its an XVidMode-Error - the only one we do handle.
+  if (err->error_code >=x11_errorbase && err->error_code < x11_errorbase + XF86VidModeNumberErrors ||
+      err->error_code == BadValue) {
+    // We caused some error. Set error flag:
+    x11_errorval = 1;
+  }
+
+  // Done.
+  return(0);
+}
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -357,14 +378,14 @@ int PsychGetScreenDepthValue(int screenNumber)
 }
 
 
-int PsychGetNominalFramerate(int screenNumber)
+float PsychGetNominalFramerate(int screenNumber)
 {
   // Information returned by the XF86VidModeExtension:
   XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
   int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
 
   // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
-  static unsigned int vrefresh = 0;
+  float vrefresh = 0;
 
   if(screenNumber>=numDisplays)
     PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
@@ -375,20 +396,98 @@ int PsychGetNominalFramerate(int screenNumber)
   }
 
   // Query vertical refresh rate. If it fails we default to the last known good value...
-  // A problem of our current (int) return type is the limitation to integral numbers (Hz), although real displays can
-  // run at non-integral refresh rates on Linux.
-
   if (XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
     // Vertical refresh rate is: RAMDAC pixel clock / width of a scanline in clockcylces /
     // number of scanlines per videoframe.
     vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / mode_line.vtotal;
 
-    // Divide vrefresh by 1000 to get real Hz - value. This will yield a floating-point
-    // number with the real refresh rate. As the current interface only allows for integral
-    // numbers, we need to round this value to the closest integral number, e.g.,
-    // 59.8 Hz --> 60 Hz. or 85.3 Hz --> 85 Hz.
-    vrefresh = (int)((((float) vrefresh) / 1000.0f) + 0.5f);
+    // Divide vrefresh by 1000 to get real Hz - value:
+    vrefresh = vrefresh / 1000.0f;
   }
+
+  // Done.
+  return(vrefresh);
+}
+
+float PsychSetNominalFramerate(int screenNumber, float requestedHz)
+{
+  // Information returned by/sent to the XF86VidModeExtension:
+  XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
+  int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
+  int rc;
+  int event_base;
+
+  // We start with a default vrefresh of zero, which means "couldn't query refresh from OS":
+  float vrefresh = 0;
+
+  if(screenNumber>=numDisplays)
+    PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); 
+
+  if (!XF86VidModeSetClientVersion(displayCGIDs[screenNumber])) {
+    // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+    return(0);
+  }
+
+  if (!XF86VidModeQueryExtension(displayCGIDs[screenNumber], &event_base, &x11_errorbase)) {
+    // Failed to use VidMode-Extension. We just return a vrefresh of zero.
+    return(0);
+  }
+
+  // Attach our error callback handler and reset error-state:
+  x11_errorval = 0;
+  x11_olderrorhandler = XSetErrorHandler(x11VidModeErrorHandler);
+
+  // Step 1: Query current dotclock and modeline:
+  if (!XF86VidModeGetModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &dot_clock, &mode_line)) {
+    // Restore default error handler:
+    XSetErrorHandler(x11_olderrorhandler);
+
+    PsychErrorExitMsg(PsychError_internal, "Failed to query video dotclock and modeline!"); 
+  }
+
+  // Step 2: Calculate updated modeline:
+  if (requestedHz > 10) {
+    // Step 2-a: Given current dot-clock and modeline and requested vrefresh, compute
+    // modeline for closest possible match:
+    requestedHz*=1000.0f;
+    vrefresh = (((dot_clock * 1000) / mode_line.htotal) * 1000) / requestedHz;
+    
+    // Assign it to closest modeline setting:
+    mode_line.vtotal = (int)(vrefresh + 0.5f);
+  }
+  else {
+    // Step 2-b: Delta mode. requestedHz represents a direct integral offset
+    // to add or subtract from current modeline setting:
+    mode_line.vtotal+=(int) requestedHz;
+  }
+
+  // Step 3: Try to set new modeline:
+  if (!XF86VidModeModModeLine(displayCGIDs[screenNumber], PsychGetXScreenIdForScreen(screenNumber), &mode_line)) {
+    // Restore default error handler:
+    XSetErrorHandler(x11_olderrorhandler);
+
+    // Invalid modeline? Signal this:
+    return(-1);
+  }
+
+  // We synchronize and wait for X-Request completion. If the modeline was invalid,
+  // this will trigger an invocation of our errorhandler, which in turn will
+  // set the x11_errorval to a non-zero value:
+  XSync(displayCGIDs[screenNumber], FALSE);
+  
+  // Restore default error handler:
+  XSetErrorHandler(x11_olderrorhandler);
+
+  // Check for error:
+  if (x11_errorval) {
+    // Failed to set new mode! Must be invalid. We return -1 to signal this:
+    return(-1);
+  }
+
+  // No error...
+
+  // Step 4: Query new settings and return them:
+  vrefresh = PsychGetNominalFramerate(screenNumber);
 
   // Done.
   return(vrefresh);

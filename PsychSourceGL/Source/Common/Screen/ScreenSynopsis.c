@@ -77,7 +77,7 @@ void InitializeSynopsis()
 
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
-	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode]);";	
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample]);";	
         synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0]);";	
 	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
@@ -146,8 +146,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "windowPtrs=Screen('Windows');";
 	synopsis[i++] = "kind=Screen(windowPtr, 'WindowKind');";
 	synopsis[i++] = "isOffscreen=Screen(windowPtr,'IsOffscreen');";
-	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber);";	
-	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber);";	
+	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber [, mode] [, reqFrameRate]);";	
+	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber [, mode] [, reqFrameRate]);";	
 	synopsis[i++] = "[ monitorFlipInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
         synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
 	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";

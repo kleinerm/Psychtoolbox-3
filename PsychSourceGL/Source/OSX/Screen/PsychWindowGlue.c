@@ -187,10 +187,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGOpenGLDisplayMask 			displayMask;
     CGLError					error;
     CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[20];
+    CGLPixelFormatAttribute			attribs[24];
     long					numVirtualScreens;
     GLboolean					isDoubleBuffer;
     int attribcount=0;
+    int i;
 
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
@@ -224,13 +225,44 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     if(stereomode==kPsychOpenGLStereo) {
         attribs[attribcount++]=kCGLPFAStereo;
     }
+
+    // Multisampled Anti-Aliasing requested?
+    if (windowRecord->multiSample > 0) {
+      // Request a multisample buffer:
+      attribs[attribcount++]= kCGLPFASampleBuffers;
+      attribs[attribcount++]= 1;
+      // Request at least multiSample samples per pixel:
+      attribs[attribcount++]= kCGLPFASamples;
+      attribs[attribcount++]= windowRecord->multiSample;
+    }
+
     // Finalize attribute array with NULL.
     attribs[attribcount]=(CGLPixelFormatAttribute)NULL;
-    
+
+    // Init to zero:
+    windowRecord->targetSpecific.pixelFormatObject = NULL;
+
+    // First try in choosing a matching format for multisample mode:
+    if (windowRecord->multiSample > 0) {
+      error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+      if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+	// Failed. Probably due to too demanding multisample requirements: Lets lower them...
+	for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
+	while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+	  attribs[i+1]--;
+	  windowRecord->multiSample--;
+	}
+	if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
+	  for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
+	  attribs[i+1]=0;
+	}
+      }
+    }
+
     // Choose a matching display configuration and create the window and rendering context:
     // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
     // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
-    error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+    if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
     if (error) {
         printf("\nPTB-ERROR[ChoosePixelFormat failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
         return(FALSE);
