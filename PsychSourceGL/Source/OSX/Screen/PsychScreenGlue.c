@@ -335,18 +335,18 @@ int PsychGetScreenDepthValue(int screenNumber)
 }
 
 
-int PsychGetNominalFramerate(int screenNumber)
+float PsychGetNominalFramerate(int screenNumber)
 {
     CFDictionaryRef currentMode;
     CFNumberRef n;
-    long currentFrequency;
+    double currentFrequency;
     
     //Get the CG display ID index for the specified display
     if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); 
+        PsychErrorExitMsg(PsychError_internal, "screenNumber is out of range"); 
     currentMode = CGDisplayCurrentMode(displayCGIDs[screenNumber]);
     n=CFDictionaryGetValue(currentMode, kCGDisplayRefreshRate);
-    CFNumberGetValue(n, kCFNumberLongType, &currentFrequency);
+    CFNumberGetValue(n, kCFNumberDoubleType, &currentFrequency);
     return(currentFrequency);
 }
 

@@ -182,6 +182,12 @@ if nargin<2
     end     
 end
 
+% Do not accept path names with blanks in them:
+if any(isspace(targetdirectory))
+    error('The targetdirectory spec contains white-space. This is not allowed!');
+end
+
+
 if nargin<1
     flavor='stable';
 end

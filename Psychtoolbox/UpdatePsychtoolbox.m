@@ -45,8 +45,13 @@ else
     targetRevision = [' -r ' targetRevision ' '];
 end
 
-fprintf(['UpdatePsychtoolbox(''' targetdirectory ''')\n']);
+fprintf('UpdatePsychtoolbox('' %s '') \n', targetdirectory);
 fprintf('\n');
+
+% Do not accept path names with blanks in them:
+if any(isspace(targetdirectory))
+    error('The targetdirectory spec contains white-space. This is not allowed!');
+end
 
 % Check OS
 isWin=strcmp(computer,'PCWIN');

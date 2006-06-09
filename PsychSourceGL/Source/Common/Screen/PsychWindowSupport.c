@@ -146,7 +146,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Retrieve real number of samples/pixel for multisampling:
     (*windowRecord)->multiSample = 0;
     while(glGetError()!=GL_NO_ERROR);
-    glGetIntegerv(GL_SAMPLES_ARB, (int*) &((*windowRecord)->multiSample));
+    glGetIntegerv(GL_SAMPLES_ARB, (GLint*) &((*windowRecord)->multiSample));
     while(glGetError()!=GL_NO_ERROR);
 
     // Retrieve display handle for beamposition queries:
@@ -488,7 +488,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     
     if(!PsychPrefStateGet_SuppressAllWarnings()){
 		printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
-		if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
+                if (strstr(glGetString(GL_RENDERER), "GDI")) {
+                    printf("PTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
+                    printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
+                    printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
+                }
+                
+                if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
 		printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
 		if (ifi_beamestimate>0) printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
 		printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
@@ -511,17 +517,27 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		}
 		if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
 		if (multiSample>0) {
-		  if ((*windowRecord)->multiSample == multiSample) {
+		  if ((*windowRecord)->multiSample >= multiSample) {
 		    printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
 		  }
 		  if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
 		    printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
 			   (*windowRecord)->multiSample, multiSample);
 		  }
-		  if ((*windowRecord)->multiSample == 0) {
+		  if ((*windowRecord)->multiSample <= 0) {
 		    printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
 		  }
 		}
+                else {
+                    // Multisampling enabled by external code, e.g., operating system override on M$-Windows?
+                    if ((*windowRecord)->multiSample > 0) {
+                        // Report this, so user is aware of possible issues reg. performance and stimulus properties:
+                        printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
+                        printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
+                        printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
+                        printf("PTB-WARNING: to disable this behaviour if you don't like it.\n");                        
+                    }
+                }
 	}
 
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:

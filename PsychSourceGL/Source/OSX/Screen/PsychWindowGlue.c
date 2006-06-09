@@ -251,6 +251,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
 	  attribs[i+1]--;
 	  windowRecord->multiSample--;
+          error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
 	}
 	if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
 	  for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
@@ -289,6 +290,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
         CGLSetCurrentContext(NULL);
         return(FALSE);
     }
+    
+    // Enable multisampling if it was requested:
+    if (windowRecord->multiSample > 0) glEnable(GL_MULTISAMPLE);
     
     // Double-check double buffer support:
     if(numBuffers>=2){
