@@ -52,9 +52,18 @@ static HINSTANCE hInstance = 0;
 // Number of currently open onscreen windows:
 static int win32_windowcount = 0;
 
+// Mouse button states:
+static boolean mousebutton_l=FALSE;
+static boolean mousebutton_m=FALSE;
+static boolean mousebutton_r=FALSE;
+
 // Definitions for dynamic binding of VSYNC extension:
 typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
 PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT = NULL;
+
+// Definitions for dynamic binding of wglChoosePixelformat extension:
+typedef BOOL (APIENTRY *PFNWGLCHOOSEPIXELFORMATPROC) (HDC,const int*, const FLOAT *, UINT, int*, UINT*);
+PFNWGLCHOOSEPIXELFORMATPROC wglChoosePixelFormatARB = NULL;
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
@@ -113,19 +122,47 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
   int i, numWindows; 
 
   // What event happened?
-  switch(uMsg)
-    {
+  switch(uMsg) {
     case WM_SYSCOMMAND:
       // System command received: We intercept system commands that would start
       // the screensaver or put the display into powersaving sleep-mode:
-      switch(wParam)
-	{
-	case SC_SCREENSAVE:
-	case SC_MONITORPOWER:
-	  return(0);
-	}
-      break;
+      switch(wParam) {
+			case SC_SCREENSAVE:
+			case SC_MONITORPOWER:
+	  		return(0);
+		}
+    break;
+	
+	 case WM_LBUTTONDOWN:
+		// Left mouse button depressed:
+		mousebutton_l = TRUE;
+	 break;
 
+	 case WM_LBUTTONUP:
+		// Left mouse button released:
+		mousebutton_l = FALSE;
+	 break;
+
+	 case WM_MBUTTONDOWN:
+		// Middle mouse button depressed:
+		mousebutton_m = TRUE;
+	 break;
+
+	 case WM_MBUTTONUP:
+		// Middle mouse button released:
+		mousebutton_m = FALSE;
+	 break;
+
+	 case WM_RBUTTONDOWN:
+		// Right mouse button depressed:
+		mousebutton_r = TRUE;
+	 break;
+
+	 case WM_RBUTTONUP:
+		// Right mouse button released:
+		mousebutton_r = FALSE;
+	 break;
+	 
     case WM_PAINT:
       // Repaint event: This happens if a previously covered non-fullscreen window
       // got uncovered, so part of it needs to be redrawn. PTB's rendering model
@@ -176,6 +213,29 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
     }
 
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
+}
+
+/* PsychGetMouseButtonState: Returns current mouse button up-/down state. Called by SCREENGetMouseHelper. */
+void PsychGetMouseButtonState(double* buttonArray)
+{
+	MSG msg;
+
+	// Run our message dispatch loop until we've processed all mouse-related events
+	// in the queue:
+	while(PeekMessage(&msg, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) {
+		// Mouse event in queue. Dispatch it to our WndProc...
+		TranslateMessage(&msg);
+		// The WndProc will keep track of the current mouse button state by
+		// updating it according to the UP or DOWN message.
+		DispatchMessage(&msg);
+	}
+
+	// The routine expects a preallocated 3-element double matrix for the three mouse-buttons:
+	// It simply copies our internally held current state to the output matrix:
+	buttonArray[0]=(double) mousebutton_l;
+	buttonArray[1]=(double) mousebutton_m;
+	buttonArray[2]=(double) mousebutton_r;
+	return;
 }
 
 boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
@@ -232,11 +292,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   PsychRectType             screenrect;
   CGDirectDisplayID         cgDisplayID;
   int         pf;
+  unsigned int nNumFormats;
   HDC         hDC;
   HWND        hWnd;
   WNDCLASS    wc;
   PIXELFORMATDESCRIPTOR pfd;
-  int x, y, width, height;
+  int         attribs[24];
+  int         attribcount;
+  int x, y, width, height, i;
   DWORD flags;
   boolean fullscreen = FALSE;
   DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
@@ -293,11 +356,15 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       wc.lpszClassName = "PTB-OpenGL";
 
       if (!RegisterClass(&wc)) {
-	hInstance = 0;
+		  hInstance = 0;
         printf("\nPTB-ERROR[Register Windowclass failed]: Unknown error, Win32 specific.\n\n");
         return(FALSE);
       }
+		
+		// Try to dynamically bind pixelformat extension. This will leave us with a NULL-Ptr if unsupported:
+      wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormatARB");
     }
+
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Creating Window...\n");
 
     // Adjust window bounds to account for the window borders if we are in non-fullscreen mode:
@@ -327,23 +394,28 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     flags = 0;
     // Init pfd to zero:
     memset(&pfd, 0, sizeof(pfd));
+    attribcount = 0;
 
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
     if(stereomode==kPsychOpenGLStereo) {
       flags = flags | PFD_STEREO;
+		attribs[attribcount++]=0x2012; // WGL_STEREO_ARB
     }
 
     // Double buffering requested?
     if(numBuffers>=2) {
       // Enable double-buffering:
       flags = flags | PFD_DOUBLEBUFFER;
+		attribs[attribcount++]=0x2011; // WGL_DOUBLE_BUFFER_ARB
       // AUX buffers for Flip-Operations needed?
       if ((conserveVRAM & kPsychDisableAUXBuffers) == 0) {
-	// Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
-	// Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
-	// the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
-	pfd.cAuxBuffers=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
+			// Allocate one or two (mono vs. stereo) AUX buffers for new "don't clear" mode of Screen('Flip'):
+			// Not clearing the framebuffer after "Flip" is implemented by storing a backup-copy of
+			// the backbuffer to AUXs before flip and restoring the content from AUXs after flip.
+			pfd.cAuxBuffers=(stereomode==kPsychOpenGLStereo || stereomode==kPsychCompressedTLBRStereo || stereomode==kPsychCompressedTRBLStereo) ? 2 : 1;
+			attribs[attribcount++]=0x2024; // WGL_AUX_BUFFERS_ARB
+			attribs[attribcount++]=pfd.cAuxBuffers;
       }
     }
 
@@ -356,19 +428,77 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     pfd.iPixelType   = PFD_TYPE_RGBA; // Want a RGBA pixel format.
     pfd.cColorBits   = 32;            // 32 bpp at least...
     pfd.cAlphaBits   = 8;             // Want a 8 bit alpha-buffer.
-    
+
+	 attribs[attribcount++]=0x2001; // WGL_DRAW_TO_WINDOW_ARB
+	 attribs[attribcount++]=0x2010; // WGL_SUPPORT_OPENGL_ARB
+	 attribs[attribcount++]=0x2007; // WGL_SWAP_METHOD_ARB
+	 attribs[attribcount++]=0x2028; // WGL_SWAP_EXCHANGE_ARB
+	 attribs[attribcount++]=0x2013; // WGL_PIXEL_TYPE_ARB
+	 attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
+	 attribs[attribcount++]=0x2014; // WGL_COLOR_BITS_ARB
+	 attribs[attribcount++]=32;
+	 attribs[attribcount++]=0x201B; // WGL_ALPHA_BITS_ARB
+	 attribs[attribcount++]=8;
+
     // Support for OpenGL 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
 		// Yes. Allocate and attach a 24bit depth buffer and 8 bit stencil buffer:
 		pfd.cDepthBits = 24;
 		pfd.cStencilBits = 8;
+		attribs[attribcount++]=0x2022; // WGL_DEPTH_BITS_ARB
+	 	attribs[attribcount++]=24;
+		attribs[attribcount++]=0x2023; // WGL_STENCIL_BITS_ARB
+	 	attribs[attribcount++]=8;
     }
+
+    // Multisampled Anti-Aliasing requested?
+    if (windowRecord->multiSample > 0) {
+      // Request a multisample buffer:
+      attribs[attribcount++]= 0x2041; // WGL_SAMPLE_BUFFERS_ARB
+      attribs[attribcount++]= 1;
+      // Request at least multiSample samples per pixel:
+      attribs[attribcount++]= 0x2042; // WGL_SAMPLES_ARB
+      attribs[attribcount++]= windowRecord->multiSample;
+    }
+
+	 // Finalize attribs-array:
+    attribs[attribcount++]= 0;
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Choosing pixelformat\n");
 
     // Create pixelformat:
-    pf = ChoosePixelFormat(hDC, &pfd);
+	 if (wglChoosePixelFormatARB==NULL) {
+		 // Old method, if wglChoosePixelFormat unsupported on very old drivers: This will
+		 // not allow to enable multisampling.
+	    pf = ChoosePixelFormat(hDC, &pfd);
+	 }
+	 else {
+		 pf = 0;
+		 wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+       if (pf==0 && windowRecord->multiSample > 0) {
+		 	// Failed. Probably due to too demanding multisample requirements: Lets lower them...
+			for (i=0; i<attribcount && attribs[i]!=0x2042; i++);
+			// Reduce requested number of samples/pixel and retry until we get one:
+			while (pf==0 && windowRecord->multiSample > 0) {
+				attribs[i+1]--;
+	  			windowRecord->multiSample--;
+				wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+			}
+			// If we still do not get one with 0 samples per pixel, we can try to disable
+			// multisampling completely:
+			if (windowRecord->multiSample == 0 && pf==0) {
+	  			for (i=0; i<attribcount && attribs[i]!=0x2041; i++);
+	  			attribs[i+1]=0;
+				wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
+			}
+       }
+		 // Either we have a multisampled or non-multisampled format, or none. If we failed,
+		 // then we can not do anything anymore about it.
+    }
+
+	 // Do we finally have a valid pixelformat?
     if (pf == 0) {
+		// Nope. We give up!
       ReleaseDC(hDC, hWnd);
       DestroyWindow(hWnd);      
       printf("\nPTB-ERROR[ChoosePixelFormat() failed]: Unknown error, Win32 specific.\n\n");
@@ -415,6 +545,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
     // Activate the rendering context:
     PsychOSSetGLContext(windowRecord);
+
+	 // Enable multisampling if this was requested:
+    if (windowRecord->multiSample > 0) glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
+	 // Throw away any error-state this could have created on old hardware...
+	 glGetError();
 
     // Finally, show our new window:
     ShowWindow(hWnd, SW_SHOW);

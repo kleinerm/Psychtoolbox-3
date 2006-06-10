@@ -58,9 +58,9 @@ static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', nu
 static char synopsisString[] = 
 	"This is a helper function called by GetMouse.  Do not call Screen(\'GetMouseHelper\'), use "
 	"GetMouse instead.\n"
-	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32."
-        "\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
-        "This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.";
+	"\"numButtons\" is the number of mouse buttons to return in buttonValueArray. 1 <= numButtons <= 32. Ignored on Linux and Windows."
+   "\"screenNumber\" is the number of the PTB screen whose mouse should be queried on setups with multiple connected mice. "
+   "This value is optional (defaults to zero) and only honored on GNU/Linux. It's meaningless on OS-X or Windows.";
 static char seeAlsoString[] = "";
 	 
 
@@ -106,12 +106,18 @@ PsychError SCREENGetMouseHelper(void)
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	double numButtons;
 	double* buttonArray;
-	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
-	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
-	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)0);
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)0);
+	POINT		point;
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)3, (int)1, &buttonArray);
+	// Query and return mouse button state:
+	PsychGetMouseButtonState(buttonArray);
+	// Query and return cursor position in global coordinates:
+	GetCursorPos(&point);
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) point.x);
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) point.y);
 #endif
 	
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -129,6 +135,9 @@ PsychError SCREENGetMouseHelper(void)
 	XEvent event_return;
 	XKeyPressedEvent keypressevent;
 	int screenNumber;
+
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
 

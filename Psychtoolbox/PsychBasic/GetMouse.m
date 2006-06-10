@@ -56,6 +56,20 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 %
 % _________________________________________________________________________
 %
+% M$-Windows: _____________________________________________________________
+%
+% Limitations:
+%
+% GetMouse will always assume a three button mouse and therefore always 
+% return the state of three buttons. GetMouse will only report button state
+% while at least one onscreen window is opened. This is the case in normal
+% use, but it will fail to report button state if used as part of a Matlab
+% script that doesn't open an onscreen window. GetMouse may get confused
+% if you keep mouse buttons pressed down during the very first Screen('OpenWindow')
+% call, i.e. press down the mouse button before window appears and keep it
+% pressed after it appears.
+%
+% _________________________________________________________________________
 % See also: GetClicks, SetMouse
 %
 
@@ -89,14 +103,16 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % 09/03/05 mk   Add caching for 'numMouseButtons' to get 10-fold speedup.
 % 02/21/06 mk   Added Linux support.
 % 18/04/06 fwc  fixed bug that prevented use of multiple mice (tested with 3)
+% 06/10/06 mk   Added Microsoft Windows support. Removed the old WinPTB GetMouse.dll
+%               which worked except for button state queries.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
 % This gives a tenfold speedup - important for tight realtime-loops.
 persistent numMouseButtons;
 if isempty(numMouseButtons)
-    % Exit with an error if we don't find the a mex file on Windows or OS 9.
-    AssertMex('MAC2', 'PCWIN');
+    % Exit with an error if we don't find the a mex file on OS 9.
+    AssertMex('MAC2');
     
     if IsOSX
         % On OS X we execute this script, otherwise either MATLAB found the mex file
@@ -117,7 +133,7 @@ if isempty(numMouseButtons)
             numMouseButtons=max(b, numMouseButtons);
         end
     else
-        % Linux: We don't need numMouseButtons so we assign a dummy value of 32
+        % Linux or Windows: We don't need numMouseButtons so we assign a dummy value of 32
         numMouseButtons = 32;
     end;
 end;

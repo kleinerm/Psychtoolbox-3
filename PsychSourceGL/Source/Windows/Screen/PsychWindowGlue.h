@@ -54,6 +54,7 @@ void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInte
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 int     CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
+void  PsychGetMouseButtonState(double* buttonArray);
 //end include once
 #endif
 
