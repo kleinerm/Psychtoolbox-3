@@ -17,7 +17,7 @@ function [ch,when] = GetChar
 % tick count, it's coarsely quantized in steps of 1/60.15 s. If you plan to
 % use the value of when.secs then you should make sure that the
 % Psychtoolbox has a fresh estimate of tick0secs by calling
-% Screen('Preference','Tick0Secs',nan).
+% Screen('Preference','Tick0Secs',nan).  
 % 
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). If only a meta key (like
@@ -53,38 +53,10 @@ function [ch,when] = GetChar
 % assigns it key focus, redirecting keyboard input away from the GetChar
 % queue and to the MATLAB window, undoing ListenChar.  
 %
-% TIMESTAMPS: The "when" return argument contains both "ticks" and "secs"
-% fields recording the times of keystrokes in units of Carbon system ticks
-% and seconds, respectively.  While OS 9 GetChar returns the same fields,
-% there are differences in precision between OS 9 and OS X values.  The OS
-% 9 operating system timestamps events in units of system ticks, with a
-% precision no better than 1/60.15 second.  GetChar converts ticks to
-% seconds, which yields a product of only GetTicks, not GetSecs precision.
-% The OS X operating system timestamps events in units of seconds with the
-% much higer precision of GetSecs. That precision, typically microseconds
-% or better, depends on hardware.  (Call "GetSecsTick" to find the
-% precision of GetSecs on your system.) On OS X, the precision of GetChar
-% timestamps might be limited by the USB keyboard, usually no better than
-% 10ms.
-%
-% UNICODE CHARACTERS: Some keyboard keys, such as the function keys,
-% return unicode characters outside of the 8-bit UTF-8 range.  MATLAB can
-% not correctly display these characters.  For unicode keys which MATLAB
-% can not display, GetChar returns the numeric unicode value of the
-% character.  
-%
 % OTHER "when" RETURN ARGUMENT FIELDS: Owing to differences in what
 % accessory information the underlying operating systems provides about
 % keystrokes, "when' return argument fields differ sbetween OS 9 and OS X.
-%
-% KNOWN BUGS:
-%
-% GetChar does not exit on ctrl-c or command-period.
-%
-% Using the MATLAB file editor prior to calling GetChar sometimes causes
-% MATLAB to hang when GetChar is called.  Operating in the command window
-% alone prior to calling GetChar does not seem to cause problems.  
-% 
+% GetChar sets fields for which it returns no value to value Nan.  
 %
 % OS 9: ___________________________________________________________________
 %
@@ -95,7 +67,7 @@ function [ch,when] = GetChar
 % 	Screen('Preference','Backgrounding',0); 
 % _________________________________________________________________________
 %
-% See also: GetCharTest, KbCheck, KbWait, CharAvail, KbDemo, EventAvail, 
+% See also: ListenChar, CharAvail, EventAvail, GetCharTest, KbCheck
 
 
 
@@ -128,6 +100,23 @@ function [ch,when] = GetChar
 %              Handle new double value from .getChar(), was char type.
 %              Changed "char" return value to "ch" to avoid name conflict with
 %               built-in MATLAB function "char" 
+% 6/15/06 awi  Added a second return argument.
+%              Updated built-in help for the Java implementation.  
+
+
+% NOTES:
+%
+% The second return argument from OS 9 PTB looks like this:
+%     ticks: 5760808
+%     secs: 1.4681e+05
+%     address: 2
+%     mouseButton: 0
+%     alphaLock: 0
+%     commandKey: 0
+%     controlKey: 0
+%     optionKey: 0
+%     shiftKey: 0
+% 
 
 
 AssertMex('OS9');
@@ -150,9 +139,48 @@ if(IsOSX)
         error('GetChar buffer overflow. Use "FlushEvents(''KeyDown'')" to clear error');  
     else
         ch=char(charValue);
+        when.address=nan;
+        when.mouseButton=nan;
+        when.alphaLock=nan;
+        when.commandKey=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierCommand();
+        when.controlKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierControl();
+        when.optionKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierOptionAlt();
+        when.shiftKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierShift();
+        rawEventTimeMs= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getEventTime();  % result is in units of ms.
+        when.ticks=nan;
+        when.secs=JavaTimeToGetSecs(rawEventTimeMs);
     end
 end
-    
+
+
+
+% This material was deleted from the built-in help when switching to the
+% Java implementaiton.  It should be added back when we conditionally
+% restore the Cocoa impelmentation.  
+
+% TIMESTAMPS: The "when" return argument contains both "ticks" and "secs"
+% fields recording the times of keystrokes in units of Carbon system ticks
+% and seconds, respectively.  While OS 9 GetChar returns the same fields,
+% there are differences in precision between OS 9 and OS X values.  The OS
+% 9 operating system timestamps events in units of system ticks, with a
+% precision no better than 1/60.15 second.  GetChar converts ticks to
+% seconds, which yields a product of only GetTicks, not GetSecs precision.
+% The OS X operating system timestamps events in units of seconds with the
+% much higer precision of GetSecs. That precision, typically microseconds
+% or better, depends on hardware.  (Call "GetSecsTick" to find the
+% precision of GetSecs on your system.) On OS X, the precision of GetChar
+% timestamps might be limited by the USB keyboard, usually no better than
+% 10ms.
+%
+% UNICODE CHARACTERS: Some keyboard keys, such as the function keys,
+% return unicode characters outside of the 8-bit UTF-8 range.  MATLAB can
+% not correctly display these characters.  For unicode keys which MATLAB
+% can not display, GetChar returns the numeric unicode value of the
+% character.  
+% KNOWN BUGS:
+%
+% GetChar does not exit on ctrl-c or command-period.
+
 
 
 

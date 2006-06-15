@@ -41,10 +41,6 @@
 					controlKey: 0
 					optionKey: 0
 					shiftKey: 0
-					
-		Appropriate Java event methods might be:
-		
-		GetWhen, isAltDown, isControlDown, isMetaDown, isShiftDown.  See especially getModifiersEx().
 
 	11. Right an installer to set the Java path instead of issuing instructions.
 	12. Try recording which window had focus before setting it to the GetChar window, then restore focus after we get the character. A general-purpose cocoa mex file might
@@ -91,16 +87,12 @@ public class GetCharJava extends JPanel
     static final String newline = "\n";
 	static JFrame frame;
 	static char[] characterBuffer;
-	static int[] eventModifiersBuffer;
-	static long[] eventTimesBuffer;
 	int characterBufferTail=0;
 	int characterBufferHead=0;
 	int characterBufferHeadStepped=0;
-	int lastCharModifier=0;
-	long lastCharTime=0;
 	boolean bufferOverflowFlag=false;	
 	char emptyChar='\0';
-	int	queueSizeChars=100;						//make this small to test the ring buffer and overflow warnings
+	int	queueSizeChars=100; //make this small to test the ring buffer and overflow warnings
 
 
     public GetCharJava() {
@@ -137,9 +129,7 @@ public class GetCharJava extends JPanel
 //        add(button, BorderLayout.PAGE_END);
 		
 		//setup the ring buffer by allocating memory
-		characterBuffer= new char[queueSizeChars];
-		eventModifiersBuffer= new int[queueSizeChars]; 
-		eventTimesBuffer= new long[queueSizeChars];  
+		characterBuffer= new char[queueSizeChars];   
     }
 
     /** Handle the key typed event from the text field. */
@@ -262,8 +252,6 @@ public class GetCharJava extends JPanel
         int id = e.getID();
         if (id == KeyEvent.KEY_TYPED) {
 			characterBuffer[characterBufferHead]= e.getKeyChar();
-			eventModifiersBuffer[characterBufferHead]= e.getModifiersEx();
-			eventTimesBuffer[characterBufferHead]=e.getWhen();
 			characterBufferHeadStepped= (characterBufferHead+1) % queueSizeChars; 
 			if(characterBufferHeadStepped == characterBufferTail)
 				bufferOverflowFlag=true;
@@ -315,80 +303,18 @@ public class GetCharJava extends JPanel
     }
 */
 	public double getChar(){
-		if(bufferOverflowFlag){
+		if(bufferOverflowFlag)
 			return(-1.0);
-		}else if(numCharsLocal() > 0){
+		else if(numCharsLocal() > 0){
 			char tempChar= characterBuffer[characterBufferTail];
-			lastCharModifier= eventModifiersBuffer[characterBufferTail];
-			lastCharTime= eventTimesBuffer[characterBufferTail];
 			characterBufferTail= (characterBufferTail+1) % queueSizeChars;
 			return((double)tempChar);
 		}else{
 			return((double)emptyChar);		
 		}	
     }
-	
-	/* The result of this function is invalid if GetChar did not return a character */
-	public boolean getModifierShift(){
-		boolean modifierShiftFlag= (InputEvent.SHIFT_DOWN_MASK & lastCharModifier) == InputEvent.SHIFT_DOWN_MASK;
-		return(modifierShiftFlag);
-	}
-	
 
-	/* The result of this function is invalid if GetChar did not return a character */
-	public boolean getModifierOptionAlt(){
-		boolean modifierOptionAltFlag= (InputEvent.ALT_DOWN_MASK & lastCharModifier) == InputEvent.ALT_DOWN_MASK;
-		return(modifierOptionAltFlag);
-	}
-
-	/* The result of this function is invalid if GetChar did not return a character */
-	public boolean getModifierControl(){
-		boolean modifierControlFlag= (InputEvent.CTRL_DOWN_MASK & lastCharModifier) == InputEvent.CTRL_DOWN_MASK;
-		return(modifierControlFlag);
-	}
 	
-	
-	public boolean getModifierCommand(){
-		boolean modifierCommandFlag= (InputEvent.META_DOWN_MASK & lastCharModifier) == InputEvent.META_DOWN_MASK;
-		return(modifierCommandFlag);
-	}
-	
-	public double getModifierValue(){
-		return(lastCharModifier);
-	}
-	
-	public long getEventTime(){
-		return(lastCharTime);
-	}
-	
-	
-	public double getSystemTime(){
-		return((double)System.currentTimeMillis());
-	}
-	
-
-/*
-	public double getModifierMouseButton(){
-		int mouseButtonsSum=0;
-		if( (InputEvent.BUTTON1_DOWN_MASK & lastCharModifier) == InputEvent.BUTTON1_DOWN_MASK )
-			mouseButtonsSum=mouseButtonsSum+1;
-		if( (InputEvent.BUTTON2_DOWN_MASK & lastCharModifier) == InputEvent.BUTTON2_DOWN_MASK )
-			mouseButtonsSum=mouseButtonsSum+2;
-		if( (InputEvent.BUTTON3_DOWN_MASK & lastCharModifier) == InputEvent.BUTTON3_DOWN_MASK )
-			mouseButtonsSum=mouseButtonsSum+4;
-		return(mouseButtonsSum);
-	}
-*/
-	public boolean getModifierMouseButton1(){
-		boolean modifierShiftFlag= (InputEvent.BUTTON1_DOWN_MASK & lastCharModifier) == InputEvent.BUTTON1_DOWN_MASK;
-		return(modifierShiftFlag);
-	}
-	
-	public String getModifierNames(){
-		return(InputEvent.getModifiersExText(lastCharModifier));
-	}
-	
-
 	public void flushChars(){
 		bufferOverflowFlag=false;
 		characterBufferHead=characterBufferTail;
@@ -401,7 +327,6 @@ public class GetCharJava extends JPanel
 	public double getQueueLength(){
 		return((double)(queueSizeChars-1));
 	}
-	
 	
 	
     /**
