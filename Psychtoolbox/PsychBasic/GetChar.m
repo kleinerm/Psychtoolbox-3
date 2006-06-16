@@ -101,7 +101,17 @@ function [ch,when] = GetChar
 %              Changed "char" return value to "ch" to avoid name conflict with
 %               built-in MATLAB function "char" 
 % 6/15/06 awi  Added a second return argument.
-%              Updated built-in help for the Java implementation.  
+%              Updated built-in help for the Java implementation.
+% 6/15/06 awi  Added break on CTRL-C
+%              Added TO DO section and item to detect genuine KeyDown
+%              events.
+
+
+% TO DO
+% 
+% The Java script currently detects key events, not keydown events.  This
+% should be modified to detect keydown events and tested. That change might also
+% allow us to detect the "address" returned in the second argument.
 
 
 % NOTES:
@@ -149,6 +159,10 @@ if(IsOSX)
         rawEventTimeMs= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getEventTime();  % result is in units of ms.
         when.ticks=nan;
         when.secs=JavaTimeToGetSecs(rawEventTimeMs);
+    end
+    % Java returns ascii 3, the "end of text" character for ctrl  C instead of ascii 99, "c".   
+    if double(ch)==3 && when.controlKey
+        error('<ctrl>-C break');
     end
 end
 

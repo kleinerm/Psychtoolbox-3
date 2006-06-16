@@ -100,7 +100,7 @@ public class GetCharJava extends JPanel
 	long lastCharTime=0;
 	boolean bufferOverflowFlag=false;	
 	char emptyChar='\0';
-	int	queueSizeChars=100;						//make this small to test the ring buffer and overflow warnings
+	int	queueSizeChars=1000;						//make this small to test the ring buffer and overflow warnings
 
 
     public GetCharJava() {
