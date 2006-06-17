@@ -69,7 +69,7 @@ static char seeAlsoString[] = "MakeTexture";
 PsychError SCREENDrawTexture(void) 
 {
 	PsychWindowRecordType		*source, *target;
-	PsychRectType			sourceRect, targetRect;
+	PsychRectType			sourceRect, targetRect, tempRect;
 	double rotationAngle = 0;   // Default rotation angle is zero deg. = upright.
         int filterMode = 1;         // Default filter mode is bilinear filtering.
         double globalAlpha = 1.0;   // Default global alpha is 1 == no effect.
@@ -94,7 +94,18 @@ PsychError SCREENDrawTexture(void)
     PsychCopyRect(sourceRect,source->rect);
     PsychCopyRect(targetRect,source->rect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
-    PsychCenterRectInRect(sourceRect, target->rect, targetRect);
+
+	 if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
+			// Special case for stereo: Only half the real window width:
+			PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
+							  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
+	 }
+	 else {
+			// Normal case:
+	      PsychCopyRect(tempRect,target->rect);
+	 }
+	
+    PsychCenterRectInRect(sourceRect, tempRect, targetRect);
     PsychCopyInRectArg(4, kPsychArgOptional, targetRect);
     PsychCopyInDoubleArg(5, kPsychArgOptional, &rotationAngle);
     PsychCopyInIntegerArg(6, kPsychArgOptional, &filterMode);

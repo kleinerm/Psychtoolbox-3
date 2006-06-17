@@ -4,7 +4,7 @@ function oldType = ShowCursor(type)
 % ShowCursor redisplays the mouse pointer after a previous call to
 % HideCursor.
 % 
-% OSX, WIN: ___________________________________________________________________
+% OSX, WIN, LINUX: _______________________________________________________
 %
 % The 'type' argument specifying the cursor shape is ignored; The
 % cursor shape can not be set.
@@ -50,7 +50,5 @@ function oldType = ShowCursor(type)
 % 10/4/05	  awi Note here that dgp made unnoted cosmetic changes between 11/16/04 and 10/4/05.
 
 
-% OSX: Use Screen to emulate ShowCursor.mex
-if IsOSX | IsLinux
-    Screen('ShowCursorHelper',0);
-end 
+% Use Screen to emulate ShowCursor.mex
+Screen('ShowCursorHelper',0);

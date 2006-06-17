@@ -44,7 +44,7 @@
 
 AssertOpenGL;
 
-%try
+try
 
     % ------------------------
     % set dot field parameters
@@ -185,8 +185,8 @@ AssertOpenGL;
     Priority(0);
     ShowCursor
     Screen('CloseAll');
-%catch
+catch
     Priority(0);
     ShowCursor
     Screen('CloseAll');
-%end
+end

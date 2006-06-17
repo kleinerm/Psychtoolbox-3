@@ -205,8 +205,6 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
     
-    //TO DO: set the clear color to be the color passed as the window background color.
-
 	if(!PsychPrefStateGet_SuppressAllWarnings()){
 		if (true) {
 		  printf("\n\nPTB-INFO: This is the Screen-Prototype for PTB 1.0.7, intended as update for Psychtoolbox 1.0.6\n");
@@ -250,24 +248,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if(!PsychPrefStateGet_SuppressAllWarnings()){
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
-			printf("\n\nPTB-INFO: You are using a multi-display setup (%i displays): Some graphics hardware\n", totaldisplaycount);
-			printf("PTB-INFO: for OS-X is known to have bugs which can cause PTB's VBL syncing and timestamp\n");
-			printf("PTB-INFO: reporting code to fail or report wrong stimulus presentation timestamps!\n");
-			printf("PTB-INFO: We have some built-in checks to detect this problems, but they rely on having the\n");
-			printf("PTB-INFO: main stimulus presentation display set to a monitor-refresh rate *different* from\n");
-			printf("PTB-INFO: the refresh rate of *all other* connected displays.\n");
-			printf("PTB-INFO: Please set refresh intervals accordingly. If this is not possible for your study,\n");
-			printf("PTB-INFO: e.g., 60 Hz LCD-Projector connected to Laptop with 60 Hz internal Flatpanel, then\n");
-			printf("PTB-INFO: please test your system and display configuration *once* with an external CRT monitor\n");
-			printf("PTB-INFO: connected. If it works once on your machine, it should always work...\n");
-			printf("PTB-INFO: Ignore this message if you did the tests already - Sorry for spamming ;-)\n\n");
-			// Unconditionally flash our visual warning bell in "Testsheet mode": This will also show some
-			// test-pattern for visually testing if syncing and beamqueries work properly.
-			// We skip the test-sheet if user asked us to skip sync-tests...
-			// MK: Changed. We disable the visual test-sheet for now. Having it for 10 secs each startup
-			// on a multi-display system is just annoying. Plus it created much confusion for users :(
-			// We'll provide a separate Matlab M-Testfile in the PsychTests folder as a replacement.
-			if (!skip_synctests) PsychVisualBell((*windowRecord), 10, 3);
+			printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
+			printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");
+			printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them."); 
 		}
 		
 		if (multidisplay && (!CGDisplayIsInMirrorSet(cgDisplayID) || PsychGetNumDisplays()>1)) {
@@ -276,29 +259,16 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			// decision... ...and for some experiments were you need to show two different stims on two connected
 			// monitors (haploscope, some stereo or binocular rivalry stuff) it is necessary. Let's hope they bought
 			// a really fast gfx-card with plenty of VRAM :-)
-			printf("\n\nPTB-WARNING: Some of your connected displays are *NOT* switched into mirror mode!\n");
-			printf("PTB-WARNING: This can cause reduced drawing performance and therefore inaccurate/wrong stimulus\n");
-			printf("PTB-WARNING: presentation timing due to skipped frames when showing moving-/movie stimuli.\n");
-			printf("PTB-WARNING: Feel free to do this for development/debugging of your experiment, but for final\n");
-			printf("PTB-WARNING: timing tests of your script and for running your study, please put *all* displays\n");
-			printf("PTB-WARNING: into mirror mode or use a single-display setup. You can put displays into\n");
-			printf("PTB-WARNING: mirror mode by opening the 'SystemPreferences' panel, setting all displays to the\n");
-			printf("PTB-WARNING: same resolution and color depth and then checking the 'Mirror' checkbox.\n");
-			printf("PTB-WARNING: Please try to set *different* refresh rates for the different displays if possible\n");
-			printf("PTB-WARNING: If you use a non-mirrored dual-display setup for showing two different stimuli\n");
-			printf("PTB-WARNING: on two different monitors (e.g., for binocular rivalry studies or stereo displays)\n");
-			printf("PTB-WARNING: by the use of two separate Onscreen-Windows, then ignore this warning - PTB will take\n");
-			printf("PTB-WARNING: care of that. But make sure your graphics card is fast enough and has plenty of VRAM\n");
-			printf("PTB-WARNING: installed (minimum 128 MB recommended) and carefully check your presentation timing.\n\n");
-			// Flash our visual warning bell:
-			if (ringTheBell<0) ringTheBell=0;
+			printf("\n\nPTB-INFO: According to the operating system, some of your connected displays do not seem to \n");
+			printf("PTB-INFO: be switched into mirror mode. For a discussion of mirror mode vs. non-mirror mode,\n");
+			printf("PTB-INFO: please read 'help MirrorMode'.\n");
 		}
 		
 		if (CGDisplayIsInMirrorSet(cgDisplayID) && !CGDisplayIsInHWMirrorSet(cgDisplayID)) {
 			// This is a multi-display setup with software-mirrored displays instead of hardware-mirrored ones: Not so good :-(
 			// Output some warning message to user, but continue. After all its the users
 			// decision...
-			printf("\n\nPTB-WARNING: Not all connected displays are switched into HARDWARE-mirror mode!\n");
+			printf("\n\nPTB-WARNING: Seems that not all connected displays are switched into HARDWARE-mirror mode!\n");
 			printf("PTB-WARNING: This could cause reduced drawing performance and inaccurate/wrong stimulus\n");
 			printf("PTB-WARNING: presentation timing or skipped frames when showing moving/movie stimuli.\n");
 			printf("PTB-WARNING: Seems that only SOFTWARE-mirroring is available for your current setup. You could\n");
@@ -465,10 +435,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
     // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
     // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
-    // and we would correct it down to half ifi_estimate.
+    // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
+	 // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
+	 // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
     (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
-        // Flip frame stereo enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
+    if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
+        // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
         if ((ifi_beamestimate>0 && ifi_estimate >= 0.9 * 2 * ifi_beamestimate && ifi_estimate <= 1.1 * 2 * ifi_beamestimate) ||
 	    (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= 0.9 * 2 * ifi_nominal && ifi_estimate <= 1.1 * 2 * ifi_nominal)
 	    ){
@@ -479,9 +451,17 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
             ifi_estimate = ifi_estimate * 0.5f;
             (*windowRecord)->VideoRefreshInterval = ifi_estimate;
 			if(!PsychPrefStateGet_SuppressAllWarnings()){
-				printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
-				printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
-				printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+				if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
+					printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+					printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
+					printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+				}
+				if ((*windowRecord)->multiSample > 0) {
+					printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+					printf("PTB-INFO: as the refresh interval of your monitor when using Anti-Aliasing at multiSample=%i on your setup.\n",
+							(*windowRecord)->multiSample);
+					printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+				}
 			}
         }
     }
@@ -504,8 +484,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
 		if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
 		if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
-		if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo display via free fusion enabled (2-in-1 stereo).\n");
-		if ((*windowRecord)->stereomode==kPsychFreeCrossFusionStereo) printf("PTB-INFO: Stereo display via free cross-fusion enabled (2-in-1 stereo).\n");
+		if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo for free fusion or dual-display desktop spanning enabled (2-in-1 stereo).\n");
+		if ((*windowRecord)->stereomode==kPsychFreeCrossFusionStereo) printf("PTB-INFO: Stereo via free cross-fusion enabled (2-in-1 stereo).\n");
 		if ((*windowRecord)->stereomode==kPsychAnaglyphRGStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Green stereo enabled.\n");
 		if ((*windowRecord)->stereomode==kPsychAnaglyphGRStereo) printf("PTB-INFO: Stereo display via Anaglyph Green-Red stereo enabled.\n");
 		if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
@@ -528,16 +508,36 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		    printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
 		  }
 		}
-                else {
+      else {
                     // Multisampling enabled by external code, e.g., operating system override on M$-Windows?
                     if ((*windowRecord)->multiSample > 0) {
                         // Report this, so user is aware of possible issues reg. performance and stimulus properties:
                         printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
                         printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
                         printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
-                        printf("PTB-WARNING: to disable this behaviour if you don't like it.\n");                        
+                        printf("PTB-WARNING: to disable this behaviour if you don't like it. I will try to forcefully disable it now,\n");                        
+                        printf("PTB-WARNING: but have no way to check if disabling it worked.\n");                        
                     }
-                }
+      }
+	}
+
+	// Final master-setup for multisampling:
+	if (multiSample>0) {
+		// Try to enable multisampling in software:
+		while(glGetError()!=GL_NO_ERROR);
+    	glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
+    	while(glGetError()!=GL_NO_ERROR);
+		// Set sampling algorithm to the most high-quality one, even if it is
+		// computationally more expensive: This will only work if the NVidia
+		// GL_NV_multisample_filter_hint extension is supported...
+    	glHint(0x8534, GL_NICEST); // Set MULTISAMPLE_FILTER_HINT_NV (0x8534) to NICEST.
+    	while(glGetError()!=GL_NO_ERROR);
+	}
+	else {
+		// Try to disable multisampling in software. That is the best we can do here:
+		while(glGetError()!=GL_NO_ERROR);
+    	glDisable(0x809D);
+    	while(glGetError()!=GL_NO_ERROR);
 	}
 
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:
@@ -586,31 +586,23 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			printf("\n\n");
 			printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
 			printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
-			printf("of Psychtoolbox to the vertical retrace (VBL) is screwed up for your setup.\n\n");
+			printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
 			printf("This would have the following bad effects:\n");
 			printf("- Screen('Flip') not synchronizing to the VBL -> Flicker & tearing artifacts, messed up stimulus onset and offset timing.\n");
 			printf("- Wrong stimulus presentation timing and/or wrong synchronization of Matlab to the VBL.\n");
-			printf("- Inaccurate or completely wrong timestamps (VBLTimestamp, StimulusOnsetTime, FlipTimestamp) for stimulus timing reported by Flip\n");
+			printf("- Inaccurate or completely wrong timestamps (VBLTimestamp, StimulusOnsetTime, FlipTimestamp) for stimulus timing reported by Flip or GetSecs.\n");
 			printf("- Inaccurate or completely wrong rasterbeam positions and monitor refresh intervals reported by Screen('Flip') and Screen('Framerate')\n");
 			printf("\n\n");
-			printf("Please try the following measures in the given order to solve or work-around the problem:\n");
-			printf("1. Make sure that your machine is not running other demanding software in parallel and then retry.\n");
-			printf("2. If you use a dual/multi-display setup, please put all displays in mirror-mode with same resolution and color depth,\n");
-			printf("   but different monitor refresh interval (set stimulus display to higher refresh rate).\n");
-			printf("3. If it doesn't help or is not possible, try to change assignment of the primary- and secondary display in the Display\n");
-			printf("   Preference settings of MacOS-X.\n");
-			printf("4. On desktops or tower machines with two external display connectors, *PHYSICALLY* swap the connections, aka\n");
-			printf("   which display is plugged into which video-out socket at the back-side of your computer.\n");
-			printf("5. If that fails or is not possible on dual- or multi-display setups, disconnect or disable all displays except\n");
-			printf("   the one for stimulus presentation to the subject.\n");
-			printf("\n\nIf everything else fails, please report your problem including all these messages and information on your specific\n");
-			printf("setup (Type of graphics card and connected displays, output of 'DescribeComputer') to the Psychtoolbox forum.\n");
-			printf("-> You may have found a bug in Psychtoolbox, MacOS-X or your graphics-hardware.\n\n\n\n");
+			printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
+			printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
+			printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
 		}
-		// Flash our visual warning bell at alert-level: We only flash 1 sec if sync-tests should be skipped.
-		PsychVisualBell((*windowRecord), (skip_synctests) ? 1 : 4, 2);
-        if (!skip_synctests) 
-			return(FALSE);
+
+		// Abort right here if sync tests are enabled:
+      if (!skip_synctests) return(FALSE);
+
+		// Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
+		PsychVisualBell((*windowRecord), 1, 2);
     }
     
     // Ok, basic syncing to VBL via CGLFlushDrawable + glFinish seems to work and we have a valid
@@ -633,30 +625,18 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! ----\n\n");
 			printf("One or more internal checks (see Warnings above) indicate that\n");
 			printf("queries of rasterbeam position are not properly working for your setup.\n\n");
-			printf("This will cause Screen('Flip') to report less accurate/robust timestamps\n");
-			printf("(VBLTimestamp, StimulusOnsetTime) for stimulus timing. As accurate timestamps are crucial for\n");
-			printf("properly timed stimulus presentation and automatic checking of presentation timing, you may experience\n");
-			printf("an excessive number of skipped frames / wrong presentation deadlines *plus* the built-in check for such\n");
-			printf("problems doesn't work reliably anymore!\n");
+			printf("Psychtoolbox will work around this by using a different timing algorithm, \n");
+			printf("but it will cause Screen('Flip') to report less accurate/robust timestamps\n");
+			printf("for stimulus timing.\n");
+			printf("Read 'help BeampositionQueries' for more info and troubleshooting tips.\n");
 			printf("\n\n");
-			printf("Please try the following measures to solve or work-around the problem:\n");
-			printf("1. Make sure that your machine is not running other demanding software in parallel and then retry.\n");
-			printf("2. If you use a dual-display setup, please put all displays in mirror-mode with same resolution and color depth.\n");
-			printf("3. If it doesn't help or is not possible, try to change assignment of the primary- and secondary display.\n");
-			printf("4. On desktops or tower machines with two external display connectors, *PHYSICALLY* swap the connections, aka\n");
-			printf("   which display is plugged into which video-out socket at the back-side of your computer.\n");
-			printf("5. If that doesn't help or is not possible on dual- or multi-display setup, disconnect or disable all displays except\n");
-			printf("   the one for stimulus presentation to the subject.\n");
-			printf("\n\nIf everything fails, please report your problem including all these messages and information on your specific\n");
-			printf("setup (Type of graphics card and connected displays, output of 'DescribeComputer') to the Psychtoolbox forum.\n");
-			printf("-> You may have found a bug in MacOS-X or your graphics-hardware.\n\n\n\n");
 			// Flash our visual warning bell:
 			if (ringTheBell<2) ringTheBell=2;
 		}
     }
 
     // The start of a gfx-card "Blacklist"...
-    if ((strstr(glGetString(GL_VENDOR), "ATI")!=NULL) && multidisplay) {
+    if ((strstr(glGetString(GL_VENDOR), "ATI")!=NULL) && multidisplay && PSYCH_SYSTEM == PSYCH_OSX) {
         // ATI card detected -> Give hint to be extra cautious about beampos...
 		if(!PsychPrefStateGet_SuppressAllWarnings()){	
 			printf("\n\nPTB-HINT: Your graphics card is KNOWN TO HAVE TROUBLE with beamposition queries on some dual display setups\n");
@@ -676,8 +656,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
     PsychSetWindowRecordValid(*windowRecord);
 
-    // Ring the visual bell if anything demands this:
-    if (ringTheBell>=0 && !skip_synctests) PsychVisualBell((*windowRecord), 4, ringTheBell);
+    // Ring the visual bell for one second if anything demands this:
+    if (ringTheBell>=0 && !skip_synctests) PsychVisualBell((*windowRecord), 1, ringTheBell);
 
     if (PsychPrefStateGet_EmulateOldPTB()) {
         // Perform all drawing and reading in the front-buffer for OS-9 emulation mode:
@@ -745,7 +725,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>0)) {
         if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline %i times!\n\n", windowRecord->nr_missed_deadlines);
+			printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests()) {
@@ -1298,7 +1278,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 // video refresh, so a doubled flip interval is a legal valid result.
                 if ((tdur >= 0.004 && tdur <= 0.040) && ((intervalHint<=0) || (intervalHint>0 &&
                     ( ((tdur > 0.8 * intervalHint) && (tdur < 1.2 * intervalHint)) ||
-                      ((windowRecord->stereomode==kPsychOpenGLStereo) && (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
+                      (((windowRecord->stereomode==kPsychOpenGLStereo) || (windowRecord->multiSample > 0)) && (tdur > 0.8 * 2 * intervalHint) && (tdur < 1.2 * 2 * intervalHint))
                     )))) {
                     // Valid measurement - Update our estimate:
                     windowRecord->IFIRunningSum = windowRecord->IFIRunningSum + tdur;
@@ -1722,6 +1702,16 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
     // Restore modelview matrix:
     glPopMatrix();
+	 if (glGetError() == GL_OUT_OF_MEMORY) {
+		// Special case: Out of memory after Flip + Postflip operations.
+		printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
+		printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+		printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+		printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+		printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+		printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+	 }
+
     PsychTestForGLErrors();
     
     // Done.

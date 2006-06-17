@@ -4,10 +4,6 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 % The cursor position (x,y) is "local", i.e. relative to the origin of the
 % window or screen, if supplied. Otherwise it's "global", i.e. relative to
 % the origin of the main screen (the one with the menu bar).
-%
-% OS X: ___________________________________________________________________
-%
-%   **to be added**
 % 
 % OS 9: ___________________________________________________________________
 %
@@ -28,9 +24,9 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 % be enough, after calling SetMouse, to simply WaitTicks(1) before calling
 % GetMouse to be sure of getting the new position.
 %
-% WINDOWS:_________________________________________________________________
+% OS-X, Linux & WINDOWS:___________________________________________________
 %
-% Psychtoolbox for Windows will accept the optional windowPtrOrScreenNumber
+% Psychtoolbox will accept the optional windowPtrOrScreenNumber
 % argument and check it for validity.  However, supplying the argument will
 % not  influence the position of the mouse cursor.  The cursor is always
 % positioned  in absolute coordinates on the main screen.  It does not
@@ -61,16 +57,16 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 %                   after the great mouse shift to state SetMouse is depricated.
 % 11/18/04  awi     Renamed "PositionCursor" to "PositionCursorHelper".
 % 02/21/06  mk      Added Linux support.
+% 06/17/06  mk      Added Windows support.
 
-%on OS X and Linux the Screen.mexmac positions the cursor, not 
-%SetMouse.mexmac.  SetMouse.m wraps the 
-%Screen('PositionCursor',..) call to emulate SetMouse.mex
-if IsOSX | IsLinux
-    if(nargin==2)
-        windowPtrOrScreenNumber=0;
-    end
-    if(nargin<2)
-        error('SetMouse requires x and y positions')
-    end
-    Screen('SetMouseHelper',windowPtrOrScreenNumber, x,y);    
-end 
+% SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
+
+if(nargin==2)
+   windowPtrOrScreenNumber=0;
+end
+
+if(nargin<2)
+   error('SetMouse requires x and y positions');
+end
+
+Screen('SetMouseHelper',windowPtrOrScreenNumber, x,y);    

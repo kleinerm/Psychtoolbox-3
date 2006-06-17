@@ -23,10 +23,12 @@ function [clicks,x,y] = GetClicks(w)
 % 6/7/96   dhb  Modified as per Pelli suggestion to respond to cmd-.
 %          dhb  Modified as per Pelli suggestion to stop any playing sound.
 % 8/23/96  dhb  Added support for windowPtr argument.
-% 3/10/97  dgp	windowPtrOrScreenNumber
-% 6/10/02  awi	Added See Also.
+% 3/10/97  dgp	 windowPtrOrScreenNumber
+% 6/10/02  awi	 Added See Also.
 % 2/28/06  mk   Completely rewritten as a wrapper around GetMouse, based on
 %          mk   the semantic and description of OS-9 GetClicks().
+% 6/17/06  mk   We also pass the windowPtr - argument on Windows now, because
+%          mk   now GetMouse.m is able to accept this argument.
 
 % Inter-click interval (in secs.) for multiple mouse-clicks.
 global ptb_mouseclick_timeout;
@@ -56,12 +58,11 @@ end;
 
 % Wait for first mouse button press:
 while ~any(buttons)
-    if nargin < 1 | IsWin
-        % Don't pass windowPtr argument if either none supplied or we are
-        % on Windows, where this currently doesn't work with GetMouse.dll
+    if nargin < 1
+        % Don't pass windowPtr argument if none supplied.
         [x,y,buttons] = GetMouse;
     else
-        % Pass windowPtr argumetn to GetMouse for proper remapping.
+        % Pass windowPtr argument to GetMouse for proper remapping.
         [x,y,buttons] = GetMouse(w);
     end;
     if (nice>0) WaitSecs(rtwait); end;

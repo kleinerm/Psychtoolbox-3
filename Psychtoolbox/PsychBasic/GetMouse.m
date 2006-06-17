@@ -32,6 +32,10 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % for the user to release the mouse button, ending the current click, before
 % you begin waiting for the next mouse press.
 %
+% Alternatively, you can also use the GetClicks() function to wait for
+% mouse-clicks and return the mouse position of first click and the number
+% of mouse button clicks.
+%
 % fprintf('Please click the mouse now.\n');
 % [x,y,buttons] = GetMouse;
 % while any(buttons) % if already down, wait for release
@@ -67,7 +71,9 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % script that doesn't open an onscreen window. GetMouse may get confused
 % if you keep mouse buttons pressed down during the very first Screen('OpenWindow')
 % call, i.e. press down the mouse button before window appears and keep it
-% pressed after it appears.
+% pressed after it appears. It will also fail to register that you release
+% mouse buttons if you keep the button pressed during calls to Screen('Close')
+% or Screen('CloseAll').
 %
 % _________________________________________________________________________
 % See also: GetClicks, SetMouse

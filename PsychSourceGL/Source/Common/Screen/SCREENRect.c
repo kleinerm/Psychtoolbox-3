@@ -53,7 +53,16 @@ PsychError SCREENRect(void)
 		PsychCopyOutRectArg(1, FALSE, rect);
 	}else if(PsychIsWindowIndexArg(1)){
 	   PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-	   PsychCopyOutRectArg(1,FALSE, windowRecord->rect);
+		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+			// Special case for stereo: Only half the real window width:
+			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],
+							  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/2,windowRecord->rect[kPsychBottom]);
+		}
+		else {
+			// Normal case:
+			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],windowRecord->rect[kPsychRight],windowRecord->rect[kPsychBottom]);
+		}
+	   PsychCopyOutRectArg(1,FALSE, rect);
 	}else
 		PsychErrorExitMsg(PsychError_user, "Argument was recognized as neither a window index nor a screen pointer");
 

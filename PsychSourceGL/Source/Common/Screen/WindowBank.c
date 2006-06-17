@@ -252,6 +252,7 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->stippleEnabled=FALSE;
 
         // Initialize stereo settings:
+		  (*winRec)->stereomode=0;
         (*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
         (*winRec)->auxbuffer_dirty[0]=FALSE;            // AUX-Buffers clean on startup.
         (*winRec)->auxbuffer_dirty[1]=FALSE;

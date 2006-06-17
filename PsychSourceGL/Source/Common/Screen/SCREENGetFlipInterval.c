@@ -40,7 +40,10 @@ static char synopsisString[] =
         "The returned monitorRefreshInterval is in seconds, but has sub-millisecond accuracy. "
         "The real number of valid samples taken and the final standard deviation is returned as well. "
         "CAUTION: When using OpenGL flip-frame stereo (stereomode=1 in OpenWindow) on ATI graphics hardware, "
-        "the flip interval (as reported here) may be twice as long as the monitor refresh interval!";
+        "the flip interval (as reported here) may be twice as long as the monitor refresh interval! Using "
+		  "Anti-Aliasing with a high multiSample level at a high display resolution may also cause the graphics "
+		  "hardware to switch to a flip-interval twice as long as the monitor refresh interval, because it is "
+		  "not capable of performing all anti-aliasing computations in one single refresh interval. ";
 
 static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 

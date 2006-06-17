@@ -499,7 +499,7 @@ void PsychHideCursor(int screenNumber)
 {
   // Hide the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
-  ShowCursor(FALSE);
+  while(ShowCursor(FALSE)>=0);
   return;
 }
 
@@ -507,7 +507,7 @@ void PsychShowCursor(int screenNumber)
 {
   // Show the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
-  ShowCursor(TRUE);
+  while(ShowCursor(TRUE)<0);
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y)
