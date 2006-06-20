@@ -111,7 +111,8 @@ glEnable(GL_TEXTURE_2D);
 texname=glGenTextures(6);
 
 % Load a binary file which contains binary pixel data for the six textures:
-load mogldemo.mat face
+matdemopath = [PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/mogldemo.mat'];
+load(matdemopath, 'face')
 
 % Setup textures for all six sides of cube:
 for i=1:6,

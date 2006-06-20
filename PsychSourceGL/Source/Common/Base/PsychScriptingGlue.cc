@@ -660,6 +660,22 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	  }
 	#endif
  
+	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
+	  // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
+	  // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
+	  // the corresponding longjmp() call in our mexErrMsgTxt() implementation (see top of file)
+	  // will unwind the stack and restore stack-state and CPU state to the saved values in
+	  // jmpbuffer --> We will end up at this setjmp() call again, with a cleaned up stack and
+	  // CPU state, but setjmp will return a non-zero error code, signaling the abnormal abortion.
+	  if (setjmp(jmpbuffer)!=0) {
+	    // PsychErrorExit() or friends called! The CPU and stack are restored to a sane state.
+	    // Call our cleanup-routine to release memory that is PsychMallocTemp()'ed and to other
+	    // error-handling...
+	    errorcondition = TRUE;
+	    goto octFunctionCleanup;
+	  }
+	#endif
+
 	// Initialization
 	if (firstTime) {
 		
@@ -699,22 +715,6 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		firstTime = FALSE;
 	}
 	
-	#if PSYCH_LANGUAGE == PSYCH_OCTAVE
-	  // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
-	  // calls an error-exit function like PsychErrorExit() or PsychErrorExitMsg() then
-	  // the corresponding longjmp() call in our mexErrMsgTxt() implementation (see top of file)
-	  // will unwind the stack and restore stack-state and CPU state to the saved values in
-	  // jmpbuffer --> We will end up at this setjmp() call again, with a cleaned up stack and
-	  // CPU state, but setjmp will return a non-zero error code, signaling the abnormal abortion.
-	  if (setjmp(jmpbuffer)!=0) {
-	    // PsychErrorExit() or friends called! The CPU and stack are restored to a sane state.
-	    // Call our cleanup-routine to release memory that is PsychMallocTemp()'ed and to other
-	    // error-handling...
-	    errorcondition = TRUE;
-	    goto octFunctionCleanup;
-	  }
-	#endif
-
 	// Store away call arguments for use by language-neutral accessor functions in ScriptingGlue.c
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
 	nlhsGLUE = nlhs;

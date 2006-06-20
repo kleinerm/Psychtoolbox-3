@@ -43,26 +43,37 @@ if ~exist('glmGetConst.m','file'),
 end;
 
 % We default to non-C-Style constants if not requested otherwise.
-if nargin < 1 | isempty(opengl_c_style)
+if nargin < 1
    opengl_c_style = 0;
 end;
 
-if nargin < 2 | isempty(debuglevel)
+if isempty(opengl_c_style)
+   opengl_c_style = 0;
+end;
+
+if nargin < 2
+    debuglevel = 1;
+end;
+
+if isempty(debuglevel)
     debuglevel = 1;
 end;
 
 % Load all GL constants:
 evalin('caller','global AGL GL GLU');
 
+% Absolute path to oglconst.mat file: Needed for GNU/Octave:
+oglconstpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/oglconst.mat'];
+
 % C-Style compatible load requested?
 if opengl_c_style > 0
    % Load all constants, also the C-Style ones, e.g., GL_LIGHTING
-   evalin('caller','load oglconst.mat');    
+   evalin('caller',['load ' oglconstpath]);    
 else
    % Load only the GL. GLU. and AGL. versions, e.g., GL.LIGHTING
    % This is less convenient as one needs to replace GL_ by GL. in
    % all scripts, but it doesn't clutter the Matlab workspace...
-   evalin('caller','load oglconst.mat AGL GL GLU');      
+   evalin('caller',['load ' oglconstpath ' AGL GL GLU']);      
 end;
 
 % On Windows, we need to preload moglcore into Matlab while the working

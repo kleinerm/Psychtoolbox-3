@@ -8,7 +8,47 @@
  *
 */
 
+#define PSYCH_MATLAB 0
+#define PSYCH_OCTAVE 1
+
+#ifndef PTBOCTAVE
+// Include mex.h with MEX - API definition for Matlab:
+#define PSYCH_LANGUAGE PSYCH_MATLAB
 #include "mex.h"
+
+
+#else
+
+
+// Include oct.h and friends with OCT - API definitions for Octave:
+#define PSYCH_LANGUAGE PSYCH_OCTAVE
+#include <octave/oct.h>
+#include <setjmp.h>
+
+// MK: These three are probably not needed for moglcore:
+#include <octave/parse.h>
+#include <octave/ov-struct.h>
+#include <octave/ov-cell.h>
+
+#define const
+
+// octavemex.h defines pseudo MEX functions emulated by our code:
+#include "octavemex.h"
+
+char* mxArrayToString(mxArray* arrayPtr);
+
+#define printf mexPrintf
+
+// Define this to 1 if you want lots of debug-output for the Octave-Scripting glue.
+#define DEBUG_PTBOCTAVEGLUE 0
+
+#define MAX_OUTPUT_ARGS 100
+#define MAX_INPUT_ARGS 100
+static mxArray* plhs[MAX_OUTPUT_ARGS]; // An array of pointers to the octave return arguments.
+static mxArray* prhs[MAX_INPUT_ARGS];  // An array of pointers to the octave call arguments.
+static bool jettisoned = false;
+
+#endif
 
 /* glew.h is part of GLEW library for automatic detection and binding of
    OpenGL core functionality and extensions.

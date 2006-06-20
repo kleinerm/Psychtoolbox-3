@@ -23,13 +23,14 @@ end;
 AssertGLSL;
 
 if nargin < 3
-    debug = 0;
+    debug = 2;
 end;
 
 if nargin < 1 | isempty(filename)
     % Set default shader file name:
     error('LoadShaderFromFile() called without any shader filename!');
 end;
+
 
 % Add path to our own shader directory if no path given:
 if isempty(fileparts(filename))
@@ -56,7 +57,7 @@ if debug>0
 end;
 
 % Read shader source code from file:
-fid=fopen(filename, 'r');
+fid=fopen(filename, 'rt');
 if fid<0
     error('Could not open shader definition file!');
 end;

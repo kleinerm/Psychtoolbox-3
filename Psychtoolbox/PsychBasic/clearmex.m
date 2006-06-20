@@ -14,5 +14,6 @@ function clearmex
 clearScreen;
 clearGetSecs;
 clearWaitSecs;
+clearmoglcore;
 
 return;
