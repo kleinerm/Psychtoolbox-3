@@ -105,6 +105,7 @@ function [ch,when] = GetChar
 % 6/15/06 awi  Added break on CTRL-C
 %              Added TO DO section and item to detect genuine KeyDown
 %              events.
+% 6/20/06 awi  Use AddPsychJavaPath instead of AssertGetCharJava.
 
 
 % TO DO
@@ -132,6 +133,7 @@ function [ch,when] = GetChar
 AssertMex('OS9');
 
 if(IsOSX)
+    AddPsychJavaPath;
     ListenChar;
     global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW; %contents of var previosly instantiated by ListenChar.
     stopLoop=0;

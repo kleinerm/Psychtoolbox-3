@@ -35,12 +35,15 @@ function avail = CharAvail
 %               Added platform conditional for OS X ('MAC').
 % 1/22/06   awi Commented out Cocoa wrapper version and wrote Java wrapper.
 % 3/28/06   awi Detect buffer overflow.
+% 6/20/06   awi Use AddPsychJavaPath instead of AssertGetCharJava.
+
 
 
 if IsOS9
     avail=EventAvail('keyDown');
 elseif IsOSX
-    AssertGetCharJava;
+    AddPsychJavaPath;
+    %AssertGetCharJava;
     global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW  
     if isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
         avail=0;

@@ -16,7 +16,9 @@ function ListenChar(listenFlag)
 
 % HISTORY
 %
-% 7/19/05 awi   Wrote it. 
+% 7/19/05 awi   Wrote it.
+% 6/20/06 awi   Use AddPsychJavaPath instead of AssertGetCharJava.
+
 
 % TO DO
 %
@@ -32,8 +34,9 @@ function ListenChar(listenFlag)
 % platforms to turn off listening.  It would be better to implement that on
 % those platforms than to give and error.  
 if IsOSX
-    %TO DO implement turning off character listening here.  
-    AssertGetCharJava;
+    %TO DO implement turning off character listening here.
+    AddPsychJavaPath;
+    %AssertGetCharJava;
     global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW
     if isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
         PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW=GetCharJava.createAndShowGUI();

@@ -15,10 +15,13 @@ function FlushEvents(varargin)
 % 9/20/05  awi  Added AssertMex call for OS 9 and Win and added OS X
 %                   conditional.
 % 1/22/06  awi  Commented out Cocoa wrapper and wrote Java wrapper.
+% 6/20/06  awi  Use AddPsychJavaPath instead of AssertGetCharJava.
+
 
 AssertMex('OS9', 'Windows');
 
 if(IsOSX)
+    AddPsychJavaPath;    
     if(any(strcmp('KEYDOWN', upper(varargin))))
         global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW
         if ~isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
