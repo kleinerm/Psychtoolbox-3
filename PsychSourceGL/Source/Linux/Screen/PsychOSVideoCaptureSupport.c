@@ -155,7 +155,7 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
         
   // Stop capture immediately if it is still running:
-  PsychVideoCaptureRate(capturehandle, 0, 0);
+  PsychVideoCaptureRate(capturehandle, 0, 0, NULL);
 
   // Initiate a power-down cycle to bring camera into standby mode:
   if (dc1394_set_camera_power(capdev->camera, DC1394_OFF)!=DC1394_SUCCESS) {
@@ -808,9 +808,10 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
  *  playbackrate = zero == Stop capture, non-zero == Capture
  *  dropframes = 0 - Always deliver oldest frame in DMA ringbuffer. 1 - Always deliver newest frame.
  *               --> 1 == drop frames in ringbuffer if behind -- low-latency capture.
+ *  startattime = Deadline (in system time) for which to wait before real start of capture.
  *  Returns Number of dropped frames during capture.
  */
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
   int dropped = 0;
   float framerate = 0;
@@ -951,6 +952,11 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
       capdev->dma_mode = 1;
     }
 
+    // Ready to go! Now we just need to tell the camera to start its capture cycle:
+
+    // Wait until start deadline reached:
+    PsychWaitUntilSeconds(*startattime);
+
     // Start DMA driven isochronous data transfer:
     if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
       if (capdev->dma_mode > 0) {
@@ -970,6 +976,9 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
       PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
     }
     
+    // Record real start time:
+    PsychGetAdjustedPrecisionTimerSeconds(startattime);
+
     // Map framerate enum to floating point value and assign it:
     if (packetsize == 0) {
       dc1394_framerate_as_float(dc1394_framerate, &framerate);
@@ -1303,6 +1312,7 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   dc1394feature_t feature;
   dc1394bool_t present;
   unsigned int minval, maxval, intval, oldintval;
+  unsigned int lowadr, hiadr;
 
   double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
   boolean assigned = false;
@@ -1316,6 +1326,61 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   intval = (int) (value + 0.5);
 
   // Check parameter name pname and call the appropriate subroutine:
+  if (strcmp(pname, "TriggerCount")==0 || strcmp(pname, "WaitTriggerCount")==0) {
+    // Query of cameras internal trigger counter or waiting for a specific
+    // value in the counter requested. Trigger counters are special features,
+    // (so called "Smart Features" or "Advanced Features" in the IIDC spec)
+    // which are only available on selected cameras.
+    // We currently only know how to do this on Basler cameras.
+    if (strstr(capdev->camera->vendor, "Basler")==NULL) {
+      // Non Basler cam :( We have to give up for now...
+      return(-1);
+    }
+
+    // It is a Basler cam. Try to get a handle to the proper register:
+    //capdev->camera->advanced_features_csr = 0xf2f00000;
+    hiadr=lowadr=0xDEADBEEF;
+    if(GetCameraAdvControlRegister(capdev->camera, 0x00, &lowadr)!=DC1394_SUCCESS) return(-11);
+    if(GetCameraAdvControlRegister(capdev->camera, 0x04, &hiadr)!=DC1394_SUCCESS) return(-12);
+    printf("Hi = %x Lo = %x  == ", hiadr, lowadr);
+
+    
+    // Step 0: Unlock Advanced features by writing Baslers unlock - key into access control register:
+    if(SetCameraAdvControlRegister(capdev->camera, 0x00, 0x0030533B)!=DC1394_SUCCESS) return(-2);
+    if(SetCameraAdvControlRegister(capdev->camera, 0x04, 0x73C3F000)!=DC1394_SUCCESS) return(-3);
+    if(GetCameraAdvControlRegister(capdev->camera, 0x00, &lowadr)!=DC1394_SUCCESS) return(-31);
+    if(GetCameraAdvControlRegister(capdev->camera, 0x04, &hiadr)!=DC1394_SUCCESS) return(-32);
+    if(lowadr == 0xFFFFFFFF && hiadr == 0xFFFFFFFF) {
+      // Failed! Advanced Features not supported on this Basler camera:
+      return(-33);
+    }
+    printf("TIMEOUT %i\n", (int) (hiadr & 0xFFFF));
+
+    // Step 1: Write GUID of Trigger counter register to "Smart Features Inquiry Register"
+    if(SetCameraAdvControlRegister(capdev->camera, 0x10, 0x16C31A78)!=DC1394_SUCCESS) return(-4);
+    if(SetCameraAdvControlRegister(capdev->camera, 0x14, 0x11D83F75)!=DC1394_SUCCESS) return(-5);
+    if(SetCameraAdvControlRegister(capdev->camera, 0x18, 0x1000EC94)!=DC1394_SUCCESS) return(-6);
+    if(SetCameraAdvControlRegister(capdev->camera, 0x1C, 0x55AE5B5A)!=DC1394_SUCCESS) return(-7);
+    // Step 2: Query address of Trigger counter reg. from "Smart Features Address Register"
+    if(GetCameraAdvControlRegister(capdev->camera, 0x20, &lowadr)!=DC1394_SUCCESS) return(-8);
+    if(GetCameraAdvControlRegister(capdev->camera, 0x24, &hiadr)!=DC1394_SUCCESS) return(-9);
+    if(lowadr == 0 && hiadr == 0) {
+      // Failed! Feature not supported, just return -1:
+      return(-10);
+    }
+    printf("Hi = %i Lo = %i  == ", hiadr, lowadr);
+
+    // Step 3: Assemble final address of trigger counter reg.
+    octlet_t triggercounteraddress = (octlet_t) (((octlet_t) hiadr << 32) | (octlet_t) lowadr);
+
+    // Step 4: Read counter:
+    lowadr = 0xDEADBEEF;
+    if(GetCameraROMValue(capdev->camera, triggercounteraddress, &lowadr)!=DC1394_SUCCESS) return(-11);
+    int triggercount = (int)(lowadr >> 16);
+    printf("%p\n", (void*) lowadr);
+    return((int) lowadr);
+  }
+
   if (strcmp(pname, "PrintParameters")==0) {
     // Special command: List and print all features...
     if (dc1394_get_camera_info(capdev->camera) !=DC1394_SUCCESS) {
@@ -1335,6 +1400,20 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     }
 
     fflush(NULL);    
+    return(0);
+  }
+
+  // Return current framerate:
+  if (strcmp(pname, "GetFramerate")==0) {
+    PsychCopyOutDoubleArg(1, FALSE, capdev->fps);
+    return(0);
+  }
+
+  // Return current ROI of camera, as requested (and potentially modified during
+  // PsychOpenCaptureDevice(). This is a read-only parameter, as the ROI can
+  // only be set during Screen('OpenVideoCapture').
+  if (strcmp(pname, "GetROI")==0) {
+    PsychCopyOutRectArg(1, FALSE, capdev->roirect);
     return(0);
   }
 

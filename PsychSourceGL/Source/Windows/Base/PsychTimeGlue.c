@@ -40,35 +40,58 @@
 
 */
 
+
 static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
 static Boolean		isKernelTimebaseFrequencyHzInitialized=FALSE;
 static long double	kernelTimebaseFrequencyHz;
 static Boolean          counterExists=FALSE;
 static Boolean          firstTime=TRUE;
+static double           sleepwait_threshold = 0.01;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
+  static unsigned int missed_count=0;
   double now=0.0;
 
-  // Waiting stage 1: If we have more than 10 milliseconds left
-  // until the deadline, we call the OS Sleep(2) function, so the
-  // CPU gets released for difference - 10 ms to other processes and threads.
+  // Get current time:
+  PsychGetPrecisionTimerSeconds(&now);
+
+  // If the deadline has already passed, we do nothing and return immediately:
+  if (now > whenSecs) return;
+
+  // Waiting stage 1: If we have more than sleepwait_threshold seconds left
+  // until the deadline, we call the OS Sleep() function, so the
+  // CPU gets released for difference - sleepwait_threshold s to other processes and threads.
   // -> Good for general system behaviour and for lowered
   // power-consumption (longer battery runtime for Laptops) as
   // the CPU can go idle if nothing else to do...
-  PsychGetPrecisionTimerSeconds(&now);
-  while(whenSecs - now > 0.01) {
-    Sleep((int)((whenSecs - now - 0.01) * 1000.0f));
+  while(whenSecs - now > sleepwait_threshold) {
+    Sleep((int)((whenSecs - now - sleepwait_threshold) * 1000.0f));
     PsychGetPrecisionTimerSeconds(&now);
   }
 
-  // Waiting stage 2: We are less than 10 ms away from deadline.
+  // Waiting stage 2: We are less than sleepwait_threshold s away from deadline.
   // Perform busy-waiting until deadline reached:
   while(now < whenSecs) PsychGetPrecisionTimerSeconds(&now);
 
-  // Check for deadline-miss of more than 500 microseconds:
-  if (now - whenSecs > 0.0005) printf("PTB-WARNING: Wait-Deadline missed by %lf ms.\n", (now - whenSecs)*1000.0f);
+  // Check for deadline-miss of more than 1 ms:
+  if (now - whenSecs > 0.001) {
+    // Deadline missed by over 1 ms.
+    missed_count++;
+
+    if (missed_count>5) {
+      // Too many consecutive misses. Increase our threshold for sleep-waiting
+      // by 5 ms until it reaches 20 ms.
+      if (sleepwait_threshold < 0.02) sleepwait_threshold+=0.005;
+      printf("PTB-WARNING: Wait-Deadline missed for %i consecutive times (Last miss %lf ms). New sleepwait_threshold is %lf ms.\n",
+	     missed_count, (now - whenSecs)*1000.0f, sleepwait_threshold*1000.0f);
+    }
+  }
+  else {
+    // No miss detected. Reset counter...
+    missed_count=0;
+  }
 
   // Ready.
   return;

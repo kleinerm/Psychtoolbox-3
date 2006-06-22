@@ -23,7 +23,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS=25] [, dropframes=0]);";
+static char useString[] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS=25] [, dropframes=0] [, startAt]);";
 static char synopsisString[] = "Start video capture device specified by 'capturePtr'. If 'captureRateFPS' "
                                "is provided, the device is requested to capture at that rate. Otherwise it "
                                "is requested to operate at 25 Hz. The real capture rate may differ from the "
@@ -37,7 +37,15 @@ static char synopsisString[] = "Start video capture device specified by 'capture
                                "want to have the default of zero. If you want to do interactive realtime processing "
                                "of video data (e.g, video feedback for action-perception studies or build your own "
                                "low-cost eyetracker), then you want to use dropframes=1 for lowest possible latency. "
-                               "'dropframes' is currently silently ignored on Windows and OS-X, only Linux supports this.";
+                               "'dropframes' is currently silently ignored on Windows and OS-X, only Linux supports this. "
+                               "'startAt' This optional argument provides a requested start time in seconds system time, "
+                               "e.g., values returned by GetSecs() or Screen('Flip'), when capture should really start. "
+                               "Psychtoolbox will wait until that point in time has elapsed before really triggering start "
+                               "of capture. This provides a means of soft-synchronizing start of capture with external events. "
+                               "The optional return value 'starttime' contains the best estimate (in system time) of when "
+                               "video capture was really started. Accuracy of 'startAt' and 'starttime' is highly dependent "
+                               "on operating system and capture device. It is assumed to be very accurate on Linux. ";
+
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
 PsychError SCREENStartVideoCapture(void) 
@@ -45,13 +53,14 @@ PsychError SCREENStartVideoCapture(void)
     int capturehandle = -1;
     double captureFPS = 25;
     int dropframes = 0;
+    double starttime = 0;
 
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
-    PsychErrorExit(PsychCapNumInputArgs(3));            // Max. 3 input args.
+    PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
     PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
-    PsychErrorExit(PsychCapNumOutputArgs(1));           // One output arg.
+    PsychErrorExit(PsychCapNumOutputArgs(2));           // Max. 2 output args.
     
     // Get the handle:
     PsychCopyInIntegerArg(1, TRUE, &capturehandle);
@@ -69,10 +78,16 @@ PsychError SCREENStartVideoCapture(void)
         PsychErrorExitMsg(PsychError_user, "StartVideoCapture called with invalid (negative) dropframes - argument.");
     }
 
+    PsychCopyInDoubleArg(4, FALSE, &starttime);
+    if (starttime<0) {
+        PsychErrorExitMsg(PsychError_user, "StartVideoCapture called with invalid (negative) startAt - argument.");
+    }
+
     // Try to start capture:
-    captureFPS = (double) PsychVideoCaptureRate(capturehandle, captureFPS, dropframes);
+    captureFPS = (double) PsychVideoCaptureRate(capturehandle, captureFPS, dropframes, &starttime);
 
     PsychCopyOutDoubleArg(1, FALSE, captureFPS);
+    PsychCopyOutDoubleArg(2, FALSE, starttime);
 
     // Ready!    
     return(PsychError_none);

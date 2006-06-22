@@ -46,13 +46,18 @@ void PsychWaitUntilSeconds(double whenSecs)
   static unsigned int missed_count=0;
   double now=0.0;
 
+  // Get current time:
+  PsychGetPrecisionTimerSeconds(&now);
+
+  // If the deadline has already passed, we do nothing and return immediately:
+  if (now > whenSecs) return;
+
   // Waiting stage 1: If we have more than sleepwait_threshold seconds left
   // until the deadline, we call the OS usleep() function, so the
   // CPU gets released for difference - sleepwait_threshold s to other processes and threads.
   // -> Good for general system behaviour and for lowered
   // power-consumption (longer battery runtime for Laptops) as
   // the CPU can go idle if nothing else to do...
-  PsychGetPrecisionTimerSeconds(&now);
   while(whenSecs - now > sleepwait_threshold) {
     usleep((unsigned long)((whenSecs - now - sleepwait_threshold) * 1000000.0f));
     PsychGetPrecisionTimerSeconds(&now);

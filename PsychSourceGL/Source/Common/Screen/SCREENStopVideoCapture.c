@@ -48,7 +48,7 @@ PsychError SCREENStopVideoCapture(void)
     }
     
     // Try to stop capture:
-    dropped = PsychVideoCaptureRate(capturehandle, 0, 0);
+    dropped = PsychVideoCaptureRate(capturehandle, 0, 0, NULL);
 
     PsychCopyOutDoubleArg(1, FALSE, dropped);
     

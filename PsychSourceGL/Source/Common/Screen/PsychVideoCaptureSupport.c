@@ -720,14 +720,15 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  *  capturehandle = Grabber to start-/stop.
  *  playbackrate = zero == Stop capture, non-zero == Capture
  *  dropframes = Currently ignored.
+ *  startattime = Deadline (in system time) to wait for before real start of capture.
  *  Returns Number of dropped frames during capture.
  */
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
     int dropped = 0;
     OSErr error = noErr;
     Fixed framerate;
-    
+
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
     }
@@ -741,7 +742,15 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
         // Start capture:
         if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
+	// Wait until start deadline reached:
+	PsychWaitUntilSeconds(*startattime);
+
+	// Start the engine!
         error = SGStartRecord(vidcapRecordBANK[capturehandle].seqGrab);
+
+	// Record real start time:
+	PsychGetAdjustedPrecisionTimerSeconds(startattime);
+
         vidcapRecordBANK[capturehandle].last_pts = -1.0;
         vidcapRecordBANK[capturehandle].nr_droppedframes = 0;
         vidcapRecordBANK[capturehandle].frame_ready = 0;
@@ -784,6 +793,35 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes)
  */
 double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
+  PsychRectType roirect;
+
+  // Return current framerate:
+  if (strcmp(pname, "GetFramerate")==0) {
+    PsychCopyOutDoubleArg(1, FALSE, capdev->fps);
+    return(0);
+  }
+
+  // Return current ROI of camera, as requested (and potentially modified during
+  // PsychOpenCaptureDevice(). This is a read-only parameter, as the ROI can
+  // only be set during Screen('OpenVideoCapture').
+  if (strcmp(pname, "GetROI")==0) {
+    PsychMakeRect(roirect, capdev->roirect[left], capdev->roirect[top], capdev->roirect[right], capdev->roirect[bottom]); 
+    PsychCopyOutRectArg(1, FALSE, rect);
+    return(0);
+  }
+
+  // Return vendor name string:
+  if (strcmp(pname, "GetVendorname")==0) {
+    PsychCopyOutCharArg(1, FALSE, "Unknown Vendor.");
+    return(0);
+  }
+
+  // Return model name string:
+  if (strcmp(pname, "GetModelname")==0) {
+    PsychCopyOutCharArg(1, FALSE, "Unknown Model.");
+    return(0);
+  }
+
   // Just return the "not supported" value DBL_MAX:
   return(DBL_MAX);
 }
@@ -804,11 +842,12 @@ void PsychExitVideoCapture(void)
     // and for some reason it reliably hangs Matlab, so one has to force-quit it :-(
     // Don't do this: ExitMovies();
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+    // Do not do it even on Windows. It can cause crashes...
     // Shutdown Quicktime core system:
-    ExitMovies();
+    // ExitMovies();
     
     // Shutdown Quicktime for Windows compatibility layer:
-    TerminateQTML();
+    // TerminateQTML();
 #endif
 
     firsttime = TRUE;

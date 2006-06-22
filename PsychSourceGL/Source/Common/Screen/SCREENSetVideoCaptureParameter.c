@@ -37,8 +37,11 @@ static char synopsisString[] = "Set video capture parameter 'parameterName' on v
                                "return value is set to DBL_MAX - a very high number. The following settings are "
                                "currently available on devices that support them: 'Brightness', 'Gain', "
                                "'Exposure', 'Shutter', 'Sharpness', 'Saturation', 'Gamma'. The special setting "
-                               "'PrintParameters' prints all features to the command window. 'GetVendor' and 'GetModel' "
-                               "return the name of the device vendor, resp. the device model name. ";
+                               "'PrintParameters' prints all features to the command window. 'GetVendorname' and 'GetModelname' "
+                               "return the name of the device vendor, resp. the device model name. 'GetROI' returns "
+                               "the capture region of interest (ROI), which can deviate from the ROI requested in "
+                               "Screen('OpenVideoCapture'), depending on the capabilities of the capture device. "
+                               "'GetFramerate' Returns the nominal capture rate of the capture device. ";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 

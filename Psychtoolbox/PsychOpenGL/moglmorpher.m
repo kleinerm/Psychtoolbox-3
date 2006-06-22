@@ -165,17 +165,6 @@ if isempty(feedbackptr)
    GL.GL_2D = 1536;
 end;
 
-% Check if hardware supports glDrawRangeElements():
-if isempty(drawrangeelements)
-    if isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_draw_range_elements'))
-        % No glDrawRangeElements() support.
-        drawrangeelements = 0;
-    else
-        % glDrawRangeElements() supported.
-        drawrangeelements = 1;
-    end;
-end;
-
 
 % Initialize count of keyshapes:
 if isempty(objcount)
@@ -191,11 +180,26 @@ if isempty(objcount)
     % supported on Matlab-7 or later.
     try
         dummy = single(1)+single(1);
-        usetype = GL.FLOAT;
+        if dummy == 2
+           usetype = GL.FLOAT;
+        else
+           usetype = GL.DOUBLE;
+        end
     catch
         usetype = GL.DOUBLE;
     end;
 end;
+
+% Check if hardware supports glDrawRangeElements():
+%if isempty(drawrangeelements)
+%    if isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_draw_range_elements'))
+%        % No glDrawRangeElements() support.
+%        drawrangeelements = 0;
+%    else
+%        % glDrawRangeElements() supported.
+%        drawrangeelements = 1;
+%    end;
+%end;
 
 % Subcommand dispatcher:
 if strcmp(cmd, 'reset')

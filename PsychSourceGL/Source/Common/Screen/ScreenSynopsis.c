@@ -201,7 +201,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Video capture functions:";
         synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback]);";
         synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
-        synopsis[i++] = "fps = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0]);";
+        synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
         synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
         synopsis[i++] = "[texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture]);";
 	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
