@@ -183,6 +183,7 @@ PsychError SCREENWaitBlanking(void)
         
         // Reset viewport to full-screen default:
         glViewport(0, 0, screenwidth, screenheight);                
+        glScissor(0, 0, screenwidth, screenheight);                
         
         // Reset color buffer writemask to "All enabled":
         glColorMask(TRUE, TRUE, TRUE, TRUE);

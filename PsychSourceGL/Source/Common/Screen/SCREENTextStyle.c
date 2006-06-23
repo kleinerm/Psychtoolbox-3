@@ -61,8 +61,8 @@ PsychError SCREENTextStyle(void)
     //Fetch and set the new size if it is specified. 
     doSetStyle= PsychCopyInIntegerArg(2, FALSE, &newTextStyle);
     if(doSetStyle) {
+      windowRecord->textAttributes.needsRebuild=(windowRecord->textAttributes.textStyle != newTextStyle) ? TRUE : FALSE;
       windowRecord->textAttributes.textStyle=newTextStyle;
-      windowRecord->textAttributes.needsRebuild=TRUE;
     }
     return(PsychError_none);
 

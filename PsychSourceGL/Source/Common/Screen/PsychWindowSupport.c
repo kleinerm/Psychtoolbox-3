@@ -80,8 +80,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     double ifi_nominal=0;    
     double ifi_estimate = 0;
     int retry_count=0;    
-    int numSamples;
-    double stddev;
+    int numSamples=0;
+    double stddev=0;
     double maxsecs;    
     int VBL_Endline = -1;
     long vbl_startline, dummy_width;
@@ -98,7 +98,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     bool multidisplay = FALSE;
     bool sync_trouble = false;
     bool sync_disaster = false;
-    bool skip_synctests = PsychPrefStateGet_SkipSyncTests();
+    int  skip_synctests = PsychPrefStateGet_SkipSyncTests();
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
     
@@ -282,6 +282,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
    } 
 #endif
 
+    // If we are in stereo mode 4 or 5 (free-fusion, cross-fusion, desktop-spanning stereo),
+    // we need to enable Scissor tests to restrict drawing and buffer clear operations to
+    // the currently set glScissor() rectangle (which is identical to the glViewport).
+    if (stereomode == 4 || stereomode == 5) glEnable(GL_SCISSOR_TEST);
+
+
     if (numBuffers<2) {
 		if(!PsychPrefStateGet_SuppressAllWarnings()){
 			// Setup for single-buffer mode is finished!
@@ -335,274 +341,288 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Make sure that the gfx-pipeline has settled to a stable state...
     glFinish();
     
-    // Then we perform an initial calibration using VBL-Syncing of OpenGL:
-    // We use 50 samples (50 monitor refresh intervals) and provide the ifi_nominal
-    // as a hint to the measurement routine to stabilize it:
+    // Complete skip of sync tests and all calibrations requested?
+    // This should be only done if Psychtoolbox is not used as psychophysics
+    // toolbox, but simply as a windowing/drawing toolkit for OpenGL in Matlab/Octave.
+    if (skip_synctests<2) {
+      // Normal calibration and at least some sync testing requested:
 
-    // We try 3 times a 5 seconds max., in case something goes wrong...
-    while(ifi_estimate==0 && retry_count<3) {
+      // We perform an initial calibration using VBL-Syncing of OpenGL:
+      // We use 50 samples (50 monitor refresh intervals) and provide the ifi_nominal
+      // as a hint to the measurement routine to stabilize it:
+      
+      // We try 3 times a 5 seconds max., in case something goes wrong...
+      while(ifi_estimate==0 && retry_count<3) {
         numSamples=50;      // Require at least 50 *valid* samples...
         stddev=0.00010;     // Require a std-deviation less than 100 microseconds..
         maxsecs=(skip_synctests) ? 1 : 5;  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
         retry_count++;
         ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
-    }
-    
-    // Now we try if CGDisplayBeamPosition works and try to estimate monitor refresh from it
-    // as well...
-    
-    // Check if a beamposition of 0 is returned at two points in time on OS-X:
-    i = 0;
-    if (((int) CGDisplayBeamPosition(cgDisplayID) == 0) && (PSYCH_SYSTEM == PSYCH_OSX)) {
+      }
+      
+      // Now we try if CGDisplayBeamPosition works and try to estimate monitor refresh from it
+      // as well...
+      
+      // Check if a beamposition of 0 is returned at two points in time on OS-X:
+      i = 0;
+      if (((int) CGDisplayBeamPosition(cgDisplayID) == 0) && (PSYCH_SYSTEM == PSYCH_OSX)) {
         // Recheck after 2 ms on OS-X:
         PsychWaitIntervalSeconds(0.002);
         if ((int) CGDisplayBeamPosition(cgDisplayID) == 0) {
-            // A constant value of zero is reported on OS-X -> Beam position queries unsupported
-            // on this combo of gfx-driver and hardware :(
-            i=12345;
+	  // A constant value of zero is reported on OS-X -> Beam position queries unsupported
+	  // on this combo of gfx-driver and hardware :(
+	  i=12345;
         }
-    }
-    
-    // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
-    // are not available on this system: This always happens on M$-Windows as that feature is unavailable.
-    if ((-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) && (i!=12345)) {
-      // Switch to RT scheduling for timing tests:
-      PsychRealtimePriority(true);
-    
-      // Code for estimating the final scanline of the vertical blank interval of display (needed by Screen('Flip')):
-      
-      // Check if CGDisplayBeamPosition is working properly:
-      // The first test checks, if it returns changing values at all or if it returns a constant
-      // value at two measurements 2 ms apart...
-      i=(int) CGDisplayBeamPosition(cgDisplayID);
-      PsychWaitIntervalSeconds(0.002);
-      if (((int) CGDisplayBeamPosition(cgDisplayID)) == i) {
-        // CGDisplayBeamPosition returns the same value at two different points in time?!?
-        // That's impossible on anything else than a high-precision 500 Hz display!
-        // --> CGDisplayBeamPosition is not working correctly for some reason.
-        sync_trouble = true;
-        if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value)\n");
       }
-      else {
-        // CGDisplayBeamPosition works: Use it to find VBL-Endline...
-        // Sample over 50 monitor refresh frames:
-        double told, tnew;
-        for (i=0; i<50; i++) {
-	  // Take beam position samples from current monitor refresh interval:
-	  maxline = -1;
-	  // We spin-wait until retrace and record our highest measurement:
-	  while ((bp=(int) CGDisplayBeamPosition(cgDisplayID)) >= maxline) maxline=bp;
-	  // We also take timestamps for "yet another way" to measure monitor refresh interval...
-	  PsychGetAdjustedPrecisionTimerSeconds(&tnew);
-	  if (i>0) {
-	    tsum+=(tnew - told);
-	    tcount+=1;
+      
+      // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
+      // are not available on this system: This always happens on M$-Windows as that feature is unavailable.
+      if ((-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) && (i!=12345)) {
+	// Switch to RT scheduling for timing tests:
+	PsychRealtimePriority(true);
+	
+	// Code for estimating the final scanline of the vertical blank interval of display (needed by Screen('Flip')):
+	
+	// Check if CGDisplayBeamPosition is working properly:
+	// The first test checks, if it returns changing values at all or if it returns a constant
+	// value at two measurements 2 ms apart...
+	i=(int) CGDisplayBeamPosition(cgDisplayID);
+	PsychWaitIntervalSeconds(0.002);
+	if (((int) CGDisplayBeamPosition(cgDisplayID)) == i) {
+	  // CGDisplayBeamPosition returns the same value at two different points in time?!?
+	  // That's impossible on anything else than a high-precision 500 Hz display!
+	  // --> CGDisplayBeamPosition is not working correctly for some reason.
+	  sync_trouble = true;
+	  if(!PsychPrefStateGet_SuppressAllWarnings())
+	    printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value)\n");
+	}
+	else {
+	  // CGDisplayBeamPosition works: Use it to find VBL-Endline...
+	  // Sample over 50 monitor refresh frames:
+	  double told, tnew;
+	  for (i=0; i<50; i++) {
+	    // Take beam position samples from current monitor refresh interval:
+	    maxline = -1;
+	    // We spin-wait until retrace and record our highest measurement:
+	    while ((bp=(int) CGDisplayBeamPosition(cgDisplayID)) >= maxline) maxline=bp;
+	    // We also take timestamps for "yet another way" to measure monitor refresh interval...
+	    PsychGetAdjustedPrecisionTimerSeconds(&tnew);
+	    if (i>0) {
+	      tsum+=(tnew - told);
+	      tcount+=1;
+	    }
+	    told=tnew;
+	    
+	    // Update global maximum with current sample:
+	    if (maxline > VBL_Endline) VBL_Endline = maxline;
 	  }
-	  told=tnew;
 	  
-	  // Update global maximum with current sample:
-	  if (maxline > VBL_Endline) VBL_Endline = maxline;
-        }
-
-        // Setup reasonable timestamp for time of last vbl in emulation mode:
-        if (PsychPrefStateGet_EmulateOldPTB()) (*windowRecord)->time_at_last_vbl = tnew;
-      }        
-      
-      // Switch to previous scheduling mode after timing tests:
-      PsychRealtimePriority(false);
-
-      // Is the VBL endline >= VBL startline, aka screen height?
-      if (VBL_Endline < (int) vbl_startline) {
-        // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
-        // as invalid so it doesn't get used anywhere:
-        sync_trouble = true;
-        ifi_beamestimate = 0;
-        if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
+	  // Setup reasonable timestamp for time of last vbl in emulation mode:
+	  if (PsychPrefStateGet_EmulateOldPTB()) (*windowRecord)->time_at_last_vbl = tnew;
+	}        
+	
+	// Switch to previous scheduling mode after timing tests:
+	PsychRealtimePriority(false);
+	
+	// Is the VBL endline >= VBL startline, aka screen height?
+	if (VBL_Endline < (int) vbl_startline) {
+	  // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
+	  // as invalid so it doesn't get used anywhere:
+	  sync_trouble = true;
+	  ifi_beamestimate = 0;
+	  if(!PsychPrefStateGet_SuppressAllWarnings())
+	    printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
+	}
+	else {
+	  // Compute ifi from beampos:
+	  ifi_beamestimate = tsum / tcount;
+	}
       }
       else {
-        // Compute ifi from beampos:
-        ifi_beamestimate = tsum / tcount;
+	// We don't have beamposition queries on this system:
+	ifi_beamestimate = 0;
+	// Setup fake-timestamp for time of last vbl in emulation mode:
+	if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
       }
-    }
-    else {
-      // We don't have beamposition queries on this system:
-      ifi_beamestimate = 0;
-      // Setup fake-timestamp for time of last vbl in emulation mode:
-      if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
-    }
 
-    // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
-    // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
-    // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
-	 // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
-	 // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
-    (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-    if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
+      // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
+      // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
+      // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
+      // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
+      // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
+      (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+      if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
         // Flip frame stereo or multiSampling enabled. Check for ifi_estimate = 2 * ifi_beamestimate:
         if ((ifi_beamestimate>0 && ifi_estimate >= 0.9 * 2 * ifi_beamestimate && ifi_estimate <= 1.1 * 2 * ifi_beamestimate) ||
 	    (ifi_beamestimate==0 && ifi_nominal>0 && ifi_estimate >= 0.9 * 2 * ifi_nominal && ifi_estimate <= 1.1 * 2 * ifi_nominal)
 	    ){
-            // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
-            // We "force" ifi_estimate = 0.5 * ifi_estimate, so ifi_estimate roughly equals to ifi_nominal and
-            // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
-            // video refresh interval...
-            ifi_estimate = ifi_estimate * 0.5f;
-            (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-			if(!PsychPrefStateGet_SuppressAllWarnings()){
-				if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
-					printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
-					printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
-					printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
-				}
-				if ((*windowRecord)->multiSample > 0) {
-					printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
-					printf("PTB-INFO: as the refresh interval of your monitor when using Anti-Aliasing at multiSample=%i on your setup.\n",
-							(*windowRecord)->multiSample);
-					printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
-				}
-			}
+	  // This seems to be a valid result: Flip-interval is roughly twice the monitor refresh interval.
+	  // We "force" ifi_estimate = 0.5 * ifi_estimate, so ifi_estimate roughly equals to ifi_nominal and
+	  // ifi_beamestimate, in order to simplify all timing checks below. We also store this value as
+	  // video refresh interval...
+	  ifi_estimate = ifi_estimate * 0.5f;
+	  (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+	  if(!PsychPrefStateGet_SuppressAllWarnings()){
+	    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
+	      printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+	      printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
+	      printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+	    }
+	    if ((*windowRecord)->multiSample > 0) {
+	      printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
+	      printf("PTB-INFO: as the refresh interval of your monitor when using Anti-Aliasing at multiSample=%i on your setup.\n",
+		     (*windowRecord)->multiSample);
+	      printf("PTB-INFO: Please keep this in mind, otherwise you'll be confused about your timing.\n");
+	    }
+	  }
         }
+      }
+    } // End of display calibration part I of synctests.
+    else {
+      // Complete skip of calibration and synctests: Mark all calibrations as invalid:
+      ifi_beamestimate = 0;
+    }
+
+    if(!PsychPrefStateGet_SuppressAllWarnings()){
+      printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
+      if (strstr(glGetString(GL_RENDERER), "GDI")) {
+	printf("PTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
+	printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
+	printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
+      }
+      
+      if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
+      printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
+      if (ifi_beamestimate>0) printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
+      printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
+	     ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
+      if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
+      printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
+      if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
+      if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
+      if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo for free fusion or dual-display desktop spanning enabled (2-in-1 stereo).\n");
+      if ((*windowRecord)->stereomode==kPsychFreeCrossFusionStereo) printf("PTB-INFO: Stereo via free cross-fusion enabled (2-in-1 stereo).\n");
+      if ((*windowRecord)->stereomode==kPsychAnaglyphRGStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Green stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychAnaglyphGRStereo) printf("PTB-INFO: Stereo display via Anaglyph Green-Red stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
+      if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr(glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
+	// User wants us to use client storage, but client storage is unavailable :(
+	printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
+	printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
+      }
+      if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
+      if (multiSample>0) {
+	if ((*windowRecord)->multiSample >= multiSample) {
+	  printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
+	}
+	if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
+	  printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
+		 (*windowRecord)->multiSample, multiSample);
+	}
+	if ((*windowRecord)->multiSample <= 0) {
+	  printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
+	}
+      }
+      else {
+	// Multisampling enabled by external code, e.g., operating system override on M$-Windows?
+	if ((*windowRecord)->multiSample > 0) {
+	  // Report this, so user is aware of possible issues reg. performance and stimulus properties:
+	  printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
+	  printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
+	  printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
+	  printf("PTB-WARNING: to disable this behaviour if you don't like it. I will try to forcefully disable it now,\n");                        
+	  printf("PTB-WARNING: but have no way to check if disabling it worked.\n");                        
+	}
+      }
     }
     
-    if(!PsychPrefStateGet_SuppressAllWarnings()){
-		printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
-                if (strstr(glGetString(GL_RENDERER), "GDI")) {
-                    printf("PTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
-                    printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
-                    printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
-                }
-                
-                if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
-		printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
-		if (ifi_beamestimate>0) printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
-		printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
-				  ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
-		if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
-		printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
-		if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
-		if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
-		if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
-		if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo for free fusion or dual-display desktop spanning enabled (2-in-1 stereo).\n");
-		if ((*windowRecord)->stereomode==kPsychFreeCrossFusionStereo) printf("PTB-INFO: Stereo via free cross-fusion enabled (2-in-1 stereo).\n");
-		if ((*windowRecord)->stereomode==kPsychAnaglyphRGStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Green stereo enabled.\n");
-		if ((*windowRecord)->stereomode==kPsychAnaglyphGRStereo) printf("PTB-INFO: Stereo display via Anaglyph Green-Red stereo enabled.\n");
-		if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
-		if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
-		if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr(glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
-		  // User wants us to use client storage, but client storage is unavailable :(
-		  printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
-		  printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
-		}
-		if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
-		if (multiSample>0) {
-		  if ((*windowRecord)->multiSample >= multiSample) {
-		    printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
-		  }
-		  if ((*windowRecord)->multiSample < multiSample && (*windowRecord)->multiSample>0) {
-		    printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled. Requested value of %i not supported by hardware.\n",
-			   (*windowRecord)->multiSample, multiSample);
-		  }
-		  if ((*windowRecord)->multiSample <= 0) {
-		    printf("PTB-WARNING: Could not enable Anti-Aliasing as requested. Your hardware does not support this feature!\n");
-		  }
-		}
-      else {
-                    // Multisampling enabled by external code, e.g., operating system override on M$-Windows?
-                    if ((*windowRecord)->multiSample > 0) {
-                        // Report this, so user is aware of possible issues reg. performance and stimulus properties:
-                        printf("PTB-WARNING: Anti-Aliasing with %i samples per pixel enabled, contrary to Psychtoolboxs request\n", (*windowRecord)->multiSample);                        
-                        printf("PTB-WARNING: for non Anti-Aliased drawing! This will reduce drawing performance and will affect\n");                        
-                        printf("PTB-WARNING: low-level properties of your visual stimuli! Check your display settings for a way\n");                        
-                        printf("PTB-WARNING: to disable this behaviour if you don't like it. I will try to forcefully disable it now,\n");                        
-                        printf("PTB-WARNING: but have no way to check if disabling it worked.\n");                        
-                    }
-      }
-	}
-
-	// Final master-setup for multisampling:
-	if (multiSample>0) {
-		// Try to enable multisampling in software:
-		while(glGetError()!=GL_NO_ERROR);
-    	glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
-    	while(glGetError()!=GL_NO_ERROR);
-		// Set sampling algorithm to the most high-quality one, even if it is
-		// computationally more expensive: This will only work if the NVidia
-		// GL_NV_multisample_filter_hint extension is supported...
-    	glHint(0x8534, GL_NICEST); // Set MULTISAMPLE_FILTER_HINT_NV (0x8534) to NICEST.
-    	while(glGetError()!=GL_NO_ERROR);
-	}
-	else {
-		// Try to disable multisampling in software. That is the best we can do here:
-		while(glGetError()!=GL_NO_ERROR);
-    	glDisable(0x809D);
-    	while(glGetError()!=GL_NO_ERROR);
-	}
-
+    // Final master-setup for multisampling:
+    if (multiSample>0) {
+      // Try to enable multisampling in software:
+      while(glGetError()!=GL_NO_ERROR);
+      glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
+      while(glGetError()!=GL_NO_ERROR);
+      // Set sampling algorithm to the most high-quality one, even if it is
+      // computationally more expensive: This will only work if the NVidia
+      // GL_NV_multisample_filter_hint extension is supported...
+      glHint(0x8534, GL_NICEST); // Set MULTISAMPLE_FILTER_HINT_NV (0x8534) to NICEST.
+      while(glGetError()!=GL_NO_ERROR);
+    }
+    else {
+      // Try to disable multisampling in software. That is the best we can do here:
+      while(glGetError()!=GL_NO_ERROR);
+      glDisable(0x809D);
+      while(glGetError()!=GL_NO_ERROR);
+    }
+    
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:
     PsychDetectTextureTarget(*windowRecord);
 
-    // Reliable estimate? These are our minimum requirements...
-    if (numSamples<50 || stddev>0.001) {
+    if (skip_synctests < 2) {
+      // Reliable estimate? These are our minimum requirements...
+      if (numSamples<50 || stddev>0.001) {
         sync_disaster = true;
-		if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
-    }
-    
-    // Check for mismatch between measured ifi from glFinish() VBLSync method and the value reported by the OS, if any:
-    // This would indicate that we have massive trouble syncing to the VBL!
-    if ((ifi_nominal > 0) && (ifi_estimate < 0.9 * ifi_nominal || ifi_estimate > 1.1 * ifi_nominal)) {
+	if(!PsychPrefStateGet_SuppressAllWarnings())
+	  printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
+      }
+      
+      // Check for mismatch between measured ifi from glFinish() VBLSync method and the value reported by the OS, if any:
+      // This would indicate that we have massive trouble syncing to the VBL!
+      if ((ifi_nominal > 0) && (ifi_estimate < 0.9 * ifi_nominal || ifi_estimate > 1.1 * ifi_nominal)) {
         if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Mismatch between measured monitor refresh interval and interval reported by operating system.\nThis indicates massive problems with VBL sync.\n");    
+	  printf("\nWARNING: Mismatch between measured monitor refresh interval and interval reported by operating system.\nThis indicates massive problems with VBL sync.\n");    
         sync_disaster = true;
-    }
+      }
     
-    // Another check for proper VBL syncing: We only accept monitor refresh intervals between 25 Hz and 250 Hz.
-    // Lower- / higher values probably indicate sync-trouble...
-    if (ifi_estimate < 0.004 || ifi_estimate > 0.040) {
+      // Another check for proper VBL syncing: We only accept monitor refresh intervals between 25 Hz and 250 Hz.
+      // Lower- / higher values probably indicate sync-trouble...
+      if (ifi_estimate < 0.004 || ifi_estimate > 0.040) {
         if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Measured monitor refresh interval indicates a display refresh of less than 25 Hz or more than 250 Hz?!?\nThis indicates massive problems with VBL sync.\n");    
+	  printf("\nWARNING: Measured monitor refresh interval indicates a display refresh of less than 25 Hz or more than 250 Hz?!?\nThis indicates massive problems with VBL sync.\n");    
         sync_disaster = true;        
-    }
+      }
+    } // End of synctests part II.
     
     // This is a "last resort" fallback: If user requests to *skip* all sync-tests and calibration routines
     // and we are unable to compute any ifi_estimate, we will fake one in order to be able to continue.
     // Either we use the nominal framerate provided by the operating system, or - if that's unavailable as well -
     // we assume a monitor refresh of 60 Hz, the typical value for flat-panels.
     if (ifi_estimate==0 && skip_synctests) {
-        ifi_estimate = (ifi_nominal>0) ? ifi_nominal : (1.0/60.0);
-        (*windowRecord)->nrIFISamples=1;
-        (*windowRecord)->IFIRunningSum=ifi_estimate;
-        (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-        if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
+      ifi_estimate = (ifi_nominal>0) ? ifi_nominal : (1.0/60.0);
+      (*windowRecord)->nrIFISamples=1;
+      (*windowRecord)->IFIRunningSum=ifi_estimate;
+      (*windowRecord)->VideoRefreshInterval = ifi_estimate;
+      if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	if (skip_synctests < 2) {
+	  printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
+	}
+	else {
+	  printf("PTB-INFO: All display tests and calibrations disabled. Assuming a refresh interval of %f Hz. Timing will be inaccurate!\n", 1.0/ifi_estimate);
+	}
+      }
     }
     
     if (sync_disaster) {
-        // We fail! Continuing would be too dangerous without a working VBL sync. We don't
-        // want to spoil somebodys study just because s(he) is relying on a non-working sync.
-		if(!PsychPrefStateGet_SuppressAllWarnings()){		
-			printf("\n\n");
-			printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
-			printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
-			printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
-			printf("This would have the following bad effects:\n");
-			printf("- Screen('Flip') not synchronizing to the VBL -> Flicker & tearing artifacts, messed up stimulus onset and offset timing.\n");
-			printf("- Wrong stimulus presentation timing and/or wrong synchronization of Matlab to the VBL.\n");
-			printf("- Inaccurate or completely wrong timestamps (VBLTimestamp, StimulusOnsetTime, FlipTimestamp) for stimulus timing reported by Flip or GetSecs.\n");
-			printf("- Inaccurate or completely wrong rasterbeam positions and monitor refresh intervals reported by Screen('Flip') and Screen('Framerate')\n");
-			printf("\n\n");
-			printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
-			printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
-			printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
-		}
-
-		// Abort right here if sync tests are enabled:
+      // We fail! Continuing would be too dangerous without a working VBL sync. We don't
+      // want to spoil somebodys study just because s(he) is relying on a non-working sync.
+      if(!PsychPrefStateGet_SuppressAllWarnings()){		
+	printf("\n\n");
+	printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
+	printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
+	printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
+	printf("This will seriously impair proper stimulus presentation and stimulus presentation timing!\n");
+	printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
+	printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
+	printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
+      }
+      
+      // Abort right here if sync tests are enabled:
       if (!skip_synctests) return(FALSE);
 
-		// Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
-		PsychVisualBell((*windowRecord), 1, 2);
+      // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
+      PsychVisualBell((*windowRecord), 1, 2);
     }
     
     // Ok, basic syncing to VBL via CGLFlushDrawable + glFinish seems to work and we have a valid
@@ -613,7 +633,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // than the one we are VBL syncing to. -> Trouble!
     if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
         if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
+	  printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
         sync_trouble = true;
     }
 
@@ -1527,6 +1547,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     
     // Reset viewport to full-screen default:
     glViewport(0, 0, screenwidth, screenheight);
+    glScissor(0, 0, screenwidth, screenheight);
     
     // Reset color buffer writemask to "All enabled":
     glColorMask(TRUE, TRUE, TRUE, TRUE);
@@ -1823,6 +1844,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                         glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, renderbuffer);
                         // Setup viewport and such for rendering:
                         glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                        glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
                         // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
                         glMatrixMode(GL_PROJECTION);
                         glLoadIdentity();
@@ -1861,6 +1883,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                         // framebuffer. Need to do it manually...
                         // Setup viewport and such for rendering:
                         glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+                        glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
                         glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);                    
                         // Blit texture zero to our rendertarget:
                         texid=windowRecord->textureNumber;
@@ -2024,6 +2047,7 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
 {
     // Set viewport to windowsize:
     glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
+    glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
     
     // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
     glMatrixMode(GL_PROJECTION);

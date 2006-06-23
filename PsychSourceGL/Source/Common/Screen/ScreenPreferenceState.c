@@ -43,7 +43,7 @@ static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
 static int								defaultTextStyle=0; // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 static Boolean                                                          textAlphaBlending=FALSE;
-static Boolean                                                          screenSkipSyncTests=FALSE;
+static int                                                              screenSkipSyncTests=0;
 //Debug preference state
 static Boolean                                                          TimeMakeTextureFlag=FALSE;
 static int								screenVisualDebugLevel=4;
@@ -149,14 +149,14 @@ void PsychPrefStateSet_TextAlphaBlending(Boolean enableFlag)
 }
 
 // Screen self-test and calibration preferences for syncing to VBL and such...  
-Boolean PsychPrefStateGet_SkipSyncTests(void)
+int PsychPrefStateGet_SkipSyncTests(void)
 {
     return(screenSkipSyncTests);
 }
 
-void PsychPrefStateSet_SkipSyncTests(Boolean setFlag)
+void PsychPrefStateSet_SkipSyncTests(int level)
 {
-    screenSkipSyncTests = setFlag;
+    screenSkipSyncTests = level;
 }
 
 // Screen debug level for output of visual feedback signals...  

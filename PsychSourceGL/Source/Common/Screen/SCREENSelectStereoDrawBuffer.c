@@ -100,10 +100,10 @@ PsychError SCREENSelectStereoDrawBuffer(void)
             PsychSwitchCompressedStereoDrawBuffer(windowRecord, bufferid);
         }
 
-        // "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in both dimensions...
+        // "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in horizontal dimension...
         if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
-            // Switch between drawing into left- and right-half of the single framebuffer:
-            screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
+	    // Switch between drawing into left- and right-half of the single framebuffer:
+	    screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
             screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
             
             // Store new assignment:
@@ -112,32 +112,34 @@ PsychError SCREENSelectStereoDrawBuffer(void)
             // Cross fusion instead of fusion requested? Switch left-right if so:
             if (windowRecord->stereomode==kPsychFreeCrossFusionStereo) bufferid = 1 - bufferid;
             
-				// Setup projection matrix for ortho-projection of full window height, but only
-				// half window width:
-			   glMatrixMode(GL_PROJECTION);
-    			glLoadIdentity();
-				gluOrtho2D(0, screenwidth/2, windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
-			   // Switch back to modelview matrix, but leave it unaltered:
-    			glMatrixMode(GL_MODELVIEW);
+	    // Setup projection matrix for ortho-projection of full window height, but only
+	    // half window width:
+	    glMatrixMode(GL_PROJECTION);
+	    glLoadIdentity();
+	    gluOrtho2D(0, screenwidth/2, windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
+	    // Switch back to modelview matrix, but leave it unaltered:
+	    glMatrixMode(GL_MODELVIEW);
 
-				// When using this stereo modes, we are most likely running on a
-				// dual display setup with desktop set to "horizontal spanning mode". In this mode,
-				// we get a virtual onscreen window that is at least twice as wide as its height and
-				// the left half of the window is displayed on the left monitor, the right half of the
-				// window is displayed on the right monitor. To make good use of the space, we only
-				// scale the viewport horizontally to half the window width, but keep it at full height:
-				// All Screen subfunctions that report the size of the onscreen window to Matlab/Octave/...
-				// will report it to be only half of its real width, so experiment code can adapt to it. 
-	         switch(bufferid) {
-   	             case 0:
-      	              // Place viewport in the left half of screen:
-            	        glViewport(0, 0, screenwidth/2, screenheight);
-            	    break;
-
-                	 case 1:
-                    	  // Place viewport in the right half of screen:
-                       glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
-                   break;
+	    // When using this stereo modes, we are most likely running on a
+	    // dual display setup with desktop set to "horizontal spanning mode". In this mode,
+	    // we get a virtual onscreen window that is at least twice as wide as its height and
+	    // the left half of the window is displayed on the left monitor, the right half of the
+	    // window is displayed on the right monitor. To make good use of the space, we only
+	    // scale the viewport horizontally to half the window width, but keep it at full height:
+	    // All Screen subfunctions that report the size of the onscreen window to Matlab/Octave/...
+	    // will report it to be only half of its real width, so experiment code can adapt to it. 
+	    switch(bufferid) {
+	      case 0:
+		// Place viewport in the left half of screen:
+		glViewport(0, 0, screenwidth/2, screenheight);
+		glScissor(0, 0, screenwidth/2, screenheight);
+	      break;
+	      
+	      case 1:
+	        // Place viewport in the right half of screen:
+		glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
+		glScissor(screenwidth/2, 0, screenwidth/2, screenheight);
+	      break;
             }
         }
 	

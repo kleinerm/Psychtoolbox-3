@@ -260,8 +260,8 @@ PsychError SCREENPreference(void)
 			if(PsychMatch(preferenceName, "SkipSyncTests")){
 			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_SkipSyncTests());
 			if(numInputArgs==2){
-				PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
-				PsychPrefStateSet_SkipSyncTests(tempFlag);
+				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+				PsychPrefStateSet_SkipSyncTests(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 

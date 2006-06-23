@@ -73,7 +73,7 @@ PsychError SCREENTextFont(void)
     //Get the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
     
-    //Save the old text size value and return it.
+    //Save the old text font value and return it.
     oldTextFontNumber=windowRecord->textAttributes.textFontNumber;
     PsychCopyOutDoubleArg(2, FALSE, (double)oldTextFontNumber);
     oldTextFontName=windowRecord->textAttributes.textFontName;
@@ -98,8 +98,8 @@ PsychError SCREENTextFont(void)
     return(PsychError_none);
 #else
     // Special case for M$-Windows:
-    if(doSetByNumber) printf("PTB-WARNING: Sorry, selecting font by number in Screen('TextFont') is not yet supported on Windows. Command ignored.\n");
-    if(doSetByName) {
+    if(doSetByNumber) printf("PTB-WARNING: Sorry, selecting font by number in Screen('TextFont') is not yet supported on Windows or Linux. Command ignored.\n");
+    if(doSetByName && (strncmp(windowRecord->textAttributes.textFontName, inputTextFontName, 255 )!=0)) {
       strncpy(windowRecord->textAttributes.textFontName, inputTextFontName, 255);
       windowRecord->textAttributes.textFontNumber= 0;
       // Set the rebuild flag:

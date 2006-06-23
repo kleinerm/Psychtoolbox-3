@@ -61,8 +61,8 @@ Boolean PsychPrefStateGet_TextAlphaBlending(void);
 void PsychPrefStateSet_TextAlphaBlending(Boolean enableFlag);
 
 // Screen self-test and calibration preferences.  
-Boolean PsychPrefStateGet_SkipSyncTests(void);
-void PsychPrefStateSet_SkipSyncTests(Boolean setFlag);
+int PsychPrefStateGet_SkipSyncTests(void);
+void PsychPrefStateSet_SkipSyncTests(int level);
 
 int PsychPrefStateGet_VisualDebugLevel(void);
 void PsychPrefStateSet_VisualDebugLevel(int level);

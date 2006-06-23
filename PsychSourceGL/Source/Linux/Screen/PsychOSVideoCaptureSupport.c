@@ -1313,6 +1313,8 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   dc1394bool_t present;
   unsigned int minval, maxval, intval, oldintval;
   unsigned int lowadr, hiadr;
+  octlet_t triggercounteraddress;
+  int triggercount;
 
   double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
   boolean assigned = false;
@@ -1371,12 +1373,12 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     printf("Hi = %i Lo = %i  == ", hiadr, lowadr);
 
     // Step 3: Assemble final address of trigger counter reg.
-    octlet_t triggercounteraddress = (octlet_t) (((octlet_t) hiadr << 32) | (octlet_t) lowadr);
+    triggercounteraddress = (octlet_t) (((octlet_t) hiadr << 32) | (octlet_t) lowadr);
 
     // Step 4: Read counter:
     lowadr = 0xDEADBEEF;
     if(GetCameraROMValue(capdev->camera, triggercounteraddress, &lowadr)!=DC1394_SUCCESS) return(-11);
-    int triggercount = (int)(lowadr >> 16);
+    triggercount = (int)(lowadr >> 16);
     printf("%p\n", (void*) lowadr);
     return((int) lowadr);
   }
