@@ -362,15 +362,8 @@ end
 if err
     fprintf('Sorry, CHECKOUT failed with error code %d: \n',err);
     fprintf('%s\n',result);
-    if err == 1
-        fprintf('Checkout failed because the Subversion client executable svn.exe could not be found.\n');
-        fprintf('Either you have to modify your system path, so Windows can find it, or (more likely)\n');
-        fprintf('you did not install the Subversion client for Windows. Please read "help DownloadPsychtoolbox"\n');
-        fprintf('for instructions on how to get and install the Subversion client for Windows.\n');
-    else
-        fprintf('One reason for failure could be temporary network- or server problems, so maybe you want to retry in a\n');
-        fprintf('couple of minutes...\n');
-    end
+    fprintf('One reason for failure could be temporary network- or server problems, so maybe you want to retry in a\n');
+    fprintf('couple of minutes...\n');
     error('CHECKOUT failed.');
 end
 fprintf('Download Success!\n\n\n');
@@ -420,6 +413,13 @@ fprintf('Useful websites with information about Psychtoolbox are:\n');
 fprintf('http://www.psychtoolbox.org  and http://en.wikibooks.org/wiki/Matlab:Psychtoolbox\n');
 fprintf('An archive of official announcements regarding Psychtoolbox is available under:\n');
 fprintf('http://lists.berlios.de/pipermail/osxptb-announce/ \n');
+
+% Does a post-install routine exist? If so, we execute it, now that PTB is basically ready.
+if exist('PsychtoolboxPostInstallRoutine.m')
+   % We pass the information about downloaded flavor and that this is a download (=0) to the
+   % post-install routine...
+   PsychtoolboxPostInstallRoutine(0, flavor);
+end;
 
 % Puuh, we are done :)
 return

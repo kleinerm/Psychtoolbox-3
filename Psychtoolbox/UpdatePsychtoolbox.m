@@ -138,4 +138,11 @@ end
 
 fprintf('Fully done. Your new Psychtoolbox folder is ready to use. Enjoy!\n\n')
 
+% Does a post-install routine exist? If so, we execute it, now that PTB is basically ready.
+if exist('PsychtoolboxPostInstallRoutine.m')
+   % We pass the information about downloaded flavor and that this is a download (=0) to the
+   % post-install routine...
+   PsychtoolboxPostInstallRoutine(1);
+end;
+
 return

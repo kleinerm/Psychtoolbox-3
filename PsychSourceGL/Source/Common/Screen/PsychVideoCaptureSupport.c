@@ -795,9 +795,13 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 {
   PsychRectType roirect;
 
+  if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
+      PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
+  }
+
   // Return current framerate:
   if (strcmp(pname, "GetFramerate")==0) {
-    PsychCopyOutDoubleArg(1, FALSE, capdev->fps);
+    PsychCopyOutDoubleArg(1, FALSE, vidcapRecordBANK[capturehandle].fps);
     return(0);
   }
 
@@ -805,8 +809,9 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   // PsychOpenCaptureDevice(). This is a read-only parameter, as the ROI can
   // only be set during Screen('OpenVideoCapture').
   if (strcmp(pname, "GetROI")==0) {
-    PsychMakeRect(roirect, capdev->roirect[left], capdev->roirect[top], capdev->roirect[right], capdev->roirect[bottom]); 
-    PsychCopyOutRectArg(1, FALSE, rect);
+    PsychMakeRect(roirect, vidcapRecordBANK[capturehandle].roirect.left, vidcapRecordBANK[capturehandle].roirect.top,
+                  vidcapRecordBANK[capturehandle].roirect.right, vidcapRecordBANK[capturehandle].roirect.bottom); 
+    PsychCopyOutRectArg(1, FALSE, roirect);
     return(0);
   }
 
