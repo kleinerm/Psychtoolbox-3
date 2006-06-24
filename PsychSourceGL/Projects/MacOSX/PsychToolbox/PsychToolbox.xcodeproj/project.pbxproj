@@ -1559,6 +1559,9 @@
 		2FEBAA650989B91C00F4165F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AF09572831002687D9 /* RegisterProject.c */; };
 		2FEBAA660989B91D00F4165F /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		2FEBAA670989B91E00F4165F /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
+		8302E2030A1928E900AE269C /* Screen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2000A1928E900AE269C /* Screen.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
+		8302E2170A1928E900AE269C /* GetSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E1FE0A1928E900AE269C /* GetSecs.cc */; };
+		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
 		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
 		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
 		832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */ = {isa = PBXBuildFile; fileRef = 832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */; };
@@ -1628,7 +1631,7 @@
 		835CD25E0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD25F0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD2600A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
-		835CD2610A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
+		835CD2610A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		835CD2620A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD2630A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD2640A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -1639,7 +1642,7 @@
 		835CD2690A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD26A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD26B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
-		835CD26C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
+		835CD26C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		835CD26D0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		8365A77F09991D69006FF0F4 /* SCREENOpenVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */; };
 		8365A78109991DAB006FF0F4 /* SCREENCloseVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */; };
@@ -1664,6 +1667,7 @@
 		83C94B0F092825020062DB0A /* SCREENCloseMovie.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B0E092825020062DB0A /* SCREENCloseMovie.c */; };
 		83C94B11092825770062DB0A /* SCREENglMatrixFunctionWrappers.c in Sources */ = {isa = PBXBuildFile; fileRef = 83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */; };
 		83C94B38092826FF0062DB0A /* QuickTime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83C94B14092826FE0062DB0A /* QuickTime.framework */; };
+		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		CF29B1CE080333DC00723921 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
@@ -2578,6 +2582,14 @@
 			outputFiles = (
 			);
 		};
+		8336BB790A1ED67400AABE10 /* PBXBuildRule */ = {
+			isa = PBXBuildRule;
+			compilerSpec = com.apple.compilers.gcc.3_3;
+			fileType = sourcecode.cpp;
+			isEditable = 1;
+			outputFiles = (
+			);
+		};
 /* End PBXBuildRule section */
 
 /* Begin PBXBuildStyle section */
@@ -2873,6 +2885,10 @@
 		2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOWarriorLib.c; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.c"; sourceTree = SOURCE_ROOT; };
 		2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = IOWarriorLib.h; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.h"; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
+		8302E1FE0A1928E900AE269C /* GetSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = GetSecs.cc; path = ../../../Source/Octave/GetSecs.cc; sourceTree = SOURCE_ROOT; };
+		8302E1FF0A1928E900AE269C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../Source/Octave/octavemex.h; sourceTree = SOURCE_ROOT; };
+		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
+		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
 		830572260984860000EB51EE /* SCREENWaitBlanking.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENWaitBlanking.c; path = ../../../Source/Common/Screen/SCREENWaitBlanking.c; sourceTree = SOURCE_ROOT; };
 		832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillArc.c; path = ../../../Source/Common/Screen/SCREENFillArc.c; sourceTree = SOURCE_ROOT; };
 		832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PsychSound.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2928,6 +2944,7 @@
 		83C94B0E092825020062DB0A /* SCREENCloseMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseMovie.c; path = ../../../Source/Common/Screen/SCREENCloseMovie.c; sourceTree = SOURCE_ROOT; };
 		83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENglMatrixFunctionWrappers.c; path = ../../../Source/Common/Screen/SCREENglMatrixFunctionWrappers.c; sourceTree = SOURCE_ROOT; };
 		83C94B14092826FE0062DB0A /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/QuickTime.framework; sourceTree = "<absolute>"; };
+		83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTextureFromMemPointer.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTextureFromMemPointer.c; sourceTree = SOURCE_ROOT; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
 		CF29B1FD080333DC00723921 /* MachAbsoluteTimeClockFrequency.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CF4FD40707DC1DE1008FEFD3 /* References.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = References.h; path = ../../../Notes/References.h; sourceTree = SOURCE_ROOT; };
@@ -4284,6 +4301,7 @@
 				F50D529703D4FA79012326C4 /* SCREENSetMouseHelper.c */,
 				83C94B04092824530062DB0A /* SCREENSetMovieTimeIndex.c */,
 				8365A78A09992279006FF0F4 /* SCREENSetOpenGLTexture.c */,
+				83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */,
 				83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */,
 				F50D529203D4D6F9012326C4 /* SCREENShowCursorHelper.c */,
 				8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */,
@@ -4359,6 +4377,18 @@
 			);
 			name = FontInfo;
 			sourceTree = "<group>";
+		};
+		8302E1FD0A1928E900AE269C /* Octave */ = {
+			isa = PBXGroup;
+			children = (
+				8302E1FE0A1928E900AE269C /* GetSecs.cc */,
+				8302E1FF0A1928E900AE269C /* octavemex.h */,
+				8302E2000A1928E900AE269C /* Screen.cc */,
+				8302E2010A1928E900AE269C /* WaitSecs.cc */,
+			);
+			name = Octave;
+			path = ../../../Source/Octave;
+			sourceTree = SOURCE_ROOT;
 		};
 		832CE63E094CE99F00578C09 /* PsychSound */ = {
 			isa = PBXGroup;
@@ -4446,6 +4476,7 @@
 		F559032A0385BAB5017A7028 /* PsychToolbox Core */ = {
 			isa = PBXGroup;
 			children = (
+				8302E1FD0A1928E900AE269C /* Octave */,
 				2FACAD530766D91600A159D3 /* Platform Neutral */,
 				F55903300385BBD1017A7028 /* Platform Specific */,
 			);
@@ -7191,6 +7222,7 @@
 				2FEBA6D00988630A00F4165F /* ShellScript */,
 			);
 			buildRules = (
+				8336BB790A1ED67400AABE10 /* PBXBuildRule */,
 				2FEBA6D10988630A00F4165F /* PBXBuildRule */,
 				2FEBA6D20988630A00F4165F /* PBXBuildRule */,
 			);
@@ -9698,6 +9730,7 @@
 				2FEBA8610989496B00F4165F /* PsychVersioning.c in Sources */,
 				2FEBA8620989496C00F4165F /* RegisterProject.c in Sources */,
 				835CD2610A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				8302E2170A1928E900AE269C /* GetSecs.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10052,6 +10085,8 @@
 				83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */,
 				83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */,
 				835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				8302E2030A1928E900AE269C /* Screen.cc in Sources */,
+				83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10131,6 +10166,7 @@
 				2FEBAA300989B80600F4165F /* RegisterProject.c in Sources */,
 				2FEBAA310989B80700F4165F /* WaitSecs.c in Sources */,
 				835CD26C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -15806,6 +15842,2451 @@
 			};
 			name = Default;
 		};
+		8302E1BA0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = CocoaEventBridge;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1BB0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = DoNothing;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1BC0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = FontInfo;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1BD0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Gestalt;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1BE0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetBusFrequencyMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1BF0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetBusTicks;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C00A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetPID;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C10A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecs;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C20A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecsMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C30A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecsTick;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C40A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetTicks;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C50A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = IOPort;
+				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C60A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachGetPriorityMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C70A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachPriority;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C80A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachSetPriorityMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1C90A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachAbsoluteTimeClockFrequency;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CA0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					"$(SRCROOT)",
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychHID;
+				PSYCHTOOLBOX_SUBFOLDER = PsychHardware;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CB0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					"$(SRCROOT)/../../../Source/Common/PsychSound/StaticOpenALLib",
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychSound;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CC0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Rush;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CD0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = /usr/local/bin/octave;
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					PTBOCTAVE,
+					HAVE_OCTAVE_21,
+				);
+				HEADER_SEARCH_PATHS = (
+					"/usr/local/include/octave-2.1.73/octave",
+					/usr/local/include/,
+					"/usr/local/include/octave-2.1.73",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"/usr/local/lib/octave-2.1.73",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-loctinterp",
+					"-lreadline",
+					"-lcruft",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lstdc++",
+					"-loctave",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Screen;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CE0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = StoreBit;
+				PSYCHTOOLBOX_SUBFOLDER = PsychDemos;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1CF0A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = SysBeep;
+				PSYCHTOOLBOX_SUBFOLDER = "PsychObsolete ";
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D00A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = TestPriorityMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D10A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = WaitSecs;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D20A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = WaitSecsMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D30A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Foo;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D40A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GenericMex;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D50A19234800AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-CocoaEventBridge.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = CocoaEventBridge.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D60A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-DoNothing.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = DoNothing.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D70A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-FontInfo.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = FontInfo.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D80A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-Gestalt.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Gestalt.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1D90A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetBusFrequencyMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetBusFrequencyMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DA0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetBusTicks.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetBusTicks.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DB0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetPID.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetPID.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DC0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetSecs.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecs.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DD0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetSecsMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecsMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DE0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetSecsTick.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetSecsTick.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1DF0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-GetTicks.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = GetTicks.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E00A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-IOPort.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = IOPort.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E10A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-MachGetPriorityMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachGetPriorityMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E20A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-MachPriority.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachPriority.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E30A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-MachSetPriorityMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachSetPriorityMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E40A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-MachAbsoluteTimeClockFrequency.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = MachAbsoluteTimeClockFrequency.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E50A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_USE_GCC3_PFE_SUPPORT = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-PsychHID.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					"$(SRCROOT)",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychHID.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychHardware;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E60A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "/Users/kleinerm/projects/Psychtoolbox/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-PsychSound.plist";
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					"$(SRCROOT)/../../../Source/Common/PsychSound/StaticOpenALLib",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychSound.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E70A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-Rush.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Rush.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychPriority;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E80A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(FRAMEWORK_SEARCH_PATHS)",
+					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
+				);
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_USE_GCC3_PFE_SUPPORT = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-Screen.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Screen.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1E90A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-StoreBit.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = StoreBit.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1EA0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-SysBeep.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = SysBeep.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1EB0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-TestPriorityMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = TestPriorityMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1EC0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-WaitSecs.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = WaitSecs.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1ED0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "Info-WaitSecsMex.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = WaitSecsMex.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychObsolete;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1EE0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				FRAMEWORK_SEARCH_PATHS = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INFOPLIST_FILE = "/SourceCode/osxptb/trunk/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-Eyelink.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OPTIMIZATION_CFLAGS = "-O0";
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-bundle",
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = Eyelink.mexmac;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SECTORDER_FLAGS = "";
+				WARNING_CFLAGS = "-Wno-long-double";
+				WRAPPER_EXTENSION = app;
+				ZERO_LINK = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		8302E1EF0A19234900AE269C /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_INPUT_FILETYPE = sourcecode.c.c;
+				MATLAB_DIR_NAME = MATLAB704;
+			};
+			name = "Development-Octavebuild";
+		};
 		832CE628094CE8C300578C09 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -15966,6 +18447,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				0E92E893095726FE002687D9 /* Development */,
+				8302E1EE0A19234900AE269C /* Development-Octavebuild */,
 				0E92E894095726FE002687D9 /* Deployment */,
 				0E92E895095726FE002687D9 /* Default */,
 			);
@@ -15976,6 +18458,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F543359090431DC0051D6CC /* Development */,
+				8302E1D60A19234900AE269C /* Development-Octavebuild */,
 				2F54335A090431DC0051D6CC /* Deployment */,
 				2F54335B090431DC0051D6CC /* Default */,
 			);
@@ -15986,6 +18469,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E28408CE718C00A5CF85 /* Development */,
+				8302E1D70A19234900AE269C /* Development-Octavebuild */,
 				2F57E28508CE718C00A5CF85 /* Deployment */,
 				2F57E28608CE718C00A5CF85 /* Default */,
 			);
@@ -15996,6 +18480,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E28808CE718C00A5CF85 /* Development */,
+				8302E1D80A19234900AE269C /* Development-Octavebuild */,
 				2F57E28908CE718C00A5CF85 /* Deployment */,
 				2F57E28A08CE718C00A5CF85 /* Default */,
 			);
@@ -16006,6 +18491,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E28C08CE718C00A5CF85 /* Development */,
+				8302E1D90A19234900AE269C /* Development-Octavebuild */,
 				2F57E28D08CE718C00A5CF85 /* Deployment */,
 				2F57E28E08CE718C00A5CF85 /* Default */,
 			);
@@ -16016,6 +18502,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E29008CE718C00A5CF85 /* Development */,
+				8302E1DA0A19234900AE269C /* Development-Octavebuild */,
 				2F57E29108CE718C00A5CF85 /* Deployment */,
 				2F57E29208CE718C00A5CF85 /* Default */,
 			);
@@ -16026,6 +18513,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E29408CE718C00A5CF85 /* Development */,
+				8302E1D50A19234800AE269C /* Development-Octavebuild */,
 				2F57E29508CE718C00A5CF85 /* Deployment */,
 				2F57E29608CE718C00A5CF85 /* Default */,
 			);
@@ -16036,6 +18524,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E29808CE718C00A5CF85 /* Development */,
+				8302E1DB0A19234900AE269C /* Development-Octavebuild */,
 				2F57E29908CE718C00A5CF85 /* Deployment */,
 				2F57E29A08CE718C00A5CF85 /* Default */,
 			);
@@ -16046,6 +18535,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E29C08CE718C00A5CF85 /* Development */,
+				8302E1DC0A19234900AE269C /* Development-Octavebuild */,
 				2F57E29D08CE718C00A5CF85 /* Deployment */,
 				2F57E29E08CE718C00A5CF85 /* Default */,
 			);
@@ -16056,6 +18546,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2A008CE718C00A5CF85 /* Development */,
+				8302E1DD0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2A108CE718C00A5CF85 /* Deployment */,
 				2F57E2A208CE718C00A5CF85 /* Default */,
 			);
@@ -16066,6 +18557,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2A408CE718C00A5CF85 /* Development */,
+				8302E1DE0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2A508CE718C00A5CF85 /* Deployment */,
 				2F57E2A608CE718C00A5CF85 /* Default */,
 			);
@@ -16076,6 +18568,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2A808CE718C00A5CF85 /* Development */,
+				8302E1DF0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2A908CE718C00A5CF85 /* Deployment */,
 				2F57E2AA08CE718C00A5CF85 /* Default */,
 			);
@@ -16086,6 +18579,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2AC08CE718C00A5CF85 /* Development */,
+				8302E1E00A19234900AE269C /* Development-Octavebuild */,
 				2F57E2AD08CE718C00A5CF85 /* Deployment */,
 				2F57E2AE08CE718C00A5CF85 /* Default */,
 			);
@@ -16096,6 +18590,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2B008CE718C00A5CF85 /* Development */,
+				8302E1E10A19234900AE269C /* Development-Octavebuild */,
 				2F57E2B108CE718C00A5CF85 /* Deployment */,
 				2F57E2B208CE718C00A5CF85 /* Default */,
 			);
@@ -16106,6 +18601,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2B408CE718C00A5CF85 /* Development */,
+				8302E1E20A19234900AE269C /* Development-Octavebuild */,
 				2F57E2B508CE718C00A5CF85 /* Deployment */,
 				2F57E2B608CE718C00A5CF85 /* Default */,
 			);
@@ -16116,6 +18612,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2B808CE718C00A5CF85 /* Development */,
+				8302E1E30A19234900AE269C /* Development-Octavebuild */,
 				2F57E2B908CE718C00A5CF85 /* Deployment */,
 				2F57E2BA08CE718C00A5CF85 /* Default */,
 			);
@@ -16126,6 +18623,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2BC08CE718C00A5CF85 /* Development */,
+				8302E1E40A19234900AE269C /* Development-Octavebuild */,
 				2F57E2BD08CE718C00A5CF85 /* Deployment */,
 				2F57E2BE08CE718C00A5CF85 /* Default */,
 			);
@@ -16136,6 +18634,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2C008CE718C00A5CF85 /* Development */,
+				8302E1E50A19234900AE269C /* Development-Octavebuild */,
 				2F57E2C108CE718C00A5CF85 /* Deployment */,
 				2F57E2C208CE718C00A5CF85 /* Default */,
 			);
@@ -16146,6 +18645,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2C408CE718C00A5CF85 /* Development */,
+				8302E1E70A19234900AE269C /* Development-Octavebuild */,
 				2F57E2C508CE718C00A5CF85 /* Deployment */,
 				2F57E2C608CE718C00A5CF85 /* Default */,
 			);
@@ -16156,6 +18656,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2C808CE718C00A5CF85 /* Development */,
+				8302E1E80A19234900AE269C /* Development-Octavebuild */,
 				2F57E2C908CE718C00A5CF85 /* Deployment */,
 				2F57E2CA08CE718C00A5CF85 /* Default */,
 			);
@@ -16166,6 +18667,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2CC08CE718C00A5CF85 /* Development */,
+				8302E1EA0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2CD08CE718C00A5CF85 /* Deployment */,
 				2F57E2CE08CE718C00A5CF85 /* Default */,
 			);
@@ -16176,6 +18678,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2D008CE718C00A5CF85 /* Development */,
+				8302E1EB0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2D108CE718C00A5CF85 /* Deployment */,
 				2F57E2D208CE718C00A5CF85 /* Default */,
 			);
@@ -16186,6 +18689,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2D408CE718C00A5CF85 /* Development */,
+				8302E1EC0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2D508CE718C00A5CF85 /* Deployment */,
 				2F57E2D608CE718C00A5CF85 /* Default */,
 			);
@@ -16196,6 +18700,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2D808CE718C00A5CF85 /* Development */,
+				8302E1ED0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2D908CE718C00A5CF85 /* Deployment */,
 				2F57E2DA08CE718C00A5CF85 /* Default */,
 			);
@@ -16206,6 +18711,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E2DC08CE718C00A5CF85 /* Development */,
+				8302E1EF0A19234900AE269C /* Development-Octavebuild */,
 				2F57E2DD08CE718C00A5CF85 /* Deployment */,
 				2F57E2DE08CE718C00A5CF85 /* Default */,
 			);
@@ -16216,6 +18722,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2F57E38008CEB64200A5CF85 /* Development */,
+				8302E1E90A19234900AE269C /* Development-Octavebuild */,
 				2F57E38108CEB64200A5CF85 /* Deployment */,
 				2F57E38208CEB64200A5CF85 /* Default */,
 			);
@@ -16226,6 +18733,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA43609885B4700F4165F /* Development */,
+				8302E1BB0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA43709885B4700F4165F /* Deployment */,
 				2FEBA43809885B4700F4165F /* Default */,
 			);
@@ -16236,6 +18744,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA47D0988613400F4165F /* Development */,
+				8302E1BC0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA47E0988613400F4165F /* Deployment */,
 				2FEBA47F0988613400F4165F /* Default */,
 			);
@@ -16246,6 +18755,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA49F098861FB00F4165F /* Development */,
+				8302E1BA0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA4A0098861FB00F4165F /* Deployment */,
 				2FEBA4A1098861FB00F4165F /* Default */,
 			);
@@ -16256,6 +18766,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA4C00988620100F4165F /* Development */,
+				8302E1BD0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA4C10988620100F4165F /* Deployment */,
 				2FEBA4C20988620100F4165F /* Default */,
 			);
@@ -16266,6 +18777,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA4E10988620800F4165F /* Development */,
+				8302E1BE0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA4E20988620800F4165F /* Deployment */,
 				2FEBA4E30988620800F4165F /* Default */,
 			);
@@ -16276,6 +18788,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5020988621900F4165F /* Development */,
+				8302E1BF0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5030988621900F4165F /* Deployment */,
 				2FEBA5040988621900F4165F /* Default */,
 			);
@@ -16286,6 +18799,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5230988622700F4165F /* Development */,
+				8302E1C00A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5240988622700F4165F /* Deployment */,
 				2FEBA5250988622700F4165F /* Default */,
 			);
@@ -16296,6 +18810,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5440988623200F4165F /* Development */,
+				8302E1C10A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5450988623200F4165F /* Deployment */,
 				2FEBA5460988623200F4165F /* Default */,
 			);
@@ -16306,6 +18821,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5650988623C00F4165F /* Development */,
+				8302E1C20A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5660988623C00F4165F /* Deployment */,
 				2FEBA5670988623C00F4165F /* Default */,
 			);
@@ -16316,6 +18832,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5860988624800F4165F /* Development */,
+				8302E1C30A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5870988624800F4165F /* Deployment */,
 				2FEBA5880988624800F4165F /* Default */,
 			);
@@ -16326,6 +18843,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5A70988625400F4165F /* Development */,
+				8302E1C40A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5A80988625400F4165F /* Deployment */,
 				2FEBA5A90988625400F4165F /* Default */,
 			);
@@ -16336,6 +18854,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5C80988626300F4165F /* Development */,
+				8302E1C50A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5C90988626300F4165F /* Deployment */,
 				2FEBA5CA0988626300F4165F /* Default */,
 			);
@@ -16346,6 +18865,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA5E90988627100F4165F /* Development */,
+				8302E1C60A19234800AE269C /* Development-Octavebuild */,
 				2FEBA5EA0988627100F4165F /* Deployment */,
 				2FEBA5EB0988627100F4165F /* Default */,
 			);
@@ -16356,6 +18876,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA60A0988627E00F4165F /* Development */,
+				8302E1C70A19234800AE269C /* Development-Octavebuild */,
 				2FEBA60B0988627E00F4165F /* Deployment */,
 				2FEBA60C0988627E00F4165F /* Default */,
 			);
@@ -16366,6 +18887,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA62F098862C400F4165F /* Development */,
+				8302E1C80A19234800AE269C /* Development-Octavebuild */,
 				2FEBA630098862C400F4165F /* Deployment */,
 				2FEBA631098862C400F4165F /* Default */,
 			);
@@ -16376,6 +18898,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA650098862CE00F4165F /* Development */,
+				8302E1C90A19234800AE269C /* Development-Octavebuild */,
 				2FEBA651098862CE00F4165F /* Deployment */,
 				2FEBA652098862CE00F4165F /* Default */,
 			);
@@ -16386,6 +18909,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA671098862D800F4165F /* Development */,
+				8302E1CA0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA672098862D800F4165F /* Deployment */,
 				2FEBA673098862D800F4165F /* Default */,
 			);
@@ -16396,6 +18920,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA692098862E300F4165F /* Development */,
+				8302E1CB0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA693098862E300F4165F /* Deployment */,
 				2FEBA694098862E300F4165F /* Default */,
 			);
@@ -16406,6 +18931,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA6B3098862FE00F4165F /* Development */,
+				8302E1CC0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA6B4098862FE00F4165F /* Deployment */,
 				2FEBA6B5098862FE00F4165F /* Default */,
 			);
@@ -16416,6 +18942,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA6D40988630A00F4165F /* Development */,
+				8302E1CD0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA6D50988630A00F4165F /* Deployment */,
 				2FEBA6D60988630A00F4165F /* Default */,
 			);
@@ -16426,6 +18953,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA6F50988631600F4165F /* Development */,
+				8302E1CE0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA6F60988631600F4165F /* Deployment */,
 				2FEBA6F70988631600F4165F /* Default */,
 			);
@@ -16436,6 +18964,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA7160988632100F4165F /* Development */,
+				8302E1CF0A19234800AE269C /* Development-Octavebuild */,
 				2FEBA7170988632100F4165F /* Deployment */,
 				2FEBA7180988632100F4165F /* Default */,
 			);
@@ -16446,6 +18975,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA7370988632D00F4165F /* Development */,
+				8302E1D00A19234800AE269C /* Development-Octavebuild */,
 				2FEBA7380988632D00F4165F /* Deployment */,
 				2FEBA7390988632D00F4165F /* Default */,
 			);
@@ -16456,6 +18986,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA7580988633B00F4165F /* Development */,
+				8302E1D10A19234800AE269C /* Development-Octavebuild */,
 				2FEBA7590988633B00F4165F /* Deployment */,
 				2FEBA75A0988633B00F4165F /* Default */,
 			);
@@ -16466,6 +18997,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA7790988634800F4165F /* Development */,
+				8302E1D20A19234800AE269C /* Development-Octavebuild */,
 				2FEBA77A0988634800F4165F /* Deployment */,
 				2FEBA77B0988634800F4165F /* Default */,
 			);
@@ -16476,6 +19008,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA79A0988635400F4165F /* Development */,
+				8302E1D30A19234800AE269C /* Development-Octavebuild */,
 				2FEBA79B0988635400F4165F /* Deployment */,
 				2FEBA79C0988635400F4165F /* Default */,
 			);
@@ -16486,6 +19019,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				2FEBA7BB0988641C00F4165F /* Development */,
+				8302E1D40A19234800AE269C /* Development-Octavebuild */,
 				2FEBA7BC0988641C00F4165F /* Deployment */,
 				2FEBA7BD0988641C00F4165F /* Default */,
 			);
@@ -16496,6 +19030,7 @@
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				832CE628094CE8C300578C09 /* Development */,
+				8302E1E60A19234900AE269C /* Development-Octavebuild */,
 				832CE629094CE8C300578C09 /* Deployment */,
 				832CE62A094CE8C300578C09 /* Default */,
 			);
