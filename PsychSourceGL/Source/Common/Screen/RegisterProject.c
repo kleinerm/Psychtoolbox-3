@@ -202,6 +202,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("SetVideoCaptureParameter", &SCREENSetVideoCaptureParameter));
 	PsychErrorExit(PsychRegister("LoadCLUT", &SCREENLoadCLUT));
         PsychErrorExit(PsychRegister("DisplaySize", &SCREENDisplaySize));
+	PsychErrorExit(PsychRegister("SetOpenGLTextureFromMemPointer", &SCREENSetOpenGLTextureFromMemPointer));
+
  	//Experiments
 
 

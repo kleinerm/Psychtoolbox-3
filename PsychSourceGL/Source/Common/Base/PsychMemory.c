@@ -25,6 +25,23 @@
 
 #include "Psych.h"
 
+// Convert a double value (which encodes a memory address) into a ptr:
+void*  PsychDoubleToPtr(volatile double dptr)
+{
+  volatile psych_uint64* iptr = (psych_uint64*) &dptr;
+  volatile psych_uint64 ival = *iptr;
+  return((void*) ival);
+}
+
+// Convert a memory address pointer into a double value:
+double PsychPtrToDouble(void* ptr)
+{
+  volatile psych_uint64 ival = (psych_uint64) ptr;
+  volatile double* dptr = (double*) &ival;
+  volatile double outval = *dptr;
+  return(outval);
+}
+
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
 
 // If running on Matlab, we use Matlab's memory manager...

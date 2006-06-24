@@ -173,6 +173,7 @@ PsychError      SCREENBeginOpenGL(void);
 PsychError      SCREENEndOpenGL(void);
 PsychError      SCREENLoadCLUT(void);
 PsychError      SCREENDisplaySize(void);
+PsychError      SCREENSetOpenGLTextureFromMemPointer(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

@@ -27,6 +27,12 @@
 #ifndef PSYCH_IS_INCLUDED_PsychMemory
 #define PSYCH_IS_INCLUDED_PsychMemory
 
+// Convert a double value (which encodes a memory address) into a ptr:
+void*  PsychDoubleToPtr(double dptr);
+
+// Convert a memory address pointer into a double value:
+double PsychPtrToDouble(void* ptr);
+
 //allocate memory which is valid between until control returns to
 //the calling module
 void *PsychCallocTemp(unsigned long n, unsigned long size);
