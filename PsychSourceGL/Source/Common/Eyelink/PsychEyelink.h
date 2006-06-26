@@ -34,7 +34,6 @@
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
 
-extern char		gstrCommand[32];
 extern int		giSystemInitialized;
 
 
@@ -58,7 +57,6 @@ PsychError	EyelinkCommand(void);
 PsychError	EyelinkCurrentMode(void);
 PsychError	EyelinkImageModeDisplay(void);
 PsychError	EyelinkInitialize(void);
-PsychError	EyelinkInitWindow(void);
 PsychError	EyelinkIsConnected(void);
 PsychError	EyelinkNewestFloatSample(void);
 PsychError	EyelinkSendKeyButton(void);
@@ -66,6 +64,20 @@ PsychError	EyelinkShutdown(void);
 PsychError	EyelinkStartRecording(void);
 PsychError	EyelinkStartSetup(void);
 PsychError	EyelinkStopRecording(void);
+PsychError	EyelinkWaitForModeReady(void);
+PsychError	EyelinkTargetCheck(void);
+PsychError	EyelinkAcceptTrigger(void);
+PsychError	EyelinkCalResult(void);
+PsychError	EyelinkMessage(void);
+PsychError EyelinkOpenFile(void);
+PsychError EyelinkCloseFile(void);
+PsychError EyelinkCheckRecording(void);
+PsychError EyelinkNewFloatSampleAvailable(void);
+PsychError EyelinkSetOfflineMode(void);
+PsychError EyelinkDriftCorrStart(void);
+PsychError EyelinkApplyDriftCorr(void);
+PsychError EyelinkEyeAvailable(void);
+
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif 

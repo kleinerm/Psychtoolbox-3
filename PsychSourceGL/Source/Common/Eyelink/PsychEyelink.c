@@ -26,7 +26,6 @@
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
 
-char	gstrCommand[32];
 int		giSystemInitialized = 0;
 
 

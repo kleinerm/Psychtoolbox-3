@@ -51,7 +51,7 @@ PsychError EyelinkShutdown(void)
 	PsychErrorExit(PsychCapNumOutputArgs(0));
 	
 	// Verify eyelink is up and running
-	EyelinkSystemIsInitialized();
+	//EyelinkSystemIsInitialized();
 
 	// Disconnect if connected
 	if (eyelink_is_connected()) {

@@ -12,8 +12,9 @@
 	PLATFORMS:	Currently only OS X  
     
 	HISTORY:
-
-		11/21/05  cdb		Created.
+		2003	  emp		created alpha version
+		11/21/05  cdb		Adapted from alpha version.
+		15/06/06  fwc		adapted and added functions
 
 	TARGET LOCATION:
 
@@ -28,7 +29,6 @@
 PsychError PsychModuleInit(void)
 {
 	// Initialize Eyelink project variables
-	memset(gstrCommand, 0, sizeof(gstrCommand));
 	giSystemInitialized = 0;
 	
 	//
@@ -54,7 +54,6 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("CurrentMode",			&EyelinkCurrentMode));
 	PsychErrorExit(PsychRegister("ImageModeDisplay",	&EyelinkImageModeDisplay));
 	PsychErrorExit(PsychRegister("Initialize",			&EyelinkInitialize));
-	PsychErrorExit(PsychRegister("InitWindow",			&EyelinkInitWindow));
 	PsychErrorExit(PsychRegister("IsConnected",			&EyelinkIsConnected));
 	PsychErrorExit(PsychRegister("NewestFloatSample",	&EyelinkNewestFloatSample));
 	PsychErrorExit(PsychRegister("SendKeyButton",		&EyelinkSendKeyButton));
@@ -62,12 +61,26 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("StartRecording",		&EyelinkStartRecording));
 	PsychErrorExit(PsychRegister("StartSetup",			&EyelinkStartSetup));
 	PsychErrorExit(PsychRegister("StopRecording",		&EyelinkStopRecording));
+	//added as of 15/06/06
+	PsychErrorExit(PsychRegister("TargetCheck",				&EyelinkTargetCheck));
+	PsychErrorExit(PsychRegister("AcceptTrigger",			&EyelinkAcceptTrigger));
+	PsychErrorExit(PsychRegister("WaitForModeReady",		&EyelinkWaitForModeReady));
+	PsychErrorExit(PsychRegister("CalResult",				&EyelinkCalResult));
+	PsychErrorExit(PsychRegister("Message",					&EyelinkMessage));
+	PsychErrorExit(PsychRegister("OpenFile",				&EyelinkOpenFile));
+	PsychErrorExit(PsychRegister("CloseFile",				&EyelinkCloseFile));
+	PsychErrorExit(PsychRegister("CheckRecording",			&EyelinkCheckRecording));
+	PsychErrorExit(PsychRegister("NewFloatSampleAvailable",	&EyelinkNewFloatSampleAvailable));
+	PsychErrorExit(PsychRegister("SetOfflineMode",			&EyelinkSetOfflineMode));
+	PsychErrorExit(PsychRegister("DriftCorrStart",			&EyelinkDriftCorrStart));
+	PsychErrorExit(PsychRegister("ApplyDriftCorr",			&EyelinkApplyDriftCorr));
+	PsychErrorExit(PsychRegister("EyeAvailable",			&EyelinkEyeAvailable));
 	
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
-	PsychSetModuleAuthorByInitials("cdb");
 	PsychSetModuleAuthorByInitials("emp");
 	PsychSetModuleAuthorByInitials("fwc");
+	PsychSetModuleAuthorByInitials("cdb");
 	
 	return(PsychError_none);
 }
