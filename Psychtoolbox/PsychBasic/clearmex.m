@@ -1,4 +1,3 @@
-function clearmex
 % clearmex -- Implementation of "clear mex" for GNU/Octave.
 %
 % This routine does what Matlab's "clear mex" would do, but
@@ -15,5 +14,3 @@ clearScreen;
 clearGetSecs;
 clearWaitSecs;
 clearmoglcore;
-
-return;

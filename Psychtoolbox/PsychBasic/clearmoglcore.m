@@ -1,4 +1,3 @@
-function clearmoglcore
 % clearmoglcore -- Implementation of "clear moglcore" for GNU/Octave.
 %
 % This routine does what Matlab's "clear moglcore" would do, but
@@ -22,4 +21,3 @@ end
 
 % Clear the module out of Matlab's or Octave's workspace.
 clear moglcore;
-return;

@@ -48,17 +48,17 @@ void mexPrintf(const char* fmt, ...)
 
 void* mxMalloc(int size)
 {
-  return(PsychMallocTemp((unsigned long) size));
+  return(PsychMallocTemp((unsigned long) size, 0));
 }
 
 void* mxCalloc(int size, int numelements)
 {
-  return(PsychCallocTemp((unsigned long) size, (unsigned long) numelements));
+  return(PsychCallocTemp((unsigned long) size, (unsigned long) numelements,0));
 }
 
 void mxFree(void* p)
 {
-  PsychFreeTemp(p);
+  PsychFreeTemp(p, 0);
 }
 
 int mexCallMATLAB(const int nargout, mxArray* argout[], 
@@ -84,7 +84,7 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
   dim_vector mydims((numDims>2) ? dim_vector(rows, cols, layers) : dim_vector(rows, cols));
 
   // Allocate our mxArray-Struct:
-  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray),0);
 
   // Create corresponding octave_value object for requested type and size of matrix.
   // Retrieve raw pointer to contained data and store it in our mxArray struct as well...
@@ -143,7 +143,7 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
     uint32NDArray m(mydims);
     // Retrieve a pointer to internal representation. As m is new
     // this won't trigger a deep-copy.
-    unsigned int* ip = (unsigned int*) PsychMallocTemp(sizeof(unsigned int));
+    unsigned int* ip = (unsigned int*) PsychMallocTemp(sizeof(unsigned int),0);
     retval->d = (void*) ip;
     if (DEBUG_PTBOCTAVEGLUE) printf("M-DATA %p\n", retval->d); fflush(NULL);
     // Build a new oct_value object from Matrix m: This is a
@@ -158,7 +158,7 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
     if (DEBUG_PTBOCTAVEGLUE) printf("NEW SCALAR:\n"); fflush(NULL);
     // This is a scalar value:
     retval->o = (void*) new octave_value(0.0);
-    double* dp = (double*) PsychMallocTemp(sizeof(double));
+    double* dp = (double*) PsychMallocTemp(sizeof(double),0);
     retval->d = (void*) dp;
   }
   else if (arraytype==mxDOUBLE_CLASS && rows*cols*layers == 0) {
@@ -220,7 +220,7 @@ mxArray* mxCreateString(const char* instring)
   mxArray* retval;
 
   // Allocate our mxArray-Struct:
-  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray),0);
   
   retval->d = NULL;
   retval->o = (void*) new octave_value(instring);
@@ -261,7 +261,7 @@ int mxGetNumberOfDimensions(const mxArray* arrayPtr)
 int* mxGetDimensions(const mxArray* arrayPtr)
 {
   dim_vector vdim = GETOCTPTR(arrayPtr)->dims();
-  int* dims = (int*) PsychMallocTemp(3*sizeof(int));
+  int* dims = (int*) PsychMallocTemp(3*sizeof(int),0);
   dims[0] = vdim(0);
   dims[1] = vdim(1);
   if (GETOCTPTR(arrayPtr)->ndims()>2) dims[2] = vdim(2); else dims[2]=1;
@@ -323,7 +323,7 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
   for (int i=1; i<numFields; i++) mymap.assign(std::string(fieldNames[i]), myCell);
 
   // Build our mxArray wrapper:
-  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray),0);
 
   // Fill it: Assign our map.
   octave_value* ovp = new octave_value(mymap);
@@ -383,7 +383,7 @@ mxArray* mxCreateCellArray(int numDims, int* ArrayDims)
   mxArray* retval;
 
   // Allocate our mxArray-Struct:
-  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+  retval = (mxArray*) PsychMallocTemp(sizeof(mxArray),0);
 
   if (numDims>2) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateCellArray: 3D Cell Arrays are not supported yet on GNU/Octave build!");
 
@@ -481,10 +481,11 @@ int mxIsInt32(const mxArray* a)
 
 char* mxArrayToString(mxArray* arrayPtr)
 {
-  char* outstr = (char*) mxMalloc(mxGetM(arrayPtr)*mxGetN(arrayPtr));
+  char* outstr = (char*) mxCalloc(mxGetM(arrayPtr)*mxGetN(arrayPtr)+1, 1);
   char* inp = (char*) arrayPtr->d;
+
   if (mxIsChar(arrayPtr)) {
-    mxGetString(arrayPtr, outstr, mxGetM(arrayPtr)*mxGetN(arrayPtr) - 1);
+    mxGetString(arrayPtr, outstr, mxGetM(arrayPtr)*mxGetN(arrayPtr)+1);
   }
   else {
     memcpy(outstr, inp, mxGetM(arrayPtr)*mxGetN(arrayPtr));

@@ -160,9 +160,6 @@ if isempty(feedbackptr)
    feedbackptr  = 0;
    feedbacksize = 0;
    
-   % Assign GL_3D manually - Little hack...
-   GL.GL_3D = 1537;
-   GL.GL_2D = 1536;
 end;
 
 
@@ -191,15 +188,15 @@ if isempty(objcount)
 end;
 
 % Check if hardware supports glDrawRangeElements():
-%if isempty(drawrangeelements)
-%    if isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_draw_range_elements'))
-%        % No glDrawRangeElements() support.
-%        drawrangeelements = 0;
-%    else
-%        % glDrawRangeElements() supported.
-%        drawrangeelements = 1;
-%    end;
-%end;
+if isempty(drawrangeelements)
+    if isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_draw_range_elements'))
+        % No glDrawRangeElements() support.
+        drawrangeelements = 0;
+    else
+        % glDrawRangeElements() supported.
+        drawrangeelements = 1;
+    end;
+end;
 
 % Subcommand dispatcher:
 if strcmp(cmd, 'reset')
@@ -212,8 +209,19 @@ if strcmp(cmd, 'reset')
       feedbacksize=0;
    end;
    
-   % Clear ourselves -> Release everything else.
-   clear moglmorpher;
+   % Release everything else. We can not use the clear
+   % function, because its use inside function bodies
+   % is forbidden under Octave.
+   objcount = [];
+   drawrangeelements = [];
+   vertices = [];
+   normals = [];
+   texcoords = [];
+   faces = [];
+   keyvertices = [];
+   keynormals = [];
+   rc = 0;
+
    return;
 end;
 
@@ -500,16 +508,24 @@ if strcmp(cmd, 'getVertexPositions')
       error('win Windowhandle missing in call to getVertexPositions!')
    end;
    
-   if nargin < 3 | isempty(arg2)
+   if nargin < 3
       startidx = 1;
    else
-      startidx = arg2;
+      if isempty(arg2)
+         startidx = 1;
+      else
+         startidx = arg2;
+      end;
    end;
    
-   if nargin < 4 | isempty(arg3)
+   if nargin < 4
       endidx = size(vertices,2);
    else
-      endidx = arg3;
+      if isempty(arg3)
+         endidx = size(vertices,2);
+      else
+         endidx = arg3;
+      end;
    end;
    
    % Correct for 0-start of OpenGL/C vs. 1-start of Matlab:
@@ -565,7 +581,15 @@ if strcmp(cmd, 'getVertexPositions')
    nritems = glRenderMode(GL.RENDER);
    
    % Copy content of buffer into a linear matrix:
-   tmpbuffer = moglgetbuffer(feedbackptr, GL.FLOAT, nritems * 4);
+   if usetype == GL.FLOAT
+      tmpbuffer = moglgetbuffer(feedbackptr, GL.FLOAT, nritems * 4);
+   else
+      % No single precision float's available :( - Need to do our
+      % ugly trick: Request data as uint32 array, then use our special cast routine to upcast it to a double matrix.
+      tmpbuffer = moglgetbuffer(feedbackptr, GL.UNSIGNED_INT, nritems * 4);
+      tmpbuffer = castDouble2Float(tmpbuffer, 1);
+   end;
+
    % Reshape it to be a n-by-4 matrix:
    tmpbuffer = transpose(reshape(tmpbuffer, 4, floor(nritems / 4)));
    % Cast to double, throw away token column:

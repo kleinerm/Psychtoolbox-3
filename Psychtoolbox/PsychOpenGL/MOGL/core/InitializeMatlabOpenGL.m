@@ -34,6 +34,8 @@ function InitializeMatlabOpenGL(opengl_c_style, debuglevel)
 % History:
 % 02/16/06 mk Written - Based on glmGetconst from Richard F. Murray.
 
+global GL;
+
 % Is Psychtoolbox properly installed?
 AssertOpenGL
 
@@ -75,6 +77,10 @@ else
    % all scripts, but it doesn't clutter the Matlab workspace...
    evalin('caller',['load ' oglconstpath ' AGL GL GLU']);      
 end;
+
+% Assign GL_3D manually - Little hack...
+GL.GL_3D = 1537;
+GL.GL_2D = 1536;
 
 % On Windows, we need to preload moglcore into Matlab while the working
 % directory is set to Psychtoolbox/PsychOpenGL/MOGL/core , so the Windows

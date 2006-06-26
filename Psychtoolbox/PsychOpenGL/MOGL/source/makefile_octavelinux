@@ -13,7 +13,7 @@ GLM=
 
 MEXCC=-I${OCTAVEINCLUDE} -I${OCTAVEINCLUDE}/octave \
 	${GLM} ${TARGETOS} -DGLEW_STATIC\
-	-DPTBOCTAVE -Doctave_idx_type=int -DNDEBUG -mieee-fp -fPIC -fno-common -fexceptions -O3
+	-DPTBOCTAVE -Doctave_idx_type=int -mieee-fp -fPIC -fno-common -fexceptions -O3 -g
 
 MEXLD=-L${OCTAVELIBDIR} -shared -Wl,-Bsymbolic -lstdc++ -loctinterp -loctave -lcruft -ldl
 

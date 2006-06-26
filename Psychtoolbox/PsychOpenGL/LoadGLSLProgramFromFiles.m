@@ -59,7 +59,8 @@ if ischar(filenames)
     shaderobjs=dir([filenames '*']);
     shaderobjpath = [fileparts([filenames '*']) '/'];
     filenames=[];
-    for i=1:size(shaderobjs,1)
+    numshaders=size(shaderobjs,1)*size(shaderobjs,2);
+    for i=1:numshaders
         [dummy1 curname curext curver] = fileparts(shaderobjs(i).name);
         shadername = [curname curext curver];
         filenames{i} = [shaderobjpath shadername];

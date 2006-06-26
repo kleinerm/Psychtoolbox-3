@@ -27,11 +27,21 @@ extern cmdhandler glm_map[];
 extern int gl_manual_map_count, gl_auto_map_count;
 extern cmdhandler gl_manual_map[], gl_auto_map[];
 
+// Pointer to the start of our list of allocated temporary memory buffers:
+static unsigned int* PsychTempMemHead[2] = { NULL, NULL };
+
+// Total count of allocated memory in Bytes:
+static int totalTempMemAllocated[2] = { 0 , 0 };
+
 // Flag that signals first real invocation of moglcore:
 static int firsttime = 1;
 
 // Debuglevel: Defines if moglcore should check for errors and how to respond to them.
 static int debuglevel = 1;
+
+// Dummymode: If set to a value greater than zero, moglcore does not really execute
+// commands anymore. 
+static int dummymode = 0;
 
 // This flag is > 0 if we are in a section started by glBegin() in that case we are
 // not allowed to call glGetError() as that itself is an error, until the corresponding
@@ -56,7 +66,9 @@ void mogl_checkerrors(const char* cmd, mxArray *prhs[]);
 
 void mexExitFunction(void)
 {
-  PsychFreeAllTempMemory();
+  // Release all memory in bufferlist 1 - The one that usually
+  // persists over calls to moglcore.
+  PsychFreeAllTempMemory(1);
   firsttime = 1;
 }
 
@@ -94,6 +106,7 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
     int i;
     GLenum err;
     bool errorcondition = false;
+
        
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
     #define const
@@ -102,13 +115,17 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
     octave_value tmpval;      // Temporary, needed in parser below...
     octave_value_list outplhs;   // Our list of left-hand-side return values...
     int nrhs = inprhs.length();
+
+    // Abort here if dummymode >= 20. Skips basically everything so a call to
+    // moglcore is really a complete "No operation".
+    if (dummymode >= 20) return(octave_value());
     
     // Child protection: Is someone trying to call us after we've shut down already?
     if (jettisoned) {
       // Yep! Stupido...
       error("%s: Tried to call the module after it has been jettisoned!!! You need to do a 'clear %s;' now. Bug in Psychtoolbox?!?",
 	    mexFunctionName, mexFunctionName);
-      goto moglreturn;
+      return(octave_value());
     }
     
     // Save CPU-state and stack at this position in 'jmpbuffer'. If any further code
@@ -139,7 +156,7 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
     // slow-down over time, could be confused with memory leaks???
     for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) {
       // Create and assign our mxArray-Struct:
-      prhs[i] = (mxArray*) PsychMallocTemp(sizeof(mxArray));
+      prhs[i] = (mxArray*) PsychMallocTemp(sizeof(mxArray), 0);
       
       // Extract data-pointer to each inprhs(i) octave_value and store a type-casted version
       // which is optimal for us.
@@ -250,19 +267,19 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
 	// copy of the value in it.
 	if (strstr(inprhs(i).type_name().c_str(), "uint32")) {
 	  // uint32 scalar:
-	  unsigned int* m = (unsigned int*) PsychMallocTemp(sizeof(unsigned int));
+	  unsigned int* m = (unsigned int*) PsychMallocTemp(sizeof(unsigned int), 0);
 	  *m = inprhs(i).uint_value();
 	  prhs[i]->d = (void*) m;
 	}
 	else if (strstr(inprhs(i).type_name().c_str(), "int32")) {
 	  // int32 scalar:
-	  int* m = (int*) PsychMallocTemp(sizeof(int));
+	  int* m = (int*) PsychMallocTemp(sizeof(int), 0);
 	  *m = inprhs(i).int_value();
 	  prhs[i]->d = (void*) m;
 	}
 	else {
 	  // Double scalar:
-	  double* m = (double*) PsychMallocTemp(sizeof(double));
+	  double* m = (double*) PsychMallocTemp(sizeof(double), 0);
 	  *m = inprhs(i).double_value();
 	  prhs[i]->d = (void*) m;
 	}
@@ -303,6 +320,15 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
         goto moglreturn;
     }
     
+    if (strcmp(cmd, "DUMMYMODE")==0) {
+        if (nrhs<2 || mxGetScalar(prhs[1])<0) {
+            mexErrMsgTxt("MOGL-ERROR: No dummy mode level or invalid level (<0) given for subcommand DUMMYMODE!");
+        }
+        dummymode = (int) mxGetScalar(prhs[1]);
+	if (dummymode>0) printf("MOGL-INFO: Switched to dummy mode level %i.\n", dummymode);
+        goto moglreturn;
+    }
+
     // Special command to set MOGL debug level:
     // debuglevel = 0 --> Shut up in any case, leave error-handling to higher-level code.
     // debuglevel > 0 --> Check for OpenGL error conditions.
@@ -334,6 +360,13 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
 
       #endif
 
+      goto moglreturn;
+    }
+
+    // Abort here if dummymode >= 10: Input arg. processing run, but no real
+    // command parsing and processing;
+    if (dummymode >= 10) {
+      printf("MOGL-INFO: Dummy call to %s() - Ignored in dummy mode %i ...\n", cmd, dummymode);
       goto moglreturn;
     }
 
@@ -440,7 +473,7 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
     // Release our own prhs array...
 
-    // Release of memory for scalar types is done by PsychFreeAllTempMemory(); 
+    // Release of memory for scalar types is done by PsychFreeAllTempMemory(0); 
     for(int i=0; i<nrhs && i<MAX_INPUT_ARGS; i++) if(prhs[i]) {
       delete(((octave_value*)(prhs[i]->o)));
       prhs[i]=NULL;	  
@@ -473,13 +506,13 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
 	
 	// We don't need to free() the PsychMallocTemp()'ed object pointed to
 	// by the d-Ptr, nor do we need to free the mxArray-Struct. This is done
-	// below in PsychFreeAllTempMemory(). Just NULL-out the array slot:
+	// below in PsychFreeAllTempMemory(0). Just NULL-out the array slot:
 	plhs[i]=NULL;
       }
     }
 
-    // Release all memory allocated via PsychMallocTemp():
-    PsychFreeAllTempMemory();
+    // Release all memory allocated via PsychMallocTemp(0):
+    PsychFreeAllTempMemory(0);
     
     // Return our octave_value_list of returned values in any case and yield control
     // back to Octave:
@@ -657,35 +690,35 @@ void mogl_checkerrors(const char* cmd, mxArray *prhs[])
 // Our memory buffer allocator, adapted from Psychtoolboxs PsychMemory.c
 // allocator:
 
-#define PTBTEMPMEMDEC(n) totalTempMemAllocated -=(n)
+#define PTBTEMPMEMDEC(n,m) totalTempMemAllocated[(m)] -=(n)
 
 // Enqueues a new record into our linked list of temp. memory buffers.
 // Returns the memory pointer to be passed to rest of Psychtoolbox.
-void* PsychEnqueueTempMemory(void* p, unsigned long n)
+void* PsychEnqueueTempMemory(void* p, unsigned long n, int mlist)
 {
   // Add current buffer-head ptr as next-pointer to our new buffer:
-  *((unsigned int*) p) = (unsigned int) PsychTempMemHead;
+  *((unsigned int*) p) = (unsigned int) PsychTempMemHead[mlist];
 
   // Set our buffer as new head of list:
-  PsychTempMemHead = (unsigned int*) p;
+  PsychTempMemHead[mlist] = (unsigned int*) p;
 
   // Add allocated buffer size as 2nd element:
-  p = (unsigned char*) p + sizeof(PsychTempMemHead);
+  p = (unsigned char*) p + sizeof(PsychTempMemHead[mlist]);
   *((unsigned long*) p) = n;
 
   // Accounting:
-  totalTempMemAllocated += n;
+  totalTempMemAllocated[mlist] += n;
 
   // Increment p again to get real start of user-visible buffer:
   p = (unsigned char*) p + sizeof(n);
 
-  if (debuglevel > 1) mexPrintf("MOGL: Allocated new buffer %p of %i Bytes,  new total = %i.\n", p, n, totalTempMemAllocated); fflush(NULL);
+  if (debuglevel > 1) mexPrintf("MOGL: Memlist %i : Allocated new buffer %p of %i Bytes,  new total = %i.\n", mlist, p, n, totalTempMemAllocated[mlist]); fflush(NULL);
 
   // Return ptr:
   return(p);
 }
 
-void *PsychCallocTemp(unsigned long n, unsigned long size)
+void *PsychCallocTemp(unsigned long n, unsigned long size, int mlist)
 {
   void *ret;
   // MK: This could create an overflow if product n * size is
@@ -701,10 +734,10 @@ void *PsychCallocTemp(unsigned long n, unsigned long size)
   }
 
   // Need to enqueue memory buffer...
-  return(PsychEnqueueTempMemory(ret, realsize));
+  return(PsychEnqueueTempMemory(ret, realsize, mlist));
 }
 
-void *PsychMallocTemp(unsigned long n)
+void *PsychMallocTemp(unsigned long n, int mlist)
 {
   void *ret;
 
@@ -715,7 +748,7 @@ void *PsychMallocTemp(unsigned long n)
   }
 
   // Need to enqueue memory buffer...
-  return(PsychEnqueueTempMemory(ret, n));
+  return(PsychEnqueueTempMemory(ret, n, mlist));
 }
 
 // Free a single spec'd temp memory buffer.
@@ -730,11 +763,11 @@ void *PsychMallocTemp(unsigned long n)
 // overhead! A better implementation would use a double-
 // linked list or even a binary tree or hash structure,
 // but for now this has to be good enough(TM).
-void PsychFreeTemp(void* ptr)
+void PsychFreeTemp(void* ptr, int mlist)
 {
   void* ptrbackup = ptr;
   unsigned long* psize = NULL;
-  unsigned int* next = PsychTempMemHead;
+  unsigned int* next = PsychTempMemHead[mlist];
   unsigned int* prevptr = NULL;
 
   if (ptr == NULL) return;
@@ -744,13 +777,13 @@ void PsychFreeTemp(void* ptr)
   ptr = (unsigned char*) ptr - sizeof((unsigned char*) ptr) - sizeof(unsigned long);
   if (ptr == NULL) return;
 
-  if (PsychTempMemHead == ptr) {
+  if (PsychTempMemHead[mlist] == ptr) {
     // Special case: ptr is first buffer in queue. Dequeue:
-    PsychTempMemHead = (unsigned int*) *PsychTempMemHead;
+    PsychTempMemHead[mlist] = (unsigned int*) *(PsychTempMemHead[mlist]);
 
     // Some accounting:
-    PTBTEMPMEMDEC(((unsigned int*)ptr)[1]);
-    if (debuglevel > 1) mexPrintf("MOGL: Freed buffer at %p, new total = %i.\n", ptrbackup, totalTempMemAllocated); fflush(NULL);
+    PTBTEMPMEMDEC(((unsigned int*)ptr)[1], mlist);
+    if (debuglevel > 1) mexPrintf("MOGL: Memlist %i : Freed buffer at %p, new total = %i.\n", mlist, ptrbackup, totalTempMemAllocated[mlist]); fflush(NULL);
 
     // Release it:
     free(ptr);
@@ -772,8 +805,8 @@ void PsychFreeTemp(void* ptr)
     *prevptr = *next;
 
     // Some accounting:
-    PTBTEMPMEMDEC(next[1]);
-    if (debuglevel > 1) mexPrintf("MOGL: Freed buffer at %p, new total = %i.\n", ptrbackup, totalTempMemAllocated); fflush(NULL);
+    PTBTEMPMEMDEC(next[1], mlist);
+    if (debuglevel > 1) mexPrintf("MOGL: Memlist %i: Freed buffer at %p, new total = %i.\n", mlist, ptrbackup, totalTempMemAllocated[mlist]); fflush(NULL);
     
     // Release:
     free(ptr);
@@ -789,11 +822,11 @@ void PsychFreeTemp(void* ptr)
 }
 
 // Master cleanup routine: Frees all allocated memory:
-void PsychFreeAllTempMemory(void)
+void PsychFreeAllTempMemory(int mlist)
 {
   unsigned int* p = NULL;
   unsigned long* psize = NULL;
-  unsigned int* next = PsychTempMemHead;
+  unsigned int* next = PsychTempMemHead[mlist];
 
   // Walk our whole buffer list and release all buffers on it:
   while (next != NULL) {
@@ -805,7 +838,7 @@ void PsychFreeAllTempMemory(void)
     next = (unsigned int*) *p;
 
     // Some accounting:
-    PTBTEMPMEMDEC(p[1]);
+    PTBTEMPMEMDEC(p[1], mlist);
 
     // Release buffer p:
     free(p);
@@ -815,38 +848,38 @@ void PsychFreeAllTempMemory(void)
   }
 
   // Done. NULL-out the list start ptr:
-  PsychTempMemHead = NULL;
+  PsychTempMemHead[mlist] = NULL;
 
   // Sanity check:
-  if (totalTempMemAllocated != 0) {
+  if (totalTempMemAllocated[mlist] != 0) {
     printf("MOGL-CRITICAL BUG: Inconsistency detected in temporary memory allocator!\n");
-    printf("MOGL-CRITICAL BUG: totalTempMemAllocated = %i after PsychFreeAllTempMemory()!!!!\n",
-	   totalTempMemAllocated);
+    printf("MOGL-CRITICAL BUG: totalTempMemAllocated[%i] = %i after PsychFreeAllTempMemory(%i)!!!!\n",
+	   mlist, totalTempMemAllocated[mlist], mlist);
     fflush(NULL);
 
     // Reset to defined state.
-    totalTempMemAllocated = 0;
+    totalTempMemAllocated[mlist] = 0;
   }
 
-  if (debuglevel > 1) printf("MOGL: Freed all internal memory buffers.\n"); fflush(NULL);
+  if (debuglevel > 1) printf("MOGL: Memlist %i : Freed all internal memory buffers.\n", mlist); fflush(NULL);
 
   return;
 }
 
 // Convert a double value (which encodes a memory address) into a ptr:
-void*  PsychDoubleToPtr(double dptr)
+void*  PsychDoubleToPtr(volatile double dptr)
 {
-  psych_uint64* iptr = (psych_uint64*) &dptr;
-  psych_uint64 ival = *iptr;
+  volatile psych_uint64* iptr = (psych_uint64*) &dptr;
+  volatile psych_uint64 ival = *iptr;
   return((void*) ival);
 }
 
 // Convert a memory address pointer into a double value:
 double PsychPtrToDouble(void* ptr)
 {
-  psych_uint64 ival = (psych_uint64) ptr;
-  double* dptr = (double*) &ival;
-  double outval = *dptr;
+  volatile psych_uint64 ival = (psych_uint64) ptr;
+  volatile double* dptr = (double*) &ival;
+  volatile double outval = *dptr;
   return(outval);
 }
 

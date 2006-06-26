@@ -1,4 +1,3 @@
-function clearScreen
 % clearScreen -- Implementation of "clear Screen" for GNU/Octave.
 %
 % This routine does what Matlab's "clear Screen" would do, but
@@ -22,4 +21,3 @@ end
 
 % Clear the module out of Matlab's or Octave's workspace.
 clear Screen;
-return;

@@ -147,7 +147,7 @@ void gl_selectbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
 
 void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
-  void* ptr = PsychMallocTemp((unsigned long) mxGetScalar(prhs[0]));
+  void* ptr = PsychMallocTemp((unsigned long) mxGetScalar(prhs[0]), 1);
 
   // Convert ptr into a double value and assign it as first return argument:
   plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
@@ -156,7 +156,7 @@ void moglmalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 void moglcalloc(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   // Allocate a memory buffer of prhs[0] bytes size. ptr points to start of buffer:
-  void* ptr = PsychCallocTemp((unsigned long) mxGetScalar(prhs[0]), (unsigned long) mxGetScalar(prhs[1]));
+  void* ptr = PsychCallocTemp((unsigned long) mxGetScalar(prhs[0]), (unsigned long) mxGetScalar(prhs[1]), 1);
 
   // Convert ptr into a double value and assign it as first return argument:
   plhs[0]=mxCreateDoubleMatrix(1,1,mxREAL);
@@ -168,11 +168,11 @@ void moglfree(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
   void* ptr = PsychDoubleToPtr((GLdouble) mxGetScalar(prhs[0]));
 
   // Free memory buffer:
-  PsychFreeTemp(ptr);
+  PsychFreeTemp(ptr, 1);
 }
 
 void moglfreeall(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-  PsychFreeAllTempMemory();
+  PsychFreeAllTempMemory(1);
 }
 
 void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {

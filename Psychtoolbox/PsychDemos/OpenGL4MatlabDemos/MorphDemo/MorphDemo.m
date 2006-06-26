@@ -253,6 +253,9 @@ ang = 0.0;      % Initial rotation angle
 % left as an exercise to the reader.
 eye_halfdist=3;
 
+% Compute initial morphed shape for next frame, based on initial weights:
+moglmorpher('computeMorph', w);
+
 % Finish OpenGL setup and check for OpenGL errors:
 Screen('EndOpenGL', win);
 

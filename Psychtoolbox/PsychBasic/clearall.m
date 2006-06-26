@@ -1,4 +1,3 @@
-function clearall
 % clearall -- Implementation of "clear all" for GNU/Octave.
 %
 % This routine does what Matlab's "clear all" would do, but
@@ -16,5 +15,3 @@ clearmex;
 % Call generic 'clear all' command of Matlab or Octave to take
 % care of the rest.
 clear all;
-
-return;

@@ -1,4 +1,3 @@
-function clearWaitSecs
 % clearWaitSecs -- Implementation of "clear WaitSecs" for GNU/Octave.
 %
 % This routine does what Matlab's "clear WaitSecs" would do, but
@@ -22,4 +21,3 @@ end
 
 % Clear the module out of Matlab's or Octave's workspace.
 clear WaitSecs;
-return;

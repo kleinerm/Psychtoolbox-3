@@ -6,7 +6,7 @@ DEFUN_DLD (castDouble2Float, args, ,
 "objects of type uint32 which internally\n"
 "store 32 bit single precision float values.\n"
 "-> Convert double into float and wrap the float\n"
-"into a uint32 object.\n\n"
+"into a uint32 object. Does also the opposite direction.\n\n"
 "This is a neccessary hack used by our single.m\n"
 "file to create a pseudo single data type that\n"
 "can be fed into moglcore when it expects float\n"
@@ -32,20 +32,46 @@ DEFUN_DLD (castDouble2Float, args, ,
   // And number of elements:
   int count = args(0).numel();
 
-  // Create output uint8 array of matching dimensionality:
-  uint32NDArray mout(indims);
+  if (args.length()>=2 && args(1).double_value()==1) {
+    // Float-->Double cast: Input is float's, packed into uint32 array,
+    // output shall be a double representation:
 
-  // Retrieve a float-pointer to internal representation. As mout is new
-  // this won't trigger a deep-copy.
-  float* outptr = (float*) mout.data();
+    // Create output double array of matching dimensionality:
+    NDArray mout(indims);
 
-  // Retrieve a double-pointer to internal representation of input array:
-  const NDArray matIn(args(0).array_value());
-  double* inptr = (double*) matIn.data();
+    // Retrieve a double-pointer to internal representation. As mout is new
+    // this won't trigger a deep-copy.
+    double* outptr = (double*) mout.data();
+    
+    // Retrieve a uint32-pointer to internal representation of input array:
+    const uint32NDArray matIn(args(0).array_value());
+    float* inptr = (float*) matIn.data();
 
-  // Cast & Copy loop:
-  for(int i=0; i<count; i++) *(outptr++) = (float)(*(inptr++));
+    // Cast & Copy loop:
+    for(int i=0; i<count; i++) *(outptr++) = (double)(*(inptr++));
 
-  // Assign mout as our output octave-value:
-  return(octave_value(mout));
+    // Assign mout as our output octave-value:
+    return(octave_value(mout));
+  }
+  else {
+    // Double-->Float cast: Input is double, output is float, packed
+    // into a uint32 array:
+
+    // Create output uint32 array of matching dimensionality:
+    uint32NDArray mout(indims);
+
+    // Retrieve a float-pointer to internal representation. As mout is new
+    // this won't trigger a deep-copy.
+    float* outptr = (float*) mout.data();
+    
+    // Retrieve a double-pointer to internal representation of input array:
+    const NDArray matIn(args(0).array_value());
+    double* inptr = (double*) matIn.data();
+
+    // Cast & Copy loop:
+    for(int i=0; i<count; i++) *(outptr++) = (float)(*(inptr++));
+
+    // Assign mout as our output octave-value:
+    return(octave_value(mout));
+  }
 }

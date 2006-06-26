@@ -135,23 +135,17 @@ double PsychPtrToDouble(void* ptr);
 unsigned int PsychGetBufferSizeForPtr(void* ptr);
 
 // Allocate and zero-out n elements of memory, each size bytes big.
-void *PsychCallocTemp(unsigned long n, unsigned long size);
+void *PsychCallocTemp(unsigned long n, unsigned long size, int mlist);
 
 // Allocate n bytes of memory:
-void *PsychMallocTemp(unsigned long n);
+void *PsychMallocTemp(unsigned long n, int mlist);
 
 // PsychFreeTemp frees memory allocated with PsychM(C)allocTemp().
 // This is not strictly needed as our memory manager will free
 // the memory anyway when this file is flushed:
-void PsychFreeTemp(void* ptr);
+void PsychFreeTemp(void* ptr, int mlist);
 
 // Master cleanup routine: Frees all allocated memory.
-void PsychFreeAllTempMemory(void);
-
-// Pointer to the start of our list of allocated temporary memory buffers:
-static unsigned int* PsychTempMemHead = NULL;
-
-// Total count of allocated memory in Bytes:
-static int totalTempMemAllocated = 0;
+void PsychFreeAllTempMemory(int mlist);
 
 #endif

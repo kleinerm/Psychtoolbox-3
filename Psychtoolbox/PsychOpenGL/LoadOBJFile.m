@@ -69,7 +69,7 @@ if nargin <2
     debug = 0;
 end;
 
-fid = fopen(modelname,'r');
+fid = fopen(modelname,'rt');
 if (fid<0)
     error(['Could not open file: ' modelname]);
 end;

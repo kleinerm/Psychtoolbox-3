@@ -1,4 +1,3 @@
-function clearGetSecs
 % clearGetSecs -- Implementation of "clear GetSecs" for GNU/Octave.
 %
 % This routine does what Matlab's "clear GetSecs" would do, but
@@ -22,4 +21,3 @@ end
 
 % Clear the module out of Matlab's or Octave's workspace.
 clear GetSecs;
-return;

@@ -35,6 +35,6 @@ if nargin < 3
     debug = 0;
 end;
 
-moglcore('glShaderSource', shader, char(shadersource), debug);
+moglcore('glShaderSource', shader, transpose(char(shadersource)), debug);
 
 return

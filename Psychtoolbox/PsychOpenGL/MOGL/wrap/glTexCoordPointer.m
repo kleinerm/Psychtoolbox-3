@@ -1,4 +1,4 @@
-function glTextCoordPointer( size, type, stride, pointer )
+function glTexCoordPointer( size, type, stride, pointer )
 
 % glTextCoordPointer  Interface to glTexCoordPointer
 %
