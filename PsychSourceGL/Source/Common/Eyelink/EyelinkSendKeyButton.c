@@ -44,7 +44,8 @@ PURPOSE:
    
 PsychError EyelinkSendKeyButton(void)
 {
-	char*	cCode = NULL;
+//	char*	cCode = NULL;
+	int		iCode		= 0;
 	int		iMods		= 0;
 	int		iResult		= 0;
 	int		iState		= 0;
@@ -70,14 +71,16 @@ PsychError EyelinkSendKeyButton(void)
 	EyelinkSystemIsInitialized();
 //printf("EyelinkSendKeyButton: 1\n");
 
-	PsychAllocInCharArg(1, TRUE, &cCode);
+//	PsychAllocInCharArg(1, TRUE, &cCode);
 
 //printf("EyelinkSendKeyButton: 2\n");
 //	printf("EyelinkSendKeyButton: %d, %s\n",iCode, (char)iCode);
+	PsychCopyInIntegerArg(1, TRUE, &iCode);
 	PsychCopyInIntegerArg(2, TRUE, &iMods);
 	PsychCopyInIntegerArg(3, TRUE, &iState);
 	
 	iResult = eyelink_send_keybutton(iCode, iMods, iState);
+//	iResult = eyelink_send_keybutton(cCode, iMods, iState);
 	
 	// Copy out arg
 	PsychCopyOutDoubleArg(1, FALSE, iResult);

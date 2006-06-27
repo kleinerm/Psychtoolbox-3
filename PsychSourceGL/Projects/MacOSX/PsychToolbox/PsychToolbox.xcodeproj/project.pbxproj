@@ -42,7 +42,6 @@
 		0E92E88A095726FE002687D9 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		0E92E88B095726FE002687D9 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		0E92E88D095726FE002687D9 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		0E92E8C009572831002687D9 /* EyelinkInitWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */; };
 		0E92E8C109572831002687D9 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = 0E92E8AE09572831002687D9 /* RegisterProject.h */; };
 		0E92E8C209572831002687D9 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AF09572831002687D9 /* RegisterProject.c */; };
 		0E92E8C309572831002687D9 /* EyelinkCreateDataStructs.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */; };
@@ -1530,7 +1529,6 @@
 		2FEBAA470989B90000F4165F /* EyelinkCurrentMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B709572831002687D9 /* EyelinkCurrentMode.c */; };
 		2FEBAA480989B90100F4165F /* EyelinkImageModeDisplay.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */; };
 		2FEBAA490989B90100F4165F /* EyelinkInitialize.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B209572831002687D9 /* EyelinkInitialize.c */; };
-		2FEBAA4A0989B90200F4165F /* EyelinkInitWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */; };
 		2FEBAA4B0989B90300F4165F /* EyelinkIsConnected.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */; };
 		2FEBAA4C0989B90400F4165F /* EyelinkNewestFloatSample.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B409572831002687D9 /* EyelinkNewestFloatSample.c */; };
 		2FEBAA4D0989B90400F4165F /* EyelinkSendKeyButton.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */; };
@@ -1559,6 +1557,19 @@
 		2FEBAA650989B91C00F4165F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AF09572831002687D9 /* RegisterProject.c */; };
 		2FEBAA660989B91D00F4165F /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		2FEBAA670989B91E00F4165F /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
+		805723550A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723480A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c */; };
+		805723560A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723490A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c */; };
+		805723570A51DE4B00DF6EF6 /* EyelinkCalResult.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234A0A51DE4B00DF6EF6 /* EyelinkCalResult.c */; };
+		805723580A51DE4B00DF6EF6 /* EyelinkCheckRecording.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234B0A51DE4B00DF6EF6 /* EyelinkCheckRecording.c */; };
+		805723590A51DE4B00DF6EF6 /* EyelinkCloseFile.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234C0A51DE4B00DF6EF6 /* EyelinkCloseFile.c */; };
+		8057235A0A51DE4B00DF6EF6 /* EyelinkDriftCorrStart.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234D0A51DE4B00DF6EF6 /* EyelinkDriftCorrStart.c */; };
+		8057235B0A51DE4B00DF6EF6 /* EyelinkEyeAvailable.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234E0A51DE4B00DF6EF6 /* EyelinkEyeAvailable.c */; };
+		8057235C0A51DE4B00DF6EF6 /* EyelinkMessage.c in Sources */ = {isa = PBXBuildFile; fileRef = 8057234F0A51DE4B00DF6EF6 /* EyelinkMessage.c */; };
+		8057235D0A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723500A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c */; };
+		8057235E0A51DE4B00DF6EF6 /* EyelinkOpenFile.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723510A51DE4B00DF6EF6 /* EyelinkOpenFile.c */; };
+		8057235F0A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */; };
+		805723600A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */; };
+		805723610A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */; };
 		8302E2030A1928E900AE269C /* Screen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2000A1928E900AE269C /* Screen.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		8302E2170A1928E900AE269C /* GetSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E1FE0A1928E900AE269C /* GetSecs.cc */; };
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
@@ -2635,9 +2646,8 @@
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
-		0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkInitWindow.c; path = ../../../Source/Common/Eyelink/EyelinkInitWindow.c; sourceTree = SOURCE_ROOT; };
 		0E92E8AE09572831002687D9 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Eyelink/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		0E92E8AF09572831002687D9 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Eyelink/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCreateDataStructs.c; path = ../../../Source/Common/Eyelink/EyelinkCreateDataStructs.c; sourceTree = SOURCE_ROOT; };
@@ -2656,7 +2666,7 @@
 		0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkIsConnected.c; path = ../../../Source/Common/Eyelink/EyelinkIsConnected.c; sourceTree = SOURCE_ROOT; };
 		0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSendKeyButton.c; path = ../../../Source/Common/Eyelink/EyelinkSendKeyButton.c; sourceTree = SOURCE_ROOT; };
 		0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkImageModeDisplay.c; path = ../../../Source/Common/Eyelink/EyelinkImageModeDisplay.c; sourceTree = SOURCE_ROOT; };
-		0E92E92709572E2C002687D9 /* eyelink_core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = eyelink_core.framework; path = /System/Library/Frameworks/eyelink_core.framework; sourceTree = "<absolute>"; };
+		0E92E92709572E2C002687D9 /* eyelink_core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = eyelink_core.framework; path = /Library/Frameworks/eyelink_core.framework; sourceTree = "<absolute>"; };
 		2F02A85705F0735800C19AA2 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/GetPID/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F02A85805F0735800C19AA2 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/GetPID/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F02A85905F0735800C19AA2 /* GetPID.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetPID.h; path = ../../../Source/Common/GetPID/GetPID.h; sourceTree = SOURCE_ROOT; };
@@ -2669,10 +2679,10 @@
 		2F0B17D50778976600359736 /* IOPORTInit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTInit.c; path = ../../../Source/Common/IOPort/IOPORTInit.c; sourceTree = SOURCE_ROOT; };
 		2F0B17D60778976600359736 /* IOPORTSetPort.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTSetPort.c; path = ../../../Source/Common/IOPort/IOPORTSetPort.c; sourceTree = SOURCE_ROOT; };
 		2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Release.rtf"; path = "../../../Notes/How To Release.rtf"; sourceTree = SOURCE_ROOT; };
-		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB704/extern/include/mex.h; sourceTree = "<absolute>"; };
-		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB704/extern/include/matrix.h; sourceTree = "<absolute>"; };
+		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB71/extern/include/mex.h; sourceTree = "<absolute>"; };
+		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB71/extern/include/matrix.h; sourceTree = "<absolute>"; };
 		2F1EB81D05447D4A00A80166 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB704/extern/src/mexversion.c; sourceTree = "<absolute>"; };
+		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB71/extern/src/mexversion.c; sourceTree = "<absolute>"; };
 		2F29D8F204B90844007A7274 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/SysBeep/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F29D8F304B90844007A7274 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/SysBeep/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F29D8F404B90844007A7274 /* SysBeep.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SysBeep.c; path = ../../../Source/Common/SysBeep/SysBeep.c; sourceTree = SOURCE_ROOT; };
@@ -2811,7 +2821,7 @@
 		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
-		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
@@ -2880,11 +2890,25 @@
 		2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = TestPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecs.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecsMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA79D0988635400F4165F /* Foo.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Foo.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA79D0988635400F4165F /* Eyelink.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Eyelink.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GenericMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOWarriorLib.c; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.c"; sourceTree = SOURCE_ROOT; };
 		2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = IOWarriorLib.h; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.h"; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
+		805723350A51DDB900DF6EF6 /* eyelink.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = eyelink.h; path = /Library/Frameworks/eyelink_core.framework/Versions/A/Headers/eyelink.h; sourceTree = "<absolute>"; };
+		805723480A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkAcceptTrigger.c; path = ../../../Source/Common/Eyelink/EyelinkAcceptTrigger.c; sourceTree = SOURCE_ROOT; };
+		805723490A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkApplyDriftCorr.c; path = ../../../Source/Common/Eyelink/EyelinkApplyDriftCorr.c; sourceTree = SOURCE_ROOT; };
+		8057234A0A51DE4B00DF6EF6 /* EyelinkCalResult.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCalResult.c; path = ../../../Source/Common/Eyelink/EyelinkCalResult.c; sourceTree = SOURCE_ROOT; };
+		8057234B0A51DE4B00DF6EF6 /* EyelinkCheckRecording.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCheckRecording.c; path = ../../../Source/Common/Eyelink/EyelinkCheckRecording.c; sourceTree = SOURCE_ROOT; };
+		8057234C0A51DE4B00DF6EF6 /* EyelinkCloseFile.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkCloseFile.c; path = ../../../Source/Common/Eyelink/EyelinkCloseFile.c; sourceTree = SOURCE_ROOT; };
+		8057234D0A51DE4B00DF6EF6 /* EyelinkDriftCorrStart.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkDriftCorrStart.c; path = ../../../Source/Common/Eyelink/EyelinkDriftCorrStart.c; sourceTree = SOURCE_ROOT; };
+		8057234E0A51DE4B00DF6EF6 /* EyelinkEyeAvailable.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkEyeAvailable.c; path = ../../../Source/Common/Eyelink/EyelinkEyeAvailable.c; sourceTree = SOURCE_ROOT; };
+		8057234F0A51DE4B00DF6EF6 /* EyelinkMessage.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkMessage.c; path = ../../../Source/Common/Eyelink/EyelinkMessage.c; sourceTree = SOURCE_ROOT; };
+		805723500A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkNewFloatSampleAvailable.c; path = ../../../Source/Common/Eyelink/EyelinkNewFloatSampleAvailable.c; sourceTree = SOURCE_ROOT; };
+		805723510A51DE4B00DF6EF6 /* EyelinkOpenFile.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkOpenFile.c; path = ../../../Source/Common/Eyelink/EyelinkOpenFile.c; sourceTree = SOURCE_ROOT; };
+		805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSetOfflineMode.c; path = ../../../Source/Common/Eyelink/EyelinkSetOfflineMode.c; sourceTree = SOURCE_ROOT; };
+		805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyeLinkTargetCheck.c; path = ../../../Source/Common/Eyelink/EyeLinkTargetCheck.c; sourceTree = SOURCE_ROOT; };
+		805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkWaitForModeReady.c; path = ../../../Source/Common/Eyelink/EyelinkWaitForModeReady.c; sourceTree = SOURCE_ROOT; };
 		8302E1FE0A1928E900AE269C /* GetSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = GetSecs.cc; path = ../../../Source/Octave/GetSecs.cc; sourceTree = SOURCE_ROOT; };
 		8302E1FF0A1928E900AE269C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../Source/Octave/octavemex.h; sourceTree = SOURCE_ROOT; };
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
@@ -3064,7 +3088,7 @@
 		F5FCC41A03833708017A7028 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		F5FCC43C038338B4017A7028 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
 		F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		F5FCC57F03833BCA017A7028 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/2.95.2/libstdc++.a"; sourceTree = "<absolute>"; };
+		F5FCC57F03833BCA017A7028 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = file; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/2.95.2/libstdc++.a"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3755,7 +3779,20 @@
 		0E92E8AC095727BC002687D9 /* Eyelink */ = {
 			isa = PBXGroup;
 			children = (
-				0E92E8AD09572831002687D9 /* EyelinkInitWindow.c */,
+				805723350A51DDB900DF6EF6 /* eyelink.h */,
+				805723480A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c */,
+				805723490A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c */,
+				8057234A0A51DE4B00DF6EF6 /* EyelinkCalResult.c */,
+				8057234B0A51DE4B00DF6EF6 /* EyelinkCheckRecording.c */,
+				8057234C0A51DE4B00DF6EF6 /* EyelinkCloseFile.c */,
+				8057234D0A51DE4B00DF6EF6 /* EyelinkDriftCorrStart.c */,
+				8057234E0A51DE4B00DF6EF6 /* EyelinkEyeAvailable.c */,
+				8057234F0A51DE4B00DF6EF6 /* EyelinkMessage.c */,
+				805723500A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c */,
+				805723510A51DE4B00DF6EF6 /* EyelinkOpenFile.c */,
+				805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */,
+				805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */,
+				805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */,
 				0E92E8AE09572831002687D9 /* RegisterProject.h */,
 				0E92E8AF09572831002687D9 /* RegisterProject.c */,
 				0E92E8B009572831002687D9 /* EyelinkCreateDataStructs.c */,
@@ -3832,7 +3869,7 @@
 				2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */,
 				2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */,
 				2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */,
-				2FEBA79D0988635400F4165F /* Foo.mexmac */,
+				2FEBA79D0988635400F4165F /* Eyelink.mexmac */,
 				2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */,
 			);
 			name = Products;
@@ -7392,7 +7429,7 @@
 			);
 			name = Eyelink;
 			productName = foo;
-			productReference = 2FEBA79D0988635400F4165F /* Foo.mexmac */;
+			productReference = 2FEBA79D0988635400F4165F /* Eyelink.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA79E0988641C00F4165F /* GenericMexTarget */ = {
@@ -8971,7 +9008,6 @@
 				0E92E882095726FE002687D9 /* MODULEVersion.c in Sources */,
 				0E92E884095726FE002687D9 /* mexversion.c in Sources */,
 				0E92E887095726FE002687D9 /* PsychAuthors.c in Sources */,
-				0E92E8C009572831002687D9 /* EyelinkInitWindow.c in Sources */,
 				0E92E8C209572831002687D9 /* RegisterProject.c in Sources */,
 				0E92E8C309572831002687D9 /* EyelinkCreateDataStructs.c in Sources */,
 				0E92E8C409572831002687D9 /* EyelinkCommand.c in Sources */,
@@ -10190,7 +10226,6 @@
 				2FEBAA470989B90000F4165F /* EyelinkCurrentMode.c in Sources */,
 				2FEBAA480989B90100F4165F /* EyelinkImageModeDisplay.c in Sources */,
 				2FEBAA490989B90100F4165F /* EyelinkInitialize.c in Sources */,
-				2FEBAA4A0989B90200F4165F /* EyelinkInitWindow.c in Sources */,
 				2FEBAA4B0989B90300F4165F /* EyelinkIsConnected.c in Sources */,
 				2FEBAA4C0989B90400F4165F /* EyelinkNewestFloatSample.c in Sources */,
 				2FEBAA4D0989B90400F4165F /* EyelinkSendKeyButton.c in Sources */,
@@ -10216,6 +10251,19 @@
 				2FEBAA640989B91C00F4165F /* PsychVersioning.c in Sources */,
 				2FEBAA650989B91C00F4165F /* RegisterProject.c in Sources */,
 				835CD26D0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				805723550A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c in Sources */,
+				805723560A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c in Sources */,
+				805723570A51DE4B00DF6EF6 /* EyelinkCalResult.c in Sources */,
+				805723580A51DE4B00DF6EF6 /* EyelinkCheckRecording.c in Sources */,
+				805723590A51DE4B00DF6EF6 /* EyelinkCloseFile.c in Sources */,
+				8057235A0A51DE4B00DF6EF6 /* EyelinkDriftCorrStart.c in Sources */,
+				8057235B0A51DE4B00DF6EF6 /* EyelinkEyeAvailable.c in Sources */,
+				8057235C0A51DE4B00DF6EF6 /* EyelinkMessage.c in Sources */,
+				8057235D0A51DE4B00DF6EF6 /* EyelinkNewFloatSampleAvailable.c in Sources */,
+				8057235E0A51DE4B00DF6EF6 /* EyelinkOpenFile.c in Sources */,
+				8057235F0A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c in Sources */,
+				805723600A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c in Sources */,
+				805723610A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -13564,7 +13612,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				MATLAB_DIR_NAME = MATLAB704;
+				LIBRARY_SEARCH_PATHS = (
+					/usr/lib/gcc/darwin/3.3/,
+					"$(LIBRARY_SEARCH_PATHS)",
+				);
+				MATLAB_DIR_NAME = MATLAB71;
+				USER_HEADER_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/src $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include $(USER_HEADER_SEARCH_PATHS)";
 			};
 			name = Development;
 		};
@@ -13572,7 +13625,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				MATLAB_DIR_NAME = MATLAB704;
+				MATLAB_DIR_NAME = MATLAB71;
 			};
 			name = Deployment;
 		};
@@ -13580,7 +13633,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				MATLAB_DIR_NAME = MATLAB704;
+				MATLAB_DIR_NAME = MATLAB71;
 			};
 			name = Default;
 		};
@@ -15706,7 +15759,7 @@
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
-					/usr/lib/gcc/darwin/2.95.2,
+					/usr/lib/gcc/darwin/3.3/,
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
@@ -15725,8 +15778,8 @@
 					"-lstdc++",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = Foo;
-				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				PRODUCT_NAME = Eyelink;
+				PSYCHTOOLBOX_SUBFOLDER = PsychHardware/EyelinkToolbox/EyelinkBasic;
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
@@ -18283,7 +18336,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
-				MATLAB_DIR_NAME = MATLAB704;
+				MATLAB_DIR_NAME = MATLAB71;
 			};
 			name = "Development-Octavebuild";
 		};
