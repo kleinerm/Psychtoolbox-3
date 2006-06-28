@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glLightfv', light, pname, single(params) );
+moglcore( 'glLightfv', light, pname, moglsingle(params) );
 
 return

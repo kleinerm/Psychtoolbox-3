@@ -19,7 +19,7 @@ if ~strcmp(class(nurb),'uint32'),
 	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
 end
 
-data = single(0);
+data = moglsingle(0);
 moglcore( 'gluGetNurbsProperty', nurb, property, data );
 
 return

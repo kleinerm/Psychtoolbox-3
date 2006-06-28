@@ -73,7 +73,7 @@ switch(type)
     case GL.INT
         pixels = int32(pixels);
     case GL.FLOAT
-        pixels = single(pixels);
+        pixels = moglsingle(pixels);
 end;
 
 % Execute actual call:

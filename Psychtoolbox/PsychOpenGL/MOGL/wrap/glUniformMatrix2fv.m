@@ -12,6 +12,6 @@ if nargin~=4,
     error('invalid number of arguments');
 end
 
-moglcore( 'glUniformMatrix2fv', location, count, transpose, single(value) );
+moglcore( 'glUniformMatrix2fv', location, count, transpose, moglsingle(value) );
 
 return

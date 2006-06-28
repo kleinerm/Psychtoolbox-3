@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glEvalCoord2fv', single(u) );
+moglcore( 'glEvalCoord2fv', moglsingle(u) );
 
 return

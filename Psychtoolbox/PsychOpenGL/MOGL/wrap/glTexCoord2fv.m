@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glTexCoord2fv', single(v) );
+moglcore( 'glTexCoord2fv', moglsingle(v) );
 
 return

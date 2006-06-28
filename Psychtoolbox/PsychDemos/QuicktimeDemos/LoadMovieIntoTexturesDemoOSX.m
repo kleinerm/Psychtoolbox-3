@@ -266,5 +266,5 @@ catch
     % Error handling: Close all windows and movies, release all ressources.
     ShowCursor;
     Screen('CloseAll');
-    rethrow(lasterror);
+    psychrethrow(lasterror);
 end;

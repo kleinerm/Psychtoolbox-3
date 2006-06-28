@@ -15,7 +15,7 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = single(NaN(4,1));
+params = moglsingle(NaN(4,1));
 moglcore( 'glGetMaterialfv', face, pname, params );
 params = params(find(~isnan(params)));
 

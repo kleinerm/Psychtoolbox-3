@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glRasterPos3fv', single(v) );
+moglcore( 'glRasterPos3fv', moglsingle(v) );
 
 return

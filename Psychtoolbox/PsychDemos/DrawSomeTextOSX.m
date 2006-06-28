@@ -44,5 +44,5 @@ catch
     % This "catch" section executes in case of an error in the "try" section
     % above.  Importantly, it closes the onscreen window if it's open.
     Screen('CloseAll');
-    rethrow(lasterror);
+    psychrethrow(lasterror);
 end

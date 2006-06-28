@@ -79,7 +79,7 @@ for j=1:numel(funcp.argin.args),
 			case { 'GLdouble' 'GLclampd' }
 				mcast='double';
 			case { 'GLfloat' 'GLclampf' }
-				mcast='single';
+				mcast='moglsingle';
 			case { 'GLint' 'GLsizei' }
 				mcast='int32';
 			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric'}

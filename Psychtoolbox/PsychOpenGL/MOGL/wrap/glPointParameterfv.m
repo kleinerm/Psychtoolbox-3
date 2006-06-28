@@ -12,6 +12,6 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glPointParameterfv', pname, single(params) );
+moglcore( 'glPointParameterfv', pname, moglsingle(params) );
 
 return

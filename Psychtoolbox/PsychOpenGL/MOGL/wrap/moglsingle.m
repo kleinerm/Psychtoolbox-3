@@ -1,8 +1,8 @@
-function retval = single(arg)
+function retval = moglsingle(arg)
 %
-% PSYCHTOOLBOX SPECIFIC OVERLOADED FUNCTION
+% PSYCHTOOLBOX SPECIFIC single() implementation:
 %
-% retval = single(arg) -- convert into
+% retval = moglsingle(arg) -- convert into
 % a single precision floating point number.
 %
 % This routine takes an 'arg' of arbitrary
@@ -10,7 +10,7 @@ function retval = single(arg)
 % object of single precision floating point format.
 %
 % If a builtin single() function is available,
-% as on Matlab, it calls the builtin function.
+% as on Matlab, it calls the builtin single() function.
 %
 % Otherwise (Octave) it calls our own special
 % implementation.

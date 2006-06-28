@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glIndexfv', single(c) );
+moglcore( 'glIndexfv', moglsingle(c) );
 
 return

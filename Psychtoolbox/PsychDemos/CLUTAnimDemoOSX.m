@@ -136,5 +136,5 @@ catch
     end
     Screen('CloseAll');
     Screen('Preference', 'SkipSyncTests', 0);
-    rethrow(lasterror);
+    psychrethrow(lasterror);
 end %try..catch..

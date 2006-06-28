@@ -20,10 +20,10 @@ set -e
 : ${FFLAGS="-O2"}
 : ${FPICFLAG="-fPIC"}
 : ${CC="/usr/bin/gcc"}
-: ${CFLAGS="-O2"}
+: ${CFLAGS="-O2 -g"}
 : ${CPICFLAG="-fPIC"}
 : ${CXX="/usr/bin/g++"}
-: ${CXXFLAGS="-O2"}
+: ${CXXFLAGS="-O2 -g"}
 : ${CXXPICFLAG="-fPIC"}
 : ${XTRA_CFLAGS="-mieee-fp"}
 : ${XTRA_CXXFLAGS="-mieee-fp"}

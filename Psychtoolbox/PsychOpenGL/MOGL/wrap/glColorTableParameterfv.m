@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glColorTableParameterfv', target, pname, single(params) );
+moglcore( 'glColorTableParameterfv', target, pname, moglsingle(params) );
 
 return

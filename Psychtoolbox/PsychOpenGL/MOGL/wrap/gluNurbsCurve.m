@@ -19,6 +19,6 @@ if ~strcmp(class(nurb),'uint32'),
 	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
 end
 
-moglcore( 'gluNurbsCurve', nurb, knotCount, single(knots), stride, single(control), order, type );
+moglcore( 'gluNurbsCurve', nurb, knotCount, moglsingle(knots), stride, moglsingle(control), order, type );
 
 return

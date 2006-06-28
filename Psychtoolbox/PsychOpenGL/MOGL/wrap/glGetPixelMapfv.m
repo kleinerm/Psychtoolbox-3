@@ -18,7 +18,7 @@ end
 % find map size
 global GL
 maxn=glGetIntegerv(GL.MAX_PIXEL_MAP_TABLE);
-values = single(NaN(maxn,1));
+values = moglsingle(NaN(maxn,1));
 moglcore( 'glGetPixelMapfv', map, values );
 values = values(~isnan(values));
 

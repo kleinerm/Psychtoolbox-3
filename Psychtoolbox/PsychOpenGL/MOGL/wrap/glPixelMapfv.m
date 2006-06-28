@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glPixelMapfv', map, mapsize, single(values) );
+moglcore( 'glPixelMapfv', map, mapsize, moglsingle(values) );
 
 return

@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glMaterialfv', face, pname, single(params) );
+moglcore( 'glMaterialfv', face, pname, moglsingle(params) );
 
 return

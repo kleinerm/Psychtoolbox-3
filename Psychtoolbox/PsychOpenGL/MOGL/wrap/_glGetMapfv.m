@@ -14,7 +14,7 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-v = single(0);
+v = moglsingle(0);
 
 moglcore( 'glGetMapfv', target, query, v );
 

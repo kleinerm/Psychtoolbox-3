@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glMultMatrixf', single(m) );
+moglcore( 'glMultMatrixf', moglsingle(m) );
 
 return

@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glConvolutionParameterfv', target, pname, single(params) );
+moglcore( 'glConvolutionParameterfv', target, pname, moglsingle(params) );
 
 return

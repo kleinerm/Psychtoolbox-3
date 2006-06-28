@@ -12,6 +12,6 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glVertexAttrib3fv', index, single(v) );
+moglcore( 'glVertexAttrib3fv', index, moglsingle(v) );
 
 return

@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glWindowPos3fv', single(v) );
+moglcore( 'glWindowPos3fv', moglsingle(v) );
 
 return

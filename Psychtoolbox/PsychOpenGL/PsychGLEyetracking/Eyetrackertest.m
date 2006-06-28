@@ -184,7 +184,7 @@ global rayvisdisplaylist;
     return;
     %catch
     Screen('CloseAll');
-    rethrow(lasterr);
+    psychrethrow(lasterror);
 end;
 
 function Waitkey

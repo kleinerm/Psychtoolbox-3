@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glUniform4fv', location, count, single(value) );
+moglcore( 'glUniform4fv', location, count, moglsingle(value) );
 
 return

@@ -16,6 +16,6 @@ if ~strcmp(class(nurb),'uint32'),
 	error([ 'argument ''nurb'' must be a pointer coded as type uint32 ' ]);
 end
 
-moglcore( 'gluLoadSamplingMatrices', nurb, single(model), single(perspective), int32(view) );
+moglcore( 'gluLoadSamplingMatrices', nurb, moglsingle(model), moglsingle(perspective), int32(view) );
 
 return

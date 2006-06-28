@@ -176,7 +176,7 @@ if isempty(objcount)
     % This is potentially faster for morphing and rendering, but only
     % supported on Matlab-7 or later.
     try
-        dummy = single(1)+single(1);
+        dummy = moglsingle(1)+moglsingle(1);
         if dummy == 2
            usetype = GL.FLOAT;
         else
@@ -292,7 +292,7 @@ if strcmp(cmd, 'addMesh')
     
     % 2nd argument is vertex array:
     if usetype==GL.FLOAT
-        vertices = single(arg2);
+        vertices = moglsingle(arg2);
     else
         vertices = double(arg2);
     end;
@@ -300,7 +300,7 @@ if strcmp(cmd, 'addMesh')
     % 3rd (optional) argument is texture coordinate array:
     if argcount>3 & ~isempty(arg3)
         if usetype==GL.FLOAT
-            texcoords = single(arg3);
+            texcoords = moglsingle(arg3);
         else
             texcoords = double(arg3);
         end;
@@ -310,7 +310,7 @@ if strcmp(cmd, 'addMesh')
     % 4th (optional) argument is normal vectors array:
     if argcount>4 & ~isempty(arg4)
         if usetype==GL.FLOAT
-            normals = single(arg4);
+            normals = moglsingle(arg4);
         else
             normals = double(arg4);
         end;

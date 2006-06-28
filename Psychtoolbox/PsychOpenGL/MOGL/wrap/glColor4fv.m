@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glColor4fv', single(v) );
+moglcore( 'glColor4fv', moglsingle(v) );
 
 return

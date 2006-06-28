@@ -206,5 +206,5 @@ depth
     
     %catch
    %Screen('CloseAll');
-   %rethrow(lasterror);
+   %psychrethrow(lasterror);
 %end;

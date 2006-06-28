@@ -15,7 +15,7 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-params = single(repmat(NaN,[ 32 1 ]));
+params = moglsingle(repmat(NaN,[ 32 1 ]));
 moglcore( 'glGetFloatv', pname, params );
 params = params(find(~isnan(params)));
 
@@ -40,7 +40,7 @@ return
 %     error('invalid number of arguments');
 % end
 % 
-% params = single(0);
+% params = moglsingle(0);
 % 
 % moglcore( 'glGetFloatv', pname, params );
 % 

@@ -12,6 +12,6 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glRectfv', single(v1), single(v2) );
+moglcore( 'glRectfv', moglsingle(v1), moglsingle(v2) );
 
 return

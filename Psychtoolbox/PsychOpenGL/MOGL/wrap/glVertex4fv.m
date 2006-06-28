@@ -12,6 +12,6 @@ if nargin~=1,
     error('invalid number of arguments');
 end
 
-moglcore( 'glVertex4fv', single(v) );
+moglcore( 'glVertex4fv', moglsingle(v) );
 
 return

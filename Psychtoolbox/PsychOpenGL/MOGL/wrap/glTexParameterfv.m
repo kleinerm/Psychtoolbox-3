@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glTexParameterfv', target, pname, single(params) );
+moglcore( 'glTexParameterfv', target, pname, moglsingle(params) );
 
 return

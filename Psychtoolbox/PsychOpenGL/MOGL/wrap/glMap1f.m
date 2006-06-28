@@ -12,6 +12,6 @@ if nargin~=6,
     error('invalid number of arguments');
 end
 
-moglcore( 'glMap1f', target, u1, u2, stride, order, single(points) );
+moglcore( 'glMap1f', target, u1, u2, stride, order, moglsingle(points) );
 
 return

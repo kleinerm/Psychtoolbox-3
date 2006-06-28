@@ -215,5 +215,5 @@ catch
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
-    rethrow(lasterr);
+    psychrethrow(lasterror);
 end % try..catch

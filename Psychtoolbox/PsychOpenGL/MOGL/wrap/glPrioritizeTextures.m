@@ -12,6 +12,6 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-moglcore( 'glPrioritizeTextures', n, uint32(textures), single(priorities) );
+moglcore( 'glPrioritizeTextures', n, uint32(textures), moglsingle(priorities) );
 
 return

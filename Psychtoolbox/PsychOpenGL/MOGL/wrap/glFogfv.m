@@ -12,6 +12,6 @@ if nargin~=2,
     error('invalid number of arguments');
 end
 
-moglcore( 'glFogfv', pname, single(params) );
+moglcore( 'glFogfv', pname, moglsingle(params) );
 
 return
