@@ -6,6 +6,7 @@ fprintf('OSX Eyelink GetKeys Test\n\n\t');
 
 
 el=EyelinkInitDefaults;
+fprintf('Quit by pressing %s\n\n\t', [el.modifierKey ' & ' el.quitKey ] );
 
 start=GetSecs;
 while 1
@@ -18,12 +19,12 @@ while 1
         break;
     end
     if key~=el.JUNK_KEY & key ~= 0
-        key
-        fprintf('Eyelink key %s (%.1f)\n', char(key), GetSecs-start);
+        key;
+        fprintf('Eyelink key %d\t%s (%.1f)\n', key, char(key), GetSecs-start);
     end
 end
 
-FlushEvents;
+% FlushEvents('keyDown');
 
 fprintf('End of Eyelink GetKeys Test.\n');
 

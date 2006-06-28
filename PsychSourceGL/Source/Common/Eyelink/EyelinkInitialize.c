@@ -1,40 +1,47 @@
 /*
-
+ 
 	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkInitialize.c
-  
+ 
 	PROJECTS: Eyelink 
-  
+ 
 	AUTHORS:
-		cburns@berkeley.edu				cdb
-		E.Peters@ai.rug.nl				emp
-		f.w.cornelissen@med.rug.nl		fwc
-  
+ cburns@berkeley.edu				cdb
+ E.Peters@ai.rug.nl				emp
+ f.w.cornelissen@med.rug.nl		fwc
+ 
 	PLATFORMS:	Currently only OS X  
-    
+ 
 	HISTORY:
-
-		11/23/05  cdb		Created.
-
+ 
+ 11/23/05  cdb		Created.
+ 28/06/06	fwc		added EyelinkInitializeDummy function. Unlike in the OS9 version, 
+					I decided to make it a seperate function rather than option in EyelinkInitialize.
+					Eyelink manual actually seems to advice to use eyelink_open_connection()
+					rather than the way we do it now.
+ 
 	TARGET LOCATION:
-
-		Eyelink.mexmac resides in:
-			EyelinkToolbox
-			
+ 
+ Eyelink.mexmac resides in:
+ PsychHardware/EyelinkToolbox/EyelinkBasic
+ 
 	NOTES:
-		This is a scaled down version compared to what Enno and Frans wrote.
-		I hardcode in the buffersize and ignore other params.  And there is 
-		no dummy version.
-								--- cdb
-*/
+ This is a scaled down version compared to the OS9 version that Enno and Frans wrote.
+ I hardcode in the buffersize and ignore other params.
+ */
 
 #include "PsychEyelink.h"
 
 char useString[] = "[status =] Eyelink('Initialize')";
+char useDummyString[] = "[status =] Eyelink('InitializeDummy')";
 
 static char synopsisString[] = 
-   "Initializes SIMLINK and Ethernet system\n"
-   "Opens connection, report any problem\n"
-   "Returns: 0 if OK, -1 if error";
+"Initializes SIMLINK and Ethernet system\n"
+"Opens connection, report any problem\n"
+"Returns: 0 if OK, -1 if error";
+
+static char synopsisDummyString[] = 
+"Initializes eyelink in dummy mode, useful for debugging\n"
+"Returns: 0 if OK, -1 if error";
 
 static char seeAlsoString[] = "";
 
@@ -42,7 +49,7 @@ PsychError EyelinkInitialize(void)
 {
 	int		iBufferSize = 20000; // Hardcode default
 	int		iStatus		= -1;
-
+	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	
@@ -62,6 +69,7 @@ PsychError EyelinkInitialize(void)
 		mexPrintf("Eyelink already initialized!\n");
 		iStatus = 0;
 	} else {
+		
 		iStatus = open_eyelink_system(iBufferSize, NULL);
 		// If link is established, open connection
 		if(iStatus != 0) {
@@ -90,3 +98,39 @@ PsychError EyelinkInitialize(void)
 	return(PsychError_none);
 	
 }
+
+
+PsychError EyelinkInitializeDummy(void)
+{
+	int		iStatus		= -1;
+	// Add help strings
+	PsychPushHelp(useDummyString, synopsisDummyString, seeAlsoString);
+	
+	// Output help if asked
+	if(PsychIsGiveHelp()) {
+		PsychGiveHelp();
+		return(PsychError_none);
+	}
+	
+	// Check arguments
+	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychRequireNumInputArgs(0));
+	PsychErrorExit(PsychCapNumOutputArgs(1));
+	
+	if(giSystemInitialized == 1) {
+		// Is there a psych function for this?
+		mexPrintf("Eyelink already initialized!\n");
+		iStatus = 0;
+	} else {
+		
+		mexPrintf("Eyelink: Opening Eyelink in DUMMY mode\n");
+		iStatus = eyelink_dummy_open();			
+	}
+		
+	// Copy output arg
+	PsychCopyOutDoubleArg(1, FALSE, iStatus);
+	
+	return(PsychError_none);
+	
+}
+

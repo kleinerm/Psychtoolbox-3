@@ -34,7 +34,7 @@ static char synopsisString[] =
 static char seeAlsoString[] = "";
 
 /*
-ROUTINE: EYELINKsendkeybutton
+ROUTINE: EyelinkSendKeyButton
 PURPOSE:
    uses INT16 CALLTYPE eyelink_send_keybutton(UINT16 code, UINT16 mods, INT16 state);
    "sends key/button state chane to tracker"

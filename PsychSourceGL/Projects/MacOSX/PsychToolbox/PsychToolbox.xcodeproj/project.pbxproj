@@ -1570,6 +1570,10 @@
 		8057235F0A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */; };
 		805723600A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */; };
 		805723610A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */; };
+		80AB76B20A52F7EE00E7FB48 /* EyelinkReadTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */; };
+		80AB76B40A52F81300E7FB48 /* EyelinkRequestTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */; };
+		80AB76B60A52F83100E7FB48 /* EyelinkReceiveFile.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */; };
+		80AB76D90A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */; };
 		8302E2030A1928E900AE269C /* Screen.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2000A1928E900AE269C /* Screen.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		8302E2170A1928E900AE269C /* GetSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E1FE0A1928E900AE269C /* GetSecs.cc */; };
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
@@ -2909,6 +2913,10 @@
 		805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSetOfflineMode.c; path = ../../../Source/Common/Eyelink/EyelinkSetOfflineMode.c; sourceTree = SOURCE_ROOT; };
 		805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyeLinkTargetCheck.c; path = ../../../Source/Common/Eyelink/EyeLinkTargetCheck.c; sourceTree = SOURCE_ROOT; };
 		805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkWaitForModeReady.c; path = ../../../Source/Common/Eyelink/EyelinkWaitForModeReady.c; sourceTree = SOURCE_ROOT; };
+		80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkReadTime.c; path = ../../../Source/Common/Eyelink/EyelinkReadTime.c; sourceTree = SOURCE_ROOT; };
+		80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkRequestTime.c; path = ../../../Source/Common/Eyelink/EyelinkRequestTime.c; sourceTree = SOURCE_ROOT; };
+		80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkReceiveFile.c; path = ../../../Source/Common/Eyelink/EyelinkReceiveFile.c; sourceTree = SOURCE_ROOT; };
+		80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkGetTrackerVersion.c; path = ../../../Source/Common/Eyelink/EyelinkGetTrackerVersion.c; sourceTree = SOURCE_ROOT; };
 		8302E1FE0A1928E900AE269C /* GetSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = GetSecs.cc; path = ../../../Source/Octave/GetSecs.cc; sourceTree = SOURCE_ROOT; };
 		8302E1FF0A1928E900AE269C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../Source/Octave/octavemex.h; sourceTree = SOURCE_ROOT; };
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
@@ -3780,6 +3788,10 @@
 			isa = PBXGroup;
 			children = (
 				805723350A51DDB900DF6EF6 /* eyelink.h */,
+				80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */,
+				80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */,
+				80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */,
+				80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */,
 				805723480A51DE4B00DF6EF6 /* EyelinkAcceptTrigger.c */,
 				805723490A51DE4B00DF6EF6 /* EyelinkApplyDriftCorr.c */,
 				8057234A0A51DE4B00DF6EF6 /* EyelinkCalResult.c */,
@@ -10264,6 +10276,10 @@
 				8057235F0A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c in Sources */,
 				805723600A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c in Sources */,
 				805723610A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c in Sources */,
+				80AB76B20A52F7EE00E7FB48 /* EyelinkReadTime.c in Sources */,
+				80AB76B40A52F81300E7FB48 /* EyelinkRequestTime.c in Sources */,
+				80AB76B60A52F83100E7FB48 /* EyelinkReceiveFile.c in Sources */,
+				80AB76D90A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

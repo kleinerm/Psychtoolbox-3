@@ -30,7 +30,6 @@ PsychError PsychModuleInit(void)
 {
 	// Initialize Eyelink project variables
 	giSystemInitialized = 0;
-	
 	//
 	// TODO:  REGISTER EYELINK EXIT FUNCTION THAT WOULD SHUTDOWN LINK TO EYELINK
 	//
@@ -53,6 +52,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Command",				&EyelinkCommand));
 	PsychErrorExit(PsychRegister("CurrentMode",			&EyelinkCurrentMode));
 	PsychErrorExit(PsychRegister("ImageModeDisplay",	&EyelinkImageModeDisplay));
+	PsychErrorExit(PsychRegister("InitializeDummy",		&EyelinkInitializeDummy));
+
 	PsychErrorExit(PsychRegister("Initialize",			&EyelinkInitialize));
 	PsychErrorExit(PsychRegister("IsConnected",			&EyelinkIsConnected));
 	PsychErrorExit(PsychRegister("NewestFloatSample",	&EyelinkNewestFloatSample));
@@ -69,12 +70,16 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Message",					&EyelinkMessage));
 	PsychErrorExit(PsychRegister("OpenFile",				&EyelinkOpenFile));
 	PsychErrorExit(PsychRegister("CloseFile",				&EyelinkCloseFile));
+	PsychErrorExit(PsychRegister("ReceiveFile",				&EyelinkReceiveFile));
 	PsychErrorExit(PsychRegister("CheckRecording",			&EyelinkCheckRecording));
 	PsychErrorExit(PsychRegister("NewFloatSampleAvailable",	&EyelinkNewFloatSampleAvailable));
 	PsychErrorExit(PsychRegister("SetOfflineMode",			&EyelinkSetOfflineMode));
 	PsychErrorExit(PsychRegister("DriftCorrStart",			&EyelinkDriftCorrStart));
 	PsychErrorExit(PsychRegister("ApplyDriftCorr",			&EyelinkApplyDriftCorr));
 	PsychErrorExit(PsychRegister("EyeAvailable",			&EyelinkEyeAvailable));
+	PsychErrorExit(PsychRegister("ReadTime",				&EyelinkReadTime));
+	PsychErrorExit(PsychRegister("RequestTime",				&EyelinkRequestTime));
+	PsychErrorExit(PsychRegister("GetTrackerVersion",		&EyelinkGetTrackerVersion));
 	
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.

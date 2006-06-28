@@ -50,11 +50,13 @@ void InitializeSynopsis()
 	// Init or close eyelink
 	synopsis[i++] = "\n% Initialize or shutdown Eyelink connection:";
 	synopsis[i++] = "[status =] Eyelink('Initialize')";
+	synopsis[i++] = "[status =] Eyelink('InitializeDummy')";
 	synopsis[i++] = "status = Eyelink('IsConnected')";
 	synopsis[i++] = "Eyelink('Shutdown')";
 	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
 	synopsis[i++] = "[status =] Eyelink('CloseFile')";
-
+	synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
+	
 	// Calibration
 	synopsis[i++] = "\n% Calibration:";
 	synopsis[i++] = "[result =] Eyelink('StartSetup')";
@@ -84,6 +86,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[result = ] Eyelink('AcceptTrigger')";
 	synopsis[i++] = "result = Eyelink('CalResult')";
 	synopsis[i++] = "Eyelink('SetOfflineMode')";
+	synopsis[i++] = "[version , versionString]  = Eyelink('GetTrackerVersion')";
 
 	// Place Holder
 	synopsis[i++] = "\n\n\n\n% Port of Eyelink toolbox for OS X";

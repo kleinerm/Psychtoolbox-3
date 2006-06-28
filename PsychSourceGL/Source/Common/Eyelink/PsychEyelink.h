@@ -36,7 +36,6 @@
 
 extern int		giSystemInitialized;
 
-
 /////////////////////////////////////////////////////////////////////////
 //		Eyelink Function prototypes
 
@@ -77,7 +76,11 @@ PsychError EyelinkSetOfflineMode(void);
 PsychError EyelinkDriftCorrStart(void);
 PsychError EyelinkApplyDriftCorr(void);
 PsychError EyelinkEyeAvailable(void);
-
+PsychError	EyelinkInitializeDummy(void);
+PsychError EyelinkReadTime(void);
+PsychError EyelinkRequestTime(void);
+PsychError EyelinkReceiveFile(void);
+PsychError EyelinkGetTrackerVersion(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif 
