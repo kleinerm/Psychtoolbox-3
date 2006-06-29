@@ -18,7 +18,7 @@
 					I decided to make it a seperate function rather than option in EyelinkInitialize.
 					Eyelink manual actually seems to advice to use eyelink_open_connection()
 					rather than the way we do it now.
- 
+ 29/06/06	fwc		fixed EyelinkInitializeDummy (didn't set giSystemInitialized)
 	TARGET LOCATION:
  
  Eyelink.mexmac resides in:
@@ -124,7 +124,22 @@ PsychError EyelinkInitializeDummy(void)
 	} else {
 		
 		mexPrintf("Eyelink: Opening Eyelink in DUMMY mode\n");
-		iStatus = eyelink_dummy_open();			
+		iStatus = eyelink_dummy_open();
+		// Check for errors and report
+		if(iStatus != 0) {
+			close_eyelink_system();
+			if(iStatus == CONNECT_TIMEOUT_FAILED) {
+				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot connect to EyeLink\n");
+			} else if(iStatus == WRONG_LINK_VERSION) {
+				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Link version mismatch to EyeLink tracker\n");
+			} else if(iStatus == LINK_INITIALIZE_FAILED) {
+				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot initialize link\n");
+			}
+		} else {
+			giSystemInitialized = 1;
+		}
+		
+				
 	}
 		
 	// Copy output arg

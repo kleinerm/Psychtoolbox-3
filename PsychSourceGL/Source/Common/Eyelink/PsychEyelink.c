@@ -14,6 +14,7 @@
 	HISTORY:
 
 		11/22/05  cdb		Created.
+		29/06/06	fwc		fixed EyelinkSystemIsConnected to allow dummy mode connections
 
 	TARGET LOCATION:
 
@@ -30,13 +31,21 @@ int		giSystemInitialized = 0;
 
 
 /////////////////////////////////////////////////////////////////////////
-// Check is system is initialized
+// Check if system is initialized
 //
 PsychError EyelinkSystemIsConnected(void)
 {
-	if (!eyelink_is_connected()) {
+	int iStatus=-9999;
+	iStatus=eyelink_is_connected();
+//	mexPrintf("EyelinkSystemIsConnected status %d ((iStatus==0)=%d)\n", iStatus, (iStatus==0) );
+	if (iStatus==0) {
+		PsychErrorExitMsg(PsychError_user, "Eyelink system is not connected!x\n");
+	}
+/*	
+	if (eyelink_is_connected()==0) {
 		PsychErrorExitMsg(PsychError_user, "Eyelink system is not connected!\n");
 	}
+	*/
 }
 
 /////////////////////////////////////////////////////////////////////////

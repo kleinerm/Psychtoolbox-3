@@ -24,43 +24,43 @@
 #include "PsychEyelink.h"
 
 static char useString[] = "[version , versionString]  = Eyelink('GetTrackerVersion')";
-	
+
 static char synopsisString[] =
-	"Returns: 0 if not connected, 1 for EyeLink I, 2 for EyeLink II\n"
-    "<Versionstring> will be 'EYELINK I' or 'EYELINK II x.xx', where 'x.xx' is the software version \n";
+"Returns: 0 if not connected, 1 for EyeLink I, 2 for EyeLink II\n"
+"<Versionstring> will be 'EYELINK I' or 'EYELINK II x.xx', where 'x.xx' is the software version \n";
 
 static char seeAlsoString[] = "";
-   
+
 /*
-ROUTINE: EyelinkGetTrackerVersion
-PURPOSE:
+ ROUTINE: EyelinkGetTrackerVersion
+ PURPOSE:
 	checks for reply to eyelink_request_time()
 	returns: 0 if no reply, else time
  */
-          
+
 PsychError EyelinkGetTrackerVersion(void)
 {
-   int iVersion;
-   char strVersion[40]="";
-
-   //all sub functions should have these two lines
-   PsychPushHelp(useString, synopsisString, seeAlsoString);
-   if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-
-   //check to see if the user supplied superfluous arguments
-   PsychErrorExit(PsychCapNumInputArgs(0));
-   PsychErrorExit(PsychRequireNumInputArgs(0));
- //  PsychErrorExit(PsychCapNumOutputArgs(2));
-   PsychErrorExit(PsychCapNumOutputArgs(1));
-
+	int iVersion;
+	char strVersion[40]="";
+	
+	//all sub functions should have these two lines
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+	
+	//check to see if the user supplied superfluous arguments
+	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychRequireNumInputArgs(0));
+	PsychErrorExit(PsychCapNumOutputArgs(2));
+	
 	// Verify eyelink is up and running
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
-
-   iVersion = eyelink_get_tracker_version(strVersion);
-   
-   PsychCopyOutDoubleArg(1, TRUE, iVersion);
-//	PsychCopyOutCharArg(1, FALSE, strVersion);
-
-   return(PsychError_none);	
+	
+	iVersion = eyelink_get_tracker_version(strVersion);
+	
+	//   mexPrintf("Tracker Version: '%s'\n", strVersion );
+	PsychCopyOutDoubleArg(1, TRUE, iVersion);
+	PsychCopyOutCharArg(2, FALSE, strVersion);
+	
+	return(PsychError_none);	
 }

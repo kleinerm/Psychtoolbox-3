@@ -76,10 +76,17 @@ PsychError EyelinkImageModeDisplay(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 	
-	// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
-	//eyelink_start_setup();
-	
-	iResult = image_mode_display();
+	if(0)
+	{
+		// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
+		eyelink_start_setup();	
+		iResult = image_mode_display();
+	}
+	else
+	{
+		//mexPrintf("EyelinkImageModeDisplay is not yet implemented.\n");
+		iResult=0;
+	}
 	
 	// Assign output arg if available
 	PsychCopyOutDoubleArg(1, FALSE, iResult);
