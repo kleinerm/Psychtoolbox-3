@@ -183,7 +183,26 @@
 	<key>Name</key>
 	<string>Default</string>
 	<key>Notifications</key>
-	<array/>
+	<array>
+		<dict>
+			<key>XCObserverAutoDisconnectKey</key>
+			<true/>
+			<key>XCObserverDefintionKey</key>
+			<dict/>
+			<key>XCObserverFactoryKey</key>
+			<string>XCPerspectivesSpecificationIdentifier</string>
+			<key>XCObserverGUIDKey</key>
+			<string>XCObserverProjectIdentifier</string>
+			<key>XCObserverNotificationKey</key>
+			<string>PBXStatusBuildStateMessageNotification</string>
+			<key>XCObserverTargetKey</key>
+			<string>XCMainBuildResultsModuleGUID</string>
+			<key>XCObserverTriggerKey</key>
+			<string>awakenModuleWithObserver:</string>
+			<key>XCObserverValidationKey</key>
+			<dict/>
+		</dict>
+	</array>
 	<key>OpenEditors</key>
 	<array/>
 	<key>PerspectiveWidths</key>
@@ -197,22 +216,21 @@
 			<key>ChosenToolbarItems</key>
 			<array>
 				<string>active-target-popup</string>
+				<string>active-buildstyle-popup</string>
 				<string>action</string>
 				<string>NSToolbarFlexibleSpaceItem</string>
-				<string>clean</string>
+				<string>NSToolbarFlexibleSpaceItem</string>
 				<string>clean-target</string>
 				<string>buildOrClean</string>
-				<string>debug</string>
-				<string>run</string>
-				<string>build-and-runOrDebug</string>
-				<string>com.apple.ide.PBXToolbarStopButton</string>
 				<string>get-info</string>
-				<string>servicesModulebuild</string>
-				<string>servicesModulefind</string>
-				<string>servicesModulebreakpoints</string>
-				<string>toggle-editor</string>
-				<string>NSToolbarFlexibleSpaceItem</string>
+				<string>com.apple.ide.PBXToolbarStopButton</string>
+				<string>com.apple.ide.PBXToolbarStopButton</string>
+				<string>debug</string>
 				<string>com.apple.pbx.toolbar.searchfield</string>
+				<string>run</string>
+				<string>servicesModulefind</string>
+				<string>servicesModulebuild</string>
+				<string>servicesModulebreakpoints</string>
 			</array>
 			<key>ControllerClassBaseName</key>
 			<string></string>
@@ -297,7 +315,7 @@
 							<real>255</real>
 						</array>
 						<key>RubberWindowFrame</key>
-						<string>245 109 1154 893 0 0 1600 1002 </string>
+						<string>245 285 1154 893 0 0 1600 1178 </string>
 					</dict>
 					<key>Module</key>
 					<string>PBXSmartGroupTreeModule</string>
@@ -325,13 +343,13 @@
 										<key>_historyCapacity</key>
 										<integer>0</integer>
 										<key>bookmark</key>
-										<string>2FF6C5F8090F5E7900E7F32B</string>
+										<string>2FAFC7160A56DE7700E332CE</string>
 										<key>history</key>
 										<array>
 											<string>2F70C3F908E08EB600A04813</string>
 											<string>2F93E12408FC50830004B3DD</string>
 											<string>2F93E12508FC50830004B3DD</string>
-											<string>2F93E12808FC50830004B3DD</string>
+											<string>2FF6C5F8090F5E7900E7F32B</string>
 										</array>
 										<key>prevStack</key>
 										<array>
@@ -352,7 +370,7 @@
 								<key>Frame</key>
 								<string>{{0, 0}, {877, 598}}</string>
 								<key>RubberWindowFrame</key>
-								<string>245 109 1154 893 0 0 1600 1002 </string>
+								<string>245 285 1154 893 0 0 1600 1178 </string>
 							</dict>
 							<key>Module</key>
 							<string>PBXNavigatorGroup</string>
@@ -372,7 +390,7 @@
 								<key>Frame</key>
 								<string>{{0, 603}, {877, 249}}</string>
 								<key>RubberWindowFrame</key>
-								<string>245 109 1154 893 0 0 1600 1002 </string>
+								<string>245 285 1154 893 0 0 1600 1178 </string>
 							</dict>
 							<key>Module</key>
 							<string>XCDetailModule</string>
@@ -396,9 +414,9 @@
 			</array>
 			<key>TableOfContents</key>
 			<array>
-				<string>2FF6C5F9090F5E7900E7F32B</string>
+				<string>2FAFC7140A56CD3900E332CE</string>
 				<string>1CE0B1FE06471DED0097A5F4</string>
-				<string>2FF6C5FA090F5E7900E7F32B</string>
+				<string>2FAFC7150A56CD3900E332CE</string>
 				<string>1CE0B20306471E060097A5F4</string>
 				<string>1CE0B20506471E060097A5F4</string>
 			</array>
@@ -517,7 +535,7 @@
 	<key>StatusbarIsVisible</key>
 	<true/>
 	<key>TimeStamp</key>
-	<real>0.0</real>
+	<real>173460759.64329699</real>
 	<key>ToolbarDisplayMode</key>
 	<integer>1</integer>
 	<key>ToolbarIsVisible</key>
@@ -532,10 +550,10 @@
 	<integer>5</integer>
 	<key>WindowOrderList</key>
 	<array>
-		<string>/Users/ingling/Desktop/1.0.6/PsychSourceGL/Cohorts/GetCharWindow/GetCharWindow.xcodeproj</string>
+		<string>/Source2/osxptb/trunk/PsychSourceGL/Cohorts/GetCharWindow/GetCharWindow.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
-	<string>245 109 1154 893 0 0 1600 1002 </string>
+	<string>245 285 1154 893 0 0 1600 1178 </string>
 	<key>WindowTools</key>
 	<array>
 		<dict>

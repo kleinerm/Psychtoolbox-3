@@ -2650,7 +2650,7 @@
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
 		0E92E8AE09572831002687D9 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Eyelink/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		0E92E8AF09572831002687D9 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Eyelink/RegisterProject.c; sourceTree = SOURCE_ROOT; };
