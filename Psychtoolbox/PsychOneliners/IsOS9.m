@@ -2,11 +2,12 @@ function resultFlag = IsOS9
 
 % resultFlag = IsOS9
 %
-% OSX, OS9: Returns true if the operating system is Mac OS 9 family.  Shorthand for:
-% streq(computer,'MAC2')
-%
-% WIN: Does not yet exist in Windows.
-%
-% See also: IsOSX, IsWin
+% Returns true if the operating system is Mac OS 9.
+% 
+% See also: IsOSX, IsWin, IsLinux, OSName, computer
+
+% HISTORY
+% ??/??/?? awi Wrote it.
+% 6/30/06  awi Fixed help section.  
 
 resultFlag= streq(computer,'MAC2');

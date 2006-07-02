@@ -14,7 +14,7 @@ function modelName=MacModelName
 % There is no official Apple-recommended way to uncover the marketing
 % name. However, this method works and should be reasonably robust.
 % 
-% See also: Gestalt, Screen('Computer?'), AppleVersion
+% See also: Gestalt, Screen('Computer?'), OSName, AppleVersion
 
 % HISTORY
 %
