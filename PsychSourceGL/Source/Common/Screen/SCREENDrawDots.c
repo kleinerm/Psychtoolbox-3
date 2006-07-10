@@ -72,7 +72,8 @@ static char synopsisString[] =
 "Instead of a single \"color\" you can also provide a 3 or 4 row vector,"
 "which specifies an individual RGB or RGBA color for each corresponding point."
 "\"dot_type\" is a flag that determines what type of dot is drawn: "
-"0 (default) squares, 1 circles (with antialiasing) "
+"0 (default) squares, 1 circles (with anti-aliasing), 2 circles (with high-quality "
+"anti-aliasing, if supported by your hardware). "
 "If you use dot_type = 1 you'll also need to set a proper blending mode with the "
 "Screen('BlendFunction') command!";  
 static char seeAlsoString[] = "BlendFunction";	 
@@ -86,6 +87,7 @@ PsychError SCREENDrawDots(void)
         int                                     i, nrpoints, nrsize;
 	boolean                                 isArgThere, usecolorvector;
 	double					*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
+	float pointsizerange[2];
 	const double convfactor = 1/255.0;
     
 	//all sub functions should have these two lines
@@ -167,9 +169,9 @@ PsychError SCREENDrawDots(void)
 	PsychSetGLContext(windowRecord);
         // Enable this windowRecords framebuffer as current drawingtarget:
         PsychSetDrawingTarget(windowRecord);
-
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
+	
  	// Set up common color for all dots if no color vector has been provided:
         if (!usecolorvector) {
             PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
@@ -193,8 +195,8 @@ PsychError SCREENDrawDots(void)
 		idot_type = 0;
 	} else {
 		PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
-		if(p!=1 || n!=1 || m!=1 || (dot_type[0]!=0 && dot_type[0]!=1))
-			PsychErrorExitMsg(PsychError_user, "dot_type must be 0 or 1");
+		if(p!=1 || n!=1 || m!=1 || (dot_type[0]<0 || dot_type[0]>2))
+			PsychErrorExitMsg(PsychError_user, "dot_type must be 0, 1 or 2");
 		idot_type = (int) dot_type[0];
 	}
 		
@@ -206,9 +208,23 @@ PsychError SCREENDrawDots(void)
         //draw dots
 
 	// turn on antialiasing to draw circles	
-	if(idot_type) glEnable(GL_POINT_SMOOTH);
+	if(idot_type) {
+	  glEnable(GL_POINT_SMOOTH);
+	  glGetFloatv(GL_POINT_SIZE_RANGE, &pointsizerange);
+	  // A dot type of 2 requests for highest quality point smoothing:
+	  glHint(GL_POINT_SMOOTH_HINT, (idot_type>1) ? GL_NICEST : GL_DONT_CARE);
+	}
+	else {
+	  glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, &pointsizerange);
+	}
 
 	// Set size of a single dot:
+	if (size[0] > pointsizerange[1] || size[0] < pointsizerange[0]) {
+	  printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+		 size[0], pointsizerange[0], pointsizerange[1]);
+	  PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
+	}
+
         glPointSize(size[0]);
 
 	// Setup modelview matrix to perform translation by 'center':
@@ -249,10 +265,17 @@ PsychError SCREENDrawDots(void)
             // Point-Sprite extensions, cleverly used display lists or via vertex-shaders...
             // For now we do it the stupid way:
             for (i=0; i<nrpoints; i++) {
-                // Setup point size for this point:
-                glPointSize(size[i]);
-                // Render point:
-                glDrawArrays(GL_POINTS, i, 1);
+	      if (size[i] > pointsizerange[1] || size[i] < pointsizerange[0]) {
+		printf("PTB-ERROR: You requested a point size of %f units, which is not in the range (%f to %f) supported by your graphics hardware.\n",
+		       size[i], pointsizerange[0], pointsizerange[1]);
+		PsychErrorExitMsg(PsychError_user, "Unsupported point size requested in Screen('DrawDots').");
+	      }
+
+	      // Setup point size for this point:
+	      glPointSize(size[i]);
+
+	      // Render point:
+	      glDrawArrays(GL_POINTS, i, 1);
             }
         }
         

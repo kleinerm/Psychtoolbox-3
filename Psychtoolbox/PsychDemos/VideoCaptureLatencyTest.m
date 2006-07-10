@@ -31,6 +31,8 @@ function VideoCaptureLatencyTest(texfetch, fullscreen, depth)
 % Running OpenGL-PTB? This is required.
 AssertOpenGL;
 
+rate = 30;
+
 % Find stimulus display:
 screen=max(Screen('Screens'));
 
@@ -50,6 +52,12 @@ if nargin < 3
    depth = 1;
 end;
 depth
+
+if IsOctave
+more off;
+ignore_function_time_stamp = 'all';
+
+end
 
 %try
     % Open display with default settings:
@@ -72,7 +80,8 @@ depth
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], depth);
     
     % Start video capture: We request at least a 100 Hz capture rate and lowlatency (=1) mode:
-    fps=Screen('StartVideoCapture', grabber, 100, 1);
+    % Requested start time is 4 seconds from now:
+    [fps capturestarttime]=Screen('StartVideoCapture', grabber, rate, 1, GetSecs + 4);
     fps
     
     oldpts = 0;
@@ -95,6 +104,10 @@ depth
                 delta = (pts - oldpts) * 1000;
                 oldpts = pts;
                 Screen('DrawText', win, ['Delta since last frame (ms): ' sprintf('%.4f', delta)], 0, 24, 255);
+                Screen('DrawText', win, ['Delta start to first frame (ms): ' sprintf('%.4f', camstartlatency)], 0, 96, 255);
+            else
+                % First image in video fifo.
+                camstartlatency = (pts - capturestarttime) * 1000.0
             end;
             
             % Compute and print intensity:
@@ -108,14 +121,21 @@ depth
             Screen('Flip', win, 0, 0, 2);
             Screen('Close', tex);
             tex=0;
+            count = count + 1;
         end;        
-        count = count + 1;
     end;
     telapsed = GetSecs - t
     
+    calcedlatency = PsychCamSettings('EstimateLatency', grabber) * 1000.0
+    tminimum = 10000000000.0;
+    tminimum2 = 10000000000.0;
+    tcount = 1;
+
+
+    for reps=1:5
     % Ok, preview finished. Cam should now point to the screen and
     % we can start the latency measurement procedure:
-    ntrials = 10;
+    ntrials = 100;
     tavgdelay = 0;
     threshold = 0;
     
@@ -124,7 +144,8 @@ depth
         Screen('FillRect', win, 0);
         Screen('Flip', win);
         
-        for j=1:50
+        % Capture at least 20 frames to make sure we're really black...
+        for j=1:20
            Screen('GetCapturedImage', win, grabber, 2);
         end;
        
@@ -136,10 +157,10 @@ depth
 
         if (tex>0) Screen('Close', tex); end;
     
-        if threshold==0
+%        if threshold==0
           blackintensity = intensity;
-          threshold = blackintensity * 1.1;
-        end;
+          threshold = blackintensity * 1.02;
+%        end;
      
         % Eat up all enqueued images, if any.
         tex=1;
@@ -190,17 +211,38 @@ depth
         ptslag = (pts - ptsblack) * 1000
         
         tavgdelay=tavgdelay + tdelay;
-      
+        tminimum2=min(tminimum2, tdelay);      
+        ttotal(tcount)=tdelay;
+        tcount = tcount + 1;
+
         % Next trial...
     end;
         
-    % Done. Stop and shutdown capture loop:
+    % Stop and restart capture loop:
     Screen('StopVideoCapture', grabber);
-    Screen('CloseVideoCapture', grabber);
-    Screen('CloseAll');
+
+    % Restart with a random delay between 0.0 and 1.0 seconds...
+    Screen('StartVideoCapture', grabber, rate, 1, GetSecs + rand);
 
     tavgdelay = tavgdelay / ntrials;
     tavgdelay
+
+    tminimum = min(tminimum, tavgdelay);
+    tdelays(reps) = tavgdelay;
+
+    end
+
+    % Shutdown capture loop, close screens...
+    Screen('CloseVideoCapture', grabber);
+    Screen('CloseAll');
+
+    tminimum
+    tminimum2
+
+    figure;
+    plot(tdelays);
+    figure;
+    plot(ttotal);
 
     return;
     

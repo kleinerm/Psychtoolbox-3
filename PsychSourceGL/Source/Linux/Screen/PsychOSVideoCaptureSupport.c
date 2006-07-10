@@ -457,18 +457,22 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
       // Pure LUMINANCE8 requested:
     case 2:
       // LUMINANCE8+ALPHA8 requested: This is not yet supported.
-      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
-								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-								capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth && !PsychPrefStateGet_SuppressAllWarnings()) {
+	printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+	       "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+	       capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      }
       capdev->reqpixeldepth = capdev->pixeldepth;
       break;
     case 3:
       // RGB8 requested:
     case 4:
       // RGBA8 requested: This is not yet supported.
-      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
-								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-								capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth && !PsychPrefStateGet_SuppressAllWarnings()) {
+	printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+	       "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+	       capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      }
       capdev->reqpixeldepth = capdev->pixeldepth;
       break;
     default:
@@ -477,7 +481,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
     }
   }
   
-  if (capdev->reqpixeldepth > 8 && color_code != DC1394_COLOR_CODING_RGB8) {
+  if (capdev->reqpixeldepth > 8 && color_code != DC1394_COLOR_CODING_RGB8 && !PsychPrefStateGet_SuppressAllWarnings()) {
     // Color capture with a non RGB8 mode aka a YUV mode -- expensive.
     printf("PTB-INFO: Using a YUV color format instead of a RGB color format. This requires expensive YUV->RGB conversion and\n");
     printf("PTB-INFO: can lead to higher cpu load and longer latencies. You may be able to avoid this with different settings\n");
@@ -520,8 +524,10 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   // Return framerate:
   capdev->dc_framerate = dc1394_framerate;
 
-  printf("PTB-INFO: Will use non-Format7 mode %i: Width x Height = %i x %i, fps=%f, colormode=%i ...\n",
-	 (int) mode, mw, mh, framerate, (int) color_code); fflush(NULL);
+  if(!PsychPrefStateGet_SuppressAllWarnings()){
+    printf("PTB-INFO: Will use non-Format7 mode %i: Width x Height = %i x %i, fps=%f, colormode=%i ...\n",
+	   (int) mode, mw, mh, framerate, (int) color_code); fflush(NULL);
+  }
 
   // Success! 
   return(true);
@@ -586,9 +592,10 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     PsychErrorExitMsg(PsychError_user, "Unknown bus speed specification! Start of video capture failed!");
   }
 
-  printf("PTB-INFO: IEEE-1394 Firewire bus speed is %i Megabit/second --> Bus period is %f usecs.\n",
-	 (int) (100 << speed), bus_period * 1000000.0f);
-
+  if(!PsychPrefStateGet_SuppressAllWarnings()){ 
+    printf("PTB-INFO: IEEE-1394 Firewire bus speed is %i Megabit/second --> Bus period is %f usecs.\n",
+	   (int) (100 << speed), bus_period * 1000000.0f);
+  }
   
   // Query supported video modes for this camera:
   dc1394_video_get_supported_modes(capdev->camera,  &video_modes);
@@ -604,7 +611,9 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // Increment count of available Format-7 modes:
     numF7Available++;
 
-    printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
+    if(!PsychPrefStateGet_SuppressAllWarnings()){
+      printf("PTB-Info: Probing Format-7 mode %i ...\n", mode);
+    }
 
     // Pixeldepth supported? We reject anything except RAW8 or MONO8 for luminance formats
     // and RGB8 for color formats.
@@ -702,12 +711,14 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
       minpacket_size = packet_size;
     }
 
-    if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || capdev->roirect[kPsychRight]!=1 || capdev->roirect[kPsychBottom]!=1) {
-      printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=%f t=%f r=%f b=%f] , FPS = %f\n", mode, (float) capdev->roirect[kPsychLeft], (float) capdev->roirect[kPsychTop],
-	     (float) capdev->roirect[kPsychRight], (float) capdev->roirect[kPsychBottom], framerate);
-    }
-    else {
-      printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=0 t=0 r=%i b=%i] , FPS = %f\n", mode, w, h, framerate);
+    if(!PsychPrefStateGet_SuppressAllWarnings()){
+      if (capdev->roirect[kPsychLeft]!=0 || capdev->roirect[kPsychTop]!=0 || capdev->roirect[kPsychRight]!=1 || capdev->roirect[kPsychBottom]!=1) {
+	printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=%f t=%f r=%f b=%f] , FPS = %f\n", mode, (float) capdev->roirect[kPsychLeft], (float) capdev->roirect[kPsychTop],
+	       (float) capdev->roirect[kPsychRight], (float) capdev->roirect[kPsychBottom], framerate);
+      }
+      else {
+	printf("PTB-INFO: Checking Format-7 mode %i: ROI = [l=0 t=0 r=%i b=%i] , FPS = %f\n", mode, w, h, framerate);
+      }
     }
 
     // Test next mode...
@@ -753,18 +764,22 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
       // Pure LUMINANCE8 requested:
     case 2:
       // LUMINANCE8+ALPHA8 requested: This is not yet supported.
-      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
-								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-								capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth && !PsychPrefStateGet_SuppressAllWarnings()) {
+	printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+	       "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+	       capdev->reqpixeldepth, (capdev->reqpixeldepth==1) ? "LUMINANCE - 8 bpc":"LUMINANCE+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      }
       capdev->reqpixeldepth = capdev->pixeldepth;
       break;
     case 3:
       // RGB8 requested:
     case 4:
       // RGBA8 requested: This is not yet supported.
-      if (capdev->pixeldepth != 8*capdev->reqpixeldepth) printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
-								"PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
-								capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      if (capdev->pixeldepth != 8*capdev->reqpixeldepth && !PsychPrefStateGet_SuppressAllWarnings()) {
+	printf("PTB-WARNING: Wanted a depth of %i layers (%s) for captured images, but capture device delivers\n"
+	       "PTB-WARNING: %i layers! Adapted to capture device native format for performance reasons.\n",
+	       capdev->reqpixeldepth, (capdev->reqpixeldepth==3) ? "RGB - 8 bpc":"RGB+ALPHA - 8 bpc", capdev->pixeldepth/8);
+      }
       capdev->reqpixeldepth = capdev->pixeldepth;
       break;
     default:
@@ -1003,8 +1018,10 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
       capdev->scratchbuffer = malloc(capdev->width * capdev->height * 3);
     }
 
-    printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle,
-	   capdev->width, capdev->height, capdev->fps);
+    if(!PsychPrefStateGet_SuppressAllWarnings()){
+      printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle,
+	     capdev->width, capdev->height, capdev->fps);
+    }
   }
   else {
     // Stop capture:
@@ -1039,15 +1056,17 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
       // Need to rethink definition of reqpixeldepth...
       capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
 
-      // Output count of dropped frames:
-      if ((dropped=capdev->nr_droppedframes) > 0) {
-	printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
+      if(!PsychPrefStateGet_SuppressAllWarnings()){
+	// Output count of dropped frames:
+	if ((dropped=capdev->nr_droppedframes) > 0) {
+	  printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
+	}
+	
+	if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
+	printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %lf milliseconds.\n", capdev->avg_decompresstime * 1000.0f);
+	if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
+	printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
       }
-      
-      if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
-      printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %lf milliseconds.\n", capdev->avg_decompresstime * 1000.0f);
-      if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
-      printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation and/or Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
     }
   }
 
@@ -1468,7 +1487,7 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 
   // Check if feature is present on this camera:
   if (dc1394_feature_is_present(capdev->camera, feature, &present)!=DC1394_SUCCESS) {
-    printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
+    if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to query presence of feature %s on camera %i! Ignored.\n", pname, capturehandle);
     fflush(NULL);
   }
   else if (present) {
@@ -1476,7 +1495,7 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 
     // Retrieve current value:
     if (dc1394_feature_get_value(capdev->camera, feature, &oldintval)!=DC1394_SUCCESS) {
-      printf("PTB-WARNING: Failed to query value of feature %s on camera %i! Ignored.\n", pname, capturehandle);
+      if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to query value of feature %s on camera %i! Ignored.\n", pname, capturehandle);
       fflush(NULL);
     }
     else {      
@@ -1484,13 +1503,13 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
       if (value != DBL_MAX) {
 	// Query allowed bounds for its value:
 	if (dc1394_feature_get_boundaries(capdev->camera, feature, &minval, &maxval)!=DC1394_SUCCESS) {
-	  printf("PTB-WARNING: Failed to query valid value range for feature %s on camera %i! Ignored.\n", pname, capturehandle);
+	  if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to query valid value range for feature %s on camera %i! Ignored.\n", pname, capturehandle);
 	  fflush(NULL);
 	}
 	else {
 	  // Sanity check against range:
 	  if (intval < minval || intval > maxval) {
-	    printf("PTB-WARNING: Requested setting %i for parameter %s not in allowed range (%i - %i) for camera %i. Ignored.\n",
+	    if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Requested setting %i for parameter %s not in allowed range (%i - %i) for camera %i. Ignored.\n",
 		   intval, pname, minval, maxval, capturehandle);
 	    fflush(NULL);      
 	  }
@@ -1498,13 +1517,14 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 	    // Ok intval is valid for this feature: Can we manually set this feature?
 	    // Switch feature to manual control mode:
 	    if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_MANUAL)!=DC1394_SUCCESS) {
-	      printf("PTB-WARNING: Failed to set feature %s on camera %i to manual control! Ignored.\n", pname, capturehandle);
+	      if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to set feature %s on camera %i to manual control! Ignored.\n", pname, capturehandle);
 	      fflush(NULL);
 	    }
 	    else {
 	      // Ok, try to set the features new value:
 	      if (dc1394_feature_set_value(capdev->camera, feature, intval)!=DC1394_SUCCESS) {
-		printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle, intval);
+		if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to set value of feature %s on camera %i to %i! Ignored.\n", pname, capturehandle,
+								    intval);
 		fflush(NULL);
 	      }
 	    }
@@ -1522,7 +1542,7 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 	if (strstr(pname, "Auto")!=0) {
 	  // Switch to automatic control requested - Try it:
 	  if (dc1394_feature_set_mode(capdev->camera, feature, DC1394_FEATURE_MODE_AUTO)!=DC1394_SUCCESS) {
-	    printf("PTB-WARNING: Failed to set feature %s on camera %i to automatic control! Ignored.\n", pname, capturehandle);
+	    if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to set feature %s on camera %i to automatic control! Ignored.\n", pname, capturehandle);
 	    fflush(NULL);
 	  }
 	}
@@ -1530,13 +1550,13 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     }
   }
   else {
-    printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
+    if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Requested capture device setting %s not available on cam %i. Ignored.\n", pname, capturehandle);
     fflush(NULL);
   }
 
   // Output a warning on unknown parameters:
   if (!assigned) {
-    printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n",
+    if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Screen('SetVideoCaptureParameter', ...) called with unknown parameter %s. Ignored...\n",
 	   pname);
     fflush(NULL);
   }

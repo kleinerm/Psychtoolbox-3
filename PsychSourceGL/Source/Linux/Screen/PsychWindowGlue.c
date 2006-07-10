@@ -80,9 +80,11 @@ boolean PsychRealtimePriority(boolean enable_realtime)
 	param.sched_priority = sched_get_priority_min(realtime_class);
 	if (sched_setscheduler(0, realtime_class, &param)) {
 	  // Failed!
-	  printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
-	  if (errno==EPERM) {
-	    printf("PTB-INFO: You need to run Matlab with root-privileges for this to work.\n");
+	  if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	    printf("PTB-INFO: Failed to enable realtime-scheduling [%s]!\n", strerror(errno));
+	    if (errno==EPERM) {
+	      printf("PTB-INFO: You need to run Matlab with root-privileges for this to work.\n");
+	    }
 	  }
 	  errno=0;
 	}
@@ -98,110 +100,6 @@ boolean PsychRealtimePriority(boolean enable_realtime)
     old_enable_realtime = enable_realtime;
     return(TRUE);
 }
-
-// Callback handler for Window manager: Handles some events
-/* LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam) */
-/* { */
-/*   static PAINTSTRUCT ps; */
-/*   PsychWindowRecordType	**windowRecordArray; */
-/*   int i, numWindows;  */
-
-/*   // What event happened? */
-/*   switch(uMsg) */
-/*     { */
-/*     case WM_SYSCOMMAND: */
-/*       // System command received: We intercept system commands that would start */
-/*       // the screensaver or put the display into powersaving sleep-mode: */
-/*       switch(wParam) */
-/* 	{ */
-/* 	case SC_SCREENSAVE: */
-/* 	case SC_MONITORPOWER: */
-/* 	  return(0); */
-/* 	} */
-/*       break; */
-
-/*     case WM_PAINT: */
-/*       // Repaint event: This happens if a previously covered non-fullscreen window */
-/*       // got uncovered, so part of it needs to be redrawn. PTB's rendering model */
-/*       // doesn't have a concept of redrawing a stimulus. As this is mostly useful */
-/*       // for debugging, we just do a double doublebuffer swap in the hope that this */
-/*       // will restore the frontbuffer... */
-/*       BeginPaint(hWnd, &ps); */
-/*       EndPaint(hWnd, &ps); */
-/*       // Scan the list of windows to find onscreen window with handle hWnd: */
-/*       PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray); */
-/*       for(i = 0; i < numWindows; i++) { */
-/* 	if (PsychIsOnscreenWindow(windowRecordArray[i]) && */
-/* 	    windowRecordArray[i]->targetSpecific.windowHandle == hWnd) { */
-/* 	  // This is it! Initiate bufferswap twice: */
-/* 	  PsychOSFlipWindowBuffers(windowRecordArray[i]); */
-/* 	  PsychOSFlipWindowBuffers(windowRecordArray[i]); */
-/* 	} */
-/*       } */
-/*       PsychDestroyVolatileWindowRecordPointerList(windowRecordArray); */
-/*       // Done. */
-/*       return 0; */
-
-/*     case WM_SIZE: */
-/*       // Window resize event: Only happens in debug-mode (non-fullscreen). */
-/*       // We resize the viewport accordingly and then trigger a repaint-op. */
-/*       glViewport(0, 0, LOWORD(lParam), HIWORD(lParam)); */
-/*       PostMessage(hWnd, WM_PAINT, 0, 0); */
-/*       // printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam)); */
-/*       return 0; */
-
-/*     case WM_CLOSE: */
-/*       // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press. */
-/*       // -> Manually closing an onscreen window does the same as pressing the Abort-key. */
-/*       wParam='@'; */
-/*     case WM_CHAR: */
-/*       // Character received. We only care about one key, the '@' key. */
-/*       // Pressing '@' will immediately close all onscreen windows, show */
-/*       // the cursor and such. It is the emergency stop key. */
-/*       if (wParam=='@') { */
-/* 	// Emergency shutdown: */
-/* 	printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n"); */
-/* 	printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n"); */
-/* 	printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n"); */
-/* 	ScreenCloseAllWindows(); */
-/* 	return(0); */
-/*       } */
-/*       break; */
-/*     } */
-
-/*     return DefWindowProc(hWnd, uMsg, wParam, lParam); */
-/* } */
-
-/* boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution */
-/* { */
-/*   DEVMODE dmScreenSettings; // Device mode structure */
-
-/*   // Clear structure: */
-/*   memset (&dmScreenSettings, 0, sizeof (DEVMODE)); */
-/*   dmScreenSettings.dmSize		= sizeof (DEVMODE); */
-/*   dmScreenSettings.dmDriverExtra	= 0; */
-/*  */
-/*   // Query current display settings and init struct with them: */
-/*   EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dmScreenSettings); */
-/*  */
-/*   // Override current settings with the requested settings, if any: */
-/*   if (width>0)  dmScreenSettings.dmPelsWidth  = width;  // Select Screen Width */
-/*   if (height>0) dmScreenSettings.dmPelsHeight = height; // Select Screen Height */
-/*   if (bitsPerPixel>0) dmScreenSettings.dmBitsPerPel = bitsPerPixel; // Select Bits Per Pixel */
-/*   if (fps>0) dmScreenSettings.dmDisplayFrequency = fps; // Select display refresh rate in Hz */
-/*    */
-/*   // All provided values should be honored: We need to spec the refresh explicitely, */
-/*   // because otherwise the system will select the lowest fps for a given display mode. */
-/*   dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY; */
-/*  */
-/*   // Perform the change: */
-/*   if (ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) { */
-/*     return(FALSE);	// Display Change Failed, Return False */
-/*   } */
-/*  */
-/*   // Display Change Was Successful, Return True */
-/*   return(TRUE); */
-/* } */
 
 /*
     PsychOSOpenOnscreenWindow()
@@ -442,17 +340,16 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // Activate the associated rendering context:
   PsychOSSetGLContext(windowRecord);
 
-  // Give it higher priority as other applications windows:
-  // SetForegroundWindow(hWnd);
-
-  // Set the focus on it:
-  // SetFocus(hWnd);
-
-  // Capture the window if it is a fullscreen one, whatever that means...
-  // if (fullscreen) SetCapture(hWnd);
-
   // Increase our own open window counter:
   x11_windowcount++;
+
+  // Disable X-Windows screensavers:
+  if (x11_windowcount==1) {
+    // First window. Disable future use of screensaver:
+    XSetScreenSaver(dpy, 0, 0, DefaultBlanking, DefaultExposures);
+    // If the screensaver is currently running, forcefully shut it down:
+    XForceScreenSaver(dpy, ScreenSaverReset);
+  }
 
   // Some info for the user regarding non-fullscreen and ATI hw:
   if (!fullscreen && (strstr(glGetString(GL_VENDOR), "ATI"))) {
@@ -472,7 +369,6 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   }
 
   // Ok, we should be ready for OS independent setup...
-  printf("\nPTB-INFO: Low-level GNU/Linux X11 setup of onscreen window finished!\n");
   fflush(NULL);
 
   // Wait for X-Server to settle...
@@ -528,13 +424,16 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // closed somewhere else.
   windowRecord->targetSpecific.deviceContext=NULL;
 
-  // Was this the last window?
+  // Decrement global count of open onscreen windows:
   x11_windowcount--;
 
+  // Was this the last window?
   if (x11_windowcount<=0) {
     x11_windowcount=0;
 
-    // This is currently a No-Op...
+    // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
+    // Set screensaver to previous settings, potentially enabling it:
+    XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
   }
 
   // Done.

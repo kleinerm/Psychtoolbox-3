@@ -121,7 +121,7 @@ PsychError SCREENGetMouseHelper(void)
 #endif
 	
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	char keys_return[32];
+	unsigned char keys_return[32];
 	char* keystring;
 	PsychGenericScriptType *kbNames;
 	CGDirectDisplayID dpy;
@@ -202,7 +202,7 @@ PsychError SCREENGetMouseHelper(void)
 	      PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
 
 	      // Any key down?
-	      for (i=0; i<32; i++) keysdown+=(int) keys_return[i];
+	      for (i=0; i<32; i++) keysdown+=(unsigned int) keys_return[i];
 	      
 	      // We repeat until any key pressed if in KbWait() mode, otherwise we
 	      // exit the loop after first iteration in KbCheck mode.
