@@ -238,7 +238,7 @@ void PsychGetMouseButtonState(double* buttonArray)
 	return;
 }
 
-boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
+boolean ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
 {
   DEVMODE dmScreenSettings; // Device mode structure
 
@@ -248,7 +248,7 @@ boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps
   dmScreenSettings.dmDriverExtra	= 0;
 
   // Query current display settings and init struct with them:
-  EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &dmScreenSettings);
+  EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), ENUM_CURRENT_SETTINGS, &dmScreenSettings);
 
   // Override current settings with the requested settings, if any:
   if (width>0)  dmScreenSettings.dmPelsWidth  = width;  // Select Screen Width
@@ -261,7 +261,7 @@ boolean ChangeScreenResolution (int width, int height, int bitsPerPixel, int fps
   dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
 
   // Perform the change:
-  if (ChangeDisplaySettings(&dmScreenSettings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL) {
+  if (ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), &dmScreenSettings, NULL, CDS_FULLSCREEN, NULL) != DISP_CHANGE_SUCCESSFUL) {
     return(FALSE);	// Display Change Failed, Return False
   }
 
@@ -323,7 +323,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       height=PsychGetHeightFromRect(screenrect);      
 
       // Switch system to fullscreen-mode without changing any settings:
-      fullscreen = ChangeScreenResolution(0, 0, 0, 0);
+      fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
     }
     else {
       // Window size different from current screen size:

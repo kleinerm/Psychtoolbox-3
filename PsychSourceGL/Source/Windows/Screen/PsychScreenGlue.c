@@ -37,6 +37,10 @@
 
 
 #include "Screen.h"
+#include <Windows.h>
+// We need to define this and include Multimon.h to allow for enumeration of multiple display screens:
+#define COMPILE_MULTIMON_STUBS
+#include <Multimon.h>
 
 // file local variables
 
@@ -48,7 +52,8 @@ static CFDictionaryRef	displayOverlayedCGSettings[kPsychMaxPossibleDisplays];   
 static boolean			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];    
-                                                                                                
+static char*               displayDeviceName[kPsychMaxPossibleDisplays];  // Windows internal monitor device name.                                                                                             
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -72,21 +77,53 @@ void InitializePsychDisplayGlue(void)
     InitCGDisplayIDList();
 }
 
-// MK-TODO: There's still a bug here: We need to call InitCGDisplayIDList() not only at
-// Screen-Init time but also as part of *EACH* query to the list...
-// Otherwise, if the user changes display settings (layout of displays, primary<->secondary display,
-// mirror<->non-mirror mode) or connects/disconnects/replugs/powers on or powers off displays,
-// while a Matlab session is running and without "clear Screen"
-// after the change, PTB will not notice the change in display configuration and access
-// invalid or wrong display handles --> all kind of syncing problems and weird bugs...
+// This callback function is called by Windows EnumDisplayMonitors() function for each
+// detected display device: We can happily ignore all provided parameters, except for the
+// hMonitor struct which contains the Windows internal name for the detected display. We
+// need to pass this name string to a variety of Windows-Functions to refer to the monitor
+// of interest.
+Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
+
+Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+{
+	MONITORINFOEX moninfo;
+	// hMonitor is the handle to the monitor info. Resolve it to a moninfo information struct:
+	moninfo.cbSize = sizeof(MONITORINFOEX);
+	GetMonitorInfo(hMonitor, &moninfo);
+
+	// Query and copy the display device name into our own screenNumber->Name mapping array:
+	displayDeviceName[numDisplays] = (char*) malloc(256);
+	strncpy(displayDeviceName[numDisplays], moninfo.szDevice, 256);
+
+	// Create a device context for this display and store it in our displayCGIDs array:
+	displayCGIDs[numDisplays] = CreateDC(displayDeviceName[numDisplays], displayDeviceName[numDisplays], NULL, NULL);
+	// Some debug output for now...
+	printf("PTB-INFO: %i. detected display device has Win32 internal name %s ...\n", numDisplays, displayDeviceName[numDisplays]); fflush(NULL);
+
+	// Increase global counter of available separate displays:
+	numDisplays++;
+
+	// Return and ask system to continue display enumeration:
+	return(TRUE);
+}
+
 void InitCGDisplayIDList(void)
 {
-  // MK: FIXME Hack create one pseudo-display id to make the system happy.
-  // We need to use DDrawEnumerateDevices() (see VideoToolboxPC.h) to really enumerate
-  // the available displays. For now we hardcode to one single display, which is the
-  // main display with the desktop window:
-  numDisplays=1;
-  displayCGIDs[0]=GetDC(GetDesktopWindow());
+  // This used to be our old hack to get everything up and running: Simply hard-code the
+  // number of displays to 1 and assign device context of main desktop window:
+  // numDisplays=1;
+  // displayCGIDs[0]=GetDC(GetDesktopWindow());
+
+  // Now we use display enumeration: Reset global count to zero. It will be
+  // set up during display enumeration...
+  numDisplays = 0;
+
+  // Call M$-Windows monitor enumeration routine. It will call our callback-function
+  // MonitorEnumProc() for each detected display device...
+  EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+
+  // Ready.
+  return;
 }
 
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
@@ -95,6 +132,11 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
     *displayID=displayCGIDs[screenNumber];
 }
 
+char* PsychGetDisplayDeviceName(int screenNumber)
+{
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+	 return(displayDeviceName[screenNumber]);
+}
 
 /*  About locking display settings:
 
@@ -184,7 +226,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
         // Query next setting (i) for current (NULL) display:
         result.dmSize = sizeof(DEVMODE);
         result.dmDriverExtra = 0;
-        rc = EnumDisplaySettings(NULL, i, &result);
+        rc = EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), i, &result);
         i++;
 
         // Valid setting returned?
@@ -193,8 +235,6 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             PsychAddValueToDepthStruct((int) result.dmBitsPerPel, depths);
         }
     } while (rc!=0);
-
-    // Old hard-coded setting: PsychAddValueToDepthStruct((int) 32, depths);
     return;    
 }
 
@@ -488,8 +528,7 @@ boolean PsychRestoreScreenSettings(int screenNumber)
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
     // Restore video settings from the defaults in the Windows registry:
-    // CDS_RESET is not necessary... ChangeDisplaySettings(NULL, CDS_RESET);
-    ChangeDisplaySettings(NULL, 0);
+    ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), NULL, NULL, 0, NULL);
             
     return(true);
 }
@@ -569,8 +608,11 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
     for (i=0; i<256; i++) gammaTable[i+256] = (int)(greenTable[i] * 65535.0f + 0.5f);
     for (i=0; i<256; i++) gammaTable[i+512] = (int)(blueTable[i]  * 65535.0f + 0.5f);
 
-	 // Set new gammaTable:
+	 // Set new gammaTable: On M$-Windows, we retry up to 10 times before giving up, because some
+	 // buggy Windows graphics drivers seem to fail on first invocation of SetDeviceGammaRamp(), just
+	 // to succeed on a 2nd invocation!
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
+	 ok=FALSE;
+    for (i=0; i<10 && !ok; i++) ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
 	 if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
 }
