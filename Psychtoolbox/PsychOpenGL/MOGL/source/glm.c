@@ -248,40 +248,44 @@ void glm_setswapinterval(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prh
 
 AbsoluteTime entrytime;
 unsigned char pausepoint[4];
+GLint nRead,nDraw;
 
 void glm_swapbuffers(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
-    // create return argument and record entry time
-    if( nlhs>0 ) {
-        plhs[0]=mxCreateNumericMatrix(1,1,mxUINT64_CLASS,mxREAL);
-        if( nlhs>1 ) {
-            plhs[1]=mxCreateNumericMatrix(1,1,mxUINT64_CLASS,mxREAL);
-            entrytime=UpTime();
-        }
+  // create return argument and record entry time
+  if( nlhs>0 ) {
+    plhs[0]=mxCreateNumericMatrix(1,1,mxUINT64_CLASS,mxREAL);
+    if( nlhs>1 ) {
+      plhs[1]=mxCreateNumericMatrix(1,1,mxUINT64_CLASS,mxREAL);
+      entrytime=UpTime();
     }
+  }
 
-    // swap buffers
-    aglSwapBuffers(context);
+  // swap buffers
+  aglSwapBuffers(context);
 
-    // do a trivial graphics operation so that execution halts here
-    // until buffers are swapped
-    if( mxGetScalar(prhs[0])>0 ) {
-        glReadPixels(0,0,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pausepoint);
-        glWindowPos2d(0,0);
-        glDrawPixels(1,1,GL_RGBA,GL_UNSIGNED_BYTE,pausepoint);
-        glFlush();
-    }
+  // do a trivial graphics operation so that execution halts here
+  // until buffers are swapped
+  if( mxGetScalar(prhs[0])>0 ) {
+    glGetIntegerv(GL_READ_BUFFER,&nRead);
+    glGetIntegerv(GL_DRAW_BUFFER,&nDraw);
+    glReadBuffer(GL_BACK);
+    glDrawBuffer(GL_BACK);
+    glReadPixels(0,0,1,1,GL_RGBA,GL_UNSIGNED_BYTE,pausepoint);
+    glWindowPos2d(0,0);
+    glDrawPixels(1,1,GL_RGBA,GL_UNSIGNED_BYTE,pausepoint);
+    glReadBuffer(nRead);
+    glDrawBuffer(nDraw);
+    glFinish();
+  }
 
+  // record the time
+  if( nlhs>0 ) {
     // record the time
-    if( nlhs>0 ) {
-		
-		// record the time
-        *(AbsoluteTime *)mxGetData(plhs[0])=UpTime();
-        if( nlhs>1 )
-            *(long long *)mxGetData(plhs[1])=*(long long *)mxGetData(plhs[0])-*(long long *)&entrytime;
-		
-    }
-
+    *(AbsoluteTime *)mxGetData(plhs[0])=UpTime();
+    if( nlhs>1 )
+      *(long long *)mxGetData(plhs[1])=*(long long *)mxGetData(plhs[0])-*(long long *)&entrytime;
+  }
 }
 
 void glm_text(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
