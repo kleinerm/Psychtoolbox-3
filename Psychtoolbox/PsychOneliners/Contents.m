@@ -25,6 +25,7 @@
 %    NameFrequency           * Nicely format clock rate for human readers.
 %    OSName                  * Convential English-language name of your operating system.
 %    PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
+%    RemoveSVNPaths          - Removes .svn folders from the path.
 %    Stopwatch               - Time intervals.
 %    streq                   - strcmp.
 %    TextBounds              - Draw string, return enclosing rect.
