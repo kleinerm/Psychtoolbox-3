@@ -52,7 +52,9 @@ static CFDictionaryRef	displayOverlayedCGSettings[kPsychMaxPossibleDisplays];   
 static boolean			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];    
-static char*               displayDeviceName[kPsychMaxPossibleDisplays];  // Windows internal monitor device name.                                                                                             
+static char*                    displayDeviceName[kPsychMaxPossibleDisplays];   // Windows internal monitor device name. Default display has NULL
+static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays]; // Top-Left corner of display on virtual screen. Default display has (0,0).
+static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -87,6 +89,7 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	MONITORINFOEX moninfo;
+
 	// hMonitor is the handle to the monitor info. Resolve it to a moninfo information struct:
 	moninfo.cbSize = sizeof(MONITORINFOEX);
 	GetMonitorInfo(hMonitor, &moninfo);
@@ -95,10 +98,12 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 	displayDeviceName[numDisplays] = (char*) malloc(256);
 	strncpy(displayDeviceName[numDisplays], moninfo.szDevice, 256);
 
+	// Query and copy the top-left corner of the monitor:
+	displayDeviceStartX[numDisplays] = moninfo.rcMonitor.left;
+	displayDeviceStartY[numDisplays] = moninfo.rcMonitor.top;
+
 	// Create a device context for this display and store it in our displayCGIDs array:
 	displayCGIDs[numDisplays] = CreateDC(displayDeviceName[numDisplays], displayDeviceName[numDisplays], NULL, NULL);
-	// Some debug output for now...
-	printf("PTB-INFO: %i. detected display device has Win32 internal name %s ...\n", numDisplays, displayDeviceName[numDisplays]); fflush(NULL);
 
 	// Increase global counter of available separate displays:
 	numDisplays++;
@@ -109,18 +114,43 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 
 void InitCGDisplayIDList(void)
 {
-  // This used to be our old hack to get everything up and running: Simply hard-code the
-  // number of displays to 1 and assign device context of main desktop window:
-  // numDisplays=1;
-  // displayCGIDs[0]=GetDC(GetDesktopWindow());
+  int i;
 
-  // Now we use display enumeration: Reset global count to zero. It will be
-  // set up during display enumeration...
-  numDisplays = 0;
+  // We always provide the full (virtual) desktop as screen number zero. This way,
+  // queries to screen 0 will always provide the global settings and dimensions of
+  // the full desktop (either single display, or extended desktop on multi-display systems).
+  // Opening an onscreen window on screen 0 will always yield a window covering the full
+  // desktop, possibly spanning multiple physical display devices. Very useful for standard
+  // dual display stereo applications in stereoMode 4.
+  numDisplays=1;
+  displayCGIDs[0]=GetDC(GetDesktopWindow());
+  displayDeviceName[0] = NULL;
+  displayDeviceStartX[0] = 0;
+  displayDeviceStartY[0] = 0;
 
-  // Call M$-Windows monitor enumeration routine. It will call our callback-function
+  // Now call M$-Windows monitor enumeration routine. It will call our callback-function
   // MonitorEnumProc() for each detected display device...
   EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
+
+  // Only one additional display found?
+  if (numDisplays <=2) {
+    // Single display mode: Enumeration only found the single monitor that constitutes
+    // the desktop on a single display setup, so screen 1 is identical to screen 0.
+    // In that case, we release screen 1 again as it would be redundant...
+    if (numDisplays == 2) DeleteDC(displayCGIDs[1]);
+    numDisplays = 1;
+  }
+  else {
+    // At least two different displays enumerated: This is a multi-display setup.
+    // Screen 0 is the full desktop. Screens i=1,2,...,n are display monitors 1 to n.
+    // Output some info to the command window:
+    printf("PTB-INFO: Multi-display setup detected:\n");
+    printf("PTB-INFO: Screen 0 corresponds to the full Windows desktop area. Useful for stereo presentations in stereomode=4 ...\n");
+    for (i=1; i<=numDisplays; i++) {
+      printf("PTB-INFO: Screen %i corresponds to the display area of the monitor with the Windows-internal name %s ...\n", i, displayDeviceName[i]);
+    }
+    printf("\n"); fflush(NULL);
+  }
 
   // Ready.
   return;
@@ -360,10 +390,10 @@ void PsychGetScreenRect(int screenNumber, double *rect)
     long width, height; 
 
     PsychGetScreenSize(screenNumber, &width, &height);
-    rect[kPsychLeft]=0;
-    rect[kPsychTop]=0;
-    rect[kPsychRight]=(int)width;
-    rect[kPsychBottom]=(int)height; 
+    rect[kPsychLeft]= (int) displayDeviceStartX[screenNumber];
+    rect[kPsychTop]= (int) displayDeviceStartY[screenNumber];
+    rect[kPsychRight]=rect[kPsychLeft] + (int) width;
+    rect[kPsychBottom]=rect[kPsychTop] + (int) height; 
 } 
 
 

@@ -303,7 +303,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   int x, y, width, height, i;
   DWORD flags;
   boolean fullscreen = FALSE;
-  DWORD windowStyle = WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
+  DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
   DWORD windowExtendedStyle = WS_EX_APPWINDOW;
 
     // Map the logical screen number to a device handle for the corresponding
@@ -311,35 +311,33 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // HDC windows hardware device context handle.
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
 
-    // Check if this should be a fullscreen window, and if not, what its dimensions
-    // should be:
+    // Check if this should be a fullscreen window:
     PsychGetScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) {
       // This is supposed to be a fullscreen window with the dimensions of
       // the current display/desktop:
-      x=0;
-      y=0;
-      width=PsychGetWidthFromRect(screenrect);
-      height=PsychGetHeightFromRect(screenrect);      
-
       // Switch system to fullscreen-mode without changing any settings:
       fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
     }
     else {
       // Window size different from current screen size:
-		// A regular desktop window with borders and control icons is requested, e.g., for debugging:
-      // Extract settings:
-      x=windowRecord->rect[kPsychLeft];
-      y=windowRecord->rect[kPsychTop];
-      width=PsychGetWidthFromRect(windowRecord->rect);
-      height=PsychGetHeightFromRect(windowRecord->rect);
-		fullscreen = FALSE;
+      // A regular desktop window with borders and control icons is requested, e.g., for debugging:
+      fullscreen = FALSE;
     }
 
     if (fullscreen) {
-      windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window)
+      windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window without borders)
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
     }
+    else {
+      windowStyle |= WS_OVERLAPPEDWINDOW;
+    }
+
+    // Define final position and size of window:
+    x=windowRecord->rect[kPsychLeft];
+    y=windowRecord->rect[kPsychTop];
+    width=PsychGetWidthFromRect(windowRecord->rect);
+    height=PsychGetHeightFromRect(windowRecord->rect);
 
     // Register our own window class for Psychtoolbox onscreen windows:
     // Only register the window class once - use hInstance as a flag.
@@ -676,8 +674,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     SetFocus(hWnd);
 
     // Capture the window if it is a fullscreen one: This window will receive all
-	 // mouse move and mouse button press events. Important for GetMouse() to work
-	 // properly...
+    // mouse move and mouse button press events. Important for GetMouse() to work
+    // properly...
     if (fullscreen) SetCapture(hWnd);
 
     // Increase our own open window counter:
