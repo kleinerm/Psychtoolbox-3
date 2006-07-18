@@ -41,7 +41,7 @@ end
 if nargin<2
     targetRevision = '';
 else
-    targetRevision
+    disp(targetRevision);
     targetRevision = [' -r ' targetRevision ' '];
 end
 
@@ -70,7 +70,7 @@ if ~isWin && ~isOSX
 end
 
 % Save old Psychtoolbox path
-oldPath=genpath(targetdirectory);
+oldPath = RemoveSVNPaths(genpath(targetdirectory));
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
@@ -121,7 +121,7 @@ fprintf('\n');
 
 % Remove old Psychtoolbox paths. Add new Psychtoolbox paths.
 rmpath(oldPath);
-addpath(genpath(targetdirectory));
+addpath(RemoveSVNPaths(genpath(targetdirectory)), '-end');
 fprintf('Your MATLAB path has been updated. Now trying to save the new MATLAB path...\n\n');
 
 % Does SAVEPATH work?
@@ -139,7 +139,7 @@ end
 fprintf('Fully done. Your new Psychtoolbox folder is ready to use. Enjoy!\n\n')
 
 % Does a post-install routine exist? If so, we execute it, now that PTB is basically ready.
-if exist('PsychtoolboxPostInstallRoutine.m')
+if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % We pass the information about downloaded flavor and that this is a download (=0) to the
    % post-install routine...
    PsychtoolboxPostInstallRoutine(1);
