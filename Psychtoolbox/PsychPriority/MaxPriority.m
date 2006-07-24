@@ -81,9 +81,13 @@ function priorityLevel=MaxPriority(varargin);
 %
 % Priority levels returned by MaxPriority are 0, 1 and 2.
 % Although use of priority levels > 1 is possible and allowed by MaxPriority
+
 % if you don't try to acquire input from keyboard or mouse, it is discouraged
+
 % to use levels > 1 as this can interfere with execution of a lot of
+
 % important system processes and severely reduce the stability of
+
 % Windows execution.
 % _________________________________________________________________________
 %
@@ -120,8 +124,11 @@ function priorityLevel=MaxPriority(varargin);
 % 3/12/05 dgp Changed "strcmp" to "streq".
 % 10/10/05 awi Noted changes by dgp on 3/12/05 
 % 12 /31/05 mk Bugfix for windows part. Never worked when passing in a windowPtrOrScreenNumber
+
 %              instead of keywords. Even if passing in keywords, the priority matching gave
+
 %              wrong results (possibly too high priority) when multiple keywords were supplied.
+
 
 % NOTES
 % 7/17/04 awi
@@ -355,6 +362,7 @@ elseif IsWin
 		char(13) '                        [''EventAvail''],[''GetClicks''],[''GetMouse''],[''GetTicks''])']);
 	end
    
+
    match=0;
    priorityLevel = 2;    
 	for i=1:nargin
@@ -441,8 +449,11 @@ elseif IsWin
 		if isnumeric(varargin{i})
 			w=varargin{i};
          % If a generic windowPtrOrScreenNumber argument is supplied, instead of the
+
          % more specific keywords, we lower priority to 1. This may be a bit
+
          % strict, but better safe than sorry...
+
          priorityLevel=min(priorityLevel,1);
          match=1;
 		end

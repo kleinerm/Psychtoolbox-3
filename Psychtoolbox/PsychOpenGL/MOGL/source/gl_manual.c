@@ -226,6 +226,7 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
   // Retrieve pointer to output matrix:
   dst = (GLfloat*) mxGetData(plhs[0]);
 
+
   // Do the copy:
   memcpy(dst, src, n);
 }

@@ -28,7 +28,9 @@ function [clicks,x,y] = GetClicks(w)
 % 2/28/06  mk   Completely rewritten as a wrapper around GetMouse, based on
 %          mk   the semantic and description of OS-9 GetClicks().
 % 6/17/06  mk   We also pass the windowPtr - argument on Windows now, because
+
 %          mk   now GetMouse.m is able to accept this argument.
+
 
 % Inter-click interval (in secs.) for multiple mouse-clicks.
 global ptb_mouseclick_timeout;

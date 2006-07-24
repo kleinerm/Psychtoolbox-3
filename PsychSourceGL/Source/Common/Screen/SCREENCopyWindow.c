@@ -41,9 +41,13 @@ static char synopsisString[] =  "Copy images, quickly, between two windows (on- 
                                 "copy images really quickly into an onscreen window, then use the 'MakeTexture' "
                                 "and 'DrawTexture' commands. They also allow for rotated drawing and advanced "
                                 "blending operations. "
+
 											"The current CopyWindow implementation has a couple of restrictions: "
+
 											"One can't copy from an offscreen window into the -same- offscreen window. "
+
 											"One can't copy from an onscreen window into a -different- onscreen window. "
+
 											"Sizes of sourceRect and targetRect need to match for Onscreen->Offscreen copy. ";
 
 static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeTexture, DrawTexture";
@@ -68,11 +72,17 @@ PsychError SCREENCopyWindow(void)
 	PsychAllocInWindowRecordArg(1, TRUE, &sourceWin);
 	PsychCopyRect(sourceRect, sourceWin->rect);
 
+
 	if (sourceWin->stereomode==kPsychFreeFusionStereo || sourceWin->stereomode==kPsychFreeCrossFusionStereo) {
+
 		// Special case for stereo: Only half the real window width:
+
 		PsychMakeRect(&sourceRect, sourceWin->rect[kPsychLeft], sourceWin->rect[kPsychTop],
+
 						  sourceWin->rect[kPsychLeft] + PsychGetWidthFromRect(sourceWin->rect)/2, sourceWin->rect[kPsychBottom]);
+
 	}
+
 	PsychCopyInRectArg(3, FALSE, sourceRect);
 
 	//get paramters for the target window:
@@ -81,29 +91,53 @@ PsychError SCREENCopyWindow(void)
    // the target window.
 	PsychCopyRect(targetRect, targetWin->rect);
 	if (targetWin->stereomode==kPsychFreeFusionStereo || targetWin->stereomode==kPsychFreeCrossFusionStereo) {
+
 		// Special case for stereo: Only half the real window width:
+
 		PsychMakeRect(&targetRect, targetWin->rect[kPsychLeft], targetWin->rect[kPsychTop],
+
 						  targetWin->rect[kPsychLeft] + PsychGetWidthFromRect(targetWin->rect)/2, targetWin->rect[kPsychBottom]);
+
 	}
+
 	PsychCopyInRectArg(4, FALSE, targetRect);
 
+
 	if (0) {
+
 		printf("SourceRect: %f %f %f %f  ---> TargetRect: %f %f %f %f\n", sourceRect[0], sourceRect[1],
+
              sourceRect[2], sourceRect[3], targetRect[0], targetRect[1],targetRect[2],targetRect[3]);
+
 	}
 
+
+
    // Validate rectangles:
+
 	if (!ValidatePsychRect(sourceRect) || sourceRect[kPsychLeft]<sourceWin->rect[kPsychLeft] ||
+
        sourceRect[kPsychTop]<sourceWin->rect[kPsychTop] || sourceRect[kPsychRight]>sourceWin->rect[kPsychRight] ||
+
 		 sourceRect[kPsychBottom]>sourceWin->rect[kPsychBottom]) {
+
 		PsychErrorExitMsg(PsychError_user, "Invalid source rectangle specified - (Partially) outside of source window.");
+
    }
 
+
+
 	if (!ValidatePsychRect(targetRect) || targetRect[kPsychLeft]<targetWin->rect[kPsychLeft] ||
+
        targetRect[kPsychTop]<targetWin->rect[kPsychTop] || targetRect[kPsychRight]>targetWin->rect[kPsychRight] ||
+
 		 targetRect[kPsychBottom]>targetWin->rect[kPsychBottom]) {
+
 		PsychErrorExitMsg(PsychError_user, "Invalid target rectangle specified - (Partially) outside of target window.");
+
    }
+
+
 
 	PsychTestForGLErrors();
 
@@ -133,12 +167,20 @@ PsychError SCREENCopyWindow(void)
         // Onscreen to texture copy?
         if (PsychIsOnscreenWindow(sourceWin) && PsychIsOffscreenWindow(targetWin)) {
 				// With the current implemenation we can't zoom if sizes of sourceRect and targetRect don't
+
 				// match: Only one-to-one copy possible...
+
 				if(PsychGetWidthFromRect(sourceRect) != PsychGetWidthFromRect(targetRect) ||
+
 					PsychGetHeightFromRect(sourceRect) != PsychGetHeightFromRect(targetRect)) {
+
 					// Non-matching sizes. We can't perform requested scaled copy :(
+
 					PsychErrorExitMsg(PsychError_user, "Size mismatch of sourceRect and targetRect. Matching size is required for Onscreen to Offscreen copies. Sorry.");
+
 				}
+
+
 
             // Update selected textures content:
             PsychSetGLContext(targetWin);
@@ -177,7 +219,9 @@ PsychError SCREENCopyWindow(void)
         }
         
 		  // Just to make sure we catch invalid values:
+
 	     PsychTestForGLErrors();
+
 
         // Done.
         return(PsychError_none);

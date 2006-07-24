@@ -118,8 +118,11 @@ try
         % this property if you don't need it!
         [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
         % We estimate framecount instead of querying it - faster:
+
         framecount = movieduration * fps;
+
         
+
         % Start playback of the movie:
         % Play 'movie', at a playbackrate = 1 (normal speed forward),
         % play it once, aka with loopflag = 0,

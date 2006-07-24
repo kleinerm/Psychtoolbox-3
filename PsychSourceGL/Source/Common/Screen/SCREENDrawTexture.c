@@ -95,16 +95,26 @@ PsychError SCREENDrawTexture(void)
     PsychCopyRect(targetRect,source->rect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
 
+
 	 if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
+
 			// Special case for stereo: Only half the real window width:
+
 			PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
+
 							  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
+
 	 }
+
 	 else {
+
 			// Normal case:
+
 	      PsychCopyRect(tempRect,target->rect);
 	 }
+
 	
+
     PsychCenterRectInRect(sourceRect, tempRect, targetRect);
     PsychCopyInRectArg(4, kPsychArgOptional, targetRect);
     PsychCopyInDoubleArg(5, kPsychArgOptional, &rotationAngle);

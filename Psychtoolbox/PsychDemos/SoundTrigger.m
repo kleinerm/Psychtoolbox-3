@@ -39,10 +39,17 @@ function SoundRecordingtest(duration)
 %
 
 try
+
    AssertOSX;
+
 catch
+
 	error('This demo does not work under M$-Windows yet, only on MacOS-X. Aborting...');   
+
 end
+
+
+
 
 
 % Initialize PsychSound for audio recording: We select a sampling frequency

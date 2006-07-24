@@ -29,8 +29,13 @@
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 #define warte PsychWaitIntervalSeconds(10);
 
+
+
 // Include QT Medialayer for Windows compatibility:
+
 #include <QTML.h>
+
+
 
 // We typedef all missing functions on Windows away...
 // typedef void* QTVisualContextRef;
@@ -65,6 +70,7 @@ typedef struct {
     int height;
     double last_pts;
     int nr_droppedframes;
+
 	 GLuint cached_texture;
 } PsychMovieRecordType;
 
@@ -89,6 +95,7 @@ void PsychMovieInit(void)
         movieRecordBANK[i].QTMovieGWorld = NULL;
         movieRecordBANK[i].loopflag = 0;
         movieRecordBANK[i].cached_texture = 0;
+
     }    
     numMovieRecords = 0;
     
@@ -154,6 +161,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     QTVisualContextRef QTMovieContext = NULL;
     QTAudioContextRef  QTAudioContext = NULL;
     int i;
+
 	 int slotid;
     OSErr error;
     CFStringRef movieLocation;
@@ -165,8 +173,12 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     char errdesc[1000];
     Rect movierect;
 	 FSSpec sfFile;
+
     short  movieResFile;
+
     char   theFullPath[255];
+
+
 
     *moviehandle = -1;
     // We startup the Quicktime subsystem only on first invocation.
@@ -179,8 +191,11 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
             PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
         }
 		  else {
+
           // printf("InitializeQTML() passed...\n"); fflush(NULL);
+
         }
+
 #endif
 
         // Initialize Quicktime-Subsystem:
@@ -191,6 +206,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         firsttime = FALSE;
     }
     
+
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
     }
@@ -212,11 +228,15 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Slot slotid will contain the movie record for our new movie object:
     slotid=i;
 
+
 #if PSYCH_SYSTEM == PSYCH_OSX
+
     // Create name-string for moviename:
     movieLocation = CFStringCreateWithCString (kCFAllocatorDefault, moviename, kCFStringEncodingASCII);
     printf("CFStringCreateWithCString... passed\n", moviename); fflush(NULL);
+
 #endif
+
 
     // Zero-out new record in moviebank:
     movieRecordBANK[slotid].theMovie=NULL;    
@@ -225,7 +245,11 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     movieRecordBANK[slotid].QTMovieGWorld=NULL;
     movieRecordBANK[slotid].cached_texture = 0;
 
+
+
 #if PSYCH_SYSTEM == PSYCH_OSX
+
+
 
     if (!PSYCH_USE_QT_GWORLDS) {
         // Create QTGLTextureContext:
@@ -242,12 +266,16 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Create QTAudioContext for default CoreAudio device:
     coreAudioDeviceUID = NULL; // Use default audio-output device.
     error =QTAudioContextCreateForAudioDevice (kCFAllocatorDefault, coreAudioDeviceUID, NULL, &QTAudioContext);
+
     if (error!=noErr) {
         PsychErrorExitMsg(PsychError_internal, "Quicktime audio context creation failed!!!");
     }
 	 else {
+
           // fprintf(stderr, "QTAudioContext created...\n"); fflush(NULL);
+
     }    
+
 
     // The Movie location 
     newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
@@ -279,30 +307,56 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     error = NewMovieFromProperties(propcount, newMovieProperties, 0, NULL, &theMovie);
     CFRelease(movieLocation);
 
+
 #else
+
 	 // M$-Windows movie loading...
 
+
+
     // make a copy of our full path name
+
     strcpy ( (char *)theFullPath, moviename);
+
     // convert theFullPath to pstring
+
     c2pstr((char*)theFullPath);
+
     // Make a FSSpec with a pascal string filename
+
     FSMakeFSSpec(0,0L,theFullPath, &sfFile);
+
     // printf("P1: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
+
     // Open the movie file
+
     error = OpenMovieFile(&sfFile, &movieResFile, fsRdPerm);
+
     // printf("P2: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
+
     if (error == noErr) {
+
       // Get the Movie from the file
+
       // printf("P3: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
+
       error = NewMovieFromFile(&theMovie, movieResFile, NULL, NULL, newMovieActive, NULL);
+
       // Close the movie file
+
       // printf("P4: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
+
       CloseMovieFile(movieResFile);
+
 	 }
+
 #endif
 
+
+
     // printf("P5: Movie opened... %s\n", (error==noErr) ? "Ok" : "Failed"); fflush(NULL);
+
+
 
     if (error!=noErr) {
         if (QTMovieContext) QTVisualContextRelease(QTMovieContext);
@@ -331,7 +385,10 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     }
     
     
+
     // printf("Movie opened...\n"); fflush(NULL);
+
+
 
     if (PSYCH_USE_QT_GWORLDS) {
         // Determine size of images in movie:
@@ -353,10 +410,14 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     // printf("GWorld created and assigned...\n"); fflush(NULL);
 
+
+
     // Preload first second of movie into system RAM for faster playback:
     LoadMovieIntoRam(theMovie, 0, 1*GetMovieTimeScale(theMovie),  keepInRam);
 
     // printf("LoadMovieIntoRAM done..\n"); fflush(NULL);
+
+
 
     // We don't preroll: Didn't help for async playback, but leads to failure in
     // manual playback mode: PrerollMovie(theMovie, 0, FloatToFixed(1));
@@ -365,6 +426,8 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     MoviesTask(theMovie, 10000);
     
     // printf("MoviesTask() done...\n"); fflush(NULL);
+
+
 
     // Assign new record in moviebank:
     movieRecordBANK[slotid].theMovie=theMovie;    
@@ -381,7 +444,10 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Compute duration in seconds:
     movieRecordBANK[slotid].movieduration = (double) GetMovieDuration(theMovie) / (double) GetMovieTimeScale(theMovie);
 
+
     // printf("Entering PsychDetermineMovieFamecountAndFps()...\n"); fflush(NULL);
+
+
 
     // Compute expected framerate, assuming a linear spacing between frames: It is derived as
     // reciprocal of the duration of the first video frame in the movie:
@@ -396,7 +462,9 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     // Will do counting on first query for this parameter as it is very time-consuming:
     movieRecordBANK[slotid].nrframes = -1;
 
+
     // printf("Movie created!!!!\n"); fflush(NULL);
+
     
     return;
 }
@@ -465,11 +533,18 @@ void PsychDeleteMovie(int moviehandle)
     glFinish();
         
 	 // Recycled texture in texture cache?
+
     if (PSYCH_USE_QT_GWORLDS && movieRecordBANK[moviehandle].cached_texture > 0) {
+
 		// Yes. Release it.
+
 		glDeleteTextures(1, &(movieRecordBANK[moviehandle].cached_texture));
+
 		movieRecordBANK[moviehandle].cached_texture = 0;
+
 	 }
+
+
 
     // Delete movieobject for this handle:
     DisposeMovie(movieRecordBANK[moviehandle].theMovie);
@@ -539,7 +614,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     Rect rect;
     float rate;
     double targetdelta, realdelta, frames;
+
     int padding;
+
    
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
@@ -550,8 +627,10 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 
     // Explicitely disable Apple's Client storage extensions. For now they are not really useful to us.
 #if PSYCH_SYSTEM == PSYCH_OSX
+
     glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
 #endif
+
 
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided.");
@@ -726,7 +805,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Hack: Need to extend rect by up to 4 pixels, because GWorlds are 4 pixels-aligned via
         // image row padding:
         padding = (4 - ((rect.right - rect.left) % 4) ) % 4;
+
 		  // printf("Padding set to %i\n", padding);
+
         rect.right = rect.right + padding;
         PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
         
@@ -749,22 +830,38 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
             
 		  // Assign a reference to our movieHandle - slot for the caching mechanism.
+
 		  // This is used by PsychFreeMovieTexture() to find the texture cache of our
+
 		  // movie object:
+
 		  out_texture->texturecache_slot = moviehandle;
+
+
 
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content. We assign the texid from our
+
 		  // our texture cache, if any, so it gets possibly reused.
+
 		  out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+
+
 
         PsychCreateTexture(out_texture);
 
+
 		  // After PsychCreateTexture() the cached texture object from our cache is used
+
 		  // and no longer available for recycling. We mark the cache as empty:
+
 		  // It will be filled with a new textureid for recycling if a texture gets
+
         // deleted in PsychMovieDeleteTexture()....
+
 		  movieRecordBANK[moviehandle].cached_texture = 0;
+
+
 
         // Undo hack from above after texture creation: Now we need the real width of the
         // texture for proper texture coordinate assignments in drawing code et al.
@@ -772,6 +869,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
 
         // Unlock GWorld surface.
+
         UnlockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
 
         // Ready to use the texture... We're done.
@@ -834,6 +932,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 void PsychFreeMovieTexture(PsychWindowRecordType *win)
 {
 	if (!PSYCH_USE_QT_GWORLDS) { 
+
 	   // Fetch special Quicktime texture handle...
  		CVOpenGLTextureRef theTexture = win->targetSpecific.QuickTimeGLTexture;
 
@@ -848,24 +947,40 @@ void PsychFreeMovieTexture(PsychWindowRecordType *win)
     	// skipped - if we don't do this, Quicktime & CoreVideo will leak memory like hell!!!
     	win->textureNumber = 0;
 	}
+
    else {
+
 		// Special path for Microsoft Windows:
+
     	// ...is this a Quicktime movietexture? If not, just skip this routine.
     	if (win->windowType!=kPsychTexture || win->textureOrientation!=3 || win->texturecache_slot<0) return;
 
+
 		// Quicktime movie texture: Check if we can move it into our recycler cache
+
 		// for later reuse...
+
 		if (movieRecordBANK[win->texturecache_slot].cached_texture == 0) {
+
 			// Cache free. Put this texture object into it for later reuse:
+
 			movieRecordBANK[win->texturecache_slot].cached_texture = win->textureNumber;
+
 	    	// 0-out the textureNumber so our standard cleanup routine (glDeleteTextures) gets
    	 	// skipped - if we wouldn't do this, our caching scheme would screw up.
+
 	    	win->textureNumber = 0;
+
       }
+
 		else {
+
 			// Cache already occupied. We don't do anything but leave the cleanup work for
+
 			// this texture to the standard PsychDeleteTexture() routine...
+
 		}
+
    }
     return;
 }
@@ -958,7 +1073,9 @@ void PsychExitMovies(void)
     // TerminateQTML();
 #endif
 
+
 	 // Reset the firsttime flag, so system gets restarted properly in PsychCreateMovie():
+
 	 firsttime = TRUE;    
     return;
 }

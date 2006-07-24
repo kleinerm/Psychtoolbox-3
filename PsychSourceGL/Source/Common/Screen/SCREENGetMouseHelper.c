@@ -108,14 +108,20 @@ PsychError SCREENGetMouseHelper(void)
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	double* buttonArray;
 	POINT		point;
+
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
+
 	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)3, (int)1, &buttonArray);
 	// Query and return mouse button state:
+
 	PsychGetMouseButtonState(buttonArray);
+
 	// Query and return cursor position in global coordinates:
+
 	GetCursorPos(&point);
+
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) point.x);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) point.y);
 #endif
@@ -138,6 +144,7 @@ PsychError SCREENGetMouseHelper(void)
 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
 
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
 

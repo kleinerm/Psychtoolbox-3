@@ -17,10 +17,13 @@ function CLUTAnimDemoOSX
 %                   applying it.
 
 % This doesn't work under M$-Windows, as Screen('LoadNormalizedGammaTable') doesn't
+
 % allow us to set the kind of LUTs needed for this demo to work :(
+
 
 % Are we running OpenGL PTB?
 AssertOpenGL;
+
 
 % Is this the M$-Windows version? This demo doesn't work under Windows...
 if IsWin
@@ -81,6 +84,7 @@ try
     % Show it by flipping the buffers:
     Screen('Flip', w);
     % Draw same image into backbuffer, so they're identical:
+
     Screen('DrawTexture', w, tex(1));
 
     i=0;
@@ -110,6 +114,7 @@ try
         t0=t1;
         i=i+1;
         
+
         % Abort after 1000 video refresh intervals or on a key-press:
         if KbCheck | (i>1000)
             break;

@@ -75,5 +75,6 @@ void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float
 void						PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
 char*                PsychGetDisplayDeviceName(int screenNumber);
 
+
 //end include once
 #endif

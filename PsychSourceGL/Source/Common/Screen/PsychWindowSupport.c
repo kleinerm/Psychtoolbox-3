@@ -250,7 +250,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		if (multidisplay) {
 			printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
 			printf("PTB-INFO: Please read 'help MultiDisplaySetups' for specific information on the Do's, Dont's,\n");
+
 			printf("PTB-INFO: and possible causes of trouble and how to diagnose and resolve them."); 
+
 		}
 		
 		if (multidisplay && (!CGDisplayIsInMirrorSet(cgDisplayID) || PsychGetNumDisplays()>1)) {
@@ -260,6 +262,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			// monitors (haploscope, some stereo or binocular rivalry stuff) it is necessary. Let's hope they bought
 			// a really fast gfx-card with plenty of VRAM :-)
 			printf("\n\nPTB-INFO: According to the operating system, some of your connected displays do not seem to \n");
+
 			printf("PTB-INFO: be switched into mirror mode. For a discussion of mirror mode vs. non-mirror mode,\n");
 			printf("PTB-INFO: please read 'help MirrorMode'.\n");
 		}
@@ -448,7 +451,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
       // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
       // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
+
       // possible that the gfx-hw is not capable of downsampling fast enough to do it every refresh
+
       // interval, so we could get an ifi_estimate which is twice the real refresh, which would be valid.
       (*windowRecord)->VideoRefreshInterval = ifi_estimate;
       if ((*windowRecord)->stereomode == kPsychOpenGLStereo || (*windowRecord)->multiSample > 0) {
@@ -649,6 +654,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			printf("but it will cause Screen('Flip') to report less accurate/robust timestamps\n");
 			printf("for stimulus timing.\n");
 			printf("Read 'help BeampositionQueries' for more info and troubleshooting tips.\n");
+
 			printf("\n\n");
 			// Flash our visual warning bell:
 			if (ringTheBell<2) ringTheBell=2;
@@ -988,26 +994,46 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         tshouldflip = tshouldflip + slackfactor * currentflipestimate;        
     }
 
+
 	 // Update of hardware gamma table in sync with flip requested?
+
 	 if (windowRecord->inRedTable) {
+
 		// Yes! Call the update routine now. It should schedule the actual update for
+
 		// the same VSYNC to which our bufferswap will lock. "Should" means, we have no
+
 		// way of checking programmatically if it really worked, only via our normal deadline
+
 		// miss detector. If we are running under M$-Windows then loading the hw-gamma table
+
 		// will block our execution until next retrace. Then it will upload the new gamma table.
+
 		// Therefore we need to disable sync of bufferswaps to VBL, otherwise we would swap only
+
 		// one VBL after the table update -> out of sync by one monitor refresh!
+
 		if (PSYCH_SYSTEM==PSYCH_WINDOWS) PsychOSSetVBLSyncLevel(windowRecord, 0);
 
+
 		// We need to wait for render-completion here, otherwise hw-gamma table update and
+
 		// bufferswap could get out of sync due to unfinished rendering commands which would
+
 		// defer the bufferswap, but not the clut update.
+
 		glFinish();
 
+
+
 		// Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
+
 		// OS-X just schedule update in sync with next retrace, but continue immediately:
+
 		PsychLoadNormalizedGammaTable(windowRecord->screenNumber, 256, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+
 	 }    
+
 
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
     PsychOSFlipWindowBuffers(windowRecord);
@@ -1182,11 +1208,18 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
     
 	 // Cleanup temporary gamma tables if needed:
+
 	 if (windowRecord->inRedTable) {
+
 		free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+
 		free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+
 		free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+
 	 }
+
+
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);
@@ -1752,14 +1785,24 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // Restore modelview matrix:
     glPopMatrix();
 	 if (glGetError() == GL_OUT_OF_MEMORY) {
+
 		// Special case: Out of memory after Flip + Postflip operations.
+
 		printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
+
 		printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+
 		printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+
 		printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+
 		printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+
 		printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+
 	 }
+
+
 
     PsychTestForGLErrors();
     

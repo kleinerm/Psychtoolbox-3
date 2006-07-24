@@ -22,6 +22,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 % dotson = If set to 0 (default), just show surface. If set to 1, some dots are
 % plotted to visualize the vertices of the underlying mesh. If set to 2, the
 % mesh itself is superimposed onto the shape. If set to 3 or 4, then the projected
+
 % vertex 2D coordinates are also visualized in a standard Matlab figure window.
 %
 % normalson = If set to 1, then the surface normal vectors will get visualized as
@@ -92,10 +93,16 @@ InitializeMatlabOpenGL(0,1);
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
 if dotson~=3 & dotson~=4
+
    rect = [];
+
 else
+
    rect = [0 0 500 500];
+
 end;
+
+
 
 [win , winRect] = Screen('OpenWindow', screenid, [], rect, [], [], stereomode);
 
@@ -387,6 +394,7 @@ function drawShape(ang, theta, rotatev, dotson, normalson)
 global GL
 global win
 
+
 % Backup modelview matrix:
 glPushMatrix;
 
@@ -432,6 +440,7 @@ if (dotson == 2)
     glEnable(GL.LIGHTING);
 end;
 
+
 if (normalson > 0)
     % Draw surface normal vectors on top of object:
     glDisable(GL.LIGHTING);
@@ -445,19 +454,30 @@ if (normalson > 0)
     glEnable(GL.LIGHTING);
     glColor3f(0,0,1);
  end;
+
  
 if (dotson == 3 | dotson == 4)
+
    % Compute and retrieve projected screen-space vertex positions:
+
    vpos = moglmorpher('getVertexPositions', win);
+
    
+
    % Plot the projected 2D points into a Matlab figure window:
+
    vpos(:,2)=RectHeight(Screen('Rect', win)) - vpos(:,2);
+
 	plot(vpos(:,1), vpos(:,2), '.');
+
    drawnow;
+
 end;
+
 
 % Restore modelview matrix:
 glPopMatrix;
+
 
 % Done, return to main-function:
 return;

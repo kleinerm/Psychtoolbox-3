@@ -86,6 +86,7 @@ static char synopsisString[] =
         "video memory and lead to a reduction in framerate due to the higher computational demand. The maximum "
         "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
         "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
+
 		  "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
         "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
@@ -321,16 +322,27 @@ PsychError SCREENOpenWindow(void)
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
+
 	 // rect argument needs special treatment in stereo mode:
+
 	 if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+
 			// Special case for stereo: Only half the real window width:
+
 			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],
+
 							  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/2,windowRecord->rect[kPsychBottom]);
+
 	 }
+
 	 else {
+
 			// Normal case:
+
 			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],windowRecord->rect[kPsychRight],windowRecord->rect[kPsychBottom]);
+
 	 }
+
     PsychCopyOutRectArg(2, FALSE, rect);
 
     return(PsychError_none);   

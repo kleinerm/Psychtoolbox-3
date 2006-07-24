@@ -216,8 +216,12 @@ PsychError SCREENDrawDots(void)
 	}
 	else {
 	  #ifndef GL_ALIASED_POINT_SIZE_RANGE
+
 	  #define GL_ALIASED_POINT_SIZE_RANGE 0x846D
+
 	  #endif
+
+
 
 	  glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, &pointsizerange);
 	}

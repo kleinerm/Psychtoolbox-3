@@ -32,9 +32,13 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % for the user to release the mouse button, ending the current click, before
 % you begin waiting for the next mouse press.
 %
+
 % Alternatively, you can also use the GetClicks() function to wait for
+
 % mouse-clicks and return the mouse position of first click and the number
+
 % of mouse button clicks.
+
 %
 % fprintf('Please click the mouse now.\n');
 % [x,y,buttons] = GetMouse;
@@ -63,16 +67,27 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % M$-Windows: _____________________________________________________________
 %
 % Limitations:
+
 %
+
 % GetMouse will always assume a three button mouse and therefore always 
+
 % return the state of three buttons. GetMouse will only report button state
+
 % while at least one onscreen window is opened. This is the case in normal
+
 % use, but it will fail to report button state if used as part of a Matlab
+
 % script that doesn't open an onscreen window. GetMouse may get confused
+
 % if you keep mouse buttons pressed down during the very first Screen('OpenWindow')
+
 % call, i.e. press down the mouse button before window appears and keep it
+
 % pressed after it appears. It will also fail to register that you release
+
 % mouse buttons if you keep the button pressed during calls to Screen('Close')
+
 % or Screen('CloseAll').
 %
 % _________________________________________________________________________
@@ -110,6 +125,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % 02/21/06 mk   Added Linux support.
 % 18/04/06 fwc  fixed bug that prevented use of multiple mice (tested with 3)
 % 06/10/06 mk   Added Microsoft Windows support. Removed the old WinPTB GetMouse.dll
+
 %               which worked except for button state queries.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we

@@ -22,10 +22,14 @@
 #define PSYCH_IS_INCLUDED_PsychMovieSupport
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+
 #include <Movies.h>
+
 #else
+
 #include <Quicktime/Movies.h>
 #endif
+
 
 #include "Screen.h"
 

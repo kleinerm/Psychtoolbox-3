@@ -112,8 +112,11 @@ function kbNameResult = KbName(arg)
 %   10/12/04    awi     Cosmetic changes to comments.
 %	 10/4/05     awi     Note here cosmetic changes by dgp on unknown date between 10/12/04 and 10/4/05   
 %   12/31/05    mk      Transplanted the keycode table from old WinPTB KbName to OS-X KbName.
+
 %                       This is a hack until we have PsychHID for Windows and can share the table
+
 %                       with OS-X table.
+
 
 %   TO DO
 %
@@ -127,19 +130,28 @@ function kbNameResult = KbName(arg)
 persistent kkOSX kkOS9 kkWin kkLinux kk
 
 
+
 %_________________________________________________________________________
+
 % Windows part
+
 % This is a complete hack: The code between if IsWin and the corresponding end;
+
 % is the code of the old KbName command of the old Windows Psychtoolbox.
+
 %
+
 %
+
 % These Key names are shared between Mac and Windows
+
 
 if isempty(kkOSX)
 	kkOSX = cell(1,256);
 	kkOS9 = cell(1,256);
 	kkWin = cell(1,256);
    
+
    % MK: Until we have a PsychHID for GNU/Linux, we query Screen for the
    % scancode to keychar mapping table:
    if IsLinux   
@@ -149,140 +161,275 @@ if isempty(kkOSX)
    end;
    
    % MK: Until we have a PsychHID for windows, we use this table for the
+
    % Windows keycode mappings. I stole it from the old WinPTB ;)
+
    kkWin{65} = 'a';
+
    kkWin{83} = 's';
+
    kkWin{68} = 'd';
+
    kkWin{70} = 'f';
+
    kkWin{72} = 'h';
+
    kkWin{71} = 'g';
+
    kkWin{90} = 'z';
+
    kkWin{88} = 'x';
+
    kkWin{67} = 'c';
+
    kkWin{86} = 'v';
+
    kkWin{66} = 'b';
+
    kkWin{81} = 'q';
+
    kkWin{87} = 'w';
+
    kkWin{69} = 'e';
+
    kkWin{82} = 'r';
+
    kkWin{89} = 'y';
+
    kkWin{84} = 't';
+
    kkWin{49} = '1!';
+
    kkWin{50} = '2@';
+
    kkWin{51} = '3#';
+
    kkWin{52} = '4$';  
+
    kkWin{53} = '5%';
+
    kkWin{54} = '6^';
+
    kkWin{187} = '=+';
+
    kkWin{57} = '9(';
+
    kkWin{55} = '7&';
+
    kkWin{189} = '-_';
+
    kkWin{56} = '8*';
+
    kkWin{48} = '0)';
+
    kkWin{221} = ']';
+
    kkWin{79} = 'o';
+
    kkWin{85} = 'u';
+
    kkWin{219} = '[';
+
    kkWin{73} = 'i';
+
    kkWin{80} = 'p';
+
    kkWin{13} = 'return';
+
    kkWin{76} = 'l';
+
    kkWin{74} = 'j';
+
    kkWin{222} = char(39);       % single quote
+
    kkWin{75} = 'k';
+
    kkWin{186} = ';';
+
    kkWin{220} = '\\';
+
    kkWin{188} = ',';
+
    kkWin{191} = '/?';
+
    kkWin{78} = 'n';
+
    kkWin{77} = 'm';
+
    kkWin{190} = '.>';
+
    kkWin{9} = 'tab';
+
    kkWin{32} = 'space';
+
    kkWin{192} = '`';
+
    kkWin{46} = 'delete';
+
    kkWin{27} = 'esc';
+
    kkWin{16} = 'shift';  % Note: Windows distinguishes between left an right shift keys.
+
    kkWin{20} = 'capslock';
+
    kkWin{17} = 'control'; % Note: Windows distinguishes between left and right control keys
+
    kkWin{110} = '.';      
+
    kkWin{106} = '*';
+
    kkWin{107} = '+';
+
    kkWin{12} = 'clear';  
+
    kkWin{111} = '/';
+
    kkWin{109} = '-';
+
    kkWin{96} = '0';
+
    kkWin{97} = '1';
+
    kkWin{98} = '2';
+
    kkWin{99} = '3';
+
    kkWin{100} = '4';
+
    kkWin{101} = '5';
+
    kkWin{102} = '6';
+
    kkWin{103} = '7';
+
    kkWin{104} = '8';
+
    kkWin{105} = '9';
+
    kkWin{116} = 'f5';
+
    kkWin{117} = 'f6';
+
    kkWin{118} = 'f7';
+
    kkWin{114} = 'f3';
+
    kkWin{119} = 'f8';
+
    kkWin{120} = 'f9';
+
    kkWin{122} = 'f11';
+
    kkWin{124} = 'f13';
+
    kkWin{125} = 'f14';
+
    kkWin{121} = 'f10';
+
    kkWin{123} = 'f12';
+
    kkWin{126} = 'f15';  
+
    kkWin{47} = 'help';    
+
    kkWin{36} = 'home';
+
    kkWin{33} = 'pageup';
+
    kkWin{115} = 'f4';
+
    kkWin{35} = 'end';
+
    kkWin{113} = 'f2';
+
    kkWin{34} = 'pagedown';
+
    kkWin{112} = 'f1';
+
    kkWin{37} = 'left';
+
    kkWin{39} = 'right';
+
    kkWin{40} = 'down';
+
    kkWin{38} = 'up';
+
    
+
    % Keynames used only on Windows
+
    kkWin{91} = 'windows_left';
+
    kkWin{92} = 'windows_right';
+
    kkWin{93} = 'applications';
+
    kkWin{108} = 'seperator';
+
    kkWin{127} = 'f16';
+
    kkWin{128} = 'f17';
+
    kkWin{129} = 'f18';
+
    kkWin{130} = 'f19';
+
    kkWin{131} = 'f20';
+
    kkWin{132} = 'f21';
+
    kkWin{133} = 'f22';
+
    kkWin{134} = 'f23';
+
    kkWin{135} = 'f24';
+
    kkWin{144} = 'numlock';
+
    kkWin{145} = 'scrolllock';
+
    kkWin{246} = 'attn';
+
    kkWin{247} = 'crsel';
+
    kkWin{248} = 'exsel';
+
    kkWin{251} = 'play';
+
    kkWin{252} = 'zoom';
+
    kkWin{254} = 'pa1';
+
    kkWin{8} = 'backspace';
+
    kkWin{1} = 'left_mouse';
+
    kkWin{2} = 'right_mouse';
+
    kkWin{4} = 'middle_mouse';
+
    kkWin{45} = 'insert';
+
    kkWin{18} = 'alt';
+
    
+
    % Keynames used only in Windows >95
+
    kkWin{160} = 'left_shift';
+
    kkWin{161} = 'right_shift';
+
    kkWin{162} = 'left_control';
+
    kkWin{163} = 'right_control';
+
    kkWin{91} = 'left_menu';
+
    kkWin{92} = 'right_menu';
+
    
+
    
 	%OS X column                                    OS 9 column             	Win Column
 	

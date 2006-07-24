@@ -51,6 +51,7 @@ function HideCursor
 % 7/12/04  awi Cosmetic and uses IsMac.
 % 11/16/04 awi Renamed "HideCursor" to "HideCursorHelper"
 
+
 %on OS X the Screen.mexmac hides the cursor, not 
 %HideCursor.mexmac.  HideCursor.m wraps the 
 %Screen call to emulate HideCursor.mex
