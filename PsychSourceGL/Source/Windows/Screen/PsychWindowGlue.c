@@ -325,6 +325,12 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       fullscreen = FALSE;
     }
 
+	 // Special case for explicit multi-display setup under Windows when opening a window on
+	 // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
+    // if anything of our automatic full-desktop window emulation code goes wrong on exotic setups,
+    // the user can still enforce a suitably positioned and sized borderless toplevel window.
+    if (PsychGetNumDisplays()>2 && screenSettings->screenNumber == 0) fullscreen = TRUE;
+
     if (fullscreen) {
       windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window without borders)
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST

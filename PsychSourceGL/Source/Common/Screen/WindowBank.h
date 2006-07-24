@@ -163,8 +163,15 @@ typedef struct _PsychWindowRecordType_{
         bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
         bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
+
+	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
+	// They default to NULL and get possibly set in Screen('LoadNormalizedGammaTable'):
+	float* inRedTable;
+	float* inGreenTable;
+	float* inBlueTable;
+
 	//Used only when this structure holds a window:
-	//platform spedific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c
+	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c
 	//Only use abstracted accessors on this structure, otherwise you will break platform portability.
 	PsychTargetSpecificWindowRecordType	targetSpecific;  //defined within 
 	

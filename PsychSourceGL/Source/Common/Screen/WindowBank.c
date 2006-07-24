@@ -256,6 +256,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
         (*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
         (*winRec)->auxbuffer_dirty[0]=FALSE;            // AUX-Buffers clean on startup.
         (*winRec)->auxbuffer_dirty[1]=FALSE;
+	// Initialize gamma table pointers for deferred loading:
+	(*winRec)->inRedTable = NULL;
+	(*winRec)->inGreenTable = NULL;
+	(*winRec)->inBlueTable = NULL;
 }
 
 
@@ -274,6 +278,11 @@ PsychError FreeWindowRecordFromIndex(PsychWindowIndexType windex)
 	if(windowRecordArrayWINBANK[windex] ==NULL)
 		return(PsychError_invalidWindex);    //window does not exist
 		
+	// Release temporary gamma tables, if any:
+	free(windowRecordArrayWINBANK[windex]->inRedTable);
+	free(windowRecordArrayWINBANK[windex]->inGreenTable);
+	free(windowRecordArrayWINBANK[windex]->inBlueTable);
+
 	free(windowRecordArrayWINBANK[windex]);
 	windowRecordArrayWINBANK[windex] = NULL;
 	--numWindowRecordsWINBANK;

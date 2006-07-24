@@ -987,7 +987,28 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Calculate final deadline for the lock on next retrace - case:
         tshouldflip = tshouldflip + slackfactor * currentflipestimate;        
     }
-    
+
+	 // Update of hardware gamma table in sync with flip requested?
+	 if (windowRecord->inRedTable) {
+		// Yes! Call the update routine now. It should schedule the actual update for
+		// the same VSYNC to which our bufferswap will lock. "Should" means, we have no
+		// way of checking programmatically if it really worked, only via our normal deadline
+		// miss detector. If we are running under M$-Windows then loading the hw-gamma table
+		// will block our execution until next retrace. Then it will upload the new gamma table.
+		// Therefore we need to disable sync of bufferswaps to VBL, otherwise we would swap only
+		// one VBL after the table update -> out of sync by one monitor refresh!
+		if (PSYCH_SYSTEM==PSYCH_WINDOWS) PsychOSSetVBLSyncLevel(windowRecord, 0);
+
+		// We need to wait for render-completion here, otherwise hw-gamma table update and
+		// bufferswap could get out of sync due to unfinished rendering commands which would
+		// defer the bufferswap, but not the clut update.
+		glFinish();
+
+		// Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
+		// OS-X just schedule update in sync with next retrace, but continue immediately:
+		PsychLoadNormalizedGammaTable(windowRecord->screenNumber, 256, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+	 }    
+
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
     PsychOSFlipWindowBuffers(windowRecord);
     
@@ -1141,7 +1162,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     windowRecord->backBufferBackupDone = false;
     
     // If we disabled (upon request) VBL syncing, we have to reenable it here:
-    if (vbl_synclevel==2) {
+    if (vbl_synclevel==2 || (windowRecord->inRedTable && (PSYCH_SYSTEM == PSYCH_WINDOWS))) {
       PsychOSSetVBLSyncLevel(windowRecord, 1);
     }
     
@@ -1160,6 +1181,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
     }
     
+	 // Cleanup temporary gamma tables if needed:
+	 if (windowRecord->inRedTable) {
+		free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+		free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+		free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+	 }
+
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);
     

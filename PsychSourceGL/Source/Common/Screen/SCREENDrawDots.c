@@ -215,6 +215,10 @@ PsychError SCREENDrawDots(void)
 	  glHint(GL_POINT_SMOOTH_HINT, (idot_type>1) ? GL_NICEST : GL_DONT_CARE);
 	}
 	else {
+	  #ifndef GL_ALIASED_POINT_SIZE_RANGE
+	  #define GL_ALIASED_POINT_SIZE_RANGE 0x846D
+	  #endif
+
 	  glGetFloatv(GL_ALIASED_POINT_SIZE_RANGE, &pointsizerange);
 	}
 
