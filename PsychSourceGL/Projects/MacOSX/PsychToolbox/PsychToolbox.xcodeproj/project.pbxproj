@@ -3096,7 +3096,7 @@
 		F5FCC41A03833708017A7028 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		F5FCC43C038338B4017A7028 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
 		F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		F5FCC57F03833BCA017A7028 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = file; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/2.95.2/libstdc++.a"; sourceTree = "<absolute>"; };
+		F5FCC57F03833BCA017A7028 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/2.95.2/libstdc++.a"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
