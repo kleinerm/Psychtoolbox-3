@@ -41,7 +41,7 @@ end
 if nargin<2
     targetRevision = '';
 else
-    disp(targetRevision);
+    fprintf('Target revision: %s \n', targetRevision);
     targetRevision = [' -r ' targetRevision ' '];
 end
 
@@ -70,7 +70,8 @@ if ~isWin && ~isOSX
 end
 
 % Save old Psychtoolbox path
-oldPath = RemoveSVNPaths(genpath(targetdirectory));
+% (MK) Not ready for prime-time: oldPath = RemoveSVNPaths(genpath(targetdirectory));
+oldPath = genpath(targetdirectory);
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
@@ -121,7 +122,8 @@ fprintf('\n');
 
 % Remove old Psychtoolbox paths. Add new Psychtoolbox paths.
 rmpath(oldPath);
-addpath(RemoveSVNPaths(genpath(targetdirectory)), '-end');
+% MK: Not ready for prime-time: addpath(RemoveSVNPaths(genpath(targetdirectory)), '-end');
+addpath(genpath(targetdirectory));
 fprintf('Your MATLAB path has been updated. Now trying to save the new MATLAB path...\n\n');
 
 % Does SAVEPATH work?
