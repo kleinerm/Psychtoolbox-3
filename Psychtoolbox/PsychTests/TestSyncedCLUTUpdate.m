@@ -35,100 +35,113 @@ function TestSyncedCLUTUpdate(synced)
 % History:
 % 24.07.2006  Written (MK).
 
-% This script calls Psychtoolbox commands available only in OpenGL-based 
-% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-% only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
+% This script calls Psychtoolbox commands available only in OpenGL-based
+% versions of the Psychtoolbox. The Psychtoolbox command AssertPsychOpenGL will issue
 % an error message if someone tries to execute this script on a computer without
 % an OpenGL Psychtoolbox
 AssertOpenGL;
 
 if nargin < 1
-   synced = 1
+    synced = 1; % Default to synchronized updates.
 end
+synced
 
 try
-	% Get the list of screens and choose the one with the highest screen number.
-	% Screen 0 is, by definition, the display with the menu bar. Often when 
-	% two monitors are connected the one without the menu bar is used as 
-	% the stimulus display.  Chosing the display with the highest dislay number is 
-	% a best guess about where you want the stimulus displayed.  
-	screens=Screen('Screens');
-	screenNumber=max(screens);
-	% Open a double buffered fullscreen window with a black background color:
-	w=Screen('OpenWindow',screenNumber, 255);
-    
-   % Make a backup copy of original LUT into origLUT.
-   origLUT=Screen('ReadNormalizedGammaTable', screenNumber);
-  	
+    % Get the list of screens and choose the one with the highest screen number.
+    % Screen 0 is, by definition, the display with the menu bar. Often when
+    % two monitors are connected the one without the menu bar is used as
+    % the stimulus display.  Chosing the display with the highest dislay number is
+    % a best guess about where you want the stimulus displayed.
+    screens=Screen('Screens');
+    screenNumber=max(screens);
+
+    % Open a double buffered fullscreen window:
+    w=Screen('OpenWindow',screenNumber);
+
+    % Store a backup copy of original LUT into origLUT.
+    origLUT=Screen('ReadNormalizedGammaTable', screenNumber);
+
     % Build a simple gray-level ramp as a single texture.
     [width, height]=Screen('WindowSize', w);
     s=floor(min(width, height)/2)-1;
     [x,y]=meshgrid(-s:s, -s:s);
     fintex=ones(2*s+1,2*s+1);
     fintex(:,:)=mod(x,255)+1;
-    
+
+    % tex1 is a full intensity ramp...
     tex1=Screen('MakeTexture', w, fintex);
+    % ...with a half intensity clut.
     lut1=origLUT * 0.5;
+
+    % tex2 is a half intensity ramp...
     tex2=Screen('MakeTexture', w, fintex * 0.5);
+    % ...with a full intensity clut.
     lut2=origLUT * 1;
 
-    % Switch to realtime-mode for smooth animation:    
+    % Switch to realtime-mode for smooth animation:
     priorityLevel=MaxPriority(w);
-    Priority(priorityLevel)
-      
-    % Initial Flip:
-    Screen('Flip', w);
+    Priority(priorityLevel);
+
+    % Query monitor refresh interval:
+    ifi = Screen('GetFlipInterval', w);
     
+    % Initial Flip to sync us to vbl and get a timestamp:
+    vbl = Screen('Flip', w);
+
     i=0;
     t1=GetSecs;
-    
+
     % Test loop: Runs until keypress or 1000 iterations have passed:
     while (1)
-       % Update the hardware CLUT with our lut 1: Defer update
-       % until Screen('Flip'), if synced == 1
-       Screen('LoadNormalizedGammaTable', w, lut1, synced);
-       
-       % Draw corresponding stimulus:
-       Screen('DrawTexture', w, tex1);
-       
-       % Show at next retrace and update clut:
-       Screen('Flip', w);
-      
-     	 % Update the hardware CLUT with our lut 2: Defer update
-       % until Screen('Flip'), if synced == 1
-       Screen('LoadNormalizedGammaTable', w, lut2, synced);
-       
-       % Draw corresponding stimulus:
-       Screen('DrawTexture', w, tex2);
-       
-       % Show at next retrace and update clut:
-       Screen('Flip', w);
-       
-       % Increment framecount:
-       i=i+1;
-        
-       % Abort after 1000 iterations or on a key-press:
-       if KbCheck | (i>1000)
-         break;
-       end;
-   end;
-     
-   avgfps = i / (GetSecs - t1)
-   
-	Priority(0);
-   
-   % Restore the original origLUT CLUT lookup table:
-   Screen('LoadNormalizedGammaTable', screenNumber, origLUT);
-   
-   % Close window, we're done:
-   Screen('CloseAll');
+        % Update the hardware CLUT with our lut 1: Defer update
+        % until Screen('Flip'), if synced == 1
+        Screen('LoadNormalizedGammaTable', w, lut1, synced);
+
+        % Draw corresponding stimulus:
+        Screen('DrawTexture', w, tex1);
+
+        % Show at next retrace after given deadline and update clut:
+        vbl = Screen('Flip', w, vbl + 1.5 * ifi);
+
+        % Update the hardware CLUT with our lut 2: Defer update
+        % until Screen('Flip'), if synced == 1
+        Screen('LoadNormalizedGammaTable', w, lut2, synced);
+
+        % Draw corresponding stimulus:
+        Screen('DrawTexture', w, tex2);
+
+        % Show at next retrace after given deadline and update clut:
+        vbl = Screen('Flip', w, vbl + 1.5 * ifi);
+
+        % Increment framecount:
+        i=i+1;
+
+        % Abort after 1000 iterations or on a key-press:
+        if KbCheck | (i>1000)
+            break;
+        end;
+    end;
+
+    % Some stats...
+    avgfps = i / (GetSecs - t1)
+
+    % Disable realtime scheduling:
+    Priority(0);
+
+    % Restore the original origLUT CLUT lookup table:
+    Screen('LoadNormalizedGammaTable', screenNumber, origLUT);
+
+    % Close window, we're done:
+    Screen('CloseAll');
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Priority(0);
+
     if exist('origLUT', 'var')
         Screen('LoadNormalizedGammaTable', screenNumber, origLUT);
     end
+
     Screen('CloseAll');
     psychrethrow(lasterror);
 end %try..catch..
