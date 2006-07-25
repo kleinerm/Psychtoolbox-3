@@ -70,8 +70,7 @@ if ~isWin && ~isOSX
 end
 
 % Save old Psychtoolbox path
-% (MK) Not ready for prime-time: oldPath = RemoveSVNPaths(genpath(targetdirectory));
-oldPath = genpath(targetdirectory);
+oldPath = RemoveSVNPaths(genpath(targetdirectory));
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
@@ -122,7 +121,6 @@ fprintf('\n');
 
 % Remove old Psychtoolbox paths. Add new Psychtoolbox paths.
 rmpath(oldPath);
-% MK: Not ready for prime-time: addpath(RemoveSVNPaths(genpath(targetdirectory)), '-end');
 addpath(genpath(targetdirectory));
 fprintf('Your MATLAB path has been updated. Now trying to save the new MATLAB path...\n\n');
 
@@ -131,7 +129,7 @@ err=savepath;
 if err
 p=fullfile(matlabroot,'toolbox','local','pathdef.m');
 fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
-    'Please ask a user with administrator privileges to enable \n'...
+        'Please ask a user with administrator privileges to enable \n'...
         'write by everyone for the file:\n''%s''\n'],p);
 fprintf(['Once that''s done, run ' mfilename ' again. For this MATLAB session, Psychtoolbox\n']);
 fprintf('will be fully functional, but you will need to save your path settings to make them persistent.\n\n');

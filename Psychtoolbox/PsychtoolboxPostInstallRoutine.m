@@ -19,8 +19,11 @@ if nargin < 1
    error('PsychtoolboxPostInstallRoutine: Required argument isUpdate missing!');
 end;
 
-% Currently we do not have anything to do...
 fprintf('Running post-install routine...\n');
+
+% Get rid of any remaining .svn folders in the path.
+path(RemoveSVNPaths);
+
 fprintf('Done.\n');
 
 return;
