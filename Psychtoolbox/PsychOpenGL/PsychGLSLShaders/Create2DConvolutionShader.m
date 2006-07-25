@@ -25,10 +25,14 @@ if nargin < 1
     error('Create2DConvolutionShader: No kernel provided!');
 end;
 
-if nargin < 2 | isempty(textarget)
+if nargin < 2
     % MK: TODO texture target specific setup.
     textarget = 0;
 end;
+
+if isempty(textarget)
+    textarget = 0;
+end
 
 if size(kernel,1)~=5 | size(kernel,2)~=5
     error('Create2DConvolutionShader: Sorry, only 5x5 kernels supported!');

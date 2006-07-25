@@ -133,7 +133,7 @@ void PsychRenderArc(unsigned int mode)
 	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
 	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
 
-	//Get the color argument or use the default, then coerce to the form determined by the window depth.  
+	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
         if(!isArgThere){
                 whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);

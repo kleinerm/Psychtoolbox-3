@@ -795,7 +795,6 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 {
   PsychRectType roirect;
 
-
   if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
       PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
   }
@@ -811,7 +810,6 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   // only be set during Screen('OpenVideoCapture').
   if (strcmp(pname, "GetROI")==0) {
     PsychMakeRect(roirect, vidcapRecordBANK[capturehandle].roirect.left, vidcapRecordBANK[capturehandle].roirect.top,
-
                   vidcapRecordBANK[capturehandle].roirect.right, vidcapRecordBANK[capturehandle].roirect.bottom); 
     PsychCopyOutRectArg(1, FALSE, roirect);
     return(0);

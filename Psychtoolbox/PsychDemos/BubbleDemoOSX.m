@@ -233,7 +233,6 @@ try
             if ~IsEmptyRect(dRect)
                 % Yes! Draw image for current frame:
                 
-
                 % Step 1: Draw the alpha-mask into the backbuffer. It
                 % defines the aperture for foveation: The center of gaze
                 % has zero alpha value. Alpha values increase with distance from

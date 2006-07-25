@@ -44,11 +44,8 @@ function AlphaImageDemoOSX
 %                     default.
 %  4/23/05    mk      Small modifications to make it compatible with
 %                     "normal" Screen.mexmac.
-
 %
-
 %  12/31/05   mk      Small modifications to make it compatible with Matlab-5
-
 
 try
     fprintf('AlphaImageDemo (%s)\n click on key or mouse to stop\n', datestr(now));
@@ -150,7 +147,6 @@ try
     buttons=0;
 
 	 priorityLevel=MaxPriority(w);
-
     Priority(priorityLevel);
     % "pre-load" textures
     Screen('DrawTexture', w, imagetex);
@@ -162,7 +158,6 @@ try
     mxold=0;
     myold=0;
     while (1)
-
         % We wait at least 10 ms each loop-iteration so that we
         % don't overload the system in realtime-priority:
         WaitSecs(0.01);
@@ -209,4 +204,3 @@ catch
     Priority(0);
     psychrethrow(lasterror);
 end %try..catch.
-

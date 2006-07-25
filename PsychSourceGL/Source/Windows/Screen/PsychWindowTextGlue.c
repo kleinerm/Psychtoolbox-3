@@ -10,12 +10,10 @@
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
 		Mario Kleiner     mk       mario.kleiner@tuebingen.mpg.de
 
-
 	HISTORY:
 		
 		11/18/03		awi		Wrote it 
 		12/30/05    mk       Ported to Windows. Derived from Allen's OS-X version.					
-
 
 	DESCRIPTION:
         

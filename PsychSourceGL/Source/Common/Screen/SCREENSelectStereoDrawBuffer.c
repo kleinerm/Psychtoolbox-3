@@ -36,7 +36,6 @@ static char synopsisString[] =
         "\"bufferid\" is either == 0 for selecting the left-eye buffer or == 1 for "
         "selecting the right-eye buffer. You need to call this command after each "
         "Screen('Flip') command or after drawing to an offscreen window again in order "
-
 		  "to reestablish your selection of draw buffer, otherwise the results of drawing "
         "operations will be undefined and most probably not what you want.";
 

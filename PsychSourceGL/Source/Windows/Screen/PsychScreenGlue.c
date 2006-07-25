@@ -38,14 +38,9 @@
 
 #include "Screen.h"
 #include <Windows.h>
-
 // We need to define this and include Multimon.h to allow for enumeration of multiple display screens:
-
 #define COMPILE_MULTIMON_STUBS
-
 #include <Multimon.h>
-
-
 
 // file local variables
 
@@ -84,17 +79,11 @@ void InitializePsychDisplayGlue(void)
     InitCGDisplayIDList();
 }
 
-
 // This callback function is called by Windows EnumDisplayMonitors() function for each
-
 // detected display device: We can happily ignore all provided parameters, except for the
-
 // hMonitor struct which contains the Windows internal name for the detected display. We
-
 // need to pass this name string to a variety of Windows-Functions to refer to the monitor
-
 // of interest.
-
 Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 
 Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
@@ -126,7 +115,6 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 void InitCGDisplayIDList(void)
 {
   int i, w1, w2, h1, h2;
-
 
   // We always provide the full (virtual) desktop as screen number zero. This way,
   // queries to screen 0 will always provide the global settings and dimensions of
@@ -162,39 +150,22 @@ void InitCGDisplayIDList(void)
       printf("PTB-INFO: Screen %i corresponds to the display area of the monitor with the Windows-internal name %s ...\n", i, displayDeviceName[i]);
     }
     
-
 	 // Check for sane display dimensions: Our emulation trick for creating a display spanning screen 0 will only work,
-
 	 // if the first two physical displays 1 and 2 are of the same resolution/size and if they are arranged so that both
-
 	 // together are suitable for a horizontal desktop spanning window, aka they touch each other at their horizontal borders.
-
 	 // If the user has a more exotic display setup, e.g., triple-display or monitors with different resolution, (s)he can still
-
 	 // use the [rect] parameter when opening a window on screen 0 to enforce arbitrary onscreen window position and size. We'll
-
     // always create a borderless window on screen 0 when in multidisplay mode...
-
     PsychGetScreenSize(1, &w1, &h1);
-
     PsychGetScreenSize(2, &w2, &h2);
-
     if (w1!=w2 || h1!=h2) {
-
 		printf("PTB-WARNING: Screens 1 and 2 do have non-equal width and height. This will probably cause wrong behaviour\n");
-
 		printf("PTB-WARNING: when trying to open a fullscreen window on Screen 0 that is supposed to fully cover displays 1 and 2.\n");
-
 		printf("PTB-WARNING: In that case, either change your screen settings to matching size and refresh rate in the display control\n");
-
 		printf("PTB-WARNING: panel and retry after a 'clear all', or manually specify a [rect] parameter for the window in the\n");
-
 		printf("PTB-WARNING: Screen('OpenWindow', 0, [color], [rect]); command to manually enforce creation of a proper onscreen window.\n");
-
 	 }
-
     
-
     printf("\n"); fflush(NULL);
   }
 
@@ -209,14 +180,10 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
 }
 
 char* PsychGetDisplayDeviceName(int screenNumber)
-
 {
-
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 	 return(displayDeviceName[screenNumber]);
-
 }
-
 
 /*  About locking display settings:
 
@@ -315,7 +282,6 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             PsychAddValueToDepthStruct((int) result.dmBitsPerPel, depths);
         }
     } while (rc!=0);
-
     return;    
 }
 
@@ -425,13 +391,9 @@ void PsychGetScreenSize(int screenNumber, long *width, long *height)
   *width = GetDeviceCaps(displayCGIDs[screenNumber], HORZRES);
   *height = GetDeviceCaps(displayCGIDs[screenNumber], VERTRES);
   // If we are in multi-display mode and size of screen 0 (our virtual full desktop) is
-
   // requested, then we return a size which is twice the desktop width, thereby providing
-
   // the proper dimensions for a full desktop spanning onscreen window on screen 0.
-
   if (numDisplays>2 && screenNumber == 0) *width = *width * 2;
-
 }
 
 
@@ -628,7 +590,6 @@ void PsychHideCursor(int screenNumber)
   // Hide the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
   while(ShowCursor(FALSE)>=0);
-
   return;
 }
 
@@ -637,7 +598,6 @@ void PsychShowCursor(int screenNumber)
   // Show the mouse cursor: We ignore the screenNumber as Windows
   // doesn't allow to set the cursor per screen anyway.
   while(ShowCursor(TRUE)<0);
-
 }
 
 void PsychPositionCursor(int screenNumber, int x, int y)
@@ -700,14 +660,10 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
     for (i=0; i<256; i++) gammaTable[i+512] = (int)(blueTable[i]  * 65535.0f + 0.5f);
 
 	 // Set new gammaTable: On M$-Windows, we retry up to 10 times before giving up, because some
-
 	 // buggy Windows graphics drivers seem to fail on first invocation of SetDeviceGammaRamp(), just
-
 	 // to succeed on a 2nd invocation!
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-
 	 ok=FALSE;
-
     for (i=0; i<10 && !ok; i++) ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
 	 if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
 }

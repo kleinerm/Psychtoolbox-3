@@ -117,7 +117,6 @@ typedef struct cmdhandler {
 // Psychtoolbox's PsychMemory.h/.c routines:
 
 // Definition of unsigned int 64 bit datatype for Windows vs. Unix
-
 #ifndef WINDOWS
 typedef unsigned long long int psych_uint64;
 #else

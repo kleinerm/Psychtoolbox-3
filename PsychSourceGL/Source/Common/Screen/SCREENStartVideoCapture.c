@@ -52,7 +52,6 @@ PsychError SCREENStartVideoCapture(void)
 {
     int capturehandle = -1;
     double captureFPS = 25;
-
     int dropframes = 0;
     double starttime = 0;
 

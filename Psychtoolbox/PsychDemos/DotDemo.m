@@ -185,7 +185,6 @@ try
     Priority(0);
     ShowCursor
     Screen('CloseAll');
-
 catch
     Priority(0);
     ShowCursor

@@ -886,11 +886,8 @@ double PsychPtrToDouble(void* ptr)
 // Return the size of the buffer pointed to by ptr in bytes.
 // CAUTION: Only works with buffers allocated via PsychMallocTemp()
 // or PsychCallocTemp(). Will segfault, crash & burn with other pointers!
-
 // The routine returns the net-size of the buffer (the size useable by
-
 // code), not the allocated size (which would be a few additional bytes
-
 // for the buffer-header).
 unsigned int PsychGetBufferSizeForPtr(void* ptr)
 {

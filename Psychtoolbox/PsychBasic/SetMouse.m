@@ -4,7 +4,6 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 % The cursor position (x,y) is "local", i.e. relative to the origin of the
 % window or screen, if supplied. Otherwise it's "global", i.e. relative to
 % the origin of the main screen (the one with the menu bar).
-
 % 
 % OS 9: ___________________________________________________________________
 %
@@ -62,17 +61,12 @@ function SetMouse(x,y,windowPtrOrScreenNumber)
 
 % SetMouse.m wraps the Screen('PositionCursor',..) call to emulate the old SetMouse.mex
 
-
 if(nargin==2)
    windowPtrOrScreenNumber=0;
 end
 
-
 if(nargin<2)
-
    error('SetMouse requires x and y positions');
-
 end
-
 
 Screen('SetMouseHelper',windowPtrOrScreenNumber, x,y);    

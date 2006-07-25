@@ -53,7 +53,7 @@ try
     % the stimulus display.  Chosing the display with the highest dislay number is
     % a best guess about where you want the stimulus displayed.
     scrnNum = max(Screen('Screens'));
-
+scrNum = 0;
     % Stimulus settings:
     numDots = 1000;
     vel = 1;   % pix/frames
@@ -70,7 +70,7 @@ try
     dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
 
     % Open double-buffered onscreen window with the requested stereo mode:
-    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode);
+    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [1280 0 2560 1024], [], [], stereoMode);
 
     % Initially fill left- and right-eye image buffer with black background
     % color:
