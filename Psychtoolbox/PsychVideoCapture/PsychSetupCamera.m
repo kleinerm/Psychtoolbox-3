@@ -73,7 +73,7 @@ PsychVideoDelayLoop('SetHeadstart', 0.0092);
 PsychVideoDelayLoop('SetLogging', 1);
 
 % Disable recording:
-PsychVideoDelayLoop('SetRecording', 0);
+PsychVideoDelayLoop('RecordFrames', 0);
 
 % Load current camera settings from file:
 if exist(camsettingsfile)
