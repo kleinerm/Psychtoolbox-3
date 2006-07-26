@@ -185,7 +185,7 @@ try
     % fixation) to simulate (x,y) input from an eyetracker. Set cursor
     % initially to center of screen:
     [a,b]=RectCenter(wRect);
-    WaitSetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
+    SetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
     
     HideCursor;
     buttons=0;

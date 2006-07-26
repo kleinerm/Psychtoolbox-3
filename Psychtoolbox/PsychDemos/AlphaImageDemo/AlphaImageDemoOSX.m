@@ -141,7 +141,7 @@ try
     Screen('Flip', w);
 
     [a,b]=WindowCenter(w);
-    WaitSetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
+    SetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
     
     HideCursor;
     buttons=0;
