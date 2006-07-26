@@ -77,6 +77,7 @@
 */
 boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample)
 {
+    PsychRectType dummyrect;
     double ifi_nominal=0;    
     double ifi_estimate = 0;
     int retry_count=0;    
@@ -140,6 +141,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         // Override for window rectangle: On OS-X we only support fullscreen mode:
         PsychCopyRect((*windowRecord)->rect, screenSettings->rect);
     }
+
+    // Normalize final windowRect: It is shifted so that its top-left corner is
+    // always the origin (0,0). This way we lose the information about the absolute
+    // position of the window on the screen, but this can be still queried from the
+    // Screen('Rect') command for a screen index. Not normalizing creates breakage
+    // in a lot of our own internal code, many demos and probably a lot of user code.
+    PsychCopyRect(dummyrect, (*windowRecord)->rect);
+    PsychNormalizeRect(dummyrect, (*windowRecord)->rect);
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("OSOpenOnscreenWindow done.\n");
 
