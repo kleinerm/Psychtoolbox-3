@@ -49,6 +49,8 @@ function oldPriority=Priority(newPriority)
 % no longer match the true frame period. Therefore you should change the
 % priority level after changing the video mode and not before. 
 %
+% MacOS-X version before 10.4.7: __________________________________________
+%
 % Because the OS X update process causes setjmp calls within MATLAB to
 % delay for up to about 13ms, Priority kills the system update process when
 % setting any priority greater than 0.  Priority will restart the update
@@ -63,6 +65,18 @@ function oldPriority=Priority(newPriority)
 % restart  with every call to Priority, but instead to do this only at the
 % beginning and end of a MATLAB session by using KillUpdateProcess and
 % StartUpdateProcess.
+%
+% MacOS-X version 10.4.7 and later: _______________________________________
+%
+% Due to improvements in the realtime behaviour of OS-X 10.4.7 and later,
+% it is no longer neccessary to kill the update process. If Priority()
+% detects such an OS version, it will not kill update anymore. This
+% provides an over hundred-fold speedup in the execution of Priority(). If
+% you think that timing gets worse on your system, you can check the timing
+% by running the test command 'TestMATLABTimingOSX'. If you rather want
+% Priority to kill the update process on 10.4.7 and later, please uncomment
+% the line '%killUpdateNotNeeded = 0;' at the top of the Priority.m file to
+% enforce killing of the update process.
 %
 % OS 9: ___________________________________________________________________
 %
@@ -289,6 +303,18 @@ function oldPriority=Priority(newPriority)
 % 2/21/06   mk   Updated for Linux.
 % 5/29/06   mk   Merged a fix for properly restarting update process.
 %                Bug found & fix provided by Michael Ross.
+% 8/02/06   mk   Bugfix by Michael Ross merged: oldPriority was sometimes
+%                reported with some roundoff error.
+% 8/02/06   mk   We now detect if we're running on a OS-X 10.4.7 system or
+%                later. We do not kill and restart the system update process
+%                anymore in that case as it isn't necessary anymore.
+
+persistent killUpdateNotNeeded;
+
+% Uncomment the following line if you want Priority() to kill the update
+% process at raised priorities, even if it thinks that it isn't necessary:
+
+%killUpdateNotNeeded = 0;
 
 if IsLinux
     % Not yet implemented on Linux. Just return zero.
@@ -305,6 +331,21 @@ end;
 if IsOSX
     
     persistent didPriorityKillUpdate;
+
+    if isempty(killUpdateNotNeeded)
+        % Check if this is MacOS-X 10.4.7 or later. We don't need to kill
+        % the update process anymore if that is the case.
+        c = Screen('Computer');
+        osrelease = sscanf(c.kern.osrelease, '%i.%i.%i');
+
+        if (osrelease(1)==8 && osrelease(2)>=7) || (osrelease(1)>=9)
+            % OS-X 10.4.7 or later -> No need to kill update.
+            killUpdateNotNeeded = 1;
+        else
+            % Pre 10.4.7 system -> Play safe and kill update.
+            killUpdateNotNeeded = 0;
+        end
+    end
     
     %Get the current settings.
     [flavorNameString, priorityStruct] = MachGetPriorityFlavor;
@@ -320,7 +361,9 @@ if IsOSX
             oldPriority=0;      
         else
             oldPriorityRatio= priorityStruct.policy.computation / priorityStruct.policy.period;
-            oldPriority=oldPriorityRatio * 10;
+            % Make sure we never exceed an oldPriority of 9, even in case
+            % of roundoff-error. Bug found and fixed by Michael Ross.
+            oldPriority=min(oldPriorityRatio * 10, 9);
         end
     end
     
@@ -343,7 +386,15 @@ if IsOSX
             didPriorityKillUpdate = 0;
         end
 
-        tempWasKilledByUs=KillUpdateProcess;    
+        % Need to kill update process?
+        if (killUpdateNotNeeded > 0)
+            % Nope. This is a 10.47 or later system...
+            tempWasKilledByUs = 0;
+        else
+            % Yes. Try to kill it, if it isn't already dead.
+            tempWasKilledByUs=KillUpdateProcess;
+        end
+        
         if isnan(tempWasKilledByUs)
             error('Failed to raise priority because the simplepsychtoolboxsetup.sh script had not been run.  Run simplepsychtoolboxsetup.sh and try again.');
         else

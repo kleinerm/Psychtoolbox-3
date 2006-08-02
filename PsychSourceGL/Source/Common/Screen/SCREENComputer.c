@@ -523,7 +523,7 @@ PsychError SCREENComputer(void)
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-    PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
+        PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
 
 	free(tempStrPtr);
 
@@ -533,11 +533,10 @@ PsychError SCREENComputer(void)
 
 		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"location\" field CFString into a C String");
 
-		
 
 	//Add the ethernet MAC address of the primary ethernet interface to the stuct.  This can serve as a unique identifier for the computer.  
 
-    ethernetMACStrSizeBytes=GetPrimaryEthernetAddressStringLengthBytes(TRUE)+1;
+        ethernetMACStrSizeBytes=GetPrimaryEthernetAddressStringLengthBytes(TRUE)+1;
 
 	ethernetMACStr=(char*)malloc(sizeof(char) * ethernetMACStrSizeBytes);
 
@@ -547,7 +546,6 @@ PsychError SCREENComputer(void)
 
 	free(ethernetMACStr);
 
-	
 
 	//Add the system version string 
 

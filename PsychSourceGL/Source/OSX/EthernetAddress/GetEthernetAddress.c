@@ -167,7 +167,7 @@ static kern_return_t GetMACAddress(io_iterator_t intfIterator, UInt8 *MACAddress
                                                                   0);
             if (MACAddressAsCFData)
             {
-                CFShow(MACAddressAsCFData); // for display purposes only; output goes to stderr
+                //CFShow(MACAddressAsCFData); // for display purposes only; output goes to stderr
                 
                 // Get the raw bytes of the MAC address from the CFData
                 CFDataGetBytes(MACAddressAsCFData, CFRangeMake(0, kIOEthernetAddressSize), MACAddress);
@@ -277,7 +277,6 @@ int GetPrimaryEthernetAddressString(char *addressStr, Boolean capsFlag, Boolean 
 	addressStringLength=strlen(tempResultBuffer);
 	if(addressStr!=NULL)
 		strcpy(addressStr, tempResultBuffer);
-	free(MACAddress);
 	return(addressStringLength);
 
 }
