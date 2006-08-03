@@ -14,8 +14,11 @@ function [T_out] = SplineCmf(wls_in, T_in, wls_out, extend)
 % wavelengths or as a [start delta num] description.
 % 
 % 7/26/03 dhb  Add extend argument and pass to SplineRaw.
+% 8/22/05 pbg  Changed T_out to include the extend variable (previously was
+%              hardwired to "1".
 
 if (nargin < 4)
 	extend = [];
 end
-T_out = SplineRaw(wls_in,T_in',wls_out,1)';
+T_out = SplineRaw(wls_in,T_in',wls_out,extend)';
+

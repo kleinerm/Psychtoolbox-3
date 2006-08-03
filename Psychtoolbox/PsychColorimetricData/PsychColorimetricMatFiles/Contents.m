@@ -58,6 +58,7 @@
 %   B_monitor           - Basis functions for a color monitor.
 %   B_nickerson         - Basis functions for Munsell surfaces.
 %   B_roomillum         - Basis functions for illuminants in Brainard's room.
+%   B_vrhel             - Basis functions for Vrhel surface measurements.
 %   den_lens_ws         - Relative lens density data (re 700 nm).  W&S, Table 1(2.4.6), p. 109.
 %                       -   This is the first data set in the table, not the Norren and Vos 
 %                       -   data.  It is for an open pupil.
@@ -75,6 +76,7 @@
 %   spd_xenonFlash      - Spectral power distribuiton for some xenon flash tube.
 %   sur_nickerson       - The Nickerson measurements of the Munsell papers.
 %   sur_macbeth         - Reflectance of Macbeth color checker (not accurate, needs updating).
+%   sur_vrhel           - Reflectances measured by Vrhel.
 %   T_cones_smj         - Stockman-MacLeod-Johnson cone fundamentals.  See CVRL database.
 %   T_cones_smj10       - Stockman-MacLeod-Johnson 10-degree cone fundamentals.  See CVRL database.
 %   T_cones_ss2         - Stockman-Sharpe (2000) 2-degree cone fundamentals.  See CVRL database.
@@ -91,3 +93,4 @@
 %   T_xyz1931           - CIE 1931 color matching functions.
 %   T_xyz1964           - CIE 1964 supplemental color matching functions.
 %   T_xyzJuddVos        - Judd-Vos modified color matching functions.
+

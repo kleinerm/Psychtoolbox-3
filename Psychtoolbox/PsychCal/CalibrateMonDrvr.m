@@ -42,6 +42,7 @@ function cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 7/9/02    dhb   Get rid of OpenWindow, CloseWindow.
 % 9/23/02   dhb, jmh  Force background to zero when box is up for aiming.
 % 2/26/03   dhb   Tidy comments.
+% 2/3/06		dhb		Allow passing of cal.describe.boxRect
 
 % Measurement parameters
 monWls = SToWls(cal.describe.S);
@@ -91,8 +92,12 @@ end
 SetColor(window,0,[0 0 0]');
 
 % Draw a box in the center of the screen
-boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-boxRect = CenterRect(boxRect,screenRect);
+if (~isfield(cal.describe,'boxRect'))
+	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
+	boxRect = CenterRect(boxRect,screenRect);
+else
+	boxRect = cal.describe.boxRect;
+end
 Screen(window,'FillRect',1,boxRect);
 SetColor(window,1,[nInputLevels-1 nInputLevels-1 nInputLevels-1]');
 
@@ -167,7 +172,4 @@ cal = CalibrateFitGamma(cal);
 if blankOtherScreen
 	SCREEN(window1,'Close');
 end
-
-
-         
 

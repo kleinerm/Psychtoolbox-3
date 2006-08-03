@@ -91,26 +91,25 @@ oldBool=Screen(windowPtrOrScreenNumber,'Preference','UsesHighGammaBits',[bool])
 
 */
 
-static char useString[] = "oldPreferenceValue=Screen('Preferenece', preferenceName, [newPreferenceValue])";
-//                                                    0             1                2
+static char useString[] = "oldPreferenceValue = Screen('Preference', preferenceName, [newPreferenceValue])";
+//                                                         0             1                2
 static char synopsisString[] = 
 	"Get or set a Psychtoolbox preference."
-	"\noldBool=Screen('Preference','IgnoreCase',[bool]);"
-	"\ntick0Secs=Screen('Preference','Tick0Secs',tick0Secs);"
-	"\npsychTableVersion=Screen('Preference','PsychTableVersion');"
-	"\nmexFunctionName=Screen('Preference','PsychTableCreator');"
-	"\nproc=Screen('Preference','Process',signature);"
-	"\nproc=Screen('Preference','DebugMakeTexture', enableDebugging);"
-	"\noldEnableFlag=Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
-	"\noldEnableFlag=Screen('Preference', 'SkipSyncTests', [enableFlag]);"
-	"\noldLevel=Screen('Preference', 'VisualDebugLevel', level);"
-        "\noldMode=Screen('Preference', 'ConserveVRAM', mode);"
-        "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
-        "\noldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
-        "\noldEnableFlag=Screen('Preference', 'Enable3DGraphics', [enableFlag]);";
-
-
-	
+	"\noldBool = Screen('Preference', 'IgnoreCase', [bool]);"
+	"\ntick0Secs = Screen('Preference', 'Tick0Secs', tick0Secs);"
+	"\npsychTableVersion = Screen('Preference', 'PsychTableVersion');"
+	"\nmexFunctionName = Screen('Preference', 'PsychTableCreator');"
+	"\nproc = Screen('Preference', 'Process', signature);"
+	"\nproc = Screen('Preference', 'DebugMakeTexture', enableDebugging);"
+	"\noldEnableFlag = Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
+	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
+	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
+    "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
+    "\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
+    "\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);";
+			
 static char seeAlsoString[] = "";	
 
 

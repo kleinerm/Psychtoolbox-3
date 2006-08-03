@@ -71,7 +71,7 @@ void PsychGiveHelp(void)
 {  
 		printf("\nUsage:\n\n%s\n",functionUseHELP);
 		if (functionSynopsisHELP != NULL) 
-			printf("\n%s\n",BreakLines(functionSynopsisHELP,72));
+			printf("\n%s\n", BreakLines(functionSynopsisHELP, 80));
 }
 
 void PsychGiveUsage(void)

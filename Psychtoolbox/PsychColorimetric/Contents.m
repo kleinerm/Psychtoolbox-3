@@ -9,9 +9,9 @@
 %
 %   AbsorbanceToAbssorbtance - Convert absorbance to absorbtance spectrum.
 %   CheckWls            - Check consistency of two wavelength descriptions.
-%   ComputeAxialDensity - Compute axial optical density from specific density and path length.
 %   ComputeDE           - Compute vector length between matrix columns.
 %   ComputeDKL_M        - Compute transformation matrix for DKL color space.
+%   ComputeAxialDensity - Compute axial optical density from specific density and path length.
 %   ConeIncToDKL        - Convert from cone increments to DKL.
 %   ContrastToExcitation - Convert contrast to excitation coordinate.
 %   ContrastToIncrement - Convert contrast to incremental coordinates.
@@ -31,15 +31,10 @@
 %   LabToXYZ            - Convert from Lab to XYZ.
 %   LjgToXYZ            - Convert from OSA UCS Ljg to XYZ (10 degree).
 %   LjgToXYZFun         - Error function for LjgToXYZ numerical optimization.
-%   LMSToMacBoyn        - Convert from cones to MacLeod-Boynton chromaticity.
 %   LumToRadiance       - Get spectral radiance from luminance and relative spectrum of source.
 %   LumToTrolands       - Convert luminance (cd/m2) to trolands.
 %   LuvToXYZ            - Convert from Luv to XYZ.
-%   LxxToY              - Convert either Lab or Luv to Y, given the XYZ of white point.
-%   M_PToP              - Conversion matrix from source/dest. primaries.
-%   M_PToT              - Conversion matrix from source primaries and dest. cmfs.
-%   M_TToP              - Conversion matrix from source cmfs and dest. primaries.
-%   M_TToT              - Conversion matrix from source/dest. cmfs.
+%   LMSToMacBoyn        - Convert from cones to MacLeod-Boynton chromaticity.
 %   MakeFourierBasis    - Make a set of Fourier component basis functions.
 %   MakeGaussBasis      - Make a set of Gaussian basis functions.
 %   MakeItS             - Force wavelength sampling spec. to S format.
@@ -48,11 +43,16 @@
 %   MakeMonoPrimary     - Make the spd of a monochromatic primary.
 %   MakeOrtho           - Make a set of basis functions orthonormal.
 %   MakeUnitLength      - Make the columns of a matrix have unit length.
+%   M_PToP              - Conversion matrix from source/dest. primaries.
+%   M_PToT              - Conversion matrix from source primaries and dest. cmfs.
+%   M_TToP              - Conversion matrix from source cmfs and dest. primaries.
+%   M_TToT              - Conversion matrix from source/dest. cmfs.
 %   PhotonAbsorptionRate - Compute photon absoroption rate.
+%   PupilDiameterFromLum - Estimate pupil diameter from luminance.
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
 %   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
-%   RetIrradianceToIsoRecSec - Convert retinal irradiance (power units) to iso. per receptor per second.
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
+%   RetIrradianceToIsoRecSec - Convert retinal irradiance (power units) to iso. per receptor per second.
 %   SampleCircle        - Sample points on a circle.
 %   SampleSphere        - Sample points on a sphere.
 %   ShiftSpectra        - Shift a spectral function along the wavelength axis.
@@ -62,8 +62,8 @@
 %   SplineRaw           - Subroutine for other spline functions.
 %   SplineSpd           - Spline a spectral power distribution to new wavelength sampling.
 %   SplineSrf           - Spline a surface reflectance function to new wavelength sampling.
-%   SRGBGammaCorrect    - Convert between sRGB primary coordinates and 8-bit RGB values.
 %   SRGBPrimaryToXYZ    - Convert between sRGB primary coordinates and XYZ.
+%   SRGBGammaCorrect    - Convert between sRGB primary coordinates and 8-bit RGB values.
 %   SToWls              - Convert S wavelength sampling spec to wls format.
 %   TestLxx             - Test routine for Lab/Luv calculations.
 %   TriToMetSPD         - Compute metamer from tristimulus coordinates.
@@ -89,4 +89,5 @@
 %       
 %
 % Copyright (c) 1996-2003 by Denis Pelli & David Brainard
+
 

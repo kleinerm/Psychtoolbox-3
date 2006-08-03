@@ -3,6 +3,17 @@
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 % help PsychDemos % For demos, triple-click me & hit enter.
 %
+%   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
+%   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
+%   FitWeibullYNTest                - Fit a Weibull to yes-no data.
+%   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
+%   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
+%   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
+%   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
+%   SimpleTimingTest                - 
+%   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
+%   TrolandTest                     - Colorimetric conversions.
+%   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
 %   TestAlphaAddition               - Combine planes by OpenGL alpha addition and verify the result.
 %   TestAlphaBlending               - Multiple tests of OpenGL alpha blending. 
 %   TestAlphaBlendSetting           - Set and readback alpha blending settings by screen; verify match. 
@@ -26,4 +37,9 @@
 %   TestTextInOffscreenWindowOSX    - Compare text rendered into onscreen and offscreen windows. 
 %   TestTextureOSX                  - Exercise Screen('DrawTexture').
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
+
+
+
+
+
 

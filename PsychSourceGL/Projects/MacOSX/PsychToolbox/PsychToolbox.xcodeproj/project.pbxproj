@@ -2607,37 +2607,6 @@
 		};
 /* End PBXBuildRule section */
 
-/* Begin PBXBuildStyle section */
-		4A9504CCFFE6A4B311CA0CBA /* Development */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_ENABLE_PASCAL_STRINGS = NO;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				OPTIMIZATION_CFLAGS = "-O0";
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
-				PREBINDING = NO;
-				WARNING_CFLAGS = "-Wno-long-double";
-				ZERO_LINK = NO;
-			};
-			name = Development;
-		};
-		4A9504CDFFE6A4B311CA0CBA /* Deployment */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
-				PATH_TO_MATLAB_FOLDER = /Applications/MATLAB701;
-				ZERO_LINK = NO;
-			};
-			name = Deployment;
-		};
-/* End PBXBuildStyle section */
-
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -2683,10 +2652,10 @@
 		2F0B17D50778976600359736 /* IOPORTInit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTInit.c; path = ../../../Source/Common/IOPort/IOPORTInit.c; sourceTree = SOURCE_ROOT; };
 		2F0B17D60778976600359736 /* IOPORTSetPort.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTSetPort.c; path = ../../../Source/Common/IOPort/IOPORTSetPort.c; sourceTree = SOURCE_ROOT; };
 		2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Release.rtf"; path = "../../../Notes/How To Release.rtf"; sourceTree = SOURCE_ROOT; };
-		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB71/extern/include/mex.h; sourceTree = "<absolute>"; };
-		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB71/extern/include/matrix.h; sourceTree = "<absolute>"; };
+		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB72/extern/include/mex.h; sourceTree = "<absolute>"; };
+		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB72/extern/include/matrix.h; sourceTree = "<absolute>"; };
 		2F1EB81D05447D4A00A80166 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB71/extern/src/mexversion.c; sourceTree = "<absolute>"; };
+		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB72/extern/src/mexversion.c; sourceTree = "<absolute>"; };
 		2F29D8F204B90844007A7274 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/SysBeep/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F29D8F304B90844007A7274 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/SysBeep/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F29D8F404B90844007A7274 /* SysBeep.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SysBeep.c; path = ../../../Source/Common/SysBeep/SysBeep.c; sourceTree = SOURCE_ROOT; };
@@ -2825,7 +2794,7 @@
 		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
-		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6154D07306666008DA6B4 /* GetChar.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetChar.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
@@ -2869,33 +2838,33 @@
 		2FE9BD9606B1FB4200DB1E5A /* SCREENDrawLine.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENDrawLine.c; path = ../../../Source/Common/Screen/SCREENDrawLine.c; sourceTree = SOURCE_ROOT; };
 		2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillPoly.c; path = ../../../Source/Common/Screen/SCREENFillPoly.c; sourceTree = SOURCE_ROOT; };
 		2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFramePoly.c; path = ../../../Source/Common/Screen/SCREENFramePoly.c; sourceTree = SOURCE_ROOT; };
-		2FEBA43909885B4700F4165F /* DoNothing.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = DoNothing.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA4800988613400F4165F /* FontInfo.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = FontInfo.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = CocoaEventBridge.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA4C30988620100F4165F /* Gestalt.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Gestalt.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA4E40988620800F4165F /* GetBusFrequencyMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetBusFrequencyMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5050988621900F4165F /* GetBusTicks.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetBusTicks.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5260988622700F4165F /* GetPID.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetPID.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5470988623200F4165F /* GetSecs.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecs.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5890988624800F4165F /* GetSecsTick.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsTick.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5AA0988625400F4165F /* GetTicks.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetTicks.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5CB0988626300F4165F /* IOPort.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = IOPort.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA60D0988627E00F4165F /* MachPriority.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachPriority.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA674098862D800F4165F /* PsychHID.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA695098862E300F4165F /* PsychSound.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychSound.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA6B6098862FE00F4165F /* Rush.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Rush.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA6D70988630A00F4165F /* Screen.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA6F80988631600F4165F /* StoreBit.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = StoreBit.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA7190988632100F4165F /* SysBeep.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = SysBeep.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = TestPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecs.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecsMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA79D0988635400F4165F /* Eyelink.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Eyelink.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GenericMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA43909885B4700F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA4800988613400F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA4A2098861FB00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA4C30988620100F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA4E40988620800F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5050988621900F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5260988622700F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5470988623200F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5680988623C00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5890988624800F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5AA0988625400F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5CB0988626300F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5EC0988627100F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA60D0988627E00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA632098862C400F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA653098862CE00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA674098862D800F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA695098862E300F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA6B6098862FE00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA6D70988630A00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA6F80988631600F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA7190988632100F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA73A0988632D00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA75B0988633B00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA77C0988634800F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA79D0988635400F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA7BE0988641C00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOWarriorLib.c; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.c"; sourceTree = SOURCE_ROOT; };
 		2FEBA8B309894E7C00F4165F /* IOWarriorLib.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = IOWarriorLib.h; path = "../../../../../MySource/Source/trunk/PsychSourceGL/Cohorts/IOWarrior/IOWarrior Lib Sources/IOWarriorLib.h"; sourceTree = SOURCE_ROOT; };
 		2FFC1F380790AD1B0056DF76 /* How To Add To Screen.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Add To Screen.rtf"; path = "../../../Notes/How To Add To Screen.rtf"; sourceTree = SOURCE_ROOT; };
@@ -3834,7 +3803,7 @@
 				2FACA4F70764D9E400A159D3 /* Gestalt.mexmac.app */,
 				2FD614DD07306666008DA6B4 /* GetBusFrequencyMex.mexmac.app */,
 				2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */,
-				2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */,
+				2FD6154D07306666008DA6B4 /* GetChar.mexmac.app */,
 				2FD6158507306666008DA6B4 /* GetPID.mexmac.app */,
 				2FD615BC07306667008DA6B4 /* GetSecs.mexmac.app */,
 				2FB35E55073065570070ABEC /* GetSecsMex.mexmac.app */,
@@ -3856,33 +3825,33 @@
 				2F54335C090431DC0051D6CC /* DoNothing.mexmac.app */,
 				832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */,
 				0E92E896095726FE002687D9 /* Eyelink.mexmac.app */,
-				2FEBA43909885B4700F4165F /* DoNothing.mexmac */,
-				2FEBA4800988613400F4165F /* FontInfo.mexmac */,
-				2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */,
-				2FEBA4C30988620100F4165F /* Gestalt.mexmac */,
-				2FEBA4E40988620800F4165F /* GetBusFrequencyMex.mexmac */,
-				2FEBA5050988621900F4165F /* GetBusTicks.mexmac */,
-				2FEBA5260988622700F4165F /* GetPID.mexmac */,
-				2FEBA5470988623200F4165F /* GetSecs.mexmac */,
-				2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */,
-				2FEBA5890988624800F4165F /* GetSecsTick.mexmac */,
-				2FEBA5AA0988625400F4165F /* GetTicks.mexmac */,
-				2FEBA5CB0988626300F4165F /* IOPort.mexmac */,
-				2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */,
-				2FEBA60D0988627E00F4165F /* MachPriority.mexmac */,
-				2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */,
-				2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */,
-				2FEBA674098862D800F4165F /* PsychHID.mexmac */,
-				2FEBA695098862E300F4165F /* PsychSound.mexmac */,
-				2FEBA6B6098862FE00F4165F /* Rush.mexmac */,
-				2FEBA6D70988630A00F4165F /* Screen.mexmac */,
-				2FEBA6F80988631600F4165F /* StoreBit.mexmac */,
-				2FEBA7190988632100F4165F /* SysBeep.mexmac */,
-				2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */,
-				2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */,
-				2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */,
-				2FEBA79D0988635400F4165F /* Eyelink.mexmac */,
-				2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */,
+				2FEBA43909885B4700F4165F /* foo.o */,
+				2FEBA4800988613400F4165F /* foo.o */,
+				2FEBA4A2098861FB00F4165F /* foo.o */,
+				2FEBA4C30988620100F4165F /* foo.o */,
+				2FEBA4E40988620800F4165F /* foo.o */,
+				2FEBA5050988621900F4165F /* foo.o */,
+				2FEBA5260988622700F4165F /* foo.o */,
+				2FEBA5470988623200F4165F /* foo.o */,
+				2FEBA5680988623C00F4165F /* foo.o */,
+				2FEBA5890988624800F4165F /* foo.o */,
+				2FEBA5AA0988625400F4165F /* foo.o */,
+				2FEBA5CB0988626300F4165F /* foo.o */,
+				2FEBA5EC0988627100F4165F /* foo.o */,
+				2FEBA60D0988627E00F4165F /* foo.o */,
+				2FEBA632098862C400F4165F /* foo.o */,
+				2FEBA653098862CE00F4165F /* foo.o */,
+				2FEBA674098862D800F4165F /* foo.o */,
+				2FEBA695098862E300F4165F /* foo.o */,
+				2FEBA6B6098862FE00F4165F /* foo.o */,
+				2FEBA6D70988630A00F4165F /* foo.o */,
+				2FEBA6F80988631600F4165F /* foo.o */,
+				2FEBA7190988632100F4165F /* foo.o */,
+				2FEBA73A0988632D00F4165F /* foo.o */,
+				2FEBA75B0988633B00F4165F /* foo.o */,
+				2FEBA77C0988634800F4165F /* foo.o */,
+				2FEBA79D0988635400F4165F /* foo.o */,
+				2FEBA7BE0988641C00F4165F /* foo.o */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -5343,44 +5312,6 @@
 				0E92E890095726FE002687D9 /* PBXBuildRule */,
 				0E92E891095726FE002687D9 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-DoNothing.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = DoNothing.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = Eyelink_OLD;
@@ -5403,44 +5334,6 @@
 				2F54345B0904BECD0051D6CC /* PBXBuildRule */,
 				2F54345A0904BEC40051D6CC /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-IOPort.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = IOPort.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = IOPort_OLD;
@@ -5463,44 +5356,6 @@
 				2F543356090431DC0051D6CC /* PBXBuildRule */,
 				2F543357090431DC0051D6CC /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-DoNothing.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = DoNothing.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = DoNothing_OLD;
@@ -5523,45 +5378,6 @@
 				2F57E37D08CEB64200A5CF85 /* PBXBuildRule */,
 				2F57E37E08CEB64200A5CF85 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetSecs.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetSecs.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"-Wno-long-double",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = StoreBit_OLD;
@@ -5584,44 +5400,6 @@
 				2F5434030904B4E40051D6CC /* PBXBuildRule */,
 				2FACA4F60764D9E400A159D3 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-Gestalt.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = Gestalt.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = Gestalt_OLD;
@@ -5643,42 +5421,6 @@
 				2F54343C0904BB9D0051D6CC /* PBXBuildRule */,
 				2F54343B0904BB970051D6CC /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetSecsMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetSecsMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetSecsMex_OLD;
@@ -5701,44 +5443,6 @@
 				2F5434000904B4840051D6CC /* PBXBuildRule */,
 				2FD614C807306666008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-FontInfo.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = FontInfo.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = FontInfo_OLD;
@@ -5760,44 +5464,6 @@
 				2F54340F0904B7260051D6CC /* PBXBuildRule */,
 				2FD614DC07306666008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetBusFrequencyMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetBusFrequencyMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetBusFrequencyMex_OLD;
@@ -5820,44 +5486,6 @@
 				2F5434130904B8600051D6CC /* PBXBuildRule */,
 				2FD6151207306666008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetBusTicks.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetBusTicks.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetBusTicks_OLD;
@@ -5880,49 +5508,11 @@
 				2F48C1E708D53ED200BF33BE /* PBXBuildRule */,
 				2FD6154C07306666008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetChar.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetChar.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = CocoaEventBridge_OLD;
 			productName = TestPBMex;
-			productReference = 2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */;
+			productReference = 2FD6154D07306666008DA6B4 /* GetChar.mexmac.app */;
 			productType = "com.apple.product-type.application";
 		};
 		2FD6154F07306666008DA6B4 /* GetPID_OLD */ = {
@@ -5940,44 +5530,6 @@
 				2F54341E0904B9610051D6CC /* PBXBuildRule */,
 				2FD6158407306666008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetPID.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetPID.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetPID_OLD;
@@ -6000,45 +5552,6 @@
 				2F57E34508CE767900A5CF85 /* PBXBuildRule */,
 				2F57E34308CE765500A5CF85 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetSecs.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetSecs.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"-Wno-long-double",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetSecs_OLD;
@@ -6061,44 +5574,6 @@
 				2F5434460904BCB60051D6CC /* PBXBuildRule */,
 				2FD6160407306667008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetSecsTick.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetSecsTick.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetSecsTick_OLD;
@@ -6121,44 +5596,6 @@
 				2F54344E0904BD600051D6CC /* PBXBuildRule */,
 				2FD6163B07306667008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-GetTicks.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = GetTicks.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = GetTicks_OLD;
@@ -6180,44 +5617,6 @@
 				2F5434760904C0290051D6CC /* PBXBuildRule */,
 				2FD6165007306667008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-MachGetPriorityMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = MachGetPriorityMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = MachGetPriorityMex_OLD;
@@ -6240,44 +5639,6 @@
 				2F54347E0904C0C70051D6CC /* PBXBuildRule */,
 				2FD6168607306667008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-MachPriority.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = MachPriority.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = MachPriority_OLD;
@@ -6299,44 +5660,6 @@
 				2F5434850904C16B0051D6CC /* PBXBuildRule */,
 				2FD6169B07306668008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-MachSetPriorityMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = MachSetPriorityMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = MachSetPriorityMex_OLD;
@@ -6359,49 +5682,6 @@
 				2F5434910904C44F0051D6CC /* PBXBuildRule */,
 				2FD616DE07306668008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				GCC_USE_GCC3_PFE_SUPPORT = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-PsychHID.plist";
-				LIBRARY_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac",
-					/Development/PsychSourceGL/Projects/MacOSX/PsychToolbox,
-				);
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = PsychHID.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"-Wno-long-double",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = PsychHID_OLD;
@@ -6424,44 +5704,6 @@
 				2FD6173C0904D737003B9B7C /* PBXBuildRule */,
 				2FD6171407306668008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-Rush.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = Rush.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = Rush_OLD;
@@ -6484,45 +5726,6 @@
 				2FD617430904D797003B9B7C /* PBXBuildRule */,
 				2FD6179A07306669008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				GCC_USE_GCC3_PFE_SUPPORT = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-Screen.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = Screen.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = Screen_OLD;
@@ -6545,44 +5748,6 @@
 				2FD6175D0904D994003B9B7C /* PBXBuildRule */,
 				2FD6181E0730666A008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-SysBeep.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = SysBeep.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 				2F57E38708CEB65700A5CF85 /* PBXTargetDependency */,
 			);
@@ -6605,44 +5770,6 @@
 				2FFA18360904DC82008821AB /* PBXBuildRule */,
 				2FD618320730666A008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-TestPriorityMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = TestPriorityMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = TestPriorityMex_OLD;
@@ -6665,45 +5792,6 @@
 				2FFA183F0904DCF7008821AB /* PBXBuildRule */,
 				2FD618680730666B008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-WaitSecs.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = WaitSecs.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"-Wno-long-double",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = WaitSecs_OLD;
@@ -6725,41 +5813,6 @@
 				2FFA18420904DD38008821AB /* PBXBuildRule */,
 				2FD6187C0730666B008DA6B4 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = "\"$(PSYCHSOURCE_MATLAB_ROOT)/extern/include\"";
-				INFOPLIST_FILE = "Info-WaitSecsMex.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = WaitSecsMex.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = WaitSecsMex_OLD;
@@ -6780,17 +5833,11 @@
 				2FEBA43309885B4700F4165F /* PBXBuildRule */,
 				2FEBA43409885B4700F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = DoNothing;
 			productName = foo;
-			productReference = 2FEBA43909885B4700F4165F /* DoNothing.mexmac */;
+			productReference = 2FEBA43909885B4700F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4600988613400F4165F /* FontInfo */ = {
@@ -6806,17 +5853,11 @@
 				2FEBA47A0988613400F4165F /* PBXBuildRule */,
 				2FEBA47B0988613400F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = FontInfo;
 			productName = foo;
-			productReference = 2FEBA4800988613400F4165F /* FontInfo.mexmac */;
+			productReference = 2FEBA4800988613400F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA482098861FB00F4165F /* CocoaEventBridge */ = {
@@ -6832,17 +5873,11 @@
 				2FEBA49C098861FB00F4165F /* PBXBuildRule */,
 				2FEBA49D098861FB00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = CocoaEventBridge;
 			productName = foo;
-			productReference = 2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */;
+			productReference = 2FEBA4A2098861FB00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4A30988620100F4165F /* Gestalt */ = {
@@ -6858,17 +5893,11 @@
 				2FEBA4BD0988620100F4165F /* PBXBuildRule */,
 				2FEBA4BE0988620100F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = Gestalt;
 			productName = foo;
-			productReference = 2FEBA4C30988620100F4165F /* Gestalt.mexmac */;
+			productReference = 2FEBA4C30988620100F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4C40988620800F4165F /* GetBusFrequencyMex */ = {
@@ -6884,17 +5913,11 @@
 				2FEBA4DE0988620800F4165F /* PBXBuildRule */,
 				2FEBA4DF0988620800F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetBusFrequencyMex;
 			productName = foo;
-			productReference = 2FEBA4E40988620800F4165F /* GetBusFrequencyMex.mexmac */;
+			productReference = 2FEBA4E40988620800F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4E50988621900F4165F /* GetBusTicks */ = {
@@ -6910,17 +5933,11 @@
 				2FEBA4FF0988621900F4165F /* PBXBuildRule */,
 				2FEBA5000988621900F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetBusTicks;
 			productName = foo;
-			productReference = 2FEBA5050988621900F4165F /* GetBusTicks.mexmac */;
+			productReference = 2FEBA5050988621900F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5060988622700F4165F /* GetPID */ = {
@@ -6936,17 +5953,11 @@
 				2FEBA5200988622700F4165F /* PBXBuildRule */,
 				2FEBA5210988622700F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetPID;
 			productName = foo;
-			productReference = 2FEBA5260988622700F4165F /* GetPID.mexmac */;
+			productReference = 2FEBA5260988622700F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5270988623200F4165F /* GetSecs */ = {
@@ -6962,17 +5973,11 @@
 				2FEBA5410988623200F4165F /* PBXBuildRule */,
 				2FEBA5420988623200F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetSecs;
 			productName = foo;
-			productReference = 2FEBA5470988623200F4165F /* GetSecs.mexmac */;
+			productReference = 2FEBA5470988623200F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5480988623C00F4165F /* GetSecsMex */ = {
@@ -6988,17 +5993,11 @@
 				2FEBA5620988623C00F4165F /* PBXBuildRule */,
 				2FEBA5630988623C00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetSecsMex;
 			productName = foo;
-			productReference = 2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */;
+			productReference = 2FEBA5680988623C00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5690988624800F4165F /* GetSecsTick */ = {
@@ -7014,17 +6013,11 @@
 				2FEBA5830988624800F4165F /* PBXBuildRule */,
 				2FEBA5840988624800F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetSecsTick;
 			productName = foo;
-			productReference = 2FEBA5890988624800F4165F /* GetSecsTick.mexmac */;
+			productReference = 2FEBA5890988624800F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA58A0988625400F4165F /* GetTicks */ = {
@@ -7040,17 +6033,11 @@
 				2FEBA5A40988625400F4165F /* PBXBuildRule */,
 				2FEBA5A50988625400F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GetTicks;
 			productName = foo;
-			productReference = 2FEBA5AA0988625400F4165F /* GetTicks.mexmac */;
+			productReference = 2FEBA5AA0988625400F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5AB0988626300F4165F /* IOPort */ = {
@@ -7066,17 +6053,11 @@
 				2FEBA5C50988626300F4165F /* PBXBuildRule */,
 				2FEBA5C60988626300F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = IOPort;
 			productName = foo;
-			productReference = 2FEBA5CB0988626300F4165F /* IOPort.mexmac */;
+			productReference = 2FEBA5CB0988626300F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5CC0988627100F4165F /* MachGetPriorityMex */ = {
@@ -7092,17 +6073,11 @@
 				2FEBA5E60988627100F4165F /* PBXBuildRule */,
 				2FEBA5E70988627100F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = MachGetPriorityMex;
 			productName = foo;
-			productReference = 2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */;
+			productReference = 2FEBA5EC0988627100F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5ED0988627E00F4165F /* MachPriority */ = {
@@ -7118,17 +6093,11 @@
 				2FEBA6070988627E00F4165F /* PBXBuildRule */,
 				2FEBA6080988627E00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = MachPriority;
 			productName = foo;
-			productReference = 2FEBA60D0988627E00F4165F /* MachPriority.mexmac */;
+			productReference = 2FEBA60D0988627E00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA612098862C400F4165F /* MachSetPriorityMex */ = {
@@ -7144,17 +6113,11 @@
 				2FEBA62C098862C400F4165F /* PBXBuildRule */,
 				2FEBA62D098862C400F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = MachSetPriorityMex;
 			productName = foo;
-			productReference = 2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */;
+			productReference = 2FEBA632098862C400F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA633098862CE00F4165F /* MachAbsoluteTimeClockFrequency */ = {
@@ -7170,17 +6133,11 @@
 				2FEBA64D098862CE00F4165F /* PBXBuildRule */,
 				2FEBA64E098862CE00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = MachAbsoluteTimeClockFrequency;
 			productName = foo;
-			productReference = 2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */;
+			productReference = 2FEBA653098862CE00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA654098862D800F4165F /* PsychHID */ = {
@@ -7196,17 +6153,11 @@
 				2FEBA66E098862D800F4165F /* PBXBuildRule */,
 				2FEBA66F098862D800F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = PsychHID;
 			productName = foo;
-			productReference = 2FEBA674098862D800F4165F /* PsychHID.mexmac */;
+			productReference = 2FEBA674098862D800F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA675098862E300F4165F /* PsychSound */ = {
@@ -7222,17 +6173,11 @@
 				2FEBA68F098862E300F4165F /* PBXBuildRule */,
 				2FEBA690098862E300F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = PsychSound;
 			productName = foo;
-			productReference = 2FEBA695098862E300F4165F /* PsychSound.mexmac */;
+			productReference = 2FEBA695098862E300F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA696098862FE00F4165F /* Rush */ = {
@@ -7248,17 +6193,11 @@
 				2FEBA6B0098862FE00F4165F /* PBXBuildRule */,
 				2FEBA6B1098862FE00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = Rush;
 			productName = foo;
-			productReference = 2FEBA6B6098862FE00F4165F /* Rush.mexmac */;
+			productReference = 2FEBA6B6098862FE00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA6B70988630A00F4165F /* Screen */ = {
@@ -7275,17 +6214,11 @@
 				2FEBA6D10988630A00F4165F /* PBXBuildRule */,
 				2FEBA6D20988630A00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = Screen;
 			productName = foo;
-			productReference = 2FEBA6D70988630A00F4165F /* Screen.mexmac */;
+			productReference = 2FEBA6D70988630A00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA6D80988631600F4165F /* StoreBit */ = {
@@ -7301,17 +6234,11 @@
 				2FEBA6F20988631600F4165F /* PBXBuildRule */,
 				2FEBA6F30988631600F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = StoreBit;
 			productName = foo;
-			productReference = 2FEBA6F80988631600F4165F /* StoreBit.mexmac */;
+			productReference = 2FEBA6F80988631600F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA6F90988632100F4165F /* SysBeep */ = {
@@ -7327,17 +6254,11 @@
 				2FEBA7130988632100F4165F /* PBXBuildRule */,
 				2FEBA7140988632100F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = SysBeep;
 			productName = foo;
-			productReference = 2FEBA7190988632100F4165F /* SysBeep.mexmac */;
+			productReference = 2FEBA7190988632100F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA71A0988632D00F4165F /* TestPriorityMex */ = {
@@ -7353,17 +6274,11 @@
 				2FEBA7340988632D00F4165F /* PBXBuildRule */,
 				2FEBA7350988632D00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = TestPriorityMex;
 			productName = foo;
-			productReference = 2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */;
+			productReference = 2FEBA73A0988632D00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA73B0988633B00F4165F /* WaitSecs */ = {
@@ -7379,17 +6294,11 @@
 				2FEBA7550988633B00F4165F /* PBXBuildRule */,
 				2FEBA7560988633B00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = WaitSecs;
 			productName = foo;
-			productReference = 2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */;
+			productReference = 2FEBA75B0988633B00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA75C0988634800F4165F /* WaitSecsMex */ = {
@@ -7405,17 +6314,11 @@
 				2FEBA7760988634800F4165F /* PBXBuildRule */,
 				2FEBA7770988634800F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = WaitSecsMex;
 			productName = foo;
-			productReference = 2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */;
+			productReference = 2FEBA77C0988634800F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA77D0988635400F4165F /* Eyelink */ = {
@@ -7431,17 +6334,11 @@
 				2FEBA7970988635400F4165F /* PBXBuildRule */,
 				2FEBA7980988635400F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = Eyelink;
 			productName = foo;
-			productReference = 2FEBA79D0988635400F4165F /* Eyelink.mexmac */;
+			productReference = 2FEBA79D0988635400F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA79E0988641C00F4165F /* GenericMexTarget */ = {
@@ -7457,17 +6354,11 @@
 				2FEBA7B80988641C00F4165F /* PBXBuildRule */,
 				2FEBA7B90988641C00F4165F /* PBXBuildRule */,
 			);
-			buildSettings = {
-				GCC_MODEL_TUNING = G5;
-				INSTALL_PATH = /usr/local/lib;
-				PREBINDING = NO;
-				PRODUCT_NAME = foo;
-			};
 			dependencies = (
 			);
 			name = GenericMexTarget;
 			productName = foo;
-			productReference = 2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */;
+			productReference = 2FEBA7BE0988641C00F4165F /* foo.o */;
 			productType = "com.apple.product-type.objfile";
 		};
 		832CE5F5094CE8C300578C09 /* PsychSound_OLD */ = {
@@ -7485,44 +6376,6 @@
 				832CE625094CE8C300578C09 /* PBXBuildRule */,
 				832CE626094CE8C300578C09 /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-DoNothing.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = DoNothing.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = PsychSound_OLD;
@@ -7545,45 +6398,6 @@
 				2F54348E0904C3500051D6CC /* PBXBuildRule */,
 				2F54348D0904C3480051D6CC /* PBXBuildRule */,
 			);
-			buildSettings = {
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/MATLAB701/extern/lib/mac/mexFunction.map";
-				FRAMEWORK_SEARCH_PATHS = "";
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/MATLAB701/extern/include",
-					"$(SYSTEM_APPS_DIR)/MATLAB701/simulink/include",
-				);
-				INFOPLIST_FILE = "Info-MachAbsoluteTimeClockFrequency.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SYSTEM_APPS_DIR)/MATLAB701/bin/mac\"";
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				OTHER_CFLAGS = (
-					"-fexceptions",
-					"-no-cpp-precomp",
-				);
-				OTHER_LDFLAGS = (
-					"-bundle",
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = MachAbsoluteTimeClockFrequency.mexmac;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"-Wno-long-double",
-				);
-				WRAPPER_EXTENSION = app;
-			};
 			dependencies = (
 			);
 			name = MachAbsoluteTimeClockFrequency_OLD;
@@ -7597,12 +6411,6 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
-			buildSettings = {
-			};
-			buildStyles = (
-				4A9504CCFFE6A4B311CA0CBA /* Development */,
-				4A9504CDFFE6A4B311CA0CBA /* Deployment */,
-			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -15280,7 +14088,7 @@
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmac;
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				EXPORTED_SYMBOLS_FILE = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(FRAMEWORK_SEARCH_PATHS)",
 					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
@@ -15291,19 +14099,14 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
-				);
+				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
-					/usr/lib/gcc/darwin/2.95.2,
-				);
+				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				MATLAB_DIR_NAME = MATLAB72;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -15329,6 +14132,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COPY_PHASE_STRIP = YES;
+				EXPORTED_SYMBOLS_FILE = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(FRAMEWORK_SEARCH_PATHS)",
 					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
@@ -15336,11 +14140,11 @@
 				GCC_ENABLE_FIX_AND_CONTINUE = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_MODEL_TUNING = G5;
+				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
-				LIBRARY_SEARCH_PATHS = (
-					"$(LIBRARY_SEARCH_PATHS)",
-					/usr/lib/gcc/darwin/2.95.2,
-				);
+				KEEP_PRIVATE_EXTERNS = YES;
+				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
+				MATLAB_DIR_NAME = MATLAB72;
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
 				ZERO_LINK = NO;
@@ -15350,16 +14154,17 @@
 		2FEBA6D60988630A00F4165F /* Default */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				EXPORTED_SYMBOLS_FILE = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(FRAMEWORK_SEARCH_PATHS)",
 					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
 				);
 				GCC_MODEL_TUNING = G5;
+				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
-				LIBRARY_SEARCH_PATHS = (
-					"$(LIBRARY_SEARCH_PATHS)",
-					/usr/lib/gcc/darwin/2.95.2,
-				);
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
+				MATLAB_DIR_NAME = MATLAB72;
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
 			};
@@ -16792,6 +15597,7 @@
 				BUNDLE_LOADER = /usr/local/bin/octave;
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(FRAMEWORK_SEARCH_PATHS)",
 					"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks",
@@ -16805,21 +15611,14 @@
 					PTBOCTAVE,
 					HAVE_OCTAVE_21,
 				);
-				HEADER_SEARCH_PATHS = (
-					"/usr/local/include/octave-2.1.73/octave",
-					/usr/local/include/,
-					"/usr/local/include/octave-2.1.73",
-				);
+				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = (
-					"/usr/local/lib/octave-2.1.73",
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
-					/usr/lib/gcc/darwin/2.95.2,
-				);
+				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				MATLAB_DIR_NAME = MATLAB72;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",

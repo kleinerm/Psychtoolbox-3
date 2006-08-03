@@ -1,14 +1,41 @@
-function M = ComputeDKL_M(bg)
-% M = ComputeDKL_M(bg)
+function M = ComputeDKL_M(bg,T_cones,T_Y)
+% M = ComputeDKL_M(bg,T_cones,T_Y)
 % 
 % Compute the matrix that converts between incremental cone
 % coordinates and DKL space.
 %
 % The code follows that published by Brainard
 % as an appendix to Human Color Vision by Kaiser
-% and Boynton.
+% and Boynton, but has been generalized to work
+% for passed cone fundamentals and luminosity 
+% function.
 %
-% 8/30/96  dhb  Pulled it out.
+% These should be passed in standard Psychtoolbox
+% form (LMS in rows of T_cones; luminosity function
+% as single row vector T_Y).
+%
+% The argument bg is the LMS cone coordinates of the
+% background that defines the space.
+%
+% See DKLDemo for proper use of this function.
+%
+% 8/30/96   dhb  Pulled it out.
+% 4/9/05    dhb  Allow passing of cones and luminance to be used.
+% 11/17/05  dhb  Require passing of cones and luminance.
+%           dhb  Fixed definition of M_raw to handle arbitrary L,M scaling.
+
+% If cones and luminance are passed, find how L and
+% M cone incrments sum to best approximate change in
+% luminance.
+if (nargin == 3)
+	T_LM = T_cones(1:2,:);
+	LMLumWeights = T_LM'\T_Y'
+else
+    fprintf('ComputeDKL_M now requires explicit specification\n');
+    fprintf('of cone fundamentals and luminosity function\n');
+    fprintf('See DKLDemo\n');
+    error('');   
+end
 
 % Set M_raw as in equation A.4.9.
 % This is found by plugging the background
@@ -16,9 +43,19 @@ function M = ComputeDKL_M(bg)
 % backgrounds produce different matrices.
 % The Matlab notation below just 
 % fills the desired 3-by-3 matrix.
-M_raw = [ 1 1 0 ; ...
-					1 -bg(1)/bg(2) 0 ; ...
-				 -1 -1 (bg(1)+bg(2))/bg(3) ];
+%
+% Note that A.4.8 in the Brainard chapter contains
+% a typo: the row 1 col 3 entry of the matrix should
+% be 0, not 1.  Also, at the top of page 571, there is
+% an erroneous negative sign in front of the term
+% for W_S-Lum,S.
+%
+% Finally, A.4.8 as given in the chatper assumes
+% that Lum = L + M.  The formula below generalizes
+% to arbitrary scaling.
+M_raw = [ LMLumWeights(1) LMLumWeights(2) 0 ; ...
+			1 -bg(1)/bg(2) 0 ; ...
+			-LMLumWeights(1) -LMLumWeights(2) (LMLumWeights(1)*bg(1)+LMLumWeights(2)*bg(2))/bg(3) ];
 
 % Compute the inverse of M for
 % equation A.4.10.  The Matlab inv() function
@@ -59,8 +96,7 @@ sisolum_unit = sisolum_raw / sisolum_raw_pooled;
 lum_resp_raw = M_raw*isochrom_unit;
 l_minus_m_resp_raw = M_raw*rgisolum_unit;
 s_minus_lum_resp_raw = M_raw*sisolum_unit;
-
-						 
+					 
 % We need to rescale the rows of M_raw
 % so that we get unit response.  This means
 % multiplying each row of M_raw by a constant.
