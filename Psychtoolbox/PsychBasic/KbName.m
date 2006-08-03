@@ -3,10 +3,10 @@ function kbNameResult = KbName(arg)
 % 	
 % 	KbName maps between KbCheck-style keyscan codes and key names.
 % 	
-% 	• If arg is a string designating a key label then KbName returns the 
+% 	¥ If arg is a string designating a key label then KbName returns the 
 % 	  keycode of the indicated key.  
-% 	• If arg is a keycode, KbName returns the label of the designated key. 
-% 	• If no argument is supplied then KbName waits one second and then 
+% 	¥ If arg is a keycode, KbName returns the label of the designated key. 
+% 	¥ If no argument is supplied then KbName waits one second and then 
 %     calls KbCheck.  KbName then returns a cell array holding the names of
 %     all keys which were down at the time of the KbCheck call. The 
 %     one-second delay preceeding the call to KbCheck avoids catching the 
@@ -147,6 +147,8 @@ if isempty(kkOSX)
    else
     kkLinux = cell(1,256);
    end;
+   
+   disp('init');
    
    % MK: Until we have a PsychHID for windows, we use this table for the
    % Windows keycode mappings. I stole it from the old WinPTB ;)
@@ -337,7 +339,7 @@ if isempty(kkOSX)
 	kkOSX{48} = ']}';                               kkOS9{31}=']}'; 
 	kkOSX{49} = '\|';                               kkOS9{43}='\|';
 
-        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:’* Dutch: <> Fren:*µ Ger: #’ Ital: ù§ LatAm: }`] Nor:,* Span: }Ç Swed: ,* Swiss: $£ UK: #~.
+        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:Õ* Dutch: <> Fren:*µ Ger: #Õ Ital: ?? LatAm: }`] Nor:,* Span: }? Swed: ,* Swiss: $£ UK: #~.
 	kkOSX{50} = '#-';                               
 	
 	kkOSX{51} = ';:';                               kkOS9{42}=';:';   
@@ -391,11 +393,11 @@ if isempty(kkOSX)
 	kkOSX{99} = '.';                                kkOS9{66}='.';
 	
 	% Non-US.  
-	% Typical language mappings: Belg:<\> FrCa:«°» Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
+	% Typical language mappings: Belg:<\> FrCa:Ç¡È Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
 	% Typically near the Left-Shift key in AT-102 implementations.
 	kkOSX{100} = 'NonUS\|';                              
 	
-	% Windows key for Windows 95, and “Compose.”
+	% Windows key for Windows 95, and ÒCompose.Ó
 	kkOSX{101} = 'Application';                     
 	
 	% Reserved for typical keyboard status or keyboard errors. Sent as a member of the keyboard array. Not a physical key.
@@ -535,7 +537,7 @@ if isempty(kkOSX)
 	kkOSX{225} = 'LeftShift';                       kkOS9{57}='LeftShift';      %double entry
 	kkOSX{226} = 'LeftAlt';                         kkOS9{59}='LeftAlt';        %double entry
 	
-	%Windows key for Windows 95, and “Compose.”  Windowing environment key, examples are Microsoft Left Win key, Mac Left Apple key, Sun Left Meta key
+	%Windows key for Windows 95, and ÒCompose.Ó  Windowing environment key, examples are Microsoft Left Win key, Mac Left Apple key, Sun Left Meta key
 	kkOSX{227} = 'LeftGUI';                         kkOS9{56}='LeftGUI';        %double entry
 	
 	kkOSX{228} = 'RightControl';                    %kkOS9{60}='RightControl'; % FIX double entry
@@ -633,7 +635,7 @@ elseif isa(arg,'double')
 
 %argument is  a single string so either it is a...
 % - command requesting a table, so return the table.
-% - key name, so lookup and return the corresponding key code.  
+% - key name, so lookup and return the corresponding key code.
 elseif ischar(arg)      % argument is a character, so find the code
     if strcmpi(arg, 'Undefined')
         kbNameResult=[];            % is is not certain what we should do in this case.  It might be better to issue an error.
@@ -641,28 +643,28 @@ elseif ischar(arg)      % argument is a character, so find the code
         kbNameResult=kk;
     elseif strcmpi(arg, 'KeyNamesOSX')  %list all kenames for the OS X platform
         kbNameResult=kkOSX;
-	elseif strcmpi(arg, 'KeyNamesOS9') 
-		kbNameResult=kkOS9; 
-	else
-	if IsOctave
-	  % GNU/Octave does not support index mode for strcmpi, need to do it manually...
-	  for i=1:length(kk)
-            if strcmpi(char(kk(i)), arg)
-              kbNameResult = i;
-              break;
+    elseif strcmpi(arg, 'KeyNamesOS9')
+        kbNameResult=kkOS9;
+    else
+        if IsOctave
+            % GNU/Octave does not support index mode for strcmpi, need to do it manually...
+            for i=1:length(kk)
+                if strcmpi(char(kk(i)), arg)
+                    kbNameResult = i;
+                    break;
+                end
             end
-          end
-	else
-          kbNameResult=find(strcmpi(kk, arg));
+        else
+            kbNameResult=find(strcmpi(kk, arg));
         end
         if isempty(kbNameResult)
             error(['Key name "' arg '" not recognized.']);
         end
     end
-    
+
 % we have a cell arry of strings so iterate over the cell array and recur on each element.    
 elseif isa(arg, 'cell')
-    kbNameResult=[]
+    kbNameResult = [];
     for i = 1:length(arg)
         kbNameResult(i)=KbName(arg{i});
     end

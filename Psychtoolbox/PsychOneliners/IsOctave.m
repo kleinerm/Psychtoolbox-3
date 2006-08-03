@@ -8,10 +8,12 @@ function resultFlag = IsOctave
 
 % History:
 % 05/10/06 Written (MK).
+% 03/08/06 Added the 'var' parameter to the exist function to make it
+%          faster.  On my box it cuts 4+ ms off this function call. (CGB)
 
 % If the built-in variable OCTAVE_VERSION exists,
 % then we are running under GNU/Octave, otherwise not.
-if exist('OCTAVE_VERSION') == 102
+if exist('OCTAVE_VERSION', 'var') == 102
   resultFlag = 1;
 else
   resultFlag = 0;
