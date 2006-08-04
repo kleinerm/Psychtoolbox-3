@@ -119,6 +119,10 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 	win->texturecache_slot=-1;
         // Explicit storage of the type of texture target for this texture: Zero means - Autodetect.
         win->texturetarget=0;
+	// We do not have a preset for texture representation by default:
+        win->textureinternalformat=0;
+        win->textureexternalformat=0;
+        win->textureexternaltype=0;
 }
 
 
@@ -335,30 +339,38 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 
 	// We only execute this pass for really new textures, not for recycled ones:
 	if (!recycle) {
-        switch(win->depth) {
+	  if (win->textureinternalformat==0) {
+	    // Standard path: Derive texture format and such from requested pixeldepth:
+	    switch(win->depth) {
             case 8:
-                glinternalFormat=GL_LUMINANCE8;
-                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, texmemptr);
-                break;
-                
+	      glinternalFormat=GL_LUMINANCE8;
+	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, texmemptr);
+	      break;
+	      
             case 16:
-                //glinternalFormat=GL_LUMINANCE8_ALPHA8;
-                glinternalFormat=GL_RGBA8;
-                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texmemptr);
-                break;
-                
+	      //glinternalFormat=GL_LUMINANCE8_ALPHA8;
+	      glinternalFormat=GL_RGBA8;
+	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texmemptr);
+	      break;
+	      
             case 24:
-                //glinternalFormat=GL_RGB8;
-                glinternalFormat=GL_RGBA8;
-                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGB, GL_UNSIGNED_BYTE, texmemptr);
-                break;
-                
+	      //glinternalFormat=GL_RGB8;
+	      glinternalFormat=GL_RGBA8;
+	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGB, GL_UNSIGNED_BYTE, texmemptr);
+	      break;
+	      
             case 32:
-                glinternalFormat=GL_RGBA8;
-                glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texmemptr);
-                break;
-        }
-
+	      glinternalFormat=GL_RGBA8;
+	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texmemptr);
+	      break;
+	    }
+	  }
+	  else {
+	    // Requested internal format and external data representation are explicitely requested: Use it.
+	    glTexImage2D(texturetarget, 0, win->textureinternalformat, (GLsizei) twidth, (GLsizei) theight, 0, win->textureexternalformat,
+			 win->textureexternaltype, texmemptr);
+	    glinternalFormat = win->textureinternalformat;
+	  }
 	}
 
 	if (texturetarget==GL_TEXTURE_2D || recycle) {
@@ -366,22 +378,30 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
 	  // unused border contains all zero == black.
 	  // The same path is used for efficient refilling existing textures that are to be recycled:
-	  switch(win->depth) {
-	  case 8:
-	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, win->textureMemory);
-	    break;
+	  if (win->textureinternalformat==0) {
+	    // Standard path: Derive texture format and such from requested pixeldepth:
+	    switch(win->depth) {
+	    case 8:
+	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE, GL_UNSIGNED_BYTE, win->textureMemory);
+	      break;
 	    
-	  case 16:
-	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, win->textureMemory);
-	    break;
+	    case 16:
+	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, win->textureMemory);
+	      break;
 	    
-	  case 24:
-	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_RGB, GL_UNSIGNED_BYTE, win->textureMemory);
-	    break;
+	    case 24:
+	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_RGB, GL_UNSIGNED_BYTE, win->textureMemory);
+	      break;
 	    
-	  case 32:
-	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
-	    break;
+	    case 32:
+	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
+	      break;
+	    }
+	  }
+	  else {
+	    // Requested internal format and external data representation are explicitely requested: Use it.
+	    glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, win->textureexternalformat, win->textureexternaltype, win->textureMemory);
+	    glinternalFormat = win->textureinternalformat;
 	  }
 	}
         
@@ -583,7 +603,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	  // hardware...
 	  // For a good intro into the issue of texture border seams, due to interpolation
 	  // problems at texture borders, see:
-     // http://home.planet.nl/~monstrous/skybox.html
+	  // http://home.planet.nl/~monstrous/skybox.html
 	  //sourceX-=0.5f;
 	  //sourceY-=0.5f;
 	  sourceXEnd-=0.5f;
@@ -610,6 +630,16 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                 
                 case 1: // Bilinear filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                break;
+
+                case 2: // Linear filtering with nearest neighbour mipmapping: Needs external support to generate mipmaps.
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+                    glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                break;
+
+                case 3: // Linear filtering with linear mipmapping --> This is full trilinear filtering. Needs external support to generate mipmaps.
+                    glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 break;
         }

@@ -137,6 +137,20 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         return(FALSE);
     }
 
+    // Now we have a valid, visible onscreen (fullscreen) window with valid
+    // OpenGL context attached. We mark it immediately as Onscreen window,
+    // so in case of an error, the Screen('CloseAll') routine can properly
+    // close it and release the Window system and OpenGL ressources.
+    if(numBuffers==1) {
+      (*windowRecord)->windowType=kPsychSingleBufferOnscreen;
+    } 
+    else {
+      (*windowRecord)->windowType=kPsychDoubleBufferOnscreen;
+    }
+
+    // Now we start to fill in the remaining windowRecord with settings:
+    // -----------------------------------------------------------------
+
     if (PSYCH_SYSTEM == PSYCH_OSX) {
         // Override for window rectangle: On OS-X we only support fullscreen mode:
         PsychCopyRect((*windowRecord)->rect, screenSettings->rect);
@@ -164,15 +178,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Retrieve final vbl_startline, aka physical height of the display in pixels:
     PsychGetScreenSize(screenSettings->screenNumber, &dummy_width, &vbl_startline);
       
-    //Fill in the window record.
+    // Associated screens id and depth:
     (*windowRecord)->screenNumber=screenSettings->screenNumber;
-    if(numBuffers==1) {
-      (*windowRecord)->windowType=kPsychSingleBufferOnscreen;
-    } 
-    else {
-      (*windowRecord)->windowType=kPsychDoubleBufferOnscreen;
-    }
-
     (*windowRecord)->depth=PsychGetScreenDepthValue(screenSettings->screenNumber);
     
     // MK: Assign stereomode: 0 == monoscopic (default) window. >0 Stereo output window, where
@@ -746,15 +753,28 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 windowRecord->targetSpecific.contextObject=NULL;
     }
     else if(windowRecord->windowType==kPsychTexture) {
+                // Texture or Offscreen window - which is also just a form of texture.
 		PsychFreeTextureForWindowRecord(windowRecord);
     }
+    else if(windowRecord->windowType==kPsychNoWindow) {
+               // Partially initialized windowRecord, not yet associated to a real Window system
+               // window or OpenGL rendering context. We skip this one - there's nothing to do.
+               // Well almost... ...we output some warning, as something must have screwed up seriously if
+               // we reached this point in control-flow...
+               printf("PTB-ERROR: Something is screwed up seriously! Please read all warnings and error messages\n");
+	       printf("PTB-ERROR: above these lines very carefully to assess and fix the problem...\n");
+	       fflush(NULL);
+    }
     else {
-		PsychErrorExitMsg(PsychError_internal, "Unrecognized window type");
+                // If we reach this point then we've really screwed up, e.g., internal memory corruption.
+		PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Unrecognized window type. Memory corruption?!?");
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>0)) {
-        if(!PsychPrefStateGet_SuppressAllWarnings())
-			printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
+      if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline\n");
+	printf("WARNING: a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
+      }
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests()) {

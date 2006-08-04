@@ -95,22 +95,22 @@ PsychError SCREENDrawTexture(void)
     PsychCopyRect(targetRect,source->rect);
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
 
-	 if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
-			// Special case for stereo: Only half the real window width:
-			PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
-							  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
-	 }
-	 else {
-			// Normal case:
-	      PsychCopyRect(tempRect,target->rect);
-	 }
-	
+    if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
+      // Special case for stereo: Only half the real window width:
+      PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
+		    target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
+    }
+    else {
+      // Normal case:
+      PsychCopyRect(tempRect,target->rect);
+    }
+    
     PsychCenterRectInRect(sourceRect, tempRect, targetRect);
     PsychCopyInRectArg(4, kPsychArgOptional, targetRect);
     PsychCopyInDoubleArg(5, kPsychArgOptional, &rotationAngle);
     PsychCopyInIntegerArg(6, kPsychArgOptional, &filterMode);
-    if (filterMode!=0 && filterMode!=1) {
-        PsychErrorExitMsg(PsychError_user, "filterMode needs to be 0 for nearest neighbour filter, or 1 for bilinear filter.");    
+    if (filterMode<0 || filterMode>3) {
+        PsychErrorExitMsg(PsychError_user, "filterMode needs to be 0 for nearest neighbour filter, or 1 for bilinear filter, or 2 for mipmapped filter or 3 for mipmapped-linear filter.");    
     }
 
     PsychCopyInDoubleArg(7, kPsychArgOptional, &globalAlpha);

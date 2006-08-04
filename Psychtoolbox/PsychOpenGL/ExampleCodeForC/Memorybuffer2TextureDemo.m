@@ -27,6 +27,8 @@ function Memorybuffer2TextureDemo
 % real experiment code, i'll feel very sorry for you...
 Screen('Preference', 'SkipSyncTests', 2);
 
+InitializeMatlabOpenGL;
+
 % Open window on screen, clear it to background color black:
 screenid = max(Screen('Screens'));
 win = Screen('OpenWindow', screenid, 0);
@@ -39,7 +41,7 @@ imgptr = Memorybuffer2Texture;
 
 % Inject the 3 channel image into Psychtoolbox, create a new texture and return a handle to it.
 % Change the 0-flag 'upsidedown' to 1, if your images appear upside down.
-texid = Screen('SetOpenGLTextureFromMemPointer', win, [], imgptr, 640, 480, 3, 0);
+texid = Screen('SetOpenGLTextureFromMemPointer', win, [], imgptr, 640, 480, 3, 0, [], GL.RGBA, GL.RGB, GL.FLOAT);
 
 % Draw texture centered in window:
 Screen('DrawTexture', win, texid);

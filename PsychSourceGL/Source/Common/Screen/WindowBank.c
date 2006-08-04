@@ -231,9 +231,16 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->windowIndex = FindEmptyWindowIndex();
 	windowRecordArrayWINBANK[(*winRec)->windowIndex] = *winRec;
         
-	//set a flag to indicate that the contents of the window record are not valid.
+	//set a flag to indicate that the contents of the window record are not completely valid.
 	(*winRec)->isValid=FALSE;
         
+	// Set window type to kPsychNoWindow to signal that the window doesn't yet exist.
+	// Although the windowRecord is partially initialized, there's no Windowsystem onscreen
+	// window associated with this and the OpenGL context isn't there either. This is important
+	// for error-handling. Windows of type kPsychNoWindow are ignored by the OpenGL and Window system
+	// cleanup routine PsychCloseWindow()...
+	(*winRec)->windowType = kPsychNoWindow;
+
 	//Intialize the text settings field within the window record to default values which should be (but are not yet) specified in Psychtoolbox preferences.
 	PsychInitTextRecordSettings(&((*winRec)->textAttributes));
 	
@@ -243,9 +250,6 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	//Initialize the fields used to store alpha blending factors as set by glBlendFunc()
 	PsychInitWindowRecordAlphaBlendingFactors(*winRec);
         
-        // Initialize the fields used for texture mapping:
-        PsychInitWindowRecordTextureFields(*winRec);
-	
 	//Initialize line stipple values
 	(*winRec)->stipplePattern=0xAAAA;		//alternating pixels stipple pattern
 	(*winRec)->stippleFactor=1;

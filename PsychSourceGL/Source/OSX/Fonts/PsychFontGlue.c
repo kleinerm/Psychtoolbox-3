@@ -207,8 +207,9 @@ void PsychInitFontList(void)
             //get the font postscript name and set the corresponding field of the struct
             if (ATSFontGetPostScriptName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
                 PsychFreeFontList();
-                mexPrintf("The following font makes trouble: %s. Please remove the offending font file from your font folders.", fontRecord->fontFMName);
-                PsychErrorExitMsg(PsychError_system, "ATSFontGetPostscriptName failed.");
+                printf("PTB-ERROR: The following font makes trouble: %s. Please REMOVE the offending font file from your font folders.", fontRecord->fontFMName);
+		printf("PTB-ERROR: After removing the font file, QUIT and RESTART Matlab / Octave. Psychtoolbox WILL NOT WORK PROPERLY BEFORE!!\n");
+                PsychErrorExitMsg(PsychError_system, "FATAL ERROR: ATSFontGetPostscriptName failed.");
             }
             resultOK=CFStringGetCString(cfFontName, fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
             if(!resultOK){

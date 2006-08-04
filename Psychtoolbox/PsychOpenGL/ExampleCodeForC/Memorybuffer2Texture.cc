@@ -18,7 +18,7 @@
 #include "octave/oct.h"
 
 /* Byte array with 640 x 480 greyscale pixels */
-static unsigned char rawimage[640*480*3];
+static float rawimage[640*480*3];
 
 /* Definition of a 64-bit number: Operating system dependend: */
 #ifndef __WIN32__
@@ -51,11 +51,11 @@ DEFUN_DLD(Memorybuffer2Texture, inargs, nargout,
   for(y=0; y<480; y++)
     for (x=0; x<640; x++) {
       // Red channel:
-      rawimage[pos++] = (unsigned char) x;
+      rawimage[pos++] = (float)x/640;
       // Green channel:
-      rawimage[pos++] = (unsigned char) y;
+      rawimage[pos++] = (float)y/480;
       // Blue channel:
-      rawimage[pos++] = (unsigned char) 0;
+      rawimage[pos++] = 0;
     }
 
   /* Convert our memory pointer to something Psychtoolbox

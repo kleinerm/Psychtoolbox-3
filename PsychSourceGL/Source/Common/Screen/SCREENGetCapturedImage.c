@@ -21,7 +21,7 @@ Psychtoolbox3/Source/Common/SCREENGetCapturedImage.c
 
 #include "Screen.h"
 
-static char useString[] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture]);";
+static char useString[] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode]);";
 static char synopsisString[] = 
 "Try to fetch a new image from video capture device 'capturePtr' for visual playback/display in window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
@@ -30,7 +30,9 @@ static char synopsisString[] =
 "summed intensity or timestamp of the image. 'oldTexture' (if provided) allows you to pass the texture handle of an already existing texture. "
 "Psychtoolbox will reuse that texture by overwriting its previous image content with the new image, instead of creating a completely new "
 "texture for the new image. Use of this ''recycling facility'' may allow for higher capture framerates and lower latencies on low-end "
-"graphics hardware in some cases. Providing a value of 'oldTexture'=0 is the same as leaving it out. "
+"graphics hardware in some cases. Providing a value of 'oldTexture'=0 is the same as leaving it out. The optional argument 'specialmode' "
+"allows to request special treatment of textures. Currently, specialmode = 1 will force PTB to use power-of-two textures instead of other "
+"formats. This is usually less efficient, unless you want to do realtime blurring of images. "
 "'capturetimestamp' contains the exact system time when the returned image was captured. The (optional) return value 'droppedcount' contains the "
 "number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. The (optional) return "
 "value 'summed_intensity' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
@@ -46,6 +48,7 @@ PsychError SCREENGetCapturedImage(void)
     double                              summed_intensity;
     int                                 capturehandle = -1;
     int                                 waitForImage = TRUE;
+    int                                 specialmode = 0;
     double                              presentation_timestamp = 0;
     int rc=-1;
     
@@ -53,7 +56,7 @@ PsychError SCREENGetCapturedImage(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
+    PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
     PsychErrorExit(PsychCapNumOutputArgs(4));           // Max. 4 output args.
     
@@ -85,6 +88,9 @@ PsychError SCREENGetCapturedImage(void)
     textureRecord = NULL;
     if ((PsychGetNumInputArgs()>=4) && PsychIsWindowIndexArg(4)) PsychAllocInWindowRecordArg(4, FALSE, &textureRecord);
     
+    // Get the optional specialmode flag:
+    PsychCopyInIntegerArg(5, FALSE, &specialmode);
+
     while (rc==-1) {
       //  We pass a checkForImage value of 2 if waitForImage>0. This way we can signal if we are in polling or blocking mode.
       // On Linux this allows to do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
@@ -159,6 +165,12 @@ PsychError SCREENGetCapturedImage(void)
         // Set textureNumber to zero, which means "Not cached, do not recycle"
         // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
         textureRecord->textureNumber = 0;
+      }
+
+      // Power-of-two texture requested?
+      if (specialmode & 0x01) {
+	// Yes. Spec it:
+	textureRecord->texturetarget = GL_TEXTURE_2D;
       }
     }
     else {

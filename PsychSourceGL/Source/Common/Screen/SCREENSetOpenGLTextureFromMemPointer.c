@@ -21,7 +21,7 @@
 
 #include "Screen.h"
 
-static char useString[]="[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target]);";
+static char useString[]="[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
 static char synopsisString[] = 
 "DANGEROUS! C-PROGRAMMING EXPERTS ONLY! OTHERS STAY AWAY! "
 "Convert raw image data, provided as a pointer to a system memory buffer, into a Psychtoolbox texture. "
@@ -39,6 +39,11 @@ static char synopsisString[] =
 "1 Byte per pixel. 3 = Input is a RGB truecolor image with 3 Bytes per pixel. 2 and 4 are like "
 "1 and 3, but with one byte for an alpha (transparency) channel added. The optional flag 'upsidedown' can "
 "be set to one (default is zero) to create textures upside-down - inverted in vertical direction. "
+"'glinternalformat', 'gltype' and 'extdataformat' are all optional. If you provide one of them, you'll need "
+"to provide all of them. In that case, PTB will create an OpenGL texture with exactly the specified internal "
+"format, assuming input data that is of type 'gltype' and in numeric data format 'extdataformat'. You are "
+"completely responsible for passing properly formatted data. This is mostly useful for injecting high dynamic "
+"range texture images and other exotic texture formats. "
 "The function returns the textureHandle of the PTB texture and its defining rectangle. "
 "This routine allows external C-Code (Mex- or Oct-Files) to inject raw image data as a texture into PTB. ";
 
@@ -47,7 +52,7 @@ static char seeAlsoString[] = "SetOpenGLTexture MakeTexture ";
 PsychError SCREENSetOpenGLTextureFromMemPointer(void) 
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
-    int w, h, d, testarg, upsidedown;
+    int w, h, d, testarg, upsidedown, glinternalformat, glexternaltype, glexternalformat;
     double doubleMemPtr;
     GLenum target = 0;
     w=h=d=-1;
@@ -58,7 +63,7 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(8));     // The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(11));     // The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(5)); // The required number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));    // The maximum number of outputs
     
@@ -110,6 +115,15 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // Query (optional) OpenGL texture target:
     PsychCopyInIntegerArg(8, FALSE, (int*) &target);
  
+    // Query (optional) full format spec:
+    glinternalformat = 0;
+    PsychCopyInIntegerArg(9, FALSE, &glinternalformat);
+    if (glinternalformat>0) {
+      // Ok copy the (now non-optional) remaining format spec:
+      PsychCopyInIntegerArg(10, TRUE, &glexternalformat);
+      PsychCopyInIntegerArg(11, TRUE, &glexternaltype);      
+    }
+
     // Safety checks:
     if (doubleMemPtr == 0) {
         PsychErrorExitMsg(PsychError_user, "You tried to set invalid (NULL) imagePtr.");
@@ -152,6 +166,12 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // If upsidedown flag is set, then we do 3 - an upside down Offscreen window texture.
     textureRecord->textureOrientation = (upsidedown>0) ? 3 : 2;
     
+    if (glinternalformat!=0) {
+      textureRecord->textureinternalformat = glinternalformat;
+      textureRecord->textureexternalformat = glexternalformat;
+      textureRecord->textureexternaltype = glexternaltype;
+    }
+
     // Setting memsize to zero prevents unwanted free() operation in PsychDeleteTexture...
     textureRecord->textureMemorySizeBytes = 0;
 

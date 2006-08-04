@@ -143,7 +143,12 @@ typedef struct _PsychWindowRecordType_{
         int                                     textureOrientation;     // Orientation of texture data in internal storage. Defines texcoord assingment.  
         int					texturecache_slot;      // Reference of cache structure for this texture, if any...
         GLenum                                  texturetarget;          // Explicit target type of texture (GL_TEXTURE_2D, ...)
-     
+        // The following three are only used for injecting special textures into PTB, e.g., High Dynamic range textures in floating point format.
+        // They default to zero, which means: Derive texture representation from depth.
+        GLint                                   textureinternalformat;  // Explicit definition of glinternalformat for texture creation.
+        GLenum                                  textureexternalformat;  // Explicit definitin of external format for texture creation.
+        GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
+
 	//Used only when this structure holds a window:
 	PsychTextAttributes                     textAttributes;
 	
