@@ -70,8 +70,13 @@ end;
 % Load, compile and attach each single shader of each single file:
 for i=1:length(filenames)
     shadername = char(filenames(i));
-    shader = LoadShaderFromFile(shadername, [], debug);
-    glAttachShader(handle, shader);
+    % We only load the shader if its name does not end in tilde or .asv,
+    % because that would mean it is a Matlab- or emacs backup file...
+    if (shadername(end)~='~') & (isempty(strfind(shadername, '.asv')))
+       % Load, compile and link the shader:
+       shader = LoadShaderFromFile(shadername, [], debug);
+       glAttachShader(handle, shader);
+    end;
 end;
 
 % Link the program:

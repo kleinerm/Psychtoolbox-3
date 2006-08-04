@@ -194,7 +194,7 @@ if isempty(headstart)
 end;
 
 if isempty(recordframes)
-     recordframes = 0;
+     recordframes = -1;
      captexs=[];
 end;
 
@@ -318,12 +318,14 @@ if strcmp(cmd, 'RecordFrames')
         error('You need to specify the framestep argument in RecordFrames!');
      end
 
-     recordframes = varargin{1};
+     recordframes = round(varargin{1});
      captexs = [];
 
-     if recordframes < 0
-        recordframes = 0;
-        error('You need to specify a positive (greater or equal zero) value for framestap in RecordFrames!');
+     if recordframes <= 0
+        % A value of minus one signals recording disabled. This value is
+        % crucial for some optimizations in the video loop to reduce
+        % loop execution overhead.
+        recordframes = -1;
      end
 
      return;
@@ -589,10 +591,16 @@ if strcmp(cmd, 'RunLoop')
      Screen('Flip', win);
      tstart=Screen('Flip', win);
      oldcts = tstart;
+     tonset = tstart;
 
      % Video capture and feedback loop. Runs until keypress or 'aborttimeout' secs have passed:
-     while (GetSecs - tstart) < aborttimeout 
+     while (tonset - tstart) < aborttimeout 
+      % Calling KbCheck is expensive (often more than 1 millisecond). We avoid it,
+      % if onlinecontrol is disabled and no abort keys are set.
+      if ~isempty(abortkeys) | onlinecontrol
+        % Check for keypress:
         if KbCheck
+           % Key pressed. Check which one and process it:
 	   [down secs keycode]=KbCheck;
            % Any of the abort-keys pressed?
            if any(intersection(find(keycode), abortkeys))
@@ -641,6 +649,9 @@ if strcmp(cmd, 'RunLoop')
               end
 	   end;
         end;
+      end; % Of keyboard checking and processing...
+
+%        mytelapsed1 = GetSecs - tonset
         
         % Retrieve most recently captured image from video source, block if none is
         % available yet. If recycledtex is a valid handle to an old, no longer needed
@@ -663,7 +674,7 @@ if strcmp(cmd, 'RunLoop')
 	   % Yes. Put it into our fifo ringbuffer, together with the requested presentation
 	   % deadline for that image, which is the capture timestamp + requested delay:
            capturecount = capturecount + 1;
-           writeptr = mod(capturecount, size(videofifo, 2)) + 1;
+           writeptr = privateMod(capturecount, size(videofifo, 2)) + 1;
            videofifo(1, writeptr) = tex;
            videofifo(2, writeptr) = cts + (latencymillisecs / 1000.0);
 	   if logmode>0
@@ -678,7 +689,7 @@ if strcmp(cmd, 'RunLoop')
 
            % Now read out the frame some fifo delayslots behind and show it:
            readcount = capturecount - fifodelay;
-           readptr = mod(readcount, size(videofifo, 2)) + 1;
+           readptr = privateMod(readcount, size(videofifo, 2)) + 1;
 
            % Get pts and texture handle for image to show:
            pts = videofifo(2, readptr);
@@ -688,13 +699,15 @@ if strcmp(cmd, 'RunLoop')
            videofifo(1, readptr)=0;
 
            % Nothing to show yet?
-           if pts == 0 | tex == 0
+           if tex == 0
               % Skip remaining loop:
 	      continue;
            end;
 
 	   % Draw the image.
 	   Screen('DrawTexture', win, tex, [], dstrect);
+
+ %          mytelapsed2 = Screen('DrawingFinished', win, 2, 1)
 
 	   % Perform image onset in sync with retrace and get onset timestamp.
            tonset = Screen('Flip', win, 0, 2);
@@ -704,7 +717,7 @@ if strcmp(cmd, 'RunLoop')
 	      timestamps(3, readcount) = timestamps(2, readcount) + camlatency;
 	   end;
 
-           if (recordframes>0) & (mod(readcount, recordframes)==0)
+           if (recordframes>0) & (privateMod(readcount, recordframes)==0)
               captexscount = captexscount + 1;
               captexs(1, captexscount) = tex;
               captexs(2, captexscount) = tonset;
@@ -763,4 +776,11 @@ help PsychVideoDelayLoop;
 fprintf('\n\nUnknown subcommand: %s\n', cmd);
 error('Unknown subcommand specified! Please read help text above.');
 
+end
+
+function rem = privateMod(x,y)
+   % Our private modulo implementation. Only handles positive scalar
+   % values correctly, but should be much faster than Matlabs/Octaves
+   % general mod(x,y) function.
+   rem = x - (y * floor(x / y));
 end

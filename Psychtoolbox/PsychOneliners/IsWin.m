@@ -10,4 +10,9 @@ function resultFlag = IsWin
 % ??/??/?? awi Wrote it.
 % 6/30/06  awi Fixed help section.  
 
-resultFlag=streq(computer,'PCWIN');
+persistent rc = [];
+
+if isempty(rc)
+     rc=streq(computer,'PCWIN');
+end;
+resultFlag=rc;

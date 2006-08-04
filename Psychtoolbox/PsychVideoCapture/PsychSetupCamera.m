@@ -1,4 +1,4 @@
-function PsychSetupCamera(camsettingsfile, rate)
+function PsychSetupCamera(camsettingsfile, rate, fullscreen)
 % PsychSetupCamera(camsettingsfile, rate)
 % 
 % Setup basic camera settings like exposure time, brightness and gain.
@@ -37,6 +37,10 @@ if nargin < 2
    rate = 30;
 end
 
+if nargin < 3
+   fullscreen = 0;
+end
+
 if IsOctave
    % Disable Octaves output pager.
    more off;
@@ -48,7 +52,13 @@ end
 
 % Open fullscreen onscreen window with black background
 % and everything else at default settings on display 0.
-win = Screen('OpenWindow', 0, 0, [0 0 640 480]);
+if fullscreen
+   win = Screen('OpenWindow', 0, 0);
+else
+   win = Screen('OpenWindow', 0, 0, [0 0 640 480]);
+end
+
+PsychVideoDelayLoop('Verbosity', 2);
 
 % Open video capture device for display in window 'win'.
 % We use the default device at default ROI (640 x 480)
@@ -67,7 +77,8 @@ PsychVideoDelayLoop('SetPresentation', 1, 0, 0);
 
 % Define time margin for processing and drift correction:
 % 9.2 ms are a good value for 60 Hz on a P4 2.2 Ghz...
-PsychVideoDelayLoop('SetHeadstart', 0.0092);
+%PsychVideoDelayLoop('SetHeadstart', 0.0092);
+PsychVideoDelayLoop('SetHeadstart', 0.018);
 
 % Enable full logging.
 PsychVideoDelayLoop('SetLogging', 1);

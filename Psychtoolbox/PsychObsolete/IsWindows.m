@@ -11,4 +11,4 @@ function resultFlag = IsWindows
 % 
 % See also: IsOS9, IsOSX, IsWin
 
-resultFlag= streq(computer,'PCWIN');
+resultFlag= IsWin;

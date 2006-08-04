@@ -10,4 +10,9 @@ function resultFlag = IsOS9
 % ??/??/?? awi Wrote it.
 % 6/30/06  awi Fixed help section.  
 
-resultFlag= streq(computer,'MAC2');
+persistent rc = [];
+
+if isempty(rc)
+     rc= streq(computer,'MAC2');
+end;
+resultFlag=rc;
