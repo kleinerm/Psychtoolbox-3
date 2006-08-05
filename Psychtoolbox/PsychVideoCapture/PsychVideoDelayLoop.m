@@ -492,6 +492,9 @@ if strcmp(cmd, 'RunLoop')
      % Psychtoolbox internal calibration:
      ifi = Screen('GetFlipInterval', win);
 
+     % Recompute estimated camera latency, just to be safe...
+     camlatency = PsychCamSettings('EstimateLatency', grabber, capturerate);
+
      % Translate latency in frames into latency in milliseconds:
      latencymillisecs = fifodelay * cfi * 1000.0;
      if verbose > 1
