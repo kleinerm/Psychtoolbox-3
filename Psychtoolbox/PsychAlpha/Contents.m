@@ -7,4 +7,5 @@
 %   PrintStruct              - Print structure & cell array to any depth
 %   TestIOPort               - Demo Code Mercenaries IO-Warrior USB device.
 %   StoreBit                 - Demonstrate Cocoa API calls from .mex file C
+%   ShowHDRDemo              - Incomplete demo of how to show HDR images.
 

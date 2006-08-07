@@ -11,7 +11,7 @@ function resultFlag = IsLinux
 % 6/30/06  awi Fixed help section.  
 
 
-persistent rc = [];
+persistent rc;
 
 if isempty(rc)
      rc= streq(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));

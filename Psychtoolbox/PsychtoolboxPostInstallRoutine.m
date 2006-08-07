@@ -23,8 +23,11 @@ fprintf('Running post-install routine...\n');
 
 % Get rid of any remaining .svn folders in the path.
 path(RemoveSVNPaths);
-savepath;
+if exist('savepath')
+   savepath;
+else
+   path2rc;
+end
 
 fprintf('Done.\n');
-
 return;

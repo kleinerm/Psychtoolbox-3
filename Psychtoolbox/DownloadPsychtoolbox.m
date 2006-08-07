@@ -209,7 +209,12 @@ if isOSX && exist('/usr/local/bin/svn','file')~=2
 end
 
 % Does SAVEPATH work?
-err=savepath;
+if exist('savepath')
+   err=savepath;
+else
+   err=path2rc;
+end
+
 if err
     p=fullfile(matlabroot,'toolbox','local','pathdef.m');
     fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
@@ -286,7 +291,13 @@ while (exist('Psychtoolbox','dir') || exist(fullfile(targetdirectory,'Psychtoolb
     warning('off','MATLAB:rmpath:DirNotFound');
     rmpath(pp);
     warning('on','MATLAB:rmpath:DirNotFound');
-    savepath;
+    
+    if exist('savepath')
+       savepath;
+    else
+       path2rc;
+    end
+
     fprintf('Success.\n');
 
     s=input('Shall I delete the old Psychtoolbox folder and all its contents \n(recommended in most cases), (yes or no)? ','s');
@@ -335,7 +346,12 @@ while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
             rmpath(s);
         end
     end
-    savepath;
+    if exist('savepath')
+       savepath;
+    else
+       path2rc;
+    end
+
     fprintf('Success.\n\n');
 end
 
@@ -377,7 +393,13 @@ fprintf('Now adding the new Psychtoolbox folder (and all its subfolders) to your
 p=fullfile(targetdirectory,'Psychtoolbox');
 pp=genpath(p);
 addpath(pp);
-err=savepath;
+
+if exist('savepath')
+   err=savepath;
+else
+   err=path2rc;
+end
+
 if err
     fprintf('SAVEPATH failed. Psychtoolbox is now already installed and configured for use on your Computer,\n');
     fprintf('but i could not save the updated Matlab path, probably due to insufficient permissions.\n');

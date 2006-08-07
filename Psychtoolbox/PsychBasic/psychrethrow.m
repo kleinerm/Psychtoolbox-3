@@ -15,7 +15,7 @@ if exist('rethrow', 'builtin')==5
   builtin('rethrow', msg);
 else
   % Use our simple fallback-implementation:
-  error(msg);
+  error(msg.message);
 end
 
 return;

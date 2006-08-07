@@ -125,7 +125,12 @@ addpath(genpath(targetdirectory));
 fprintf('Your MATLAB path has been updated. Now trying to save the new MATLAB path...\n\n');
 
 % Does SAVEPATH work?
-err=savepath;
+if exist('savepath')
+   err=savepath;
+else
+   err=path2rc;
+end
+
 if err
 p=fullfile(matlabroot,'toolbox','local','pathdef.m');
 fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...

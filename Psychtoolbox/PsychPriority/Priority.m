@@ -74,9 +74,10 @@ function oldPriority=Priority(newPriority)
 % provides an over hundred-fold speedup in the execution of Priority(). If
 % you think that timing gets worse on your system, you can check the timing
 % by running the test command 'TestMATLABTimingOSX'. If you rather want
-% Priority to kill the update process on 10.4.7 and later, please uncomment
-% the line '%killUpdateNotNeeded = 0;' at the top of the Priority.m file to
-% enforce killing of the update process.
+% Priority to kill the update process on 10.4.7 and later, please create a
+% file with the name 'AlwaysKillUpdate' in the Psychtoolbox root folder to
+% enforce killing of the update process. The content of the file does not
+% matter at all.
 %
 % OS 9: ___________________________________________________________________
 %
@@ -311,11 +312,6 @@ function oldPriority=Priority(newPriority)
 
 persistent killUpdateNotNeeded;
 
-% Uncomment the following line if you want Priority() to kill the update
-% process at raised priorities, even if it thinks that it isn't necessary:
-
-%killUpdateNotNeeded = 0;
-
 if IsLinux
     % Not yet implemented on Linux. Just return zero.
     oldPriority=0;
@@ -343,6 +339,12 @@ if IsOSX
             killUpdateNotNeeded = 1;
         else
             % Pre 10.4.7 system -> Play safe and kill update.
+            killUpdateNotNeeded = 0;
+        end
+
+        % Override for the scared.
+	if exist('AlwaysKillUpdate', 'file')>0
+            % Detected a veto file created by the user. We do kill update.
             killUpdateNotNeeded = 0;
         end
     end

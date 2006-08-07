@@ -60,6 +60,7 @@ try
    fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
    fprintf('or any keypress...\n');
    pause;
+   while KbCheck; end;
    
    [win , winRect]=Screen('OpenWindow', screen, 0, rect, 32, doublebuffer, stereomode);
    flickerRect = InsetRect(winRect, 100, 0);
