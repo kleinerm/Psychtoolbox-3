@@ -1,4 +1,4 @@
-function callStack=AssertMex(varargin)
+function callStack = AssertMex(varargin)
 
 % AssertMex([platform1,] [platform2,] ...)
 %
@@ -58,23 +58,28 @@ function callStack=AssertMex(varargin)
 % 03/08/05  dgp     Add support for 'WIN'.
 % 10/06/05	awi     Fixed bug: Changed "okSupNameMatches"  to match addition of  'WIN' to 
 %								to "okSupNames"
-% 3/3/06    awi     Rewrote help for improved clarity.   
+% 3/3/06    awi     Rewrote help for improved clarity.
+
+persistent okNames mexExtensions okSupNames okSupNameMatches;
 
 % Do not do anything on Octave build.
 if IsOctave
     return;
 end;
 
-okNames=          {'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
-mexExtensions=    {'dll',   '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
-okSupNames=       {'WINDOWS', 'WIN', 'OS9', 'OSX'};
-okSupNameMatches= {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
+% Initialize the persistent variables.
+if isempty(okNames)
+    okNames = {'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
+    mexExtensions = {'dll',   '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
+    okSupNames = {'WINDOWS', 'WIN', 'OS9', 'OSX'};
+    okSupNameMatches = {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
+end
 
 % Replace any non-standard platform names in the argument list with their
 % official equivalents.  Our non-standard names
 % match our shorthand platform tests: IsOS9, IsWin, and IsOSX.
 
-inputNames=upper(varargin);
+inputNames = upper(varargin);
 
 for i = 1:length(okSupNames)
     foundices=find(streq(okSupNames{i},upper(inputNames)));
@@ -84,7 +89,7 @@ for i = 1:length(okSupNames)
 end
 
 % Check for invalid arguments.
-badNames=setdiff(inputNames, okNames); 
+badNames = setdiff(inputNames, okNames); 
 if ~(isempty(badNames) | streq(badNames,'')) % badNames was often {''} which is not empty for isempty()
     nameList=[];
     for i = 1:length(badNames)
@@ -94,12 +99,12 @@ if ~(isempty(badNames) | streq(badNames,'')) % badNames was often {''} which is 
 end
 
 % Check to see if there should be a mex file for our platform.
-if isempty(inputNames) | ismember(computer,inputNames)
-	% Element 1 will always be AssertMex. Element 2 will be the calling
-	% function unless it is invoked from the commnand line.
-	callStack=dbstack;
-	if length(callStack) > 1
-        callerName=callStack(2).name;
+if isempty(inputNames) | ismember(computer, inputNames)
+    % Element 1 will always be AssertMex. Element 2 will be the calling
+    % function unless it is invoked from the commnand line.
+    callStack = dbstack;
+    if length(callStack) > 1
+        callerName = callStack(2).name;
     else
         error('PsychAssertMex was invoked from the command line.');
     end
