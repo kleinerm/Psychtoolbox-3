@@ -55,7 +55,7 @@
 try
     % Open up a window on the screen and clear it.
     whichScreen = max(Screen('Screens'));
-    [theWindow,theRect] = Screen(whichScreen,'OpenWindow',0,[],[],2,0,8);
+    [theWindow,theRect] = Screen(whichScreen,'OpenWindow',0);
 
     % Move the cursor to the center of the screen
     theX = theRect(RectRight)/2;

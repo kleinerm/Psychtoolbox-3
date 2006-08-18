@@ -1,5 +1,5 @@
-function PerceptualVBLSyncTest(stereomode, fullscreen, doublebuffer)
-% PerceptualVBLSyncTest(stereomode, fullscreen, doublebuffer)
+function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer)
+% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer)
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
 % Screen('WaitBlanking') to the vertical retrace.
@@ -31,7 +31,7 @@ function PerceptualVBLSyncTest(stereomode, fullscreen, doublebuffer)
 % Check for presence of OpenGL PTB.
 AssertOpenGL;
 
-if nargin < 3
+if nargin < 4
    % Use double-buffered windows by default: Single-buffered ones can't sync to
    % retrace and are discouraged anyway. Setting doublebuffer=0 is an easy way
    % to reproduce the visual pattern created by a complete sync-failure though.
@@ -39,17 +39,20 @@ if nargin < 3
 end;
 doublebuffer=doublebuffer+1;
 
-if nargin < 1
+if nargin < 2
    % Use non-stereo display by default. 
    stereomode=0;
 end;
 
-if nargin < 2
+if nargin < 3
    fullscreen=1;
 end;
 
+if nargin < 1
+    screen=max(Screen('Screens'));
+end;
+
 try
-   screen=max(Screen('Screens'));
    if fullscreen
       rect=[];
    else
