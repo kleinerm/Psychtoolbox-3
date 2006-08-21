@@ -640,15 +640,14 @@ PsychError SCREENComputer(void)
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
-#include "stdafx.h"
-#include <Windows.h>
-#include <rpc.h>
-#include <rpcdce.h>
-#pragma comment(lib, "rpcrt4.lib")
+//#include <Windows.h>
+//#include <rpc.h>
+//#include <rpcdce.h>
+//#pragma comment(lib, "rpcrt4.lib")
 
 // M$-Windows implementation of Screen('Computer'): This is very rudimentary for now.
 // We only report the operating sytem type (="Windows") and MAC-Address, but don't report any more useful
-// information.
+// information. MAC query does not work yet - We do not have the neccessary libraries to compile the code :(
 PsychError SCREENComputer(void)
 {
     // const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
@@ -658,10 +657,10 @@ PsychError SCREENComputer(void)
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=5, numKernStructFieldNames=5, numHwStructFieldNames=7;
-    char ethernetMACStr[20];
-    unsigned char MACData[6];
-    UUID uuid;
+    int numMajorStructFieldNames=4, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    // char ethernetMACStr[20];
+    // unsigned char MACData[6];
+    // UUID uuid;
     int i;
 
     PsychGenericScriptType	*kernStruct, *hwStruct, *majorStruct;
@@ -681,18 +680,18 @@ PsychError SCREENComputer(void)
     
     // Query hardware MAC address of primary ethernet interface: This is a unique id of the computer,
     // good enough to disambiguate our statistics:
-    sprintf(ethernetMACStr, "00:00:00:00:00:00");
-    
+    // sprintf(ethernetMACStr, "00:00:00:00:00:00");
+   
     // Ask OS to create UUID. Windows uses the MAC address of primary interface
     // in bytes 2 to 7  to do this:
-    UuidCreateSequential( &uuid );    // Ask OS to create UUID
-    for (i=2; i<8; i++) MACData[i - 2] = uuid.Data4[i];
-    sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
-	    MACData[0] & 0xff, MACData[1] & 0xff,
-	    MACData[2] & 0xff, MACData[3] & 0xff,
-	    MACData[4] & 0xff, MACData[5] & 0xff);
+    //UuidCreateSequential( &uuid );    // Ask OS to create UUID
+    //for (i=2; i<8; i++) MACData[i - 2] = uuid.Data4[i];
+    //sprintf(ethernetMACStr, "%.2X:%.2X:%.2X:%.2X:%.2X:%.2X",
+	 //   MACData[0] & 0xff, MACData[1] & 0xff,
+	 //   MACData[2] & 0xff, MACData[3] & 0xff,
+	 //   MACData[4] & 0xff, MACData[5] & 0xff);
 	    	    	    
-    PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
+    // PsychSetStructArrayStringElement("MACAddress", 0, ethernetMACStr, majorStruct);
 
     return(PsychError_none);
 }

@@ -1,0 +1,4 @@
+macid can also be compiled under turbo pascal 5.5 for dos.
+so it can be used under pure dos (or freedos etc.), if a 
+netbios environment is loaded (e.g. MS lanman or MS client 
+for dos networks).

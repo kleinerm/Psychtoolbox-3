@@ -32,13 +32,17 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % The minimal network server for collecting the transmitted information would be the
 % following line of code, executed in the Linux/OS-X command window:
 %
-% while true; do nc -l -p 2000 | head -c 200 >> /tmp/testlog ; done
+% while true; do nc -l -p 2000 | head -c 500 >> /tmp/testlog ; done
 %
 % This will receive data from network port 2000 (any number between 1025 and 65535
-% is valid), discard everything except the first 200 bytes (to prevent overflows due
+% is valid), discard everything except the first 500 bytes (to prevent overflows due
 % to bugs or hacker attacks) and append it to the logfile /tmp/testlog, one
 % line per registered copy of Psychtoolbox.
-
+%
+% This M-File makes use of two GPL'ed free software utilities for
+% M$-Windows, "nc" and "macid". Credits for the utilities and their source
+% code can be found in the PsychContributed subfolder of Psychtoolbox.
+%
 % History:
 % 18.08.2006 Written (MK)
 
@@ -55,15 +59,6 @@ try
         fprintf('PsychtoolboxRegistration: WARNING - Call arguments missing. Skipped...\n');
         return;
     end;
-    
-    % Query MAC address as unique machine id:
-    compinfo = Screen('Computer');
-    if isfield(compinfo, 'MACAddress')
-        mac = compinfo.MACAddress;
-    else
-        % Unknown MAC address. Use our dummy value:
-        mac = '00:00:00:00:00:00';
-    end
     
     % Default path and name for netcat command:
     nccommand = 'nc';
@@ -94,26 +89,61 @@ try
         runtimeenv = 'Matlab';
         runtimeversion = version;
     end
-    
+
+    % Query MAC address as unique machine id:
+    % We try to get the info from the 'Computer' subfunction of Screen:
+    compinfo = Screen('Computer');
+    if isfield(compinfo, 'MACAddress')
+        % Success. Use it.
+        mac = compinfo.MACAddress;
+    else
+        % Failed: Try harder...
+        if IsWin
+            % Use external helper-utility to try to query MAC address:
+            macidcom = [PsychtoolboxRoot 'PsychContributed\macid '];
+            [rc mac] = dos(macidcom);
+            if rc==0 & length(mac)>=12
+                % Worked on Windows: Reassemble MAC into our standard
+                % format:
+                mac = [mac(1) mac(2) ':' mac(3) mac(4) ':' mac(5) mac(6) ':' mac(7) mac(8) ':' mac(9) mac(10) ':' mac(11) mac(12)];
+            else
+                % Failed as well. Set to unknown default.
+                mac = '00:00:00:00:00:00';
+            end
+        else
+            % On Non-Windows system, we are out of luck and use our
+            % 'unknown' default:
+            mac = '00:00:00:00:00:00';
+        end
+    end
+
     % Build unique id string for this system:
-    uniqueID = [mac '-' ostype '-' runtimeenv '-' runtimeversion '-' flavor '-' num2str(isUpdate) '-' date];
+    uniqueID = ['<MACID>' mac '</MACID><OS>' ostype '</OS><ENVIRONMENT>' runtimeenv '</ENVIRONMENT><ENVVERSION>' ...
+                runtimeversion '</ENVVERSION><FLAVOR>' flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
     
     fprintf('Online Registration: Will try to transmit the following string of data\n');
-    fprintf('to the www.psychtoolbox.org website for statistical purpose:\n');
+    fprintf('to the www.psychtoolbox.org website for statistical purpose:\n\n');
     fprintf('%s\n\n', uniqueID);
     fprintf('Type ''help PsychtoolboxRegistration'' at the Matlab/Octave command prompt\n');
-    fprintf('to learn about the purpose and scope of online registration.\n\n');
-    fprintf('This can take up to 10 seconds... The system reports:\n');
+    fprintf('to learn about the purpose and scope of online registration.\n');
+    fprintf('Type ''type PsychtoolboxRegistration'' to see the source code of this routine.\n\n');
+    fprintf('Data transfer can take up to 10 seconds... The system reports:\n');
     
     % Execute transmission command: We time out after 10 seconds if it does not work.
-    rc = system(['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' ']);
+    syscmd = ['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' '];
+    if IsWin
+        rc = dos(syscmd);
+    else
+        rc = system(syscmd);
+    end
     fprintf('\n');
     
     % Did it work?
     if rc==0
         fprintf('Success! Thanks for online registration of this copy.\n');
     else
-        fprintf('Failed! Anyway, this does not affect your use of PTB in any way.\n');
+        fprintf('Failed! Anyway, this does not affect your use of PTB in any way,\n');
+        fprintf('only our statistics about usage will be inaccurate :(\n');
     end
 catch
     % This empty try-catch-end framework is just to make absolutely sure that our
