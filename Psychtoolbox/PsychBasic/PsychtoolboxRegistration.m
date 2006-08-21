@@ -63,6 +63,8 @@ try
     % Default path and name for netcat command:
     nccommand = 'nc';
     
+    compinfo = Screen('Computer');
+
     % Query OS-Type:
     if IsOSX
         ostype = 'MacOS-X';
@@ -92,7 +94,6 @@ try
 
     % Query MAC address as unique machine id:
     % We try to get the info from the 'Computer' subfunction of Screen:
-    compinfo = Screen('Computer');
     if isfield(compinfo, 'MACAddress')
         % Success. Use it.
         mac = compinfo.MACAddress;
@@ -118,7 +119,7 @@ try
     end
 
     % Build unique id string for this system:
-    uniqueID = ['<MACID>' mac '</MACID><OS>' ostype '</OS><ENVIRONMENT>' runtimeenv '</ENVIRONMENT><ENVVERSION>' ...
+    uniqueID = ['<MACID>' mac '</MACID><OS>' ostype '-' osversion '</OS><ENVIRONMENT>' runtimeenv '</ENVIRONMENT><ENVVERSION>' ...
                 runtimeversion '</ENVVERSION><FLAVOR>' flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
     
     fprintf('Online Registration: Will try to transmit the following string of data\n');
