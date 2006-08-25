@@ -413,126 +413,118 @@ PsychError SCREENComputer(void)
 
     //fill in the process user, console user and machine name in the root struct.
 
-	tempCFStringRef= CSCopyMachineName();
+        tempCFStringRef= CSCopyMachineName();
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-	PsychSetStructArrayStringElement("machineName", 0, tempStrPtr, majorStruct);
-
+	if(stringSuccess) {
+            PsychSetStructArrayStringElement("machineName", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
+        
 	free(tempStrPtr);
-
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"machineName\" field CFString into a C String");
-
-		
-
-	
 
 	tempCFStringRef= CSCopyUserName(TRUE); //use short name
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-	PsychSetStructArrayStringElement("processUserShortName", 0, tempStrPtr, majorStruct);
+	if(stringSuccess) {
+            PsychSetStructArrayStringElement("processUserShortName", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("processUserShortName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
 
 	free(tempStrPtr);
 
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"processUserShortName\" field CFString into a C String");
-
-	
 
 	tempCFStringRef= CSCopyUserName(FALSE); //use long name
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-	PsychSetStructArrayStringElement("processUserLongName", 0, tempStrPtr, majorStruct);
+	if(stringSuccess) {
+            PsychSetStructArrayStringElement("processUserLongName", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("processUserLongName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
 
 	free(tempStrPtr);
 
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"processUserLongName\" field CFString into a C String");
-
-
 
 	tempCFStringRef= SCDynamicStoreCopyConsoleUser(NULL, NULL, NULL);
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-    PsychSetStructArrayStringElement("consoleUserName", 0, tempStrPtr, majorStruct);
-
+	if(stringSuccess) {
+            PsychSetStructArrayStringElement("consoleUserName", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("consoleUserName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
+        
 	free(tempStrPtr);
 
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"consoleUserName\" field CFString into a C String");
-
-
 
 	tempCFStringRef= SCDynamicStoreCopyLocalHostName (NULL); 
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-    PsychSetStructArrayStringElement("localHostName", 0, tempStrPtr, majorStruct);
-
-	free(tempStrPtr);
-
+        if(stringSuccess) {
+            PsychSetStructArrayStringElement("localHostName", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("localHostName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
+        
+        free(tempStrPtr);
+        
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"localHostName\" field CFString into a C String");
-
-
 
 	tempCFStringRef= SCDynamicStoreCopyLocation(NULL);
 
-	stringLengthChars=(int)CFStringGetLength(tempCFStringRef);
+	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
 
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
 
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
 
-        PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
+	if(stringSuccess) {
+            PsychSetStructArrayStringElement("location", 0, tempStrPtr, majorStruct);
+        }
+        else {
+            PsychSetStructArrayStringElement("location", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+        }
 
 	free(tempStrPtr);
 
 	CFRelease(tempCFStringRef);
-
-	if(!stringSuccess)
-
-		PsychErrorExitMsg(PsychError_internal, "Failed to convert the \"location\" field CFString into a C String");
-
 
 	//Add the ethernet MAC address of the primary ethernet interface to the stuct.  This can serve as a unique identifier for the computer.  
 
