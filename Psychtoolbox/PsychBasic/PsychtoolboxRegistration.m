@@ -35,6 +35,8 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % Linux: while true; do nc -l -p 2000 | head -c 500 >> /tmp/testlog ; done
 % MacOS-X: while true; do nc -l -p 2000 >> /tmp/testlog ; done
 %
+% A server script that does this can be found in managementtools/psychregistrationserver.sh
+%
 % This will receive data from network port 2000 (any number between 1025 and 65535
 % is valid), discard everything except the first 500 bytes (to prevent overflows due
 % to bugs or hacker attacks) and append it to the logfile /tmp/testlog, one
@@ -87,7 +89,7 @@ try
     % Query runtime environment:
     if IsOctave
         runtimeenv = 'Octave';
-        runtimeversion = 'Unknown';
+        runtimeversion = version;
     else
         runtimeenv = 'Matlab';
         runtimeversion = version;
