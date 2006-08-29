@@ -36,37 +36,30 @@ function avail = CharAvail
 % 1/22/06   awi Commented out Cocoa wrapper version and wrote Java wrapper.
 % 3/28/06   awi Detect buffer overflow.
 % 6/20/06   awi Use AddPsychJavaPath instead of AssertGetCharJava.
+% 8/16/06   cgb Now using a much faster method to get characters in Matlab.
+%               We now read straight from the keyboard event manager in
+%               java.
 
-
+global OSX_JAVA_GETCHAR;
 
 if IsOS9
-    avail=EventAvail('keyDown');
-elseif IsOSX
-    AddPsychJavaPath;
-    %AssertGetCharJava;
-    global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW  
-    if isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
-        avail=0;
-    else
-        numCharsAvail=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.numChars();
-        if numCharsAvail==-1
-            error('GetChar buffer overflow. Use "FlushEvents(''KeyDown'')" to clear error'); 
-        end
-        avail= numCharsAvail > 0;
+    avail = EventAvail('keyDown');
+elseif IsOSX     
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        OSX_JAVA_GETCHAR = GetCharJava;
+        OSX_JAVA_GETCHAR.register;
+        setappdata(0, 'OSX_JAVA_GETCHAR', OSX_JAVA_GETCHAR);
     end
-end
-
-
-
-
-
-% This is the old Cocoa wrapper version. Retained here in case we have to resort to it.
-% 
-% if strcmp(computer,'MAC2')
-%    avail=EventAvail('keyDown');
-% elseif strcmp(computer, 'MAC')
-%     InitCocoaEventBridge;
-%     avail=CocoaEventBridge('CharAvail');
-% end
     
-
+    % Check to see if any characters are available.
+    avail = OSX_JAVA_GETCHAR.getCharCount;
+    
+    % Make sure that there isn't a buffer overflow.
+    if avail == -1
+        error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+    end
+    
+    avail = avail > 0;
+end

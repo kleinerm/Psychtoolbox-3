@@ -437,9 +437,9 @@ fprintf('web http://en.wikibooks.org/wiki/Matlab:Psychtoolbox -browser\n');
 fprintf('Archive of Psychtoolbox announcements:\n');
 fprintf('web http://lists.berlios.de/pipermail/osxptb-announce/  -browser\n');
 
-if exist('PsychtoolboxPostInstallRoutine.m')
+if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % Notify the post-install routine of the download and its flavor.
-   PsychtoolboxPostInstallRoutine(0,flavor);
+   PsychtoolboxPostInstallRoutine(0, flavor);
 end
 
 % Puuh, we are done :)

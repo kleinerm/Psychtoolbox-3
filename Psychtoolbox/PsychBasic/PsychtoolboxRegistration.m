@@ -50,7 +50,7 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % 18.08.2006 Written (MK)
 
 % Address and port number of our statistics server:
-ptbserveraddress = 'localhost 2000';
+ptbserveraddress = 'platypus.psych.upenn.edu 2000';
 
 % Running under OpenGL-PTB? Otherwise we abort.
 AssertOpenGL;

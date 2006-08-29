@@ -16,28 +16,18 @@ function FlushEvents(varargin)
 %                   conditional.
 % 1/22/06  awi  Commented out Cocoa wrapper and wrote Java wrapper.
 % 6/20/06  awi  Use AddPsychJavaPath instead of AssertGetCharJava.
+% 8/16/06  cgb  Now using the new GetChar system.
 
+global OSX_JAVA_GETCHAR;
 
-AssertMex('OS9', 'Windows');
-
-if(IsOSX)
-    AddPsychJavaPath;    
-    if(any(strcmp('KEYDOWN', upper(varargin))))
-        global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW
-        if ~isempty(PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW)
-            PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.flushChars();
-        end
+if IsOSX    
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        OSX_JAVA_GETCHAR = GetCharJava;
+        OSX_JAVA_GETCHAR.register;
+        setappdata(0, 'OSX_JAVA_GETCHAR', OSX_JAVA_GETCHAR);
     end
+    
+    OSX_JAVA_GETCHAR.clear;
 end
-
-
-
-
-
-% if IsOSX
-%     InitCocoaEventBridge;
-%     if(any(strcmp('KEYDOWN', upper(varargin))))
-%         CocoaEventBridge('FlushChars');
-%     end
-% end
-

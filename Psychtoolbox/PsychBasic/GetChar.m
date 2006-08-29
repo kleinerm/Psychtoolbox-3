@@ -1,5 +1,5 @@
-function [ch,when] = GetChar
-% [ch,when] = GetChar
+function [ch, when] = GetChar(getExtendedData, getRawCode)
+% [ch, when] = GetChar([getExtendedData], [getRawCode])
 % 
 % Wait for a typed character and return it.  If a character was typed
 % before calling GetChar then GetChar will return immediatly.  Characters
@@ -17,8 +17,15 @@ function [ch,when] = GetChar
 % tick count, it's coarsely quantized in steps of 1/60.15 s. If you plan to
 % use the value of when.secs then you should make sure that the
 % Psychtoolbox has a fresh estimate of tick0secs by calling
-% Screen('Preference','Tick0Secs',nan).  
-% 
+% Screen('Preference','Tick0Secs',nan).
+%
+% By setting getExtendedData to 0, when all extended timing/modifier information
+% will not be collected and "when" will be returned empty.  This speeds up
+% calls to this function. If ommitted or set to 1, the "when" data structure
+% is filled.  getRawCode set to 1 will set "ch" to be the integer ascii code
+% of the available character.  If ommitted or set to 0, "ch" will be in
+% char format.
+
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). If only a meta key (like
 % <option> or <shift>) was hit, KbCheck will return true, because a key was
@@ -28,7 +35,7 @@ function [ch,when] = GetChar
 % CharAvail and GetChar use the Event Manager to retrieve the character
 % generated, not the raw key press(es) per se. If the user presses "a",
 % GetChar returns 'a', but if the user presses option-e followed by "a",
-% this selects an accented a, "‡", which is treated by GetChar as a single
+% this selects an accented a, "?", which is treated by GetChar as a single
 % character, even though it took the user three keypresses (counting the
 % option key) to produce it.
 % 
@@ -106,6 +113,9 @@ function [ch,when] = GetChar
 %              Added TO DO section and item to detect genuine KeyDown
 %              events.
 % 6/20/06 awi  Use AddPsychJavaPath instead of AssertGetCharJava.
+% 8/16/06 cgb  Now using the new GetChar system which taps straight into
+%              the java keypress dispatcher.
+
 
 
 % TO DO
@@ -129,88 +139,66 @@ function [ch,when] = GetChar
 %     shiftKey: 0
 % 
 
+global OSX_JAVA_GETCHAR;
 
-AssertMex('OS9');
-
-if(IsOSX)
-    AddPsychJavaPath;
-    ListenChar;
-    global PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW; %contents of var previosly instantiated by ListenChar.
-    stopLoop=0;
-    while ~stopLoop
-        %restore window focus if necessary
-        if ~PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.isWindowFocused()
-            PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.windowFocusOn();
-            PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.typingAreaFocusOn()
-        end
-        %get the character and set the stop bit according to its value
-        charValue=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getChar();
-        stopLoop= charValue~=0;  
+if IsOSX
+    % If no command line argument was passed we'll assume that the user only
+    % wants to get character data and timing/modifier data.
+    if nargin == 0
+        getExtendedData = 1;
+        getRawCode = 0;
+    elseif nargin == 1
+        getRawCode = 0;
     end
-    if charValue==-1
-        error('GetChar buffer overflow. Use "FlushEvents(''KeyDown'')" to clear error');  
+
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        OSX_JAVA_GETCHAR = GetCharJava;
+        OSX_JAVA_GETCHAR.register;
+        setappdata(0, 'OSX_JAVA_GETCHAR', OSX_JAVA_GETCHAR);
+    end
+
+    % Loop until we receive character input.
+    keepChecking = 1;
+    while keepChecking
+        % Check to see if a character is available, and stop looking if
+        % we've found one.
+        charValue = OSX_JAVA_GETCHAR.getChar();
+        keepChecking = charValue == 0;  
+    end
+    
+    % Throw up an error if we've exceeded the buffer size.
+    if charValue == -1
+        error('GetChar buffer overflow. Use "FlushEvents" to clear error');  
+    end
+    
+    % Get the typed character.
+    if getRawCode
+        ch = charValue;
     else
-        ch=char(charValue);
+        ch = char(charValue);
+    end
+    
+    % Only fill up the 'when' data stucture if extended data was requested.
+    if getExtendedData
         when.address=nan;
         when.mouseButton=nan;
         when.alphaLock=nan;
-        when.commandKey=PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierCommand();
-        when.controlKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierControl();
-        when.optionKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierOptionAlt();
-        when.shiftKey= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getModifierShift();
-        rawEventTimeMs= PSYCHTOOLBOX_OSX_JAVA_GETCHAR_WINDOW.getEventTime();  % result is in units of ms.
-        when.ticks=nan;
-        when.secs=JavaTimeToGetSecs(rawEventTimeMs);
+        modifiers = OSX_JAVA_GETCHAR.getModifiers;
+        when.commandKey = modifiers(1);
+        when.controlKey = modifiers(2);
+        when.optionKey = modifiers(3);
+        when.shiftKey = modifiers(4);
+        rawEventTimeMs = OSX_JAVA_GETCHAR.getEventTime();  % result is in units of ms.
+        when.ticks = nan;
+        when.secs = JavaTimeToGetSecs(rawEventTimeMs, -1);
+    else
+        when = [];
     end
-    % Java returns ascii 3, the "end of text" character for ctrl  C instead of ascii 99, "c".   
-    if double(ch)==3 && when.controlKey
-        error('<ctrl>-C break');
-    end
-end
-
-
-
-% This material was deleted from the built-in help when switching to the
-% Java implementaiton.  It should be added back when we conditionally
-% restore the Cocoa impelmentation.  
-
-% TIMESTAMPS: The "when" return argument contains both "ticks" and "secs"
-% fields recording the times of keystrokes in units of Carbon system ticks
-% and seconds, respectively.  While OS 9 GetChar returns the same fields,
-% there are differences in precision between OS 9 and OS X values.  The OS
-% 9 operating system timestamps events in units of system ticks, with a
-% precision no better than 1/60.15 second.  GetChar converts ticks to
-% seconds, which yields a product of only GetTicks, not GetSecs precision.
-% The OS X operating system timestamps events in units of seconds with the
-% much higer precision of GetSecs. That precision, typically microseconds
-% or better, depends on hardware.  (Call "GetSecsTick" to find the
-% precision of GetSecs on your system.) On OS X, the precision of GetChar
-% timestamps might be limited by the USB keyboard, usually no better than
-% 10ms.
-%
-% UNICODE CHARACTERS: Some keyboard keys, such as the function keys,
-% return unicode characters outside of the 8-bit UTF-8 range.  MATLAB can
-% not correctly display these characters.  For unicode keys which MATLAB
-% can not display, GetChar returns the numeric unicode value of the
-% character.  
-% KNOWN BUGS:
-%
-% GetChar does not exit on ctrl-c or command-period.
-
-
-
-
-
-
-% This is the OLD version of MacOSX GetChar.  It used Cocoa events but did
-% not work, apparently because of interference with the MATLAB editor
-% window.  Left here as fallback until the Java version is complete. - awi
-%
-% if(IsOSX)
-%     InitCocoaEventBridge;
-%     [char, when]=CocoaEventBridge('GetChar');
-%     [callStack, stackIndex]=dbstack;
-%     if(length(callStack) == 1)
-%        CocoaEventBridge('RevertKeyWindow');
+    
+%     % Java returns ascii 3, the "end of text" character for ctrl  C instead of ascii 99, "c".   
+%     if double(ch) == 3 && when.controlKey
+%         error('<ctrl>-C break');
 %     end
-% end
+end
