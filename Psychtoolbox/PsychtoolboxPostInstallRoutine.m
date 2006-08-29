@@ -15,15 +15,45 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % History:
 % 23/06/2006 Written (MK). Has no real function yet, but soon...
 
+fprintf('Running post-install routine...\n');
+
 if nargin < 1
    error('PsychtoolboxPostInstallRoutine: Required argument isUpdate missing!');
 end;
 
 if nargin < 2
+    % No flavor provided: Default to 'unknown', but try to determine it from the
+    % flavor file if this is an update.
     flavor = 'unknown';
-end;
-
-fprintf('Running post-install routine...\n');
+    try
+        if isUpdate>0
+            % This is an update of an existing working copy. Check if flavor-file
+            % is available:
+            flavorfile = [PsychtoolboxRoot 'ptbflavorinfo.txt'];
+            if exist(flavorfile, 'file')
+                fd=fopen(flavorfile);
+                if fd>-1
+                    flavor = fscanf(fd, '%s');
+                    fclose(fd);
+                end
+            end
+        end
+    catch
+        fprintf('Info: Failed to determine flavor of this Psychtoolbox. Not a big deal...\n');
+    end
+else
+    % Flavor provided: Write it into the flavor file for use by later update calls:
+    try
+        flavorfile = [PsychtoolboxRoot 'ptbflavorinfo.txt'];
+        fd=fopen(flavorfile, 'wt');
+        if fd>-1
+            fprintf(fd, '%s\n', flavor);
+            fclose(fd);
+        end
+    catch
+        fprintf('Info: Failed to store flavor of this Psychtoolbox to file. Not a big deal...\n');
+    end
+end
 
 % Get rid of any remaining .svn folders in the path.
 try
