@@ -156,7 +156,6 @@ if IsOSX
     if isempty(OSX_JAVA_GETCHAR)
         OSX_JAVA_GETCHAR = GetCharJava;
         OSX_JAVA_GETCHAR.register;
-        setappdata(0, 'OSX_JAVA_GETCHAR', OSX_JAVA_GETCHAR);
     end
 
     % Loop until we receive character input.

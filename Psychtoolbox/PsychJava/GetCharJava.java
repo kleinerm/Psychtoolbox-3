@@ -11,13 +11,15 @@ public class GetCharJava implements KeyEventDispatcher
 	private int currentModifier;
 	private long[] eventTimesBuffer;
 	private long currentTime;
-	private int charCount = 0;
-	private final int bufferSize = 1000;
+	private int queueHead;          // Index of the queue head.
+    private int writeHead;          // Index of the write head.
+	private final int bufferSize = 1024;
 	private KeyboardFocusManager manager;
 	private boolean registered = false;
 
 	public GetCharJava()
 	{
+        // Initialize all of our buffers and grab the keyboard focus manager.
 		manager = KeyboardFocusManager.getCurrentKeyboardFocusManager();
 		charBuffer = new char[bufferSize];
 		eventModifiersBuffer = new int[bufferSize];
@@ -33,33 +35,37 @@ public class GetCharJava implements KeyEventDispatcher
 
 	public boolean dispatchKeyEvent(KeyEvent e)
 	{
-		char k;
-
-		if (e.getID() == KeyEvent.KEY_PRESSED) {
-			k = e.getKeyChar();
-			if (charCount < bufferSize) {	
-				charBuffer[charCount] = k;
-				eventModifiersBuffer[charCount] = e.getModifiersEx();
-				eventTimesBuffer[charCount] = e.getWhen();
-			}
-
-			charCount++;
+		if (e.getID() == KeyEvent.KEY_TYPED) {
+            int bufIndex = writeHead % bufferSize;
+            
+            // Grab the character and stick it and its associated
+            // information into the queue.
+            charBuffer[bufIndex] =  e.getKeyChar();
+            eventModifiersBuffer[bufIndex] = e.getModifiersEx();
+            eventTimesBuffer[bufIndex] = e.getWhen();
+            
+            writeHead++;
 		}
 
+        // By returning false we let other event dispatchers handle
+        // what we've caught.
 		return false;
 	}
 
 	
 	public void clear()
 	{
-		charCount = 0;
+		queueHead = 0;
+        writeHead = 0;
 	}
 
 
 	public int getCharCount()
 	{
+        int charCount = writeHead - queueHead;
+        
 		// If we've exceeded the buffer size, return -1.
-		if (charCount >= bufferSize) {
+		if (charCount > bufferSize) {
 			return -1;
 		}
 		else {
@@ -69,23 +75,26 @@ public class GetCharJava implements KeyEventDispatcher
 
 	public int getChar()
 	{
-		int k;
+        int charCount = writeHead - queueHead,
+		    k;
 
 		if (charCount == 0) {
 			k = 0;
 		}
-		else if (charCount >= bufferSize) {
+		else if (charCount > bufferSize) {
 			k = -1;
 		}
 		else {
 			// Grab the most recent character, modifier, and time from
 			// the buffers.
-			charCount--;
-			currentChar = charBuffer[charCount];
-			currentModifier = eventModifiersBuffer[charCount];
-			currentTime = eventTimesBuffer[charCount];
+            int bufIndex = queueHead % bufferSize;
+			currentChar = charBuffer[bufIndex];
+			currentModifier = eventModifiersBuffer[bufIndex];
+			currentTime = eventTimesBuffer[bufIndex];
 			
 			k = (int)currentChar;
+            
+            queueHead++;
 		}
 
 		return k;
@@ -119,14 +128,25 @@ public class GetCharJava implements KeyEventDispatcher
 
 	public void register()
 	{
-		manager.addKeyEventDispatcher(this);
-		registered = true;
+        // Only add the dispatcher if we're not registered.
+        if (!registered) {
+            // Initilize our indexes to zero so we start with
+            // a fresh ring buffer.
+            queueHead = 0;
+            writeHead = 0;
+            
+            manager.addKeyEventDispatcher(this);
+            registered = true;
+        }
 	}
 
 
 	public void unregister()
 	{
-		manager.removeKeyEventDispatcher(this);
-		registered = false;
+        // Only remove the dispatcher if we're registered.
+        if (registered) {
+    		manager.removeKeyEventDispatcher(this);
+        	registered = false;
+        }
 	}
 }

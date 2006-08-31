@@ -50,7 +50,6 @@ elseif IsOSX
     if isempty(OSX_JAVA_GETCHAR)
         OSX_JAVA_GETCHAR = GetCharJava;
         OSX_JAVA_GETCHAR.register;
-        setappdata(0, 'OSX_JAVA_GETCHAR', OSX_JAVA_GETCHAR);
     end
     
     % Check to see if any characters are available.

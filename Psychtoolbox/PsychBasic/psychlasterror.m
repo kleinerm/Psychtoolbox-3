@@ -9,7 +9,7 @@ function rc = psychlasterror
 % If your Matlab lacks this variable, this function
 % will return the older lasterr variable instead.
 
-if exist('lasterror')>0
+if exist('lasterror', 'builtin') > 0
   % Call Matlab implementation:
   rc = lasterror;
 else
