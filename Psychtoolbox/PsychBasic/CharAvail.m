@@ -1,11 +1,13 @@
 function [avail, numChars] = CharAvail
-% avail = CharAvail
-% 
-% Return 1 if a character is available in the event queue, 0 if not. Note
-% that this routine leaves the character in the queue.  Call GetChar to
-% remove the character from the event queue.  Also returns the number of
-% characters in the queue via "numChars".
+% [avail, numChars] = CharAvail
 %
+% CharAvail returns the availability of characters in the keyboard event
+% queue and the queue's current size. "avail" will be 1 if characters are
+% available, 0 otherwise.  "numChars" will hold the current number of
+% characters in the event queue.
+%
+% Note that this routine does not actually remove characters from the event
+% queue.  Call GetChar to remove characters from the queue.
 %
 % 
 % Mac:
