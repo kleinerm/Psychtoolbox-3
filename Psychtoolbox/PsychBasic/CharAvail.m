@@ -1,9 +1,12 @@
-function avail = CharAvail
+function [avail, numChars] = CharAvail
 % avail = CharAvail
 % 
 % Return 1 if a character is available in the event queue, 0 if not. Note
 % that this routine leaves the character in the queue.  Call GetChar to
-% remove the character from the event queue.
+% remove the character from the event queue.  Also returns the number of
+% characters in the queue via "numChars".
+%
+%
 % 
 % Mac:
 % 	Command-Period always causes an immediate exit.
@@ -60,5 +63,6 @@ elseif IsOSX
         error('GetChar buffer overflow. Use "FlushEvents" to clear error');
     end
     
+    numChars = avail;
     avail = avail > 0;
 end
