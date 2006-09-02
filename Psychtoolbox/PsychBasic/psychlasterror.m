@@ -1,15 +1,18 @@
 function rc = psychlasterror
-% psychlasterror - Replacement for Matlab-7 builtin 'lasterror'.
+% psychlasterror - Replacement for Matlab-7 'lasterror'.
 % This is hopefully useful for older Matlab installations and
 % for the Octave port:
 %
-% If the 'lasterror' variable is supported on
-% your Matlab installation, this function will return it.
+% If the 'lasterror' variable, M-File or builtin function
+% is supported on your Matlab installation, this function
+% will return it.
 %
-% If your Matlab lacks this variable, this function
-% will return the older lasterr variable instead.
+% Otherwise, this function will return the older lasterr
+% variable instead.
 
-if exist('lasterror', 'builtin') > 0
+% exist must check for all cases, as lasterror is implemented differently
+% on different Matlab versions (variable, M-File or builtin-function):
+if exist('lasterror') > 0
   % Call Matlab implementation:
   rc = lasterror;
 else
