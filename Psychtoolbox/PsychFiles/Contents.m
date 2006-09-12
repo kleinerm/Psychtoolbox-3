@@ -5,6 +5,7 @@
 %   BreakLines              - Break string into lines and terminators. 
 %   FindFolder              - Find a folder on MATLAB path.
 %   LiteralUnderscore       - Insert escape ("\") before each underscore char in string.
+%   QuoteString		    - Wraps a string in quotes.
 %   ReadStructsFromText     - Read struct array from a tab delimited text file.
 %   ReplaceLineTerminators  - Strip and replace line terminators.  
 %   SaveAsEps               - Save matrix as an EPS file.

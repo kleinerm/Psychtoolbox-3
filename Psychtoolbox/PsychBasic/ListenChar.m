@@ -9,7 +9,7 @@ function ListenChar(listenFlag)
 % supplied.  Passing 0 will turn off character listening and reset the
 % buffer which holds the captured characters.
 %
-% This function isn't entirely necessary turn on listening as calling
+% This function isn't entirely necessary to turn on listening as calling
 % GetChar, CharAvail, or FlushEvents will trigger listening on.  However,
 % it is the only method by which to disable listening.
 %
