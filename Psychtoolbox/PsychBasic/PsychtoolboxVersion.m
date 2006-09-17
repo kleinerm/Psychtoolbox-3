@@ -74,6 +74,8 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 %   5/5/06     mk       Tries to query info from Subversion and displays info about last date
 %                       of change, SVN revision and flavor. This code is pretty experimental and
 %                       probably also somewhat fragile. And its sloooow.
+%   9/17/06    mk       Improvements to parser: We try harder to get the flavor info.
+
 global Psychtoolbox
 
 if IsOS9
@@ -120,17 +122,22 @@ elseif IsOSX | IsLinux | IsWin
         
         % Find revision string for Psychtoolbox that defines the SVN revision
         % to which this working copy corresponds:
-        [status , result] = system([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+        if ~IsWin
+           [status , result] = system([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+        else
+           [status , result] = dos([svncmdpath 'svnversion -c ' PsychtoolboxRoot]);
+        end
+        
         if status==0
             % Parse output of svnversion: Find revision number of the working copy.
-            colpos=strfind(result, ':');
+            colpos=findstr(result, ':');
             if isempty(colpos)
                 Psychtoolbox.version.revision=sscanf(result, '%d',1);
             else
                 cvv = sscanf(result, '%d:%d',2);
                 Psychtoolbox.version.revision=cvv(2);
             end
-            if isempty(strfind(result, 'M'))
+            if isempty(findstr(result, 'M'))
                 Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d', Psychtoolbox.version.revision);
             else
                 Psychtoolbox.version.revstring = sprintf('Corresponds to SVN Revision %d but is *locally modified* !', Psychtoolbox.version.revision);
@@ -141,16 +148,30 @@ elseif IsOSX | IsLinux | IsWin
             status=-1;
             if status<0 | status>0
                 % Fallback path:
-                [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
+                if ~IsWin
+                   [status , result] = system([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
+                else
+                   [status , result] = dos([svncmdpath 'svn info --xml ' PsychtoolboxRoot]);
+                end
             end
             
-            startdel = strfind(result, '/osxptb/') + length('/osxptb/');
-            findel = min(strfind(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
+            startdel = findstr(result, '/osxptb/') + length('/osxptb/');
+            
+            if isempty(startdel)
+                if ~IsWin
+                   [status , result] = system([svncmdpath 'svn info ' PsychtoolboxRoot]);
+                else
+                   [status , result] = dos([svncmdpath 'svn info ' PsychtoolboxRoot]);
+                end
+                startdel = findstr(result, '/osxptb/') + length('/osxptb/');
+            end
+            
+            findel = min(findstr(result(startdel:length(result)), '/Psychtoolbox')) + startdel - 2;
             Psychtoolbox.version.flavor = result(startdel:findel);
             
             % And the date of last commit:
-            startdel = strfind(result, '<date>') + length('<date>');
-            findel = strfind(result, 'T') - 1;
+            startdel = findstr(result, '<date>') + length('<date>');
+            findel = findstr(result, 'T') - 1;
             Psychtoolbox.date = result(startdel:findel);            
             % Build final SVN URL: This is the location where one can find detailled info about this working copy:
             Psychtoolbox.version.websvn = sprintf('http://svn.berlios.de/wsvn/osxptb/?rev=%d&sc=0', Psychtoolbox.version.revision);
