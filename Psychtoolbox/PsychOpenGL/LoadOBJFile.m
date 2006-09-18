@@ -1,5 +1,5 @@
-function objobject=LoadOBJFile(modelname, debug)
-% objobject=LoadOBJFile(modelname, debug)
+function objobject=LoadOBJFile(modelname, debug, preparse)
+% objobject=LoadOBJFile(modelname [, debug] [, preparse])
 %
 % Load an Alias/Wavefront ASCII-OBJ file and return description of corresponding 3D
 % models in 'objobject'. The current implementation will only consider polygons
@@ -12,6 +12,11 @@ function objobject=LoadOBJFile(modelname, debug)
 % Parameters:
 % 'modelname' Filename of the OBJ file to read.
 % 'debug' (Optional) If set to non-zero, some debug output is written to the Matlab prompt.
+% 'preparse' (Optional) If set to non-zero (default), some preparsing is
+% done to speed up loading of large OBJ files. Preparsing assumes that all
+% vertices, texture coordinates and face indices contain 3 components. If
+% loading of your OBJ file fails, retry with preparse==0 to use a more
+% generic but slow loader.
 %
 % Return values:
 % 'objobject' objobject is a cell array of structs. For each mesh in the
@@ -61,12 +66,16 @@ function objobject=LoadOBJFile(modelname, debug)
 % HISTORY
 % 31/03/06, written by Mario Kleiner, derived from W.S. Harwins code.
 
-if nargin <1 
+if nargin<1 
   error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
 end;
 
-if nargin <2
+if nargin<2
     debug = 0;
+end;
+
+if nargin<3
+    preparse = 1;
 end;
 
 fid = fopen(modelname,'rt');
@@ -74,92 +83,120 @@ if (fid<0)
     error(['Could not open file: ' modelname]);
 end;
 
+if preparse>0
+    % Pre-Parse pass: Load the whole file into a matlab matrix and then count
+    % number of vertices et al. to quickly determine the storage requirements.
+    preobj = fread(fid, inf, 'uint8=>char')';
+    vnum = length(findstr(preobj, 'v '));
+    vtnum = length(findstr(preobj, 'vt '));
+    vnnum = length(findstr(preobj, 'vn '));
+    f3num = length(findstr(preobj, 'f '));
+
+    % Preallocate output arrays, based on the element counts from the
+    % preparse-pass: We may allocate slightly too much, but this should not be
+    % a problem, as the real parse pass will correct this.
+    Vertices=zeros(3,vnum);
+    Faces=zeros(3,f3num);
+    Texcoords=zeros(3,vtnum);
+    Normals=zeros(3,vnnum);
+    QuadFaces=[];
+
+    % Rewind to beginning of file in preparation of real data parse pass:
+    frewind(fid);
+else
+    % We do not preallocate, but just create empty arrays. This is needed
+    % to accomodate for the special cases where an item has a
+    % component-count other than 3, e.g., pure 2D texture coordinates.
+    Vertices=[];
+    Faces=[];
+    Texcoords=[];
+    Normals=[];
+    QuadFaces=[];
+end;
+
+% Reset all counts: We recount during real data parse pass to play safe:
 vnum=1;
 f3num=1;
 f4num=1;
 vtnum=1;
 vnnum=1;
-gnum=1;
 meshcount=1;
-
-Vertices=[];
-Faces=Vertices;
-Texcoords=Vertices;
-Normals=Vertices;
-QuadFaces=Vertices;
+totalcount=0;
 
 % Line by line parsing of the obj file
 Lyn=fgets(fid);
 while Lyn>=0
-  s=sscanf(Lyn,'%s',1);
-  l=length(Lyn);
-  if l==0  % isempty(s) ; 
-    if (debug) disp(['empty' Lyn]); end;
-  end
+    s=sscanf(Lyn,'%s',1);
+    l=length(Lyn);
+
     switch s
-    case '#' % comment
-      if debug disp(Lyn); end;
-    case 'v' % vertex
-      v=sscanf(Lyn(2:l),'%f');
-      Vertices(:,vnum)=v;
-      vnum=vnum+1;
-    case 'vt'			% textures
-      v=sscanf(Lyn(3:l),'%f');
-      Texcoords(:,vtnum)=v;
-      vtnum=vtnum+1;
-    case 'g' % mesh??
-      if (debug) disp(Lyn); end;
-    case 'usemtl' % what is this??
-        if (debug) disp(Lyn); end;
-    case 'vn' % normals
-      v=sscanf(Lyn(3:l),'%f');
-      Normals(:,vnnum)=v;
-      vnnum=vnnum+1;
-    case 'f' % faces
-      Lyn=deblank(Lyn(3:l));
-      nvrts=length(findstr(Lyn,' '))+1;
-      fstr=findstr(Lyn,'/');
-      nslash=length(fstr);
-      if nvrts == 3
-        if nslash ==3 % vertex and textures
-          f1=sscanf(Lyn,'%f/%f');
-          f1=f1([1 3 5]);
-        elseif nslash==6 % vertex, textures and normals, 
-          f1=sscanf(Lyn,'%f/%f/%f');
-          f1=f1([1 4 7]);
-        elseif nslash==0
-          f1=sscanf(Lyn,'%f');
-        else
-          if (debug) disp(['xyx' Lyn]); end;
-          f1=[];
-        end
-        Faces(:,f3num)=f1;
-        f3num=f3num+1;
-      elseif nvrts == 4
-        if nslash == 4
-          f1=sscanf(Lyn,'%f/%f');
-          f1=f1([1 3 5 7]);
-        elseif nslash == 8
-          f1=sscanf(Lyn,'%f/%f/%f');
-          f1=f1([1 4 7 10]);
-        elseif nslash ==0
-          f1=sscanf(Lyn,'%f');
-        else
-          if (debug) disp(['xx' Lyn]); end;
-          f1=[];
-        end
-        F4(:,f4num)=f1;
-        f4num=f4num+1;
-      end 
-     
-    otherwise 
-      if ~strcmp(Lyn,char([13 10]))
-        if (debug) disp(['OBJ entry unprocessed: ' Lyn]); end;
-      end
+        case 'f' % faces
+            Lyn=deblank(Lyn(3:l));
+            nvrts=length(findstr(Lyn,' '))+1;
+            fstr=findstr(Lyn,'/');
+            nslash=length(fstr);
+            if nvrts == 3
+                if nslash ==3 % vertex and textures
+                    f1=sscanf(Lyn,'%f/%f');
+                    f1=f1([1 3 5]);
+                elseif nslash==6 % vertex, textures and normals,
+                    f1=sscanf(Lyn,'%f/%f/%f');
+                    f1=f1([1 4 7]);
+                elseif nslash==0
+                    f1=sscanf(Lyn,'%f');
+                else
+                    if (debug>1), disp(['xyx' Lyn]); end;
+                    f1=[];
+                end
+                Faces(:,f3num)=f1;
+                f3num=f3num+1;
+            elseif nvrts == 4
+                if nslash == 4
+                    f1=sscanf(Lyn,'%f/%f');
+                    f1=f1([1 3 5 7]);
+                elseif nslash == 8
+                    f1=sscanf(Lyn,'%f/%f/%f');
+                    f1=f1([1 4 7 10]);
+                elseif nslash ==0
+                    f1=sscanf(Lyn,'%f');
+                else
+                    if (debug>1), disp(['xx' Lyn]); end;
+                    f1=[];
+                end
+                F4(:,f4num)=f1;
+                f4num=f4num+1;
+            end
+        case 'v'  % vertex
+            Vertices(:,vnum)=sscanf(Lyn(2:l),'%f');
+            vnum=vnum+1;
+        case 'vt' % textures
+            Texcoords(:,vtnum)=sscanf(Lyn(3:l),'%f');
+            vtnum=vtnum+1;
+        case 'vn' % normals
+            Normals(:,vnnum)=sscanf(Lyn(3:l),'%f');
+            vnnum=vnnum+1;
+        case '#'  % comment
+            if debug>1 , disp(Lyn); end;
+        case 'g'  % mesh.
+            if (debug>1), disp(Lyn); end;
+        case 'usemtl' % what is this??
+            if (debug>1), disp(Lyn); end;
+        otherwise
+            if ~strcmp(Lyn,char([13 10]))
+                if (debug>1), disp(['OBJ entry unprocessed: ' Lyn]); end;
+            end
     end
-  
-  Lyn=fgets(fid);
-end
+
+    if debug>0
+        % Display progress output:
+        totalcount = totalcount + 1;
+        if mod(totalcount, 5000)==0
+            disp(['At line ' num2str(totalcount)]);
+        end;
+    end;
+
+    Lyn=fgets(fid);
+end;
 
 fclose(fid);
 
