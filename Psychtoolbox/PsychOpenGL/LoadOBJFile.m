@@ -65,6 +65,7 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 %
 % HISTORY
 % 31/03/06, written by Mario Kleiner, derived from W.S. Harwins code.
+% 18/09/06, Speedup for common OBJ files due to memory preallocation. (MK)
 
 if nargin<1 
   error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
@@ -87,18 +88,18 @@ if preparse>0
     % Pre-Parse pass: Load the whole file into a matlab matrix and then count
     % number of vertices et al. to quickly determine the storage requirements.
     preobj = fread(fid, inf, 'uint8=>char')';
-    vnum = length(findstr(preobj, 'v '));
-    vtnum = length(findstr(preobj, 'vt '));
-    vnnum = length(findstr(preobj, 'vn '));
-    f3num = length(findstr(preobj, 'f '));
+    prevnum = length(findstr(preobj, 'v '));
+    prevtnum = length(findstr(preobj, 'vt '));
+    prevnnum = length(findstr(preobj, 'vn '));
+    pref3num = length(findstr(preobj, 'f '));
 
     % Preallocate output arrays, based on the element counts from the
     % preparse-pass: We may allocate slightly too much, but this should not be
     % a problem, as the real parse pass will correct this.
-    Vertices=zeros(3,vnum);
-    Faces=zeros(3,f3num);
-    Texcoords=zeros(3,vtnum);
-    Normals=zeros(3,vnnum);
+    Vertices=zeros(3,prevnum);
+    Faces=zeros(3,pref3num);
+    Texcoords=zeros(3,prevtnum);
+    Normals=zeros(3,prevnnum);
     QuadFaces=[];
 
     % Rewind to beginning of file in preparation of real data parse pass:
@@ -112,6 +113,7 @@ else
     Texcoords=[];
     Normals=[];
     QuadFaces=[];
+    prevtnum=1;
 end;
 
 % Reset all counts: We recount during real data parse pass to play safe:
@@ -170,7 +172,26 @@ while Lyn>=0
             Vertices(:,vnum)=sscanf(Lyn(2:l),'%f');
             vnum=vnum+1;
         case 'vt' % textures
-            Texcoords(:,vtnum)=sscanf(Lyn(3:l),'%f');
+            try
+                % Try to assign texture coordinate:
+                Texcoords(:,vtnum)=sscanf(Lyn(3:l),'%f');
+            catch
+                % Failed. Most common reason is that this is not a 3
+                % component texture coordinate, so our preallocated array
+                % is of wrong size in 1st dimension.
+                if vtnum==1
+                    % Try to determine real number of components and then
+                    % reallocate a proper texture coordinate array:
+                    ncomponents = size(sscanf(Lyn(3:l),'%f'),1);
+                    Texcoords=zeros(ncomponents, prevtnum);
+                    % Restart assignment:
+                    Texcoords(:,vtnum)=sscanf(Lyn(3:l),'%f');                    
+                else
+                    % Failed for some unknown reason. Just throw an error
+                    % and abort.
+                    psychrethrow(psychlasterror);
+                end
+            end
             vtnum=vtnum+1;
         case 'vn' % normals
             Normals(:,vnnum)=sscanf(Lyn(3:l),'%f');
