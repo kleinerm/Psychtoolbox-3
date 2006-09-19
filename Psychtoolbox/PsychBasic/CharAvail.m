@@ -2,13 +2,18 @@ function [avail, numChars] = CharAvail
 % [avail, numChars] = CharAvail
 %
 % CharAvail returns the availability of characters in the keyboard event
-% queue and the queue's current size. "avail" will be 1 if characters are
-% available, 0 otherwise.  "numChars" will hold the current number of
-% characters in the event queue.
+% queue and sometimes the queue's current size. "avail" will be 1 if characters are
+% available, 0 otherwise.  "numChars" may hold the current number of
+% characters in the event queue, but in some system configurations it is
+% just empty, so do not rely on numChars providing meaningful results,
+% unless you've tested it on your specific setup.
 %
 % Note that this routine does not actually remove characters from the event
 % queue.  Call GetChar to remove characters from the queue.
 %
+% CharAvail works on all platforms with Matlab and Java enabled. It works
+% also on M$-Windows under matlab -nojvm mode. It does not work on OS-X or
+% Linux in Matlab -nojvm mode and it also doesn't work under GNU/Octave.
 % 
 % Mac:
 % 	Command-Period always causes an immediate exit.
@@ -44,27 +49,49 @@ function [avail, numChars] = CharAvail
 % 8/16/06   cgb Now using a much faster method to get characters in Matlab.
 %               We now read straight from the keyboard event manager in
 %               java.
+% 9/18/06  mk   CharAvail now works on all Matlabs (OS-X, Windows) in JVM
+%               mode. In -nojvm mode on Windows, it falls back to the old
+%               Windows DLL ...
 
 global OSX_JAVA_GETCHAR;
 
 if IsOS9
     avail = EventAvail('keyDown');
-elseif IsOSX     
-    % Make sure that the GetCharJava class is loaded and registered with
-    % the java focus manager.
-    if isempty(OSX_JAVA_GETCHAR)
-        OSX_JAVA_GETCHAR = GetCharJava;
-        OSX_JAVA_GETCHAR.register;
+else
+    if ~IsOctave
+        if isempty(javachk('awt'))
+            % Make sure that the GetCharJava class is loaded and registered with
+            % the java focus manager.
+            if isempty(OSX_JAVA_GETCHAR)
+                OSX_JAVA_GETCHAR = GetCharJava;
+                OSX_JAVA_GETCHAR.register;
+            end
+
+            % Check to see if any characters are available.
+            avail = OSX_JAVA_GETCHAR.getCharCount;
+
+            % Make sure that there isn't a buffer overflow.
+            if avail == -1
+                error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+            end
+
+            numChars = avail;
+            avail = avail > 0;
+        else
+            % Java VM unavailable, i.e., running in -nojvm mode.
+            % On Windows, we can fall back to the old CharAvail.dll.
+            if IsWin
+                % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
+                avail = CharAvailNoJVM;
+                numChars = [];
+                return;
+            else
+                % There's no replacement for Java GetChar on OS-X or Linux :(
+                error('Sorry! CharAvail is not supported in ''matlab -nojvm'' mode on MacOS-X or GNU/Linux.');
+            end
+        end
+    else
+        % Running on Octave! That is a no go.
+        error('Sorry! CharAvail is not yet supported on GNU/Octave.');
     end
-    
-    % Check to see if any characters are available.
-    avail = OSX_JAVA_GETCHAR.getCharCount;
-    
-    % Make sure that there isn't a buffer overflow.
-    if avail == -1
-        error('GetChar buffer overflow. Use "FlushEvents" to clear error');
-    end
-    
-    numChars = avail;
-    avail = avail > 0;
 end
