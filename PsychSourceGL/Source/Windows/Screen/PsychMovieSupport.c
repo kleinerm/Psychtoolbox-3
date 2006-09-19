@@ -3,7 +3,7 @@
 	
 	PLATFORMS:	
 	
-		This is the OS X Core Graphics version.  
+		This is the Microsoft Windows version.  
 				
 	AUTHORS:
 	
@@ -719,16 +719,6 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // standard OpenGL texture:
                
         // Build a standard PTB texture record:    
-
-        // Assign texture rectangle:
-        GetMovieBox(theMovie, &rect);
-
-        // Hack: Need to extend rect by up to 4 pixels, because GWorlds are 4 pixels-aligned via
-        // image row padding:
-        padding = (4 - ((rect.right - rect.left) % 4) ) % 4;
-		  // printf("Padding set to %i\n", padding);
-        rect.right = rect.right + padding;
-        PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
         
         // Set NULL - special texture object as part of the PTB texture record:
         out_texture->targetSpecific.QuickTimeGLTexture = NULL;
@@ -745,30 +735,40 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
             PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromMovie(): Locking GWorld pixmap surface failed!!!");
         }
         
+        // Assign texture rectangle:
+        GetMovieBox(theMovie, &rect);
+
+        // Hack: Need to extend rect by up to 4 pixels, because GWorlds are 4 pixels-aligned via
+        // image row padding:
+        // padding = (4 - ((rect.right - rect.left) % 4) ) % 4;
+        // rect.right = rect.right + padding;
+	padding = rect.left + QTGetPixMapHandleRowBytes(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld)) / 4;
+        PsychMakeRect(out_texture->rect, rect.left, rect.top, padding, rect.bottom);    
+
         // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld));
             
-		  // Assign a reference to our movieHandle - slot for the caching mechanism.
-		  // This is used by PsychFreeMovieTexture() to find the texture cache of our
-		  // movie object:
-		  out_texture->texturecache_slot = moviehandle;
+	// Assign a reference to our movieHandle - slot for the caching mechanism.
+	// This is used by PsychFreeMovieTexture() to find the texture cache of our
+	// movie object:
+	out_texture->texturecache_slot = moviehandle;
 
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content. We assign the texid from our
-		  // our texture cache, if any, so it gets possibly reused.
-		  out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
+	// our texture cache, if any, so it gets possibly reused.
+	out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
         PsychCreateTexture(out_texture);
 
-		  // After PsychCreateTexture() the cached texture object from our cache is used
-		  // and no longer available for recycling. We mark the cache as empty:
-		  // It will be filled with a new textureid for recycling if a texture gets
+	// After PsychCreateTexture() the cached texture object from our cache is used
+	// and no longer available for recycling. We mark the cache as empty:
+	// It will be filled with a new textureid for recycling if a texture gets
         // deleted in PsychMovieDeleteTexture()....
-		  movieRecordBANK[moviehandle].cached_texture = 0;
+	movieRecordBANK[moviehandle].cached_texture = 0;
 
         // Undo hack from above after texture creation: Now we need the real width of the
         // texture for proper texture coordinate assignments in drawing code et al.
-        rect.right = rect.right - padding;
+        // rect.right = rect.right - padding;
         PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
 
         // Unlock GWorld surface.

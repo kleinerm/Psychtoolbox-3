@@ -218,23 +218,28 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 /* PsychGetMouseButtonState: Returns current mouse button up-/down state. Called by SCREENGetMouseHelper. */
 void PsychGetMouseButtonState(double* buttonArray)
 {
-	MSG msg;
+  // MSG msg;
 
 	// Run our message dispatch loop until we've processed all mouse-related events
 	// in the queue:
-	while(PeekMessage(&msg, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) {
-		// Mouse event in queue. Dispatch it to our WndProc...
-		TranslateMessage(&msg);
-		// The WndProc will keep track of the current mouse button state by
-		// updating it according to the UP or DOWN message.
-		DispatchMessage(&msg);
-	}
+	//	while(PeekMessage(&msg, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) {
+	//	// Mouse event in queue. Dispatch it to our WndProc...
+	//	TranslateMessage(&msg);
+	//	// The WndProc will keep track of the current mouse button state by
+	//	// updating it according to the UP or DOWN message.
+	//	DispatchMessage(&msg);
+	// }
 
 	// The routine expects a preallocated 3-element double matrix for the three mouse-buttons:
 	// It simply copies our internally held current state to the output matrix:
-	buttonArray[0]=(double) mousebutton_l;
-	buttonArray[1]=(double) mousebutton_m;
-	buttonArray[2]=(double) mousebutton_r;
+	//buttonArray[0]=(double) mousebutton_l;
+	//buttonArray[1]=(double) mousebutton_m;
+	//buttonArray[2]=(double) mousebutton_r;
+
+	buttonArray[0]=(double) ((GetAsyncKeyState(VK_LBUTTON) & -32768) ? 1 : 0);
+	buttonArray[1]=(double) ((GetAsyncKeyState(VK_MBUTTON) & -32768) ? 1 : 0);
+	buttonArray[2]=(double) ((GetAsyncKeyState(VK_RBUTTON) & -32768) ? 1 : 0);
+
 	return;
 }
 
@@ -674,10 +679,10 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     ShowWindow(hWnd, SW_SHOW);
 
     // Give it higher priority than other applications windows:
-    SetForegroundWindow(hWnd);
+    // Disabled: Interferes with JAVA-GetChar: SetForegroundWindow(hWnd);
 
     // Set the focus on it:
-    SetFocus(hWnd);
+    // Disabled: Interferes with JAVA-GetChar: SetFocus(hWnd);
 
     // Capture the window if it is a fullscreen one: This window will receive all
     // mouse move and mouse button press events. Important for GetMouse() to work

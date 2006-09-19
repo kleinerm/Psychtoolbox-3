@@ -637,11 +637,6 @@ PsychError SCREENDrawText(void)
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
     if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
-    if(!doSetColor){
-      whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
-      PsychLoadColorStruct(&colorArg, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
-    }
-    PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &colorArg);
 
     // Same for background color: FIXME This is currently a no-op. Don't know yet how to
     // map this to the Windows way of font rendering...
@@ -649,10 +644,11 @@ PsychError SCREENDrawText(void)
     if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
 
     PsychSetGLContext(winRec);
+
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
-    PsychSetGLColor(&colorArg, depthValue);
+    PsychSetGLColor(&(winRec->textAttributes.textColor), depthValue);
 
     // Does the font (better, its display list) need to be build or rebuild, because
     // font name, size or settings have changed?
