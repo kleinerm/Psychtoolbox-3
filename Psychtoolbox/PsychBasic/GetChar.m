@@ -6,6 +6,12 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % Characters flushed by FlushEvents are all ignored by GetChar. Characters
 % are returned in the first return argument "ch".
 % 
+% CAUTION: Do not rely on the keypress timestamps returned by GetChar
+% without fully reading and understanding this help text. Run your own
+% timing tests on GetChar and KbCheck to verify that the timing is good
+% enough and avoid GetChar for timed keypresses if possible at all. Use
+% KbWait and KbCheck instead.
+%
 % The main purpose of GetChar is to reliably collect keyboard input in the
 % background while your experiment script is occupied with performing other
 % operations, e.g., Matlab computations, sound output or visual stimulus
@@ -53,12 +59,26 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % character, even though it took the user three keypresses (counting the
 % option key) to produce it.
 % 
-% CharAvail and GetChar call the Event Manager, which allows the system to
-% get control. Sometimes CharAvail will take tens of milliseconds to
-% return, so don't use CharAvail in real-time loops. And there can be some
-% delay between when the key is pressed and when CharAvail or GetChar
-% detects it. If precise timing of the keypress is important, use KbCheck
-% or KbWait.
+% There can be some delay between when the key is pressed and when CharAvail
+% or GetChar detects it, due to internal processing overhead in Matlabs Java
+% implementation. GetChar internally collects timestamps in the timebase
+% used by Matlabs Java implementation, whereas other Psychtoolbox timing functions
+% (GetSecs, Screen('Flip'), KbCheck, KbWait, ...) use time reported by some
+% high precision system timer. The "when.secs" time reported by GetChar is
+% converted from Java timebase to Psychtoolboxs timebase. Due to conversion
+% errors mostly out of our control, the reported values can be off by
+% multiple dozen or even hundreds of milliseconds from what KbWait, KbCheck
+% or GetSecs would report. Example: A high-end Pentium-4 3.2 Ghz system
+% running Windows-XP has been measured to be off by 40 to 70 milliseconds.
+%
+% Some Java implementations are also known to have problems/bugs in
+% timestamping keyboard presses properly and each Matlab version on each
+% operating system is bundled with a different Java version, so some Matlab
+% versions may be reliable with respect to GetChars timing, whereas others
+% are not.
+%
+% ---> If precise timing of the keypress is important, use KbCheck or
+% KbWait for consistent results!
 %
 % OS X / Windows / Linux with Matlab and Java enabled: ____________________
 %
@@ -68,7 +88,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % the Matlab file "classpath.txt" (enter which('classpath.txt') to find the
 % location of that file). If the installer fails to edit the file properly,
 % you'll need to perform that step manually by following the instructions
-% of the installer.
+% of the installer. See 'help PsychJavaTrouble' for more infos on this.
 %
 % KEYSTROKES IN THE BACKGROUND: Under OS 9, keyboard input is automatically
 % directed to the Getchar queue while a script or function executes in
@@ -83,7 +103,7 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % OTHER "when" RETURN ARGUMENT FIELDS: Owing to differences in what
 % accessory information the underlying operating systems provides about
 % keystrokes, "when' return argument fields differs between OS 9 and OS X.
-% GetChar sets fields for which it returns no value to value Nan.  
+% GetChar sets fields for which it returns no value to the value 'Nan'.  
 %
 % OS 9: ___________________________________________________________________
 %
@@ -94,7 +114,8 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % 	Screen('Preference','Backgrounding',0); 
 % _________________________________________________________________________
 %
-% See also: ListenChar, CharAvail, EventAvail, GetCharTest, KbCheck
+% See also: ListenChar, CharAvail, FlushEvents, TestGetChar, KbCheck,
+% KbWait
 
 
 
@@ -168,7 +189,7 @@ global OSX_JAVA_GETCHAR;
 % Octaves lack of a Java virtual machine.
 if ~IsOctave
     % This is Matlab. Is the Java VM and AWT running?
-    if isempty(javachk('awt'))
+    if psychusejava('awt')
         % Java virtual machine and AWT are running. Use our Java based
         % GetChar.
         
@@ -184,7 +205,11 @@ if ~IsOctave
         % Make sure that the GetCharJava class is loaded and registered with
         % the java focus manager.
         if isempty(OSX_JAVA_GETCHAR)
-            OSX_JAVA_GETCHAR = GetCharJava;
+            try
+                OSX_JAVA_GETCHAR = GetCharJava;
+            catch
+                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+            end
             OSX_JAVA_GETCHAR.register;
         end
 

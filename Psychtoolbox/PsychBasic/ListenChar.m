@@ -34,7 +34,7 @@ global OSX_JAVA_GETCHAR;
 % no operation.
 if ~IsOctave
     % This is Matlab. Is the JVM running?
-    if isempty(javachk('awt'))
+    if psychusejava('awt')
         % Java enabled. There's work to do.
         if nargin == 0
             listenFlag = 1;
@@ -44,7 +44,11 @@ if ~IsOctave
 
         % Make sure that the GetCharJava class is loaded.
         if isempty(OSX_JAVA_GETCHAR)
-            OSX_JAVA_GETCHAR = GetCharJava;
+            try
+                OSX_JAVA_GETCHAR = GetCharJava;
+            catch
+                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+            end
         end
 
         if listenFlag

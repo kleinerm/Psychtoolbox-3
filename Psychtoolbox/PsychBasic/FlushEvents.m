@@ -37,11 +37,15 @@ global OSX_JAVA_GETCHAR;
 
 if ~IsOctave
     % This is Matlab. Is the Java VM and AWT running?
-    if isempty(javachk('awt'))
+    if psychusejava('awt')
         % Make sure that the GetCharJava class is loaded and registered with
         % the java focus manager.
         if isempty(OSX_JAVA_GETCHAR)
-            OSX_JAVA_GETCHAR = GetCharJava;
+            try
+                OSX_JAVA_GETCHAR = GetCharJava;
+            catch
+                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+            end
             OSX_JAVA_GETCHAR.register;
         end
 
@@ -59,8 +63,10 @@ if ~IsOctave
             end
         end;
         
-        % Clear the internal queue of characters:
-        OSX_JAVA_GETCHAR.clear;
+        if doclear == 1
+            % Clear the internal queue of characters:
+            OSX_JAVA_GETCHAR.clear;
+        end
     else
         % Java VM unavailable, i.e., running in -nojvm mode.
         % On Windows, we can fall back to the old FlushEvents.dll.

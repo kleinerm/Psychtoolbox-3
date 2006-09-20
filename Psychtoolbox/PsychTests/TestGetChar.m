@@ -108,6 +108,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
     % inaccurate because  
     fprintf('\nGetCharTest tests the Psychtoolbox function "GetChar". ');
     query=1;
+    ListenChar;
     FlushEvents('keyDown');
     while query
         fprintf('Proceed with the test [Y/N]? ');
@@ -129,7 +130,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         % TEST 1 of 6: CharAvail
         if nargin==0 || (nargin==1 && startAt == 1)
             fprintf('\n');
-            fprintf('GetChar test 1 of 6: CharAvail\n');
+            fprintf('GetChar test 1 of 7: CharAvail\n');
             fprintf('  CharAvail reports if a keyboard key has been pressed, but without removing keys from the GetChar queue.\n');
             fprintf('  We will test CharAvail by flushing all characters from the GetChar queue, looping until CharAvail reports\n');
             fprintf('  a keypress and then reading that keypress using GetChar.\n');
@@ -149,7 +150,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         % TEST 2 of 6: FlushEvents
         if nargin==0 || (nargin==1 && startAt <= 2)
             fprintf('\n');
-            fprintf('GetChar test 2 of 6: FlushEvents\n');
+            fprintf('GetChar test 2 of 7: FlushEvents\n');
             fprintf('  FlushEvents removes all characters from the GetChar queue.\n');
             fprintf('  We will test FlushEvents by gathering keypresses, flushing them, then checking to see if the queue is empty\n');
             fprintf('  by using CharAvail.\n');
@@ -185,7 +186,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         % TEST 3 of 6: ListenChar
         if nargin==0 || (nargin==1 && startAt <= 3)
             fprintf('\n');
-            fprintf('GetChar test 3 of 6: ListenChar\n');
+            fprintf('GetChar test 3 of 7: ListenChar\n');
             fprintf('  ListenChar directs keyboard input to the GetChar queue.  We will test ListenChar by first.\n');
             fprintf('  directing keyboard input to the MATLAB command window, then redirecting it to the GetChar queue\n');
             fprintf('  using ListenChar, then checking for a character.\n');
@@ -204,7 +205,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         % TEST 4 of 6: Typing
         if nargin==0 || (nargin==1 && startAt <= 4)
             fprintf('\n');
-            fprintf('GetChar test 4 of 6: Typing Test\n');
+            fprintf('GetChar test 4 of 7: Typing Test\n');
             fprintf('  Getchar should reliably return characters.  Type and display characters to check for errors.\n');
             fprintf('      Entering the GetChar loop, Use the "Q" key to quit...\n');
             fprintf('\n      ');
@@ -226,7 +227,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         closeSecondWindow=0;
         if nargin==0 || (nargin==1 && startAt <= 5)
             fprintf('\n');
-            fprintf('GetChar test 5 of 6: Interoperability with Fullscreen Windows\n');
+            fprintf('GetChar test 5 of 7: Interoperability with Fullscreen Windows\n');
             fprintf('  Test Using GetChar at the same time fullscreen windows are open.  We will open fullscreen.\n');
             fprintf('  Windows on all screens and then use GetChar to gather and display kepresses.\n');
             % Pause...  
@@ -343,7 +344,7 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
         % TEST 6 of 6: GetChar during WaitSecs
         if nargin==0 || (nargin==1 && startAt <= 6)
             fprintf('\n');
-            fprintf('GetChar test 6 of 6: GetChar during WaitSecs\n');
+            fprintf('GetChar test 6 of 7: GetChar during WaitSecs\n');
             fprintf('  Test Using GetChar to gather keypresses during WaitSecs. Unlike KbCheck, GetChar should.\n');
             fprintf('  detect keypresses in the background during WaitSecs.\n');
             fprintf('\n');
@@ -363,8 +364,33 @@ elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
             FlushEvents('keyDown');
             fprintf(['  You typed ' int2str(length(tChars)) ' characters during WaitSecs\n']);
             fprintf('  The characters which you typed are:\n');
-            fprintf(['  ' tChars '\n']);
+            fprintf(['  ' tChars '\n\n\n']);
         end
+        % TEST 7 of 7: Comparing GetChar timing with KbWait timing: Only
+        % makes sense with Java-based GetChar, skip test in -nojvm mode.
+        if (nargin==0 || (nargin==1 && startAt <= 7)) & (psychusejava('awt'))
+            fprintf('GetChar test 7 of 7: Comparison of keypress timing reported by KbWait and GetChar\n');
+            fprintf('  Timing test: The test will wait five times for a keypress of you. Each time, waiting\n');
+            fprintf('  is performed via KbWait. Then the typed character is retrieved via GetChar as well and\n');
+            fprintf('  the time stamps reported by KbWait and GetChar are compared to each other. The difference\n');
+            fprintf('  between both values will give you a feeling for how much the reported timing is off between\n');
+            fprintf('  KbWait and GetChar.\n\n');
+            for i=1:5
+                fprintf('Press a character key (a,b,c,d,e,...): ');
+                while KbCheck; end;
+                FlushEvents('keyDown');
+                t1=KbWait;
+                [ch, when]=GetChar;
+                tdelta = 1000 * (t1 - when.secs);
+                fprintf('Pressed %s. Time delta between KbWait and GetChar is %f milliseconds.\n', ch, tdelta);
+            end
+
+            fprintf('\n\n  Thanks for typing!\n\n');
+        end
+
+        % Disable listening and flush queue:
+        ListenChar(0);
+        
         fprintf('\n');
         fprintf('The GetCharTest has reached the end.  Thank you for testing.\n');
         fprintf('\n');

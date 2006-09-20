@@ -59,11 +59,15 @@ if IsOS9
     avail = EventAvail('keyDown');
 else
     if ~IsOctave
-        if isempty(javachk('awt'))
+        if psychusejava('awt')
             % Make sure that the GetCharJava class is loaded and registered with
             % the java focus manager.
             if isempty(OSX_JAVA_GETCHAR)
-                OSX_JAVA_GETCHAR = GetCharJava;
+                try
+                    OSX_JAVA_GETCHAR = GetCharJava;
+                catch
+                    error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+                end
                 OSX_JAVA_GETCHAR.register;
             end
 
