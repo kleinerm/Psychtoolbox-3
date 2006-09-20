@@ -648,6 +648,7 @@ PsychError SCREENDrawText(void)
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
+	 PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &(winRec->textAttributes.textColor));
     PsychSetGLColor(&(winRec->textAttributes.textColor), depthValue);
 
     // Does the font (better, its display list) need to be build or rebuild, because

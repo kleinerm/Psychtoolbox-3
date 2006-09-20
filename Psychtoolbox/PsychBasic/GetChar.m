@@ -193,7 +193,7 @@ if ~IsOctave
         while keepChecking
             % Check to see if a character is available, and stop looking if
             % we've found one.
-            charValue = OSX_JAVA_GETCHAR.getChar();
+            charValue = OSX_JAVA_GETCHAR.getChar;
             keepChecking = charValue == 0;
         end
 
@@ -219,7 +219,7 @@ if ~IsOctave
             when.controlKey = modifiers(2);
             when.optionKey = modifiers(3);
             when.shiftKey = modifiers(4);
-            rawEventTimeMs = OSX_JAVA_GETCHAR.getEventTime();  % result is in units of ms.
+            rawEventTimeMs = OSX_JAVA_GETCHAR.getEventTime;  % result is in units of ms.
             when.ticks = nan;
             when.secs = JavaTimeToGetSecs(rawEventTimeMs, -1);
         else

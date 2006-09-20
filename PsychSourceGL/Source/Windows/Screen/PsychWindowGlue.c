@@ -219,6 +219,8 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 void PsychGetMouseButtonState(double* buttonArray)
 {
   // MSG msg;
+	// Old-Style mouse button queries by parsing events in the event-queue and
+	// keeping track of state changes... Obsoleted by GetAsyncKeyState() below.
 
 	// Run our message dispatch loop until we've processed all mouse-related events
 	// in the queue:
@@ -236,6 +238,9 @@ void PsychGetMouseButtonState(double* buttonArray)
 	//buttonArray[1]=(double) mousebutton_m;
 	//buttonArray[2]=(double) mousebutton_r;
 
+	// GetAsyncKeyState() directly returns the current state of the physical mouse
+	// buttons, independent of window system event processing, keyboard or mouse
+	// focus and such. Much more robust.
 	buttonArray[0]=(double) ((GetAsyncKeyState(VK_LBUTTON) & -32768) ? 1 : 0);
 	buttonArray[1]=(double) ((GetAsyncKeyState(VK_MBUTTON) & -32768) ? 1 : 0);
 	buttonArray[2]=(double) ((GetAsyncKeyState(VK_RBUTTON) & -32768) ? 1 : 0);
@@ -309,7 +314,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   DWORD flags;
   boolean fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
-  DWORD windowExtendedStyle = WS_EX_APPWINDOW;
+  // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
+  // the new Java-GetChar can do its job.
+  DWORD windowExtendedStyle = WS_EX_APPWINDOW | 0x08000000; // const int WS_EX_NOACTIVATE = 0x08000000;
 
     // Map the logical screen number to a device handle for the corresponding
     // physical display device: CGDirectDisplayID is currently typedef'd to a
@@ -342,6 +349,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
     else {
       windowStyle |= WS_OVERLAPPEDWINDOW;
+      windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
     }
 
     // Define final position and size of window:

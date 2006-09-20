@@ -56,7 +56,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % OS X: ___________________________________________________________________
 %
 % Even if your mouse has more than three buttons, GetMouse will return as
-% many values as your mouse has buttons, 
+% many values as your mouse has buttons.
 %
 % _________________________________________________________________________
 %
@@ -65,15 +65,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % Limitations:
 %
 % GetMouse will always assume a three button mouse and therefore always 
-% return the state of three buttons. GetMouse will only report button state
-% while at least one onscreen window is opened. This is the case in normal
-% use, but it will fail to report button state if used as part of a Matlab
-% script that doesn't open an onscreen window. GetMouse may get confused
-% if you keep mouse buttons pressed down during the very first Screen('OpenWindow')
-% call, i.e. press down the mouse button before window appears and keep it
-% pressed after it appears. It will also fail to register that you release
-% mouse buttons if you keep the button pressed during calls to Screen('Close')
-% or Screen('CloseAll').
+% return the state of three buttons.
 %
 % _________________________________________________________________________
 % See also: GetClicks, SetMouse
@@ -111,6 +103,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % 18/04/06 fwc  fixed bug that prevented use of multiple mice (tested with 3)
 % 06/10/06 mk   Added Microsoft Windows support. Removed the old WinPTB GetMouse.dll
 %               which worked except for button state queries.
+% 09/20/06 mk   Updated help section for Windows: GetMouse now also works without onscreen windows.
 
 % We Cache the value of numMouseButtons between calls to GetMouse, so we
 % can skip the *very time-consuming* detection code on successive calls.
