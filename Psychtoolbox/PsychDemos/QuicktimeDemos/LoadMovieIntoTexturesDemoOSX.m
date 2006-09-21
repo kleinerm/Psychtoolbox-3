@@ -48,19 +48,14 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 % Abort if we don't:
 AssertOpenGL;
 
-if IsOSX
-   esc=KbName('ESCAPE');
-   space=KbName('SPACE');
-   right=KbName('RightArrow');
-   left=KbName('LeftArrow');
-end;
+% Switch KbName into unified mode: It will use the names of the OS-X
+% platform on all platforms in order to make this script portable:
+KbName('UnifyKeyNames');
 
-if IsWin
-   esc=KbName('esc');
-   space=KbName('space');
-   right=KbName('right');
-   left=KbName('left');
-end;
+esc=KbName('ESCAPE');
+space=KbName('SPACE');
+right=KbName('RightArrow');
+left=KbName('LeftArrow');
 
 if nargin < 1
     % Default movie is our own disc collision movie:

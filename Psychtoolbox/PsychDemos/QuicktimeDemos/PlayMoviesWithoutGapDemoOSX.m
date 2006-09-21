@@ -31,14 +31,11 @@ if nargin < 1
     moviename = '*.mov'
 end;
 
-% Adapt to different keyboard name mapping on Win vs. OS-X:
-if IsWin
-   esc=KbName('esc');
-end;
+% Switch KbName into unified mode: It will use the names of the OS-X
+% platform on all platforms in order to make this script portable:
+KbName('UnifyKeyNames');
 
-if IsOSX
-   esc=KbName('ESCAPE');
-end;
+esc=KbName('ESCAPE');
 
 try
     % Child protection

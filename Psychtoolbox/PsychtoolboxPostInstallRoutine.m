@@ -25,7 +25,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 23/06/2006 Written (MK).
 % 17/09/2006 Made working on Matlab-5 and Octave. Made more robust. (MK)
 
-fprintf('Running post-install routine...\n');
+fprintf('\n\nRunning post-install routine...\n\n');
 
 if nargin < 1
    error('PsychtoolboxPostInstallRoutine: Required argument isUpdate missing!');
@@ -79,8 +79,8 @@ end
 
 % Try to execute online registration routine: This should be fail-safe in case
 % of no network connection.
+fprintf('\n\n');
 PsychtoolboxRegistration(isUpdate, flavor);
-
 fprintf('\n\n\n');
 
 % If we're using Matlab on OSX, then add the PsychJava stuff to the static
@@ -155,7 +155,8 @@ if ~IsOctave
             end
             fclose(FID);
 
-            disp('*** Matlab''s Static Java classpath definition file modified. Please restart Matlab to enable use of the new Java components.');
+            fprintf('\n\n');
+            disp('*** Matlab''s Static Java classpath definition file modified. Please restart Matlab to enable use of the new Java components. ***');
         end
     catch
         lerr = psychlasterror;
@@ -171,7 +172,7 @@ if ~IsOctave
         fprintf('to the file: %s\n\n', classpathFile);        
         fprintf('If you skip this step, Psychtoolbox will still be mostly functional, \n');
         fprintf('with exception of the Java-based commands ListenChar, CharAvail, GetChar and FlushEvents\n');
-        fprintf('on Linux, MacOS-X and M$-Windows in Java mode.\n\n');
+        fprintf('on Linux, MacOS-X and M$-Windows in Java mode. For more info see ''help PsychJavaTrouble''.\n\n');
 
         % Restore the old classpath file if necessary.
         if exist('madeBackup', 'var')
@@ -184,6 +185,20 @@ if ~IsOctave
     end
 end % if IsOSX && ~IsOctave
 
+% Some goodbye, copyright and getting started blurb...
+fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n');
+fprintf('Psychtoolbox is free software; you can redistribute it and/or modify\n');
+fprintf('it under the terms of the GNU General Public License as published by\n');
+fprintf('the Free Software Foundation; either version 2 of the License, or\n');
+fprintf('(at your option) any later version. See the file ''License.txt'' in\n');
+fprintf('the Psychtoolbox root folder for exact licensing conditions.\n\n');
 
-fprintf('Done.\n');
+fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
+fprintf('Useful Psychtoolbox websites:\n');
+fprintf('web http://www.psychtoolbox.org -browser\n');
+fprintf('web http://en.wikibooks.org/wiki/Matlab:Psychtoolbox -browser\n');
+fprintf('Archive of Psychtoolbox announcements:\n');
+fprintf('web http://lists.berlios.de/pipermail/osxptb-announce/  -browser\n');
+
+fprintf('\nEnjoy!\n\n');
 return;

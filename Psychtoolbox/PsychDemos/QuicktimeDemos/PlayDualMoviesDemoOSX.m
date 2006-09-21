@@ -23,26 +23,17 @@ if nargin < 1
     moviename = '*.mov'
 end;
 
-if IsWin
-   space=KbName('space');
-   esc=KbName('esc');
-   right=KbName('right');
-   left=KbName('left');
-   up=KbName('up');
-   down=KbName('down');
-   shift=KbName('right_shift');
-end;
+% Switch KbName into unified mode: It will use the names of the OS-X
+% platform on all platforms in order to make this script portable:
+KbName('UnifyKeyNames');
 
-if IsOSX
-   space=KbName('SPACE');
-   esc=KbName('ESCAPE');
-   right=KbName('RightArrow');
-   left=KbName('LeftArrow');
-   up=KbName('UpArrow');
-   down=KbName('DownArrow');
-   shift=KbName('RightShift');
-end;
-
+space=KbName('SPACE');
+esc=KbName('ESCAPE');
+right=KbName('RightArrow');
+left=KbName('LeftArrow');
+up=KbName('UpArrow');
+down=KbName('DownArrow');
+shift=KbName('RightShift');
 
 try
     % Child protection

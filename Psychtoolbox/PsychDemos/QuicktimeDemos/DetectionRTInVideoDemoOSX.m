@@ -58,15 +58,13 @@ fprintf('Loading probe movie %s ...\n', moviename);
 fprintf('Time locked probe event will happen at time %f secs after start of movie.\n', timeOfEvent);
 fprintf('Will run %i trials or until ESCape key is pressed.\n', trials);
 
-if IsOSX
-	esc=KbName('ESCAPE');
-   space=KbName('SPACE');
-end;
+% Switch KbName into unified mode: It will use the names of the OS-X
+% platform on all platforms in order to make this script portable:
+KbName('UnifyKeyNames');
 
-if IsWin
-	esc=KbName('esc');
-   space=KbName('space');
-end;
+% Query keycodes for ESCAPE key and Space key:
+esc=KbName('ESCAPE');
+space=KbName('space');
             
 try
     % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.

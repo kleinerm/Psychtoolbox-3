@@ -5,13 +5,40 @@ function kbNameResult = KbName(arg)
 % 	
 % 	« If arg is a string designating a key label then KbName returns the 
 % 	  keycode of the indicated key.  
+%
 % 	« If arg is a keycode, KbName returns the label of the designated key. 
+%
 % 	« If no argument is supplied then KbName waits one second and then 
 %     calls KbCheck.  KbName then returns a cell array holding the names of
 %     all keys which were down at the time of the KbCheck call. The 
 %     one-second delay preceeding the call to KbCheck avoids catching the 
 %     <return> keypress used to execute the KbName function. 
-% 			
+%
+%   « If arg is 'UnifyKeyNames', KbName will switch its internal naming
+%     scheme from the operating system specific scheme (which was used in
+%     the old Psychtoolboxes on MacOS-9 and on Windows) to the MacOS-X
+%     naming scheme, thereby allowing to use one common naming scheme for
+%     all operating systems, increasing portability of scripts. It is
+%     recommended to call KbName('UnifyKeyNames'); at the beginning of each
+%     new experiment script.
+% 	  CAUTION: This function may contain bugs. Please report them (or fix
+% 	  them) if you find some.
+%
+%   « If arg is 'KeyNames', KbName will print out a table of all
+%     keycodes->keynames mappings.
+%
+%   « If arg is 'KeyNamesOSX', KbName will print out a table of all
+%     keycodes->keynames mappings for MacOS-X.
+%
+%   « If arg is 'KeyNamesOS9', KbName will print out a table of all
+%     keycodes->keynames mappings for MacOS-9.
+%
+%   « If arg is 'KeyNamesWindows', KbName will print out a table of all
+%     keycodes->keynames mappings for M$-Windows.
+%
+%   « If arg is 'KeyNamesLinux', KbName will print out a table of all
+%     keycodes->keynames mappings for GNU/Linux, X11.
+%
 % 	KbName deals with keys, not characters. See KbCheck help for an 
 % 	explanation of keys, characters, and keycodes.   
 % 	
@@ -37,6 +64,7 @@ function kbNameResult = KbName(arg)
 % 	Use KbName to make your scripts more readable and portable, using key 
 % 	labels instead of keycodes, which are cryptic and vary between Mac and
 % 	Windows computers.  
+%
 % 	For example, 
 % 	
 % 	yesKey = KbName('return');           
@@ -57,6 +85,11 @@ function kbNameResult = KbName(arg)
 %   used only on Macintosh. For a lists of key names common to both
 %   platforms and unique to each see the comments in the  body of KbName.m.
 %
+%   KbName will try to use a mostly shared name mapping if you add the
+%   command KbName('UnifyKeyNames'); at the top of your experiment script.
+%   At least the names of special keys like cursor keys, function keys and
+%   such will be shared between the operating systems then.
+%
 %   Your computer might be able to distinguish between identically named
 %   keys.  For example, left and right shift keys, or the "enter" key on
 %   the keyboard and the enter key on the numeric keypad. Which of these
@@ -64,7 +97,7 @@ function kbNameResult = KbName(arg)
 %   see comments in the body of KbName.m.
 %
 %   Historically, different operating systems used different keycodes
-%   becuase they used different types of keyboards: PS/2 for Windows, ADB
+%   because they used different types of keyboards: PS/2 for Windows, ADB
 %   for OS 9, and USB for OS 9, Windows, and OSX.  KbCheck on OS X returns
 %   USB keycodes. 
 % 	
@@ -110,10 +143,13 @@ function kbNameResult = KbName(arg)
 %						mxCreateLogicalMatrix() instead of mxSetLogical.  
 % 	
 %   10/12/04    awi     Cosmetic changes to comments.
-%	 10/4/05     awi     Note here cosmetic changes by dgp on unknown date between 10/12/04 and 10/4/05   
+%	 10/4/05    awi     Note here cosmetic changes by dgp on unknown date between 10/12/04 and 10/4/05   
 %   12/31/05    mk      Transplanted the keycode table from old WinPTB KbName to OS-X KbName.
 %                       This is a hack until we have PsychHID for Windows and can share the table
 %                       with OS-X table.
+%   21.09.06    mk      Added new command KbName('UnifyKeyNames'), which
+%                       remaps many of the Windows/Linux keynames to the OS-X naming scheme for
+%                       greater portability of newly written scripts.
 
 %   TO DO
 %
@@ -603,7 +639,7 @@ if nargin==0
     while (~keyPressed)
         [keyPressed, secs, keyCodes] = KbCheck;
     end
-    kbNameResult= KbName(keyCodes);  %note that keyCodes should be of type logical here.
+    kbNameResult= KbName(logical(keyCodes));  %note that keyCodes should be of type logical here.
 
 %if the argument is a logical array then convert to a list of doubles and
 %recur on the result. 
@@ -643,6 +679,101 @@ elseif ischar(arg)      % argument is a character, so find the code
         kbNameResult=kkOSX;
     elseif strcmpi(arg, 'KeyNamesOS9')
         kbNameResult=kkOS9;
+    elseif strcmpi(arg, 'KeyNamesWindows')
+        kbNameResult=kkWin;
+    elseif strcmpi(arg, 'KeyNamesLinux')
+        kbNameResult=kkLinux;
+    elseif strcmpi(arg, 'UnifyKeyNames')
+        % Calling code requests that we use the OS-X keyboard naming scheme
+        % on all platforms. The OS-X scheme is modelled after the official
+        % naming scheme for USB-HID Human interface device keyboards.
+        % If we ever have a PsychHID implementation for Windows and Linux,
+        % we'll have a unified keycode->keyname mapping and can get rid of
+        % all this remapping cruft and the other keyboard tables.
+        %
+        % On OS-X and OS-9 this is a no-op, all other platforms need remapping...
+        
+        if IsWin
+            % The following routine remaps specific Windows keycodes to their
+            % corresponding OS-X / USB-HID keynames. We remap the original
+            % Windows keynames as closely as possible, but there will be
+            % certainly some omissions and mistakes.
+            kk{8} = 'BackSpace';
+            kk{13} = 'Return';
+            kk{219} = '[{';
+            kk{221} = ']}';
+            kk{46} = 'DELETE';
+            kk{27} = 'ESCAPE';
+            kk{12} = 'Clear';
+            kk{16} = 'Shift';
+            kk{20} = 'CapsLock';
+            kk{112} = 'F1';
+            kk{113} = 'F2';
+            kk{114} = 'F3';
+            kk{115} = 'F4';
+            kk{116} = 'F5';
+            kk{117} = 'F6';
+            kk{118} = 'F7';
+            kk{119} = 'F8';
+            kk{120} = 'F9';
+            kk{121} = 'F10';
+            kk{122} = 'F11';
+            kk{123} = 'F12';
+            kk{124} = 'F13';
+            kk{125} = 'F14';
+            kk{126} = 'F15';
+            kk{160} = 'LeftShift';
+            kk{161} = 'RightShift';
+            kk{162} = 'LeftControl';
+            kk{163} = 'RightControl';
+            kk{91} = 'LeftMenu';
+            kk{92} = 'RightMenu';
+            kk{47} = 'Help';
+            kk{36} = 'Home';
+            kk{33} = 'PageUp';
+            kk{45} = 'Insert';
+            kk{35} = 'End';
+            kk{34} = 'PageDown';
+            kk{37} = 'LeftArrow';
+            kk{39} = 'RightArrow';
+            kk{40} = 'DownArrow';
+            kk{38} = 'UpArrow';
+            kk{164} = 'LeftAlt';
+            kk{165} = 'RightAlt';
+            kk{144} = 'NumLock';
+            kk{145} = 'ScrollLock';
+            kk{44} = 'PrintScreen';
+            kk{91} = 'LeftGUI';
+            kk{92} = 'RightGUI';
+            kk{93} = 'Application';
+        end
+        
+        if IsLinux
+            % Remapping of Linux aka X11 keynames to OS-X/USB-HID keynames:
+            % This is work in progress, but the most important keys should
+            % be there.
+            fprintf('KbName: WARNING! Remapping of Linux/X11 keycodes to unified keynames not yet complete!!\nRemapping a subset...\n');
+            kk{find(strcmp(kkLinux, 'Up'))} = 'UpArrow';
+            kk{find(strcmp(kkLinux, 'Down'))} = 'DownArrow';
+            kk{find(strcmp(kkLinux, 'Left'))} = 'LeftArrow';
+            kk{find(strcmp(kkLinux, 'Right'))} = 'RightArrow';
+            kk{find(strcmp(kkLinux, 'Shift_R'))} = 'RightShift';
+            kk{find(strcmp(kkLinux, 'Shift_L'))} = 'LeftShift';
+            kk{find(strcmp(kkLinux, 'Prior'))} = 'PageUp';
+            kk{find(strcmp(kkLinux, 'Next'))} = 'PageDown';
+            kk{find(strcmp(kkLinux, 'Delete'))} = 'DELETE';
+            kk{find(strcmp(kkLinux, 'Escape'))} = 'ESCAPE';
+            kk{find(strcmp(kkLinux, 'Caps_Lock'))} = 'CapsLock';
+            kk{find(strcmp(kkLinux, 'Control_R'))} = 'RightControl';
+            kk{find(strcmp(kkLinux, 'Control_L'))} = 'LeftControl';
+            kk{find(strcmp(kkLinux, 'Alt_L'))} = 'LeftAlt';
+            kk{find(strcmp(kkLinux, 'Mode_switch'))} = 'RightAlt';
+            kk{find(strcmp(kkLinux, 'Super_L'))} = 'LeftGUI';
+            kk{find(strcmp(kkLinux, 'Menu'))} = 'Application';
+            kk{find(strcmp(kkLinux, 'Num_Lock'))} = 'NumLock';
+            kk{find(strcmp(kkLinux, 'Tab'))} = 'tab';
+        end
+        % End of keyname unification code.
     else
         if IsOctave
             % GNU/Octave does not support index mode for strcmpi, need to do it manually...
@@ -656,7 +787,7 @@ elseif ischar(arg)      % argument is a character, so find the code
             kbNameResult=find(strcmpi(kk, arg));
         end
         if isempty(kbNameResult)
-            error(['Key name "' arg '" not recognized.']);
+            error(['Key name "' arg '" not recognized. Maybe you need to add KbName(''UnifyKeyNames''); to top of your script?']);
         end
     end
 
