@@ -259,50 +259,62 @@ PsychError SCREENOpenWindow(void)
     PsychInitDepthStruct(&(screenSettings.depth));
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
 
-    
+    // Here is where all the work goes on:
 
-    //Here is where all the work goes on
-
-    //if the screen is not already captured then to that
-
-    if(~PsychIsScreenCaptured(screenNumber)){
-
+    // If the screen is not already captured then to that:
+    if(~PsychIsScreenCaptured(screenNumber)) {
         PsychCaptureScreen(screenNumber);
 
-        settingsMade=PsychSetScreenSettings(screenNumber, &screenSettings); 
-
-        //Capturing the screen and setting its settings always occur in conjunction.
-
-        //There should be a check above to see if the display is captured and openWindow is attempting to change
-
-        //the bit depth.
-
+        settingsMade=PsychSetScreenSettings(screenNumber, &screenSettings);
+        //Capturing the screen and setting its settings always occur in conjunction
+        //There should be a check above to see if the display is captured and openWindow is attempting to chang
+        //the bit depth
     }
 
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	 // On M$-Windows we currently only support - and therefore require - 32 bpp color depth.
+    if (PsychGetScreenDepthValue(screenNumber) < 32) {
+        // Display running at less than 32 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
+		  // now.
 
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
-
-    if(!didWindowOpen){
-
+		  // Release the captured screen:
         PsychReleaseScreen(screenNumber);
 
-        // We use this dirty hack to exit with an error, but without printing
+		  // Output warning text:
+        printf("PTB-ERROR: Your display screen %i is not running at the required color depth of 32 bit.\n", screenNumber);
+        printf("PTB-ERROR: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
+        printf("PTB-ERROR: This will not work on Microsoftw Windows operating systems.\n");
+        printf("PTB-ERROR: Please use the 'Display settings' control panel of Windows to change the color depth to\n");
+        printf("PTB-ERROR: 32 bits per pixel ('True color' or 'Highest' setting) and then retry. It may be neccessary\n");
+        printf("PTB-ERROR: to restart Matlab after applying the change...\n");
+        fflush(NULL);
 
-        // an error message. The specific error message has been printed in
-
-        // PsychOpenOnscreenWindow() already...
-
-        PsychErrMsgTxt("");
-
+		  // Abort with Matlab error:
+	     PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 32 bpp).");
     }
 
-    // Sufficient display depth for full alpha-blending ans such?
+#endif
+
+    //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
+
+    if (!didWindowOpen) {
+        PsychReleaseScreen(screenNumber);
+
+        // We use this dirty hack to exit with an error, but without printin
+        // an error message. The specific error message has been printed in
+        // PsychOpenOnscreenWindow() already..
+        PsychErrMsgTxt("");
+    }
+
+    // Sufficient display depth for full alpha-blending and such?
     if (PsychGetScreenDepthValue(screenNumber) < 24) {
         // Nope. Output a little warning.
         printf("PTB-WARNING: Your display screen %i is not running at 24 bit color depth or higher.\n", screenNumber);
+        printf("PTB-WARNING: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
         printf("PTB-WARNING: This could cause failure to work correctly or visual artifacts in stimuli\n");
-        printf("PTB-WARNING: that involve Alpha-Blending. Please try to switch your display to 'True Color' (Windows)\n");
+        printf("PTB-WARNING: that involve Alpha-Blending. It can also cause drastically reduced color resolution\n");
+        printf("PTB-WARNING: for your stimuli! Please try to switch your display to 'True Color' (Windows)\n");
         printf("PTB-WARNING: our 'Millions of Colors' (MacOS-X) to get rid of this warning and the visual artifacts.\n");
         fflush(NULL);
     }

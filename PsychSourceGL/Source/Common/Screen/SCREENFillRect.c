@@ -81,24 +81,34 @@ PsychError SCREENFillRect(void)
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 	isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->rect);
 	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+   // Enable this windowRecords framebuffer as current drawingtarget:
+   PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	if(isScreenRect){
-		//fullscreen rect fill which in GL is a special case which may be accelerated.
+
+	if(isScreenRect && PsychIsOnscreenWindow(windowRecord)){
+		// Fullscreen rect fill which in GL is a special case which may be accelerated.
+      // We only use this fast-path on real onscreen windows, not on textures or
+      // offscreen windows.
 		dVals[3]=1.0;
 		PsychConvertColorAndDepthToDoubleVector(&color, depthValue, dVals);
 		glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
 		glClear(GL_COLOR_BUFFER_BIT);
 	}else{
-		//subregion fill which, draw a colored rect.
+		// Subregion fill or fullscreen fill into offscreen window or texture: Draw a colored rect.
 		PsychSetGLColor(&color, depthValue);
-		PsychGLRect(rect);
+
+		if (isScreenRect) {
+			// Fullscreen fill of a non-onscreen window:
+			PsychGLRect(windowRecord->rect);
+		} else {
+			// Partial fill: Draw provided rect:
+			PsychGLRect(rect);
+		}
 	}
        
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
+   // Mark end of drawing op. This is needed for single buffered drawing:
+   PsychFlushGL(windowRecord);
 
  	//All psychfunctions require this.
 	return(PsychError_none);

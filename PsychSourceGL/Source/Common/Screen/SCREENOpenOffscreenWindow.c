@@ -78,7 +78,16 @@ PsychError SCREENOpenOffscreenWindow(void)
     Boolean				wasColorSupplied;
     char*                               texturePointer;
     int                                 xSize, ySize, nbytes;
-    
+    Boolean                             bigendian;
+	 GLubyte *rpb;
+    int ix;
+
+    // Detect endianity (byte-order) of machine:
+    ix=255;
+    rpb=(GLubyte*) &ix;
+    bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
+    ix = 0; rpb = NULL;
+
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -183,13 +192,26 @@ PsychError SCREENOpenOffscreenWindow(void)
         break;        
     
         case 32: // RGBA
-            while (nbytes < windowRecord->textureMemorySizeBytes) {
+				if (bigendian) {
+				  // Code for big-endian machines, e.g., PowerPC:
+              while (nbytes < windowRecord->textureMemorySizeBytes) {
                 *(texturePointer++) = color.value.rgba.a;
                 *(texturePointer++) = color.value.rgba.r;
                 *(texturePointer++) = color.value.rgba.g;
                 *(texturePointer++) = color.value.rgba.b;
                 nbytes+=4;
-            }
+              }
+				}
+				else {
+				  // Code for little-endian machines, e.g., IntelPC, IntelMAC, aka Pentium.
+              while (nbytes < windowRecord->textureMemorySizeBytes) {
+                *(texturePointer++) = color.value.rgba.b;
+                *(texturePointer++) = color.value.rgba.g;
+                *(texturePointer++) = color.value.rgba.r;
+                *(texturePointer++) = color.value.rgba.a;
+                nbytes+=4;
+              }
+				}
         break;
     }
     
