@@ -24,6 +24,8 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % History:
 % 23/06/2006 Written (MK).
 % 17/09/2006 Made working on Matlab-5 and Octave. Made more robust. (MK)
+% 22/09/2006 Replace system copy commands by Matlabs copyfile() - More
+%            robust (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -95,6 +97,8 @@ if ~IsOctave
         % they exist, remove them, and put the current one in the file.  This
         % only allows on PsychJava to be on the path.
         classpathFile = which('classpath.txt');
+        bakclasspathFile = [classpathFile '.bak'];
+        
         fileContents = textread(classpathFile, '%s');
         j = 1;
         newFileContents = {};
@@ -131,15 +135,10 @@ if ~IsOctave
         if updateClasspath
             % Make a backup of the old classpath.
             clear madeBackup;
-            if ~IsWin
-                % Execute 'cp' copy command on Linux and MacOS-X:
-                [s, w] = system(['cp -f ', classpathFile, ' ', classpathFile, '.bak']);
-            else
-                % Execute 'copy' copy command on M$-Windows:
-                [s, w] = dos(['copy /Y ', classpathFile, ' ', classpathFile, '.bak']);
-            end
-            
-            if s
+
+            [s, w] = copyfile(classpathFile, bakclasspathFile, 'f');
+
+            if s==0
                 error(['Could not make a backup copy of Matlab''s JAVA path definition file ''classpath.txt''.\n' ...
                     'The system reports: ', w]);
             end
@@ -176,11 +175,7 @@ if ~IsOctave
 
         % Restore the old classpath file if necessary.
         if exist('madeBackup', 'var')
-            if ~IsWin
-                system(['cp -f ', classpathFile, '.bak ', classpathFile]);
-            else
-                dos(['copy /Y ', classpathFile, '.bak ', classpathFile]);
-            end
+            [s, w] = copyfile(bakclasspathFile, classpathFile, 'f');
         end
     end
 end % if IsOSX && ~IsOctave
@@ -201,4 +196,8 @@ fprintf('Archive of Psychtoolbox announcements:\n');
 fprintf('web http://lists.berlios.de/pipermail/osxptb-announce/  -browser\n');
 
 fprintf('\nEnjoy!\n\n');
+
+% Clear out everything:
+clear all;
+
 return;

@@ -33,6 +33,11 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %             Changed default to use WHICH instead of PWD as
 %             targetdirectory. Update MATLAB path. Expand comments.
 % 5/08/06 mk  Small fixes. Added option to downgrade to a specific revision.
+% 9/23/06 mk  Add clear mex call to flush mex files before updating.
+
+% Flush all MEX files: This is needed at least on M$-Windows for SVN to
+% work if Screen et al. are still loaded.
+clear mex
 
 if nargin<1
     targetdirectory=fileparts(which(fullfile('Psychtoolbox','Contents.m')));
