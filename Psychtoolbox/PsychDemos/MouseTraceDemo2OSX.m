@@ -113,5 +113,5 @@ try
 catch
     Screen('CloseAll')
     Screen('ShowCursor');
-    psychrethrow(lasterror);
+    psychrethrow(psychlasterror);
 end %try..catch..

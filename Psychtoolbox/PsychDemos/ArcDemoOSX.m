@@ -101,5 +101,5 @@ catch
     % experiment code implemented between try and catch...
     ShowCursor;
     Screen('CloseAll');
-    psychrethrow(lasterror);
+    psychrethrow(psychlasterror);
 end;

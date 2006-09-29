@@ -148,5 +148,5 @@ try
 catch
     % Executes in case of an error: Closes onscreen window:
     Screen('CloseAll');
-    psychrethrow(lasterror);
+    psychrethrow(psychlasterror);
 end;

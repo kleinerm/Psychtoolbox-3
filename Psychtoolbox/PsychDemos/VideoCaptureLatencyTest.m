@@ -248,5 +248,5 @@ end
     
     %catch
    %Screen('CloseAll');
-   %psychrethrow(lasterror);
+   %psychrethrow(psychlasterror);
 %end;

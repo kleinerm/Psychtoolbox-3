@@ -269,7 +269,7 @@ catch
     ShowCursor;
     fclose('all');
     Priority(0);
-    psychrethrow(lasterror);
+    psychrethrow(psychlasterror);
 end % try ... catch %
 % only 277 lines of codes ...  :)
 
