@@ -156,6 +156,7 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % 06/27/06 dgp Cosmetic editing of comments and messages. Check for spaces
 %              in targetdirectory name.
 % 9/23/06  mk  Add clear mex call to flush mex files before downloading.
+% 10/5/06 mk   Add detection code for MacOS-X on Intel Macs.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -163,7 +164,7 @@ clear mex
 
 % Check OS
 isWin=strcmp(computer,'PCWIN');
-isOSX=strcmp(computer,'MAC');
+isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
 if ~isWin && ~isOSX
 os=computer;
 if strcmp(os,'MAC2')

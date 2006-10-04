@@ -34,6 +34,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %             targetdirectory. Update MATLAB path. Expand comments.
 % 5/08/06 mk  Small fixes. Added option to downgrade to a specific revision.
 % 9/23/06 mk  Add clear mex call to flush mex files before updating.
+% 10/5/06 mk  Add detection code for MacOS-X on Intel Macs.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -60,7 +61,7 @@ end
 
 % Check OS
 isWin=strcmp(computer,'PCWIN');
-isOSX=strcmp(computer,'MAC');
+isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
 if ~isWin && ~isOSX
     os=computer;
     if strcmp(os,'MAC2')

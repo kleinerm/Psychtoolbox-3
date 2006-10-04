@@ -178,6 +178,6 @@ catch
 	ShowCursor;
 
 	% We throw the error again so the user sees the error description.
-	psychrethrow(lasterror);
+	psychrethrow(psychlasterror);
     
 end

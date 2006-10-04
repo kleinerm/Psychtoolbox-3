@@ -28,6 +28,8 @@ elseif streq(cNameStr, 'GLNXA64')
     osNameStr='Linux';
 elseif streq(cNameStr, 'MAC')
     osNameStr='OS X';
+elseif streq(cNameStr, 'MACI')
+    osNameStr='OS X';
 elseif streq(cNameStr, 'MAC2')
     osNameStr='OS 9';
 else

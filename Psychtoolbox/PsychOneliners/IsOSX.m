@@ -13,7 +13,7 @@ function resultFlag = IsOSX
 persistent rc;
 
 if isempty(rc)
-     rc = streq(computer,'MAC') || streq(computer, 'MACI') || ~isempty(findstr(computer, 'apple-darwin'));
+     rc = streq(computer,'MAC') | streq(computer, 'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
 end;
 
 resultFlag=rc;
