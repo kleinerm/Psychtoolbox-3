@@ -18,6 +18,16 @@ function PsychJavaTrouble
 % Psychtoolbox. In that case you need to upgrade to a more recent Matlab
 % version. If you run GNU/Octave you are also out of luck, due to Octaves
 % lack of Java support.
+% Your Matlab needs to support at least java version 1.4. This means that:
+%
+% On M$-Windows and GNU/Linux, Matlab version 7.0.0 and later should work,
+% because V7 is bundled with java 1.4.2 or 1.5. Matlab 5.x or 6.x won't work,
+% unless you manually upgrade Matlab with a new version of Java. See Mathworks
+% support knowledgebase for instructions on how to do that.
+%
+% On MacOS-X 10.3.9 or later, all Matlab versions should work, as Matlab uses
+% the java which is installed as part of the operating system. OS-X 10.3.9 provides
+% Java 1.4.2, OS-X 10.4.x provides Java 1.5.
 %
 % 3. The Psychtoolbox/PsychJava/ subfolder of your working copy of
 % Psychtoolbox isn't included in Matlabs static Java classpath. The
@@ -45,7 +55,14 @@ function PsychJavaTrouble
 % 4. You didn't restart Matlab after the Psychtoolbox installer asked you
 % to do so. -> Restart Matlab and retry.
 %
-% 5. Other reasons: Post to the Psychtoolbox forum and ask for help.
+% 5. The versions of GetCharJava bundled with Psychtoolbox are incompatible
+% with the version of Java installed on your machine or bundled with your
+% version of Matlab. If you have a Java SDK installed on your machine,
+% Psychtoolbox will try to compile a matching version of GetCharJava.
+% This should succeed on OS-X but is unlikely to work on Windows, because
+% that system does not have a javac compiler installed by default.
+%
+% 6. Other reasons: Post to the Psychtoolbox forum and ask for help.
 %
 % Good luck!
 

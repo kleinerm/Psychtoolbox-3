@@ -45,7 +45,7 @@ if ~IsOctave
         % Make sure that the GetCharJava class is loaded.
         if isempty(OSX_JAVA_GETCHAR)
             try
-                OSX_JAVA_GETCHAR = GetCharJava;
+                OSX_JAVA_GETCHAR = AssignGetCharJava;
             catch
                 error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
             end
