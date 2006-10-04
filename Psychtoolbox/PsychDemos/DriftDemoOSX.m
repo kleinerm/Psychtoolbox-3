@@ -98,7 +98,7 @@ try
     for i=1:movieDurationFrames
         Screen('DrawTexture', w, tex(movieFrameIndices(i)));
         Screen('Flip', w);
-	end;
+    end
 
     Priority(0);
 	

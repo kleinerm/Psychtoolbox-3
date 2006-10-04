@@ -103,6 +103,4 @@ function priorityStruct = MachGetPriorityMex(policyFlavorString, defaultFlag)
 PsychAssertMex('OSX');
 
 
-
-
  

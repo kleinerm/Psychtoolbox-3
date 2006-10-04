@@ -55,8 +55,8 @@ AssertOSX;
 % the thread is not in the specified policy flavor mode.
 %
 
-psTCP= MachGetPriorityMex('THREAD_TIME_CONSTRAINT_POLICY', 0);  % 0 flag means get the current mode, 1 flag means get the default mode.
-psS= MachGetPriorityMex('THREAD_STANDARD_POLICY', 0);             
+psTCP = MachGetPriorityMex('THREAD_TIME_CONSTRAINT_POLICY', 0);  % 0 flag means get the current mode, 1 flag means get the default mode.
+psS = MachGetPriorityMex('THREAD_STANDARD_POLICY', 0);             
 
 if ~psTCP.isDefault && psS.isDefault
     flavorNameString='THREAD_TIME_CONSTRAINT_POLICY';
