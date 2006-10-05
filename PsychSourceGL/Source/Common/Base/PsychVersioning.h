@@ -3,11 +3,11 @@
     
 	AUTHORS:
  
-	Allen.Ingling@nyu.edu		awi 
-  
+	Allen.Ingling@nyu.edu		  awi 
+	mario.kleiner at tuebingen.mpg.de mk
 	PLATFORMS:
 
-		Only OS X for now.
+		All
 		
 
 	HISTORY:
@@ -15,6 +15,7 @@
 		3/13/03		awi		Created.
 		11/3/04		awi		Incremented version number to 1.0.2 from 1.0.1 for 3 November release.
 		11/18/04	awi		changed "Matlab" to "MATLAB"
+		10/05/06        mk              Incremented version number to 3.0.8.
   
 */
 
@@ -25,9 +26,9 @@
 #include "Psych.h"
 
 //these are all constants defined only for reporting versioning.  They are returned by Module('Version')
-#define PSYCHTOOLBOX_MAJOR_VERSION				1
+#define PSYCHTOOLBOX_MAJOR_VERSION				3
 #define PSYCHTOOLBOX_MINOR_VERSION				0
-#define PSYCHTOOLBOX_POINT_VERSION				6
+#define PSYCHTOOLBOX_POINT_VERSION				8
 //If you fork my source please change this name.  - awi 
 #define PSYCHTOOLBOX_PROJECT_NAME				"OpenGL Psychtoolbox"
 #if PSYCH_SYSTEM == PSYCH_OSX

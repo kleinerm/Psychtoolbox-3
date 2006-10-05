@@ -216,6 +216,7 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("kas");
 	PsychSetModuleAuthorByInitials("fjc");
 	PsychSetModuleAuthorByInitials("mk");
+	PsychSetModuleAuthorByInitials("cb");
 
 	InitializeSynopsis();
 	InitializePsychDisplayGlue();

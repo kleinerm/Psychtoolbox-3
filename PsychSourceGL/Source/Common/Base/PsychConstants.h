@@ -97,13 +97,20 @@ typedef unsigned char bool;
 #define GL_CLAMP_TO_EDGE 0x812F
 #endif
 #ifndef GL_SAMPLES_ARB
-#define GL_SAMPLES_ARB   0x80A9 
+#define GL_SAMPLES_ARB   0x80A9
 #endif
 #ifndef GL_SAMPLE_BUFFERS_ARB
-#define GL_SAMPLE_BUFFERS_ARB   0x80A8 
+#define GL_SAMPLE_BUFFERS_ARB   0x80A8
 #endif
 #ifndef GL_TEXTURE_DEPTH
 #define GL_TEXTURE_DEPTH 0x8071
+#endif
+
+// mwSize is a new type introduced around Matlab R2006b. Define
+// it to be an integer on older Matlab releases and other runtime
+// environments:
+#ifndef mwSize
+typedef int mwSize;
 #endif
 
 //abstract up simple data types. 

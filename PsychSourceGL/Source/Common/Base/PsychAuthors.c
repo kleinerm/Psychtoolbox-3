@@ -5,7 +5,7 @@
 
 	Allen.Ingling@nyu.edu		awi 
   
-  PLATFORMS:	Only OSX for now.
+  PLATFORMS:	All.
     
 
   HISTORY:
@@ -128,6 +128,15 @@ void InitPsychAuthorList(void)
 		"mk",
 		"mario.kleiner@tuebingen.mpg.de",
 		"http://www.kyb.mpg.de/~kleinerm"
+	);
+	PsychAddAuthor(
+	// Port to OS-X on Intel-Macs, and misc stuff: 
+		"Christopher",
+		"",
+		"Broussard",
+		"cb",
+		"chrg@sas.upenn.edu",
+		"http://color.psych.upenn.edu/lab/"
 	);
 }
 

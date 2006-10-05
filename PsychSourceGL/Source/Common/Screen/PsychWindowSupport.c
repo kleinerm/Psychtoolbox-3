@@ -223,8 +223,10 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     
 	if(!PsychPrefStateGet_SuppressAllWarnings()){
 		if (true) {
-		  printf("\n\nPTB-INFO: This is the Screen-Prototype for PTB 1.0.7, intended as update for Psychtoolbox 1.0.6\n");
-		  printf("PTB-INFO: Implementation details may change in the final release for Psychtoolbox 1.0.7 - Use at your own Risk!\n\n");
+		  printf("\n\nPTB-INFO: This is the OpenGL-Psychtoolbox version %i.%i.%i. ", PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber());
+		  printf("Type 'PsychtoolboxVersion' for more detailed version information.\n"); 
+		  printf("PTB-INFO: Psychtoolbox is licensed to you under terms of the GNU General Public License (GPL). See file 'License.txt' in the\n");
+		  printf("PTB-INFO: Psychtoolbox root folder for a copy of the GPL license.\n\n");
 		}
 
 		if (PsychPrefStateGet_EmulateOldPTB()) {
