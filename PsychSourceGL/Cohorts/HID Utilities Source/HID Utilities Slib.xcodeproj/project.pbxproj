@@ -19,30 +19,6 @@
 		F94745F401B3062C0ACA2316 /* HID_Error_Handler.c in Sources */ = {isa = PBXBuildFile; fileRef = F94745F301B3062C0ACA2316 /* HID_Error_Handler.c */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXBuildStyle section */
-		F94745CB01B2DAC40ACA2316 /* Development */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				ZERO_LINK = YES;
-			};
-			name = Development;
-		};
-		F94745CC01B2DAC40ACA2316 /* Deployment */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
-				ZERO_LINK = NO;
-			};
-			name = Deployment;
-		};
-/* End PBXBuildStyle section */
-
 /* Begin PBXFileReference section */
 		113C0C5F036745F00CCB177F /* HID_Transaction_Utilities.c */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.c; path = HID_Transaction_Utilities.c; sourceTree = "<group>"; };
 		11AB43E70369956C0CCB177F /* HID Utilities Read Me.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = "HID Utilities Read Me.rtf"; sourceTree = "<group>"; };
@@ -157,22 +133,6 @@
 				F94745D401B2DB060ACA2316 /* Frameworks */,
 				F94745D501B2DB060ACA2316 /* Rez */,
 			);
-			buildSettings = {
-				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "";
-				OTHER_LDFLAGS = "";
-				OTHER_LIBTOOL_FLAGS = "";
-				OTHER_REZFLAGS = "";
-				PREFIX_HEADER = HIDLib.h;
-				PRODUCT_NAME = libHIDUtilities.a;
-				REZ_EXECUTABLE = YES;
-				SECTORDER_FLAGS = "";
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-				);
-			};
 			dependencies = (
 			);
 			name = libHIDUtilities.a;
@@ -185,12 +145,6 @@
 		F94745C901B2DAC40ACA2316 /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F5435BD0904CCE10051D6CC /* Build configuration list for PBXProject "HID Utilities Slib" */;
-			buildSettings = {
-			};
-			buildStyles = (
-				F94745CB01B2DAC40ACA2316 /* Development */,
-				F94745CC01B2DAC40ACA2316 /* Deployment */,
-			);
 			hasScannedForEncodings = 0;
 			mainGroup = F94745CA01B2DAC40ACA2316;
 			productRefGroup = F94745CF01B2DB060ACA2316 /* Products */;
@@ -300,8 +254,9 @@
 		2F5435BE0904CCE10051D6CC /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = i386;
 				MACOSX_DEPLOYMENT_TARGET = 10.3;
-				SDKROOT = /Developer/SDKs/MacOSX10.3.9.sdk;
+				SDKROOT = "";
 			};
 			name = Development;
 		};

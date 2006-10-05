@@ -1881,6 +1881,7 @@
 		F089BCFC0AD42DF500663D86 /* QuickTime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83C94B14092826FE0062DB0A /* QuickTime.framework */; };
 		F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
+		F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */; };
 		F14A27AF0AD48A2A00BFB68F /* MachGetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95011D04E446B9007A7274 /* MachGetPriorityMex.c */; };
 		F14A27B00AD48A2A00BFB68F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		F14A27B10AD48A2A00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -1927,7 +1928,6 @@
 		F14A27EF0AD48C1200BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A27F00AD48C1200BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A27F10AD48C1200BFB68F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
-		F14A27F20AD48C1200BFB68F /* libHIDUtilities.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC483A9069E5F1E00EE6B86 /* libHIDUtilities.a */; };
 		F14A27F30AD48C1200BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28020AD48DDF00BFB68F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		F14A28030AD48DDF00BFB68F /* EyelinkButtonStates.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B909572831002687D9 /* EyelinkButtonStates.c */; };
@@ -3462,30 +3462,30 @@
 		2FE9BD9606B1FB4200DB1E5A /* SCREENDrawLine.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENDrawLine.c; path = ../../../Source/Common/Screen/SCREENDrawLine.c; sourceTree = SOURCE_ROOT; };
 		2FE9BDC006B20A2600DB1E5A /* SCREENFillPoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillPoly.c; path = ../../../Source/Common/Screen/SCREENFillPoly.c; sourceTree = SOURCE_ROOT; };
 		2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFramePoly.c; path = ../../../Source/Common/Screen/SCREENFramePoly.c; sourceTree = SOURCE_ROOT; };
-		2FEBA43909885B4700F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA43909885B4700F4165F /* DoNothing.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = DoNothing.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA4800988613400F4165F /* FontInfo.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = FontInfo.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA4A2098861FB00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = CocoaEventBridge.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA4C30988620100F4165F /* Gestalt.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Gestalt.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA4E40988620800F4165F /* GetBusFrequencyMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetBusFrequencyMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5050988621900F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5050988621900F4165F /* GetBusTicks.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetBusTicks.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA5260988622700F4165F /* GetPID.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetPID.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5470988623200F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5680988623C00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5470988623200F4165F /* GetSecs.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecs.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA5890988624800F4165F /* GetSecsTick.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsTick.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA5AA0988625400F4165F /* GetTicks.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetTicks.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA5CB0988626300F4165F /* IOPort.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = IOPort.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA5EC0988627100F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA60D0988627E00F4165F /* MachPriority.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachPriority.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA632098862C400F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA653098862CE00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA674098862D800F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA695098862E300F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA674098862D800F4165F /* PsychHID.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA695098862E300F4165F /* PsychSound.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychSound.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA6B6098862FE00F4165F /* Rush.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Rush.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA6D70988630A00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA6F80988631600F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA6D70988630A00F4165F /* Screen.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA6F80988631600F4165F /* StoreBit.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = StoreBit.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA7190988632100F4165F /* SysBeep.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = SysBeep.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA73A0988632D00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEBA75B0988633B00F4165F /* foo.o */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = foo.o; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = TestPriorityMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecs.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = WaitSecsMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA79D0988635400F4165F /* Eyelink.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Eyelink.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GenericMex.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3599,6 +3599,7 @@
 		CFE5132707E2642900D55D72 /* SCREENTextBackgroundColor.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENTextBackgroundColor.c; path = ../../../Source/Common/Screen/SCREENTextBackgroundColor.c; sourceTree = SOURCE_ROOT; };
 		F074321A0AD465B400602397 /* MachSetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F089BD090AD42DF500663D86 /* Screen.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libHIDUtilities-Intel.a"; sourceTree = "<group>"; };
 		F14A27C20AD48A2A00BFB68F /* MachGetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A27FD0AD48C1200BFB68F /* PsychHID.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A28450AD48DDF00BFB68F /* Eyelink.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Eyelink.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4450,8 +4451,8 @@
 				F14A27EF0AD48C1200BFB68F /* Carbon.framework in Frameworks */,
 				F14A27F00AD48C1200BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A27F10AD48C1200BFB68F /* IOKit.framework in Frameworks */,
-				F14A27F20AD48C1200BFB68F /* libHIDUtilities.a in Frameworks */,
 				F14A27F30AD48C1200BFB68F /* libstdc++.a in Frameworks */,
+				F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4793,30 +4794,30 @@
 				2F54335C090431DC0051D6CC /* DoNothing.mexmac.app */,
 				832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */,
 				0E92E896095726FE002687D9 /* Eyelink.mexmac.app */,
-				2FEBA43909885B4700F4165F /* foo.o */,
+				2FEBA43909885B4700F4165F /* DoNothing.mexmac */,
 				2FEBA4800988613400F4165F /* FontInfo.mexmac */,
-				2FEBA4A2098861FB00F4165F /* foo.o */,
+				2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */,
 				2FEBA4C30988620100F4165F /* Gestalt.mexmac */,
 				2FEBA4E40988620800F4165F /* GetBusFrequencyMex.mexmac */,
-				2FEBA5050988621900F4165F /* foo.o */,
+				2FEBA5050988621900F4165F /* GetBusTicks.mexmac */,
 				2FEBA5260988622700F4165F /* GetPID.mexmac */,
-				2FEBA5470988623200F4165F /* foo.o */,
-				2FEBA5680988623C00F4165F /* foo.o */,
+				2FEBA5470988623200F4165F /* GetSecs.mexmac */,
+				2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */,
 				2FEBA5890988624800F4165F /* GetSecsTick.mexmac */,
 				2FEBA5AA0988625400F4165F /* GetTicks.mexmac */,
 				2FEBA5CB0988626300F4165F /* IOPort.mexmac */,
-				2FEBA5EC0988627100F4165F /* foo.o */,
+				2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */,
 				2FEBA60D0988627E00F4165F /* MachPriority.mexmac */,
-				2FEBA632098862C400F4165F /* foo.o */,
-				2FEBA653098862CE00F4165F /* foo.o */,
-				2FEBA674098862D800F4165F /* foo.o */,
-				2FEBA695098862E300F4165F /* foo.o */,
+				2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */,
+				2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */,
+				2FEBA674098862D800F4165F /* PsychHID.mexmac */,
+				2FEBA695098862E300F4165F /* PsychSound.mexmac */,
 				2FEBA6B6098862FE00F4165F /* Rush.mexmac */,
-				2FEBA6D70988630A00F4165F /* foo.o */,
-				2FEBA6F80988631600F4165F /* foo.o */,
+				2FEBA6D70988630A00F4165F /* Screen.mexmac */,
+				2FEBA6F80988631600F4165F /* StoreBit.mexmac */,
 				2FEBA7190988632100F4165F /* SysBeep.mexmac */,
-				2FEBA73A0988632D00F4165F /* foo.o */,
-				2FEBA75B0988633B00F4165F /* foo.o */,
+				2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */,
+				2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */,
 				2FEBA77C0988634800F4165F /* WaitSecsMex.mexmac */,
 				2FEBA79D0988635400F4165F /* Eyelink.mexmac */,
 				2FEBA7BE0988641C00F4165F /* GenericMex.mexmac */,
@@ -5118,6 +5119,7 @@
 			children = (
 				2FA3B58804621AFE007A7274 /* HID_Utilities_External.h */,
 				2FC483A9069E5F1E00EE6B86 /* libHIDUtilities.a */,
+				F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */,
 			);
 			name = "HID Utilities";
 			sourceTree = "<group>";
@@ -6830,7 +6832,7 @@
 			);
 			name = DoNothing;
 			productName = foo;
-			productReference = 2FEBA43909885B4700F4165F /* foo.o */;
+			productReference = 2FEBA43909885B4700F4165F /* DoNothing.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4600988613400F4165F /* FontInfo */ = {
@@ -6870,7 +6872,7 @@
 			);
 			name = CocoaEventBridge;
 			productName = foo;
-			productReference = 2FEBA4A2098861FB00F4165F /* foo.o */;
+			productReference = 2FEBA4A2098861FB00F4165F /* CocoaEventBridge.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA4A30988620100F4165F /* Gestalt */ = {
@@ -6930,7 +6932,7 @@
 			);
 			name = GetBusTicks;
 			productName = foo;
-			productReference = 2FEBA5050988621900F4165F /* foo.o */;
+			productReference = 2FEBA5050988621900F4165F /* GetBusTicks.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5060988622700F4165F /* GetPID */ = {
@@ -6970,7 +6972,7 @@
 			);
 			name = GetSecs;
 			productName = foo;
-			productReference = 2FEBA5470988623200F4165F /* foo.o */;
+			productReference = 2FEBA5470988623200F4165F /* GetSecs.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5480988623C00F4165F /* GetSecsMex */ = {
@@ -6990,7 +6992,7 @@
 			);
 			name = GetSecsMex;
 			productName = foo;
-			productReference = 2FEBA5680988623C00F4165F /* foo.o */;
+			productReference = 2FEBA5680988623C00F4165F /* GetSecsMex.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5690988624800F4165F /* GetSecsTick */ = {
@@ -7070,7 +7072,7 @@
 			);
 			name = MachGetPriorityMex;
 			productName = foo;
-			productReference = 2FEBA5EC0988627100F4165F /* foo.o */;
+			productReference = 2FEBA5EC0988627100F4165F /* MachGetPriorityMex.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA5ED0988627E00F4165F /* MachPriority */ = {
@@ -7110,7 +7112,7 @@
 			);
 			name = MachSetPriorityMex;
 			productName = foo;
-			productReference = 2FEBA632098862C400F4165F /* foo.o */;
+			productReference = 2FEBA632098862C400F4165F /* MachSetPriorityMex.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA633098862CE00F4165F /* MachAbsoluteTimeClockFrequency */ = {
@@ -7130,7 +7132,7 @@
 			);
 			name = MachAbsoluteTimeClockFrequency;
 			productName = foo;
-			productReference = 2FEBA653098862CE00F4165F /* foo.o */;
+			productReference = 2FEBA653098862CE00F4165F /* MachAbsoluteTimeClockFrequency.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA654098862D800F4165F /* PsychHID */ = {
@@ -7150,7 +7152,7 @@
 			);
 			name = PsychHID;
 			productName = foo;
-			productReference = 2FEBA674098862D800F4165F /* foo.o */;
+			productReference = 2FEBA674098862D800F4165F /* PsychHID.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA675098862E300F4165F /* PsychSound */ = {
@@ -7170,7 +7172,7 @@
 			);
 			name = PsychSound;
 			productName = foo;
-			productReference = 2FEBA695098862E300F4165F /* foo.o */;
+			productReference = 2FEBA695098862E300F4165F /* PsychSound.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA696098862FE00F4165F /* Rush */ = {
@@ -7211,7 +7213,7 @@
 			);
 			name = Screen;
 			productName = foo;
-			productReference = 2FEBA6D70988630A00F4165F /* foo.o */;
+			productReference = 2FEBA6D70988630A00F4165F /* Screen.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA6D80988631600F4165F /* StoreBit */ = {
@@ -7231,7 +7233,7 @@
 			);
 			name = StoreBit;
 			productName = foo;
-			productReference = 2FEBA6F80988631600F4165F /* foo.o */;
+			productReference = 2FEBA6F80988631600F4165F /* StoreBit.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA6F90988632100F4165F /* SysBeep */ = {
@@ -7271,7 +7273,7 @@
 			);
 			name = TestPriorityMex;
 			productName = foo;
-			productReference = 2FEBA73A0988632D00F4165F /* foo.o */;
+			productReference = 2FEBA73A0988632D00F4165F /* TestPriorityMex.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA73B0988633B00F4165F /* WaitSecs */ = {
@@ -7291,7 +7293,7 @@
 			);
 			name = WaitSecs;
 			productName = foo;
-			productReference = 2FEBA75B0988633B00F4165F /* foo.o */;
+			productReference = 2FEBA75B0988633B00F4165F /* WaitSecs.mexmac */;
 			productType = "com.apple.product-type.objfile";
 		};
 		2FEBA75C0988634800F4165F /* WaitSecsMex */ = {
@@ -20133,7 +20135,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
 					"$(SRCROOT)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/HID Utilities Source/build\"";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
@@ -20181,7 +20185,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
 					"$(SRCROOT)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/HID Utilities Source/build\"";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.2;
@@ -20218,7 +20224,9 @@
 					"$(LIBRARY_SEARCH_PATHS)",
 					/usr/lib/gcc/darwin/2.95.2,
 					"$(SRCROOT)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/HID Utilities Source/build\"";
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
 				ZERO_LINK = NO;
@@ -20234,7 +20242,9 @@
 					"$(LIBRARY_SEARCH_PATHS)",
 					/usr/lib/gcc/darwin/2.95.2,
 					"$(SRCROOT)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/HID Utilities Source/build\"";
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
 			};
