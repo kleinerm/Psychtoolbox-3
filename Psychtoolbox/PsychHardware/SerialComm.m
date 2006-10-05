@@ -28,5 +28,11 @@ function y = SerialComm(op, port, data)
 %	
 %  SerialComm( 'close', PORT ) closes the PORT. 
 %
-%  SerialComm( 'status', PORT ) prints some status info. 
+%  SerialComm( 'status', PORT ) prints some status info.
 
+% Author: Tom Davis (tomldavis@comcast.net)
+% Date: October, 2006
+% 
+% SerialComm was generously donated to the Psychtoolbox by Tom Davis.  You
+% can find more of his Matlab creations at
+% http://www.mathworks.com/matlabcentral/fileexchange/loadAuthor.do?objectType=author&objectId=1093697
