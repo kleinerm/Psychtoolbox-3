@@ -14,7 +14,7 @@ end
 % fprintf('Flush\n');
 dumpStr = '0';
 while ~isempty(dumpStr)
-	dumpStr = SerialComm('read', g_serialPort);
+	dumpStr = char(SerialComm('read', g_serialPort))';
 end
 
 % Make measurement
@@ -25,7 +25,7 @@ inStr = [];
 while isempty(inStr) && (waited < timeout)
 	WaitSecs(1);
 	waited = waited + 1;
-	inStr = SerialComm('read', g_serialPort);
+	inStr = char(SerialComm('read', g_serialPort))';
 end
 if waited == timeout
 	error('No response after measure command');
@@ -44,7 +44,7 @@ WaitSecs(0.1);
 waited = 0;
 inStr = [];
 while isempty(inStr) && (waited < timeout)
-    inStr = SerialComm('read', g_serialPort);
+    inStr = char(SerialComm('read', g_serialPort))';
     WaitSecs(1);
     waited = waited+1;
 end
@@ -55,7 +55,7 @@ else
 	% Pick up entire buffer.  This is the loop referred to above.
 	readStr = inStr;
 	while ~isempty(inStr)
-		inStr = SerialComm('read', g_serialPort);
+		inStr = char(SerialComm('read', g_serialPort))';
 		readStr = [readStr inStr];
 	end
 end

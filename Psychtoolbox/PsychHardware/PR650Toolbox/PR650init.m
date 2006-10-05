@@ -20,5 +20,5 @@ end
 SerialComm('write', portNumber, ['b3' char(10)]);
 retval = [];
 while isempty(retval)
-    retval = SerialComm('read', portNumber);
+    retval = char(SerialComm('read', portNumber))';
 end
