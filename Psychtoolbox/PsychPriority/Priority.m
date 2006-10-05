@@ -334,7 +334,7 @@ if IsOSX
         c = Screen('Computer');
         osrelease = sscanf(c.kern.osrelease, '%i.%i.%i');
 
-        if (osrelease(1)==8 && osrelease(2)>=7) || (osrelease(1)>=9)
+        if (osrelease(1)==8 & osrelease(2)>=7) | (osrelease(1)>=9)
             % OS-X 10.4.7 or later -> No need to kill update.
             killUpdateNotNeeded = 1;
         else
