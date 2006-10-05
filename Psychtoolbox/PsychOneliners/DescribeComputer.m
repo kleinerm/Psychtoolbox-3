@@ -239,9 +239,9 @@ if exist('flops','builtin')
 end
 for i=1 % precompile
 %   Priority(7);
-    t=getsecs;
+    t=GetSecs;
     fft2(x);
-    t=getsecs-t;
+    t=GetSecs-t;
 %   Priority(0);
 end
 if exist('flops','builtin')

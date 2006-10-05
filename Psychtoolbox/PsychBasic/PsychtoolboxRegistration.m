@@ -27,6 +27,7 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 %    and Matlab / Octave version to prioritize development for the most
 %    common platform+OS combinations.
 %
+
 %
 % Technical Notes:
 % The minimal network server for collecting the transmitted information would be the
@@ -48,6 +49,8 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 %
 % History:
 % 18.08.2006 Written (MK)
+% 5.10.2006  Add queries for Matlabs computer string and for machine
+%            architecture.
 
 % Address and port number of our statistics server:
 ptbserveraddress = 'platypus.psych.upenn.edu 2000';
@@ -72,18 +75,25 @@ try
     if IsOSX
         ostype = 'MacOS-X';
         osversion = compinfo.system;
+        % Query machine architecture via Unix 'arch' utility.
+        [rc arch] = system('arch');
+        runtimearch = computer;
     end
-    
+
     if IsWin
         ostype = 'Windows';
         osversion = 'Unknown';
+        % Define machine architecture to be Intel.
+        arch = 'Intel';
         % Define path to our own netcat executable for M$-Windows:
         nccommand = [PsychtoolboxRoot 'PsychContributed\nc '];
     end
-    
+
     if IsLinux
         ostype = 'LinuxOS';
         osversion = 'Unknown';
+        % Query machine architecture via Unix 'arch' utility.
+        [rc arch] = system('arch');
     end
     
     % Query runtime environment:
@@ -94,6 +104,9 @@ try
         runtimeenv = 'Matlab';
         runtimeversion = version;
     end
+
+    % Query what Matlab thinks as well:
+    runtimearch = computer;
 
     % Query MAC address as unique machine id:
     % We try to get the info from the 'Computer' subfunction of Screen:
@@ -123,7 +136,8 @@ try
 
     % Build unique id string for this system:
     uniqueID = ['<MACID>' mac '</MACID><OS>' ostype '-' osversion '</OS><ENVIRONMENT>' runtimeenv '</ENVIRONMENT><ENVVERSION>' ...
-                runtimeversion '</ENVVERSION><FLAVOR>' flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
+                runtimeversion '</ENVVERSION><ENVARCH>' runtimearch '</ENVARCH><CPUARCH>' arch '</CPUARCH><FLAVOR>' ...
+                flavor '</FLAVOR><ISUPDATE>' num2str(isUpdate) '</ISUPDATE><DATE>' date '</DATE>'];
     
     fprintf('Online Registration: Will try to transmit the following string of data\n');
     fprintf('to the www.psychtoolbox.org website for statistical purpose:\n\n');
