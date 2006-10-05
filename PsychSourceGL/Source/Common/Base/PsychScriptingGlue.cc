@@ -1177,12 +1177,13 @@ boolean PsychAreSubfunctionsEnabled(void)
 */
 static int mxGetP(const mxArray *arrayPtr)
 {
-	const int  *dimArray;
+	const int *dimArray;
 	
-	if(mxGetNumberOfDimensions(arrayPtr)<3)
+	if (mxGetNumberOfDimensions(arrayPtr) < 3) {
 		return(1);
-	dimArray=mxGetDimensions(arrayPtr);
-	return(dimArray[2]);
+	}
+	dimArray = (const int*)mxGetDimensions(arrayPtr);
+	return dimArray[2];
 }
 
 
@@ -1195,10 +1196,10 @@ static int mxGetP(const mxArray *arrayPtr)
 */
 static int mxGetNOnly(const mxArray *arrayPtr)
 {
-	const int  *dimArray;
+	const int *dimArray;
 	
-	dimArray=mxGetDimensions(arrayPtr);
-	return(dimArray[1]);
+	dimArray = (const int*)mxGetDimensions(arrayPtr);
+	return dimArray[1];
 }
 
 
@@ -1219,7 +1220,8 @@ mxArray *mxCreateDoubleMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
-	return(mxCreateNumericArray(numDims, dimArray, mxDOUBLE_CLASS, mxREAL));		
+	
+	return mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxDOUBLE_CLASS, mxREAL);		
 }
 
 /*
@@ -1239,8 +1241,8 @@ mxArray *mxCreateNativeBooleanMatrix3D(int m, int n, int p)
         }else{
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
-	numDims= (p==0 || p==1) ? 2 : 3;
-	newArray=mxCreateNumericArray(numDims, dimArray, mxLOGICAL_CLASS, mxREAL);
+	numDims = (p==0 || p==1) ? 2 : 3;
+	newArray = mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxLOGICAL_CLASS, mxREAL);
 
 	#if mxLOGICAL_CLASS == mxUINT8_CLASS
         #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -1268,7 +1270,7 @@ mxArray *mxCreateByteMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
-	return(mxCreateNumericArray(numDims, dimArray, mxUINT8_CLASS, mxREAL));
+	return mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxUINT8_CLASS, mxREAL);
 		
 } 
  
