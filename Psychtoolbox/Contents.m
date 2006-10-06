@@ -1,5 +1,5 @@
 % Psychtoolbox.
-% Version 1.0.6       26 October 2005
+% Version 3.0.8       9 October 2006
 % 
 % The Psychophysics Toolbox is a collection of Matlab functions
 % that extend the language to give you exquisite control of your
@@ -29,6 +29,10 @@
 %      help screen
 %      screen openwindow?
 % 
+% The folder PsychDocumentation contains bits of documentation about
+% technical implementation details, how to solve specific tasks and
+% how to troubleshoot common problems.
+%
 % To read more, look at the "intro" and "docs" pages at the web site. The
 % web site also has advice about getting help, the Psychtoolbox forum, and
 % the latest information about bugs and new releases:
@@ -52,12 +56,14 @@
 % PsychColorimetricData - Standard colorimetric data.
 % PsychContributed      - Contributed programs.
 % PsychDemos            - Show how to use the Psychtoolbox.
+% PsychDocumentation    - Documentation about specific topics.
 % PsychFiles            - Process text files.
 % PsychGamma            - Fit monitor gamma functions.
 % PsychHardware         - Interface to plug-in hardware.
 % PsychInitialize       - Initialize and deinitialize MATLAB
 % PsychMatlabTests      - Document the few bugs in Matlab 5.2.1.
 % PsychObsolete         - Obsolete routines, still present for compatibility.
+% PsychOpenGL           - Routines for low-level access to OpenGL 3D graphics.
 % Psychometric          - Psychometric function fitting.
 % PsychOneliners        - Trivial, but handy, functions.
 % PsychOptics           - Optics calculations, mostly for human optics.

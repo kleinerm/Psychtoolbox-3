@@ -176,7 +176,7 @@ elseif IsOSX | IsLinux | IsWin
             % Build final SVN URL: This is the location where one can find detailled info about this working copy:
             Psychtoolbox.version.websvn = sprintf('http://svn.berlios.de/wsvn/osxptb/?rev=%d&sc=0', Psychtoolbox.version.revision);
             % Build final version string:
-            Psychtoolbox.version.string = sprintf('%d.%d.%d-post - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
+            Psychtoolbox.version.string = sprintf('%d.%d.%d - Flavor: %s - %s\nFor more info visit:\n%s', Psychtoolbox.version.major, Psychtoolbox.version.minor, Psychtoolbox.version.point, ...
                                                   Psychtoolbox.version.flavor, Psychtoolbox.version.revstring, Psychtoolbox.version.websvn);
         else        
             % Fallback path if svn commands fail for some reason. Output as much as we can.
