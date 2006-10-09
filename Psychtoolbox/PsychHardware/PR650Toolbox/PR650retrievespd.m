@@ -22,7 +22,7 @@ end
 % fprintf('Flush\n');
 dumpStr = '0';
 while ~isempty(dumpStr)
-	dumpStr = SerialComm('read', g_serialPort);
+	dumpStr = PR650serialread;
 end
 
 
@@ -39,7 +39,7 @@ WaitSecs(0.1);
 waited = 0;
 inStr = [];
 while isempty(inStr) && (waited < timeout)
-    inStr = SerialComm('read', g_serialPort);
+    inStr = PR650serialread;
     WaitSecs(1);
     waited = waited+1;
 end
@@ -50,7 +50,7 @@ else
 	% Pick up entire buffer.  This is the loop referred to above.
 	readStr = inStr;
 	while ~isempty(inStr)
-		inStr = SerialComm('read', g_serialPort);
+		inStr = PR650serialread;
 		readStr = [readStr inStr];
 	end
 end

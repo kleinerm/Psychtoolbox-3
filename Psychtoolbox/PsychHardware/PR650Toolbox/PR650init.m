@@ -20,5 +20,6 @@ end
 SerialComm('write', portNumber, ['b3' char(10)]);
 retval = [];
 while isempty(retval)
-    retval = char(SerialComm('read', portNumber))';
+    %retval = char(SerialComm('read', portNumber))';
+    retval = PR650serialread;
 end

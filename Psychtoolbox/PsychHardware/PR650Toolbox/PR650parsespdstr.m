@@ -10,6 +10,8 @@ end
 
 start = findstr(readStr,'0380.');
 for k= 1:101
+    %fprintf('k: %d, bi: %d, ed: %d\n', k, start+6+17*(k-1), start+6+9+17*(k-1));
+    
 	spd(k) = str2num(readStr(start+6+17*(k-1):start+6+9+17*(k-1)));
 end
 
