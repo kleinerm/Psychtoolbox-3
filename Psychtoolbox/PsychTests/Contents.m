@@ -13,8 +13,8 @@
 %   SimpleTimingTest                - 
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
 %   TrolandTest                     - Colorimetric conversions.
-%   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
-%   SoundRecordingTest              - Test recording feature of PsychSound.
+%   WavelengthSamplingTest          - Test conversion between
+%   representations of wavelength sampling information.
 %   TestAlphaAddition               - Combine planes by OpenGL alpha addition and verify the result.
 %   TestAlphaBlending               - Multiple tests of OpenGL alpha blending. 
 %   TestAlphaBlendSetting           - Set and readback alpha blending settings by screen; verify match. 

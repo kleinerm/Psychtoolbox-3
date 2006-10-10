@@ -6,7 +6,7 @@
 % power distribution respectively.
 %
 % 7/7/98  dhb  Wrote from generic.
-%         dhb  dacsize/driver filled in by hand, SCREEN fails to return it.
+%         dhb  dacsize/driver filled in by hand, Screen fails to return it.
 % 4/7/99  dhb  NINEBIT -> NBITS.
 %         dhb  Wrote version for Radius 10 bit cards.
 % 4/23/99 dhb  Change wavelength sampling to 380 4 101, PR-650 native.
@@ -25,7 +25,7 @@ cal = [];
 blankOtherScreen = 1;
 
 % Script parameters
-whichScreen = max(SCREEN('Screens'));
+whichScreen = max(Screen('Screens'));
 whichMeterType = 1;
 cal.describe.leaveRoomTime = 10;
 cal.describe.nAverage = 2;  
@@ -96,8 +96,8 @@ if (isempty(cal.describe.meterDistance))
 end
 
 % Fill in descriptive information
-[computerName,owner,system,processor,cache,fpu,Hz,busHz,vm,pci]=SCREEN('Computer');
-[card,driver,driverVersion,slot]=SCREEN(cal.describe.whichScreen,'VideoCard');
+[computerName,owner,system,processor,cache,fpu,Hz,busHz,vm,pci]=Screen('Computer');
+[card,driver,driverVersion,slot]=Screen(cal.describe.whichScreen,'VideoCard');
 hz = FrameRate(cal.describe.whichScreen);
 cal.describe.caltype = 'monitor';
 cal.describe.computer = sprintf('%s''s %s, %s',owner,computerName,system);

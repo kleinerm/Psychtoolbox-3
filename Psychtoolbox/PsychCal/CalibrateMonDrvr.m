@@ -78,12 +78,12 @@ end
 
 % Blank other screen
 if blankOtherScreen
-	[window1,screenRect1] = SCREEN(cal.describe.whichBlankScreen,'OpenWindow',0,[],32);
+	[window1,screenRect1] = Screen(cal.describe.whichBlankScreen,'OpenWindow',0,[],32);
 	SetColor(window1,0,[0 0 0]');
 end
 
 % Blank screen to be measured
-[window,screenRect] = SCREEN(cal.describe.whichScreen,'OpenWindow',0,[],32);
+[window,screenRect] = Screen(cal.describe.whichScreen,'OpenWindow',0,[],32);
 if (cal.describe.whichScreen == 0)
 	HideCursor;
 else
@@ -147,7 +147,7 @@ end
 mon = mon / cal.describe.nAverage;
 
 % Close the screen
-SCREEN(window,'Close');
+Screen(window,'Close');
 ShowCursor;
 
 % Report time
@@ -170,6 +170,6 @@ cal = CalibrateFitGamma(cal);
 
 % Blank other screen
 if blankOtherScreen
-	SCREEN(window1,'Close');
+	Screen(window1,'Close');
 end
 

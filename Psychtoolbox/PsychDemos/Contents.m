@@ -28,7 +28,6 @@
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
 %    SpriteDemo              - Animates an image that follows the mouse.
-%    SoundRecordingtest      - Why isn't this in PsychTests?
 %    SoundTrigger            -
 %    StoreBit                - Not at all clear why this is here
 %    StressQuickTimeOSX      - Why isn't this in PsychTests?
