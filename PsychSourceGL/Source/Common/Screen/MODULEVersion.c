@@ -68,9 +68,9 @@ PsychError MODULEVersion(void)
     //create a structure and populate it.
     PsychAllocOutStructArray(1, FALSE, numVersionFieldDimensions, numVersionFieldNames, versionFieldNames, &versionStructArray);
     PsychSetStructArrayStringElement("version", 0, versionString, versionStructArray);
-    PsychSetStructArrayDoubleElement("major", 0, (double)PSYCHTOOLBOX_MAJOR_VERSION, versionStructArray);
-    PsychSetStructArrayDoubleElement("minor", 0, (double)PSYCHTOOLBOX_MINOR_VERSION, versionStructArray);
-    PsychSetStructArrayDoubleElement("point", 0, (double)PSYCHTOOLBOX_POINT_VERSION, versionStructArray);
+    PsychSetStructArrayDoubleElement("major", 0, (double)PsychGetMajorVersionNumber(), versionStructArray);
+    PsychSetStructArrayDoubleElement("minor", 0, (double)PsychGetMinorVersionNumber(), versionStructArray);
+    PsychSetStructArrayDoubleElement("point", 0, (double)PsychGetPointVersionNumber(), versionStructArray);
     PsychSetStructArrayDoubleElement("build", 0, buildNumber, versionStructArray);
     PsychSetStructArrayStringElement("date", 0, PsychGetBuildDate(), versionStructArray);
     PsychSetStructArrayStringElement("time", 0, PsychGetBuildTime(), versionStructArray);

@@ -265,28 +265,28 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
     if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
     if (error) {
-        printf("\nPTB-ERROR[ChoosePixelFormat failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
+        printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
         return(FALSE);
     }
     
     // Create an OpenGL rendering context with the selected pixelformat
     error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, NULL, &(windowRecord->targetSpecific.contextObject));
     if (error) {
-        printf("\nPTB-ERROR[ContextCreation failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
+        printf("\nPTB-ERROR[ContextCreation failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
         return(FALSE);
     }
     
     // Enable the OpenGL rendering context associated with our window:
     error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
     if (error) {
-        printf("\nPTB-ERROR[SetCurrentContext failed]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n");
+        printf("\nPTB-ERROR[SetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
         return(FALSE);
     }
     
     // Switch to fullscreen display: We don't support windowed display on OS-X
     error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
     if (error) {
-        printf("\nPTB-ERROR[CGLSetFullScreen failed]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n");
+        printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
         CGLSetCurrentContext(NULL);
         return(FALSE);
     }
