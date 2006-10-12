@@ -13,6 +13,7 @@ function GratingDemo
 %                pixelsPerPeriod, periodsCoveredByOneStandardDeviation and widthOfGrid.
 % 08/18/2006 rhh Expanded comments and created comment sections.
 % 10/04/2006 dhb Minimize warnings.
+% 10/11/2006 dhb Use maximum available screen.f
 
 % ---------- Parameter Setup ----------
 % Initializes the program's parameters.
@@ -56,6 +57,9 @@ try
 	Screen('Preference', 'VisualDebugLevel', 3);
     Screen('Preference', 'SuppressAllWarnings', 1);
 	
+    % Find out how many screens and use largest screen number.
+    whichScreen = max(Screen('Screens'));
+    
 	% Hides the mouse cursor
 	HideCursor;
 	
@@ -63,7 +67,7 @@ try
 	% multiple monitors connected to your computer, then you can specify
 	% a different monitor by supplying a different number in the second
 	% argument to OpenWindow, e.g. Screen('OpenWindow', 2).
-	window = Screen('OpenWindow', 0);
+	window = Screen('OpenWindow', whichScreen);
 
 	  
 	% ---------- Color Setup ----------
