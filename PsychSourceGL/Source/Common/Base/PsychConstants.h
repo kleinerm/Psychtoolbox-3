@@ -109,7 +109,7 @@ typedef unsigned char bool;
 // mwSize is a new type introduced around Matlab R2006b. Define
 // it to be an integer on older Matlab releases and other runtime
 // environments:
-#ifndef mwSize
+#ifndef USE_MWSIZE
 typedef int mwSize;
 #endif
 
