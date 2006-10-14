@@ -26,6 +26,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 17/09/2006 Made working on Matlab-5 and Octave. Made more robust. (MK)
 % 22/09/2006 Replace system copy commands by Matlabs copyfile() - More
 %            robust (MK).
+% 14/10/2006 Update web page pointers at end, just to point at new wiki.
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -189,11 +190,9 @@ fprintf('(at your option) any later version. See the file ''License.txt'' in\n')
 fprintf('the Psychtoolbox root folder for exact licensing conditions.\n\n');
 
 fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
-fprintf('Useful Psychtoolbox websites:\n');
+fprintf('Psychtoolbox website:\n');
 fprintf('web http://www.psychtoolbox.org -browser\n');
-fprintf('web http://en.wikibooks.org/wiki/Matlab:Psychtoolbox -browser\n');
-fprintf('Archive of Psychtoolbox announcements:\n');
-fprintf('web http://lists.berlios.de/pipermail/osxptb-announce/  -browser\n');
+
 
 fprintf('\nEnjoy!\n\n');
 
