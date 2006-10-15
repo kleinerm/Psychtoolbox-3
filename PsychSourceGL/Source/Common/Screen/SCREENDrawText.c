@@ -690,8 +690,10 @@ PsychError SCREENDrawText(void)
     glPixelZoom(1,1);
     #endif
 
-    // Backup display list state:
-    glPushAttrib(GL_LIST_BIT);
+    // Backup display list state and state of glFrontFace(): The display lists on M$-Windows
+    // contain glFrontFace() commands to change front-face order, so we need to save and
+    // restore it.
+    glPushAttrib(GL_LIST_BIT | GL_POLYGON_BIT);
 
     // Sets The Base Character to the start of our font display list:
     glListBase(winRec->textAttributes.DisplayList);

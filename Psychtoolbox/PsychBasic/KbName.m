@@ -645,7 +645,7 @@ if nargin==0
 %recur on the result. 
 %Note that this case must come before the test for double below.  In Matlab 5 logicals are also
 %doubles but in Matlab 6.5 logicals are not doubles.  
-elseif islogical(arg)
+elseif islogical(arg) | (isa(arg,'double') & length(arg)==256)
     kbNameResult=KbName(find(arg));
 	
 %if the argument is a double or a list of doubles 
