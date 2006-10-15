@@ -29,18 +29,20 @@
 %   SimpleTimingTest                - 
 %   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process. 
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
+%   SyncedCLUTUpdateTest            - Visual test of clut write synching to vertical retrace.
+%   TextBoundsTest                  - Test Screen('TestBounds')
+%   TextBugTest                     - Look for interference between
+%   TextFontTest                    - Test setting the text font.
+%   TextInitBugTest                 - Test for failure of 'DrawText' default font.%   TextInOffscreenWindowTest       - Compare text rendered into onscreen and offscreen windows. 
+%   TextureChannelsTest             - Test assignment of matrix layers to RGBA texture channels
+%   TextureTest                     - Exercise Screen('DrawTexture').
 %   TrolandTest                     - Colorimetric conversions.
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
 
 
 
-%   TextBugTest                     - Look for interference between DrawText and DrawTexture.
-%   TextBoundsTest                  - Test Screen('TestBounds')
-%   TextFontTest                    - Test setting the text font.
-%   TextInitBugTest                 - Test for failure of 'DrawText' default font.  
-%   TestTextInOffscreenWindowOSX    - Compare text rendered into onscreen and offscreen windows. 
-%   TestTextureOSX                  - Exercise Screen('DrawTexture').
+
 
 
 

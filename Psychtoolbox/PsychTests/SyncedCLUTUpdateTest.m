@@ -1,4 +1,6 @@
-function TestSyncedCLUTUpdate(synced)
+function SyncedCLUTUpdateTest(synced)
+% SyncedCLUTUpdateTest
+%
 % Perceptual test to test synchronization of hardware gamma table
 % updates to the vertical refresh and to Screen('Flip').
 %

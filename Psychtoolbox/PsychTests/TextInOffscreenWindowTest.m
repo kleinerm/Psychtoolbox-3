@@ -1,4 +1,4 @@
-% TestTextInOffscreenWindowOSX
+% TextInOffscreenWindowTest
 %
 % Compare text drawn into an offscreen window to text drawn into an
 % onscreen window.
@@ -11,7 +11,6 @@
 % Until this is resolved, we recommend not mixing onscreen and offscreen
 % text rendering if you require exact matching between text.
 % 
-
 % We don't yet know why this fails. The problem seems to have to do with
 % differences between how textures are rendered into onscreen and offscreen
 % windows.  That could be either because of a bug in Screen, or because the
