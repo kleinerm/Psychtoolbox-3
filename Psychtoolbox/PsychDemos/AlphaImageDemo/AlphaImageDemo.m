@@ -1,11 +1,8 @@
-function AlphaImageDemoOSX
-%
-% OS X: ___________________________________________________________________
+function AlphaImageDemo
+% AlphaImageDemo
 %
 % Display a gaussian masked image, locked to the cursor position,
-% using the new Screen('DrawTexture') command.
-% In the OS X Psychtoolbox Screen('DrawTexture') replaces
-% Screen('CopyWindow').
+% using the Screen('DrawTexture') command.
 %
 % This illustrates an application of OpenGL Alpha blending by displaying
 % an image masked with a gaussian transparency mask.
@@ -17,12 +14,7 @@ function AlphaImageDemoOSX
 % Please note that we only use two textures: One holding the image,
 % the other defining the mask.
 %
-% OS 9 and WINDOWS : ______________________________________________________
-%
-% AlphaImageDemoOSX does not exist on OS 9 and Windows.
-% _________________________________________________________________________
-%
-% see also: PsychDemosOSX, MovieDemoOSX, DriftDemo
+% see also: PsychDemos, MovieDemo, DriftDemo
 
 % HISTORY
 %
@@ -44,25 +36,34 @@ function AlphaImageDemoOSX
 %                     default.
 %  4/23/05    mk      Small modifications to make it compatible with
 %                     "normal" Screen.mexmac.
-%
 %  12/31/05   mk      Small modifications to make it compatible with Matlab-5
+%  10/14/06   dhb     Rename without OSX bit.  Fewer warnings.
+%             dhb     More comments, cleaned.
 
+% Standard coding practice, use try/catch to allow cleanup on error.
 try
-    fprintf('AlphaImageDemo (%s)\n click on key or mouse to stop\n', datestr(now));
-
     % This script calls Psychtoolbox commands available only in OpenGL-based
-    % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
-    % only OpenGL-base Psychtoolbox.)  The Psychtoolbox command AssertPsychOpenGL will issue
+    % versions of the Psychtoolbox. The Psychtoolbox command AssertPsychOpenGL will issue
     % an error message if someone tries to execute this script on a computer without
     % an OpenGL Psychtoolbox
     AssertOpenGL;
 
+    % Screen is able to do a lot of configuration and performance checks on
+	% open, and will print out a fair amount of detailed information when
+	% it does.  These commands supress that checking behavior and just let
+    % the demo go straight into action.  See ScreenTest for an example of
+    % how to do detailed checking.
+	oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
+    oldSupressAllWarnings = Screen('Preference', 'SuppressAllWarnings', 1);
+    
+    % Say hello in command window
+    fprintf('\nAlphaImageDemo\n');
+    
     % Get the list of screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when
     % two monitors are connected the one without the menu bar is used as
     % the stimulus display.  Chosing the display with the highest dislay number is
     % a best guess about where you want the stimulus displayed.
-
     screenNumber=max(Screen('Screens'));
 
     % Open a double buffered fullscreen window and draw a gray background
@@ -70,32 +71,25 @@ try
     [w, wRect]=Screen('OpenWindow',screenNumber, 0,[],32,2);
     Screen(w,'BlendFunction',GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    % Find the color values which correspond to white and black.  Though on OS
-    % X we currently only support true color and thus, for scalar color
-    % arguments,
-    % black is always 0 and white 255, this rule is not true on other platforms will
-    % not remain true on OS X after we add other color depth modes.
+    % Find the color values which correspond to white and black.
     white=WhiteIndex(screenNumber);
     black=BlackIndex(screenNumber);
-    gray=GrayIndex(screenNumber); % returns as default the mean gray value of screen
+    gray=GrayIndex(screenNumber); 
 
-    % import image and and convert it, stored in
+    % Import image and and convert it, stored in
     % MATLAB matrix, into a Psychtoolbox OpenGL texture using 'MakeTexture';
-
     myimgfile= 'konijntjes1024x768';
-
     fprintf('Using image ''%s''\n', myimgfile);
-
     imdata=imread(myimgfile, 'jpg');
-    %     crop image if it is larger then screen size. There's no image scaling
-    %     in maketexture
+    
+    % Crop image if it is larger then screen size. There's no image scaling
+    % in maketexture
     [iy, ix, id]=size(imdata);
     [wW, wH]=WindowSize(w);
     if ix>wW | iy>wH
-        disp('Image size exceeds screen size');
-        disp('Image will be cropped');
+        fprintf('Image size exceeds screen size\n');
+        fprintf('Image will be cropped\n');
     end
-
     if ix>wW
         cl=round((ix-wW)/2);
         cr=(ix-wW)-cl;
@@ -111,10 +105,9 @@ try
         cb=0;
     end
 
-
+    % Set up texture and rects
     imagetex=Screen('MakeTexture', w, imdata(1+ct:iy-cb, 1+cl:ix-cr,:));
     tRect=Screen('Rect', imagetex);
-
     [ctRect, dx, dy]=CenterRect(tRect, wRect);
 
     % We create a Luminance+Alpha matrix for use as transparency mask:
@@ -125,46 +118,50 @@ try
     [x,y]=meshgrid(-ms:ms, -ms:ms);
     maskblob=uint8(ones(2*ms+1, 2*ms+1, transLayer) * gray);
     size(maskblob);
+    
     % Layer 2 (Transparency aka Alpha) is filled with gaussian transparency
     % mask.
     xsd=ms/2.0;
     ysd=ms/2.0;
     maskblob(:,:,transLayer)=uint8(round(255 - exp(-((x/xsd).^2)-((y/ysd).^2))*255));
-    % Build a single transparency mask texture:
+    
+    % Build a single transparency mask texture
     masktex=Screen('MakeTexture', w, maskblob);
     mRect=Screen('Rect', masktex);
-
     fprintf('Size image texture: %d x %d\n', RectWidth(tRect), RectHeight(tRect));
     fprintf('Size  mask texture: %d x %d\n', RectWidth(mRect), RectHeight(mRect));
 
+    % Blank sceen
     Screen('FillRect',w, gray);
     Screen('Flip', w);
 
+    % initialize mouse position at center
     [a,b]=WindowCenter(w);
-    SetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
-    
+    SetMouse(a,b,screenNumber); 
     HideCursor;
     buttons=0;
 
-	 priorityLevel=MaxPriority(w);
+    % Bump priority for speed        
+	priorityLevel=MaxPriority(w);
     Priority(priorityLevel);
-    % "pre-load" textures
+    
+    % Pre-load textures
     Screen('DrawTexture', w, imagetex);
     Screen('DrawTexture', w, masktex);
     Screen('FillRect',w, gray);
     Screen('Flip', w);
-    while KbCheck; WaitSecs(0.1); end;
-    Screen('Flip', w); % would be useful 
+    
+    % Main mouse tracking loop
     mxold=0;
     myold=0;
     while (1)
         % We wait at least 10 ms each loop-iteration so that we
         % don't overload the system in realtime-priority:
         WaitSecs(0.01);
-        
-        [mx, my, buttons]=GetMouse(screenNumber);
+
         % We only redraw if mouse has been moved:
-        if (mx~=mxold | my~=myold)            
+        [mx, my, buttons]=GetMouse(screenNumber);
+        if (mx~=mxold | my~=myold)
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
             dRect = ClipRect(myrect,ctRect);
             sRect=OffsetRect(dRect, -dx, -dy);
@@ -172,35 +169,47 @@ try
             if ~IsEmptyRect(dRect)
                 % Draw image for current frame:
                 Screen('DrawTexture', w, imagetex, sRect, dRect);
-                % Overdraw -- and therefore alpha-blend -- with gaussian alpha mask:
+                
+                % Overdraw -- and therefore alpha-blend -- with gaussian alpha mask
                 Screen('DrawTexture', w, masktex, [], myrect);
+                
+                % Useful info for user about how to quit.
+                Screen('DrawText', w, 'Move mouse to see different parts of image through mask.  Click mouse to exit.', 20, 20, black);
+                
                 % Show result on screen:
                 Screen('Flip', w);
             end
-        end;
-
+        end
         mxold=mx;
         myold=my;
 
-        if KbCheck | find(buttons) % break out of loop
+        % Break out of loop on mouse click
+        if find(buttons) 
             break;
-        end;
-    end;
-    Screen('DrawTexture', w, imagetex);
-    Screen('Flip', w);
+        end
+    end
 
-    %The same commands which closes onscreen and offscreen windows also
-    %closes textures.
+    % The same command which closes onscreen and offscreen windows also
+    % closes textures.
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
-    fprintf('End of AlphaImageDemo\n\n');
-
+    
+    % Restore preferences
+    Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
+    Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
+    
+% This "catch" section executes in case of an error in the "try" section
+% above.  Importantly, it closes the onscreen window if it's open.
 catch
-    %this "catch" section executes in case of an error in the "try" section
-    %above.  Importantly, it closes the onscreen window if its open.
+
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
+    
+    % Restore preferences
+    Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
+    Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
+    
     psychrethrow(psychlasterror);
-end %try..catch.
+end

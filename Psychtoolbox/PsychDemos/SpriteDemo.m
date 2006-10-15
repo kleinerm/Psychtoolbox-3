@@ -1,6 +1,7 @@
 function SpriteDemo
-
-% SpriteDemo animates a sprite across the screen.  The image
+% SpriteDemo
+%
+% Animates a sprite across the screen.  The image
 % follows the mouse, like a huge cursor.
 % 
 % There are many ways to create animations.  The simplest is to show a
@@ -19,6 +20,7 @@ function SpriteDemo
 % 6/20/02 awi  Wrote it as TargetDemo.  
 % 6/20/02 dgp  Cosmetic.  Renamed SpriteDemo.
 % 8/25/06 rhh  Added noise to the sprite.  Expanded comments.
+% 10/14/06 dhb Save and restore altered prefs, more extensive comments for them
 
 
 % ------ Parameters ------
@@ -37,9 +39,14 @@ try
     foregroundColor = WhiteIndex(screenNumber);
     foregroundMinusBackground = abs(foregroundColor - backgroundColor);
 
-    % Removes the blue screen flash and minimize extraneous warnings.
-	Screen('Preference', 'VisualDebugLevel', 3);
-    Screen('Preference', 'SuppressAllWarnings', 1);
+    
+	% Screen is able to do a lot of configuration and performance checks on
+	% open, and will print out a fair amount of detailed information when
+	% it does.  These commands supress that checking behavior and just let
+    % the demo go straight into action.  See ScreenTest for an example of
+    % how to do detailed checking.
+	oldVisualDebugLevel = Screen('Preference', 'VisualDebugLevel', 3);
+    oldSupressAllWarnings = Screen('Preference', 'SuppressAllWarnings', 1);
     
     % Open a window and paint the background white
     window = Screen('OpenWindow', 0, foregroundColor);
@@ -89,8 +96,15 @@ try
         end
     end
 
-    ShowCursor; % Revive the mouse cursor.
+    % Revive the mouse cursor.
+    ShowCursor; 
+    
+    % Close screen
     Screen('CloseAll');
+    
+    % Restore preferences
+    Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
+    Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
 
 catch
     
@@ -98,6 +112,8 @@ catch
     % return the user to the familiar MATLAB prompt.
     ShowCursor; 
     Screen('CloseAll');
+    Screen('Preference', 'VisualDebugLevel', oldVisualDebugLevel);
+    Screen('Preference', 'SuppressAllWarnings', oldSupressAllWarnings);
     psychrethrow(psychlasterror);
     
 end

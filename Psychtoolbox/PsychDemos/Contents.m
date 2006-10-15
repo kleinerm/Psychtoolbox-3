@@ -3,13 +3,13 @@
 % help Psychtoolbox     % For an overview, triple-click me & hit enter.
 % help PsychDemos       % For demos, triple-click me & hit enter.
 %
-%    AlphaImageDemoOSX       - Simple demo of OpenGL alpha blending.
+%    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemoOSX      - Looks like a variant of AlphaImageDemoOSX
 %    ArcDemoOSX              -
 %    BubbleDemoOSX           - Like GazeContingentDemoOSX, but with multiple apertures.
 %    CLUTAnimDemoOSX         - Demonstrate lookup table animation.
 %    DotDemo                 - Animate dots with Screen('DrawDots).
-%    DKLDemo				 - Demonstrate DKL color space.
+%    DKLDemo                 - Demonstrate DKL color space.
 %    DrawMirroredTextOSX     - 
 %    DrawSomeTextOSX         - Very simple example of using 'DrawText'.
 %    DriftDemoOSX            - Animation of grating using textures.
@@ -29,11 +29,13 @@
 %    MouseTraceDemo2OSX      - More Tracking mouse around screen drawing contour.
 %    MovieDemoOSX            - Animation without offscreen windows.
 %    NomogramDemo            - Compute photoreceptor nomograms.
+%    OldNewRecogDemo         -
+%    OpenGL4MatlabDemos      -
+%    QuicktimeDemos          -
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    SoundTrigger            -
 %    StoreBit                - Not at all clear why this is here
-%    StressQuickTimeOSX      - Why isn't this in PsychTests?
 %    ValetonVanNorrenDemo    - Exercise our code that implements the V-VN (1983) cone adaptation model.
-%    VideoCaptureDemoOSX     -
+
 
