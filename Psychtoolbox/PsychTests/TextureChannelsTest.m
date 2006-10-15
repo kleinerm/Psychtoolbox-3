@@ -1,5 +1,5 @@
 function TextureChannelsTest
-% TestextureChannelsTest
+% TextureChannelsTest
 %
 % Test proper assignment of matrix layers to RGBA texture channels.
 %
