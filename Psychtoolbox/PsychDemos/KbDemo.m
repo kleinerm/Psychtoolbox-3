@@ -248,6 +248,6 @@ try
 
 catch
     Screen('CloseAll');
-    psychrethrow(lasterror);
+    psychrethrow(psychlasterror);
 end
 return
