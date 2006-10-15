@@ -1,4 +1,4 @@
-function SoundRecordingtest(duration)
+function SoundRecordingTest(duration)
 % Basic test and demo of the sound recording/capture functionality of the
 % new PsychSound() function.
 %

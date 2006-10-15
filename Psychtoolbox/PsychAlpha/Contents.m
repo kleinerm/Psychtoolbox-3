@@ -7,6 +7,11 @@
 %   PrintStruct              - Print structure & cell array to any depth
 %   TestIOPort               - Demo Code Mercenaries IO-Warrior USB device.
 %   SoundRecordingTest       - Test recording feature of PsychSound.
-%   StoreBit                 - Demonstrate Cocoa API calls from .mex file C
+%   SoundTrigger             -
 %   ShowHDRDemo              - Incomplete demo of how to show HDR images.
+%   StoreBit                 - Demonstrate Cocoa API calls from .mex file C
+%   IOPortTest               -
+%   VideoCaptureDemo         -
+%   VideoCaptureLatencyTest
+%   VideoFeedbackLoop        -
 

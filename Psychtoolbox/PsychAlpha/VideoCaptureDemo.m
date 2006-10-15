@@ -1,4 +1,4 @@
-function VideoCaptureDemoOSX(fullscreen)
+function VideoCaptureDemo(fullscreen)
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
