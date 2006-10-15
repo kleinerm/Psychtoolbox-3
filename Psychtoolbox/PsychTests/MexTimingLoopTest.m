@@ -1,5 +1,4 @@
-
-% TestMexTimingLoopOSX.m
+% MexTimingLoopTest
 % 
 % Run a timing loop within a mex file, as part of the MATLAB process but without returing control to the 
 %  MATLAB engine.  
