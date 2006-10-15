@@ -1,5 +1,5 @@
-function TestTextBounds
-% TestTextBounds
+function TextBoundsTest
+% TextBoundsTest
 %
 % Test Screen('TestBounds')
 %

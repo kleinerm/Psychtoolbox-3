@@ -1,6 +1,7 @@
-function TestPsychHID
-% TestPsychHID
-% TestPsychHID exercises the PsychHID mex file. We list all the HID
+function PsychHIDTest
+% PsychHIDTest
+%
+% PsychHIDTest exercises the PsychHID mex file. We list all the HID
 % devices. We read from the keyboard and mouse. We flicker the keyboard
 % LEDs.
 % 
@@ -9,7 +10,7 @@ function TestPsychHID
 % find that this reliably restores normal communication. 
 % 
 % web http://psychtoolbox.org/usb.html -browser;
-% See also Daq, TestDaq, PsychHID, PsychHardware.
+% See also DaqTest, PsychHID, PsychHardware.
 
 % 3/19/05 dgp Denis Pelli wrote it.
 % 4/18/05 dgp Flush stale reports.

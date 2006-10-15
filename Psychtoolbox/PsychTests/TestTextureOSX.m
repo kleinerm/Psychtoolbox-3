@@ -1,4 +1,4 @@
-% TestTextures.m
+% TextureTest
 %
 % Exercises the new Screen('DrawTexture') command in the OS X Psychtolbox 
 % which replaces Screen('CopyWindow').   

@@ -20,26 +20,25 @@
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
-%   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
+%   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
+%   MexTimingLoopTest               - Test for MATLAB timing glitch without return to MATLAB.%   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
+%   PsychHIDTest                    - PsychHID MEX file for HID-compliant USB devices.
 %   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
 %   ScreenTest                      - Thorough test of hardware/software performance.
 %   SimpleTimingTest                - 
+%   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process. 
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
 %   TrolandTest                     - Colorimetric conversions.
 %   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
 
 
-%   TestMATLABTimingOSX             - Test for MATLAB timing glitch caused by sigsetjmp().
-%   TestMexTimingLoopOSX            - Test for MATLAB timing glitch without return to MATLAB.
-%   TestPsychHID                    - PsychHID MEX file for HID-compliant USB devices.
-%   TestStandaloneTimingOSX         - Test for timing glitch outside of MATLAB process. 
-%   TestTextBug                     - Look for interference between DrawText and DrawTexture.
-%   TestTextBounds                  - Test Screen('TestBounds')
-%   TestTextBug                     - Checks for texture/text interaction bug.
-%   TestTextFont                    - Test setting the text font.
-%   TestTextInitBug                 - Test for failure of 'DrawText' default font.  
+
+%   TextBugTest                     - Look for interference between DrawText and DrawTexture.
+%   TextBoundsTest                  - Test Screen('TestBounds')
+%   TextFontTest                    - Test setting the text font.
+%   TextInitBugTest                 - Test for failure of 'DrawText' default font.  
 %   TestTextInOffscreenWindowOSX    - Compare text rendered into onscreen and offscreen windows. 
 %   TestTextureOSX                  - Exercise Screen('DrawTexture').
 

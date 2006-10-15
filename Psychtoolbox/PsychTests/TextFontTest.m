@@ -1,4 +1,4 @@
-function TestTextFont
+function TextFontTest
 
 % Test setting the text font.
 

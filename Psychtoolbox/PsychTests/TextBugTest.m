@@ -1,9 +1,9 @@
-% TestTextBug
+% TextBugTest
 %
 % Tests for the text bug where using textures before drawing texts causes
 % 'DrawText' not to work.  Reported by lots of people.
 %
-% TestTextBug tests both text before textures and textures before text.  
+% TextBugTest tests both text before textures and textures before text.  
 %
 % Screen should now pass this test.
 

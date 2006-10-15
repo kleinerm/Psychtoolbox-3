@@ -1,5 +1,5 @@
-function TestStandaloneTimingOSX(use_sigsetjmp, savemask)
-% TestStandaloneTimingOSX(use_sigsetjmp, savemask)
+function StandaloneTimingTest(use_sigsetjmp, savemask)
+% StandaloneTimingTest(use_sigsetjmp, savemask)
 % 
 % run a timing loop in a separate process, indepenent of MATLAB.  plot the results.  
 %  

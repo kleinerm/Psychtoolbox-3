@@ -1,3 +1,5 @@
+% TestInitBugTest
+%
 % Tests for a bug in DrawText where failing to initialize text paramters
 % causes a SCREEN crash
 
