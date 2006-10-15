@@ -1,4 +1,4 @@
-% TestMakeTextureTiming
+% MakeTextureTimingTest
 %
 % Screen 'MakeTexture' both allocates memory to hold an OpenGL texture and
 % loads a MATLAB matrix into the OpenGL texture. TestMakeTextureTiming

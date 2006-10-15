@@ -1,6 +1,6 @@
-function failFlag=TestAlphaBlendSetting(screenNumber)
+function failFlag=AlphaBlendSettingTest(screenNumber)
 
-% failFlag=TestAlphaBlendSetting([screenNumber])
+% failFlag=AlphaBlendSettingTest([screenNumber])
 %
 % Test that Screen('BlendFunction') recalls the same alpha blending values
 % as previoulsy set.
@@ -9,7 +9,7 @@ function failFlag=TestAlphaBlendSetting(screenNumber)
 % when a test fails.  If a return argument is supplied then it signals a
 % failed test only by returning true, without issuing an error.  
 %
-% see also: PsychTests, PsychAlpha
+% See also: AlphaBlendingTest, PsychAlphaBlending
 
 
 % HISTORY

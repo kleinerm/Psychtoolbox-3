@@ -3,10 +3,23 @@
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 % help PsychDemos % For demos, triple-click me & hit enter.
 %
-%   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
+%   AlphaAdditionTest               - Combine planes by OpenGL alpha addition and verify the result.
+%   AlphaBlendingTest               - Multiple tests of OpenGL alpha blending. 
+%   AlphaBlendSettingTest           - Set and readback alpha blending settings by screen; verify match. 
+%   AlphaMultiplicationTest         - Test alpha multiplication by 0 and 1 for perfect precision.
+%   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.%   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
+%   CopyWindowTest                  -
+%   DaqTest                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
+%   DrawingStuffTest                - FrameRect, DrawLine, FillPoly, FramePoly.
+%   EventAvailTest                  - Test EventAvail
+%   FillPolyTest                    - Test drawing concave polygons.
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
 %   FitWeibullYNTest                - Fit a Weibull to yes-no data.
+%   FlipTest                        - Test frame synchroniziation.
+%   GetCharTest                     - Tests of GetChar.
+%   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
+%   MakeTextureTimingTest           - Time memory allocation by MakeTexture
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
 %   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
@@ -14,18 +27,10 @@
 %   SimpleTimingTest                - 
 %   StructsFileTest                 - Test routines for reading and writing struct arrays to text files.
 %   TrolandTest                     - Colorimetric conversions.
+%   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
 %   WavelengthSamplingTest          - Test conversion between representations of wavelength sampling information.
-%   TestAlphaAddition               - Combine planes by OpenGL alpha addition and verify the result.
-%   TestAlphaBlending               - Multiple tests of OpenGL alpha blending. 
-%   TestAlphaBlendSetting           - Set and readback alpha blending settings by screen; verify match. 
-%   TestAlphaMultiplication         - Test alpha multiplication by 0 and 1 for perfect precision.
-%   TestAlphaMultiplicationAccuracy - Test precision of alpha multiplication for values between 0 and 1.
-%   TestDaq                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
-%   TestDrawingStuffOSX             - FrameRect, DrawLine, FillPoly, FramePoly.
-%   TestEventAvailOSX               - Test EventAvail
-%   TestFillPolyOSX                 - Test drawing concave polygons.
-%   TestFlip                        - Test frame synchroniziation.
-%   TestMakeTextureTiming           - Time memory allocation by MakeTexture
+
+
 %   TestMATLABTimingOSX             - Test for MATLAB timing glitch caused by sigsetjmp().
 %   TestMexTimingLoopOSX            - Test for MATLAB timing glitch without return to MATLAB.
 %   TestPsychHID                    - PsychHID MEX file for HID-compliant USB devices.
@@ -37,7 +42,7 @@
 %   TestTextInitBug                 - Test for failure of 'DrawText' default font.  
 %   TestTextInOffscreenWindowOSX    - Compare text rendered into onscreen and offscreen windows. 
 %   TestTextureOSX                  - Exercise Screen('DrawTexture').
-%   VBLSyncTest                     - Tests syncing of PTB-OSX to the vertical retrace.
+
 
 
 

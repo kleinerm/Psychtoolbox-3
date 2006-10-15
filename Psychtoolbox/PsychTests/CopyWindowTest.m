@@ -1,5 +1,5 @@
-function TestCopyWindow(sf, sd)
-% TestCopyWindow(sf, sd)
+function CopyWindowTest(sf, sd)
+% CopyWindowTest(sf, sd)
 %
 % Basic correctness test of different path's of Screen('CopyWindow')
 % Copies a small rectangular region from one window into another window.

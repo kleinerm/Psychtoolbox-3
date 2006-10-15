@@ -1,6 +1,6 @@
-function failFlag=TestAlphaMultipication(screenNumber)
+function failFlag=AlphaMultipicationTest(screenNumber)
 
-% passedFlag=TestAlphaMultipication([screenNumber])
+% passedFlag=AlphaMultipicationTest([screenNumber])
 %
 % TestAlphaMultiplication: 
 %
@@ -19,7 +19,7 @@ function failFlag=TestAlphaMultipication(screenNumber)
 % when a test fails.  If a return argument is supplied then it signals a
 % failed test only by returning true, without issuing an error.  
 %
-% see also: TestAlphaPrecision, TestAlphaAdd, PsychAlphaBlending
+% See also: AlphaBlendingTest, PsychAlphaBlending
 
 
 % HISTORY

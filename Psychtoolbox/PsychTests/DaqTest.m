@@ -1,6 +1,7 @@
-function TestDaq
-% TestDaq
-% TestDaq assesses the Daq Toolbox, which provides communication with a
+function DaqTest
+% DaqTest
+%
+% DaqTest assesses the Daq Toolbox, which provides communication with a
 % particular USB data acquisition device (daq): the USB-1208FS made by
 % Measurement Computing (see URL below). This daq costs $150 and offers "50
 % kHz" input and output 12-bit sampling of analog voltages (8 in, 2 out)

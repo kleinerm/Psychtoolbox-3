@@ -7,52 +7,8 @@ function GetCharTest(startAt)
 % begin at subtest "startAt" if it is in the allowable range.  Otherwise
 % ignore the argument and begin with the first subtest.    
 %
-% OS 9: ___________________________________________________________________
-%
-% GetCharTest evaluates the accuracy of the timing information returned by
-% GetChar. GetChar returns two values: when.ticks and when.secs.
-% when.ticks is passed on directly from the Mac OS. when.secs is an
-% estimate, based on when.ticks, of what GetSecs would have returned.
-% There are four issues that limit the accuracy of the timing:
-% 
-% 1. The time, in ticks, of the keypress returned by the Mac OS is
-% inaccurate, with errors of more than one tick. This may reflect
-% coarse quantization of time in the the hardware interface to the
-% keyboard. Different kinds of keyboard interface (built-in laptop
-% keyboard, ADB, USB) may have different quantizations.
-% 
-% 2. A tick is an integer, with a unit of 1/60.15 s.
-% 
-% 3. The value of when.secs necessarily inherits all the inaccuracies of
-% when.ticks, and has a further problem. If you know the rates of two
-% clocks, it's easy to convert times from one kind of time to the other.
-% We do that by estimating Tick0Secs, the value of GetSecs at the moment
-% when GetTicks was zero.
-% 	tick0Secs=GetSecs-GetTicks/60.15;
-% We can then convert any value of ticks to secs by the formula:
-% 	secs=ticks/60.15+tick0Secs;
-% However, it turns out that the Mac OS tick counter often misses ticks
-% when the computer is very busy. I.e. the ticks clock may be slow. Thus,
-% the value of tick0Secs, which tracks the slippage, will keep changing.
-% It's fine to measure it once and use it for a few minutes, but not for
-% hours. It should be remeasured. GetCharTest begins by asking Screen to
-% remeasure Tick0Secs.
-% 
-% 4. One of your clocks may be slow. Try running TimingTest to test the
-% clocks against one another. In Mac OS 9.0 GetSecs ran about 1% slow
-% because the Apple-supplied conversion factor for UpTime was slightly
-% off. The Psychtoolbox provides GetSecsTest to allow the user to apply a
-% correction factor to get the time right. In Mac OS 9.2.2 the problem
-% seems to be gone, but we tested different computers, so the problem and
-% fix may depend on which Mac you use. The simplest way to minimize the
-% effect of slippage due to unequal clock rates is to ask Screen to
-% remeasure Tick0Secs immediately before each use.
-%
-% OS X: ___________________________________________________________________
-%
-% GetCharTest tests GetChar for likely failure modes specific to OS X. It
-% also tests associated functions for character events, such as
-% CharAvail, ListenChar and FlushEvents. 
+% GetCharTest tests GetChar for likely failure modes. It also tests associated functions
+% for character events, such as CharAvail, ListenChar and FlushEvents. 
 
 % HISTORY
 % 5/31/02 ds   Written by Dan Shima <daniel.shima@vanderbilt.edu>
@@ -60,9 +16,10 @@ function GetCharTest(startAt)
 % 6/3/02  dgp  Added 4, above.
 % 3/3/06  awi  Added OS X section.
 % 6/15/06 awi  Added FlushEvents call after opening onscreen window.  
-%               Erases panic keypresses made during l o n g time it takes to open the onscreen window.   
+%              Erases panic keypresses made during l o n g time it takes to open the onscreen window.   
 %              Added WaitSecs and FlushEvents to onscreen window test to block keypresses carried over 
-%               from previous test.  
+%              from previous test. 
+% 10/14/06 dhb  Removed OS 9 branch.
 
 % NOTES
 %
@@ -76,33 +33,7 @@ function GetCharTest(startAt)
 % use proportially spaced fonts, so fixed-character-width lines give ragged
 % line breaks.  
 
-if IsOS9
-    clear all;
-    Screen('Preference','Tick0Secs',nan); % ask Screen to recompute tick0Secs
-    GetTicks;
-    GetSecs;
-    fprintf('Please press a character key, twice: ');
-    a=GetChar; % wait for user to type a character
-    fprintf('%c ',a);
-    ticks(1)=GetTicks;
-    secs(1)=GetSecs;
-    [a when]=GetChar; % wait for user to type a character
-    ticks(2)=when.ticks;
-    secs(2)=when.secs;
-    ticks(3)=GetTicks;
-    secs(3)=GetSecs;
-    fprintf('%c\n',a);
-    fprintf('\nHere''s timing info for the second keypress: the times immediately before and after the call to GetChar,\n');
-    fprintf('and the values of "when.ticks" and "when.secs" returned by GetChar.\n');
-    fprintf('\n%8s %10s %10s %10s %8s %8s\n',' ','Ticks','Secs','Tick0Secs','Ticks','Secs');
-    rowTitle={'before','when','after'};
-    for i=1:3
-        fprintf('%-8s %10.0f %10.2f %10.2f %8.0f %8.2f\n',rowTitle{i},ticks(i),secs(i),secs(i)-ticks(i)/60.15,ticks(i)-ticks(1),secs(i)-secs(1));
-    end
-    fprintf('\n');
-    
-    
-elseif (~IsOctave) & (IsOSX | IsWin | IsLinux)
+if (~IsOctave) & (IsOSX | IsWin | IsLinux)
     % We test for some common failings of previous implementations of
     % GetChar on OS X.  The labeling of each testing step is somewhat
     % inaccurate because  

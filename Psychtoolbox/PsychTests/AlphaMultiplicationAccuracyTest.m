@@ -1,6 +1,6 @@
-function [maximumError, roundTypeStr, independentFlag]=TestAlphaMultiplicationAccuracy(screenNumber)
+function [maximumError, roundTypeStr, independentFlag]=AlphaMultiplicationAccuracyTest(screenNumber)
 
-% [maximumError, roundTypeStr, independentFlag]=TestAlphaMultiplicationAccuracy([screenNumber])
+% [maximumError, roundTypeStr, independentFlag]=AlphaMultiplicationAccuracyTest([screenNumber])
 %
 % Test the accuracy of alpha blending multiplication. OpenGL guarantees
 % perfect accuracy of alpha multiplication for values 0 and 1 only.
@@ -61,7 +61,7 @@ function [maximumError, roundTypeStr, independentFlag]=TestAlphaMultiplicationAc
 %         equal to one is guaranteed not to modify its multiplicand, and a blend
 %         factor equal to zero reduces its multiplicand to zero." 
 %
-% see also: TestAlphaBlending, PsychAlphaBlending 
+% See also: AlphaBlendingTest, PsychAlphaBlending
 
 
 % HISTORY

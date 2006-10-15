@@ -1,5 +1,6 @@
-function timeDiffs=TestJavaClock(testDurationMinutes)
-
+function timeDiffs=JavaClockTest(testDurationMinutes)
+% JavaClockTest
+%
 % Test for divergence between the java.lang.System.currentTimeMillis() and
 % GetSecs clocks.  
 % 

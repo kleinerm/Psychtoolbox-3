@@ -1,10 +1,8 @@
-% TestFlip
+% FlipTest
 %
-% OS X: ___________________________________________________________________
-%
-% TestFlip times and plots the intervals between flips of the front and
+% FlipTest times and plots the intervals between flips of the front and
 % back display buffers in a tight loop.  Flips should occur at the video
-% frame period.  Result of TestFlip are a test of Priority's ability to
+% frame period.  Result of lipTest are a test of Priority's ability to
 % gurantee time to MATLAB for real-time displays.  
 %
 % On OS X, the Screen subfunction 'Flip' replaces 'WaitBlanking' as a means 
@@ -19,20 +17,6 @@
 % A call to Screen 'Flip' delays until the next vertical retrace, then
 % instantaneously interchanges front and back video surfaces, and then
 % returns.    
-%
-% 
-%
-% OS 9: ___________________________________________________________________
-%
-% TestFlip does not exist in OS 9. 
-%
-% WINDOWS: ________________________________________________________________
-% 
-% TestFlip does not yet exist in Windows.
-% 
-% _________________________________________________________________________
-%
-% See also: 
 
 % HISTORY
 % 
@@ -42,9 +26,7 @@
 % 1/11/05   awi     Merged in bug fixes given by David Jones.
 %                   Expanded description.
 %                   Give feedback to user in command window.
-%                   Add try ...                  
-%                   
-
+%                   Add try ...                                   
 
 try
     screenNumber=max(Screen('Screens'));

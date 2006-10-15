@@ -1,11 +1,13 @@
-function TestFillPolyOSX
+function FillPolyTest
+% FillPolyTest
+%
 % Test Screen 'FillPoly' for speed and correctness.
 %
 % Screen 'FillPoly' renders both convex and concave polygons, but treats
 % them differently; Convex polygons it renders quickly using GL_POLYGON.
 % Concave polygons it renders slowly using GLU tesselators.  
 % 
-% TestFillPolyOSX draws a "Butterfly" concave polygon to test if FillPolly
+% FillPolyTest draws a "Butterfly" concave polygon to test if FillPolly
 % correctly detects and renders concave polygons.  If FillPoly failed to 
 % detect concavity, it would use GL_POLYGON, which renders concave polygons
 % incorrectly.
