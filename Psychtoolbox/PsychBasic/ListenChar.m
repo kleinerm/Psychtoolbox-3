@@ -4,7 +4,12 @@ function ListenChar(listenFlag)
 % Tell the Psychtoolbox function "GetChar" to start or stop listening for
 % keyboard input.  By default ListenChar listens when no argument is
 % supplied.  Passing 0 will turn off character listening and reset the
-% buffer which holds the captured characters.
+% buffer which holds the captured characters. Passing a value of 1 or not
+% passing any value will enable listening. Passing a value of 2 will enable
+% listening, additionally any output of keypresses to Matlab windows is
+% suppressed. Use this with care, if your script aborts with an error,
+% Matlab may be left with a dead keyboard until the user presses CTRL+C to
+% reenable keyboard input.
 %
 % This function isn't entirely necessary to turn on listening as calling
 % GetChar, CharAvail, or FlushEvents will trigger listening on.  However,
@@ -21,11 +26,13 @@ function ListenChar(listenFlag)
 
 % HISTORY
 %
-% 7/19/05 awi   Wrote it.
-% 6/20/06 awi   Use AddPsychJavaPath instead of AssertGetCharJava.
-% 8/31/06 cgb   Works with the new character listening system.
-% 9/19/06 mk    Modified to work on all Java enabled Matlabs and be a no-op
-% in all other configurations.
+% 7/19/05  awi   Wrote it.
+% 6/20/06  awi   Use AddPsychJavaPath instead of AssertGetCharJava.
+% 8/31/06  cgb   Works with the new character listening system.
+% 9/19/06  mk    Modified to work on all Java enabled Matlabs and be a no-op
+%                in all other configurations.
+% 10/13/06 mk    Support for setting the redispatch-mode of GetChar and
+%                friends.
 
 global OSX_JAVA_GETCHAR;
  
@@ -54,10 +61,20 @@ if ~IsOctave
         if listenFlag
             % Start listening for characters.
             OSX_JAVA_GETCHAR.register;
+            % Should we block output of characters to Matlab?
+            if listenFlag > 1
+                % Disable redispatching:
+                OSX_JAVA_GETCHAR.setRedispatchFlag(1);
+            else
+                % Enable redispatching: This is the startup default.
+                OSX_JAVA_GETCHAR.setRedispatchFlag(0);
+            end
         else
             % Stop listening for characters and clear the buffer.
             OSX_JAVA_GETCHAR.unregister;
             OSX_JAVA_GETCHAR.clear;
+            % Enable redispatching:
+            OSX_JAVA_GETCHAR.setRedispatchFlag(0);
         end
     end
 end

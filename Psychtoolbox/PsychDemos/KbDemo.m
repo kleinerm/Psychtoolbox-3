@@ -26,7 +26,7 @@ function KbDemo
 % script. Caution: Make sure to always call ListenChar(0) at normal exit and in all
 % error handling routines, otherwise Matlab will be left with a dead
 % keyboard and you'll be unable to type any commands into the Matlab
-% window!
+% window! Pressing CTRL+C will reenable the keyboard in such a case.
 
 % David Brainard, January, 1997
 % Allen Ingling, February, 1998
@@ -58,7 +58,7 @@ function KbDemo
 % 09/23/06  rhh Ported part four of the demo to Mac OS X.
 % 10/11/06  dhb  Imported subfunctions into single file, use cell syntax.
 % 10/11/06  dhb Added comment comparing to GetChar/CharAvail.
-
+% 10/16/06  mk  Add call 'UnifyKeyNames' -> Same keynames on all systems.
 % Enable unified mode of KbName, so KbName accepts identical key names on
 % all operating systems:
 KbName('UnifyKeyNames');

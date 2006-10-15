@@ -100,6 +100,14 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % cause GetChar to behave identically to OS 9 GetChar with respect to
 % background keystroke collection.  
 %
+% KEYSTROKES IN MATLAB WINDOW: By default, all keystrokes are also sent to
+% Matlabs window, generating some ugly clutter. You can suppress this by
+% calling ListenChar(2), so your Matlab console stays nice and clean. Don't
+% forget to call ListenChar(1) or ListenChar(0) though before the end of
+% your script. If Matlab returns to its command prompt without reenabling
+% keyboard input via ListenChar(0) or ListenChar(1), Matlab will be left
+% with a dead keyboard until you press the CTRL+C key combo.
+%
 % OTHER "when" RETURN ARGUMENT FIELDS: Owing to differences in what
 % accessory information the underlying operating systems provides about
 % keystrokes, "when' return argument fields differs between OS 9 and OS X.
@@ -224,6 +232,9 @@ if ~IsOctave
 
         % Throw an error if we've exceeded the buffer size.
         if charValue == -1
+            % Reenable keystroke dispatching to Matlab to leave us with a
+            % functional Matlab console.
+            OSX_JAVA_GETCHAR.setRedispatchFlag(0);
             error('GetChar buffer overflow. Use "FlushEvents" to clear error');
         end
 
