@@ -113,14 +113,18 @@ if isempty(inputNames) | ismember(computer, inputNames)
     extensionNameIndex=find(streq(computer,okNames));
     extensionName=mexExtensions{extensionNameIndex};
     mExtensionIndices=findstr('.m',callerName);
-    termExtension=mExtensionIndices(end);
-    mexFilenameHead=callerName(1:termExtension-1);
+    if ~isempty(mExtensionIndices)
+        termExtension=mExtensionIndices(end);
+        mexFilenameHead=callerName(1:termExtension-1);
+    else
+        mexFilenameHead = callerName;
+    end
     mexFilename=[mexFilenameHead '.' extensionName];
     fprintf('In place of the expected mex file this file was executed:\n');
     fprintf(['  ' callerName '\n']);
     fprintf('This mex file seems to be missing:\n')
     fprintf(['  ' mexFilename '\n']);
-    error('Missing Psychtoolbox mex file.');
+    error('Missing Psychtoolbox mex file for this operating system. Unsupported?');
 end
         
 

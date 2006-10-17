@@ -7,6 +7,7 @@
 %
 %     CharAvail            - Is a keypress available for GetChar?       
 %     DoNothing            - Does nothing. Used to time Matlab's overhead.
+%     DrawFormattedText    - Drawing of formatted text into windows.
 %     FlushEvents          - Flush any unprocessed events. 
 %     FontInfo             - Return a struct array describing installed fonts.
 %     Gestalt              - Query system configuration on OS 9 and OS X. 

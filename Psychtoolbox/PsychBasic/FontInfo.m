@@ -20,14 +20,9 @@ function FontInfo
 % function to find the number of a font which satisfies your criteria for a
 % font.  Among those critera may be the font name itself.
 %
-% OS 9: ___________________________________________________________________
+% OS 9, WINDOWS, Linux: ___________________________________________________
 %
-% FontInfo does not exist in OS 9. 
-%
-% WINDOWS: ________________________________________________________________
-%
-% FontInfo does not exist in Windows.
-%
+% FontInfo does not exist on OS-9, Windows and Linux.
 % _________________________________________________________________________
 %
 % SEE ALSO: Screen, Screen('TextFont')
