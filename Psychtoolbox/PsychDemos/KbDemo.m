@@ -59,6 +59,10 @@ function KbDemo
 % 10/11/06  dhb  Imported subfunctions into single file, use cell syntax.
 % 10/11/06  dhb Added comment comparing to GetChar/CharAvail.
 % 10/16/06  mk  Add call 'UnifyKeyNames' -> Same keynames on all systems.
+% 10/17/06  mk  Remove calls to FlushEvents. They are meaningless for KbWait and KbCheck,
+%               would only affect CharAvail and GetChar.
+
+
 % Enable unified mode of KbName, so KbName accepts identical key names on
 % all operating systems:
 KbName('UnifyKeyNames');
@@ -113,9 +117,6 @@ while 1
     end
 end
 
-% To prepare for the next demo, discard key press events from the Event
-% Manager queue.
-FlushEvents('keyDown');
 return
 
 %% Part 2
@@ -143,9 +144,6 @@ while 1
 	end
 end
 
-% To prepare for the next demo, discard key press events from the Event
-% Manager queue.
-FlushEvents('keyDown');
 return
 
 %% Part 3
@@ -157,9 +155,6 @@ timeSecs = KbWait;
 [ keyIsDown, t, keyCode ] = KbCheck;
 fprintf('"%s" typed at time %.3f seconds\n', KbName(keyCode), timeSecs - startSecs);
 
-% To prepare for the next demo, discard key press events from the Event
-% Manager queue.
-FlushEvents('keyDown');
 return
 
 %% Part 4
@@ -183,10 +178,12 @@ try
     % Open a new window.
     [ window, windowRect ] = Screen('OpenWindow', whichScreen);
     
-    % Set text display options.
-    Screen('TextFont', window, 'Arial');
-    Screen('TextSize', window, 18);
-    
+    % Set text display options. We skip on Linux.
+    if ~IsLinux
+        Screen('TextFont', window, 'Arial');
+        Screen('TextSize', window, 18);
+    end
+
     % Set colors.
     black = BlackIndex(window);
     
@@ -243,7 +240,7 @@ try
     end
     
     Screen('CloseAll');
-    FlushEvents('keyDown');	% Discard all key press events from the Event Manager queue.
+
     fprintf('\n4 of 4.  Done.\n');
 
 catch

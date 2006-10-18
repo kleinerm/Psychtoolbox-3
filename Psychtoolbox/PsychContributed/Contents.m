@@ -26,3 +26,7 @@
 %
 % macidpascalsource/           This folder contains the Delphi-7 Pascal source code
 %                              of macid.exe, as required by macid's GPL license.
+%
+% ple.m                        Prints useful debugging output, including a stack trace in case
+%                              a script exits via rethrow() or psychrethrow(). See help ple for
+%                              copyright info.
