@@ -47,14 +47,14 @@ switch meterType
             portNameIn = meterports.in;
         end
 
-		if IsWin | IsOSX
+		if IsWin || IsOSX
 			% Interface through PsychSerial for both OS9 and Windows.
 			stat = PR650init(portNameIn);				
 			status = sscanf(stat,'%f');
-			if (isempty(status) | status == -1)
+			if (isempty(status) || status == -1)
 			  disp('If colorimeter is off, turn it on');
 			end
-			while (isempty(status) | status == -1)
+			while isempty(status) || status == -1
 				stat = PR650init(portNameIn);
 				status = sscanf(stat,'%f');
 			end

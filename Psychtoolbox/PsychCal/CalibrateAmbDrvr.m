@@ -31,7 +31,7 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 4/1/03    dhb   Fix ambient averaging.
 
 % Check meter
-if (~whichMeterType)
+if ~whichMeterType
 	CMCheckInit;
 end
 
@@ -40,78 +40,83 @@ bits = cal.describe.dacsize;
 nInputLevels = 2^bits;
 
 % User prompt
-if (USERPROMPT)
-	if (cal.describe.whichScreen == 0)
+if USERPROMPT
+	if cal.describe.whichScreen == 0
 		fprintf('Hit any key to proceed past this message and display a box.\n');
 		fprintf('Focus radiometer on the displayed box.\n');
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
-			cal.describe.leaveRoomTime);
+                cal.describe.leaveRoomTime);
 		fprintf('to leave room.\n');
+        FlushEvents;
 		GetChar;
 	else
 		fprintf('Focus radiometer on the displayed box.\n');
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
-			cal.describe.leaveRoomTime);
+                cal.describe.leaveRoomTime);
 		fprintf('to leave room.\n');
 	end
 end
 
 % Blank other screen
 if blankOtherScreen
-	[window1,screenRect1] = SCREEN(cal.describe.whichBlankScreen,'OpenWindow',0,[],32);
-	SetColor(window1,0,[0 0 0]');
+    [window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen);
+	Screen('LoadNormalizedGammaTable', window1, zeros(256, 3));
 end
 
 % Blank screen to be measured
-[window,screenRect] = SCREEN(cal.describe.whichScreen,'OpenWindow',0,[],32);
+[window, screenRect] = Screen('OpenWindow', cal.describe.whichScreen);
 if (cal.describe.whichScreen == 0)
 	HideCursor;
 else
-	Screen('MatlabToFront');
+	%Screen('MatlabToFront');
 end
-SetColor(window,0,[0 0 0]');
+Screen('LoadNormalizedGammaTable', window, zeros(256, 3));
 
 % Set CLUT
 rClut2 = 0:1:255;
 clut2 = [rClut2', rClut2', rClut2'];
-Screen(window,'SetClut',clut2);
+Screen('LoadClut', window, clut2);
+Screen('Flip', window);
 
 % Draw a box in the center of the screen
 boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
-boxRect = CenterRect(boxRect,screenRect);
-Screen(window,'FillRect',1,boxRect);
-SetColor(window,1,[nInputLevels-1 nInputLevels-1 nInputLevels-1]');
+boxRect = CenterRect(boxRect, screenRect);
+Screen('LoadClut', window, [nInputLevels-1, nInputLevels-1, nInputLevels-1], 1, bits);
+Screen('FillRect', window, 1, boxRect);
+Screen('Flip', window);
 
 % Wait for user
-if (USERPROMPT == 1)
-  GetChar;
-	fprintf('Pausing for %d seconds ...',cal.describe.leaveRoomTime);
+if USERPROMPT == 1
+    FlushEvents;
+    GetChar;
+	fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
 	WaitSecs(cal.describe.leaveRoomTime);
 	fprintf(' done\n');
 end
 
 % Put in appropriate background.
-SetColor(window,0,cal.bgColor);
+Screen('LoadClut', window, cal.bgColor', 0, bits);
+Screen('Flip');
 
 % Start timing
 t0 = clock;
 
-ambient = zeros(cal.describe.S(3),1);
+ambient = zeros(cal.describe.S(3), 1);
 for a = 1:cal.describe.nAverage
-  % Measure ambient
-	ambient = ambient  + MeasMonSpd(window,[0 0 0]',cal.describe.S,0,whichMeterType);
+    % Measure ambient
+    ambient = ambient + MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
 end
 ambient = ambient / cal.describe.nAverage;
 
 % Close the screen
-SCREEN(window,'Close');
-if (cal.describe.whichScreen == 0)
+Screen('Close', window);
+if cal.describe.whichScreen == 0
 	ShowCursor;
 end
 
 % Report time
 t1 = clock;
-fprintf('CalibrateAmbDrvr measurements took %g minutes\n',etime(t1,t0)/60);
+fprintf('CalibrateAmbDrvr measurements took %g minutes\n', etime(t1,t0)/60);
 
 % Update structure
 Smon = cal.describe.S;
@@ -122,6 +127,6 @@ cal.S_ambient = Smon;
 
 % Blank other screen
 if blankOtherScreen
-	SCREEN(window1,'Close');
+	Screen('Close', window1);
 end     
 

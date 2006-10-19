@@ -33,10 +33,10 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 % 2/26/03   dhb   Change definition of PR-650 meter type to 1.
 
 % Handle defaults
-if nargin < 2 | isempty(meterType)
+if nargin < 2 || isempty(meterType)
   meterType = 1;
 end
-if nargin < 1 | isempty(S)
+if nargin < 1 || isempty(S)
   S = [380 5 81];
 end 
 

@@ -52,7 +52,7 @@ bits = cal.describe.dacsize;
 nInputLevels = 2^bits;
 
 % Define input settings for the measurements
-mGammaInputRaw = round(linspace(nInputLevels/cal.describe.nMeas,nInputLevels-1,cal.describe.nMeas))';
+mGammaInputRaw = round(linspace(nInputLevels/cal.describe.nMeas, nInputLevels-1, cal.describe.nMeas))';
 
 % Make manual measurements here if desired.  This needs to come first.
 if cal.manual.use
@@ -61,88 +61,92 @@ end
 
 % User prompt
 if USERPROMPT
-	if (cal.describe.whichScreen == 0)
+	if cal.describe.whichScreen == 0
 		fprintf('Hit any key to proceed past this message and display a box.\n');
 		fprintf('Focus radiometer on the displayed box.\n');
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
-			cal.describe.leaveRoomTime);
+                cal.describe.leaveRoomTime);
 		fprintf('to leave room.\n');
 		GetChar;
 	else
 		fprintf('Focus radiometer on the displayed box.\n');
 		fprintf('Once meter is set up, hit any key - you will get %g seconds\n',...
-			cal.describe.leaveRoomTime);
+                cal.describe.leaveRoomTime);
 		fprintf('to leave room.\n');
 	end
 end
 
 % Blank other screen
 if blankOtherScreen
-	[window1,screenRect1] = Screen(cal.describe.whichBlankScreen,'OpenWindow',0,[],32);
-	SetColor(window1,0,[0 0 0]');
+	[window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
+	Screen('LoadNormalizedGammaTable', window1, zeros(256, 3));
 end
 
 % Blank screen to be measured
-[window,screenRect] = Screen(cal.describe.whichScreen,'OpenWindow',0,[],32);
+[window, screenRect] = Screen('OpenWindow', cal.describe.whichScreen, 0);
 if (cal.describe.whichScreen == 0)
 	HideCursor;
 else
-	Screen('MatlabToFront');
+	%Screen('MatlabToFront');
 end
-SetColor(window,0,[0 0 0]');
+Screen('LoadNormalizedGammaTable', window, zeros(256, 3));
 
 % Draw a box in the center of the screen
-if (~isfield(cal.describe,'boxRect'))
+if ~isfield(cal.describe, 'boxRect')
 	boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
 	boxRect = CenterRect(boxRect,screenRect);
 else
 	boxRect = cal.describe.boxRect;
 end
-Screen(window,'FillRect',1,boxRect);
-SetColor(window,1,[nInputLevels-1 nInputLevels-1 nInputLevels-1]');
+Screen('LoadClut', window, [nInputLevels-1, nInputLevels-1, nInputLevels-1], 1, bits);
+Screen('FillRect', window, 1, boxRect);
+Screen('Flip', window);
 
 % Wait for user
-if (USERPROMPT == 1)
-  GetChar;
-	fprintf('Pausing for %d seconds ...',cal.describe.leaveRoomTime);
-	WaitSecs(cal.describe.leaveRoomTime);
-	fprintf(' done\n');
+if USERPROMPT == 1
+    FlushEvents;
+    GetChar;
+    fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
+    WaitSecs(cal.describe.leaveRoomTime);
+    fprintf(' done\n');
 end
 
 % Put correct surround for measurements.
-SetColor(window,0,cal.bgColor);
+Screen('LoadClut', window, cal.bgColor', 0, bits);
+Screen('Flip', window);
 
 % Start timing
 t0 = clock;
 
 mon = zeros(cal.describe.S(3)*cal.describe.nMeas,cal.nDevices);
 for a = 1:cal.describe.nAverage
-  for i = 1:cal.nDevices
-    disp(sprintf('Monitor device %g',i));
-		Screen(window,'FillRect',1,boxRect);
-		
-    % Measure ambient
-		darkAmbient1 = MeasMonSpd(window,[0 0 0]',cal.describe.S,0,whichMeterType);
+    for i = 1:cal.nDevices
+        disp(sprintf('Monitor device %g',i));
+        Screen('FillRect', window, 1, boxRect);
+        Screen('Flip', window);
 
-    % Measure full gamma in random order
-    mGammaInput = zeros(cal.nDevices,cal.describe.nMeas);
-    mGammaInput(i,:) = mGammaInputRaw';
-    sortVals = rand(cal.describe.nMeas,1);
-    [null,sortIndex] = sort(sortVals);
-		%fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
-		[tempMon,cal.describe.S] = MeasMonSpd(window,mGammaInput(:,sortIndex),cal.describe.S,[],whichMeterType);  
-    tempMon(:,sortIndex) = tempMon;
+        % Measure ambient
+        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
 
-    % Take another ambient reading and average
-		darkAmbient2 = MeasMonSpd(window,[0 0 0]',cal.describe.S,0,whichMeterType);  
-    darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1,cal.describe.nMeas);
+        % Measure full gamma in random order
+        mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
+        mGammaInput(i,:) = mGammaInputRaw';
+        sortVals = rand(cal.describe.nMeas,1);
+        [null, sortIndex] = sort(sortVals);
+        %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
+        [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), cal.describe.S, [], whichMeterType);
+        tempMon(:, sortIndex) = tempMon;
 
-    % Subtract ambient
-    tempMon = tempMon - darkAmbient;
+        % Take another ambient reading and average
+        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
+        darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas);
 
-    % Store data
-    mon(:,i) = mon(:,i) + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,1);
-  end
+        % Subtract ambient
+        tempMon = tempMon - darkAmbient;
+
+        % Store data
+        mon(:, i) = mon(:, i) + reshape(tempMon,cal.describe.S(3)*cal.describe.nMeas,1);
+    end
 end
 mon = mon / cal.describe.nAverage;
 
@@ -152,7 +156,7 @@ ShowCursor;
 
 % Report time
 t1 = clock;
-fprintf('CalibrateMonDrvr measurements took %g minutes\n',etime(t1,t0)/60);
+fprintf('CalibrateMonDrvr measurements took %g minutes\n', etime(t1, t0)/60);
 
 % Pre-process data to get rid of negative values.
 mon = EnforcePos(mon);
@@ -170,6 +174,6 @@ cal = CalibrateFitGamma(cal);
 
 % Blank other screen
 if blankOtherScreen
-	Screen(window1,'Close');
+	Screen('Close', window1);
 end
 
