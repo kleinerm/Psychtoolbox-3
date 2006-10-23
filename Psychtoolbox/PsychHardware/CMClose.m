@@ -13,24 +13,24 @@ function CMClose(meterType)
 % 3/27/03  dhb, jmh  Fix up default argument.
 
 % Set default meterType.
-if nargin < 1 | isempty(meterType)
+if nargin < 1 || isempty(meterType)
   meterType = 1;
 end
 
 switch meterType
-	case 1,
+	case 1
 		% PR-650
-		if IsWin | IsOS9
+		if IsWin || IsOS9 || IsOSX
 			PR650close;
 		else
 			error(['Unsupported OS ' computer]);
 		end
-	case 2,
-		if (~exist('CVIClose'))
+	case 2
+		if ~exist('CVIClose')
 			error('Need CVIToolbox to call CVIClose (meterType 2)');
 		end
 		CVIClose;
-	case 3,
+	case 3
 		CRSColorClose;
 	otherwise,
 		error('Unknown meter type');

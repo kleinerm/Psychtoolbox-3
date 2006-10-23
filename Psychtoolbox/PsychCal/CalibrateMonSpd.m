@@ -14,7 +14,7 @@
 % 8/11/00 dhb  Save mon in rawdata.
 % 8/18/00 dhb  More descriptive information saved.
 % 8/20/00 dhb  Automatic check for RADIUS and number of DAC bits.
-% 9/10/00	pbe	 Added option to blank another screen while measuring. 
+% 9/10/00 pbe  Added option to blank another screen while measuring. 
 % 2/27/02 dhb  Various small fixes, including Radeon support.
 %         dhb  Change noMeterAvail to whichMeterType.
 

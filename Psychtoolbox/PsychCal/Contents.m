@@ -10,7 +10,6 @@
 %   CalibrateFitLinMod  - Fit the linear model to spectral calibration data.
 %   CalibrateManualDrvr - Common code called by monitor calibration programs.  Script.
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
-%   CalibrateMonDrvrnewcoor - Common code called by monitor calibration programs.  Script. 
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
 %   CompareMonCal       - Compare two calibration structures to see if they match.
 %   CompareMonCalOverTime - Compare two calibrations of same monitor and see differences.  Script.

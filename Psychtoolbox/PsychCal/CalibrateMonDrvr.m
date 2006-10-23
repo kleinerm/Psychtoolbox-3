@@ -9,40 +9,41 @@ function cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % Gamma curves are computed.
 
 % 10/26/93	dhb		Wrote it based on CalibrateProj.
-% 11/3/93		dhb		Added filename entry with default.
-% 2/28/94		dhb		Updated SetMon call to SetColor call.
-% 3/12/94		dhb		Created version for monitor 0.
-% 								User interface is a little wild.
-% 4/3/94		dhb		Save the darkAmbient variable.
-% 								User interface improvements
-% 9/4/94		dhb		Incorporate gamma fitting
-%									improvements from CalibrateMonRoom.
-%						dhb		Add whichScreen variable. 
-%						dhb		Add sync mode variable.
-%	10/20/94	dhb		Add bgColor variable.
-% 11/18/94  ccc   Change the range of LUT from (0,255) to 
-%                 (0, InputLevels-step) with step=nInputLevels/255 
+% 11/3/93	dhb		Added filename entry with default.
+% 2/28/94	dhb		Updated SetMon call to SetColor call.
+% 3/12/94	dhb		Created version for monitor 0.
+% 					User interface is a little wild.
+% 4/3/94	dhb		Save the darkAmbient variable.
+% 					User interface improvements
+% 9/4/94	dhb		Incorporate gamma fitting
+%					improvements from CalibrateMonRoom.
+%			dhb		Add whichScreen variable. 
+%			dhb		Add sync mode variable.
+% 10/20/94	dhb		Add bgColor variable.
+% 11/18/94  ccc     Change the range of LUT from (0,255) to 
+%                   (0, InputLevels-step) with step=nInputLevels/255 
 % 11/21/94	dhb, ccc	Further nine-bit modifications.
-% 1/23/95		dhb		Pulled parameter setting out into a calling script,
-%									made user prompting conditional.
-% 4/12/97		dhb		Update for new toolbox.
-% 8/21/97		dhb		Don't save data here.
-% 					dhb		Get rid of option not to measure.
-% 4/7/99    dhb   NINEBIT -> NBITS.
-%           dhb   Handle noMeterAvail, RADIUS switches.
-%           dhb   Check for empty indexLin.
+% 1/23/95	dhb		Pulled parameter setting out into a calling script,
+%					made user prompting conditional.
+% 4/12/97	dhb		Update for new toolbox.
+% 8/21/97	dhb		Don't save data here.
+% 			dhb		Get rid of option not to measure.
+% 4/7/99    dhb     NINEBIT -> NBITS.
+%           dhb     Handle noMeterAvail, RADIUS switches.
+%           dhb     Check for empty indexLin.
 % 9/22/99   dhb, mdr  Make boxRect depend on boxSize, defined up one level.
 % 10/1/99   dhb, mdr  Pull out nMonBases, defined up one level.
-% 12/2/99   dhb   Put background on after white box for aiming.
-% 8/14/00   dhb   Call to CMETER('Frequency') only for OS9.
-% 8/20/00   dhb   Remove bits arg to SetColor and most RADIUS conditionals.
-% 9/11/00   dhb   Remove syncMode code, any direct refs to CMETER.
-% 9/14/00   dhb   Use OpenWindow to open.
+% 12/2/99   dhb     Put background on after white box for aiming.
+% 8/14/00   dhb     Call to CMETER('Frequency') only for OS9.
+% 8/20/00   dhb     Remove bits arg to SetColor and most RADIUS conditionals.
+% 9/11/00   dhb     Remove syncMode code, any direct refs to CMETER.
+% 9/14/00   dhb     Use OpenWindow to open.
 % 3/8/02    dhb, ly  Call CalibrateManualDrvr if desired.
-% 7/9/02    dhb   Get rid of OpenWindow, CloseWindow.
+% 7/9/02    dhb     Get rid of OpenWindow, CloseWindow.
 % 9/23/02   dhb, jmh  Force background to zero when box is up for aiming.
-% 2/26/03   dhb   Tidy comments.
-% 2/3/06		dhb		Allow passing of cal.describe.boxRect
+% 2/26/03   dhb     Tidy comments.
+% 2/3/06	dhb		Allow passing of cal.describe.boxRect
+% 10/23/06  cgb     OS/X, etc.
 
 % Measurement parameters
 monWls = SToWls(cal.describe.S);
@@ -151,7 +152,7 @@ end
 mon = mon / cal.describe.nAverage;
 
 % Close the screen
-Screen(window,'Close');
+Screen(window, 'Close');
 ShowCursor;
 
 % Report time

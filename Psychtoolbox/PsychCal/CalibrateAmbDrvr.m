@@ -96,7 +96,7 @@ end
 
 % Put in appropriate background.
 Screen('LoadClut', window, cal.bgColor', 0, bits);
-Screen('Flip');
+Screen('Flip', window);
 
 % Start timing
 t0 = clock;
