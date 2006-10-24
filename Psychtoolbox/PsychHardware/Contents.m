@@ -5,7 +5,7 @@
 %
 %   help Psychtoolbox % For an overview, triple-click me & hit enter.
 %
-% ActiveWire          - Win, OS9: ActiveWire minimal USB interface, $59.  
+% ActiveWire          - Win: ActiveWire minimal USB interface, $59.  
 %                            web http://www.activewireinc.com/ -browser ;
 % CMCheckInit         - OS9: Turn on color meter.
 % CMClose             - OS9: Turn off color meter.
