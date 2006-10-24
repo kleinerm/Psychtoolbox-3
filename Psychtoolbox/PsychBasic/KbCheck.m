@@ -25,6 +25,16 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 % only key not reported is the start key (triangle) used to power on your
 % computer.
 % 
+% Some users of Laptops experienced the problem of "stuck keys": Some keys
+% are always reported as "down", so KbWait returns immediately and KbCheck
+% always reports keyIsDown == 1. This is often due to special function keys.
+% These keys or system functionality are assigned vendor specific
+% key codes, e.g., the status of the Laptop lid (opened/closed) could be
+% reported by some special keycode. Whenever the Laptop lid is open, this key
+% will be reported as pressed. You can work around this problem by passing
+% a list of keycodes to be ignored by KbCheck and KbWait. See
+% "help DisableKeysForKbCheck" on how to do this.
+%
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). If only a meta key was hit,
 % KbCheck will return true, because a key was pressed, but CharAvail will
@@ -38,35 +48,18 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 %
 % KbCheck uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
+%
+% KbCheck queries the first USB-HID keyboard device by default. Optionally
+% you can pass in a 'deviceNumber' to query a different keyboard if multiple
+% keyboards are connected to your machine.
 % 
-% OS9: ___________________________________________________________________
+% Windows/Linux: __________________________________________________________
 %
-% Command-Period causes an immediate exit.
-%
-% The Mac OS Event Manager detects and queues typed characters in the 
-% background. GetChar will return any characters typed before the  call to
-% GetChar. FlushEvents can be used to clear the character event  buffer
-% read by GetChar. Unlike GetChar, KbCheck only reports keys  depressed at
-% the moment KbCheck is called.  FlushEvents has no effect  on KbCheck.
-% 
-% Hitting CapsLock makes KbCheck and KbWait think that you're holding the
-% shift key down. They will continue to think so (returning 1) until you
-% release the shift by hitting CapsLock again.
-%
-% KbCheck and KbWait detect that a key is down by using the low-level Mac
-% OS call GetKeys. It's not clear what temporal accuracy this provides, but
-% it's much better than going through the higher-level Event Manager. Our
-% impression from reading the documentation in Dan Costin's KeMo package
-% web http://psychtoolbox.org/kemo.html
-% <ftp://ftp.stolaf.edu/pub/macpsych/KemMo_1.5.sit.hqx> is that this
-% low-level call still has uncertainty on the order of 11 ms because of the
-% way the Mac OS polls ADB devices. Someone clever could probably use his
-% advice to develop MEX files that timed keypresses more  accurately than
-% KbCheck does.
-%
+% KbCheck uses built-in helper functions of the Screen() mex file to query
+% keyboard state.
 % _________________________________________________________________________
 % 
-% See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail, KbDemo.
+% See also: FlushEvents, KbName, KbDemo, KbWait, GetChar, CharAvail.
 
 % TO DO:
 %
@@ -86,8 +79,24 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 %                Added conditional invocation of PsychHID on OSX
 % 7/12/04 awi  Cosmetic.  Separted platform-specific help. Use IsOSX now. 
 % 10/4/05 awi Note here cosmetic changes by dbp on unknown date between 7/12/04 and 10/4/05.  
+% 10/24/06 mk Windows and Linux implementation: Use built-in helper code in Screen.
+% 10/24/06 mk Add code for disabling "stuck keys".
 
-if IsOSX
+% ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
+% to define keys which should never be reported as 'down', i.e. disabled
+% keys. The vector is empty by default. If you have special quirky hardware,
+% e.g., some Laptop keyboards, that reports some keys as 'always down', you
+% can work around this 'stuck keys' by defining them in the ptb_kbcheck_disabledKeys
+% vector.
+global ptb_kbcheck_disabledKeys;
+
+% Cache operating system type to speed up the code below:
+persistent macosx;
+if isempty(macosx)
+   macosx = IsOSX;
+end
+
+if macosx
     if nargin==1
         [keyIsDown,secs, keyCode]= PsychHID('KbCheck', deviceNumber);
     elseif nargin == 0
@@ -95,13 +104,18 @@ if IsOSX
     elseif nargin > 1
         error('Too many arguments supplied to KbCheck'); 
     end
+else
+   % We use the built-in KbCheck facility of Screen on GNU/Linux and M$-Windows
+   % for KbChecks until a PsychHID implementation is ready.
+    [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end
 
-if IsLinux
-    % We use the built-in KbCheck facility of Screen on GNU/LInux for KbChecks until
-    % a PsychHID implementation for Linux is ready.
-    if nargin > 1
-        error('Too many arguments supplied to KbCheck'); 
-    end;
-    [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
-end;
+% Any dead keys defined?
+if ~isempty(ptb_kbcheck_disabledKeys)
+   % Yes. Disable all dead keys - force them to 'not pressed':
+   keyCode(ptb_kbcheck_disabledKeys)=0;
+   % Reevaluate global key down state:
+   keyIsDown = any(keyCode);
+end
+
+return;

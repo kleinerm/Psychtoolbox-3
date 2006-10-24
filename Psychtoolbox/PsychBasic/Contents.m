@@ -6,6 +6,7 @@
 %   help PsychDemos   % For demos, triple-click me & hit enter.
 %
 %     CharAvail            - Is a keypress available for GetChar?       
+%     DisableKeysForKbCheck- Tell KbCheck and KbWait to ignore specific keys.
 %     DoNothing            - Does nothing. Used to time Matlab's overhead.
 %     DrawFormattedText    - Drawing of formatted text into windows.
 %     FlushEvents          - Flush any unprocessed events. 

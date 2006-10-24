@@ -106,18 +106,107 @@ PsychError SCREENGetMouseHelper(void)
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+	static unsigned char disabledKeys[256];
+	static unsigned char firsttime = 1;
+	int keysdown, i;
+	unsigned char keyState[256];
 	double* buttonArray;
+	double numButtons, timestamp;
+	PsychNativeBooleanType* buttonStates;
 	POINT		point;
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)3, (int)1, &buttonArray);
-	// Query and return mouse button state:
-	PsychGetMouseButtonState(buttonArray);
-	// Query and return cursor position in global coordinates:
-	GetCursorPos(&point);
-	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) point.x);
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) point.y);
+	// Retrieve optional number of mouse buttons:
+	numButtons = 0;
+	PsychCopyInDoubleArg(1, FALSE, &numButtons);
+
+	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
+	if (numButtons>=0) {
+		// GetMouse-Mode: Return mouse button states and mouse cursor position:
+
+		PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)3, (int)1, &buttonArray);
+		// Query and return mouse button state:
+		PsychGetMouseButtonState(buttonArray);
+		// Query and return cursor position in global coordinates:
+		GetCursorPos(&point);
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) point.x);
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) point.y);
+	}
+	else {
+	  // 'KeyboardHelper' mode: We implement either KbCheck() or KbWait() via X11.
+	  // This is a hack to provide keyboard queries until a PsychHID() implementation
+	  // for Microsoft Windows is available...
+
+	  if (firsttime) {
+			// First time init:
+			firsttime = 0;
+			memset(keyState, 0, sizeof(keyState));
+			memset(disabledKeys, 0, sizeof(disabledKeys));
+			// These keycodes are always disabled: 0, 255:
+			disabledKeys[0]=1;
+			disabledKeys[255]=1;
+			// Mouse buttone (left, right, middle) are also disabled by default:
+			disabledKeys[1]=1;
+			disabledKeys[2]=1;
+			disabledKeys[4]=1;
+	  }
+
+	  if (numButtons==-1 || numButtons==-2) {
+	    // KbCheck()/KbWait() mode
+	    do {
+	      // Reset overall key state to "none pressed":
+	      keysdown=0;
+
+	      // Request current time of query:
+	      PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
+
+			// Query state of all keys:
+			for(i=1;i<255;i++){
+				keyState[i] = (GetAsyncKeyState(i) & -32768) ? 1 : 0;
+			}
+
+	      // Disable all keys that are registered in disabledKeys. Check if
+			// any non-disabled key is down.
+	      for (i=0; i<256; i++) {
+				if (disabledKeys[i]>0) keyState[i] = 0;
+				keysdown+=(unsigned int) keyState[i];
+	      }
+
+	      // We repeat until any key pressed if in KbWait() mode, otherwise we
+	      // exit the loop after first iteration in KbCheck mode.
+	      if ((numButtons==-1) || ((numButtons==-2) && (keysdown>0))) break;
+
+	      // Sleep for a millisecond before next KbWait loop iteration:
+	      PsychWaitIntervalSeconds(0.001);
+
+	    } while(1);
+
+	    if (numButtons==-2) {
+	      // KbWait mode: Copy out time value.
+	      PsychCopyOutDoubleArg(1, kPsychArgOptional, timestamp);
+	    }
+	    else {
+	      // KbCheck mode:
+	      
+	      // Copy out overall keystate:
+	      PsychCopyOutDoubleArg(1, kPsychArgOptional, (keysdown>0) ? 1 : 0);
+
+	      // Copy out timestamp:
+	      PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);	      
+
+	      // Copy out keyboard state:
+	      PsychAllocOutBooleanMatArg(3, kPsychArgOptional, 1, 256, 1, &buttonStates);
+
+	      // Build 256 elements return vector:
+	      for(i=0; i<255; i++) {
+		  		buttonStates[i] = (PsychNativeBooleanType)((keyState[i+1]) ? 1 : 0);
+	      }
+			// Special case: Null out last element:
+			buttonStates[255] = (PsychNativeBooleanType) 0;
+	    }
+	  }
+	}
 #endif
 	
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -228,9 +317,9 @@ PsychError SCREENGetMouseHelper(void)
 
 	      // Map 32 times 8 bitvector to 256 element return vector:
 	      for(i=0; i<32; i++) {
-		for(j=0; j<8; j++) {
-		  buttonStates[i*8 + j] = (PsychNativeBooleanType)(keys_return[i] & (1<<j)) ? 1 : 0;
-		}
+				for(j=0; j<8; j++) {
+		  			buttonStates[i*8 + j] = (PsychNativeBooleanType)(keys_return[i] & (1<<j)) ? 1 : 0;
+				}
 	      }
 	    }
 	  }
