@@ -39,13 +39,14 @@ PsychError EyelinkSystemIsConnected(void)
 	iStatus=eyelink_is_connected();
 //	mexPrintf("EyelinkSystemIsConnected status %d ((iStatus==0)=%d)\n", iStatus, (iStatus==0) );
 	if (iStatus==0) {
-		PsychErrorExitMsg(PsychError_user, "Eyelink system is not connected!x\n");
+		PsychErrorExitMsg(PsychError_user, "Eyelink system is not connected!\n");
 	}
 /*	
 	if (eyelink_is_connected()==0) {
 		PsychErrorExitMsg(PsychError_user, "Eyelink system is not connected!\n");
 	}
 	*/
+	return(PsychError_none);
 }
 
 /////////////////////////////////////////////////////////////////////////
@@ -56,5 +57,6 @@ PsychError EyelinkSystemIsInitialized(void)
 	if (giSystemInitialized != 1) {
 		PsychErrorExitMsg(PsychError_user, "Eyelink system is not initialized!\n");
 	}
+	return(PsychError_none);
 }
 

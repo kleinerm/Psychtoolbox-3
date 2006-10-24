@@ -79,7 +79,7 @@ PsychError EyelinkSendKeyButton(void)
 	PsychCopyInIntegerArg(2, TRUE, &iMods);
 	PsychCopyInIntegerArg(3, TRUE, &iState);
 	
-	iResult = eyelink_send_keybutton(iCode, iMods, iState);
+	iResult = (int) eyelink_send_keybutton((UINT16) iCode, (UINT16) iMods, (INT16) iState);
 //	iResult = eyelink_send_keybutton(cCode, iMods, iState);
 	
 	// Copy out arg

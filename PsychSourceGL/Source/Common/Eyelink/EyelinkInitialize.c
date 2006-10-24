@@ -70,7 +70,7 @@ PsychError EyelinkInitialize(void)
 		iStatus = 0;
 	} else {
 		
-		iStatus = open_eyelink_system(iBufferSize, NULL);
+		iStatus = (int) open_eyelink_system((UINT16) iBufferSize, NULL);
 		// If link is established, open connection
 		if(iStatus != 0) {
 			msec_delay(300);
@@ -124,7 +124,15 @@ PsychError EyelinkInitializeDummy(void)
 	} else {
 		
 		mexPrintf("Eyelink: Opening Eyelink in DUMMY mode\n");
-		iStatus = eyelink_dummy_open();
+
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// Need to open an eyelink connection on Windows, otherwise the beast will crash!
+			iStatus = (int) open_eyelink_connection(-1);
+			if (iStatus == 0) iStatus = (int) eyelink_dummy_open();
+		#else
+			iStatus = (int) eyelink_dummy_open();
+		#endif
+
 		// Check for errors and report
 		if(iStatus != 0) {
 			close_eyelink_system();
@@ -137,15 +145,11 @@ PsychError EyelinkInitializeDummy(void)
 			}
 		} else {
 			giSystemInitialized = 1;
-		}
-		
-				
+		}				
 	}
 		
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
 	
-	return(PsychError_none);
-	
+	return(PsychError_none)	
 }
-

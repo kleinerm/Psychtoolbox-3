@@ -76,7 +76,7 @@ PsychError EyelinkStartRecording(void)
 	PsychCopyInIntegerArg(3, FALSE, &iLinkSamples);
 	PsychCopyInIntegerArg(4, FALSE, &iLinkEvents);
 	
-	iStatus = start_recording(iFileSamples, iFileEvents, iLinkSamples, iLinkEvents);
+	iStatus = (int) start_recording((INT16) iFileSamples,(INT16) iFileEvents,(INT16) iLinkSamples,(INT16) iLinkEvents);
 	if (iStatus != 0) {
 		// BUG?  Recording starts and appears to be working, but does not
 		// return 0 and aborts if we use the PsychErrorExit...

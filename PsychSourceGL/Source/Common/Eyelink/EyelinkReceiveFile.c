@@ -74,7 +74,7 @@
 	 PsychAllocInCharArg(2, FALSE, &dest);
 	 PsychCopyInIntegerArg(3, FALSE, &dest_is_path);
 	 
-	 iStatus = receive_data_file(src, dest, dest_is_path);
+	 iStatus = (int) receive_data_file(src, dest, (INT16) dest_is_path);
 	 
 	 /* if there is an output variable available, assign result to it.   */			
 	 PsychCopyOutDoubleArg(1, FALSE, iStatus);

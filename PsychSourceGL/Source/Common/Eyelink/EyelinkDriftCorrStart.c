@@ -60,7 +60,7 @@ PsychError EyelinkDriftCorrStart(void)
    PsychCopyInIntegerArg(1, TRUE, &x);
    PsychCopyInIntegerArg(2, TRUE, &y);   
    
-   status = eyelink_driftcorr_start(x, y);
+   status = (int) eyelink_driftcorr_start((INT16) x,(INT16) y);
    
    /* if there is an output variable available, assign openstatus to it.   */
    PsychCopyOutDoubleArg(1, FALSE, status);
