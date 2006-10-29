@@ -6,18 +6,18 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 % Return a string identifying this release of the Psychtoolbox.
 % The first three numbers identify the base version of Psychtoolbox:
 %
-% ¥ Leftmost: increments indicate a significant change in the feature
+% ´ Leftmost: increments indicate a significant change in the feature
 % set, either through accumulated progress over time or abrupt introduction
 % of significant new features.
 %
-% ¥ Middle: Even numbers designate a "stable" release. The objective for
+% ´ Middle: Even numbers designate a "stable" release. The objective for
 % even number releases is that the software should run stably, as opposed
 % to introduction of new features. An even number is not a guarantee of
 % stability, but an expression of intent.  Odd numbers indicate a
 % "developer" release.  Odd number releases are incomplete, the software is
 % made available for the purpose of public collaboration in development.
 %
-% ¥ Rightmost: A counter to distinguish multiple releases having the same
+% ´ Rightmost: A counter to distinguish multiple releases having the same
 % leftmost and middle version numbers.
 %
 % Numeric values of the three integer fields contained in versionString are
@@ -30,7 +30,7 @@ function [versionString, versionStructure]=PsychtoolboxVersion
 % but that may change slightly in behaviour or syntax in the final release,
 % making it necessary for you to adapt your code after a software update.
 % Beta releases are known to be imperfect and fixing bugs in them is not a
-% high priority.
+% high priority.  The term 'current' is a synonym for 'beta'.
 %
 % * stable: A release with the intention of being well-tested and reliable.
 % Fixing bugs found in stable releases has a high priority and syntax or

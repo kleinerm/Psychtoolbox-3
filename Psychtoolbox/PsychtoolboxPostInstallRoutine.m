@@ -27,6 +27,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 22/09/2006 Replace system copy commands by Matlabs copyfile() - More
 %            robust (MK).
 % 14/10/2006 Update web page pointers at end, just to point at new wiki.
+% 28/10/2006 Accept 'current' as synonym for 'beta'. (DHB)
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -55,6 +56,12 @@ if nargin < 2
         fprintf('Info: Failed to determine flavor of this Psychtoolbox. Not a big deal...\n');
     end
 else
+    % Handle 'current' as synonym for 'beta'
+    switch (flavor)
+        case 'current'
+            flavor = 'beta';
+    end
+    
     % Flavor provided: Write it into the flavor file for use by later update calls:
     try
         flavorfile = [PsychtoolboxRoot 'ptbflavorinfo.txt'];
