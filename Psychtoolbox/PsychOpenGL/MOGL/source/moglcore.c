@@ -401,7 +401,9 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
             goto moglreturn;
         }
         // Success. Ready to go...
-        printf("MOGL - OpenGL for Matlab & GNU/Octave initialized - MOGL is (c) 2006 Richard F. Murray & Mario Kleiner, licensed to you under GPL.\n");
+		if (debuglevel > 1) {
+			printf("MOGL - OpenGL for Matlab & GNU/Octave initialized - MOGL is (c) 2006 Richard F. Murray & Mario Kleiner, licensed to you under GPL.\n");
+		}
         fflush(NULL);
         
         // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
