@@ -1,5 +1,5 @@
 function [fbo , texids] = moglCreateFBO(width, height, nrbuffers, layers, format, withdepth, withstencil)
-% [fbo , texids] = moglCreateFBO(width, height, layers, format, withdepth, withstencil)
+% [fbo , texids] = moglCreateFBO(width, height [, nrbuffers, layers, format, withdepth, withstencil])
 %
 % moglCreateFBO creates a standard OpenGL Framebuffer Object, suitable for
 % computer vision and other GPGPU tasks and returns a handle to it.
@@ -80,7 +80,7 @@ fbo = glGenFramebuffersEXT(1);
 
 % Hack, needs to be improved...
 if IsLinux
-    % Redifine vor NVidia:
+    % Redefine vor NVidia:
     GL.RGBA_FLOAT32_APPLE = hex2dec('8883');
 end;
 

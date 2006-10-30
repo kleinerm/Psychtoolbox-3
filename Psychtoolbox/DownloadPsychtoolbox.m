@@ -389,6 +389,7 @@ p=fullfile(targetdirectory,'Psychtoolbox');
 if any(isspace(p)) % Double check, to be sure.
     error('No spaces are allowed in the destination folder name.');
 end
+
 checkoutcommand=['svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' p];
 if isOSX
     checkoutcommand=[ '/usr/local/bin/' checkoutcommand];
@@ -401,6 +402,26 @@ if isOSX
 else
     [err,result]=dos(checkoutcommand);
 end
+
+if err
+    % Failed! Let's retry it via http protocol. This may work-around overly
+    % restrictive firewalls or otherwise screwed network proxies:
+    fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
+    fprintf('%s\n\n',result);
+    fprintf('Will retry now by use of alternative http protocol...\n');
+    checkoutcommand=['svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+    if isOSX
+        checkoutcommand=[ '/usr/local/bin/' checkoutcommand];
+    end
+    fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
+    fprintf('%s\n\n',checkoutcommand);
+    if isOSX
+        [err,result]=system(checkoutcommand);
+    else
+        [err,result]=dos(checkoutcommand);
+    end    
+end
+
 if err
     fprintf('Sorry, the download command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n',result);

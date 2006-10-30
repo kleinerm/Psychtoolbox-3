@@ -150,6 +150,7 @@ function kbNameResult = KbName(arg)
 %   21.09.06    mk      Added new command KbName('UnifyKeyNames'), which
 %                       remaps many of the Windows/Linux keynames to the OS-X naming scheme for
 %                       greater portability of newly written scripts.
+%   27.10.06    mk      Yet another bugfix for KbName, see forum message 5247.
 
 %   TO DO
 %
@@ -641,14 +642,19 @@ if nargin==0
     end
     kbNameResult= KbName(logical(keyCodes));  %note that keyCodes should be of type logical here.
 
+elseif isempty(arg)
+    % Empty argument. Could happen when the returned keyCode vector of
+    % KbCheck did not report any depressed keys:
+    kbNameResult=[];
+
 %if the argument is a logical array then convert to a list of doubles and
 %recur on the result. 
 %Note that this case must come before the test for double below.  In Matlab 5 logicals are also
 %doubles but in Matlab 6.5 logicals are not doubles.  
-elseif islogical(arg) | (isa(arg,'double') & length(arg)==256)
+elseif islogical(arg) | (isa(arg,'double') & length(arg)==256) | (isa(arg,'uint8') & length(arg)==256)
     kbNameResult=KbName(find(arg));
-	
-%if the argument is a double or a list of doubles 
+
+%if the argument is a single double or a list of doubles (list of keycodes) 
 elseif isa(arg,'double')
     %single element, the base case, we look up the name.
     if length(arg) == 1
@@ -797,5 +803,6 @@ elseif isa(arg, 'cell')
     for i = 1:length(arg)
         kbNameResult(i)=KbName(arg{i});
     end
+else
+    error('KbName can not handle the supplied argument. Please check your code or read the "help KbName".');
 end
-

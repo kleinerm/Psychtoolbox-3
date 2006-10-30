@@ -51,5 +51,8 @@ else
     glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, boundfbo);
 end;
 
+% Finally destroy the FBo itself:
+glDeleteFramebuffersEXT( 1, fbo);
+
 % Done.
 return;
