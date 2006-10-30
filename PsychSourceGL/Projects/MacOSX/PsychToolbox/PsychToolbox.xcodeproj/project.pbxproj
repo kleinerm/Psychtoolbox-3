@@ -40,7 +40,6 @@
 		0E92E887095726FE002687D9 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		0E92E889095726FE002687D9 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		0E92E88A095726FE002687D9 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		0E92E88B095726FE002687D9 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		0E92E88D095726FE002687D9 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		0E92E8C109572831002687D9 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = 0E92E8AE09572831002687D9 /* RegisterProject.h */; };
 		0E92E8C209572831002687D9 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8AF09572831002687D9 /* RegisterProject.c */; };
@@ -105,7 +104,6 @@
 		2F0B168A07788BB500359736 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2F0B168C07788BB500359736 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2F0B168D07788BB500359736 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2F0B168E07788BB500359736 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2F0B168F07788BB500359736 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2F0B169007788BB500359736 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2F0B16C407788CC100359736 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F0B16C007788CC100359736 /* RegisterProject.h */; };
@@ -156,7 +154,6 @@
 		2F54334D090431DC0051D6CC /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2F54334F090431DC0051D6CC /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2F543350090431DC0051D6CC /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2F543351090431DC0051D6CC /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2F543352090431DC0051D6CC /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2F543353090431DC0051D6CC /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2F5434D80904C5DB0051D6CC /* PsychHIDGiveMeReports.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F5434D70904C5DB0051D6CC /* PsychHIDGiveMeReports.c */; };
@@ -197,7 +194,6 @@
 		2F57E37408CEB64200A5CF85 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2F57E37608CEB64200A5CF85 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2F57E37708CEB64200A5CF85 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2F57E37808CEB64200A5CF85 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2F57E37908CEB64200A5CF85 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2F57E37A08CEB64200A5CF85 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2F57E38808CEB69B00A5CF85 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = F56C69E603DBF1C301866A1C /* RegisterProject.h */; };
@@ -250,7 +246,6 @@
 		2FACA4EC0764D9E400A159D3 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FACA4EE0764D9E400A159D3 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FACA4EF0764D9E400A159D3 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FACA4F00764D9E400A159D3 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FACA4F10764D9E400A159D3 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FACA4F20764D9E400A159D3 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FACA4F30764D9E400A159D3 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -265,7 +260,6 @@
 		2FB35E4B073065570070ABEC /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FB35E4D073065570070ABEC /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FB35E4E073065570070ABEC /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FB35E4F073065570070ABEC /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FB35E50073065570070ABEC /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FB35E51073065570070ABEC /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FB35E52073065570070ABEC /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -331,7 +325,6 @@
 		2FD614BD07306666008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD614BF07306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD614C007306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD614C107306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD614C207306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD614C307306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD614C407306666008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -341,7 +334,6 @@
 		2FD614D207306666008DA6B4 /* GetBusFrequencyMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95015B04E9AE88007A7274 /* GetBusFrequencyMex.c */; };
 		2FD614D407306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD614D507306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD614D607306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD614D707306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD614D807306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD614D907306666008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -382,7 +374,6 @@
 		2FD6150807306666008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6150A07306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6150B07306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6150C07306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6150D07306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6150E07306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6151707306666008DA6B4 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -423,7 +414,6 @@
 		2FD6154107306666008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6154307306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6154407306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6154507306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6154607306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6154707306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6154807306666008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -464,7 +454,6 @@
 		2FD6157807306666008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6157A07306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6157B07306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6157C07306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6157D07306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6157E07306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6158907306666008DA6B4 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -505,7 +494,6 @@
 		2FD615B207306666008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD615B407306666008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD615B507306666008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD615B607306666008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD615B707306666008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD615B807306666008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD615D307306667008DA6B4 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -545,7 +533,6 @@
 		2FD615FA07306667008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD615FC07306667008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD615FD07306667008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD615FE07306667008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD615FF07306667008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6160007306667008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6160907306667008DA6B4 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -585,7 +572,6 @@
 		2FD6163007306667008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6163207306667008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6163307306667008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6163407306667008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6163507306667008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6163607306667008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6163707306667008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -596,7 +582,6 @@
 		2FD6164607306667008DA6B4 /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		2FD6164807306667008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6164907306667008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6164A07306667008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6164B07306667008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6164C07306667008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6164D07306667008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -637,7 +622,6 @@
 		2FD6167C07306667008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6167E07306667008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6167F07306667008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6168007306667008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6168107306667008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6168207306667008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6168B07306667008DA6B4 /* MachPriorityMex.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F95011C04E446B9007A7274 /* MachPriorityMex.h */; };
@@ -647,7 +631,6 @@
 		2FD6169107306667008DA6B4 /* MachSetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95014604E8A2EB007A7274 /* MachSetPriorityMex.c */; };
 		2FD6169307306667008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6169407306667008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6169507306667008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6169607306667008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6169707306667008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6169807306667008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -683,7 +666,6 @@
 		2FD616C307306668008DA6B4 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
 		2FD616C507306668008DA6B4 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FD616D307306668008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
-		2FD616D507306668008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD616D607306668008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD616D707306668008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FD616D807306668008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
@@ -725,7 +707,6 @@
 		2FD6170A07306668008DA6B4 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F58C8D50588466A007A711C /* RegisterProject.c */; };
 		2FD6170C07306668008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6170D07306668008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6170E07306668008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6170F07306668008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6171007306668008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6171907306668008DA6B4 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = F55903740385C81D017A7028 /* RegisterProject.h */; };
@@ -839,7 +820,6 @@
 		2FD6178E07306668008DA6B4 /* SCREENFramePoly.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE9BE3C06B230AA00DB1E5A /* SCREENFramePoly.c */; };
 		2FD6179007306668008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6179107306668008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6179207306668008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6179307306668008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6179407306668008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6179507306668008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -884,7 +864,6 @@
 		2FD6181307306669008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD6181507306669008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6181607306669008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6181707306669008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6181807306669008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6181907306669008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6181A07306669008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -894,7 +873,6 @@
 		2FD618280730666A008DA6B4 /* TestPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F9DD46A051F863000A80166 /* TestPriorityMex.c */; };
 		2FD6182A0730666A008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD6182B0730666A008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD6182C0730666A008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD6182D0730666A008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD6182E0730666A008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6182F0730666A008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -935,7 +913,6 @@
 		2FD6185E0730666A008DA6B4 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		2FD618600730666A008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD618610730666A008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD618620730666A008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD618630730666A008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD618640730666A008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD6186D0730666B008DA6B4 /* WaitSecsMex.h in Headers */ = {isa = PBXBuildFile; fileRef = 2F9500E604E1A363007A7274 /* WaitSecsMex.h */; };
@@ -944,7 +921,6 @@
 		2FD618720730666B008DA6B4 /* WaitSecsMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F9500E704E1A363007A7274 /* WaitSecsMex.c */; };
 		2FD618740730666B008DA6B4 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FD618750730666B008DA6B4 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		2FD618760730666B008DA6B4 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FD618770730666B008DA6B4 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FD618780730666B008DA6B4 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FD618790730666B008DA6B4 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
@@ -956,7 +932,6 @@
 		2FEBA43B09885CF300F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA43C09885CF400F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA43D09885CF400F4165F /* DoNothing.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F550B2904B7AEFF007A7274 /* DoNothing.c */; };
-		2FEBA43E09885CF500F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA43F09885CF600F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA44009885CF700F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA44109885CF800F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -987,7 +962,6 @@
 		2FEBA7CC0988881F00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA7CD0988882000F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA7CE0988882100F4165F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
-		2FEBA7CF0988882200F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA7D00988882300F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA7D10988882400F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA7D20988882600F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1011,7 +985,6 @@
 		2FEBA7E7098889BD00F4165F /* FONTSFonts.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DEE069CBAFA0005EA67 /* FONTSFonts.c */; };
 		2FEBA7E8098889BE00F4165F /* FONTSNumFonts.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DED069CBAFA0005EA67 /* FONTSNumFonts.c */; };
 		2FEBA7E9098889BF00F4165F /* FONTSSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DEC069CBAFA0005EA67 /* FONTSSynopsis.c */; };
-		2FEBA7EA098889C000F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA7EB098889C100F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA7EC098889C200F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA7ED098889C300F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1035,7 +1008,6 @@
 		2FEBA80109888B4500F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA80209888B4600F4165F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		2FEBA80309888B4700F4165F /* Gestalt.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACA51D0764DAFC00A159D3 /* Gestalt.c */; };
-		2FEBA80409888B4800F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA80509888B4800F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA80609888B4900F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA80709888B4A00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1056,14 +1028,12 @@
 		2FEBA81A09888CA900F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA81B09888CAA00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA81C09888CAB00F4165F /* GetBusFrequencyMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95015B04E9AE88007A7274 /* GetBusFrequencyMex.c */; };
-		2FEBA81D09888CAC00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA81E09888CAD00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA81F09888CAE00F4165F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FEBA82109888D7400F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA82209888D7500F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA82309888D7600F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA82409888D7700F4165F /* GetBusTicks.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F2B824F044BA32900A80166 /* GetBusTicks.c */; };
-		2FEBA82509888D7800F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA82609888D7800F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA82709888D7900F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA82809888D7A00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1083,7 +1053,6 @@
 		2FEBA8380989488C00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8390989488D00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA83A0989488E00F4165F /* GetPID.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F02A85A05F0735800C19AA2 /* GetPID.c */; };
-		2FEBA83B0989488F00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA83C0989488F00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA83D0989489000F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA83E0989489100F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1103,7 +1072,6 @@
 		2FEBA84F0989495900F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8500989495A00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA8510989495B00F4165F /* GetSecs.c in Sources */ = {isa = PBXBuildFile; fileRef = F56C69E503DBF1C301866A1C /* GetSecs.c */; };
-		2FEBA8520989495C00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8530989495D00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA8540989495E00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA8550989495F00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1124,14 +1092,12 @@
 		2FEBA86609894A1500F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA86709894A1600F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA86809894A1700F4165F /* GetSecsMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F945AC30739C4290086193D /* GetSecsMex.c */; };
-		2FEBA86909894A1700F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA86A09894A1800F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA86B09894A1900F4165F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FEBA86D09894B3D00F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA86E09894B3D00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA86F09894B3E00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA87009894B3F00F4165F /* GetSecsTick.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CDBD3D03DCE6F0017C1EE6 /* GetSecsTick.c */; };
-		2FEBA87109894B4000F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA87209894B4100F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA87309894B4100F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA87409894B4200F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1152,7 +1118,6 @@
 		2FEBA88509894BCA00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA88609894BCA00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA88709894BCB00F4165F /* GetTicks.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F550B9C04B7F90A007A7274 /* GetTicks.c */; };
-		2FEBA88809894BCC00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA88909894BCD00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA88A09894BCD00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA88B09894BCE00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1173,7 +1138,6 @@
 		2FEBA89C09894CFE00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA89D09894CFF00F4165F /* IOPORTInit.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B17D50778976600359736 /* IOPORTInit.c */; };
 		2FEBA89E09894CFF00F4165F /* IOPORTSetPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */; };
-		2FEBA8A009894D0100F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8A109894D0200F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA8A209894D0200F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA8A309894D0300F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1194,7 +1158,6 @@
 		2FEBA8B709894F1100F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBA8B809894F1200F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8B909894F1300F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA8BA09894F1300F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8BB09894F1400F4165F /* MachGetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95011D04E446B9007A7274 /* MachGetPriorityMex.c */; };
 		2FEBA8BC09894F1600F4165F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		2FEBA8BD09894F1700F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -1202,7 +1165,6 @@
 		2FEBA8C00989761800F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA8C10989761800F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8C20989761900F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA8C30989761900F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8C40989761A00F4165F /* MachPriority.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FBB3CD504393BCA007A7274 /* MachPriority.c */; };
 		2FEBA8C50989761B00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA8C60989761C00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -1223,7 +1185,6 @@
 		2FEBA8D70989767300F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBA8D80989767400F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8D90989767400F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA8DA0989767500F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8DB0989767600F4165F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		2FEBA8DC0989767600F4165F /* MachSetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95014604E8A2EB007A7274 /* MachSetPriorityMex.c */; };
 		2FEBA8DD0989767700F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -1231,7 +1192,6 @@
 		2FEBA8E00989771000F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA8E10989771200F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8E20989771200F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA8E30989771300F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8E40989771500F4165F /* MachAbsoluteTimeClockFrequency.c in Sources */ = {isa = PBXBuildFile; fileRef = CFA99A22080732BC00E1D3DC /* MachAbsoluteTimeClockFrequency.c */; };
 		2FEBA8E50989771600F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA8E60989771700F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -1253,7 +1213,6 @@
 		2FEBA8FA098990F200F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA8FB098990F300F4165F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
 		2FEBA8FC098990F400F4165F /* libHIDUtilities.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC483A9069E5F1E00EE6B86 /* libHIDUtilities.a */; };
-		2FEBA8FD098990F400F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA8FE098990F500F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA8FF098990F600F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA900098990F700F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1290,7 +1249,6 @@
 		2FEBA9320989968B00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA9330989968C00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA9340989968D00F4165F /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
-		2FEBA9350989968E00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA9360989968F00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA9370989968F00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA9380989969100F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1309,7 +1267,6 @@
 		2FEBA9570989AAF800F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA9580989AAF800F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA9590989AAF900F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA95A0989AAFA00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA95B0989AAFA00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA95C0989AAFB00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA95D0989AAFC00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1334,7 +1291,6 @@
 		2FEBA9720989ACB700F4165F /* FontInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */; };
 		2FEBA9730989ACB800F4165F /* GetEthernetAddress.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */; };
 		2FEBA9740989ACB900F4165F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
-		2FEBA9750989ACBA00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA9760989ACBA00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA9770989ACBB00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA9780989ACBD00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1443,7 +1399,6 @@
 		2FEBA9E30989AE3600F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA9E40989AE3700F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA9E50989AE3800F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBA9E60989AE3900F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA9E70989AE3900F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBA9E80989AE3B00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBA9E90989AE3C00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1465,7 +1420,6 @@
 		2FEBA9FB0989AEDB00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBA9FC0989AEDC00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		2FEBA9FD0989AEDD00F4165F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
-		2FEBA9FE0989AEDE00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBA9FF0989AEDF00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBAA000989AEE000F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBAA010989AEE000F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1486,14 +1440,12 @@
 		2FEBAA120989B55500F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBAA130989B55500F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBAA140989B55700F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBAA150989B55800F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBAA160989B55900F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBAA170989B55A00F4165F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FEBAA180989B55B00F4165F /* TestPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F9DD46A051F863000A80166 /* TestPriorityMex.c */; };
 		2FEBAA1C0989B5C200F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBAA1D0989B5C300F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBAA1E0989B5C400F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBAA1F0989B5C500F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBAA200989B5C600F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBAA210989B5C700F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBAA230989B7F900F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1514,14 +1466,12 @@
 		2FEBAA360989B85B00F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBAA370989B85C00F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		2FEBAA380989B85D00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBAA390989B85E00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBAA3A0989B85F00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBAA3B0989B85F00F4165F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		2FEBAA3C0989B86000F4165F /* WaitSecsMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F9500E704E1A363007A7274 /* WaitSecsMex.c */; };
 		2FEBAA3F0989B8FA00F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBAA400989B8FB00F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBAA410989B8FB00F4165F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		2FEBAA420989B8FC00F4165F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		2FEBAA430989B8FD00F4165F /* eyelink_core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E92E92709572E2C002687D9 /* eyelink_core.framework */; };
 		2FEBAA440989B8FE00F4165F /* EyelinkButtonStates.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B909572831002687D9 /* EyelinkButtonStates.c */; };
 		2FEBAA450989B8FE00F4165F /* EyelinkCommand.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B109572831002687D9 /* EyelinkCommand.c */; };
@@ -1537,7 +1487,6 @@
 		2FEBAA500989B90700F4165F /* EyelinkStartSetup.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B509572831002687D9 /* EyelinkStartSetup.c */; };
 		2FEBAA510989B90900F4165F /* EyelinkStopRecording.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8BA09572831002687D9 /* EyelinkStopRecording.c */; };
 		2FEBAA520989B90900F4165F /* EyelinkSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B809572831002687D9 /* EyelinkSynopsis.c */; };
-		2FEBAA530989B90A00F4165F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		2FEBAA540989B90B00F4165F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		2FEBAA550989B90C00F4165F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		2FEBAA560989B90D00F4165F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -1570,6 +1519,9 @@
 		8057235F0A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */; };
 		805723600A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */; };
 		805723610A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c in Sources */ = {isa = PBXBuildFile; fileRef = 805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */; };
+		806F15FF0AF631E4005949BE /* EyelinkGetNextDataType.c in Sources */ = {isa = PBXBuildFile; fileRef = 806F15FE0AF631E4005949BE /* EyelinkGetNextDataType.c */; };
+		806F161E0AF6347A005949BE /* EyelinkGetFloatData.c in Sources */ = {isa = PBXBuildFile; fileRef = 806F161D0AF6347A005949BE /* EyelinkGetFloatData.c */; };
+		806FB9090AE97EA800FBA3F9 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 806FB9080AE97EA800FBA3F9 /* libstdc++.a */; };
 		80AB76B20A52F7EE00E7FB48 /* EyelinkReadTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */; };
 		80AB76B40A52F81300E7FB48 /* EyelinkRequestTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */; };
 		80AB76B60A52F83100E7FB48 /* EyelinkReceiveFile.c in Sources */ = {isa = PBXBuildFile; fileRef = 80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */; };
@@ -1612,7 +1564,6 @@
 		832CE619094CE8C300578C09 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		832CE61C094CE8C300578C09 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		832CE61F094CE8C300578C09 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		832CE620094CE8C300578C09 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		832CE621094CE8C300578C09 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		832CE622094CE8C300578C09 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		832CE659094CE9F600578C09 /* RegisterProject.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE655094CE9F600578C09 /* RegisterProject.h */; };
@@ -1719,7 +1670,6 @@
 		CF29B1F4080333DC00723921 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
 		CF29B1F6080333DC00723921 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		CF29B1F7080333DC00723921 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
-		CF29B1F8080333DC00723921 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		CF29B1F9080333DC00723921 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		CF29B1FA080333DC00723921 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		CF566E5207F7D20500D4957A /* libHIDUtilities.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC483A9069E5F1E00EE6B86 /* libHIDUtilities.a */; };
@@ -1753,7 +1703,6 @@
 		F074320C0AD465B400602397 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F074320D0AD465B400602397 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F074320E0AD465B400602397 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F074320F0AD465B400602397 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F07432100AD465B400602397 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F089BC800AD42DF500663D86 /* FontInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */; };
 		F089BC810AD42DF500663D86 /* GetEthernetAddress.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */; };
@@ -1876,7 +1825,6 @@
 		F089BCF70AD42DF500663D86 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F089BCF80AD42DF500663D86 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		F089BCF90AD42DF500663D86 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
-		F089BCFA0AD42DF500663D86 /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F089BCFB0AD42DF500663D86 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F089BCFC0AD42DF500663D86 /* QuickTime.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83C94B14092826FE0062DB0A /* QuickTime.framework */; };
 		F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
@@ -1889,7 +1837,6 @@
 		F14A27B40AD48A2A00BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A27B50AD48A2A00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A27B60AD48A2A00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A27B70AD48A2A00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A27B80AD48A2A00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A27CC0AD48C1200BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A27CD0AD48C1200BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -1928,7 +1875,6 @@
 		F14A27EF0AD48C1200BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A27F00AD48C1200BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A27F10AD48C1200BFB68F /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FC737E40450E15E007A7274 /* IOKit.framework */; };
-		F14A27F30AD48C1200BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28020AD48DDF00BFB68F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		F14A28030AD48DDF00BFB68F /* EyelinkButtonStates.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B909572831002687D9 /* EyelinkButtonStates.c */; };
 		F14A28040AD48DDF00BFB68F /* EyelinkCommand.c in Sources */ = {isa = PBXBuildFile; fileRef = 0E92E8B109572831002687D9 /* EyelinkCommand.c */; };
@@ -1982,7 +1928,6 @@
 		F14A28350AD48DDF00BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A28360AD48DDF00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		F14A28370AD48DDF00BFB68F /* eyelink_core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E92E92709572E2C002687D9 /* eyelink_core.framework */; };
-		F14A28380AD48DDF00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28390AD48DDF00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A283A0AD48DDF00BFB68F /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		F14A283B0AD48DDF00BFB68F /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
@@ -1992,7 +1937,6 @@
 		F14A28530AD48FCE00BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A28540AD48FCE00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A28550AD48FCE00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A28560AD48FCE00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28570AD48FCE00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A286A0AD4933000BFB68F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		F14A286B0AD4933000BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2015,7 +1959,6 @@
 		F14A287D0AD4933000BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A287E0AD4933000BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A287F0AD4933000BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A28800AD4933000BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28810AD4933000BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A28960AD4943E00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A28970AD4943E00BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -2037,7 +1980,6 @@
 		F14A28A80AD4943E00BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A28A90AD4943E00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A28AA0AD4943E00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A28AB0AD4943E00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28AC0AD4943E00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A28CD0AD4971100BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A28CE0AD4971100BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -2058,7 +2000,6 @@
 		F14A28DE0AD4971100BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A28DF0AD4971100BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A28E00AD4971100BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A28E10AD4971100BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A28E20AD4971100BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A28FA0AD4984300BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A28FB0AD4984300BFB68F /* TestPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F9DD46A051F863000A80166 /* TestPriorityMex.c */; };
@@ -2066,7 +2007,6 @@
 		F14A28FE0AD4984300BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A28FF0AD4984300BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A29000AD4984300BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A29010AD4984300BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A29020AD4984300BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A291B0AD49B9400BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A291C0AD49B9400BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -2088,7 +2028,6 @@
 		F14A292D0AD49B9400BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A292E0AD49B9400BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A292F0AD49B9400BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A29300AD49B9400BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A29310AD49B9400BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A29440AD49C2900BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A29450AD49C2900BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -2110,7 +2049,6 @@
 		F14A29560AD49C2900BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A29570AD49C2900BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		F14A29580AD49C2900BFB68F /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
-		F14A29590AD49C2900BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A297B0AD49D4F00BFB68F /* DoNothing.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F550B2904B7AEFF007A7274 /* DoNothing.c */; };
 		F14A297C0AD49D4F00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		F14A297D0AD49D4F00BFB68F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -2130,7 +2068,6 @@
 		F14A298C0AD49D4F00BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A298D0AD49D4F00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A298E0AD49D4F00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A298F0AD49D4F00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A29900AD49D4F00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A29A00AD49E4300BFB68F /* FontInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */; };
 		F14A29A10AD49E4300BFB68F /* FONTSFonts.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F4A2DEE069CBAFA0005EA67 /* FONTSFonts.c */; };
@@ -2157,7 +2094,6 @@
 		F14A29B70AD49E4300BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A29B80AD49E4300BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A29B90AD49E4300BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A29BA0AD49E4300BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A29BB0AD49E4300BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A29D20AD49F3F00BFB68F /* GetPID.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F02A85A05F0735800C19AA2 /* GetPID.c */; };
 		F14A29D30AD49F3F00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2178,7 +2114,6 @@
 		F14A29E30AD49F3F00BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A29E40AD49F3F00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A29E50AD49F3F00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A29E60AD49F3F00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A29E70AD49F3F00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A29F90AD4A02B00BFB68F /* Events.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F29D90004B911AF007A7274 /* Events.c */; };
 		F14A29FA0AD4A02B00BFB68F /* Gestalt.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FACA51D0764DAFC00A159D3 /* Gestalt.c */; };
@@ -2201,7 +2136,6 @@
 		F14A2A0C0AD4A02B00BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A2A0D0AD4A02B00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2A0E0AD4A02B00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2A0F0AD4A02B00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2A100AD4A02B00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2A200AD4A0D400BFB68F /* GetBusFrequencyMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95015B04E9AE88007A7274 /* GetBusFrequencyMex.c */; };
 		F14A2A210AD4A0D400BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2209,7 +2143,6 @@
 		F14A2A240AD4A0D400BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A2A250AD4A0D400BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2A260AD4A0D400BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2A270AD4A0D400BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2A280AD4A0D400BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2A5A0AD4A15C00BFB68F /* GetBusTicks.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F2B824F044BA32900A80166 /* GetBusTicks.c */; };
 		F14A2A5B0AD4A15C00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2230,7 +2163,6 @@
 		F14A2A6B0AD4A15C00BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2A6C0AD4A15C00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2A6D0AD4A15C00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2A6E0AD4A15C00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2A6F0AD4A15C00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2A7F0AD4A1E200BFB68F /* GetSecs.c in Sources */ = {isa = PBXBuildFile; fileRef = F56C69E503DBF1C301866A1C /* GetSecs.c */; };
 		F14A2A800AD4A1E200BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2252,7 +2184,6 @@
 		F14A2A910AD4A1E200BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2A920AD4A1E200BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2A930AD4A1E200BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2A940AD4A1E200BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2A950AD4A1E200BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2AA50AD4A26B00BFB68F /* GetSecsMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F945AC30739C4290086193D /* GetSecsMex.c */; };
 		F14A2AA60AD4A26B00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2260,7 +2191,6 @@
 		F14A2AA90AD4A26B00BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A2AAA0AD4A26B00BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2AAB0AD4A26B00BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2AAC0AD4A26B00BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2AAD0AD4A26B00BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2AC10AD4AAD600BFB68F /* GetSecsTick.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CDBD3D03DCE6F0017C1EE6 /* GetSecsTick.c */; };
 		F14A2AC20AD4AAD600BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2281,7 +2211,6 @@
 		F14A2AD20AD4AAD600BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2AD30AD4AAD600BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2AD40AD4AAD600BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2AD50AD4AAD600BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2AD60AD4AAD600BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2AE60AD4AB5200BFB68F /* GetTicks.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F550B9C04B7F90A007A7274 /* GetTicks.c */; };
 		F14A2AE70AD4AB5200BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2303,7 +2232,6 @@
 		F14A2AF80AD4AB5200BFB68F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		F14A2AF90AD4AB5200BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2AFA0AD4AB5200BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2AFB0AD4AB5200BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2AFC0AD4AB5200BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2B0D0AD4ABB500BFB68F /* IOPORTInit.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B17D50778976600359736 /* IOPORTInit.c */; };
 		F14A2B0E0AD4ABB500BFB68F /* IOPORTSetPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B17D60778976600359736 /* IOPORTSetPort.c */; };
@@ -2326,7 +2254,6 @@
 		F14A2B200AD4ABB500BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2B210AD4ABB500BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2B220AD4ABB500BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2B230AD4ABB500BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2B240AD4ABB500BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2B3A0AD4AC8000BFB68F /* MachPriority.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FBB3CD504393BCA007A7274 /* MachPriority.c */; };
 		F14A2B3B0AD4AC8000BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2347,7 +2274,6 @@
 		F14A2B4B0AD4AC8000BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2B4C0AD4AC8000BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2B4D0AD4AC8000BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2B4E0AD4AC8000BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2B4F0AD4AC8000BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		F14A2B610AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.c in Sources */ = {isa = PBXBuildFile; fileRef = CFA99A22080732BC00E1D3DC /* MachAbsoluteTimeClockFrequency.c */; };
 		F14A2B620AD4ACE700BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2368,7 +2294,6 @@
 		F14A2B720AD4ACE700BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2B730AD4ACE700BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2B740AD4ACE700BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
-		F14A2B750AD4ACE700BFB68F /* libstdc++.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC57F03833BCA017A7028 /* libstdc++.a */; };
 		F14A2B760AD4ACE700BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 /* End PBXBuildFile section */
 
@@ -3231,6 +3156,23 @@
 		};
 /* End PBXBuildRule section */
 
+/* Begin PBXBuildStyle section */
+		8074C5DD0AE7A4A80067B5B9 /* Development */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Development;
+		};
+		8074C5DE0AE7A4A80067B5B9 /* Deployment */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Deployment;
+		};
+/* End PBXBuildStyle section */
+
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -3243,7 +3185,7 @@
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
 		0E92E8AE09572831002687D9 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Eyelink/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		0E92E8AF09572831002687D9 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Eyelink/RegisterProject.c; sourceTree = SOURCE_ROOT; };
@@ -3276,10 +3218,10 @@
 		2F0B17D50778976600359736 /* IOPORTInit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTInit.c; path = ../../../Source/Common/IOPort/IOPORTInit.c; sourceTree = SOURCE_ROOT; };
 		2F0B17D60778976600359736 /* IOPORTSetPort.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = IOPORTSetPort.c; path = ../../../Source/Common/IOPort/IOPORTSetPort.c; sourceTree = SOURCE_ROOT; };
 		2F1642F6075E5FBF00E4FCB1 /* How To Release.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; name = "How To Release.rtf"; path = "../../../Notes/How To Release.rtf"; sourceTree = SOURCE_ROOT; };
-		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB72/extern/include/mex.h; sourceTree = "<absolute>"; };
-		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB72/extern/include/matrix.h; sourceTree = "<absolute>"; };
+		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB71/extern/include/mex.h; sourceTree = "<absolute>"; };
+		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB71/extern/include/matrix.h; sourceTree = "<absolute>"; };
 		2F1EB81D05447D4A00A80166 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB73/extern/src/mexversion.c; sourceTree = "<absolute>"; };
+		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB71/extern/src/mexversion.c; sourceTree = "<absolute>"; };
 		2F29D8F204B90844007A7274 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/SysBeep/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F29D8F304B90844007A7274 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/SysBeep/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F29D8F404B90844007A7274 /* SysBeep.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SysBeep.c; path = ../../../Source/Common/SysBeep/SysBeep.c; sourceTree = SOURCE_ROOT; };
@@ -3292,7 +3234,7 @@
 		2F2B824E044BA32900A80166 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/GetBusTicks/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F2B824F044BA32900A80166 /* GetBusTicks.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = GetBusTicks.c; path = ../../../Source/Common/GetBusTicks/GetBusTicks.c; sourceTree = SOURCE_ROOT; };
 		2F3BFF3B04E0C836007A7274 /* GetSecsMex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetSecsMex.h; path = ../../../Source/Common/GetSecsMex/GetSecsMex.h; sourceTree = SOURCE_ROOT; };
-		2F3ED8090535081000A80166 /* CHUD.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CHUD.framework; path = /System/Library/Frameworks/CHUD.framework; sourceTree = "<absolute>"; };
+		2F3ED8090535081000A80166 /* CHUD.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CHUD.framework; path = /Library/Frameworks/CHUD.framework; sourceTree = "<absolute>"; };
 		2F44A9B008DB8A1000F0A627 /* COCOAEVENTBRIDGERevertKeyWindow.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = COCOAEVENTBRIDGERevertKeyWindow.c; path = ../../../Source/Common/GetChar/COCOAEVENTBRIDGERevertKeyWindow.c; sourceTree = SOURCE_ROOT; };
 		2F44AD77056B166A007A711C /* SCREENTextSize.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENTextSize.c; path = ../../../Source/Common/Screen/SCREENTextSize.c; sourceTree = SOURCE_ROOT; };
 		2F47161707A81674009DDBA2 /* SCREENClearTimeList.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENClearTimeList.c; path = ../../../Source/Common/Screen/SCREENClearTimeList.c; sourceTree = SOURCE_ROOT; };
@@ -3506,6 +3448,10 @@
 		805723520A51DE4B00DF6EF6 /* EyelinkSetOfflineMode.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSetOfflineMode.c; path = ../../../Source/Common/Eyelink/EyelinkSetOfflineMode.c; sourceTree = SOURCE_ROOT; };
 		805723530A51DE4B00DF6EF6 /* EyeLinkTargetCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyeLinkTargetCheck.c; path = ../../../Source/Common/Eyelink/EyeLinkTargetCheck.c; sourceTree = SOURCE_ROOT; };
 		805723540A51DE4B00DF6EF6 /* EyelinkWaitForModeReady.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkWaitForModeReady.c; path = ../../../Source/Common/Eyelink/EyelinkWaitForModeReady.c; sourceTree = SOURCE_ROOT; };
+		806F15D40AF62BBD005949BE /* core_expt.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = core_expt.h; path = /Library/Frameworks/eyelink_core.framework/Versions/A/Headers/core_expt.h; sourceTree = "<absolute>"; };
+		806F15FE0AF631E4005949BE /* EyelinkGetNextDataType.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkGetNextDataType.c; path = ../../../Source/Common/Eyelink/EyelinkGetNextDataType.c; sourceTree = SOURCE_ROOT; };
+		806F161D0AF6347A005949BE /* EyelinkGetFloatData.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkGetFloatData.c; path = ../../../Source/Common/Eyelink/EyelinkGetFloatData.c; sourceTree = SOURCE_ROOT; };
+		806FB9080AE97EA800FBA3F9 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/3.3/libstdc++.a"; sourceTree = "<absolute>"; };
 		80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkReadTime.c; path = ../../../Source/Common/Eyelink/EyelinkReadTime.c; sourceTree = SOURCE_ROOT; };
 		80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkRequestTime.c; path = ../../../Source/Common/Eyelink/EyelinkRequestTime.c; sourceTree = SOURCE_ROOT; };
 		80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkReceiveFile.c; path = ../../../Source/Common/Eyelink/EyelinkReceiveFile.c; sourceTree = SOURCE_ROOT; };
@@ -3715,7 +3661,6 @@
 		F5FCC41A03833708017A7028 /* OpenGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGL.framework; path = /System/Library/Frameworks/OpenGL.framework; sourceTree = "<absolute>"; };
 		F5FCC43C038338B4017A7028 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = /System/Library/Frameworks/Carbon.framework; sourceTree = "<absolute>"; };
 		F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		F5FCC57F03833BCA017A7028 /* libstdc++.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libstdc++.a"; path = "/usr/lib/gcc/darwin/2.95.2/libstdc++.a"; sourceTree = "<absolute>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -3725,7 +3670,6 @@
 			files = (
 				0E92E889095726FE002687D9 /* OpenGL.framework in Frameworks */,
 				0E92E88A095726FE002687D9 /* ApplicationServices.framework in Frameworks */,
-				0E92E88B095726FE002687D9 /* libstdc++.a in Frameworks */,
 				0E92E88D095726FE002687D9 /* CoreServices.framework in Frameworks */,
 				0E92E8E00957291D002687D9 /* Carbon.framework in Frameworks */,
 				0E92E8E10957292F002687D9 /* System.framework in Frameworks */,
@@ -3740,7 +3684,6 @@
 			files = (
 				2F0B168C07788BB500359736 /* OpenGL.framework in Frameworks */,
 				2F0B168D07788BB500359736 /* ApplicationServices.framework in Frameworks */,
-				2F0B168E07788BB500359736 /* libstdc++.a in Frameworks */,
 				2F0B168F07788BB500359736 /* CoreAudio.framework in Frameworks */,
 				2F0B169007788BB500359736 /* CoreServices.framework in Frameworks */,
 			);
@@ -3752,7 +3695,6 @@
 			files = (
 				2F54334F090431DC0051D6CC /* OpenGL.framework in Frameworks */,
 				2F543350090431DC0051D6CC /* ApplicationServices.framework in Frameworks */,
-				2F543351090431DC0051D6CC /* libstdc++.a in Frameworks */,
 				2F543352090431DC0051D6CC /* CoreAudio.framework in Frameworks */,
 				2F543353090431DC0051D6CC /* CoreServices.framework in Frameworks */,
 			);
@@ -3764,7 +3706,6 @@
 			files = (
 				2F57E37608CEB64200A5CF85 /* OpenGL.framework in Frameworks */,
 				2F57E37708CEB64200A5CF85 /* ApplicationServices.framework in Frameworks */,
-				2F57E37808CEB64200A5CF85 /* libstdc++.a in Frameworks */,
 				2F57E37908CEB64200A5CF85 /* CoreAudio.framework in Frameworks */,
 				2F57E37A08CEB64200A5CF85 /* CoreServices.framework in Frameworks */,
 			);
@@ -3776,7 +3717,6 @@
 			files = (
 				2FACA4EE0764D9E400A159D3 /* OpenGL.framework in Frameworks */,
 				2FACA4EF0764D9E400A159D3 /* ApplicationServices.framework in Frameworks */,
-				2FACA4F00764D9E400A159D3 /* libstdc++.a in Frameworks */,
 				2FACA4F10764D9E400A159D3 /* CoreAudio.framework in Frameworks */,
 				2FACA4F20764D9E400A159D3 /* CoreServices.framework in Frameworks */,
 				2FACA4F30764D9E400A159D3 /* Carbon.framework in Frameworks */,
@@ -3789,7 +3729,6 @@
 			files = (
 				2FB35E4D073065570070ABEC /* OpenGL.framework in Frameworks */,
 				2FB35E4E073065570070ABEC /* ApplicationServices.framework in Frameworks */,
-				2FB35E4F073065570070ABEC /* libstdc++.a in Frameworks */,
 				2FB35E50073065570070ABEC /* CoreAudio.framework in Frameworks */,
 				2FB35E51073065570070ABEC /* CoreServices.framework in Frameworks */,
 				2FB35E52073065570070ABEC /* Carbon.framework in Frameworks */,
@@ -3802,7 +3741,6 @@
 			files = (
 				2FD614BF07306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD614C007306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD614C107306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD614C207306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD614C307306666008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD614C407306666008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3815,7 +3753,6 @@
 			files = (
 				2FD614D407306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD614D507306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD614D607306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD614D707306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD614D807306666008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD614D907306666008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3828,7 +3765,6 @@
 			files = (
 				2FD6150A07306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6150B07306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6150C07306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6150D07306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6150E07306666008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3840,7 +3776,6 @@
 			files = (
 				2FD6154307306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6154407306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6154507306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6154607306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6154707306666008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6154807306666008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3853,7 +3788,6 @@
 			files = (
 				2FD6157A07306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6157B07306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6157C07306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6157D07306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6157E07306666008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3865,7 +3799,6 @@
 			files = (
 				2FD615B407306666008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD615B507306666008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD615B607306666008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD615B707306666008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD615B807306666008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3877,7 +3810,6 @@
 			files = (
 				2FD615FC07306667008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD615FD07306667008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD615FE07306667008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD615FF07306667008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6160007306667008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3889,7 +3821,6 @@
 			files = (
 				2FD6163207306667008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6163307306667008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6163407306667008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6163507306667008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6163607306667008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6163707306667008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3902,7 +3833,6 @@
 			files = (
 				2FD6164807306667008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6164907306667008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6164A07306667008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6164B07306667008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6164C07306667008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6164D07306667008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3915,7 +3845,6 @@
 			files = (
 				2FD6167E07306667008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6167F07306667008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6168007306667008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6168107306667008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6168207306667008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3927,7 +3856,6 @@
 			files = (
 				2FD6169307306667008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6169407306667008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6169507306667008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6169607306667008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6169707306667008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6169807306667008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3938,7 +3866,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FD616D507306668008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD616D607306668008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD616D707306668008DA6B4 /* Carbon.framework in Frameworks */,
 				2FD616D807306668008DA6B4 /* ApplicationServices.framework in Frameworks */,
@@ -3953,7 +3880,6 @@
 			files = (
 				2FD6170C07306668008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6170D07306668008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6170E07306668008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6170F07306668008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6171007306668008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -3965,7 +3891,6 @@
 			files = (
 				2FD6179007306668008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6179107306668008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6179207306668008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6179307306668008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6179407306668008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6179507306668008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3983,7 +3908,6 @@
 			files = (
 				2FD6181507306669008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6181607306669008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6181707306669008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6181807306669008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6181907306669008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6181A07306669008DA6B4 /* Carbon.framework in Frameworks */,
@@ -3996,7 +3920,6 @@
 			files = (
 				2FD6182A0730666A008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD6182B0730666A008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD6182C0730666A008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD6182D0730666A008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD6182E0730666A008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD6182F0730666A008DA6B4 /* Carbon.framework in Frameworks */,
@@ -4009,7 +3932,6 @@
 			files = (
 				2FD618600730666A008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD618610730666A008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD618620730666A008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD618630730666A008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD618640730666A008DA6B4 /* CoreServices.framework in Frameworks */,
 			);
@@ -4021,7 +3943,6 @@
 			files = (
 				2FD618740730666B008DA6B4 /* OpenGL.framework in Frameworks */,
 				2FD618750730666B008DA6B4 /* ApplicationServices.framework in Frameworks */,
-				2FD618760730666B008DA6B4 /* libstdc++.a in Frameworks */,
 				2FD618770730666B008DA6B4 /* CoreAudio.framework in Frameworks */,
 				2FD618780730666B008DA6B4 /* CoreServices.framework in Frameworks */,
 				2FD618790730666B008DA6B4 /* Carbon.framework in Frameworks */,
@@ -4035,7 +3956,6 @@
 				2FEBA43A09885CF200F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA43B09885CF300F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA43C09885CF400F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA43E09885CF500F4165F /* libstdc++.a in Frameworks */,
 				2FEBA44209885CF900F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4048,7 +3968,6 @@
 				2FEBA7E3098889BA00F4165F /* Carbon.framework in Frameworks */,
 				2FEBA7E4098889BB00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA7E5098889BC00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA7EA098889C000F4165F /* libstdc++.a in Frameworks */,
 				2FEBA7EE098889C300F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4061,7 +3980,6 @@
 				2FEBA7C10988881700F4165F /* Carbon.framework in Frameworks */,
 				2FEBA7CC0988881F00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA7CD0988882000F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA7CF0988882200F4165F /* libstdc++.a in Frameworks */,
 				2FEBA7D30988882700F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4074,7 +3992,6 @@
 				2FEBA7FF09888B4400F4165F /* Carbon.framework in Frameworks */,
 				2FEBA80009888B4400F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA80109888B4500F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA80409888B4800F4165F /* libstdc++.a in Frameworks */,
 				2FEBA80809888B4B00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4087,7 +4004,6 @@
 				2FEBA81909888CA900F4165F /* Carbon.framework in Frameworks */,
 				2FEBA81A09888CA900F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA81B09888CAA00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA81D09888CAC00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA81F09888CAE00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4099,7 +4015,6 @@
 				2FEBA82109888D7400F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA82209888D7500F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA82309888D7600F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA82509888D7800F4165F /* libstdc++.a in Frameworks */,
 				2FEBA82909888D7A00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4111,7 +4026,6 @@
 				2FEBA8370989488B00F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA8380989488C00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8390989488D00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA83B0989488F00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA83F0989489200F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4123,7 +4037,6 @@
 				2FEBA84E0989495800F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA84F0989495900F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8500989495A00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8520989495C00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8560989496000F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4136,7 +4049,6 @@
 				2FEBA86509894A1400F4165F /* Carbon.framework in Frameworks */,
 				2FEBA86609894A1500F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA86709894A1600F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA86909894A1700F4165F /* libstdc++.a in Frameworks */,
 				2FEBA86B09894A1900F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4148,7 +4060,6 @@
 				2FEBA86D09894B3D00F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA86E09894B3D00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA86F09894B3E00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA87109894B4000F4165F /* libstdc++.a in Frameworks */,
 				2FEBA87509894B4300F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4161,7 +4072,6 @@
 				2FEBA88409894BC900F4165F /* Carbon.framework in Frameworks */,
 				2FEBA88509894BCA00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA88609894BCA00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA88809894BCC00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA88C09894BCF00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4173,7 +4083,6 @@
 				2FEBA89A09894CFC00F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA89B09894CFD00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA89C09894CFE00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8A009894D0100F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8A409894D0400F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4186,7 +4095,6 @@
 				2FEBA8B709894F1100F4165F /* Carbon.framework in Frameworks */,
 				2FEBA8B809894F1200F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8B909894F1300F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8BA09894F1300F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8BE09894F1700F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4198,7 +4106,6 @@
 				2FEBA8C00989761800F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA8C10989761800F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8C20989761900F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8C30989761900F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8C80989761D00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4211,7 +4118,6 @@
 				2FEBA8D70989767300F4165F /* Carbon.framework in Frameworks */,
 				2FEBA8D80989767400F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8D90989767400F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8DA0989767500F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8DE0989767800F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4223,7 +4129,6 @@
 				2FEBA8E00989771000F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA8E10989771200F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8E20989771200F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA8E30989771300F4165F /* libstdc++.a in Frameworks */,
 				2FEBA8E80989771900F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4237,7 +4142,6 @@
 				2FEBA8FA098990F200F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA8FB098990F300F4165F /* IOKit.framework in Frameworks */,
 				2FEBA8FC098990F400F4165F /* libHIDUtilities.a in Frameworks */,
-				2FEBA8FD098990F400F4165F /* libstdc++.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4249,7 +4153,6 @@
 				2FEBA9320989968B00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA9330989968C00F4165F /* CoreServices.framework in Frameworks */,
 				2FEBA9340989968D00F4165F /* libOpenAL.ar in Frameworks */,
-				2FEBA9350989968E00F4165F /* libstdc++.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4260,7 +4163,6 @@
 				2FEBA9570989AAF800F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA9580989AAF800F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA9590989AAF900F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA95A0989AAFA00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA95E0989AAFD00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4274,7 +4176,6 @@
 				2FEBA9700989ACB300F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA9710989ACB500F4165F /* CoreServices.framework in Frameworks */,
 				2FEBA9740989ACB900F4165F /* IOKit.framework in Frameworks */,
-				2FEBA9750989ACBA00F4165F /* libstdc++.a in Frameworks */,
 				2FEBA9790989ACBD00F4165F /* OpenGL.framework in Frameworks */,
 				2FEBA9900989ACD500F4165F /* QuickTime.framework in Frameworks */,
 				2FEBA9DB0989AD1900F4165F /* System.framework in Frameworks */,
@@ -4289,7 +4190,6 @@
 				2FEBA9E30989AE3600F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBA9E40989AE3700F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA9E50989AE3800F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA9E60989AE3900F4165F /* libstdc++.a in Frameworks */,
 				2FEBA9EA0989AE3C00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4302,7 +4202,6 @@
 				2FEBA9FA0989AEDB00F4165F /* Carbon.framework in Frameworks */,
 				2FEBA9FB0989AEDB00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBA9FC0989AEDC00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBA9FE0989AEDE00F4165F /* libstdc++.a in Frameworks */,
 				2FEBAA020989AEE100F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4315,7 +4214,6 @@
 				2FEBAA120989B55500F4165F /* Carbon.framework in Frameworks */,
 				2FEBAA130989B55500F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBAA140989B55700F4165F /* CoreServices.framework in Frameworks */,
-				2FEBAA150989B55800F4165F /* libstdc++.a in Frameworks */,
 				2FEBAA170989B55A00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4327,7 +4225,6 @@
 				2FEBAA1C0989B5C200F4165F /* ApplicationServices.framework in Frameworks */,
 				2FEBAA1D0989B5C300F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBAA1E0989B5C400F4165F /* CoreServices.framework in Frameworks */,
-				2FEBAA1F0989B5C500F4165F /* libstdc++.a in Frameworks */,
 				2FEBAA240989B7FA00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4340,7 +4237,6 @@
 				2FEBAA360989B85B00F4165F /* Carbon.framework in Frameworks */,
 				2FEBAA370989B85C00F4165F /* CoreAudio.framework in Frameworks */,
 				2FEBAA380989B85D00F4165F /* CoreServices.framework in Frameworks */,
-				2FEBAA390989B85E00F4165F /* libstdc++.a in Frameworks */,
 				2FEBAA3B0989B85F00F4165F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4353,10 +4249,10 @@
 				2FEBAA400989B8FB00F4165F /* Carbon.framework in Frameworks */,
 				2FEBAA410989B8FB00F4165F /* CoreServices.framework in Frameworks */,
 				2FEBAA430989B8FD00F4165F /* eyelink_core.framework in Frameworks */,
-				2FEBAA530989B90A00F4165F /* libstdc++.a in Frameworks */,
 				2FEBAA570989B90E00F4165F /* OpenGL.framework in Frameworks */,
 				2FEBAA660989B91D00F4165F /* System.framework in Frameworks */,
 				2FEBAA670989B91E00F4165F /* SystemConfiguration.framework in Frameworks */,
+				806FB9090AE97EA800FBA3F9 /* libstdc++.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4372,7 +4268,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				832CE61F094CE8C300578C09 /* ApplicationServices.framework in Frameworks */,
-				832CE620094CE8C300578C09 /* libstdc++.a in Frameworks */,
 				832CE621094CE8C300578C09 /* CoreAudio.framework in Frameworks */,
 				832CE622094CE8C300578C09 /* CoreServices.framework in Frameworks */,
 				832CE7DD094D03D100578C09 /* alBuffer.o in Frameworks */,
@@ -4394,7 +4289,6 @@
 			files = (
 				CF29B1F6080333DC00723921 /* OpenGL.framework in Frameworks */,
 				CF29B1F7080333DC00723921 /* ApplicationServices.framework in Frameworks */,
-				CF29B1F8080333DC00723921 /* libstdc++.a in Frameworks */,
 				CF29B1F9080333DC00723921 /* CoreAudio.framework in Frameworks */,
 				CF29B1FA080333DC00723921 /* CoreServices.framework in Frameworks */,
 			);
@@ -4408,7 +4302,6 @@
 				F074320C0AD465B400602397 /* Carbon.framework in Frameworks */,
 				F074320D0AD465B400602397 /* CoreAudio.framework in Frameworks */,
 				F074320E0AD465B400602397 /* CoreServices.framework in Frameworks */,
-				F074320F0AD465B400602397 /* libstdc++.a in Frameworks */,
 				F07432100AD465B400602397 /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4422,7 +4315,6 @@
 				F089BCF70AD42DF500663D86 /* CoreAudio.framework in Frameworks */,
 				F089BCF80AD42DF500663D86 /* CoreServices.framework in Frameworks */,
 				F089BCF90AD42DF500663D86 /* IOKit.framework in Frameworks */,
-				F089BCFA0AD42DF500663D86 /* libstdc++.a in Frameworks */,
 				F089BCFB0AD42DF500663D86 /* OpenGL.framework in Frameworks */,
 				F089BCFC0AD42DF500663D86 /* QuickTime.framework in Frameworks */,
 				F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */,
@@ -4438,7 +4330,6 @@
 				F14A27B40AD48A2A00BFB68F /* Carbon.framework in Frameworks */,
 				F14A27B50AD48A2A00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A27B60AD48A2A00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A27B70AD48A2A00BFB68F /* libstdc++.a in Frameworks */,
 				F14A27B80AD48A2A00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4451,7 +4342,6 @@
 				F14A27EF0AD48C1200BFB68F /* Carbon.framework in Frameworks */,
 				F14A27F00AD48C1200BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A27F10AD48C1200BFB68F /* IOKit.framework in Frameworks */,
-				F14A27F30AD48C1200BFB68F /* libstdc++.a in Frameworks */,
 				F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4464,7 +4354,6 @@
 				F14A28350AD48DDF00BFB68F /* Carbon.framework in Frameworks */,
 				F14A28360AD48DDF00BFB68F /* CoreServices.framework in Frameworks */,
 				F14A28370AD48DDF00BFB68F /* eyelink_core.framework in Frameworks */,
-				F14A28380AD48DDF00BFB68F /* libstdc++.a in Frameworks */,
 				F14A28390AD48DDF00BFB68F /* OpenGL.framework in Frameworks */,
 				F14A283A0AD48DDF00BFB68F /* System.framework in Frameworks */,
 				F14A283B0AD48DDF00BFB68F /* SystemConfiguration.framework in Frameworks */,
@@ -4479,7 +4368,6 @@
 				F14A28530AD48FCE00BFB68F /* Carbon.framework in Frameworks */,
 				F14A28540AD48FCE00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A28550AD48FCE00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A28560AD48FCE00BFB68F /* libstdc++.a in Frameworks */,
 				F14A28570AD48FCE00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4492,7 +4380,6 @@
 				F14A287D0AD4933000BFB68F /* Carbon.framework in Frameworks */,
 				F14A287E0AD4933000BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A287F0AD4933000BFB68F /* CoreServices.framework in Frameworks */,
-				F14A28800AD4933000BFB68F /* libstdc++.a in Frameworks */,
 				F14A28810AD4933000BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4504,7 +4391,6 @@
 				F14A28A80AD4943E00BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A28A90AD4943E00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A28AA0AD4943E00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A28AB0AD4943E00BFB68F /* libstdc++.a in Frameworks */,
 				F14A28AC0AD4943E00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4516,7 +4402,6 @@
 				F14A28DE0AD4971100BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A28DF0AD4971100BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A28E00AD4971100BFB68F /* CoreServices.framework in Frameworks */,
-				F14A28E10AD4971100BFB68F /* libstdc++.a in Frameworks */,
 				F14A28E20AD4971100BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4529,7 +4414,6 @@
 				F14A28FE0AD4984300BFB68F /* Carbon.framework in Frameworks */,
 				F14A28FF0AD4984300BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A29000AD4984300BFB68F /* CoreServices.framework in Frameworks */,
-				F14A29010AD4984300BFB68F /* libstdc++.a in Frameworks */,
 				F14A29020AD4984300BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4541,7 +4425,6 @@
 				F14A292D0AD49B9400BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A292E0AD49B9400BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A292F0AD49B9400BFB68F /* CoreServices.framework in Frameworks */,
-				F14A29300AD49B9400BFB68F /* libstdc++.a in Frameworks */,
 				F14A29310AD49B9400BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4554,7 +4437,6 @@
 				F14A29560AD49C2900BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A29570AD49C2900BFB68F /* CoreServices.framework in Frameworks */,
 				F14A29580AD49C2900BFB68F /* libOpenAL.ar in Frameworks */,
-				F14A29590AD49C2900BFB68F /* libstdc++.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4565,7 +4447,6 @@
 				F14A298C0AD49D4F00BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A298D0AD49D4F00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A298E0AD49D4F00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A298F0AD49D4F00BFB68F /* libstdc++.a in Frameworks */,
 				F14A29900AD49D4F00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4578,7 +4459,6 @@
 				F14A29B70AD49E4300BFB68F /* Carbon.framework in Frameworks */,
 				F14A29B80AD49E4300BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A29B90AD49E4300BFB68F /* CoreServices.framework in Frameworks */,
-				F14A29BA0AD49E4300BFB68F /* libstdc++.a in Frameworks */,
 				F14A29BB0AD49E4300BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4590,7 +4470,6 @@
 				F14A29E30AD49F3F00BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A29E40AD49F3F00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A29E50AD49F3F00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A29E60AD49F3F00BFB68F /* libstdc++.a in Frameworks */,
 				F14A29E70AD49F3F00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4603,7 +4482,6 @@
 				F14A2A0C0AD4A02B00BFB68F /* Carbon.framework in Frameworks */,
 				F14A2A0D0AD4A02B00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2A0E0AD4A02B00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2A0F0AD4A02B00BFB68F /* libstdc++.a in Frameworks */,
 				F14A2A100AD4A02B00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4616,7 +4494,6 @@
 				F14A2A240AD4A0D400BFB68F /* Carbon.framework in Frameworks */,
 				F14A2A250AD4A0D400BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2A260AD4A0D400BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2A270AD4A0D400BFB68F /* libstdc++.a in Frameworks */,
 				F14A2A280AD4A0D400BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4628,7 +4505,6 @@
 				F14A2A6B0AD4A15C00BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2A6C0AD4A15C00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2A6D0AD4A15C00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2A6E0AD4A15C00BFB68F /* libstdc++.a in Frameworks */,
 				F14A2A6F0AD4A15C00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4640,7 +4516,6 @@
 				F14A2A910AD4A1E200BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2A920AD4A1E200BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2A930AD4A1E200BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2A940AD4A1E200BFB68F /* libstdc++.a in Frameworks */,
 				F14A2A950AD4A1E200BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4653,7 +4528,6 @@
 				F14A2AA90AD4A26B00BFB68F /* Carbon.framework in Frameworks */,
 				F14A2AAA0AD4A26B00BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2AAB0AD4A26B00BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2AAC0AD4A26B00BFB68F /* libstdc++.a in Frameworks */,
 				F14A2AAD0AD4A26B00BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4665,7 +4539,6 @@
 				F14A2AD20AD4AAD600BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2AD30AD4AAD600BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2AD40AD4AAD600BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2AD50AD4AAD600BFB68F /* libstdc++.a in Frameworks */,
 				F14A2AD60AD4AAD600BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4678,7 +4551,6 @@
 				F14A2AF80AD4AB5200BFB68F /* Carbon.framework in Frameworks */,
 				F14A2AF90AD4AB5200BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2AFA0AD4AB5200BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2AFB0AD4AB5200BFB68F /* libstdc++.a in Frameworks */,
 				F14A2AFC0AD4AB5200BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4690,7 +4562,6 @@
 				F14A2B200AD4ABB500BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2B210AD4ABB500BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2B220AD4ABB500BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2B230AD4ABB500BFB68F /* libstdc++.a in Frameworks */,
 				F14A2B240AD4ABB500BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4702,7 +4573,6 @@
 				F14A2B4B0AD4AC8000BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2B4C0AD4AC8000BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2B4D0AD4AC8000BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2B4E0AD4AC8000BFB68F /* libstdc++.a in Frameworks */,
 				F14A2B4F0AD4AC8000BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4714,7 +4584,6 @@
 				F14A2B720AD4ACE700BFB68F /* ApplicationServices.framework in Frameworks */,
 				F14A2B730AD4ACE700BFB68F /* CoreAudio.framework in Frameworks */,
 				F14A2B740AD4ACE700BFB68F /* CoreServices.framework in Frameworks */,
-				F14A2B750AD4ACE700BFB68F /* libstdc++.a in Frameworks */,
 				F14A2B760AD4ACE700BFB68F /* OpenGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4725,6 +4594,7 @@
 		0E92E8AC095727BC002687D9 /* Eyelink */ = {
 			isa = PBXGroup;
 			children = (
+				806F15D40AF62BBD005949BE /* core_expt.h */,
 				805723350A51DDB900DF6EF6 /* eyelink.h */,
 				80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */,
 				80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */,
@@ -4761,6 +4631,8 @@
 				0E92E8BD09572831002687D9 /* EyelinkIsConnected.c */,
 				0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */,
 				0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */,
+				806F15FE0AF631E4005949BE /* EyelinkGetNextDataType.c */,
+				806F161D0AF6347A005949BE /* EyelinkGetFloatData.c */,
 			);
 			name = Eyelink;
 			sourceTree = "<group>";
@@ -5643,6 +5515,7 @@
 		F5FCC41903833678017A7028 /* System Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				806FB9080AE97EA800FBA3F9 /* libstdc++.a */,
 				0E92E92709572E2C002687D9 /* eyelink_core.framework */,
 				83C94B14092826FE0062DB0A /* QuickTime.framework */,
 				2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */,
@@ -5650,7 +5523,6 @@
 				F5FCC43C038338B4017A7028 /* Carbon.framework */,
 				F5FCC41A03833708017A7028 /* OpenGL.framework */,
 				F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */,
-				F5FCC57F03833BCA017A7028 /* libstdc++.a */,
 				F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */,
 				F56C69FA03DCAC5101866A1C /* CoreServices.framework */,
 				2FC737E40450E15E007A7274 /* IOKit.framework */,
@@ -7831,6 +7703,12 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				8074C5DD0AE7A4A80067B5B9 /* Development */,
+				8074C5DE0AE7A4A80067B5B9 /* Deployment */,
+			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -10809,7 +10687,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FEBAA420989B8FC00F4165F /* Events.c in Sources */,
 				2FEBAA440989B8FE00F4165F /* EyelinkButtonStates.c in Sources */,
 				2FEBAA450989B8FE00F4165F /* EyelinkCommand.c in Sources */,
 				2FEBAA460989B8FF00F4165F /* EyelinkCreateDataStructs.c in Sources */,
@@ -10858,6 +10735,8 @@
 				80AB76B40A52F81300E7FB48 /* EyelinkRequestTime.c in Sources */,
 				80AB76B60A52F83100E7FB48 /* EyelinkReceiveFile.c in Sources */,
 				80AB76D90A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c in Sources */,
+				806F15FF0AF631E4005949BE /* EyelinkGetNextDataType.c in Sources */,
+				806F161E0AF6347A005949BE /* EyelinkGetFloatData.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -17043,6 +16922,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(LIBRARY_SEARCH_PATHS)",
 					/usr/lib/gcc/darwin/2.95.2,
+					/usr/lib/gcc/darwin/3.3,
 				);
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
@@ -17058,6 +16938,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(LIBRARY_SEARCH_PATHS)",
 					/usr/lib/gcc/darwin/2.95.2,
+					/usr/lib/gcc/darwin/3.3,
 				);
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
@@ -18318,6 +18199,7 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
 					/usr/lib/gcc/darwin/2.95.2,
+					/usr/lib/gcc/darwin/3.3,
 				);
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
