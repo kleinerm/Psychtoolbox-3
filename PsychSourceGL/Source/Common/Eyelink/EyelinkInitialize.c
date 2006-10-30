@@ -19,6 +19,7 @@
 					Eyelink manual actually seems to advice to use eyelink_open_connection()
 					rather than the way we do it now.
  29/06/06	fwc		fixed EyelinkInitializeDummy (didn't set giSystemInitialized)
+ 30-10-06	fwc		no longer use PsychErrorExitMsg to report error, otherwise we cannot connect in dummy mode later on
 	TARGET LOCATION:
  
  Eyelink.mexmac resides in:
@@ -81,11 +82,14 @@ PsychError EyelinkInitialize(void)
 		if(iStatus != 0) {
 			close_eyelink_system();
 			if(iStatus == CONNECT_TIMEOUT_FAILED) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot connect to EyeLink\n");
+			//	PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot connect to EyeLink\n");
+				mexPrintf("EyeLink: Initialize:  Cannot connect to EyeLink\n");
 			} else if(iStatus == WRONG_LINK_VERSION) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Link version mismatch to EyeLink tracker\n");
+			//	PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Link version mismatch to EyeLink tracker\n");
+				mexPrintf( "EyeLink: Initialize:  Link version mismatch to EyeLink tracker\n");
 			} else if(iStatus == LINK_INITIALIZE_FAILED) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot initialize link\n");
+			//	PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot initialize link\n");
+				mexPrintf( "EyeLink: Initialize:  Cannot initialize link\n");
 			}
 		} else {
 			giSystemInitialized = 1;
@@ -137,11 +141,11 @@ PsychError EyelinkInitializeDummy(void)
 		if(iStatus != 0) {
 			close_eyelink_system();
 			if(iStatus == CONNECT_TIMEOUT_FAILED) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot connect to EyeLink\n");
+				PsychErrorExitMsg(PsychError_user, "EyeLink: InitializeDummy:  Cannot connect to EyeLink\n");
 			} else if(iStatus == WRONG_LINK_VERSION) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Link version mismatch to EyeLink tracker\n");
+				PsychErrorExitMsg(PsychError_user, "EyeLink: InitializeDummy:  Link version mismatch to EyeLink tracker\n");
 			} else if(iStatus == LINK_INITIALIZE_FAILED) {
-				PsychErrorExitMsg(PsychError_user, "EyeLink: Initialize:  Cannot initialize link\n");
+				PsychErrorExitMsg(PsychError_user, "EyeLink: InitializeDummy:  Cannot initialize link\n");
 			}
 		} else {
 			giSystemInitialized = 1;
@@ -151,5 +155,5 @@ PsychError EyelinkInitializeDummy(void)
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
 	
-	return(PsychError_none)	
+	return(PsychError_none);	
 }

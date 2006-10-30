@@ -42,6 +42,7 @@ extern int		giSystemInitialized;
 
 // Defined in EyelinkCreateDataStructs.c
 mxArray *CreateMXFSample(const FSAMPLE *fs);
+mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs);
 mxArray *CreateMXISample(const ISAMPLE *is);
 mxArray *CreateMXFEvent(const FEVENT *fe);
 mxArray *CreateMXIEvent(const IEVENT *ie);
@@ -88,6 +89,11 @@ PsychError EyelinkReadTime(void);
 PsychError EyelinkRequestTime(void);
 PsychError EyelinkReceiveFile(void);
 PsychError EyelinkGetTrackerVersion(void);
+
+PsychError EyelinkNewestFloatSampleRaw(void);
+PsychError EyelinkGetNextDataType(void);
+PsychError EyelinkGetFloatData(void);
+
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif 

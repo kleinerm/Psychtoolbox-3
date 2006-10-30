@@ -25,13 +25,13 @@ function EyelinkGazeContingentDemo(mode, ms, myimgfile)
 
 % HISTORY
 %
-% mm/dd/yy 
-% 
+% mm/dd/yy
+%
 %  7/23/05    mk      Derived it from Frans Cornelissens AlphaImageDemoOSX.
 %   29/06/06  fwc     Derived from Mario Kleiner's GazeContingentDemoOSX ;-)
 
- if 1 Screen('Preference', 'SkipSyncTests', 1); end
- commandwindow;
+if 1 Screen('Preference', 'SkipSyncTests', 1); end
+commandwindow;
 
 
 % Set hurryup = 1 for benchmarking - Syncing to retrace is disabled
@@ -59,14 +59,14 @@ mygrayimgfile= 'konijntjes1024x768gray.jpg';
 try
     fprintf('GazeContingentDemo (%s)\n', datestr(now));
     fprintf('Press a key or click on mouse to stop demo.\n');
-    
+
     % initialize eyelink
-         if EyelinkInit()~= 1; %
-    	return;
+    if EyelinkInit()~= 1; %
+        return;
     end;
 
 
-    
+
     % This script calls Psychtoolbox commands available only in OpenGL-based
     % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
     % only OpenGL-based Psychtoolbox.)  The Psychtoolbox command AssertOpenGL will issue
@@ -83,7 +83,7 @@ try
 
     % Open a double buffered fullscreen window.
     [w, wRect]=Screen('OpenWindow',screenNumber);
-    
+
     % Find the color values which correspond to white and black.  Though on OS
     % X we currently only support true color and thus, for scalar color
     % arguments,
@@ -95,20 +95,20 @@ try
 
     % Set background color to gray:
     backgroundcolor = gray;
-    
+
     % Load image file:
     fprintf('Using image ''%s''\n', myimgfile);
     imdata=imread(myimgfile);
     imdatablur=imread(myblurimgfile);
     imdatagray=imread(mygrayimgfile);
-    
+
     %     crop image if it is larger then screen size. There's no image scaling
     %     in maketexture
     [iy, ix, id]=size(imdata);
     [wW, wH]=WindowSize(w);
-	% wW=wRect(3);
-	% wH=wRect(4);
-	 if ix>wW | iy>wH
+    % wW=wRect(3);
+    % wH=wRect(4);
+    if ix>wW | iy>wH
         disp('Image size exceeds screen size');
         disp('Image will be cropped');
     end
@@ -132,7 +132,7 @@ try
     imdata=imdata(1+ct:iy-cb, 1+cl:ix-cr,:);
     imdatablur=imdatablur(1+ct:iy-cb, 1+cl:ix-cr,:);
     imdatagray=imdatagray(1+ct:iy-cb, 1+cl:ix-cr,:);
-    
+
     % Compute image for foveated region and periphery:
     switch (mode)
         case 1
@@ -150,18 +150,18 @@ try
             % Fovea contains color-inverted image data:
             foveaimdata(:,:,:) = 255 - imdata(:,:,:);
             % Periphery contains original data:
-            peripheryimdata = imdata;             
+            peripheryimdata = imdata;
         case 4
             % Test-case: One shouldn't see any foveated region on the
             % screen - this is a basic correctness test for blending.
             foveaimdata = imdata;
-            peripheryimdata = imdata;             
+            peripheryimdata = imdata;
         otherwise
             % Unknown mode! We force abortion:
             fprintf('Invalid mode provided!');
             abortthisbeast
     end;
-    
+
     % Build texture for foveated region:
     foveatex=Screen('MakeTexture', w, foveaimdata);
     tRect=Screen('Rect', foveatex);
@@ -180,7 +180,7 @@ try
     xsd=ms/2.2;
     ysd=ms/2.2;
     maskblob(:,:,transLayer)=round(255 - exp(-((x/xsd).^2)-((y/ysd).^2))*255);
-    
+
     % Build a single transparency mask texture:
     masktex=Screen('MakeTexture', w, maskblob);
     mRect=Screen('Rect', masktex);
@@ -188,17 +188,17 @@ try
     fprintf('Size image texture: %d x %d\n', RectWidth(tRect), RectHeight(tRect));
     fprintf('Size  mask texture: %d x %d\n', RectWidth(mRect), RectHeight(mRect));
 
-    
-     % Set background color to 'backgroundcolor' and do initial flip to show
+
+    % Set background color to 'backgroundcolor' and do initial flip to show
     % blank screen:
     Screen('FillRect', w, backgroundcolor);
     Screen('Flip', w);
 
-    
+
     % do eyelink stuff
     el=EyelinkInitDefaults(w);
 
-      % make sure that we get gaze data from the Eyelink
+    % make sure that we get gaze data from the Eyelink
     Eyelink('command', 'link_sample_data = LEFT,RIGHT,GAZE,AREA');
 
     % open file to record data to
@@ -211,26 +211,26 @@ try
     % do a final check of calibration using driftcorrection
     EyelinkDoDriftCorrection(el);
 
-    WaitSecs(0.1);    
+    WaitSecs(0.1);
     Eyelink('StartRecording');
 
     eye_used = Eyelink('EyeAvailable'); % get eye that's tracked
     if eye_used == el.BINOCULAR; % if both eyes are tracked
         eye_used = el.LEFT_EYE; % use left eye
     end
-  
+
     % Set background color to 'backgroundcolor' and do initial flip to show
     % blank screen:
     Screen('FillRect', w, backgroundcolor);
     Screen('Flip', w);
 
-    
+
     % The mouse-cursor position will define gaze-position (center of
     % fixation) to simulate (x,y) input from an eyetracker. Set cursor
     % initially to center of screen:
     [a,b]=RectCenter(wRect);
     WaitSetMouse(a,b,screenNumber); % set cursor and wait for it to take effect
-    
+
     HideCursor;
     buttons=0;
 
@@ -242,52 +242,52 @@ try
 
     mxold=0;
     myold=0;
-    
+
     oldvbl=Screen('Flip', w);
     tavg = 0;
     ncount = 0;
-    
+
     % Infinite display loop: Whenever "gaze position" changes, we update
     % the display accordingly. Loop aborts on keyboard press or mouse
     % click or after 10000 frames...
-    while (ncount < 10000) 
-        
-        
+    while (ncount < 10000)
+
+
         if 1
-                    error=Eyelink('CheckRecording');
-        if(error~=0)
-            break;
-        end
+            error=Eyelink('CheckRecording');
+            if(error~=0)
+                break;
+            end
 
-        if Eyelink( 'NewFloatSampleAvailable') > 0
-            % get the sample in the form of an event structure
-            evt = Eyelink( 'NewestFloatSample');
-            if eye_used ~= -1 % do we know which eye to use yet?
-                % if we do, get current gaze position from sample
-                x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
-                y = evt.gy(eye_used+1);
-                % do we have valid data and is the pupil visible?
-                if x~=el.MISSING_DATA & y~=el.MISSING_DATA & evt.pa(eye_used+1)>0
+            if Eyelink( 'NewFloatSampleAvailable') > 0
+                % get the sample in the form of an event structure
+                evt = Eyelink( 'NewestFloatSample');
+                if eye_used ~= -1 % do we know which eye to use yet?
+                    % if we do, get current gaze position from sample
+                    x = evt.gx(eye_used+1); % +1 as we're accessing MATLAB array
+                    y = evt.gy(eye_used+1);
+                    % do we have valid data and is the pupil visible?
+                    if x~=el.MISSING_DATA & y~=el.MISSING_DATA & evt.pa(eye_used+1)>0
 
-                    mx=x;
-                    my=y;
+                        mx=x;
+                        my=y;
+                    end
                 end
             end
+        else
+
+            % Query current mouse cursor position (our "pseudo-eyetracker") -
+            % (mx,my) is our gaze position.
+            if (hurryup==0)
+                [mx, my, buttons]=GetMouse; %(w);
+            else
+                % In benchmark mode, we just do a quick sinusoidal motion
+                % without query of the mouse:
+                mx=500 + 500*sin(ncount/10); my=300;
+            end;
         end
-        else
-        
-        % Query current mouse cursor position (our "pseudo-eyetracker") -
-        % (mx,my) is our gaze position.
-        if (hurryup==0)
-            [mx, my, buttons]=GetMouse; %(w);
-        else
-            % In benchmark mode, we just do a quick sinusoidal motion
-            % without query of the mouse:
-            mx=500 + 500*sin(ncount/10); my=300;
-        end;
-        end 
         % We only redraw if gazepos. has changed:
-        if (mx~=mxold | my~=myold)            
+        if (mx~=mxold | my~=myold)
             % Compute position and size of source- and destinationrect and
             % clip it, if necessary...
             myrect=[mx-ms my-ms mx+ms+1 my+ms+1]; % center dRect on current mouseposition
@@ -297,7 +297,7 @@ try
             % Valid destination rectangle?
             if ~IsEmptyRect(dRect)
                 % Yes! Draw image for current frame:
-                
+
                 % Step 1: Draw the alpha-mask into the backbuffer. It
                 % defines the aperture for foveation: The center of gaze
                 % has zero alpha value. Alpha values increase with distance from
@@ -358,7 +358,7 @@ try
     Eyelink('ShutDown');
 
 
-    
+
     % Display full image a last time, just for fun...
     Screen('BlendFunction', w, GL_ONE, GL_ZERO);
     Screen('DrawTexture', w, foveatex);
@@ -371,12 +371,12 @@ try
     Priority(0);
     tavg = tavg / ncount * 1000;
     fprintf('End of GazeContingentDemo. Avg. redraw time is %f ms = %f Hz.\n\n', tavg, 1000 / tavg);
-	 return;
+    return;
 catch
     %this "catch" section executes in case of an error in the "try" section
     %above.  Importantly, it closes the onscreen window if its open.
     Screen('CloseAll');
     ShowCursor;
     Priority(0);
-%     psychrethrow(lasterror);
+    %     psychrethrow(lasterror);
 end %try..catch..
