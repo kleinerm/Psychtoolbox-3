@@ -17,15 +17,20 @@ function el=EyelinkInitDefaults(window)
 % 26-11-02  fwc&emp added PC support
 % 11-01-04  fwc OS X changes
 % 22-06-06  fwc further OSX changes
+% 31-10-06  mk  Unified keyname mapping and such...
 
 el=[];
 
 % eyelink computer check
 el.computer = computer;
-if ~(strcmp(el.computer,'PCWIN')==1 | strcmp(el.computer,'MAC2')==1 | strcmp(el.computer,'MAC')==1)
+%if ~(strcmp(el.computer,'PCWIN')==1 | strcmp(el.computer,'MAC2')==1 | strcmp(el.computer,'MAC')==1)
+if ~(IsOSX | IsWin)
     disp([el.computer,' is not a supported computer type!']);
     return;
 end
+
+% Enable unified keyname -> keycode mapping for all operating systems:
+KbName('UnifyKeyNames');
 
 % eye codes
 el.LEFT_EYE=0;
@@ -64,16 +69,20 @@ el.mousetriggersdriftcorr=0; % 1=allow mouse to trigger drift correction (fwc tr
 el.quitkey=KbName('ESCAPE'); % when pressed in combination with modifier key
 % forces getkeyforeyelink to return 'TERMINATE_KEY' !
 
-if strcmp(el.computer,'PCWIN')==1
-    el.modifierkey=KbName('alt');
-elseif strcmp(el.computer,'MAC2')==1
-    el.modifierkey=KbName('apple');
-elseif strcmp(el.computer,'MAC')==1
-    el.modifierkey=KbName('LeftGUI');
-else
-    disp([el.computer,' not a supported computer type!']);
-    return;
-end
+%if strcmp(el.computer,'PCWIN')==1
+%    el.modifierkey=KbName('alt');
+%elseif strcmp(el.computer,'MAC2')==1
+%    el.modifierkey=KbName('apple');
+%elseif strcmp(el.computer,'MAC')==1
+
+% Modifier key is always LeftGUI due to unified keyname mapping:
+el.modifierkey=KbName('LeftGUI');
+
+%else
+%    disp([el.computer,' not a supported computer type!']);
+%    return;
+%end
+
 el.waitformodereadytime=500;
 el.calibrationtargetsize=2;  % size of calibration target as percentage of screen
 el.calibrationtargetwidth=.75; % width of calibration target's border as percentage of screen
@@ -83,7 +92,6 @@ el.getkeytime=-1; % stores last time eyelinkgetkey was used
 
 [keyIsDown,secs,el.lastKeyCodes] = KbCheck;
 
-KbName('UnifyKeyNames');
 % keyCodes for EyelinkGetKey
 % if strcmp(el.computer,'MAC')==1 % OSX
     el.uparrow=KbName('UpArrow');
@@ -92,11 +100,18 @@ KbName('UnifyKeyNames');
     el.leftarrow=KbName('LeftArrow');
     el.pageup=KbName('PageUp');
     el.pagedown=KbName('PageDown');
-    el.enter=KbName('ENTER');
     el.return=KbName('Return');
     el.escape=KbName('ESCAPE');
     el.space=KbName('space');
     el.backspace=KbName('DELETE'); % is this delete backspace?
+    if IsOSX
+    % OS-X supports a separate keycode for the Enter key:
+        el.enter=KbName('ENTER');
+    else
+        % M$-Windows and GNU/Linux don't have a separate code for Enter,
+        % so we will map it to the 'Return' key:
+        el.enter=el.return;
+    end
     el.keysCached=1;
 % else
 %     el.keysCached=0;
