@@ -23,7 +23,7 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "time = Eyelink('ReadTime')";
+static char useString[] = "[time =] Eyelink('ReadTime')";
 	
 static char synopsisString[] = 
   "checks for reply to eyelink_request_time()\n"
@@ -57,7 +57,7 @@ PsychError EyelinkReadTime(void)
 
    time = eyelink_read_time();
    
-   PsychCopyOutDoubleArg(1, TRUE, time);
+   PsychCopyOutDoubleArg(1, FALSE, time);
    
    return(PsychError_none);	
 }

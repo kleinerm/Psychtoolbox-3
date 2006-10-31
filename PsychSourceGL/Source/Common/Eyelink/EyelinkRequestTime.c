@@ -24,7 +24,7 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "time = Eyelink('RequestTime')";
+static char useString[] = "[status =] Eyelink('RequestTime')";
 
 static char synopsisString[] = 
 "sends request for tracker time update\n"

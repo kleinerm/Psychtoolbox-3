@@ -36,7 +36,7 @@ void InitializeSynopsis()
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 
-	synopsis[i++] = "\n% This is main function of the Eyelink toolbox for OS X";
+	synopsis[i++] = "\n% This is main function of the Eyelink toolbox";
 	synopsis[i++] = "Usage:";
    synopsis[i++] = "\n% For general advice, try:";
    synopsis[i++] = "help eyelink";
@@ -45,7 +45,7 @@ void InitializeSynopsis()
    synopsis[i++] = "eyelink('Initialize?')";
    synopsis[i++] = "eyelink Initialize?";
    synopsis[i++] = "% If you think you've found a bug,\n";
-   synopsis[i++] = "Please report on the forum: http://psychtoolbox.org\n";
+   synopsis[i++] = "Please report on the forum, see: http://psychtoolbox.org/\n";
 
 	// Init or close eyelink
 	synopsis[i++] = "\n% Initialize or shutdown Eyelink connection:";
@@ -62,14 +62,20 @@ void InitializeSynopsis()
 	synopsis[i++] = "[result =] Eyelink('StartSetup')";
 	synopsis[i++] = "[status = ] Eyelink('DriftCorrStart', x, y)";
 	synopsis[i++] = "[result = ] Eyelink('ApplyDriftCorr')";
+	synopsis[i++] = "[result, tx, ty] = Eyelink('TargetCheck')";
+	synopsis[i++] = "[result = ] Eyelink('AcceptTrigger')";
 	
 	// Start or stop recording, Data acquisition
 	synopsis[i++] = "\n% Start or stop recording and acquiring data:";
 	synopsis[i++] = "[startrecording_error =] Eyelink('StartRecording' [,file_samples, file_events, link_samples, link_events] )";
 	synopsis[i++] = "Eyelink('Stoprecording')";
+	synopsis[i++] = "error = Eyelink('CheckRecording')";
 	synopsis[i++] =  "eyeused = Eyelink('EyeAvailable')";
-	synopsis[i++] = "sample = Eyelink('NewestFloatSample')";
 	synopsis[i++] = "NewOrOld = Eyelink('NewFloatSampleAvailable')";
+	synopsis[i++] = "sample = Eyelink('NewestFloatSample')";
+	synopsis[i++] = "[sample, raw] = Eyelink('NewestFloatSampleRaw')";
+	synopsis[i++] = "type = Eyelink('GetNextDataType')";
+	synopsis[i++]  = "item = Eyelink('GetFloatData', type)";
 
 	// Misc eyelink communication:
 	synopsis[i++] = "\n% Miscellaneous functions to communicate with Eyelink:";
@@ -77,24 +83,25 @@ void InitializeSynopsis()
 	synopsis[i++] = "[status =] Eyelink('Command', 'formatstring', [...])";
 	synopsis[i++] = "[status =] Eyelink('Message', 'formatstring', [...])";
 	synopsis[i++] = "[result =] Eyelink('SendKeyButton', code, mods, state)";
+	synopsis[i++] = "[status =] Eyelink('RequestTime')";
+	synopsis[i++] = "[time =] Eyelink('ReadTime')";
 
 	synopsis[i++] = "\n% Miscellaneous Eyelink functions:";
 	synopsis[i++] = "[result = ]Eyelink('WaitForModeReady', maxwait)";
-	synopsis[i++] = "[result, tx, ty] = Eyelink('TargetCheck')";
 	synopsis[i++] = "[result =] Eyelink('ImageModeDisplay')";
 	synopsis[i++] = "mode = Eyelink('CurrentMode')";
-	synopsis[i++] = "[result = ] Eyelink('AcceptTrigger')";
 	synopsis[i++] = "result = Eyelink('CalResult')";
 	synopsis[i++] = "Eyelink('SetOfflineMode')";
 	synopsis[i++] = "[version , versionString]  = Eyelink('GetTrackerVersion')";
 
 	// Place Holder
-	synopsis[i++] = "\n\n\n\n% Port of Eyelink toolbox for OS X";
-	synopsis[i++] = "The EyelinkToolbox was developed by:";
+	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";
+	synopsis[i++] = "% The EyelinkToolbox was developed by:";
 	synopsis[i++] = "\tFrans Cornelissen";
 	synopsis[i++] = "\tEnno Peters";
 	synopsis[i++] = "\tJohn Palmer";
 	synopsis[i++] = "\tChris Burns";
+	synopsis[i++] = "\tMario Kleiner";
 	
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {

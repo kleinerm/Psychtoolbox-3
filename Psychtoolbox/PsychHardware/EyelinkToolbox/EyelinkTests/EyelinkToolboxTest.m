@@ -1,21 +1,25 @@
 clear all;
 commandwindow;
 fprintf('Testing EyelinkToolbox functions\n');
+Eyelink
+Eyelink('Version')
 Eyelink('Shutdown')
 fprintf('Opening EyelinkToolbox in dummy mode\n');
 status = Eyelink('InitializeDummy')
+if 1
 Eyelink('Shutdown')
 
 fprintf('Now opening EyelinkToolbox in REAL mode\n');
 
 status = Eyelink('Initialize')
 Eyelink('Shutdown')
-fprintf('Again opening EyelinkToolbox in REAL mode\n');
+fprintf('Opening EyelinkToolbox using EyelinkInit function\n');
 
 EyelinkInit
 Eyelink('Shutdown')
 EyelinkInit
-status = Eyelink('IsConnected')
+end
+connect_status = Eyelink('IsConnected')
 
 [version , versionString]  = Eyelink('GetTrackerVersion')
 el=EyelinkInitDefaults()
@@ -23,7 +27,7 @@ Eyelink('OpenFile', 'demo.edf')
 [key, el] =EyelinkGetKey(el)
 
 command_status = Eyelink('Command', 'link_sample_data = LEFT,RIGHT,GAZE,AREA')
-heuristic_filter_status = eyelink('command', 'heuristic_filter = ON')
+heuristic_filter_status = Eyelink('command', 'heuristic_filter = ON')
 result = Eyelink('StartSetup')
 
 % result = Eyelink('ImageModeDisplay')
@@ -58,16 +62,30 @@ ButtonStates_result = Eyelink('ButtonStates')
 
 NewFloatSampleAvailable_status=Eyelink('NewFloatSampleAvailable')
 
+connect_status = Eyelink('IsConnected')
+
 sample = Eyelink('NewestFloatSample')
+
 [sample, raw] = Eyelink('NewestFloatSampleRaw')
 
+% Eyelink('Shutdown')
+% return
+
+
+
 type = Eyelink('GetNextDataType')
+
 item = Eyelink('GetFloatData', type)
 
+
 Eyelink('Stoprecording')
+
+
 error = Eyelink('CheckRecording')
 
+
 status = Eyelink('CloseFile')
+
 
 Eyelink('Shutdown')
 

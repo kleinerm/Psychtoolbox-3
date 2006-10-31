@@ -12,8 +12,9 @@
 	PLATFORMS:	Currently only OS X  
     
 	HISTORY:
-
-		11/23/05  cdb		Created.
+			2001	emp		created
+		11/23/05    cdb		adapted for OSX.
+		30/10/06	fwc		added CreateMXFSampleRaw
 
 	TARGET LOCATION:
 
@@ -43,8 +44,11 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
    const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
    mxArray *struct_array_ptr, *mx; 
    
-   if ((*fs).type != SAMPLE_TYPE)
-      PrintfExit("wrong pointer argument\n");
+   if ((*fs).type != SAMPLE_TYPE){
+     // PrintfExit("CreateMXFSample: wrong pointer argument\n");
+     mexprintf("CreateMXFSample: wrong pointer argument\n");
+	 return(NULL);
+	}
  
    /* Create a 1-by-1 structmatrix. */  
    struct_array_ptr = mxCreateStructMatrix(1,1,fieldCount,fieldNames);   
@@ -135,6 +139,67 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
               
    return struct_array_ptr;
 }
+
+/* RAW SAMPLE STRUCT */
+
+mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs)
+{
+   const char *fieldNames[] = {"raw_pupil","raw_cr","pupil_area","cr_area","pupil_dimension",
+								"cr_dimension", "window_position","pupil_cr"};
+   const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
+   mxArray *struct_array_ptr, *mx;
+   
+//   if ((*fs).type != SAMPLE_TYPE)
+////      PrintfExit("wrong pointer argument\n");
+//      mexPrintf("wrong pointer argument\n");
+ 
+   /* Create a 1-by-1 structmatrix. */  
+   struct_array_ptr = mxCreateStructMatrix(1,1,fieldCount,fieldNames);   
+   if (struct_array_ptr == NULL)
+      PrintfExit("Could not create struct matrix (probably out of memory)\n");
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).raw_pupil[0];
+   mxGetPr(mx)[1] = (*fs).raw_pupil[1];
+   mxSetField(struct_array_ptr,0,"raw_pupil",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).raw_cr[0];
+   mxGetPr(mx)[1] = (*fs).raw_cr[1];
+   mxSetField(struct_array_ptr,0,"raw_cr",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs).cr_area;
+   mxSetField(struct_array_ptr,0,"cr_area",mx);
+
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs).pupil_area;
+   mxSetField(struct_array_ptr,0,"pupil_area",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).pupil_dimension[0];
+   mxGetPr(mx)[1] = (*fs).pupil_dimension[1];
+   mxSetField(struct_array_ptr,0,"pupil_dimension",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).cr_dimension[0];
+   mxGetPr(mx)[1] = (*fs).cr_dimension[1];
+   mxSetField(struct_array_ptr,0,"cr_dimension",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).window_position[0];
+   mxGetPr(mx)[1] = (*fs).window_position[1];
+   mxSetField(struct_array_ptr,0,"window_position",mx);
+
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).pupil_cr[0];
+   mxGetPr(mx)[1] = (*fs).pupil_cr[1];
+   mxSetField(struct_array_ptr,0,"pupil_cr",mx);
+              
+   return struct_array_ptr;
+}
+
+
 
 /*
 ROUTINE: CreateMXISample

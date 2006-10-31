@@ -64,7 +64,7 @@ PsychError EyelinkStartRecording(void)
 
 	// Check arguments
 	PsychErrorExit(PsychCapNumInputArgs(4));
-	PsychErrorExit(PsychCapNumOutputArgs(0));
+	PsychErrorExit(PsychCapNumOutputArgs(1));
 	
 	// Verify eyelink is up and running
 	EyelinkSystemIsConnected();

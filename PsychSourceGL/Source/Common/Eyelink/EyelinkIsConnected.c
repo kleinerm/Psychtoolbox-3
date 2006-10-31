@@ -30,6 +30,7 @@ static char synopsisString[] =
   "checks if the eyelink is (still) connected\n"
   "returns 1 if connected\n"
   "       -1 if dummy-connected\n" 
+  "       2 if broadcast-connected\n" 
   "        0 if not connected\n";
 
 static char seeAlsoString[] = "Initialize";

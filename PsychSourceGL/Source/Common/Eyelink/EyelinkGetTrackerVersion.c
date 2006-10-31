@@ -40,8 +40,8 @@ static char seeAlsoString[] = "";
 
 PsychError EyelinkGetTrackerVersion(void)
 {
-	int iVersion;
-	char strVersion[40]="";
+	int iVersion=0;
+	char strVersion[40]="unknown tracker type";
 	
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -52,9 +52,9 @@ PsychError EyelinkGetTrackerVersion(void)
 	PsychErrorExit(PsychRequireNumInputArgs(0));
 	PsychErrorExit(PsychCapNumOutputArgs(2));
 	
-	// Verify eyelink is up and running
-	EyelinkSystemIsConnected();
-	EyelinkSystemIsInitialized();
+//	// Verify eyelink is up and running
+//	EyelinkSystemIsConnected();
+//	EyelinkSystemIsInitialized();
 	
 	iVersion = eyelink_get_tracker_version(strVersion);
 	

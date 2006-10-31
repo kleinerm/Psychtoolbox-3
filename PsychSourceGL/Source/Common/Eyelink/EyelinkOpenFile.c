@@ -32,7 +32,7 @@ static char synopsisString[] =
 static char seeAlsoString[] = "";
  
 /*
-ROUTINE: EYELINKopenfile
+ROUTINE: EyelinkOpenFile
 PURPOSE:
   uses INT16 open_data_file(char *name); 
   Opens an EDF file on tracker hard disk, closes any existing file
@@ -40,7 +40,7 @@ PURPOSE:
 
 PsychError EyelinkOpenFile(void)
 {
-   int openfilestatus = -1;
+   int iOpenFileStatus = -1;
    char *filename;
 
    //all sub functions should have these two lines
@@ -58,12 +58,12 @@ PsychError EyelinkOpenFile(void)
 
    PsychAllocInCharArg(1, TRUE, &filename);
 
-   openfilestatus = open_data_file(filename);
-   if (openfilestatus)
-      printf("Eyelink openfile:  Cannot create EDF file '%s' errorcode : %d\n", filename,openfilestatus);
+   iOpenFileStatus = open_data_file(filename);
+   if (iOpenFileStatus!=0)
+      mexPrintf("Eyelink openfile:  Cannot create EDF file '%s' errorcode : %d\n", filename, iOpenFileStatus);
  
-   /* if there is an output variable available, assign openfilestatus to it.   */			
-   PsychCopyOutDoubleArg(1, FALSE, openfilestatus);
+   /* if there is an output variable available, assign iOpenFileStatus to it.   */			
+   PsychCopyOutDoubleArg(1, FALSE, iOpenFileStatus);
    
    return(PsychError_none);
 }
