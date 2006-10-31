@@ -1,0 +1,49 @@
+tcpip toolbox for matlab.
+========================
+
+Version 1.2.4       2001-10-22
+
+  tcpip_sendfile,( tcpip_sendvar) bad send loop condition fixed!
+
+
+Version 1.2.3       2001-05-18
+
+  tcpip_servopen fixed. Has returned wrong handler number in
+  latest versions. 
+
+Version 1.2.2       2001-01-25
+
+   Optimize tcpip_readln() and modify help text in top of
+   som of the other scripts.
+
+Version 1.2.1       2001-01-04
+
+   Bugfix of variable and file tranfer functions
+   Prelimnaray remote execution interface!
+
+Version 1.2        2000-12-14
+
+   tcpip_servopen() replace by tcpip_servsocket() and
+   tcpip_listen() Now its a non blocking multi connection
+   server!!
+   A simple webserver_demo is now also included.
+
+Version 1.2 BETA   2000-11-20
+
+   Bug fixed. multi connections work proper!
+
+
+Version 1.1   1999-10-28
+
+   Now also support for Windows 95/98(?)/NT4 By Mario Bergeron
+   All data types is now supported to be sent/rec. in network byte
+   order. Solaris and Linux also seams to work well without
+   "broke pipe handling" bug!
+   A demo that reads mail from a pop mail server is also included.
+
+
+Version 1.0 Beta 1  1999-04-06
+
+   Open connections as client or server and send/receive
+   text strings. Works under Linux and Solaris.
+   Under soloris some trouble with "broken pipe handling"
