@@ -1,6 +1,12 @@
 % 	EyelinkToolbox.
 % 	History and list of changes
 %
+%   Version 2, October 2006
+%   Updated Beta version for OpenGL Toolbox
+% 
+%   Version 2, June 2006
+%   Beta version for OpenGL Toolbox
+% 
 % 	Version 1.4.5 xx-xx-2003
 %
 % 	fixed small error in setting usemaxwait in geteyelinktime
