@@ -77,7 +77,7 @@ PsychError EyelinkNewestFloatSample(void)
 	
 	mxOutArg = PsychGetOutArgMxPtr(1);
 	
-	if( iSampleType==1 | iSampleType==0 )
+	if( iSampleType==1 || iSampleType==0 )
 	{
 		//		mexPrintf("old or new sample\n");
 		*mxOutArg = (mxArray *)CreateMXFSample(&structFloatSample);
@@ -151,7 +151,7 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	// Grab the sample
 	iSampleType=eyelink_newest_float_sample(&structFloatSample);
 	
-	if( iSampleType==1 | iSampleType==0 )
+	if( iSampleType==1 || iSampleType==0 )
 	{
 		//	mexPrintf("old or new sample\n");
 		*mxOutArg[0] = (mxArray*) CreateMXFSample(&structFloatSample);

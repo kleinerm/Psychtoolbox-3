@@ -46,7 +46,7 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
    
    if ((*fs).type != SAMPLE_TYPE){
      // PrintfExit("CreateMXFSample: wrong pointer argument\n");
-     mexprintf("CreateMXFSample: wrong pointer argument\n");
+     printf("CreateMXFSample: wrong pointer argument\n");
 	 return(NULL);
 	}
  
