@@ -30,6 +30,10 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 
 % History:
 % 10/17/06  Written (MK).
+% 11/01/06  Add support for correct handling of 3D rendering mode (MK).
+
+% We need GL for drawing in 3D rendering mode:
+global GL;
 
 if nargin < 1 || isempty(win)
     error('DrawFormattedText: Windowhandle missing!');
@@ -44,7 +48,7 @@ if nargin < 3 || isempty(sx)
     sx=0;
 end
 
-if ischar(sx) && strcmp(lower(sx), 'center')
+if ischar(sx) && strcmpi(sx, 'center')
     xcenter=1;
     sx=0;
 else
@@ -74,13 +78,15 @@ end
 
 % Query textsize for implementation of linefeeds:
 theight = Screen('TextSize', win);
+% Query window size as well:
+[winwidth winheight] = Screen('WindowSize', win);
 
 % Default y start position is top of window:
 if nargin < 4 || isempty(sy)
     sy=0;
 end
 
-if ischar(sy) && strcmp(lower(sy), 'center')
+if ischar(sy) && strcmpi(sy, 'center')
     % Compute vertical centering:
     
     % Compute height of text box:
@@ -109,6 +115,36 @@ minx = inf;
 miny = inf;
 maxx = 0;
 maxy = 0;
+
+% If we are in 3D mode, we need to make sure we have a ortho-projection set
+% up.
+if (~isempty(GL)) && (Screen('Preference', 'Enable3DGraphics')>0)
+    % 3D mode active:
+    gl3dmode = 1;
+    
+    % First we backup all relevant transformation matrices and set up
+    % identity orthonormal transforms for our purpose:
+    glMatrixMode(GL.PROJECTION);
+    glPushMatrix;
+    glLoadIdentity;
+    gluOrtho2D(0, winwidth, winheight, 0);
+    glMatrixMode(GL.MODELVIEW);
+    glPushMatrix;
+    glLoadIdentity;
+
+    % Disable lighting and blending and texture mapping:
+    lights_on = glIsEnabled(GL.LIGHTING);
+    blending_on = glIsEnabled(GL.BLEND);
+    tex2d_on = glIsEnabled(GL.TEXTURE_2D);
+    texrect_on = glIsEnabled(GL.TEXTURE_RECTANGLE_EXT);
+    glDisable(GL.LIGHTING);
+    glDisable(GL.BLEND);    
+    glDisable(GL.TEXTURE_2D);
+    glDisable(GL.TEXTURE_RECTANGLE_EXT);
+else
+    % Pure 2D drawing, nothing special to do.
+    gl3dmode = 0;
+end
 
 % Parse string, break it into substrings at line-feeds:
 while length(tstring)>0
@@ -176,5 +212,32 @@ textbounds = SetRect(minx, miny, maxx, maxy);
 % Create new cursor position:
 nx = minx;
 ny = maxy;
+
+% Was this drawing in 3D mode?
+if gl3dmode > 0
+    % Yes. Need to restore transform matrices and other GL state:
+    glMatrixMode(GL.PROJECTION);
+    glPopMatrix;
+    glMatrixMode(GL.MODELVIEW);
+    glPopMatrix;
+
+    % Conditionally reenable lighting and blending and texture mapping:
+    if lights_on
+        glEnable(GL.LIGHTING);
+    end
+
+    if blending_on
+        glEnable(GL.BLEND);
+    end
+
+    if tex2d_on
+        glEnable(GL.TEXTURE_2D);
+    end
+
+    if texrect_on
+        glEnable(GL.TEXTURE_RECTANGLE_EXT);
+    end
+
+end
 
 return;

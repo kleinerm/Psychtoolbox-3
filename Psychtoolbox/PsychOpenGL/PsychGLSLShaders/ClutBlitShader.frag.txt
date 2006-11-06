@@ -1,0 +1,21 @@
+/* ClutBlitShader.frag -- Brute force CLUT animation.
+ * Shader for application of a color lookup table to a texture image.
+ * Reads each texels color index from red/luminance channel of texture
+ * 'Image', does a index -> color lookup in lookup table texture 'clut'.
+ * Assigns looked up color RGB to output fragment color RGB. Copies alpha
+ * channels value unmodified.
+ * This shader is used by moglClutBlit.m to implement CLUT animation caps.
+ *
+ * (w)2006 by Mario Kleiner.
+*/
+
+uniform sampler2DRect Image;
+uniform sampler2DRect clut;
+
+void main()
+{
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    float index = incolor.r * 255.0f + 0.5f;
+    gl_FragColor.rgb = texture2DRect(clut, vec2(index, 0)).rgb;
+    gl_FragColor.a = incolor.a;
+}

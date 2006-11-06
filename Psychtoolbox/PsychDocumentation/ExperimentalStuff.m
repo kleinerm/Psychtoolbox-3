@@ -56,6 +56,12 @@
 % whereas GetChar is known to be one of the most fragile and troublesome
 % functions in Psychtoolbox.
 %
+% iViewXToolbox: (Frans Cornelissen)
+%
+% The iViewXToolbox should allow to control iView Gazetrackers from Matlab.
+% The current version is a very early prototype, most likely not yet functional,
+% just included for backup purpose.
+%
 % PSYCHSOUND: (Mario Kleiner)
 %
 % PsychSound is supposed to be a well working replacement for the Snd
@@ -67,14 +73,16 @@
 %
 % EYELINKTOOLBOX: (Frans Cornellisen, Christopher Burns and others)
 %
-% The version of the eyelink toolbox bundled with this release is a
-% working beta version for OS-X on PowerPC computers. It should work
-% well for basic control and use of the Eyelink eyetracker, but some
+% The version of the Eyelink toolbox bundled with this release is a
+% working beta version for OS-X on PowerPC computers and for Microsoft
+% Windows.
+%
+% It should work well for basic control and use of the Eyelink eyetracker, but some
 % of the more advanced features are missing, the help texts are not
 % yet fully updated and the demos are in need for cleanup. The toolbox
-% is not yet available for Microsoft Windows, GNU/Linux or MacOS-X on
-% the new IntelMacs. Availability of OS-X IntelMac support will depend
-% on the future availability of runtime libraries from SR-Research systems.
+% is not yet available for GNU/Linux or MacOS-X on the new IntelMacs.
+% Availability of OS-X IntelMac support will depend on the future
+% availability of runtime libraries from SR-Research systems.
 %
 % MOGL OpenGL for Matlab support: (Richard F. Murray, Mario Kleiner)
 %
@@ -120,7 +128,7 @@
 % are not available on Windows. It wouldn't be difficult for an experienced
 % C programmer to implement PsychHID though. Any volunteers?
 % 
-% Eyelinktoolbox and PsychSound are missing.
+% PsychSound is missing.
 %
 % CLUT animation does not work on Windows due to some brain-damage in the
 % design of the M$ operating system. There's nothing we could do about that.

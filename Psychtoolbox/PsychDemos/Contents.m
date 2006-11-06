@@ -18,9 +18,16 @@
 %    DriftDemoOSX3           - Even more efficient animation of gratings.
 %    DriftWaitDemoOSX        - Show how to optimally time animations.
 %    ErrorCatchDemo          - How to handle errors gracefully (try/catch).
+%    FastNoiseDemo           - Demo and benchmark on how to quickly draw
+%                              noise stimuli.
+%    FastMaskedNoiseDemo     - Like FastNoiseDemo, but the noise patch is
+%                              drawn through an aperture to demonstrate
+%                              fast masking.
 %    FitGammaDemo            - Demonstrate gamma fitting routine FitGamma.
 %    FontDemo                - How to check for font availability and set font.
 %    GazeContingentDemoOSX   - Implementation of a simple gaze contingent display 
+%    GLSLClutAnimDemo        - Demonstrates use of function moglClutBlit to
+%                              perform CLUT animation with GLSL in an OS independent way.
 %    GratingDemo             - Basic display of a grating on the screen.
 %    IsomerizationsInDishDemo - Compute photoreceptor isomerizations for retina in a dish.
 %    IsomerizationsInEyeDemo  - Compute photoreceptor isomerizations for human eye.
