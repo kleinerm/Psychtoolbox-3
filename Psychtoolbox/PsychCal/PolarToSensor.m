@@ -1,19 +1,20 @@
-function [sensor] = PolarToSensor(cData,pol)
-% [sensor] = PolarToSensor(cData,pol)
+function [sensor] = PolarToSensor(pol)
+% [sensor] = PolarToSensor(pol)
 %
 % Converts from polar sensor coordinates to
 % rectangular sensor coordinates.
 %
 % Polar coordinates are defined as radius, azimuth, and elevation.
 %
+% Inverts SensorToPolar.
+%
+% See also SensorToPolar, SensorToCyl, CylToSensor.
+%
 % 9/26/93    dhb   Added calData argument.
 % 2/6/94     jms   Changed 'polar' to 'pol'
 % 2/20/94    jms   Added single argument case to avoid cData.
 % 4/5/02     dhb, ly  New calling interface.
-
-if (nargin==1)
-  pol=cData;
-end
+% 11/6/06    dhb   Only allow one input arguemnt.
 
 [n,m] = size(pol);
 if (n ~= 3)

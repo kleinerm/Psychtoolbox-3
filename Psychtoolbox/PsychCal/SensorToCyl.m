@@ -1,18 +1,26 @@
-function cyl = SensorToCyl(cal,sensor)
-% cyl = SensorToCyl(cal,sensor)
+function cyl = SensorToCyl(sensor)
+% cyl = SensorToCyl(sensor)
 %
 % Convert from sensor to cylindrical coordinates.
+%
+% This is designed for use with the CIE Lxx color
+% spaces, so it's assumed that the first input
+% coordinate is luminance and this is take directly
+% as height.  The next two input coordiantes are
+% assumed to be chromaticity coords.
+%
+% The returned cylindrical system is luminance, radius, angle,
+% with radius and angle computed in the passed chromaticity plane.
 %
 % We use the conventions of the CIE Lxx color spaces
 % for angle.
 %
-% 10/17/93		dhb   Wrote it by converting CAP C code.
-% 2/20/94			jms   Added single argument case to avoid cData.
-% 4/5/02      dhb, ly  New calling interface.
-
-if (nargin==1)
-  sensor=cal;
-end
+% See also CylToSensor, SensorToPolar, PolarToSensor.
+%
+% 10/17/93  dhb   Wrote it by converting CAP C code.
+% 2/20/94   jms   Added single argument case to avoid cData.
+% 4/5/02    dhb, ly  New calling interface.
+% 11/06/06  dhb   No longer allow two passed args.
 
 cyl = sensor;
 cyl(1,:) = sensor(1,:);
