@@ -26,7 +26,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 17/09/2006 Made working on Matlab-5 and Octave. Made more robust. (MK)
 % 22/09/2006 Replace system copy commands by Matlabs copyfile() - More
 %            robust (MK).
-% 14/10/2006 Update web page pointers at end, just to point at new wiki.
+% 14/10/2006 Update web page pointers at end, just to point at new wiki (DHB).
 % 28/10/2006 Accept 'current' as synonym for 'beta'. (DHB)
 
 fprintf('\n\nRunning post-install routine...\n\n');
