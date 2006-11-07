@@ -20,8 +20,9 @@ function irradiance = RadianceToRetIrradiance(radiance,radianceS,pupilAreaMM,eye
 % See also: PupilAreaFromLum, IsomerizationsInEyeDemo.
 %
 % 7/10/03  dhb  Wrote it.
+% 11/06/03 dhb  Fixed comments about units, as per Lu Yin email.
 
-% Convert spectral units to watts/sr-mm^2-wlinterval
+% Convert spectral units to power/sr-mm^2-wlinterval
 radianceMM = radiance*1e-6;
 
 % Define factor to convert radiance spectrum to retinal irradiance in watts/mm^2-wlinterval.
@@ -35,5 +36,5 @@ radianceMM = radiance*1e-6;
 conversionFactor = pupilAreaMM/(eyeSizeMM^2);
 irradianceMM = conversionFactor*radianceMM;
 
-% Convert irradiance to units of quanta/um^2-sec-wlinterval
+% Convert units to um^2 from mm^2 base.
 irradiance = irradianceMM*1e-6;
