@@ -3,7 +3,7 @@ function [x, y] = RectCenter(r);
 %
 %	RectCenter returns the integer x,y point closest to the center of a rect.  
 %
-%	See also: PsychRects, CenterRectOnPoint
+%	See also PsychRects, CenterRectOnPoint.
 
 %	9/13/99	Allen Ingling wrote it.
 %	10/6/99	dgp Fixed bug.

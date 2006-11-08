@@ -23,7 +23,9 @@
 %     RectSize            - Return the width and the height of a rect.
 %     ScaleRect           - Scale a rect by multiplicative factors.
 %     SetRect             - Create a rect.
+%     SizeOfRect          - Accept a Psychtoolbox rect and return the
+%                           corresponding image's MATLAB array size.
 %     UnionRect           - Smallest rect containing two given rects.
 
-% Copyright (c) 1997-8 by David Brainard & Denis Pelli
+% Copyright (c) 1997-2006 by David Brainard & Denis Pelli
 

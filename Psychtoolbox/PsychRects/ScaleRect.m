@@ -4,10 +4,10 @@ function r=ScaleRect(r,horizontalFactor,verticalFactor)
 % Scales a rect, by multiplying the left and right coordinates by the 
 % horizontal scale factor and multiplying the top and bottom coordinates
 % by the vertical scale factor. Also see Expand and InsetRect. 
-% Also see "help PsychRects".
+% Also see PsychRects.
 
 % 5/27/96 Denis Pelli
-% 7/10/96 dgp "help PsychRects"
+% 7/10/96 dgp PsychRects
 % 8/5/96 dgp check rect size.
 
 if nargin~=3

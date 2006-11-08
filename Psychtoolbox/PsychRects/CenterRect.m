@@ -2,10 +2,10 @@ function [rect,dh,dv] = CenterRect(rect,fixedRect)
 % [rect,dh,dv] = CenterRect(rect,fixedRect)
 % 
 % Center the first rect in the second by adding an integer offset.
-% Also see "help PsychRects".
+% Also see PsychRects.
 
 % 5/16/96 dgp  Updated for new OffsetRect, and use symbolic rect indices.
-% 7/10/96 dgp  "help PsychRects"
+% 7/10/96 dgp  PsychRects
 % 8/5/96  dgp  Renamed the arguments, check rect size.
 % 7/23/97 dgp  Round the offset.
 % 5/4/00  dhb  Return dh and dv as well as centered rect.

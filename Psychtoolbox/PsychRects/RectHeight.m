@@ -2,10 +2,10 @@ function height = RectHeight(rect)
 % height = RectHeight(rect)
 %
 % Returns the rect's height.
-% Also see "help PsychRects".
+% Also see PsychRects.
 
 % 5/12/96 dgp wrote it.
-% 7/10/96 dgp "help PsychRects"
+% 7/10/96 dgp PsychRects
 % 8/5/96 dgp check rect size.
 
 if nargin~=1

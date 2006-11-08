@@ -4,7 +4,7 @@ function rect = RectOfMatrix(mat)
 % Accept an image as a matrix and return a Psychtoolbox rect specifying 
 % the bounds.
 %
-% See also: SetRect, PsychRects
+% See also SetRect, PsychRects
 
 % HISTORY
 % 6/28/04   awi Wrote it.

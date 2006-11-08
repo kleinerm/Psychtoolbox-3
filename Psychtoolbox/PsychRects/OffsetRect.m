@@ -3,7 +3,7 @@ function newRect = OffsetRect(oldRect,x,y)
 %
 % Offset the passed rect matrix by the horizontal (x)
 % and vertical (y) shift given.
-% Also see "help PsychRects".
+% Also see PsychRects.
 
 % 5/16/96  dhb  Relented to Pelli's request to change calling order
 %               from v,h to x,y.

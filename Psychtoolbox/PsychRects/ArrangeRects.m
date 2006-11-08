@@ -9,12 +9,12 @@ function cellRects=ArrangeRects(n,objectRect,windowRect,rightToLeft);
 % Otherwise they are ordered left to right (like English letters).
 % The result depends on the proportions of the objectRect, but is 
 % independent of its size and position.
-% Also see "help PsychRects".
+% Also see PsychRects.
 
 % 5/12/96 dgp Wrote it, based on my Alphabet.c in TextInNoise.
 % 5/16/96 dgp Updated it to work with 1x4, instead of 4x1, rect.
 % 5/27/96 dgp more explanation.
-% 7/10/96 dgp "help PsychRects"
+% 7/10/96 dgp PsychRects
 
 % Explanation:
 % Distribute n objects of size objectRect in a window of size windowRect.
