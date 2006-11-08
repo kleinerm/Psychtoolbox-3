@@ -10,7 +10,11 @@
   
   HISTORY:
   05/07/06 	mk	Derived from Allen's PsychScriptingGlue
-  
+  11/08/06      mk      Fixes for Matlab beta on IntelMac -- Replace mxGetPr() by mxGetData()
+                        or mxGetScalar() in places where this is appropriate. Using mxGetPr()
+			in the debug-build of the Matlab beta triggers an assertion when
+			passing a non-double array to mxGetPr().
+
   DESCRIPTION:
   
 	ScriptingGlue defines abstracted functions to pass values 
@@ -279,6 +283,11 @@ mxArray* mxCreateString(const char* instring)
 void* mxGetData(const mxArray* arrayPtr)
 {
   return(arrayPtr->d);
+}
+
+double mxGetScalar(const mxArray* arrayPtr)
+{
+  return((double) (mxGetPr(arrayPtr)[0]));
 }
 
 double* mxGetPr(const mxArray* arrayPtr)
@@ -2095,7 +2104,7 @@ boolean PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType is
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
 		*mxpp = mxCreateByteMatrix3D(m,n,p); 
-		*array = (ubyte *)mxGetPr(*mxpp);
+		*array = (ubyte *)mxGetData(*mxpp);
 	}else{
 		*array= (ubyte *)mxMalloc(sizeof(ubyte)*m*n*maxInt(1,p));
 	}
@@ -2243,7 +2252,7 @@ boolean PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isR
 		*m = (int)mxGetM(mxPtr);
 		*n = (int)mxGetNOnly(mxPtr);
 		*p = (int)mxGetP(mxPtr);
-		*array=(unsigned char *)mxGetPr(mxPtr);
+		*array=(unsigned char *)mxGetData(mxPtr);
 	}
 	return(acceptArg);
 }
@@ -2425,7 +2434,7 @@ boolean PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, b
 			else
 				**argVal=(boolean)0;
 		}else{	
-			if(mxGetPr(mxPtr)[0])
+			if(mxGetScalar(mxPtr))
 				**argVal=(boolean)1;
 			else
 				**argVal=(boolean)0;
@@ -2444,8 +2453,13 @@ boolean PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequi
 
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
-	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_char | PsychArgType_uint8 | PsychArgType_boolean), 
-									isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
+	// MK: Disabled. Doesn't work without conversion of mxGetData into many subcases...
+	// PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_char | PsychArgType_uint8 | PsychArgType_boolean), 
+	//		       isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
+
+	// Ok. Let's see if anybody ever complains about this...
+	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, (PsychArgFormatType)(PsychArgType_double | PsychArgType_boolean), 
+				       isRequired, 1, kPsychUnboundedArraySize, 1, kPsychUnboundedArraySize, kPsychUnusedArrayDimension, kPsychUnusedArrayDimension);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
 	if(acceptArg){
@@ -2497,7 +2511,7 @@ boolean PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, boo
 			else
 				*argVal=(boolean)0;
 		}else{	
-			if(mxGetPr(mxPtr)[0])
+			if(mxGetScalar(mxPtr))
 				*argVal=(boolean)1;
 			else
 				*argVal=(boolean)0;

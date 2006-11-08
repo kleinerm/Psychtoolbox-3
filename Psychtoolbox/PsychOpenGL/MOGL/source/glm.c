@@ -3,7 +3,7 @@
  * glm.c -- implementation of glm functions
  *
  * 08-Dec-2005 -- created (RFM)
- *
+ * 11-Nov-2006 -- Minimal fixes for IntelMac Matlab beta: Replace mxGetPr by mxGetData where appropriate.
  */
 
 #include "mogltypes.h"
@@ -52,7 +52,7 @@ void glm_close(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
 void glm_getkeys(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
     plhs[0]=mxCreateNumericMatrix(4,1,mxUINT32_CLASS,mxREAL);
-    GetKeys((void *)mxGetPr(plhs[0]));
+    GetKeys((void *)mxGetData(plhs[0]));
     
 }
 
@@ -162,7 +162,7 @@ void glm_packpixels(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) 
     // create return argument
     int n2=3*n+padn;
     plhs[0]=mxCreateNumericMatrix(n2*m+8,1,mxUINT8_CLASS,mxREAL);
-    unsigned char *umat=(unsigned char*)mxGetPr(plhs[0]);
+    unsigned char *umat=(unsigned char*)mxGetData(plhs[0]);
     
     // store image format and size
     umat[n2*m  ]=GL_RGB/256;

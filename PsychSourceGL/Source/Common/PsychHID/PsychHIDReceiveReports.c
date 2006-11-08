@@ -355,7 +355,7 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 		if(r->bytes>reportBytes)r->bytes=reportBytes;
 		dims[1]=r->bytes;
 		fieldValue=mxCreateNumericArray(2,(void *)dims,mxUINT8_CLASS,mxREAL);
-		reportBuffer=(void *)mxGetPr(fieldValue);
+		reportBuffer=(void *)mxGetData(fieldValue);
 		for(j=0;j<r->bytes;j++)reportBuffer[j]=r->report[j];
 		if(fieldValue==NULL)PrintfExit("Couldn't allocate report array.");
 		mxSetField(*outReports,i,"report",fieldValue);
