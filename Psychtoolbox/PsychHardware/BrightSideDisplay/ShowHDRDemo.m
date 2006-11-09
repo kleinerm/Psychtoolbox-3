@@ -12,6 +12,9 @@ function ShowHDRDemo(imfilename, dummymode)
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
 AssertOpenGL;
 
+% For now we skip the sync tests during debugging:
+Screen('Preference', 'SkipSyncTests', 2);
+
 % Run demo in dummy mode?
 if nargin < 2
     dummymode = 0;
@@ -34,9 +37,8 @@ end
 
 % Is this really a LDR image?
 if max(max(max(img)))>1
-    % Seems so. Convert it to double precision and normalize to range 0-1
-    % to create a fake HDR image:
-    img=double(img) / 255.0;
+    % Seems so. Convert it to double precision to create a fake HDR image:
+    img=double(img); %
 end;
 
 % No Alpha channel provided?
@@ -52,6 +54,9 @@ try
     % Find screen to display: We choose the one with the highest number,
     % assuming this is the HDR display:
     screenid=max(Screen('Screens'));
+
+    % Override by Oguz: HDR is always the primary display on MPI setup:
+    screenid = 0;
 
     % Initialize OpenGL mode of Psychtoolbox:
     InitializeMatlabOpenGL;
@@ -74,28 +79,66 @@ try
     % End of OpenGL processing:
     Screen('EndOpenGL', win);
 
+    % Load our bias and rescale shader: We need it for HDR texture mapping:
+    glslnormalizer = LoadGLSLProgramFromFiles('ScaleAndBiasShader');
+    prebias = glGetUniformLocation(glslnormalizer, 'prescaleoffset');
+    postbias = glGetUniformLocation(glslnormalizer, 'postscaleoffset');
+    scalefactor = glGetUniformLocation(glslnormalizer, 'scalefactor');
+
+    % Activate it for setup:
+    glUseProgram(glslnormalizer);
+
+    % Set no bias to be applied:
+    glUniform1f(prebias, 0.0);
+    glUniform1f(postbias, 0.0);
+
+    % Multiply all luminance values by 255, so they are in usual range 0-255
+    % instead of 0-1. We do this to reduce numeric roundoff errors.
+    glUniform1f(scalefactor, 0.1);
+
+    % Disable it. Will be enabled when needed:
+    glUseProgram(0);
+
+    % Animation loop: Show a rotating HDR image, until user presses any key
+    % to abort:
     rotAngle = 0;
+    framecounter = 0;
+    
+    % Initial Flip to sync us to retrace:
+    vbl = Screen('Flip', win);
+    tstart = vbl;
+    
     while ~KbCheck
         % Select the HDR backbuffer for drawing:
         BrightSideHDR('BeginDrawing', win);
 
-        % Clear it by overdrawing with a black full screen rect:
-        Screen('FillRect', win, 0);
-        
-        % Draw our texture into the backbuffer:
-        Screen('DrawTexture', win, texid, [], [], rotAngle, 0);
+        % Clear it by overdrawing with a grey full screen rect:
+        Screen('FillRect', win, 128000);
 
+        % Draw our texture into the backbuffer. For some reason we need to
+        % use a GLSL rescale shader for this to work:
+        glUseProgram(glslnormalizer);
+        Screen('DrawTexture', win, texid, [], [], rotAngle, 0, 0);
+        glUseProgram(0);
+
+        % Modulate LED intensity:
+        % BrightSideCore(4, 0.5*(cos(rotAngle)+1));
+        
         % End of drawing. Prepare HDR framebuffer for flip:
         BrightSideHDR('EndDrawing', win);
-        
-        % Show updated HDR framebuffer:
-        Screen('Flip', win);
+
+        % Show updated HDR framebuffer at next vertical retrace:
+        vbl=Screen('Flip', win, vbl);
 
         % Increase rotation angle to make it a bit more interesting...
         rotAngle = rotAngle + 0.1;
+        framecounter = framecounter + 1;
     end
-    
+  
     % We're done.
+    framecounter
+    duration = vbl - tstart
+    averagefps = framecounter / duration
     
     % Shutdown BrightSide HDR:
     BrightSideHDR('Shutdown', win);

@@ -1,0 +1,69 @@
+@echo off 
+rem MSVC80OPTS.BAT 
+rem 
+rem Compile and link options used for building MEX-files 
+rem using the Microsoft Visual C++ compiler version 8.0 
+rem 
+rem $Revision: 1.1.8.1 $ $Date: 2006/01/23 06:01:29 $ 
+rem 
+rem ******************************************************************** 
+rem General parameters 
+rem ******************************************************************** 
+
+
+rem set MATLAB=%MATLAB% 
+rem set VS80COMNTOOLS=%VS80COMNTOOLS% 
+rem set VSINSTALLDIR=C:\Program Files\Microsoft Visual Studio 8 
+rem set VCINSTALLDIR=%VSINSTALLDIR%\VC 
+rem set PATH=%VCINSTALLDIR%\BIN;%VCINSTALLDIR%\PlatformSDK\bin;%VSINSTALLDIR%;\Common7\IDE;%VSINSTALLDIR%\SDK\v2.0\bin;%VSINSTALLDIR%\Common7\Tools;%VSINSTALLDIR%\Common7\Tools\bin;%VCINSTALLDIR%\VCPackages;%MATLAB_BIN%;%PATH% 
+rem set INCLUDE=%VCINSTALLDIR%\ATLMFC\INCLUDE;%VCINSTALLDIR%\INCLUDE;%VCINSTALLDIR%\PlatformSDK\INCLUDE;%VSINSTALLDIR%\SDK\v2.0\include;%INCLUDE% 
+rem set LIB=%VCINSTALLDIR%\ATLMFC\LIB;%VCINSTALLDIR%\LIB;%VCINSTALLDIR%\PlatformSDK\lib;%VSINSTALLDIR%\SDK\v2.0\lib;%MATLAB%\extern\lib\win32;%LIB% 
+
+set MATLAB=%MATLAB%
+set MSVCDir=C:\Program Files\Microsoft Visual Studio 8
+set DevEnvDir=%MSVCDir%\Common7\Tools
+set PATH=%MSVCDir%\VC\bin;%DevEnvDir%;%DevEnvDir%\bin;%MSVCDir%\Common7\IDE;%MATLAB_BIN%;%PATH%;
+set INCLUDE=%MSVCDir%\ATLMFC\INCLUDE;%MSVCDir%\INCLUDE;%MSVCDir%\VC\PlatformSDK\include;%MSVCDir%\VC\include;%INCLUDE%
+set LIB=%MSVCDir%\ATLMFC\LIB;%MSVCDir%\LIB;%MSVCDir%\VC\PlatformSDK\lib;%MSVCDir%\VC\lib;%MATLAB%\extern\lib\win32;%LIB%
+
+
+rem ******************************************************************** 
+rem Compiler parameters 
+rem ******************************************************************** 
+set COMPILER=cl 
+rem set COMPFLAGS=/c /Zp8 /GR /W3 /EHsc /Zc:wchar_t /DMATLAB_MEX_FILE /nologo 
+rem set OPTIMFLAGS=/MD /O2 /Oy /DNDEBUG 
+rem set DEBUGFLAGS=/MD /Zi /Fd"%OUTDIR%%MEX_NAME%%MEX_EXT%.pdb" 
+rem set NAME_OBJECT=/Fo 
+
+set COMPFLAGS=-c -Zp8 -W3 /EHsc -DMATLAB_MEX_FILE -nologo
+set OPTIMFLAGS=/MD -O2 -Oy- -DNDEBUG
+set DEBUGFLAGS=/MDd -Zi -Fd"%OUTDIR%%MEX_NAME%.pdb"
+set NAME_OBJECT=/Fo
+
+rem ******************************************************************** 
+rem Linker parameters 
+rem ******************************************************************** 
+set LIBLOC=%MATLAB%\extern\lib\win32\microsoft 
+set LINKER=link 
+set LINKFLAGS=/dll /export:%ENTRYPOINT% /MAP /LIBPATH:"%LIBLOC%" libmx.lib libmex.lib libmat.lib /implib:%LIB_NAME%.x /MACHINE:X86 kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib 
+set LINKOPTIMFLAGS= 
+set LINKDEBUGFLAGS=/DEBUG /PDB:"%OUTDIR%%MEX_NAME%%MEX_EXT%.pdb" 
+set LINK_FILE= 
+set LINK_LIB= 
+set NAME_OUTPUT=/out:"%OUTDIR%%MEX_NAME%%MEX_EXT%" 
+set RSP_FILE_INDICATOR=@ 
+
+
+rem ******************************************************************** 
+rem Resource compiler parameters 
+rem ******************************************************************** 
+set RC_COMPILER=rc /fo "%OUTDIR%mexversion.res" 
+set RC_LINKER= 
+
+set POSTLINK_CMDS=del "%OUTDIR%%MEX_NAME%.map" 
+set POSTLINK_CMDS1=del %LIB_NAME%.x 
+set POSTLINK_CMDS2=mt -outputresource:"%OUTDIR%%MEX_NAME%%MEX_EXT%";2 -manifest "%OUTDIR%%MEX_NAME%%MEX_EXT%.manifest" 
+set POSTLINK_CMDS3=del "%OUTDIR%%MEX_NAME%%MEX_EXT%.manifest" 
+
+

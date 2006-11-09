@@ -19,6 +19,10 @@ function BrightSideHDR(cmd, arg, dummy)
 % i.e., we work without invocation of the mex file and without a real HDR
 % display.
 %
+% BrightSideHDR('Debuglevel', level); -- Set level of verbosity for
+% debugging. The default is zero which means to be silent. A level of 1
+% produces some debug output.
+%
 % BrightSideHDR('BeginDrawing'); -- Mark start of drawing operations into
 % the high dynamic range backbuffer. After this command you can issue
 % standard Screen or mogl OpenGL commands to draw into the high resolution
@@ -35,6 +39,7 @@ function BrightSideHDR(cmd, arg, dummy)
 
 % History:
 % 10/30/2006 Initial prototype implementation. (MK)
+% 11/09/2006 Small fixes and improvements to make it really work. (MK)
 
 global GL;
 persistent windowPtr;
@@ -45,12 +50,14 @@ persistent hdrtexid;
 persistent online;
 persistent inhdrdrawmode;
 persistent dummymode;
+persistent debuglevel;
 
 % Cold start: Setup our variables to safe defaults.
 if isempty(online)
     online = 0;
     inhdrdrawmode = 0;
     dummymode = 0;
+    debuglevel = 0;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -58,6 +65,21 @@ if nargin < 1 || isempty(cmd)
 end
 
 % Command dispatcher:
+if strcmp(cmd, 'Debuglevel')
+    if nargin < 1 || isempty(arg)
+        error('BrightSideHDR: "Debuglevel" called without specifiying a new level.');
+    end
+    
+    debuglevel = arg;
+    
+    if ~dummymode && online
+        % Set new debuglevel in core:
+        BrightSideCore(-1, debuglevel);
+    end
+    
+    return;
+end
+
 if strcmp(cmd, 'Initialize')
     % Initialization command:
 
@@ -110,9 +132,28 @@ if strcmp(cmd, 'Initialize')
     % core library and initialize it:
     if ~dummymode
         % Initiate loading, linking and initialization of the core:
-        BrightSideCore(-1);
+
+        % On Windows, we need to preload BrightSideCore into Matlab while the working
+        % directory is set to Psychtoolbox/PsychHardware/BrightSideDisplay/BSRuntimeLibs/outputlib/lib/
+        % , so the Windows dynamic linker can find our own local copies of the BrightSide DLL's.
+        % and link against it.
+        if IsWin
+            % Windows system: Change working dir to location to BrightSide
+            % DLL's:
+            olddir = pwd;
+            cd([PsychtoolboxRoot 'PsychHardware/BrightSideDisplay/BSRuntimeLibs/outputlib/lib']);
+            % Preload (and thereby link) BrightSideCore into Matlab. The
+            % special command code -1 forces loading and sets the initial
+            % debuglevel:
+            BrightSideCore(-1, debuglevel);
+
+            % Now that it is (hopefully) properly loaded, we can revert the working
+            % directory to its previous setting:
+            cd(olddir);
+        end;
+        
         % Initialize the libraries and display device:
-        BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/'], 'DR-37P-beta.xml', hdrtexid, 0);
+        BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/Resources'], 'DR-37P-beta.xml', hdrtexid, 0);
     end
     
     % Reset draw mode:
@@ -187,15 +228,35 @@ if strcmp(cmd, 'EndDrawing')
     % texture can be used for blitting by the core library:
     moglChooseFBO(0);
     
-    % Setup special projection matrices for the BrightSide core lib:
-    glMatrixMode(GL.PROJECTION);
-    glPushMatrix;
-%    glLoadIdentity;
-% MK: This causes an OpenGL error:	gluOrtho2D(0, 0, winwidth, winheight); % This seems to be a quite odd coordinate system.
-	glMatrixMode (GL.MODELVIEW);
-    glPushMatrix;
-%	glLoadIdentity;
+    if ~dummymode
+        % Setup special projection matrices for the BrightSide core lib:
+        glMatrixMode(GL.PROJECTION);
+        glPushMatrix;
+        glLoadIdentity;
 
+        % The following gluOrhto2D command causes an OpenGL error, because
+        % it defines invalid settings, but for some reason we need exactly this
+        % transformation for the BrightSideHDR to work. Therefore we disable
+        % automatic error-checking in moglcore, then execute the command, then
+        % eat up the error-code and then reenable error checking:
+
+        % Disable automatic error checking:
+        moglcore('DEBUGLEVEL', 0);
+
+        % Perform the strange setup command:
+        gluOrtho2D(0, 0, winwidth, winheight);
+
+        % Eat up all OpenGL errors caused by this:
+        while glGetError; end;
+
+        % Reenable automatic error checking:
+        moglcore('DEBUGLEVEL', 1);
+
+        glMatrixMode (GL.MODELVIEW);
+        glPushMatrix;
+        glLoadIdentity;
+    end
+    
     % Perform HDR-->LDR conversion:
     if ~dummymode
         % Call the BrightSide core library to do the conversion:
@@ -205,11 +266,13 @@ if strcmp(cmd, 'EndDrawing')
         moglBlitTexture(hdrtexid);
     end
 
-    % Restore normal matrices:
-    glMatrixMode(GL.PROJECTION);
-    glPopMatrix;
-	glMatrixMode (GL.MODELVIEW);
-    glPopMatrix;
+    if ~dummymode
+        % Restore normal matrices:
+        glMatrixMode(GL.PROJECTION);
+        glPopMatrix;
+        glMatrixMode (GL.MODELVIEW);
+        glPopMatrix;
+    end
     
     % Ready:
     inhdrdrawmode = 0;

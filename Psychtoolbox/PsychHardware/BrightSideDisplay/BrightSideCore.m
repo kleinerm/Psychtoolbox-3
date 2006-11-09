@@ -19,5 +19,14 @@ function BrightSideCore(varargin)
 % - Convert HDR image content of input texture to an image suitable for
 % driving the HDR display, blit it into the real LDR framebuffer.
 %
+% BrightSideCore(3, texid, fboid);
+% - Change source texture to 'texid' and target framebuffer to 'fboid' for conversion.
+%
+% BrightSideCore(4, ledintensity);
+% - Change output multiplication factor for intensity of the LED array.
+%
+
+% History:
+% October 2006  Written (MK).
 error('The BrightSideCore MEX file seems to be either invalid, not loadable or missing in your setup!');
 return
