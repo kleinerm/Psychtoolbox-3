@@ -224,6 +224,9 @@ if strcmp(cmd, 'EndDrawing')
         error('BrightSideHDR: "EndDrawing" called without previous call to "BeginDrawing".');
     end
 
+    % Disable shaders, if any active:
+    glUseProgram(0);
+
     % Unbind our HDR framebuffer as rendertarget, so its color buffer
     % texture can be used for blitting by the core library:
     moglChooseFBO(0);
@@ -260,7 +263,22 @@ if strcmp(cmd, 'EndDrawing')
     % Perform HDR-->LDR conversion:
     if ~dummymode
         % Call the BrightSide core library to do the conversion:
+        % It is crucial to backup & restore at least the GL_ENABLE_BIT
+        % state around the call to BrightSides core libraries. They seem to
+        % change enable-state and don't restore it properly. For that
+        % reason, we couldn't use unclamped colors when the fixed-function
+        % pipeline was active, i.e. no shaders bound.        
+        glPushAttrib(GL.ALL_ATTRIB_BITS);
+
+        % Would be enough to push this, but better safe than sorry. You never
+        % know what your software vendor will screw in its next release ;)
+        % glPushAttrib(GL.ENABLE_BIT);
+
+        % Do it!
         BrightSideCore(2);
+
+        % Restore saved state:
+        glPopAttrib;
     else
         % Dummy mode: We do it ourselves.
         moglBlitTexture(hdrtexid);

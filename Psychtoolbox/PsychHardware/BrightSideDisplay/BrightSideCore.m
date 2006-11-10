@@ -25,6 +25,10 @@ function BrightSideCore(varargin)
 % BrightSideCore(4, ledintensity);
 % - Change output multiplication factor for intensity of the LED array.
 %
+% BrightSideCore(5, clampingenabled);
+% - Enable or disable clamping of colors in the OpenGL pipeline, depending
+% if 'clampingenabled' is 1 or 0. 0 == Disable clamping is what one usually
+% wants for drawing of HDR content.
 
 % History:
 % October 2006  Written (MK).

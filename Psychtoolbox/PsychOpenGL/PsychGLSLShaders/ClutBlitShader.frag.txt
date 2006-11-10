@@ -8,6 +8,7 @@
  *
  * (w)2006 by Mario Kleiner.
 */
+#version 110
 
 uniform sampler2DRect Image;
 uniform sampler2DRect clut;
