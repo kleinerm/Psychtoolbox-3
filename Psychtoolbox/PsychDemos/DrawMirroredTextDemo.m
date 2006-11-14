@@ -1,18 +1,13 @@
-% DrawMirroredTextDemoOSX
+% DrawMirroredTextDemo
 %
-% OS X and Windows: _______________________________________________________
+% _______________________________________________________
 %
 %  Trivial example of drawing mirrored text. This demonstrates how to use
 %  low-level OpenGL API functions to apply geometric transformations to
 %  the drawn objects.
-% 
-% OS 9 and Linux: _________________________________________________________
-%
-%  DrawSomeMirroredTextOSX does not exist on OS 9 and Linux. See TextDemo.
-%
 % _________________________________________________________________________
 %
-% see also: PsychDemosOSX, Screen
+% see also: PsychDemos
 
 % 3/8/04    awi     Wrote it.
 % 7/13/04   awi     Added comments section.  

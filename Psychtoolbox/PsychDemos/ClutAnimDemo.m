@@ -1,4 +1,4 @@
-function CLUTAnimDemoOSX
+function CLUTAnimDemo
 %
 % OS X: ___________________________________________________________________
 %
@@ -7,11 +7,11 @@ function CLUTAnimDemoOSX
 %
 % _________________________________________________________________________
 % 
-% see also: PsychDemosOSX, MovieDemoOSX
+% see also: PsychDemos, MovieDemo
 
 % HISTORY
-%  7/05/05    mk     Wrote it. 
-%  22/0705  fwc       added SkipSyncTests preference call, slightly smaller texture,
+%  7/05/05    mk    Wrote it. 
+%  22/0705    fwc   Added SkipSyncTests preference call, slightly smaller texture,
 %                   as drawtexture failed on s=400 on a 1024x768 pix screen
 %                   in catch section, test if OrigLut exists before
 %                   applying it.

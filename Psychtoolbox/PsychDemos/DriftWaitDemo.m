@@ -1,10 +1,18 @@
-function DriftDemoOSX
-%
-% OS X: ___________________________________________________________________
+function DriftWaitDemo(movieDurationSecs, waitframes)
+% DriftWaitDemo(movieDurationSecs, waitframes)
+% ___________________________________________________________________
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
 % In the OS X Psychtoolbox Screen('DrawTexture') replaces
 % Screen('CopyWindow').     
+%
+% This demo illustrates on how to emulate the old Screen('WaitBlanking'...)
+% behaviour: If you set waitframes > 1 then the screen is only updated
+% every waitframes'th monitor refresh interval.
+%
+% movieDurationSecs == Requested total duration of movie in seconds.
+% waitframes == Number of monitor refresh intervals to wait before each
+% frame is drawn.
 %
 % CopyWindow vs. DrawTexture:
 %
@@ -17,12 +25,9 @@ function DriftDemoOSX
 % window during the animation rather than rendered to offscreen  windows
 % prior to the animation.
 %
-% OS 9 and WINDOWS : ______________________________________________________
-%
-% DriftDemoOSX does not exist on OS 9 and Windows.  See DriftDemo instead.
 % _________________________________________________________________________
 % 
-% see also: PsychDemosOSX, MovieDemoOSX
+% see also: PsychDemos, MovieDemo, DriftDemo
 
 % HISTORY
 %  6/28/04    awi     Adapted from Denis Pelli's DriftDemo.m for OS 9 
@@ -31,6 +36,15 @@ function DriftDemoOSX
 %  4/23/05    mk      Added Priority(0) in catch section, moved Screen('OpenWindow')
 %                     before first call to Screen('MakeTexture') in
 %                     preparation of future improvements to 'MakeTexture'.
+%  5/10/05    mk      Added demo-code for WaitBlanking - emulation.
+
+if nargin<2
+    waitframes=1;
+end;
+
+if nargin<1
+    movieDurationSecs=20;
+end;
 
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -67,38 +81,65 @@ try
 	Screen('FillRect',w, gray);
 	Screen('Flip', w);
 	Screen('FillRect',w, gray);
-    
-	% compute each frame of the movie and convert the those frames, stored in
+
+    % compute each frame of the movie and convert the those frames, stored in
 	% MATLAB matices, into Psychtoolbox OpenGL textures using 'MakeTexture';
 	numFrames=12; % temporal period, in frames, of the drifting grating
 	for i=1:numFrames
 		phase=(i/numFrames)*2*pi;
+        %phase=mod(i,2)*pi+pi/2;
 		% grating
 		[x,y]=meshgrid(-200:200,-200:200);
 		angle=30*pi/180; % 30 deg orientation.
 		f=0.05*2*pi; % cycles/pixel
-		a=cos(angle)*f;
+		%f=0;
+        a=cos(angle)*f;
 		b=sin(angle)*f;
 		m=exp(-((x/90).^2)-((y/90).^2)).*sin(a*x+b*y+phase);
 		tex(i)=Screen('MakeTexture', w, gray+inc*m);
 	end
 		
 	% Run the movie animation for a fixed period.  
-	movieDurationSecs=5;
+	%movieDurationSecs=5;
 	frameRate=Screen('FrameRate',screenNumber);
 	if(frameRate==0)  %if MacOSX does not know the frame rate the 'FrameRate' will return 0. 
         frameRate=60;
     end
 
-    movieDurationFrames=round(movieDurationSecs * frameRate);
+    movieDurationFrames=round(movieDurationSecs * frameRate / waitframes);
 	movieFrameIndices=mod(0:(movieDurationFrames-1), numFrames) + 1;
 	priorityLevel=MaxPriority(w);
 	Priority(priorityLevel);
+    
+    Screen('TextSize', w, 24);
+    Screen('DrawText', w, 'Measuring monitor refresh interval... This can take up to 20 seconds...', 10, 10, 255);
+    Screen('Flip', w);
+    
+    % NEW: Perform extra calibration pass to estimate monitor refresh
+    % interval. We want at least 100 valid samples, requiring standard
+    % deviation of the measurements below 50 microseconds, but timing out
+    % after 20 seconds if we can't get that level of accuracy:
+    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 20);
+    fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
 
+    % Perform initial Flip to sync us to the VBL and for getting an initial
+    % VBL-Timestamp for our "WaitBlanking" emulation:
+    vbl=Screen('Flip', w);
+    
     for i=1:movieDurationFrames
         Screen('DrawTexture', w, tex(movieFrameIndices(i)));
-        Screen('Flip', w);
-    end
+        % NEW: We only flip every 'waitframes' monitor refresh intervals:
+        % For this, we calculate a point in time after which Flip should flip
+        % at the next possible VBL.
+        % This should happen waitframes * ifi seconds after the last flip
+        % has happened (=vbl). ifi is the monitor refresh interval
+        % duration. We subtract 0.5 frame durations, so we have some
+        % headroom to take possible timing jitter or roundoff-errors into
+        % account.
+        % This is basically the old Screen('WaitBlanking', w, waitframes)
+        % as known from the old PTB...
+        vbl = Screen('Flip', w, vbl + (waitframes - 0.5) * ifi);
+	end;
 
     Priority(0);
 	

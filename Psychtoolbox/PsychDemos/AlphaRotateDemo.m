@@ -1,5 +1,5 @@
-function AlphaRotateDemoOSX(numFrames, ifis)
-% AlphaRotateDemoOSX(numFrames, ifis)
+function AlphaRotateDemo(numFrames, ifis)
+% AlphaRotateDemo(numFrames, ifis)
 %
 % numFrames Number of grating textures to use for the drifting grating...
 %
@@ -22,7 +22,7 @@ function AlphaRotateDemoOSX(numFrames, ifis)
 %
 % _________________________________________________________________________
 % 
-% see also: PsychDemosOSX, MovieDemoOSX
+% see also: PsychDemos, MovieDemo
 
 % HISTORY
 %  6/28/04    awi     Adapted from Denis Pelli's DriftDemo.m for OS 9 

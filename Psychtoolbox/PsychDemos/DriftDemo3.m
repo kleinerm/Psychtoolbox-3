@@ -1,5 +1,5 @@
-function DriftDemoOSX3(cyclespersecond, p)
-% function DriftDemoOSX3(cyclespersecond, p)
+function DriftDemo3(cyclespersecond, p)
+% function DriftDemo3(cyclespersecond, p)
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
 % In the OpenGL-Psychtoolbox Screen('DrawTexture') replaces
@@ -40,10 +40,8 @@ function DriftDemoOSX3(cyclespersecond, p)
 % and ovals we recommend that these be drawn directly to the  display
 % window during the animation rather than rendered to offscreen  windows
 % prior to the animation.
-%
-% _________________________________________________________________________
 % 
-% see also: PsychDemosOSX, MovieDemoOSX, DriftDemoOSX, DriftDemoOSX2
+% see also: PsychDemos, MovieDemo, DriftDemo, DriftDemo2
 
 % HISTORY
 %  5/5/06    mk     Adapted from DriftDemoOSX2.m 

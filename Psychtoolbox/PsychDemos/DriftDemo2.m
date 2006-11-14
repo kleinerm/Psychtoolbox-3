@@ -1,6 +1,6 @@
-function DriftDemoOSX2(angle, cyclespersecond, f, drawmask)
-% function DriftDemoOSX2(angle, cyclespersecond, f, drawmask)
-% OS X: ___________________________________________________________________
+function DriftDemo2(angle, cyclespersecond, f, drawmask)
+% function DriftDemo2(angle, cyclespersecond, f, drawmask)
+% ___________________________________________________________________
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
 % In the OS X Psychtoolbox Screen('DrawTexture') replaces
@@ -38,12 +38,9 @@ function DriftDemoOSX2(angle, cyclespersecond, f, drawmask)
 % window during the animation rather than rendered to offscreen  windows
 % prior to the animation.
 %
-% OS 9 and WINDOWS : ______________________________________________________
-%
-% DriftDemoOSX does not exist on OS 9 and Windows.  See DriftDemo instead.
 % _________________________________________________________________________
 % 
-% see also: PsychDemosOSX, MovieDemoOSX
+% see also: PsychDemos, MovieDemo
 
 % HISTORY
 %  6/7/05    mk     Adapted from Allen Ingling's DriftDemoOSX.m 

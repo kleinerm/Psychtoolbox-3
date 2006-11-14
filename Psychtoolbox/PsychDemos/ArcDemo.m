@@ -1,5 +1,5 @@
-function ArcDemoOSX
-% ArcDemoOSX
+function ArcDemo
+% ArcDemo
 %
 % Demonstration of the function Screen('FillArc',...) on OSX
 %

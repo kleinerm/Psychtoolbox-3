@@ -1,23 +1,17 @@
-
-% DrawSomeTextOSX
+% DrawSomeText
 %
-% OS X: ___________________________________________________________________
+% ___________________________________________________________________
 %
 %  Trivial example of drawing text.  
-% 
-% OS 9 and WINDOWS : ______________________________________________________
-%
-%  DrawSomeTextOSX does not exist on OS 9 and Windows.  See TextDemo.
-%
 % _________________________________________________________________________
 %
-% see also: PsychDemosOSX, Screen
+% see also: PsychDemos
 
 % 3/8/04    awi     Wrote it.
 % 7/13/04   awi     Added comments section.  
 % 9/8/04    awi     Added Try/Catch, cosmetic changes to documentation.
 % 1/21/05   awi     Replaced call to GetChar with call to KbWait. 
-% 10/6/05	 awi		Note here cosmetic changes by dgp between 1/21/05 and 10/6/05	.
+% 10/6/05	awi		Note here cosmetic changes by dgp between 1/21/05 and 10/6/05	.
 
 try
     % Choosing the display with the highest dislay number is

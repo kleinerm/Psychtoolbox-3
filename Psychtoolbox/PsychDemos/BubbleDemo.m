@@ -1,4 +1,5 @@
-function BubbleDemoOSX(mode, ms, myimgfile)
+function BubbleDemo(mode, ms, myimgfile)
+% BubbleDemo(mode, ms, myimgfile)
 %
 % OS X and WINDOWS: _______________________________________________________
 %
@@ -16,12 +17,7 @@ function BubbleDemoOSX(mode, ms, myimgfile)
 % by the graphics hardware.
 %
 %
-% OS 9: ___________________________________________________________________
-%
-% BubbleDemoOSX does not exist on OS 9.
-% _________________________________________________________________________
-%
-% see also: PsychDemosOSX, MovieDemoOSX, DriftDemo
+% see also: PsychDemos, MovieDemo, DriftDemo
 
 % HISTORY
 %
