@@ -222,6 +222,7 @@ PsychError SCREENOpenWindow(void)
 #endif
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
+    PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
 
     if (!didWindowOpen) {

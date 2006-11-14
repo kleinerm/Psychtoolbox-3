@@ -189,7 +189,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGDirectDisplayID				cgDisplayID;
     CGLPixelFormatAttribute			attribs[29];
     long					numVirtualScreens;
-    GLboolean					isDoubleBuffer;
+    GLboolean					isDoubleBuffer, isFloatBuffer;
+    GLint bpc;
     int attribcount=0;
     int i;
 
@@ -202,8 +203,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     attribs[attribcount++]=displayMask;
 
     // 10 bit per component framebuffer requested (10-10-10-2)?
-    if (screenSettings->depth == 30) {
+    if (windowRecord->depth == 30) {
       // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
+      printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
       attribs[attribcount++]=kCGLPFAColorSize;
       attribs[attribcount++]=30;
       attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -211,8 +213,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
 
     // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
-    if (screenSettings->depth == 64) {
+    if (windowRecord->depth == 64) {
       // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
+      printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
       attribs[attribcount++]=kCGLPFAColorFloat;
       attribs[attribcount++]=kCGLPFAColorSize;
       attribs[attribcount++]=16*3;
@@ -221,8 +224,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
 
     // 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
-    if (screenSettings->depth == 128) {
+    if (windowRecord->depth == 128) {
       // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
+      printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
       attribs[attribcount++]=kCGLPFAColorFloat;
       attribs[attribcount++]=kCGLPFAColorSize;
       attribs[attribcount++]=32*3;
@@ -337,7 +341,29 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
             return(FALSE);
         }
     }
+    
+    if (windowRecord->depth == 30 || windowRecord->depth == 64 || windowRecord->depth == 128) {
 
+        // Floating point framebuffer active?
+        glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+        if (isFloatBuffer) {
+            printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
+        }
+        else {
+            printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
+        }
+        
+        // Query and show bpc for all channels:
+        glGetIntegerv(GL_RED_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for red channel.\n", bpc);
+        glGetIntegerv(GL_GREEN_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for green channel.\n", bpc);
+        glGetIntegerv(GL_BLUE_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for blue channel.\n", bpc);
+        glGetIntegerv(GL_ALPHA_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
+    }
+    
     // Done.
     return(TRUE);
 }

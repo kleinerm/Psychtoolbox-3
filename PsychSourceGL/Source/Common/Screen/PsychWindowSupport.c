@@ -134,6 +134,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // the real value used.
     (*windowRecord)->multiSample = multiSample;
 
+    // Assign requested color buffer depth:
+    (*windowRecord)->depth = screenSettings->depth.depths[0];
+    
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:

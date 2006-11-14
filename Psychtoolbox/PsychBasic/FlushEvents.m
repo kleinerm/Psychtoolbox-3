@@ -70,7 +70,7 @@ if ~IsOctave
             OSX_JAVA_GETCHAR.clear;
             % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
             % reported by Denis:
-            while CharAvail, dummy = GetChar;
+            while CharAvail, drawnow; dummy = GetChar; end;
         end
     else
         % Java VM unavailable, i.e., running in -nojvm mode.

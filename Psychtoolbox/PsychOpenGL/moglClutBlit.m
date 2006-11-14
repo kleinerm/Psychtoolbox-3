@@ -126,7 +126,7 @@ if nargin < 1
     luttex=-1;
     glActiveTexture(GL.TEXTURE0);
     glUseProgram(0);
-    glDeleteProgram(remapshader);
+    % Disabled for now: glDeleteProgram(remapshader);
     remapshader=-1;
     clear initialized;
     return;
