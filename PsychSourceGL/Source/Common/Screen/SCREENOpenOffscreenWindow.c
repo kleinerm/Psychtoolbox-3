@@ -131,6 +131,8 @@ PsychError SCREENOpenOffscreenWindow(void)
     //Depth and rect argument supplied as arguments override those inherited from reference screen or window.
     //Note that PsychCopyIn* prefix means that value will not be overwritten if the arguments are not present.
     PsychCopyInRectArg(3,FALSE, rect);
+    if (IsRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "Invalid rect value provided: Empty rects are not allowed.");
+
     PsychCopyInIntegerArg(4,FALSE, &depth); 
 
     // If any of the no longer supported values 0, 1, 2 or 4 is provided, we

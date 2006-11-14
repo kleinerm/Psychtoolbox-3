@@ -32,6 +32,8 @@ function FlushEvents(varargin)
 %               mode. In -nojvm mode on Windows, it falls back to the old
 %               Windows FlushEvents.dll ...
 %               We now check for valid event descriptors.
+%
+% 11/14/06 mk   Ugly while CharAvail, GetChar; hack to fix more GetChar brain-damage.
 
 global OSX_JAVA_GETCHAR;
 
@@ -66,6 +68,9 @@ if ~IsOctave
         if doclear == 1
             % Clear the internal queue of characters:
             OSX_JAVA_GETCHAR.clear;
+            % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
+            % reported by Denis:
+            while CharAvail, dummy = GetChar;
         end
     else
         % Java VM unavailable, i.e., running in -nojvm mode.

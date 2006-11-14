@@ -45,7 +45,7 @@
                 2/25/05         awi             Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
                 3/22/05         mk              Added possibility to spec vectors with individual color and size spec per dot.
                 4/29/05         mk              Bugfix for color vectors: They should also take values in range 0-255 instead of 0.0-1.0.
-							
+		11/14/06        mk              We now also accept color vectors in uint8 format and pass them directly for higher efficiency.
 		
  
 	TO DO:
@@ -85,8 +85,9 @@ PsychError SCREENDrawDots(void)
 	PsychWindowRecordType                   *windowRecord;
 	int                                     depthValue, whiteValue, colorPlaneSize, numColorPlanes, m,n,p,mc,nc,pc,idot_type;
         int                                     i, nrpoints, nrsize;
-	boolean                                 isArgThere, usecolorvector;
+	boolean                                 isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double					*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
+	unsigned char                           *bytecolors;
 	float pointsizerange[2];
 	const double convfactor = 1/255.0;
     
@@ -138,32 +139,39 @@ PsychError SCREENDrawDots(void)
             usecolorvector=false;
 	}
         else {
-            // Some color argument provided. Check first, if it's a valid color vector:
-            PsychAllocInDoubleMatArg(4, TRUE, &mc, &nc, &pc, &colors);
-            // Do we have a color vector, aka one element per vertex?
-            if(pc==1 && nc==nrpoints && nrpoints>1) {
-                // Looks like we might have a color vector... ... Double-check it:
-                if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
-                // Yes. colors is a valid pointer to it.
-                usecolorvector=true;
-                
-                // We have to loop through the vector and divide all values by 255, so the input values
-                // 0-255 get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
-                // a color vector is passed in Double- or Float format.
-                // This is inefficient, as it burns some cpu-cycles, but necessary to keep color
-                // specifications consistent in the PTB - API.
-                tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
-                pcolors = colors;
-                tcolors = tmpcolors;
-                for (i=0; i<(nc*mc); i++) {
-                    *(tcolors++)=(*pcolors++) * convfactor;
-                }
-            }
-            else {
-                // No color vector provided: Check for a single valid color triplet or quadruple:
-                usecolorvector=false;
-                isArgThere=PsychCopyInColorArg(4, TRUE, &color);                
-            }
+	  // Some color argument provided. Check first, if it's a valid color vector:
+	  isdoublecolors = PsychAllocInDoubleMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &colors);
+	  isuint8colors  = PsychAllocInUnsignedByteMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &bytecolors);
+
+	  // Do we have a color vector, aka one element per vertex?
+	  if((isdoublecolors || isuint8colors) && pc==1 && nc==nrpoints && nrpoints>1) {
+	    // Looks like we might have a color vector... ... Double-check it:
+	    if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
+	    // Yes. colors is a valid pointer to it.
+	    usecolorvector=true;
+	    
+	    if (isdoublecolors) {
+	      // We have to loop through the vector and divide all values by 255, so the input values
+	      // 0-255 get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
+	      // a color vector is passed in Double- or Float format.
+	      // This is inefficient, as it burns some cpu-cycles, but necessary to keep color
+	      // specifications consistent in the PTB - API.
+	      tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
+	      pcolors = colors;
+	      tcolors = tmpcolors;
+	      for (i=0; i<(nc*mc); i++) {
+		*(tcolors++)=(*pcolors++) * convfactor;
+	      }
+	    }
+	    else {
+	      // Color vector in uint8 format. Nothing to do.
+	    }
+	  }
+	  else {
+	    // No color vector provided: Check for a single valid color triplet or quadruple:
+	    usecolorvector=false;
+	    isArgThere=PsychCopyInColorArg(4, TRUE, &color);                
+	  }
         }
         
 	PsychSetGLContext(windowRecord);
@@ -253,8 +261,9 @@ PsychError SCREENDrawDots(void)
         glEnableClientState(GL_VERTEX_ARRAY);
 
         if (usecolorvector) {
-            glColorPointer(mc, GL_DOUBLE, 0, tmpcolors);
-            glEnableClientState(GL_COLOR_ARRAY);
+	  if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, tmpcolors);
+	  if (isuint8colors)  glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
+	  glEnableClientState(GL_COLOR_ARRAY);
         }
         
         // Render all n points, starting at point 0, render them as POINTS:

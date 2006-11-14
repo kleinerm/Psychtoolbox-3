@@ -1,56 +1,33 @@
 /*
-
 	Psychtoolbox3/Source/Common/SCREENLoadNormalizedGammaTable.c		
-
-  
 
 	AUTHORS:
 
-
-
-		Allen.Ingling@nyu.edu		awi 
-
+	Allen.Ingling@nyu.edu		awi 
+	mario.kleiner@tuebingen.mpg.de  mk
   
-
 	PLATFORMS:	
 
-	
-
-		Only OS X for now.
-
-
+	All.
 
 	HISTORY:
-
-
-
-		1/27/03  awi		Created. 
-      1/30/06  mk       Improved online help text.
+	
+	1/27/03  awi		Created. 
+	1/30/06  mk       Improved online help text.
  
-
 	DESCRIPTION:
 
 	Interface to the operating systems hardware gamma-table functions.    
 
 	TO DO:  
-
 */
-
-
-
-
 
 #include "Screen.h"
 
-
-
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-
-static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip]);";
-
+static char useString[] = "Screen('LoadNormalizedGammaTable', ScreenNumber, table [, loadOnNextFlip]);";
 static char synopsisString[] = 
-
-        "Load the gamma table of the specified screen or windowPtr. You need to pass the new "
+        "Load the gamma table of the specified screen. You need to pass the new "
 			"hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
 			"a single color index value in the framebuffer and contains the Red- green- and blue values "
 			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
@@ -59,7 +36,7 @@ static char synopsisString[] =
          "the maximum red-gun intensity, table(32, 3)=0.11 means that blue color value 32 should be displayed "
 			"with 11% of the maximum blue-gun intensity. The range of values 0-1 gets mapped to the hardware with "
 			"the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits. "
-			"If you provide the index of an onscreen window as 'windowPtrOrScreenNumber' and you set the (optional) "
+			"If you provide the index of an onscreen window as 'ScreenNumber' and you set the (optional) "
 			"flag 'loadOnNextFlip' to 1, then update of the gamma table will not happen immediately, but only at "
 			"execution of the Screen('Flip', windowPtrOrScreenNumber) command. This allows to synchronize change of "
 			"both the visual stimulus and change of the gamma table with each other and to the vertical retrace. If "

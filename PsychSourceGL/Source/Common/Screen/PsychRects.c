@@ -38,9 +38,14 @@ void PsychMakeRect(double *psychRect, double left, double top, double right, dou
 	the volume is >= 1 pixel.
 */
 
+boolean IsRectEmpty(PsychRectType rect)
+{
+        return((rect[kPsychLeft] == rect[kPsychRight] || rect[kPsychTop]==rect[kPsychBottom]));
+}
+
 boolean ValidatePsychRect(double *rect)
 {
-	if(rect[kPsychLeft] >= rect[kPsychRight] || rect[kPsychTop]>=rect[kPsychBottom])
+	if(rect[kPsychLeft] > rect[kPsychRight] || rect[kPsychTop]>rect[kPsychBottom])
 		return(FALSE);
 	return(TRUE);
 }

@@ -28,9 +28,12 @@ end
 % Name of an image file passed? If so, then load it. Load our default LDR
 % image otherwise.
 if nargin>=1 && ~isempty(imfilename)
-    if ~isempty(findstr(imfilename, '.exr'))
+    if ~isempty(findstr(imfilename, '.hdr'))
         % Load a real EXR high dynamic range file:
-        img = exrRead(imfilename);
+        inimg = read_rle_rgbe(imfilename);
+        img(:,:,1) = flipud(inimg(:,:,1));
+        img(:,:,2) = flipud(inimg(:,:,2));
+        img(:,:,3) = flipud(inimg(:,:,3));
     else
         % Load a standard low dynamic range file:
         img = imread(imfilename);
@@ -40,11 +43,8 @@ else
     img = imread([PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg']);
 end
 
-% Is this really a LDR image?
-if max(max(max(img)))>1
-    % Seems so. Convert it to double precision to create a fake HDR image:
-    img=double(img) * 10; %
-end;
+% Scale by some factor:
+img=double(img) * 50; %
 
 % No Alpha channel provided?
 if size(img, 3) < 4
@@ -143,12 +143,12 @@ try
 
         % Draw some 2D primitives:
         if useshader, glUseProgram(glslcolor); end;
-        Screen('FillOval', win, [255 * 255 * 10 255 0], [500 500 600 600]);
+        %Screen('FillOval', win, [255 * 255 * 10 255 0], [500 500 600 600]);
         
         % And some text:
         Screen('TextSize', win, 30);
         Screen('TextStyle', win , 1);
-        DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 255*255*10 0]);
+        %DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 255*255*10 0]);
         
         % Lightshow! Modulate LED intensity of the LED array:
         % BrightSideCore(4, 0.5*(cos(rotAngle)+1));
@@ -161,7 +161,7 @@ try
         vbl=Screen('Flip', win, vbl);
 
         % Increase rotation angle to make it a bit more interesting...
-        rotAngle = rotAngle + 0.1;
+        % rotAngle = rotAngle + 0.1;
         
         % Count our frames...
         framecounter = framecounter + 1;

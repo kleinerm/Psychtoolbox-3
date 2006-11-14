@@ -38,6 +38,7 @@ typedef double PsychRectType[4];
 
 //Accessors for PsychRectType
 void			PsychMakeRect(double *psychRect, double left, double top, double right, double bottom);
+boolean                 IsRectEmpty(PsychRectType rect);
 boolean 		ValidatePsychRect(PsychRectType rect);
 double 			PsychGetWidthFromRect(const double *rect);
 double 			PsychGetHeightFromRect(const double *rect);

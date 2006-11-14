@@ -187,7 +187,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGOpenGLDisplayMask 			displayMask;
     CGLError					error;
     CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[24];
+    CGLPixelFormatAttribute			attribs[29];
     long					numVirtualScreens;
     GLboolean					isDoubleBuffer;
     int attribcount=0;
@@ -200,6 +200,36 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     attribs[attribcount++]=kCGLPFAFullScreen;
     attribs[attribcount++]=kCGLPFADisplayMask;
     attribs[attribcount++]=displayMask;
+
+    // 10 bit per component framebuffer requested (10-10-10-2)?
+    if (screenSettings->depth == 30) {
+      // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
+      attribs[attribcount++]=kCGLPFAColorSize;
+      attribs[attribcount++]=30;
+      attribs[attribcount++]=kCGLPFAAlphaSize;
+      attribs[attribcount++]=2;
+    }
+
+    // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
+    if (screenSettings->depth == 64) {
+      // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
+      attribs[attribcount++]=kCGLPFAColorFloat;
+      attribs[attribcount++]=kCGLPFAColorSize;
+      attribs[attribcount++]=16*3;
+      attribs[attribcount++]=kCGLPFAAlphaSize;
+      attribs[attribcount++]=16;
+    }
+
+    // 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
+    if (screenSettings->depth == 128) {
+      // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
+      attribs[attribcount++]=kCGLPFAColorFloat;
+      attribs[attribcount++]=kCGLPFAColorSize;
+      attribs[attribcount++]=32*3;
+      attribs[attribcount++]=kCGLPFAAlphaSize;
+      attribs[attribcount++]=32;
+    }
+
     // Support for 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
         // Yes. Allocate a 24-Bit depth and 8-Bit stencilbuffer for this purpose:

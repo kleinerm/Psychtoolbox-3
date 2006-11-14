@@ -1,5 +1,5 @@
 /*
-	PsychToolbox2/Source/Common/Screen/ScreenTypes.cpp
+	PsychToolbox3/Source/Common/Screen/ScreenTypes.cpp
 	
 	PLATFORMS:	Windows
 				MacOS9
@@ -9,13 +9,16 @@
 	Allen Ingling		awi		Allen.Ingling@nyu.edu
 
 	HISTORY:
-	09/09/02			awi		wrote it.  
-	
+	09/09/02		awi		wrote it.  
+	11/14/06                mk              Rewritten to support 10bpc, float framebuffers.
+
 	DESCRIPTION:
 	
 	functions which operate on types defined in ScreenTypes.h	
 	
-
+	TODO:
+	
+	Most of this stuff should just die. It doesn't match how OpenGL works.
 */
 
 #include "Screen.h"
@@ -101,7 +104,6 @@ void PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth)
     
     for(i=0;i<PsychGetNumDepthsFromStruct(fromDepth); i++)
         PsychAddValueToDepthStruct(PsychGetValueFromDepthStruct(i,fromDepth), toDepth);
-
 }
 
 
@@ -112,18 +114,12 @@ void PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth)
 */ 
 PsychColorModeType PsychGetColorModeFromDepthStruct(PsychDepthType *depth)
 {
-switch(PsychGetValueFromDepthStruct(0, depth)){
-        case 8:	
-            return(kPsychIndexColor);
-        case 16:
-	    return(kPsychRGBAColor);    // MK: Changed. We always want RGBA mode. OpenGL can handle this even for 16-bit and 24-bit case.
-        case 24:
-            return(kPsychRGBAColor);    // MK: Changed. We always want RGBA mode. OpenGL can handle this even for 16-bit and 24-bit case.
-        case 32:
-            return(kPsychRGBAColor);
-        default:
-            return(kPsychUnknownColor);
-    }
+  switch(PsychGetValueFromDepthStruct(0, depth)) {
+    case 8:	
+      return(kPsychIndexColor);
+    default:
+      return(kPsychRGBAColor);
+  }
 }
 
 PsychColorModeType PsychGetColorModeFromDepthValue(int depthValue)
@@ -147,9 +143,10 @@ int PsychGetWhiteValueFromDepthStruct(PsychDepthType *depth)
             return(255);
         case 32:
             return(255);
-        default:
-            PsychErrorExitMsg(PsychError_internal, "Unrecognized screen depth value");
-            return(0);  //makes the compiler happy
+        case 30:
+	    return(1023);
+        default: // Probably a floating point color buffer: Set to 1
+	    return(1);
     }
 }
 
@@ -176,9 +173,10 @@ int PsychGetColorSizeFromDepthValue(int depthValue)
             return(8);
         case 32:
             return(8);
+        case 30:
+	    return(10);
         default:
-            PsychErrorExitMsg(PsychError_internal, "Unrecognized screen depth value");
-            return(0);  //makes the compiler happy
+	  return(1);    // A value of 1 will map to "no scaling factor / denominator applied" for HDR rendering.
     }
 }
 
@@ -191,15 +189,8 @@ int PsychGetNumPlanesFromDepthValue(int depthValue)
     switch(depthValue){
         case 8:	
             return(1);
-        case 16:
-	    return(4); // MK: Changed from 3 to 4. OpenGL can handle this by itself.
-        case 24:
-            return(4); // MK: Changed from 3 to 4. OpenGL can handle this by itself.
-        case 32:
-            return(4); 
         default:
-            PsychErrorExitMsg(PsychError_internal, "Unrecognized screen depth value");
-            return(0);  //makes the compiler happy
+            return(4);  //makes the compiler happy
     }
 }
 
@@ -217,8 +208,9 @@ int PsychGetMaxValueFromColorSize(int colorPlaneSize)
             return(31);
         case 8:
             return(255);
+        case 10:
+	    return(1023);
         default:
-            PsychErrorExitMsg(PsychError_internal, "Unrecognized screen depth value");
             return(0);  //makes the compiler happy 
     }
 }

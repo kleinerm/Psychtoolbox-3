@@ -27,10 +27,10 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber [, clut] [, startEntry=0] [, bits=8]);";
+static char useString[] = "oldclut = Screen('LoadCLUT', ScreenNumber [, clut] [, startEntry=0] [, bits=8]);";
 
 static char synopsisString[] = 
-"Load or query the hardware gamma table of the specified screen or windowPtr. If you pass a new 'clut' "
+"Load or query the hardware gamma table of the specified screen. If you pass a new 'clut' "
 "hardware gamma table, then 'clut' needs to be a matrix with 1 to (256-startEntry) rows and 3 columns. "
 "Each row corresponds to a single color index value  and contains the Red- green- and blue values to use for "
 "output of a pixel of that color. If you provide 'startEntry' then the hardware clut is overwritten by your table starting at "

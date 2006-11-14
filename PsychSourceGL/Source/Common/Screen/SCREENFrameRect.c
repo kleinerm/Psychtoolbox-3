@@ -72,6 +72,7 @@ PsychError SCREENFrameRect(void)
 	//get the rect
 	PsychCopyRect(rect, windowRecord->rect);
 	PsychCopyInRectArg(3, FALSE, rect);
+	if (IsRectEmpty(rect)) return(PsychError_none);
 	
 	//get the pen size
 	penSize=1;

@@ -1,65 +1,35 @@
 /*
-
 	SCREENOpenWindow.c		
-
-  
 
 	AUTHORS:
 
-
-
-		Allen.Ingling@nyu.edu		awi 
-
+	Allen.Ingling@nyu.edu		awi 
+	mario.kleiner@tuebingen.mpg.de  mk
   
 
 	PLATFORMS:	All
 
-    
-
-
-
 	HISTORY:
 
-
-
 		12/18/01	awi		Created.  Copied the Synopsis string from old version of psychtoolbox. 
-
 		10/18/02	awi		Added defaults to allow for optional arguments.
-
 		12/05/02	awi		Started over again for OS X without SDL.
-
 		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
-
                 2/15/05         awi             Commented out glEnable(GL_BLEND) and mode settings.  
-
                 04/03/05        mk              Added support for selecting binocular stereo output via native OpenGL.
-
+		11/14/06        mk              New onscreen windows blank to their background color after successfull init.
+		                                Support for specification of pixelSize's for 10-10-10-2, 16-16-16-16 and
+						32-32-32-32 framebuffers on supported hardware.
 	TO DO:
-
-  
-
-
 
 */
 
-
-
-
-
 #include "Screen.h"
 
-
-
-
-
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-
 static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample]);";
-
 //                                                               1                         2        3      4           5                 6            7
-
 static char synopsisString[] =
-
 	"Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
 	"the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
 	"triplet) that you want to poke into each pixel; default is white. If supplied, "
@@ -86,7 +56,7 @@ static char synopsisString[] =
         "video memory and lead to a reduction in framerate due to the higher computational demand. The maximum "
         "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
         "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
-		  "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
+        "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
         "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
         "Psychtoolbox, you can switch into a compatibility mode by adding the command "
@@ -97,14 +67,9 @@ static char synopsisString[] =
 
 static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
 
-	
-
-
-
 PsychError SCREENOpenWindow(void) 
 
 {
-
     int					screenNumber, numWindowBuffers, stereomode, multiSample;
     PsychRectType 			rect;
     PsychColorType			color;
@@ -113,109 +78,70 @@ PsychError SCREENOpenWindow(void)
     PsychScreenSettingsType		screenSettings;
     PsychWindowRecordType		*windowRecord;
     double dVals[4];
-
     PsychDepthType		specifiedDepth, possibleDepths, currentDepth, useDepth;
-
-    
 
     //just for debugging
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering SCREENOpen\n");
 
-    
-
     //all sub functions should have these two lines
-
     PsychPushHelp(useString, synopsisString, seeAlsoString);
-
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-    
-
     //cap the number of inputs
-
     PsychErrorExit(PsychCapNumInputArgs(7));   //The maximum number of inputs
-
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
-    
-
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
-
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
-
     if(screenNumber==-1)
-
         PsychErrorExitMsg(PsychError_user, "The specified offscreen window has no ancestral screen."); 
 
-    
-
     /*
-
-        The depth checking is ugly because of this stupid depth structure stuff.  
-
-     Instead get a descriptor of the current video settings, change the depth field,
-
-     and pass it to a validate function wich searches a list of valid video modes for the display.
-
-     
-
-     There seems to be no point in checking the depths alone because the legality of a particular
-
-     depth depends on the other settings specified below.  Its probably best to wait until we have
-
-     digested all settings and then test the full mode, declarin an invalid
-
-     mode and not an invalid pixel size.  We could notice when the depth alone is specified 
-
-     and in that case issue an invalid depth value.
-
+      The depth checking is ugly because of this stupid depth structure stuff.  
+      Instead get a descriptor of the current video settings, change the depth field,
+      and pass it to a validate function wich searches a list of valid video modes for the display.
+      There seems to be no point in checking the depths alone because the legality of a particular
+      depth depends on the other settings specified below.  Its probably best to wait until we have
+      digested all settings and then test the full mode, declarin an invalid
+      mode and not an invalid pixel size.  We could notice when the depth alone is specified 
+      and in that case issue an invalid depth value.
      */  
 
     //find the PixelSize first because the color specifier depends on the screen depth.  
-
     PsychInitDepthStruct(&currentDepth);  //get the current depth
-
     PsychGetScreenDepth(screenNumber, &currentDepth);
-
     PsychInitDepthStruct(&possibleDepths); //get the possible depths
-
     PsychGetScreenDepths(screenNumber, &possibleDepths);
 
-    PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
+    #if PSYCH_SYSTEM == PSYCH_OSX
+       // MK Experimental Hack: Add the special depth values 30, 64 and 128 to the depth struct. This allows for
+       // 10 bpc color buffers and 16 bpc, 32 bpc floating point color buffers on the latest ATI
+       // and NVidia hardware. Unfortunately at this point of the init sequence, we are not able
+       // to check if these formats are supported by the hardware. Ugly ugly ugly...
+       PsychAddValueToDepthStruct(30, &possibleDepths);
+       PsychAddValueToDepthStruct(64, &possibleDepths);
+       PsychAddValueToDepthStruct(128, &possibleDepths);
+    #endif
 
+    PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
     isArgThere = PsychCopyInSingleDepthArg(4, FALSE, &specifiedDepth);
 
     PsychInitDepthStruct(&useDepth);
-
     if(isArgThere){ //if the argument is there check that the screen supports it...
-
         if(!PsychIsMemberDepthStruct(&specifiedDepth, &possibleDepths))
-
             PsychErrorExit(PsychError_invalidDepthArg);
-
         else
-
             PsychCopyDepthStruct(&useDepth, &specifiedDepth);
-
     }else //otherwise use the default
-
         PsychCopyDepthStruct(&useDepth, &currentDepth);
 
-    
-
     //find the color.  We do this here because the validity of this argument depends on the depth.
-
     isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
 
-    if(!isArgThere)
-
-        PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthStruct(&useDepth)); //or use the default
+    if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthStruct(&useDepth)); //or use the default
 
     mode=PsychGetColorModeFromDepthStruct(&useDepth);
-
     PsychCoerceColorMode(mode, &color);  //transparent if mode match, error exit if invalid conversion.
-
-    
 
     //find the rect.
 
@@ -223,11 +149,11 @@ PsychError SCREENOpenWindow(void)
 
     // Override it with a user supplied rect, if one was supplied:
     isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
+    if (IsRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
 
     //find the number of specified buffers. 
 
     //OS X:	The number of backbuffers is not a property of the display mode but an attribute of the pixel format.
-
     //		Therefore the value is held by a window record and not a screen record.    
 
     numWindowBuffers=2;	
@@ -272,25 +198,25 @@ PsychError SCREENOpenWindow(void)
     }
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	 // On M$-Windows we currently only support - and therefore require - 32 bpp color depth.
-    if (PsychGetScreenDepthValue(screenNumber) < 32) {
-        // Display running at less than 32 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
-		  // now.
+    // On M$-Windows we currently only support - and therefore require >= 30 bpp color depth.
+    if (PsychGetScreenDepthValue(screenNumber) < 30) {
+      // Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
+      // now.
 
-		  // Release the captured screen:
+      // Release the captured screen:
         PsychReleaseScreen(screenNumber);
 
-		  // Output warning text:
-        printf("PTB-ERROR: Your display screen %i is not running at the required color depth of 32 bit.\n", screenNumber);
+	// Output warning text:
+        printf("PTB-ERROR: Your display screen %i is not running at the required color depth of at least 30 bit.\n", screenNumber);
         printf("PTB-ERROR: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
-        printf("PTB-ERROR: This will not work on Microsoftw Windows operating systems.\n");
+        printf("PTB-ERROR: This will not work on Microsoft Windows operating systems.\n");
         printf("PTB-ERROR: Please use the 'Display settings' control panel of Windows to change the color depth to\n");
         printf("PTB-ERROR: 32 bits per pixel ('True color' or 'Highest' setting) and then retry. It may be neccessary\n");
         printf("PTB-ERROR: to restart Matlab after applying the change...\n");
         fflush(NULL);
 
-		  // Abort with Matlab error:
-	     PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 32 bpp).");
+	// Abort with Matlab error:
+	PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 30 bpp).");
     }
 
 #endif
@@ -328,7 +254,21 @@ PsychError SCREENOpenWindow(void)
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(windowRecord);
 
+    // Make sure no OpenGL errors happened up to this point:
     PsychTestForGLErrors();
+
+    // If we are in logo-startup mode (former blue-screen mode) and double-buffering
+    // is enabled, then do an initial bufferswap & clear, so the display starts in
+    // the user selected background color instead of staying at the blue screen or
+    // logo display until the Matlab script first calls 'Flip'.
+    if ((PsychPrefStateGet_VisualDebugLevel()>=4) && numWindowBuffers>=2) {
+      // Do immediate bufferswap:
+      PsychOSFlipWindowBuffers(windowRecord);
+      // Clear new backbuffer to background color as well:
+      glClear(GL_COLOR_BUFFER_BIT);
+      // Display now shows background color, so user knows that PTB's 'OpenWindow'
+      // procedure is successfully finished.
+    }
 
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);

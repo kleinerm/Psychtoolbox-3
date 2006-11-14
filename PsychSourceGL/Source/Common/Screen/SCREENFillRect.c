@@ -80,6 +80,8 @@ PsychError SCREENFillRect(void)
 	isScreenRect=FALSE;
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 	isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->rect);
+	if (isArgThere && IsRectEmpty(rect)) return(PsychError_none);
+
 	PsychSetGLContext(windowRecord);
    // Enable this windowRecords framebuffer as current drawingtarget:
    PsychSetDrawingTarget(windowRecord);

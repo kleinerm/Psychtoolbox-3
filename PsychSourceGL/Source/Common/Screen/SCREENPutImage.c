@@ -81,16 +81,17 @@ PsychError SCREENPutImage(void)
         numPlanes=PsychGetNumPlanesFromWindowRecord(windowRecord);
         bitsPerColor=PsychGetColorSizeFromWindowRecord(windowRecord);
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
-		  if(PsychCopyInRectArg(3, FALSE, positionRect)){
-            positionRectWidth=(int)PsychGetWidthFromRect(positionRect);
-            positionRectHeight=(int)PsychGetHeightFromRect(positionRect);
-            if(inputP != 1 && inputP != 3 && inputP != 4)
-                PsychErrorExitMsg(PsychError_user, "Third dimension of image matrix must be 1, 3, or 4"); 
-            if( positionRectWidth != inputN  || positionRectHeight != inputM){
-                //calculate the zoom factor
-                xZoom=(GLfloat)positionRectWidth/(GLfloat)inputN;
-                yZoom=-((GLfloat)positionRectHeight/(GLfloat)inputM);
-            }
+	if(PsychCopyInRectArg(3, FALSE, positionRect)){
+	  if (IsRectEmpty(positionRect)) return(PsychError_none);
+	  positionRectWidth=(int)PsychGetWidthFromRect(positionRect);
+	  positionRectHeight=(int)PsychGetHeightFromRect(positionRect);
+	  if(inputP != 1 && inputP != 3 && inputP != 4)
+	    PsychErrorExitMsg(PsychError_user, "Third dimension of image matrix must be 1, 3, or 4"); 
+	  if( positionRectWidth != inputN  || positionRectHeight != inputM){
+	    //calculate the zoom factor
+	    xZoom=(GLfloat)positionRectWidth/(GLfloat)inputN;
+	    yZoom=-((GLfloat)positionRectHeight/(GLfloat)inputM);
+	  }
         }else{
            positionRect[kPsychLeft]=0;
            positionRect[kPsychTop]=0;

@@ -58,6 +58,7 @@ Screen('Flip', w);
 % Draw same rect into an offscreen window:
 [woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 101 101]);
 srcRect=srcRect*sf
+
 DrawRect(woff1, 0, 1);
 %Screen('Textfont', woff1, 'Courier New');
 %Screen('TextSize', woff1, 60);

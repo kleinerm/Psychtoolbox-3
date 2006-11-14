@@ -95,8 +95,8 @@ PsychError SCREENFrameOval(void)
 
 	//get the rect value
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);
-	if(!isArgThere)
-		PsychCopyRect(rect, windowRecord->rect);
+	if(!isArgThere) PsychCopyRect(rect, windowRecord->rect);
+	if (IsRectEmpty(rect)) return(PsychError_none);
             
 	//get the pen width and height arguments
 	penWidth=1;

@@ -90,7 +90,7 @@ try
     
     black = BlackIndex(w);
     white = WhiteIndex(w);
-    Screen('FillRect', w, black)
+%    Screen('FillRect', w, black)
     HideCursor;	% Hide the mouse cursor
     Priority(MaxPriority(w));
     
@@ -121,7 +121,7 @@ try
     % Create a vector with different colors for each single dot, if
     % requested:
     if (differentcolors==1)
-        colvect = round(rand(3,ndots)*255);
+        colvect = uint8(round(rand(3,ndots)*255));
     else
         colvect=white;
     end;
@@ -139,7 +139,7 @@ try
     % --------------    
     for i = 1:nframes
         if (i>1)
-            Screen('FillOval', w, white, fix_cord);	% draw fixation dot (flip erases it)
+            Screen('FillOval', w, uint8(white), fix_cord);	% draw fixation dot (flip erases it)
             Screen('DrawDots', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw square dots
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;

@@ -11,7 +11,7 @@
 	HISTORY:
 	09/09/02			awi		wrote it.  
         10/20/03			awi		fixed a bug in PsychCopyInColorArg where we failed to save alph value correctly in the color struct.
-	
+	11/14/06                        mk              Colors are now also accepted in uint8 format. Empty rects are no longer rejected as invalid.
 	DESCRIPTION:
 	
 	Functions which get and put arguments used by Screen.  	
@@ -272,9 +272,11 @@ boolean PsychIsScreenNumberArg(int position)
 */
 boolean PsychCopyInColorArg(int position, boolean required, PsychColorType *color)
 {
-	int m,n,p,argSize;
+	int i,m,n,p,argSize;
 	boolean isArg;
+	double dummyColor[4];
 	double *colorArgMat=NULL;
+	unsigned char *colorArgMatBytes=NULL;
 	
 	if(position == kPsychUseDefaultArgPosition)
 		position = kPsychDefaultColorArgPosition;
@@ -285,10 +287,24 @@ boolean PsychCopyInColorArg(int position, boolean required, PsychColorType *colo
 		else
 			return(FALSE);	//2A
 	}
-	PsychAllocInDoubleMatArg(position, TRUE, &m, &n, &p, &colorArgMat);
-	if(p!=1)
-		PsychErrorExit(PsychError_invalidColorArg);
+
+	// Try to retrieve double-matrix:
+	if (!PsychAllocInDoubleMatArg(position, kPsychArgAnything, &m, &n, &p, &colorArgMat)) {
+	  // No double matrix: Try to retrieve uint8 matrix:
+	  if (!PsychAllocInUnsignedByteMatArg(position, TRUE, &m, &n, &p, &colorArgMatBytes)) {
+	    PsychErrorExitMsg(PsychError_user, "No color argument or invalid color argument supplied");
+	  }
+
+	  // Color as uint8 received: Convert to double.
+	  if(p!=1) PsychErrorExit(PsychError_invalidColorArg);
+	  argSize = m*n;
+	  for(i=0; i<argSize; i++) dummyColor[i] = (double) colorArgMatBytes[i];
+	  colorArgMat = (double*) (&dummyColor[0]);
+	}
+
+	if(p!=1) PsychErrorExit(PsychError_invalidColorArg);
 	argSize = m*n;
+
 	if(argSize==4){
 		color->mode = kPsychRGBAColor;
 		color->value.rgba.r = colorArgMat[0];

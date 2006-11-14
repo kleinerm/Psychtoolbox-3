@@ -16,7 +16,7 @@ uniform sampler2DRect clut;
 void main()
 {
     vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
-    float index = incolor.r * 255.0f + 0.5f;
+    float index = incolor.r * 255.0 + 0.5;
     gl_FragColor.rgb = texture2DRect(clut, vec2(index, 0)).rgb;
     gl_FragColor.a = incolor.a;
 }

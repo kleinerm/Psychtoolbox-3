@@ -74,6 +74,7 @@ PsychError SCREENCopyWindow(void)
 						  sourceWin->rect[kPsychLeft] + PsychGetWidthFromRect(sourceWin->rect)/2, sourceWin->rect[kPsychBottom]);
 	}
 	PsychCopyInRectArg(3, FALSE, sourceRect);
+	if (IsRectEmpty(sourceRect)) return(PsychError_none);
 
 	//get paramters for the target window:
 	PsychAllocInWindowRecordArg(2, TRUE, &targetWin);
@@ -86,6 +87,8 @@ PsychError SCREENCopyWindow(void)
 						  targetWin->rect[kPsychLeft] + PsychGetWidthFromRect(targetWin->rect)/2, targetWin->rect[kPsychBottom]);
 	}
 	PsychCopyInRectArg(4, FALSE, targetRect);
+	if (IsRectEmpty(targetRect)) return(PsychError_none);
+
 
 	if (0) {
 		printf("SourceRect: %f %f %f %f  ---> TargetRect: %f %f %f %f\n", sourceRect[0], sourceRect[1],

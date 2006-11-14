@@ -76,8 +76,9 @@ PsychError SCREENFillOval(void)
 
 	//get the rect value
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);
-	if(!isArgThere)
-		PsychCopyRect(rect, windowRecord->rect);
+	if(!isArgThere) PsychCopyRect(rect, windowRecord->rect);
+	if (IsRectEmpty(rect)) return(PsychError_none);
+
 
 	//The glu disk object location and size with a  center point and a radius,   
 	//whereas FillOval accepts a bounding rect.   Converting from one set of parameters
