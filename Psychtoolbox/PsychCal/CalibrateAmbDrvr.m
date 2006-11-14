@@ -6,7 +6,7 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 4/4/94		dhb		Wrote it.
 % 8/5/94		dhb, ccc	More flexible interface.
 % 9/4/94		dhb		Small changes.
-%	10/20/94	dhb		Add bgColor variable.
+% 10/20/94	dhb		Add bgColor variable.
 % 12/9/94   ccc   Nine-bit modification
 % 1/23/95		dhb		Pulled out working code to be called from elsewhere.
 %						dhb		Make user prompting optional.
@@ -70,20 +70,15 @@ if (cal.describe.whichScreen == 0)
 else
 	%Screen('MatlabToFront');
 end
-Screen('LoadNormalizedGammaTable', window, zeros(256, 3));
-
-% Set CLUT
-rClut2 = 0:1:255;
-clut2 = [rClut2', rClut2', rClut2'];
-Screen('LoadClut', window, clut2);
-Screen('Flip', window);
+theClut = zeros(256,3);
+Screen('LoadNormalizedGammaTable', window, theClut);
 
 % Draw a box in the center of the screen
 boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
 boxRect = CenterRect(boxRect, screenRect);
-Screen('LoadClut', window, [nInputLevels-1, nInputLevels-1, nInputLevels-1], 1, bits);
+theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
-Screen('Flip', window);
+Screen('LoadNormalizedGammaTable', window, theClut);
 
 % Wait for user
 if USERPROMPT == 1
@@ -95,8 +90,8 @@ if USERPROMPT == 1
 end
 
 % Put in appropriate background.
-Screen('LoadClut', window, cal.bgColor', 0, bits);
-Screen('Flip', window);
+theClut(2,:) = cal.bgColor';
+Screen('LoadNormalizedGammaTable',window, theClut);
 
 % Start timing
 t0 = clock;

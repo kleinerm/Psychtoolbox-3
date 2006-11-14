@@ -17,6 +17,7 @@
 % 9/10/00 pbe  Added option to blank another screen while measuring. 
 % 2/27/02 dhb  Various small fixes, including Radeon support.
 %         dhb  Change noMeterAvail to whichMeterType.
+% 11/08/06 cgb, dhb  OS/X.
 
 % Create calibration structure;
 cal = [];
@@ -70,9 +71,10 @@ end
 cal.describe.dacsize = ScreenDacBits(whichScreen);
 nLevels = 2^cal.describe.dacsize;
 
-% Prompt for background values
-defBgColor = (nLevels/256)*[190 190 190]';
-thePrompt = sprintf('Enter RGB values for background as a row vector [%g %g %g]: ',...
+% Prompt for background values.  The default is a guess as to what
+% produces one-half of maximum output for a typical CRT.
+defBgColor = [190 190 190]'/255;
+thePrompt = sprintf('Enter RGB values for background (range 0-1) as a row vector [%0.3f %0.3f %0.3f]: ',...
                     defBgColor(1), defBgColor(2), defBgColor(3));
 while 1
 	cal.bgColor = input(thePrompt)';
@@ -82,7 +84,9 @@ while 1
 	[m, n] = size(cal.bgColor);
 	if m ~= 3 || n ~= 1
 		fprintf('\nMust enter values as a row vector (in brackets).  Try again.\n');
-	else
+    elseif (any(defBgColor > 1) || any(defBgColor < 0))
+        fprintf('\nValues must be in range (0-1) inclusive.  Try again.\n');
+    else
 		break;
 	end
 end

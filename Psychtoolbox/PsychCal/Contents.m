@@ -8,7 +8,6 @@
 %   CalibrateAmbDrvr    - Common code called by monitor calibration programs.  Script.
 %   CalibrateFitGamma   - Fit the gamma function to the calibration measurements.
 %   CalibrateFitLinMod  - Fit the linear model to spectral calibration data.
-%   CalibrateManualDrvr - Common code called by monitor calibration programs.  Script.
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
 %   CompareMonCal       - Compare two calibration structures to see if they match.
@@ -35,6 +34,7 @@
 %   MeasMonSpd          - Set monitor and measure spd.
 %   MeasMonXYZ          - Set monitor and measure XYZ.
 %   MeasureDpi          - Measure monitor dpi.
+%   NotYetUpdatedForPTB3 - As the name suggests.
 %   PolarToSensor       - Convert from polar to linear coordinates.
 %   PrimaryToGamut      - Force primary coordinates into gamut.
 %   PrimaryToSensor     - Convert from primary to sensor coordinates.

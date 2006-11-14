@@ -42,6 +42,9 @@ defaultS = [380 5 81];
 defaultSync = 0;
 defaultWhichMeterType = 1;
 
+% Get the normalized gamma table.
+theClut = Screen('ReadNormalizedGammaTable',window);
+
 % Check args and set defaults
 if nargin < 5 || isempty(whichMeterType)
 	whichMeterType = defaultWhichMeterType;
@@ -61,13 +64,16 @@ for i = 1:nMeas
     % Measure spectrum
     switch whichMeterType
         case 0
-            LoadClut(window, settings(:, i)', 1);
+            theClut(2,:) = settings(:, i)';
+            Screen('LoadNormalizedGammaTable',window, theClut);
             spd(:,i) = sum(settings(:, i))*ones(S(3), 1);
             WaitSecs(.1);
         case 1
-            LoadClut(window, settings(:, i)', 1);
+            theClut(2,:) = settings(:, i)';
+            Screen('LoadNormalizedGammaTable',window, theClut);
             spd(:,i) = MeasSpd(S);
         case 2
+            error('CVI interface not yet ported to PTB-3.');
             cviCal = LoadCVICalFile;
             spd(:,i) =  CVICalibratedDarkMeasurement(cviCal, S, [], [], [], ...
                                                      window, 1, settings(:,i));

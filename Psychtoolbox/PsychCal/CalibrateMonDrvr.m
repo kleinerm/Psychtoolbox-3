@@ -44,20 +44,20 @@ function cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 2/26/03   dhb     Tidy comments.
 % 2/3/06	dhb		Allow passing of cal.describe.boxRect
 % 10/23/06  cgb     OS/X, etc.
+% 11/08/06  dhb, cgb Living in the 0-1 world ....
+% 11/10/06  dhb     Get rid of round() around production of input levels.
 
 % Measurement parameters
 monWls = SToWls(cal.describe.S);
 
-% Define device characteristics
-bits = cal.describe.dacsize;
-nInputLevels = 2^bits;
-
 % Define input settings for the measurements
-mGammaInputRaw = round(linspace(nInputLevels/cal.describe.nMeas, nInputLevels-1, cal.describe.nMeas))';
+mGammaInputRaw = linspace(0, 1, cal.describe.nMeas+1)';
+mGammaInputRaw = mGammaInputRaw(2:end);
 
 % Make manual measurements here if desired.  This needs to come first.
 if cal.manual.use
-  CalibrateManualDrvr;		
+    error('Manual measurements not yet converted to PTB-3.  Fix CalibrateManualDrvr if you need this.')
+    CalibrateManualDrvr;
 end
 
 % User prompt
@@ -78,9 +78,10 @@ if USERPROMPT
 end
 
 % Blank other screen
+
 if blankOtherScreen
 	[window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
-	Screen('LoadNormalizedGammaTable', window1, zeros(256, 3));
+	Screen('LoadNormalizedGammaTable', window1, zeros(256,3));
 end
 
 % Blank screen to be measured
@@ -90,7 +91,8 @@ if (cal.describe.whichScreen == 0)
 else
 	%Screen('MatlabToFront');
 end
-Screen('LoadNormalizedGammaTable', window, zeros(256, 3));
+theClut = zeros(256,3);
+Screen('LoadNormalizedGammaTable', window, theClut);
 
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
@@ -99,9 +101,9 @@ if ~isfield(cal.describe, 'boxRect')
 else
 	boxRect = cal.describe.boxRect;
 end
-Screen('LoadClut', window, [nInputLevels-1, nInputLevels-1, nInputLevels-1], 1, bits);
+theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
-Screen('Flip', window);
+Screen('LoadNormalizedGammaTable', window, theClut);
 
 % Wait for user
 if USERPROMPT == 1
@@ -113,8 +115,8 @@ if USERPROMPT == 1
 end
 
 % Put correct surround for measurements.
-Screen('LoadClut', window, cal.bgColor', 0, bits);
-Screen('Flip', window);
+theClut(1,:) = cal.bgColor';
+Screen('LoadNormalizedGammaTable', window, theClut);
 
 % Start timing
 t0 = clock;

@@ -29,7 +29,7 @@ function [fit_out,x,fitComment] = ...
 %   fitType == 4:  Weibull
 %   fitType == 5:  Modified polynomial
 %   fitType == 6:  Linear interpolation
-%   fitType == 7:	 Cubic spline
+%   fitType == 7:  Cubic spline
 %
 % All fit types are in a form such that the fit is forced through the
 % origin for 0 input.  This is because our convention is that gamma
@@ -41,11 +41,12 @@ function [fit_out,x,fitComment] = ...
 % Also see FitGammaDemo.
 
 % 10/3/93   dhb		Removed polynomial fit from list tried with fitType == 0.
-% 								Added Weibull function fit
-% 3/15/94   dhb, jms	Added linear interpolation.
+% 					Added Weibull function fit
+% 3/15/94   dhb, jms Added linear interpolation.
 % 7/18/94   dhb		Added cubic spline interpolation.
-% 8/7/00    dhb   Fix bug.  Spline was calling linear interpolation.  Thanks to
-%                 Chien-Chung Chen for notifying us of this bug.
+% 8/7/00    dhb     Fix bug.  Spline was calling linear interpolation.  Thanks to
+%                   Chien-Chung Chen for notifying us of this bug.
+% 11/14/06 dhb      Modify how default type is set.  Handle passed empty matrix.
 
 % Get sizes
 [null,nDevices] = size(measurements);
@@ -56,7 +57,7 @@ nFitTypes = 5;
 error = zeros(nFitTypes,nDevices);
 
 % Handle force fittting
-if (nargin == 3)
+if (nargin < 4 || isempty(fitType))
   fitType = 0;
 end
 

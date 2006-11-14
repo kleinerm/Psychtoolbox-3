@@ -4,11 +4,15 @@ function cal = CalibrateFitGamma(cal)
 % Fit the gamma function to the calibration measurements.
 %
 % 3/26/02  dhb  Pulled out of CalibrateMonDrvr.
+% 11/14/06 dhb  Define nInputLevels and pass to underlying fit routine
+
+% Set nInputLevels
+nInputLevels = 1024;
 
 % Fit gamma functions.
 switch(cal.describe.gamma.fitType)
 	case 'crtPolyLinear',
-  % For fitting, we set to zero the raw data we
+    % For fitting, we set to zero the raw data we
 	% believe to be below reliable measurement threshold (contrastThresh).
 	% Currently we are fitting both with polynomial and a linear interpolation,
 	% using the latter for low measurement values.  The fit break point is
@@ -22,10 +26,10 @@ switch(cal.describe.gamma.fitType)
 	end
 	fitType = 7;
 	[mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
-	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType);
+	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
 	fitType = 6;
 	[mGammaFit1b,cal.gammaInput,mGammaCommentb] = FitDeviceGamma(...
-	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType);
+	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
 	mGammaFit1 = mGammaFit1a;
 	for i = 1:cal.nDevices
 		indexLin = find(mGammaMassaged(:,i) < cal.describe.gamma.fitBreakThresh);
@@ -61,7 +65,7 @@ case 'crtGamma',
 	end
 	fitType = 2;
 	[mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
-	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType);
+	  mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
 	mGammaFit1 = mGammaFit1a;
 	
 	% Higher order components do not have this constraint and are fit with
