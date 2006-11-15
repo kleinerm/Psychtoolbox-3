@@ -52,6 +52,10 @@ static int                                                              screenCo
 static Boolean                                                          EmulateOldPTB=FALSE;
 // Support for real 3D rendering enabled?
 static Boolean                                                          Enable_3d_gfx=FALSE;
+// Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
+// use beampos if available, fall back to kernel-level otherwise:
+static int                                                              screenVBLTimestampingMode=1;
+
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)
 {
@@ -168,6 +172,27 @@ int PsychPrefStateGet_VisualDebugLevel(void)
 void PsychPrefStateSet_VisualDebugLevel(int level)
 {
     screenVisualDebugLevel=level;
+}
+
+// Get and set mode of operation for Screen('Flip')'s VBL
+// and bufferswap timestamping. This parameter is better left
+// at default setting by most users. Useful for debugging/testing
+// and in special cases. Currently meaningless on Windows and Linux
+// and therefore silently ignored.
+// Meaning on OS-X:
+// 0 = low-level, kernel-based timestamping always off: Use beampos method if available, otherwise use uncorrected timestamps.
+// 1 = Automatic, on demand: Use beampos method if available, use the kernel-level method if beampos method unsupported, e.g., IntelMacs.
+// 2 = Always use kernel-level method, but only as a consistency check for beampos method -- For the super-paranoid and for testing.
+// 3 = Always use kernel-level method, this method overrides everything else. This is the opposite of 1.
+// We default to 1 -- Use old method normally, but use new method as fallback.
+int PsychPrefStateGet_VBLTimestampingMode(void)
+{
+    return(screenVBLTimestampingMode);
+}
+
+void PsychPrefStateSet_VBLTimestampingMode(int level)
+{
+    screenVBLTimestampingMode = level;
 }
 
 // Settings for conserving VRAM usage by disabling certain features.

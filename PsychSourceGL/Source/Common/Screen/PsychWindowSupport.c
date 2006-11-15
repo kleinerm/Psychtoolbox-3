@@ -34,12 +34,18 @@
 						code for the flipwhen>0 case and the flipwhen==0 case. All this should not matter on systems with beampos
 						queries, but it makes the test more sensitive on systems without beampos queries, biasing it to more false
 						positives on noisy systems, reducing the chance for false negatives.
+                11/15/06                mk      Experimental support for low-level queries of vbl count and time from the driver: Used for verifying
+                                                beampos query timestamping and as a fallback on systems that lack beampos query support.
  
 	DESCRIPTION:
 	
 	NOTES:
 	
-	TO DO: 
+        Documentation on the kernel-level shared memory access to the gfx-driver can be found here:
+ 
+        http://developer.apple.com/documentation/Darwin/Reference/IOKit/IOFramebufferShared/index.html
+	
+        TO DO: 
 	
 */
 
@@ -545,7 +551,23 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
-      if (ifi_beamestimate>0) printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
+      if (ifi_beamestimate>0) {
+          printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
+          if (PsychPrefStateGet_VBLTimestampingMode()==3 && PSYCH_SYSTEM == PSYCH_OSX) {
+              printf("PTB-Info: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
+          }
+          else {
+              printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
+          }
+      }
+      else {
+          if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && PSYCH_SYSTEM == PSYCH_OSX) {
+              printf("PTB-Info: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
+          }
+          else {
+              printf("PTB-Info: Beamposition queries unsupported on this system.\n");
+          }
+      }
       printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
 	     ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
       if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
@@ -902,7 +924,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double vbl_time_elapsed; 
     double onset_time_togo;
     long scw, sch;
-
+    psych_uint64 preflip_vblcount;          // VBL counters and timestamps acquired from low-level OS specific routines.
+    psych_uint64 postflip_vblcount;         // Currently only supported on OS-X, but Linux/X11 implementation will follow.
+    double preflip_vbltimestamp = -1;
+    double postflip_vbltimestamp = -1;
+    int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
+    
     PsychWindowRecordType **windowRecordArray=NULL;
     int	i;
     int numWindows=0; 
@@ -1074,6 +1101,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
       PsychLoadNormalizedGammaTable(windowRecord->screenNumber, 256, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
     }
 
+    #if PSYCH_SYSTEM == PSYCH_OSX
+        // OS-X only: Low level queries to the driver:
+        preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
+    #endif
+    
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
     PsychOSFlipWindowBuffers(windowRecord);
     
@@ -1133,6 +1165,20 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
          // We take a timestamp here and return it to "userspace"
         PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 
+        #if PSYCH_SYSTEM == PSYCH_OSX
+        // Run kernel-level timestamping always in mode > 1 or on demand in mode 1 if beampos.
+        // queries don't work properly:
+        if (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1)) {
+            // OS-X only: Low level query to the driver: We need to yield the cpu for a couple of
+            // microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
+            // in IOKits workloop can do its job.
+            do {
+                PsychWaitIntervalSeconds(0.00025);
+                postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+            } while (preflip_vbltimestamp == postflip_vbltimestamp);
+        }
+        #endif
+        
         // Calculate estimate of real time of VBL, based on our post glFinish() timestamp, post glFinish() beam-
         // position and the roughly known height of image and duration of IFI. The corrected time_at_vbl
         // contains time at start of VBL. This value is crucial for control stimulus presentation timing.
@@ -1144,7 +1190,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // VBL_Endline is determined in a calibration loop in PsychOpenOnscreenWindow above.
         // If this fails for some reason, we mark it as invalid by setting it to -1.
-        if (windowRecord->VBL_Endline != -1) {
+        if ((windowRecord->VBL_Endline != -1) && (vbltimestampmode>=0)) {
             if (*beamPosAtFlip >= vbl_startline) {
                 vbl_lines_elapsed = *beamPosAtFlip - vbl_startline;
                 onset_lines_togo = vbl_endline - (*beamPosAtFlip) + 1;
@@ -1163,12 +1209,36 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             time_at_vbl = time_at_vbl - vbl_time_elapsed;
         }
         else {
+            // Beamposition queries unavailable!
+            
+            // Shall we fall-back to kernel-level query?
+            if (vbltimestampmode==1 && preflip_vbltimestamp > 0) {
+                // Yes: Use fallback result:
+                time_at_vbl = postflip_vbltimestamp;
+            }
+            
             // If we can't depend on timestamp correction, we just set time_at_onset == time_at_vbl.
             // This is not strictly correct, but at least the user doesn't have to change the whole
             // implementation of his code and we've warned him anyway at Window open time...
             *time_at_onset=time_at_vbl;
         }
                 
+        // OS level queries of timestamps supported and consistency check wanted?
+        if (preflip_vbltimestamp > 0 && vbltimestampmode==2) {
+            // Yes. Check both methods for consistency: We accept max. 1 ms deviation.
+            if (fabs(postflip_vbltimestamp - time_at_vbl)>0.001) {
+                printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %lf  -  beampos_vbltimestamp = %lf  == Delta is = %lf \n",
+                   (int) preflip_vblcount, (int) postflip_vblcount, (int) (postflip_vblcount - preflip_vblcount), postflip_vbltimestamp, time_at_vbl, postflip_vbltimestamp - time_at_vbl);
+
+            }
+        }
+        
+        // Shall kernel-level method override everything else?
+        if (preflip_vbltimestamp > 0 && vbltimestampmode==3) {
+            time_at_vbl = postflip_vbltimestamp;
+            *time_at_onset=time_at_vbl;
+        }
+        
         // Check for missed / skipped frames: We exclude the very first "Flip" after
         // creation of the onscreen window from the check, as deadline-miss is expected
         // in that case:

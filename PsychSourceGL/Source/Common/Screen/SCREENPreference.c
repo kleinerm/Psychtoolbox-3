@@ -17,6 +17,7 @@
 		5/30/05		mk		New preference setting screenSkipSyncTests -- allow skipping/shortening of some internal tests.
 		5/30/05		mk		New preference setting screenVisualDebugLevel.
 		3/07/05		awi		New preference SuppressAllWarnings.
+                11/15/06        mk              New preference vbl & flip timestamping mode.
  
 	DESCRIPTION:
   
@@ -105,10 +106,11 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
-    "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
-    "\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
-    "\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
-	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);";
+        "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
+        "\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
+        "\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
+        "\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"; 
 			
 static char seeAlsoString[] = "";	
 
@@ -272,6 +274,14 @@ PsychError SCREENPreference(void)
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 
+                        if(PsychMatch(preferenceName, "VBLTimestampingMode")){
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_VBLTimestampingMode());
+			if(numInputArgs==2){
+                            PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+                            PsychPrefStateSet_VBLTimestampingMode(tempInt);
+			}
+			preferenceNameArgumentValid=TRUE;
+                }else 
 			if(PsychMatch(preferenceName, "ConserveVRAM")){
 					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
 					if(numInputArgs==2){

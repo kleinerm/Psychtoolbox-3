@@ -53,5 +53,6 @@ void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
 void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
+double  PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount);
 //end include once
 #endif
