@@ -20,6 +20,7 @@
 %    IsOS9                   - Shorthand for streq(computer,'MAC2').
 %    IsOSX                   - Shorthand for streq(computer,'MAC').
 %    IsWin                   - Shorthand for streq(computer,'PCWIN').
+%    LoadIdentityClut        - Loads the identity CLUT on a specified monitor.
 %    MacModelName            - Mac model name, e.g. 'PowerBook G4 15"'
 %    MakeBeep                - Compute a beep of specified frequency and duration, for Snd.
 %    NameBytes               - Nicely format memory size for human readers.
