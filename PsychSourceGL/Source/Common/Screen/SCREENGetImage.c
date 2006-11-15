@@ -84,7 +84,7 @@ PsychError SCREENGetImage(void)
 	// Retrieve optional read rectangle:
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
 	if(!PsychCopyInRectArg(2, FALSE, sampleRect)) memcpy(sampleRect, windowRect, sizeof(PsychRectType));
-	if (IsRectEmpty(sampleRect)) return(PsychError_none);
+	if (IsPsychRectEmpty(sampleRect)) return(PsychError_none);
 
 	// Assign read buffer:
 	if(PsychIsOnscreenWindow(windowRecord)) {

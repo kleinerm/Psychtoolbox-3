@@ -85,7 +85,7 @@ PsychError SCREENOpenVideoCapture(void)
 
         // Get the optional roi rectangle:
         roiassigned = PsychCopyInRectArg(3, FALSE, roirectangle);
-	if (IsRectEmpty(roirectangle)) PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid (empty) roirectangle argument.");
+	if (IsPsychRectEmpty(roirectangle)) PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid (empty) roirectangle argument.");
 
 
 	// Query (optional) output texture pixel depth: By default, we take whatever we get from the capture device:

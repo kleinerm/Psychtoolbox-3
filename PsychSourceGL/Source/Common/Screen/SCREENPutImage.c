@@ -82,7 +82,7 @@ PsychError SCREENPutImage(void)
         bitsPerColor=PsychGetColorSizeFromWindowRecord(windowRecord);
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
 	if(PsychCopyInRectArg(3, FALSE, positionRect)){
-	  if (IsRectEmpty(positionRect)) return(PsychError_none);
+	  if (IsPsychRectEmpty(positionRect)) return(PsychError_none);
 	  positionRectWidth=(int)PsychGetWidthFromRect(positionRect);
 	  positionRectHeight=(int)PsychGetHeightFromRect(positionRect);
 	  if(inputP != 1 && inputP != 3 && inputP != 4)

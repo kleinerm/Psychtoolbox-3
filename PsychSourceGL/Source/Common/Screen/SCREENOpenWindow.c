@@ -149,7 +149,7 @@ PsychError SCREENOpenWindow(void)
 
     // Override it with a user supplied rect, if one was supplied:
     isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
-    if (IsRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
+    if (IsPsychRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
 
     //find the number of specified buffers. 
 

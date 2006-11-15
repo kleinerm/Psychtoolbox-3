@@ -77,7 +77,7 @@ PsychError SCREENFillOval(void)
 	//get the rect value
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);
 	if(!isArgThere) PsychCopyRect(rect, windowRecord->rect);
-	if (IsRectEmpty(rect)) return(PsychError_none);
+	if (IsPsychRectEmpty(rect)) return(PsychError_none);
 
 
 	//The glu disk object location and size with a  center point and a radius,   
