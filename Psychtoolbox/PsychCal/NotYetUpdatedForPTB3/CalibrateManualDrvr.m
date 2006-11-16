@@ -1,8 +1,6 @@
 % CalibrateManualDrvr
 %
 % Get some manual measurements from radiometer/photometer.
-%
-% Not yet updated for PTB-3, although some changes were made.
 
 % 3/8/02  dhb, ly  Wrote it.
 % 2/21/03 dhb, ly  Specify input units.

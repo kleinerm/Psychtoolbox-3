@@ -38,6 +38,7 @@
 %    OldNewRecogDemo         - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
+%    RenderDemo              - Render CIE xyY as a color patch.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
 %    SoundTrigger            - Demo of a very simple sound based trigger.

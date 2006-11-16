@@ -5,29 +5,29 @@ function [settings,values] = GamutToSettings(cal,gamut)
 % the passed linear device coordinates.
 % 
 % The passed coordinates should be in the range [0,1].
-% The returned settings run from [0,nlevels-1], where nlevels
-% is the number of quantized levels available on the device.
+% The returned settings also run from [0,1], but after
+% inversion of the device's gamma measurements.
 %
 % The returned argument values is what you actually should
 % get after quantization error.
 %
-% The routine depends on the calibration globals.
-
 % 9/26/93    dhb   Added calData argument.
 % 10/19/93   dhb   Allow gamma table dimensions to exceed device settings.
 % 11/11/93   dhb   Update for new calData routines.
 % 8/4/96     dhb   Update for stuff bag routines.
 % 8/21/97    dhb   Update for structures.
-% 4/13/02	 awi   Replaced SettingsToDevice with new name SettingsToPrimary
+% 4/13/02	 awi   Replaced SettingsToDevice with new name SettingsToPrimary.
+% 11/16/06   dhb   Adjust for [0,1] world.
 
 % Get gamma table
+gammaInput = cal.gammaInput;
 gammaTable = cal.gammaTable;
 gammaMode = cal.gammaMode;
 if isempty(gammaTable)
 	error('No gamma table present in calibration structure');
 end
 if isempty(gammaMode)
-	error('SetGamma has not been called on calibration structure');
+	error('SetGammaMethod has not been called on calibration structure');
 end
 
 if gammaMode==0

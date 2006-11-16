@@ -1,8 +1,8 @@
-function [indices,values] = SearchTable(targets,table)
-% [indices,values] = SearchTable(targets,table)
+function [values] = SearchGammaTable(targets,table)
+% [values] = SearchGammaTable(targets,table)
 %
-% Return the index and value of the entry in the table
-% that is closest to the target.
+% Return the [0-1] entry from the passed table that produces
+% output closest to the [0-1] target.
 %
 % The targets are assumed to be a row vector.
 % The table is assumed to be a column vector.
@@ -19,7 +19,9 @@ function [indices,values] = SearchTable(targets,table)
 % 4/4/94		dhb		Fixed code added on 4/2.
 % 4/5/94		jms		Fixed code added on 4/2.
 % 1/21/95		dhb		Write search as a loop.  Loses time and elegance,
-%									but prevents allocation of arrays that may be huge.
+%						but prevents allocation of arrays that may be huge.
+% 11/16/06      dhb     Renamed as SearchGammaTable.
+%               dhb     Start work on converting to [0-1] universe.
 
 % Check dimensions
 [m,n] = size(targets);
