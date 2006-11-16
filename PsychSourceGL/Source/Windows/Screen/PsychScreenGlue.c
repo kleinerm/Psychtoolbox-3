@@ -123,6 +123,8 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 void InitCGDisplayIDList(void)
 {
   int i, w1, w2, h1, h2;
+  psych_uint32 beampos = 100000;
+  HRESULT rc;
 
   // We always provide the full (virtual) desktop as screen number zero. This way,
   // queries to screen 0 will always provide the global settings and dimensions of
@@ -144,7 +146,20 @@ void InitCGDisplayIDList(void)
     displayDeviceDDrawObject[0]=NULL;
     printf("PTB-WARNING: Failed to create DirectDraw interface for primary display. Won't be able to generate high-precision 'Flip' timestamps.\n");
   }
+  else {
+    rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+	 if (rc!=DD_OK && rc!=DDERR_VERTICALBLANKINPROGRESS) {
+		// Beamposition query failed :(
+		switch(rc) {
+			case DDERR_UNSUPPORTED:
+				printf("PTB-INFO: Beamposition query unsupported on this system configuration.\n");
+			break;
 
+			default:
+				printf("PTB-INFO: Beamposition query test failed: Direct Draw Error.\n");
+		}
+    }
+  }
   // Now call M$-Windows monitor enumeration routine. It will call our callback-function
   // MonitorEnumProc() for each detected display device...
   EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
@@ -697,19 +712,20 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 //
 int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
 {
+  HRESULT rc;
   psych_uint32 beampos = 0;
 
   // EXPERIMENTAL: For now this only queries the primary display device and
   // probably only works properly on single-display setups and some multi-setups.
-  if((displayDeviceDDrawObject[0]) && (displayDeviceDDrawObject[0]->GetScanLine((LPDWORD) &beampos)==DD_OK)) {
+  if(displayDeviceDDrawObject[0]) {
     // We have a Direct draw object: Try to use GetScanLine():
-    return((int) beampos);
+	 rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+	 if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return((int) beampos);
   }
-  else {
-    // Direct Draw unavailable, therefore function unsupported, or hardware
-    // doesn't support query under given configuration:
-    // We return -1 as an indicator to high-level routines that we don't
-    // know the rasterbeam position.
-    return(-1);
-  }
+
+  // Direct Draw unavailable or function unsupported, or hardware
+  // doesn't support query under given configuration:
+  // We return -1 as an indicator to high-level routines that we don't
+  // know the rasterbeam position.
+  return(-1);
 }

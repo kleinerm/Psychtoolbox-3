@@ -50,7 +50,21 @@
 */
 
 #include "Screen.h"
+
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 #include "ptbstartlogo.h"
+#else
+/* This is a placeholder for ptbstartlogo.h until the fu%&$ing M$-Compiler can handle it.
+ * GIMP RGBA C-Source image dump (welcomeWait.c)
+ */
+static const struct {
+  unsigned int 	 width;
+  unsigned int 	 height;
+  unsigned int 	 bytes_per_pixel; /* 3:RGB, 4:RGBA */ 
+  unsigned char	 pixel_data[4 + 1];
+} gimp_image = {
+  1, 1, 4, "    ",};
+#endif
 
 /*
     PsychOpenOnscreenWindow()
@@ -479,8 +493,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	// Switch to previous scheduling mode after timing tests:
 	PsychRealtimePriority(false);
 	
-	// Is the VBL endline >= VBL startline, aka screen height?
-	if (VBL_Endline < (int) vbl_startline) {
+	// Is the VBL endline >= VBL startline - 1, aka screen height?
+	if (VBL_Endline < (int) vbl_startline - 1) {
 	  // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
 	  // as invalid so it doesn't get used anywhere:
 	  sync_trouble = true;
@@ -545,7 +559,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
 	printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
 	printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
-	printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware accelerationh slider is\n");
+	printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
 	printf("PTB-WARNING: set to 'Full' (rightmost position).\n");
       }
       
@@ -557,7 +571,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
               printf("PTB-Info: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
           }
           else {
-              printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
+              if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
           }
       }
       else {
