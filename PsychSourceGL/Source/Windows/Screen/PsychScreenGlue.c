@@ -29,10 +29,7 @@
 	
 	TO DO: 
 	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		¥ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
+	* DirectDraw objects are not yet destroyed at Screen flush time. This will leak a bit of memory...
 */
 
 
@@ -41,6 +38,9 @@
 // We need to define this and include Multimon.h to allow for enumeration of multiple display screens:
 #define COMPILE_MULTIMON_STUBS
 #include <Multimon.h>
+
+// Include DirectDraw header for access to the GetScanLine() function:
+#include <ddraw.h>
 
 // file local variables
 
@@ -55,6 +55,7 @@ static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static char*                    displayDeviceName[kPsychMaxPossibleDisplays];   // Windows internal monitor device name. Default display has NULL
 static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays]; // Top-Left corner of display on virtual screen. Default display has (0,0).
 static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
+static LPDIRECTDRAW             displayDeviceDDrawObject[kPsychMaxPossibleDisplays]; // Pointer to associated DirectDraw object, if any. NULL otherwise.
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -73,6 +74,7 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
+	displayDeviceDDrawObject[i]=NULL;
     }
     
     //init the list of Core Graphics display IDs.
@@ -105,6 +107,12 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 	// Create a device context for this display and store it in our displayCGIDs array:
 	displayCGIDs[numDisplays] = CreateDC(displayDeviceName[numDisplays], displayDeviceName[numDisplays], NULL, NULL);
 
+	// EXPERIMENTAL: Replicate DirectDraw object pointer of primary display device to all display devices.
+	// This is not the correct solution for multi-display setups, but at least it allows for basic testing
+	// on some multi display setups to find the proper solution. On multi-display setups we disable the new
+	// beamposition query mechanism by default, so it is up to the user to take the risk:
+	displayDeviceDDrawObject[numDisplays] = displayDeviceDDrawObject[0];
+
 	// Increase global counter of available separate displays:
 	numDisplays++;
 
@@ -128,6 +136,15 @@ void InitCGDisplayIDList(void)
   displayDeviceStartX[0] = 0;
   displayDeviceStartY[0] = 0;
 
+  // EXPERIMENTAL: Create a DirectDraw object for the primary display device, i.e.
+  // the single display on a single display setup or the display device corresponding to
+  // the desktop on a multi-display setup:
+  if (DirectDrawCreate(DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL)!=DD_OK) {
+    // Failed to create Direct Draw object:
+    displayDeviceDDrawObject[0]=NULL;
+    printf("PTB-WARNING: Failed to create DirectDraw interface for primary display. Won't be able to generate high-precision 'Flip' timestamps.\n");
+  }
+
   // Now call M$-Windows monitor enumeration routine. It will call our callback-function
   // MonitorEnumProc() for each detected display device...
   EnumDisplayMonitors(NULL, NULL, MonitorEnumProc, 0);
@@ -150,11 +167,11 @@ void InitCGDisplayIDList(void)
       printf("PTB-INFO: Screen %i corresponds to the display area of the monitor with the Windows-internal name %s ...\n", i, displayDeviceName[i]);
     }
     
-	 // Check for sane display dimensions: Our emulation trick for creating a display spanning screen 0 will only work,
-	 // if the first two physical displays 1 and 2 are of the same resolution/size and if they are arranged so that both
-	 // together are suitable for a horizontal desktop spanning window, aka they touch each other at their horizontal borders.
-	 // If the user has a more exotic display setup, e.g., triple-display or monitors with different resolution, (s)he can still
-	 // use the [rect] parameter when opening a window on screen 0 to enforce arbitrary onscreen window position and size. We'll
+    // Check for sane display dimensions: Our emulation trick for creating a display spanning screen 0 will only work,
+    // if the first two physical displays 1 and 2 are of the same resolution/size and if they are arranged so that both
+    // together are suitable for a horizontal desktop spanning window, aka they touch each other at their horizontal borders.
+    // If the user has a more exotic display setup, e.g., triple-display or monitors with different resolution, (s)he can still
+    // use the [rect] parameter when opening a window on screen 0 to enforce arbitrary onscreen window position and size. We'll
     // always create a borderless window on screen 0 when in multidisplay mode...
     PsychGetScreenSize(1, &w1, &h1);
     PsychGetScreenSize(2, &w2, &h2);
@@ -167,6 +184,11 @@ void InitCGDisplayIDList(void)
 	 }
     
     printf("\n"); fflush(NULL);
+
+    // On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
+    // Users are free to override the default. This behaviour will be changed in the future when multi-display support
+    // for DirectDraw has been properly implemented and tested:
+    PsychPrefStateSet_VBLTimestampingMode(-1);
   }
 
   // Ready.
@@ -666,4 +688,28 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 	 ok=FALSE;
     for (i=0; i<10 && !ok; i++) ok=SetDeviceGammaRamp(cgDisplayID, &gammaTable);
 	 if (!ok) PsychErrorExitMsg(PsychError_user, "Failed to upload the hardware gamma table into graphics adapter! Read the help for explanation...");
+}
+
+// Beamposition queries on Windows are implemented via the DirectDraw-7 interface. It provides
+// the GetScanLine() method for beamposition queries, and also functions like WaitForVerticalBlank()
+// and VerticalBlankStatus(). This is supposed to work on Windows 2000 and later.
+// See http://msdn.microsoft.com/archive/default.asp?url=/archive/en-us/ddraw7/directdraw7/ddref_2n5j.asp
+//
+int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
+{
+  psych_uint32 beampos = 0;
+
+  // EXPERIMENTAL: For now this only queries the primary display device and
+  // probably only works properly on single-display setups and some multi-setups.
+  if((displayDeviceDDrawObject[0]) && (displayDeviceDDrawObject[0]->GetScanLine((LPDWORD) &beampos)==DD_OK)) {
+    // We have a Direct draw object: Try to use GetScanLine():
+    return((int) beampos);
+  }
+  else {
+    // Direct Draw unavailable, therefore function unsupported, or hardware
+    // doesn't support query under given configuration:
+    // We return -1 as an indicator to high-level routines that we don't
+    // know the rasterbeam position.
+    return(-1);
+  }
 }

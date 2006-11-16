@@ -878,11 +878,3 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
   wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
 }
-
-int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
-{
-  // FIXME: Don't know how to do this on windows.
-  // We return -1 as an indicator to high-level routines that we don't
-  // know the rasterbeam position.
-  return(-1);
-}

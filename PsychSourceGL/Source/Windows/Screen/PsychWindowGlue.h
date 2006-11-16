@@ -53,8 +53,7 @@ void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
 void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
-int     CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
-void  PsychGetMouseButtonState(double* buttonArray);
+void    PsychGetMouseButtonState(double* buttonArray);
 //end include once
 #endif
 

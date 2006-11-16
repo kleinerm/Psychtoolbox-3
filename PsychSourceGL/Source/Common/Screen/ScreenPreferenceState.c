@@ -177,14 +177,26 @@ void PsychPrefStateSet_VisualDebugLevel(int level)
 // Get and set mode of operation for Screen('Flip')'s VBL
 // and bufferswap timestamping. This parameter is better left
 // at default setting by most users. Useful for debugging/testing
-// and in special cases. Currently meaningless on Windows and Linux
+// and in special cases. Currently meaningless on Linux
 // and therefore silently ignored.
 // Meaning on OS-X:
+// -1= Always use uncorrected timestamps.
 // 0 = low-level, kernel-based timestamping always off: Use beampos method if available, otherwise use uncorrected timestamps.
 // 1 = Automatic, on demand: Use beampos method if available, use the kernel-level method if beampos method unsupported, e.g., IntelMacs.
 // 2 = Always use kernel-level method, but only as a consistency check for beampos method -- For the super-paranoid and for testing.
 // 3 = Always use kernel-level method, this method overrides everything else. This is the opposite of 1.
-// We default to 1 -- Use old method normally, but use new method as fallback.
+//
+// OS-X: 
+// We default to 1 -- Use old beamposition query method normally, but use new kernel-level method as fallback.
+//
+// Windows:
+// We default to 1 on single display setups or multi-display setups with only one primary display device attached,
+// i.e., use beamposition queries if supported. On multi-display setups in explicit multi-display mode, we default
+// to -1, i.e., use uncorrected timestamps. Proper multi-display support is not yet implemented and tested.
+//
+// Linux:
+// Not yet implemented, therefore silently ignored. Will add support for SGI-GLX Video sync extensions soon.
+//
 int PsychPrefStateGet_VBLTimestampingMode(void)
 {
     return(screenVBLTimestampingMode);

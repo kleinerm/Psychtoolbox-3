@@ -1,5 +1,5 @@
-function ShowHDRDemo(imfilename, dummymode)
-% ShowHDRDemo([imfilename][, dummymode]) -- Load and show a high dynamic range image
+function ShowHDRDemo(imfilename, dummymode, sf)
+% ShowHDRDemo([imfilename][, dummymode][, sf]) -- Load and show a high dynamic range image
 % on the BrightSide Technologies High Dynamic Range display device.
 %
 % 'imfilename' - Filename of the HDR image to load. Will load our standard
@@ -7,6 +7,8 @@ function ShowHDRDemo(imfilename, dummymode)
 %
 % 'dummymode' - If set to 1 we only run in emulation mode without use of
 % the HDR device or BrightSide core library.
+%
+% 'sf' - Scaling factor to apply.
 %
 
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
@@ -44,7 +46,15 @@ else
 end
 
 % Scale by some factor:
-img=double(img) * 50; %
+if nargin < 3 || isempty(sf)
+    if ~dummymode
+        sf = 50;
+    else
+        sf = 1;
+    end
+end
+
+img=double(img) * sf;
 
 % No Alpha channel provided?
 if size(img, 3) < 4
@@ -125,7 +135,7 @@ try
     while ~KbCheck
         % Select the HDR backbuffer for drawing:
         BrightSideHDR('BeginDrawing', win);
-        BrightSideCore(5, 0);
+        if ~dummymode, BrightSideCore(5, 0); end
         
         % Clear it by overdrawing with a black full screen rect:
         Screen('FillRect', win, 0);
