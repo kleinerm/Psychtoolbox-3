@@ -77,6 +77,7 @@ try
         osversion = compinfo.system;
         % Query machine architecture via Unix 'arch' utility.
         [rc arch] = system('arch');
+        arch=deblank(arch);
         runtimearch = computer;
     end
 
@@ -94,6 +95,7 @@ try
         osversion = 'Unknown';
         % Query machine architecture via Unix 'arch' utility.
         [rc arch] = system('arch');
+        arch=deblank(arch);
     end
     
     % Query runtime environment:

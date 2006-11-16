@@ -1,11 +1,13 @@
 function Screen
-% Screen is a MEX file for precise control the video display. Screen has
+% Screen is a MEX file for precise control of the video display. Screen has
 % many functions; type "Screen" for a list:
 % 	Screen
+%
 % For explanation of any particular screen function, just add a question
 % mark "?". E.g. for 'OpenWindow', try either of these equivalent forms:
 % 	Screen('OpenWindow?')
 % 	Screen OpenWindow?
+%
 % All the Screen Preference settings are documented together:
 % 	Screen Preference?
 % 
@@ -13,9 +15,8 @@ function Screen
 % 
 % "windowPtr" argument: Screen 'OpenWindow' and 'OpenOffscreenWindow' both
 % return a windowPtr, a number that designates the window you just
-% created. You can create many windows. And you can obtain a windowPtr to
-% any of Matlab's windows. To use a window, you pass its windowPtr to the
-% Screen function you want to apply to that window.
+% created. You can create many windows. To use a window, you pass its
+% windowPtr to the Screen function you want to apply to that window.
 % 
 % "rect" argument: "rect" is a 1x4 matrix containing the upper left and
 % lower right coordinates of an imaginary box containing all the pixels.
@@ -44,16 +45,18 @@ function Screen
 % If your computer only has one screen (the typical scenario) and your
 % program produces a Matlab error while your full-screen window is open,
 % you'll hear the beep, but you won't be able to see the Matlab Command
-% Window. Follow the instructions below for brining forward the command
-% widow, then type clear screen to flush just the Screen MEX file, or 
+% Window. Follow the instructions below for bringing forward the command
+% window, then type clear screen to flush just the Screen MEX file, or 
 % "clear mex" to flush all the MEX files. When flushed, as part of its 
 % exit sequence, Screen closes all its windows, restores the screen's normal 
 % color table, and shows the cursor. Or you can get just those effects, 
 % without flushing, by calling 
-% Screen('CloseAll')
+% Screen('CloseAll') or sca - which is an abbreviation for Screen('CloseAll').
+%
 % You can use Matlab's EVAL command to do this for you automatically. E.g.
 % if your program is called "foo.m", run your program by calling EVAL:
 % 	eval('foo','clear screen;error(''error in foo'')')
+%
 % If an error occurs in FOO, Matlab, instead of halting, will execute the
 % second argument to EVAL, which restores your screen and reports the
 % error.
@@ -66,83 +69,95 @@ function Screen
 % window, rather than being rendered to offscreen windows before the start
 % of the movie.  Matrices are converted to Textures before the start of the
 % animation and, like offscreen windows in OS 9, may be quickly copied to
-% an onscreen window during movie play.  
+% an onscreen window during movie play. Offscreen windows are still supported
+% if you need to draw very complex stimuli. You can draw the stimulus into
+% an offscreen window and then quickly copy the window into the onscreen
+% window. For most purposes however, it is possible to draw directly into
+% the backbuffer of your offscreen window and make the backbuffer visible
+% on next vertical blank by a call to Screen('Flip', windowPtr).  
 %
 % See MovieDemoOSX and DriftDemoOSX for examples of how to create and show
 % movies in OS X.
 %
-% OS9  &  Win: _______________________________________________________
-% 
 % Off-screen windows are invisible, but useful as an intermediate place to
 % create and store images for later display. Copying from window to window
-% is very fast, e.g. 36 MB/s on a PowerMac 7500/100 and 171 MB/s on a
-% PowerBook G4/500. It's easy to precompute a series of off-screen windows
+% is very fast. It's easy to precompute a series of off-screen windows
 % and then show them as a movie, in real time, one per video frame:
 %
 % 		% make movie
-% 		window=Screen(0,'OpenWindow',0);
+% 		window=Screen('OpenWindow', 0, 0);
 % 		rect=[0 0 200 200];
 % 		for i=1:100
-% 			movie(i)=Screen(window,'OpenOffscreenWindow',0,rect);
-% 			Screen(movie(i),'FillOval',255,[0 0 2 2]*(i-1));
+% 			movie(i)=Screen('OpenOffscreenWindow', window, 0, rect);
+% 			Screen('FillOval', movie(i), 255, [0 0 2 2]*(i-1));
 % 		end;
+%
 % 		% show movie
 % 		for i=[1:100 100:-1:1] % forwards and backwards
 % 			Screen('CopyWindow',movie(i),window,rect,rect);
-% 			Screen(window,'WaitBlanking');
+% 			Screen('Flip', window);
 % 		end;
 % 		Screen('CloseAll');
 %
 %
-% OS9: ___________________________________________________________________
-%
-% The OS9 Psychtoolbox allows windows smaller than the entire screen. 
-%
-% Command-period halts any program. (Type a period "." while holding the
-% apple-cloverleaf "command" key down.) If the command-period is
-% intercepted by any of our MEX files, all of Screen's windows will be
-% closed, and the cursor will be shown, to allow you to work normally in
-% the Matlab Command window.
+% Stopping programs:
 %
 % Command-zero brings the Matlab Command window forward. (Type a zero
 % "0" while holding the apple-cloverleaf "command" key down.)
 %
-% WIN:_________________________________________________________________
-%
 % Ctrl-C halts any program.  (Type a "c" while holding down the "Ctrl"
-% key.) If Ctrl-C is intercepted by any of our .dll files, the .dll file
-% should exit, returning the user to the Matlab command window. However,
-% this feature is not yet supported by all the Win Psychtoolbox functions.
-% Additionally, Ctrl-C fails to halt progams executing in a Matlab process
+% key). Sometimes, Ctrl-C fails to halt progams executing in a Matlab process
 % run with the "nojvm" option. To halt a runaway Psychtoolbox script in
-% Win Psychtoolbox you might resort to the Windows Task Manager to kill
+% Psychtoolbox you might resort to the Windows Task Manager to kill
 % the Matlab process.  (Use Ctrl-Alt-Delete to open a window from which
 % you can start the Task Manager.)
-% 
+%
+% Windows:
+%
 % Ctrl-Alt-Delete allows you to launch the Windows task manager, which
 % reduces the Psychtoolbox onscreen windows when it opens. (Simultaneosly
 % press the "Ctrl", "Alt", and "Delete" keys.)  There are also simpler ways of
 % reducing the Psychtoolbox window which are specific to particular
 % versions of Windows.
 % Windows 2000: 	Alt-Tab will bring another application to the foreground,
-% 				minimizing the Matlab Psychtoolbox window.
+% 			minimizing the Matlab Psychtoolbox window.
 % 
-% See also ScreenDemo, MovieDemo, ScreenTest, PrepareScreen, RestoreScreen, PasteImage, CopyImage.
+% OS-X:
+% Apple-Command-Escape executes "Force Quit" on Matlab, closing Matlab and all
+% of its windows.
+%
+% Linux:
+% Ctrl-Alt-Escape, followed by a mouse click kills the onscreen windows and your
+% Matlab session.
+%
+%
+% See "help PsychDemos" for many demos which demonstrate Screen's capabilities.
+%
+% Differences in Screens capabilities between different operating systems
+% are discussed in the online help for the different subfunctions, our
+% "PsychDemos" if differences apply, and on the Psychtoolbox Wiki under
+% "Platform Differences and writing portable code".
 % 
 % BUGS
-% All known bugs and fixes are eventually described at the web site on the OS9, 
-% OSX, or Win page:
+%
+% All known bugs and fixes are eventually described at the web site under "Bugs":
 % web http://psychtoolbox.org/ ;
+%
 % Initial reports appear first at the forum:
 % web http://www.yahoogroups.com/messages/psychtoolbox/ ;
+%
 % If you find a bug, please report it to the forum: 
 % web mailto:psychtoolbox@yahoogroups.com ;
+%
 % It will help greatly if you can supply a  minimal-length program that exhibits 
-% the bug. And please include a ScreenTest report to document the context in
-% which you're running.
+% the bug. And please include as much information about your hardware and software
+% setup to document the context in which you're running, e.g., Computer type, graphics
+% card type and model, operating system, Matlab version, Psychtoolbox version and flavor
+% and the output of PTB to the Matlab window.
 
 % HISTORY
 % 7/12/04   awi     ****** OSX fork from the OS9 version *******
 %                   Divided into sections for OSX, OS9 and Win. 
 % 10/4/05   awi  Note here cosmetic changes by dgp on unknown date between 7/12/04 and 10/4/05
+% 11/16/06  mk   Rewritten to more closely match reality on PTB-3.
 
