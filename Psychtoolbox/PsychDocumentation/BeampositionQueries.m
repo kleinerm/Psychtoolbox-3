@@ -1,9 +1,9 @@
 % BeampositionQueries -- What they are used for, and what can go wrong.
 %
-% MacOS-X provides a mechanism that allows to query the scanline which
-% is currently updated by the scanning beam of a CRT display or by
-% the equivalent mechanism in a video beamer or flat panel display,
-% the so called "beamposition".
+% MacOS-X and M$-Windows provide a mechanism that allows to query the
+% scanline which is currently updated by the scanning beam of a CRT
+% display or by the equivalent mechanism in a video beamer or flat 
+% panel display, the so called "beamposition".
 %
 % We use this mechanism for two purposes:
 %
@@ -21,7 +21,7 @@
 % (see 'help SyncTrouble') and the value provided by the operating system to 
 % make the sync tests and display calibration as robust as possible, even
 % if the operating system reports bogus values like 0 Hz, which can happen
-% on MacOS-X.
+% on MacOS-X and Windows with some flat panels.
 %
 % 2. Highly accurate and robust stimulus onset timestamps in Screen('Flip').
 %
@@ -37,11 +37,12 @@
 % future stimuli, or for synchronizing Psychtoolbox execution with other
 % stimulus generators or acquisition hardware.
 %
-% On Microsoft Windows, there is currently nothing we can do about this - the
-% price that people pay for running the worst operating system designed ever.
-% The only "solution" would be to write special proprietary kernel mode drivers
-% that implement a mechanism like on MacOS-X -- this would be time consuming and
-% extremely painful, given the "openness" of Microsoft Windows.
+% On Microsoft Windows 2000 and later, there is experimental support for
+% beamposition queries. This support is only enabled on single display setups
+% and multi-display setups which are configured to appear to Psychtoolbox as
+% single-display setups, i.e., one "virtual" primary monitor which consists
+% of multiple real displays in horizontal spanning mode. We use this mechanism
+% to get high precision time stamps as described below for MacOS-X.
 %
 % On GNU/Linux, timing precision even in non-realtime scheduling mode is far
 % superior to all other operating systems, yielding a timing jitter of less
@@ -65,9 +66,33 @@
 % calibration values and mechanisms are accurate and work properly. You can assess
 % the accuracy of all returned timestamps by use of the script VBLSyncTest.
 %
-% In case that beamposition queries should not work properly,
-% PTB will use the same fallback strategy as on Linux and Windows: Just acquire
-% a timestamp and live with the reduced accuracy and robustness.
+% In case that beamposition queries should not work properly or are not supported,
+% PTB will use different fallback strategies:
+%
+% On Microsoft Windows, only a normal - possibly noisy - timestamp is taken.
+%
+% On MacOS-X, PTB tries to get low-level access to the kernel interrupt handlers
+% for the VBL interrupts and uses its values for timestamping the time of buffer-
+% swap. This method is slightly less accurate and robust than the bemposition method,
+% but should be still suitable for most applications. If the kernel-level queries should
+% fail as well, PTB falls back to pure timestamping without any correction.
+%
+% The behaviour of PTB can be controlled by the command:
+% Screen('Preference', 'VBLTimestampingMode', mode); where mode can be one of the
+% following:
+%
+% -1 = Disable all cleverness, take noisy timestamps.
+%  0 = Disable kernel-level fallback method (on OS-X), use beamposition or noisy stamps.
+%  1 = Use beamposition, if it fails, use kernel-level, if it fails use noisy stamps.
+%  2 = Use beamposition, but cross-check with kernel-level. Use noisy stamps if beamposition
+%      mode fails. This is for the paranoid to check proper functioning.
+%  3 = Always use kernel-level timestamping, fall back to noisy stamps if it fails.
+%
+% The default on OS-X and Windows with single display setups is "1". On Windows in
+% explicit multi-display mode, we default to "-1" ie noisy timestamps, as the current
+% beamposition mechanism is not yet mature and tested enough for multi-display mode on
+% Windows.
+%
 % If the beampos query test fails, you will see some warning message about
 % "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window.
 %
@@ -77,9 +102,24 @@
 % Psychtoolbox, introducing severe timing noise into the calibration and test loop.
 % See 'help SyncTrouble' on what to do.
 %
-% 2. Driver bug: Not much you can do, except submit a bug report to Apple for
-% your specific hardware + software setup.
+% 2. Driver bug: Not much you can do, except submit a bug report to Apple or Microsoft
+% for your specific hardware + software setup.
+%
+% Accuracy of beamposition method:
+%
+% Cross-checking of beamposition timestamps and kernel-level timestamps on a single
+% display PowerPC G5 1.6 Ghz under OS-X 10.4.8 with NVidia GeforceFX-5200 showed an
+% accuracy of beamposition timestamping of better than 100 microseconds, with a maximum
+% deviation between the different methods of less than 200 microseconds.
+%
+% Initial checking on two Window PC's (Dell Inspiron 8000 Laptio, Geforce 2Go, Windows 2000,
+% and some 3.2 Ghz Pentium-4 with NVidia Geforce 7800 GTX) shows a precision of about
+% 30 microseconds. No further testing on Windows has been performed yet.
+%
+% Also check the FAQ section of http://www.psychtoolbox.org for latest infos.
 %
 
 % History:
 % 17.06.2006 Written (MK).
+% 16.11.2006 Updated for Windows exp. beampos support. (MK)
+
