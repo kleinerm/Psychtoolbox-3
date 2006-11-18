@@ -1189,7 +1189,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             do {
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
-            } while (preflip_vbltimestamp == postflip_vbltimestamp);
+            } while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp));
         }
         #endif
         

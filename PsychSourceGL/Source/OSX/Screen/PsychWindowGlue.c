@@ -387,15 +387,32 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     if (PsychPrefStateGet_VBLTimestampingMode()>0) {
         // Get access to Mach service port for the physical display device associated
         // with this onscreen window and open our own connection to the port:
-        if (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[windowRecord->screenNumber].connect))) {
-            // Connection established. Map a slice of device memory into our VM space:
-            if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-                                                       (vm_address_t *) &(fbsharedmem[windowRecord->screenNumber].shmem),
-                                                       &(fbsharedmem[windowRecord->screenNumber].shmemSize), kIOMapAnywhere)) {
-                // Mapping failed!
-                fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+        if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[windowRecord->screenNumber].connect))) ||
+            (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[windowRecord->screenNumber].connect)))) {
+            // Connection established.
+
+            // Create shared memory region:
+            if (TRUE || kIOReturnSuccess == IOFBCreateSharedCursor(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCurrentShmemVersion, 32, 32)) {
+                // Map the slice of device memory into our VM space:
+                if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
+                                                           (vm_address_t *) &(fbsharedmem[windowRecord->screenNumber].shmem),
+                                                           &(fbsharedmem[windowRecord->screenNumber].shmemSize), kIOMapAnywhere)) {
+                    // Mapping failed!
+                    fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+                    printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
+                }
+                else {
+                    printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[windowRecord->screenNumber].shmem);
+                }
+            }
+            else {
+                printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOFBCreateSharedCursor()] - Fallback path for time stamping won't be available.\n");
             }
         }
+        else {
+            printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
+        }
+        
         // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
     }
     
