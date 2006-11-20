@@ -1,18 +1,20 @@
-function MovieDemoOSX
-% MovieDemoOSX. 
+function MovieDemo
+% MovieDemo
 % 
-% Show a movie on OSX, easy as pie. MovieDemoOSX is adapted from
-% Denis Pelli's MovieDemo script for the OS 9 Psychtoolbox.
+% Show a movie, easy as pie.
+%
+% The comments below review the difference between the OS 9 version of
+% the toolbox and PTB-3.
 % 
 % New and different on OS Psychtoolbox: 
 % 
-%  The OS 9 Psychtoolbox is based on QuickTime and the OS X Psychtoolbox is
+%  The OS 9 Psychtoolbox is based on QuickTime and PTB-3 is
 %  based on OpenGL.  Differences between these underlying graphics libraries
-%  have unavoidably resulted in differences between the OS 9 and OS X
+%  have unavoidably resulted in differences between the OS 9 and PTB-3
 %  versions of Screen; Some subfunctions of OS 9 Screen are replaced by
-%  similar, but not identical functions in OS X.
+%  similar, but not identical functions in PTB-3.
 %
-%  In OS 9:                   In OSX
+%  In OS 9:                   In PTB-3
 %   
 %   WaitBlanking              Flip        
 %   PutImage                  MakeTexture
@@ -32,7 +34,7 @@ function MovieDemoOSX
 %   vertical blank would occur while the CRT beam retraced to the upper
 %   left corner of the display.
 % 
-%   In contrast, OS X onscreen windows by default have not one but two
+%   In contrast, PTB-3 onscreen windows by default have not one but two
 %   buffers:  the front buffer and the back buffer.  In double-buffered
 %   mode, all Screen drawing commands are issued to the back buffer, where
 %   what is drawn is hidden from view.  The contents of the back buffer
@@ -57,7 +59,7 @@ function MovieDemoOSX
 %   Instead of using Offscreen Windows to quickly display MATLAB Matrices 
 %   the OSX Psychtoolbox uses Textures.
 %
-%       Steps to quickly display an image matrix in OS X:  
+%       Steps to quickly display an image matrix in PTB-3:  
 %         1. Create a texture and copy into it a matrix by using MakeTexture
 %         2. Copy the texture quickly to the onscreen window using
 %         DrawTexure
@@ -74,9 +76,9 @@ function MovieDemoOSX
 %   should be no need to prerender and buffer what is displayed during
 %   animation.  
 %
-%  Animation loops: OS 9 Vs OSX
+%  Animation loops: OS 9 VS PTB-3
 %
-%   To understand the differences between OS 9 and OSX Screen its helpful
+%   To understand the differences between OS 9 and PTB-3 Screen its helpful
 %   to compare animation loops:
 %
 %   OS 9: 
@@ -87,7 +89,7 @@ function MovieDemoOSX
 %           Screen('CopyWindow', offscreenWindow(i), window);
 %       end
 %
-%   OS X: 
+%   PTB-3: 
 %
 %       %generate textures here...
 %       for i=1:numberOfMovieFrames
@@ -96,20 +98,21 @@ function MovieDemoOSX
 %       end
 %
 %   
-% See Also: DriftDemo, PsychDemosOSX.
+% See also: DriftDemo, PsychDemos.
 %
-
+%
 % HISTORY
 %
-% 7/3/04  awi  Wrote it.  Based on Denis Pelli's MovieDemo for OS 9.
-% 7/19/04 awi  restored Priority, and time tests, added option to plot results. 
-% 7/24/04 awi  Cosmetic
-% 9/8/04  awi  Added Try/Catch.
-% 4/23/05 mk   Added Priority(0) to Catch-Section.
+% 7/3/04   awi  Wrote it.  Based on Denis Pelli's MovieDemo for OS 9.
+% 7/19/04  awi  restored Priority, and time tests, added option to plot results. 
+% 7/24/04  awi  Cosmetic
+% 9/8/04   awi  Added Try/Catch.
+% 4/23/05  mk   Added Priority(0) to Catch-Section.
+% 11/19/06 dhb  Remove OSX from name.
 
 
 try
-	fprintf('MovieDemoOSX.m is only 66 lines, plus comments. Read it to see how easy it \nis to show movies.\n\n');
+	fprintf('MovieDemo.m is short. Read it to see how easy it \nis to show movies.\n\n');
 	
 	% If there are multiple displays guess that one without the menu bar is the
 	% best choice.  Dislay 0 has the menu bar.  
@@ -185,7 +188,7 @@ try
 	% In OS 9 we checked for missed frames by comparing the actual movie play
 	% duration to the expected duration as predicted by the number of frames
 	% shown and the frame rate  reported by Screen('FrameRate'). However,
-	% FrameRate on OSX returns the nominal frame rate reported by the video
+	% FrameRate on PTB-3 returns the nominal frame rate reported by the video
 	% card driver.  That is imprecise.  So instead, we use the median frame
 	% period, which will work except for in case of egregious synching failure.
 	frameRate=1/median(s2Diffs);

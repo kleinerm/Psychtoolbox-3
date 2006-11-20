@@ -1,6 +1,6 @@
-function GazeContingentDemoOSX(mode, ms, myimgfile)
+function GazeContingentDemo(mode, ms, myimgfile)
 %
-% OS X: ___________________________________________________________________
+% ___________________________________________________________________
 %
 % Demo implementation of a generic gaze-contingent display.
 % We take one input image and create - via image processing - two images
@@ -15,19 +15,14 @@ function GazeContingentDemoOSX(mode, ms, myimgfile)
 % two images based on a spatial gaussian weight mask. Compositing is done
 % by the graphics hardware.
 %
-%
-% OS 9 and WINDOWS : ______________________________________________________
-%
-% GazeContingentDemoOSX does not exist on OS 9 and Windows.
-% _________________________________________________________________________
-%
-% see also: PsychDemosOSX, MovieDemoOSX, DriftDemo
+% See also: PsychDemos, MovieDemo, DriftDemo
 
 % HISTORY
 %
 % mm/dd/yy 
 % 
 %  7/23/05    mk      Derived it from Frans Cornelissens AlphaImageDemoOSX.
+% 11/19/06    dhb     Remove OSX from name.
 
 % Set hurryup = 1 for benchmarking - Syncing to retrace is disabled
 % in that case so we'll get the maximum refresh rate.
