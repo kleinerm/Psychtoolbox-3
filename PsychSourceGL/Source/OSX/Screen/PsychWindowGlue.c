@@ -200,7 +200,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGOpenGLDisplayMask 			displayMask;
     CGLError					error;
     CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[29];
+    CGLPixelFormatAttribute			attribs[30];
     long					numVirtualScreens;
     GLboolean					isDoubleBuffer, isFloatBuffer;
     GLint bpc;
@@ -223,6 +223,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       attribs[attribcount++]=30;
       attribs[attribcount++]=kCGLPFAAlphaSize;
       attribs[attribcount++]=2;
+	  attribs[attribcount++]=kCGLPFAMinimumPolicy;
     }
 
     // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
@@ -381,28 +382,28 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // our address space: Needed for additional timing checks:
 
     // Initialize to safe default:
-    fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+    fbsharedmem[screenSettings->screenNumber].shmem = NULL;
 
     // A value of zero would forcefully disable this method:
     if (PsychPrefStateGet_VBLTimestampingMode()>0) {
         // Get access to Mach service port for the physical display device associated
         // with this onscreen window and open our own connection to the port:
-        if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[windowRecord->screenNumber].connect))) ||
-            (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[windowRecord->screenNumber].connect)))) {
+        if ((kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(cgDisplayID), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect))) ||
+            (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect)))) {
             // Connection established.
 
             // Create shared memory region:
-            if (TRUE || kIOReturnSuccess == IOFBCreateSharedCursor(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCurrentShmemVersion, 32, 32)) {
+            if (TRUE || kIOReturnSuccess == IOFBCreateSharedCursor(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCurrentShmemVersion, 32, 32)) {
                 // Map the slice of device memory into our VM space:
-                if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[windowRecord->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-                                                           (vm_address_t *) &(fbsharedmem[windowRecord->screenNumber].shmem),
-                                                           &(fbsharedmem[windowRecord->screenNumber].shmemSize), kIOMapAnywhere)) {
+                if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
+                                                           (vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
+                                                           &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
                     // Mapping failed!
-                    fbsharedmem[windowRecord->screenNumber].shmem = NULL;
+                    fbsharedmem[screenSettings->screenNumber].shmem = NULL;
                     printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
                 }
                 else {
-                    printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[windowRecord->screenNumber].shmem);
+                    printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
                 }
             }
             else {

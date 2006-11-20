@@ -579,7 +579,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
               printf("PTB-Info: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
           }
           else {
-              printf("PTB-Info: Beamposition queries unsupported on this system.\n");
+              printf("PTB-Info: Beamposition queries unsupported on this system. Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
       }
       printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
@@ -942,6 +942,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     psych_uint64 postflip_vblcount;         // Currently only supported on OS-X, but Linux/X11 implementation will follow.
     double preflip_vbltimestamp = -1;
     double postflip_vbltimestamp = -1;
+	unsigned int vbltimestampquery_retrycount = 0;
+	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     
     PsychWindowRecordType **windowRecordArray=NULL;
@@ -1186,10 +1188,18 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // OS-X only: Low level query to the driver: We need to yield the cpu for a couple of
             // microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
             // in IOKits workloop can do its job.
+			vbltimestampquery_retrycount = 0;
             do {
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
-            } while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp));
+				vbltimestampquery_retrycount++;
+            } while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 10000));
+			
+			if (vbltimestampquery_retrycount>=10000) {
+				// VBL irq queries broken! Disable them.
+				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
+				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
+			}
         }
         #endif
         

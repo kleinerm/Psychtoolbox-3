@@ -251,6 +251,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
             CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
             PsychAddValueToDepthStruct((int)tempDepth, depths);
         }
+		// printf("mode %i : w x h = %i x %i, fps = %i, depths = %i\n", i, tempWidth, tempHeight, tempFrequency, tempDepth);
     }
 
 }

@@ -743,10 +743,10 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
         if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
 	// Wait until start deadline reached:
-	PsychWaitUntilSeconds(*startattime);
+	if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
 
 	// Start the engine!
-        error = SGStartRecord(vidcapRecordBANK[capturehandle].seqGrab);
+	error = SGStartRecord(vidcapRecordBANK[capturehandle].seqGrab);
 
 	// Record real start time:
 	PsychGetAdjustedPrecisionTimerSeconds(startattime);

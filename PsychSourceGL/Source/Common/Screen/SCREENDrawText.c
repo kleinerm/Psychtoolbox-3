@@ -133,6 +133,16 @@ PsychError SCREENDrawText(void)
     double			quadLeft, quadRight, quadTop, quadBottom;
     int				psychColorSize;
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
+	int ix;
+	GLubyte* rpb;
+	Boolean bigendian;
+	
+	// Detect endianity (byte-order) of machine:
+    ix=255;
+    rpb=(GLubyte*) &ix;
+    bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
+    ix = 0; rpb = NULL;
+
     
     //for layout attributes.  (not the same as run style attributes set by PsychSetATSUTStyleAttributes or line attributes which we do not set.) 	
     ATSUAttributeTag		saTags[] =  {kATSUCGContextTag };
@@ -300,7 +310,7 @@ PsychError SCREENDrawText(void)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
     PsychTestForGLErrors();
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, textureMemory);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,  (GLsizei)textureWidth, (GLsizei)textureHeight, 0, GL_BGRA, (bigendian) ? GL_UNSIGNED_INT_8_8_8_8_REV : GL_UNSIGNED_INT_8_8_8_8, textureMemory);
     free((void *)textureMemory);	// Free the texture memory: OpenGL has its own copy now in internal buffers.
     textureMemory = NULL;
     
