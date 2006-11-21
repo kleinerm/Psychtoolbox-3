@@ -33,16 +33,18 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 %               to make it clear that replyFun must be supplied as a string and rectAlign1 as a value.
 % 8/14/04  dgp	Call Screen 'WindowToFront'.
 
-if ~Screen(window,'WindowKind')
+if ~Screen(window, 'WindowKind')
 	error('Invalid window')
 end
-screenRect=Screen(window,'Rect');
+
+screenRect = Screen('Rect', window);
 %height=Screen(window,'TextWidth',' ');
-height=Screen(window,'TextSize');
-if height==0
-	height=12; % A weird Mac OS convention: zero means 12.
+height = Screen('TextSize', window);
+if height == 0
+	height = 12; % A weird Mac OS convention: zero means 12.
 end
-width=Screen(window,'TextWidth',[message '  ']);
+% width=Screen(window,'TextWidth',[message '  ']);
+width = size([message, ' '], 2);
 r=[0 0 width height+30];
 r=AlignRect(r,screenRect,RectRight,RectTop);
 if nargin>6
