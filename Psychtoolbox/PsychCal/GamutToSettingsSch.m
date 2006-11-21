@@ -29,6 +29,5 @@ end
 settings = zeros(m,n);
 values = zeros(m,n);
 for i = 1:m
-  [settings(i,:)] = SearchTable(gamut(i,:),gammaTable(:,i));
+  [settings(i,:)] = SearchGammaTable(gamut(i,:),gammaInput,gammaTable(:,i));
 end
-settings = settings-ones(m,n);

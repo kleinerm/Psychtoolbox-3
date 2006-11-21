@@ -1,5 +1,5 @@
-function [settings,values] = GamutToSettings(cal,gamut)
-% [settings,values] = GamutToSettings(cal,gamut)
+function [settings] = GamutToSettings(cal,gamut)
+% [settings] = GamutToSettings(cal,gamut)
 %
 % Find the best integer device settings to produce
 % the passed linear device coordinates.
@@ -17,7 +17,8 @@ function [settings,values] = GamutToSettings(cal,gamut)
 % 8/4/96     dhb   Update for stuff bag routines.
 % 8/21/97    dhb   Update for structures.
 % 4/13/02	 awi   Replaced SettingsToDevice with new name SettingsToPrimary.
-% 11/16/06   dhb   Adjust for [0,1] world.
+% 11/16/06   dhb   Adjust for [0,1] world.  Involves changing what's passed
+%                  in and out
 
 % Get gamma table
 gammaInput = cal.gammaInput;
@@ -31,16 +32,13 @@ if isempty(gammaMode)
 end
 
 if gammaMode==0
-	[settings,values] = GamutToSettingsSch(gammaTable,gamut);
+	[settings] = GamutToSettingsSch(gammaInput,gammaTable,gamut);
 elseif gammaMode==1
 	iGammaTable = cal.iGammaTable;
 	if isempty(iGammaTable)
 		error('Inverse gamma table not present for gammaMode == 1');
 	end
 	settings = GamutToSettingsTbl(iGammaTable,gamut);
-	if nargin==2
-		values = SettingsToPrimary(cal,settings);
-	end
 else
 	error(sprintf('Requested gamma inversion mode %g is not yet implemented',gammaMode));
 end

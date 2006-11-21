@@ -1,11 +1,12 @@
-function iGammaTable = InvertGammaTable(gammaTable,precision)
-% iGammaTable = InvertGammaTable(gammaTable,precision)
+function iGammaTable = InvertGammaTable(gammaInput,gammaTable,precision)
+% iGammaTable = InvertGammaTable(gammaInput,gammaTable,precision)
 %
 % Build an inverse gamma table.
 %
 % 1/21/95	dhb	  Wrote it.
 % 8/4/96    dhb   Update for stuff bag routines.
 % 8/21/97   dhb   Update for structures.
+% 11/21/06  dhb   Update for PTB-3.
 
 % Allocate space for the inverse table
 [nInputLevels,nDevices] = size(gammaTable);
@@ -18,5 +19,5 @@ searchValues = outputLevels+outDelta/2;
 gamutValues = searchValues(ones(nDevices,1),:);
 
 % Make the table
-iGammaTable = GamutToSettingsSch(gammaTable,gamutValues)';
+iGammaTable = GamutToSettingsSch(gammaInput,gammaTable,gamutValues)';
 		

@@ -21,9 +21,11 @@ window = Screen(screen,'OpenWindow',0,[],32);
 % This demo will not work using a default gamma table in the graphics card,
 % or even if you set the gamma to 1.0, due to this bug.
 % This is NOT a bug with Psychtoolbox!
-Screen('LoadNormalizedGammaTable', window, linspace(0,(255/256),256)'*ones(1,3));
+Screen('LoadNormalizedGammaTable', window, linspace(0,(256/256),256)'*ones(1,3));
 
-BitsPlusSetClut(window, zeros(256, 3));
+theClut = zeros(256, 3);
+%theClut(:, 2) = 2^16-1; % (DEBUG) Turn the screen green.
+BitsPlusSetClut(window, theClut);
 
 % draw a black (?) background on front and back buffers to clear out any old LUTs
 Screen('FillRect',window, 0);

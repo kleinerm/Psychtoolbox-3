@@ -15,6 +15,7 @@ function cal = SetGammaMethod(cal,gammaMode,precision)
 
 % Check that the needed data is available. 
 gammaTable = cal.gammaTable;
+gammaInput = cal.gammaInput;
 if (isempty(gammaTable))
 	error('Calibration structure does not contain gamma data');
 end
@@ -27,7 +28,7 @@ elseif (gammaMode == 1)
 	if (nargin == 2)
 		precision = 1000;
 	end
-	iGammaTable = InvertGammaTable(gammaTable,precision);
+	iGammaTable = InvertGammaTable(gammaInput,gammaTable,precision);
 	cal.gammaMode = gammaMode;
 	cal.iGammaTable = iGammaTable;
 else
