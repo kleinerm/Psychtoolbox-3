@@ -114,8 +114,8 @@ try
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel);
-
+        shader = EXPCreateStatic2DConvolutionShader(kernel,0,1);
+        %shader = Create2DGaussianBlurShader;
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
     end
@@ -144,7 +144,7 @@ try
     % Init framecounter to zero and take initial timestamp:
     count = 0;    
     tstart = GetSecs;
-    endtime = tstart + 20;
+    endtime = tstart + 5;
     
     % Run noise image drawing loop for 20 seconds.
     while GetSecs < endtime

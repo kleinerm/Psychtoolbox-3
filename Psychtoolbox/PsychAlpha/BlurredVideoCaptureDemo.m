@@ -1,4 +1,4 @@
-function FilteredVideoCaptureDemo(fullscreen)
+function FilteredVideoCaptureDemo(filtertype, kwidth)
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
@@ -21,10 +21,7 @@ try
 
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
-    
-    % Build our image processing shader:
-    shader = Create2DGaussianBlurShader(2.5, 7);
-    
+        
     % Build a filter kernel:
     stddev = kwidth / 3;
 
@@ -35,6 +32,12 @@ try
             kernel = fspecial('gaussian', kwidth, stddev);
         case 2
             kernel = fspecial('prewitt');
+        case 3
+            kernel = fspecial('unsharp');
+        case 4
+            kernel = fspecial('sobel');
+        case 5
+            kernel = fspecial('log');
     end
 
     if filtertype > 0
@@ -44,6 +47,7 @@ try
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
     else
+        % No filtering requested: Select fixed-function pipeline
         shader = 0;
     end
     
@@ -56,6 +60,20 @@ try
     Screen('SetVideoCaptureParameter', grabber, 'PrintParameters')
     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
+
+    % Setup mirror transformation for horizontal flipping:
+
+    % xc, yc is the geometric center of the text.
+    [xc, yc] = RectCenter(Screen('Rect', win));
+
+    % Translate origin into the geometric center of text:
+    Screen('glTranslate', win, xc, 0, 0);
+    % Apple a scaling transform which flips the direction of x-Axis,
+    % thereby mirroring the drawn text horizontally:
+    Screen('glScale', win, -1, 1, 1);
+    % We need to undo the translations...
+    Screen('glTranslate', win, -xc, 0, 0);
+    % The transformation is ready for mirrored drawing:
 
     Screen('StartVideoCapture', grabber, 60, 1);
 
@@ -71,37 +89,19 @@ try
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
         
         if (tex>0)
-            % Setup mirror transformation for horizontal flipping:
             
-            % xc, yc is the geometric center of the text.
-            [xc, yc] = RectCenter(Screen('Rect', win));
-            
-            % Make a backup copy of the current transformation matrix for later
-            % use/restoration of default state:
-            Screen('glPushMatrix', win);
-            % Translate origin into the geometric center of text:
-            Screen('glTranslate', win, xc, 0, 0);
-            % Apple a scaling transform which flips the direction of x-Axis,
-            % thereby mirroring the drawn text horizontally:
-            Screen('glScale', win, -1, 1, 1);
-            % We need to undo the translations...
-            Screen('glTranslate', win, -xc, 0, 0);
-            % The transformation is ready for mirrored drawing:
 
             % Draw new texture from framegrabber.
-            glUseProgram(shader);
-            Screen('DrawTexture', win, tex, [], Screen('Rect', win));
-            glUseProgram(0);
+            Screen('DrawTexture', win, tex, [], []); %Screen('Rect', win));
             
-            Screen('glPopMatrix', win);
-
+    
             % Print pts:
-            Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
+%            Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
              if count>0
                 % Compute delta:
                 delta = (pts - oldpts) * 1000;
                 oldpts = pts;
-                Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
+ %               Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
             end;
             
             % Show it.

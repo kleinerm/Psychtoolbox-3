@@ -18,6 +18,7 @@ function shader = EXPCreateStatic2DConvolutionShader(kernel, textarget, debug)
 
 % History:
 % 15.04.2006 written by Mario Kleiner.
+
 global GL;
 persistent initialized;
 
@@ -80,15 +81,8 @@ shaderkernel = single(reshape(kernel, kernelw * kernelh, 1));
 src = [src '#version 110' char(10)  char(10) ...
            'const int KernelHalfWidth = ' num2str(hw) ';' char(10) ...
            'uniform sampler2DRect Image;' char(10) ...
-           'const float kernel[' num2str(kernelw * kernelh) '] = { '];
+           'float kernel[' num2str(kernelw * kernelh) '];' char(10) char(10)];
 
-% Output the kernel itself:
-for i=1:(kernelw*kernelh - 1)
-    src = sprintf('%s %f,', src, shaderkernel(i));
-end
-
-% Final element:
-src = sprintf('%s %f };\n', src, shaderkernel(kernelw*kernelh));
 
 % Now for the program body:
 src =         [src ...
@@ -97,7 +91,14 @@ src =         [src ...
               '  int dx, dy, i;' char(10) ...
               '  vec4 sum = vec4(0.0);' char(10) ...
               '  vec4 tmp;' char(10) ...
-              '  i=0;' char(10) ...
+              '  i=0;' char(10) ' '];
+
+% Output the kernel itself:
+for i=1:(kernelw*kernelh)
+    src = sprintf('%s kernel[%i] = %f;', src, i-1, shaderkernel(i));
+end
+          
+src =         [src char(10) char(10) ...   
               '  for (dy = -KernelHalfWidth; dy <= KernelHalfWidth; dy++) {' char(10) ...
               '    for (dx = -KernelHalfWidth; dx <= KernelHalfWidth; dx++) {' char(10) ...
               '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx) + 0.5, float(dy) + 0.5));' char(10) ...
@@ -121,7 +122,7 @@ else
     glShaderSource(shandle, src);
 end;
 
-% This would abort if the shader should be invalid:
+% This would abort if the shader would be invalid:
 glCompileShader(shandle);
 
 % Create new program object and get handle to it:
