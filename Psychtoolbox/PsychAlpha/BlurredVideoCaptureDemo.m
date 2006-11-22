@@ -42,7 +42,7 @@ try
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel);
+        shader = EXPCreateStatic2DConvolutionShader(kernel, 1, 0, 1);
 
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
@@ -92,7 +92,7 @@ try
             
 
             % Draw new texture from framegrabber.
-            Screen('DrawTexture', win, tex, [], []); %Screen('Rect', win));
+            Screen('DrawTexture', win, tex, [], [], 0, 0); %Screen('Rect', win));
             
     
             % Print pts:

@@ -66,20 +66,22 @@ else
     singlefbo=1;
 end;
 
+precision = GL.RGBA_FLOAT16_APPLE;
+
 % Create framebuffer objects and color buffer textures:
 if singlefbo==0
     % Hw only supports one color attachment per FBO. Need to create three
     % FBOs for pingpong:
-    [fbos(1), tex(1)]=moglCreateFBO(msize, msize);
-    [fbos(2), tex(2)]=moglCreateFBO(msize, msize);
-    [fbos(3), tex(3)]=moglCreateFBO(msize, msize);
+    [fbos(1), tex(1)]=moglCreateFBO(msize, msize, 1, 4, precision);
+    [fbos(2), tex(2)]=moglCreateFBO(msize, msize, 1, 4, precision);
+    [fbos(3), tex(3)]=moglCreateFBO(msize, msize, 1, 4, precision);
 else
     % We use one FBO with two color attachments for pingpong.
-    [fbos(1), tex ]=moglCreateFBO(msize, msize, 2);
+    [fbos(1), tex ]=moglCreateFBO(msize, msize, 2, 4, precision);
     % Set fbos(2) = 0 to signal not to use fbo(2).
     fbos(2)=0;
     % We create one FBO for the static b, c1 and c2 arrays:
-    [fbos(3), tex(3) ]=moglCreateFBO(msize, msize, 1);
+    [fbos(3), tex(3) ]=moglCreateFBO(msize, msize, 1, 4, precision);
 end;
 
 % Load our bias and rescale shader:
@@ -156,7 +158,7 @@ numiters = 100
 gvfcinput = double(inputimage);
 
 tic
-[gvfc_v,gvfc_u] = GVFC(gvfcinput, mu, numiters);
+%[gvfc_v,gvfc_u] = GVFC(gvfcinput, mu, numiters);
 gvfcduration = toc
 gvfcdurationperiter = gvfcduration / numiters
 
@@ -391,10 +393,12 @@ Screen('EndOpenGL', win);
 % Close onscreen window and release all other ressources:
 Screen('CloseAll');
 
-minu = min(min(gvfc_u))
+%minu = min(min(gvfc_u))
 minu = min(min(gvf_finalimg(:,:,1)))
-maxu = max(max(gvfc_u))
+%maxu = max(max(gvfc_u))
 maxu = max(max(gvf_finalimg(:,:,1)))
+
+return
 
 imagesc(gvfc_u);
 figure;

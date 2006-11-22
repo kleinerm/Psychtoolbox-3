@@ -24,6 +24,12 @@ global GL;
 % Child protection:
 AssertGLSL;
 
+% Hack, needs to be improved...
+if IsLinux
+    % Redefine vor NVidia:
+    GL.RGBA_FLOAT32_APPLE = hex2dec('8883');
+end;
+
 if nargin < 2
     error('Must specify a widht x height of FBO in CreateGLFBO!');
 end;
@@ -44,10 +50,10 @@ if isempty(layers)
 end;
 
 if nargin < 5
-    format = GL.FLOAT;
+    format = GL.RGBA_FLOAT32_APPLE;
 end;
 if isempty(format)
-    layers = GL.FLOAT;
+    format = GL.RGBA_FLOAT32_APPLE;
 end;
 
 if nargin < 6
@@ -78,12 +84,6 @@ texids=glGenTextures(nrbuffers);
 % Create a framebuffer object:
 fbo = glGenFramebuffersEXT(1);
 
-% Hack, needs to be improved...
-if IsLinux
-    % Redefine vor NVidia:
-    GL.RGBA_FLOAT32_APPLE = hex2dec('8883');
-end;
-
 % Bind fbo:
 glBindFramebufferEXT(GL.FRAMEBUFFER_EXT, fbo);
 
@@ -94,7 +94,7 @@ for i=1:nrbuffers
 
     % Create representation: A rectangle texture with only mipmap level zero
     % and without a border, single precision float, RGBA:
-    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, GL.RGBA_FLOAT32_APPLE, width, height, 0, GL.RGBA, GL.FLOAT, 0);
+    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, format, width, height, 0, GL.RGBA, GL.FLOAT, 0);
 
     % Setup texture wrapping behaviour to clamp, as other behaviours are
     % unsupported on many gfx-cards for rectangle textures:

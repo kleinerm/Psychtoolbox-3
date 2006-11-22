@@ -1,16 +1,21 @@
 function FastFilteredNoiseDemo(filtertype, rectSize, kwidth, scale, syncToVBL, dontclear)
 % FastFilteredNoiseDemo([filtertype=1][, rectSize=128][, kwidth=5][, scale=1][, syncToVBL=1][, dontclear=0])
 %
-% Demonstrates how to generate and draw noise patches on-the-fly in a fast way. Can be
-% used to benchmark your system by varying the load. If you like this demo
+% Demonstrates how to generate, filter and draw noise patches on-the-fly 
+% in a fast way by use of GLSL fragment shaders.
+% Use it to benchmark your system by varying the load. If you like this demo
 % then also have a look at FastMaskedNoiseDemo that shows how to
 % efficiently draw a masked stimulus by use of alpha-blending.
 %
-% numRects = Number of random patches to generate and draw per frame.
+% filtertype = Type of filter to apply, see switch statement below for
+% supported filters. Zero selects no filtering, 1 is Gaussian blur.
 %
 % rectSize = Size of the generated random noise image: rectSize by rectSize
 %            pixels. This is also the size of the Psychtoolbox noise
 %            texture.
+%
+% kwidth = For filters which support a varying kernel size, the kernel
+% size. Will create a kwidth x kwidth convolution kernel.
 %
 % scale = Scalefactor to apply to texture during drawing: E.g. if you'd set
 % scale = 2, then each noise pixel would be replicated to draw an image
@@ -114,7 +119,7 @@ try
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel,0,1);
+        shader = EXPCreateStatic2DConvolutionShader(kernel,4,0,1);
         %shader = Create2DGaussianBlurShader;
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
@@ -141,8 +146,10 @@ try
         dstRect(i,:)=CenterRectOnPoint(objRect * scale, xc, yc);
     end
 
+
     % Init framecounter to zero and take initial timestamp:
-    count = 0;    
+    count = 0; 
+    glFinish;
     tstart = GetSecs;
     endtime = tstart + 5;
     
@@ -154,7 +161,10 @@ try
             % Normally distributed noise with mean 128 and stddev. 50, each
             % pixel computed independently:
             noiseimg=(50*randn(rectSize, rectSize) + 128);
-
+            %noiseimg=min(255.0, noiseimg);
+            %noiseimg=max(0, noiseimg);
+            %noiseimg=uint8(noiseimg);
+            
             % Convert it to a texture 'tex':
             tex=Screen('MakeTexture', win, noiseimg);
 
@@ -169,7 +179,13 @@ try
             % texture! The default bilinear filtering would introduce local
             % correlations when scaling is applied:
             Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
+            %OffsetRect(InsetRect(Screen('Rect', tex), -0.5, -0.5), 0.5, 0.5)
+            %Screen('DrawTexture', win, tex, [], [],[],0);
 
+            % Compute same convolution on CPU:
+            %ref = uint8(0.5 + conv2(single(noiseimg), kernel, 'valid'));
+            
+            
             % After drawing, we can discard the noise texture.
             Screen('Close', tex);
         end
@@ -179,12 +195,20 @@ try
         % synchronized to vertical retrace. If 'asyncflag' is 2, bufferswap
         % will happen immediately -- Only useful for benchmarking!
         Screen('Flip', win, 0, dontclear, asyncflag);
-
+        
+        %gpu = (Screen('GetImage', win, dstRect(1,:)));
+        %size(gpu);
+        %size(ref);
+        %difference = gpu(6:123, 6:123, 1) - ref; % (6:123, 6:123);
+        %maxdiff = max(gpu(:,:,1) - ref(1:118, 1:118))
+        %imagesc(difference)
+        %hist(single(difference))
         % Increase our frame counter:
         count = count + 1;
     end
-
+count
     % We're done: Output average framerate:
+    glFinish;
     telapsed = GetSecs - tstart
     updaterate = count / telapsed
     

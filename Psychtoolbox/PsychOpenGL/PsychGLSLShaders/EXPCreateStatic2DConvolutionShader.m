@@ -1,5 +1,5 @@
-function shader = EXPCreateStatic2DConvolutionShader(kernel, textarget, debug)
-% EXPCreateStatic2DConvolutionShader(kernel [, textarget][, debug])
+function shader = EXPCreateStatic2DConvolutionShader(kernel, channels, shadertype, debug)
+% EXPCreateStatic2DConvolutionShader(kernel [, channels=4][, shadertype][, debug])
 % 
 % Creates a GLSL fragment shader for 2D convolution of textures with
 % the 2D convolution kernel 'kernel' and returns a handle 'shader'
@@ -30,10 +30,15 @@ if isempty(kernel)
     error('CreateStatic2DConvolutionShader: No kernel provided!');
 end
 
-% MK: TODO texture target specific setup.
-textarget = 0;
+if nargin < 2 || isempty(channels)
+    channels = 4;
+end
 
-if nargin < 3
+if nargin < 3 || isempty(shadertype)
+    shadertype = 0;
+end
+
+if nargin < 4
     debug = 0;
 end;
 
@@ -43,7 +48,7 @@ kernelh = size(kernel,2);
 
 % We only want odd sized kernels of at least 3x3, e.g., 3x3, 5x5, 7x7, 9x9,
 % ...
-if kernelw < 3 | kernelh < 3 | mod(kernelw,2)~=1 | mod(kernelh,2)~=1
+if kernelw < 1 | kernelh < 1 | mod(kernelw,2)~=1 | mod(kernelh,2)~=1
     error('CreateStatic2DConvolutionShader: Only odd-sized kernels of at least size 3x3 supported!');
 end;
 
@@ -62,6 +67,9 @@ if isempty(initialized)
     % Clear any OpenGL error state.
     while (glGetError~=GL.NO_ERROR); end;
 
+%    maxinstructions = glGetIntegerv(GL.MAX_OPTIMIZED_VERTEX_SHADER_INSTRUCTIONS_EXT)
+    maxuniforms = glGetIntegerv(GL.MAX_FRAGMENT_UNIFORM_COMPONENTS)
+    
     % We are initialized:
     initialized = 1;
 end % of initialization.
@@ -80,33 +88,59 @@ shaderkernel = single(reshape(kernel, kernelw * kernelh, 1));
 
 src = [src '#version 110' char(10)  char(10) ...
            'const int KernelHalfWidth = ' num2str(hw) ';' char(10) ...
-           'uniform sampler2DRect Image;' char(10) ...
-           'float kernel[' num2str(kernelw * kernelh) '];' char(10) char(10)];
+           'uniform sampler2DRect Image;' char(10)];
+       
+if shadertype == 0
+    src = [src 'float kernel[' num2str(kernelw * kernelh) '];' char(10) char(10)];
+else
+    src = [src 'uniform float kernel[' num2str(kernelw * kernelh) '];' char(10) char(10)];
+end
 
+switch(channels)
+    case 1
+        dtype  = '  float tmp, sum = float(0.0);';
+        ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).r;';
+        douti  = '  gl_FragColor.rgba = vec4(sum);';
+    case 2
+        dtype  = '  vec2 tmp, sum = vec2(0.0);';
+        ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).rg;';
+        douti  = '  gl_FragColor.rg = sum;';
+    case 3
+        dtype  = '  vec3 tmp, sum = vec3(0.0);';
+        ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).rgb;';
+        douti  = '  gl_FragColor.rgb = sum;';
+    case 4
+        dtype  = '  vec4 tmp, sum = vec4(0.0);';
+        ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).rgba;';
+        douti  = '  gl_FragColor.rgba = sum;';
+end
 
 % Now for the program body:
 src =         [src ...
               'void main()' char(10)...
               '{' char(10) ...
               '  int dx, dy, i;' char(10) ...
-              '  vec4 sum = vec4(0.0);' char(10) ...
-              '  vec4 tmp;' char(10) ...
+              dtype char(10) ...
               '  i=0;' char(10) ' '];
 
-% Output the kernel itself:
-for i=1:(kernelw*kernelh)
-    src = sprintf('%s kernel[%i] = %f;', src, i-1, shaderkernel(i));
+% Type 0: Kernel is compiled into the shader as array of floating
+% point constants:
+if shadertype == 0
+    % Output the kernel itself:
+    for i=1:(kernelw*kernelh)
+        src = sprintf('%s kernel[%i] = %f;', src, i-1, shaderkernel(i));
+    end
 end
-          
+
 src =         [src char(10) char(10) ...   
               '  for (dy = -KernelHalfWidth; dy <= KernelHalfWidth; dy++) {' char(10) ...
               '    for (dx = -KernelHalfWidth; dx <= KernelHalfWidth; dx++) {' char(10) ...
-              '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx) + 0.5, float(dy) + 0.5));' char(10) ...
+              ifetch char(10) ...
               '      sum += tmp * kernel[i];' char(10) ...
               '      i++;' char(10) ...
               '    }' char(10) ...
               '  }' char(10) ...
-              '  gl_FragColor = sum;' char(10) ...
+              douti char(10) ...
               '}' char(10) char(10)];
   
 % Ok, we have our shader source string:
@@ -136,6 +170,18 @@ glLinkProgram(shader);
 glUseProgram(shader);
 shader_image = glGetUniformLocation(shader, 'Image');
 glUniform1i(shader_image, 0);
+
+% For shadertype 1, set up uniforms with kernel:
+if shadertype == 1
+    shader_kernel = glGetUniformLocation(shader, 'kernel[0]');
+
+    % Output the kernel itself:
+    for i=1:(kernelw*kernelh)
+        glUniform1f(shader_kernel + i - 1, shaderkernel(i));
+    end
+
+end
+
 % Unbind program:
 glUseProgram(0);
 
