@@ -27,7 +27,7 @@ clf; axis; drawnow;
 udp=pnet('udpsocket',lport);
 % Use timeout to not block forever, makes it possible to update resized window.
 try,
-    while 1,hel
+    while ~KbCheck
         % Wait/Read udp packet to reed buffer
         len=pnet(udp,'readpacket');
         if len>0,

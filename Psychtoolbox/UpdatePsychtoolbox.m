@@ -23,7 +23,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % specifier, you can incrementally downgrade until stuff works for you.
 %
 % UpdatePsychtoolbox cannot change the beta-vs-stable flavor of your
-% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox.
+% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox again.
 
 % History:
 %
@@ -35,6 +35,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 5/08/06 mk  Small fixes. Added option to downgrade to a specific revision.
 % 9/23/06 mk  Add clear mex call to flush mex files before updating.
 % 10/5/06 mk  Add detection code for MacOS-X on Intel Macs.
+% 21/11/06 mk Add improved detection code for Subversion.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -78,9 +79,12 @@ end
 % Save old Psychtoolbox path
 oldPath = RemoveSVNPaths(genpath(targetdirectory));
 
+% Retrieve path to Subversion executable:
+svnpath = GetSubversionPath;
+
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
-if isOSX && exist('/usr/local/bin/svn','file')~=2
+if isOSX && isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
     fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
     fprintf('download and install the most recent Subversion client from:\n');
@@ -90,10 +94,7 @@ if isOSX && exist('/usr/local/bin/svn','file')~=2
 end
 
 fprintf('About to update your working copy of the OpenGL-based Psychtoolbox.\n');
-updatecommand=['svn update '  targetRevision targetdirectory ];
-if isOSX
-    updatecommand=['/usr/local/bin/' updatecommand];
-end
+updatecommand=[svnpath 'svn update '  targetRevision targetdirectory ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
 if isOSX

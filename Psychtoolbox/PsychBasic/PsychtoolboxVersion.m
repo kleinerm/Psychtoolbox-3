@@ -114,11 +114,7 @@ elseif IsOSX | IsLinux | IsWin
         Psychtoolbox.version.point=cvv(3);
 
         % Additional parser code for SVN information. This is slooow!
-        if IsWin | IsLinux
-            svncmdpath='';
-        else
-            svncmdpath='/usr/local/bin/';
-        end;
+        svncmdpath = GetSubversionPath;
         
         % Find revision string for Psychtoolbox that defines the SVN revision
         % to which this working copy corresponds:

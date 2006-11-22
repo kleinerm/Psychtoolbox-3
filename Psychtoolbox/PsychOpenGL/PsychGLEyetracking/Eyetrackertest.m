@@ -7,7 +7,7 @@ function Eyetrackertest(imfilename)
 
 global rayvisdisplaylist;
 
-%try
+try
     
     % Assign default name for test-image or test-movie:
     if nargin < 1 | isempty(imfilename)
@@ -22,7 +22,19 @@ global rayvisdisplaylist;
 
     % Read test-image:
     inimage=imread(imfilename);
+    inimage=rgb2gray(inimage);
+    inimage=inimage(1:128, 1:128);
+    size(inimage)
 
+    kernel = fspecial('gaussian', 11, 5.5);
+    inimage2=single(inimage);
+    myimg=conv2(kernel, inimage2);
+    tic;
+    for i=1:1000
+        myimg=conv2(kernel, inimage2);
+    end
+    toc
+    
     AssertOpenGL;
     oldsynctest = Screen('Preference','SkipSyncTests',1);
     InitializeMatlabOpenGL;
@@ -70,12 +82,19 @@ global rayvisdisplaylist;
     horizedgedistshader = LoadGLSLProgramFromFiles('HorizontalMinimumEdgeDistanceShader');
 
     % Build and initialize gaussian blur shader (5x5, stddev=1.5):
-    blurshader = Create2DGaussianBlurShader(3.5, 5);
+    blurshader = Create2DGaussianBlurShader(2.5, 11);
     % Select blurshader:
     glUseProgram(blurshader);
     
     % Draw input image imtex into img_blurred, applying the blurshader:
     Screen('CopyWindow', imtex, img_blurred);
+glFinish;
+tic
+for i = 1:1000
+    Screen('CopyWindow', imtex, img_blurred);
+end
+glFinish;
+toc
     % Disable blurshader:
     glUseProgram(0);
 
@@ -151,7 +170,7 @@ global rayvisdisplaylist;
         ssize=2;
         n=norm([dx dy]);
         if n==0
-            n=1
+            n=1;
         end;
         
         dx = dx / n * ssize;

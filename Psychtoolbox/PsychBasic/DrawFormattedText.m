@@ -31,6 +31,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % History:
 % 10/17/06  Written (MK).
 % 11/01/06  Add support for correct handling of 3D rendering mode (MK).
+% 11/22/06  More 3D handling: Save/restore backface cull state (MK).
 
 % We need GL for drawing in 3D rendering mode:
 global GL;
@@ -133,10 +134,12 @@ if (~isempty(GL)) && (Screen('Preference', 'Enable3DGraphics')>0)
     glLoadIdentity;
 
     % Disable lighting and blending and texture mapping:
+    culling_on = glIsEnabled(GL.CULL_FACE);
     lights_on = glIsEnabled(GL.LIGHTING);
     blending_on = glIsEnabled(GL.BLEND);
     tex2d_on = glIsEnabled(GL.TEXTURE_2D);
     texrect_on = glIsEnabled(GL.TEXTURE_RECTANGLE_EXT);
+    glDisable(GL.CULL_FACE);
     glDisable(GL.LIGHTING);
     glDisable(GL.BLEND);    
     glDisable(GL.TEXTURE_2D);
@@ -222,6 +225,10 @@ if gl3dmode > 0
     glPopMatrix;
 
     % Conditionally reenable lighting and blending and texture mapping:
+    if culling_on
+        glEnable(GL.CULL_FACE);
+    end
+    
     if lights_on
         glEnable(GL.LIGHTING);
     end

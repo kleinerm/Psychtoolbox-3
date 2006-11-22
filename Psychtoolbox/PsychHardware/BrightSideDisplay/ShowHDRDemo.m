@@ -1,4 +1,4 @@
-function ShowHDRDemo(imfilename, dummymode, sf)
+function ShowHDRDemo(imfilename, dummymode, sf, halffloat)
 % ShowHDRDemo([imfilename][, dummymode][, sf]) -- Load and show a high dynamic range image
 % on the BrightSide Technologies High Dynamic Range display device.
 %
@@ -54,6 +54,11 @@ if nargin < 3 || isempty(sf)
     end
 end
 
+% Enable half-float precision by default:
+if nargin < 4 || isempty(halffloat)
+    halffloat = 1;
+end
+
 img=double(img) * sf;
 
 % No Alpha channel provided?
@@ -86,8 +91,8 @@ try
     % texture processing.
     Screen('BeginOpenGL', win);
 
-    % Build a Psychtoolbox texture from the image array:
-    texid = moglMakeHDRTexture(win, img);
+    % Build a Psychtoolbox 16 bpc half-float or 32 bpc float texture from the image array:
+    texid = moglMakeHDRTexture(win, img, halffloat);
 
     % End of OpenGL processing:
     Screen('EndOpenGL', win);
@@ -148,8 +153,10 @@ try
         % not capable of bilinear filtering of floating point textures in
         % hardware. Bilinear filtering works, but framerate drops from 30
         % fps to 0.5 fps when the driver switches to the slow software
-        % fallback path:
-        Screen('DrawTexture', win, texid, [], [], rotAngle, 0);
+        % fallback path. If otoh halffloat is true, i.e. the texture is
+        % stored as 16 bpc half-floats, then we enable bilinear filtering,
+        % as modern hardware is capable of filtering that.
+        Screen('DrawTexture', win, texid, [], [], rotAngle, halffloat);
 
         % Draw some 2D primitives:
         if useshader, glUseProgram(glslcolor); end;
@@ -171,7 +178,7 @@ try
         vbl=Screen('Flip', win, vbl);
 
         % Increase rotation angle to make it a bit more interesting...
-        % rotAngle = rotAngle + 0.1;
+        rotAngle = rotAngle + 0.1;
         
         % Count our frames...
         framecounter = framecounter + 1;

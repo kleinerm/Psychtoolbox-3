@@ -34,7 +34,7 @@ if isempty(textarget)
     textarget = 0;
 end
 
-if size(kernel,1)~=5 | size(kernel,2)~=5
+if size(kernel,1)~=11 | size(kernel,2)~=11
     error('Create2DConvolutionShader: Sorry, only 5x5 kernels supported!');
 end;
 
@@ -49,7 +49,7 @@ glUseProgram(shader);
 
 % Compute gauss-weight mask and offset-mask and upload them
 % into shaders uniform-arrays:
-hw = 5;
+hw = 11;
 shaderkernel = reshape(kernel, size(kernel,1)*size(kernel,2), 1);
 shaderweights = glGetUniformLocation( shader, 'KernelValue[0]');
 shaderoffsets = glGetUniformLocation( shader, 'Offset[0]');
@@ -58,8 +58,8 @@ for i=0:(hw*hw)-1
 end;
 
 i=0;
-for dx=-2:+2
-    for dy=-2:+2
+for dx=-5:+5
+    for dy=-5:+5
         glUniform2f(shaderoffsets + i, dx, dy);
         i=i+1;
     end;

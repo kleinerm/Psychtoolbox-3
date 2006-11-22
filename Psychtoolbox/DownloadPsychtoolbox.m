@@ -62,6 +62,14 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % can find the new subversion executable. In many cases it may be
 % neccessary to even reboot your computer after installation of subversion.
 %
+% Alternatively, if you don't have the neccessary permissions to install
+% Subversion into a system folder, you can install Subversion into an
+% arbitrary folder on your system (excluding ones with blanks in their
+% path) and then add that folder to your Matlab path. E.g. you installed
+% into D:\MyOwnFolder\Subversion\ . Then you can do this in Matlab:
+% addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
+% client then.
+%
 % 2. We strongly recommend that you install the Psychtoolbox in the
 % default location (/Applications or, failing that, /Users/Shared). Just
 % type:
@@ -166,6 +174,9 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % 9/23/06  mk  Add clear mex call to flush mex files before downloading.
 % 10/5/06  mk  Add detection code for MacOS-X on Intel Macs.
 % 10/28/06 dhb Allow 'current' as a synonym for 'beta'.
+% 11/21/06 mk  Allow alternate install location for svn client: Installer
+%              will find the svn executable if its installation folder is
+%              included in the Matlab path.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -219,15 +230,40 @@ if any(isspace(targetdirectory))
     error('Cannot be any spaces in "targetdirectory" name.');
 end
 
-% Check that Subversion client is installed.
-% Currently, we only know how to check this for Mac OSX.
-if isOSX && exist('/usr/local/bin/svn','file')~=2
-    fprintf('The Subversion client "svn" is not in its expected\n');
-    fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
-    fprintf('download and install the most recent Subversion client from:\n');
-    fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
-    fprintf('and then run %s again.\n',mfilename);
-    error('Subversion client is missing. Please install it.');
+% Check for alternative install location of Subversion:
+if isWin
+    % Search for Windows executable in Matlabs path:
+    svnpath = which('svn.exe');
+else
+    % Search for Unix executable in Matlabs path:
+    svnpath = which('svn.');
+end
+
+% Found one?
+if ~isempty(svnpath)
+    % Extract basepath and use it:
+    svnpath=[fileparts(svnpath) filesep];
+else
+    % Could not find svn executable in Matlabs path. Check the default
+    % install location on OS-X and abort if it isn't there. On M$-Win we
+    % simply have to hope that it is in some system dependent search path.
+
+    % Currently, we only know how to check this for Mac OSX.
+    if isOSX
+        svnpath='/usr/local/bin/';
+        if exist('/usr/local/bin/svn','file')~=2
+            fprintf('The Subversion client "svn" is not in its expected\n');
+            fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
+            fprintf('download and install the most recent Subversion client from:\n');
+            fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
+            fprintf('and then run %s again.\n',mfilename);
+            error('Subversion client is missing. Please install it.');
+        end
+    end
+end
+
+if ~isempty(svnpath)
+    fprintf('Will use the svn client which is located in this folder: %s\n', svnpath);
 end
 
 % Does SAVEPATH work?
@@ -390,10 +426,7 @@ if any(isspace(p)) % Double check, to be sure.
     error('No spaces are allowed in the destination folder name.');
 end
 
-checkoutcommand=['svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' p];
-if isOSX
-    checkoutcommand=[ '/usr/local/bin/' checkoutcommand];
-end
+checkoutcommand=[svnpath 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' p];
 fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there is no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
@@ -409,10 +442,7 @@ if err
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=['svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
-    if isOSX
-        checkoutcommand=[ '/usr/local/bin/' checkoutcommand];
-    end
+    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX
@@ -474,13 +504,6 @@ end
 fprintf('You can now use your newly installed ''%s''-flavor Psychtoolbox. Enjoy!\n',flavor);
 fprintf('Whenever you want to upgrade your Psychtoolbox to the latest ''%s'' version, just\n',flavor);
 fprintf('run the UpdatePsychtoolbox script.\n\n');
-
-fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n');
-fprintf('Useful Psychtoolbox websites:\n');
-fprintf('web http://www.psychtoolbox.org -browser\n');
-fprintf('web http://en.wikibooks.org/wiki/Matlab:Psychtoolbox -browser\n');
-fprintf('Archive of Psychtoolbox announcements:\n');
-fprintf('web http://lists.berlios.de/pipermail/osxptb-announce/  -browser\n');
 
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % Notify the post-install routine of the download and its flavor.

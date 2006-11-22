@@ -1,5 +1,5 @@
-function gltexId = moglMakeGLHDRTexture(hdrImage, gltextarget)
-% gltexId = moglMakeGLHDRTexture(hdrImage, gltextarget)
+function gltexId = moglMakeGLHDRTexture(hdrImage, gltextarget, halffloat)
+% gltexId = moglMakeGLHDRTexture(hdrImage, gltextarget [, halffloat])
 %
 % Create a high dynamic range OpenGL texture from the given
 % Matlab/Octave high dynamic range image matrix 'hdrImage' and attach
@@ -17,6 +17,11 @@ function gltexId = moglMakeGLHDRTexture(hdrImage, gltextarget)
 % 'hdrImage' must be a (height, width, 4) matrix of type 'double' or
 % 'single', where channel 1=Red, 2=Green, 3=Blue, 4=Alpha. The numeric
 % range (0.0 - 1.0) maps to (minimum intensity - maximum intensity).
+%
+% If 'halffloat' is set to 1 (default is 0), then the texture is created as
+% half-precision floating point texture, ie 16 bpc floats. This saves
+% memory and bandwidth and allows for floating point filtering on Geforce
+% 6000 and 7000 series.
 %
 % If you want to create a pure 2D texture and use it with Psychtoolbox'
 % standard Screen() drawing command, then call moglMakeHDRTexture() instead.
@@ -58,6 +63,10 @@ if nargin < 2
    error('Required OpenGL texture target ''gltextarget'' is missing.');
 end
 
+if nargin < 3
+    halffloat = 0;
+end
+
 if size(hdrImage,1)<1 | size(hdrImage,2)<1
    error('Passed ''hdrImage'' does not have required minimum width x height of at least 1 by 1 pixels.');
 end
@@ -89,8 +98,14 @@ end;
 % Bind the new texture object:
 glBindTexture(gltextarget, gltexId);
 
+if halffloat
+    intformat = GL.RGBA_FLOAT16_APPLE;
+else
+    intformat = GL.RGBA_FLOAT32_APPLE;
+end
+
 % Assign the transformed HDR image as mipmap level zero:
-glTexImage2D(gltextarget, 0, GL.RGBA_FLOAT32_APPLE, size(hdrImage,2), size(hdrImage,1), 0, GL.RGBA, GL.FLOAT, glImage);
+glTexImage2D(gltextarget, 0, intformat, size(hdrImage,2), size(hdrImage,1), 0, GL.RGBA, GL.FLOAT, glImage);
 
 % Setup texture wrapping behaviour to clamp, as other behaviours are
 % unsupported on many gfx-cards for rectangle textures:

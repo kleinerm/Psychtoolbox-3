@@ -35,11 +35,11 @@ if nargin < 1
 end;
 
 if nargin < 2 | isempty(width)
-    width = 5;
+    width = 11;
 end;
 
-if width~=5
-    error('Create2DGaussianBlurShader: Invalid width specified. Currently only width=5 supported.');
+if width~=11
+%    error('Create2DGaussianBlurShader: Invalid width specified. Currently only width=5 supported.');
 end;
 
 % Build and initialize gaussian blur shader (5x5, stddev=2.5):
@@ -52,5 +52,5 @@ catch
 end;
 
 % Create shader from convolution kernel and return handle to it:
-blurshader = Create2DConvolutionShader(kernel);
+blurshader = EXPCreateStatic2DConvolutionShader(kernel);
 return;

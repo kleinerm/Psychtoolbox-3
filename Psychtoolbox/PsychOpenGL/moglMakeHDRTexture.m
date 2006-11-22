@@ -1,5 +1,5 @@
-function textureId = moglMakeHDRTexture(win, hdrImage, poweroftwo)
-% textureId = moglMakeHDRTexture(win, hdrImage [, poweroftwo])
+function textureId = moglMakeHDRTexture(win, hdrImage, halffloat, poweroftwo)
+% textureId = moglMakeHDRTexture(win, hdrImage [, halffloat][, poweroftwo])
 %
 % Create a high dynamic range Psychtoolbox texture from the given
 % Matlab/Octave high dynamic range image matrix 'hdrImage' and attach
@@ -12,7 +12,14 @@ function textureId = moglMakeHDRTexture(win, hdrImage, poweroftwo)
 % Returns a Psychtoolbox handle 'textureId' for the created 2D texture.
 % The texture can be used like any other Psychtoolbox texture, just
 % with the difference that it represents its color values with 32 bit
-% floating point precision instead of 8 bpc fixed point precision.
+% floating point precision or 16 bit half floating point precision
+% instead of 8 bpc fixed point precision.
+%
+% The optional flag 'halffloat', if set to 1, will trigger creation of a
+% texture in half float format, ie. 16 bit floating point numbers instead
+% of 32 bit ones. This saves 50% memory and bandwidth. It also allows to
+% apply bilinear filtering during texture blits in hardware on GeForce 6000
+% and higher.
 %
 % Normally, Psychtoolbox will try to select a GL_TEXTURE_RECTANGLE
 % texture if the hardware supports it. You can enforce creation of
@@ -52,6 +59,10 @@ if nargin < 2
 end
 
 if nargin < 3
+   halffloat = 0;
+end
+
+if nargin < 4
    poweroftwo = 0;
 end
 
@@ -62,7 +73,7 @@ else
 end
 
 % Call the routine that creates an OpenGL texture:
-gltexid = moglMakeGLHDRTexture(hdrImage, gltextarget);
+gltexid = moglMakeGLHDRTexture(hdrImage, gltextarget, halffloat);
 
 % Assign the glTexture to Psychtoolbox:
 textureId = Screen('SetOpenGLTexture', win, [], gltexid, gltextarget, size(hdrImage, 2), size(hdrImage, 1), 32);
