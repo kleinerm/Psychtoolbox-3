@@ -1,5 +1,5 @@
-function FastFilteredNoiseDemo(filtertype, rectSize, kwidth, scale, syncToVBL, dontclear)
-% FastFilteredNoiseDemo([filtertype=1][, rectSize=128][, kwidth=5][, scale=1][, syncToVBL=1][, dontclear=0])
+function FastFilteredNoiseDemo(filtertype, rectSize, kwidth, scale, syncToVBL, dontclear, validate)
+% FastFilteredNoiseDemo([filtertype=1][, rectSize=128][, kwidth=5][, scale=1][, syncToVBL=1][, dontclear=0][, validate=0])
 %
 % Demonstrates how to generate, filter and draw noise patches on-the-fly 
 % in a fast way by use of GLSL fragment shaders.
@@ -92,6 +92,9 @@ if dontclear > 0
     dontclear = 2;
 end
 
+if nargin < 7 || isempty(validate)
+    validate = 0;
+end
 
 try
     % Find screen with maximal index:
@@ -117,9 +120,12 @@ try
             kernel = fspecial('prewitt');
     end
 
+stype = 0;
+channels = 4;
+
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel,4,0,1);
+        shader = EXPCreateStatic2DConvolutionShader(kernel,channels,stype,1);
         %shader = Create2DGaussianBlurShader;
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
@@ -161,9 +167,10 @@ try
             % Normally distributed noise with mean 128 and stddev. 50, each
             % pixel computed independently:
             noiseimg=(50*randn(rectSize, rectSize) + 128);
-            %noiseimg=min(255.0, noiseimg);
-            %noiseimg=max(0, noiseimg);
-            %noiseimg=uint8(noiseimg);
+
+            if validate
+                noiseimg=uint8(noiseimg);
+            end
             
             % Convert it to a texture 'tex':
             tex=Screen('MakeTexture', win, noiseimg);
@@ -177,14 +184,25 @@ try
             % neighbour filtering. This is important to preserve the
             % statistical independence of the noise pixels in the noise
             % texture! The default bilinear filtering would introduce local
-            % correlations when scaling is applied:
-            Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
-            %OffsetRect(InsetRect(Screen('Rect', tex), -0.5, -0.5), 0.5, 0.5)
-            %Screen('DrawTexture', win, tex, [], [],[],0);
-
-            % Compute same convolution on CPU:
-            %ref = uint8(0.5 + conv2(single(noiseimg), kernel, 'valid'));
+            % correlatio
+            if validate
+                glFinish;
+                tic
+                Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
+                glFinish;
+                gpu = toc
+            else                
+                Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
+            end
             
+            if validate
+                % Compute same convolution on CPU:
+                noiseimg = single(noiseimg);
+                tic
+                ref = conv2(noiseimg, kernel, 'same');
+                cpu = toc
+                ref = uint8(0.5 + ref);
+            end
             
             % After drawing, we can discard the noise texture.
             Screen('Close', tex);
@@ -196,17 +214,17 @@ try
         % will happen immediately -- Only useful for benchmarking!
         Screen('Flip', win, 0, dontclear, asyncflag);
         
-        %gpu = (Screen('GetImage', win, dstRect(1,:)));
-        %size(gpu);
-        %size(ref);
-        %difference = gpu(6:123, 6:123, 1) - ref; % (6:123, 6:123);
-        %maxdiff = max(gpu(:,:,1) - ref(1:118, 1:118))
-        %imagesc(difference)
-        %hist(single(difference))
+        if validate
+            gpu = (Screen('GetImage', win, dstRect(1,:)));
+            difference = gpu(:,:,1) - ref;
+            difference = difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel));
+            maxdiff = max(max(difference))
+        end
+        
         % Increase our frame counter:
         count = count + 1;
     end
-count
+
     % We're done: Output average framerate:
     glFinish;
     telapsed = GetSecs - tstart
@@ -214,6 +232,12 @@ count
     
     % Disable shader: Standard fixed-function pipeline is activated.
     glUseProgram(0);
+
+    if validate
+        imagesc(difference);
+        figure;
+        imagesc(noiseimg);
+    end
 
     % Done. Close Screen, release all ressouces:
     Screen('CloseAll');
