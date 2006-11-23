@@ -21,14 +21,14 @@ uniform sampler2DRect Kernel;
 
 void main()
 {
-    int dx, dy;
+    float dx, dy;
     vec4 sum = vec4(0.0);
     vec4 tmp;
     float kernelvalue;
 
     for (dy = -KernelHalfWidth; dy <= KernelHalfWidth; dy++) {
         for (dx = -KernelHalfWidth; dx <= KernelHalfWidth; dx++) {
-            kernelvalue = texture2DRect(Kernel, vec2(dx + KernelHalfWidth, dy + KernelHalfWidth));
+            kernelvalue = texture2DRect(Kernel, vec2(dx + KernelHalfWidth, dy + KernelHalfWidth)).r;
             tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(dx, dy));
             sum += tmp * kernelvalue;
         }

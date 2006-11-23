@@ -121,7 +121,7 @@ try
     end
 
 stype = 0;
-channels = 4;
+channels = 1;
 
     if filtertype > 0
         % Build shader from kernel:
