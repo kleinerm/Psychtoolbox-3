@@ -125,7 +125,7 @@ channels = 1;
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel,channels,stype,1);
+        shader = EXPCreateStatic2DConvolutionShader(kernel, channels, 1, stype,1);
         %shader = Create2DGaussianBlurShader;
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
@@ -151,7 +151,6 @@ channels = 1;
         % times the size of our pixel noise matrix 'objRect':
         dstRect(i,:)=CenterRectOnPoint(objRect * scale, xc, yc);
     end
-
 
     % Init framecounter to zero and take initial timestamp:
     count = 0; 

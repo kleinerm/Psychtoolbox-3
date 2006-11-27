@@ -1,4 +1,4 @@
-function FilteredVideoCaptureDemo(filtertype, kwidth)
+function BlurredVideoCaptureDemo(filtertype, kwidth)
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
@@ -42,7 +42,7 @@ try
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel, 1, 0, 1);
+        shader = EXPCreateStatic2DConvolutionShader(kernel, 3, 3, 0, 1);
 
         % Enable shader: It will apply to any further drawing operation:
         glUseProgram(shader);
