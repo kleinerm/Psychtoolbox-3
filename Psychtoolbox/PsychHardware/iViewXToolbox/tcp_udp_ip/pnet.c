@@ -5,7 +5,7 @@
 #define VERSION "Version  2.0.5  2003-09-16"
 
 /*
-%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter Rydesäter et al.
+%   This file(s) is part of the tcp_udp_ip toolbox (C) Peter RydesŠter et al.
 %   et al.  1998-2003 for running in MATLAB(R) as scripts and/or plug-ins.
 %
 %   This program is free software; you can redistribute it and/or modify
@@ -22,7 +22,7 @@
 %   along with this program; if not, write to the Free Software
 %   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
 %
-%   In addition, as a SPECIAL EXCEPTION, Peter Rydesäter, SWEDEN,
+%   In addition, as a SPECIAL EXCEPTION, Peter RydesŠter, SWEDEN,
 %   gives permission to link the code of this program with any library,
 %   and distribute linked combinations of it. You must obey the GNU
 %   General Public License in all respects for all of the code in the
@@ -49,9 +49,9 @@
   
   
   == Main Authour ==           == Windows support ==      == Earlie/Basic UDP support ==
-  Peter Rydesäter              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
+  Peter RydesŠter              Mario Bergeron             Mike Medeiros at 23-Jan-2001.
                                LYRtech
-  Östersund, Sweden            Québec, Canada
+  …stersund, Sweden            QuŽbec, Canada
   +46 70 560 68 16             
   Peter.Rydesater@mh.se        Mario.Bergeron@lyrtech.com
 
@@ -186,7 +186,7 @@ void Print_Start_Message(){
 	      "Loaded pnet MEX-file for the tcp/udp/ip-toolbox Compiled @ "
 	      __DATE__ " " __TIME__  "\n"
 	      VERSION "\n"
-	      "Copyright (C) Peter Rydesäter, Sweden, et al. , 1998 - 2003\n"
+	      "Copyright (C) Peter RydesŠter, Sweden, et al. , 1998 - 2003\n"
 	      "GNU General Public License, se license.txt for full license notis.\n"
 	      "You are allowed to (dynamicaly) link this file with non-free code. \n\n"
 	      "   http://www.rydesater.com \n\n"
@@ -581,12 +581,12 @@ int my_mexInputArray2Buff(const int argno,io_buff *buff)
     newbuffsize(buff,buff->pos+len*si);
 
     if(id==mxCHAR_CLASS){
-	mxChar *ptr = (mxChar *)mxGetPr(gprhs[argno]);
+	mxChar *ptr = (mxChar *)mxGetData(gprhs[argno]);
 	int a;
 	for(a=0;a<len;a++)
 	    buff->ptr[buff->pos++]=(char)(unsigned char)ptr[a];
     }else{
-	char *ptr = (char *)mxGetPr(gprhs[argno]);
+	char *ptr = (char *)mxGetData(gprhs[argno]);
 	byteswapcopy(&buff->ptr[buff->pos],ptr,len,si,swap);
 	buff->pos+=(len*si);
     }
@@ -696,17 +696,17 @@ void my_mexReturnArrayFromBuff(const int argno,io_buff *buff,const int line)
 	if(dims[0]!=0){
 	    if(id==mxCHAR_CLASS){
 		int i;
-		mxChar *p=(mxChar *)mxGetPr(gplhs[gret_args]);
+		mxChar *p=(mxChar *)mxGetData(gplhs[gret_args]);
 		for(i=0;i<returnelements;i++)
 		    p[i]=buff->ptr[i];
 	    }else{
-		char *p=(char *)mxGetPr(gplhs[gret_args]);
+		char *p=(char *)mxGetData(gplhs[gret_args]);
 		byteswapcopy(p,buff->ptr,returnelements,si,swap);
 	    }
 	}
 	gret_args++;
     }
-       //    debug_view_con_status("GET_ARRAY NÄSTAN KLAR");
+       //    debug_view_con_status("GET_ARRAY N€STAN KLAR");
     // Delete from read buffer if not "VIEW" option and dims filled
     if(my_mexFindInputOption(argno+1,"VIEW")==0 && deleteelements>0 ){
 	buff->pos-=deleteelements*si;
