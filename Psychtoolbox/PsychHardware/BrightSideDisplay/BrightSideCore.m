@@ -31,6 +31,8 @@ function BrightSideCore(varargin)
 % wants for drawing of HDR content.
 
 % History:
-% October 2006  Written (MK).
+% October 2006  Written by Mario Kleiner (MPIK) and Oguz Ahmet Akyuz - Dept. of
+% Computer Science, University of Central Florida.
+
 error('The BrightSideCore MEX file seems to be either invalid, not loadable or missing in your setup!');
 return

@@ -1,5 +1,5 @@
-function moglBlitTexture(texid, x, y, w, h, fastblit)
-% moglBlitTexture(texid, x, y, w, h, fastblit)
+function moglBlitTexture(texid, x, y, w, h, fastblit, clamping)
+% moglBlitTexture(texid, x, y, w, h, fastblit, clamping)
 %
 % moglBlitTexture blits the OpenGL texture 'texid' at offset (x,y) into the
 % current framebuffer. 'w x h' pixels are blitted. By default the offset is
@@ -82,6 +82,13 @@ if fastblit == 0
     if isempty(y)
         y = 0;
     end;
+
+    if nargin>=7
+        if ~isempty(clamping)
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_S, clamping);
+            glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_T, clamping);
+        end
+    end
 else
     % Fast path:
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, texid);    

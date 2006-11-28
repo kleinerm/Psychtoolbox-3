@@ -2,15 +2,15 @@ function shader = EXPCreateStatic2DConvolutionShader(kernel, inputchannels, filt
 % EXPCreateStatic2DConvolutionShader(kernel [, inputchannels=3][, filteredoutchannels=3][, shadertype][, debug])
 % 
 % Creates a GLSL fragment shader for 2D convolution of textures with
-% the 2D convolution kernel 'kernel' and returns a handle 'shader'
+% the 2D or 1D convolution kernel 'kernel' and returns a handle 'shader'
 % to it. The shader can then be applied to any texture by
 % calling glUseProgram(shader) before drawing the texture.
 %
-% The kernel is a simple n-by-n matrix of floating point numbers with n 
-% being an odd number, e.g., 1x1, 3x3, 5x5, 7x7, 9x9, ...
+% The kernel is a simple m-by-n matrix of floating point numbers with m and
+% n being odd numbers, e.g., 1x1, 3x3, 5x5, 7x7, 9x9,..., 1x3, 1x9, 7x1 ...
 % Each entry in the kernel is used as a weight factor.
 %
-% The simplest way to get a kernel is to use the function
+% The simplest way to get a 2D kernel is to use the function
 % kernel = fspecial(...); fspecial is part of the Matlab image
 % processing toolbox, see "help fspecial" for more information.
 %
@@ -44,6 +44,9 @@ function shader = EXPCreateStatic2DConvolutionShader(kernel, inputchannels, filt
 % This feature is in early alpha stage. It may fail on your system and its
 % future implementation may change significantly! Don't trust its results
 % without validation against a known good reference implementation!
+%
+% NOTES: Filtermode 2 and 3 not fully implemented for the general case!
+% ---> No separable 1D kernels, no support for all input->output mappings
 
 % History:
 % 27.11.2006 written by Mario Kleiner.
@@ -79,12 +82,7 @@ end;
 kernelw = size(kernel,1);
 kernelh = size(kernel,2);
 
-if kernelw~=kernelh
-    error('CreateStatic2DConvolutionShader: Only square-sized kernels supported!');
-end
-
-% We only want odd sized kernels of at least 3x3, e.g., 3x3, 5x5, 7x7, 9x9,
-% ...
+% We only want odd sized kernels of at least 3x3, e.g., 3x3, 5x5, 7x7, ...
 if kernelw < 1 | kernelh < 1 | mod(kernelw,2)~=1 | mod(kernelh,2)~=1
     error('CreateStatic2DConvolutionShader: Only odd-sized kernels of at least size 3x3 supported!');
 end;
@@ -112,16 +110,18 @@ if isempty(initialized)
 end % of initialization.
 
 % Compute half-width and linear shader coefficient array:
-hw = (kernelw - 1) / 2;
+hwx = (kernelw - 1) / 2;
+hwy = (kernelh - 1) / 2;
 shaderkernel = single(reshape(kernel, kernelw * kernelh, 1));
 
 if shadertype == 3
     % Generic shader, using a texture bound to 2nd unit as lookup table for
     % the convolution kernel. This method is way less efficient than
-    % lookups of the kernel in internal uniform registers or compiled in
+    % lookups of the kernel in internal uniform registers or compiled-in
     % constants, but it scales up to very large kernels, whereas the former
     % methods are limited in kernel size by how many constants can be
-    % compiled into the shader or stored in uniform registers.
+    % compiled into the shader or stored in uniform registers of a specific
+    % GPU.
 
     % Load our shader for convolution blit operations:
     shader = LoadGLSLProgramFromFiles('Convolve2DRectTextureShader.frag.txt', 1);
@@ -133,7 +133,7 @@ if shadertype == 3
 
     glUniform1i(shader_image, 0);
     glUniform1i(shader_clut, 1);
-    glUniform1f(shader_kernelsize, hw);
+    glUniform1f(shader_kernelsize, hwx);
 
     glUseProgram(0);
 
@@ -159,6 +159,10 @@ if shadertype == 3
 end
 
 if shadertype == 2
+    % Generate a linear shader program, i.e., all loops are completely
+    % unrolled. This may be a good workaround on old GPU's, but it didn't
+    % yield any speed improvements on GF-7000 or X1600 ...
+    
     % Header section:
     src = ['/* Statically compiled 2D convolution fragment shader for 2D rectangle textures.' char(10) ...
         '// Kernel Size is ' num2str(kernelw) ' by ' num2str(kernelh) char(10) ...
@@ -195,8 +199,8 @@ if shadertype == 2
     
     % Generate unrolled loop:
     i=0;
-    for dy=-hw:hw
-        for dx=-hw:hw
+    for dy=-hwy:hwy
+        for dx=-hwx:hwx
             i= i + 1;
             src = [src '  sum += ' num2str(shaderkernel(i)) ' * texture2DRect(Image, gl_TexCoord[0].st + vec2(' num2str(dx) '.0, ' num2str(dy) '.0))' ifetch ';' char(10)];
         end
@@ -247,7 +251,8 @@ if shadertype < 2
         '*/'  char(10)];
 
     src = [src '#version 110' char(10)  char(10) ...
-        'const int KernelHalfWidth = ' num2str(hw) ';' char(10) ...
+        'const int KernelHalfWidthX = ' num2str(hwx) ';' char(10) ...
+        'const int KernelHalfWidthY = ' num2str(hwy) ';' char(10) ...
         'uniform sampler2DRect Image;' char(10)];
 
     if (inputchannels==3) && (filteredoutchannels==1)
@@ -312,8 +317,8 @@ if shadertype < 2
     end
 
     src =         [src char(10) char(10) ...
-        '  for (dy = -KernelHalfWidth; dy <= KernelHalfWidth; dy++) {' char(10) ...
-        '    for (dx = -KernelHalfWidth; dx <= KernelHalfWidth; dx++) {' char(10) ...
+        '  for (dy = -KernelHalfWidthY; dy <= KernelHalfWidthY; dy++) {' char(10) ...
+        '    for (dx = -KernelHalfWidthX; dx <= KernelHalfWidthX; dx++) {' char(10) ...
         ifetch char(10) ...
         iupdate char(10) ...
         '      i++;' char(10) ...

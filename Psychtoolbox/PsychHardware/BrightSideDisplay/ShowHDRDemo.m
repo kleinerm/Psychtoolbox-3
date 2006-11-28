@@ -11,6 +11,10 @@ function ShowHDRDemo(imfilename, dummymode, sf, halffloat)
 % 'sf' - Scaling factor to apply.
 %
 
+% History:
+% Written 2006 by Mario Kleiner - MPI for Biological Cybernetics, Tuebingen, Germany
+% and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
+
 % Make sure we run on OpenGL-Psychtoolbox. Abort otherwise.
 AssertOpenGL;
 

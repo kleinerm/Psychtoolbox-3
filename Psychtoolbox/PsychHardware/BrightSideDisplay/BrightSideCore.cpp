@@ -14,7 +14,9 @@
  * - The BrightSide SDK and runtimes to be installed in the BSRuntimeLibs subfolder,
  *   see the Contents.m file in that folder for more info.
  *
- * Copyright 2006 Mario Kleiner - MPI for Biological Cybernetics, Tuebingen, Germany.
+ * Written 2006 by Mario Kleiner - MPI for Biological Cybernetics, Tuebingen, Germany
+ * and Oguz Ahmet Akyuz - Department of Computer Science, University of Central Florida.
+ *
  * This file is licensed to you under the GNU General Public License. See the
  * License.txt file in the Psychtoolbox root folder.
  */

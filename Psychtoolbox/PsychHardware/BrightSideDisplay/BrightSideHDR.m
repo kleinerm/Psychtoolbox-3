@@ -38,8 +38,9 @@ function BrightSideHDR(cmd, arg, dummy)
 % switch PTB back to standard LDR output.
 
 % History:
-% 10/30/2006 Initial prototype implementation. (MK)
-% 11/09/2006 Small fixes and improvements to make it really work. (MK)
+% 10/30/2006 Initial prototype implementation. MK & Oguz Ahmet Akyuz (Dept. of
+% Computer Science, University of Central Florida)
+% 11/09/2006 Small fixes and improvements to make it really work. (MK + Oguz)
 
 global GL;
 persistent windowPtr;
