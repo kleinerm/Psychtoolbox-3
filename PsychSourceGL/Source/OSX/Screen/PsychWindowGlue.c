@@ -200,7 +200,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGOpenGLDisplayMask 			displayMask;
     CGLError					error;
     CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[30];
+    CGLPixelFormatAttribute			attribs[32];
     long					numVirtualScreens;
     GLboolean					isDoubleBuffer, isFloatBuffer;
     GLint bpc;
@@ -219,11 +219,12 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     if (windowRecord->depth == 30) {
       // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
       printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
+	  attribs[attribcount++]=kCGLPFANoRecovery;
+	  attribs[attribcount++]=kCGLPFAAccelerated;
       attribs[attribcount++]=kCGLPFAColorSize;
-      attribs[attribcount++]=30;
+      attribs[attribcount++]=16*3;
       attribs[attribcount++]=kCGLPFAAlphaSize;
-      attribs[attribcount++]=2;
-	  attribs[attribcount++]=kCGLPFAMinimumPolicy;
+      attribs[attribcount++]=16;
     }
 
     // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
