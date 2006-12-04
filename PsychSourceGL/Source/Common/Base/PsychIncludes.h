@@ -34,12 +34,22 @@
     #include "mex.h"
 #endif
 
+// Platform independent include for glew: This is a catch-all
+// for all OpenGL definitions and functions, currently up to
+// OpenGL 2.1:
+#include "../Screen/glew.h"
+
 //platform dependent includes stage 1
 #if PSYCH_SYSTEM == PSYCH_LINUX
-	#include <GL/gl.h>
-	#include <GL/glu.h>
-	#include <GL/glx.h>
-	#include <GL/glext.h>
+	//These are not needed anymore with GLEW:
+	//#include <GL/gl.h>
+	//#include <GL/glu.h>
+	//#include <GL/glx.h>
+	//#include <GL/glext.h>
+	
+	// This is the new glew include for GLX extension support:
+	#include "../Screen/glxew.h"
+	
         #include <X11/Xlib.h>
         #include <X11/keysym.h>
         #include <sys/time.h>
@@ -49,8 +59,10 @@
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	#include <windows.h>
-	#include <gl/gl.h>
-	#include <gl/glu.h>
+	//#include <gl/gl.h>
+	//#include <gl/glu.h>
+	#include "../Screen/wglew.h"
+	
         #include <Movies.h>
         #include <CoreVideo.h>
         #include <GXMath.h>
@@ -87,10 +99,10 @@
         #include <CoreServices/../Frameworks/CarbonCore.framework/Headers/MacTypes.h>
         #endif
 
-        #include <OpenGL/OpenGL.h>
-	#include <OpenGL/gl.h>
-	#include <OpenGL/glext.h>
-	#include <OpenGL/glu.h>
+	#include <OpenGL/OpenGL.h>
+	//#include <OpenGL/gl.h>
+	//#include <OpenGL/glext.h>
+	//#include <OpenGL/glu.h>
 #endif 
 
 //C standard library headers

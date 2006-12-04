@@ -204,6 +204,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     long					numVirtualScreens;
     GLboolean					isDoubleBuffer, isFloatBuffer;
     GLint bpc;
+	GLenum glerr;
+	
     int attribcount=0;
     int i;
 
@@ -340,6 +342,19 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
         return(FALSE);
     }
     
+	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
+	// available OpenGL extensions via GLEW:
+	glerr = glewInit();
+	if (GLEW_OK != glerr)
+	{
+		/* Problem: glewInit failed, something is seriously wrong. */
+		printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
+		fflush(NULL);
+	}
+	else {
+		printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+	}
+	
     // Enable multisampling if it was requested:
     if (windowRecord->multiSample > 0) glEnable(GL_MULTISAMPLE);
     

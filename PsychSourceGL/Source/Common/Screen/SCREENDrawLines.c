@@ -11,7 +11,7 @@ SCREENDrawLines.c
  
 	PLATFORMS:	
 	
-		Only OS X for now.  
+		All.  
  
 	HISTORY:
 	
@@ -48,45 +48,48 @@ SCREENDrawLines.c
 								method has the advantage of passing an rgb or rgba color
 								array to use as the lines are drawn.
 		3/23/05		dgt		Merged mk's improvements into SCREENDrawLines.c
-                4/22/05         mk              Small bug fix (size = PsychMallocTemp.....)
-		
- 
- 
+		4/22/05     mk      Small bug fix (size = PsychMallocTemp.....)
+		12/4/06		mk		Rewrite to make it functional again and to implement a similar
+							syntax to Screen('DrawDots').
+
  */
 
 
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('DrawLines', windowPtr, xy [,width] ,colors [,center] [,smooth]);";
-//                                            1          2    3       4        5         6
+static char useString[] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
+//                                             1          2    3        4         5         6
 static char synopsisString[] = 
-"Quickly draw an array of lines using Vertex and Color arrays.  "
-"\"xy\" is a two-row vector containing the x and y coordinates of the line ends, "
-"relative to \"center\" (default center is [0 0]).  "
-"\"size\" is the width of each line in pixels (default is 1).  "
-"\"colors\" an array of rgb or rgba color data for each line "
-"that you want to poke into each line (default is black).  "
-"\"smooth\" is a flag that determines whether smoothing is on: "
-"0 (default) no smoothing, 1 smoothing (with antialiasing) "
-"If you use smoothing, you'll also need to set a proper blending mode "
-"with Screen('BlendFunction').";  
+"Quickly draw an array of lines into the specified window \"windowPtr\". "
+"\"xy\" is a two-row vector containing the x and y coordinates of the line segments: Pairs of consecutive "
+"columns define (x,y) positions of the starts and ends of line segments. All positions are relative "
+"to \"center\" (default center is [0 0]). \"width\" is either a scalar with the global width for "
+"all lines in pixels (default is 1), or a vector with one separate width value for each separate line. "
+"\"colors\" is either a single global color argument for all lines, or an array of rgb or rgba "
+"color values for each line, where each column corresponds to the color of the corresponding line start or "
+"endpoint in the xy position argument. If you specify different colors for the start- and endpoint of a "
+"line segment, PTB will generate a smooth transition of colors along the line via linear interpolation. "
+"The default color is white if colors is omitted. \"smooth\" is a flag that determines whether lines "
+"should be smoothed: 0 (default) no smoothing, 1 smoothing (with anti-aliasing). If you use smoothing, "
+"you'll also need to set a proper blending mode with Screen('BlendFunction').";
+  
 static char seeAlsoString[] = "BlendFunction";	 
 
 PsychError SCREENDrawLines(void)  
 {
 
-#ifdef OLDCOLOR	
 	PsychColorType				color;		// To get rid of warnings;
-	int					whiteValue;
-#endif
-	PsychWindowRecordType			*windowRecord;
-	int					depthValue, colorPlaneSize, numColorPlanes, m,n,p, smooth;
-	boolean                                 isArgThere;
-	double					*xy, *size, *center, *dot_type;
-	int                                     disable_at_exit = false;
-	double                                  *colors;
-	
+	int							whiteValue;
+	PsychWindowRecordType		*windowRecord;
+	int							depthValue, colorPlaneSize, numColorPlanes, m,n,p, smooth;
+	int							nrsize, nrcolors, nrvertices, mc, nc, pc, i;
+	boolean                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+	double						*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
+	unsigned char               *bytecolors;
+	float						linesizerange[2];
+	const double				convfactor = 1/255.0;
+
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -97,40 +100,46 @@ PsychError SCREENDrawLines(void)
 	
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
-	
-	//get size argument
-	isArgThere = PsychIsArgPresent(PsychArgIn, 3);
-	if(!isArgThere){
-            size = (double *) PsychMallocTemp(1 * sizeof(double));
-            size[0] = 1;
-	} else {
-		PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, &size);
-		if(p!=1 || n!=1 || m!=1)
-			PsychErrorExitMsg(PsychError_user, "size must be a scalar");
-	}
-	
+		
 	//Get the depth from the window, we need this to interpret the color argument.
 	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
 	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
 	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
 
+	// Enable the rendering context of this window:
 	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
 
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
+
+	// Setup alpha-blending properly:
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
-#if OLDCOLOR	
-	//Get the color argument or use the default, then coerce to the form determined by the window depth.  
-	isArgThere=PsychCopyInColorArg(4, FALSE, &color);
+	//get xy coordinates vector:
+	isArgThere = PsychIsArgPresent(PsychArgIn, 2);
 	if(!isArgThere){
-		whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
-		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+		PsychErrorExitMsg(PsychError_user, "No xy line positions argument supplied");
 	}
- 	PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
-	PsychSetGLColor(&color, depthValue);
-#endif	
-	// get center argument
+
+	PsychAllocInDoubleMatArg(2, TRUE, &m, &n, &p, &xy);
+	if(p!=1 || m!=2 || n<2) PsychErrorExitMsg(PsychError_user, "xy must be a 2-rows vector of line endpoints with at least 2 columns.");
+	nrvertices = n;
+	
+	// Get line-width argument
+	isArgThere = PsychIsArgPresent(PsychArgIn, 3);
+	if(!isArgThere){
+            size = (double *) PsychMallocTemp(1 * sizeof(double));
+            size[0] = 1;
+			nrsize=1;
+	} else {
+		PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, &size);
+		if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a 1 row or 1 column vector.");
+		nrsize = m * n;
+		
+		if(nrsize!=1 && nrsize!=nrvertices/2) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a 1 row or 1 column vector with one entry per line.");
+	}
+
+	// Get center argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, 5);
 	if(!isArgThere){
 		center = (double *) PsychMallocTemp(2 * sizeof(double));
@@ -138,125 +147,136 @@ PsychError SCREENDrawLines(void)
 		center[1] = 0;
 	} else {
 		PsychAllocInDoubleMatArg(5, TRUE, &m, &n, &p, &center);
-		if(p!=1 || n!=2 || m!=1)
-			PsychErrorExitMsg(PsychError_user, "center must be a 1-by-2 vector");
+		if(p!=1 || n!=2 || m!=1) PsychErrorExitMsg(PsychError_user, "center must be a 1-by-2 vector");
 	}
 	
-	// get smooth argument
+	// Get smooth argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, 6);
 	if(!isArgThere){
 		smooth = 0;
 	} else {
 		PsychAllocInDoubleMatArg(6, TRUE, &m, &n, &p, &dot_type);
 		smooth = (int) dot_type[0];
-		if(p!=1 || n!=1 || m!=1 || (smooth!=0 && smooth!=1))
-			PsychErrorExitMsg(PsychError_user, "smooth must be 0 or 1");
+		if(p!=1 || n!=1 || m!=1 || (smooth!=0 && smooth!=1)) PsychErrorExitMsg(PsychError_user, "smooth must be 0 or 1");
 	}
 
-        // Child-protection: Alpha blending needs to be enabled for smoothing to work:
-        if (smooth>0 && windowRecord->actualEnableBlending!=TRUE) {
-            PsychErrorExitMsg(PsychError_user, "Line smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
-        }
-
-	//get xy coordinates argument
-	isArgThere = PsychIsArgPresent(PsychArgIn, 2);
+	// Child-protection: Alpha blending needs to be enabled for smoothing to work:
+	if (smooth>0 && windowRecord->actualEnableBlending!=TRUE) {
+		PsychErrorExitMsg(PsychError_user, "Line smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
+	}
+		
+	// Check if color argument is provided:
+	isArgThere = PsychIsArgPresent(PsychArgIn, 4);        
 	if(!isArgThere){
-		PsychErrorExitMsg(PsychError_user, "No xy argument supplied");
+		// No color argument provided - Use defaults:
+		whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+		usecolorvector=false;
 	}
-	PsychAllocInDoubleMatArg(2, TRUE, &m, &n, &p, &xy);
-	if(p!=1 || m!=2)
-		PsychErrorExitMsg(PsychError_user, "xy must be a 2-row vector");
-	
-	//get colors coordinates argument
-	isArgThere = PsychIsArgPresent(PsychArgIn, 4);
-	if(!isArgThere){
-		PsychErrorExitMsg(PsychError_user, "No color array argument supplied");
+	else {
+		// Some color argument provided. Check first, if it's a valid color vector:
+		isdoublecolors = PsychAllocInDoubleMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &colors);
+		isuint8colors  = PsychAllocInUnsignedByteMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &bytecolors);
+		
+		// Do we have a color vector, aka one element per vertex?
+		if((isdoublecolors || isuint8colors) && pc==1 && nc==nrvertices && nrvertices>1) {
+			// Looks like we might have a color vector... ... Double-check it:
+			if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
+			// Yes. colors is a valid pointer to it.
+			usecolorvector=true;
+			
+			if (isdoublecolors) {
+				// We have to loop through the vector and divide all values by 255, so the input values
+				// 0-255 get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
+				// a color vector is passed in Double- or Float format.
+				// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
+				// specifications consistent in the PTB - API.
+				tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
+				pcolors = colors;
+				tcolors = tmpcolors;
+				for (i=0; i<(nc*mc); i++) {
+					*(tcolors++)=(*pcolors++) * convfactor;
+				}
+			}
+			else {
+				// Color vector in uint8 format. Nothing to do.
+			}
+		}
+		else {
+			// No color vector provided: Check for a single valid color triplet or quadruple:
+			usecolorvector=false;
+			isArgThere=PsychCopyInColorArg(4, TRUE, &color);                
+		}
 	}
-	PsychAllocInDoubleMatArg(4, TRUE, &m, &n, &p, &colors);
-	if(p!=1 || m<3 || m>4)
-		PsychErrorExitMsg(PsychError_user, "colors must be a 3- or 4-row vector");
 
-#ifdef OLD
-	(char *)colors = NewPtr(n*3*sizeof(float));
-	for(i=0;i<n*3; )
-	{
-		colors[i++] = 1.0;//(float)Random()/ (float)32767;
-		colors[i++] = 1.0;//(float)Random()/ (float)32767;
-		colors[i++] = (float)i/(float)(n*3);	//Random()/ (float)32767;
-	}
-	m = 3;
-#endif
-	//draw lines
-	// 1st make sure blending is enabled
-	
-/*	if( glIsEnabled(GL_BLEND) )
-	{
-		disable_at_exit = false;	// don't disable at exit
-	}
-	else
-	{
-		glEnable(GL_BLEND);			// turn it on and disable it at exit
-		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-		disable_at_exit = true;	
-	}
-*/	
-	// turn on antialiasing to draw circles	
+	// turn on antialiasing to draw anti-aliased lines:
 	if(smooth) glEnable(GL_LINE_SMOOTH);
-	//glEnable(GL_TEXTURE_2D);
 
-	// Set size of a single dot:
-        glLineWidth(size[0]);
+	// Set global width of lines:
+	glLineWidth(size[0]);
 
 	// Setup modelview matrix to perform translation by 'center':
-        glMatrixMode(GL_MODELVIEW);		// was incorrectly using GL_MODELVIEW_MATRIX
-
-        // Make a backup copy of the matrix:
-        glPushMatrix();
-
-        // Apply a global translation of (center(x,y)) pixels to all following points:
-        glTranslated(center[0], center[1],0);
-        
-        // Render the array of 2D-Points - Efficient version:
-        // This command sequence allows fast processing of whole arrays
-        // of vertices (or points, in this case). It saves the call overhead
-        // associated with the original implementation below and is potentially
-        // optimized in specific OpenGL implementations.
-        
-        // Pass a pointer to the start of the point-coordinate array:
-        glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
-         glColorPointer(m, GL_DOUBLE, 0, colors);
-       // Enable fast rendering of arrays:
-        glEnableClientState(GL_VERTEX_ARRAY);
-        glEnableClientState(GL_COLOR_ARRAY);
-        // Render all n points, starting at point 0, render them as POINTS:
-        glDrawArrays(GL_LINES, 0, n);
-        // Disable fast rendering of arrays:
-        glDisableClientState(GL_VERTEX_ARRAY);
-        glDisableClientState(GL_COLOR_ARRAY);
-        
-        // Old implementation: Loops over the array of points and submits each point
-        // via a glVertex() call. The new solution above saves the overhead for the
-        // for-loop and for the individual glVertex-calls.
-        // glBegin(GL_POINTS);
-	// for(i=0; i<2*n; i+=2) glVertex2d(xy[i], xy[i+1]);
-	// glEnd();
+	glMatrixMode(GL_MODELVIEW);	
 	
-        // Restore old matrix from backup copy, undoing the global translation:
-        glPopMatrix();
+	// Make a backup copy of the matrix:
+	glPushMatrix();
+	
+	// Apply a global translation of (center(x,y)) pixels to all following lines:
+	glTranslated(center[0], center[1],0);
+	
+	// Render the array of 2D-Lines - Efficient version:
+	// This command sequence allows fast processing of whole arrays
+	// of vertices (or lines, in this case). It saves the call overhead
+	// associated with the original implementation below and is potentially
+	// optimized in specific OpenGL implementations.
+	
+	// Pass a pointer to the start of the arrays:
+	glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
+	
+	if (usecolorvector) {
+		if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, tmpcolors);
+		if (isuint8colors)  glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
+		glEnableClientState(GL_COLOR_ARRAY);
+	}
+	else {
+		// Set up common color for all dots if no color vector has been provided:
+		PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
+		PsychSetGLColor(&color, depthValue);
+	}
 
-        // turn off antialiasing again
-		if(smooth) glDisable(GL_LINE_SMOOTH);
+	// Enable fast rendering of arrays:
+	glEnableClientState(GL_VERTEX_ARRAY);
 
-       // turn off blending if we turned it on
-       //		if(disable_at_exit) glDisable(GL_BLEND);
+	if (nrsize==1) {
+		// Common line-width for all lines: Render all lines, starting at line 0:
+		glDrawArrays(GL_LINES, 0, nrvertices);
+	}
+	else {
+		// Different line-width per line: Need to manually loop through this mess:
+		for (i=0; i < nrvertices/2; i++) {
+	      glLineWidth(size[i]);
 
-        // Reset pointsize to 1.0
-        glLineWidth(1);
-       	//DisposePtr((char *)colors);
- 
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
-
+	      // Render line:
+	      glDrawArrays(GL_LINES, i * 2, 2);
+		}
+	}
+	
+	// Disable fast rendering of arrays:
+	glDisableClientState(GL_VERTEX_ARRAY);
+	if (usecolorvector) glDisableClientState(GL_COLOR_ARRAY);
+	
+	// Restore old matrix from backup copy, undoing the global translation:
+	glPopMatrix();
+	
+	// Turn off anti-aliasing:
+	if(smooth) glDisable(GL_LINE_SMOOTH);
+	
+	// Reset line width to 1.0:
+	glLineWidth(1);
+	
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
+	
  	//All psychfunctions require this.
 	return(PsychError_none);
-	}
+}

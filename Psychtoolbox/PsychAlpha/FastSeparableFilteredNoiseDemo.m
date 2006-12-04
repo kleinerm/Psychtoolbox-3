@@ -110,7 +110,7 @@ try
     
     % Build a separable filter kernel:
     stddev = kwidth / 3;
-stddev=10;
+stddev=30;
 
     switch(filtertype)
         case 0
@@ -126,12 +126,12 @@ stddev=10;
     end
     
     stype = 0;
-    channels = 4;
+    channels = 1;
 
     if filtertype > 0
         % Build shaders from kernels:
-        shader1 = EXPCreateStatic2DConvolutionShader(kernel1, channels, 4, stype, 1);
-        shader2 = EXPCreateStatic2DConvolutionShader(kernel2, channels, 4, stype, 1);
+        shader1 = EXPCreateStatic2DConvolutionShader(kernel1, channels, 1, stype, 1);
+        shader2 = EXPCreateStatic2DConvolutionShader(kernel2, channels, 1, stype, 1);
     end
 
     % Create a floating-point precision FBO for intermediate result of first filter pass:
@@ -201,9 +201,9 @@ stddev=10;
                 % Compute same convolution on CPU:
                 noiseimg = single(noiseimg);
                 tic
-                %ref = conv2(noiseimg, single(kernel1), 'same');
-                %ref = conv2(ref, single(kernel2), 'same');
-                ref = conv2(noiseimg, (kernel), 'same');
+                ref = conv2(noiseimg, single(kernel1), 'same');
+                ref = conv2(ref, single(kernel2), 'same');
+                %ref = conv2(noiseimg, (kernel), 'same');
                 cpu = toc
                 ref = uint8(0.5 + ref);
             end

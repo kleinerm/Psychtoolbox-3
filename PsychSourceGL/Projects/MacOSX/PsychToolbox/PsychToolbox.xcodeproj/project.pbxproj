@@ -69,6 +69,8 @@
 		0E92E8EA09572AF7002687D9 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
 		0E92E8EB09572AF8002687D9 /* PsychCellGlue.h in Headers */ = {isa = PBXBuildFile; fileRef = 2FE3CC150569E4BA007A711C /* PsychCellGlue.h */; };
 		0E92E94309572E39002687D9 /* eyelink_core.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0E92E92709572E2C002687D9 /* eyelink_core.framework */; };
+		0F35BB030B23DF5E0083A954 /* glew.c in Sources */ = {isa = PBXBuildFile; fileRef = 0F35BB020B23DF5E0083A954 /* glew.c */; };
+		0F35BB040B23DF5E0083A954 /* glew.c in Sources */ = {isa = PBXBuildFile; fileRef = 0F35BB020B23DF5E0083A954 /* glew.c */; };
 		2F0B166307788BB500359736 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		2F0B166407788BB500359736 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
 		2F0B166507788BB500359736 /* PsychInit.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F239038E2BE2017A7028 /* PsychInit.h */; };
@@ -3156,6 +3158,23 @@
 		};
 /* End PBXBuildRule section */
 
+/* Begin PBXBuildStyle section */
+		0F35BA770B23A7BC0083A954 /* Development */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Development;
+		};
+		0F35BA780B23A7BC0083A954 /* Deployment */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Deployment;
+		};
+/* End PBXBuildStyle section */
+
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -3189,6 +3208,10 @@
 		0E92E8BE09572831002687D9 /* EyelinkSendKeyButton.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkSendKeyButton.c; path = ../../../Source/Common/Eyelink/EyelinkSendKeyButton.c; sourceTree = SOURCE_ROOT; };
 		0E92E8BF09572831002687D9 /* EyelinkImageModeDisplay.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkImageModeDisplay.c; path = ../../../Source/Common/Eyelink/EyelinkImageModeDisplay.c; sourceTree = SOURCE_ROOT; };
 		0E92E92709572E2C002687D9 /* eyelink_core.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = eyelink_core.framework; path = /Library/Frameworks/eyelink_core.framework; sourceTree = "<absolute>"; };
+		0F35BB020B23DF5E0083A954 /* glew.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = glew.c; path = ../../../Source/Common/Screen/glew.c; sourceTree = SOURCE_ROOT; };
+		0F35BB050B23DF930083A954 /* glew.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = glew.h; path = ../../../Source/Common/Screen/glew.h; sourceTree = SOURCE_ROOT; };
+		0F35BB060B23DF9F0083A954 /* glxew.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = glxew.h; path = ../../../Source/Common/Screen/glxew.h; sourceTree = SOURCE_ROOT; };
+		0F35BB070B23DFAD0083A954 /* wglew.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = wglew.h; path = ../../../Source/Common/Screen/wglew.h; sourceTree = SOURCE_ROOT; };
 		2F02A85705F0735800C19AA2 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/GetPID/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F02A85805F0735800C19AA2 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/GetPID/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F02A85905F0735800C19AA2 /* GetPID.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetPID.h; path = ../../../Source/Common/GetPID/GetPID.h; sourceTree = SOURCE_ROOT; };
@@ -5020,6 +5043,7 @@
 		2FA8DC3C06A360FD0031AE12 /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				0F35BB020B23DF5E0083A954 /* glew.c */,
 				F569F25A038E2C77017A7028 /* RegisterProject.c */,
 				F598839503F9A78801A80168 /* PsychRects.c */,
 				F5CC19F6039355F6017A7028 /* ScreenTypes.c */,
@@ -5431,6 +5455,9 @@
 		F55903320385BC1F017A7028 /* Headers */ = {
 			isa = PBXGroup;
 			children = (
+				0F35BB050B23DF930083A954 /* glew.h */,
+				0F35BB060B23DF9F0083A954 /* glxew.h */,
+				0F35BB070B23DFAD0083A954 /* wglew.h */,
 				F55903740385C81D017A7028 /* RegisterProject.h */,
 				F598839303F9A74F01A80168 /* PsychRects.h */,
 				8370C71C096A013600BD4C8C /* PsychTextureSupport.h */,
@@ -7688,6 +7715,12 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				0F35BA770B23A7BC0083A954 /* Development */,
+				0F35BA780B23A7BC0083A954 /* Deployment */,
+			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -10570,6 +10603,7 @@
 				835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
 				8302E2030A1928E900AE269C /* Screen.cc in Sources */,
 				83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */,
+				0F35BB040B23DF5E0083A954 /* glew.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10900,6 +10934,7 @@
 				F089BCF10AD42DF500663D86 /* PsychScriptingGlue.cc in Sources */,
 				F089BCF20AD42DF500663D86 /* Screen.cc in Sources */,
 				F089BCF30AD42DF500663D86 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */,
+				0F35BB030B23DF5E0083A954 /* glew.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
