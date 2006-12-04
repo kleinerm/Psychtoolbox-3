@@ -58,12 +58,12 @@ static boolean mousebutton_m=FALSE;
 static boolean mousebutton_r=FALSE;
 
 // Definitions for dynamic binding of VSYNC extension:
-typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
-PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT = NULL;
+//typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
+//PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT = NULL;
 
 // Definitions for dynamic binding of wglChoosePixelformat extension:
-typedef BOOL (APIENTRY *PFNWGLCHOOSEPIXELFORMATPROC) (HDC,const int*, const FLOAT *, UINT, int*, UINT*);
-PFNWGLCHOOSEPIXELFORMATPROC wglChoosePixelFormatARB = NULL;
+// typedef BOOL (APIENTRY *PFNWGLCHOOSEPIXELFORMATPROC) (HDC,const int*, const FLOAT *, UINT, int*, UINT*);
+// PFNWGLCHOOSEPIXELFORMATPROC wglChoosePixelFormatARB = NULL;
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
@@ -307,10 +307,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   HWND        hWnd;
   WNDCLASS    wc;
   PIXELFORMATDESCRIPTOR pfd;
-  int         attribs[40];
+  int         attribs[48];
   int         attribcount;
   float       fattribs[2]={0,0};
-  int x, y, width, height, i;
+  int x, y, width, height, i, bpc;
+  GLenum      glerr;
   DWORD flags;
   boolean fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
@@ -417,11 +418,60 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	 attribs[attribcount++]=0x2007; // WGL_SWAP_METHOD_ARB
 	 attribs[attribcount++]=0x2028; // WGL_SWAP_EXCHANGE_ARB
 	 attribs[attribcount++]=0x2013; // WGL_PIXEL_TYPE_ARB
-	 attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
-	 attribs[attribcount++]=0x2014; // WGL_COLOR_BITS_ARB
-	 attribs[attribcount++]=32;
-	 attribs[attribcount++]=0x201B; // WGL_ALPHA_BITS_ARB
-	 attribs[attribcount++]=8;
+
+	 // Select either floating point or fixed point framebuffer:
+	 if (windowRecord->depth == 64 || windowRecord->depth == 128) {
+		 // Request a floating point drawable instead of a fixed-point one:
+		 attribs[attribcount++]=WGL_TYPE_RGBA_FLOAT_ARB;
+	 }
+	 else {
+		 // Request standard fixed point drawable:
+		 attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
+	 }
+
+	 // Select requested depth per color component 'bpc' for each channel:
+	 bpc = 8; // We default to 8 bpc == RGBA8
+	 if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
+	 if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc floating point framebuffer.\n"); }
+	 if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc floating point framebuffer.\n"); }
+
+	 // Set up color depth for each channel:
+	 attribs[attribcount++]=WGL_RED_BITS_ARB;
+	 attribs[attribcount++]=bpc;
+	 attribs[attribcount++]=WGL_GREEN_BITS_ARB;
+	 attribs[attribcount++]=bpc;
+	 attribs[attribcount++]=WGL_BLUE_BITS_ARB;
+	 attribs[attribcount++]=bpc;
+	 attribs[attribcount++]=WGL_ALPHA_BITS_ARB;
+	 // Alpha channel has only 2 bpc in the fixed point bpc=10 case, i.e. RGBA=8882.
+	 attribs[attribcount++]=(bpc == 10) ? 2 : bpc;
+
+//	 attribs[attribcount++]=0x2014; // WGL_COLOR_BITS_ARB
+//	 if (windowRecord->depth == 64 || windowRecord->depth == 30) {
+//		// Request float-16 per RGB component.
+//		attribs[attribcount++]=16*3;
+//	 }
+//	 else if (windowRecord->depth == 128) {
+//		// Request float-32 per RGB component.
+//		attribs[attribcount++]=32*3;
+//	 }
+//	 else {
+//		// Request default 8 bpc.
+//		attribs[attribcount++]=32;
+//	 }
+//	 attribs[attribcount++]=0x201B; // WGL_ALPHA_BITS_ARB
+//	 if (windowRecord->depth == 64 || windowRecord->depth == 30) {
+//		// Request 16 bit alpha channel:
+//		attribs[attribcount++]=16;
+//	 }
+//	 else if (windowRecord->depth == 128) {
+//		// Request float 32 bit alpha channel:
+//		attribs[attribcount++]=32;
+//	 }
+//	 else {
+//		// Request standard 8 bit alpha channel:
+//		attribs[attribcount++]=8;
+//	 }
 
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
@@ -529,6 +579,19 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // Activate the rendering context:
     PsychOSSetGLContext(windowRecord);
 
+	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
+	// available OpenGL extensions via GLEW:
+	glerr = glewInit();
+	if (GLEW_OK != glerr)
+	{
+		/* Problem: glewInit failed, something is seriously wrong. */
+		printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
+		fflush(NULL);
+	}
+	else {
+		printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+	}
+
     DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
     if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
@@ -544,9 +607,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
 	 // Step 2: Ok, we have an OpenGL rendering context: Query and bind wglChoosePixelFormat and friends...
 	 // Try to dynamically bind pixelformat extension. This will leave us with a NULL-Ptr if unsupported:
-    wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormatARB");
-	 if (wglChoosePixelFormatARB==NULL) wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormatEXT");
-	 if (wglChoosePixelFormatARB==NULL) wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormat");
+    // wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormatARB");
+	 // if (wglChoosePixelFormatARB==NULL) wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormatEXT");
+	 // if (wglChoosePixelFormatARB==NULL) wglChoosePixelFormatARB=(PFNWGLCHOOSEPIXELFORMATPROC) wglGetProcAddress("wglChoosePixelFormat");
 
 	 // Do we have it?
 	 if (wglChoosePixelFormatARB == NULL) {
@@ -633,7 +696,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		   // Nope. We give up!
          ReleaseDC(hDC, hWnd);
          DestroyWindow(hWnd);      
-         printf("\nPTB-ERROR[wglChoosePixelFormat() failed]: Unknown error, Win32 specific.\n\n");
+         printf("\nPTB-ERROR[wglChoosePixelFormat() failed]: Unknown error, Win32 specific. Code: %i.\n\n", GetLastError());
          return(FALSE);
       }
 
@@ -709,11 +772,12 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
 
     // Dynamically bind the VSYNC extension:
-    if (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")) {
+    //if (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")) {
       // Bind it:
-      wglSwapIntervalEXT=(PFNWGLEXTSWAPCONTROLPROC) wglGetProcAddress("wglSwapIntervalEXT");
-    }
-    else {
+      // wglSwapIntervalEXT=(PFNWGLEXTSWAPCONTROLPROC) wglGetProcAddress("wglSwapIntervalEXT");
+    //}
+    //else {
+	 if (wglSwapIntervalEXT == NULL) {
       wglSwapIntervalEXT = NULL;
       printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
       printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");

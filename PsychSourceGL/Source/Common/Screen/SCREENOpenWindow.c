@@ -113,7 +113,7 @@ PsychError SCREENOpenWindow(void)
     PsychInitDepthStruct(&possibleDepths); //get the possible depths
     PsychGetScreenDepths(screenNumber, &possibleDepths);
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
+    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_WINDOWS
        // MK Experimental Hack: Add the special depth values 30, 64 and 128 to the depth struct. This allows for
        // 10 bpc color buffers and 16 bpc, 32 bpc floating point color buffers on the latest ATI
        // and NVidia hardware. Unfortunately at this point of the init sequence, we are not able

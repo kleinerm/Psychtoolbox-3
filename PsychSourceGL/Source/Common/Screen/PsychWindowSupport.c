@@ -128,6 +128,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
     int logo_x, logo_y;
+    GLboolean	isFloatBuffer;
+    GLint bpc;
 
     // OS-9 emulation? If so, then we only work in double-buffer mode:
     if (PsychPrefStateGet_EmulateOldPTB()) numBuffers = 2;
@@ -175,6 +177,28 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     } 
     else {
       (*windowRecord)->windowType=kPsychDoubleBufferOnscreen;
+    }
+
+    if ((*windowRecord)->depth == 30 || (*windowRecord)->depth == 64 || (*windowRecord)->depth == 128) {
+
+        // Floating point framebuffer active? GL_RGBA_FLOAT_MODE_ARB would be a viable alternative?
+        glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+        if (isFloatBuffer) {
+            printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
+        }
+        else {
+            printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
+        }
+        
+        // Query and show bpc for all channels:
+        glGetIntegerv(GL_RED_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for red channel.\n", bpc);
+        glGetIntegerv(GL_GREEN_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for green channel.\n", bpc);
+        glGetIntegerv(GL_BLUE_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for blue channel.\n", bpc);
+        glGetIntegerv(GL_ALPHA_BITS, &bpc);
+        printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
     }
 
     // Now we start to fill in the remaining windowRecord with settings:

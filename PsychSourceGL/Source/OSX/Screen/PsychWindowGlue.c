@@ -372,27 +372,6 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
         }
     }
     
-    if (windowRecord->depth == 30 || windowRecord->depth == 64 || windowRecord->depth == 128) {
-
-        // Floating point framebuffer active?
-        glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
-        if (isFloatBuffer) {
-            printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
-        }
-        else {
-            printf("PTB-INFO: Fixed point precision integer framebuffer enabled.\n");
-        }
-        
-        // Query and show bpc for all channels:
-        glGetIntegerv(GL_RED_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for red channel.\n", bpc);
-        glGetIntegerv(GL_GREEN_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for green channel.\n", bpc);
-        glGetIntegerv(GL_BLUE_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for blue channel.\n", bpc);
-        glGetIntegerv(GL_ALPHA_BITS, &bpc);
-        printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
-    }
     
     // Initialize a low-level mapping of Framebuffer device data structures into
     // our address space: Needed for additional timing checks:

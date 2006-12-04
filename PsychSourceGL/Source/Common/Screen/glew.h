@@ -62,6 +62,9 @@
 #define __glew_h__
 #define __GLEW_H__
 
+/* Additions for PTB */
+#define GLEW_STATIC 1
+
 #if defined(__gl_h_) || defined(__GL_H__)
 #error gl.h included before glew.h
 #endif
