@@ -39,8 +39,8 @@
 static int x11_windowcount = 0;
 
 
-typedef int (*GLXEXTVSYNCCONTROLPROC) (int);
-GLXEXTVSYNCCONTROLPROC PTBglXSwapIntervalSGI = NULL;
+// typedef int (*GLXEXTVSYNCCONTROLPROC) (int);
+// GLXEXTVSYNCCONTROLPROC PTBglXSwapIntervalSGI = NULL;
 
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
@@ -130,6 +130,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   GLXContext ctx;
   XVisualInfo *visinfo;
   int i, x, y, width, height;
+  GLenum glerr;
   boolean fullscreen = FALSE;
   int attrib[30];
   int attribcount=0;
@@ -340,6 +341,18 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // Activate the associated rendering context:
   PsychOSSetGLContext(windowRecord);
 
+  // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
+  // available OpenGL extensions via GLEW:
+  glerr = glewInit();
+  if (GLEW_OK != glerr) {
+    /* Problem: glewInit failed, something is seriously wrong. */
+    printf("\nPTB-ERROR[GLEW init failed: %s]: Please report this to the forum. Will try to continue, but may crash soon!\n\n", glewGetErrorString(glerr));
+    fflush(NULL);
+  }
+  else {
+    printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+  }
+
   // Increase our own open window counter:
   x11_windowcount++;
 
@@ -360,8 +373,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   }
 
   // Check for availability of VSYNC extension:
-  PTBglXSwapIntervalSGI=(GLXEXTVSYNCCONTROLPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
-  if (PTBglXSwapIntervalSGI==NULL || strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL) {
+  // PTBglXSwapIntervalSGI=(GLXEXTVSYNCCONTROLPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
+  // if (PTBglXSwapIntervalSGI==NULL || strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL) {
+  if (glXSwapIntervalSGI==NULL || strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL) {
     printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
     printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
     printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somehow in a manner that is\n");
@@ -466,7 +480,8 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 
   // Try to set requested swapInterval if swap-control extension is supported on
   // this Linux machine. Otherwise this will be a no-op...
-  if (PTBglXSwapIntervalSGI) PTBglXSwapIntervalSGI(swapInterval);
+  // if (PTBglXSwapIntervalSGI) PTBglXSwapIntervalSGI(swapInterval);
+  if (glXSwapIntervalSGI) glXSwapIntervalSGI(swapInterval);
 
   return;
 }
