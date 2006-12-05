@@ -389,3 +389,4 @@ void PsychCoerceColorModeWithDepthValue(PsychColorModeType mode, int depthValue,
     else
         PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
 }
+

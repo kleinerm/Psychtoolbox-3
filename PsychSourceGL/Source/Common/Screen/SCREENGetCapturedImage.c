@@ -207,3 +207,4 @@ PsychError SCREENGetCapturedImage(void)
     // Ready!
     return(PsychError_none);
 }
+

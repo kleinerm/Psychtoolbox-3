@@ -39,3 +39,4 @@ int GetPrimaryEthernetAddressStringLengthBytes(Boolean colonSeparatedFlag);
 //end include once
 #endif
 
+

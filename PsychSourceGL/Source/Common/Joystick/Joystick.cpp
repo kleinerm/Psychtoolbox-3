@@ -171,3 +171,4 @@ void InitializeSynopsis(char *synopsis[],int maxStrings)
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)maxStrings,(long)i);
 	}
 }	
+

@@ -86,3 +86,4 @@ typedef int ALCenum;
 #define ALC_TRUE                                 (!(ALC_FALSE))
 
 #endif /* _ALCTYPES_H */
+

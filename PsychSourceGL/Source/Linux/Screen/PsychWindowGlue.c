@@ -515,3 +515,4 @@ int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
   // know the rasterbeam position.
   return(-1);
 }
+

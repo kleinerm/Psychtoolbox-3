@@ -32,3 +32,4 @@ void JOYSTICKGetNumHats(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[
 	mxGetPr(plhs[0])[0] = SDL_JoystickNumHats(pStick);
 		
 }
+

@@ -89,3 +89,4 @@ Boolean IsCommandPeriod(EventRecord *eventPtr)
 		&& (eventPtr->modifiers & cmdKey);
 	return isCommandPeriod;
 }
+

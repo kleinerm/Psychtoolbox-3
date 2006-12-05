@@ -269,3 +269,4 @@ static int CallMATLAB(CONSTmxArray *mxString,Boolean trapErrors)
 	mxDestroyArray(prhs[1]);
 	return error;
 }
+

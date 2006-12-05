@@ -65,3 +65,4 @@ PsychError ScreenExitFunction(void)
 
 	return(PsychError_none);
 }
+

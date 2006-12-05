@@ -53,3 +53,4 @@ PsychError SCREENReadNormalizedGammaTable(void)
 
     return(PsychError_none);
 }
+

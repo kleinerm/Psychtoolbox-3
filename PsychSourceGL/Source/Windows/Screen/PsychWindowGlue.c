@@ -942,3 +942,4 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
   wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);
 }
+

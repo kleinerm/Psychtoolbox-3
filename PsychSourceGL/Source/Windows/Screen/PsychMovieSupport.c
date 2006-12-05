@@ -1022,3 +1022,4 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
     // Return old value:
     return(oldtime);
 }
+

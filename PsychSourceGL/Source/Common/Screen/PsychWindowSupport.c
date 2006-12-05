@@ -2282,3 +2282,4 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
     glMatrixMode(GL_MODELVIEW);
     return;
 }
+

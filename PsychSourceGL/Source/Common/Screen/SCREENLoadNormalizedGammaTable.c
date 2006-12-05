@@ -130,3 +130,4 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 
     return(PsychError_none);
 }
+

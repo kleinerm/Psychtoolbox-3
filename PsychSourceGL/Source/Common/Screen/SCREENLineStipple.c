@@ -131,3 +131,4 @@ static void ConvertStippleArrayToShort(boolean *patternArray, GLushort *shortPat
 	}
 }
 
+

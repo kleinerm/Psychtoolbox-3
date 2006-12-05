@@ -581,3 +581,4 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
         printf("\nPTB-WARNING: FAILED to enable synchronization to vertical retrace!\n\n");
     }
 }
+

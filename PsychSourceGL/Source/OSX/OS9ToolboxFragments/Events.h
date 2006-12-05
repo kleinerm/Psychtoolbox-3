@@ -31,3 +31,4 @@ void WaitTicks(long ticks);
 Boolean WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,RgnHandle mouseRgn);
 Boolean CommandPeriod(void);
 Boolean IsCommandPeriod(EventRecord *eventPtr);
+

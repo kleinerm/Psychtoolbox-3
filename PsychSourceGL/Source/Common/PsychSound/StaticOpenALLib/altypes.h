@@ -439,3 +439,4 @@ typedef ALdouble ALclampd;
 #define AL_INVALID_OPERATION                     0xA004
 
 #endif
+

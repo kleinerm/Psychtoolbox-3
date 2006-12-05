@@ -190,3 +190,4 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // Done.
     return(PsychError_none);
 }
+

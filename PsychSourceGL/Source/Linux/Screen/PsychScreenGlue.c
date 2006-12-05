@@ -808,3 +808,4 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
   XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
   return;
 }
+

@@ -366,3 +366,4 @@ PsychError SCREENGetMouseHelper(void)
 #endif
 	return(PsychError_none);	
 }
+

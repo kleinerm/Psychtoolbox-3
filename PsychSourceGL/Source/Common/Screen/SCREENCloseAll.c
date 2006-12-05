@@ -99,3 +99,4 @@ void ScreenCloseAllWindows()
 
     return;
 }
+

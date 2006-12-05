@@ -35,3 +35,4 @@ void SetPreferencesDoubleValue(char *flagName, double value );
 void PsychSetPreferencesNativeDoublesArray(char *flagName, mxArray *setMat);
 
 #endif
+

@@ -347,3 +347,4 @@ PsychError SCREENTextBounds(void)
 }
 
 #endif
+

@@ -55,3 +55,4 @@
 //MachPrioirityCommonMex.c
 char *GetFlavorStringFromFlavorConstant(thread_policy_flavor_t flavor);				
 bool GetFlavorConstantFromFlavorString(char *flavorString, int flavorStringLength, thread_policy_flavor_t *flavorConstant);  //case sensitive.  
+

@@ -21,3 +21,4 @@ void JOYSTICKUnplug(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 	CloseJoystick();
 	
 }
+

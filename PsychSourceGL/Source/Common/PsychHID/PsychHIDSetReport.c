@@ -122,3 +122,4 @@ PsychError PSYCHHIDSetReport(void)
 	}		
     return(PsychError_none);	
 }
+

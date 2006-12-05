@@ -169,3 +169,4 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
 {
   return(0.0);
 }
+

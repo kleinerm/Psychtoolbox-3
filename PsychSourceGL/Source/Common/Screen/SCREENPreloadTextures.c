@@ -195,3 +195,4 @@ PsychError SCREENPreloadTextures(void)
  	// Done. Our PsychMallocTemp'ed arrays will be auto-released...
 	return(PsychError_none);
 }
+

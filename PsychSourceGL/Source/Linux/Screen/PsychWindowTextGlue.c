@@ -104,3 +104,4 @@ boolean PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingM
     } //for
     return(TRUE);
 }
+

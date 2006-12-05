@@ -175,3 +175,4 @@ void GetModuleAuthorDescriptorFromIndex(int index, PsychAuthorDescriptorType **d
 	PsychErrorExitMsg(PsychError_internal, "Failed to find author for index");
 }
 
+

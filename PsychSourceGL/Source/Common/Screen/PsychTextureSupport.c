@@ -851,3 +851,4 @@ void PsychMapTexCoord(PsychWindowRecordType *tex, double* tx, double* ty)
     // Done.
     return;
 }
+

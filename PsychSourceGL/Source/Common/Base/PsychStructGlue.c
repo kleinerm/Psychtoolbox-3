@@ -293,3 +293,4 @@ void PsychSetStructArrayNativeElement(	char *fieldName,
     mxSetField(pStructArray, index, fieldName, pNativeElement); 
     
 }
+

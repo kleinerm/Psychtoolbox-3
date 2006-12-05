@@ -1566,3 +1566,4 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   // Return the old value. Could be DBL_MAX if parameter was unknown or not accepted for some reason.
   return(oldvalue);
 }
+

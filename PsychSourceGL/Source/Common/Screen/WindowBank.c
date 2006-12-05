@@ -457,3 +457,4 @@ PsychWindowIndexType FindEmptyWindowIndex(void)
 	return(PSYCH_INVALID_WINDEX);
 }
 
+

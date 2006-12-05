@@ -216,3 +216,4 @@ void PsychFindEnclosingTextureRect(double *rectA, double *enclosingRect)
 	enclosingRect[kPsychBottom]=(double)newSides[1];
 	
 }
+
