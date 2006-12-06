@@ -299,7 +299,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
             newrect.right=(short)  capturerectangle[kPsychRight];
             newrect.bottom=(short) capturerectangle[kPsychBottom];
             
-            printf("PTB-INFO: Selected video capture ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+            if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Selected video capture ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
             
             if ((int) capturerectangle[kPsychLeft]<movierect.left || (int) capturerectangle[kPsychTop]<movierect.top ||
                 (int) capturerectangle[kPsychRight]>movierect.right || (int) capturerectangle[kPsychBottom]>movierect.bottom) {
@@ -314,8 +314,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
             error=SGSetVideoRect(*sgchanptr, &newrect);
             if (error!=noErr) {
                 // Grabber didn't accept new rectangle :(
-                printf("PTB-INFO: Video capture device didn't accept new capture area. Reverting to full hardware capture area,\n");
-                printf("PTB-INFO: Trying to only process specified ROI by restricting conversion to ROI in software...\n");
+                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full hardware capture area,\n");
+                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Trying to only process specified ROI by restricting conversion to ROI in software...\n");
                 movierect.left=(int) capturerectangle[kPsychLeft];
                 movierect.top=(int) capturerectangle[kPsychTop];
                 movierect.right=(int) capturerectangle[kPsychRight];
@@ -369,7 +369,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         error=SGSetVideoRect(*sgchanptr, &movierect);
         if (error!=noErr) {
             // Grabber didn't accept new rectangle :(
-            printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full area...\n"); fflush(NULL);
+            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full area...\n"); fflush(NULL);
         }
 
         error = SGSetChannelBounds(*sgchanptr, &movierect);
@@ -475,7 +475,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     else {
       // Query failed: Assign a dummy value of 25 Hz and output a warning.
       vidcapRecordBANK[slotid].fps = 25;
-      printf("PTB-WARNING: Couldn't determine real capture framerate of grabber device %i. Assigning dummy value of 25 fps.\n", slotid);
+      if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Couldn't determine real capture framerate of grabber device %i. Assigning dummy value of 25 fps.\n", slotid);
     }
 
     // Determine size of images in movie:
@@ -485,7 +485,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     // Reset framecounter:
     vidcapRecordBANK[slotid].nrframes = 0;
 
-    printf("W x h = %i x  %i at %lf fps...\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
+    if (PsychPrefStateGet_Verbosity()>3) printf("W x h = %i x  %i at %lf fps...\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
 
     return(TRUE);
 }
@@ -759,7 +759,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
         SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
         SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
-        printf("FRAMERATE: %f\n", vidcapRecordBANK[capturehandle].fps);
+        if (PsychPrefStateGet_Verbosity()>3) printf("FRAMERATE: %f\n", vidcapRecordBANK[capturehandle].fps);
     }
     else {
         // Stop capture:
@@ -769,12 +769,12 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
 
         // Output count of dropped frames:
         if ((dropped=vidcapRecordBANK[capturehandle].nr_droppedframes) > 0) {
-            printf("PTB-INFO: Video capture dropped %i frames on device %i to keep pipe running.\n", vidcapRecordBANK[capturehandle].nr_droppedframes, capturehandle); 
+            if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Video capture dropped %i frames on device %i to keep pipe running.\n", vidcapRecordBANK[capturehandle].nr_droppedframes, capturehandle); 
         }
         if (vidcapRecordBANK[capturehandle].nrframes>0)  vidcapRecordBANK[capturehandle].avg_decompresstime/= (double)vidcapRecordBANK[capturehandle].nrframes;
-        printf("PTB-INFO: Average time spent in video decompressor was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_decompresstime * 1000.0f);
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Average time spent in video decompressor was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_decompresstime * 1000.0f);
         if (vidcapRecordBANK[capturehandle].nrgfxframes>0)  vidcapRecordBANK[capturehandle].avg_gfxtime/= (double)vidcapRecordBANK[capturehandle].nrgfxframes;
-        printf("PTB-INFO: Average time spent in GetCapturedImage was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_gfxtime * 1000.0f);
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Average time spent in GetCapturedImage was %lf milliseconds.\n", vidcapRecordBANK[capturehandle].avg_gfxtime * 1000.0f);
     }
     
     // Reset framecounter:

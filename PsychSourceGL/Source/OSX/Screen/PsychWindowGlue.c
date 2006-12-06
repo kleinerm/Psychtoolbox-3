@@ -352,7 +352,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		fflush(NULL);
 	}
 	else {
-		printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
 	}
 	
     // Enable multisampling if it was requested:
@@ -395,18 +395,18 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
                                                            &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
                     // Mapping failed!
                     fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-                    printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
+                    if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
                 }
                 else {
-                    printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
+                    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
                 }
             }
             else {
-                printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOFBCreateSharedCursor()] - Fallback path for time stamping won't be available.\n");
+                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOFBCreateSharedCursor()] - Fallback path for time stamping won't be available.\n");
             }
         }
         else {
-            printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
+            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");
         }
         
         // If the mapping worked, we have a pointer to the driver memory in .shmem, otherwise we have NULL:
@@ -578,7 +578,7 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     long myinterval = (long) swapInterval;
     error=CGLSetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
     if (error) {
-        printf("\nPTB-WARNING: FAILED to enable synchronization to vertical retrace!\n\n");
+        if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to enable synchronization to vertical retrace!\n\n");
     }
 }
 

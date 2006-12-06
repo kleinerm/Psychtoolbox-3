@@ -43,6 +43,7 @@
 #include "PsychTextureSupport.h"
 #include "PsychAlphaBlending.h"
 #include "PsychVideoCaptureSupport.h"
+#include "PsychImagingPipelineSupport.h"
 
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
@@ -174,6 +175,8 @@ PsychError      SCREENEndOpenGL(void);
 PsychError      SCREENLoadCLUT(void);
 PsychError      SCREENDisplaySize(void);
 PsychError      SCREENSetOpenGLTextureFromMemPointer(void);
+PsychError		SCREENColorRange(void);
+PsychError		SCREENHookFunction(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

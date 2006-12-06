@@ -106,11 +106,12 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
-        "\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
-        "\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
-        "\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
+	"\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
+	"\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
-        "\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"; 
+	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
+	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 			
 static char seeAlsoString[] = "";	
 
@@ -274,19 +275,27 @@ PsychError SCREENPreference(void)
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 
-                        if(PsychMatch(preferenceName, "VBLTimestampingMode")){
+			if(PsychMatch(preferenceName, "VBLTimestampingMode")){
 			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_VBLTimestampingMode());
 			if(numInputArgs==2){
                             PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
                             PsychPrefStateSet_VBLTimestampingMode(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
-                }else 
+		}else 
 			if(PsychMatch(preferenceName, "ConserveVRAM")){
 					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
 					if(numInputArgs==2){
 						PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
 						PsychPrefStateSet_ConserveVRAM(tempInt);
+					}
+			preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "Verbosity")){
+					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_Verbosity());
+					if(numInputArgs==2){
+						PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+						PsychPrefStateSet_Verbosity(tempInt);
 					}
 			preferenceNameArgumentValid=TRUE;
 		}else 

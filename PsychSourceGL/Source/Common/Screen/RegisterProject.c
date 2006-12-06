@@ -170,41 +170,43 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("LineStipple", &SCREENLineStipple));  
 	PsychErrorExit(PsychRegister("SelectStereoDrawBuffer", &SCREENSelectStereoDrawBuffer));
 	PsychErrorExit(PsychRegister("DrawingFinished", &SCREENDrawingFinished));
-        PsychErrorExit(PsychRegister("DrawLines", &SCREENDrawLines));
-        PsychErrorExit(PsychRegister("GetFlipInterval", &SCREENGetFlipInterval));
-        PsychErrorExit(PsychRegister("CloseMovie", &SCREENCloseMovie));
-        PsychErrorExit(PsychRegister("OpenMovie", &SCREENOpenMovie));
-        PsychErrorExit(PsychRegister("PlayMovie", &SCREENPlayMovie));
-        PsychErrorExit(PsychRegister("SetMovieTimeIndex", &SCREENSetMovieTimeIndex));
-        PsychErrorExit(PsychRegister("GetMovieTimeIndex", &SCREENGetMovieTimeIndex));
-        PsychErrorExit(PsychRegister("GetMovieImage", &SCREENGetMovieImage));
-        PsychErrorExit(PsychRegister("glPushMatrix", &SCREENglPushMatrix));
-        PsychErrorExit(PsychRegister("glPopMatrix", &SCREENglPopMatrix));
-        PsychErrorExit(PsychRegister("glLoadIdentity", &SCREENglLoadIdentity));
-        PsychErrorExit(PsychRegister("glTranslate", &SCREENglTranslate));
-        PsychErrorExit(PsychRegister("glScale", &SCREENglScale));
-        PsychErrorExit(PsychRegister("glRotate", &SCREENglRotate));
-        PsychErrorExit(PsychRegister("PreloadTextures", &SCREENPreloadTextures));
-        PsychErrorExit(PsychRegister("FillArc", &SCREENFillArc));
-        PsychErrorExit(PsychRegister("DrawArc", &SCREENDrawArc));
-        PsychErrorExit(PsychRegister("FrameArc", &SCREENFrameArc));
-        PsychErrorExit(PsychRegister("CopyWindow", &SCREENCopyWindow));
-        PsychErrorExit(PsychRegister("WaitBlanking", &SCREENWaitBlanking));
-        PsychErrorExit(PsychRegister("GetOpenGLTexture", &SCREENGetOpenGLTexture));
-        PsychErrorExit(PsychRegister("SetOpenGLTexture", &SCREENSetOpenGLTexture));
-        PsychErrorExit(PsychRegister("BeginOpenGL", &SCREENBeginOpenGL));
-        PsychErrorExit(PsychRegister("EndOpenGL", &SCREENEndOpenGL));
-        PsychErrorExit(PsychRegister("OpenVideoCapture", &SCREENOpenVideoCapture));
-        PsychErrorExit(PsychRegister("CloseVideoCapture", &SCREENCloseVideoCapture));
-        PsychErrorExit(PsychRegister("StartVideoCapture", &SCREENStartVideoCapture));
-        PsychErrorExit(PsychRegister("StopVideoCapture", &SCREENStopVideoCapture));
-        PsychErrorExit(PsychRegister("GetCapturedImage", &SCREENGetCapturedImage));
+	PsychErrorExit(PsychRegister("DrawLines", &SCREENDrawLines));
+	PsychErrorExit(PsychRegister("GetFlipInterval", &SCREENGetFlipInterval));
+	PsychErrorExit(PsychRegister("CloseMovie", &SCREENCloseMovie));
+	PsychErrorExit(PsychRegister("OpenMovie", &SCREENOpenMovie));
+	PsychErrorExit(PsychRegister("PlayMovie", &SCREENPlayMovie));
+	PsychErrorExit(PsychRegister("SetMovieTimeIndex", &SCREENSetMovieTimeIndex));
+	PsychErrorExit(PsychRegister("GetMovieTimeIndex", &SCREENGetMovieTimeIndex));
+	PsychErrorExit(PsychRegister("GetMovieImage", &SCREENGetMovieImage));
+	PsychErrorExit(PsychRegister("glPushMatrix", &SCREENglPushMatrix));
+	PsychErrorExit(PsychRegister("glPopMatrix", &SCREENglPopMatrix));
+	PsychErrorExit(PsychRegister("glLoadIdentity", &SCREENglLoadIdentity));
+	PsychErrorExit(PsychRegister("glTranslate", &SCREENglTranslate));
+	PsychErrorExit(PsychRegister("glScale", &SCREENglScale));
+	PsychErrorExit(PsychRegister("glRotate", &SCREENglRotate));
+	PsychErrorExit(PsychRegister("PreloadTextures", &SCREENPreloadTextures));
+	PsychErrorExit(PsychRegister("FillArc", &SCREENFillArc));
+	PsychErrorExit(PsychRegister("DrawArc", &SCREENDrawArc));
+	PsychErrorExit(PsychRegister("FrameArc", &SCREENFrameArc));
+	PsychErrorExit(PsychRegister("CopyWindow", &SCREENCopyWindow));
+	PsychErrorExit(PsychRegister("WaitBlanking", &SCREENWaitBlanking));
+	PsychErrorExit(PsychRegister("GetOpenGLTexture", &SCREENGetOpenGLTexture));
+	PsychErrorExit(PsychRegister("SetOpenGLTexture", &SCREENSetOpenGLTexture));
+	PsychErrorExit(PsychRegister("BeginOpenGL", &SCREENBeginOpenGL));
+	PsychErrorExit(PsychRegister("EndOpenGL", &SCREENEndOpenGL));
+	PsychErrorExit(PsychRegister("OpenVideoCapture", &SCREENOpenVideoCapture));
+	PsychErrorExit(PsychRegister("CloseVideoCapture", &SCREENCloseVideoCapture));
+	PsychErrorExit(PsychRegister("StartVideoCapture", &SCREENStartVideoCapture));
+	PsychErrorExit(PsychRegister("StopVideoCapture", &SCREENStopVideoCapture));
+	PsychErrorExit(PsychRegister("GetCapturedImage", &SCREENGetCapturedImage));
 	PsychErrorExit(PsychRegister("SetVideoCaptureParameter", &SCREENSetVideoCaptureParameter));
 	PsychErrorExit(PsychRegister("LoadCLUT", &SCREENLoadCLUT));
-        PsychErrorExit(PsychRegister("DisplaySize", &SCREENDisplaySize));
+	PsychErrorExit(PsychRegister("DisplaySize", &SCREENDisplaySize));
 	PsychErrorExit(PsychRegister("SetOpenGLTextureFromMemPointer", &SCREENSetOpenGLTextureFromMemPointer));
-
- 	//Experiments
+	PsychErrorExit(PsychRegister("ColorRange", &SCREENColorRange));
+	PsychErrorExit(PsychRegister("HookFunction", &SCREENHookFunction));
+ 	
+	//Experiments
 
 
 	//PsychErrorExit(PsychRegister("SetGLSynchronous", &SCREENSetGLSynchronous));

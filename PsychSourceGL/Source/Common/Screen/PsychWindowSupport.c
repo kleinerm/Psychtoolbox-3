@@ -280,22 +280,21 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
     
-	if(!PsychPrefStateGet_SuppressAllWarnings()){
-		if (true) {
+	if(PsychPrefStateGet_Verbosity()>2) {
 		  printf("\n\nPTB-INFO: This is the OpenGL-Psychtoolbox version %i.%i.%i. ", PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber());
 		  printf("Type 'PsychtoolboxVersion' for more detailed version information.\n"); 
 		  printf("PTB-INFO: Psychtoolbox is licensed to you under terms of the GNU General Public License (GPL). See file 'License.txt' in the\n");
 		  printf("PTB-INFO: Psychtoolbox root folder for a copy of the GPL license.\n\n");
-		}
-
-		if (PsychPrefStateGet_EmulateOldPTB()) {
+		
+		  printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
+	}
+	
+	if (PsychPrefStateGet_EmulateOldPTB() && PsychPrefStateGet_Verbosity()>1) {
 			printf("PTB-INFO: Psychtoolbox is running in compatibility mode to old MacOS-9 PTB. This is an experimental feature with\n");
 			printf("PTB-INFO: limited support and possibly significant bugs hidden in it! Use with great caution and avoid if you can!\n");
 			printf("PTB-INFO: Currently implemented: Screen('OpenOffscreenWindow'), Screen('CopyWindow') and Screen('WaitBlanking')\n");
-		}
-		
-		printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
 	}
+
     
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
@@ -322,7 +321,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     CGDisplayCount totaldisplaycount=0;
     CGGetOnlineDisplayList(0, NULL, &totaldisplaycount);
     
-    if(!PsychPrefStateGet_SuppressAllWarnings()){
+    if(PsychPrefStateGet_Verbosity()>1){
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
 			printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
@@ -366,7 +365,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
 
     if (numBuffers<2) {
-		if(!PsychPrefStateGet_SuppressAllWarnings()){
+		if(PsychPrefStateGet_Verbosity()>1){
 			// Setup for single-buffer mode is finished!
 			printf("\n\nPTB-WARNING: You are using a *single-buffered* window. This is *strongly discouraged* unless you\n");
 			printf("PTB-WARNING: *really* know what you're doing! Stimulus presentation timing and all reported timestamps\n");
@@ -486,7 +485,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  // That's impossible on anything else than a high-precision 500 Hz display!
 	  // --> CGDisplayBeamPosition is not working correctly for some reason.
 	  sync_trouble = true;
-	  if(!PsychPrefStateGet_SuppressAllWarnings())
+	  if(PsychPrefStateGet_Verbosity()>1)
 	    printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value)\n");
 	}
 	else {
@@ -523,7 +522,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  // as invalid so it doesn't get used anywhere:
 	  sync_trouble = true;
 	  ifi_beamestimate = 0;
-	  if(!PsychPrefStateGet_SuppressAllWarnings())
+	  if(PsychPrefStateGet_Verbosity()>1)
 	    printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
 	}
 	else {
@@ -555,7 +554,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  // video refresh interval...
 	  ifi_estimate = ifi_estimate * 0.5f;
 	  (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-	  if(!PsychPrefStateGet_SuppressAllWarnings()){
+	  if(PsychPrefStateGet_Verbosity()>2){
 	    if ((*windowRecord)->stereomode == kPsychOpenGLStereo) {
 	      printf("\nPTB-INFO: The timing granularity of stimulus onset/offset via Screen('Flip') is twice as long\n");
 	      printf("PTB-INFO: as the refresh interval of your monitor when using OpenGL flip-frame stereo on your setup.\n");
@@ -576,17 +575,20 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       ifi_beamestimate = 0;
     }
 
-    if(!PsychPrefStateGet_SuppressAllWarnings()){
-      printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
-      if (strstr(glGetString(GL_RENDERER), "GDI")) {
-	printf("PTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
-	printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
-	printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
-	printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
-	printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
-	printf("PTB-WARNING: set to 'Full' (rightmost position).\n");
-      }
-      
+	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
+
+    if(PsychPrefStateGet_Verbosity()>1) {
+		if (strstr(glGetString(GL_RENDERER), "GDI")) {
+			printf("PTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
+			printf("PTB-WARNING: performance and severe timing and synchronization problems. A reason could be that you run at\n");
+			printf("PTB-WARNING: a too high display resolution, or the system is running out of ressources for some other reason.\n");
+			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
+			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
+			printf("PTB-WARNING: set to 'Full' (rightmost position).\n");
+		}
+	}
+	
+    if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
@@ -676,14 +678,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       // Reliable estimate? These are our minimum requirements...
       if (numSamples<50 || stddev>0.001) {
         sync_disaster = true;
-	if(!PsychPrefStateGet_SuppressAllWarnings())
+	if(PsychPrefStateGet_Verbosity()>1)
 	  printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
       }
       
       // Check for mismatch between measured ifi from glFinish() VBLSync method and the value reported by the OS, if any:
       // This would indicate that we have massive trouble syncing to the VBL!
       if ((ifi_nominal > 0) && (ifi_estimate < 0.9 * ifi_nominal || ifi_estimate > 1.1 * ifi_nominal)) {
-        if(!PsychPrefStateGet_SuppressAllWarnings())
+        if(PsychPrefStateGet_Verbosity()>1)
 	  printf("\nWARNING: Mismatch between measured monitor refresh interval and interval reported by operating system.\nThis indicates massive problems with VBL sync.\n");    
         sync_disaster = true;
       }
@@ -691,7 +693,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       // Another check for proper VBL syncing: We only accept monitor refresh intervals between 25 Hz and 250 Hz.
       // Lower- / higher values probably indicate sync-trouble...
       if (ifi_estimate < 0.004 || ifi_estimate > 0.040) {
-        if(!PsychPrefStateGet_SuppressAllWarnings())
+        if(PsychPrefStateGet_Verbosity()>1)
 	  printf("\nWARNING: Measured monitor refresh interval indicates a display refresh of less than 25 Hz or more than 250 Hz?!?\nThis indicates massive problems with VBL sync.\n");    
         sync_disaster = true;        
       }
@@ -706,7 +708,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       (*windowRecord)->nrIFISamples=1;
       (*windowRecord)->IFIRunningSum=ifi_estimate;
       (*windowRecord)->VideoRefreshInterval = ifi_estimate;
-      if(!PsychPrefStateGet_SuppressAllWarnings()) {
+      if(PsychPrefStateGet_Verbosity()>1) {
 	if (skip_synctests < 2) {
 	  printf("\nPTB-WARNING: Unable to measure monitor refresh interval! Using a fake value of %f milliseconds.\n", ifi_estimate*1000);
 	}
@@ -719,7 +721,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if (sync_disaster) {
       // We fail! Continuing would be too dangerous without a working VBL sync. We don't
       // want to spoil somebodys study just because s(he) is relying on a non-working sync.
-      if(!PsychPrefStateGet_SuppressAllWarnings()){		
+      if(PsychPrefStateGet_Verbosity()>0){		
 	printf("\n\n");
 	printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
 	printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
@@ -744,7 +746,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // This would indicate that the beam position is reported from a different display device
     // than the one we are VBL syncing to. -> Trouble!
     if ((ifi_beamestimate < 0.8 * ifi_estimate || ifi_beamestimate > 1.2 * ifi_estimate) && (ifi_beamestimate > 0)) {
-        if(!PsychPrefStateGet_SuppressAllWarnings())
+        if(PsychPrefStateGet_Verbosity()>1)
 	  printf("\nWARNING: Mismatch between measured monitor refresh intervals! This indicates problems with rasterbeam position queries.\n");    
         sync_trouble = true;
     }
@@ -752,7 +754,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if (sync_trouble) {
         // Fail-Safe: Mark VBL-Endline as invalid, so a couple of mechanisms get disabled in Screen('Flip') aka PsychFlipWindowBuffers().
         VBL_Endline = -1;
-		if(!PsychPrefStateGet_SuppressAllWarnings()){		
+		if(PsychPrefStateGet_Verbosity()>1){		
 			printf("\n\n");
 			printf("----- ! PTB - WARNING: SYNCHRONIZATION TROUBLE ! ----\n\n");
 			printf("One or more internal checks (see Warnings above) indicate that\n");
@@ -770,7 +772,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // The start of a gfx-card "Blacklist"...
     if ((strstr(glGetString(GL_VENDOR), "ATI")!=NULL) && multidisplay && PSYCH_SYSTEM == PSYCH_OSX) {
         // ATI card detected -> Give hint to be extra cautious about beampos...
-		if(!PsychPrefStateGet_SuppressAllWarnings()){	
+		if(PsychPrefStateGet_Verbosity()>2){	
 			printf("\n\nPTB-HINT: Your graphics card is KNOWN TO HAVE TROUBLE with beamposition queries on some dual display setups\n");
 			printf("PTB-HINT: due to an ATI driver bug in all versions of MacOS-X 10.3.x and in versions of MacOS-X before 10.4.3!\n");
 			printf("PTB-HINT: Please *double-check* this by setting different monitor refresh rates for the different displays.\n");
@@ -867,14 +869,14 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>0)) {
-      if(!PsychPrefStateGet_SuppressAllWarnings()) {
+      if(PsychPrefStateGet_Verbosity()>1) {
 	printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline\n");
 	printf("WARNING: a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
       }
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests()) {
-        if(!PsychPrefStateGet_SuppressAllWarnings()){
+        if(PsychPrefStateGet_Verbosity()>1){
 			printf("\n\nWARNING: This session of your experiment was run by you with the setting Screen('Preference', 'SkipSyncTests', %i).\n",
 			       (int) PsychPrefStateGet_SkipSyncTests());
 			printf("WARNING: This means that some internal self-tests and calibrations were skipped. Your stimulus presentation timing\n");

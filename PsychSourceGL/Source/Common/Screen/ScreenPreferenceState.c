@@ -65,6 +65,14 @@ void PrepareScreenPreferences(void)
 }
 static Boolean							suppressAllWarnings=FALSE;
 
+// General level of verbosity:
+// 0 = Shut up.
+// 1 = Errors only.
+// 2 = Errors and Warnings.
+// 3 = Above + Basic Info, e.g., window properties and copyright. This is the default.
+// 4 = Lot's more debug output and infos.
+// 5 = Extreme debug output.
+static int								Verbosity=3;
 
 //Accessors
 
@@ -281,7 +289,18 @@ void PsychPrefStateSet_SuppressAllWarnings(Boolean setFlag)
 	suppressAllWarnings=setFlag;
 }
 
+// Level of verbosity:
+int PsychPrefStateGet_Verbosity(void)
+{
+	// Clamp level of verbosity to max. 1 if suppression of warnings is requested:
+	if (suppressAllWarnings && Verbosity>1) return(1); 
+	return(Verbosity);
+}
 
+void PsychPrefStateSet_Verbosity(int level)
+{
+	Verbosity = level;
+}
 
 
 

@@ -888,7 +888,7 @@ int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double sou
 
         // Output count of dropped frames:
         if ((dropped=movieRecordBANK[moviehandle].nr_droppedframes) > 0) {
-            printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle); 
+            if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Movie playback had to drop %i frames of movie %i to keep playback in sync.\n", movieRecordBANK[moviehandle].nr_droppedframes, moviehandle); 
         }
     }
     

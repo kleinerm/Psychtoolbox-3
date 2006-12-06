@@ -162,7 +162,7 @@ typedef struct _PsychWindowRecordType_{
         bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.
-	double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
+		double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
         double                                  VideoRefreshInterval;   // MK: Estimated video refresh interval of display. Can be different to IFI.
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
         bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
@@ -174,7 +174,11 @@ typedef struct _PsychWindowRecordType_{
 	float* inRedTable;
 	float* inGreenTable;
 	float* inBlueTable;
-
+	
+	// Settings for the image processing and hook callback pipeline:
+	double		colorRange;						// Maximum allowable color component value. See SCREENColorRange.c for explanation.
+	int			imagingMode;					// Master mode switch for imaging and callback hook pipeline.
+	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c
 	//Only use abstracted accessors on this structure, otherwise you will break platform portability.

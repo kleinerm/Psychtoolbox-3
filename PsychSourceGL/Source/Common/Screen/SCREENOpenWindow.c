@@ -27,8 +27,8 @@
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample]);";
-//                                                               1                         2        3      4           5                 6            7
+static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode]);";
+//                                                               1                         2        3      4           5                 6            7             8
 static char synopsisString[] =
 	"Open an onscreen window. Specify a screen by a windowPtr or a screenNumber (0 is "
 	"the main screen, with menu bar). \"color\" is the clut index (scalar or [r g b] "
@@ -57,6 +57,8 @@ static char synopsisString[] =
         "number of samples is hardware dependent. Psychtoolbox will silently clamp the number to the maximum "
         "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
         "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
+		"\"imagingmode\" This optional parameter enables PTB's internal image processing pipeline. The pipeline is "
+		"off by default. Read 'help PsychImagingMode' for information about this feature. "
         "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
         "Psychtoolbox, you can switch into a compatibility mode by adding the command "
@@ -70,7 +72,7 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
 PsychError SCREENOpenWindow(void) 
 
 {
-    int					screenNumber, numWindowBuffers, stereomode, multiSample;
+    int					screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
     PsychRectType 			rect;
     PsychColorType			color;
     PsychColorModeType  		mode; 
@@ -88,7 +90,7 @@ PsychError SCREENOpenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(7));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(8));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
@@ -180,6 +182,10 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInIntegerArg(7,FALSE,&multiSample);
     if(multiSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid multisample value provided (Valid are positive numbers >= 0).");
 
+	imagingmode=0;
+    PsychCopyInIntegerArg(8,FALSE,&imagingmode);
+    if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
+	
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
     PsychGetScreenSettings(screenNumber, &screenSettings);    
     PsychInitDepthStruct(&(screenSettings.depth));
@@ -228,7 +234,7 @@ PsychError SCREENOpenWindow(void)
     if (!didWindowOpen) {
         PsychReleaseScreen(screenNumber);
 
-        // We use this dirty hack to exit with an error, but without printin
+        // We use this dirty hack to exit with an error, but without printing
         // an error message. The specific error message has been printed in
         // PsychOpenOnscreenWindow() already..
         PsychErrMsgTxt("");
@@ -246,6 +252,9 @@ PsychError SCREENOpenWindow(void)
         fflush(NULL);
     }
     
+	// Initialize internal image processing pipeline if requested:
+	PsychInitializeImagingPipeline(windowRecord, imagingmode);
+	
     // Set the clear color and perform a backbuffer-clear:
     PsychSetGLContext(windowRecord);
     PsychConvertColorAndDepthToDoubleVector(&color, PsychGetValueFromDepthStruct(0, &useDepth), dVals);

@@ -72,19 +72,19 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
         if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
 	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-	    if(!PsychPrefStateGet_SuppressAllWarnings())
+	    if(PsychPrefStateGet_Verbosity()>2)
 			printf("PTB-INFO: Using OpenGL GL_TEXTURE_RECTANGLE_EXT extension for efficient high-performance texture mapping...\n");
         }
         else if (strstr(glGetString(GL_EXTENSIONS), "GL_NV_texture_rectangle") && GL_TEXTURE_RECTANGLE_NV != GL_TEXTURE_2D){
 	    // Try NVidia specific texture rectangle extension:
 	    texturetarget = GL_TEXTURE_RECTANGLE_NV;
-	    if(!PsychPrefStateGet_SuppressAllWarnings())
+	    if(PsychPrefStateGet_Verbosity()>2)
 			printf("PTB-INFO: Using NVidia's GL_TEXTURE_RECTANGLE_NV extension for efficient high-performance texture mapping...\n");
         }
         else {
 	    // No texture rectangle extension available :(
 	    // We fall back to standard power of two textures...
-		if(!PsychPrefStateGet_SuppressAllWarnings()){
+		if(PsychPrefStateGet_Verbosity()>1){
 			printf("\nPTB-WARNING: Your graphics hardware & driver doesn't support OpenGL rectangle textures.\n");
 			printf("PTB-WARNING: This won't affect the correctness or visual accuracy of image drawing, but it can significantly\n");
 			printf("PTB-WARNING: degrade performance/speed and increase memory consumption of images by up to a factor of 4!\n");

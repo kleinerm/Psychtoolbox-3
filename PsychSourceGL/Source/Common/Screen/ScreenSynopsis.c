@@ -77,7 +77,7 @@ void InitializeSynopsis()
 
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
-	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample]);";	
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
         synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0]);";	
 	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
@@ -149,12 +149,14 @@ void InitializeSynopsis()
 	synopsis[i++] = "hz=Screen('FrameRate', windowPtrOrScreenNumber [, mode] [, reqFrameRate]);";	
 	synopsis[i++] = "hz=Screen('NominalFrameRate', windowPtrOrScreenNumber [, mode] [, reqFrameRate]);";	
 	synopsis[i++] = "[ monitorFlipInterval nrValidSamples stddev ]=Screen('GetFlipInterval', windowPtr [, nrSamples] [, stddev] [, timeout]);";
-        synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
+	synopsis[i++] = "screenNumber=Screen('WindowScreenNumber', windowPtr);";
 	synopsis[i++] = "rect=Screen('Rect', windowPtrOrScreenNumber);";
 	synopsis[i++] = "pixelSize=Screen('PixelSize', windowPtrOrScreenNumber);";
 	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
-        synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
+	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
+	synopsis[i++] = "oldmaximumvalue = Screen('ColorRange', windowPtr [, maximumvalue]);";
+	synopsis[i++] = "[ret1, ret2] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2);";
 
 	// Get and set information about the environment, computer, and video card (i.e. screen):
 	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
@@ -169,8 +171,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "oldSecondsMultiplier=Screen('Preference', 'SecondsMultiplier');";
 	synopsis[i++] = "Screen('Preference','SkipSyncTests', skipTest);";
 	synopsis[i++] = "Screen('Preference','VisualDebugLevel', level (valid values between 0 and 5));";
-        synopsis[i++] = "Screen('Preference', 'ConserveVRAM', mode (valid values between 0 and 3));";
-        synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);";
+	synopsis[i++] = "Screen('Preference', 'ConserveVRAM', mode (valid values between 0 and 3));";
+	synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);";
 
 		
 	//synopsis[i++] = "\n% Set clipping region (on- or off- screen):";
