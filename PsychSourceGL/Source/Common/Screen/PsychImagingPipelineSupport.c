@@ -55,3 +55,40 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Well done.
 	return;
 }
+
+void PsychPipelineListAllHooks(PsychWindowRecordType *windowRecord)
+{
+	printf("PTB-INFO: The Screen command currently provides the following hook functions:\n");
+	printf("=============================================================================\n");
+	printf("Screen('Flip'):\n");
+	printf("- Flip_MasterOverride : Complete replacement for the command. C and M functions.\n");
+	printf("- Flip_MasterOverride : Complete replacement for the command. C and M functions.\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("\n");
+	printf("=============================================================================\n\n");	
+	fflush(NULL);
+	// Well done.
+	return;	
+}
+
+//void	PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord)
+//void	PsychPipelineDumpHook(PsychWindowRecordType *windowRecord, const char* hookString)
+//void	PsychPipelineDisableHook(PsychWindowRecordType *windowRecord, const char* hookString);
+//void	PsychPipelineEnableHook(PsychWindowRecordType *windowRecord, const char* hookString);
+//void	PsychPipelineResetHook(PsychWindowRecordType *windowRecord, const char* hookString);
+//int		PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, char** idString, char** blitterString, double* doubleptr, double* shaderid, double* luttexid1);
+//void	PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, const char* configString);
+//void	PsychPipelineAddRuntimeFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, const char* evalString);
+//void	PsychPipelineAddCFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, void* procPtr);
+//void	PsychPipelineAddShaderToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, unsigned int shaderid, const char* blitterString, unsigned int luttexid1);

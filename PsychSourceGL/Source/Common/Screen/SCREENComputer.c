@@ -402,43 +402,34 @@ PsychError SCREENComputer(void)
     tempULongIntSize=sizeof(tempULongInt);
 
     ReportSysctlError(sysctl(mib, 2, &tempULongInt, &tempULongIntSize, NULL, 0));
-
     PsychSetStructArrayDoubleElement("cpufreq", 0, (double)tempULongInt, hwStruct);
-
-
-
     PsychSetStructArrayStructElement("hw",0, hwStruct, majorStruct);
 
-
-
     //fill in the process user, console user and machine name in the root struct.
-
-        tempCFStringRef= CSCopyMachineName();
-
-	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-
-	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-
-	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-
-	if(stringSuccess) {
+	tempCFStringRef= CSCopyMachineName();
+	if (tempCFStringRef) {
+		stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
+		tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
+		stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
+		
+		if(stringSuccess) {
             PsychSetStructArrayStringElement("machineName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
         
-	free(tempStrPtr);
-	CFRelease(tempCFStringRef);
-
+		free(tempStrPtr);
+		CFRelease(tempCFStringRef);
+	}
+	else {
+		PsychSetStructArrayStringElement("machineName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
+	}
+	
 	tempCFStringRef= CSCopyUserName(TRUE); //use short name
-
 	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-
 	if(stringSuccess) {
             PsychSetStructArrayStringElement("processUserShortName", 0, tempStrPtr, majorStruct);
         }
@@ -447,26 +438,19 @@ PsychError SCREENComputer(void)
         }
 
 	free(tempStrPtr);
-
 	CFRelease(tempCFStringRef);
 
 	tempCFStringRef= CSCopyUserName(FALSE); //use long name
-
 	stringLengthChars=(int) CFStringGetMaximumSizeForEncoding(CFStringGetLength(tempCFStringRef), kCFStringEncodingUTF8);
-
 	tempStrPtr=malloc(sizeof(char) * (stringLengthChars+1));
-
 	stringSuccess= CFStringGetCString(tempCFStringRef, tempStrPtr, stringLengthChars+1, kCFStringEncodingUTF8);
-
 	if(stringSuccess) {
             PsychSetStructArrayStringElement("processUserLongName", 0, tempStrPtr, majorStruct);
         }
         else {
             PsychSetStructArrayStringElement("processUserLongName", 0, "UNKNOWN! QUERY FAILED DUE TO EMPTY OR PROBLEMATIC NAME.", majorStruct);
         }
-
 	free(tempStrPtr);
-
 	CFRelease(tempCFStringRef);
 
 	tempCFStringRef= SCDynamicStoreCopyConsoleUser(NULL, NULL, NULL);
