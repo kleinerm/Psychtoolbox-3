@@ -825,19 +825,27 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
     
+	// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord:
+	PsychShutdownImagingPipeline(windowRecord, TRUE);
+
     if(PsychIsOnscreenWindow(windowRecord)){
                 // Free possible shadow textures:
                 PsychFreeTextureForWindowRecord(windowRecord);        
                 
                 // Make sure that OpenGL pipeline is done & idle for this window:
                 PsychSetGLContext(windowRecord);
+				
+				// EXPERIMENTAL: Execute hook chain for OpenGL related shutdown:
+				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, 0, 1);
+
+				// Sync and idle the pipeline:
                 glFinish();
                 
                 // Disable rendering context:
                 PsychOSUnsetGLContext(windowRecord);
 
-		// Call OS specific low-level window close routine:
-		PsychOSCloseWindow(windowRecord);
+				// Call OS specific low-level window close routine:
+				PsychOSCloseWindow(windowRecord);
 
                 // We need to NULL-out all references to the - now destroyed - OpenGL context:
                 PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
@@ -849,6 +857,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 }
                 PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
                 windowRecord->targetSpecific.contextObject=NULL;
+				
+				// EXPERIMENTAL: Execute hook chain for final non-OpenGL related shutdown:
+				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, 0, 1);				
     }
     else if(windowRecord->windowType==kPsychTexture) {
                 // Texture or Offscreen window - which is also just a form of texture.
@@ -884,7 +895,10 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 			printf("WARNING: study, please make sure to set Screen('Preference', 'SkipSyncTests', 0) for maximum accuracy and reliability.\n");
 		}
     }
-    
+
+	// Shutdown non-OpenGL related parts of imaging pipeline for this windowRecord:
+	PsychShutdownImagingPipeline(windowRecord, FALSE);
+
     PsychErrorExit(FreeWindowRecordFromPntr(windowRecord));
 }
 
@@ -1834,6 +1848,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
         glDrawBuffer(draw_buffer);        
     }
 
+	// EXPERIMENTAL: Execute hook chain for final backbuffer data formatting after stereo composition and post processing:
+	PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, 0, 1);
+
     // Restore modelview matrix:
     glPopMatrix();
     
@@ -1949,6 +1966,9 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
     PsychTestForGLErrors();
     
+	// EXPERIMENTAL: Execute hook chain for preparation of user space drawing ops:
+	PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, 0, 1);
+
     // Done.
     return;
 }

@@ -172,6 +172,7 @@ stddev=30;
             % Convert it to a texture 'tex':
             tex=Screen('MakeTexture', win, noiseimg);
             intex=Screen('GetOpenGLTexture', win, tex);
+            cotex=Screen('SetOpenGLTexture', win, [], convolvetex, GL.TEXTURE_RECTANGLE_EXT);
             
             if validate == 1
                 glFinish;
@@ -180,14 +181,16 @@ stddev=30;
 
             % Pass 1: Blit texture into our FBO, apply first kernel:
             moglChooseFBO(convolvefbo);
+            %moglChooseFBO(0);
             glUseProgram(shader1);
-            moglBlitTexture(intex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
-
+            %moglBlitTexture(intex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
+            Screen('DrawTexture', win, tex, [], dstRect, [], 0);
             % Pass 2: Blit intermediate result into framebuffer, apply
             % second kernel:
             moglChooseFBO(0);
             glUseProgram(shader2);
-            moglBlitTexture(convolvetex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
+            Screen('DrawTexture', win, cotex, [], dstRect, [], 0);
+            %moglBlitTexture(convolvetex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
 
             % Done. Disable shader:
             glUseProgram(0);
@@ -202,7 +205,7 @@ stddev=30;
                 noiseimg = single(noiseimg);
                 tic
                 ref = conv2(noiseimg, single(kernel1), 'same');
-                ref = conv2(ref, single(kernel2), 'same');
+                ref = conv2(single(ref), single(kernel2), 'same');
                 %ref = conv2(noiseimg, (kernel), 'same');
                 cpu = toc
                 ref = uint8(0.5 + ref);

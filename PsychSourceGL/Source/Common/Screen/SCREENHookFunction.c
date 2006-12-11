@@ -89,7 +89,7 @@ PsychError SCREENHookFunction(void)
 	if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
 	
 	// Need hook name?
-	if(cmd!=9) {
+	if(cmd!=9 && cmd!=8) {
 		// Get it:
 		PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
 	}

@@ -2598,8 +2598,19 @@ double PsychGetNanValue(void)
 	return(mxGetNaN());
 }
 
-
-
+/* PsychRuntimeEvaluateString()
+ *
+ * Simple function evaluation by scripting environment via feval() style functions.
+ * This asks the runtime environment to execute/evaluate the given string 'cmdstring',
+ * passing no return arguments back, except an error code.
+ * 
+ */
+int	PsychRuntimeEvaluateString(const char* cmdstring)
+{
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		return(mexEvalString(cmdstring));
+	#endif
+}
 
 //end of Matlab & Octave only stuff.
 #endif

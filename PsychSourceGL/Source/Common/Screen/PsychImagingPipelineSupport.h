@@ -30,8 +30,23 @@
 
 #include "Screen.h"
 
-// Initialize imaging pipeline for windowRecord, applying the imagingmode flags. Called by Screen('OpenWindow')
+// Symbolic names for Hook-Chains:
+typedef enum {
+	kPsychCloseWindowPreGLShutdown =				0,
+	kPsychCloseWindowPostGLShutdown =				1,
+	kPsychUserspaceBufferDrawingFinished =			2,
+	kPsychStereoLeftCompositingBlit =				3,
+	kPsychStereoRightCompositingBlit =				4,
+	kPsychStereoCompositingBlit =					5,
+	kPsychPostCompositingBlit =						6,
+	kPsychFinalOutputFormattingBlit =				7,
+	kPsychUserspaceBufferDrawingPrepare =			8,
+} PsychHookType;
+
+// API for PTB core:
+void	PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *windowRecord);
 void	PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode);
+void	PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean openglpart);
 void	PsychPipelineListAllHooks(PsychWindowRecordType *windowRecord);
 void	PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord);
 void	PsychPipelineDumpHook(PsychWindowRecordType *windowRecord, const char* hookString);
@@ -43,6 +58,14 @@ void	PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, 
 void	PsychPipelineAddRuntimeFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, const char* evalString);
 void	PsychPipelineAddCFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, void* procPtr);
 void	PsychPipelineAddShaderToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, unsigned int shaderid, const char* blitterString, unsigned int luttexid1);
+
+void	PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, int minfbo, int maxfbo);
+void	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, int* srcfbo, int* dstfbo);
+
+// Internal helper functions:
+PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, int hookfunctype);
+int		PsychGetHookByName(const char* hookName);
+
 //end include once
 #endif
 

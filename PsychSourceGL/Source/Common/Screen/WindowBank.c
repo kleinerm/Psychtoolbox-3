@@ -241,6 +241,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// cleanup routine PsychCloseWindow()...
 	(*winRec)->windowType = kPsychNoWindow;
 
+	// Initialize all imaging pipeline related fields to safe defaults:
+	PsychInitImagingPipelineDefaultsForWindowRecord(*winRec);
+	
 	//Intialize the text settings field within the window record to default values which should be (but are not yet) specified in Psychtoolbox preferences.
 	PsychInitTextRecordSettings(&((*winRec)->textAttributes));
 	

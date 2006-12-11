@@ -70,6 +70,31 @@ T0 DO:
 #define PSYCH_INVALID_WINDEX 				-1
 #define PSYCH_INVALID_SCUMBER				-1
 
+// Maximum number of different hook chains:
+#define MAX_SCREEN_HOOKS 9
+
+// Type of hook function attached to a specific hook chain slot:
+#define kPsychShaderFunc	0
+#define kPsychCFunc			1
+#define kPsychMFunc			2
+#define kPsychBuiltinFunc	3
+
+// Symbolic names for different hooks:
+
+typedef struct PsychHookFunction*	PtrPsychHookFunction;
+typedef struct PsychHookFunction {
+	PtrPsychHookFunction	next;
+	char*					idString;
+	int						hookfunctype;
+	char*					pString1;
+	void*					cprocfunc;
+	unsigned int			shaderid;
+	unsigned int			luttexid1;
+} PsychHookFunction;
+
+// Typedefs for WindowRecord in WindowBank.h
+//typedef Boolean					PsychHookChainEnabled[MAX_SCREEN_HOOKS];
+
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 // Definition of OS-X core graphics and Core OpenGL handles:
@@ -175,9 +200,13 @@ typedef struct _PsychWindowRecordType_{
 	float* inGreenTable;
 	float* inBlueTable;
 	
-	// Settings for the image processing and hook callback pipeline:
-	double		colorRange;						// Maximum allowable color component value. See SCREENColorRange.c for explanation.
-	int			imagingMode;					// Master mode switch for imaging and callback hook pipeline.
+	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
+	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.
+	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
+	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.
+	Boolean					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.
+	int						renderTargetFBOS[2][2][2];				// Storage for pre-compositing FBOs
+	int						postCompositingFBOS[2][2];				// Storage for post-compositing FBOs
 	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c

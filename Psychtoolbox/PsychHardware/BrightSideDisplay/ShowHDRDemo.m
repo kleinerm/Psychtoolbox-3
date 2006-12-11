@@ -91,6 +91,14 @@ try
     % Initialize the BrightSide HDR display library:
     BrightSideHDR('Initialize', win, dummymode);
     
+    Screen('HookFunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''EndDrawing'', win)');
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    Screen('HookFunction', win, 'AppendMFunction', 'UserspaceBufferDrawingPrepare', 'Prepare FBO for drawing', 'BrightSideHDR(''BeginDrawing'', win)');
+    Screen('HookFunction', win, 'Enable', 'UserspaceBufferDrawingPrepare');
+    Screen('HookFunction', win, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''ShutDown'', win)');
+    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
+
+    
     % Enable OpenGL mode for our onscreen window: This is needed for HDR
     % texture processing.
     Screen('BeginOpenGL', win);
@@ -143,7 +151,7 @@ try
     
     while ~KbCheck
         % Select the HDR backbuffer for drawing:
-        BrightSideHDR('BeginDrawing', win);
+        % BrightSideHDR('BeginDrawing', win);
         if ~dummymode, BrightSideCore(5, 0); end
         
         % Clear it by overdrawing with a black full screen rect:
@@ -175,8 +183,8 @@ try
         % BrightSideCore(4, 0.5*(cos(rotAngle)+1));
         
         % End of drawing. Prepare HDR framebuffer for flip:
-        BrightSideHDR('EndDrawing', win);
-        actlut = Screen('ReadNormalizedGammaTable', screenid);
+        %BrightSideHDR('EndDrawing', win);
+        %actlut = Screen('ReadNormalizedGammaTable', screenid);
 
         % Show updated HDR framebuffer at next vertical retrace:
         vbl=Screen('Flip', win, vbl);
@@ -188,7 +196,7 @@ try
         framecounter = framecounter + 1;
 
         % Lets check if BrightSide knows how to handle gamma tables:
-        lutchanged = any(any(prelut - actlut))
+        %lutchanged = any(any(prelut - actlut));
     end
   
     % We're done. Print the stats:
@@ -197,7 +205,7 @@ try
     averagefps = framecounter / duration
     
     % Shutdown BrightSide HDR:
-    BrightSideHDR('Shutdown', win);
+    % BrightSideHDR('Shutdown', win);
     
     % Release all textures, close all windows:
     Screen('CloseAll');
@@ -209,7 +217,7 @@ catch
     % close the window and abort.
 
     % Shutdown BrightSide HDR if it is online:
-    BrightSideHDR('Shutdown', win);
+    % BrightSideHDR('Shutdown', win);
 
     % Release all textures, close all windows:
     Screen('CloseAll');

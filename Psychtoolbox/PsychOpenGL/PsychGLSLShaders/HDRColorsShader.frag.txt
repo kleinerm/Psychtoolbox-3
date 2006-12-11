@@ -10,5 +10,5 @@ void main()
     /* Just pass-through the alpha value, do not modify it: */
     gl_FragColor.a = gl_Color.a;
     /* Apply scaling to RGB channels... */
-    gl_FragColor.rgb = gl_Color.rgb * 255;
+    gl_FragColor.rgb = gl_Color.rgb * 255.0;
 }
