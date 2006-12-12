@@ -86,18 +86,9 @@ try
     % background color, instead of the default white one: win is the window
     % handle for this window:
     win = Screen('OpenWindow', screenid, 0);
-    prelut = Screen('ReadNormalizedGammaTable', screenid);
 
     % Initialize the BrightSide HDR display library:
     BrightSideHDR('Initialize', win, dummymode);
-    
-    Screen('HookFunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''EndDrawing'', win)');
-    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
-    Screen('HookFunction', win, 'AppendMFunction', 'UserspaceBufferDrawingPrepare', 'Prepare FBO for drawing', 'BrightSideHDR(''BeginDrawing'', win)');
-    Screen('HookFunction', win, 'Enable', 'UserspaceBufferDrawingPrepare');
-    Screen('HookFunction', win, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''ShutDown'', win)');
-    Screen('HookFunction', win, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
-
     
     % Enable OpenGL mode for our onscreen window: This is needed for HDR
     % texture processing.
@@ -150,42 +141,34 @@ try
     tstart = vbl;
     
     while ~KbCheck
-        % Select the HDR backbuffer for drawing:
-        % BrightSideHDR('BeginDrawing', win);
-        if ~dummymode, BrightSideCore(5, 0); end
-        
-        % Clear it by overdrawing with a black full screen rect:
+        % Clear backbuffer by overdrawing with a black full screen rect:
         Screen('FillRect', win, 0);
 
         % Shall we use GLSL shaders?
         if useshader, glUseProgram(glslnormalizer); end;
 
         % Draw our texture into the backbuffer. We explicitely disable bilinear
-        % filtering here, because current Geforce 7000 series hardware is
-        % not capable of bilinear filtering of floating point textures in
-        % hardware. Bilinear filtering works, but framerate drops from 30
+        % filtering if halfffloat is 0, i.e., the texture is float32 format,
+        % because current Geforce 7000 series hardware is not capable of
+        % bilinear filtering of floating point 32 textures in hardware.
+        % Bilinear filtering would work, but framerate would drop from 30
         % fps to 0.5 fps when the driver switches to the slow software
-        % fallback path. If otoh halffloat is true, i.e. the texture is
+        % fallback path. If otoh halffloat is 1, i.e. the texture is
         % stored as 16 bpc half-floats, then we enable bilinear filtering,
         % as modern hardware is capable of filtering that.
         Screen('DrawTexture', win, texid, [], [], rotAngle, halffloat);
 
         % Draw some 2D primitives:
         if useshader, glUseProgram(glslcolor); end;
-        %Screen('FillOval', win, [255 * 255 * 10 255 0], [500 500 600 600]);
+        Screen('FillOval', win, [255 * 255 * 10 255 0], [500 500 600 600]);
         
         % And some text:
         Screen('TextSize', win, 30);
         Screen('TextStyle', win , 1);
-        %DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 255*255*10 0]);
+        if dummymode==0
+            DrawFormattedText(win, 'If it works, it works.\nIf it doesn''t, it doesn''t.\n(Quoc Vuong, 2006)', 'center', 'center', [0 255*255*10 0]);
+        end
         
-        % Lightshow! Modulate LED intensity of the LED array:
-        % BrightSideCore(4, 0.5*(cos(rotAngle)+1));
-        
-        % End of drawing. Prepare HDR framebuffer for flip:
-        %BrightSideHDR('EndDrawing', win);
-        %actlut = Screen('ReadNormalizedGammaTable', screenid);
-
         % Show updated HDR framebuffer at next vertical retrace:
         vbl=Screen('Flip', win, vbl);
 
@@ -194,9 +177,6 @@ try
         
         % Count our frames...
         framecounter = framecounter + 1;
-
-        % Lets check if BrightSide knows how to handle gamma tables:
-        %lutchanged = any(any(prelut - actlut));
     end
   
     % We're done. Print the stats:
@@ -204,10 +184,7 @@ try
     duration = vbl - tstart
     averagefps = framecounter / duration
     
-    % Shutdown BrightSide HDR:
-    % BrightSideHDR('Shutdown', win);
-    
-    % Release all textures, close all windows:
+    % Release all textures, close all windows, shutdown BrightSide library:
     Screen('CloseAll');
     
     % Well done!
@@ -216,10 +193,7 @@ catch
     % Error handler: If something goes wrong between try and catch, we
     % close the window and abort.
 
-    % Shutdown BrightSide HDR if it is online:
-    % BrightSideHDR('Shutdown', win);
-
-    % Release all textures, close all windows:
+    % Release all textures, close all windows, shutdown BrightSide library:
     Screen('CloseAll');
 
     % Rethrow the error, so higher level routines can handle it:

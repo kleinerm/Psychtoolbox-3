@@ -17,18 +17,23 @@ function BrightSideHDR(cmd, arg, dummy)
 % opened before on a screen which corresponds to the attached High Dynamic Range
 % display device. If you set 'dummy' to 1, then we are in emulation mode,
 % i.e., we work without invocation of the mex file and without a real HDR
-% display.
+% display. This call will also attach all callback functions to the proper
+% hooks for the given onscreen window 'win' inside the Screen() command.
 %
 % BrightSideHDR('Debuglevel', level); -- Set level of verbosity for
 % debugging. The default is zero which means to be silent. A level of 1
 % produces some debug output.
 %
-% BrightSideHDR('BeginDrawing'); -- Mark start of drawing operations into
+% Callbacks: Usually called automatically by Screen(), no need to use them
+% in your script directly! Some of them may disappear in the future,
+% getting subsumed by Screen()'s internal imaging pipeline.
+%
+% BrightSideHDR('BeginDrawing', win); -- Mark start of drawing operations into
 % the high dynamic range backbuffer. After this command you can issue
 % standard Screen or mogl OpenGL commands to draw into the high resolution
 % framebuffer.
 %
-% BrightSideHDR('EndDrawing'); -- Mark end of drawing operations. This will
+% BrightSideHDR('EndDrawing', win); -- Mark end of drawing operations. This will
 % convert the HDR image content in the HDR backbuffer into the special data
 % format needed by the HDR display hardware. After execution of this
 % command you can simply call the usual Screen('Flip', win, ...) command to
@@ -41,6 +46,8 @@ function BrightSideHDR(cmd, arg, dummy)
 % 10/30/2006 Initial prototype implementation. MK & Oguz Ahmet Akyuz (Dept. of
 % Computer Science, University of Central Florida)
 % 11/09/2006 Small fixes and improvements to make it really work. (MK + Oguz)
+% 12/12/2006 Integrate initial hook-plugin support for PTB's imaging
+% pipeline, so user code does not need to call these functions anymore.
 
 global GL;
 persistent windowPtr;
@@ -159,6 +166,20 @@ if strcmp(cmd, 'Initialize')
     
     % Reset draw mode:
     inhdrdrawmode = 0;
+
+    % Add proper callback functions to Screen's hook-chains:
+    Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''EndDrawing'', win)');
+    Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
+    Screen('HookFunction', windowPtr, 'AppendMFunction', 'UserspaceBufferDrawingPrepare', 'Prepare FBO for drawing', 'BrightSideHDR(''BeginDrawing'', win)');
+    Screen('HookFunction', windowPtr, 'Enable', 'UserspaceBufferDrawingPrepare');
+    Screen('HookFunction', windowPtr, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''Shutdown'', win)');
+    Screen('HookFunction', windowPtr, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
+
+    % Disable color clamping in the GL pipeline. It's not useful for our
+    % purpose, unless we are in dummymode:
+    if ~dummymode
+        BrightSideCore(5, 0);
+    end
 
     % We are online:
     online = 1;
@@ -282,6 +303,7 @@ if strcmp(cmd, 'EndDrawing')
         glPopAttrib;
     else
         % Dummy mode: We do it ourselves.
+        glColor4f(1,1,1,1);
         moglBlitTexture(hdrtexid);
     end
 
