@@ -30,3 +30,9 @@
 % ple.m                        Prints useful debugging output, including a stack trace in case
 %                              a script exits via rethrow() or psychrethrow(). See help ple for
 %                              copyright info.
+%
+% read_rle_rgbe.m              Reader routine for RLE encoded RGBE high dynamic range images.
+%                              See help read_rle_rgbe for copyright & authorship info. This is
+%                              a helper routine for ReadHDR - the recommended function for user
+%                              scripts.
+

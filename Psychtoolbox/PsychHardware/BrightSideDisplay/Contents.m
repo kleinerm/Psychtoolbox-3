@@ -1,7 +1,5 @@
 % Psychtoolbox:PsychHardware:BrightSideDisplay
 %
-% EARLY PROTOTYPE - NOT READY FOR GENERAL USE!
-%
 % Support files for interfacing Psychtoolbox-3 with the
 % High Dynamic Range display device DR37-P or compatible
 % devices from BrightSide Technologies.
@@ -15,16 +13,27 @@
 %
 % The runtime libraries and config files for your display
 % need to be stored in the BSRuntimeLibs subfolder. They
-% are not included in Psychtoolbox, but you need to manually
+% are not included in Psychtoolbox, so you need to manually
 % copy them from your BrightSide installation CD to that folder.
+%
+% Have a look at SimpleHDRDemo.m to see how simple it is to use the
+% display with PTB, thanks to the new PTB built-in imaging pipeline.
 %
 % Files:
 %
-% BrigthSideDemo.m      -- Simple demo to demonstrate use of these functions.
+% SimpleHDRDemo.m       -- Simple demo to demonstrate use of BrightSide-HDR with
+%                          Psychtoolbox.
+% ShowHDRDemo.m         -- Less simple demo to demonstrate use of these functions.
+%
 % BrightSideHDR.m       -- Psychtoolbox interface to the display.
 % BrightSideCore.dll    -- Matlab MEX interface, used by BrightSideHDR.
 % BrightSideCore.m      -- Technical documentation for BrightSideCore.dll.
 % BrightSideCore.c      -- C++ source code for BrightSideCore.dll.
+%
 % BSRuntimeLibs/        -- Subfolder for runtime libraries and config.
-%                          Empty by default.
+%                          Empty by default. Needs to be filled with files that
+%                          are bundled with the software for your display device.
+%
+% HDRRead.m             -- Generic HDR image reader. Dispatches into helper
+%                          routines for different file formats.
 %
