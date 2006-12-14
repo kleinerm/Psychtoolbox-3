@@ -659,7 +659,7 @@ PsychError SCREENDrawText(void)
     PsychSetDrawingTarget(winRec);
 
 	 PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &(winRec->textAttributes.textColor));
-    PsychSetGLColor(&(winRec->textAttributes.textColor), windowRecord);
+    PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
 
     // Does the font (better, its display list) need to be build or rebuild, because
     // font name, size or settings have changed?
