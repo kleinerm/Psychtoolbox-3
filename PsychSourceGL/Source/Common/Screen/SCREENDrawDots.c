@@ -89,7 +89,7 @@ PsychError SCREENDrawDots(void)
 	double					*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
 	unsigned char                           *bytecolors;
 	float pointsizerange[2];
-	const double convfactor = 1/255.0;
+	double convfactor;
     
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -151,16 +151,24 @@ PsychError SCREENDrawDots(void)
 			usecolorvector=true;
 			
 			if (isdoublecolors) {
-				// We have to loop through the vector and divide all values by 255, so the input values
-				// 0-255 get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
-				// a color vector is passed in Double- or Float format.
-				// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
-				// specifications consistent in the PTB - API.
-				tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
-				pcolors = colors;
-				tcolors = tmpcolors;
-				for (i=0; i<(nc*mc); i++) {
-					*(tcolors++)=(*pcolors++) * convfactor;
+				if (fabs(windowRecord->colorRange)!=1) {
+					// We have to loop through the vector and divide all values by windowRecord->colorRange, so the input values
+					// 0-colorRange get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
+					// a color vector is passed in Double- or Float format.
+					// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
+					// specifications consistent in the PTB - API.
+					convfactor = 1.0 / fabs(windowRecord->colorRange);
+					tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
+					pcolors = colors;
+					tcolors = tmpcolors;
+					for (i=0; i<(nc*mc); i++) {
+						*(tcolors++)=(*pcolors++) * convfactor;
+					}
+				}
+				else {
+					// colorRange is == 1 --> No remapping needed as colors are already in proper range!
+					// Just setup pointer to our unaltered input color vector:
+					tmpcolors=colors;
 				}
 			}
 			else {
@@ -183,7 +191,7 @@ PsychError SCREENDrawDots(void)
  	// Set up common color for all dots if no color vector has been provided:
         if (!usecolorvector) {
             PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
-            PsychSetGLColor(&color, depthValue);
+            PsychSetGLColor(&color, windowRecord);
 	}
         
 	// get center argument

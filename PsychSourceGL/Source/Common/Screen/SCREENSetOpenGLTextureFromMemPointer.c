@@ -83,6 +83,9 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
         textureRecord->screenNumber = windowRecord->screenNumber;
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+		
+		textureRecord->colorRange = windowRecord->colorRange;
+
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
     }

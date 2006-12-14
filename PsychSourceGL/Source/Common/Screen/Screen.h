@@ -70,9 +70,9 @@ void InitializeSynopsis();				//ScreenExit.c
 void ScreenCloseAllWindows();           //SCREENCloseAll.c
 
 //PsychGLGlue.c
-int		PsychConvertColorAndDepthToDoubleVector(PsychColorType *color, int depthValue, GLdouble *valueArray);
-int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
-void		PsychSetGLColor(PsychColorType *color, int depthValue);
+int		PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray);
+// int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
+void		PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord);
 void		PsychGLRect(double *psychRect);
 char		*PsychGetGLErrorNameString(GLenum errorConstant);
 #define		PsychTestForGLErrors()		PsychTestForGLErrorsC(__LINE__, __func__, __FILE__) 

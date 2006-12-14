@@ -265,7 +265,7 @@ PsychError SCREENDrawText(void)
     quartzRect.size.height=(float)textureHeight;
     psychColorSize=PsychGetColorSizeFromWindowRecord(winRec);
     PsychCoerceColorModeWithDepthValue(kPsychRGBAColor, psychColorSize, &(winRec->textAttributes.textBackgroundColor));
-    PsychConvertColorAndColorSizeToDoubleVector(&(winRec->textAttributes.textBackgroundColor), psychColorSize, backgroundColorVector);
+    PsychConvertColorToDoubleVector(&(winRec->textAttributes.textBackgroundColor), winRec, backgroundColorVector);
     //by default override the background alpha value, setting alpha transparecy. Only when DrawText obeys the alpha blend function setting do we need or want the the alpha argument for the background.
     if(!PsychPrefStateGet_TextAlphaBlending())
         backgroundColorVector[3]=0;
@@ -659,7 +659,7 @@ PsychError SCREENDrawText(void)
     PsychSetDrawingTarget(winRec);
 
 	 PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &(winRec->textAttributes.textColor));
-    PsychSetGLColor(&(winRec->textAttributes.textColor), depthValue);
+    PsychSetGLColor(&(winRec->textAttributes.textColor), windowRecord);
 
     // Does the font (better, its display list) need to be build or rebuild, because
     // font name, size or settings have changed?

@@ -162,6 +162,8 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
 
+		textureRecord->colorRange = windowRecord->colorRange;
+
         // Set textureNumber to zero, which means "Not cached, do not recycle"
         // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!
         textureRecord->textureNumber = 0;

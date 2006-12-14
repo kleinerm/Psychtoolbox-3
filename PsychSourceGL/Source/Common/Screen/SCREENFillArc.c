@@ -178,7 +178,7 @@ void PsychRenderArc(unsigned int mode)
         PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color,  windowRecord);
         
         // Backup our modelview matrix:
         glMatrixMode(GL_MODELVIEW);

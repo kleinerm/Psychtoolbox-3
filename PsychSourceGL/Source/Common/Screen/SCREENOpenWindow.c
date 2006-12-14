@@ -257,7 +257,7 @@ PsychError SCREENOpenWindow(void)
 	
     // Set the clear color and perform a backbuffer-clear:
     PsychSetGLContext(windowRecord);
-    PsychConvertColorAndDepthToDoubleVector(&color, PsychGetValueFromDepthStruct(0, &useDepth), dVals);
+    PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
     glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
     glClear(GL_COLOR_BUFFER_BIT);
 

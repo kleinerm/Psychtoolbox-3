@@ -220,6 +220,9 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Setup associated OpenGL context:
     windowRecord->targetSpecific.contextObject = targetWindow->targetSpecific.contextObject;
 	 windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
+	 
+	// Copy color range and mode from parent window:
+	windowRecord->colorRange = targetWindow->colorRange;
 
     // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
     windowRecord->textureOrientation = 2;

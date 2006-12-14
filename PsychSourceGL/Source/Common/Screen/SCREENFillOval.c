@@ -108,7 +108,7 @@ PsychError SCREENFillOval(void)
         PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color,  windowRecord);
         
 	//Draw  
 	glPushMatrix();

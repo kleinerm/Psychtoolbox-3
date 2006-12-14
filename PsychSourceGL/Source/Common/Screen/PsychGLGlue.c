@@ -22,7 +22,7 @@
 #include "Screen.h"
 
 /*
-    PsychConvertColorAndDepthToDoubleVector()
+    PsychConvertColorToDoubleVector()
     
     Accept a color structure and a screen depth and return either three or four double values in the range between
     0-1 which specify r, g, b and optinally alpha values.
@@ -30,12 +30,16 @@
     The value array argument should be be four elements long.
     
 */
-int PsychConvertColorAndDepthToDoubleVector(PsychColorType *color, int depthValue, GLdouble *valueArray)
+int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray)
 {
-     GLdouble deno;
+	GLdouble deno;
     
-    deno= (1<<PsychGetColorSizeFromDepthValue(depthValue))-1;
-        
+    // Old style: deno= (1<<PsychGetColorSizeFromDepthValue(depthValue))-1;
+	
+	// New style: Read denominator from windowRecord. Need to get rid of the sign, because it
+	// encodes if we have color clamping enabled or not:
+	deno = fabs(windowRecord->colorRange);
+	
     switch(color->mode){
         case kPsychIndexColor:
             valueArray[0]=color->value.index.i/deno;
@@ -61,14 +65,13 @@ int PsychConvertColorAndDepthToDoubleVector(PsychColorType *color, int depthValu
 
 
 /*
-    PsychConvertColorAndDepthToDoubleVector()
+    PsychConvertColorAndColorSizeToDoubleVector()
     
     Accept a color structure and a screen depth and return either three or four double values in the range between
     0-1 which specify r, g, b and optinally alpha values.
     
     The value array argument should be be four elements long.
     
-*/
 int PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray)
 {
      GLdouble deno;
@@ -97,6 +100,7 @@ int PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int color
     return(0); //make the compiler happy.  
 }
 
+*/
 
 
 /*
@@ -104,12 +108,12 @@ int PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int color
     
     Accept a Psych color structure and a depth value and call the appropriate variant of glColor.       
 */
-void PsychSetGLColor(PsychColorType *color, int depthValue)
+void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 {
     GLdouble dVals[4]; 
     int numVals;
     
-    numVals=PsychConvertColorAndDepthToDoubleVector(color, depthValue, dVals);
+    numVals=PsychConvertColorToDoubleVector(color, windowRecord, dVals);
     if(numVals==1)
         PsychErrorExitMsg(PsychError_internal, "palette mode not yet implemented");
     else if(numVals==3)

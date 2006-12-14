@@ -125,7 +125,7 @@ stddev=30;
             kernel = fspecial('prewitt');
     end
     
-    stype = 0;
+    stype = 2;
     channels = 1;
 
     if filtertype > 0
@@ -180,16 +180,16 @@ stddev=30;
             end
 
             % Pass 1: Blit texture into our FBO, apply first kernel:
-            moglChooseFBO(convolvefbo);
-            %moglChooseFBO(0);
+            %moglChooseFBO(convolvefbo);
+            moglChooseFBO(0);
             glUseProgram(shader1);
             %moglBlitTexture(intex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
             Screen('DrawTexture', win, tex, [], dstRect, [], 0);
             % Pass 2: Blit intermediate result into framebuffer, apply
             % second kernel:
-            moglChooseFBO(0);
-            glUseProgram(shader2);
-            Screen('DrawTexture', win, cotex, [], dstRect, [], 0);
+            %moglChooseFBO(0);
+            %glUseProgram(shader2);
+            %Screen('DrawTexture', win, cotex, [], dstRect, [], 0);
             %moglBlitTexture(convolvetex, [], [], [], [], 0, GL.CLAMP_TO_BORDER);
 
             % Done. Disable shader:
@@ -205,7 +205,7 @@ stddev=30;
                 noiseimg = single(noiseimg);
                 tic
                 ref = conv2(noiseimg, single(kernel1), 'same');
-                ref = conv2(single(ref), single(kernel2), 'same');
+                %ref = conv2(single(ref), single(kernel2), 'same');
                 %ref = conv2(noiseimg, (kernel), 'same');
                 cpu = toc
                 ref = uint8(0.5 + ref);

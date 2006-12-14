@@ -76,7 +76,7 @@ PsychError SCREENgluDisk(void)
         PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color, windowRecord);
 	glPushMatrix();
 	glTranslated(*xPosition,*yPosition,0);
 	diskQuadric=gluNewQuadric();

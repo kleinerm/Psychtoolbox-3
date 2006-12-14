@@ -79,7 +79,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Open or close a window or texture:";
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
         synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
-	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0]);";	
+	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0] [, floatprecision=0]);";	
 	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
 	synopsis[i++] = "Screen('CloseAll');";
 	
@@ -155,7 +155,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "pixelSizes=Screen('PixelSizes', windowPtrOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
-	synopsis[i++] = "oldmaximumvalue = Screen('ColorRange', windowPtr [, maximumvalue]);";
+	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
 	synopsis[i++] = "[ret1, ret2] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2);";
 
 	// Get and set information about the environment, computer, and video card (i.e. screen):

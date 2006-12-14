@@ -75,7 +75,7 @@ PsychError SCREENglPoint(void)
         PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color, windowRecord);
 	glEnable(GL_POINT_SMOOTH);
 	glPointSize((float)dotSize);
 	glBegin(GL_POINTS);

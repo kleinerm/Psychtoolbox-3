@@ -134,6 +134,7 @@ PsychError SCREENGetMovieImage(void)
     // MK: Is this the proper way to do it???
     textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
     textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+    textureRecord->colorRange = windowRecord->colorRange;
     
     // Try to fetch an image from the movie object and return it as texture:
     PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp);

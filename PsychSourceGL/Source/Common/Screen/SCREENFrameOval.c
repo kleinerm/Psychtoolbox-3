@@ -134,7 +134,7 @@ PsychError SCREENFrameOval(void)
         PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color, windowRecord);
 	//glEnable(GL_POLYGON_SMOOTH);
         //Draw the rect.  
 	glPushMatrix();

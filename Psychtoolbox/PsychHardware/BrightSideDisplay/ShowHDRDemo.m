@@ -23,8 +23,8 @@ AssertOpenGL;
 % in fixed-function mode.
 useshader = 0;
 
-% For now we skip the sync tests during debugging:
-Screen('Preference', 'SkipSyncTests', 2);
+% For now we shorten the sync tests during debugging:
+Screen('Preference', 'SkipSyncTests', 1);
 
 % Run demo in dummy mode?
 if nargin < 2
@@ -63,13 +63,8 @@ if nargin < 4 || isempty(halffloat)
     halffloat = 1;
 end
 
+% Scale image matrix by scalefactor 'sf':
 img=double(img) * sf;
-
-% No Alpha channel provided?
-if size(img, 3) < 4
-    % Add a dummy one with alpha set to fully opaque:
-    img(:,:,4) = ones(size(img,1), size(img,2));
-end;
 
 % img is now a height by width by 4 matrix with the (R,G,B,A) channels of our
 % image. Now we use Psychtoolbox to make a HDR texture out of it and show
@@ -85,21 +80,15 @@ try
     % Open a standard fullscreen onscreen window, double-buffered with black
     % background color, instead of the default white one: win is the window
     % handle for this window:
-    win = Screen('OpenWindow', screenid, 0);
-
-    % Initialize the BrightSide HDR display library:
-    BrightSideHDR('Initialize', win, dummymode);
+    if dummymode
+        win = BrightSideHDR('DummyOpenWindow', screenid, 0);
+    else
+        win = BrightSideHDR('OpenWindow', screenid, 0);
+    end
     
-    % Enable OpenGL mode for our onscreen window: This is needed for HDR
-    % texture processing.
-    Screen('BeginOpenGL', win);
-
     % Build a Psychtoolbox 16 bpc half-float or 32 bpc float texture from the image array:
-    texid = moglMakeHDRTexture(win, img, halffloat);
-
-    % End of OpenGL processing:
-    Screen('EndOpenGL', win);
-
+    texid = Screen('MakeTexture', win, img, [], [], 2-halffloat);
+    
     % Load our bias and rescale shader:
     glslnormalizer = LoadGLSLProgramFromFiles('ScaleAndBiasShader');
     prebias = glGetUniformLocation(glslnormalizer, 'prescaleoffset');

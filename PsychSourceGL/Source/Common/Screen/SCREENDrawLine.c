@@ -88,7 +88,7 @@ PsychError SCREENDrawLine(void)
 	glLineWidth((GLfloat)penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color, depthValue);
+	PsychSetGLColor(&color, windowRecord);
 	glBegin(GL_LINES);
 		glVertex2d((GLdouble)sX, (GLdouble)sY);
 		glVertex2d((GLdouble)dX, (GLdouble)dY);

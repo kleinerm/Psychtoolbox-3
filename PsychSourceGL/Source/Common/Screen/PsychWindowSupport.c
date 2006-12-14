@@ -201,6 +201,12 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
     }
 
+	// We need the real color depth (bits per color component) of the framebuffer attached
+	// to this onscreen window. We need it to setup color range correctly. Let's assume the
+	// red bits value is representative for the green and blue channel as well:
+	glGetIntegerv(GL_RED_BITS, &bpc);
+	(*windowRecord)->colorRange = (double) ((1 << bpc) - 1);
+
     // Now we start to fill in the remaining windowRecord with settings:
     // -----------------------------------------------------------------
 

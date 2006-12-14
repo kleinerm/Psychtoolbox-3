@@ -56,7 +56,7 @@ void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  Psyc
 	//set the color
 	psychColorSize=PsychGetColorSizeFromWindowRecord(winRec);
 	PsychCoerceColorModeWithDepthValue(kPsychRGBAColor, psychColorSize, &(winRec->textAttributes.textColor));
-	PsychConvertColorAndColorSizeToDoubleVector(&(winRec->textAttributes.textColor), psychColorSize, colorVector);
+	PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
 	atsuFontColor.red=(float)colorVector[0];
 	atsuFontColor.green=(float)colorVector[1];
 	atsuFontColor.blue=(float)colorVector[2];
