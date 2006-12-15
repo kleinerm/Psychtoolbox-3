@@ -28,3 +28,6 @@
 % GLSLDemo          -- Demo that shows how to use the OpenGL Shading Language (GLSL). This
 %                      demo may only work on recent graphics hardware, so dont be surprised
 %                      if it fails on older hardware.
+%
+% ShepardZoomDemo   -- A visual equivalent of the Shepard tone illusion.
+%
