@@ -17,12 +17,15 @@ function string = GetString
 % 3/31/97 dhb Fix bug arising from new initialization.
 % 2/28/98 dgp Use GetChar instead of obsolete GetKey. Use SWITCH and LENGTH.
 % 3/27/98 dhb Fix bug from 2/28/98, put abs around char in switch.
+% 12/19/06 mk Adapted for use with PTB-3.
 
 string='';
+% Flush the keyboard buffer:
+FlushEvents;
 while 1	% Loop until <return> or <enter>
 	char=GetChar;
 	switch(abs(char))
-		case {13,3},	% <return> or <enter>
+		case {13,3,10},	% <return> or <enter>
 			break;
 		case 8,			% <delete>
 			if length(string)>0
