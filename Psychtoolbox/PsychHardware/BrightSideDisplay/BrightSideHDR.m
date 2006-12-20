@@ -7,7 +7,8 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % level GLSL Psychtoolbox functions and the low-level BrightSideCore.dll
 % MEX-File. You need to have Brightsides DLL's (and the display device)
 % installed on your machine for this to work. Without the DLL's this will
-% simply crash.
+% simply crash. See "help BSRuntimeLibs" for information about
+% dependencies.
 %
 % cmd - The command that BrightSideHDR should execute. cmd can be any of
 % the following:
@@ -279,6 +280,18 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
         Screen('ColorRange', windowPtr, 1, 0);
     end
 
+    % Eat up all OpenGL errors caused by this:
+    while glGetError; end;
+
+    % Bind our HDR framebuffer as rendertarget. This will unbind its color
+    % buffer texture hdrtexid automatically and setup the viewport,
+    % projection and modelview matrices for orthonormal drawing
+    % automatically:
+    moglChooseFBO(hdrfbo);
+
+    % Ready:
+    inhdrdrawmode = 1;
+
     % We are online:
     online = 1;
     return;
@@ -320,7 +333,7 @@ if strcmp(cmd, 'BeginDrawing')
     end
 
     if inhdrdrawmode
-        error('BrightSideHDR: "BeginDrawing" called, although already in HDR drawing mode.');
+        return;
     end
     
     % Bind our HDR framebuffer as rendertarget. This will unbind its color
@@ -341,7 +354,7 @@ if strcmp(cmd, 'EndDrawing')
     end
 
     if ~inhdrdrawmode
-        error('BrightSideHDR: "EndDrawing" called without previous call to "BeginDrawing".');
+        return;
     end
 
     % Disable shaders, if any active:

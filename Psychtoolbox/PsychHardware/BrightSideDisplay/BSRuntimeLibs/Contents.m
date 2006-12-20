@@ -17,7 +17,33 @@
 % libraries and config files into this folder and you should be ready
 % to use your display with PTB.
 %
-% Files:
-% To be done.
-
-
+% Dependencies on DLL libraries and other files on M$-Windows:
+% ------------------------------------------------------------
+%
+% You must have the following libraries somewhere in your systems
+% library search path, either by putting them into the subfolder
+% outputlib/lib of this folder, or by putting them in a system default
+% library folder to use the BrightSideHDR with our precompiled mex file:
+%
+% GL_OutputLibrary.dll -- From BrightSide software.
+% CoreLibrary_GL.dll   -- From BrightSide software.
+% glew32.dll           -- From http://glew.sourceforge.net
+% glut32.dll           -- From the source of the GLUT toolkit.
+% cg.dll               -- From NVidia's Cg toolkit SDK:
+%                         http://developer.nvidia.com/page/cg_main.html
+% cgGL.dll             -- From NVidia's Cg toolkit SDK.
+%
+% Additionally in the subfolders...
+% Resources/Textures
+% Resources/BlurCorrectionReference
+% Resources/DisplayConfiguration
+% Resources/VertexShaders
+% ... you'll need the appropriate BrightSide files.
+%
+% You'll also need all header (includes) and .lib files from the BrightSide
+% SDK if you want to rebuild the BrightSideCore.cpp file into a MEX file,
+% but this should be seldomly (if at all) needed:
+%
+% Subfolders:
+% outputlib/include    -- For all the header files .h
+% outputlib/lib        -- For all the .lib and .dll library files.

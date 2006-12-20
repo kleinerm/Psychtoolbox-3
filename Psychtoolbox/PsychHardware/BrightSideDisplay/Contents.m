@@ -23,12 +23,16 @@
 %
 % SimpleHDRDemo.m       -- Simple demo to demonstrate use of BrightSide-HDR with
 %                          Psychtoolbox.
+%
 % ShowHDRDemo.m         -- Less simple demo to demonstrate use of these functions.
+%
+% HDRViewer.m           -- An interactive viewer for HDR images, including
+%                          zoom function.
 %
 % BrightSideHDR.m       -- Psychtoolbox interface to the display.
 % BrightSideCore.dll    -- Matlab MEX interface, used by BrightSideHDR.
 % BrightSideCore.m      -- Technical documentation for BrightSideCore.dll.
-% BrightSideCore.c      -- C++ source code for BrightSideCore.dll.
+% BrightSideCore.cpp    -- C++ source code for BrightSideCore.dll.
 %
 % BSRuntimeLibs/        -- Subfolder for runtime libraries and config.
 %                          Empty by default. Needs to be filled with files that
