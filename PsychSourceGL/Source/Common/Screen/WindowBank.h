@@ -79,8 +79,19 @@ T0 DO:
 #define kPsychMFunc			2
 #define kPsychBuiltinFunc	3
 
-// Symbolic names for different hooks:
+// Definition of flags for imagingMode of Image processing pipeline.
+// These are used internally, but need to be exposed to Matlab as well.
+#define kPsychNeedFastBackingStore 1		// Any FBO's needed at all?
+#define kPsychNeedImageProcessing  2		// Any image processing needed at all?
+#define kPsychNeedOutputConversion 4		// Output conversion blit needed?
+#define kPsychNeedSeparateStreams  8		// Quad-buffered stereo needed?
+#define kPsychNeedStereoMergeOp	   16		// Merging stereo -> single fb needed?
+#define kPsychNeed32BPCFloat	   32		// float32 FBO's needed?
+#define kPsychNeed16BPCFloat	   64		// float16 FBO's needed?
+#define kPsychNeed16BPCFixed	   128		// fixed point 16 bpc FBO's needed?
 
+
+// Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
 typedef struct PsychHookFunction {
 	PtrPsychHookFunction	next;
@@ -92,8 +103,16 @@ typedef struct PsychHookFunction {
 	unsigned int			luttexid1;
 } PsychHookFunction;
 
+// Definition of an OpenGL Framebuffer object (FBO) for internal use.
+typedef struct PsychFBO {
+	GLuint					fboid;		// Handle to FBO.
+	GLuint					coltexid;	// Texture handle for color buffer texture (color attachment zero).
+	GLuint					ztexid;		// Texture handle for z-Buffer texture, if any. Zero otherwise.
+	int						width;		// Width of FBO.
+	int						height;		// Height of FBO.
+} PsychFBO;
+
 // Typedefs for WindowRecord in WindowBank.h
-//typedef Boolean					PsychHookChainEnabled[MAX_SCREEN_HOOKS];
 
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -205,8 +224,20 @@ typedef struct _PsychWindowRecordType_{
 	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
 	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.
 	Boolean					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.
-	int						renderTargetFBOS[2][2][2];				// Storage for pre-compositing FBOs
-	int						postCompositingFBOS[2][2];				// Storage for post-compositing FBOs
+
+	// Indices into our FBO table: The special value -1 means: Don't use.
+	int						drawBufferFBO[2];						// Storage for drawing FBOs: These are the targets of all drawing operations before
+																	// Screen('DrawingFinished') or Screen('Flip') is called. They are read-only wrt.
+																	// to all following processing stages: 0=Left eye (or mono) channel, 1=Right eye channel.
+	int						processedDrawBufferFBO[3];				// These contain the final output of all per-view channel postprocessing operations:
+																	// 0=Left eye (or mono) channel, 1=Right eye channel, 2=Temporary bounce buffer for iterative
+																	// multi-pass processing. These provide the input for the stereo merger in stereo modes that
+																	// require merging of the two views, e.g., anaglyph stereo.
+	int						preConversionFBO[3];					// preConversion FBO's: FBO zero/one are the targets for any stereo merge operations. FBO two is
+																	// (optionally) a temporary bounce buffer for multipass post processing.
+	int						finalizedFBO[2];						// This is the final framebuffer: Usually the system backbuffer, but could be something special.
+	
+	PsychFBO				fboTable[2+3+3+2];						// This array contains the FBO structs which are referenced by the indices above.
 	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c

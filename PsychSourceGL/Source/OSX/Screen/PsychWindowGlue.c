@@ -387,23 +387,17 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
             (kIOReturnSuccess == IOServiceOpen(CGDisplayIOServicePort(CGMainDisplayID()), mach_task_self(), kIOFBSharedConnectType, &(fbsharedmem[screenSettings->screenNumber].connect)))) {
             // Connection established.
 
-            // Create shared memory region:
-            if (TRUE || kIOReturnSuccess == IOFBCreateSharedCursor(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCurrentShmemVersion, 32, 32)) {
-                // Map the slice of device memory into our VM space:
-                if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
-                                                           (vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
-                                                           &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
-                    // Mapping failed!
-                    fbsharedmem[screenSettings->screenNumber].shmem = NULL;
-                    if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
-                }
-                else {
-                    if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
-                }
-            }
-            else {
-                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOFBCreateSharedCursor()] - Fallback path for time stamping won't be available.\n");
-            }
+			// Map the slice of device memory into our VM space:
+			if (kIOReturnSuccess != IOConnectMapMemory(fbsharedmem[screenSettings->screenNumber].connect, kIOFBCursorMemory, mach_task_self(),
+													   (vm_address_t *) &(fbsharedmem[screenSettings->screenNumber].shmem),
+													   &(fbsharedmem[screenSettings->screenNumber].shmemSize), kIOMapAnywhere)) {
+				// Mapping failed!
+				fbsharedmem[screenSettings->screenNumber].shmem = NULL;
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
+			}
         }
         else {
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOServiceOpen()] - Fallback path for time stamping won't be available.\n");

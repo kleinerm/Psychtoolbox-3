@@ -94,16 +94,169 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
  */
 void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode)
 {	
+	GLenum fboInternalFormat;
+	int newimagingmode = 0;
+	int fbocount = 0;
+	int winwidth, winheight;
+	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore; 
+	
+	// Disable all special framebuffer objects by default:
+	windowRecord->drawBufferFBO[0]=0;
+	windowRecord->drawBufferFBO[1]=0;
+	windowRecord->processedDrawBufferFBO[0]=0;
+	windowRecord->processedDrawBufferFBO[1]=0;
+	windowRecord->processedDrawBufferFBO[2]=0;
+	windowRecord->preConversionFBO[0]=0;
+	windowRecord->preConversionFBO[1]=0;
+	windowRecord->preConversionFBO[2]=0;
+	windowRecord->finalizedFBO[0]=0;
+	windowRecord->finalizedFBO[1]=0;
+
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
-	if (imagingmode<=0) return;
+	if (imagingmode<=0) {
+		imagingmode=0;
+		return;
+	}
 	
 	// Specific setup of pipeline if real imaging ops are requested:
-	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline enabled for window with imaging flags %i ...\n", imagingmode);
+	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline enabled for window with requested imaging flags %i ...\n", imagingmode);
 	fflush(NULL);
 	
 	// Setup mode switch in record:
 	windowRecord->imagingMode = imagingmode;
 	
+	// Determine required precision for our framebuffer objects:
+
+	// Start off with standard 8 bpc fixed point:
+	fboInternalFormat = GL_RGBA8;
+	
+	// Need 16 bpc fixed point precision?
+	if (imagingmode & kPsychNeed16BPCFixed) fboInternalFormat = GL_RGBA16;
+	 
+	// Need 16 bpc floating point precision?
+	if (imagingmode & kPsychNeed16BPCFloat) fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+	
+	// Need 32 bpc floating point precision?
+	if (imagingmode & kPsychNeed32BPCFloat) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+
+	// Do we need additional depth buffer attachments?
+	needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
+	
+	// Do we need separate streams for stereo? Only for OpenGL quad-buffered mode:
+	needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo) ? TRUE : FALSE;
+
+	// Do we need some intermediate image processing?
+	needimageprocessing= (imagingmode & kPsychNeedImageProcessing) ? TRUE : FALSE;
+
+	// Do we need some final output formatting?
+	needoutputconversion = (imagingmode & kPsychNeedOutputConversion) ? TRUE : FALSE;
+	
+	// Do we need fast backing store?
+	needfastbackingstore = (imagingmode & kPsychNeedFastBackingStore) ? TRUE : FALSE;
+	
+	// Consolidate settings:
+	if (needoutputconversion || needimageprocessing || windowRecord->stereomode > 0) needfastbackingstore = TRUE;
+	
+	// Try to allocate and configure proper FBO's:
+	fbocount = 0;
+	
+	if (needfastbackingstore) {
+		// We need at least the 1st level drawBufferFBO's as rendertargets for all
+		// user-space drawing, ie Screen 2D drawing functions, MOGL OpenGL rendering and
+		// C-MEX OpenGL rendering plugins...
+		
+		// Define dimensions of 1st stage FBO:
+		winwidth=PsychGetWidthFromRect(windowRecord->rect);
+		winheight=PsychGetHeightFromRect(windowRecord->rect);
+
+		// Adapt it for some stereo modes:
+		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+			// Special case for stereo: Only half the real window width:
+			winwidth = winwidth / 2;
+		}
+
+		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
+		// enabled:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
+		}
+		
+		// Assign this FBO as drawBuffer for left-eye or mono channel:
+		windowRecord->drawBufferFBO[0] = fbocount;
+		fbocount++;
+		
+		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
+		if (windowRecord->stereomode > 0) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight)) {
+				// Failed!
+				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
+			}
+			
+			// Assign this FBO as drawBuffer for right-eye channel:
+			windowRecord->drawBufferFBO[1] = fbocount;
+			fbocount++;
+		}
+	}
+	
+	// Do we need 2nd stage FBOs? We need them as targets for the processed data if support for misc image processing ops is requested.
+	if (needimageprocessing) {
+		// Need real FBO's as targets for image processing:
+
+		// Define dimensions of 2nd stage FBO:
+		winwidth=PsychGetWidthFromRect(windowRecord->rect);
+		winheight=PsychGetHeightFromRect(windowRecord->rect);
+
+		// Adapt it for some stereo modes:
+		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+			// Special case for stereo: Only half the real window width:
+			winwidth = winwidth / 2;
+		}
+
+		// These FBO's don't need z- or stencil buffers anymore:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+		}
+		
+		// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
+		windowRecord->processedDrawBufferFBO[0] = fbocount;
+		fbocount++;
+		
+		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
+		if (windowRecord->stereomode > 0) {
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+				// Failed!
+				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+			}
+			
+			// Assign this FBO as processedDrawBuffer for right-eye channel:
+			windowRecord->processedDrawBufferFBO[1] = fbocount;
+			fbocount++;
+		}
+		else {
+			windowRecord->processedDrawBufferFBO[1] = 0;
+		}
+		
+		// Allocate a bounce-buffer as well:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+		}
+		
+		// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
+		windowRecord->processedDrawBufferFBO[2] = fbocount;
+		fbocount++;
+	}
+	else {
+		// No image processing: Set 2nd stage FBO's to 1st stage FBO's:
+		windowRecord->processedDrawBufferFBO[0] = windowRecord->drawBufferFBO[0];
+		windowRecord->processedDrawBufferFBO[1] = windowRecord->drawBufferFBO[1];
+		windowRecord->processedDrawBufferFBO[2] = 0;
+	}
+	
+	// Stage 2 ready. TO BE CONTINUED...
+	 
 	// Well done.
 	return;
 }
