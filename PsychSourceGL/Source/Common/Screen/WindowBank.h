@@ -108,6 +108,7 @@ typedef struct PsychFBO {
 	GLuint					fboid;		// Handle to FBO.
 	GLuint					coltexid;	// Texture handle for color buffer texture (color attachment zero).
 	GLuint					ztexid;		// Texture handle for z-Buffer texture, if any. Zero otherwise.
+	GLuint					stexid;		// Texture handle for stencil-Buffer texture, if any. Zero otherwise.
 	int						width;		// Width of FBO.
 	int						height;		// Height of FBO.
 } PsychFBO;
@@ -238,6 +239,7 @@ typedef struct _PsychWindowRecordType_{
 	int						finalizedFBO[2];						// This is the final framebuffer: Usually the system backbuffer, but could be something special.
 	
 	PsychFBO				fboTable[2+3+3+2];						// This array contains the FBO structs which are referenced by the indices above.
+	int						fboCount;								// This contains the number of FBO's in fboTable.
 	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c

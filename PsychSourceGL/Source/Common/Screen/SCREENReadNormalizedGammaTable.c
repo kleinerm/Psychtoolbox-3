@@ -21,10 +21,13 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('ReadNormalizedGammaTable', ScreenNumber);";
+static char useString[] = "[gammatable, dacbits] = Screen('ReadNormalizedGammaTable', ScreenNumber);";
 static char synopsisString[] = 
-        "Reads the gamma table of the specified screen. See help for Screen('LoadNormalizedGammaTable'); "
-        "for infos about the format of the returned table and for further explanations regarding gamma tables.";
+        "Reads and returns the gamma table 'gammatable' of the specified screen. Returns the output resolution "
+		"of the video DAC as optional second argument 'dacbits'. Will return dacbits=8 as a safe default if it "
+		"is unable to query the real resolution of the DAC. Currently only OS-X reports the real DAC size. "
+		"See help for Screen('LoadNormalizedGammaTable'); for infos about the format of the returned table "
+        "and for further explanations regarding gamma tables.";
 
 static char seeAlsoString[] = "";
 
@@ -38,7 +41,7 @@ PsychError SCREENReadNormalizedGammaTable(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumOutputArgs(2));
     PsychErrorExit(PsychCapNumInputArgs(1));
 
     PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
@@ -51,6 +54,9 @@ PsychError SCREENReadNormalizedGammaTable(void)
         gammaTable[PsychIndexElementFrom3DArray(numEntries, 3, 0, i, 2, 0)]=(double)blueTable[i];
     }
 
+	// Copy out optional DAC resolution value:
+	PsychCopyOutDoubleArg(2, FALSE, (double) PsychGetDacBitsFromDisplay(screenNumber));
+	
     return(PsychError_none);
 }
 

@@ -219,7 +219,7 @@ PsychError SCREENOpenOffscreenWindow(void)
     
     // Setup associated OpenGL context:
     windowRecord->targetSpecific.contextObject = targetWindow->targetSpecific.contextObject;
-	 windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
+	windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
 	 
 	// Copy color range and mode from parent window:
 	windowRecord->colorRange = targetWindow->colorRange;

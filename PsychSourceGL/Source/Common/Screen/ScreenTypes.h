@@ -132,7 +132,7 @@ typedef struct {
         PsychDepthType 		depth;
         PsychColorModeType	mode;
         int					nominalFrameRate;
-		//int				dacbits;
+		//int					dacbits;
 } PsychScreenSettingsType;
 
 typedef struct {

@@ -111,7 +111,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->preConversionFBO[2]=0;
 	windowRecord->finalizedFBO[0]=0;
 	windowRecord->finalizedFBO[1]=0;
-
+	windowRecord->fboCount = 0;
+	
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
 	if (imagingmode<=0) {
 		imagingmode=0;
@@ -157,6 +158,18 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Consolidate settings:
 	if (needoutputconversion || needimageprocessing || windowRecord->stereomode > 0) needfastbackingstore = TRUE;
 	
+	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
+	if (!glewIsSupported("GL_EXT_framebuffer_object") || !glewIsSupported("GL_EXT_texture_rectangle")) {
+		// Unsupported! This is a complete no-go :(
+		printf("PTB-ERROR: Initialization of the built-in image processing pipeline failed. Your graphics hardware or graphics driver does not support\n");
+		printf("PTB-ERROR: the required OpenGL framebuffer object extension. You may want to upgrade to the latest drivers or if that doesn't help, to a\n");
+		printf("PTB-ERROR: more recent graphics card. You'll need at minimum a NVidia GeforceFX-5000 or a ATI Radeon 9600 or Intel GMA 950 for this to work.\n");
+		printf("PTB-ERROR: See the www.psychtoolbox.org Wiki for recommendations. You can still use basic stereo support (with restricted performance and features)\n");
+		printf("PTB-ERROR: by disabling the imaging pipeline (imagingmode = 0) but still selecting a stereomode in the 'OpenWindow' subfunction.\n");
+		fflush(NULL);
+		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
+	}
+
 	// Try to allocate and configure proper FBO's:
 	fbocount = 0;
 	
@@ -255,10 +268,256 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->processedDrawBufferFBO[2] = 0;
 	}
 	
-	// Stage 2 ready. TO BE CONTINUED...
-	 
+	// Stage 2 ready. Any need for real merged FBO's? We need a merged FBO if we are in stereo mode
+	// and in need to merge output from the two views and to postprocess that output. In all other
+	// cases there's no need for real merged FBO's and we do just a "pass-through" assignment.
+	if ((windowRecord->stereomode > 0) && (!needseparatestreams) && (needoutputconversion)) {
+		// Need real FBO's as targets for merger output.
+
+		// Define dimensions of 3rd stage FBO:
+		winwidth=PsychGetWidthFromRect(windowRecord->rect);
+		winheight=PsychGetHeightFromRect(windowRecord->rect);
+
+		// These FBO's don't need z- or stencil buffers anymore:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
+		}
+		
+		// Assign this FBO for left-eye and right-eye channel: The FBO is shared accross channels...
+		windowRecord->preConversionFBO[0] = fbocount;
+		windowRecord->preConversionFBO[1] = fbocount;
+		fbocount++;
+
+		// Allocate a bounce-buffer as well:
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
+		}
+		
+		windowRecord->preConversionFBO[2] = fbocount;
+		fbocount++;
+	}
+	else {
+		// No real merger FBO's: Set 3rd stage FBO's to 2nd stage FBO's:
+		windowRecord->preConversionFBO[0] = windowRecord->processedDrawBufferFBO[0];
+		windowRecord->preConversionFBO[1] = windowRecord->processedDrawBufferFBO[1];
+		windowRecord->preConversionFBO[2] = windowRecord->processedDrawBufferFBO[2];
+	}
+	
+	// Define output buffers as system framebuffers:
+	windowRecord->finalizedFBO[0]=0;
+	windowRecord->finalizedFBO[1]=0;
+
+	// Setup imaging mode flags:
+	newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
+	if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
+	if (needfastbackingstore) newimagingmode |= kPsychNeedFastBackingStore;
+	if (needoutputconversion) newimagingmode |= kPsychNeedOutputConversion;
+	if (needimageprocessing)  newimagingmode |= kPsychNeedImageProcessing;
+	if (imagingmode & kPsychNeed32BPCFloat) {
+		newimagingmode |= kPsychNeed32BPCFloat;
+	}
+	else if (imagingmode & kPsychNeed16BPCFloat) {
+		newimagingmode |= kPsychNeed16BPCFloat;
+	}
+	else if (imagingmode & kPsychNeed16BPCFixed) {
+		newimagingmode |= kPsychNeed16BPCFixed;
+	}
+	
+	// Set new imaging mode:
+	windowRecord->imagingMode = newimagingmode;
+	windowRecord->fboCount = fbocount;
+	
+	// TODO: Setup stereo shaders for the different stereo modes...
+	
 	// Well done.
 	return;
+}
+
+/* PsychCreateFBO()
+ * Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it.
+ * This function creates an OpenGL framebuffer object, creates and attaches a texture of suitable size
+ * (width x height) pixels with format fboInternalFormat as color buffer (color attachment 0). Optionally,
+ * (if needzbuffer is true) it also creates and attaches suitable z-buffer and stencil-buffer attachments.
+ * It checks for correct setup and then stores all relevant information in the PsychFBO struct, pointed by
+ * fbo. On success it returns true, on failure it returns false.
+ */
+Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height)
+{
+	GLenum fborc;
+	GLint bpc;
+	GLboolean isFloatBuffer;
+	
+	// Eat all GL errors:
+	PsychTestForGLErrors();
+	
+	// Start cleanly for error handling:
+	fbo->fboid = 0;
+	fbo->coltexid = 0;
+	fbo->stexid = 0;
+	fbo->ztexid = 0;
+
+	// Build color buffer: Create a new texture handle for the color buffer attachment.
+	glGenTextures(1, (GLuint*) &(fbo->coltexid));
+	
+	// Bind it as rectangle texture:
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
+	
+	// Create proper texture: Just allocate proper format, don't assign data.
+	glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+
+    // Setup texture wrapping behaviour to clamp, as other behaviours are
+    // unsupported on many gfx-cards for rectangle textures:
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP);
+    // Setup filtering for the textures - Use nearest neighbour by default, as floating
+    // point filtering usually unsupported.
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+
+	// Texture ready, unbind it.
+	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+
+	// Create a new framebuffer object and bind it:
+	glGenFramebuffersEXT(1, (GLuint*) &(fbo->fboid));
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
+	
+	// Attach the texture as color buffer zero:
+    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid, 0);
+	
+	// Do we need additional buffers for 3D rendering?
+	if (needzbuffer) {
+		// Yes. Try to setup and attach them:
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
+		if (!glewIsSupported("GL_ARB_depth_texture")) {
+			printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
+			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5000 or ATI Radeon 9600\n");
+			printf("PTB-ERROR: for this to work.\n");
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline Setup: Setup of internal Framebuffer object failed [No support for depth textures].");
+		}
+		
+		// Create texture object for z-buffer (or z+stencil buffer) and set it up:
+		glGenTextures(1, (GLuint*) &(fbo->ztexid));
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid);
+		
+		// Setup texture wrapping behaviour to clamp, as other behaviours are
+		// unsupported on many gfx-cards for rectangle textures:
+		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP);
+		
+		// Setup filtering for the textures - Use nearest neighbour by default, as floating
+		// point filtering usually unsupported.
+		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+		
+		// Just to be safe...
+		PsychTestForGLErrors();
+
+		// Do we have support for combined 24 bit depth and 8 bit stencil buffer textures?
+		if (glewIsSupported("GL_EXT_packed_depth_stencil")) {
+			// Yes! Create combined depth and stencil texture:
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil supported. Attaching combined 24 bit depth + 8 bit stencil texture...\n"); 
+
+			// Create proper texture: Just allocate proper format, don't assign data.
+			glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_DEPTH24_STENCIL8_EXT, width, height, 0, GL_DEPTH_STENCIL_EXT, GL_UNSIGNED_INT_24_8_EXT, NULL);
+			PsychTestForGLErrors();
+
+			// Texture ready, unbind it.
+			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+			
+			// Attach the texture as depth buffer...
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+			// ... and as stencil buffer ...
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+		}
+		else {
+			// Packed depth+stencil textures unsupported :( 
+			// Allocate a single depth texture and attach it. Then see what we can do about the stencil attachment...
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: packed_depth_stencil unsupported. Attaching 24 bit depth texture and 8 bit stencil renderbuffer...\n"); 
+
+			// Create proper texture: Just allocate proper format, don't assign data.
+			glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, GL_DEPTH_COMPONENT, width, height, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_INT, NULL);
+
+			// Depth texture ready, unbind it.
+			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+			
+			// Attach the texture as depth buffer...
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+			
+			// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
+			glGenRenderbuffersEXT(1, (GLuint*) &(fbo->stexid));
+			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo->stexid);
+			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, width, height);
+			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo->stexid);
+			
+			// See if we are framebuffer complete:
+			if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
+				// Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
+				// and live with a depth-buffer only setup.
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil renderbuffer attachment failed! Detaching stencil buffer...\n"); 
+				if (PsychPrefStateGet_Verbosity()>1) {
+					printf("PTB-WARNING: OpenGL stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
+					printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
+					printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
+					printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware. According to specs,\n");
+					printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5000 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
+					printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.8.\n"); 
+				}
+				
+				glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
+				glDeleteRenderbuffersEXT(1, (GLuint*) &(fbo->stexid));
+				fbo->stexid = 0;
+			}
+		}
+	}
+	else {
+		// Initialize additional buffers to zero:
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Only colorbuffer texture attached to FBO, no depth- or stencil buffers requested...\n"); 
+		fbo->stexid = 0;
+		fbo->ztexid = 0;
+	}
+	
+	// Store dimensions:
+	fbo->width = width;
+	fbo->height = height;
+	
+	// Check for framebuffer completeness:
+	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT) {
+		// Framebuffer incomplete!
+		while(glGetError());
+		printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline [%s]! The most likely cause is that your hardware does not support\n", (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) ? "Unsupported format" : "Unknown error");
+		printf("PTB-ERROR: the required buffers at the given screen resolution (Additional 3D buffers for z- and stencil are %s).\n", (needzbuffer) ? "requested" : "disabled");
+		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) display resolution or with 3D rendering support disabled.\n");
+		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline Setup: Setup of internal Framebuffer object failed [Framebuffer incomplete].");
+	}
+	
+	if (PsychPrefStateGet_Verbosity()>4) {
+		// Output framebuffer properties:
+		glGetIntegerv(GL_RED_BITS, &bpc);
+		printf("PTB-DEBUG: FBO has %i bits per color component in ", bpc);
+		glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+        if (isFloatBuffer) {
+            printf("floating point format ");
+        }
+        else {
+            printf("fixed point precision ");
+        }
+
+		glGetIntegerv(GL_DEPTH_BITS, &bpc);
+		printf("with  %i depths buffer bits ", bpc);
+		glGetIntegerv(GL_STENCIL_BITS, &bpc);
+		printf("and %i stencil buffer bits.\n", bpc);
+	}
+
+	// Unbind FBO:
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+	// Test all GL errors:
+	PsychTestForGLErrors();
+
+	// Well done.
+	return(TRUE);
 }
 
 /* PsychShutdownImagingPipeline()
@@ -272,6 +531,20 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean o
 	// Imaging enabled?
 	if (windowRecord->imagingMode>0) {
 		// Yes. Mode specific cleanup:
+		for (i=0; i<windowRecord->fboCount; i++) {
+			// Delete i'th FBO:
+			
+			// Unbind it:
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			// Detach and delete color buffer texture:
+			if (windowRecord->fboTable[i].coltexid) glDeleteTextures(1, &(windowRecord->fboTable[i].coltexid));
+			// Detach and delete depth buffer (and probably stencil buffer) texture, if any:
+			if (windowRecord->fboTable[i].ztexid) glDeleteTextures(1, &(windowRecord->fboTable[i].ztexid));
+			// Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
+			if (windowRecord->fboTable[i].stexid) glDeleteRenderbuffersEXT(1, &(windowRecord->fboTable[i].stexid));
+			// Delete FBO itself:
+			if (windowRecord->fboTable[i].fboid) glDeleteFramebuffersEXT(1, &(windowRecord->fboTable[i].fboid));
+		}
 	} 
 
 	if (!openglpart) {

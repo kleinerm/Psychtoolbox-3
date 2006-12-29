@@ -13,7 +13,8 @@
 	
 		10/20/02		awi			Wrote it mostly by adding in SDL-specific refugeess (from an experimental SDL Psychtoolbox) from header and source files.
 		11/16/04		awi			added  PsychGetGlobalScreenRect.  Enhanced DESCRIPTION text.  
-                04/29/05                mk                      Return id of primary display for displays in hardware mirroring sets.
+		04/29/05        mk          Return id of primary display for displays in hardware mirroring sets.
+		12/29/06		mk			Implement query code for DAC output resolution on OS-X, finally...
         							
 	DESCRIPTION:
 	
@@ -423,27 +424,48 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
 */	
 int PsychGetNumScreenPlanes(int screenNumber)
 {
-    
     return(PsychGetNumPlanesFromDepthValue(PsychGetScreenDepthValue(screenNumber)));
 }
 
 
 
 /*
-	This is a place holder for a function which uncovers the number of dacbits.  To be filled in at a later date.
-	If you know that your card supports >8 then you can fill that in the PsychtPreferences and the psychtoolbox
-	will act accordingly.
+	PsychGetDacBitsFromDisplay()
 	
-	There seems to be no way to uncover the dacbits programatically.  According to apple CoreGraphics
-	sends a 16-bit word and the driver throws out whatever it chooses not to use.
-		
-	For now we just use 8 to avoid false precision.  
-	
-	If we can uncover the video card model then  we can implement a table lookup of video card model to number of dacbits.  
+	Return output resolution of video DAC in bits per color component.
+	We return a safe default of 8 bpc if we can't query the real value.
 */
 int PsychGetDacBitsFromDisplay(int screenNumber)
 {
-	return(8);
+    CGDirectDisplayID	displayID;
+	CFMutableDictionaryRef properties;
+	CFNumberRef cfGammaWidth;
+	SInt32 dacbits;
+	io_service_t displayService;
+	kern_return_t kr;
+	
+	// Retrieve display handle for screen:
+	if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDacBitsFromDisplay() is out of range"); 
+	displayID=displayCGIDs[screenNumber];
+
+	// Retrieve low-level IOKit service port for this display:
+	displayService = CGDisplayIOServicePort(displayID);
+	// printf("Display 0x%08X with IOServicePort 0x%08X\n", displayID, displayService);
+	
+	// Obtain the properties from that service
+	kr = IORegistryEntryCreateCFProperties(displayService, &properties, NULL, 0);
+	if((kr == kIOReturnSuccess) && ((cfGammaWidth = (CFNumberRef) CFDictionaryGetValue(properties, CFSTR(kIOFBGammaWidthKey)))!=NULL))
+	{
+		CFNumberGetValue(cfGammaWidth, kCFNumberSInt32Type, &dacbits);
+		CFRelease(properties);
+		return((int) dacbits);
+	}
+	else {
+		// Failed! Return safe 8 bits...
+		CFRelease(properties);
+		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to query resolution of video DAC for screen %i! Will return safe default of 8 bits.\n", screenNumber);
+		return(8);
+	}
 }
 
 
@@ -463,11 +485,8 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
     PsychGetScreenDepth(screenNumber, &(settings->depth));
     settings->mode=PsychGetColorModeFromDepthStruct(&(settings->depth));
     settings->nominalFrameRate=PsychGetNominalFramerate(screenNumber);
-	//settings->dacbits=PsychGetDacBits(screenNumber);
+	// settings->dacbits=PsychGetDacBitsFromDisplay(screenNumber);
 }
-
-
-
 
 //Set display parameters
 

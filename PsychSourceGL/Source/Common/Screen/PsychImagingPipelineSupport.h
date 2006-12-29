@@ -66,6 +66,9 @@ void	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookI
 PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, int hookfunctype);
 int		PsychGetHookByName(const char* hookName);
 
+// Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
+Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height);
+
 //end include once
 #endif
 
