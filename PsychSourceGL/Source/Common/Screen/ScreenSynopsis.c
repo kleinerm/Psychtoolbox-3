@@ -222,7 +222,7 @@ void InitializeSynopsis()
         // Interfacing with external OpenGL rendering code (MOGL and external OpenGL Mexfiles):
 	synopsis[i++] = "\n% Support for 3D graphics rendering and for interfacing with external OpenGL code:";
         synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);  % Enable 3D gfx support.";
-        synopsis[i++] = "Screen('BeginOpenGL', windowPtr);  % Prepare window for external OpenGL drawing.";
+        synopsis[i++] = "Screen('BeginOpenGL', windowPtr [, sharecontext]);  % Prepare window for external OpenGL drawing.";
         synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
 	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
         synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";

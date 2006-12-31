@@ -68,6 +68,7 @@ PsychError SCREENSetOpenGLTexture(void)
         textureRecord->screenNumber = windowRecord->screenNumber;
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+        textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
 		
 		textureRecord->colorRange = windowRecord->colorRange;
 		

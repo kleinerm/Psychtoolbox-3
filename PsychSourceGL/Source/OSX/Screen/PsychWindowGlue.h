@@ -54,6 +54,7 @@ void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInte
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 double  PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount);
+void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext);
 //end include once
 #endif
 

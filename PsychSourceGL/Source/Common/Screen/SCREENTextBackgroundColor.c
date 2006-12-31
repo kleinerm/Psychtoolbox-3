@@ -56,13 +56,13 @@ PsychError SCREENTextBackgroundColor(void)
 	
 	//Coerce the current color record to the correct type in case it has not been accessed yet.
 	//  and return it. 
-	PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textColor),  winRec);
+	PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textBackgroundColor),  winRec);
 	PsychCopyOutColorArg(1, kPsychArgOptional, &(winRec->textAttributes.textBackgroundColor));
 	
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(2, kPsychArgOptional, &colorArg);
 	if(doSetColor)
-		PsychSetTextColorInWindowRecord(&colorArg,  winRec);
+		PsychSetTextBackgroundColorInWindowRecord(&colorArg,  winRec);
         
     return(PsychError_none);
 

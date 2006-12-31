@@ -292,7 +292,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
-
+	windowRecord->targetSpecific.glusercontextObject = NULL;
+	
     // First try in choosing a matching format for multisample mode:
     if (windowRecord->multiSample > 0) {
       error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
@@ -372,7 +373,33 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
         }
     }
     
-    
+    // External 3D graphics support enabled?
+	if (PsychPrefStateGet_3DGfx()) {
+		// Yes. We need to create an extra OpenGL rendering context for the external
+		// OpenGL code to provide optimal state-isolation. The context shares all
+		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
+		// starts off as an identical copy of PTB's context as of here.
+		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
+		if (error) {
+			printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+			return(FALSE);
+		}
+	    // Attach it to our onscreen drawable:
+		error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
+		if (error) {
+			printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+			CGLSetCurrentContext(NULL);
+			return(FALSE);
+		}
+		// Copy full state from our main context:
+		error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+		if (error) {
+			printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+			CGLSetCurrentContext(NULL);
+			return(FALSE);
+		}
+	}
+	
     // Initialize a low-level mapping of Framebuffer device data structures into
     // our address space: Needed for additional timing checks:
 
@@ -504,12 +531,14 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
         PsychReleaseScreen(windowRecord->screenNumber);
         // Destroy onscreen window, detach context:
         CGLClearDrawable(windowRecord->targetSpecific.contextObject);
+		if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
         PsychCaptureScreen(windowRecord->screenNumber);
     }
     // Destroy pixelformat object:
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
     // Destroy rendering context:
     CGLDestroyContext(windowRecord->targetSpecific.contextObject);
+	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
 
     // Disable low-level mapping of framebuffer cursor memory:
     if (PsychPrefStateGet_VBLTimestampingMode()>0) {
@@ -547,9 +576,38 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 */
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
-    // MK: Setup new context if it isn't already setup. -> Avoid redundant context switch.
+    // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
-        CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+		// We need to glFlush the context before switching, otherwise race-conditions may occur:
+        glFlush();
+		
+		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		
+		// Switch to new context:
+		CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+    }
+}
+
+/* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
+ * optionally copying state from PTBs context.
+ */
+void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext)
+{
+	// Child protection:
+	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
+	
+	if (copyfromPTBContext) {
+		// Syncing of external contexts state with PTBs internal state requested. Do it:
+		glFlush();
+		CGLSetCurrentContext(NULL);
+		CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+	}
+	
+    // Setup new context if it isn't already setup. -> Avoid redundant context switch.
+    if (CGLGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
+		glFlush();
+        CGLSetCurrentContext(windowRecord->targetSpecific.glusercontextObject);
     }
 }
 

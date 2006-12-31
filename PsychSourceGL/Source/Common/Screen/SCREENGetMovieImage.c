@@ -134,6 +134,7 @@ PsychError SCREENGetMovieImage(void)
     // MK: Is this the proper way to do it???
     textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
     textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+	textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
     textureRecord->colorRange = windowRecord->colorRange;
 	// Copy imaging mode flags from parent:
 	textureRecord->imagingMode = windowRecord->imagingMode;

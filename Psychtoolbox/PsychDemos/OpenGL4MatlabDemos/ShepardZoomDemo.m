@@ -89,6 +89,9 @@ if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
     % Retrieve OpenGL texture handle to the power of two sized texture:
     texture=Screen('GetOpenGLTexture', win, tex);
 
+    % Activate our own OpenGL rendering code:
+    Screen('BeginOpenGL', win);
+    
     % Bind the texture for use:
     glBindTexture(GL.TEXTURE_2D, texture);   %  2d texture (x and y size)
 
@@ -105,6 +108,9 @@ else
     end;
     glpixels = uint8(glpixels);
     
+    % Activate our own OpenGL rendering code:
+    Screen('BeginOpenGL', win);
+
     % Generate a texture object:
     texture = glGenTextures(1);
     
@@ -404,18 +410,24 @@ while 1
     % Restore modelview matrix to pre-render state:
     glPopMatrix;
     
+    % Finish our OpenGl rendering:
+    Screen('EndOpenGL', win);
+
     % Draw help text if enabled:
     if drawhelp
         DrawFormattedText(win, helptext, 'center', 'center');
     end
     
-    % Perform flip in sync with retrace. Backup and restore modelview
-    % matrix before and after flip, so PTB can't screw our matrix ;)
-    glPushMatrix;
+    % Perform flip in sync with retrace.
     Screen('Flip', win);
-    glPopMatrix;
+    
+    % Activate our own OpenGL rendering code again for drawing the next frame:
+    Screen('BeginOpenGL', win);
 
 end % Next iteration of animation loop...
+
+% Finish our OpenGl rendering:
+Screen('EndOpenGL', win);
 
 % We're done! Close window and release all texture ressources:
 Screen('CloseAll');

@@ -121,6 +121,7 @@ typedef struct PsychFBO {
 typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
+		CGLContextObj		glusercontextObject;   // OpenGL context for userspace rendering code, e.g., moglcore...
         CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
         void*              deviceContext;          // Dummy pointer, just here for compatibility to Windows-Port (simplifies code)
 } PsychTargetSpecificWindowRecordType;
@@ -129,10 +130,11 @@ typedef struct{
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // Definition of Win32 Window handles, device handles and OpenGL contexts
 typedef struct{
-  HGLRC		          contextObject;      // OpenGL rendering context.
+  HGLRC		              contextObject;      // OpenGL rendering context.
   HDC                     deviceContext;      // Device context of the window.
   HWND                    windowHandle;       // The window handle.
   PIXELFORMATDESCRIPTOR   pixelFormatObject;  // The context's pixel format object.
+  HGLRC					  glusercontextObject;	   // OpenGL context for userspace rendering code, e.g., moglcore...
   CVOpenGLTextureRef      QuickTimeGLTexture; // Used for textures returned by movie routines in PsychMovieSupport.c
   // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;
@@ -144,7 +146,8 @@ typedef struct{
   GLXContext		contextObject;       // GLX OpenGL rendering context.
   int             	pixelFormatObject;   // Just here for compatibility. Its a dummy entry without meaning.
   Display*              deviceContext;       // Pointer to the X11 display connection.
-  Window                windowHandle;        // Handle to the onscreen window.  
+  Window                windowHandle;        // Handle to the onscreen window.
+  GLXContext		glusercontextObject;	   // OpenGL context for userspace rendering code, e.g., moglcore...
   CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
   // CVOpenGLTextureRef is not ready yet. Its typedefd to a void* to make the compiler happy.
 } PsychTargetSpecificWindowRecordType;

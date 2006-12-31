@@ -1878,8 +1878,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]].coltexid;
 		glLoadIdentity();
-			glDisable(GL_DEPTH_TEST);
-			glDisable(GL_LIGHTING);
+
 		// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
 		// sure that alpha-blending is disabled during this blit operation:
 		if (glIsEnabled(GL_BLEND)) {
@@ -1892,8 +1891,6 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			// Alpha blending not enabled. Just blit it:
 			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
 		}
-			glEnable(GL_LIGHTING);
-			glEnable(GL_DEPTH_TEST);
 		
 		windowRecord->textureNumber = 0;
 	}

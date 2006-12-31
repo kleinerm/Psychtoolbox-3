@@ -161,6 +161,7 @@ PsychError SCREENGetCapturedImage(void)
         // Assign proper OpenGL-Renderingcontext to texture:
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
+        textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
 
 		textureRecord->colorRange = windowRecord->colorRange;
 		// Copy imaging mode flags from parent:
