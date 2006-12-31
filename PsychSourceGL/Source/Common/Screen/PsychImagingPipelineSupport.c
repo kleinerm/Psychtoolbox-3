@@ -73,6 +73,19 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
 		windowRecord->HookChain[i]=NULL;
 	}
 	
+	// Disable all special framebuffer objects by default:
+	windowRecord->drawBufferFBO[0]=-1;
+	windowRecord->drawBufferFBO[1]=-1;
+	windowRecord->processedDrawBufferFBO[0]=-1;
+	windowRecord->processedDrawBufferFBO[1]=-1;
+	windowRecord->processedDrawBufferFBO[2]=-1;
+	windowRecord->preConversionFBO[0]=-1;
+	windowRecord->preConversionFBO[1]=-1;
+	windowRecord->preConversionFBO[2]=-1;
+	windowRecord->finalizedFBO[0]=-1;
+	windowRecord->finalizedFBO[1]=-1;
+	windowRecord->fboCount = 0;
+
 	// Setup mode switch in record to "all off":
 	windowRecord->imagingMode = 0;
 
@@ -87,9 +100,8 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
  *  default values in the windowRecord (imaging pipe is disabled by default if imagingmode is zero), based on
  *  the imagingmode flags and all the windowRecord and OpenGL settings.
  *
- *  1. All hook chains are initialized to empty & disabled.
- *  2. FBO's are setup according to the requested imagingmode, stereomode and color depth of a window.
- *  3. Depending on stereo mode and imagingmode, some default GLSL shaders may get created and attached to
+ *  1. FBO's are setup according to the requested imagingmode, stereomode and color depth of a window.
+ *  2. Depending on stereo mode and imagingmode, some default GLSL shaders may get created and attached to
  *     some hook-chains for advanced stereo processing.
  */
 void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode)
@@ -99,26 +111,16 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	int fbocount = 0;
 	int winwidth, winheight;
 	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore; 
-	
-	// Disable all special framebuffer objects by default:
-	windowRecord->drawBufferFBO[0]=0;
-	windowRecord->drawBufferFBO[1]=0;
-	windowRecord->processedDrawBufferFBO[0]=0;
-	windowRecord->processedDrawBufferFBO[1]=0;
-	windowRecord->processedDrawBufferFBO[2]=0;
-	windowRecord->preConversionFBO[0]=0;
-	windowRecord->preConversionFBO[1]=0;
-	windowRecord->preConversionFBO[2]=0;
-	windowRecord->finalizedFBO[0]=0;
-	windowRecord->finalizedFBO[1]=0;
-	windowRecord->fboCount = 0;
-	
+		
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
 	if (imagingmode<=0) {
 		imagingmode=0;
 		return;
 	}
 	
+	// Activate rendering context of this window:
+	PsychSetGLContext(windowRecord);
+
 	// Specific setup of pipeline if real imaging ops are requested:
 	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline enabled for window with requested imaging flags %i ...\n", imagingmode);
 	fflush(NULL);
@@ -330,7 +332,13 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->fboCount = fbocount;
 	
 	// TODO: Setup stereo shaders for the different stereo modes...
-	
+
+	// Perform a full reset of current drawing target. This is a warm-start of PTB's drawing
+	// engine, so the next drawing command will trigger binding the proper FBO of our pipeline.
+	// Before this point (==OpenWindow time), all drawing was directly directed to the system
+	// framebuffer - important for all the timing tests and calibrations to work correctly.
+	PsychSetDrawingTarget(NULL);
+
 	// Well done.
 	return;
 }
@@ -354,19 +362,27 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 	
 	// Start cleanly for error handling:
 	fbo->fboid = 0;
-	fbo->coltexid = 0;
 	fbo->stexid = 0;
 	fbo->ztexid = 0;
 
-	// Build color buffer: Create a new texture handle for the color buffer attachment.
-	glGenTextures(1, (GLuint*) &(fbo->coltexid));
+	// Is there already a texture object defined for the color attachment?
+	if (fboInternalFormat != (GLenum) 0) {
+		// No, need to create one:
+		
+		// Build color buffer: Create a new texture handle for the color buffer attachment.
+		glGenTextures(1, (GLuint*) &(fbo->coltexid));
+		
+		// Bind it as rectangle texture:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
+		
+		// Create proper texture: Just allocate proper format, don't assign data.
+		glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+	}
+	else {
+		// Yes. Bind it as rectangle texture:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
+	}
 	
-	// Bind it as rectangle texture:
-	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
-	
-	// Create proper texture: Just allocate proper format, don't assign data.
-	glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-
     // Setup texture wrapping behaviour to clamp, as other behaviours are
     // unsupported on many gfx-cards for rectangle textures:
     glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
@@ -394,7 +410,7 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 			printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
 			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5000 or ATI Radeon 9600\n");
 			printf("PTB-ERROR: for this to work.\n");
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline Setup: Setup of internal Framebuffer object failed [No support for depth textures].");
+			return(FALSE);
 		}
 		
 		// Create texture object for z-buffer (or z+stencil buffer) and set it up:
@@ -490,7 +506,7 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 		printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline [%s]! The most likely cause is that your hardware does not support\n", (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) ? "Unsupported format" : "Unknown error");
 		printf("PTB-ERROR: the required buffers at the given screen resolution (Additional 3D buffers for z- and stencil are %s).\n", (needzbuffer) ? "requested" : "disabled");
 		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) display resolution or with 3D rendering support disabled.\n");
-		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline Setup: Setup of internal Framebuffer object failed [Framebuffer incomplete].");
+		return(FALSE);
 	}
 	
 	if (PsychPrefStateGet_Verbosity()>4) {
@@ -513,6 +529,7 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 
 	// Unbind FBO:
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
 	// Test all GL errors:
 	PsychTestForGLErrors();
 
@@ -547,6 +564,8 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean o
 		}
 	} 
 
+	// The following cleanup must only happen after OpenGL rendering context is already detached and
+	// destroyed. It's part of phase-2 "post GL shutdown" of Screen('Close') and friends...
 	if (!openglpart) {
 		// Clear all hook chains:
 		for (i=0; i<MAX_SCREEN_HOOKS; i++) {

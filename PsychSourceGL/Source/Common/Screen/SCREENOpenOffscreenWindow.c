@@ -144,6 +144,12 @@ PsychError SCREENOpenOffscreenWindow(void)
       PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp!");
     }
 
+	// If the imaging pipeline is enabled for the associated onscreen window and fast backing store, aka FBO's
+	// is requested, then we only accept depths of at least 32 bit, i.e. RGBA windows. We override any lower
+	// precision spec. This is because some common hardware only supports rendering to RGBA textures, not to
+	// RGB, LA or Luminance textures.
+	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore) && (depth < 32)) depth = 32;
+
     //find the color for the window background.  
     wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
     if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthValue(32)); // Use the default 32 bpp!!!  
@@ -224,6 +230,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// Copy color range and mode from parent window:
 	windowRecord->colorRange = targetWindow->colorRange;
 
+	// Copy imaging mode flags from parent:
+	windowRecord->imagingMode = targetWindow->imagingMode;
+	
     // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
     windowRecord->textureOrientation = 2;
     

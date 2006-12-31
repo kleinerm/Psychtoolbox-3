@@ -474,7 +474,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       }
       
       // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
-      // are not available on this system: This always happens on M$-Windows as that feature is unavailable.
+      // are not available on this system: This always happens on Linux as that feature is unavailable.
       if ((-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) && (i!=12345)) {
 	// Switch to RT scheduling for timing tests:
 	PsychRealtimePriority(true);
@@ -831,7 +831,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
     
-	// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord:
+	// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
+	// do the shutdown work which still requires a fully functional OpenGL context and
+	// hook-chains:
 	PsychShutdownImagingPipeline(windowRecord, TRUE);
 
     if(PsychIsOnscreenWindow(windowRecord)){
@@ -841,7 +843,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 // Make sure that OpenGL pipeline is done & idle for this window:
                 PsychSetGLContext(windowRecord);
 				
-				// EXPERIMENTAL: Execute hook chain for OpenGL related shutdown:
+				// Execute hook chain for OpenGL related shutdown:
 				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, 0, 1);
 
 				// Sync and idle the pipeline:
@@ -864,7 +866,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
                 windowRecord->targetSpecific.contextObject=NULL;
 				
-				// EXPERIMENTAL: Execute hook chain for final non-OpenGL related shutdown:
+				// Execute hook chain for final non-OpenGL related shutdown:
 				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, 0, 1);				
     }
     else if(windowRecord->windowType==kPsychTexture) {
@@ -1079,6 +1081,14 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     // and special compositing operations for specific stereo algorithms...
     PsychPreFlipOperations(windowRecord, dont_clear);
     
+	// Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
+	if (windowRecord->imagingMode > 0) {
+		// Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
+		// and reset the current target window to 'none'. We need this to be sure that our flip
+		// sync pixel token is written to the real system backbuffer...
+		PsychSetDrawingTarget(NULL);
+	}
+	
     // Part 1 of workaround- /checkcode for syncing to vertical retrace:
     if (vblsyncworkaround) {
         glDrawBuffer(GL_BACK);
@@ -1357,10 +1367,15 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         id++;
     }
 
+	// Special imaging mode active? in that case we need to restore drawing engine state to preflip state.
+	if (windowRecord->imagingMode > 0) {
+		PsychSetDrawingTarget(windowRecord);
+	}
+
     // Restore assignments of read- and drawbuffers to pre-Flip state:
     glReadBuffer(read_buffer);
     glDrawBuffer(draw_buffer);
-    
+
     // Reset flags used for avoiding redundant Pipeline flushes and backbuffer-backups:
     // This flags are altered and checked by SCREENDrawingFinished() and PsychPreFlipOperations() as well:
     windowRecord->PipelineFlushDone = false;
@@ -1792,67 +1807,96 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     
-    // Check for compressed stereo handling...
-    if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
-      if (auxbuffers<2) {
-	PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! The requested stereo mode doesn't work without them.\n"
-			  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
-      }
-      
-      // Compressed stereo mode active. Compositing already done?
-      // Backup backbuffer -> AUX buffer: We trigger this via transition to "no buffer":
-      PsychSwitchCompressedStereoDrawBuffer(windowRecord, 2);
-      
-      // Ok, now both AUX buffers contain the final stereo content: Compose them into
-      // back-buffer:
-      PsychComposeCompressedStereoBuffer(windowRecord);
-    }
-    // Non-compressed stereo case: Mono or other stereo alg. Normal treatment applies...
-    // Check if we should do the backbuffer -> AUX buffer backup, because we use
-    // clearmode 1 aka "Don't clear after flip, but retain backbuffer content"
-    else if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen) {
-        // Backup current assignment of read- writebuffers:
-        GLint read_buffer, draw_buffer, blending_on;
-        glGetIntegerv(GL_READ_BUFFER, &read_buffer);
-        glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
-	blending_on = (int) glIsEnabled(GL_BLEND);
-        glDisable(GL_BLEND);
-        
-        // Is this window equipped with a native OpenGL stereo rendering context?
-        // If so, then we need to backup both backbuffers (left-eye and right-eye),
-        // instead of only the monoscopic one.
-        if (stereo_mode==kPsychOpenGLStereo) {
-            if (auxbuffers<2) {
-                PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
-                "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
-            }
-            
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK_LEFT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-            glDrawBuffer(GL_AUX1);
-            glReadBuffer(GL_BACK_RIGHT);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-        else {
-            if (auxbuffers<1) {
-                PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
-                                  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
-            }
-            glDrawBuffer(GL_AUX0);
-            glReadBuffer(GL_BACK);
-            glRasterPos2i(0, screenheight);
-            glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
-        }
-
-        if (blending_on) glEnable(GL_BLEND);
-
-        // Restore assignment of read- writebuffers:
-        glReadBuffer(read_buffer);
-        glDrawBuffer(draw_buffer);        
-    }
+	// The following code is for traditional non-imaging rendering:
+	if (windowRecord->imagingMode == 0) {
+		// Check for compressed stereo handling...
+		if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
+			if (auxbuffers<2) {
+				PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! The requested stereo mode doesn't work without them.\n"
+								  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+			}
+			
+			// Compressed stereo mode active. Compositing already done?
+			// Backup backbuffer -> AUX buffer: We trigger this via transition to "no buffer":
+			PsychSwitchCompressedStereoDrawBuffer(windowRecord, 2);
+			
+			// Ok, now both AUX buffers contain the final stereo content: Compose them into
+			// back-buffer:
+			PsychComposeCompressedStereoBuffer(windowRecord);
+		}
+		// Non-compressed stereo case: Mono or other stereo alg. Normal treatment applies...
+		// Check if we should do the backbuffer -> AUX buffer backup, because we use
+		// clearmode 1 aka "Don't clear after flip, but retain backbuffer content"
+		else if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen) {
+			// Backup current assignment of read- writebuffers:
+			GLint read_buffer, draw_buffer, blending_on;
+			glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+			glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
+			blending_on = (int) glIsEnabled(GL_BLEND);
+			glDisable(GL_BLEND);
+			
+			// Is this window equipped with a native OpenGL stereo rendering context?
+			// If so, then we need to backup both backbuffers (left-eye and right-eye),
+			// instead of only the monoscopic one.
+			if (stereo_mode==kPsychOpenGLStereo) {
+				if (auxbuffers<2) {
+					PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
+									  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+				}
+				
+				glDrawBuffer(GL_AUX0);
+				glReadBuffer(GL_BACK_LEFT);
+				glRasterPos2i(0, screenheight);
+				glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+				glDrawBuffer(GL_AUX1);
+				glReadBuffer(GL_BACK_RIGHT);
+				glRasterPos2i(0, screenheight);
+				glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+			}
+			else {
+				if (auxbuffers<1) {
+					PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
+									  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+				}
+				glDrawBuffer(GL_AUX0);
+				glReadBuffer(GL_BACK);
+				glRasterPos2i(0, screenheight);
+				glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+			}
+			
+			if (blending_on) glEnable(GL_BLEND);
+			
+			// Restore assignment of read- writebuffers:
+			glReadBuffer(read_buffer);
+			glDrawBuffer(draw_buffer);        
+		}
+	}		
+	
+	if (windowRecord->imagingMode) {
+		PsychSetDrawingTarget(NULL);
+		PsychSetupView(windowRecord);
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]].coltexid;
+		glLoadIdentity();
+			glDisable(GL_DEPTH_TEST);
+			glDisable(GL_LIGHTING);
+		// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
+		// sure that alpha-blending is disabled during this blit operation:
+		if (glIsEnabled(GL_BLEND)) {
+			// Alpha blending enabled. Disable it, blit texture, reenable it:
+			glDisable(GL_BLEND);
+			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+			glEnable(GL_BLEND);
+		}
+		else {
+			// Alpha blending not enabled. Just blit it:
+			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+		}
+			glEnable(GL_LIGHTING);
+			glEnable(GL_DEPTH_TEST);
+		
+		windowRecord->textureNumber = 0;
+	}
 
 	// EXPERIMENTAL: Execute hook chain for final backbuffer data formatting after stereo composition and post processing:
 	PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, 0, 1);
@@ -1957,10 +2001,38 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
             }
         }
     }
-
-    // Restore modelview matrix:
+	
+	// Restore modelview matrix:
     glPopMatrix();
-	 if (glGetError() == GL_OUT_OF_MEMORY) {
+
+	// Imaging pipeline enabled?
+    if (windowRecord->imagingMode > 0) {
+		// Yes. This is rather simple. In dontclear=2 mode we do nothing, except reenable
+		// the windowRecord as drawing target again. In dontlclear=1 mode ditto, because
+		// our backing store FBO's already retained a backup of the preflip-framebuffer.
+		// Only in dontclear = 0 mode, we need to clear the backing FBO's:
+		
+		if (clearmode==0) {
+			// Select proper viewport and cliprectangles for clearing:
+			PsychSetupView(windowRecord);
+			// Bind left view (or mono view) buffer:
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]].fboid);
+			// and clear it:
+			glClear(GL_COLOR_BUFFER_BIT);
+			if (windowRecord->stereomode > 0) {
+				// Bind right view buffer for stereo mode:
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]].fboid);
+				// and clear it:
+				glClear(GL_COLOR_BUFFER_BIT);
+			}
+		}
+		
+		// Select proper rendertarget for further drawing ops - restore preflip state:
+		PsychSetDrawingTarget(windowRecord);
+	}
+
+	
+	if (glGetError() == GL_OUT_OF_MEMORY) {
 		// Special case: Out of memory after Flip + Postflip operations.
 		printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
 		printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
@@ -1998,18 +2070,6 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
  */
 void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
-    // The ENABLE_FBOS is a master-switch for use of the fast-path with OpenGL Framebuffer
-    // objects: This requires OS-X 10.4.3 or higher to work.
-    // The dynamic binding code is currently missing that will be needed for the Windows version.
-    // We leave this switch off for now, as we still want to support OS-X 10.3 at least until the
-    // next official release. Also this code still contains bugs -- although bugs of OX-X not our
-    // bugs ;) -- Let's wait for OS-X 10.4.5 before using it...
-#if PSYCH_SYSTEM == PSYCH_OSX
-#define ENABLE_FBOS 0
-#else
-#define ENABLE_FBOS 0    
-#endif
-
     // We keep track of the current active rendertarget in order to
     // avoid needless state changes:
     static PsychWindowRecordType* currentRendertarget = NULL;
@@ -2032,130 +2092,82 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
         return;
     }
     
-    // First time invocation?
-    if (use_framebuffer_objects==-1) {
-        // FBO extension available on this hardware?
-        if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_framebuffer_object") && (ENABLE_FBOS == 1)) {
-            // Yes it is :)
-            use_framebuffer_objects = 1;
-        }
-        else {
-            // Nope :( -- We use some slow-path that only uses OpenGL 1.1 functionality and
-            // should therefore work on old gfx-hardware, albeit at some significant speed
-            // penalty.
-            use_framebuffer_objects = 0;
-        }
-    }
-    
+	// windowRecord or NULL provided? NULL would mean a warm-start:
     if (windowRecord) {
         // State transition requested?
         if (currentRendertarget != windowRecord) {
             // Need to do a switch between drawing target windows:
-            if (use_framebuffer_objects == 1 && ENABLE_FBOS == 1) {
-                // Use OpenGL framebuffer objects: This is the fast-path!
-                #if ENABLE_FBOS == 1
-                // Yes! Transition to offscreen rendertarget?
+
+			// Check if the imaging pipeline is enabled for this window. If so, we will use
+			// the fast FBO based rendertarget implementation:
+            if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
+                // Imaging pipeline active for this window. Use OpenGL framebuffer objects: This is the fast-path!
+
+                // Transition to offscreen rendertarget?
                 if (windowRecord->windowType == kPsychTexture) {
-                    // Need to bind a texture as framebuffer object:
-                    if (framebufferobject == 0) {
-                        // Need to create a framebuffer object first:
-                        glGenFramebuffersEXT(1, &framebufferobject);
-                        
-                        // Check if this is a buggy renderer which needs the FBO hack:
-                        // At least the GeForceFX 5200 Ultra on OS-X 10.4.4 has trouble with
-                        // not properly initializing the FBO when a texture is bound as rendertarget,
-                        // which can lead to junk in the offscreen windows under some circumstance.
-                        if (strstr(glGetString(GL_RENDERER), "GeForce FX 5200")) {
-                            // Yes it is :(
-                            fbo_workaround_needed = TRUE;
-                            
-                            // Create a 2nd framebuffer-object which will be needed for the hack:
-                            glGenFramebuffersEXT(1, &framebufferobject2);
-                            glGenRenderbuffersEXT(1, &renderbuffer);
-                        }
+                    // Yes. Need to bind the texture as framebuffer object. This only works for rectangle textures.
+					if (PsychGetTextureTarget(windowRecord)!=GL_TEXTURE_RECTANGLE_EXT) {
+						PsychErrorExitMsg(PsychError_user, "You tried to draw into a special power-of-two offscreen window or texture. Sorry, this is not supported.");
+					}
+					
+					// It also only works on RGB or RGBA textures, not Luminance or LA textures:
+					// We could relax this constraint on some gfx-hardware or on all hardware by an expensive conversion blit, but for now we live with this limit.
+					if (windowRecord->depth < 24) {
+						PsychErrorExitMsg(PsychError_user, "You tried to draw into a offscreen window or texture which is not RGB or RGBA true-color format. Sorry, this is not supported.");
+					}
+					
+					// Do we already have a framebuffer object for this texture? All textures start off without one,
+					// because most textures are just used for drawing them, not drawing *into* them. Therefore we
+					// only create a full blown FBO on demand here.
+					if (windowRecord->drawBufferFBO[0]==-1) {
+                        // No. This texture is used the first time as a drawing target.
+						// Need to create a framebuffer object for it first.
+						
+						// Manually set up the color attachment texture id to our texture id:
+						windowRecord->fboTable[0].coltexid = windowRecord->textureNumber;
+						
+						// Create proper FBO object (optionally with z- and stencilbuffer) and attach the texture
+						// as color attachment 0, aka main colorbuffer:				
+						if (!PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect))) {
+							// Failed!
+							PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
+
+						}					
+
+						// Worked. Set up remaining state:
+						windowRecord->fboCount = 1;
+						windowRecord->drawBufferFBO[0]=0;
                     }
+
+					// Switch to FBO for given texture or offscreen window:
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0].fboid);
+
+				} // Special setup for offscreen windows or textures finished.
+				else {
+					// Bind onscreen window as drawing target:
+					// We either bind the drawBufferFBO for the left channel or right channel, depending
+					// on stereo mode and selected stereo buffer:
+					if ((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) {
+						// We are in stereo mode and want to draw into the right-eye channel. Bind FBO-1
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]].fboid);
+					}
+					else {
+						// We are either in stereo mode and want to draw into left-eye channel or we are
+						// in mono mode. Bind FBO-0:
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]].fboid);
+					}
+				}
                     
-                    if (fbo_workaround_needed) {
-                        // Bind our scratch framebuffer and attach our renderbuffer to it as a
-                        // color-buffer:
-                        glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject2);
-                        glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, renderbuffer);
-                        glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_RGBA8, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect)); 
-                        glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_RENDERBUFFER_EXT, renderbuffer);
-                        // Setup viewport and such for rendering:
-                        glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-                        glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-                        // Setup projection matrix for a proper orthonormal projection for this framebuffer or window:
-                        glMatrixMode(GL_PROJECTION);
-                        glLoadIdentity();
-                        gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
-                        glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);                    
-                        // Switch back to modelview matrix, but leave it unaltered:
-                        glMatrixMode(GL_MODELVIEW);
-                        // Blit our texture into the framebuffer:
-			// MK: TODO - Need to disable alpha blending here?
-                        PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-                        // Unbind any bound texture:
-                        glBindTexture(PsychGetTextureTarget(windowRecord), 0);                    
-                        // Copy the framebuffer, aka our texture into dummy texture object zero:
-                        glCopyTexImage2D(PsychGetTextureTarget(windowRecord), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect), 0); 
-                        // Ok, now we have a copy of our texture in texture zero.
-                    }
-                    
-                    // Bind our own framebuffer:
-                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, framebufferobject);
-                    // Make sure our texture is not bound to a texture unit:
-                    glBindTexture(PsychGetTextureTarget(windowRecord), 0);
-                    // Assign our texture to our framebufferobject:
-                    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT,
-                                              PsychGetTextureTarget(windowRecord), windowRecord->textureNumber, 0);
-                    
-                    // Check for success:
-                    if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
-                        // Failed!
-                        printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
-                        PsychTestForGLErrors();
-                        recursionLevel--;
-                        return;
-                    }
-                    
-                    if (fbo_workaround_needed) {
-                        // This renderer doesn't initialize properly when binding a texture as
-                        // framebuffer. Need to do it manually...
-                        // Setup viewport and such for rendering:
-                        glViewport(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-                        glScissor(0, 0, (int) PsychGetWidthFromRect(windowRecord->rect), (int) PsychGetHeightFromRect(windowRecord->rect));
-                        glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);                    
-                        // Blit texture zero to our rendertarget:
-                        texid=windowRecord->textureNumber;
-                        windowRecord->textureNumber = 0;
-			// MK: TODO - Need to disable alpha blending here?
-                        PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-                        windowRecord->textureNumber = texid;
-                        // Ok, the framebuffer has been initialized with the content of our texture.
-                    }
-                    
-                    // Check for success:
-                    if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
-                        // Failed!
-                        printf("\nPTB-ERROR: Preparing Offscreen-Window or Texture for drawing failed in PsychSetDrawingTarget()!!!\n");
-                        PsychTestForGLErrors();
-                        recursionLevel--;
-                        return;
-                    }
-                    
-                    // Enable attached texture as drawing target:
-                    glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-                }
-                else {
-                    // Need to bind standard framebuffer (which has id 0):
-                    glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-                }
-                #endif
-            }
+				// Do we need this? glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
+				// Need to bind standard framebuffer (which has id 0):
+				
+				// Fast path for rendertarget switch finished.
+            }	// End of fast-path: FBO based processing...
             else {
                 // Use standard OpenGL without framebuffer objects for drawing target switch:
-                
+                // This code path is executed when the imaging pipeline is disabled. It only uses
+				// OpenGL 1.1 functionality so it should work on any piece of gfx-hardware:
+				
                 // Whatever is bound at the moment needs to be backed-up into a texture...
                 // If currentRendertarget is NULL then we've got nothing to back up.
                 if (currentRendertarget) {
@@ -2184,36 +2196,36 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                                 // This one is an onscreen window that doesn't have a shadow-texture yet. Create a suitable one.
                                 glGenTextures(1, &(currentRendertarget->textureNumber));
                                 glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-				// If this system only supports power-of-2 textures, then we'll need a little trick:
-				if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
-				  // Ok, we need to create an empty texture of suitable power-of-two size:
-				  // Now we can do subimage texturing...
-				  twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
-				  theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
-				  glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
-				  glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
-				}
-				else {
-				  // Supports rectangle textures. Just create texture as copy of framebuffer:
-				  glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
-				}
+								// If this system only supports power-of-2 textures, then we'll need a little trick:
+								if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
+									// Ok, we need to create an empty texture of suitable power-of-two size:
+									// Now we can do subimage texturing...
+									twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
+									theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
+									glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
+								}
+								else {
+									// Supports rectangle textures. Just create texture as copy of framebuffer:
+									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+								}
                             }
                             else {
-			      // Texture for this one already exist: Bind and update it:
-			      glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-			      if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
-				// Special case for power-of-two textures:
-				glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
-			      }
-			      else {
-				// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-				glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
-			      }
+								// Texture for this one already exist: Bind and update it:
+								glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
+								if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
+									// Special case for power-of-two textures:
+									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
+								}
+								else {
+									// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
+									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+								}
                             }
                         }
                     }
                 }
-
+				
                 // We only blit when a texture was involved, either as previous rendertarget or as new rendertarget:
                 if (windowRecord->windowType == kPsychTexture || (currentRendertarget && currentRendertarget->windowType == kPsychTexture)) {
                     // OS-9 emulation: frontbuffer = framebuffer, backbuffer = offscreen scratchpad
@@ -2225,31 +2237,31 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                             glDrawBuffer(GL_FRONT);
                         }
                         else {
-			    // Need to write the content to the backbuffer (scratch buffer for offscreen windows) to restore from the backup copy:
+							// Need to write the content to the backbuffer (scratch buffer for offscreen windows) to restore from the backup copy:
                             glReadBuffer(GL_BACK);
                             glDrawBuffer(GL_BACK);
                         }
                     }
-                                        
+					
                     // In emulation mode for old PTB, we only need to restore offscreen windows, as they
                     // share the backbuffer as scratchpad. Each onscreen window has its own frontbuffer, so
                     // it will be unaffected by the switch --> No need to backup & restore.
                     if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(windowRecord))) {
                         // Setup viewport and projections to fit new dimensions of new rendertarget:
                         PsychSetupView(windowRecord);
-
+						
                         // Now we need to blit the new rendertargets texture into the framebuffer. We need to make
-			// sure that alpha-blending is disabled during this blit operation:
-			if (glIsEnabled(GL_BLEND)) {
-			  // Alpha blending enabled. Disable it, blit texture, reenable it:
-			  glDisable(GL_BLEND);
-			  PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-			  glEnable(GL_BLEND);
-			}
-			else {
-			  // Alpha blending not enabled. Just blit it:
-			  PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-			}
+						// sure that alpha-blending is disabled during this blit operation:
+						if (glIsEnabled(GL_BLEND)) {
+							// Alpha blending enabled. Disable it, blit texture, reenable it:
+							glDisable(GL_BLEND);
+							PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+							glEnable(GL_BLEND);
+						}
+						else {
+							// Alpha blending not enabled. Just blit it:
+							PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+						}
                         // Ok, the framebuffer has been initialized with the content of our texture.
                     }
                 }
@@ -2261,31 +2273,27 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                 // or of MakeTexture.
             }
             
-            // Setup viewport and projections to fit new dimensions of new drawingtarget:
+			// Common code after fast- or slow-path switching:
+			
+            // Setup viewport, clip rectangle and projections to fit new dimensions of new drawingtarget:
             PsychSetupView(windowRecord);
-      
-            // Update our bookkeeping:
+			
+            // Update our bookkeeping, set windowRecord as current rendertarget:
             currentRendertarget = windowRecord;
-        }
-    }
+			
+			// Transition finished.
+        } // End of transition code.
+    } // End of if(windowRecord) - then branch...
     else {
-        // Reset of currentRendertarget and framebufferobject requested:
+        // windowRecord==NULL. Reset of currentRendertarget and framebufferobject requested:
+		
+		// Reset current rendertarget to 'none':
         currentRendertarget = NULL;
-        if (framebufferobject != 0) {
-#if ENABLE_FBOS == 1
-            glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-            glDeleteFramebuffersEXT(1, &framebufferobject);
-            if (framebufferobject2 != 0) {
-                glDeleteRenderbuffersEXT(1, &renderbuffer);
-                glDeleteFramebuffersEXT(1, &framebufferobject2);
-            }
-#endif
-            framebufferobject = 0;
-            framebufferobject2 = 0;
-            renderbuffer = 0;
-        }
+		
+		// Bind system framebuffer if FBO's supported on this system:
+        if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
     }
-
+	
     // Decrease recursion level tracker:
     recursionLevel--;
     

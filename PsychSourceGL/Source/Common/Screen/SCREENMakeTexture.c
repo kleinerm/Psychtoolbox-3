@@ -410,6 +410,8 @@ PsychError SCREENMakeTexture(void)
     textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
     textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
 	textureRecord->colorRange = windowRecord->colorRange;
+	// Copy imaging mode flags from parent:
+	textureRecord->imagingMode = windowRecord->imagingMode;
 
     // Texture orientation is zero aka transposed aka non-renderswapped.
     textureRecord->textureOrientation = 0;

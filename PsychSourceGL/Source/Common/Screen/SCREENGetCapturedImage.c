@@ -146,7 +146,7 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord->screenNumber=windowRecord->screenNumber;
 
         // It defaults to a 32 bit texture for captured images. On Linux, this will be overriden,
-	// if optimized formats exist for our purpose:
+		// if optimized formats exist for our purpose:
         textureRecord->depth=32;
         
         // Create default rectangle which describes the dimensions of the image. Will be overwritten
@@ -163,6 +163,8 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
 
 		textureRecord->colorRange = windowRecord->colorRange;
+		// Copy imaging mode flags from parent:
+		textureRecord->imagingMode = windowRecord->imagingMode;
 
         // Set textureNumber to zero, which means "Not cached, do not recycle"
         // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!

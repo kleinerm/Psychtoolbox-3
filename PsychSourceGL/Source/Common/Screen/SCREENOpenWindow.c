@@ -81,8 +81,11 @@ PsychError SCREENOpenWindow(void)
     PsychWindowRecordType		*windowRecord;
     double dVals[4];
     PsychDepthType		specifiedDepth, possibleDepths, currentDepth, useDepth;
-
-    //just for debugging
+	int dummy1;
+	double dummy2, dummy3, dummy4;
+	Boolean EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
+    
+	//just for debugging
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering SCREENOpen\n");
 
     //all sub functions should have these two lines
@@ -177,14 +180,17 @@ PsychError SCREENOpenWindow(void)
     stereomode=0;
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
     if(stereomode < 0 || stereomode > 9) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 9).");
+	if (stereomode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, stereo display functions are not supported in OS-9 PTB emulation mode.");
 
     multiSample=0;
     PsychCopyInIntegerArg(7,FALSE,&multiSample);
     if(multiSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid multisample value provided (Valid are positive numbers >= 0).");
+	if (multiSample!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, anti-aliasing functions are not supported in OS-9 PTB emulation mode.");
 
 	imagingmode=0;
     PsychCopyInIntegerArg(8,FALSE,&imagingmode);
     if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
+	if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
 	
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
     PsychGetScreenSettings(screenNumber, &screenSettings);    
@@ -255,8 +261,12 @@ PsychError SCREENOpenWindow(void)
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
-    // Set the clear color and perform a backbuffer-clear:
+	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
+	// will bind the correct rendertargets for the first time:
     PsychSetGLContext(windowRecord);
+	PsychSetDrawingTarget(windowRecord);
+
+    // Set the clear color and perform a backbuffer-clear:
     PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
     glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
     glClear(GL_COLOR_BUFFER_BIT);
@@ -272,13 +282,15 @@ PsychError SCREENOpenWindow(void)
     // the user selected background color instead of staying at the blue screen or
     // logo display until the Matlab script first calls 'Flip'.
     if ((PsychPrefStateGet_VisualDebugLevel()>=4) && numWindowBuffers>=2) {
-      // Do immediate bufferswap:
-      PsychOSFlipWindowBuffers(windowRecord);
-      // Clear new backbuffer to background color as well:
-      glClear(GL_COLOR_BUFFER_BIT);
+      // Do immediate bufferswap by an internal call to Screen('Flip'). This will also
+	  // take care of clearing the backbuffer in preparation of first userspace drawing
+	  // commands and such...
+	  PsychFlipWindowBuffers(windowRecord, 0, 0, 0, 0, &dummy1, &dummy2, &dummy3, &dummy4);
       // Display now shows background color, so user knows that PTB's 'OpenWindow'
       // procedure is successfully finished.
     }
+
+    PsychTestForGLErrors();
 
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);

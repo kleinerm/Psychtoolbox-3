@@ -70,6 +70,9 @@ PsychError SCREENSetOpenGLTexture(void)
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
 		
 		textureRecord->colorRange = windowRecord->colorRange;
+		
+		// Copy imaging mode flags from parent:
+		textureRecord->imagingMode = windowRecord->imagingMode;
 
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
