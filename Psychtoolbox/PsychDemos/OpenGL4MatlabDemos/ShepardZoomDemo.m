@@ -64,8 +64,8 @@ hold=0;
 flattransparency=0;
 
 % We read PNG images with color- and alpha channels:
-teximage = imread([ PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/snowy_rgb.png' ]);
-alpha    = imread([ PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/snowy_a.png' ]);
+teximage = imread([ PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/snowy_rgb.png' ]);
+alpha    = imread([ PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/snowy_a.png' ]);
 
 % Add alpha channel as 4th layer to image:
 teximage(:,:,4)=alpha(:,:);
