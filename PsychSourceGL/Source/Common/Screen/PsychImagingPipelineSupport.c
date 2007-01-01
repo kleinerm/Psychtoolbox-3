@@ -161,7 +161,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	if (needoutputconversion || needimageprocessing || windowRecord->stereomode > 0) needfastbackingstore = TRUE;
 	
 	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
-	if (!glewIsSupported("GL_EXT_framebuffer_object") || !glewIsSupported("GL_EXT_texture_rectangle")) {
+	if (!glewIsSupported("GL_EXT_framebuffer_object") || (!glewIsSupported("GL_EXT_texture_rectangle") && !glewIsSupported("GL_ARB_texture_rectangle") && !glewIsSupported("GL_NV_texture_rectangle"))) {
 		// Unsupported! This is a complete no-go :(
 		printf("PTB-ERROR: Initialization of the built-in image processing pipeline failed. Your graphics hardware or graphics driver does not support\n");
 		printf("PTB-ERROR: the required OpenGL framebuffer object extension. You may want to upgrade to the latest drivers or if that doesn't help, to a\n");
@@ -513,12 +513,19 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 		// Output framebuffer properties:
 		glGetIntegerv(GL_RED_BITS, &bpc);
 		printf("PTB-DEBUG: FBO has %i bits per color component in ", bpc);
-		glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+		if (glewIsSupported("GL_ARB_color_buffer_float")) {
+			glGetBooleanv(GL_RGBA_FLOAT_MODE_ARB, &isFloatBuffer);
+		}
+		else if (glewIsSupported("GL_APPLE_float_pixels")) { 
+			glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+		}
+		else isFloatBuffer = FALSE;
+
         if (isFloatBuffer) {
             printf("floating point format ");
         }
         else {
-            printf("fixed point precision ");
+            printf("fixed point (or unknown) precision ");
         }
 
 		glGetIntegerv(GL_DEPTH_BITS, &bpc);

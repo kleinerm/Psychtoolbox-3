@@ -763,13 +763,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			return(FALSE);
 		}
 
-	   // Enable ressource sharing with master context for this window:
-		if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject)) {
-			// This is ugly, but not fatal...
-			if (PsychPrefStateGet_Verbosity()>1) {
-				printf("\nPTB-WARNING[wglShareLists for user context failed]: Ressource sharing with private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
-			}		
-		}
+		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
 
 		// Copy full state from our main context:
 		if(!wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS)) {
@@ -778,6 +773,15 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 				printf("\nPTB-WARNING[wglCopyContext for user context failed]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
 			}
 		}
+
+	   // Enable ressource sharing with master context for this window:
+		if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject)) {
+			// This is ugly, but not fatal...
+			if (PsychPrefStateGet_Verbosity()>1) {
+				printf("\nPTB-WARNING[wglShareLists for user context failed]: Ressource sharing with private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+			}		
+		}
+
 	 }
 
     // Finally, show our new window:
@@ -976,6 +980,9 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 	 if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 
     wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
+
+	 // Need to soft-reset drawing engine:
+	 PsychSetDrawingTarget(NULL);
   }
 }
 
@@ -1000,13 +1007,22 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfr
 	if (copyfromPTBContext) {
 		// Syncing of external contexts state with PTBs internal state requested. Do it:
 		glFlush();
+
+	   // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+	   if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
   		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);		
 		wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
 	}
 	
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
   	 if (wglGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
+		 // Prevent race conditions by flushing the context:
 		 glFlush();
+
+	    // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+	    if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+
        wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
     }
 }

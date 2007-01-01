@@ -63,7 +63,7 @@ PsychError SCREENBeginOpenGL(void)
 
     PsychWindowRecordType	*windowRecord;
     int sharecontext;
-	GLint fboid;
+	 GLint fboid, coltexid, ztexid, stexid;
 	
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -77,20 +77,16 @@ PsychError SCREENBeginOpenGL(void)
     //get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
     
+	 // (Optional) context sharing flag provided?
+	 sharecontext = 0;
+	 PsychCopyInIntegerArg(2, FALSE, &sharecontext);
+	 if (sharecontext<0 || sharecontext>2) PsychErrorExitMsg(PsychError_user, "Invalid value for 'sharecontext' provided. Not in range 0 to 2.");
+
     // Switch to windows OpenGL context:
     PsychSetGLContext(windowRecord); 
     
     // Set it as drawing target: This will set up the proper FBO bindings as well:
     PsychSetDrawingTarget(windowRecord);
-	
-	// Query current FBO binding. We need to manually transfer this to the userspace context, so
-	// it can render into our window:
-    if (glBindFramebufferEXT) glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &fboid);
-	
-	// (Optional) context sharing flag provided?
-	sharecontext = 0;
-	PsychCopyInIntegerArg(2, FALSE, &sharecontext);
-	if (sharecontext<0 || sharecontext>2) PsychErrorExitMsg(PsychError_user, "Invalid value for 'sharecontext' provided. Not in range 0 to 2.");
 
 	// Userspace wants its own private rendering context, optionally updated to match PTBs internal state?
 	if (sharecontext == 0 || sharecontext == 2) {
@@ -101,19 +97,55 @@ PsychError SCREENBeginOpenGL(void)
 		// Make sure 3D rendering is globally enabled, otherwise this is considered a userspace bug:
 		if (PsychPrefStateGet_3DGfx()==0) PsychErrorExitMsg(PsychError_user, "Tried to call 'BeginOpenGL' for external rendering, but rendering not enabled! Call 'InitializeMatlabOpenGL' at the beginning of your script!!");
 
+	   // Query current FBO binding. We need to manually transfer this to the userspace context, so
+	   // it can render into our window:
+      if (glBindFramebufferEXT) {
+			fboid = 0;
+	 		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &fboid);
+			if (fboid>0) {
+				// Query attachments of FBO:
+ 				glGetFramebufferAttachmentParameterivEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT, &coltexid);
+ 				glGetFramebufferAttachmentParameterivEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT, &ztexid);
+ 				glGetFramebufferAttachmentParameterivEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT, &stexid);
+			}
+	   }
+
 		// Switch to userspace context for this window, optionally sync state with PTBs context:
 		PsychOSSetUserGLContext(windowRecord, (sharecontext==2) ? TRUE : FALSE);
 		
 		// Manually establish proper FBO binding. This will get reset automaticaly on back-transition
 		// inside PsychSetGLContext on its first invocation:
-		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+		if (glBindFramebufferEXT) {
+				if ((fboid > 0) && (!glIsFramebufferEXT(fboid))) {
+					// Special case: Need to bind a special FBO and the underlying OpenGL driver is faulty,
+					// i.e. it doesn't share FBO names accross our OpenGL contexts as it should according to
+					// spec.: We manually create a clone of our internal FBO - Create an FBO in the userspace
+					// context with the same FBO handle, then manually reattach the proper attachments...					
+					if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Faulty graphics driver - FBO sharing doesn't work properly, trying work-around. Update your drivers as soon as possible!\n");
+
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, coltexid, 0);
+    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, ztexid, 0);
+    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, stexid, 0);
+					if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
+						// Game over :(
+						PsychErrorExitMsg(PsychError_internal, "Failed to clone PTBs internal FBO for userspace GLContext inside SCREENBeginOpenGL as part of workaround code! Upgrade your gfx-drivers!!");
+					}
+					// If we reach this point, then the workaround for the worst OS in existence has worked.
+				}
+				else {
+					// Standard system framebuffer needs to be bound, or need to bind a special FBO,
+					// and the system works correctly - no workaround needed. Just bind it in new context:
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+				}
+		}
 	}
     
 	// Check for GL errors:
-    PsychTestForGLErrors();
+   PsychTestForGLErrors();
     
 	// Ready for userspace rendering:
-    return(PsychError_none);
+   return(PsychError_none);
 }
 
 PsychError SCREENEndOpenGL(void)
@@ -151,16 +183,16 @@ PsychError SCREENEndOpenGL(void)
         PsychErrorExitMsg(PsychError_user, "Failure in external OpenGL code.");
     }
 
-	// Switch to windows OpenGL context:
+	 // Switch to windows OpenGL context:
     PsychSetGLContext(windowRecord); 
     
-    // Set it as drawing target:
-    PsychSetDrawingTarget(windowRecord);
+    // Reset drawing target, in case something messed with it in userspace:
+    PsychSetDrawingTarget(NULL);
     
-	// Check again...
-    PsychTestForGLErrors();
-    
-	// Ready for internal rendering:
+	 // Reset error state for our internal context:
+    while (glGetError()!=GL_NO_ERROR);
+  
+	 // Ready for internal rendering:
     return(PsychError_none);
 }
 
