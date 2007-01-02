@@ -66,6 +66,9 @@ static const struct {
   1, 1, 4, "    ",};
 #endif
 
+/* Flag which defines if userspace rendering is active: */
+static boolean inGLUserspace = FALSE;
+
 /*
     PsychOpenOnscreenWindow()
     
@@ -861,6 +864,7 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                     if (windowRecordArray[i]->targetSpecific.contextObject == windowRecord->targetSpecific.contextObject &&
                         windowRecordArray[i]->windowType==kPsychTexture) {
                         windowRecordArray[i]->targetSpecific.contextObject = NULL;
+						windowRecordArray[i]->targetSpecific.glusercontextObject = NULL;
                     }
                 }
                 PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
@@ -1422,7 +1426,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 */
 void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 {
-    // Call OS - specific context switching code:
+	// Child protection: Calling this function is only allowed in non-userspace rendering mode:
+    if (PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "You tried to call a Screen graphics command after Screen('BeginOpenGL'), but without calling Screen('EndOpenGL') beforehand! Read the help for 'Screen EndOpenGL?'.");
+
+	// Call OS - specific context switching code:
     PsychOSSetGLContext(windowRecord);
 }
 
@@ -2316,3 +2323,14 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
     return;
 }
 
+/* Set Screen - global flag which tells PTB if userspace rendering is active or not. */
+void PsychSetUserspaceGLFlag(boolean inuserspace)
+{
+	inGLUserspace = inuserspace;
+}
+
+/* Get Screen - global flag which tells if we are in userspace rendering mode: */
+boolean PsychIsUserspaceRendering(void)
+{
+	return(inGLUserspace);
+}

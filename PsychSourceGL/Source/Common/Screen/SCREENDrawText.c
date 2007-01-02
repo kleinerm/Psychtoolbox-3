@@ -68,7 +68,7 @@
 
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
-static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor]);";
+static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline]);";
 static char seeAlsoString[] = "";
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -80,8 +80,13 @@ static char synopsisString[] =
     "Draw text. \"text\" may include two-byte (16 bit) characters (e.g. Chinese). "
     "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
     "g b] triplet) that you want to poke into each pixel; default produces black with "
-    "the standard CLUT for this window's pixelSize. \"newX, newY\" return the final pen "
-    "location.";
+    "the standard CLUT for this window's pixelSize. \"backgroundColor\" is the color of "
+	"the text background. \"yPositionIsBaseline\" If specified, will override the global "
+	"preference setting for text positioning: It defaults to off. If it is set to 1, the y "
+	"pen location defines the base line of drawn text, otherwise it defines the top of the "
+	"drawn text. Old PTB's had a behaviour equivalent to setting 1, unfortunately this behaviour "
+	"wasn't replicated in pre 3.0.8 PTB's so now we stick to the new behaviour by default. "
+	"\"newX, newY\" return the final pen location.";
 
 
 //Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 
@@ -129,9 +134,9 @@ PsychError SCREENDrawText(void)
     
     Rect			textBoundsQRect;
     double			textBoundsPRect[4], textBoundsPRectOrigin[4], textureRect[4];
-    double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight;
+    double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight, textHeightToBaseline;
     double			quadLeft, quadRight, quadTop, quadBottom;
-    int				psychColorSize;
+    int				psychColorSize, yPositionIsBaseline;
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
 	int ix;
 	GLubyte* rpb;
@@ -155,7 +160,7 @@ PsychError SCREENDrawText(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(6));   	
+    PsychErrorExit(PsychCapNumInputArgs(7));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(2));  
     PsychAllocInWindowRecordArg(1, TRUE, &winRec);
@@ -206,6 +211,34 @@ PsychError SCREENDrawText(void)
     callError=ATSUSetRunStyle(textLayout, atsuStyle, (UniCharArrayOffset)0, (UniCharCount)stringLengthChars);
     /////////////end common to TextBounds and DrawText//////////////////
     
+	// Define the meaning of the y position of the specified drawing cursor.
+	// We get the global setting from the Screen preference, but allow to override
+	// it on a per-invocation basis via the optional 7th argument to 'DrawText':
+	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+	 
+	if (yPositionIsBaseline) {
+		// Y position of drawing cursor defines distance between top of text and
+		// baseline of text, i.e. the textheight excluding descenders of letters:
+
+		// Need to compute offset via ATSU:
+		ATSUTextMeasurement mleft, mright, mtop, mbottom;
+        callError=ATSUGetUnjustifiedBounds(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, &mleft, &mright, &mbottom, &mtop);
+		if (callError) {
+			PsychErrorExitMsg(PsychError_internal, "Failed to compute unjustified text height to baseline in call to ATSUGetUnjustifiedBounds().\n");    
+		}
+
+		// Only take height including ascenders into account, not the descenders.
+		// MK: Honestly, i have no clue why this is the correct calculation (or if it is
+		// the correct calculation), but visually it seems to provide the correct results
+		// and i'm not a typographic expert and don't intend to become one...
+		textHeightToBaseline = fabs(Fix2X(mbottom));
+	}
+	else {
+		// Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
+		textHeightToBaseline = 0;
+	}
+
     //Get the bounds for our text so that and create a texture of sufficient size to containt it. 
     ATSTrapezoid trapezoid;
     ItemCount oActualNumberOfBounds = 0;
@@ -329,8 +362,9 @@ PsychError SCREENDrawText(void)
     // Final screen position of the textured text-quad:
     quadLeft=winRec->textAttributes.textPositionX;
     quadRight=winRec->textAttributes.textPositionX + textWidth;
-    quadTop=winRec->textAttributes.textPositionY;
-    quadBottom=winRec->textAttributes.textPositionY + textHeight;
+	// quadTop needs to be adjusted by textHeightToBaseline, see above:
+    quadTop=winRec->textAttributes.textPositionY - textHeightToBaseline;
+    quadBottom=quadTop + textHeight;
     
     // Submit quad to pipeline:
     glBegin(GL_QUADS);
@@ -613,8 +647,8 @@ PsychError SCREENDrawText(void)
     int                   stringl;
     Boolean			        doSetColor, doSetBackgroundColor;
     PsychColorType		  colorArg, backgroundColorArg;
-    int				        depthValue, whiteValue, colorPlaneSize, numColorPlanes, i;
-    float                 accumWidth, maxHeight;
+    int				        depthValue, whiteValue, colorPlaneSize, numColorPlanes, i, yPositionIsBaseline;
+    float                 accumWidth, maxHeight, textHeightToBaseline;
 
     static GLuint	        base=0;	     // Base Display List For The Font Set
     
@@ -622,7 +656,7 @@ PsychError SCREENDrawText(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(6));   	
+    PsychErrorExit(PsychCapNumInputArgs(7));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(2));  
 
@@ -653,6 +687,10 @@ PsychError SCREENDrawText(void)
     doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
     if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
 
+	// Special handling of offset for y position correction:
+	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+
     PsychSetGLContext(winRec);
 
     // Enable this windowRecords framebuffer as current drawingtarget:
@@ -678,6 +716,17 @@ PsychError SCREENDrawText(void)
     accumWidth*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
     maxHeight*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
 
+	if (yPositionIsBaseline) {
+		// Y position of drawing cursor defines distance between top of text and
+		// baseline of text, i.e. the textheight excluding descenders of letters:
+		// FIXME: This is most likely plain wrong!!!
+		textHeightToBaseline = maxHeight;
+	}
+	else {
+		// Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
+		textHeightToBaseline = 0;
+	}
+
     // Draw the text string to window by execution of the display lists in
     // proper order:
 
@@ -687,7 +736,7 @@ PsychError SCREENDrawText(void)
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
-    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize, -0.5f);
+    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY - textHeightToBaseline + winRec->textAttributes.textSize, -0.5f);
 
     // Scale to final size:
     glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
@@ -696,7 +745,7 @@ PsychError SCREENDrawText(void)
     #if PSYCH_SYSTEM == PSYCH_LINUX
     // Position our "cursor": The X11 implementation uses glBitmap()'ed fonts, so we need to position
     // the rasterposition cursor...
-    glRasterPos2f(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY + winRec->textAttributes.textSize);
+    glRasterPos2f(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY  - textHeightToBaseline + winRec->textAttributes.textSize);
     glPixelZoom(1,1);
     #endif
 

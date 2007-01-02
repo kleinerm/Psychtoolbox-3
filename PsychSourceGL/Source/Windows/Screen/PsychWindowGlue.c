@@ -972,18 +972,24 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 */
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
-  if (wglGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
-	 // We need to glFlush the context before switching, otherwise race-conditions may occur:
-    glFlush();
+	if (wglGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
+		if (wglGetCurrentContext() != NULL) {
+			// We need to glFlush the context before switching, otherwise race-conditions may occur:
+			glFlush();
+			
+			// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+			if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
+
+		// Switch to new context:
+		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
 		
-	 // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-	 if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-    wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
-
-	 // Need to soft-reset drawing engine:
-	 PsychSetDrawingTarget(NULL);
-  }
+		// If imaging pipe is active, we need to reset the current drawing target, so it and its
+		// FBO bindings get properly reinitialized before next use. In non-imaging mode this is
+		// not needed, because the new context already contains the proper setup for transformations,
+		// drawbuffers and such, as well as the matching content in the backbuffer:
+		if (windowRecord->imagingMode > 0) PsychSetDrawingTarget(NULL);
+	}
 }
 
 /*
@@ -1005,24 +1011,12 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfr
 	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
 	
 	if (copyfromPTBContext) {
-		// Syncing of external contexts state with PTBs internal state requested. Do it:
-		glFlush();
-
-	   // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-	   if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
   		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, NULL);		
 		wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
 	}
 	
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
   	 if (wglGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
-		 // Prevent race conditions by flushing the context:
-		 glFlush();
-
-	    // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-	    if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-
-       wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+		 wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
     }
 }

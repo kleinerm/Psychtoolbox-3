@@ -79,6 +79,10 @@ void ScreenCloseAllWindows()
     PsychWindowRecordType	**windowRecordArray;
     int						i, numWindows, numScreens; 
 
+	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
+	// due to Screen('BeginOpenGL') command.
+	PsychSetUserspaceGLFlag(FALSE);
+	
     // Shutdown Quicktime subsystems if active:
     PsychExitMovies();
     PsychExitVideoCapture();

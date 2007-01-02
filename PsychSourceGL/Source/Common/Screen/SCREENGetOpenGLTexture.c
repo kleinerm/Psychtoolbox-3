@@ -65,10 +65,6 @@ PsychError SCREENGetOpenGLTexture(void)
     // Query optional y-pos:
     PsychCopyInDoubleArg(4, FALSE, &y);
 
-    // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
-    PsychSetGLContext(windowRecord);
-    PsychSetDrawingTarget(windowRecord);
-    
     // Return the OpenGL texture handle:
     PsychCopyOutDoubleArg(1, FALSE, (double) textureRecord->textureNumber);
     

@@ -47,6 +47,8 @@ void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmod
 void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 void    PsychSetDrawingTarget(PsychWindowRecordType *windowRecord);
 void    PsychSetupView(PsychWindowRecordType *windowRecord);
+void	PsychSetUserspaceGLFlag(Boolean inuserspace);
+boolean PsychIsUserspaceRendering(void);
 //end include once
 #endif
 

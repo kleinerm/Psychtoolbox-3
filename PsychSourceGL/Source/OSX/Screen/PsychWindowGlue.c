@@ -578,14 +578,22 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
-		// We need to glFlush the context before switching, otherwise race-conditions may occur:
-        glFlush();
-		
-		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
-		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		if (CGLGetCurrentContext() != NULL) {
+			// We need to glFlush the old context before switching, otherwise race-conditions may occur:
+			glFlush();
+			
+			// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+			if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
 		
 		// Switch to new context:
 		CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+		
+		// If imaging pipe is active, we need to reset the current drawing target, so it and its
+		// FBO bindings get properly reinitialized before next use. In non-imaging mode this is
+		// not needed, because the new context already contains the proper setup for transformations,
+		// drawbuffers and such, as well as the matching content in the backbuffer:
+		if (windowRecord->imagingMode > 0) PsychSetDrawingTarget(NULL);
     }
 }
 
@@ -599,14 +607,12 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfr
 	
 	if (copyfromPTBContext) {
 		// Syncing of external contexts state with PTBs internal state requested. Do it:
-		glFlush();
 		CGLSetCurrentContext(NULL);
 		CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
 	}
 	
     // Setup new context if it isn't already setup. -> Avoid redundant context switch.
     if (CGLGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
-		glFlush();
         CGLSetCurrentContext(windowRecord->targetSpecific.glusercontextObject);
     }
 }

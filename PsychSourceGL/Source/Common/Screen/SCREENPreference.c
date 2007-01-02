@@ -103,6 +103,7 @@ static char synopsisString[] =
 	"\nproc = Screen('Preference', 'Process', signature);"
 	"\nproc = Screen('Preference', 'DebugMakeTexture', enableDebugging);"
 	"\noldEnableFlag = Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'DefaultTextYPositionIsBaseline', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
@@ -240,6 +241,14 @@ PsychError SCREENPreference(void)
 			if(numInputArgs==2){
 				PsychCopyInIntegerArg(2, kPsychArgRequired, &newFontStyleNumber);
 				PsychPrefStateSet_DefaultTextStyle(newFontStyleNumber);
+			}
+			preferenceNameArgumentValid=TRUE;
+		}else
+		if(PsychMatch(preferenceName, "DefaultTextYPositionIsBaseline")){
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_TextYPositionIsBaseline());
+			if(numInputArgs==2){
+				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+				PsychPrefStateSet_TextYPositionIsBaseline(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 

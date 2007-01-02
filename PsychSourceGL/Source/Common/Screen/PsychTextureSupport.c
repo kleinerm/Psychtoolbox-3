@@ -69,6 +69,8 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
     // First time invocation?
     if (texturetarget==0) {
         // Yes. Need to auto-detect texturetarget to use...
+		PsychSetGLContext(win);
+
         if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
 	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
@@ -760,14 +762,15 @@ GLenum PsychGetTextureTarget(PsychWindowRecordType *win)
         // we don't win anything...
     }
     
-    // Setup texture-target if not already done:
-    PsychSetGLContext(win);
-    PsychDetectTextureTarget(win);
-
     // If texturetaget field for this texture isn't yet initialized, then
     // init it now from our global setting:
-    if (win->texturetarget == 0) win->texturetarget = texturetarget;
-    
+    if (win->texturetarget == 0) {
+		// Setup texture-target if not already done:
+		PsychDetectTextureTarget(win);
+
+		win->texturetarget = texturetarget;
+	}
+	
     // Return texturetarget for this window:
     return(win->texturetarget);
 }

@@ -113,7 +113,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "oldStyle=Screen('TextStyle', windowPtr [,style]);";
 	synopsis[i++] = "[oldFontName,oldFontNumber]=Screen(windowPtr,'TextFont' [,fontNameOrNumber]);";
 	synopsis[i++] = "[normBoundsRect, offsetBoundsRect]=Screen('TextBounds', windowPtr, text);";
-	synopsis[i++] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color]);";
+	synopsis[i++] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline]);";
 	synopsis[i++] = "oldTextColor=Screen('TextColor', windowPtr [,colorVector]);";
 	synopsis[i++] = "oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";
 	

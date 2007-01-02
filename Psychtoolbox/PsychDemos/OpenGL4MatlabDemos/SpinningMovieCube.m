@@ -136,7 +136,9 @@ global tv
 while (1)
     % Fetch next video frame from movie file and return a Psychtoolbox
     % texture handle to it:
+    Screen('EndOpenGL', win);
     texid = Screen('GetMovieImage', win, movie);
+    Screen('BeginOpenGL', win);
     
     % Valid texture?
     if texid<=0

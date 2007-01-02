@@ -38,15 +38,15 @@
 
 PsychError SCREENBeginOpenGL(void)
 {
-    static char useString[] = "Screen('BeginOpenGL', windowPtr [, sharecontext]);";
+    static char useString[] = "Screen('BeginOpenGL', windowPtr [, sharecontext=0]);";
     static char synopsisString[] = "Prepare window 'windowPtr' for OpenGL rendering by external OpenGL code. "
-                                   "This allows to use OpenGL drawing routines other than the ones implemented "
+		"This allows to use OpenGL drawing routines other than the ones implemented "
         "in Screen() to draw to a Psychtoolbox onscreen- or offscreen window via execution of "
         "OpenGL commands. Typical clients of this function are mogl (Richard F. Murrays OpenGL for Matlab wrapper), "
         "the new Eyelink-Toolbox and third party Matlab Mex-Files which contain OpenGL rendering routines. "
-        "You have to call this command once before using any of those external drawing commands. After drawing, you "
-        "switch back to PTB's rendering via the Screen('EndOpenGL', windowPtr); command. "
-		"Normally you won't provide the optional flag 'sharecontext', so PTB will automatically isolate the OpenGL "
+        "You *have to* call this command once before using any of those external drawing commands for the window. "
+        "After drawing, you *must* switch back to PTB's rendering via the Screen('EndOpenGL', windowPtr); command. "
+		"Normally, you won't provide the optional flag 'sharecontext', so PTB will automatically isolate the OpenGL "
 		"state of your code from its internal state. However, if you provide sharecontext=1, then PTB will allow "
 		"your code to use and affect PTBs internal context. Only do this if you really know what you're doing! "
 		"If you provide sharecontext=2 then PTB will give you your own private context, but it will synchronize "
@@ -63,7 +63,7 @@ PsychError SCREENBeginOpenGL(void)
 
     PsychWindowRecordType	*windowRecord;
     int sharecontext;
-	 GLint fboid, coltexid, ztexid, stexid;
+	GLint fboid, coltexid, ztexid, stexid;
 	
     //all sub functions should have these two lines
     PsychPushHelp(useString, synopsisString,seeAlsoString);
@@ -77,12 +77,15 @@ PsychError SCREENBeginOpenGL(void)
     //get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
     
-	 // (Optional) context sharing flag provided?
-	 sharecontext = 0;
-	 PsychCopyInIntegerArg(2, FALSE, &sharecontext);
-	 if (sharecontext<0 || sharecontext>2) PsychErrorExitMsg(PsychError_user, "Invalid value for 'sharecontext' provided. Not in range 0 to 2.");
+	// Already in userspace mode?
+	if (PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "Tried to call Screen('BeginOpenGL'), but userspace rendering is already active! Missing or mismatched Screen('EndOpenGL')? Check your code.");
+	
+	// (Optional) context sharing flag provided?
+	sharecontext = 0;
+	PsychCopyInIntegerArg(2, FALSE, &sharecontext);
+	if (sharecontext<0 || sharecontext>2) PsychErrorExitMsg(PsychError_user, "Invalid value for 'sharecontext' provided. Not in range 0 to 2.");
 
-    // Switch to windows OpenGL context:
+    // Switch to windows internal OpenGL context:
     PsychSetGLContext(windowRecord); 
     
     // Set it as drawing target: This will set up the proper FBO bindings as well:
@@ -95,11 +98,11 @@ PsychError SCREENBeginOpenGL(void)
 		// and GLSL shaders are shared, but not the current renderstate.
 		
 		// Make sure 3D rendering is globally enabled, otherwise this is considered a userspace bug:
-		if (PsychPrefStateGet_3DGfx()==0) PsychErrorExitMsg(PsychError_user, "Tried to call 'BeginOpenGL' for external rendering, but rendering not enabled! Call 'InitializeMatlabOpenGL' at the beginning of your script!!");
-
-	   // Query current FBO binding. We need to manually transfer this to the userspace context, so
-	   // it can render into our window:
-      if (glBindFramebufferEXT) {
+		if (PsychPrefStateGet_3DGfx()==0) PsychErrorExitMsg(PsychError_user, "Tried to call 'BeginOpenGL' for external rendering, but 3D rendering not globally enabled! Call 'InitializeMatlabOpenGL' at the beginning of your script!!");
+		
+		// Query current FBO binding. We need to manually transfer this to the userspace context, so
+		// it can render into our window:
+		if (glBindFramebufferEXT) {
 			fboid = 0;
 	 		glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &fboid);
 			if (fboid>0) {
@@ -108,57 +111,69 @@ PsychError SCREENBeginOpenGL(void)
  				glGetFramebufferAttachmentParameterivEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT, &ztexid);
  				glGetFramebufferAttachmentParameterivEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME_EXT, &stexid);
 			}
-	   }
-
+		}
+		
+		// Flush our context before context switch:
+		glFlush();
+		
+		// Unbind possible FBOs, so system FB is active in our context:
+		if (glBindFramebufferEXT) {
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			glFlush();
+		}
+		
 		// Switch to userspace context for this window, optionally sync state with PTBs context:
 		PsychOSSetUserGLContext(windowRecord, (sharecontext==2) ? TRUE : FALSE);
 		
-		// Manually establish proper FBO binding. This will get reset automaticaly on back-transition
-		// inside PsychSetGLContext on its first invocation:
+		// All following ops apply to the usercontext, not our internal context:
+		
+		// Manually establish proper FBO binding for userspace. This will get reset automaticaly on back-transition
+		// inside PsychSetGLContext on its first invocation. If we are in non-imaging mode then there's nothing to do.
 		if (glBindFramebufferEXT) {
-				if ((fboid > 0) && (!glIsFramebufferEXT(fboid))) {
-					// Special case: Need to bind a special FBO and the underlying OpenGL driver is faulty,
-					// i.e. it doesn't share FBO names accross our OpenGL contexts as it should according to
-					// spec.: We manually create a clone of our internal FBO - Create an FBO in the userspace
-					// context with the same FBO handle, then manually reattach the proper attachments...					
-					if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Faulty graphics driver - FBO sharing doesn't work properly, trying work-around. Update your drivers as soon as possible!\n");
-
-					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
-    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, coltexid, 0);
-    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, ztexid, 0);
-    				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, stexid, 0);
-					if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
-						// Game over :(
-						PsychErrorExitMsg(PsychError_internal, "Failed to clone PTBs internal FBO for userspace GLContext inside SCREENBeginOpenGL as part of workaround code! Upgrade your gfx-drivers!!");
-					}
-					// If we reach this point, then the workaround for the worst OS in existence has worked.
+			if ((fboid > 0) && (!glIsFramebufferEXT(fboid))) {
+				// Special case: Need to bind a special FBO and the underlying OpenGL driver is faulty,
+				// i.e. it doesn't share FBO names accross our OpenGL contexts as it should according to
+				// spec.: We manually create a clone of our internal FBO - Create an FBO in the userspace
+				// context with the same FBO handle, then manually reattach the proper attachments...					
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Faulty graphics driver - FBO sharing doesn't work properly, trying work-around. Update your drivers as soon as possible!\n");
+				
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, coltexid, 0);
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, ztexid, 0);
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, stexid, 0);
+				if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
+					// Game over :(
+					PsychErrorExitMsg(PsychError_internal, "Graphics driver malfunction: Failed to clone PTBs internal FBO for userspace GLContext inside SCREENBeginOpenGL as part of workaround code! Upgrade your gfx-drivers!!");
 				}
-				else {
-					// Standard system framebuffer needs to be bound, or need to bind a special FBO,
-					// and the system works correctly - no workaround needed. Just bind it in new context:
-					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
-				}
+				// If we reach this point, then the workaround for the worst OS in existence has worked.
+			}
+			else {
+				// Standard system framebuffer needs to be bound, or need to bind a special FBO,
+				// and the system works correctly - no workaround needed. Just bind it in new context:
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
+			}
 		}
 	}
     
 	// Check for GL errors:
-   PsychTestForGLErrors();
+    PsychTestForGLErrors();
     
+	// Set the userspace flag:
+	PsychSetUserspaceGLFlag(TRUE);
+
 	// Ready for userspace rendering:
-   return(PsychError_none);
+	return(PsychError_none);
 }
 
 PsychError SCREENEndOpenGL(void)
 {
     static char useString[] = "Screen('EndOpenGL', windowPtr);";
-    static char synopsisString[] = "Prepare window 'windowPtr' for OpenGL rendering by external OpenGL code. "
-        "This allows to use OpenGL drawing routines other than the ones implemented "
-        "in Screen() to draw to a Psychtoolbox onscreen- or offscreen window via execution of "
-        "OpenGL commands. Typical clients of this function are mogl (Richard F. Murrays OpenGL for Matlab wrapper), "
-        "the new Eyelink-Toolbox and third party Matlab Mex-Files which contain OpenGL rendering routines. "
-        "You have to call this command once before using any of those external drawing commands. After drawing, you "
-        "switch back to PTB's rendering via the Screen('EndOpenGL', windowPtr); command. ";
-    static char seeAlsoString[] = "EndOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
+    static char synopsisString[] = "Finish OpenGL rendering by external OpenGL code into window 'windowPtr'. "
+        "This is the counterpart to Screen('BeginOpenGL'). Whenever you used Screen('BeginOpenGL') to enable "
+        "external OpenGL drawing from Matlab, you *must* call Screen('EndOpenGL') when you're finished with a "
+        "window, either because you want to draw into a different window, or you want to use a Screen command. "
+        "Psychtoolbox will abort your script if you omit this command. ";
+    static char seeAlsoString[] = "BeginOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
     
     PsychWindowRecordType	*windowRecord;
     GLenum error;
@@ -174,25 +189,33 @@ PsychError SCREENEndOpenGL(void)
     
     //get the window record from the window record argument and get info from the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
-    
+	
+	// In userspace mode?
+	if (!PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "Tried to call Screen('EndOpenGL'), but userspace rendering is already disabled! Missing or mismatched Screen('BeginOpenGL')? Check your code.");
+
     // Check for OpenGL errors in external code:
     if ((error=glGetError())!=GL_NO_ERROR) {
         printf("PTB-ERROR: Some of your external OpenGL code executed between last invocation of Screen('BeginOpenGL') and\n");
         printf("PTB-ERROR: Screen('EndOpenGL') produced an OpenGL error condition. Please check your code. The reported GL\n");
-        printf("PTB-ERROR: error was: %s\n\n", (const char*) gluErrorString(error)); 
+        printf("PTB-ERROR: error was: %s\n\n", (const char*) gluErrorString(error));
+
+		// Reset further error state for this context:
+		while (glGetError()!=GL_NO_ERROR);
+		
+		// Abort script:
         PsychErrorExitMsg(PsychError_user, "Failure in external OpenGL code.");
     }
 
-	 // Switch to windows OpenGL context:
+	// Reset userspace rendering flag:
+	PsychSetUserspaceGLFlag(FALSE);
+	
+	// Switch to our windows own OpenGL context:
     PsychSetGLContext(windowRecord); 
-    
-    // Reset drawing target, in case something messed with it in userspace:
-    PsychSetDrawingTarget(NULL);
-    
-	 // Reset error state for our internal context:
+        
+	// Reset error state for our internal context:
     while (glGetError()!=GL_NO_ERROR);
   
-	 // Ready for internal rendering:
+	// Ready for internal rendering:
     return(PsychError_none);
 }
 

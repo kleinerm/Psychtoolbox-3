@@ -61,8 +61,8 @@
 
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[normBoundsRect, offsetBoundsRect]= Screen('TextBounds', windowPtr, text);";
-//                          1               2                                      1          2         
+static char useString[] = "[normBoundsRect, offsetBoundsRect]= Screen('TextBounds', windowPtr, text [,x] [,y] [,yPositionIsBaseline]);";
+//                          1               2                                      1          2     3     4    5    
 static char synopsisString[] = 
     "Accept a window pointer and a string.  Return in normBoundsRect a rect defining the size of the text "
     "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin, assuming "
@@ -89,7 +89,8 @@ PsychError SCREENTextBounds(void)
 	PsychRectType			resultPsychRect, resultPsychNormRect;
 	ATSUTextLayout			textLayout;				//layout is a pointer to an opaque struct.
 	int				stringLengthChars;
-	int				uniCharBufferLengthElements, uniCharBufferLengthChars, uniCharBufferLengthBytes;
+	int				uniCharBufferLengthElements, uniCharBufferLengthChars, uniCharBufferLengthBytes, yPositionIsBaseline;
+	double			textHeightToBaseline;
 	ByteCount			uniCharStringLengthBytes;
 	TextToUnicodeInfo		textToUnicodeInfo;
 	TextEncoding			textEncoding;
@@ -105,7 +106,7 @@ PsychError SCREENTextBounds(void)
         if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
         //check for correct the number of arguments before getting involved
-        PsychErrorExit(PsychCapNumInputArgs(2));   	
+        PsychErrorExit(PsychCapNumInputArgs(5));   	
         PsychErrorExit(PsychRequireNumInputArgs(2)); 	
         PsychErrorExit(PsychCapNumOutputArgs(2));
 	
@@ -126,6 +127,10 @@ PsychError SCREENTextBounds(void)
 	uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
 	uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
 	textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
+
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
+
 	//Using a TextEncoding type describe the encoding of the text to be converteed.  
 	textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
 	//Take apart the encoding we just made to check it:
@@ -157,24 +162,56 @@ PsychError SCREENTextBounds(void)
 	//associate the style with our layout object. This call assigns a style to every character of the string to be displayed.  
 	callError=ATSUSetRunStyle(textLayout, atsuStyle, (UniCharArrayOffset)0, (UniCharCount)stringLengthChars);
 
-        //Get the bounds for our text so that and create a texture of sufficient size to containt it. 
-        ATSTrapezoid trapezoid;
-        ItemCount oActualNumberOfBounds = 0;
-        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
-        if (callError || oActualNumberOfBounds!=1) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
-        }
-        callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
-        if (callError || oActualNumberOfBounds!=1) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
-        }
-        
-        resultPsychRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
-        resultPsychRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
-        resultPsychRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
-        resultPsychRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
+	// Define the meaning of the y position of the specified drawing cursor.
+	// We get the global setting from the Screen preference, but allow to override
+	// it on a per-invocation basis via the optional 7th argument to 'DrawText':
+	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+	PsychCopyInIntegerArg(5, kPsychArgOptional, &yPositionIsBaseline);
+	 
+	if (yPositionIsBaseline) {
+		// Y position of drawing cursor defines distance between top of text and
+		// baseline of text, i.e. the textheight excluding descenders of letters:
 
+		// Need to compute offset via ATSU:
+		ATSUTextMeasurement mleft, mright, mtop, mbottom;
+        callError=ATSUGetUnjustifiedBounds(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, &mleft, &mright, &mbottom, &mtop);
+		if (callError) {
+			PsychErrorExitMsg(PsychError_internal, "Failed to compute unjustified text height to baseline in call to ATSUGetUnjustifiedBounds().\n");    
+		}
+
+		// Only take height including ascenders into account, not the descenders.
+		// MK: Honestly, i have no clue why this is the correct calculation (or if it is
+		// the correct calculation), but visually it seems to provide the correct results
+		// and i'm not a typographic expert and don't intend to become one...
+		textHeightToBaseline = fabs(Fix2X(mbottom));
+	}
+	else {
+		// Y position of drawing cursor defines top of text, therefore no offset (==0) needed:
+		textHeightToBaseline = 0;
+	}
+
+	//Get the bounds for our text so that and create a texture of sufficient size to containt it. 
+	ATSTrapezoid trapezoid;
+	ItemCount oActualNumberOfBounds = 0;
+	callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
+	if (callError || oActualNumberOfBounds!=1) {
+		PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+	}
+	callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
+	if (callError || oActualNumberOfBounds!=1) {
+		PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
+	}
+	
+	resultPsychRect[kPsychLeft]=(Fix2X(trapezoid.upperLeft.x) < Fix2X(trapezoid.lowerLeft.x)) ? Fix2X(trapezoid.upperLeft.x) : Fix2X(trapezoid.lowerLeft.x);
+	resultPsychRect[kPsychRight]=(Fix2X(trapezoid.upperRight.x) > Fix2X(trapezoid.lowerRight.x)) ? Fix2X(trapezoid.upperRight.x) : Fix2X(trapezoid.lowerRight.x);
+	resultPsychRect[kPsychTop]=(Fix2X(trapezoid.upperLeft.y) < Fix2X(trapezoid.upperRight.y)) ? Fix2X(trapezoid.upperLeft.y) : Fix2X(trapezoid.upperRight.y);
+	resultPsychRect[kPsychBottom]=(Fix2X(trapezoid.lowerLeft.y) > Fix2X(trapezoid.lowerRight.y)) ? Fix2X(trapezoid.lowerLeft.y) : Fix2X(trapezoid.lowerRight.y);
+	
 	PsychNormalizeRect(resultPsychRect, resultPsychNormRect);
+	resultPsychRect[kPsychLeft]=resultPsychNormRect[kPsychLeft] + winRec->textAttributes.textPositionX;
+	resultPsychRect[kPsychRight]=resultPsychNormRect[kPsychRight] + winRec->textAttributes.textPositionX;
+	resultPsychRect[kPsychTop]=resultPsychNormRect[kPsychTop] + winRec->textAttributes.textPositionY - textHeightToBaseline;
+	resultPsychRect[kPsychBottom]=resultPsychNormRect[kPsychBottom] + winRec->textAttributes.textPositionY - textHeightToBaseline;
 
 	PsychCopyOutRectArg(1, FALSE, resultPsychNormRect);
 	PsychCopyOutRectArg(2, FALSE, resultPsychRect);
@@ -290,7 +327,7 @@ PsychError SCREENTextBounds(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(2));   	
+    PsychErrorExit(PsychCapNumInputArgs(5));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(2));  
 
@@ -299,6 +336,9 @@ PsychError SCREENTextBounds(void)
     
     //Get the text string (it is required)
     PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
 
 	 // Enable GL context of this window - we might need it:
     PsychSetGLContext(winRec);

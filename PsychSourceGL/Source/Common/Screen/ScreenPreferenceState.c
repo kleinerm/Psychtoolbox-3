@@ -39,6 +39,7 @@ static char								PsychTableCreator[]="Screen";   //there is no psych table yet
 //Text preference state
 #define MAX_DEFAULT_FONT_NAME_LENGTH    256
 #define INITIAL_DEFAULT_FONT_NAME		"Courier"
+static int								defaultTextYPositionIsBaseline=0; // Use new style of text positioning by default: y-pos is top of text.
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
 static int								defaultTextStyle=0; // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
@@ -98,6 +99,20 @@ const char *PsychPrefStateGet_PsychTableCreator(void)
 
 //****************************************************************************************************************
 //Text and Font preferences
+
+// If set to true, then the y-position specified in Screen('DrawText') defines
+// the baseline of the text, not the top of the text. Default is off -> top of text.
+// The default changes to 'on' -> Baseline if emulation of old PTB enabled on OS-X.
+// This setting can be overriden case-by-case with the optional 7th argument to 'DrawText':
+int PsychPrefStateGet_TextYPositionIsBaseline(void)
+{
+	return(defaultTextYPositionIsBaseline);
+}
+
+void PsychPrefStateSet_TextYPositionIsBaseline(int textPosIsBaseline)
+{
+	defaultTextYPositionIsBaseline = (textPosIsBaseline > 0) ? 1 : 0;
+}
 
 /*
 preference: DefaultFontName
@@ -248,6 +263,11 @@ Boolean PsychPrefStateGet_EmulateOldPTB(void)
 void PsychPrefStateSet_EmulateOldPTB(Boolean level)
 {
     EmulateOldPTB = level;
+	// When emulation for old PTB gets enabled, we change the default for
+	// text baseline to 'on' -- The behaviour of old PTB.
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		if (EmulateOldPTB>0) defaultTextYPositionIsBaseline=1;
+	#endif
 }
 
 // Enable switch for 3D graphics support. If set to true, PTB will allocate stencil-

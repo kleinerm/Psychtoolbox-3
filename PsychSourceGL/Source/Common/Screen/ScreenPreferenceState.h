@@ -48,6 +48,9 @@ int PsychPrefStateGet_PsychTableVersion(void);
 const char *PsychPrefStateGet_PsychTableCreator(void);
 
 //Text and Font preferences
+int  PsychPrefStateGet_TextYPositionIsBaseline(void);
+void PsychPrefStateSet_TextYPositionIsBaseline(int textPosIsBaseline);
+
 void PsychPrefStateGet_DefaultFontName(const char **fontName);
 void PsychPrefStateSet_DefaultFontName(const char *newName);
 

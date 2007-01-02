@@ -889,19 +889,19 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		// (!isArgThere[0] && !isArgText[1]     --disallowed except in case of !isArgThere[0] caught above. 
 
 		else if(isArgEmptyMat[0] && !isArgThere[1])
-			PrintfExit("Invalid command (error state A)");
+			PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state A)");
 		else if(isArgEmptyMat[0] && isArgEmptyMat[1])
-			PrintfExit("Invalid command (error state B)");
+			PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state B)");
 		else if(isArgEmptyMat[0] && isArgText[1]){
 			if(isArgFunction[1]){
 				nameFirstGLUE = FALSE;
 				(*(fArg[1]))();
 			}
 			else
-				PrintfExit("Invalid command (error state C)");
+				PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state C)");
 		}
 		else if(isArgEmptyMat[0] && !isArgText[1])
-			PrintfExit("Invalid command (error state D)");
+			PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state D)");
 			
 		else if(isArgText[0] && !isArgThere[1]){
 			if(isArgFunction[0]){
@@ -910,7 +910,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 			}else{ //when we receive a first argument  wich is a string and it is  not recognized as a function name then call the default function 
 			/*
                         else
-				PrintfExit("Invalid command (error state E)");
+				PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state E)");
                         */
                             baseFunction = PsychGetProjectFunction(NULL);
                             if(baseFunction != NULL){
@@ -927,7 +927,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 				(*(fArg[0]))();
 			}
 			else
-				PrintfExit("Invalid command (error state F)");
+				PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state F)");
 		}
 		else if(isArgText[0] && isArgText[1]){
 			if(isArgFunction[0] && !isArgFunction[1]){ //the first argument is the function name
@@ -956,7 +956,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 				(*(fArg[0]))();
 			}
 			else
-				PrintfExit("Invalid command (error state H)");
+				PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state H)");
 		}
 
 		else if(!isArgText[0] && !isArgThere[1]){  //this was modified for MODULEVersion with WaitSecs.
@@ -969,7 +969,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
                         PrintfExit("Project base function invoked but no base function registered");
                 }
 		else if(!isArgText[0] && isArgEmptyMat[1])
-			PrintfExit("Invalid command (error state I)");
+			PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state I)");
 		else if(!isArgText[0] && isArgText[1])
 		{
 			if(isArgFunction[1]){
@@ -977,7 +977,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 				(*(fArg[1]))();
 			}
 			else
-				PrintfExit("Invalid command (error state J)");
+				PrintfExit("Unknown or invalid subfunction name - Typo? Check spelling of the function name.  (error state J)");
 		}
 		else if(!isArgText[0] && !isArgText[1]){  //this was modified for Priority.
                     //PrintfExit("Invalid command (error state K)");
@@ -1042,9 +1042,19 @@ octFunctionCleanup:
 	  // the user pressing the CTRL+C key combo. Try to call PTB's
 	  // Screen('CloseAll') command to close the display, at least if this is
 	  // the Screen module.
-	  #ifdef PTBMODULE_Screen
-	  if (strcmp(PsychGetModuleName(), "Screen")==0) ScreenCloseAllWindows();
-	  #endif
+
+		// Is this the Screen() module?
+		if (strcmp(PsychGetModuleName(), "Screen")==0) {
+			// Yes. We directly call our close and cleanup routine:
+			#ifdef PTBMODULE_Screen
+			ScreenCloseAllWindows();
+			#endif
+		} else {
+			// Nope. This is a Psychtoolbox OCT file other than Screen.
+			// We can't call directly, but we can call the 'sca' command
+			// from Octave:
+			PsychRuntimeEvaluateString("Screen('CloseAll');");
+		}
 	}
 
 	// Return our octave_value_list of returned values in any case and yield control
@@ -1286,10 +1296,28 @@ mxArray *mxCreateByteMatrix3D(int m, int n, int p)
 
 
 /*
-	Print string s and return return control to the calling environment
+	Print string s and return return control to the calling environment.
 */
 void PsychErrMsgTxt(char *s)
 {
+	// If this is the Matlab version then we try to close onscreen windows here.
+	// The Octave version has a different implementation of this facility...
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		// Is this the Screen() module?
+		if (strcmp(PsychGetModuleName(), "Screen")==0) {
+			// Yes. We directly call our close and cleanup routine:
+			#ifdef PTBMODULE_Screen
+			ScreenCloseAllWindows();
+			#endif
+		} else {
+			// Nope. This is a Psychtoolbox MEX file other than Screen.
+			// We can't call directly, but we can call the 'sca' command
+			// from Matlab:
+			PsychRuntimeEvaluateString("Screen('CloseAll');");
+		}
+	#endif
+	
+	// Call the Matlab- or Octave error printing and error handling facilities:
 	mexErrMsgTxt(s);
 }
 
@@ -2609,6 +2637,11 @@ int	PsychRuntimeEvaluateString(const char* cmdstring)
 {
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
 		return(mexEvalString(cmdstring));
+	#else
+		int parse_status;
+		// Call Octaves evalstring-parser:
+		eval_string(std::string(cmdstring), (bool) TRUE, parse_status);
+		return(parse_status);
 	#endif
 }
 
