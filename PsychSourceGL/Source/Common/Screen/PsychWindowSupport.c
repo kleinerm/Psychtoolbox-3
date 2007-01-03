@@ -69,6 +69,10 @@ static const struct {
 /* Flag which defines if userspace rendering is active: */
 static boolean inGLUserspace = FALSE;
 
+// We keep track of the current active rendertarget in order to
+// avoid needless state changes:
+static PsychWindowRecordType* currentRendertarget = NULL;
+
 /*
     PsychOpenOnscreenWindow()
     
@@ -834,11 +838,12 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
     
-	// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
-	// do the shutdown work which still requires a fully functional OpenGL context and
-	// hook-chains:
-	PsychShutdownImagingPipeline(windowRecord, TRUE);
-
+	// If our to-be-destroyed windowRecord is currently bound as drawing target,
+	// e.g. as onscreen window or offscreen window, then we need to soft-reset
+	// our drawing engine - Unbind its FBO (if any) and reset current target to
+	// 'none'.
+	if (PsychGetDrawingTarget() == windowRecord) PsychSetDrawingTarget(NULL);
+	
     if(PsychIsOnscreenWindow(windowRecord)){
                 // Free possible shadow textures:
                 PsychFreeTextureForWindowRecord(windowRecord);        
@@ -847,11 +852,19 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 PsychSetGLContext(windowRecord);
 				
 				// Execute hook chain for OpenGL related shutdown:
-				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, 0, 1);
+				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPreGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
 				// Sync and idle the pipeline:
                 glFinish();
                 
+				// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
+				// do the shutdown work which still requires a fully functional OpenGL context and
+				// hook-chains:
+				PsychShutdownImagingPipeline(windowRecord, TRUE);
+				
+				// Sync and idle the pipeline again:
+                glFinish();
+
                 // Disable rendering context:
                 PsychOSUnsetGLContext(windowRecord);
 
@@ -871,31 +884,37 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
                 windowRecord->targetSpecific.contextObject=NULL;
 				
 				// Execute hook chain for final non-OpenGL related shutdown:
-				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, 0, 1);				
+				PsychPipelineExecuteHook(windowRecord, kPsychCloseWindowPostGLShutdown, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);				
     }
     else if(windowRecord->windowType==kPsychTexture) {
                 // Texture or Offscreen window - which is also just a form of texture.
-		PsychFreeTextureForWindowRecord(windowRecord);
+				PsychFreeTextureForWindowRecord(windowRecord);
+
+				// Shutdown only OpenGL related parts of imaging pipeline for this windowRecord, i.e.
+				// do the shutdown work which still requires a fully functional OpenGL context and
+				// hook-chains:
+				PsychShutdownImagingPipeline(windowRecord, TRUE);
     }
     else if(windowRecord->windowType==kPsychNoWindow) {
-               // Partially initialized windowRecord, not yet associated to a real Window system
-               // window or OpenGL rendering context. We skip this one - there's nothing to do.
-               // Well almost... ...we output some warning, as something must have screwed up seriously if
-               // we reached this point in control-flow...
-               printf("PTB-ERROR: Something is screwed up seriously! Please read all warnings and error messages\n");
-	       printf("PTB-ERROR: above these lines very carefully to assess and fix the problem...\n");
-	       fflush(NULL);
+				// Partially initialized windowRecord, not yet associated to a real Window system
+				// window or OpenGL rendering context. We skip this one - there's nothing to do.
+				// Well almost... ...we output some warning, as something must have screwed up seriously if
+				// we reached this point in control-flow...
+				printf("PTB-ERROR: Something is screwed up seriously! Please read all warnings and error messages\n");
+				printf("PTB-ERROR: above these lines very carefully to assess and fix the problem...\n");
+				fflush(NULL);
+				return;
     }
     else {
                 // If we reach this point then we've really screwed up, e.g., internal memory corruption.
-		PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Unrecognized window type. Memory corruption?!?");
+				PsychErrorExitMsg(PsychError_internal, "FATAL ERROR: Unrecognized window type. Memory corruption?!?");
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>0)) {
-      if(PsychPrefStateGet_Verbosity()>1) {
-	printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline\n");
-	printf("WARNING: a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
-      }
+		if(PsychPrefStateGet_Verbosity()>1) {
+			printf("\n\nWARNING: PTB's Screen('Flip') command missed the requested stimulus presentation deadline\n");
+			printf("WARNING: a total of %i times during this session!\n\n", windowRecord->nr_missed_deadlines);
+		}
     }
     
     if (PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_SkipSyncTests()) {
@@ -1877,33 +1896,44 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			glReadBuffer(read_buffer);
 			glDrawBuffer(draw_buffer);        
 		}
-	}		
+	}	// End of traditional preflip path.
 	
 	if (windowRecord->imagingMode) {
+		// Preflip operations for imaging mode:
+		
+		// Detach any active drawing targets:
 		PsychSetDrawingTarget(NULL);
-		PsychSetupView(windowRecord);
-		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-		windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]].coltexid;
+
+		// Reset modelview matrix to identity:
 		glLoadIdentity();
+
+		// Save all state:
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+		
+		// Disable alpha-blending:
+		glDisable(GL_BLEND);
+		
+		PsychSetupView(windowRecord);
+		
+		// Execute our post processing chain for this onscreen window:
+		
+		
+		windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->coltexid;
 
 		// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
 		// sure that alpha-blending is disabled during this blit operation:
-		if (glIsEnabled(GL_BLEND)) {
-			// Alpha blending enabled. Disable it, blit texture, reenable it:
-			glDisable(GL_BLEND);
-			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-			glEnable(GL_BLEND);
-		}
-		else {
 			// Alpha blending not enabled. Just blit it:
 			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-		}
 		
 		windowRecord->textureNumber = 0;
-	}
+
+		// Restore all state, including blending and texturing state:
+		glPopAttrib();
+		
+	}	// End of preflip operations for imaging mode:
 
 	// EXPERIMENTAL: Execute hook chain for final backbuffer data formatting after stereo composition and post processing:
-	PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, 0, 1);
+	PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
     // Restore modelview matrix:
     glPopMatrix();
@@ -1942,90 +1972,96 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
 
-    // Set transform matrix to well-defined state:
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    //glLoadIdentity();
-
-    // Vertical compression stereo active? This needs special treatment...
-    if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
-        // Yes. We reset the active stereo buffer to 2 == none selected.
-        windowRecord->stereodrawbuffer=2;
-        // In clearmode==1, aka retain we don't do anything. This way the AUX buffers
-        // restore the preflip state automatically. clearmode=2 is undefined by definition ;-)
-        if (clearmode==0) {
-            // clearmode 0 active. Sterobuffers shall be cleared on flip. We just
-            // reset the dirty-flags of the AUX buffers, so backbuffer gets cleared
-            // on first use after selection of a new stereo draw buffer:
-            windowRecord->auxbuffer_dirty[0]=FALSE;
-            windowRecord->auxbuffer_dirty[1]=FALSE;
-        }
-    }
-    // In other stereo modes and mono mode, we don't need to play backbuffer-AUX buffer games,
-    // just treat'em as in mono case...
-    else if (clearmode!=2) {
-        // Reinitialization of back buffer for drawing of next stim requested:
-        if (clearmode==1) {
-            // We shall not clear the back buffer(s), but restore them to state before "Flip",
-            // so previous stim can be incrementally updated where this makes sense.
-            // Copy back our backup-copy from AUX buffers:
-            glDisable(GL_BLEND);
-            
-            // Need to do it on both backbuffers when OpenGL native stereo is enabled:
-            if (stereo_mode==kPsychOpenGLStereo) {
-                glDrawBuffer(GL_BACK_LEFT);
-                glReadBuffer(GL_AUX0);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-                glDrawBuffer(GL_BACK_RIGHT);
-                glReadBuffer(GL_AUX1);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-            }
-            else {
-                glDrawBuffer(GL_BACK);
-                glReadBuffer(GL_AUX0);
-                glRasterPos2i(0, screenheight);
-                glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
-            }
-
-            glEnable(GL_BLEND);
-        }
-        else {
-            // Clearing (both)  back buffer requested:
-            if (stereo_mode==kPsychOpenGLStereo) {
-                glDrawBuffer(GL_BACK_LEFT);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDrawBuffer(GL_BACK_RIGHT);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-            else {
-                glDrawBuffer(GL_BACK);
-                glClear(GL_COLOR_BUFFER_BIT);
-            }
-        }
-    }
+	// Imaging pipeline off?
+	if (windowRecord->imagingMode==0) {
+		// Imaging pipeline disabled: This is the old-style way of doing things:
+		
+		// Set transform matrix to well-defined state:
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		
+		// Vertical compression stereo active? This needs special treatment...
+		if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
+			// Yes. We reset the active stereo buffer to 2 == none selected.
+			windowRecord->stereodrawbuffer=2;
+			// In clearmode==1, aka retain we don't do anything. This way the AUX buffers
+			// restore the preflip state automatically. clearmode=2 is undefined by definition ;-)
+			if (clearmode==0) {
+				// clearmode 0 active. Sterobuffers shall be cleared on flip. We just
+				// reset the dirty-flags of the AUX buffers, so backbuffer gets cleared
+				// on first use after selection of a new stereo draw buffer:
+				windowRecord->auxbuffer_dirty[0]=FALSE;
+				windowRecord->auxbuffer_dirty[1]=FALSE;
+			}
+		}
+		// In other stereo modes and mono mode, we don't need to play backbuffer-AUX buffer games,
+		// just treat'em as in mono case...
+		else if (clearmode!=2) {
+			// Reinitialization of back buffer for drawing of next stim requested:
+			if (clearmode==1) {
+				// We shall not clear the back buffer(s), but restore them to state before "Flip",
+				// so previous stim can be incrementally updated where this makes sense.
+				// Copy back our backup-copy from AUX buffers:
+				glDisable(GL_BLEND);
+				
+				// Need to do it on both backbuffers when OpenGL native stereo is enabled:
+				if (stereo_mode==kPsychOpenGLStereo) {
+					glDrawBuffer(GL_BACK_LEFT);
+					glReadBuffer(GL_AUX0);
+					glRasterPos2i(0, screenheight);
+					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+					glDrawBuffer(GL_BACK_RIGHT);
+					glReadBuffer(GL_AUX1);
+					glRasterPos2i(0, screenheight);
+					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+				}
+				else {
+					glDrawBuffer(GL_BACK);
+					glReadBuffer(GL_AUX0);
+					glRasterPos2i(0, screenheight);
+					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+				}
+				
+				glEnable(GL_BLEND);
+			}
+			else {
+				// Clearing (both)  back buffer requested:
+				if (stereo_mode==kPsychOpenGLStereo) {
+					glDrawBuffer(GL_BACK_LEFT);
+					glClear(GL_COLOR_BUFFER_BIT);
+					glDrawBuffer(GL_BACK_RIGHT);
+					glClear(GL_COLOR_BUFFER_BIT);
+				}
+				else {
+					glDrawBuffer(GL_BACK);
+					glClear(GL_COLOR_BUFFER_BIT);
+				}
+			}
+		}
+		
+		// Restore modelview matrix:
+		glPopMatrix();
+	} // End of traditional postflip implementation for non-imaging mode:
 	
-	// Restore modelview matrix:
-    glPopMatrix();
-
 	// Imaging pipeline enabled?
     if (windowRecord->imagingMode > 0) {
 		// Yes. This is rather simple. In dontclear=2 mode we do nothing, except reenable
-		// the windowRecord as drawing target again. In dontlclear=1 mode ditto, because
+		// the windowRecord as drawing target again. In dontclear=1 mode ditto, because
 		// our backing store FBO's already retained a backup of the preflip-framebuffer.
 		// Only in dontclear = 0 mode, we need to clear the backing FBO's:
 		
 		if (clearmode==0) {
 			// Select proper viewport and cliprectangles for clearing:
 			PsychSetupView(windowRecord);
+			
 			// Bind left view (or mono view) buffer:
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]].fboid);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
 			// and clear it:
 			glClear(GL_COLOR_BUFFER_BIT);
+			
 			if (windowRecord->stereomode > 0) {
 				// Bind right view buffer for stereo mode:
-				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]].fboid);
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]]->fboid);
 				// and clear it:
 				glClear(GL_COLOR_BUFFER_BIT);
 			}
@@ -2035,7 +2071,6 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		PsychSetDrawingTarget(windowRecord);
 	}
 
-	
 	if (glGetError() == GL_OUT_OF_MEMORY) {
 		// Special case: Out of memory after Flip + Postflip operations.
 		printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
@@ -2049,10 +2084,15 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     PsychTestForGLErrors();
     
 	// EXPERIMENTAL: Execute hook chain for preparation of user space drawing ops:
-	PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, 0, 1);
+	PsychPipelineExecuteHook(windowRecord, kPsychUserspaceBufferDrawingPrepare, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
     // Done.
     return;
+}
+
+PsychWindowRecordType* PsychGetDrawingTarget(void)
+{
+	return(currentRendertarget);
 }
 
 /* PsychSetDrawingTarget - Set the target window for following drawing ops.
@@ -2074,9 +2114,6 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
  */
 void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
-    // We keep track of the current active rendertarget in order to
-    // avoid needless state changes:
-    static PsychWindowRecordType* currentRendertarget = NULL;
     static GLuint framebufferobject = 0;
     static Boolean fbo_workaround_needed = FALSE;
     static GLuint framebufferobject2 = 0;
@@ -2127,12 +2164,15 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                         // No. This texture is used the first time as a drawing target.
 						// Need to create a framebuffer object for it first.
 						
-						// Manually set up the color attachment texture id to our texture id:
-						windowRecord->fboTable[0].coltexid = windowRecord->textureNumber;
+						// Allocate and assign FBO object info structure PsychFBO:
+						PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect));
 						
-						// Create proper FBO object (optionally with z- and stencilbuffer) and attach the texture
+						// Manually set up the color attachment texture id to our texture id:
+						windowRecord->fboTable[0]->coltexid = windowRecord->textureNumber;
+						
+						// Initialize and setup FBO object (optionally with z- and stencilbuffer) and attach the texture
 						// as color attachment 0, aka main colorbuffer:				
-						if (!PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect))) {
+						if (!PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect))) {
 							// Failed!
 							PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
 
@@ -2144,7 +2184,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                     }
 
 					// Switch to FBO for given texture or offscreen window:
-					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0].fboid);
+					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0]->fboid);
 
 				} // Special setup for offscreen windows or textures finished.
 				else {
@@ -2153,12 +2193,12 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// on stereo mode and selected stereo buffer:
 					if ((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) {
 						// We are in stereo mode and want to draw into the right-eye channel. Bind FBO-1
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]].fboid);
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]]->fboid);
 					}
 					else {
 						// We are either in stereo mode and want to draw into left-eye channel or we are
 						// in mono mode. Bind FBO-0:
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]].fboid);
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
 					}
 				}
                     

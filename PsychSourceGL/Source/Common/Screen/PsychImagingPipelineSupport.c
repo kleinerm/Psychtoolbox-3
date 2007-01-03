@@ -86,6 +86,9 @@ void PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *wind
 	windowRecord->finalizedFBO[1]=-1;
 	windowRecord->fboCount = 0;
 
+	// NULL-out fboTable:
+	for (i=0; i<MAX_FBOTABLE_SLOTS; i++) windowRecord->fboTable[i] = NULL;
+	
 	// Setup mode switch in record to "all off":
 	windowRecord->imagingMode = 0;
 
@@ -351,7 +354,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
  * It checks for correct setup and then stores all relevant information in the PsychFBO struct, pointed by
  * fbo. On success it returns true, on failure it returns false.
  */
-Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height)
+Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height)
 {
 	GLenum fborc;
 	GLint bpc;
@@ -360,27 +363,42 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 	// Eat all GL errors:
 	PsychTestForGLErrors();
 	
-	// Start cleanly for error handling:
-	fbo->fboid = 0;
-	fbo->stexid = 0;
-	fbo->ztexid = 0;
+	// If fboInternalFomrat!=1 then we need to allocate and assign a proper PsychFBO struct first:
+	if (fboInternalFormat!=1) {
+		*fbo = (PsychFBO*) malloc(sizeof(PsychFBO));
+		if (*fbo == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate PsychFBO struct!");
+
+		// Start cleanly for error handling:
+		(*fbo)->fboid = 0;
+		(*fbo)->stexid = 0;
+		(*fbo)->ztexid = 0;
+		
+		// fboInternalFormat == 0 --> Only allocate and assign, don't initialize FBO.
+		if (fboInternalFormat==0) return(TRUE);
+	}
 
 	// Is there already a texture object defined for the color attachment?
-	if (fboInternalFormat != (GLenum) 0) {
+	if (fboInternalFormat != (GLenum) 1) {
 		// No, need to create one:
 		
 		// Build color buffer: Create a new texture handle for the color buffer attachment.
-		glGenTextures(1, (GLuint*) &(fbo->coltexid));
+		glGenTextures(1, (GLuint*) &((*fbo)->coltexid));
 		
 		// Bind it as rectangle texture:
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid);
 		
 		// Create proper texture: Just allocate proper format, don't assign data.
 		glTexImage2D(GL_TEXTURE_RECTANGLE_EXT, 0, fboInternalFormat, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
 	}
 	else {
 		// Yes. Bind it as rectangle texture:
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid);
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid);
+	}
+	
+	if (glGetError()!=GL_NO_ERROR) {
+		printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment for imaging pipeline!\n");
+		printf("PTB-ERROR: Most likely the requested size & depth of the window or texture is not supported by your graphics hardware.\n");
+		return(FALSE);
 	}
 	
     // Setup texture wrapping behaviour to clamp, as other behaviours are
@@ -396,11 +414,27 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 	glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 
 	// Create a new framebuffer object and bind it:
-	glGenFramebuffersEXT(1, (GLuint*) &(fbo->fboid));
-	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fbo->fboid);
+	glGenFramebuffersEXT(1, (GLuint*) &((*fbo)->fboid));
+	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (*fbo)->fboid);
 	
 	// Attach the texture as color buffer zero:
-    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->coltexid, 0);
+    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid, 0);
+	
+	// Check for framebuffer completeness:
+	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT) {
+		// Framebuffer incomplete!
+		while(glGetError());
+		printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment for imaging pipeline!\n");
+		if (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) {
+			printf("PTB-ERROR: Your graphics hardware does not support the selected or requested format for drawing into it.\n");
+		}
+		else {
+			printf("PTB-ERROR: Exact reason for failure is unknown.\n");
+		}
+		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) size and depth of the onscreen window or offscreen window.\n");
+		return(FALSE);
+	}
 	
 	// Do we need additional buffers for 3D rendering?
 	if (needzbuffer) {
@@ -414,8 +448,8 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 		}
 		
 		// Create texture object for z-buffer (or z+stencil buffer) and set it up:
-		glGenTextures(1, (GLuint*) &(fbo->ztexid));
-		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid);
+		glGenTextures(1, (GLuint*) &((*fbo)->ztexid));
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid);
 		
 		// Setup texture wrapping behaviour to clamp, as other behaviours are
 		// unsupported on many gfx-cards for rectangle textures:
@@ -443,9 +477,9 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 			
 			// Attach the texture as depth buffer...
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
 			// ... and as stencil buffer ...
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
 		}
 		else {
 			// Packed depth+stencil textures unsupported :( 
@@ -459,13 +493,13 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 			
 			// Attach the texture as depth buffer...
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, fbo->ztexid, 0);
+			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
 			
 			// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
-			glGenRenderbuffersEXT(1, (GLuint*) &(fbo->stexid));
-			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, fbo->stexid);
+			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, width, height);
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, fbo->stexid);
+			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 			
 			// See if we are framebuffer complete:
 			if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
@@ -482,21 +516,21 @@ Boolean PsychCreateFBO(PsychFBO* fbo, GLenum fboInternalFormat, Boolean needzbuf
 				}
 				
 				glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
-				glDeleteRenderbuffersEXT(1, (GLuint*) &(fbo->stexid));
-				fbo->stexid = 0;
+				glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+				(*fbo)->stexid = 0;
 			}
 		}
 	}
 	else {
 		// Initialize additional buffers to zero:
 		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Only colorbuffer texture attached to FBO, no depth- or stencil buffers requested...\n"); 
-		fbo->stexid = 0;
-		fbo->ztexid = 0;
+		(*fbo)->stexid = 0;
+		(*fbo)->ztexid = 0;
 	}
 	
 	// Store dimensions:
-	fbo->width = width;
-	fbo->height = height;
+	(*fbo)->width = width;
+	(*fbo)->height = height;
 	
 	// Check for framebuffer completeness:
 	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
@@ -551,23 +585,30 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean o
 {
 	int i;
 	PtrPsychHookFunction hookfunc, hookiter;
+	PsychFBO* fboptr;
 	
-	// Imaging enabled?
-	if (windowRecord->imagingMode>0) {
+	// Imaging enabled? Do OpenGL specific cleanup:
+	if (windowRecord->imagingMode>0 && openglpart) {
 		// Yes. Mode specific cleanup:
 		for (i=0; i<windowRecord->fboCount; i++) {
-			// Delete i'th FBO:
-			
-			// Unbind it:
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
-			// Detach and delete color buffer texture:
-			if (windowRecord->fboTable[i].coltexid) glDeleteTextures(1, &(windowRecord->fboTable[i].coltexid));
-			// Detach and delete depth buffer (and probably stencil buffer) texture, if any:
-			if (windowRecord->fboTable[i].ztexid) glDeleteTextures(1, &(windowRecord->fboTable[i].ztexid));
-			// Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
-			if (windowRecord->fboTable[i].stexid) glDeleteRenderbuffersEXT(1, &(windowRecord->fboTable[i].stexid));
-			// Delete FBO itself:
-			if (windowRecord->fboTable[i].fboid) glDeleteFramebuffersEXT(1, &(windowRecord->fboTable[i].fboid));
+			// Delete i'th FBO, if any:
+			fboptr = windowRecord->fboTable[i];
+			if (fboptr!=NULL) { 
+				// Delete all remaining references to this fbo:
+				for (i=0; i<windowRecord->fboCount; i++) if (fboptr == windowRecord->fboTable[i]) windowRecord->fboTable[i] = NULL;
+				
+				// Detach and delete color buffer texture:
+				if (fboptr->coltexid) glDeleteTextures(1, &(fboptr->coltexid));
+				// Detach and delete depth buffer (and probably stencil buffer) texture, if any:
+				if (fboptr->ztexid) glDeleteTextures(1, &(fboptr->ztexid));
+				// Detach and delete stencil renderbuffer, if a separate stencil buffer was needed:
+				if (fboptr->stexid) glDeleteRenderbuffersEXT(1, &(fboptr->stexid));
+				// Delete FBO itself:
+				if (fboptr->fboid) glDeleteFramebuffersEXT(1, &(fboptr->fboid));
+				
+				// Delete PsychFBO struct associated with this FBO:
+				free(fboptr); fboptr = NULL;
+			}
 		}
 	} 
 
@@ -921,20 +962,75 @@ void PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord)
  * If it is enabled, it iterates over the full chain, executes all assigned hook functions in order and uses the FBO's between minfbo and maxfbo
  * as pingpong buffers if neccessary.
  */
-void PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, int minfbo, int maxfbo)
+boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	PtrPsychHookFunction hookfunc;
 	int i=0;
-	int srcfbo, dstfbo;
-	srcfbo = minfbo;
-	dstfbo = maxfbo;
+	int pendingFBOpingpongs = 0;
+	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo; 
+	boolean gfxprocessing;
+	GLint restorefboid = 0;
 	
 	// Child protection:
 	if (hookId<0 || hookId>=MAX_SCREEN_HOOKS) PsychErrorExitMsg(PsychError_internal, "In PsychPipelineExecuteHook: Was asked to execute unknown (non-existent) hook chain with invalid id!");
-	// Hook chain enabled for processing? We skip otherwise.
-	if (!windowRecord->HookChainEnabled[hookId]) return;
+
+	// Hook chain enabled for processing and contains at least one hook slot?
+	if ((!windowRecord->HookChainEnabled[hookId]) || (windowRecord->HookChain[hookId] == NULL)) {
+		// Chain is empty or disabled.
+		return(TRUE);
+	}
 	
+	// Is this an image processing hook?
+	gfxprocessing = (srcfbo1!=NULL && dstfbo!=NULL) ? TRUE : FALSE;
+		
 	// Get start of enabled chain:
+	hookfunc = windowRecord->HookChain[hookId];
+
+	// Count number of needed ping-pong FBO switches inside this chain:
+	while(hookfunc) {
+		// Pingpong command?
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "PINGPONGFBOS")==0) pendingFBOpingpongs++;
+		// Process next hookfunc slot in chain, if any:
+		hookfunc = hookfunc->next;
+	}
+	
+	if (gfxprocessing) {
+		// Prepare gfx-processing:
+
+		if ((pendingFBOpingpongs % 2) == 0) {
+			// Even number of ping-pongs needed in this chain. We stream from source fbo to
+			// destination fbo in first pass.
+			mysrcfbo1 = *srcfbo1;
+			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
+			mydstfbo  = *dstfbo;
+			mynxtfbo  = (bouncefbo) ? *bouncefbo : NULL;
+		}
+		else {
+			// Odd number of ping-pongs needed. Initially stream from source to bouncefbo:
+			mysrcfbo1 = *srcfbo1;
+			mysrcfbo2 = (srcfbo2) ? *srcfbo2 : NULL;
+			mydstfbo  = (bouncefbo) ? *bouncefbo : NULL;
+			mynxtfbo  = *dstfbo;
+		}
+		
+		// If this is a multi-pass chain we'll need a bounce buffer FBO:
+		if (pendingFBOpingpongs > 0 && bouncefbo == NULL) PsychErrorExitMsg(PsychError_internal, "In gfx-hook chain processing: Required bounce-buffer missing!!!");
+		
+		// Enable associated GL context:
+		PsychSetGLContext(windowRecord);
+		
+		// Save current FBO bindings and switch to system FB:
+		if (glBindFramebufferEXT) {
+			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &restorefboid);
+			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		}
+		
+		// Setup initial source -> target binding:
+		PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo);
+	}
+
+	
+	// Reget start of enabled chain:
 	hookfunc = windowRecord->HookChain[hookId];
 
 	// Iterate over all slots:
@@ -961,49 +1057,154 @@ void PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, v
 			}
 		}
 		
-		// Process this hook function:
-		PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, &srcfbo, &dstfbo);
+		// Is this a ping-pong command?
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "PINGPONGFBOS")==0) {
+			// Ping pong buffer swap requested:
+			pendingFBOpingpongs--;
+			mysrcfbo1 = mydstfbo;
+			mydstfbo  = mynxtfbo;
+			if ((pendingFBOpingpongs % 2) == 0) {
+				// Even number of ping-pongs remaining in this chain.
+				mynxtfbo  = (bouncefbo) ? *bouncefbo : NULL;
+			}
+			else {
+				// Odd number of ping-pongs remaining.
+				mynxtfbo  = *dstfbo;
+			}
+			
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: SWAPPING PING-PONG FBOS, %i swaps pending...\n", pendingFBOpingpongs);
+			
+			// Set new src -> dst binding:
+			PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo);
+		}
+		else {
+			// Normal hook function - Process this hook function:
+			if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {
+				// Failed!
+				if (PsychPrefStateGet_Verbosity()>0) {
+					printf("PTB-ERROR: Failed in processing of Hookchain %i : Slot %i: Id='%s'  --> Aborting chain processing. Set verbosity to 5 for extended debug output.\n", hookId, i, hookfunc->idString);
+				}
+				return(FALSE);
+			}
+		}
 		
 		// Process next hookfunc slot in chain, if any:
 		i++;
 		hookfunc = hookfunc->next;
 	}
 
+	if (gfxprocessing) {
+		// Disable renderflow:
+		PsychPipelineSetupRenderFlow(NULL, NULL, NULL);
+		
+		// Restore old FBO bindings:
+		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, restorefboid);
+	}
+
 	// Done.
-	return;
+	return(TRUE);
 }
 
 /* PsychPipelineExecuteHookSlot()
  * Execute a single hookfunction slot in a hook chain for a specific window.
  */
-void PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, int* srcfbo, int* dstfbo)
+boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	// Dispatch by hook function type:
 	switch(hookfunc->hookfunctype) {
 		case kPsychShaderFunc:
-			printf("TODO: EXECUTE -- GLSL-Shader      : id=%i , luttex1=%i , blitter=%s\n", hookfunc->shaderid, hookfunc->luttexid1, hookfunc->pString1);
-			break;
+			// Call a GLSL shader to do some image processing:
+			printf("EXECUTING GLSL-Shader             : id=%i , luttex1=%i , blitter=%s\n", hookfunc->shaderid, hookfunc->luttexid1, hookfunc->pString1);
+			
+			
+		break;
 			
 		case kPsychCFunc:
 			printf("TODO: EXECUTE -- C-Callback       : void*= %p\n", hookfunc->cprocfunc);
-			break;
+		break;
 			
 		case kPsychMFunc:
-			// printf("EXECUTING: Runtime-Function : Evalstring= %s\n", hookfunc->pString1);
-			#if PSYCH_LANGUAGE == PSYCH_MATLAB
-				PsychRuntimeEvaluateString(hookfunc->pString1);
-			#else
-				printf("TODO: Implement runtime function support in GNU/Octave!\n");
-			#endif
-			break;
+			// Call the eval() function of our scripting runtime environment to evaluate
+			// function string pString1. Currently supported are Matlab & Octave, so this
+			// can be the call string of an arbitrary Matlab/Octave builtin or M-Function.
+			// Care has to be taken that the called functions do not invoke any Screen
+			// subfunctions! Screen is not reentrant, so that would likely screw seriously!
+			PsychRuntimeEvaluateString(hookfunc->pString1);
+		break;
 			
 		case kPsychBuiltinFunc:
 			printf("TODO: EXECUTE -- Builtin-Function : Name= %s\n", hookfunc->idString);
-			break;
+		break;
 			
 		default:
 			PsychErrorExitMsg(PsychError_internal, "In PsychPipelineExecuteHookSlot: Was asked to execute unknown (non-existent) hook function type!");
 	}
 	
+	return(TRUE);
+}
+
+void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo)
+{
+	static int ow, oh;
+	int w, h;
+	
+	// Assign color texture of srcfbo2, if any,  to texture unit 1:
+	glActiveTextureARB(GL_TEXTURE1_ARB);
+	if (srcfbo2) {
+		// srcfbo2 is valid: Assign its color buffer texture:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo2->coltexid);
+		glEnable(GL_TEXTURE_RECTANGLE_EXT);
+	}
+	else {
+		// srcfbo2 doesn't exist: Unbind and deactivate 2nd unit:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+	}
+	
+	// Assign color texture of srcfbo1 to texture unit 0:
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	if (srcfbo1) {
+		// srcfbo1 is valid: Assign its color buffer texture:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo1->coltexid);
+		glEnable(GL_TEXTURE_RECTANGLE_EXT);
+	}
+	else {
+		// srcfbo1 doesn't exist: Unbind and deactivate 1st unit:
+		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
+		glDisable(GL_TEXTURE_RECTANGLE_EXT);
+	}
+	
+	// Select rendertarget:
+	if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (dstfbo) ? dstfbo->fboid : 0);
+	
+	if (dstfbo) {
+		// Setup viewport, scissor rectangle and projection matrix for orthonormal rendering into the
+		// target FBO or system framebuffer:
+		w = (int) dstfbo->width;
+		h = (int) dstfbo->height;
+		
+		// Geometry changed? We skip if not - state changes are expensive...
+		if (w!=ow || h!=oh) {
+			ow=w;
+			oh=h;
+			
+			// Setup viewport and scissor for full FBO area:
+			glViewport(0, 0, w, h);
+			glScissor(0, 0, w, h);
+			
+			// Setup projection matrix for a proper orthonormal projection for this framebuffer:
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			gluOrtho2D(0, w, 0, h);
+			
+			// Switch back to modelview matrix, but leave it unaltered:
+			glMatrixMode(GL_MODELVIEW);
+		}
+	}
+	else {
+		ow=0;
+		oh=0;
+	}
+
 	return;
 }

@@ -142,6 +142,8 @@ function [data,params]=DaqAInScan(device,options)
 %             suggested by Maria Mckinley <parody@u.washington.edu>. The reported
 %             number of outputs of the USB-1208FS has changed in Tiger.
 %             http://groups.yahoo.com/group/psychtoolbox/message/3614
+% 1/02/07 mk  Add 'persistent dinc' to line 245. This apparently fixes some
+%             bug, bugfix proposed by Florian Stendel.
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -242,6 +244,8 @@ if ~isfield(options,'end')
     options.end=1;
 end
 persistent start;
+persistent dinc;
+
 if options.begin
     % It might be running, so stop it.
     % hex2dec('12') is 18.

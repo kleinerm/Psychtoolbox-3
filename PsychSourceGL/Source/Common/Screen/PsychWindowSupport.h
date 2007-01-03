@@ -45,6 +45,7 @@ double  PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int*
 void    PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int belltype);
 void    PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
 void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode);
+PsychWindowRecordType* PsychGetDrawingTarget(void);
 void    PsychSetDrawingTarget(PsychWindowRecordType *windowRecord);
 void    PsychSetupView(PsychWindowRecordType *windowRecord);
 void	PsychSetUserspaceGLFlag(Boolean inuserspace);

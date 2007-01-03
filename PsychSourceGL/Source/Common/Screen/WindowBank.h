@@ -73,6 +73,9 @@ T0 DO:
 // Maximum number of different hook chains:
 #define MAX_SCREEN_HOOKS 9
 
+// Maximum number of slots in windowRecords fboTable:
+#define MAX_FBOTABLE_SLOTS 2+3+3+2
+
 // Type of hook function attached to a specific hook chain slot:
 #define kPsychShaderFunc	0
 #define kPsychCFunc			1
@@ -240,8 +243,8 @@ typedef struct _PsychWindowRecordType_{
 	int						preConversionFBO[3];					// preConversion FBO's: FBO zero/one are the targets for any stereo merge operations. FBO two is
 																	// (optionally) a temporary bounce buffer for multipass post processing.
 	int						finalizedFBO[2];						// This is the final framebuffer: Usually the system backbuffer, but could be something special.
-	
-	PsychFBO				fboTable[2+3+3+2];						// This array contains the FBO structs which are referenced by the indices above.
+
+	PsychFBO*				fboTable[MAX_FBOTABLE_SLOTS];			// This array contains pointers to the FBO structs which are referenced by the indices above.
 	int						fboCount;								// This contains the number of FBO's in fboTable.
 	
 	//Used only when this structure holds a window:
