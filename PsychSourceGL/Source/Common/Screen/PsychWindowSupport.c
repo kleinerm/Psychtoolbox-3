@@ -1903,7 +1903,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	
 	if (imagingMode) {
 		// Preflip operations for imaging mode:
-		
+
 		// Detach any active drawing targets:
 		PsychSetDrawingTarget(NULL);
 
@@ -2005,8 +2005,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			else {
 				// No conversion needed or chain disabled: Do our identity blit:
 				// printf("view %i: preconv fbo id: %i ", viewid, windowRecord->preConversionFBO[viewid]); fflush(NULL);
-				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 				if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>1)) printf("PTB-WARNING: Processing chain for output conversion disabled -- Using identity copy as workaround. Bug?!?\n");
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 			}
 		}
 		

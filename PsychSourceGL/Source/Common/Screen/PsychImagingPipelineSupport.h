@@ -76,6 +76,9 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
 boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
+// Try to create GLSL shader from source strings and return handle to new shader.
+GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, const char* primitivesrc);
+
 // Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
 // =============================================================================
 

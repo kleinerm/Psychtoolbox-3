@@ -76,16 +76,22 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	
 	// Switch to associated GL-Context:
 	PsychSetGLContext(windowRecord);
-        
-	// Enable this windowRecords framebuffer as current drawingtarget. In imagingmode this will also
-	// select the proper backing FBO:
-	PsychSetDrawingTarget(windowRecord);
-        
+
 	// If the imaging pipeline is active, then we're done.
-	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) return(PsychError_none);
-	
+	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
+		// Enable this windowRecords framebuffer as current drawingtarget. In imagingmode this will also
+		// select the proper backing FBO:
+		PsychSetDrawingTarget(NULL);
+		PsychSetDrawingTarget(windowRecord);
+		
+		// Done for imaging mode:
+		return(PsychError_none);
+	}
+
 	// The following code is only used for non-imaging mode operations:
-	
+
+	PsychSetDrawingTarget(windowRecord);
+
 	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen || windowRecord->stereomode == kPsychMonoscopic) {
 		// Trying to select the draw target buffer on a non-stereo window: We just reset it to monoscopic default.
 		glDrawBuffer(GL_BACK);
