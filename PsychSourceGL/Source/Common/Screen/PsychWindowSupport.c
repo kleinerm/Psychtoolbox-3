@@ -1804,6 +1804,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
     int stereo_mode=windowRecord->stereomode;
+	int imagingMode = windowRecord->imagingMode;
+	int viewid, hookchainid;
+	
     GLint auxbuffers;
 
     // Early reject: If this flag is set, then there's no need for any processing:
@@ -1834,7 +1837,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     glPushMatrix();
     
 	// The following code is for traditional non-imaging rendering:
-	if (windowRecord->imagingMode == 0) {
+	if (imagingMode == 0) {
 		// Check for compressed stereo handling...
 		if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
 			if (auxbuffers<2) {
@@ -1898,7 +1901,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		}
 	}	// End of traditional preflip path.
 	
-	if (windowRecord->imagingMode) {
+	if (imagingMode) {
 		// Preflip operations for imaging mode:
 		
 		// Detach any active drawing targets:
@@ -1913,19 +1916,114 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Disable alpha-blending:
 		glDisable(GL_BLEND);
 		
-		PsychSetupView(windowRecord);
+		// FIXME: Hmmm... is this needed? Doesn't hurt, but ??
+		// PsychSetupView(windowRecord);
 		
-		// Execute our post processing chain for this onscreen window:
+		// Execute post processing sequence for this onscreen window:
 		
+		// Generic image processing on viewchannels enabled?
+		if (imagingMode & kPsychNeedImageProcessing) {
+			// Yes. Process each of the (up to two) streams:
+			for (viewid = 0; viewid < ((stereo_mode > 0) ? 2 : 1); viewid++) {
+				// Processing chain enabled and non-empty?
+				hookchainid = (viewid==0) ? kPsychStereoLeftCompositingBlit : kPsychStereoRightCompositingBlit;
+				if (PsychIsHookChainOperational(windowRecord, hookchainid)) {
+					// Hook chain ready to do its job: Execute it.      userd,blitf
+					// Don't supply user-specific data, blitfunction is default blitter, unless defined otherwise in blitchain,
+					// srcfbos are read-only, swizzling forbidden, 2nd srcfbo doesn't exist (only needed for stereo merge op),
+					// We provide a bounce-buffer...
+					// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
+					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]), &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]));
+				}
+				else {
+					// Hook chain disabled by userspace or doesn't contain any instructions.
+					// Execute our special identity blit chain to transfer the data from source buffer
+					// to destination buffer:
+					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]), NULL);
+				}
+			}
+		}
 		
-		windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->coltexid;
+		// At this point, processedDrawBufferFBO[0 and 1] contain the per-viewchannel result of
+		// user defined (or stereo) image processing.
+		
+		// Stereo processing: This depends on selected stereomode...
+		if (stereo_mode <= kPsychOpenGLStereo) {
+			// No stereo or quad-buffered stereo - Nothing to do in merge stage.
+		}
+		else if (stereo_mode <= kPsychAnaglyphBRStereo) {
+			// Merged stereo - All work is done by the anaglyph shader that was created for this purpose
+			// in pipeline setup, no geometric transform or such are needed, so we can use the default blitter:
+			if (PsychIsHookChainOperational(windowRecord, kPsychStereoCompositingBlit)) {
+				// Don't supply user-specific data, blitfunction is default blitter, unless defined otherwise in blitchain,
+				// srcfbos are read-only, swizzling forbidden, 2nd srcfbo is right-eye channel, whereas 1st srcfbo is left-eye channel.
+				// We provide a bounce-buffer as well.
+				// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
+				PsychPipelineExecuteHook(windowRecord, kPsychStereoCompositingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[0]]), &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[1]]), &(windowRecord->fboTable[windowRecord->preConversionFBO[0]]), &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]));
+			}
+			else {
+				// Hook chain disabled by userspace or doesn't contain any instructions.
+				// We vitally need the compositing chain, there's no simple fallback here!
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Processing chain for stereo processing merge operations is empty - No visual output produced! Bug?!?\n");
+			}			
+		}
+		else {
+			// Invalid stereo mode?
+			PsychErrorExitMsg(PsychError_internal, "Invalid stereo mode encountered!?!");
+		}
+		
+		// At this point we have image data ready for final post-processing and special device output formatting...
+		// In mono mode: Image in preConversionFBO[0].
+		// In quad-buffered stereo mode: Left eye image in preConversionFBO[0], Right eye image in preConversionFBO[1].
+		// In other stereo modes: Merged image in both preConversionFBO[0] and preConversionFBO[1], both reference the same image buffer.
+		
+		// Ready to create the final content, either for drawing into a snapshot buffer or into the real system framebuffer.
+		// finalizedFBO[0] is set up to take the final image for anything but quad-buffered stereo.
+		// In quad-buffered mode, finalizedFBO[0] shall receive the left-eye image, finalizedFBO[1] shall receive the right-eye image.
+		// Each FBO is either a real FBO for framebuffer "screenshots" or the system framebuffer for final output into the backbuffer.
 
-		// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
-		// sure that alpha-blending is disabled during this blit operation:
+		// Process each of the (up to two) streams:
+		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo) ? 2 : 1); viewid++) {
+
+			// Select final drawbuffer if our target is the system framebuffer:
+			if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
+				// Final target is system backbuffer:
+				if (stereo_mode == kPsychOpenGLStereo) {
+					// Quad buffered stereo: Select proper backbuffer:
+					glDrawBuffer((viewid==0) ? GL_BACK_LEFT : GL_BACK_RIGHT);
+				} else {
+					// Mono mode: Select backbuffer:
+					glDrawBuffer(GL_BACK);
+				}
+			}
+
+			// Output conversion needed, processing chain enabled and non-empty?
+			if ((imagingMode & kPsychNeedOutputConversion) && PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit)) {
+				// Yes - Execute it:
+				PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+			}
+			else {
+				// No conversion needed or chain disabled: Do our identity blit:
+				// printf("view %i: preconv fbo id: %i ", viewid, windowRecord->preConversionFBO[viewid]); fflush(NULL);
+				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
+				if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>1)) printf("PTB-WARNING: Processing chain for output conversion disabled -- Using identity copy as workaround. Bug?!?\n");
+			}
+		}
+		
+		// At this point we should have either a valid snapshot of the framebuffer in the finalizedFBOs, or
+		// (the common case) the final image in the system backbuffers, ready for display after swap.
+		
+		// Disabled debug code:
+		if (FALSE) {
+			windowRecord->textureNumber = windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->coltexid;
+			
+			// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
+			// sure that alpha-blending is disabled during this blit operation:
 			// Alpha blending not enabled. Just blit it:
 			PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
-		
-		windowRecord->textureNumber = 0;
+			
+			windowRecord->textureNumber = 0;
+		}
 
 		// Restore all state, including blending and texturing state:
 		glPopAttrib();
@@ -1933,12 +2031,13 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	}	// End of preflip operations for imaging mode:
 
 	// EXPERIMENTAL: Execute hook chain for final backbuffer data formatting after stereo composition and post processing:
-	PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+	// PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
     // Restore modelview matrix:
     glPopMatrix();
     
-    // Tell Flip that backbuffer backup has been done already to avoid redundant backups:
+    // Tell Flip that backbuffer backup has been done already to avoid redundant backups. This is a bit of a
+	// unlucky name. It actually signals that all the preflip processing has been done, the old name is historical.
     windowRecord->backBufferBackupDone = true;
 
     return;
@@ -2357,7 +2456,7 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluOrtho2D(windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychRight], windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
-    
+
     // Switch back to modelview matrix, but leave it unaltered:
     glMatrixMode(GL_MODELVIEW);
     return;

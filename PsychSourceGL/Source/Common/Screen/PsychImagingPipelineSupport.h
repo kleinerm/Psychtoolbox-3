@@ -30,6 +30,9 @@
 
 #include "Screen.h"
 
+// Definition of a pointer to a blitter function: See below for conforming blitter function prototypes:
+typedef boolean (*PsychBlitterFunc)(PsychWindowRecordType*, void*, boolean, boolean, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
+
 // Symbolic names for Hook-Chains:
 typedef enum {
 	kPsychCloseWindowPreGLShutdown =				0,
@@ -41,6 +44,7 @@ typedef enum {
 	kPsychPostCompositingBlit =						6,
 	kPsychFinalOutputFormattingBlit =				7,
 	kPsychUserspaceBufferDrawingPrepare =			8,
+	kPsychIdentityBlit=								9,
 } PsychHookType;
 
 // API for PTB core:
@@ -69,6 +73,16 @@ int		PsychGetHookByName(const char* hookName);
 void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo);
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
 Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height);
+boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
+boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+
+// Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
+// =============================================================================
+
+// Identity blitter: Blits from srcfbo1 color attachment to dstfbo without geometric transformations or other extras.
+// This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
+// when no special (non-default) blitter is requested by core code or users blitter parameter string:
+boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 //end include once
 #endif

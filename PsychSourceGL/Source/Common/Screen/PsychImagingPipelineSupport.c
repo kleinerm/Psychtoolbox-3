@@ -44,7 +44,8 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"StereoCompositingBlit",
 	"PostCompositingBlit",
 	"FinalOutputFormattingBlit",
-	"UserspaceBufferDrawingPrepare"
+	"UserspaceBufferDrawingPrepare",
+	"IdentityBlitChain"
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
@@ -56,7 +57,8 @@ char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
 	"HelpStereoCompositingBlit",
 	"HelpPostCompositingBlit",
 	"HelpFinalOutputFormattingBlit",
-	"HelpUserspaceBufferDrawingPrepare"
+	"HelpUserspaceBufferDrawingPrepare",
+	"IdentityBlitChain: Only for internal use. Only modify for debugging and testing of pipeline itself!"
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()
@@ -253,7 +255,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			fbocount++;
 		}
 		else {
-			windowRecord->processedDrawBufferFBO[1] = 0;
+			// Mono mode: No righ-eye buffer:
+			windowRecord->processedDrawBufferFBO[1] = -1;
 		}
 		
 		// Allocate a bounce-buffer as well:
@@ -262,7 +265,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 		}
 		
-		// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
+		// Assign this FBO as processedDrawBuffer for bounce buffer ops in multi-pass rendering:
 		windowRecord->processedDrawBufferFBO[2] = fbocount;
 		fbocount++;
 	}
@@ -270,7 +273,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// No image processing: Set 2nd stage FBO's to 1st stage FBO's:
 		windowRecord->processedDrawBufferFBO[0] = windowRecord->drawBufferFBO[0];
 		windowRecord->processedDrawBufferFBO[1] = windowRecord->drawBufferFBO[1];
-		windowRecord->processedDrawBufferFBO[2] = 0;
+		windowRecord->processedDrawBufferFBO[2] = -1;
 	}
 	
 	// Stage 2 ready. Any need for real merged FBO's? We need a merged FBO if we are in stereo mode
@@ -307,12 +310,28 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// No real merger FBO's: Set 3rd stage FBO's to 2nd stage FBO's:
 		windowRecord->preConversionFBO[0] = windowRecord->processedDrawBufferFBO[0];
 		windowRecord->preConversionFBO[1] = windowRecord->processedDrawBufferFBO[1];
+		// We reuse the bounce buffer from stage 2...
+		// FIXME: Do we need a separate bounce buffer when needoutputconversion is true???
 		windowRecord->preConversionFBO[2] = windowRecord->processedDrawBufferFBO[2];
 	}
 	
-	// Define output buffers as system framebuffers:
-	windowRecord->finalizedFBO[0]=0;
-	windowRecord->finalizedFBO[1]=0;
+	// Define output buffers as system framebuffers: We create some pseudo-FBO's for these
+	// which describe the system framebuffer. This is done to simplify pipeline design:
+	
+	// Allocate empty FBO info struct and assign it:
+	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight)) {
+		// Failed!
+		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 4 of imaging pipeline.");
+	}
+
+	// The pseudo-FBO contains a fboid of zero == system framebuffer, and empty (zero) attachments.
+	// The up to now only useful information is the viewport geometry ie winwidth and winheight.
+
+	// We use the same struct for both buffers:
+	windowRecord->finalizedFBO[0]=fbocount;
+	windowRecord->finalizedFBO[1]=fbocount;
+
+	fbocount++;
 
 	// Setup imaging mode flags:
 	newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
@@ -334,7 +353,33 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->imagingMode = newimagingmode;
 	windowRecord->fboCount = fbocount;
 	
+	// Setup our default chain: This chain is executed if some stage of the imaging pipe is set up according
+	// to imagingMode, but the corresponding hook-chain is empty or disabled. In that case we need to copy
+	// the data for that stage from its input buffers to its output buffers via a simple blit operation.
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
+
+	// TEST chains:
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineEnableHook(windowRecord, "StereoLeftCompositingBlit");
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoRightCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineEnableHook(windowRecord, "StereoRightCompositingBlit");
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "FinalOutputFormattingBlit", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineEnableHook(windowRecord, "FinalOutputFormattingBlit");
+
 	// TODO: Setup stereo shaders for the different stereo modes...
+
+	if (PsychPrefStateGet_Verbosity()>4) {
+		printf("PTB-DEBUG: Buffer mappings follow...\n");
+		printf("fboCount = %i\n", windowRecord->fboCount);
+		printf("finalizedFBO = %i, %i\n", windowRecord->finalizedFBO[0], windowRecord->finalizedFBO[1]);
+		printf("preConversionFBO = %i, %i, %i\n", windowRecord->preConversionFBO[0], windowRecord->preConversionFBO[1], windowRecord->preConversionFBO[2]);
+		printf("processedDrawBufferFBO = %i %i %i\n", windowRecord->processedDrawBufferFBO[0], windowRecord->processedDrawBufferFBO[1], windowRecord->processedDrawBufferFBO[2]);
+		printf("drawBufferFBO = %i %i \n", windowRecord->drawBufferFBO[0], windowRecord->drawBufferFBO[1]);
+		fflush(NULL);
+	}
 
 	// Perform a full reset of current drawing target. This is a warm-start of PTB's drawing
 	// engine, so the next drawing command will trigger binding the proper FBO of our pipeline.
@@ -373,6 +418,9 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		(*fbo)->stexid = 0;
 		(*fbo)->ztexid = 0;
 		
+		(*fbo)->width = width;
+		(*fbo)->height = height;
+		
 		// fboInternalFormat == 0 --> Only allocate and assign, don't initialize FBO.
 		if (fboInternalFormat==0) return(TRUE);
 	}
@@ -405,6 +453,7 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
     // unsupported on many gfx-cards for rectangle textures:
     glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
     glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP);
+	
     // Setup filtering for the textures - Use nearest neighbour by default, as floating
     // point filtering usually unsupported.
     glTexParameterf(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER,GL_NEAREST);
@@ -956,6 +1005,21 @@ void PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord)
 	return;
 }
 
+boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid)
+{
+	// Child protection:
+	if (hookid<0 || hookid>=MAX_SCREEN_HOOKS) PsychErrorExitMsg(PsychError_internal, "In PsychIsHookChainOperational: Was asked to check unknown (non-existent) hook chain with invalid id!");
+
+	// Hook chain enabled for processing and contains at least one hook slot?
+	if ((!windowRecord->HookChainEnabled[hookid]) || (windowRecord->HookChain[hookid] == NULL)) {
+		// Chain is empty or disabled.
+		return(FALSE);
+	}
+	
+	// Chain operational:
+	return(TRUE);
+}
+
 /* PsychPipelineExecuteHook()
  * Execute the full hook processing chain for a specific hook and a specific windowRecord.
  * This checks if the chain is enabled. If it isn't enabled, it skips processing.
@@ -989,7 +1053,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 	// Count number of needed ping-pong FBO switches inside this chain:
 	while(hookfunc) {
 		// Pingpong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "PINGPONGFBOS")==0) pendingFBOpingpongs++;
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) pendingFBOpingpongs++;
 		// Process next hookfunc slot in chain, if any:
 		hookfunc = hookfunc->next;
 	}
@@ -1019,10 +1083,9 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 		// Enable associated GL context:
 		PsychSetGLContext(windowRecord);
 		
-		// Save current FBO bindings and switch to system FB:
+		// Save current FBO bindings for later restore:
 		if (glBindFramebufferEXT) {
 			glGetIntegerv(GL_FRAMEBUFFER_BINDING_EXT, &restorefboid);
-			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 		}
 		
 		// Setup initial source -> target binding:
@@ -1037,7 +1100,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 	while(hookfunc) {
 		// Debug output, if requested:
 		if (PsychPrefStateGet_Verbosity()>4) {
-			printf("Hookchain %i : Slot %i: Id='%s' : ", hookId, i, hookfunc->idString);
+			printf("Hookchain '%s' : Slot %i: Id='%s' : ", PsychHookPointNames[hookId], i, hookfunc->idString);
 			switch(hookfunc->hookfunctype) {
 				case kPsychShaderFunc:
 					printf("GLSL-Shader      : id=%i , luttex1=%i , blitter=%s\n", hookfunc->shaderid, hookfunc->luttexid1, hookfunc->pString1);
@@ -1058,7 +1121,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 		}
 		
 		// Is this a ping-pong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "PINGPONGFBOS")==0) {
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) {
 			// Ping pong buffer swap requested:
 			pendingFBOpingpongs--;
 			mysrcfbo1 = mydstfbo;
@@ -1082,7 +1145,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 			if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {
 				// Failed!
 				if (PsychPrefStateGet_Verbosity()>0) {
-					printf("PTB-ERROR: Failed in processing of Hookchain %i : Slot %i: Id='%s'  --> Aborting chain processing. Set verbosity to 5 for extended debug output.\n", hookId, i, hookfunc->idString);
+					printf("PTB-ERROR: Failed in processing of Hookchain '%s' : Slot %i: Id='%s'  --> Aborting chain processing. Set verbosity to 5 for extended debug output.\n", PsychHookPointNames[hookId], i, hookfunc->idString);
 				}
 				return(FALSE);
 			}
@@ -1110,17 +1173,25 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
  */
 boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
+	boolean dispatched = FALSE;
+	
 	// Dispatch by hook function type:
 	switch(hookfunc->hookfunctype) {
 		case kPsychShaderFunc:
-			// Call a GLSL shader to do some image processing:
+			// Call a GLSL shader to do some image processing: We just execute the blitter, the shader gets assigned inside
+			// this function.
 			printf("EXECUTING GLSL-Shader             : id=%i , luttex1=%i , blitter=%s\n", hookfunc->shaderid, hookfunc->luttexid1, hookfunc->pString1);
-			
-			
+			if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, srcfbo1, srcfbo2, dstfbo, bouncefbo)) {
+				// Blitter failed!
+				return(FALSE);
+			}
+			dispatched=TRUE;
 		break;
 			
 		case kPsychCFunc:
+			// Call a C callback function via the given memory function pointer:
 			printf("TODO: EXECUTE -- C-Callback       : void*= %p\n", hookfunc->cprocfunc);
+			dispatched=TRUE;
 		break;
 			
 		case kPsychMFunc:
@@ -1129,15 +1200,32 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 			// can be the call string of an arbitrary Matlab/Octave builtin or M-Function.
 			// Care has to be taken that the called functions do not invoke any Screen
 			// subfunctions! Screen is not reentrant, so that would likely screw seriously!
+
+			// TODO: Substitute specific placeholders in pString1 by parameters from us.
 			PsychRuntimeEvaluateString(hookfunc->pString1);
+			dispatched=TRUE;
 		break;
 			
 		case kPsychBuiltinFunc:
-			printf("TODO: EXECUTE -- Builtin-Function : Name= %s\n", hookfunc->idString);
+			// Dispatch to a builtin function:
+			if (strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) { dispatched=TRUE; } // No op here. Done in upper layer...
+			if (strcmp(hookfunc->idString, "Builtin:IdentityBlit")==0) {
+				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
+				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
+					// Blitter failed!
+					return(FALSE);
+				}
+				dispatched=TRUE;
+			}
 		break;
 			
 		default:
 			PsychErrorExitMsg(PsychError_internal, "In PsychPipelineExecuteHookSlot: Was asked to execute unknown (non-existent) hook function type!");
+	}
+	
+	if (!dispatched) {
+		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Failed to dispatch hook slot - Unknown command or failure in command execution.\n");
+		return(FALSE);
 	}
 	
 	return(TRUE);
@@ -1145,7 +1233,8 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 
 void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo)
 {
-	static int ow, oh;
+	static int ow=0;
+	static int oh=0;
 	int w, h;
 	
 	// Assign color texture of srcfbo2, if any,  to texture unit 1:
@@ -1161,6 +1250,9 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
 	}
 	
+	// Set texture application mode to replace:
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
 	// Assign color texture of srcfbo1 to texture unit 0:
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 	if (srcfbo1) {
@@ -1173,7 +1265,10 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, 0);
 		glDisable(GL_TEXTURE_RECTANGLE_EXT);
 	}
-	
+
+	// Set texture application mode to replace:
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+
 	// Select rendertarget:
 	if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (dstfbo) ? dstfbo->fboid : 0);
 	
@@ -1182,8 +1277,9 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		// target FBO or system framebuffer:
 		w = (int) dstfbo->width;
 		h = (int) dstfbo->height;
+		// printf("w x h = %i %i\n", w, h);
 		
-		// Geometry changed? We skip if not - state changes are expensive...
+		// Settings changed? We skip if not - state changes are expensive...
 		if (w!=ow || h!=oh) {
 			ow=w;
 			oh=h;
@@ -1195,16 +1291,139 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 			// Setup projection matrix for a proper orthonormal projection for this framebuffer:
 			glMatrixMode(GL_PROJECTION);
 			glLoadIdentity();
-			gluOrtho2D(0, w, 0, h);
-			
+			gluOrtho2D(0, w, h, 0);
+
 			// Switch back to modelview matrix, but leave it unaltered:
 			glMatrixMode(GL_MODELVIEW);
 		}
 	}
 	else {
+		// Reset our cached settings:
 		ow=0;
 		oh=0;
 	}
 
 	return;
+}
+
+boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
+{
+	boolean rc = TRUE;
+	PsychBlitterFunc blitterfnc = NULL;
+	GLenum glerr;
+	
+	// Select proper blitter function:
+	
+	// Any special override blitter defined in parameter string?
+	if (strstr(hookfunc->pString1, "Blitter:")) {
+		// Yes. Which one?
+		hookBlitterFunction = NULL;
+		
+		// Standard blitter? This one does a one-to-one copy without special geometric transformations.
+		if (strstr(hookfunc->pString1, "Blitter:IdentityBlit")) blitterfnc = &PsychBlitterIdentity; // Assign our standard one-to-one blitter.
+		
+		// Blitter assigned?
+		if (blitterfnc == NULL) {
+			if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Invalid (unknown) blitter specified in blitter string. Blit aborted.\n");
+			return(FALSE);
+		}
+	}
+	
+	// Master blitter function set?
+	if (hookBlitterFunction == NULL) {
+		// No blitter set up to now. Assign the default blitter:
+		blitterfnc = &PsychBlitterIdentity; // Assign our standard one-to-one blitter.
+	} else {
+		// Override blitter defined: Assign it.
+		blitterfnc = (PsychBlitterFunc) hookBlitterFunction;
+	}
+	
+	// TODO: Common setup code for texturing, filtering, alpha blending, z-test and such...
+
+	// Need a shader for this blit op?
+	if (hookfunc->shaderid) {
+		// Setup shader, if any:
+		if (!glUseProgram){
+			if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: Blitter needs to attach GLSL shaders, but shaders are not supported on your hardware!\n");
+			rc = FALSE;
+		} else {
+			// Attach shader:
+			while(glGetError());
+			glUseProgram(hookfunc->shaderid);
+			if ((glerr = glGetError())!=GL_NO_ERROR) {
+				if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: glUseProgram(%i) failed with error: %s\n", hookfunc->shaderid, gluErrorString(glerr));
+				rc = FALSE;
+			}
+		}
+	}
+	
+	// Execute blitter function:
+	rc = (rc && blitterfnc(windowRecord, hookUserData, srcIsReadonly, allowFBOSwizzle, srcfbo1, srcfbo2, dstfbo, bouncefbo));
+	if (!rc) {
+		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: OpenGL error state is: %s\n", gluErrorString(glGetError()));
+		while(glGetError());
+	}
+	
+	// TODO: Common teardown code for texturing, filtering and such...
+
+	// Reset shader assignment, if any:
+	if ((hookfunc->shaderid) && glUseProgram) glUseProgram(0);
+
+	// Return result code:
+	return(rc);
+}
+
+/* PsychBlitterIdentity()  -- Default blitter.
+ *
+ * Identity blitter: Blits from srcfbo1 color attachment to dstfbo without geometric transformations or other extras.
+ * This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
+ * when no special (non-default) blitter is requested by core code or users blitter parameter string:
+ */
+boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
+{
+	int w, h;
+
+	// We basically ignore all parameters and just blit the bound texture(s) into the
+	// attached rendertarget, assuming a one-to-one correspondence of texture coordinates to
+	// fragment coordinates, i.e., the geometry if fully specified by size of dstfbo:
+	if (dstfbo && (*dstfbo)) {
+		// Query dimensions of viewport:
+		w = (*dstfbo)->width;
+		h = (*dstfbo)->height;
+		
+		// Do the blit, using a rectangular quad:
+		glBegin(GL_QUADS);
+
+		// Note the swapped y-coord for textures wrt. y-coord of vertex position!
+		// Texture coordinate system has origin at bottom-left, y-axis pointing upward,
+		// but PTB has framebuffer coordinate system with origin at top-left, with
+		// y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
+		// but PTB has to use a different system (changed by special gluOrtho2D) transform),
+		// because our 2D coordinate system needs to conform to the standards of the old
+		// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
+		
+		// Upper left vertex in window
+		glTexCoord2f(0, h);
+		glVertex2f(0, 0);		
+
+		// Lower left vertex in window
+		glTexCoord2f(0, 0);
+		glVertex2f(0, h);		
+
+		// Lower right  vertex in window
+		glTexCoord2f(w, 0);
+		glVertex2f(w, h);		
+
+		// Upper right in window
+		glTexCoord2f(w, h);
+		glVertex2f(w, 0);		
+
+		glEnd();
+	}
+	else {
+		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): dstfbo is a NULL - Pointer!!!");
+	}
+	
+	// Done.
+	return(TRUE);
 }

@@ -44,7 +44,7 @@ static char seeAlsoString[] = "OpenWindow Flip";
 PsychError SCREENSelectStereoDrawBuffer(void) 
 {
 	PsychWindowRecordType *windowRecord;
-        int bufferid=2;
+	int bufferid=2;
 	int screenwidth, screenheight;
 	Boolean Anaglyph;
 
@@ -53,65 +53,78 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	PsychErrorExit(PsychCapNumInputArgs(2));     //The maximum number of inputs
-        PsychErrorExit(PsychRequireNumInputArgs(2)); //The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
+	PsychErrorExit(PsychRequireNumInputArgs(2)); //The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(0));    //The maximum number of outputs
         
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
         
-        if(!PsychIsOnscreenWindow(windowRecord))
-            PsychErrorExitMsg(PsychError_user, "Tried to select stereo draw buffer on something else than a onscreen window");
-            
+	if(!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "Tried to select stereo draw buffer on something else than a onscreen window.");
+            	
+	// Get the buffer id (0==left, 1==right):
+	PsychCopyInIntegerArg(2, TRUE, &bufferid);
+	if (bufferid<0 || bufferid>1) PsychErrorExitMsg(PsychError_user, "Invalid bufferid provided: Must be 0 for left-eye or 1 for right-eye buffer.");
+	
+	// Trying to select other than left buffer on mono-window?
 	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen || windowRecord->stereomode == kPsychMonoscopic) {
-            // Trying to select the draw target buffer on a non-stereo window: We just reset it to monoscopic default.
-            glDrawBuffer(GL_BACK);
-            return(PsychError_none);
-        }
-            
-        // Get the buffer id (0==left, 1==right):
-        PsychCopyInIntegerArg(2, TRUE, &bufferid);
-        if (bufferid<0 || bufferid>1)
-            PsychErrorExitMsg(PsychError_user, "Invalid bufferid provided: Must be 0 for left-eye or 1 for right-eye buffer.");
-
+		// Yes. Reset to left buffer, which is used for mono mode:
+		bufferid = 0;
+	}
+	
+	// Store assignment in windowRecord:
+	windowRecord->stereodrawbuffer = bufferid;
+	
 	// Switch to associated GL-Context:
-        PsychSetGLContext(windowRecord);
+	PsychSetGLContext(windowRecord);
         
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget. In imagingmode this will also
+	// select the proper backing FBO:
+	PsychSetDrawingTarget(windowRecord);
         
-        // OpenGL native stereo?
-        if (windowRecord->stereomode==kPsychOpenGLStereo) {
-            // OpenGL native stereo via separate back-buffers: Select target draw buffer:
-            switch(bufferid) {
-                case 0:
-                    glDrawBuffer(GL_BACK_LEFT);
-                    break;
-                case 1:
-                    glDrawBuffer(GL_BACK_RIGHT);
-                    break;
-            }
-
-            // Store new assignment:
-            windowRecord->stereodrawbuffer = bufferid;
-        }
-        
-        // Vertical compression stereo?
-        if (windowRecord->stereomode==kPsychCompressedTLBRStereo || windowRecord->stereomode==kPsychCompressedTRBLStereo) {
-            PsychSwitchCompressedStereoDrawBuffer(windowRecord, bufferid);
-        }
-
-        // "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in horizontal dimension...
-        if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+	// If the imaging pipeline is active, then we're done.
+	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) return(PsychError_none);
+	
+	// The following code is only used for non-imaging mode operations:
+	
+	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen || windowRecord->stereomode == kPsychMonoscopic) {
+		// Trying to select the draw target buffer on a non-stereo window: We just reset it to monoscopic default.
+		glDrawBuffer(GL_BACK);
+		return(PsychError_none);
+	}
+	
+	// OpenGL native stereo?
+	if (windowRecord->stereomode==kPsychOpenGLStereo) {
+		// OpenGL native stereo via separate back-buffers: Select target draw buffer:
+		switch(bufferid) {
+			case 0:
+				glDrawBuffer(GL_BACK_LEFT);
+				break;
+			case 1:
+				glDrawBuffer(GL_BACK_RIGHT);
+				break;
+		}
+		
+		// Store new assignment:
+		windowRecord->stereodrawbuffer = bufferid;
+	}
+	
+	// Vertical compression stereo?
+	if (windowRecord->stereomode==kPsychCompressedTLBRStereo || windowRecord->stereomode==kPsychCompressedTRBLStereo) {
+		PsychSwitchCompressedStereoDrawBuffer(windowRecord, bufferid);
+	}
+	
+	// "Free fusion" stereo? Simply place views side-by-side, downscaled by a factor of 2 in horizontal dimension...
+	if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
 	    // Switch between drawing into left- and right-half of the single framebuffer:
 	    screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
-            screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
-            
-            // Store new assignment:
-            windowRecord->stereodrawbuffer = bufferid;
-
-            // Cross fusion instead of fusion requested? Switch left-right if so:
-            if (windowRecord->stereomode==kPsychFreeCrossFusionStereo) bufferid = 1 - bufferid;
-            
+		screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
+		
+		// Store new assignment:
+		windowRecord->stereodrawbuffer = bufferid;
+		
+		// Cross fusion instead of fusion requested? Switch left-right if so:
+		if (windowRecord->stereomode==kPsychFreeCrossFusionStereo) bufferid = 1 - bufferid;
+		
 	    // Setup projection matrix for ortho-projection of full window height, but only
 	    // half window width:
 	    glMatrixMode(GL_PROJECTION);
@@ -119,7 +132,7 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	    gluOrtho2D(0, screenwidth/2, windowRecord->rect[kPsychBottom], windowRecord->rect[kPsychTop]);
 	    // Switch back to modelview matrix, but leave it unaltered:
 	    glMatrixMode(GL_MODELVIEW);
-
+		
 	    // When using this stereo modes, we are most likely running on a
 	    // dual display setup with desktop set to "horizontal spanning mode". In this mode,
 	    // we get a virtual onscreen window that is at least twice as wide as its height and
@@ -129,79 +142,79 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 	    // All Screen subfunctions that report the size of the onscreen window to Matlab/Octave/...
 	    // will report it to be only half of its real width, so experiment code can adapt to it. 
 	    switch(bufferid) {
-	      case 0:
-		// Place viewport in the left half of screen:
-		glViewport(0, 0, screenwidth/2, screenheight);
-		glScissor(0, 0, screenwidth/2, screenheight);
-	      break;
-	      
-	      case 1:
-	        // Place viewport in the right half of screen:
-		glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
-		glScissor(screenwidth/2, 0, screenwidth/2, screenheight);
-	      break;
-            }
-        }
+			case 0:
+				// Place viewport in the left half of screen:
+				glViewport(0, 0, screenwidth/2, screenheight);
+				glScissor(0, 0, screenwidth/2, screenheight);
+				break;
+				
+			case 1:
+				// Place viewport in the right half of screen:
+				glViewport(screenwidth/2, 0, screenwidth/2, screenheight);
+				glScissor(screenwidth/2, 0, screenwidth/2, screenheight);
+				break;
+		}
+	}
 	
-        // And now for the Anaglyph stereo modes, were the left-eye vs. right-eye images are encoded in
-        // the separate color-channels of the same display. We do this via the OpenGL writemask, which
-        // allows to selectively enable/disable write operations to the different color channels:
-        // The alpha channel is always enabled, the red,gree,blue channels are depending on mode and
-        // bufferid conditionally enabled/disabled:
-        Anaglyph=FALSE;
-        
-        switch (windowRecord->stereomode) {
-            case kPsychAnaglyphRGStereo:
-                glColorMask(bufferid==0, bufferid==1, FALSE, TRUE);
-                Anaglyph=TRUE;
+	// And now for the Anaglyph stereo modes, were the left-eye vs. right-eye images are encoded in
+	// the separate color-channels of the same display. We do this via the OpenGL writemask, which
+	// allows to selectively enable/disable write operations to the different color channels:
+	// The alpha channel is always enabled, the red,gree,blue channels are depending on mode and
+	// bufferid conditionally enabled/disabled:
+	Anaglyph=FALSE;
+	
+	switch (windowRecord->stereomode) {
+		case kPsychAnaglyphRGStereo:
+			glColorMask(bufferid==0, bufferid==1, FALSE, TRUE);
+			Anaglyph=TRUE;
             break;
-
-            case kPsychAnaglyphGRStereo:
-                glColorMask(bufferid==1, bufferid==0, FALSE, TRUE);
-                Anaglyph=TRUE;
+			
+		case kPsychAnaglyphGRStereo:
+			glColorMask(bufferid==1, bufferid==0, FALSE, TRUE);
+			Anaglyph=TRUE;
             break;
-
-            case kPsychAnaglyphRBStereo:
-                glColorMask(bufferid==0, FALSE, bufferid==1, TRUE);
-                Anaglyph=TRUE;
+			
+		case kPsychAnaglyphRBStereo:
+			glColorMask(bufferid==0, FALSE, bufferid==1, TRUE);
+			Anaglyph=TRUE;
             break;
-
-            case kPsychAnaglyphBRStereo:
-                glColorMask(bufferid==1, FALSE, bufferid==0, TRUE);
-                Anaglyph=TRUE;
+			
+		case kPsychAnaglyphBRStereo:
+			glColorMask(bufferid==1, FALSE, bufferid==0, TRUE);
+			Anaglyph=TRUE;
             break;
-        }
-        
-        // Anaglyph mode selected?
-        // MK: GL_COLOR matrix doesn't seem to work at all on OS-X 10.4.3 +
-        // Nvidia GeforceFX-Ultra. Therefore this is disabled until the issue
-        // is resolved. We'll need to do the color->luminance->Gain conversion
-        // manually if this doesn't work out :(
-        Anaglyph = FALSE;
+	}
+	
+	// Anaglyph mode selected?
+	// MK: GL_COLOR matrix doesn't seem to work at all on OS-X 10.4.3 +
+	// Nvidia GeforceFX-Ultra. Therefore this is disabled until the issue
+	// is resolved. We'll need to do the color->luminance->Gain conversion
+	// manually if this doesn't work out :(
+	Anaglyph = FALSE;
 	/*
-        if (Anaglyph) {
-            // Update the red- versus green/blue- gain for color stereo...
-            float rwgt = 0.3086;
-            float gwgt = 0.6094;
-            float bwgt = 0.0820;
-            PsychTestForGLErrors();
-
-            // Note - You might have to transpose the matrix.
-            float grayscale[4][4] = 
-            {
-                rwgt,   gwgt,   bwgt,   0.0,
-                rwgt,   gwgt,   bwgt,   0.0,
-                rwgt,   gwgt,   bwgt,   0.0,
-                0.0,    0.0,    0.0,    1.0,
-            };
-            
-            glMatrixMode(GL_COLOR);
-            glLoadMatrixf((const GLfloat*)grayscale);
-            glMatrixMode(GL_MODELVIEW);
-            PsychTestForGLErrors();
-        }
-        */
-        return(PsychError_none);
+	 if (Anaglyph) {
+		 // Update the red- versus green/blue- gain for color stereo...
+		 float rwgt = 0.3086;
+		 float gwgt = 0.6094;
+		 float bwgt = 0.0820;
+		 PsychTestForGLErrors();
+		 
+		 // Note - You might have to transpose the matrix.
+		 float grayscale[4][4] = 
+		 {
+			 rwgt,   gwgt,   bwgt,   0.0,
+			 rwgt,   gwgt,   bwgt,   0.0,
+			 rwgt,   gwgt,   bwgt,   0.0,
+			 0.0,    0.0,    0.0,    1.0,
+		 };
+		 
+		 glMatrixMode(GL_COLOR);
+		 glLoadMatrixf((const GLfloat*)grayscale);
+		 glMatrixMode(GL_MODELVIEW);
+		 PsychTestForGLErrors();
+	 }
+	 */
+	return(PsychError_none);
 }
 
 /* 
