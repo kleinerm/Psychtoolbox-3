@@ -16,22 +16,22 @@ function cal = SetGammaMethod(cal,gammaMode,precision)
 % Check that the needed data is available. 
 gammaTable = cal.gammaTable;
 gammaInput = cal.gammaInput;
-if (isempty(gammaTable))
+if isempty(gammaTable)
 	error('Calibration structure does not contain gamma data');
 end
 
 % Do the right thing depending on mode.
-if (gammaMode == 0)
+if gammaMode == 0
 	cal.gammaMode = gammaMode;
 	return;
-elseif (gammaMode == 1)
-	if (nargin == 2)
+elseif gammaMode == 1
+	if nargin == 2
 		precision = 1000;
 	end
 	iGammaTable = InvertGammaTable(gammaInput,gammaTable,precision);
 	cal.gammaMode = gammaMode;
 	cal.iGammaTable = iGammaTable;
 else
-  error(sprintf('Requested gamma inversion mode %g is not yet implemented',gammaMode));
+  error('Requested gamma inversion mode %g is not yet implemented', gammaMode);
 end
 	

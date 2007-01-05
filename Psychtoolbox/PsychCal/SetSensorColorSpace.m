@@ -1,5 +1,5 @@
-function [cal,errorRet] = SetColorSensorSpace(cal,T_sensor,S_sensor,quiet)
-% [cal,errorRet] = SetSensorColorSpace(cal,T_sensor,S_sensor,[quiet])
+function [cal, errorRet] = SetSensorColorSpace(cal, T_sensor, S_sensor,quiet)
+% [cal,errorRet] = SetSensorColorSpace(cal, T_sensor, S_sensor, [quiet])
 %
 % Initialize the sensor color space for use in calibration.  Requires
 % a calibration structure which contains the standard
@@ -14,7 +14,7 @@ function [cal,errorRet] = SetColorSensorSpace(cal,T_sensor,S_sensor,quiet)
 %   == 1: Bad condition number on linear/device conversion matrix 
 %
 % quiet flag suppresses error messages, default 0.
-% 
+
 % 9/13/93     dhb   Wrote it.
 % 10/16/93    jms   Added optional calData arg which is freed if passed.
 % 10/30/93    dhb   Added nDevices, nBases arguments.
@@ -32,7 +32,7 @@ function [cal,errorRet] = SetColorSensorSpace(cal,T_sensor,S_sensor,quiet)
 % 4/5/02      dhb, ly  New calling convention.  Internal naming not updated.
 % 4/23/04     dhb   Make quiet the default.
 
-if nargin < 4 | isempty(quiet)
+if nargin < 4 || isempty(quiet)
   quiet = 1;
 end
 
@@ -47,27 +47,27 @@ T_device = cal.T_device;
 S_device = cal.S_device;
 nDevices = cal.nDevices;
 nPrimaryBases = cal.nPrimaryBases;
-if (isempty(P_device) | isempty(T_device) | isempty(S_device) | ...
-	  isempty(nDevices) | isempty(nPrimaryBases))
-	error('Calibration structure does not contain device colorimetric data');
+if isempty(P_device) || isempty(T_device) || isempty(S_device) || ...
+        isempty(nDevices) || isempty(nPrimaryBases)
+    error('Calibration structure does not contain device colorimetric data');
 end
 
 % Ambient
 P_ambient = cal.P_ambient;
 T_ambient = cal.T_ambient;
 S_ambient = cal.S_ambient;
-if (isempty(P_ambient) | isempty(T_device) | isempty(S_device))
+if isempty(P_ambient) || isempty(T_device) || isempty(S_device)
 	error('Calibration structure does not contain ambient data');
 end
 
 % Check that wavelength sampling is OK, spline if not.
-if ( CheckWls(S_device,S_ambient,quiet) )
+if CheckWls(S_device,S_ambient,quiet)
   if ~quiet
     disp('InitCal: Splining T_ambient to match T_device');
   end
   T_ambient = SplineCmf(S_ambient,T_ambient,S_device);
 end
-if ( CheckWls(S_device,S_sensor,quiet) )
+if CheckWls(S_device,S_sensor,quiet)
   if ~quiet
     disp('InitCal: Splining T_sensor to match T_device');
   end
@@ -84,10 +84,10 @@ M_device_linear = M_tmp*P_device;
 % why we carry the nBasesIn variable around.   
 tmp_M_device_linear = M_device_linear(:,1:nDevices);
 [m,n] = size(tmp_M_device_linear);
-if ( (cond(tmp_M_device_linear) > 1e7) | (m > n) )
+if (cond(tmp_M_device_linear) > 1e7) || (m > n)
   errorRet = 1;
   M_linear_device = pinv(tmp_M_device_linear);
-elseif (n > m)
+elseif n > m
   errorRet = 2;
   M_linear_device = pinv(tmp_M_device_linear);
 else

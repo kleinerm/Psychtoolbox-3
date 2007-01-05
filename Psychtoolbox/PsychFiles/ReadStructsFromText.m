@@ -13,7 +13,7 @@ function theStructs = ReadStructsFromText(filename)
 % fails to conform to the necessary format.
 %
 % See Also: WriteStructsToText
-%
+
 % 6/15/03   dhb			Wrote it.
 % 07/01/03  dhb 		Support string as well as numeric data.
 % 07/02/03	dhb, jg	Handle white space in column headers.

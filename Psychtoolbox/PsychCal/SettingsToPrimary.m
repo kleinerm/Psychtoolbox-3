@@ -8,7 +8,7 @@ function [primary] = SettingsToPrimary(cal,settings)
 % INPUTS:
 %   calibration globals
 %   settings -- column vectors in device settings
-%
+
 % 9/26/93    dhb   Added calData argument.
 % 10/19/93   dhb   Allow gamma table dimensions to exceed device settings.
 % 11/11/93   dhb   Update for new calData routines.
