@@ -588,6 +588,26 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       ifi_beamestimate = 0;
     }
 
+	// HACK: FIXME: On M$-Windows, we forcefully disable beamposition queries for timestamping if we are
+	// running on an Intel onboard gfx-chip. Some of them have problems (hardware or driver bugs), so
+	// until i've implemented a proper detection & workaround code for detecting and fixing this, its
+	// safer to disable this method:
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	if (strstr(glGetString(GL_VENDOR), "Intel") || strstr(glGetString(GL_VENDOR), "INTEL")) {
+		// Shutdown advanced timestamping facilities for Intel onboard chips under Windows:
+		PsychPrefStateSet_VBLTimestampingMode(-1);
+		
+		// And tell the user about the c%!@%p stuff he is trying to use for his work... 
+		if(PsychPrefStateGet_Verbosity()>1) {
+			printf("PTB-WARNING: Intel onboard graphics chip detected. Some of these are known to have severe bugs in their drivers or hardware\n");
+			printf("PTB-WARNING: which could seriously screw up PTBs timestamping code. We disable high-precision timestamping until this issue\n");
+			printf("PTB-WARNING: is properly resolved by a proper work-around (if possible) in a future PTB release. Screen('Flip') timestamps\n");
+			printf("PTB-WARNING: will be less robust and accurate and more noisy due to this, but still at least as good as the ones provided by\n");
+			printf("PTB-WARNING: the old Psychtoolboxes or other toolkits ;-)  -- Stay tuned...\n");
+		}
+	}
+	#endif
+	
 	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
 
     if(PsychPrefStateGet_Verbosity()>1) {
