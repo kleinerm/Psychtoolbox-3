@@ -71,7 +71,7 @@ T0 DO:
 #define PSYCH_INVALID_SCUMBER				-1
 
 // Maximum number of different hook chains:
-#define MAX_SCREEN_HOOKS 10
+#define MAX_SCREEN_HOOKS 12
 
 // Maximum number of slots in windowRecords fboTable:
 #define MAX_FBOTABLE_SLOTS 2+3+3+2
@@ -92,7 +92,8 @@ T0 DO:
 #define kPsychNeed32BPCFloat	   32		// float32 FBO's needed?
 #define kPsychNeed16BPCFloat	   64		// float16 FBO's needed?
 #define kPsychNeed16BPCFixed	   128		// fixed point 16 bpc FBO's needed?
-
+#define kPsychNeedDualPass         256      // At least support for dual-pass processing needed?
+#define kPsychNeedMultiPass        512      // Support for multi-pass processing needed?
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;

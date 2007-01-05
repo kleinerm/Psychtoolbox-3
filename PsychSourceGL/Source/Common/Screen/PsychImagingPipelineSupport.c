@@ -3,7 +3,7 @@
 	
 	PLATFORMS:	
 	
-		All.  
+		All. Well, all with sufficiently advanced graphics hardware...
 				
 	AUTHORS:
 		
@@ -24,6 +24,13 @@
 	NOTES:
 	
 	TO DO: 
+	
+		We could implement a less capable minimal fallback-path for gfx-hardware that doesn't support
+		framebuffer objects, but does support rectangle textures. Such hw would be limited to the initial
+		pipeline stage (image processing) and would only allow single-pass processing, no multi-pass algs
+		due to the lack of bounce buffers. But it could still allow for slightly more precise textures,
+		and simple shaders (if supported) or basic fixed-function processing, e.g., simple contrast
+		corrections or geometric undistortion.
 
 */
 
@@ -32,24 +39,26 @@
 // Source code for our GLSL anaglyph stereo shader:
 char anaglyphshadersrc[] = 
 "/* Weight vector for conversion from RGB to Luminance, according to NTSC spec. */ \n"
-"const vec4 ColorToGrayWeights = vec4(0.3, 0.59, 0.11, 0.0); \n"
+"uniform vec3 ColorToGrayWeights; \n"
 "/* Left image channel and right image channel: */ \n"
 "uniform sampler2DRect Image1; \n"
 "uniform sampler2DRect Image2; \n"
+"uniform vec3 Gains1;\n"
+"uniform vec3 Gains2;\n"
 "\n"
 "void main()\n"
 "{\n"
 "    /* Lookup RGBA pixel colors in left- and right buffer and convert to Luminance */\n"
-"    vec4 incolor1 = texture2DRect(Image1, gl_TexCoord[0].st);\n"
+"    vec3 incolor1 = texture2DRect(Image1, gl_TexCoord[0].st).rgb;\n"
 "    float luminance1 = dot(incolor1, ColorToGrayWeights);\n"
-"    vec4 incolor2 = texture2DRect(Image2, gl_TexCoord[0].st);\n"
+"    vec3 incolor2 = texture2DRect(Image2, gl_TexCoord[0].st).rgb;\n"
 "    float luminance2 = dot(incolor2, ColorToGrayWeights);\n"
 "    /* Replicate in own RGBA tupel */\n"
 "    vec3 channel1 = vec3(luminance1);\n"
 "    vec3 channel2 = vec3(luminance2);\n"
 "    /* Mask with per channel weights: */\n"
-"    channel1 = channel1 * vec3(1.0,0.0,0.0);\n"
-"    channel2 = channel2 * vec3(0.0,1.0,0.0);\n"
+"    channel1 = channel1 * Gains1;\n"
+"    channel2 = channel2 * Gains2;\n"
 "    /* Add them up to form final output fragment: */\n"
 "    gl_FragColor.rgb = channel1 + channel2;\n"
 "    /* Alpha is forced to 1 - It does not matter anymore: */\n"
@@ -61,7 +70,7 @@ char anaglyphshadersrc[] =
 // PsychImagingPipelineSupport.h define symbolic names for the indices for fast
 // lookup by name:
 #define MAX_HOOKNAME_LENGTH 40
-#define MAX_HOOKSYNOPSIS_LENGTH 120
+#define MAX_HOOKSYNOPSIS_LENGTH 1024
 
 char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"CloseOnscreenWindowPreGLShutdown",
@@ -73,20 +82,24 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"PostCompositingBlit",
 	"FinalOutputFormattingBlit",
 	"UserspaceBufferDrawingPrepare",
-	"IdentityBlitChain"
+	"IdentityBlitChain",
+	"LeftFinalizerBlitChain",
+	"RightFinalizerBlitChain"
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
-	"HelpCloseOnscreenWindowPreGLShutdown",
-	"HelpCloseOnscreenWindowPostGLShutdown",
-	"HelpUserspaceBufferDrawingFinished",
-	"HelpStereoLeftCompositingBlit",
-	"HelpStereoRightCompositingBlit",
-	"HelpStereoCompositingBlit",
-	"HelpPostCompositingBlit",
-	"HelpFinalOutputFormattingBlit",
-	"HelpUserspaceBufferDrawingPrepare",
-	"IdentityBlitChain: Only for internal use. Only modify for debugging and testing of pipeline itself!"
+	"CloseOnscreenWindowPreGLShutdown: OpenGL based actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
+	"CloseOnscreenWindowPostGLShutdown: Non-graphics actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
+	"UserspaceBufferDrawingFinished: Operations to be performed after last drawing command, i.e. in Screen('Flip') or Screen('DrawingFinshed').",
+	"StereoLeftCompositingBlit: Perform generic user-defined image processing on image content of left-eye (or mono) buffer.",
+	"StereoRightCompositingBlit: Perform generic user-defined image processing on image content of right-eye buffer.",
+	"StereoCompositingBlit: Internal - Compose left- and right-eye view into one combined image for all stereo modes except quad-buffered flip-frame stereo.",
+	"PostCompositingBlit: Not yet used.",
+	"FinalOutputFormattingBlit: Perform post-processing indifferent of stereo mode, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
+	"UserspaceBufferDrawingPrepare: Operations to be performed immediately after Screen('Flip') in order to prepare drawing commands of users script.",
+	"IdentityBlitChain: Only for internal use. Only modify for debugging and testing of pipeline itself!",
+	"LeftFinalizerBlitChain: Perform last time operation on left (or mono) channel, e.g., draw blue-sync lines.",
+	"RightFinalizerBlitChain: Perform last time operation on right channel, e.g., draw blue-sync lines."
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()
@@ -143,20 +156,24 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	int newimagingmode = 0;
 	int fbocount = 0;
 	int winwidth, winheight;
-	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore; 
+	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
-	
+	float rg, gg, bg;	// Gains for color channels and color masking for anaglyph shader setup.
+
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
 	if (imagingmode<=0) {
 		imagingmode=0;
 		return;
 	}
 	
+	// Safe default:
+	targetisfinalFB = FALSE;
+	
 	// Activate rendering context of this window:
 	PsychSetGLContext(windowRecord);
 
 	// Specific setup of pipeline if real imaging ops are requested:
-	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline enabled for window with requested imaging flags %i ...\n", imagingmode);
+	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline starting up for window with requested imagingmode %i ...\n", imagingmode);
 	fflush(NULL);
 	
 	// Setup mode switch in record:
@@ -206,8 +223,37 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
 	}
 
+	// Another child protection:
+	if ((windowRecord->windowType != kPsychDoubleBufferOnscreen) || PsychPrefStateGet_EmulateOldPTB()>0) {
+		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, imaging pipeline only supported on double buffered onscreen windows in non-emulation mode for old PTB.\n");
+	}
+
 	// Try to allocate and configure proper FBO's:
 	fbocount = 0;
+	
+	// Define final default output buffers as system framebuffers: We create some pseudo-FBO's for these
+	// which describe the system framebuffer (backbuffer). This is done to simplify pipeline design:
+
+	// Allocate empty FBO info struct and assign it:
+	winwidth=PsychGetWidthFromRect(windowRecord->rect);
+	winheight=PsychGetHeightFromRect(windowRecord->rect);
+
+	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight)) {
+		// Failed!
+		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline.");
+	}
+
+	// The pseudo-FBO initially contains a fboid of zero == system framebuffer, and empty (zero) attachments.
+	// The up to now only useful information is the viewport geometry ie winwidth and winheight.
+
+	// We use the same struct for both buffers, because in the end, there is only one backbuffer. Separate channels
+	// with same mapping allow some interesting extensions in the future for additional stereo modes or snapshot
+	// creation...
+	windowRecord->finalizedFBO[0]=fbocount;
+	windowRecord->finalizedFBO[1]=fbocount;
+	fbocount++;
+
+	// Now we preinit all further stages with the finalizedFBO assignment. This way 
 	
 	if (needfastbackingstore) {
 		// We need at least the 1st level drawBufferFBO's as rendertargets for all
@@ -262,41 +308,67 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winwidth = winwidth / 2;
 		}
 
-		// These FBO's don't need z- or stencil buffers anymore:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
-			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+		// Is the target of imageprocessing (our processedDrawBufferFBO) the final destination? This is true if there is no further need
+		// for more rendering passes in later processing stages and we don't do any processing here with more than 2 rendering passes. In that
+		// case we can directly output to the finalizedFBO without need for one more intermediate buffer -- faster!
+		// In all other cases, we'll need an additional buffer. We also exclude quad-buffered stereo, because the image processing blit chains
+		// cannot switch between left- and right backbuffer of the system framebuffer...
+		targetisfinalFB = ( !(imagingmode & kPsychNeedMultiPass) && (windowRecord->stereomode == kPsychMonoscopic) && !needoutputconversion ) ? TRUE : FALSE;
+
+		if (!targetisfinalFB) {
+			// These FBO's don't need z- or stencil buffers anymore:
+			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+				// Failed!
+				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+			}			
+
+			// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
+			windowRecord->processedDrawBufferFBO[0] = fbocount;
+			fbocount++;			
 		}
-		
-		// Assign this FBO as processedDrawBuffer for left-eye or mono channel:
-		windowRecord->processedDrawBufferFBO[0] = fbocount;
-		fbocount++;
-		
+		else {
+			// Can assign final destination:
+			windowRecord->processedDrawBufferFBO[0] = windowRecord->finalizedFBO[0];
+		}
+				
 		// If we are in stereo mode, we'll need a 2nd buffer for the right-eye channel:
 		if (windowRecord->stereomode > 0) {
+			if (!targetisfinalFB) {
+				// These FBO's don't need z- or stencil buffers anymore:
+				if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
+					// Failed!
+					PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
+				}			
+				
+				// Assign this FBO as processedDrawBuffer for right-eye channel:
+				windowRecord->processedDrawBufferFBO[1] = fbocount;
+				fbocount++;
+			}
+			else {
+				// Can assign final destination:
+				windowRecord->processedDrawBufferFBO[1] = windowRecord->finalizedFBO[1];
+			}
+		}
+		else {
+			// Mono mode: No right-eye buffer:
+			windowRecord->processedDrawBufferFBO[1] = -1;
+		}
+		
+		// Allocate a bounce-buffer as well if multi-pass rendering is requested:
+		if (imagingmode & kPsychNeedDualPass || imagingmode & kPsychNeedMultiPass) {
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
 			}
 			
-			// Assign this FBO as processedDrawBuffer for right-eye channel:
-			windowRecord->processedDrawBufferFBO[1] = fbocount;
+			// Assign this FBO as processedDrawBuffer for bounce buffer ops in multi-pass rendering:
+			windowRecord->processedDrawBufferFBO[2] = fbocount;
 			fbocount++;
 		}
 		else {
-			// Mono mode: No righ-eye buffer:
-			windowRecord->processedDrawBufferFBO[1] = -1;
+			// No need for bounce-buffers, only single-pass processing requested.
+			windowRecord->processedDrawBufferFBO[2] = -1;
 		}
-		
-		// Allocate a bounce-buffer as well:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
-			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 2 of imaging pipeline.");
-		}
-		
-		// Assign this FBO as processedDrawBuffer for bounce buffer ops in multi-pass rendering:
-		windowRecord->processedDrawBufferFBO[2] = fbocount;
-		fbocount++;
 	}
 	else {
 		// No image processing: Set 2nd stage FBO's to 1st stage FBO's:
@@ -305,24 +377,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->processedDrawBufferFBO[2] = -1;
 	}
 	
-	// Define output buffers as system framebuffers: We create some pseudo-FBO's for these
-	// which describe the system framebuffer. This is done to simplify pipeline design:
-	// Allocate empty FBO info struct and assign it:
-	winwidth=PsychGetWidthFromRect(windowRecord->rect);
-	winheight=PsychGetHeightFromRect(windowRecord->rect);
-	if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), 0, FALSE, winwidth, winheight)) {
-		// Failed!
-		PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 4 of imaging pipeline.");
-	}
-
-	// The pseudo-FBO contains a fboid of zero == system framebuffer, and empty (zero) attachments.
-	// The up to now only useful information is the viewport geometry ie winwidth and winheight.
-
-	// We use the same struct for both buffers:
-	windowRecord->finalizedFBO[0]=fbocount;
-	windowRecord->finalizedFBO[1]=fbocount;
-	fbocount++;
-
 	// Stage 2 ready. Any need for real merged FBO's? We need a merged FBO if we are in stereo mode
 	// and in need to merge output from the two views and to postprocess that output. In all other
 	// cases there's no need for real merged FBO's and we do just a "pass-through" assignment.
@@ -344,14 +398,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->preConversionFBO[1] = fbocount;
 		fbocount++;
 
-		// Allocate a bounce-buffer as well:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
-			// Failed!
-			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
-		}
-		
-		windowRecord->preConversionFBO[2] = fbocount;
-		fbocount++;
+		// Request bounce buffer:
+		windowRecord->preConversionFBO[2] = -1000;
 	}
 	else {
 		if ((windowRecord->stereomode > 0) && (!needseparatestreams)) {
@@ -362,29 +410,55 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			// backbuffer. Anyway, the proper ones are stored in finalizedFBO[]:
 			windowRecord->preConversionFBO[0] = windowRecord->finalizedFBO[0];
 			windowRecord->preConversionFBO[1] = windowRecord->finalizedFBO[1];
+			// Request bounce buffer:
+			windowRecord->preConversionFBO[2] = -1000;
 		}
 		else {		
-			// No merge operation needed, so no real merger FBO's: Set 3rd stage FBO's to 2nd stage FBO's:
-			windowRecord->preConversionFBO[0] = windowRecord->processedDrawBufferFBO[0];
-			windowRecord->preConversionFBO[1] = windowRecord->processedDrawBufferFBO[1];
-		}
-		
-		// We reuse the bounce buffer from stage 2...
-		windowRecord->preConversionFBO[2] = windowRecord->processedDrawBufferFBO[2];
+			// No merge operation needed. Do we need output conversion?
+			if (needoutputconversion) {
+				// Output conversion needed. Set input for this stage to output of the
+				// image processing.
+				windowRecord->preConversionFBO[0] = windowRecord->processedDrawBufferFBO[0];
+				windowRecord->preConversionFBO[1] = windowRecord->processedDrawBufferFBO[1];
+				// Request bounce buffer:
+				windowRecord->preConversionFBO[2] = -1000;
+			}
+			else {
+				// No merge and no output conversion needed. In that case, PsychPreFlipOperations()
+				// will behave as if output conversion is requested, but with the identity blit chain,
+				// and merge stage is skipped, so we need to set the preConversionFBO's as if conversion
+				// is done.
+				windowRecord->preConversionFBO[0] = windowRecord->processedDrawBufferFBO[0];
+				windowRecord->preConversionFBO[1] = windowRecord->processedDrawBufferFBO[1];
+				// No bounce buffer needed:
+				windowRecord->preConversionFBO[2] = -1;
+			}
+			
+		}		
+	}
 
-		if (needoutputconversion && windowRecord->preConversionFBO[2] == -1) {
-			// We need a separate bounce buffer when needoutputconversion is true!
-			// Allocate a bounce-buffer as well:
+	// Do we need a bounce buffer for merging and/or conversion?
+	if (windowRecord->preConversionFBO[2] == -1000) {
+		// Yes. We can reuse/share the bounce buffer of the image processing stage if
+		// one exists and is of suitable size i.e. we're not in dual-view stereo - in
+		// that case all buffers are of same size.
+		if ((windowRecord->processedDrawBufferFBO[2]!=-1) && 
+			!(windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo)) {
+			// Stage 1 bounce buffer is suitable for sharing, assign it:
+			windowRecord->preConversionFBO[2] = windowRecord->processedDrawBufferFBO[2];
+		}
+		else {
+			// We need a new, private bounce-buffer:
 			if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, FALSE, winwidth, winheight)) {
 				// Failed!
 				PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 3 of imaging pipeline.");
 			}
 			
 			windowRecord->preConversionFBO[2] = fbocount;
-			fbocount++;
+			fbocount++;				
 		}
-	}
-		
+	}		
+	
 	// Setup imaging mode flags:
 	newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
 	if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
@@ -413,6 +487,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		printf("preConversionFBO = %i, %i, %i\n", windowRecord->preConversionFBO[0], windowRecord->preConversionFBO[1], windowRecord->preConversionFBO[2]);
 		printf("processedDrawBufferFBO = %i %i %i\n", windowRecord->processedDrawBufferFBO[0], windowRecord->processedDrawBufferFBO[1], windowRecord->processedDrawBufferFBO[2]);
 		printf("drawBufferFBO = %i %i \n", windowRecord->drawBufferFBO[0], windowRecord->drawBufferFBO[1]);
+		printf("-------------------------------------\n\n");
 		fflush(NULL);
 	}
 
@@ -436,7 +511,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			case kPsychAnaglyphBRStereo:
 				// These share all code...
 				
-				// Create anaglyph shader:
+				// Create anaglyph shader and set proper defaults: These can be changed from the M-File if wanted.
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Creating internal anaglyph stereo compositing shader...\n");
+				
 				glsl = PsychCreateGLSLProgram(anaglyphshadersrc, NULL, NULL);
 				if (glsl) {
 					// Bind it:
@@ -446,7 +523,26 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					glUniform1i(glGetUniformLocation(glsl, "Image1"), 0);
 					glUniform1i(glGetUniformLocation(glsl, "Image2"), 1);
 					
-					// Unbind it:
+					// Set per-channel color gains: 0 masks the channel, >0 enables it. The values can be used
+					// to compensate for differences in the color reproduction of different monitors to reduce
+					// cross-talk / ghosting:
+					
+					// Left-eye channel (channel 1):
+					rg = (windowRecord->stereomode==kPsychAnaglyphRGStereo || windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
+					gg = (windowRecord->stereomode==kPsychAnaglyphGRStereo) ? 1.0 : 0.0;
+					bg = (windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
+					glUniform3f(glGetUniformLocation(glsl, "Gains1"), rg, gg, bg);
+
+					// Right-eye channel (channel 2):
+					rg = (windowRecord->stereomode==kPsychAnaglyphGRStereo || windowRecord->stereomode==kPsychAnaglyphBRStereo) ? 1.0 : 0.0;
+					gg = (windowRecord->stereomode==kPsychAnaglyphRGStereo) ? 1.0 : 0.0;
+					bg = (windowRecord->stereomode==kPsychAnaglyphRBStereo) ? 1.0 : 0.0;
+					glUniform3f(glGetUniformLocation(glsl, "Gains2"), rg, gg, bg);
+					
+					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
+					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.3, 0.59, 0.11);
+					
+					// Unbind it, its ready!
 					glUseProgram(0);
 				}
 				else {
@@ -468,8 +564,13 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	}
 	
 
-	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "FinalOutputFormattingBlit", "Builtin:IdentityBlit", TRUE, "");
-	PsychPipelineEnableHook(windowRecord, "FinalOutputFormattingBlit");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "FinalOutputFormattingBlit", "Builtin:IdentityBlit", TRUE, "");
+	//PsychPipelineEnableHook(windowRecord, "FinalOutputFormattingBlit");
+
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:FlipFBOs", TRUE, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	//PsychPipelineEnableHook(windowRecord, "StereoLeftCompositingBlit");
 
 	// Perform a full reset of current drawing target. This is a warm-start of PTB's drawing
 	// engine, so the next drawing command will trigger binding the proper FBO of our pipeline.
@@ -511,7 +612,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 	
 	// Fragment shader wanted?
 	if (fragmentsrc) {
-printf("%s", fragmentsrc);
+		if (PsychPrefStateGet_Verbosity()>4)  printf("PTB-INFO: Creating the following fragment shader, GLSL source code follows:\n\n%s\n\n", fragmentsrc);
 
 		// Supported on this hardware?
 		if (!glewIsSupported("GL_ARB_fragment_shader")) {
@@ -546,6 +647,7 @@ printf("%s", fragmentsrc);
 
 	// Vertex shader wanted?
 	if (vertexsrc) {
+		if (PsychPrefStateGet_Verbosity()>4)  printf("PTB-INFO: Creating the following vertex shader, GLSL source code follows:\n\n%s\n\n", vertexsrc);
 
 		// Supported on this hardware?
 		if (!glewIsSupported("GL_ARB_vertex_shader")) {
@@ -586,7 +688,7 @@ printf("%s", fragmentsrc);
 	if (status != GL_TRUE) {
 		printf("PTB-ERROR: Shader link operation for builtin glsl program failed:\n");
 		glGetProgramInfoLog(glsl, 9999, NULL, (GLchar*) &errtxt);
-		printf("%s\n\n", errtxt);
+		printf("Error output follows:\n\n%s\n\n", errtxt);
 		glDeleteProgram(glsl);
 		// Failed!
 		while (glGetError());
@@ -1262,14 +1364,24 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 	// Count number of needed ping-pong FBO switches inside this chain:
 	while(hookfunc) {
 		// Pingpong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) pendingFBOpingpongs++;
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) pendingFBOpingpongs++;
 		// Process next hookfunc slot in chain, if any:
 		hookfunc = hookfunc->next;
 	}
-	
+
 	if (gfxprocessing) {
 		// Prepare gfx-processing:
 
+		// If this is a multi-pass chain we'll need a bounce buffer FBO:
+		if ((pendingFBOpingpongs > 0 && bouncefbo == NULL) || (pendingFBOpingpongs > 1 && ((*dstfbo)->fboid == 0))) {
+			printf("PTB-ERROR: Hook processing chain '%s' is a multi-pass processing chain with %i passes,\n", PsychHookPointNames[hookId], pendingFBOpingpongs + 1);
+			printf("PTB-ERROR: but imaging pipeline is not configured for multi-pass processing! You need to supply the additional flag\n");
+			printf("PTB-ERROR: %s as imagingmode to Screen('OpenWindow') to tell PTB about these requirements and then restart.\n\n",
+					(pendingFBOpingpongs > 1) ? "kPsychNeedMultiPass" : "kPsychNeedDualPass");
+			// Ok, abort...
+			PsychErrorExitMsg(PsychError_user, "Insufficient pipeline configuration for processing. Adapt the 'imagingmode' flag according to my tips!");
+		}
+		
 		if ((pendingFBOpingpongs % 2) == 0) {
 			// Even number of ping-pongs needed in this chain. We stream from source fbo to
 			// destination fbo in first pass.
@@ -1285,10 +1397,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 			mydstfbo  = (bouncefbo) ? *bouncefbo : NULL;
 			mynxtfbo  = *dstfbo;
 		}
-		
-		// If this is a multi-pass chain we'll need a bounce buffer FBO:
-		if (pendingFBOpingpongs > 0 && bouncefbo == NULL) PsychErrorExitMsg(PsychError_internal, "In gfx-hook chain processing: Required bounce-buffer missing!!!");
-		
+				
 		// Enable associated GL context:
 		PsychSetGLContext(windowRecord);
 		
@@ -1330,7 +1439,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 		}
 		
 		// Is this a ping-pong command?
-		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) {
+		if (hookfunc->hookfunctype == kPsychBuiltinFunc && strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) {
 			// Ping pong buffer swap requested:
 			pendingFBOpingpongs--;
 			mysrcfbo1 = mydstfbo;
@@ -1389,7 +1498,6 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 		case kPsychShaderFunc:
 			// Call a GLSL shader to do some image processing: We just execute the blitter, the shader gets assigned inside
 			// this function.
-			printf("EXECUTING GLSL-Shader             : id=%i , luttex1=%i , blitter='%s'\n", hookfunc->shaderid, hookfunc->luttexid1, hookfunc->pString1);
 			if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, srcfbo1, srcfbo2, dstfbo, bouncefbo)) {
 				// Blitter failed!
 				return(FALSE);
@@ -1417,7 +1525,7 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 			
 		case kPsychBuiltinFunc:
 			// Dispatch to a builtin function:
-			if (strcmp(hookfunc->idString, "Builtin:PingPongFBOs")==0) { dispatched=TRUE; } // No op here. Done in upper layer...
+			if (strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) { dispatched=TRUE; } // No op here. Done in upper layer...
 			if (strcmp(hookfunc->idString, "Builtin:IdentityBlit")==0) {
 				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
 				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
@@ -1453,7 +1561,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	glActiveTextureARB(GL_TEXTURE1_ARB);
 	if (srcfbo2) {
 		// srcfbo2 is valid: Assign its color buffer texture:
-		printf("Unit 1 on -- %i\n", srcfbo2->coltexid);
+		if (PsychPrefStateGet_Verbosity()>4) printf("TexUnit 1 reading from texid -- %i\n", srcfbo2->coltexid);
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo2->coltexid);
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
@@ -1471,7 +1579,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 	if (srcfbo1) {
 		// srcfbo1 is valid: Assign its color buffer texture:
-		printf("Unit 0 on -- %i\n", srcfbo1->coltexid);
+		if (PsychPrefStateGet_Verbosity()>4) printf("TexUnit 0 reading from texid -- %i\n", srcfbo1->coltexid);
 		glBindTexture(GL_TEXTURE_RECTANGLE_EXT, srcfbo1->coltexid);
 
 		// Set texture application mode to replace:
@@ -1491,7 +1599,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 		// target FBO or system framebuffer:
 		w = (int) dstfbo->width;
 		h = (int) dstfbo->height;
-		printf("Targettex = %i , w x h = %i %i\n", dstfbo->coltexid, w, h);
+		if (PsychPrefStateGet_Verbosity()>4) printf("Blitting to Targettex = %i , w x h = %i %i\n", dstfbo->coltexid, w, h);
 		
 		// Settings changed? We skip if not - state changes are expensive...
 		if (w!=ow || h!=oh) {

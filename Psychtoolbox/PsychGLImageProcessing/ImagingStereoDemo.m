@@ -53,7 +53,7 @@ try
     % the stimulus display.  Chosing the display with the highest dislay number is
     % a best guess about where you want the stimulus displayed.
     scrnNum = max(Screen('Screens'));
-    Screen('Preference', 'Verbosity', 5);
+    Screen('Preference', 'Verbosity', 6);
     
     % Windows-Hack: If mode 4 or 5 is requested, we select screen zero
     % as target screen: This will open a window that spans multiple
@@ -78,7 +78,9 @@ try
     dots(1, :) = 2*(xmax)*rand(1, numDots) - xmax;
     dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
 
-    imagingmode = mor(kPsychNeedFastBackingStore, kPsychNeed16BPCFloat, kPsychNeedImageProcessing, kPsychNeedOutputConversion);
+    imagingmode = mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing, kPsychNeedDualPass);
+    imagingmode = mor(kPsychNeedFastBackingStore, kPsychNeed16BPCFloat);
+    %imagingmode = 0;
     % Open double-buffered onscreen window with the requested stereo mode:
     [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode, 0, imagingmode);
 
@@ -131,6 +133,9 @@ try
         % Draw right stim:
         Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
 
+        SetAnaglyphStereoParameters('LeftGains', windowPtr, [0.5*(1+cos(GetSecs)) 0.0 0.0]);
+        SetAnaglyphStereoParameters('RightGains', windowPtr, [0.0 1.0 0.5*(1+cos(GetSecs))]);
+        
         % Take timestamp of stimulus-onset after displaying the new stimulus
         % and record it in vector t:
         onset = Screen('Flip', windowPtr);

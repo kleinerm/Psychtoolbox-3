@@ -47,6 +47,14 @@ static char useString[] = "[ret1, ret2] = Screen('HookFunction', windowPtr, 'Sub
 //                                                               1           2             3          4     5     6     7
 static char synopsisString[] = 
     "Manage Screen processing hook chains. "
+	"Subsubcommands and their syntax: "
+	"Query information form a specific slot in a specific hook processing chain: "
+	"[slot idstring blittercfg voidptr glslid luttexid] = Screen('HookFunction', windowPtr, 'Query', hookname, slotnameOrIndex);"
+	"'hookname' is the name of the chain to query, e.g., 'StereoCompositingBlit' for the stereo processing chain'. "
+	"'slotnameOrIndex' either the name of the requested slot (if it has one and you know it, e.g., 'StereoCompositingShader') or "
+	"the index into the hook-chain. Return arguments, all optional: 'slot' index of the slot in the chain in which the queried "
+	"subfunction is to be found, -1 if no such slot exists. 'shaderid' numeric GLSL handle of the shader if the slot contains a "
+	"GLSL shader, 0 otherwise"
 	"TODO - Write proper online help.";
 	
 static char seeAlsoString[] = "";
@@ -67,7 +75,7 @@ PsychError SCREENHookFunction(void)
     
     PsychErrorExit(PsychCapNumInputArgs(7));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(2));  
+    PsychErrorExit(PsychCapNumOutputArgs(6));  
 
     // Get the window structure for the onscreen window.
     PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);

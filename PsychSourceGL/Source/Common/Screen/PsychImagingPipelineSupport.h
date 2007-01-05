@@ -33,18 +33,20 @@
 // Definition of a pointer to a blitter function: See below for conforming blitter function prototypes:
 typedef boolean (*PsychBlitterFunc)(PsychWindowRecordType*, void*, boolean, boolean, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
 
-// Symbolic names for Hook-Chains:
+// Symbolic names for Hook-Chains: The text strings for user-space and synopsis strings are in the PsychImagingPipelineSupport.c file.
 typedef enum {
-	kPsychCloseWindowPreGLShutdown =				0,
-	kPsychCloseWindowPostGLShutdown =				1,
-	kPsychUserspaceBufferDrawingFinished =			2,
-	kPsychStereoLeftCompositingBlit =				3,
-	kPsychStereoRightCompositingBlit =				4,
-	kPsychStereoCompositingBlit =					5,
-	kPsychPostCompositingBlit =						6,
-	kPsychFinalOutputFormattingBlit =				7,
-	kPsychUserspaceBufferDrawingPrepare =			8,
-	kPsychIdentityBlit=								9,
+	kPsychCloseWindowPreGLShutdown =				0,	// Called when closing an onscreen window while context is still available.
+	kPsychCloseWindowPostGLShutdown =				1,	// Ditto., but after OpenGL context shutdown -- only non-GL ops possible here.
+	kPsychUserspaceBufferDrawingFinished =			2,	// Called as part of 'DrawingFinished' or 'Flip' to do generic after drawing ops.
+	kPsychStereoLeftCompositingBlit =				3,	// Image processing on the mono channel or left channel (in stereomode).
+	kPsychStereoRightCompositingBlit =				4,	// Ditto for right channel in stereomode. Can add generic image processing here.
+	kPsychStereoCompositingBlit =					5,	// Performs merge operation from two stereo channels to single output in all modes but quad-buffered stereo.
+	kPsychPostCompositingBlit =						6,	// Not used for now.
+	kPsychFinalOutputFormattingBlit =				7,	// Performs final data conversion/image processing on output immediately before hitting framebuffer.
+	kPsychUserspaceBufferDrawingPrepare =			8,	// Prepare transition to userspace after 'Flip' command.
+	kPsychIdentityBlit=								9,	// Standard blit chain, used when nothing else available: Copy images from one buffer to next.
+	kPsychLeftFinalizerBlit=						10,	// Very last (single-pass only!) operations on left- or mono channel, e.g., drawing stereo sync lines.
+	kPsychRightFinalizerBlit=						11, // Same for right channel in stereo modes.
 } PsychHookType;
 
 // API for PTB core:

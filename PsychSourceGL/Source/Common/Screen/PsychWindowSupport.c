@@ -1916,9 +1916,6 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Disable alpha-blending:
 		glDisable(GL_BLEND);
 		
-		// FIXME: Hmmm... is this needed? Doesn't hurt, but ??
-		// PsychSetupView(windowRecord);
-		
 		// Execute post processing sequence for this onscreen window:
 		
 		// Generic image processing on viewchannels enabled?
@@ -1931,9 +1928,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					// Hook chain ready to do its job: Execute it.      userd,blitf
 					// Don't supply user-specific data, blitfunction is default blitter, unless defined otherwise in blitchain,
 					// srcfbos are read-only, swizzling forbidden, 2nd srcfbo doesn't exist (only needed for stereo merge op),
-					// We provide a bounce-buffer...
+					// We provide a bounce-buffer... We could bind the 2nd channel in steromode if we wanted. Should we?
 					// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
-					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]), &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]));
+					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),  (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
 				}
 				else {
 					// Hook chain disabled by userspace or doesn't contain any instructions.
@@ -1959,12 +1956,12 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// srcfbos are read-only, swizzling forbidden, 2nd srcfbo is right-eye channel, whereas 1st srcfbo is left-eye channel.
 				// We provide a bounce-buffer as well.
 				// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
-				PsychPipelineExecuteHook(windowRecord, kPsychStereoCompositingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[0]]), &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[1]]), &(windowRecord->fboTable[windowRecord->preConversionFBO[0]]), &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]));
+				PsychPipelineExecuteHook(windowRecord, kPsychStereoCompositingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[0]]), &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[1]]), &(windowRecord->fboTable[windowRecord->preConversionFBO[0]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 			}
 			else {
 				// Hook chain disabled by userspace or doesn't contain any instructions.
 				// We vitally need the compositing chain, there's no simple fallback here!
-				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Processing chain for stereo processing merge operations is empty - No visual output produced! Bug?!?\n");
+				PsychErrorExitMsg(PsychError_internal, "Processing chain for stereo processing merge operations is needed, but empty or disabled - No visual output produced! Bug?!?\n");
 			}			
 		}
 		else {
@@ -2003,11 +2000,22 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
 			}
 			else {
-				// No conversion needed or chain disabled: Do our identity blit:
-				// printf("view %i: preconv fbo id: %i ", viewid, windowRecord->preConversionFBO[viewid]); fflush(NULL);
-				if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>1)) printf("PTB-WARNING: Processing chain for output conversion disabled -- Using identity copy as workaround. Bug?!?\n");
-				PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
+				// No conversion needed or chain disabled: Do our identity blit, but only if really needed!
+				// This gets skipped in mono-mode if no conversion needed and only single-pass image processing
+				// applied. In that case, the image processing state did the final blit already.
+				if (windowRecord->preConversionFBO[viewid] != windowRecord->finalizedFBO[viewid]) {
+					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>1)) printf("PTB-WARNING: Processing chain for output conversion disabled -- Using identity copy as workaround. Bug?!?\n");
+					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
+				}
 			}
+			
+			// This special purpose blit chains can be used to encode low-level information about frames into
+			// the frames or do other limited per-frame processing. Their main use (as of now) is to draw
+			// the blue-line sync signal into quad-buffered windows in quad-buffered stereo mode. One could
+			// use them e.g., to encode a frame index, a timestamp or a trigger signal into frames as well.
+			// Encoding CLUTs for devices like the Bits++ is conceivable as well - these would be automatically
+			// synchronous to frame updates and could be injected from our own gamma-table functions.
+			PsychPipelineExecuteHook(windowRecord, (viewid==0) ? kPsychLeftFinalizerBlit : kPsychRightFinalizerBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 		}
 		
 		// At this point we should have either a valid snapshot of the framebuffer in the finalizedFBOs, or
