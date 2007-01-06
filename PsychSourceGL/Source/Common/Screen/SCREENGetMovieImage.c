@@ -121,6 +121,8 @@ PsychError SCREENGetMovieImage(void)
     textureRecord->screenNumber=windowRecord->screenNumber;
     // It is always a 32 bit texture for movie textures:
     textureRecord->depth=32;
+	textureRecord->nrchannels = 4;
+
     // Create default rectangle which describes the dimensions of the image. Will be overwritten
     // later on.
     PsychMakeRect(rect, 0, 0, 10, 10);

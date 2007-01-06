@@ -156,7 +156,6 @@ void InitializeSynopsis()
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
 	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
-	synopsis[i++] = "[ret1, ret2] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2);";
 
 	// Get and set information about the environment, computer, and video card (i.e. screen):
 	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";
@@ -227,7 +226,10 @@ void InitializeSynopsis()
 	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
         synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
         synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
-        
+
+		synopsis[i++] = "\n% Support for plugins and for builtin high performance image processing pipeline:";
+		synopsis[i++] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, ...);";
+
         synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);

@@ -173,7 +173,8 @@ typedef struct _PsychWindowRecordType_{
 	int					surfaceSizeBytes;	//what is this ?  the size in bytes ? 
 	PsychRectType                           rect;
 	boolean					isValid;		//between when we allocate the record and when we fill in values.
-	int					depth;			
+	int					depth;
+	int					nrchannels;
 	int					redSize;		
 	int					greenSize;
 	int					blueSize;

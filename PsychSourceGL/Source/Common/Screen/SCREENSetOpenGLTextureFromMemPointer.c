@@ -163,6 +163,7 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // Ok, setup texture record for texture:
     PsychInitWindowRecordTextureFields(textureRecord);
     textureRecord->depth = d * 8;
+	textureRecord->nrchannels = d;
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
     // Override texture target, if one was provided:

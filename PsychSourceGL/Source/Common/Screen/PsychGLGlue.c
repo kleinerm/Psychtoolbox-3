@@ -34,9 +34,7 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
 {
 	GLdouble deno;
     
-    // Old style: deno= (1<<PsychGetColorSizeFromDepthValue(depthValue))-1;
-	
-	// New style: Read denominator from windowRecord. Need to get rid of the sign, because it
+	// Read denominator from windowRecord. Need to get rid of the sign, because it
 	// encodes if we have color clamping enabled or not:
 	deno = fabs(windowRecord->colorRange);
 	
@@ -53,7 +51,7 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
             valueArray[0]=color->value.rgba.r/deno;
             valueArray[1]=color->value.rgba.g/deno;
             valueArray[2]=color->value.rgba.b/deno;
-            valueArray[3]=color->value.rgba.a/deno;
+            valueArray[3]=(color->value.rgba.a == DBL_MAX) ? 1.0 : color->value.rgba.a/deno;
             return(4);
         case kPsychUnknownColor:
             PsychErrorExitMsg(PsychError_internal,"Unspecified display mode");
@@ -61,47 +59,6 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
     PsychErrorExitMsg(PsychError_internal,"Unknown display mode");
     return(0); //make the compiler happy.  
 }
-
-
-
-/*
-    PsychConvertColorAndColorSizeToDoubleVector()
-    
-    Accept a color structure and a screen depth and return either three or four double values in the range between
-    0-1 which specify r, g, b and optinally alpha values.
-    
-    The value array argument should be be four elements long.
-    
-int PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray)
-{
-     GLdouble deno;
-    
-    deno= (1<<colorSize)-1;
-        
-    switch(color->mode){
-        case kPsychIndexColor:
-            valueArray[0]=color->value.index.i/deno;
-            return(1);
-        case kPsychRGBColor:
-            valueArray[0]=color->value.rgb.r/deno;
-            valueArray[1]=color->value.rgb.g/deno;
-            valueArray[2]=color->value.rgb.b/deno;
-            return(3); 
-        case kPsychRGBAColor:
-            valueArray[0]=color->value.rgba.r/deno;
-            valueArray[1]=color->value.rgba.g/deno;
-            valueArray[2]=color->value.rgba.b/deno;
-            valueArray[3]=color->value.rgba.a/deno;
-            return(4);
-        case kPsychUnknownColor:
-            PsychErrorExitMsg(PsychError_internal,"Unspecified display mode");
-    }
-    PsychErrorExitMsg(PsychError_internal,"Unknown display mode");
-    return(0); //make the compiler happy.  
-}
-
-*/
-
 
 /*
     PsychSetGLColor()

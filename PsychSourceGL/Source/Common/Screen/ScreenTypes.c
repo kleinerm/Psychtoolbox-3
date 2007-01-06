@@ -6,11 +6,13 @@
 			
 	
 	AUTHORS:
-	Allen Ingling		awi		Allen.Ingling@nyu.edu
+	Allen Ingling	awi		Allen.Ingling@nyu.edu
+	Mario Kleiner	mk		mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
 	09/09/02		awi		wrote it.  
-	11/14/06                mk              Rewritten to support 10bpc, float framebuffers.
+	11/14/06        mk      Rewritten to support 10bpc, float framebuffers.
+	01/06/07		mk		Purged much of the bullshit it was.
 
 	DESCRIPTION:
 	
@@ -19,16 +21,13 @@
 	TODO:
 	
 	Most of this stuff should just die. It doesn't match how OpenGL works.
+	--> Done. Killed as much as possible.
 */
 
 #include "Screen.h"
 
-
-
-
 //accessors for PsychDepthType
  
-
 void PsychInitDepthStruct(PsychDepthType *depth)
 {
     depth->numDepths = 0;
@@ -109,118 +108,27 @@ void PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth)
 
 /*
     PsychGetColorModeFromDepthStruct()
-    
-    Get ride of this color mode stuff and replace it with functions wich access the number of depth planes and the size of every plane.
+	MK: This is a useless relict from old times. It always returns RGBA color mode,
+	the only mode we will ever support...
 */ 
 PsychColorModeType PsychGetColorModeFromDepthStruct(PsychDepthType *depth)
 {
-  switch(PsychGetValueFromDepthStruct(0, depth)) {
-    case 8:	
-      return(kPsychIndexColor);
-    default:
-      return(kPsychRGBAColor);
-  }
+	return(kPsychRGBAColor);
 }
 
-PsychColorModeType PsychGetColorModeFromDepthValue(int depthValue)
+// Return the white value that really corresponds to white for a specific
+// window, regardless of color depths and whatever...
+double PsychGetWhiteValueFromWindow(PsychWindowRecordType* windowRecord)
 {
-    PsychDepthType depth;
-    
-    PsychInitDepthStruct(&depth);
-    PsychAddValueToDepthStruct(depthValue, &depth);
-    return(PsychGetColorModeFromDepthStruct(&depth));
+	return(fabs(windowRecord->colorRange));
 }
-
-
-int PsychGetWhiteValueFromDepthStruct(PsychDepthType *depth)
-{
-    switch(PsychGetValueFromDepthStruct(0, depth)){
-        case 8:	
-            return(255);
-        case 16:
-            return(255);
-        case 24:
-            return(255);
-        case 32:
-            return(255);
-        case 30:
-	    return(1023);
-        default: // Probably a floating point color buffer: Set to 1
-	    return(1);
-    }
-}
-
-
-int PsychGetWhiteValueFromDepthValue(int depthValue)
-{
-    PsychDepthType depth;
-    
-    PsychInitDepthStruct(&depth);
-    PsychAddValueToDepthStruct(depthValue, &depth);
-    return(PsychGetWhiteValueFromDepthStruct(&depth));
-}
-
-
-
-int PsychGetColorSizeFromDepthValue(int depthValue)
-{
-    switch(depthValue){
-        case 8:	
-            return(8);
-        case 16:
-	    return(8);    // MK: Changed. We always assume RGBA8 pixel formats. OpenGL can handle this in 16-bit case.
-        case 24:
-            return(8);
-        case 32:
-            return(8);
-        case 30:
-	    return(10);
-        default:
-	  return(1);    // A value of 1 will map to "no scaling factor / denominator applied" for HDR rendering.
-    }
-}
-
-
-
-
-
-int PsychGetNumPlanesFromDepthValue(int depthValue)
-{
-    switch(depthValue){
-        case 8:	
-            return(1);
-        default:
-            return(4);  //makes the compiler happy
-    }
-}
-
 
 /*
-    PsychGetMaxValueFromColorSize()
-    
-*/
-int PsychGetMaxValueFromColorSize(int colorPlaneSize)
-{
-    switch(colorPlaneSize){
-        case 1:
-            return(1);
-        case 5:
-            return(31);
-        case 8:
-            return(255);
-        case 10:
-	    return(1023);
-        default:
-            return(0);  //makes the compiler happy 
-    }
-}
-
-
-
-
-
-/*
-    PsychLoadColorStruct()
+    PsychLoadColorStruct(): Internal method to set colors, usually used to
+	setup default colors.
+	
+	CAUTION: Only accepts double values, not int's, does not automatically
+	cast, but screws up insted due to the va_arg macro magic below...
     
     PsychLoadColorStruct is polymorphic:
     PsychLoadColorStruct(*color, kPsychIndexColor,  int index)
@@ -235,18 +143,18 @@ void PsychLoadColorStruct(PsychColorType *color, PsychColorModeType mode,  ...)
     va_start(ap, mode);
     switch(mode){
         case kPsychIndexColor:
-            color->value.index.i=va_arg(ap,int);
+            color->value.index.i=va_arg(ap,double);
             break;
         case kPsychRGBColor:
-            color->value.rgb.r=va_arg(ap,int);
-            color->value.rgb.g=va_arg(ap,int);
-            color->value.rgb.b=va_arg(ap,int);
+            color->value.rgb.r=va_arg(ap,double);
+            color->value.rgb.g=va_arg(ap,double);
+            color->value.rgb.b=va_arg(ap,double);
             break;
         case kPsychRGBAColor:
-            color->value.rgba.r=va_arg(ap,int);
-            color->value.rgba.g=va_arg(ap,int);
-            color->value.rgba.b=va_arg(ap,int);
-            color->value.rgba.a=va_arg(ap,int);
+            color->value.rgba.r=va_arg(ap,double);
+            color->value.rgba.g=va_arg(ap,double);
+            color->value.rgba.b=va_arg(ap,double);
+            color->value.rgba.a=va_arg(ap,double);
             break;
         case kPsychUnknownColor:
             PsychErrorExitMsg(PsychError_internal,"Unspecified display mode");
@@ -256,137 +164,48 @@ void PsychLoadColorStruct(PsychColorType *color, PsychColorModeType mode,  ...)
         
 }
 
-    
- 
- /*
-    PsychCoerceColorModeFromSizes()
-    
-    Accepts a color specifier of arbitrary and convert it to a color specifier of the mode appropriate for the specified
-	number of color planes and plane size.
-    
-    Not all conversions are necessary or supported.    
-*/
-void PsychCoerceColorModeFromSizes(int numColorPlanes, int colorPlaneSize, PsychColorType *color)
-{
-
-    //from index to RGB
-    if(numColorPlanes==3 && color->mode==kPsychIndexColor){
-        color->mode=kPsychRGBColor;
-        color->value.rgb.r=color->value.index.i;
-        color->value.rgb.g=color->value.index.i;
-        color->value.rgb.b=color->value.index.i;
-    //from index to RGBA
-    }else if(numColorPlanes==4 && color->mode==kPsychIndexColor){
-        color->mode=kPsychRGBAColor;
-        color->value.rgba.r=color->value.index.i;
-        color->value.rgba.g=color->value.index.i;
-        color->value.rgba.b=color->value.index.i;
-        color->value.rgba.a=PsychGetMaxValueFromColorSize(colorPlaneSize);
-    //from index to RGB to RGBA
-    }else if(numColorPlanes==4 && color->mode==kPsychRGBColor){
-        color->mode=kPsychRGBAColor;
-        color->value.rgba.a=PsychGetMaxValueFromColorSize(colorPlaneSize);
-    }else if(numColorPlanes==3 && color->mode==kPsychRGBColor)
-        ;
-    else if(numColorPlanes==1 && color->mode==kPsychIndexColor)
-        ;
-    else if(numColorPlanes==4 && color->mode==kPsychRGBAColor)
-        ;
-    else if(numColorPlanes==3 && color->mode==kPsychRGBAColor)
-      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
-    else
-        PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
-}
-
-
 /*
-    PsychCoerceColor()
+    PsychCoerceColorMode()
     
-    Accepts a color specifier for one display mode and converts it into another.  This doesn't fill in  the right alpha value
-	and we should use PsychCoerceColorModeWithDepth()
-    
-    Not all conversions are necessary or supported.    
+	Converts any color mode into RGBA mode, the only mode we need to handle with OpenGL,
+	regardless of display depth, number of color planes or whatever. The GL will always
+	accept the full thing and discard unwanted information internally in a much more fool
+	proof way than we could do it.
+	
+	MK: Important change! We now assign DBL_MAX for unknown alphas and our color setup routine
+	(see SetGLColor()) maps DBL_MAX to the maximum supported value, which is simple, because
+	it always passes colors as doubles via glColor4d, so the maximum is always 1.0, irrespective
+	of display depth.
+	
 */
-void PsychCoerceColorMode(PsychColorModeType mode, PsychColorType *color)
+void PsychCoerceColorMode(PsychColorType *color)
 {
-    int index;
+    double index;
 
-    
-    if(mode==kPsychRGBColor && color->mode==kPsychIndexColor){
+	// Conversion from Index color?
+    if(color->mode==kPsychIndexColor) {
+		// Replicate index color value into RGB channels:
         index=color->value.index.i;
-        color->mode=kPsychRGBColor;
-        color->value.rgb.r=index;
-        color->value.rgb.g=index;
-        color->value.rgb.b=index;
-    }else if(mode==kPsychRGBAColor && color->mode==kPsychIndexColor){
-        index=color->value.index.i;
-        color->mode=kPsychRGBAColor;
         color->value.rgba.r=index;
         color->value.rgba.g=index;
         color->value.rgba.b=index;
-        color->value.rgba.a=index;
-    }else if(mode==kPsychRGBAColor && color->mode==kPsychRGBColor){
-        color->mode=kPsychRGBAColor;
-        color->value.rgba.r=color->value.rgb.r;
-        color->value.rgba.g=color->value.rgb.g;
-        color->value.rgba.b=color->value.rgb.b;
-        color->value.rgba.a=255;
-   }else if(mode==kPsychRGBColor && color->mode==kPsychRGBColor)
-        ;
-    else if(mode==kPsychIndexColor && color->mode==kPsychIndexColor)
-        ;
-    else if(mode==kPsychRGBAColor && color->mode==kPsychRGBAColor)
-        ;
-    else if(mode==kPsychRGBColor && color->mode==kPsychRGBAColor)
-      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
-    else
-        PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
-}
-
-
-/*
-    PsychCoerceColor()
-    
-    Accepts a color specifier for one display mode and converts it into another.  This doesn't fill in  the right alpha value
-	and we should use PsychCoerceColorModeWithDepth()
-    
-    Not all conversions are necessary or supported.    
-*/
-void PsychCoerceColorModeWithDepthValue(PsychColorModeType mode, int depthValue, PsychColorType *color)
-{
-    int index, maxValue;
+		// Set alpha to our "maximum alpha" value:
+        color->value.rgba.a=DBL_MAX;
+	}
+	else {
+		// No, conversion from RGB?
+		if(color->mode==kPsychRGBColor) {
+			// Yes. Copy RGB channels over:
+			color->value.rgba.r=color->value.rgb.r;
+			color->value.rgba.g=color->value.rgb.g;
+			color->value.rgba.b=color->value.rgb.b;
+			// Set alpha to our "maximum alpha" value:
+			color->value.rgba.a=DBL_MAX;
+		}
+		// Third case would be from RGBA to RGBA, but that's
+		// a no-op.
+	}
 	
-	
-	maxValue=PsychGetWhiteValueFromDepthValue(depthValue);
-    
-    if(mode==kPsychRGBColor && color->mode==kPsychIndexColor){
-        index=color->value.index.i;
-        color->mode=kPsychRGBColor;
-        color->value.rgb.r=index;
-        color->value.rgb.g=index;
-        color->value.rgb.b=index;
-    }else if(mode==kPsychRGBAColor && color->mode==kPsychIndexColor){
-        index=color->value.index.i;
-        color->mode=kPsychRGBAColor;
-        color->value.rgba.r=index;
-        color->value.rgba.g=index;
-        color->value.rgba.b=index;
-        color->value.rgba.a=maxValue;
-	}else if(mode==kPsychRGBAColor && color->mode==kPsychRGBColor){
-        color->mode=kPsychRGBAColor;
-        color->value.rgba.r=color->value.rgb.r;
-        color->value.rgba.g=color->value.rgb.g;
-        color->value.rgba.b=color->value.rgb.b;
-        color->value.rgba.a=maxValue;
-   }else if(mode==kPsychRGBColor && color->mode==kPsychRGBColor)
-        ;
-    else if(mode==kPsychIndexColor && color->mode==kPsychIndexColor)
-        ;
-    else if(mode==kPsychRGBAColor && color->mode==kPsychRGBAColor)
-        ;
-    else if(mode==kPsychRGBColor && color->mode==kPsychRGBAColor)
-      ; // MK: This is a no-op: We stay in RGBA mode if RGBA->RGB transition is requested.
-    else
-        PsychErrorExitMsg(PsychError_internal, "Error attempting to coerce color specifier");
+	// Always convert to RGBA color mode:
+	color->mode=kPsychRGBAColor;
 }
-

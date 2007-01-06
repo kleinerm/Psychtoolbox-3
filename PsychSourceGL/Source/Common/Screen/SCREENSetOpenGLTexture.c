@@ -133,6 +133,10 @@ PsychError SCREENSetOpenGLTexture(void)
     // Ok, setup texture record for texture:
     PsychInitWindowRecordTextureFields(textureRecord);
     textureRecord->depth = d;
+	
+	// Assume this texture has four channels. FIXME: Is this problematic?
+	textureRecord->nrchannels = 4;
+
     PsychMakeRect(textureRecord->rect, 0, 0, w, h);
 
     textureRecord->texturetarget = target;

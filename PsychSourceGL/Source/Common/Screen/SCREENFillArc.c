@@ -119,7 +119,7 @@ void PsychRenderArc(unsigned int mode)
         PsychRectType                   rect;
         double				*startAngle, *arcAngle, *penWidth, *penHeight;
 	PsychWindowRecordType           *windowRecord;
-	int				depthValue, whiteValue, colorPlaneSize, numColorPlanes;
+	int				depthValue, whiteValue;
 	double                          dotSize;
         boolean				isArgThere;
 	GLUquadric                      *diskQuadric = NULL;
@@ -130,16 +130,15 @@ void PsychRenderArc(unsigned int mode)
 	
 	//Get the depth from the window, we need this to interpret the color argument.
 	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
-	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
+	
 
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
         if(!isArgThere){
-                whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+                whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
                 PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
         }
- 	PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
+ 	PsychCoerceColorMode( &color);
         
         // Get the rect to which the object should be inscribed: Default is "full screen"
         PsychMakeRect(rect, 0, 0, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect));

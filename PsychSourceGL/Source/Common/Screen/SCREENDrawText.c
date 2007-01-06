@@ -136,7 +136,7 @@ PsychError SCREENDrawText(void)
     double			textBoundsPRect[4], textBoundsPRectOrigin[4], textureRect[4];
     double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight, textHeightToBaseline;
     double			quadLeft, quadRight, quadTop, quadBottom;
-    int				psychColorSize, yPositionIsBaseline;
+    int				yPositionIsBaseline;
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
 	int ix;
 	GLubyte* rpb;
@@ -296,8 +296,7 @@ PsychError SCREENDrawText(void)
     quartzRect.origin.y=(float)0;
     quartzRect.size.width=(float)textureWidth;
     quartzRect.size.height=(float)textureHeight;
-    psychColorSize=PsychGetColorSizeFromWindowRecord(winRec);
-    PsychCoerceColorModeWithDepthValue(kPsychRGBAColor, psychColorSize, &(winRec->textAttributes.textBackgroundColor));
+    PsychCoerceColorMode(&(winRec->textAttributes.textBackgroundColor));
     PsychConvertColorToDoubleVector(&(winRec->textAttributes.textBackgroundColor), winRec, backgroundColorVector);
     //by default override the background alpha value, setting alpha transparecy. Only when DrawText obeys the alpha blend function setting do we need or want the the alpha argument for the background.
     if(!PsychPrefStateGet_TextAlphaBlending())
@@ -647,7 +646,7 @@ PsychError SCREENDrawText(void)
     int                   stringl;
     Boolean			        doSetColor, doSetBackgroundColor;
     PsychColorType		  colorArg, backgroundColorArg;
-    int				        depthValue, whiteValue, colorPlaneSize, numColorPlanes, i, yPositionIsBaseline;
+    int				        depthValue, whiteValue, i, yPositionIsBaseline;
     float                 accumWidth, maxHeight, textHeightToBaseline;
 
     static GLuint	        base=0;	     // Base Display List For The Font Set
@@ -675,8 +674,7 @@ PsychError SCREENDrawText(void)
     
     //Get the depth from the window, we need this to interpret the color argument.
     depthValue=PsychGetWindowDepthValueFromWindowRecord(winRec);
-    numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
-    colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
+    
 
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
@@ -696,7 +694,7 @@ PsychError SCREENDrawText(void)
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
-	 PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &(winRec->textAttributes.textColor));
+	 PsychCoerceColorMode( &(winRec->textAttributes.textColor));
     PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
 
     // Does the font (better, its display list) need to be build or rebuild, because

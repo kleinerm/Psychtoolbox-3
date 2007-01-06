@@ -30,7 +30,6 @@ int				PsychGetColorSizeFromWindowRecord(PsychWindowRecordType *windowRecord);
 
 
 int					PsychGetWindowDepthValueFromWindowRecord(PsychWindowRecordType *windowRecord);
-PsychColorModeType 	PsychGetColorModeFromWindowRecord(PsychWindowRecordType *windowRecord);
 void				PsychSetTextColorInWindowRecord(PsychColorType *textColor,  PsychWindowRecordType *winRec);
 void				PsychSetTextBackgroundColorInWindowRecord(PsychColorType *textColor,  PsychWindowRecordType *winRec);
 int					PsychGetDepthFromWindowRecord(PsychWindowRecordType *winRec);

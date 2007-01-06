@@ -208,6 +208,16 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         printf("PTB-INFO: Frame buffer provides %i bits for alpha channel.\n", bpc);
     }
 
+	// Query if this onscreen window has a backbuffer with alpha channel, i.e.
+	// it has more than zero alpha bits: 
+	glGetIntegerv(GL_ALPHA_BITS, &bpc);
+	
+	// Windows are either RGB or RGBA, so either 3 or 4 channels. Here we
+	// assign the default depths for this window record. This value needs to get
+	// overriden when imaging pipeline is active, because there we use framebuffer
+	// objects as backing store which always have RGBA 4 channel format.
+	(*windowRecord)->nrchannels = (bpc > 0) ? 4 : 3;
+
 	// We need the real color depth (bits per color component) of the framebuffer attached
 	// to this onscreen window. We need it to setup color range correctly. Let's assume the
 	// red bits value is representative for the green and blue channel as well:
@@ -2278,11 +2288,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 						PsychErrorExitMsg(PsychError_user, "You tried to draw into a special power-of-two offscreen window or texture. Sorry, this is not supported.");
 					}
 					
-					// It also only works on RGB or RGBA textures, not Luminance or LA textures:
-					// We could relax this constraint on some gfx-hardware or on all hardware by an expensive conversion blit, but for now we live with this limit.
-					if (windowRecord->depth < 24) {
-						PsychErrorExitMsg(PsychError_user, "You tried to draw into a offscreen window or texture which is not RGB or RGBA true-color format. Sorry, this is not supported.");
-					}
+					// It also only works on RGB or RGBA textures, not Luminance or LA textures, but the code in PsychCreateFBO will catch that case in
+					// case we get something unsuitable for drawing.
 					
 					// Do we already have a framebuffer object for this texture? All textures start off without one,
 					// because most textures are just used for drawing them, not drawing *into* them. Therefore we

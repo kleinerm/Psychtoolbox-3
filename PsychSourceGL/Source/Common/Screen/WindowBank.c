@@ -241,6 +241,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// cleanup routine PsychCloseWindow()...
 	(*winRec)->windowType = kPsychNoWindow;
 
+	// Assign default number of color channels: 4 is a good number (RGBA), but this
+	// gets overwritten in appropriate places...
+	(*winRec)->nrchannels=4;
+	
 	// Initialize all imaging pipeline related fields to safe defaults:
 	PsychInitImagingPipelineDefaultsForWindowRecord(*winRec);
 	

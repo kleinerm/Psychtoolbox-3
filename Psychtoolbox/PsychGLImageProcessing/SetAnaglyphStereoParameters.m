@@ -76,7 +76,7 @@ try
     
     % Query GLSL shader handle for anaglyph shader:
     [slot shaderid blittercfg voidptr glsl luttexid] = Screen('HookFunction', win, 'Query', 'StereoCompositingBlit', 'StereoCompositingShader');
-    
+        
     % Shader found?
     if slot == -1
         error('Either the imaging pipeline is not enabled for given onscreen window, or it is not switched to Anaglyph stereo mode.');

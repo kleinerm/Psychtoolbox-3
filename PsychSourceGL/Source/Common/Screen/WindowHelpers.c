@@ -39,7 +39,7 @@
 */
 int PsychGetColorSizeFromWindowRecord(PsychWindowRecordType *windowRecord)
 {
-    return(PsychGetColorSizeFromDepthValue(windowRecord->depth));
+	PsychErrorExitMsg(PsychError_internal, "PsychGetColorSizeFromWindowRecord not implemented!!!");
 }
 
 
@@ -56,23 +56,15 @@ int PsychGetWindowDepthValueFromWindowRecord(PsychWindowRecordType *windowRecord
     }
 }
 
-PsychColorModeType PsychGetColorModeFromWindowRecord(PsychWindowRecordType *windowRecord)
-{
-    return(PsychGetColorModeFromDepthValue(windowRecord->depth));
-}
-
-
 void PsychGetRectFromWindowRecord(double *rect, PsychWindowRecordType *windowRecord)
 {
     
     PsychCopyRect(rect, windowRecord->rect);
 }
 
-
-
 int PsychGetNumPlanesFromWindowRecord(PsychWindowRecordType *windowRecord)
 {
-    return(PsychGetNumPlanesFromDepthValue(windowRecord->depth));
+    return(windowRecord->nrchannels);
 }
 
 int PsychGetNumBuffersFromWindowRecord(PsychWindowRecordType *windowRecord)
@@ -138,27 +130,14 @@ boolean PsychIsTexture(PsychWindowRecordType *windowRecord)
 
 void PsychSetTextColorInWindowRecord(PsychColorType *textColor,  PsychWindowRecordType *winRec)
 {
-	PsychColorModeType		colorMode;
-	int						depth;
-	
-		
-	colorMode=PsychGetColorModeFromWindowRecord(winRec);
-	depth=PsychGetDepthFromWindowRecord(winRec);
 	memcpy(&(winRec->textAttributes.textColor), textColor, sizeof(PsychColorType));
-	PsychCoerceColorModeWithDepthValue(colorMode, depth, &(winRec->textAttributes.textColor));
-	
+	PsychCoerceColorMode(&(winRec->textAttributes.textColor));	
 }
 
 void PsychSetTextBackgroundColorInWindowRecord(PsychColorType *textBackgroundColor,  PsychWindowRecordType *winRec)
 {
-	PsychColorModeType		colorMode;
-	int						depth;
-	
-		
-	colorMode=PsychGetColorModeFromWindowRecord(winRec);
-	depth=PsychGetDepthFromWindowRecord(winRec);
 	memcpy(&(winRec->textAttributes.textBackgroundColor), textBackgroundColor, sizeof(PsychColorType));
-	PsychCoerceColorModeWithDepthValue(colorMode, depth, &(winRec->textAttributes.textBackgroundColor));
+	PsychCoerceColorMode(&(winRec->textAttributes.textBackgroundColor));
 }
 
 

@@ -10,8 +10,9 @@
 
 	HISTORY:
 	09/06/02		awi		wrote it.  
-        11/26/02		awi			turned PsychDepthType into an int from enum.  
-        
+	11/26/02		awi		turned PsychDepthType into an int from enum.  
+    01/06/07        mk		Change data type for Color type from int to double to accomodate all the HDR stuff and
+							get rid of most color conversion routines, which were useless and a bad idea from day 1.
 	
 	DESCRIPTION:
 	
@@ -21,7 +22,7 @@
         This file should contain only platform-neutral typedefs.  Platform specfic stuff all goes into
         files within PsychToolbox3/Source/PLATFORMNAME/Screen/.  Currently those files are PsychSurfaceGlue.c
         and PsychSurfaceGlue.h
-	
+
 	TO DO: 
 	
         -The depth stuff is stupid.  Fix it: break out the number of values and an array from that dumb structure and abolish the structure.
@@ -99,21 +100,21 @@ typedef enum {
 }	PsychColorModeType;
 
 typedef struct {
-	int r;
-	int g;
-	int b;
-	int a;		//alpha
+	double r;
+	double g;
+	double b;
+	double a;		//alpha
 } PsychRGBAColorType;
 
 typedef struct {
-	int r;
-	int g;
-	int b;
+	double r;
+	double g;
+	double b;
 } PsychRGBColorType;
 
 
 typedef struct {
-	int i;	//color index   	
+	double i;	//color index   	
 } PsychIndexColorType;
 
 
@@ -166,19 +167,19 @@ int					PsychGetValueFromDepthStruct(int index, PsychDepthType *depth);
 void				PsychAddValueToDepthStruct(int value, PsychDepthType *depth);
 boolean				PsychIsMemberDepthStruct(PsychDepthType *depth, PsychDepthType *depthSet);
 void				PsychCopyDepthStruct(PsychDepthType *toDepth, PsychDepthType *fromDepth);
+
+// Useless function, always returns RGBA mode, the only one we support.
 PsychColorModeType 	PsychGetColorModeFromDepthStruct(PsychDepthType *depth);
-PsychColorModeType 	PsychGetColorModeFromDepthValue(int depthValue);
-int					PsychGetWhiteValueFromDepthStruct(PsychDepthType *depth);
-int					PsychGetWhiteValueFromDepthValue(int depthValue);
-int					PsychGetColorSizeFromDepthValue(int depthValue);
-int					PsychGetNumPlanesFromDepthValue(int depthValue);
 
-//Accessors for PsychColorType
+// Accessors for PsychColorType:
+// Convert some color into our PsychColorType: This only used internally to set default
+// colors, usually white or black: Careful! It only accepts double values and screws with
+// anything else, due to some macro preprocessor magic inside:
 void				PsychLoadColorStruct(PsychColorType *color, PsychColorModeType mode,  ...);
-void				PsychCoerceColorModeFromSizes(int numColorPlanes, int colorPlaneSize, PsychColorType *color);
-void				PsychCoerceColorMode(PsychColorModeType mode, PsychColorType *color);
-void				PsychCoerceColorModeWithDepthValue(PsychColorModeType mode, int depthValue, PsychColorType *color);
 
+// Convert from whatever color representation "color" is to RGBA color spec, the only
+// spec we use for internal color handling:
+void				PsychCoerceColorMode(PsychColorType *color);
 
 //end include once
 #endif

@@ -72,7 +72,7 @@ PsychError SCREENFillPoly(void)
 	
 	PsychColorType				color;
 	PsychWindowRecordType			*windowRecord;
-	int					depthValue, whiteValue, colorPlaneSize, numColorPlanes;
+	int					depthValue, whiteValue;
 	int					i, mSize, nSize, pSize;
 	boolean					isArgThere;
 	double					*pointList;
@@ -97,16 +97,15 @@ PsychError SCREENFillPoly(void)
 	
 	//Get the depth from the window, we need this to interpret the color argument.
 	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
-	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
+	
 
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(2, FALSE, &color);
 	if(!isArgThere){
-		whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 	}
- 	PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
+ 	PsychCoerceColorMode( &color);
         
 	//get the list of pairs and validate.  
 	PsychAllocInDoubleMatArg(3, kPsychArgRequired, &mSize, &nSize, &pSize, &pointList);

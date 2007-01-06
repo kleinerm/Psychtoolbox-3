@@ -424,7 +424,7 @@ PsychColorModeType PsychGetScreenMode(int screenNumber)
 */	
 int PsychGetNumScreenPlanes(int screenNumber)
 {
-    return(PsychGetNumPlanesFromDepthValue(PsychGetScreenDepthValue(screenNumber)));
+    return((PsychGetScreenDepthValue(screenNumber)>24) ? 4 : 3 );
 }
 
 

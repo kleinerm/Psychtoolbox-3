@@ -42,7 +42,7 @@ static char seeAlsoString[] = "GetImage";
 PsychError SCREENPutImage(void) 
 {
 	PsychRectType 		windowRect,positionRect;
-	int 			ix, iy, numPlanes, bitsPerColor, matrixRedIndex, matrixGreenIndex, matrixBlueIndex, matrixAlphaIndex, matrixGrayIndex;
+	int 			ix, iy, numPlanes, matrixRedIndex, matrixGreenIndex, matrixBlueIndex, matrixAlphaIndex, matrixGrayIndex;
 	int 			inputM, inputN, inputP, positionRectWidth, positionRectHeight; 
 	PsychWindowRecordType	*windowRecord;
 	unsigned char		*inputMatrixByte;
@@ -79,7 +79,6 @@ PsychError SCREENPutImage(void)
         //get the window and get the rect and stuff
         PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
         numPlanes=PsychGetNumPlanesFromWindowRecord(windowRecord);
-        bitsPerColor=PsychGetColorSizeFromWindowRecord(windowRecord);
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
 	if(PsychCopyInRectArg(3, FALSE, positionRect)){
 	  if (IsPsychRectEmpty(positionRect)) return(PsychError_none);

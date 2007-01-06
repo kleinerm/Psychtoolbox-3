@@ -88,18 +88,18 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
-	"CloseOnscreenWindowPreGLShutdown: OpenGL based actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
-	"CloseOnscreenWindowPostGLShutdown: Non-graphics actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
-	"UserspaceBufferDrawingFinished: Operations to be performed after last drawing command, i.e. in Screen('Flip') or Screen('DrawingFinshed').",
-	"StereoLeftCompositingBlit: Perform generic user-defined image processing on image content of left-eye (or mono) buffer.",
-	"StereoRightCompositingBlit: Perform generic user-defined image processing on image content of right-eye buffer.",
-	"StereoCompositingBlit: Internal - Compose left- and right-eye view into one combined image for all stereo modes except quad-buffered flip-frame stereo.",
-	"PostCompositingBlit: Not yet used.",
-	"FinalOutputFormattingBlit: Perform post-processing indifferent of stereo mode, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
-	"UserspaceBufferDrawingPrepare: Operations to be performed immediately after Screen('Flip') in order to prepare drawing commands of users script.",
-	"IdentityBlitChain: Only for internal use. Only modify for debugging and testing of pipeline itself!",
-	"LeftFinalizerBlitChain: Perform last time operation on left (or mono) channel, e.g., draw blue-sync lines.",
-	"RightFinalizerBlitChain: Perform last time operation on right channel, e.g., draw blue-sync lines."
+	"OpenGL based actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
+	"Non-graphics actions to be performed when an onscreen window is closed, e.g., teardown for special output devices.",
+	"Operations to be performed after last drawing command, i.e. in Screen('Flip') or Screen('DrawingFinshed').",
+	"Perform generic user-defined image processing on image content of left-eye (or mono) buffer.",
+	"Perform generic user-defined image processing on image content of right-eye buffer.",
+	"Internal(preinitialized): Compose left- and right-eye view into one combined image for all stereo modes except quad-buffered flip-frame stereo.",
+	"Not yet used.",
+	"Perform post-processing indifferent of stereo mode, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
+	"Operations to be performed immediately after Screen('Flip') in order to prepare drawing commands of users script.",
+	"Internal(preinitialized): Only for internal use. Only modify for debugging and testing of pipeline itself!",
+	"Internal(preinitialized): Perform last time operation on left (or mono) channel, e.g., draw blue-sync lines.",
+	"Internal(preinitialized): Perform last time operation on right channel, e.g., draw blue-sync lines."
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()
@@ -292,6 +292,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			windowRecord->drawBufferFBO[1] = fbocount;
 			fbocount++;
 		}
+		
+		// Windows with fast backing store always have 4 color channels RGBA, regardless what the
+		// associated system framebuffer has:
+		windowRecord->nrchannels = 4;
+
 	}
 	
 	// Do we need 2nd stage FBOs? We need them as targets for the processed data if support for misc image processing ops is requested.
@@ -787,10 +792,15 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		while(glGetError());
 		printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment for imaging pipeline!\n");
 		if (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) {
-			printf("PTB-ERROR: Your graphics hardware does not support the selected or requested format for drawing into it.\n");
+			printf("PTB-ERROR: Your graphics hardware does not support the selected or requested texture- or offscreen window format for drawing into it.\n");
+			printf("PTB-ERROR: Most graphics cards do not support drawing into textures or offscreen windows which are not true-color, i.e. 1 layer pure\n");
+			printf("PTB-ERROR: luminance or 2 layer luminance+alpha textures or offscreen windows may not work, but 3-layer RGB or 4-layer RGBA textures\n");
+			printf("PTB-ERROR: or offscreen windows will work. Another reason could be that the specific colordepth is not supported on your hardware:\n");
+			printf("PTB-ERROR: 8 bits per color component are supported on nearly all hardware, 16 bpc or 32 bpc floating point format only on recent\n");
+			printf("PTB-ERROR: hardware. 16 bpc fixed precision is not supported on many systems either, or only under restricted conditions.\n");
 		}
 		else {
-			printf("PTB-ERROR: Exact reason for failure is unknown.\n");
+			printf("PTB-ERROR: Exact reason for failure is unknown, glCheckFramebufferStatus() returns code %i\n", fborc);
 		}
 		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) size and depth of the onscreen window or offscreen window.\n");
 		return(FALSE);
@@ -802,7 +812,7 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
 		if (!glewIsSupported("GL_ARB_depth_texture")) {
 			printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
-			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5000 or ATI Radeon 9600\n");
+			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5200 or ATI Radeon 9600\n");
 			printf("PTB-ERROR: for this to work.\n");
 			return(FALSE);
 		}
@@ -906,21 +916,29 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	if (PsychPrefStateGet_Verbosity()>4) {
 		// Output framebuffer properties:
 		glGetIntegerv(GL_RED_BITS, &bpc);
-		printf("PTB-DEBUG: FBO has %i bits per color component in ", bpc);
+		printf("PTB-DEBUG: FBO has %i bits precision per color component in ", bpc);
 		if (glewIsSupported("GL_ARB_color_buffer_float")) {
 			glGetBooleanv(GL_RGBA_FLOAT_MODE_ARB, &isFloatBuffer);
+			if (isFloatBuffer) {
+				printf("floating point format ");
+			}
+			else {
+				printf("fixed point format ");
+			}
 		}
 		else if (glewIsSupported("GL_APPLE_float_pixels")) { 
 			glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
+			if (isFloatBuffer) {
+				printf("floating point format ");
+			}
+			else {
+				printf("fixed point foramt ");
+			}
 		}
-		else isFloatBuffer = FALSE;
-
-        if (isFloatBuffer) {
-            printf("floating point format ");
-        }
-        else {
-            printf("fixed point (or unknown) precision ");
-        }
+		else {
+			isFloatBuffer = FALSE;
+			printf("unknown format ");
+		}
 
 		glGetIntegerv(GL_DEPTH_BITS, &bpc);
 		printf("with  %i depths buffer bits ", bpc);

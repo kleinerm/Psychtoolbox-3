@@ -82,7 +82,7 @@ PsychError SCREENDrawLines(void)
 	PsychColorType				color;		// To get rid of warnings;
 	int							whiteValue;
 	PsychWindowRecordType		*windowRecord;
-	int							depthValue, colorPlaneSize, numColorPlanes, m,n,p, smooth;
+	int							depthValue, m,n,p, smooth;
 	int							nrsize, nrcolors, nrvertices, mc, nc, pc, i;
 	boolean                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double						*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
@@ -103,8 +103,7 @@ PsychError SCREENDrawLines(void)
 		
 	//Get the depth from the window, we need this to interpret the color argument.
 	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
-	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
+	
 
 	// Enable the rendering context of this window:
 	PsychSetGLContext(windowRecord);
@@ -169,7 +168,7 @@ PsychError SCREENDrawLines(void)
 	isArgThere = PsychIsArgPresent(PsychArgIn, 4);        
 	if(!isArgThere){
 		// No color argument provided - Use defaults:
-		whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 		usecolorvector=false;
 	}
@@ -248,7 +247,7 @@ PsychError SCREENDrawLines(void)
 	}
 	else {
 		// Set up common color for all dots if no color vector has been provided:
-		PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
+		PsychCoerceColorMode( &color);
 		PsychSetGLColor(&color, windowRecord);
 	}
 

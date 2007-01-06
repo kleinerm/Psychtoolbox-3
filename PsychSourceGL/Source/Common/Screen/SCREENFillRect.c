@@ -48,7 +48,7 @@ PsychError SCREENFillRect(void)
 	PsychColorType					color;
 	PsychRectType					rect;
 	PsychWindowRecordType			*windowRecord;
-	int								depthValue, whiteValue, colorPlaneSize, numColorPlanes;
+	int								depthValue, whiteValue;
 	boolean							isArgThere, isScreenRect;
 	GLdouble						dVals[4]; 
     
@@ -65,16 +65,14 @@ PsychError SCREENFillRect(void)
 	
 	//Get the depth from the window, we need this to interpret the color argument.
 	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	numColorPlanes=PsychGetNumPlanesFromDepthValue(depthValue);
-	colorPlaneSize=PsychGetColorSizeFromDepthValue(depthValue);
 
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(2, FALSE, &color);
 	if(!isArgThere){
-		whiteValue=PsychGetWhiteValueFromDepthValue(depthValue);
+		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 	}
- 	PsychCoerceColorModeFromSizes(numColorPlanes, colorPlaneSize, &color);
+ 	PsychCoerceColorMode( &color);
         
 	//get the rect and draw it
 	isScreenRect=FALSE;

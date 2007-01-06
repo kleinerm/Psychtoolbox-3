@@ -97,7 +97,7 @@ else
    rect = [0 0 500 500];
 end;
 
-[win , winRect] = Screen('OpenWindow', screenid, [], rect, [], [], stereomode);
+[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -187,9 +187,6 @@ glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS,12);
 % regardless what happens to them during morphing. This is important for
 % correct lighting calculations:
 glEnable(GL.NORMALIZE);
-
-% Set background color to 'black':
-glClearColor(0,0,0,0);
 
 % Set projection matrix: This defines a perspective projection,
 % corresponding to the model of a pin-hole camera - which is a good
@@ -281,8 +278,12 @@ while ((GetSecs - t) < 60)
     % at the origin (0,0,0) of the worlds coordinate system:
     glLoadIdentity;
     gluLookAt(-eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
+
+
     % Draw into image buffer for left eye:
+    Screen('EndOpenGL', win);
     Screen('SelectStereoDrawBuffer', win, 0);
+    Screen('BeginOpenGL', win);
 
     % Clear out the depth-buffer for proper occlusion handling:
     glClear(GL.DEPTH_BUFFER_BIT);
@@ -300,7 +301,9 @@ while ((GetSecs - t) < 60)
         glLoadIdentity;
         gluLookAt(+eye_halfdist, 0, zz, 0, 0, 0, 0, 1, 0);
         % Draw into image buffer for right eye:
+        Screen('EndOpenGL', win);
         Screen('SelectStereoDrawBuffer', win, 1);
+        Screen('BeginOpenGL', win);
     
         % Clear out the depth-buffer for proper occlusion handling:
         glClear(GL.DEPTH_BUFFER_BIT);

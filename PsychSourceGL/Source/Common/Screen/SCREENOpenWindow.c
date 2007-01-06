@@ -140,16 +140,7 @@ PsychError SCREENOpenWindow(void)
     }else //otherwise use the default
         PsychCopyDepthStruct(&useDepth, &currentDepth);
 
-    //find the color.  We do this here because the validity of this argument depends on the depth.
-    isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
-
-    if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromDepthStruct(&useDepth)); //or use the default
-
-    mode=PsychGetColorModeFromDepthStruct(&useDepth);
-    PsychCoerceColorMode(mode, &color);  //transparent if mode match, error exit if invalid conversion.
-
     //find the rect.
-
     PsychGetScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
 
     // Override it with a user supplied rect, if one was supplied:
@@ -258,6 +249,11 @@ PsychError SCREENOpenWindow(void)
         fflush(NULL);
     }
     
+	// Define clear color: This depends on the color range of our onscreen window...
+    isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
+    if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(windowRecord)); //or use the default
+    PsychCoerceColorMode(&color);
+
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
