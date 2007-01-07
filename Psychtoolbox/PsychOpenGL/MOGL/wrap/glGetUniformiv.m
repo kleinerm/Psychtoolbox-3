@@ -9,13 +9,16 @@ function params = glGetUniformiv( program, location )
 % 05-Mar-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = int32(0);
+% Allocate enough bufferspace for the biggest returned vector:
+params=int32(repmat(intmax, [ 16 1 ]));
 
 moglcore( 'glGetUniformiv', program, location, params );
+params = params(find(params~=intmax)));
 
 return

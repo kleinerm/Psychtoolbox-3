@@ -9,13 +9,20 @@ function params = glGetUniformfv( program, location )
 % 05-Mar-2006 -- created (generated automatically from header files)
 
 % ---allocate---
+% ---protected---
 
 if nargin~=2,
     error('invalid number of arguments');
 end
 
-params = moglsingle(0);
+% Allocate enough space of float single datatype for a sufficient
+% number of arguments (worst case): I believe the biggest return could be a
+% 4 x 4 matrix, i.e. 16 elements, but i'm not sure about arrays...
+% FIXME: Verify this assumption!
+params = moglsingle(repmat(NaN,[ 16 1 ]));
 
 moglcore( 'glGetUniformfv', program, location, params );
+
+params = params(find(~isnan(params)));
 
 return

@@ -65,6 +65,14 @@ char anaglyphshadersrc[] =
 "    gl_FragColor.a = 1.0;\n"
 "}\n\0";
 
+char passthroughshadersrc[] =
+"uniform sampler2DRect Image1; \n"
+"\n"
+"void main()\n"
+"{\n"
+"    gl_FragColor.rgb = texture2DRect(Image1, gl_TexCoord[0].st).rgb;\n"
+"    gl_FragColor.a = 1.0;\n"
+"}\n\0";
 
 // This array maps hook point name strings to indices. The symbolic constants in
 // PsychImagingPipelineSupport.h define symbolic names for the indices for fast
@@ -159,6 +167,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
 	float rg, gg, bg;	// Gains for color channels and color masking for anaglyph shader setup.
+	char blittercfg[100];
 
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
 	if (imagingmode<=0) {
@@ -506,6 +515,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Quad-buffered stereo and mono mode don't need these...
 	if (windowRecord->stereomode > kPsychOpenGLStereo) {
 		// Merged stereo mode requested.
+		glsl = 0;
 		
 		// Which mode?
 		switch(windowRecord->stereomode) {
@@ -549,23 +559,63 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Unbind it, its ready!
 					glUseProgram(0);
+
+					if (glsl) {
+						// Add shader to processing chain:
+						PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderAnaglyph", TRUE, glsl, "", 0) ;
+						
+						// Enable stereo compositor:
+						PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
+					}
 				}
 				else {
 					printf("PTB-ERROR: Failed to create anaglyph stereo processing shader -- Anaglyph stereo won't work!\n");
 				}
 			break;
 			
+			case kPsychFreeFusionStereo:
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Creating internal dualview stereo compositing shader...\n");
+				
+				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
+				if (glsl) {
+					// Bind it:
+					glUseProgram(glsl);
+					// Set channel to texture units assignments:
+					glUniform1i(glGetUniformLocation(glsl, "Image1"), 0);
+					glUseProgram(0);
+					
+					// Add shader to processing chain:
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", 0, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewLeft", TRUE, glsl, blittercfg, 0);
+				}
+				else {
+					printf("PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+				}
+				
+				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
+				if (glsl) {
+					// Bind it:
+					glUseProgram(glsl);
+					// Set channel to texture units assignments:
+					glUniform1i(glGetUniformLocation(glsl, "Image1"), 1);
+					glUseProgram(0);
+					
+					// Add shader to processing chain:
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", 840, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewRight", TRUE, glsl, blittercfg, 0);
+				}
+				else {
+					printf("PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+				}
+
+				// Enable stereo compositor:
+				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
+			break;
+			
 			default:
 				PsychErrorExitMsg(PsychError_internal, "Unknown stereo mode encountered! FIX SCREENOpenWindow.c to catch this at the appropriate place!\n");
 		}
 		
-		if (glsl) {
-			// Add shader to processing chain:
-			PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShader", TRUE, glsl, "", 0) ;
-
-			// Enable stereo compositor:
-			PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
-		}
 	}
 	
 
@@ -1221,7 +1271,8 @@ void PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, 
  * windowRecord - Query for this window/texture.
  * hookString   - Query this named chain.
  * idString     - This string defines the specific slot to query. Can contain an integral number, then the associated slot is
- *				  queried, or a idString (as assigned during creation), then a slot with that name is queried.
+ *				  queried, or a idString (as assigned during creation), then a slot with that name is queried. Partial name
+ *				  matches are also accepted to search for substrings...
  *
  * On successfull return, the following values are assigned, on unsuccessfull return (=-1), nothing is assigned:
  * idString = The name string of this slot *Read-Only*
@@ -1244,7 +1295,7 @@ int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* 
 	
 	// Perform linear search until proper slot reached or proper name reached:
 	hookfunc = windowRecord->HookChain[hookidx]; 
-	while(hookfunc && ((targetidx>-1 && idx<targetidx) || (targetidx==-1 && strcmp(*idString, hookfunc->idString)!=0))) {
+	while(hookfunc && ((targetidx>-1 && idx<targetidx) || (targetidx==-1 && strstr(hookfunc->idString, *idString)==NULL))) {
 			hookfunc = hookfunc->next;
 			idx++;
 	}
@@ -1698,7 +1749,7 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 	}
 	
 	// Execute blitter function:
-	rc = (rc && blitterfnc(windowRecord, hookUserData, srcIsReadonly, allowFBOSwizzle, srcfbo1, srcfbo2, dstfbo, bouncefbo));
+	rc = (rc && blitterfnc(windowRecord, hookfunc, hookUserData, srcIsReadonly, allowFBOSwizzle, srcfbo1, srcfbo2, dstfbo, bouncefbo));
 	if (!rc) {
 		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: OpenGL error state is: %s\n", gluErrorString(glGetError()));
 		while(glGetError());
@@ -1719,17 +1770,31 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
  * This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
  * when no special (non-default) blitter is requested by core code or users blitter parameter string:
  */
-boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
+boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
-	int w, h;
-
+	int w, h, x, y;
+	char* strp;
+	
+	// We only accept one (optional) parameter in the blitterString: An integral (x,y)
+	// offset for the destination of the blit. This allows to blit the srcfbo1, without
+	// scaling or filtering it, to a different start location than (0,0):
+	x=0;
+	y=0;
+	
+	if (strp=strstr(hookfunc->pString1, "Offset:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Offset: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+	
 	// We basically ignore all parameters and just blit the bound texture(s) into the
 	// attached rendertarget, assuming a one-to-one correspondence of texture coordinates to
 	// fragment coordinates, i.e., the geometry if fully specified by size of dstfbo:
-	if (dstfbo && (*dstfbo)) {
+	if (srcfbo1 && (*srcfbo1)) {
 		// Query dimensions of viewport:
-		w = (*dstfbo)->width;
-		h = (*dstfbo)->height;
+		w = (*srcfbo1)->width;
+		h = (*srcfbo1)->height;
 		
 		// Do the blit, using a rectangular quad:
 		glBegin(GL_QUADS);
@@ -1744,24 +1809,24 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, void* hookUser
 		
 		// Upper left vertex in window
 		glTexCoord2f(0, h);
-		glVertex2f(0, 0);		
+		glVertex2f(x, y);		
 
 		// Lower left vertex in window
 		glTexCoord2f(0, 0);
-		glVertex2f(0, h);		
+		glVertex2f(x, h+y);		
 
 		// Lower right  vertex in window
 		glTexCoord2f(w, 0);
-		glVertex2f(w, h);		
+		glVertex2f(w+x, h+y);		
 
 		// Upper right in window
 		glTexCoord2f(w, h);
-		glVertex2f(w, 0);		
+		glVertex2f(w+x, y);		
 
 		glEnd();
 	}
 	else {
-		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): dstfbo is a NULL - Pointer!!!");
+		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
 	}
 	
 	// Done.

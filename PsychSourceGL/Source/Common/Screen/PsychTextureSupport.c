@@ -216,7 +216,8 @@ void PsychCreateTexture(PsychWindowRecordType *win)
         int twidth, theight;
 	void* texmemptr;
 	bool recycle = FALSE;
-
+// TEST:
+if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
         // Enable the proper OpenGL rendering context for the window associated with this
         // texture:
 	PsychSetGLContext(win);

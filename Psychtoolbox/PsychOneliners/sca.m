@@ -6,5 +6,6 @@ function sca
 % History:
 % 4/6/6  Written (MK).
 
+ShowCursor;
 Screen('CloseAll');
 return;

@@ -31,7 +31,7 @@
 #include "Screen.h"
 
 // Definition of a pointer to a blitter function: See below for conforming blitter function prototypes:
-typedef boolean (*PsychBlitterFunc)(PsychWindowRecordType*, void*, boolean, boolean, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
+typedef boolean (*PsychBlitterFunc)(PsychWindowRecordType*, PsychHookFunction*, void*, boolean, boolean, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
 
 // Symbolic names for Hook-Chains: The text strings for user-space and synopsis strings are in the PsychImagingPipelineSupport.c file.
 typedef enum {
@@ -87,7 +87,7 @@ GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, c
 // Identity blitter: Blits from srcfbo1 color attachment to dstfbo without geometric transformations or other extras.
 // This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
 // when no special (non-default) blitter is requested by core code or users blitter parameter string:
-boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 //end include once
 #endif

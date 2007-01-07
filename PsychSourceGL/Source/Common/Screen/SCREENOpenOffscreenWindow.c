@@ -85,6 +85,8 @@ PsychError SCREENOpenOffscreenWindow(void)
     Boolean                             bigendian;
 	 GLubyte *rpb;
     int ix;
+	GLenum fboInternalFormat;
+	boolean needzbuffer;
 
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -200,10 +202,7 @@ PsychError SCREENOpenOffscreenWindow(void)
     PsychCopyRect(windowRecord->rect, rect);
 
 	if (targetWindow->imagingMode & kPsychNeedFastBackingStore) {
-		// Imaging mode for this window enabled: Use new way of creating the offscreen window:
-		GLenum fboInternalFormat;
-		boolean needzbuffer;
-		
+		// Imaging mode for this window enabled: Use new way of creating the offscreen window:		
 		PsychSetGLContext(targetWindow);
 		PsychSetDrawingTarget(NULL);
 		

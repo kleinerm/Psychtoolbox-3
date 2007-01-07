@@ -1,5 +1,5 @@
 function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
-% retval = SetAnaglyphStereoParameters(subcommand, windowPtr [red green blue]);
+% retval = SetAnaglyphStereoParameters(subcommand, windowPtr, [red green blue]);
 %
 % Change parameters of built-in anaglyph stereo display function at
 % runtime. Allows to change all relevant settings of the algorithm at any
@@ -9,7 +9,7 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 % Red-Green means "Left eye displayed in red channel, right eye displayed
 % in green channel"). You also need to enable the Psychtoolbox image
 % processing pipeline by setting the 'imagingmode' parameter to at least
-% kPsychNeedFastBackingStore.
+% 'kPsychNeedFastBackingStore'.
 %
 % Example:
 % imagingmode = kPsychNeedFastBackingStore;
@@ -19,6 +19,7 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 % See help PsychGLImageProcessing for an overview of the imaging pipeline.
 %
 % Parameters and their meaning:
+%
 % 'windowPtr' is the handle to a anaglyph stereo onscreen window.
 %
 % 'subcommand' can be one of:
@@ -35,7 +36,7 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 % for Red-Green or Red-Blue anaglyph, left eye view only goes into red
 % channel.
 %
-% Returns the old gains.
+% The command always returns the old gains as a 3 component vector.
 %
 % 'RightGains' - See left gains, but this time for right image:
 % SetAnaglyphStereoParameters('RightGains', win, [0.0 0.7 0.0]);
@@ -57,6 +58,7 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 %
 % SetAnaglyphStereoParameters('ColorToLuminanceWeights', win, [redweight greenweight blueweight]);
 %
+% The command always returns the old weights as a 3 component vector.
 %
 % 'GetHandle' - Return GLSL handle to anaglyph shader. Allows to modify the
 % shader itself, e.g., replace it by your own customized shader. Only for
@@ -101,23 +103,35 @@ end
     
     if strcmpi(cmd, 'ColorToLuminanceWeights')
         uniloc = glGetUniformLocation(glsl, 'ColorToGrayWeights');
-        retval = []; % FIXME: How to query this?
-        glUniform3fv(uniloc, 3, rgb);
-        retval = rgb;
+        retval = glGetUniformfv(glsl, uniloc);
+        if nargin>=3
+            if size(rgb)~=3
+                error('Provided call parameter must be a 3 component vector with color weights or gains.');
+            end
+            glUniform3fv(uniloc, 3, rgb);
+        end
     end
     
     if strcmpi(cmd, 'LeftGains')
         uniloc = glGetUniformLocation(glsl, 'Gains1');
-        retval = []; % FIXME: How to query this?
-        glUniform3fv(uniloc, 3, rgb);
-        retval = rgb;
+        retval = glGetUniformfv(glsl, uniloc);
+        if nargin>=3
+            if size(rgb)~=3
+                error('Provided call parameter must be a 3 component vector with color weights or gains.');
+            end
+            glUniform3fv(uniloc, 3, rgb);
+        end
     end
     
     if strcmpi(cmd, 'RightGains')
         uniloc = glGetUniformLocation(glsl, 'Gains2');
-        retval = []; % FIXME: How to query this?
-        glUniform3fv(uniloc, 3, rgb);
-        retval = rgb;
+        retval = glGetUniformfv(glsl, uniloc);
+        if nargin>=3
+            if size(rgb)~=3
+                error('Provided call parameter must be a 3 component vector with color weights or gains.');
+            end
+            glUniform3fv(uniloc, 3, rgb);
+        end
     end
 
 try
