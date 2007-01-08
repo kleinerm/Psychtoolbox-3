@@ -1,0 +1,26 @@
+/* Shader for video deinterlacing - Extracts either the even- or odd- field
+ * (even or odd rows) of an interlaced image texture and replicates them.
+ * This is the most simple form of deinterlacing.
+ *
+ * This code is beta quality. It doesn't work yet with filtered texture
+ * drawing, and could be more optimized.
+ *
+ * Written 2007 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
+ * GPL.
+ *
+ */ 
+
+/* UseOddField: To be set by usercode - 0 = Extract even lines, 1 = Extract odd lines. */
+uniform float UseOddField;
+/* Input image rectangle texture: */
+uniform sampler2DRect Image1;
+
+void main()
+{
+    /* Get default texel read position (s,t): s is column, t is row of image. */
+    vec2 readpos = gl_TexCoord[0].st;
+    /* Update the t (==row) component to only read even or odd lines, replicating them. */
+    readpos.t = readpos.t - mod(readpos.t, 2.0) + UseOddField;
+    /* Read the image pixel from the modified readpos, output it to framebuffer. */
+    gl_FragColor = texture2DRect(Image1, readpos);
+}
