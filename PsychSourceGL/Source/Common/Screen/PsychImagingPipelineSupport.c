@@ -528,7 +528,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				
 				// Create anaglyph shader and set proper defaults: These can be changed from the M-File if wanted.
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Creating internal anaglyph stereo compositing shader...\n");
-				
 				glsl = PsychCreateGLSLProgram(anaglyphshadersrc, NULL, NULL);
 				if (glsl) {
 					// Bind it:
@@ -569,7 +568,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					}
 				}
 				else {
-					printf("PTB-ERROR: Failed to create anaglyph stereo processing shader -- Anaglyph stereo won't work!\n");
+					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create anaglyph stereo processing shader -- Anaglyph stereo won't work!\n");
 				}
 			break;
 			
@@ -589,7 +588,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewLeft", TRUE, glsl, blittercfg, 0);
 				}
 				else {
-					printf("PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
 				}
 				
 				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
@@ -605,7 +604,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewRight", TRUE, glsl, blittercfg, 0);
 				}
 				else {
-					printf("PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
 				}
 
 				// Enable stereo compositor:
@@ -657,7 +656,7 @@ GLuint PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, co
 	while (glGetError());
 	
 	// Supported at all on this hardware?
-	if (!glewIsSupported("GL_ARB_shader_objects")) {
+	if (!glewIsSupported("GL_ARB_shader_objects") || !glewIsSupported("GL_ARB_shading_language_100")) {
 		printf("PTB-ERROR: Your graphics hardware does not support GLSL fragment shaders! Use of imaging pipeline with current settings impossible!\n");
 		return(0);
 	}
