@@ -31,6 +31,7 @@ end;
 KbName('UnifyKeyNames');
 
 esc=KbName('ESCAPE');
+space=KbName('space');
 
 try
     % Child protection

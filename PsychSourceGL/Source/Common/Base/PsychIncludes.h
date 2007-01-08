@@ -110,6 +110,7 @@
 #include <stdio.h>
 #include <limits.h>
 #include <string.h>
+#include <float.h>
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 // File with pseudo MATLAB interface API definitions:
