@@ -94,7 +94,7 @@ try
     dstrect = CenterRect(dstrect, winrect);
 
     % Show original (interlaced) image:
-    Screen('DrawTexture', win, tex, [], dstrect, [], filter);
+    Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
     Screen('Flip', win);
 
     % Wait for keypress:
@@ -132,7 +132,7 @@ try
         end
 
         % Draw it:
-        Screen('DrawTexture', win, tex, [], dstrect, [], filter);
+        Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
         Screen('Flip', win, 0, 0, 0);
 
         % Wait for keypress:
@@ -144,7 +144,7 @@ try
         end
 
         % Draw it:
-        Screen('DrawTexture', win, tex, [], dstrect, [], filter);
+        Screen('DrawTexture', win, tex, [], dstrect, 90, filter);
         Screen('Flip', win, 0, 0, 0);
 
         % Wait for keypress:
