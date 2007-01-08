@@ -1,0 +1,34 @@
+/* Shader for video deinterlacing - Extracts either the even- or odd- field
+ * (even or odd rows) of an interlaced image texture:
+ *
+ * If even lines are wanted, then the even lines are taken as they are, the
+ * lines are replaced by the average of the even lines above and below them.
+ *
+ * Same logic applies when extracting the odd lines.
+ *
+ * This code is beta quality. It doesn't work yet with filtered texture
+ * drawing, and could be more optimized.
+ *
+ * Written 2007 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
+ * GPL.
+ *
+ */ 
+
+/* UseOddField: To be set by usercode - 0 = Extract even lines, 1 = Extract odd lines. */
+uniform float UseOddField;
+/* Input image rectangle texture: */
+uniform sampler2DRect Image1;
+
+void main()
+{
+    /* Get default texel read position (s,t): s is column, t is row of image. */
+    vec2 readpos = gl_TexCoord[0].st;
+    if (bool(mod(floor(readpos.t + UseOddField), 2.0))) {
+        /* This row is to be replaced by the average of its neighbour rows: */
+        gl_FragColor = 0.5*(texture2DRect(Image1, readpos - vec2(0.0, 1.0)) + texture2DRect(Image1, readpos + vec2(0.0, 1.0)));
+    }
+    else {
+        /* This row is to be used: */
+        gl_FragColor = texture2DRect(Image1, readpos);
+    }
+}

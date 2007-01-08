@@ -1,5 +1,5 @@
-function DeinterlacerTest(sf, imgname, dryrun)
-% DeinterlacerTest([sf][,imgname][,noshader])
+function DeinterlacerTest(sf, imgname, method)
+% DeinterlacerTest([sf][,imgname][,method])
 %
 % Tests (and thereby demonstrates) the Psychtoolbox builtin GLSL realtime
 % deinterlaceshader, an OpenGL GLSL Fragmentshader for on-the-fly
@@ -12,7 +12,12 @@ function DeinterlacerTest(sf, imgname, dryrun)
 %
 % sf - Optional scalefactor, by which the image is scaled in size.
 %
-% dryrun - If set to 1, the shader isn't used, just for comparison.
+% method - Select deinterlace method:
+%
+% 0 = None. 1 = Replacement of lines, 2 = Averaging of lines.
+%
+% See the shader sources under Psychtoolbox/PsychOpenGL/PsychGLSLShaders
+% for proper definition of the operations.
 %
 % What you should see (assuming you did not provide an input image file):
 %
@@ -47,7 +52,7 @@ try
     [win winrect] = Screen('OpenWindow', screenid, 0);
 
     if nargin<3
-        dryrun=0;
+        method=1;
     end
 
     if nargin<1
@@ -78,11 +83,11 @@ try
     end
 
     for i=1:3
-        img(:,:,i)=transpose(img(:,:,i));
+        teximg(:,:,i)=transpose(img(:,:,i));
     end
     
     % Build corresponding texture:
-    tex = Screen('MakeTexture', win, img);
+    tex = Screen('MakeTexture', win, teximg);
 
     dstrect = Screen('Rect', tex);
     dstrect = ScaleRect(dstrect, sf, sf);
@@ -96,17 +101,23 @@ try
     KbWait; while KbCheck; end;
 
     % Load deinterlace-shader:
-    deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShader',1);
+    if method == 1
+        % Simple line replication:
+        deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderLineDouble',1);
+    else
+        if method ==2
+            % Replace line by average of neighbour lines:
+            deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderAvg',1);
+        end
+    end
 
-    % Bind and initialize it:
-    glUseProgram(deinterlacer);
-    % Input image will be bound to texture unit zero:
-    glUniform1i(glGetUniformLocation(deinterlacer, 'Image1'), 0);
-    % Get handle for the field selection parameter:
-    useoddfield=glGetUniformLocation(deinterlacer, 'UseOddField');
-
-    if dryrun
-        glUseProgram(0);
+    if method > 0
+        % Bind and initialize it:
+        glUseProgram(deinterlacer);
+        % Input image will be bound to texture unit zero:
+        glUniform1i(glGetUniformLocation(deinterlacer, 'Image1'), 0);
+        % Get handle for the field selection parameter:
+        useoddfield=glGetUniformLocation(deinterlacer, 'UseOddField');
     end
 
     glFinish;
@@ -116,7 +127,7 @@ try
     % Run until user presses ESCape or for 1000 iterations.
     while count < 1000
         % Show the even half-field: Tell deinterlacer we want the even field:
-        if ~dryrun
+        if method>0
             glUniform1f(useoddfield, 0);
         end
 
@@ -128,7 +139,7 @@ try
         KbWait; while KbCheck; end;
 
         % Show the odd half-field: Tell deinterlacer we want the odd field:
-        if ~dryrun
+        if method>0
             glUniform1f(useoddfield, 1);
         end
 

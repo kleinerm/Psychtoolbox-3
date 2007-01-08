@@ -46,7 +46,7 @@ try
 
     % Load deinterlacing-shader: This will abort our script if the graphics
     % hardware doesn't support GLSL or fragment shaders.
-    deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShader',1);
+    deinterlacer = LoadGLSLProgramFromFiles('EXPDeinterlaceShaderLineDouble',1);
 
     % Bind and initialize deinterlacer:
     glUseProgram(deinterlacer);
