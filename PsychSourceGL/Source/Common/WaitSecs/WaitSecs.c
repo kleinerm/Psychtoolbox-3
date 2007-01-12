@@ -44,14 +44,14 @@
 
 PsychError WAITSECSWaitSecs(void) 
 {
-    double							*waitPeriodSecs;
+    double	waitPeriodSecs;
 
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(0));
     PsychErrorExit(PsychCapNumInputArgs(1));
     
-    PsychAllocInDoubleArg(1,TRUE,&waitPeriodSecs);
-	PsychWaitIntervalSeconds(*waitPeriodSecs);
+    PsychCopyInDoubleArg(1,TRUE,&waitPeriodSecs);
+	 PsychWaitIntervalSeconds(waitPeriodSecs);
 
     return(PsychError_none);	
 }

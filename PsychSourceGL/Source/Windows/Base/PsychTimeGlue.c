@@ -47,11 +47,12 @@ static Boolean		isKernelTimebaseFrequencyHzInitialized=FALSE;
 static long double	kernelTimebaseFrequencyHz;
 static Boolean          counterExists=FALSE;
 static Boolean          firstTime=TRUE;
-static double           sleepwait_threshold = 0.01;
+static double           sleepwait_threshold = 0.003;
 
 void PsychWaitUntilSeconds(double whenSecs)
 {
   static unsigned int missed_count=0;
+  static Boolean firstfail = TRUE;
   double now=0.0;
 
   // Get current time:
@@ -67,7 +68,22 @@ void PsychWaitUntilSeconds(double whenSecs)
   // power-consumption (longer battery runtime for Laptops) as
   // the CPU can go idle if nothing else to do...
   while(whenSecs - now > sleepwait_threshold) {
+	 // Try to switch windows timer to 1 msec precision:
+    if ((timeBeginPeriod(1)!=TIMERR_NOERROR) && firstfail) {
+		  // High precision mode failed! Output warning on first failed invocation...
+		  firstfail = FALSE;
+        printf("PTB-WARNING: PsychTimeGlue - Win32 syscall timeBeginPeriod(1) failed! Timing may be inaccurate...\n");
+		  // Increase switching threshold to 10 msecs to take low timer resolution into account:
+		  sleepwait_threshold = 0.010;
+    }    
+
+	 // Sleep until only sleepwait_threshold away from deadline:
     Sleep((int)((whenSecs - now - sleepwait_threshold) * 1000.0f));
+
+	 // Switch windows timer back to default precision (around 10-20 msecs):
+	 timeEndPeriod(1);
+
+	 // Recheck:
     PsychGetPrecisionTimerSeconds(&now);
   }
 
@@ -86,6 +102,8 @@ void PsychWaitUntilSeconds(double whenSecs)
       if (sleepwait_threshold < 0.02) sleepwait_threshold+=0.005;
       printf("PTB-WARNING: Wait-Deadline missed for %i consecutive times (Last miss %lf ms). New sleepwait_threshold is %lf ms.\n",
 	     missed_count, (now - whenSecs)*1000.0f, sleepwait_threshold*1000.0f);
+		// Reset missed count after increase of threshold:
+		missed_count = 0;
     }
   }
   else {
