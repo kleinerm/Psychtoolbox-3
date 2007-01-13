@@ -15,7 +15,6 @@ function svnpath = GetSubversionPath
 % tries default path locations for OS-X and Windows. If that doesn't work,
 % it returns an empty string.
 %
-
 % History:
 % 11/21/06 Written (MK).
 

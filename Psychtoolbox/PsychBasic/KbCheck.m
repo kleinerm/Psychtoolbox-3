@@ -1,5 +1,5 @@
 function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
-% [keyIsDown,secs,keyCode] = KbCheck([deviceNumber])
+% [keyIsDown, secs, keyCode] = KbCheck([deviceNumber])
 % 
 % Return keyboard status (keyIsDown), time (secs) of the status check, and
 % keyboard scan code (keyCode).
@@ -105,7 +105,7 @@ if macosx
         error('Too many arguments supplied to KbCheck'); 
     end
 else
-   % We use the built-in KbCheck facility of Screen on GNU/Linux and M$-Windows
+   % We use the built-in KbCheck facility of Screen on GNU/Linux and MS-Windows
    % for KbChecks until a PsychHID implementation is ready.
     [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end
