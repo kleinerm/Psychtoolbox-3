@@ -5,15 +5,15 @@ function [s,sPos,sNeg] = MaximizeGamutContrast(dir,white)
 % the white point.  Input should be specified in device
 % primary coordinates.
 % 
-%	2/22/94		dhb		Wrote it.
-% 4/3/94		dhb		Analytic version.
-% 4/4/94		dhb		Avoid divide by zero problem.
-% 8/17/94		dhb		Handle small values of useWhite.
-% 8/23/94		dhb		Fix 8/17 fix to handle negative numbers.  Sigh.
-% 2/16/98		dgp		Renamed from MaxGmtCon to MaximizeGamutContrast.
-% 12/3/98   dhb   Add directional return values.
-%           dhb   Remove redundant calculations.
-%	9/7/00		mpr		Made zero handling code more compact; did away with unnecessary variable.
+% 2/22/94  dhb    Wrote it.
+% 4/3/94   dhb    Analytic version.
+% 4/4/94   dhb    Avoid divide by zero problem.
+% 8/17/94  dhb    Handle small values of useWhite.
+% 8/23/94  dhb    Fix 8/17 fix to handle negative numbers.  Sigh.
+% 2/16/98  dgp    Renamed from MaxGmtCon to MaximizeGamutContrast.
+% 12/3/98  dhb    Add directional return values.
+%          dhb    Remove redundant calculations.
+% 9/7/00   mpr    Made zero handling code more compact; did away with unnecessary variable.
 
 % Expand out dir to handle all inputs together.
 n = size(dir,2);
