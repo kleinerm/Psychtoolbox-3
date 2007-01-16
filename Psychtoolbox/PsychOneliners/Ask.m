@@ -67,7 +67,7 @@ end
 
 % Draw our message on the screen and wait for the reply.
 Screen('DrawText', window, message, r(RectLeft), r(RectBottom), textColor);
-Screen('Flip', window);
+Screen('Flip', window, 0, 1);
 reply = eval(replyFun);
 
 % Erase the text off the screen.
@@ -78,4 +78,4 @@ bounds = AlignRect(bounds, r, RectBottom,RectLeft);
 % by a generous amount to make sure we erase all traces of what we drew.
 bounds = InsetRect(bounds, -2*height, -height);
 Screen('FillRect', window, bgColor, bounds);
-Screen('Flip', window);
+Screen('Flip', window, 0, 1);
