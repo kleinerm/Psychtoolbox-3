@@ -27,6 +27,10 @@ if ~Screen(window, 'WindowKind')
 	error('Invalid window')
 end
 
+% Make the look a bit nicer than the default.
+Screen('TextFont', window, 'Times');
+Screen('TextSize', window, 30);
+
 % Create the box to hold the text that will be drawn on the screen.
 screenRect = Screen('Rect', window);
 [tbx, tby] = Screen('TextBounds', window, message);
