@@ -8,6 +8,7 @@
 %
 % PlayMoviesDemoOSX            -- Show simple playback of one movie with soudn at a time.
 % PlayDualMoviesDemoOSX        -- Same as PlayMoviesDemoOSX, but play two movies in parallel.
+% PlayInterlacedMovieDemo      -- Simple demo on how to use the GLSL realtime video deinterlacer.
 % PlayMoviesWithoutGapDemoOSX  -- OS-X without sound only: Play one movie while opening a new
 %                                 movie in the background to reduce gaps between movies.
 % DetectionRTInVideoDemoOSX    -- How to collect reaction times in response to detection of some

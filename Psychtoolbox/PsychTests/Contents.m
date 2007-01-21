@@ -8,6 +8,7 @@
 %   AlphaBlendSettingTest           - Set and readback alpha blending settings by screen; verify match. 
 %   AlphaMultiplicationTest         - Test alpha multiplication by 0 and 1 for perfect precision.
 %   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.
+%   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
 %   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
 %   CopyWindowTest                  - Test CopyWindow functionality.
 %   DaqTest                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
