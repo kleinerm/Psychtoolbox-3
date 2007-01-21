@@ -67,7 +67,6 @@ PsychError RUSHRush(void)
     int								numPriorityCallInputs, numPriorityCallOutputs, numEvalCallInputs, numEvalCallOutputs, errorPrefixStringLength;
     int								numLasterrCallInputs, numLasterrCallOutputs, error, error2;
     char							errorString[MAX_ERROR_STRING_LENGTH];
-      
 
     //check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumInputArgs(2));
@@ -75,10 +74,9 @@ PsychError RUSHRush(void)
     //fetch the code to be rushed.  this can be either a string or a cell array of strings.  If its a cell array we need to convert it to a string.
     isCellArray = PsychAllocInNativeCellVector(1, kPsychArgAnything, &codeNativeCell);
     isCharArray = PsychAllocInNativeString(1, kPsychArgAnything, &codeNativeString);
-    if(!(isCellArray || isCharArray))
-        PsychErrorExitMsg(PsychError_user, "First input argument must be either a cell array or a string.");
-    if(isCellArray)
-        PsychConvertNativeCellArrayToNativeString(codeNativeCell, &codeNativeString);
+    if(!(isCellArray || isCharArray)) PsychErrorExitMsg(PsychError_user, "First input argument must be either a cell array or a string.");
+    
+	if(isCellArray) PsychConvertNativeCellArrayToNativeString(codeNativeCell, &codeNativeString);
         
     //fetch the priority level and bounds check.    
     priorityLevelSpecifiedDouble=DEFAULT_PRIORITY_LEVEL;

@@ -27,7 +27,7 @@ boolean PsychAllocInNativeCellVector(int position, PsychArgRequirementType isReq
 	Boolean			acceptArg;
 
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 0);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
 	if(acceptArg)
@@ -47,7 +47,7 @@ boolean PsychAllocInNativeString(int position, PsychArgRequirementType isRequire
 	Boolean		acceptArg;
     
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
-    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 0);
+    PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
  	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
 	if(acceptArg)
