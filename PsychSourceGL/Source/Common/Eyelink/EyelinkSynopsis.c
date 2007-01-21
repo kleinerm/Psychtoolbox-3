@@ -83,16 +83,18 @@ void InitializeSynopsis()
 	synopsis[i++] = "[status =] Eyelink('Command', 'formatstring', [...])";
 	synopsis[i++] = "[status =] Eyelink('Message', 'formatstring', [...])";
 	synopsis[i++] = "[result =] Eyelink('SendKeyButton', code, mods, state)";
+	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
+	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
 	synopsis[i++] = "[status =] Eyelink('RequestTime')";
 	synopsis[i++] = "[time =] Eyelink('ReadTime')";
 
 	synopsis[i++] = "\n% Miscellaneous Eyelink functions:";
-	synopsis[i++] = "[result = ]Eyelink('WaitForModeReady', maxwait)";
+	synopsis[i++] = "[result =] Eyelink('WaitForModeReady', maxwait)";
 	synopsis[i++] = "[result =] Eyelink('ImageModeDisplay')";
 	synopsis[i++] = "mode = Eyelink('CurrentMode')";
 	synopsis[i++] = "result = Eyelink('CalResult')";
 	synopsis[i++] = "Eyelink('SetOfflineMode')";
-	synopsis[i++] = "[version , versionString]  = Eyelink('GetTrackerVersion')";
+	synopsis[i++] = "[version, versionString]  = Eyelink('GetTrackerVersion')";
 
 	// Place Holder
 	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";

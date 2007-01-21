@@ -16,6 +16,7 @@
 		11/21/05  cdb		Adapted from alpha version.
 		15/06/06  fwc		adapted and added functions
 		19/10/06  fwc		added raw data function
+		21/01/07  fwc		added new timing functions
 
 	TARGET LOCATION:
 
@@ -93,6 +94,11 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("GetNextDataType",	&EyelinkGetNextDataType));
 	PsychErrorExit(PsychRegister("GetNextData",	&EyelinkGetNextDataType));  // for compatibility reasons only
 	PsychErrorExit(PsychRegister("GetFloatData",	&EyelinkGetFloatData));
+
+	// added as of 21/01/07
+	PsychErrorExit(PsychRegister("TrackerTime",				&EyelinkTrackerTime));
+	PsychErrorExit(PsychRegister("TimeOffset",				&EyelinkTimeOffset));
+
 	
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.

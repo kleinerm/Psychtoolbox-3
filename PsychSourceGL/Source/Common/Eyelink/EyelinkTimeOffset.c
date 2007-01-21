@@ -1,18 +1,17 @@
 /*
  
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkReadTime.c
+	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkTimeOffset.c
  
 	PROJECTS: Eyelink 
  
 	AUTHORS:
- E.Peters@ai.rug.nl				emp
  f.w.cornelissen@rug.nl		fwc
  
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	OSX, windows
  
 	HISTORY:
  
- 28/06/06	fwc		adapted from alpha version
+ 21/01/07	fwc		added based on EyelinkTrackerTime function
  
 	TARGET LOCATION:
  
@@ -23,24 +22,26 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "[time =] Eyelink('ReadTime')";
+static char useString[] = "[offset =] Eyelink('TimeOffset')";
 	
 static char synopsisString[] = 
-  "checks for reply to eyelink_request_time()\n"
-  "returns: 0 if no reply, else time \n";
+  "Returns the time difference (in msec)\n"
+  "between the tracker time and display pc time.\n";
 
 static char seeAlsoString[] = "";
    
 /*
-ROUTINE: EyelinkReadTime
+ROUTINE: EyelinkTimeOffset
 PURPOSE:
-	checks for reply to eyelink_request_time()
-	returns: 0 if no reply, else time
+	Returns the time difference between the tracker time and display pc time.
+	eyelink_double_usec_offset() returns current offset between local and tracker time in microseconds.
+	We scale it to mseconds, while keeping precision
+    May "jiggle" by 50 usec or more.
  */
           
-PsychError EyelinkReadTime(void)
+PsychError EyelinkTimeOffset(void)
 {
-   UINT32 time;
+   double offset;
 
    //all sub functions should have these two lines
    PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -55,9 +56,9 @@ PsychError EyelinkReadTime(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 
-   time = eyelink_read_time();
+   offset = eyelink_double_usec_offset()/1000;
    
-   PsychCopyOutDoubleArg(1, FALSE, time);
+   PsychCopyOutDoubleArg(1, FALSE, offset);
    
    return(PsychError_none);	
 }

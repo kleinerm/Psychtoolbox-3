@@ -1,18 +1,17 @@
 /*
  
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkReadTime.c
+	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkTrackerTime.c
  
 	PROJECTS: Eyelink 
  
 	AUTHORS:
- E.Peters@ai.rug.nl				emp
  f.w.cornelissen@rug.nl		fwc
  
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	OSX, windows
  
 	HISTORY:
  
- 28/06/06	fwc		adapted from alpha version
+ 21/01/07	fwc		added based on EyelinkReadTime function
  
 	TARGET LOCATION:
  
@@ -23,24 +22,25 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "[time =] Eyelink('ReadTime')";
+static char useString[] = "[time =] Eyelink('TrackerTime')";
 	
 static char synopsisString[] = 
-  "checks for reply to eyelink_request_time()\n"
-  "returns: 0 if no reply, else time \n";
+  "Returns the current tracker time (in seconds)\n"
+  "since the tracker application started.\n";
 
 static char seeAlsoString[] = "";
    
 /*
-ROUTINE: EyelinkReadTime
+ROUTINE: EyelinkTrackerTime
 PURPOSE:
-	checks for reply to eyelink_request_time()
-	returns: 0 if no reply, else time
+	Returns the current tracker time (in seconds)
+	since the tracker application started, uses usec precision.
+	We use the eyelink_tracker_double_usec() function, and scale to seconds, keeping precision
  */
           
-PsychError EyelinkReadTime(void)
+PsychError EyelinkTrackerTime(void)
 {
-   UINT32 time;
+   double time;
 
    //all sub functions should have these two lines
    PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -55,7 +55,7 @@ PsychError EyelinkReadTime(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 
-   time = eyelink_read_time();
+   time = eyelink_tracker_double_usec()/1000000;
    
    PsychCopyOutDoubleArg(1, FALSE, time);
    

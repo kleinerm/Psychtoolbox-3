@@ -59,23 +59,23 @@ PsychError	PsychDisplayEyelinkSynopsis(void);
 PsychError	MODULEVersion(void);
 
 // Eyelink Target sub-commands
-PsychError	EyelinkButtonStates(void);
-PsychError	EyelinkCommand(void);
-PsychError	EyelinkCurrentMode(void);
-PsychError	EyelinkImageModeDisplay(void);
-PsychError	EyelinkInitialize(void);
-PsychError	EyelinkIsConnected(void);
-PsychError	EyelinkNewestFloatSample(void);
-PsychError	EyelinkSendKeyButton(void);
-PsychError	EyelinkShutdown(void);
-PsychError	EyelinkStartRecording(void);
-PsychError	EyelinkStartSetup(void);
-PsychError	EyelinkStopRecording(void);
-PsychError	EyelinkWaitForModeReady(void);
-PsychError	EyelinkTargetCheck(void);
-PsychError	EyelinkAcceptTrigger(void);
-PsychError	EyelinkCalResult(void);
-PsychError	EyelinkMessage(void);
+PsychError EyelinkButtonStates(void);
+PsychError EyelinkCommand(void);
+PsychError EyelinkCurrentMode(void);
+PsychError EyelinkImageModeDisplay(void);
+PsychError EyelinkInitialize(void);
+PsychError EyelinkIsConnected(void);
+PsychError EyelinkNewestFloatSample(void);
+PsychError EyelinkSendKeyButton(void);
+PsychError EyelinkShutdown(void);
+PsychError EyelinkStartRecording(void);
+PsychError EyelinkStartSetup(void);
+PsychError EyelinkStopRecording(void);
+PsychError EyelinkWaitForModeReady(void);
+PsychError EyelinkTargetCheck(void);
+PsychError EyelinkAcceptTrigger(void);
+PsychError EyelinkCalResult(void);
+PsychError EyelinkMessage(void);
 PsychError EyelinkOpenFile(void);
 PsychError EyelinkCloseFile(void);
 PsychError EyelinkCheckRecording(void);
@@ -84,7 +84,7 @@ PsychError EyelinkSetOfflineMode(void);
 PsychError EyelinkDriftCorrStart(void);
 PsychError EyelinkApplyDriftCorr(void);
 PsychError EyelinkEyeAvailable(void);
-PsychError	EyelinkInitializeDummy(void);
+PsychError EyelinkInitializeDummy(void);
 PsychError EyelinkReadTime(void);
 PsychError EyelinkRequestTime(void);
 PsychError EyelinkReceiveFile(void);
@@ -94,6 +94,8 @@ PsychError EyelinkNewestFloatSampleRaw(void);
 PsychError EyelinkGetNextDataType(void);
 PsychError EyelinkGetFloatData(void);
 
+PsychError EyelinkTrackerTime(void);
+PsychError EyelinkTimeOffset(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif 
