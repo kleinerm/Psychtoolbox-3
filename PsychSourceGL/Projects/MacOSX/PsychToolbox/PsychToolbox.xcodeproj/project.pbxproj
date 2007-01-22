@@ -3198,7 +3198,7 @@
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0E92E896095726FE002687D9 /* Eyelink.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Eyelink.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0E92E8A2095726FF002687D9 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
 		0E92E8AE09572831002687D9 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/Eyelink/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		0E92E8AF09572831002687D9 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/Eyelink/RegisterProject.c; sourceTree = SOURCE_ROOT; };
@@ -3242,7 +3242,7 @@
 		2F19007704A03C39007A7274 /* mex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = mex.h; path = /Applications/MATLAB71/extern/include/mex.h; sourceTree = "<absolute>"; };
 		2F19007804A03C62007A7274 /* matrix.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = matrix.h; path = /Applications/MATLAB71/extern/include/matrix.h; sourceTree = "<absolute>"; };
 		2F1EB81D05447D4A00A80166 /* ApplicationServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ApplicationServices.framework; path = /System/Library/Frameworks/ApplicationServices.framework; sourceTree = "<absolute>"; };
-		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB71/extern/src/mexversion.c; sourceTree = "<absolute>"; };
+		2F26E8BD04343B30007A7274 /* mexversion.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 30; name = mexversion.c; path = /Applications/MATLAB74/extern/src/mexversion.c; sourceTree = "<absolute>"; };
 		2F29D8F204B90844007A7274 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/SysBeep/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		2F29D8F304B90844007A7274 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/SysBeep/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F29D8F404B90844007A7274 /* SysBeep.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SysBeep.c; path = ../../../Source/Common/SysBeep/SysBeep.c; sourceTree = SOURCE_ROOT; };
@@ -19793,6 +19793,7 @@
 		F089BD050AD42DF500663D86 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH)";
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
@@ -20194,12 +20195,13 @@
 		F14A28410AD48DDF00BFB68F /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = "$(NATIVE_ARCH)";
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_MODEL_TUNING = G5;
+				GCC_MODEL_TUNING = "";
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
@@ -20213,7 +20215,7 @@
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
-				MATLAB_DIR_NAME = MATLAB73;
+				MATLAB_DIR_NAME = MATLAB74;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -20222,7 +20224,7 @@
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
-					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-Wl,-exported_symbols_list,$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map",
 					"-lmx",
 					"-lmex",
 					"-lmat",
@@ -22314,7 +22316,7 @@
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
-				MATLAB_DIR_NAME = MATLAB73;
+				MATLAB_DIR_NAME = MATLAB74;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -22323,7 +22325,7 @@
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
-					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-Wl,-exported_symbols_list,$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/maci/mexFunction.map",
 					"-lmx",
 					"-lmex",
 					"-lmat",
