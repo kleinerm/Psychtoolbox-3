@@ -136,6 +136,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   int attribcount=0;
   int depth;
 
+  // Init userspace GL context to safe default:
+  windowRecord->targetSpecific.glusercontextObject = NULL;
+  	 
   // Which display depth is requested?
   depth = PsychGetValueFromDepthStruct(0, &(screenSettings->depth));
 
@@ -327,13 +330,28 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     return(FALSE);
   }
 
-  // Release visual info:
-  XFree(visinfo);
-
   // Store the handles...
   windowRecord->targetSpecific.windowHandle = win;
   windowRecord->targetSpecific.deviceContext = dpy;
   windowRecord->targetSpecific.contextObject = ctx;
+
+  // External 3D graphics support enabled?
+  if (PsychPrefStateGet_3DGfx()) {
+    // Yes. We need to create an extra OpenGL rendering context for the external
+    // OpenGL code to provide optimal state-isolation. The context shares all
+    // heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
+    // starts off as an identical copy of PTB's context as of here.
+
+    // Create rendering context with identical visual and display as main context, share all heavyweight ressources with it:
+    windowRecord->targetSpecific.glusercontextObject = glXCreateContext(dpy, visinfo, windowRecord->targetSpecific.contextObject, True);
+    if (windowRecord->targetSpecific.glusercontextObject == NULL) {
+      printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+      return(FALSE);
+    }    
+  }
+  
+  // Release visual info:
+  XFree(visinfo);
 
   // Show our new window:
   XMapWindow(dpy, win);
@@ -419,6 +437,12 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   glXDestroyContext(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
   windowRecord->targetSpecific.contextObject=NULL;
 
+  // Delete userspace context, if any:
+  if (windowRecord->targetSpecific.glusercontextObject) {
+    glXDestroyContext(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+    windowRecord->targetSpecific.glusercontextObject = NULL;
+  }
+
   // Wait for X-Server to settle...
   XSync(dpy, 0);
 
@@ -494,7 +518,22 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 {
   if (glXGetCurrentContext() != windowRecord->targetSpecific.contextObject) {
+    if (glXGetCurrentContext() != NULL) {
+      // We need to glFlush the context before switching, otherwise race-conditions may occur:
+      glFlush();
+      
+      // Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+      if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+    }
+    
+    // Switch to new context:
     glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.contextObject);
+    
+    // If imaging pipe is active, we need to reset the current drawing target, so it and its
+    // FBO bindings get properly reinitialized before next use. In non-imaging mode this is
+    // not needed, because the new context already contains the proper setup for transformations,
+    // drawbuffers and such, as well as the matching content in the backbuffer:
+    if (windowRecord->imagingMode > 0) PsychSetDrawingTarget(NULL);    
   }
 }
 
@@ -516,3 +555,24 @@ int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
   return(-1);
 }
 
+/* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
+ * optionally copying state from PTBs context.
+ */
+void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext)
+{
+  // Child protection:
+  if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user,"GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");
+  
+  if (copyfromPTBContext) {
+    // This unbind is probably not needed on X11/GLX, but better safe than sorry...
+    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
+
+    // Copy render context state:
+    glXCopyContext(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+  }
+  
+  // Setup new context if it isn't already setup. -> Avoid redundant context switch.
+  if (glXGetCurrentContext() != windowRecord->targetSpecific.glusercontextObject) {
+    glXMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle, windowRecord->targetSpecific.glusercontextObject);
+  }
+}

@@ -74,7 +74,7 @@ PsychError SCREENCloseAll(void)
 // etc....
 // This routine is normally called by SCREENCloseAll, but can be also called by the exit-handler,
 // and diverse error-handlers for cleanup.
-void ScreenCloseAllWindows()
+void ScreenCloseAllWindows(void)
 {
     PsychWindowRecordType	**windowRecordArray;
     int						i, numWindows, numScreens; 

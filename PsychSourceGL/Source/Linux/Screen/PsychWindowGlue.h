@@ -53,6 +53,7 @@ void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
 void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
+void    PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext);
 int     CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId);
 
 // Special query function, only defined on Linux/X11:

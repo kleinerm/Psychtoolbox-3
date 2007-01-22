@@ -612,6 +612,8 @@ PsychError PsychExitOctaveGlue(void);
 static Boolean jettisoned = FALSE;
 #endif
 
+// Forward declaration for GNU/Linux compile:
+void ScreenCloseAllWindows();
 
 /*
 
