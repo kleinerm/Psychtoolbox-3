@@ -227,6 +227,7 @@ typedef struct _PsychWindowRecordType_{
 	float* inRedTable;
 	float* inGreenTable;
 	float* inBlueTable;
+	int    inTableSize;		// Number of slots in the LUT tables.
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.

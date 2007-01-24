@@ -27,15 +27,17 @@
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('LoadNormalizedGammaTable', ScreenNumber, table [, loadOnNextFlip]);";
 static char synopsisString[] = 
-        "Load the gamma table of the specified screen. You need to pass the new "
+			"Load the gamma table of the specified screen. You need to pass the new "
 			"hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
 			"a single color index value in the framebuffer and contains the Red- green- and blue values "
 			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
 			"the blue value. Values have to be in range between 0.0 (for dark pixel) and 1.0 (for maximum intensity). "
 			"Example: table(127,1)=0.67 would mean that the red color value 127 should be displayed with 67% of "
-         "the maximum red-gun intensity, table(32, 3)=0.11 means that blue color value 32 should be displayed "
+			"the maximum red-gun intensity, table(32, 3)=0.11 means that blue color value 32 should be displayed "
 			"with 11% of the maximum blue-gun intensity. The range of values 0-1 gets mapped to the hardware with "
 			"the accuracy attainable by the hardwares DAC's, typically between 8 and 10 bits. "
+			"On OS-X you can also pass 512, 1024, 2048, ..., 65535 rows instead of 256 rows, although this only "
+			"makes sense for a few selected applications, e.g., setup for the Bits++ box. "
 			"If you provide the index of an onscreen window as 'ScreenNumber' and you set the (optional) "
 			"flag 'loadOnNextFlip' to 1, then update of the gamma table will not happen immediately, but only at "
 			"execution of the Screen('Flip', windowPtrOrScreenNumber) command. This allows to synchronize change of "
@@ -71,9 +73,21 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     //load, sanity check the input matrix, and covert from float to doubles
     PsychAllocInDoubleMatArg(2, TRUE, &inM,  &inN, &inP, &inTable);
 
-    if((inM != 256) || (inN != 3) || (inP != 1))
-        PsychErrorExitMsg(PsychError_user, "The gamma table must be 256x3");
-
+    if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
+	
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		// OS-X allows tables with other than 256 slots. It either passes them to hw if in native size, or performs
+		// software interpolation to convert it into native size:
+		if((inM != 256) && (inM != 512) && (inM != 1024) && (inM != 2048) && (inM != 4096) && (inM != 8192) && (inM != 16384) && (inM != 32768) && (inM != 65535)) {
+			PsychErrorExitMsg(PsychError_user, "The gamma table must have a number of rows equal to one of these: 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 or 65535.");
+		}
+	#else
+		// Windows requires 256 slots, i didn't check for Linux yet, but this is always safe, so...
+		if(inM != 256) {
+			PsychErrorExitMsg(PsychError_user, "The gamma table must have 256 rows.");
+		}
+	#endif
+	
 	 // Copy in optional loadOnNextFlip - flag. It defaults to zero. If provided
 	 // with a non-zero value, we will defer actual update of the gamma table to
 	 // the next bufferswap as initiated via Screen('Flip').
@@ -84,32 +98,33 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		 // Allocate tables in associated windowRecord: We will update during next
 		 // Flip operation for specified windowRecord.
 		 PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-
+		 
 		 // Sanity checks:
 		 if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "Target window for gamma table upload is not an onscreen window!");
-   	 if (windowRecord->inRedTable) PsychErrorExitMsg(PsychError_user, "This window has already a new gamma table assigned for upload on next Flip!");
-
+		 if (windowRecord->inRedTable) PsychErrorExitMsg(PsychError_user, "This window has already a new gamma table assigned for upload on next Flip!");
+		 
 		 // Allocate persistent memory:
-	    inRedTable=malloc(sizeof(float) * 256);
-   	 inGreenTable=malloc(sizeof(float) * 256);
-	    inBlueTable=malloc(sizeof(float) * 256);
-
+		 inRedTable=malloc(sizeof(float) * inM);
+		 inGreenTable=malloc(sizeof(float) * inM);
+		 inBlueTable=malloc(sizeof(float) * inM);
+		 
 		 // Assign the pointers to the windowRecord:
 		 windowRecord->inRedTable = inRedTable;
 		 windowRecord->inGreenTable = inGreenTable;
 		 windowRecord->inBlueTable = inBlueTable;
+		 windowRecord->inTableSize = inM;
 	 }
-    else {
+	 else {
 		 // Allocate temporary tables: We will update immediately.
-	    inRedTable=PsychMallocTemp(sizeof(float) * 256);
-   	 inGreenTable=PsychMallocTemp(sizeof(float) * 256);
-	    inBlueTable=PsychMallocTemp(sizeof(float) * 256);
+		 inRedTable=PsychMallocTemp(sizeof(float) * inM);
+		 inGreenTable=PsychMallocTemp(sizeof(float) * inM);
+		 inBlueTable=PsychMallocTemp(sizeof(float) * inM);
 	 }
-
-    for(i=0;i<256;i++){
-        inRedTable[i]=(float)inTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 0, 0)];
-        inGreenTable[i]=(float)inTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 1, 0)];
-        inBlueTable[i]=(float)inTable[PsychIndexElementFrom3DArray(256, 3, 0, i, 2, 0)];
+	 
+    for(i=0;i<inM;i++){
+        inRedTable[i]=(float)inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i, 0, 0)];
+        inGreenTable[i]=(float)inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i, 1, 0)];
+        inBlueTable[i]=(float)inTable[PsychIndexElementFrom3DArray(inM, 3, 0, i, 2, 0)];
 
         if(inRedTable[i]>1 || inRedTable[i]< 0 || inGreenTable[i] > 1 || inGreenTable[i] < 0 || inBlueTable[i] >1 || inBlueTable[i] < 0)
             PsychErrorExitMsg(PsychError_user, "Gamma Table Values must be in interval 0 =< x =< 1");
@@ -126,7 +141,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
     }
 
     //Now set the new gamma table
-    if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, numEntries, inRedTable, inGreenTable, inBlueTable);
+    if (loadOnNextFlip == 0) PsychLoadNormalizedGammaTable(screenNumber, inM, inRedTable, inGreenTable, inBlueTable);
 
     return(PsychError_none);
 }

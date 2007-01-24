@@ -1280,7 +1280,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
       
       // Perform hw-table upload on M$-Windows in sync with retrace, wait until completion. On
       // OS-X just schedule update in sync with next retrace, but continue immediately:
-      PsychLoadNormalizedGammaTable(windowRecord->screenNumber, 256, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
+      PsychLoadNormalizedGammaTable(windowRecord->screenNumber, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
     }
 
     #if PSYCH_SYSTEM == PSYCH_OSX
@@ -1516,6 +1516,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
 		free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
 		free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+		windowRecord->inTableSize = 0;
 	 }
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"

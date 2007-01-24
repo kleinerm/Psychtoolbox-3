@@ -1744,6 +1744,18 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 				if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Blitter invocation failed: glUseProgram(%i) failed with error: %s\n", hookfunc->shaderid, gluErrorString(glerr));
 				rc = FALSE;
 			}
+			
+			#if PSYCH_SYSTEM == PSYCH_OSX
+			// On OS-X we can query the OS if the bound shader is running on the GPU or if it is running in emulation mode on the CPU.
+			// This is an expensive operation - it triggers OpenGL internal state revalidation. Only use for debugging and testing!
+			if (PsychPrefStateGet_Verbosity()>5) {
+				long vsgpu=0, fsgpu=0;
+				CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUVertexProcessing, &vsgpu);
+				CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUFragmentProcessing, &fsgpu);
+				printf("PTB-DEBUG: Imaging pipeline GPU shading state: Vertex processing on %s : Fragment processing on %s.\n", (vsgpu) ? "GPU" : "CPU!!", (fsgpu) ? "GPU" : "CPU!!");
+			}
+			#endif
+			
 		}
 	}
 	
