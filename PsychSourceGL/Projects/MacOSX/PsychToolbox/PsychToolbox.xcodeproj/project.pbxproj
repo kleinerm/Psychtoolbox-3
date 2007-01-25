@@ -3169,23 +3169,6 @@
 		};
 /* End PBXBuildRule section */
 
-/* Begin PBXBuildStyle section */
-		0F35BA770B23A7BC0083A954 /* Development */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-			};
-			name = Development;
-		};
-		0F35BA780B23A7BC0083A954 /* Deployment */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Deployment;
-		};
-/* End PBXBuildStyle section */
-
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -7738,12 +7721,6 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
-			buildSettings = {
-			};
-			buildStyles = (
-				0F35BA770B23A7BC0083A954 /* Development */,
-				0F35BA780B23A7BC0083A954 /* Deployment */,
-			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -20227,7 +20204,7 @@
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
-					"-Wl,-exported_symbols_list,$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map",
+					"-Wl,-exported_symbols_list,$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/maci/mexFunction.map",
 					"-lmx",
 					"-lmex",
 					"-lmat",
