@@ -71,7 +71,7 @@ T0 DO:
 #define PSYCH_INVALID_SCUMBER				-1
 
 // Maximum number of different hook chains:
-#define MAX_SCREEN_HOOKS 12
+#define MAX_SCREEN_HOOKS 13
 
 // Maximum number of slots in windowRecords fboTable:
 #define MAX_FBOTABLE_SLOTS 2+3+3+2

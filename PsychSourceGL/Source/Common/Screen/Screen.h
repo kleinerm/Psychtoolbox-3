@@ -177,6 +177,8 @@ PsychError      SCREENDisplaySize(void);
 PsychError      SCREENSetOpenGLTextureFromMemPointer(void);
 PsychError		SCREENColorRange(void);
 PsychError		SCREENHookFunction(void);
+PsychError		SCREENOpenProxy(void);
+PsychError		SCREENTransformTexture(void);
 
 //experimental
 PsychError SCREENGetMouseHelper(void);

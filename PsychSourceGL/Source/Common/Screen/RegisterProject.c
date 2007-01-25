@@ -205,7 +205,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("SetOpenGLTextureFromMemPointer", &SCREENSetOpenGLTextureFromMemPointer));
 	PsychErrorExit(PsychRegister("ColorRange", &SCREENColorRange));
 	PsychErrorExit(PsychRegister("HookFunction", &SCREENHookFunction));
- 	
+ 	PsychErrorExit(PsychRegister("OpenProxy", &SCREENOpenProxy));
+	PsychErrorExit(PsychRegister("TransformTexture", &SCREENTransformTexture));
 	//Experiments
 
 

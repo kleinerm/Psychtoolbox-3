@@ -92,7 +92,8 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"UserspaceBufferDrawingPrepare",
 	"IdentityBlitChain",
 	"LeftFinalizerBlitChain",
-	"RightFinalizerBlitChain"
+	"RightFinalizerBlitChain",
+	"UserDefinedBlit"
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
@@ -107,7 +108,8 @@ char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
 	"Operations to be performed immediately after Screen('Flip') in order to prepare drawing commands of users script.",
 	"Internal(preinitialized): Only for internal use. Only modify for debugging and testing of pipeline itself!",
 	"Internal(preinitialized): Perform last time operation on left (or mono) channel, e.g., draw blue-sync lines.",
-	"Internal(preinitialized): Perform last time operation on right channel, e.g., draw blue-sync lines."
+	"Internal(preinitialized): Perform last time operation on right channel, e.g., draw blue-sync lines.",
+	"Defines a user defined image processing operation for the Screen('TransformTexture') command."
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()

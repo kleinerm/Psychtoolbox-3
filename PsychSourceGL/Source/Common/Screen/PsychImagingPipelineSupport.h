@@ -47,6 +47,7 @@ typedef enum {
 	kPsychIdentityBlit=								9,	// Standard blit chain, used when nothing else available: Copy images from one buffer to next.
 	kPsychLeftFinalizerBlit=						10,	// Very last (single-pass only!) operations on left- or mono channel, e.g., drawing stereo sync lines.
 	kPsychRightFinalizerBlit=						11, // Same for right channel in stereo modes.
+	kPsychUserDefinedBlit=							12, // User defined image processing, e.g., for Screen('TransformTexture').
 } PsychHookType;
 
 // API for PTB core:

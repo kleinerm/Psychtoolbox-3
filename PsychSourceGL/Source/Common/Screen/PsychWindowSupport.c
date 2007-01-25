@@ -982,6 +982,10 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				// hook-chains:
 				PsychShutdownImagingPipeline(windowRecord, TRUE);
     }
+    else if(windowRecord->windowType==kPsychProxyWindow) {
+				// Proxy window object without associated OpenGL state or content.
+				// Nothing to do yet. Just fall through to the imaging pipe shutdown code below...
+    }
     else if(windowRecord->windowType==kPsychNoWindow) {
 				// Partially initialized windowRecord, not yet associated to a real Window system
 				// window or OpenGL rendering context. We skip this one - there's nothing to do.

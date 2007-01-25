@@ -74,7 +74,8 @@ typedef enum {
 	kPsychDoubleBufferOnscreen = 	3,	  
 	kPsychVideoMemoryOffscreen = 	4,
 	kPsychSystemMemoryOffscreen = 	5,
-	kPsychTexture =					6
+	kPsychTexture =					6,
+	kPsychProxyWindow =             7
 	} PsychWindowType; //naming conventions dictate "PsychWindowTypeType" but thats silly.
 
 typedef enum  {
