@@ -2,17 +2,8 @@ function tickPeriod = GetTicksTick
 
 %  tickPeriod = GetTicksTick
 %
-% OS X and 9: ___________________________________________________________________
-%
 %  Return the period of the GetTicks clock. The period is always 1/60.15
-%  seconds.
-%
-% WINDOWS: ________________________________________________________________
-% 
-% GetTicksTick does not exist in Windows.
-% 
-% _________________________________________________________________________
-%
+%  seconds by definition.
 %
 % SEE ALSO: GetTicks, GetSecs, GetSecsTick, GetBusTicks, GetBusTicksTick. 
 

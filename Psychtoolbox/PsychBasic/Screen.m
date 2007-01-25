@@ -11,7 +11,7 @@ function Screen
 % All the Screen Preference settings are documented together:
 % 	Screen Preference?
 % 
-% Screen ARGUMENTS
+% General Screen ARGUMENTS, common to most subfunctions of Screen:
 % 
 % "windowPtr" argument: Screen 'OpenWindow' and 'OpenOffscreenWindow' both
 % return a windowPtr, a number that designates the window you just
@@ -27,13 +27,11 @@ function Screen
 % screen (origin at upper left of screen), or "global", which follows
 % Apple's convention of treating the entire desktop (all your screens) as
 % one big screen, with origin at the upper left of the main screen, which
-% has the menu bar. You can rearrange the screens in the desktop by using
-% Apple's Control Panel: Monitors or Monitors and Sounds. Historically
-% we've had two different orderings of the elements of rect, so, for
-% general compatibility, all of the Psychophysics Toolbox refers to the
-% elements symbolically, through RectLeft, RectTop, etc. Since 2/97, we
-% use Apple's standard ordering: RectLeft=1, RectTop=2, RectRight=3,
-% RectBottom=4.
+% has the menu bar. Historically we've had two different orderings of the
+% elements of rect, so, for general compatibility, all of the Psychophysics
+% Toolbox refers to the elements symbolically, through RectLeft, RectTop, etc.
+% Since 2/97, we use Apple's standard ordering: RectLeft=1, RectTop=2,
+% RectRight=3, RectBottom=4.
 % 
 % [optional arguments]: Brackets in the function list, e.g. [color],
 % indicate optional arguments, not matrices. Optional arguments must be in
@@ -50,8 +48,8 @@ function Screen
 % "clear mex" to flush all the MEX files. When flushed, as part of its 
 % exit sequence, Screen closes all its windows, restores the screen's normal 
 % color table, and shows the cursor. Or you can get just those effects, 
-% without flushing, by calling 
-% Screen('CloseAll') or sca - which is an abbreviation for Screen('CloseAll').
+% without flushing, by calling Screen('CloseAll') or sca - which is an 
+% abbreviation for Screen('CloseAll').
 %
 % You can use Matlab's EVAL command to do this for you automatically. E.g.
 % if your program is called "foo.m", run your program by calling EVAL:
@@ -61,9 +59,9 @@ function Screen
 % second argument to EVAL, which restores your screen and reports the
 % error.
 %
-% OSX: ___________________________________________________________________
+% OpenGL: _________________________________________________________________
 %
-% Instead of offscreen windows, the OS X Psychtoolbox uses fast rendering
+% Instead of offscreen windows, the OpenGL Psychtoolbox uses fast rendering
 % and OpenGL textures for animation. With the exception of matrices, all
 % drawing may be done during the animation loop directly to the  onscreen
 % window, rather than being rendered to offscreen windows before the start
@@ -77,7 +75,7 @@ function Screen
 % on next vertical blank by a call to Screen('Flip', windowPtr).  
 %
 % See MovieDemoOSX and DriftDemoOSX for examples of how to create and show
-% movies in OS X.
+% movies this way.
 %
 % Off-screen windows are invisible, but useful as an intermediate place to
 % create and store images for later display. Copying from window to window
@@ -107,7 +105,7 @@ function Screen
 %
 % Ctrl-C halts any program.  (Type a "c" while holding down the "Ctrl"
 % key). Sometimes, Ctrl-C fails to halt progams executing in a Matlab process
-% run with the "nojvm" option. To halt a runaway Psychtoolbox script in
+% run with the "-nojvm" option. To halt a runaway Psychtoolbox script in
 % Psychtoolbox you might resort to the Windows Task Manager to kill
 % the Matlab process.  (Use Ctrl-Alt-Delete to open a window from which
 % you can start the Task Manager.)
@@ -156,8 +154,8 @@ function Screen
 % and the output of PTB to the Matlab window.
 
 % HISTORY
-% 7/12/04   awi     ****** OSX fork from the OS9 version *******
-%                   Divided into sections for OSX, OS9 and Win. 
+% 7/12/04   awi  ****** OSX fork from the OS9 version *******
+%                Divided into sections for OSX, OS9 and Win. 
 % 10/4/05   awi  Note here cosmetic changes by dgp on unknown date between 7/12/04 and 10/4/05
 % 11/16/06  mk   Rewritten to more closely match reality on PTB-3.
-
+% 01/25/07  mk   Refined again.

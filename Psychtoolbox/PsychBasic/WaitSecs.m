@@ -2,13 +2,13 @@ function WaitSecs(s)
 % WaitSecs(s)
 %
 % Waits "s" seconds with high precision.  The timing precision  depends on
-% the model of your computer, use GetSecsTick to report the  precision for
-% your computer.  
+% the model of your computer, but a well configured system will be accurate
+% to about 1 millisecond if your script is executed with realtime-priority
+% (See help Priority) and well written.
 % 
 % WaitSecs(s) is similar to Matlab's built-in PAUSE(s) command. The
-% advantage of WaitSecs(s) is that it is much more accurate, and can be
-% aborted by hitting Command-Period. However, PAUSE can be turned 'ON' and
-% 'OFF', which is useful for scripts.
+% advantage of WaitSecs(s) is that it is much more accurate. However, PAUSE
+% can be turned 'ON' and 'OFF', which is useful for scripts.
 % 
 % TIMING ADVICE: the first time you access any MEX function or M file,
 % Matlab takes several hundred milliseconds to load it from disk.
@@ -27,23 +27,6 @@ function WaitSecs(s)
 % setting.  
 %
 % WaitSecs ignores the OX MATLAB <ctrl>-C break key sequenece.
-%
-% OS 9: ___________________________________________________________________
-%
-% Uses the extremely accurate PowerPC processor clock if the UpTime trap is
-% available (PowerMac  with Mac OS 8.6 or better). Otherwise uses the Time
-% Manager's Microseconds trap. The Time Manager seems to lose time when
-% interrupts are suppressed, whereas UpTime is unaffected.
-%
-% GetSecs, WaitSecs, and several other MEX files use the VideoToolbox
-% Seconds.c function as their timebase. Seconds.c uses the Mac OS UpTime
-% trap if available. This trap is based on a hardware counter in the
-% PowerPC processor, which provides extremely stable reliable timing.
-% However, the Mac OS conversion from a count to a time uses an
-% Apple-supplied conversion factor that is only accurate to about 1%. To
-% make your timing more accurate you can scale all values returned by
-% Seconds.c by setting the scale factor different from 1 in Screen
-% Preference SecondsMultiplier. Run GetSecsTest to do this automatically.
 %
 % WINDOWS:_________________________________________________________________
 %
