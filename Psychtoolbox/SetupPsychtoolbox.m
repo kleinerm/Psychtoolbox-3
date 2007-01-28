@@ -48,7 +48,7 @@ clear mex
 % Check OS
 isWin=strcmp(computer,'PCWIN');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
-if ~isWin && ~isOSX
+if ~isWin & ~isOSX
 os=computer;
 if strcmp(os,'MAC2')
 os='Mac OS9';

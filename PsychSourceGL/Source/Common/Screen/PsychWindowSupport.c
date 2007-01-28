@@ -95,7 +95,8 @@ void PsychRebindARBExtensionsToCore(void)
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
     if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
     if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
-    if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
+    // if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
+    if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;
     if (NULL == glUniform1f) glUniform1f = glUniform1fARB;
     if (NULL == glUniform2f) glUniform2f = glUniform2fARB;
     if (NULL == glUniform3f) glUniform3f = glUniform3fARB;
