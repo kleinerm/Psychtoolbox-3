@@ -926,6 +926,16 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     PsychWindowRecordType	**windowRecordArray;
     int                         i, numWindows; 
     
+	// Extra child-protection to protect against half-initialized windowRecords...
+	if (!windowRecord->isValid) {
+		if (PsychPrefStateGet_Verbosity()>5) {
+			printf("PTB-ERROR: Tried to destroy invalid windowRecord. Screw up in init sequence?!? Skipped.\n");
+			fflush(NULL);
+		}
+		
+		return;
+	}
+	
 	// If our to-be-destroyed windowRecord is currently bound as drawing target,
 	// e.g. as onscreen window or offscreen window, then we need to soft-reset
 	// our drawing engine - Unbind its FBO (if any) and reset current target to
@@ -953,22 +963,23 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				// Sync and idle the pipeline again:
                 glFinish();
 
+                // We need to NULL-out all references to the - now destroyed - OpenGL context:
+                PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+                for(i=0;i<numWindows;i++) {
+                    if (windowRecordArray[i]->targetSpecific.contextObject == windowRecord->targetSpecific.contextObject &&
+                        (windowRecordArray[i]->windowType==kPsychTexture || windowRecordArray[i]->windowType==kPsychProxyWindow)) {
+                        windowRecordArray[i]->targetSpecific.contextObject = NULL;
+						windowRecordArray[i]->targetSpecific.glusercontextObject = NULL;
+                    }
+                }
+                PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+
                 // Disable rendering context:
                 PsychOSUnsetGLContext(windowRecord);
 
 				// Call OS specific low-level window close routine:
 				PsychOSCloseWindow(windowRecord);
 
-                // We need to NULL-out all references to the - now destroyed - OpenGL context:
-                PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-                for(i=0;i<numWindows;i++) {
-                    if (windowRecordArray[i]->targetSpecific.contextObject == windowRecord->targetSpecific.contextObject &&
-                        windowRecordArray[i]->windowType==kPsychTexture) {
-                        windowRecordArray[i]->targetSpecific.contextObject = NULL;
-						windowRecordArray[i]->targetSpecific.glusercontextObject = NULL;
-                    }
-                }
-                PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
                 windowRecord->targetSpecific.contextObject=NULL;
 				
 				// Execute hook chain for final non-OpenGL related shutdown:
@@ -985,7 +996,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
     }
     else if(windowRecord->windowType==kPsychProxyWindow) {
 				// Proxy window object without associated OpenGL state or content.
-				// Nothing to do yet. Just fall through to the imaging pipe shutdown code below...
+				// Run shutdown sequence for imaging pipeline in case the proxy has bounce-buffer or
+				// lookup table textures or FBO's attached:
+				PsychShutdownImagingPipeline(windowRecord, TRUE);
     }
     else if(windowRecord->windowType==kPsychNoWindow) {
 				// Partially initialized windowRecord, not yet associated to a real Window system
@@ -2357,28 +2370,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// Do we already have a framebuffer object for this texture? All textures start off without one,
 					// because most textures are just used for drawing them, not drawing *into* them. Therefore we
 					// only create a full blown FBO on demand here.
-					if (windowRecord->drawBufferFBO[0]==-1) {
-                        // No. This texture is used the first time as a drawing target.
-						// Need to create a framebuffer object for it first.
-						
-						// Allocate and assign FBO object info structure PsychFBO:
-						PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect));
-						
-						// Manually set up the color attachment texture id to our texture id:
-						windowRecord->fboTable[0]->coltexid = windowRecord->textureNumber;
-						
-						// Initialize and setup FBO object (optionally with z- and stencilbuffer) and attach the texture
-						// as color attachment 0, aka main colorbuffer:				
-						if (!PsychCreateFBO(&(windowRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect))) {
-							// Failed!
-							PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
-
-						}					
-
-						// Worked. Set up remaining state:
-						windowRecord->fboCount = 1;
-						windowRecord->drawBufferFBO[0]=0;
-                    }
+					PsychCreateShadowFBOForTexture(windowRecord, TRUE, -1);
 
 					// Switch to FBO for given texture or offscreen window:
 					glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[0]->fboid);
@@ -2398,10 +2390,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
 					}
 				}
-                    
-				// Do we need this? glDrawBuffer(GL_COLOR_ATTACHMENT0_EXT);
-				// Need to bind standard framebuffer (which has id 0):
-				
+
 				// Fast path for rendertarget switch finished.
             }	// End of fast-path: FBO based processing...
             else {

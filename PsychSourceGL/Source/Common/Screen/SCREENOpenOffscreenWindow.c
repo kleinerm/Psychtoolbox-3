@@ -244,6 +244,12 @@ PsychError SCREENOpenOffscreenWindow(void)
 	}
 	else {
 		// Traditional texture creation code:
+		
+		// Special case for alpha-channel: DBL_MAX signals maximum alpha
+		// value requested. In our own code we need to manually map this to
+		// the maximum uint8 alpha value of 255:
+		if (color.value.rgba.a == DBL_MAX) color.value.rgba.a = 255;
+		
 		// Allocate the texture memory:
 		// We only allocate the amount really needed for given format, aka numMatrixPlanes - Bytes per pixel.
 		xSize = PsychGetWidthFromRect(rect);

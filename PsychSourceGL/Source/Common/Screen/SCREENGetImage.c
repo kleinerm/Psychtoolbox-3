@@ -76,10 +76,6 @@ PsychError SCREENGetImage(void)
 
         glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);
-
-        // Enable this windowRecords framebuffer as current drawingtarget. This should
-	// also allow us to "GetImage" from Offscreen windows:
-        PsychSetDrawingTarget(windowRecord);
         
 	// Retrieve optional read rectangle:
         PsychGetRectFromWindowRecord(windowRect, windowRecord);
@@ -122,12 +118,24 @@ PsychError SCREENGetImage(void)
 	  whichBuffer=(isDoubleBuffer) ? GL_BACK : GL_FRONT;
 	}
 
+	// Enable this windowRecords framebuffer as current drawingtarget. This should
+	// also allow us to "GetImage" from Offscreen windows:
+	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
+		// Special case: Imaging pipeline active - We need to activate system framebuffer
+		// so we really read the content of the framebuffer and not of some FBO:
+		PsychSetDrawingTarget(NULL);
+	}
+	else {
+		// Normal case: No FBO based imaging - Select drawing target as usual:
+		PsychSetDrawingTarget(windowRecord);
+	}
+	
 	// Select requested read buffer:
-        glReadBuffer(whichBuffer);
-        
-        sampleRectWidth=PsychGetWidthFromRect(sampleRect);
-        sampleRectHeight=PsychGetHeightFromRect(sampleRect);
-        
+	glReadBuffer(whichBuffer);
+	
+	sampleRectWidth=PsychGetWidthFromRect(sampleRect);
+	sampleRectHeight=PsychGetHeightFromRect(sampleRect);
+	
 	//Note this will only work correctly for 8-bit pixels.  
 	if(PsychAllocOutUnsignedByteMatArg(1, TRUE, sampleRectHeight, sampleRectWidth, 3, &returnArrayBase)){
 	  redPlane= PsychMallocTemp(3 * sizeof(GL_UNSIGNED_BYTE) * sampleRectWidth * sampleRectHeight);

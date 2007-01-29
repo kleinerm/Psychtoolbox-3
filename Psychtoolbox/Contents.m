@@ -46,33 +46,35 @@
 % Pelli, D.G. (1997) The VideoToolbox software for visual psychophysics:
 %           Transforming numbers into movies, Spatial Vision 10:437-442.
 % 
-% PsychAlpha            - Under development. Experimental, risky, undocumented.
-% PsychAlphaBlending    - OpenGL alpha-channel blending utilities and constants.  
-% PsychBasic            - Basic support routines for psychophysics.
-% PsychBeta             - Under development.  
-% PsychCal              - Calibrate your video monitors.
-% PsychCalDemoData      - Demo calibration data.
-% PsychColorimetric     - Colorimetric calculations.
-% PsychColorimetricData - Standard colorimetric data.
-% PsychContributed      - Contributed programs.
-% PsychDemos            - Show how to use the Psychtoolbox.
-% PsychDocumentation    - Documentation about specific topics.
-% PsychFiles            - Process text files.
-% PsychGamma            - Fit monitor gamma functions.
-% PsychHardware         - Interface to plug-in hardware.
-% PsychInitialize       - Initialize and deinitialize MATLAB
-% PsychMatlabTests      - Document the few bugs in Matlab 5.2.1.
-% PsychObsolete         - Obsolete routines, still present for compatibility.
-% PsychOpenGL           - Routines for low-level access to OpenGL 3D graphics.
-% Psychometric          - Psychometric function fitting.
-% PsychOneliners        - Trivial, but handy, functions.
-% PsychOptics           - Optics calculations, mostly for human optics.
-% PsychPriority         - Priority and Rush.  (formerly within PsychBasic)
-% PsychProbability      - Probability and statistics.
-% PsychRects            - Manipulate rectangles for drawing.
-% PsychSignal           - Signal processing and math routines.
-% PsychTests            - Evaluate performance of software and hardware.
-% Quest                 - Threshold estimation procedure.
+% PsychAlpha             - Under development. Experimental, risky, undocumented.
+% PsychAlphaBlending     - OpenGL alpha-channel blending utilities and constants.  
+% PsychBasic             - Basic support routines for psychophysics.
+% PsychBeta              - Under development.  
+% PsychCal               - Calibrate your video monitors.
+% PsychCalDemoData       - Demo calibration data.
+% PsychColorimetric      - Colorimetric calculations.
+% PsychColorimetricData  - Standard colorimetric data.
+% PsychContributed       - Contributed programs.
+% PsychDemos             - Show how to use the Psychtoolbox.
+% PsychDocumentation     - Documentation about specific topics.
+% PsychFiles             - Process text files.
+% PsychGamma             - Fit monitor gamma functions.
+% PsychGLImageProcessing - Built-in image processing via graphics hardware.
+% PsychHardware          - Interface to plug-in hardware.
+% PsychInitialize        - Initialize and deinitialize MATLAB
+% PsychMatlabTests       - Document the few bugs in Matlab 5.2.1.
+% PsychObsolete          - Obsolete routines, still present for compatibility.
+% PsychOpenGL            - Routines for low-level access to OpenGL 3D graphics.
+% Psychometric           - Psychometric function fitting.
+% PsychOneliners         - Trivial, but handy, functions.
+% PsychOptics            - Optics calculations, mostly for human optics.
+% PsychPriority          - Priority and Rush.  (formerly within PsychBasic)
+% PsychProbability       - Probability and statistics.
+% PsychRects             - Manipulate rectangles for drawing.
+% PsychSignal            - Signal processing and math routines.
+% PsychTests             - Evaluate performance of software and hardware.
+% PsychVideoCapture      - Functions for realtime video capture.
+% Quest                  - Threshold estimation procedure.
 
 
 % The OS 9 version was this:

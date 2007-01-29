@@ -70,12 +70,19 @@ boolean	PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 boolean	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 // Internal helper functions:
+
 PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, int hookfunctype);
 int		PsychGetHookByName(const char* hookName);
+
 // Setup source -> rendertarget binding for next rendering pass:
 void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo);
+
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
 Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height);
+
+// Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
+void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolean asRendertarget, int forImagingmode);
+
 boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
 boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 

@@ -818,8 +818,8 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	
     // Setup texture wrapping behaviour to clamp, as other behaviours are
     // unsupported on many gfx-cards for rectangle textures:
-    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP);
-    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glTexParameterf(GL_TEXTURE_RECTANGLE_EXT,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
 	
     // Setup filtering for the textures - Use nearest neighbour by default, as floating
     // point filtering usually unsupported.
@@ -1007,6 +1007,75 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	return(TRUE);
 }
 
+/* PsychCreateShadowFBOForTexture()
+ * Check if provided PTB texture already has a PsychFBO attached. Do nothing if so.
+ * If a FBO is missing, create one.
+ *
+ * If asRendertarget is FALSE, we only create the data structure, not a real OpenGL FBO,
+ * so the texture is only suitable as image source for image processing.
+ *
+ * If asRendertraget is TRUE, we create a full blown FBO, so the texture can be used as
+ * rendertarget.
+ *
+ */
+void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolean asRendertarget, int forImagingmode)
+{
+	GLenum fboInternalFormat;
+	
+	// Do we already have a framebuffer object for this texture? All textures start off without one,
+	// because most textures are just used for drawing them, not drawing *into* them. Therefore we
+	// only create a full blown FBO on demand here.
+	if (textureRecord->drawBufferFBO[0]==-1) {
+		// No. This texture is used the first time as a drawing target.
+		// Need to create a framebuffer object for it first.
+		
+		if (textureRecord->textureNumber > 0) {
+			// Allocate and assign FBO object info structure PsychFBO:
+			PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 0, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect));
+			
+			// Manually set up the color attachment texture id to our texture id:
+			textureRecord->fboTable[0]->coltexid = textureRecord->textureNumber;
+		}
+		else {
+			// No texture yet. Create suitable one for given imagingmode:
+
+			// Start off with standard 8 bpc fixed point:
+			fboInternalFormat = GL_RGBA8;
+			
+			// Need 16 bpc fixed point precision?
+			if (forImagingmode & kPsychNeed16BPCFixed) fboInternalFormat = GL_RGBA16;
+			
+			// Need 16 bpc floating point precision?
+			if (forImagingmode & kPsychNeed16BPCFloat) fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+			
+			// Need 32 bpc floating point precision?
+			if (forImagingmode & kPsychNeed32BPCFloat) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+			
+			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect));
+			
+			// Manually set up the texture id from our color attachment texture id:
+			textureRecord->textureNumber = textureRecord->fboTable[0]->coltexid;
+		}
+				
+		// Worked. Set up remaining state:
+		textureRecord->fboCount = 1;
+		textureRecord->drawBufferFBO[0]=0;
+	}
+	
+	// Does it need to be suitable as a rendertarget? If so, check if it is already, upgrade it if neccessary:
+	if (asRendertarget && textureRecord->fboTable[0]->fboid==0) {
+		// Initialize and setup real FBO object (optionally with z- and stencilbuffer) and attach the texture
+		// as color attachment 0, aka main colorbuffer:				
+		if (!PsychCreateFBO(&(textureRecord->fboTable[0]), (GLenum) 1, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect))) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Preparation of drawing into an offscreen window or texture failed when trying to create associated framebuffer object!");
+			
+		}					
+	}
+	
+	return;
+}
+
 /* PsychShutdownImagingPipeline()
  * Shutdown imaging pipeline for a windowRecord and free all ressources associated with it.
  */
@@ -1128,7 +1197,7 @@ PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, 
 	}
 	
 	// New hookfunc struct is enqueued and zero initialized. Fill rest of its fields:
-	hookfunc->idString = strdup(idString);
+	hookfunc->idString = (idString) ? strdup(idString) : strdup("");
 	hookfunc->hookfunctype = hookfunctype;
 	
 	// Return pointer to new hook slot:
@@ -1197,7 +1266,7 @@ void PsychPipelineAddShaderToHook(PsychWindowRecordType *windowRecord, const cha
 	PtrPsychHookFunction hookfunc = PsychAddNewHookFunction(windowRecord, hookString, idString, where, kPsychShaderFunc);
 	// Init remaining fields:
 	hookfunc->shaderid =  shaderid;
-	hookfunc->pString1 =  strdup(blitterString);
+	hookfunc->pString1 =  (blitterString) ? strdup(blitterString) : strdup("");
 	hookfunc->luttexid1 = luttexid1;
 	return;
 }
@@ -1243,7 +1312,7 @@ void PsychPipelineAddRuntimeFunctionToHook(PsychWindowRecordType *windowRecord, 
 	// Create and attach proper preinitialized hook function and return pointer to it for further initialization:
 	PtrPsychHookFunction hookfunc = PsychAddNewHookFunction(windowRecord, hookString, idString, where, kPsychMFunc);
 	// Init remaining fields:
-	hookfunc->pString1 =  strdup(evalString);
+	hookfunc->pString1 =  (evalString) ? strdup(evalString) : strdup("");
 	return;
 }
 
@@ -1263,7 +1332,7 @@ void PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, 
 	// Create and attach proper preinitialized hook function and return pointer to it for further initialization:
 	PtrPsychHookFunction hookfunc = PsychAddNewHookFunction(windowRecord, hookString, idString, where, kPsychBuiltinFunc);
 	// Init remaining fields:
-	hookfunc->pString1 =  strdup(configString);
+	hookfunc->pString1 =  (configString) ? strdup(configString) : strdup("");
 	return;
 }
 
@@ -1654,6 +1723,12 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 
 		// Set texture application mode to replace:
 		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
 		glEnable(GL_TEXTURE_RECTANGLE_EXT);
 		glDisable(GL_TEXTURE_2D);
 	}

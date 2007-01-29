@@ -202,7 +202,8 @@ if shadertype == 2
     for dy=-hwy:hwy
         for dx=-hwx:hwx
             i= i + 1;
-            src = [src '  sum += ' num2str(shaderkernel(i)) ' * texture2DRect(Image, gl_TexCoord[0].st + vec2(' num2str(dx) '.0, ' num2str(dy) '.0))' ifetch ';' char(10)];
+%            src = [src '  sum += ' num2str(shaderkernel(i)) ' * texture2DRect(Image, gl_TexCoord[0].st + vec2(' num2str(dx) '.0, ' num2str(dy) '.0))' ifetch ';' char(10)];
+            src = [src '  sum += ' sprintf('%.16f',shaderkernel(i)) ' * texture2DRect(Image, gl_TexCoord[0].st + vec2(' num2str(dx) '.0, ' num2str(dy) '.0))' ifetch ';' char(10)];
         end
     end
 
@@ -312,7 +313,7 @@ if shadertype < 2
     if shadertype == 0
         % Output the kernel itself:
         for i=1:(kernelw*kernelh)
-            src = sprintf('%s kernel[%i] = %f;', src, i-1, shaderkernel(i));
+            src = sprintf('%s kernel[%i] = %.16f;', src, i-1, shaderkernel(i));
         end
     end
 

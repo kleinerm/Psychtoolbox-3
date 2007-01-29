@@ -92,7 +92,10 @@ void ScreenCloseAllWindows(void)
     // more stress on the PsychCloseWindow() path. If we have bugs there, chances are
     // higher they get exposed this way, which long-term is a good thing(TM).
     PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-    for(i = numWindows - 1; i >= 0; i--) PsychCloseWindow(windowRecordArray[i]);
+    for(i = numWindows - 1; i >= 0; i--) {
+		if (PsychPrefStateGet_Verbosity()>5) { printf("PTB-DEBUG: In ScreenCloseAllWindows(): Destroying window %i\n", i); fflush(NULL); }
+		PsychCloseWindow(windowRecordArray[i]);
+	}
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 
     // Release all captured displays
