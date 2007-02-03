@@ -479,7 +479,10 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // Stereo display support: If stereo display output is requested with OpenGL native stereo,
     // we request a stereo-enabled rendering context.
     if(stereomode==kPsychOpenGLStereo) {
-      flags = flags | PFD_STEREO;
+      // MK: Don't request stereo for initial probe context.
+		// Let's see if this helps Quadro cards to properly initialize
+		// quad-buffered stereo contexts...
+		// flags = flags | PFD_STEREO;
 		attribs[attribcount++]=0x2012; // WGL_STEREO_ARB
 		attribs[attribcount++]=GL_TRUE;
     }
@@ -592,21 +595,21 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		fflush(NULL);
 	}
 	else {
-		printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
 	}
 
-    DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+   // DescribePixelFormat(hDC, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
 
-    if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
-      // Ooops. Couldn't get the requested stereo-context from hardware :(
-      ReleaseDC(hDC, hWnd);
-      DestroyWindow(hWnd);
-
-      printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
-	     "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
-
-      return(FALSE);
-    }
+   // if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
+   //   // Ooops. Couldn't get the requested stereo-context from hardware :(
+   //   ReleaseDC(hDC, hWnd);
+   //   DestroyWindow(hWnd);
+   //
+   //   printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
+	//     "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
+   //
+   //   return(FALSE);
+   //  }
 
 	 // Step 2: Ok, we have an OpenGL rendering context: Query and bind wglChoosePixelFormat and friends...
 	 // Try to dynamically bind pixelformat extension. This will leave us with a NULL-Ptr if unsupported:
@@ -919,9 +922,6 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // Release the capture, whatever that means...
   ReleaseCapture();
 
-  // Restore video settings from the defaults in the Windows registry:
-  ChangeDisplaySettings(NULL, 0);
-
   // Close & Destroy the window:
   DestroyWindow(windowRecord->targetSpecific.windowHandle);
   windowRecord->targetSpecific.windowHandle=NULL;
@@ -938,6 +938,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
       hInstance=NULL;
     }
   }
+
+  // Restore video settings from the defaults in the Windows registry:
+  ChangeDisplaySettings(NULL, 0);
 
   // Done.
   return;
