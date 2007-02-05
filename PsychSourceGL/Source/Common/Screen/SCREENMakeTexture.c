@@ -39,8 +39,8 @@
 
 	
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0] [, floatprecision=0]);";
-//                                                            1            2              3                          4                5
+static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0] [, floatprecision=0] [, textureOrientation=0]);";
+//                                                            1            2              3                          4                5                    6
 static char synopsisString[] = 
 	"Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture. "
 	"In the the OS X Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
@@ -61,9 +61,16 @@ static char synopsisString[] =
 	"texture gets stored in half_float format, i.e. 16 bit per color component - Suitable for most display purposes and "
 	"fast on recent gfx-hardware. A value of 2 asks for full 32 bit single precision float per color component. Useful for complex "
 	"computations and image processing, but can be extremely slow when texture filtering is used on any piece of graphics hardware "
-	"manufactured before the year 2007.";
+	"manufactured before the year 2007. 'textureOrientation' This optional argument labels textures with a special orientation. "
+	"Normally (value 0) a Matlab matrix is passed in standard Matlab column-major dataformat. This is efficient for drawing of "
+	"textures but not for processing them via Screen('TransformTexture'). Therefore textures need to be transformed on demand "
+	"if used that way. This flag allows to short-cut the process: A setting of 1 will ask for immediate conversion into the "
+	"optimized format. A setting of 2 will tell PTB that the Matlab matrix has been already converted into optimal format, "
+	"so no further processing is needed. A value of 3 tells PTB that the texture is completely isotropic, with no real orientation,"
+	"therefore no conversion is required. This latter setting only makes sense for random noise textures or other textures generated "
+	"from a distribution with uncorrelated noise-like pixels, e.g., some power spectrum distribution. ";
 	  
-static char seeAlsoString[] = "DrawTexture BlendFunction";
+static char seeAlsoString[] = "DrawTexture TransformTexture BlendFunction";
 
 
 	 
@@ -82,7 +89,7 @@ PsychError SCREENMakeTexture(void)
 	GLfloat								*texturePointer_f;
     double *rp, *gp, *bp, *ap;    
     GLubyte *rpb, *gpb, *bpb, *apb;    
-    int                                 usepoweroftwo, usefloatformat;
+    int                                 usepoweroftwo, usefloatformat, assume_texorientation;
     double                              optimized_orientation;
     Boolean                             bigendian;
 
@@ -101,7 +108,7 @@ PsychError SCREENMakeTexture(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(5));   	
+    PsychErrorExit(PsychCapNumInputArgs(6));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(1)); 
     
@@ -111,6 +118,10 @@ PsychError SCREENMakeTexture(void)
     if((windowRecord->windowType!=kPsychDoubleBufferOnscreen) && (windowRecord->windowType!=kPsychSingleBufferOnscreen))
         PsychErrorExitMsg(PsychError_user, "MakeTexture called on something else than a onscreen window");
     
+	// Get optional texture orientation flag:
+	assume_texorientation = 0;
+	PsychCopyInIntegerArg(6, FALSE, &assume_texorientation);
+	
     //get the argument and sanity check it.
     isImageMatrixBytes=PsychAllocInUnsignedByteMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &byteMatrix);
     isImageMatrixDoubles=PsychAllocInDoubleMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &doubleMatrix);
@@ -120,6 +131,17 @@ PsychError SCREENMakeTexture(void)
         PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Specified image matrix must be at least 1 x 1 pixels in size");
     if(! (isImageMatrixBytes || isImageMatrixDoubles))
         PsychErrorExitMsg(PsychError_user, "Illegal argument type");  //not  likely. 
+
+	// Is this a special image matrix which is already pre-transposed to fit our optimal format?
+	if (assume_texorientation == 2) {
+		// Yes. Swap xSize and ySize to take this into account:
+		ix = xSize;
+		xSize = ySize;
+		ySize = ix;
+		ix = 0;
+	}
+
+	// Build defining rect for this texture:
     PsychMakeRect(rect, 0, 0, xSize, ySize);
 
     // Copy in texture preferred draw orientation hint. We default to zero degrees, if
@@ -428,6 +450,22 @@ PsychError SCREENMakeTexture(void)
     // Texture ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(textureRecord);
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);
+	
+	// Swapping the texture to upright orientation requested?
+	if (assume_texorientation == 1) {
+		// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
+		// that format. We require this standard orientation for simplified shader design.
+		PsychNormalizeTextureOrientation(textureRecord);
+	}
+	
+	// Shall the texture be finally declared "normally oriented"?
+	// This is either due to explicit renderswapping if assume_textureorientation == 1,
+	// or because it was already pretransposed in Matlab/Octave if assume_textureorientation == 2,
+	// or because user space tells us the texture is isotropic if assume_textureorientation == 3.
+	if (assume_texorientation > 0) {
+		// Yes. Label it as such:
+		textureRecord->textureOrientation = 2;
+	}
     
     if(PsychPrefStateGet_DebugMakeTexture()) 	//MARK #4
         StoreNowTime();

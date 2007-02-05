@@ -133,8 +133,8 @@ try
         % Draw right stim:
         Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
 
-        %SetAnaglyphStereoParameters('LeftGains', windowPtr, [0.5*(1+cos(GetSecs)) 0.0 0.0]);
-        %SetAnaglyphStereoParameters('RightGains', windowPtr, [0.0 1.0 0.5*(1+cos(GetSecs))]);
+        SetAnaglyphStereoParameters('LeftGains', windowPtr, [0.5*(1+cos(GetSecs)) 0.0 0.0]);
+        SetAnaglyphStereoParameters('RightGains', windowPtr, [0.0 1.0 0.5*(1+cos(GetSecs))]);
         
         % Take timestamp of stimulus-onset after displaying the new stimulus
         % and record it in vector t:

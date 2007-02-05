@@ -85,6 +85,7 @@ if nargin < 6 || isempty(dontclear)
     dontclear = 0; % Clear backbuffer to background color by default after each bufferswap.
 end
 
+
 if dontclear > 0
     % A value of 2 will prevent any change to the backbuffer after a
     % bufferswap. In that case it is your responsibility to take care of
@@ -162,7 +163,7 @@ try
         dstRect(i,:)=CenterRectOnPoint(objRect * scale, xc, yc);
     end
 
-    tex = Screen('OpenOffscreenWindow', win, 0, [0 0 rectSize rectSize]);            
+    %tex = Screen('OpenOffscreenWindow', win, 0, [0 0 rectSize rectSize]);            
 
     % Init framecounter to zero and take initial timestamp:
     count = 0; 
@@ -189,11 +190,11 @@ try
             end
             
             % Convert it to a texture 'tex':
-            intex=Screen('MakeTexture', win, noiseimg);
+            tex=Screen('MakeTexture', win, noiseimg, [], [],[], 1);
 
-            %tex=Screen('MakeTexture', win, transpose(flipud(noiseimg)));
+            %tex=Screen('MakeTexture', win, transpose(flipud(noiseimg)), [], [],[], 2);
             %Screen('PutImage', tex, noiseimg);
-            Screen('DrawTexture', tex, intex, [], [], [], 0);
+            %Screen('DrawTexture', tex, intex, [], [], [], 0);
             
             % Draw the texture into the screen location defined by the
             % destination rectangle 'dstRect(i,:)'. If dstRect is bigger
@@ -233,7 +234,7 @@ try
             end
             
             % After drawing, we can discard the noise texture.
-            Screen('Close', intex);
+            Screen('Close', tex);
         end
         
         % Done with drawing the noise patches to the backbuffer: Initiate

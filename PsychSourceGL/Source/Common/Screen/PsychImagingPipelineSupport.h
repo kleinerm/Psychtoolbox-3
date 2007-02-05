@@ -83,6 +83,9 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolean asRendertarget, int forImagingmode);
 
+// On demand normalization of texture orientation to standard upright format:
+void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord);
+
 boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
 boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 

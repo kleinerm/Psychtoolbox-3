@@ -108,7 +108,7 @@ end
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
             end
-            glUniform3fv(uniloc, 3, rgb);
+            glUniform3fv(uniloc, 1, rgb);
         end
     end
     
@@ -119,7 +119,7 @@ end
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
             end
-            glUniform3fv(uniloc, 3, rgb);
+            glUniform3fv(uniloc, 1, rgb);
         end
     end
     
@@ -130,7 +130,7 @@ end
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
             end
-            glUniform3fv(uniloc, 3, rgb);
+            glUniform3fv(uniloc, 1, rgb);
         end
     end
 
