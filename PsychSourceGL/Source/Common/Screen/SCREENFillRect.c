@@ -81,40 +81,36 @@ PsychError SCREENFillRect(void)
 	if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 
 	PsychSetGLContext(windowRecord);
-   // Enable this windowRecords framebuffer as current drawingtarget:
-   PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
-	if(isScreenRect && PsychIsOnscreenWindow(windowRecord)){
-		// Fullscreen rect fill which in GL is a special case which may be accelerated.
-      // We only use this fast-path on real onscreen windows, not on textures or
-      // offscreen windows.
-		dVals[3]=1.0;
-		PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
-		glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
-		glClear(GL_COLOR_BUFFER_BIT);
+	if(isScreenRect && PsychIsOnscreenWindow(windowRecord) && 
+	   (windowRecord->stereomode < kPsychAnaglyphRGStereo || windowRecord->stereomode > kPsychAnaglyphBRStereo || windowRecord->imagingMode > 0)){
+	  // Fullscreen rect fill which in GL is a special case which may be accelerated.
+	  // We only use this fast-path on real onscreen windows, not on textures or
+	  // offscreen windows.
+	  dVals[3]=1.0;
+	  PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
+	  glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
+	  glClear(GL_COLOR_BUFFER_BIT);
 	}else{
-		// Subregion fill or fullscreen fill into offscreen window or texture: Draw a colored rect.
-		PsychSetGLColor(&color, windowRecord);
-
-		if (isScreenRect) {
-			// Fullscreen fill of a non-onscreen window:
-			PsychGLRect(windowRecord->rect);
-		} else {
-			// Partial fill: Draw provided rect:
-			PsychGLRect(rect);
-		}
+	  // Subregion fill or fullscreen fill into offscreen window or texture: Draw a colored rect.
+	  PsychSetGLColor(&color, windowRecord);
+	  
+	  if (isScreenRect) {
+	    // Fullscreen fill of a non-onscreen window:
+	    PsychGLRect(windowRecord->rect);
+	  } else {
+	    // Partial fill: Draw provided rect:
+	    PsychGLRect(rect);
+	  }
 	}
-       
-   // Mark end of drawing op. This is needed for single buffered drawing:
-   PsychFlushGL(windowRecord);
-
+	
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
+	
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-
-
-
-
-

@@ -157,7 +157,8 @@ typedef struct {
 #define kPsychDisableAUXBuffers 1
 // Use Client storage for RAM->DMA texturing instead of VRAM texturing.
 #define kPsychDontCacheTextures 2
-
+// Do not use wglChoosePixelformat - extension on M$-Windows:
+#define kPsychOverrideWglChoosePixelformat 4
 
 //function protoptypes
 
