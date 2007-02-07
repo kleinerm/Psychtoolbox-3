@@ -1,10 +1,15 @@
-function mwrite( funcp, M )
+function mwrite( funcp, M, openal )
 
 % MWRITE  Write an M-file wrapper function
 %
-% mwrite( funcp, M )
+% mwrite( funcp, M, openal )
 
 % 24-Jan-2005 -- created;  adapted from code in autocode.m (RFM)
+% 06-Feb-2007 -- Modified; can now handle OpenAL as well. (MK)
+
+if nargin < 3
+	openal = 0;
+end
 
 % set names for temporary files
 tmpwrapfile1='/tmp/mogl_wrap1.m';
@@ -27,7 +32,11 @@ if ~isempty(M.arg_in),
 end
 % write
 fprintf(fid,'function %s\n\n',fndef);
-fprintf(fid,'%% %s  Interface to OpenGL function %s\n%%\n',funcp.fname,funcp.fname);
+if openal
+	fprintf(fid,'%% %s  Interface to OpenAL function %s\n%%\n',funcp.fname,funcp.fname);
+else
+	fprintf(fid,'%% %s  Interface to OpenGL function %s\n%%\n',funcp.fname,funcp.fname);
+end
 fprintf(fid,'%% usage:  %s\n%%\n',fndef);
 fprintf(fid,'%% C function:  %s\n\n',funcp.full);
 fprintf(fid,'%% %s -- created (generated automatically from header files)\n\n',datestr(now,1));
@@ -56,7 +65,11 @@ end
 if ~isempty(M.mogl_out),
 	fprintf(fid,'%s = ',M.mogl_out{1});
 end
-fprintf(fid,'moglcore( %s );\n\n',commalist(sprintf('''%s''',funcp.fname),M.mogl_in{:}) );
+if openal
+	fprintf(fid,'moalcore( %s );\n\n',commalist(sprintf('''%s''',funcp.fname),M.mogl_in{:}) );
+else
+	fprintf(fid,'moglcore( %s );\n\n',commalist(sprintf('''%s''',funcp.fname),M.mogl_in{:}) );
+end
 fprintf(fid,'return\n');
 fclose(fid);
 

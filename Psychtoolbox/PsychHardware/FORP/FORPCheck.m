@@ -38,10 +38,13 @@ function [KeyPressed,EventTime] = FORPCheck()
 %    10/10/06   fs   Wrote it.
 %    10/16/06   mk   Add caching of device index.
 %    10/17/06   fs   Done some restructuring and testing. 
-%   
+%    02/08/07   mk   New vendor id 6171 added to valid device lists.
 
     persistent psychtoolbox_forp_id;
 
+    % List of vendor IDs for valid FORP devices:
+    vendorIDs = [1240 6171];
+    
     KeyPressed  =   '';
     keydata     =   [];
 
@@ -50,7 +53,7 @@ function [KeyPressed,EventTime] = FORPCheck()
         Devices = PsychHID('Devices');
 	% Loop through all KEYBOARD devices with the vendorID of FORP's vendor:
         for i=1:size(Devices,2)
-            if strcmp(Devices(i).usageName,'Keyboard') & Devices(i).vendorID == 1240
+            if strcmp(Devices(i).usageName,'Keyboard') & ismember(Devices(i).vendorID, vendorIDs)
                 psychtoolbox_forp_id=i;
                 break;
             end

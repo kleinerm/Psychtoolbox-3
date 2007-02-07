@@ -40,6 +40,8 @@
 char anaglyphshadersrc[] = 
 "/* Weight vector for conversion from RGB to Luminance, according to NTSC spec. */ \n"
 "uniform vec3 ColorToGrayWeights; \n"
+"/* Bias to add to final product - The background color (normally (0,0,0)). */ \n"
+"uniform vec3 ChannelBias; \n"
 "/* Left image channel and right image channel: */ \n"
 "uniform sampler2DRect Image1; \n"
 "uniform sampler2DRect Image2; \n"
@@ -60,7 +62,7 @@ char anaglyphshadersrc[] =
 "    channel1 = channel1 * Gains1;\n"
 "    channel2 = channel2 * Gains2;\n"
 "    /* Add them up to form final output fragment: */\n"
-"    gl_FragColor.rgb = channel1 + channel2;\n"
+"    gl_FragColor.rgb = channel1 + channel2 + ChannelBias;\n"
 "    /* Alpha is forced to 1 - It does not matter anymore: */\n"
 "    gl_FragColor.a = 1.0;\n"
 "}\n\0";
@@ -557,7 +559,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
 					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.3, 0.59, 0.11);
-					
+					// Define background bias color to add: Normally zero for standard anaglyph:
+					glUniform3f(glGetUniformLocation(glsl, "ChannelBias"), 0.0, 0.0, 0.0);
+
 					// Unbind it, its ready!
 					glUseProgram(0);
 

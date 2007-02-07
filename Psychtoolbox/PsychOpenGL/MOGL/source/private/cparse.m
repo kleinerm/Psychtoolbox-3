@@ -1,4 +1,4 @@
-function p = cparse( str )
+function p = cparse( str , openal)
 
 % CPARSE  Parse a C language function declaration
 % 
@@ -6,8 +6,18 @@ function p = cparse( str )
 
 % 22-Dec-2005 -- created (RFM)
 
-if nargin<1,
-    str='  const  void * *glFunction (  int arg1 , const char** arg2 ) ; ';
+if nargin<2
+    openal = 0;
+end
+
+%str = [];
+
+if nargin<1 || isempty(str),
+    if openal
+        str='  const AL_API void AL_APIENTRY alFunction (  int arg1 , const char** arg2 ) ; ';
+    else 
+        str='  const  void * *glFunction (  int arg1 , const char** arg2 ) ; ';
+    end
 end
 
 % delete extra spaces
@@ -19,10 +29,29 @@ p.full=str;
 % make list of data types
 ctypes='void|char|unsigned char|signed char|short|unsigned short|signed short|short int|unsigned short int|signed short int|int|unsigned int|signed int|long|unsigned long|signed long|long int|unsigned long int|signed long int|float|double';
 ogltypes='GLenum|GLboolean|GLbitfield|GLbyte|GLshort|GLint|GLsizei|GLubyte|GLushort|GLuint|GLfloat|GLclampf|GLdouble|GLclampd|GLvoid|GLintptr|GLsizeiptr|GLchar|GLUnurbs|GLUquadric|GLUtesselator|GLhandleARB';
-types=[ ctypes '|' ogltypes ];
+oaltypes='ALenum|ALboolean|ALbitfield|ALbyte|ALshort|ALint|ALsizei|ALubyte|ALushort|ALuint|ALfloat|ALclampf|ALdouble|ALclampd|ALvoid|ALintptr|ALsizeiptr|ALchar';
+types=[ ctypes '|' ogltypes '|' oaltypes];
 
 % parse full declaration
-r=regexp(str,sprintf('(?<const>const)? ?(?<basetype>%s) ?(?<stars>[\\* ]*) ?(?<fname>\\w+) ?\\( ?(?<argin>.*) ?\\).*',types),'names');
+if openal
+    % OpenAL parser expression: ?(?<stars>[\\* ]*)
+    r=regexp(str,sprintf('(?<const>const)? .* ?(?<basetype>%s) .*  ?(?<fname>\\w+) ?\\( ?(?<argin>.*) ?\\).*',types),'names');
+    if ~isempty(r)
+        r.stars = '';
+    end
+else
+    % OpenGL parser expression:
+    r=regexp(str,sprintf('(?<const>const)? ?(?<basetype>%s) ?(?<stars>[\\* ]*) ?(?<fname>\\w+) ?\\( ?(?<argin>.*) ?\\).*',types),'names');
+end
+
+if isempty(r)    
+    p = [];
+    % fprintf('Skipped!\n');
+    return;
+end
+
+% disp(r);
+
 p.fname=r.fname;
 p.argin.full=strtrim(r.argin);
 r.stars=r.stars(find(r.stars~=' '));

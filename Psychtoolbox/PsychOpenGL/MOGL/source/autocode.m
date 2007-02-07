@@ -1,40 +1,57 @@
-function autocode(overwrite, glheaderpath)
+function autocode(overwrite, glheaderpath, openal)
 
-% AUTOCODE.M  Generate MATLAB-OpenGL interface code from OpenGL header files
+% AUTOCODE.M  Generate MATLAB-OpenGL or OpenAL interface code from OpenGL or OpenAL header files
 %
-% Usage: autocode(overwrite, glheaderpath).
+% Usage: autocode(overwrite, glheaderpath, openal).
 % glheaderpath is the path to the OpenGL gl.h and glu.h header files.
 % It defaults to /System/Library/Frameworks/OpenGL.framework/Headers/
 %
 % If overwrite is == 1, then existing M-Files are overwritten, else (and
 % this is the default) existing files are not touched.
 %
+% If openal is == 1, then OpenAL code is generated, instead of OpenGL code.
+%
 % 18-Dec-05 -- created (RFM)
 % 05-Mar-06 -- added option to spec. glheaderpath (MK)
 % 30-May-06 -- added option 'overwrite' to not overwrite M-Files. (MK)
 %              added additional parsing code for headers/glext_edit.h
+% 06-Feb-07 -- added support for OpenAL (MK)
 
 clc;
 
-if nargin < 1
+if nargin < 1 || isempty(overwrite)
     overwrite = 0;
 end;
 overwrite
 
+if nargin < 3
+	openal = 0;
+end
+
 % Alternate path to header files specified?
-if nargin < 2
+if nargin < 2 || isempty(glheaderpath)
     if IsOSX
         glheaderpath = '/System/Library/Frameworks/OpenGL.framework/Headers';
+		if openal
+			glheaderpath = '/System/Library/Frameworks/OpenAL.framework/Headers';
+		end
     end;
     if IsLinux
         glheaderpath = '/usr/include/GL';
+		if openal
+			glheaderpath = '/usr/include/AL';
+		end
     end;
     if IsWin
         error('autocode.m not yet supported on M$-Windows.');
     end;
 end;
 
-fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
+if openal
+	fprintf('Parsing OpenAL and ALC header files in %s ...\n',glheaderpath);
+else
+	fprintf('Parsing OpenGL and GLU header files in %s ...\n',glheaderpath);
+end
 
 % delete unprotected wrapper files
 % ( protected = contains string "---protected---" somewhere in the file )
@@ -44,18 +61,33 @@ end;
 
 % make file with list of OpenGL functions
 tmplistfile='/tmp/mogl_listfile.txt';
-unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
-unix(sprintf('grep glu[A-Z]  %s/glu.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
-unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
-unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
-% MK Disabled for now: unix(sprintf('grep gl[A-Z]   %s/glext.h     | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',glheaderpath, tmplistfile));
-listfid=fopen(tmplistfile,'r');
 
-% initialize and open C file
-cfile='gl_auto.c';
-if unix(sprintf('cat gl_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
-    error(sprintf('unable to initialize ''%s''',cfile));
+if openal
+	unix(sprintf('grep al[A-Z]   %s/al.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
+	unix(sprintf('grep alu[A-Z]  %s/alc.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
+	% unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
+	% unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
+
+	% initialize and open C file
+	cfile='al_auto.c';
+	if unix(sprintf('cat al_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
+		error(sprintf('unable to initialize ''%s''',cfile));
+	end
+else
+	unix(sprintf('grep gl[A-Z]   %s/gl.h        | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >  %s',glheaderpath, tmplistfile));
+	unix(sprintf('grep glu[A-Z]  %s/glu.h       | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',glheaderpath, tmplistfile));
+	unix(sprintf('grep glut[A-Z] headers/glut_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >> %s',tmplistfile));
+	unix(sprintf('grep gl[A-Z]   headers/glext_edit.h | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',tmplistfile));
+	% MK Disabled for now: unix(sprintf('grep gl[A-Z]   %s/glext.h     | grep -v ProcPtr | grep -v \\#define | sed -E ''s/^[[:space:]]*extern[[:space:]]*//'' | sed -E ''s/;[[:space:]]*$//'' >>  %s',glheaderpath, tmplistfile));
+
+	% initialize and open C file
+	cfile='gl_auto.c';
+	if unix(sprintf('cat gl_auto_init.c | sed ''s/DATE/%s/'' > %s',datestr(now,1),cfile))~=0,
+		error(sprintf('unable to initialize ''%s''',cfile));
+	end
 end
+
+listfid=fopen(tmplistfile,'r');
 cfid=fopen(cfile,'a');
 
 % initialize list of entries in command map
@@ -65,10 +97,10 @@ cmdmap={};
 while(~feof(listfid)),
 
     % parse the next function declaration
-    funcp=cparse(fgetl(listfid));
+    funcp=cparse(fgetl(listfid), openal);
 
     % skip functions in autono.txt
-    if filecontains('autono.txt',funcp.fname),
+    if isempty(funcp) || filecontains('autono.txt',funcp.fname),
         continue
     end
 
@@ -89,7 +121,7 @@ while(~feof(listfid)),
     if (overwrite > 0) | (exist([ funcp.fname '.m'], 'file')~= 2)
         % (re)create M-file wrapper
         fprintf(1, 'creating M-File wrapper.\n');
-        mwrite(funcp,M);
+        mwrite(funcp,M,openal);
     else
         fprintf(1, '\n');
     end;
@@ -115,5 +147,6 @@ fclose(listfid);
 
 % clean up
 delete('/tmp/mogl_*');
+delete('/tmp/moal_*');
 
 return

@@ -76,25 +76,25 @@ for j=1:numel(funcp.argin.args),
 
 		% decide how to cast input argument, if necessary
 		switch funcp.argin.args(j).type.basetype,
-			case { 'GLdouble' 'GLclampd' }
+			case { 'GLdouble' 'GLclampd' 'ALdouble' 'ALclampd' }
 				mcast='double';
-			case { 'GLfloat' 'GLclampf' }
+			case { 'GLfloat' 'GLclampf' 'ALfloat' 'ALclampf' }
 				mcast='moglsingle';
-			case { 'GLint' 'GLsizei' }
+			case { 'GLint' 'GLsizei' 'ALint' 'ALsizei' }
 				mcast='int32';
-			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric'}
+			case { 'GLuint' 'GLenum' 'GLbitfield' 'GLUnurbs' 'GLUtesselator' 'GLUquadric' 'ALuint' 'ALenum' 'ALbitfield' }
 				mcast='uint32';
-			case { 'GLshort' }
+			case { 'GLshort' 'ALshort' }
 				mcast='int16';
-			case { 'GLushort' }
+			case { 'GLushort' 'ALushort'}
 				mcast='uint16';
-			case { 'GLbyte' }
+			case { 'GLbyte' 'ALbyte' }
 				mcast='int8';
-			case { 'GLubyte' 'GLchar' 'GLboolean' }
+			case { 'GLubyte' 'GLchar' 'GLboolean' 'ALubyte' 'ALchar' 'ALboolean' }
 				mcast='uint8';
-			case { 'GLvoid' 'void' }
+			case { 'GLvoid' 'void' 'ALvoid' }
 				mcast='';
-            case { 'GLhandleARB' 'GLhandle'}
+            case { 'GLhandleARB' 'GLhandle' 'ALhandleARB' 'ALhandle' }
                 mcast='void*';
 			otherwise
 				error(sprintf('don''t know how to handle pointer type %s',funcp.argin.args(j).type.full));

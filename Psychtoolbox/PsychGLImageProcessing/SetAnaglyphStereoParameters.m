@@ -60,6 +60,9 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 %
 % The command always returns the old weights as a 3 component vector.
 %
+% 'BackgroundColorBias' - Set the "background color" for inverted anaglyph
+% mode. TODO: Finish...
+%
 % 'GetHandle' - Return GLSL handle to anaglyph shader. Allows to modify the
 % shader itself, e.g., replace it by your own customized shader. Only for
 % OpenGL experts!
@@ -101,6 +104,21 @@ end
         retval = glsl;
     end
     
+    if strcmpi(cmd, 'BackgroundColorBias')
+        uniloc = glGetUniformLocation(glsl, 'ChannelBias');
+        retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
+        if nargin>=3
+            if size(rgb)~=3
+                error('Provided call parameter must be a 3 component vector with (R,G,B) bias color values.');
+            end
+            
+            % Normalize from color range of window to GL's 0-1 range:
+            rgb = rgb / WhiteIndex(win);
+            
+            glUniform3fv(uniloc, 1, rgb);
+        end
+    end
+
     if strcmpi(cmd, 'ColorToLuminanceWeights')
         uniloc = glGetUniformLocation(glsl, 'ColorToGrayWeights');
         retval = glGetUniformfv(glsl, uniloc);
