@@ -1,102 +1,144 @@
 function moaldemo
+% moaldemo - Minimalistic demo on how to use OpenAL for
+% 3D audio output in Matlab. This is mostly trash code
+% for initial testing and development. Better demos will
+% follow soon.
 
+% Establish key mapping: ESCape aborts, Space toggles between auto-
+% movement of sound source or user mouse controlled movement:
 KbName('UnifyKeynames');
 space = KbName('space');
 esc = KbName('ESCAPE');
 
 % Initialize OpenAL subsystem at debuglevel 2 with the default output
 % device:
-InitializeMatlabOpenAL(2, 'HelloWorld');
+InitializeMatlabOpenAL(2);
 
 % Generate one sound buffer:
 buffers = alGenBuffers(1);
-alGetError
 
-% Fill it with data:
-%mynoise = int16(randn(1,44100 * 10) * 32767);
-mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
+% Query for errors:
+alGetString(alGetError)
+
+% Create sound data:
+
+% Start of with 10 seconds of 44.1 Khz random noise as a fallback:
+mynoise = randn(1,44100 * 10);
+
+% Try to load some impressive sound...
+if IsOSX
+   try
+      mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
+      freq = 16384;
+   catch
+      % Load Matlabs demo sound matrix if everything else fails..
+      load handel;
+      freq = 8000;
+      mynoise = y;
+   end
+end
+
+if IsWin
+   try
+      mynoise = wavread('C:\WINNT\MEDIA\Windows-Anmeldeklang.wav');
+      freq = 16384;
+   catch
+      % Load Matlabs demo sound matrix if everything else fails..
+      load handel;
+      freq = 8000;
+      mynoise = y;
+   end
+end
+
+% Convert to 16 bit signed integer format, map range from -1.0 ; 1.0 to -32768 ; 32768.
+% This is one of two sound formats accepted by OpenAL, the other being unsigned 8 bit
+% integer in range 0;255. Other formats (e.g. float or double) are supported by some
+% implementations, but one can't count on it. This is more efficient anyways...
 mynoise = int16(mynoise * 32767);
 
-%x=1:44100
-%mynoise = int16(sin(1000/2*x/44100)*32767);
-alBufferData( buffers, AL.FORMAT_MONO16, mynoise, length(mynoise)*2, 16384);
-alGetError
+% Fill our sound buffer with the data from the sound vector. Tell AL that its
+% a 16 bpc, mono format, with length(mynoise)*2 bytes total, to be played at
+% a sampling rate of freq Hz. The AL will resample this to the native device
+% sampling rate and format at buffer load time.
+alBufferData( buffers, AL.FORMAT_MONO16, mynoise, length(mynoise)*2, freq);
 
-% Create sound source:
+% Create a sound source:
 source = alGenSources(1);
-alGetError
 
-% Attach buffer to it:
+% Attach our buffer to it: The source will play the buffers sound data.
 alSourceQueueBuffers(source, 1, buffers);
-alGetError
 
-% Switch source to looping playback:
+% Switch source to looping playback: It will repeat playing the buffer until
+% its stopped.
 alSourcei(source, AL.LOOPING, AL.TRUE);
-alGetError
 
-% Set volume to 100%
+% Set emission volume to 100%, aka a gain of 1.0:
 alSourcef(source, AL.GAIN, 1);
-alGetError
 
-
-% Start playback:
+% Start playback for this source:
 alSourcePlay(source);
+
 x=0;
 manual = 0;
 
-% Wait for keypress:
+% 3D sound animation loop. Runs until ESCape key press:
 while 1
-    %x=mod(x + 0.01, 2);
-    [isdown dummy, keycode]=KbCheck;
+   % Check keyboard:
+   [isdown dummy, keycode]=KbCheck;
     if isdown
         if keycode(esc)
             break;
         end
         
         if keycode(space)
-            manual=1-manual;
-            while KbCheck; end;
+           % Toggle between mouse control and automatic:
+           manual=1-manual;
+           while KbCheck; end;
         end
     end
     
+    % Query mouse:
     [xm ym button]=GetMouse;
     if any(button) 
-        x=(xm-700)/400;
-        z=(ym-500)/400;
+       % x,y mouse pos selects sound source position in space:
+       x=(xm-700)/400;
+       z=(ym-500)/400;
     end
     
     if ~manual
-        t=GetSecs;
-        x=sin(t)*3;
-        z=cos(t)*3;
+       % Auto mode, source moves along a 3D circle in space:
+       t=GetSecs;
+       x=sin(t)*3;
+       z=cos(t)*3;
     end
     
+    % Select 3D position of source in space:
     alSource3f(source, AL.POSITION, x, 0, z);
-    alGetSourcef(source, AL.SEC_OFFSET)
+    
+    % Query current playback position in seconds since start of buffer:
+    % alGetSourcef(source, AL.SEC_OFFSET);
+    
+    % Pause for 10 milliseconds in order to yield the cpu to other processes:
     WaitSecs(0.01);
 end
 
 % Stop playback:
 alSourceStop(source);
-alGetError
 
 % Unqueue sound buffer:
 alSourceUnqueueBuffers(source, 1);
-alGetError
 
 % Wait a bit:
 WaitSecs(0.1);
 
 % Delete buffer:
 alDeleteBuffers(1, buffers);
-alGetError
 
 % Wait a bit:
 WaitSecs(0.1);
 
 % Delete source:
 alDeleteSources(1, source);
-alGetError
 
 % Wait a bit:
 WaitSecs(0.1);
@@ -104,5 +146,5 @@ WaitSecs(0.1);
 % Shutdown OpenAL:
 CloseOpenAL;
 
-% Done.
+% Done. Bye.
 return;

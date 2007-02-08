@@ -1,68 +1,54 @@
-% CONTENTS.M  Contents of mogl toolbox
+% Psychtoolbox:PsychSound:MOAL Contents of MOAL Matlab-OpenAL toolbox
 %
-% mogl is a collection of M-File wrappers and a MEX file that allow to call
-% all OpenGL commands from Matlab as one is used to from the C programming
+% Moal is a collection of M-File wrappers and a MEX file that allow to call
+% all OpenAL commands from Matlab as one is used to from the C programming
 % language.
-%
-%
-% The 'OpenGL for Matlab' low level interface wrapper mogl was developed,
-% implemented and generously contributed to Psychtoolbox under the GPL
-% license by Prof. Richard F. Murray, University of York, Canada.
 %
 % Directory structure is as follows: 
 % 
-%     mogldemo.m          -- demonstration of how to use the mogl toolbox
-%     mogldemo.mat        -- data used by mogldemo.m
+%     moaldemo.m          -- demonstration of how to use the toolbox
 % 
 %     core/
 % 
 %         (first group:  main toolbox functions)
 % 
-%         moglcore.mexmac -- main MEX interface to OpenGL functions
-%         oglconst.mat    -- constants used by OpenGL routines
-%         setupdate.sh    -- shell script to start or stop 'update' process
-%                            (normally called via wrap/glmSetUpdate.m)
-% 
-%         (second group:  miscellaneous helper files)
-% 
-%         edittag.m       -- edit all M-files that contain a given string
-%         finish.m        -- automatically run when quitting MATLAB
-%         mor.m           -- bitwise OR of multiple input arguments
+%         moalcore.mexmac -- main MEX interface to OpenAL functions
+%         oalconst.mat    -- constants used by OpenAL routines
 % 
 %     source/
 % 
 %         (first group:  files that generate interface code)
 %         
-%         autocode.m      -- MATLAB script that generates gl_auto.c and M-file
-%                            interfaces to moglcore.mexmac
-%         autono.txt      -- list of OpenGL functions that autocode.m should not
-%                            generate interfaces for;  most of these appear
-%                            in gl_manual.c
-%         gl_auto_init.c  -- file used in generating gl_auto.c;  contains
+%         al_auto_init.c  -- file used in generating al_auto.c;  contains
 %                            top portion of file, i.e., #includes, etc.
-%         oglconst.m      -- MATLAB script that searches through OpenGL header
+%         oalconst.m      -- MATLAB script that searches through OpenAL header
 %                            files for #defined constants, and writes them
-%                            to oglconst.mat as variables
-%         headers/*.h     -- OpenGL headers
-%         private/*.m     -- miscellaneous helper files for autocode.m
+%                            to oalconst.mat as variables
 % 
-%         (second group:  files that compile to produce moglcore.mexmac)
+%         (second group:  files that compile to produce moalcore.mexmac)
 % 
-%         gl_auto.c       -- automatically generated interfaces to OpenGL functions
-%         gl_manual.c     -- manually generated interfaces to OpenGL functions
-%         glm.c           -- GLM library of GLUT-like functions
-%         moglcore.c      -- main MEX interface function
-%         mogltypes.h     -- useful data types
-%         makefile        -- makefile to compile C files into moglcore.mexmac
+%         al_auto.c       -- automatically generated interfaces to OpenAL functions
+%         al_manual.c     -- manually generated interfaces to OpenAL functions
+%         alm.c           -- ALM library of ALC like functions.
+%         moalcore.c      -- main MEX interface function
+%         moaltypes.h     -- useful data types
+%         windowshacks.c  -- hacks needed for Windows compatibility.
+%
+%         (third group:   Makefiles and build scripts.)
+%         makefile        -- makefile to compile C files into moalcore.mexmac on PPC.
+%         makefile_intelmac -- makefile for IntelMac.
+%         makefile_linux    -- makefile for GNU/Linux.
+%         makefile_linuxoctave -- makefile for Linux + Octave.
+%         makefile_windows.m -- makefile for M$-Windows.
 % 
 %     wrap/*          -- wrapper M-files that check arguments, etc., and
-%                        then call to moglcore.mexmac to run OpenGL functions
+%                        then call to moalcore.mexmac to run OpenAL functions
 % 
 %
-% The following three commands will completely regenerate mogl.
+% The following three commands will completely regenerate moal.
 % 
-% >> autocode     % generate gl_auto.c and wrapper M-files
-% >> ! make       % compile C code to produce MEX files
-% >> oglconst     % save constants from header files in a .mat file
+% >> autocode(1,[],1)     % generate al_auto.c and wrapper M-files
+% >> !make                % compile C code to produce MEX files
+% >> oalconst             % save constants from header files in a .mat file
 
-% 06-Jan-2006 -- created (RFM)
+% 06-Feb-2007 -- created (MK)

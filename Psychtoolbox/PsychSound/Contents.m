@@ -1,4 +1,4 @@
-% PsychSound -- Psychtoolbox sound functions, based on OpenAL.
+% Psychtoolbox:PsychSound -- Psychtoolbox sound functions, based on OpenAL.
 %
 % Psychtoolbox allows you to directly call low-level OpenAL commands from
 % the Matlab environment in nearly the same way as you could do from native
@@ -8,6 +8,14 @@
 %
 % Access to OpenAL from Matlab is provided by the "Matlab OpenAL toolbox"
 % (MOAL) which was derived from the MOGL toolbox for OpenGL.
+%
+% OpenAL is a free (free software), cross-platform (Windows, Macintosh, Linux),
+% highly efficient, easy to learn, flexible audio library which incorporates
+% advanced features like 3D spatialized sound, multi-channel support, streaming,
+% audio capture, special effects like echo, reverb, attenuation, doppler effects
+% and other stuff. Its programming model and API closely resembles OpenGL, so
+% OpenGL programmers will find themselves immediatels at home with this library,
+% and its very easy to extend 3D graphics code with corresponding 3D sound.
 %
 % MOAL provides one Matlab wrapper M-File for each corresponding OpenAL
 % function. The wrapper file calls into a special MEX file (moalcore) which
@@ -57,7 +65,9 @@
 % compile them into Matlab-MEX files if you have "need for speed". Your Mex
 % files will just contain the mixture of ANSI C code and OpenAL calls, but
 % no code to setup the OpenAL rendering context. You just need to call the
-% InitializeMatlabOpenAL; function.
+% InitializeMatlabOpenAL; function. After that call, an audio device will
+% be set up and the associated OpenAL rendering context will be active. All
+% commands in your MEX-File will apply to that rendering context.
 %
 % If you want to write OpenAL mex-files that are portable across different
 % operating systems (OS-X, Windows, Linux) then have a look at:
@@ -67,8 +77,9 @@
 % KNOWN LIMITATIONS:
 %
 % Depending on your specific code, rendering speed in Matlab may be
-% significantly lower than when executing the same code from C or C++. This
-% is the price you'll have to pay for using Matlab.
+% slightly lower than when executing the same code from C or C++. This
+% is the price you'll have to pay for using Matlab, but our abstraction
+% layer is very thin, so most applications won't be really affected.
 %
 % The OpenAL for Matlab support is a pretty new feature so it may contain a
 % couple of bugs or glitches. If you happen to find one, please report it!
@@ -83,31 +94,36 @@
 %
 % Apart from these limitations that will get removed in the future, there
 % are limitations imposed by your operating system and sound hardware.
+%
 % Support for OpenAL functions varies between different sound hardware,
 % so if you want to use the latest and greatest OpenAL functions, you'll
 % need to buy and install the latest and greatest sound hardware.
 %
+% Typical limitations of low-end versus high-end hardware:
+% - Number of sound sources / channels that can be played back simultaneously.
+% - Complexity of audio processing that can be performed.
+% - Latency in sound processing.
+% - Quality of 3D spatial audio rendering.
+%
 % CONTENTS:
 %
-% * All supported OpenGL low-level functions can be found in the folder
-% 'Psychtoolbox/PsychOpenGL/MOGL/wrap/'. Functions prefixed with _ are not
-% yet implemented.
+% * All supported OpenAL low-level functions can be found in the folder
+%   'Psychtoolbox/PsychSound/MOAL/wrap/'. Functions prefixed with _ are not
+%   yet implemented.
 %
-% * A number of interesting GLSL shaders for realtime image processing can
-% be found in 'Psychtoolbox/PsychOpenGL/PsychGLSLShaders/'. These may only work on
-% state of the art graphics hardware.
+% * High-level helper functions  can be found in 'Psychtoolbox/PsychSound/'
+%   and its subfolders.
 %
-% * High-level helper functions (e.g., OBJ file loading, morphing, ...) can
-% be found in 'Psychtoolbox/PsychOpenGL/' and its subfolders.
+% * Demos can be found in 'Psychtoolbox/PsychDemos/SoundDemos'
 %
-% * Demos can be found in 'Psychtoolbox/PsychDemos/OpenGL4MatlabDemos'
+% Lot's of documentation, tutorials, code samples and news about OpenAL can
+% be found by following links at:
 %
-% Lot's of documentation, tutorials, code samples and news about OpenGL can
-% be found at:
+% http://www.openal.org
 %
-% http://www.opengl.org
+% Googling for OpenAL is also a option.
 %
 % Enjoy!
 
 % History:
-% 17.04.2006 -- created (MK)
+% 7.02.2007 -- created (MK)

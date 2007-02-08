@@ -58,7 +58,6 @@ static bool jettisoned = false;
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-//#include <OpenGL/OpenGL.h>
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
 #include <OpenAL/MacOSX_OALExtensions.h>
@@ -78,8 +77,11 @@ static bool jettisoned = false;
 
 /* Includes specific to M$-Windows version of mogl: */
 #ifdef WINDOWS
+#include <windows.h>
 #include <stdlib.h>
 #include <string.h>
+#include <AL/al.h>
+#include <AL/alc.h>
 //#include <AL/alut.h>
 
 /* Hacks to get Windows version running - to be replaced soon. */
