@@ -29,7 +29,7 @@
 #include "Screen.h"
 
 
-static char useString[] = "videoPtr = Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback]);";
+static char useString[] = "videoPtr = Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags]);";
 static char synopsisString[] = 
 	"Try to open the video source 'deviceIndex' for video capture into onscreen window 'windowPtr' and "
         "return a handle 'videoPtr' on success. If 'deviceIndex' is left out, it defaults to zero - use the "
@@ -43,10 +43,18 @@ static char synopsisString[] =
         "video buffers to use. It defaults to a value that is optimal for your specific hardware for common use. "
         "'allowfallback' if set to 1, will allow Psychtoolbox to use a less efficient mode of operation for video "
         "capture if your specific hardware or operating system setup doesn't allow to use the high-performance "
-        "mode. 'allowfallback' defaults to 1 = Allow fallback path. On OS-X and Windows, video capture is handled by use of "
-        "Apples Quicktime Sequence-Grabber API. Linux currently only supports high performance machine vision cameras that "
-        "are compliant with the IIDC-1.x standard and that are connected via a Firewire (IEEE1394) bus system. Use of Linux "
-        "with such cams allows for much higher flexibility and performance than use of video capture on OS-X or Windows. ";
+        "mode. 'allowfallback' defaults to 1 = Allow fallback path.\n"
+		"'targetmoviename' If you provide a filename for this argument, PTB will record the captured video to the "
+		"specified Quicktime movie file on your filesystem. 'recordingflags' specify the behaviour of harddisc- "
+		"recording: 0 (default) = Only record video. 2 = Record audio track as well. The value 1 (or 1+2) asks "
+		"PTB to first record into system memory, and only write the movie file after capture has been stopped. "
+		"This allows for higher capture framerates, but is limited in recording time by installed memory. Also, "
+		"this mode currently can cause hangs and crashes of PTB for unknown reasons, so better avoid!\n"
+		"On OS-X and Windows, video capture is handled by use of Apples Quicktime Sequence-Grabber API. "
+        "Linux currently only supports high performance machine vision cameras that are compliant with the "
+        "IIDC-1.x standard and that are connected via a Firewire (IEEE1394) bus system. Use of Linux with such "
+        "cams allows for much higher flexibility and performance than use of video capture on OS-X or Windows. "
+		"However, video recording to harddisk isn't yet supported on Linux.";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 
@@ -60,15 +68,17 @@ PsychError SCREENOpenVideoCapture(void)
         int                                     height;
         PsychRectType                           roirectangle;
         Boolean                                 roiassigned;
-	int                                     reqdepth = 0;
-	int                                     num_dmabuffers = 0;
-	int                                     allow_lowperf_fallback = 1;
-
+		int                                     reqdepth = 0;
+		int                                     num_dmabuffers = 0;
+		int                                     allow_lowperf_fallback = 1;
+		char*									moviename;
+		int										recordingflags;
+		
 	// All sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
+        PsychErrorExit(PsychCapNumInputArgs(8));            // Max. 6 input args.
         PsychErrorExit(PsychRequireNumInputArgs(1));        // Min. 1 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
         
@@ -98,13 +108,25 @@ PsychError SCREENOpenVideoCapture(void)
         PsychCopyInIntegerArg(6, FALSE, &allow_lowperf_fallback);
 	if (allow_lowperf_fallback<0) PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid (negative) allowfallback flag.");
 
+	// Query optional moviename for recording the grabbed video into a Quicktime movie file:
+	moviename = NULL;
+	PsychAllocInCharArg(7, FALSE, &moviename);
+	
+	// Query optional movie recording flags:
+	// 0 = Record video, stream to disk immediately (slower, but unlimited recording duration).
+	// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
+	// 2 = Record audio as well.
+	recordingflags = 0;
+	PsychCopyInIntegerArg(8, FALSE, &recordingflags);
+	
+	
 	// Try to open the capture device and create & initialize a corresponding capture object.
         // A MATLAB handle to the video capture object is returned upon successfull operation.
         if (roiassigned) {
-            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, roirectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback);
+            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, roirectangle, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags);
         }
         else {
-            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, NULL, reqdepth, num_dmabuffers, allow_lowperf_fallback);
+            PsychOpenVideoCaptureDevice(windowRecord, deviceIndex, &capturehandle, NULL, reqdepth, num_dmabuffers, allow_lowperf_fallback, moviename, recordingflags);
         }
         
         // Upon sucessfull completion, we'll have a valid handle in 'capturehandle'. Return it to Matlab-world:

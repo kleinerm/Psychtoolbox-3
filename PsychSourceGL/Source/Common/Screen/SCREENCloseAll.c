@@ -98,10 +98,11 @@ void ScreenCloseAllWindows(void)
 	}
     PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
 
-    // Release all captured displays
+    // Release all captured displays, unhide the cursor on each of them:
     numScreens=PsychGetNumDisplays();
     for(i=0;i<numScreens;i++){
         if(PsychIsScreenCaptured(i)) PsychReleaseScreen(i);
+		PsychShowCursor(i);
     }
 
     return;

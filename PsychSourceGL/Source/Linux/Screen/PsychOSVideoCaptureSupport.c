@@ -189,10 +189,10 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
  *      reqdepth = Number of layers for captured output textures. (0=Don't care, 1=LUMINANCE8, 2=LUMINANCE8_ALPHA8, 3=RGB8, 4=RGBA8)
  *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
- *
+ *		targetmoviefilename and recordingflags are currently ignored, they would refer to video harddics recording capabilities.
  */
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback)
+				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
     PsychVidcapRecordType* capdev = NULL;
     dc1394camera_t **cameras=NULL;

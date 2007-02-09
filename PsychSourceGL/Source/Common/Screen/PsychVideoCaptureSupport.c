@@ -45,6 +45,7 @@ typedef struct {
     GWorldPtr           gworld;       // Offscreen GWorld into which captured frame is decompressed.
     SeqGrabComponent 	seqGrab;	     // Sequence grabber handle.
     SGChannel           sgchanVideo;  // Handle for video channel of sequence grabber.
+	SGChannel			sgchanAudio;  // Handle for audio channel of sequence grabber.
     ImageSequence 	decomSeq;	     // unique identifier for our video decompression sequence
     int nrframes;                     // Total count of decompressed images.
     double fps;                       // Acquisition framerate of capture device.
@@ -77,12 +78,16 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
     CodecFlags	ignore;
     TimeScale 	timeScale;
     double tstart, tend;
-    
+
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
     // Retrieve handle to our capture data structure:
     handle = (int) chRefCon;
 
+	// Check if we're called on a video channel. If we're called on a sound channel,
+	// we simply return -- nothing to do in that case.
+	if (vidcapRecordBANK[handle].sgchanVideo != c) return(noErr);
+	
     // Compute capture timestamp:
     err = SGGetChannelTimeScale(c, &timeScale);
     vidcapRecordBANK[handle].current_pts = (double) time / (double) timeScale;
@@ -189,9 +194,16 @@ void PsychVideoCaptureInit(void)
  *      reqdepth = Number of layers for captured output textures. (0=Don't care, 1=LUMINANCE8, 2=LUMINANCE8_ALPHA8, 3=RGB8, 4=RGBA8)
  *      num_dmabuffers = Number of buffers in the ringbuffer queue (e.g., DMA buffers) - This is OS specific. Zero = Don't care.
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
+ *		targetmoviefilename = NULL == Only live capture, non-NULL == Pointer to char-string with name of target QT file for video recording.
+ *		recordingflags = Only used for recording: Request audio recording, ram recording vs. disk recording and such...
+ *		// Query optional movie recording flags:
+ *		// 0 = Record video, stream to disk immediately (slower, but unlimited recording duration).
+ *		// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
+ *		// 2 = Record audio as well.
+ *
  */
 bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
-				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback)
+				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
     int i, slotid;
     OSErr error;
@@ -200,6 +212,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Rect movierect, newrect;
     SeqGrabComponent seqGrab = NULL;
     SGChannel *sgchanptr = NULL;
+	SGChannel *sgchanaudioptr = NULL;
     ImageDescriptionHandle imageDesc;
     Fixed framerate;
     *capturehandle = -1;
@@ -411,16 +424,16 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     //    DisposeHandle((Handle)imageDesc);
     
     // Specify a data callback function: Gets called whenever a new frame is ready...
-    error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
-    if (error !=noErr) {
-        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
-        vidcapRecordBANK[slotid].gworld = NULL;
-        SGDisposeChannel(seqGrab, *sgchanptr);
-        *sgchanptr = NULL;
-        CloseComponent(seqGrab);
-        PsychErrorExitMsg(PsychError_internal, "Assignment of capture callback fcn. to capture device failed!");            
-    }
-    
+	error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
+	if (error !=noErr) {
+		DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+		vidcapRecordBANK[slotid].gworld = NULL;
+		SGDisposeChannel(seqGrab, *sgchanptr);
+		*sgchanptr = NULL;
+		CloseComponent(seqGrab);
+		PsychErrorExitMsg(PsychError_internal, "Assignment of capture callback fcn. to capture device failed!");            
+	}
+	
     // Store a reference to our slotid for this channel. This gets passed to the
     // videocapture callback fcn. so it knows to which capture object to relate to...
     error = SGSetChannelRefCon(vidcapRecordBANK[slotid].sgchanVideo, slotid);
@@ -433,7 +446,30 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         PsychErrorExitMsg(PsychError_internal, "Assignment of Refcon to capture device failed!");            
     }
     
-    error = SGSetDataOutput(seqGrab, NULL, seqGrabDontMakeMovie);
+	// Sound channel requested as well?
+	if (targetmoviefilename && (recordingflags & 2)) {
+		// Create sound grabber component as well:
+		sgchanaudioptr = &(vidcapRecordBANK[slotid].sgchanAudio);
+		error = SGNewChannel(seqGrab, SoundMediaType, sgchanaudioptr);
+		SGSetChannelRefCon(vidcapRecordBANK[slotid].sgchanAudio, slotid);
+		// More setup code needed?
+		if (error == noErr) error = SGSetChannelUsage(*sgchanaudioptr,  seqGrabRecord | seqGrabLowLatencyCapture);
+	}
+	
+	// Recording to disc requested?
+	if (targetmoviefilename==NULL) {
+		// No. Just live capture and processing:
+		error = SGSetDataOutput(seqGrab, NULL, seqGrabDontMakeMovie);
+	}
+	else {
+		// Yes. Set it up:
+		FSSpec recfile;
+		NativePathNameToFSSpec(targetmoviefilename, &recfile, 0);
+		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
+		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
+		error = SGSetDataOutput(seqGrab, &recfile, ((recordingflags & 1) ? seqGrabToMemory : seqGrabToDisk));
+	}
+	
     if (error !=noErr) {
         DisposeGWorld(vidcapRecordBANK[slotid].gworld);
         vidcapRecordBANK[slotid].gworld = NULL;
@@ -572,9 +608,12 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
     
     // Grant some processing time to the sequence grabber engine:
-    if (SGIdle(vidcapRecordBANK[capturehandle].seqGrab)!=noErr) {
-        PsychErrorExitMsg(PsychError_internal, "SGIdle() failed!!!");
-    }
+    if ((error=SGIdle(vidcapRecordBANK[capturehandle].seqGrab))!=noErr) {
+		// We don't abort on non noErr case, but only (optionally) report it. This is because when in harddisc
+		// movie recording mode with sound recording, we can get intermittent errors in SGIdle() which are
+		// meaningless so they are best ignored and must not lead to interruption of PTB operation.
+        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychGetTextureFromCapture(): SGIdle() returns error code %i\n", (int) error);
+	}
     
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
