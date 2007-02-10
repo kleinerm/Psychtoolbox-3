@@ -18,10 +18,7 @@ function [pol] = SensorToPolar(sensor)
 % 5/20/98 dhb   Fix little bug, make sure index is not empty.
 % 4/5/02  dhb, ly  New calling interface.
 % 11/6/06 dhb   Only allow one input argument.
-
-if (nargin==1)
-  sensor=cal;
-end
+% 2/10/07 dhb   Finish above fix.
 
 [n,m] = size(sensor);
 if (n ~= 3)
