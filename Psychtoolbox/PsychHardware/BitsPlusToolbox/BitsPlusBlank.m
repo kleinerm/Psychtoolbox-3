@@ -12,16 +12,12 @@ if (nargin ~= 1)
     error('USAGE: BitsPlusBlank(screen)');
 end
 
-window = Screen(screen,'OpenWindow',0,[],32);
+window = Screen('OpenWindow',screen, 0, [], 32);
 
 % THE FOLLOWING STEP IS IMPORTANT.
 % make sure the graphics card LUT is set to a linear ramp
 % (else the encoded data will not be recognised by Bits++).
-% There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.  
-% This demo will not work using a default gamma table in the graphics card,
-% or even if you set the gamma to 1.0, due to this bug.
-% This is NOT a bug with Psychtoolbox!
-Screen('LoadNormalizedGammaTable', window, linspace(0,(256/256),256)'*ones(1,3));
+Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)'*ones(1, 3));
 
 theClut = zeros(256, 3);
 %theClut(:, 2) = 2^16-1; % (DEBUG) Turn the screen green.

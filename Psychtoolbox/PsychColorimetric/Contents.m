@@ -7,7 +7,7 @@
 % help PsychColorimetricData     % For colorimetric calculations, triple-click me & hit enter.
 % help PsychColorimetricMatFiles % For list of data .mat files, triple-click me & hit enter.
 %
-%   AbsorbanceToAbssorbtance - Convert absorbance to absorbtance spectrum.
+%   AbsorbanceToAbsorbtance - Convert absorbance to absorbtance spectrum.
 %   CheckWls            - Check consistency of two wavelength descriptions.
 %   ComputeDE           - Compute vector length between matrix columns.
 %   ComputeDKL_M        - Compute transformation matrix for DKL color space.
@@ -64,6 +64,7 @@
 %   SplineSrf           - Spline a surface reflectance function to new wavelength sampling.
 %   SRGBPrimaryToXYZ    - Convert between sRGB primary coordinates and XYZ.
 %   SRGBGammaCorrect    - Convert between sRGB primary coordinates and 8-bit RGB values.
+%   SRGBGammaUncorrect   - Convert between sRGB 8-bit RGB values and primary coordinates.
 %   SToWls              - Convert S wavelength sampling spec to wls format.
 %   TestLxx             - Test routine for Lab/Luv calculations.
 %   TriToMetSPD         - Compute metamer from tristimulus coordinates.
