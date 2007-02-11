@@ -168,7 +168,7 @@ void* PsychAsyncCreateMovie(void* mi)
     // The special value -1000 tells PsychCreateMovie to not output any error-
     // messages as this could easily crash Matlab.
     int mymoviehandle=-1000;
-    
+
     // Reduce our scheduling priority to the minimum value of zero, so
     // we do not interfere too much with the PTB main thread:
     sp.sched_priority = 0;
@@ -176,9 +176,15 @@ void* PsychAsyncCreateMovie(void* mi)
         printf("PTB-ERROR: In PsychAsyncCreateMovie(): PTHREAD ERROR %i ...", rc);
     }
     
+	// Tell QT subsystem that this thread wants to use it as well:
+    // MK: Do we need this? Defaults seem to be ok... EnterMoviesOnThread(<#UInt32 inFlags#>);
+
     // Execute our normal OpenMovie function: This does the hard work:
     PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, &mymoviehandle);
     
+	// Disable QT subsystem for this thread:
+	// ExitMoviesOnThread();
+	
     // Ok, either we have a moviehandle to a valid movie, or we failed, which would
     // be signalled to the calling function via some negative moviehandle:
     movieinfo->moviehandle = mymoviehandle; // Return moviehandle.
@@ -364,18 +370,22 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
         // Determine size of images in movie:
         GetMovieBox(theMovie, &movierect);
         
-        // Create GWorld for this movie object:
-        // error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, k32ABGRPixelFormat, &movierect,  NULL, NULL, 0);
-        error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, 0, &movierect,  NULL, NULL, 0);
-        if (error!=noErr) {
-            QTAudioContextRelease(QTAudioContext);
-            DisposeMovie(movieRecordBANK[slotid].theMovie);
-            movieRecordBANK[slotid].theMovie=NULL;    
-            if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!"); else return;
-        }
-                            
-        // Attach this GWorld as rendering target for Quicktime:
-        SetMovieGWorld(theMovie, movieRecordBANK[slotid].QTMovieGWorld, NULL);
+		// Only create a GWorld if movie frames contain at least 1 pixel. This way we skip GWorld
+		// setup on "movies" which only consist of sound tracks.
+		if ((movierect.right - movierect.left != 0) && (movierect.bottom - movierect.top != 0)) {
+			// Create GWorld for this movie object:
+			// error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, k32ABGRPixelFormat, &movierect,  NULL, NULL, 0);
+			error = QTNewGWorld(&movieRecordBANK[slotid].QTMovieGWorld, 0, &movierect,  NULL, NULL, 0);
+			if (error!=noErr) {
+				QTAudioContextRelease(QTAudioContext);
+				DisposeMovie(movieRecordBANK[slotid].theMovie);
+				movieRecordBANK[slotid].theMovie=NULL;    
+				if (printErrors) PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation failed!!!"); else return;
+			}
+			
+			// Attach this GWorld as rendering target for Quicktime:
+			SetMovieGWorld(theMovie, movieRecordBANK[slotid].QTMovieGWorld, NULL);
+		}
     }
     
     // Preload first second of movie into system RAM for faster playback:
@@ -662,7 +672,11 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
                 return(-1);
             }
             
-            // Success!
+            // Is this the special case of a movie without video, but only sound? In that case,
+			// we always return a 'false' because there ain't no image to return.
+			if (movieRecordBANK[moviehandle].QTMovieGWorld == NULL) return(false);
+			
+			// Success!
             return(true);
         }
         
@@ -714,6 +728,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Assign texture rectangle:
         PsychMakeRect(out_texture->rect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
         
+        // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+        out_texture->textureOrientation = (CVOpenGLTextureIsFlipped(newImage)) ? 3 : 4;
+
         // Assign OpenGL texture id:
         out_texture->textureNumber = texid;
         

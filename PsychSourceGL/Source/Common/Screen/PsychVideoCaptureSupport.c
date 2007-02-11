@@ -468,6 +468,9 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
 		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
 		error = SGSetDataOutput(seqGrab, &recfile, ((recordingflags & 1) ? seqGrabToMemory : seqGrabToDisk));
+		
+		// This call would select a specific video compressor, if we had any except the default one ;)
+		// SGSetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, 0, kCinepakCodecType, codecHighQuality, codecHighQuality, 10);
 	}
 	
     if (error !=noErr) {

@@ -541,11 +541,11 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 {
         GLdouble       			 sourceWidth, sourceHeight, tWidth, tHeight;
         GLdouble                         sourceX, sourceY, sourceXEnd, sourceYEnd;
-	double                           transX, transY;
+		double                           transX, transY;
         GLenum                           texturetarget;
 
         // Activate rendering context of target window:
-	PsychSetGLContext(target);
+		PsychSetGLContext(target);
 
         // Setup texture-target if not already done:
         PsychDetectTextureTarget(target);
@@ -556,7 +556,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // Enable target's framebuffer as current drawingtarget, except if this is a
 		// blit operation from a window into itself and the imaging pipe is on:
         if ((source != target) || (target->imagingMode==0)) PsychSetDrawingTarget(target);
-        
+		//printf("%i\n", source->textureOrientation);
+		
         // This code allows the application of sourceRect, as it is meant to be:
         // CAUTION: This calculation with sourceHeight - xxxx  depends on if GPU texture swapping
         // is on or off!!!!
@@ -573,22 +574,32 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         }
         else {
             sourceHeight=PsychGetWidthFromRect(source->rect);
-	    sourceWidth=PsychGetHeightFromRect(source->rect);
+			sourceWidth=PsychGetHeightFromRect(source->rect);
             sourceX=sourceRect[kPsychTop];
             sourceY=sourceRect[kPsychLeft];
             sourceXEnd=sourceRect[kPsychBottom];
             sourceYEnd=sourceRect[kPsychRight];
         }
     
-	// Override for special case: Corevideo texture from Quicktime-subsystem or upside-down
+		// Overrides for special cases: Corevideo textures from Quicktime-subsystem or upside-down
         // texture from Quicktime GWorld or Sequence-Grabber...
-        if (source->targetSpecific.QuickTimeGLTexture || source->textureOrientation == 3) {
+        if (source->textureOrientation == 3) {
             sourceHeight=PsychGetHeightFromRect(source->rect);
-	    sourceWidth=PsychGetWidthFromRect(source->rect);
-	    sourceX=sourceRect[kPsychLeft];
+			sourceWidth=PsychGetWidthFromRect(source->rect);
+			sourceX=sourceRect[kPsychLeft];
             sourceY=sourceRect[kPsychBottom];
             sourceXEnd=sourceRect[kPsychRight];
             sourceYEnd=sourceRect[kPsychTop];
+        }
+
+		// This case can happen with some QT movies, they are upside down in an unusual way:
+        if (source->textureOrientation == 4) {
+            sourceHeight=PsychGetHeightFromRect(source->rect);
+			sourceWidth=PsychGetWidthFromRect(source->rect);
+			sourceX=sourceRect[kPsychLeft];
+            sourceY=sourceRect[kPsychTop];
+            sourceXEnd=sourceRect[kPsychRight];
+            sourceYEnd=sourceRect[kPsychBottom];
         }
 
         // Special case handling for GL_TEXTURE_2D textures. We need to map the
@@ -691,11 +702,11 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // Now we store the textures as provided by Matlab, simplifying MakeTexture's implementation,
         // and let the Graphics hardware do the job of "swapping" during rendering, by drawing the texture
         // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
-	glBegin(GL_QUADS);
+		glBegin(GL_QUADS);
         // Coordinate assignments depend on internal texture orientation...
         // Override for special case: Corevideo texture from Quicktime-subsystem.
         if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
-            source->textureOrientation == 3) {
+            source->textureOrientation == 3 || source->textureOrientation == 4) {
 	  // NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
 	  // is the fastest case --> Most common orientation has highest performance.
 	  //lower left

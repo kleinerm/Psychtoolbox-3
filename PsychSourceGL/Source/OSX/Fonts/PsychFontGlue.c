@@ -164,28 +164,24 @@ void PsychInitFontList(void)
     LangCode			languageCode;
     OSStatus			localOK;
     LocaleRef			locale;
-
+	boolean				trouble = FALSE;
 
     fontListHead=PsychFontListHeadKeeper(FALSE, NULL); //get the font list head.
-    if(fontListHead)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to set new font list head when one is already set.");
+    if(fontListHead) PsychErrorExitMsg(PsychError_internal, "Attempt to set new font list head when one is already set.");
         
     fontRecord=NULL;
     halt= ATSFontIteratorCreate(PSYCH_ATS_ITERATOR_CONTEXT, NULL, NULL, PSYCH_ATS_ITERATOR_SCOPE, &fontIterator);
     i=0;
+	
     while(halt==noErr){
         halt=ATSFontIteratorNext(fontIterator, &tempATSFontRef);
+
         if(halt==noErr){
             //create a new  font  font structure.  Set the next field  to NULL as  soon as we allocate the font so that if 
             //we break with an error then we can find the end when we  walk down the linked list. 
             fontRecord=(PsychFontStructPtrType)malloc(sizeof(PsychFontStructType));
             fontRecord->next=NULL;
-            if(i==0)
-                PsychFontListHeadKeeper(TRUE, fontRecord); 
-            else
-                previousFontRecord->next=fontRecord;
-            //set the font number field of the struct
-            fontRecord->fontNumber=i+1;
+
             //Get  FM and ATS font and font family references from the ATS font reference, which we get from iteration.
             fontRecord->fontATSRef=tempATSFontRef; 
             fontRecord->fontFMRef=FMGetFontFromATSFontRef(fontRecord->fontATSRef);
@@ -193,45 +189,56 @@ void PsychInitFontList(void)
             fontRecord->fontFamilyATSRef=FMGetATSFontFamilyRefFromFontFamily(fontRecord->fontFamilyFMRef);
             //get the font name and set the the corresponding field of the struct
             if (ATSFontGetName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
-                PsychFreeFontList();
-                PsychErrorExitMsg(PsychError_internal, "Failed to query font name in ATSFontGetName! OS-X font handling screwed up?!?");
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to query font name in ATSFontGetName! OS-X font handling screwed up?!? Skipped this entry...\n");
+				trouble = TRUE;
+				continue;
             }
             
             resultOK=CFStringGetCString(cfFontName, fontRecord->fontFMName, 255, kCFStringEncodingASCII);
             if(!resultOK){
                 CFRelease(cfFontName);
-                PsychFreeFontList();
-                PsychErrorExitMsg(PsychError_internal, "Failed to convert CF string to char string.");
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontFMName CF string to char string. Defective font?!? Skipped this entry...\n");
+				trouble = TRUE;
+				continue;
             }
             CFRelease(cfFontName);
+
             //get the font postscript name and set the corresponding field of the struct
             if (ATSFontGetPostScriptName(fontRecord->fontATSRef, kATSOptionFlagsDefault, &cfFontName)!=noErr) {
-                PsychFreeFontList();
-                printf("PTB-ERROR: The following font makes trouble: %s. Please REMOVE the offending font file from your font folders.", fontRecord->fontFMName);
-		printf("PTB-ERROR: After removing the font file, QUIT and RESTART Matlab / Octave. Psychtoolbox WILL NOT WORK PROPERLY BEFORE!!\n");
-                PsychErrorExitMsg(PsychError_system, "FATAL ERROR: ATSFontGetPostscriptName failed.");
+                if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: The following font makes trouble: %s. Please REMOVE the offending font file from your font folders and restart Matlab. Skipped entry for now...\n", fontRecord->fontFMName);
+				trouble = TRUE;
+				continue;
             }
+
             resultOK=CFStringGetCString(cfFontName, fontRecord->fontPostScriptName, 255, kCFStringEncodingASCII); //kCFStringEncodingASCII matches MATLAB for 0-127
             if(!resultOK){
                 CFRelease(cfFontName);
-                PsychFreeFontList();
-                PsychErrorExitMsg(PsychError_internal, "Failed to convert CF string to char string.");
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to convert fontPostScriptName CF string to char string for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				trouble = TRUE;
+				continue;
             }
             CFRelease(cfFontName);
+
             //get the QuickDraw name of the font
             ATSFontFamilyGetQuickDrawName(fontRecord->fontFamilyATSRef, fontFamilyQuickDrawNamePString);
             CopyPascalStringToC(fontFamilyQuickDrawNamePString, fontRecord->fontFamilyQuickDrawName);
 
             //get the font file used for this font
             osStatus= ATSFontGetFileSpecification(fontRecord->fontATSRef, &fontFileSpec);
-            if(osStatus != noErr)
-                PsychErrorExitMsg(PsychError_internal, "Failed to get the font file specifier.");
+            if(osStatus != noErr) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file specifier for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				trouble = TRUE;
+				continue;
+			}
+
             FSpMakeFSRef(&fontFileSpec, &fontFileRef);
             osStatus= FSRefMakePath(&fontFileRef, fontRecord->fontFile, (UInt32)(kPsychMaxFontFileNameChars - 1));
             if(osStatus!=noErr){
-                PsychFreeFontList();
-                PsychErrorExitMsg(PsychError_internal, "Failed to get the font file path.");
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: In font initialization: Failed to get the font file path for font %s. Defective font?!? Skipped this entry...\n", fontRecord->fontFMName);
+				trouble = TRUE;
+				continue;
             }
+
             //get the font metrics of this font.
             //Explicit copy between fields to make it clear what is going one, will likely have to mix & match between native and Psych structures for different
             //platforms.
@@ -282,21 +289,53 @@ void PsychInitFontList(void)
             localOK=LocaleRefGetPartString(locale, kLocaleRegionMask, 255, fontRecord->locale.region);			fontRecord->locale.region[255]='\0';
             localOK=LocaleRefGetPartString(locale, kLocaleRegionVariantMask, 255, fontRecord->locale.regionVariant);	fontRecord->locale.regionVariant[255]='\0';
             localOK=LocaleRefGetPartString(locale, kLocaleAllPartsMask, 255, fontRecord->locale.fullName);		fontRecord->locale.fullName[255]='\0';
-            //increment the font index and update the next font pointer
+
+			// Init for fontRecord (nearly) finished.
+			
+			// Set this fontRecord as head of font-list, or enqueue it in existing list:
+            if(i==0) {
+                PsychFontListHeadKeeper(TRUE, fontRecord); 
+            }
+			else {
+                previousFontRecord->next=fontRecord;
+            }
+			
+			// Set the font number field of the struct
+            fontRecord->fontNumber=i+1;
+
+            // Increment the font index and update the next font pointer
             ++i;
             previousFontRecord=fontRecord;
         }else if(halt == kATSIterationScopeModified){
             //exit because the font database changed during this loop.
             PsychFreeFontList();
-            PsychErrorExitMsg(PsychError_internal, "The system font database was modified during the function call");
+            PsychErrorExitMsg(PsychError_internal, "The system font database was modified during font list setup. Please 'clear all' and restart your script.");
         }
+		// Next parse iteration in system font database...
     }
+	
     if(halt != kATSIterationCompleted){
         PsychFreeFontList();
-        PsychErrorExitMsg(PsychError_internal, "Font iteration terminated prematurely");
+        PsychErrorExitMsg(PsychError_internal, "Font iteration terminated prematurely. OS-X Font database corrupted?!?");
     }
+	
+	// Did we get a hand on at least one font?
+	if (i==0) {
+		if (PsychPrefStateGet_Verbosity() > 0) {
+			printf("PTB-ERROR: In font initialization: Could not even retrieve one valid font from the system! The OS-X font database must be corrupt.\n");
+			printf("PTB-ERROR: Will try to continue but will likely crash if your code tries to call any of the font handling or text drawing functions.\n");
+			trouble = TRUE;
+		}
+	}
+	
+	if (trouble && PsychPrefStateGet_Verbosity() > 0) {
+		printf("PTB-HINT: Go to the Application folder and open the 'Font Book' application. It allows you to check and repair your font database.\n");
+	} 
+
     ATSFontIteratorRelease(&fontIterator);
-    
+
+    // Font database ready for use.
+	return;
 }
 
 
