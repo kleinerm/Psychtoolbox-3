@@ -24,8 +24,8 @@ whichScreen = max(Screen('Screens'));
 % encode the LUT
 newClutRow = BitsPlusEncodeClutRow(clut);
 
-% find out how big the window is
-[screenWidth, screenHeight] = Screen('WindowSize', windowPtr)
+% Find out how big the window is.
+[screenWidth, screenHeight] = Screen('WindowSize', windowPtr);
 
 % check that the screen width is at least 524 pixels
 if screenWidth < 524
