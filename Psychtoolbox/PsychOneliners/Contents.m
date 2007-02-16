@@ -48,7 +48,7 @@
 %    streq                   - strcmp.
 %    TextBounds              - Draw string, return enclosing rect.
 %    TextCenteredBounds      - Draw string, centered, return enclosing rect.
-%    UnpackColorImage      - Extract three color planes from an m by n by 3 color image.
+%    UnpackColorImage        - Extract three color planes from an m by n by 3 color image.
 %    VecToImage              - Convert a grayscale image from vector to image format.
 %    WhiteIndex              - Returns number that will produce the color white.
 %    WrapString              - Word wrap (break into lines).
@@ -78,7 +78,7 @@
 %   SCREENWinToFront      - Bring Screen window back in front of Command window.
 %   SetResolution         - Sets the screen resolution: width, height, hz, and pixelSize.
 %   ShowTiff              - Show a TIFF file, calibrated.
-%   TextCenteredBounds    - Draw string, centered, return enclosing rect.
+
 
 
 

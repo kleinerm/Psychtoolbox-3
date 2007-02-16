@@ -16443,15 +16443,16 @@
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					PTBMODULE_Screen,
 					MATLAB_MEX_FILE,
+					USE_MWSIZE,
 				);
-				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
+				HEADER_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include";
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
+				LIBRARY_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.2;
-				MATLAB_DIR_NAME = MATLAB72;
+				MATLAB_DIR_NAME = MATLAB73;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
