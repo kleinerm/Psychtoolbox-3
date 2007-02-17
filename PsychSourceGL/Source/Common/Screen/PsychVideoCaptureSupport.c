@@ -390,7 +390,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         if (error == noErr) {
             // set usage for new video channel to avoid playthrough
             // note we don't set seqGrabPlayDuringRecord
-            error = SGSetChannelUsage(*sgchanptr, seqGrabRecord | seqGrabLowLatencyCapture);
+            error = SGSetChannelUsage(*sgchanptr, seqGrabRecord | seqGrabLowLatencyCapture | seqGrabAlwaysUseTimeBase);
         }
         
         //if (error==noErr) error = SGGetChannelBounds(*sgchanptr, &movierect);
@@ -454,7 +454,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 		error = SGNewChannel(seqGrab, SoundMediaType, sgchanaudioptr);
 		SGSetChannelRefCon(vidcapRecordBANK[slotid].sgchanAudio, slotid);
 		// More setup code needed?
-		if (error == noErr) error = SGSetChannelUsage(*sgchanaudioptr,  seqGrabRecord | seqGrabLowLatencyCapture);
+		if (error == noErr) error = SGSetChannelUsage(*sgchanaudioptr,  seqGrabRecord | seqGrabLowLatencyCapture | seqGrabAlwaysUseTimeBase);
 	}
 	
 	// Recording to disc requested?
@@ -487,7 +487,6 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 			}
 		}
 		
-
 		NativePathNameToFSSpec(targetmoviefilename, &recfile, 0);
 		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
 		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
@@ -803,7 +802,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
     int dropped = 0;
     OSErr error = noErr;
     Fixed framerate;
-
+	long usage;
+	
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
     }
@@ -817,6 +817,24 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
         // Start capture:
         if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
+	// Low latency capture disabled?
+	if (dropframes == 0) {
+		// Yes. Need to clear the lowlat flag from our channel config:
+		SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+		
+		SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		usage&=~seqGrabLowLatencyCapture;
+		SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		
+		if (vidcapRecordBANK[capturehandle].sgchanAudio) {
+			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+			usage&=~seqGrabLowLatencyCapture;
+			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+		}
+		
+		SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+	}
+	
 	// Wait until start deadline reached:
 	if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
 
