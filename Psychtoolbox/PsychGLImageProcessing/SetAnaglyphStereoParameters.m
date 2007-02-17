@@ -61,7 +61,18 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 % The command always returns the old weights as a 3 component vector.
 %
 % 'BackgroundColorBias' - Set the "background color" for inverted anaglyph
-% mode. TODO: Finish...
+% mode. This color value is added to each pixel. It defaults to zero - bias
+% free display. For inverted mode, one usually sets it to maximum output
+% intensity, so that the default background is a bright output.
+%
+% 'InvertedMode' - Switch to inverted display mode, i.e., set the
+% 'BackgroundColorBias' and color gains properly. The image is displayed in
+% an inverted fashion, like a photo-negative. This allows for less ghosting
+% artifacts if your stimulus is sparse, e.g., dots and lines. This trick
+% was proposed by Massimiliano di Luca.
+%
+% 'NormalMode' - Switch from inverted mode to normal anaglyph mode.
+% Background color bias is set to zero, gains a positive.
 %
 % 'GetHandle' - Return GLSL handle to anaglyph shader. Allows to modify the
 % shader itself, e.g., replace it by your own customized shader. Only for
@@ -69,10 +80,16 @@ function retval = SetAnaglyphStereoParameters(cmd, win, rgb)
 %
 
 % History:
-% 5.1.2007 Wrote it (MK).
+% 5.1.2007   Wrote it (MK).
+% 17.2.2007  Implemented setup code for Max di Lucas inversion trick (MK).
+
+persistent inverted;
 
 % Only works if GL shading language is supported.
-AssertGLSL;
+if isempty(inverted)
+    AssertGLSL;
+    inverted = [];
+end
 
 try
     if nargin < 2
@@ -104,6 +121,59 @@ end
         retval = glsl;
     end
     
+    if strcmpi(cmd, 'InvertedMode')
+        % Switch to inverted display (Max di Lucas trick):
+        if isempty(find(inverted, win))
+            % Switch needed: Add windowhandle to our list of inverted
+            % windows:
+            inverted = [inverted win];
+            
+            % Retrieve background color bias, check if its non-zero:
+            uniloc = glGetUniformLocation(glsl, 'ChannelBias');
+            retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
+            
+            if max(abs(retval)) <= 0
+                % Bias is zero, that's not suitable for inverted mode. Set
+                % it to maximum output color, except for the components
+                % where both gains are zero, i.e., unused channels:
+                lg=SetAnaglyphStereoParameters('LeftGains', win);
+                rg=SetAnaglyphStereoParameters('RightGains', win);
+                glUseProgram(glsl);
+                glUniform3fv(uniloc, 1, sign(lg + rg));
+            end
+            
+            % Query and set color gains - This will switch gains properly:
+            SetAnaglyphStereoParameters('LeftGains', win, SetAnaglyphStereoParameters('LeftGains', win));
+            SetAnaglyphStereoParameters('RightGains', win, SetAnaglyphStereoParameters('RightGains', win));
+            retval = 1;
+        end
+    end
+
+    if strcmpi(cmd, 'StandardMode')
+        % Switch to standard, non-inverted display:
+        winidx = find(inverted, win);
+        if ~isempty(winidx)
+            % Switch needed: Remove windowhandle from our list of inverted
+            % windows, actually null it out, don't remove:
+            inverted(winidx) = 0;
+            
+            % Retrieve background color bias, check if its non-zero:
+            uniloc = glGetUniformLocation(glsl, 'ChannelBias');
+            retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
+            
+            if max(abs(retval)) > 0
+                % Bias is non-zero, that's not suitable for inverted mode. Set
+                % it to black output color:
+                glUniform3fv(uniloc, 1, [0 0 0]);
+            end
+            
+            % Query and set color gains - This will switch gains properly:
+            SetAnaglyphStereoParameters('LeftGains', win, SetAnaglyphStereoParameters('LeftGains', win));
+            SetAnaglyphStereoParameters('RightGains', win, SetAnaglyphStereoParameters('RightGains', win));
+            retval = 0;
+        end
+    end
+
     if strcmpi(cmd, 'BackgroundColorBias')
         uniloc = glGetUniformLocation(glsl, 'ChannelBias');
         retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
@@ -132,23 +202,37 @@ end
     
     if strcmpi(cmd, 'LeftGains')
         uniloc = glGetUniformLocation(glsl, 'Gains1');
-        retval = glGetUniformfv(glsl, uniloc);
+        retval = abs(glGetUniformfv(glsl, uniloc));
+        
+        if find(inverted, win)
+            inverter = -1;
+        else
+            inverter = 1;
+        end
+        
         if nargin>=3
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
             end
-            glUniform3fv(uniloc, 1, rgb);
+            glUniform3fv(uniloc, 1, inverter * rgb);
         end
     end
     
     if strcmpi(cmd, 'RightGains')
         uniloc = glGetUniformLocation(glsl, 'Gains2');
-        retval = glGetUniformfv(glsl, uniloc);
+        retval = abs(glGetUniformfv(glsl, uniloc));
+
+        if find(inverted, win)
+            inverter = -1;
+        else
+            inverter = 1;
+        end
+
         if nargin>=3
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
             end
-            glUniform3fv(uniloc, 1, rgb);
+            glUniform3fv(uniloc, 1, inverter * rgb);
         end
     end
 

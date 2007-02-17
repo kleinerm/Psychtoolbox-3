@@ -177,6 +177,7 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % 11/21/06 mk  Allow alternate install location for svn client: Installer
 %              will find the svn executable if its installation folder is
 %              included in the Matlab path.
+% 02/17/07 mk  Convert flavor spec to lower case in case it isn't.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -215,6 +216,10 @@ end
 if (nargin<1 | isempty(flavor))
     flavor='stable';
 end
+
+% Make sure that flavor is lower-case:
+flavor = lower(flavor);
+
 switch (flavor)
     % 'current' is a synonym for 'beta'.
     case 'current'
