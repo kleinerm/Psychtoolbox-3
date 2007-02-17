@@ -217,7 +217,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Fixed framerate;
     *capturehandle = -1;
     error=noErr;
-
+	CodecNameSpecListPtr	codeclist = NULL;
+	
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -464,13 +465,45 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 	else {
 		// Yes. Set it up:
 		FSSpec recfile;
+		CodecType codectypeid;
+		char* codecstr = strstr(targetmoviefilename, ":CodecType="); 
+		if (codecstr) {
+			sscanf(codecstr, ":CodecType= %i", &codectypeid);
+			*codecstr = 0;
+		}
+		else {
+			codectypeid = 0;
+		}
+		
+		if (PsychPrefStateGet_Verbosity() > 3) {
+			// Query and print list of all supported codecs on this setup:
+			if ((GetCodecNameList(&codeclist, 1) == noErr) && (codeclist != NULL)) {
+				printf("PTB-INFO: The following codecs are supported on your system for video recording:\n");
+				for (i=0; i<codeclist->count; i++) {
+					printf(":CodecType=%i  - '%s'  \n", (int) codeclist->list[i].cType, codeclist->list[i].typeName);
+				}
+				printf("--------------------------------------------------------------------------------\n\n");
+				DisposeCodecNameList(codeclist); codeclist = NULL;
+			}
+		}
+		
+
 		NativePathNameToFSSpec(targetmoviefilename, &recfile, 0);
 		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
 		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
 		error = SGSetDataOutput(seqGrab, &recfile, ((recordingflags & 1) ? seqGrabToMemory : seqGrabToDisk));
 		
 		// This call would select a specific video compressor, if we had any except the default one ;)
-		// SGSetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, 0, kCinepakCodecType, codecHighQuality, codecHighQuality, 10);
+		if (error==noErr && codectypeid!=0) {
+			// MK: Does not work well up to now: error = SGSetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, 32, kH264kCodecType, codecHighQuality, codecHighQuality, 24);
+			// MK: Example of a symbolic spec:	error = SGSetVideoCompressorType(vidcapRecordBANK[slotid].sgchanVideo, kH264CodecType);
+			error = SGSetVideoCompressorType(vidcapRecordBANK[slotid].sgchanVideo, codectypeid);
+			if (error != noErr && PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: Video recording engine could not enable requested codec of type id %i: QT Error code %i.\n", (int) codectypeid, (int) error);
+				printf("PTB-HINT:    Rerun the script with a 'Verbosity' preference setting of greater than or equal to 4 to print out a list of supported codecs.\n");		
+			}
+			error=noErr;
+		}
 	}
 	
     if (error !=noErr) {
