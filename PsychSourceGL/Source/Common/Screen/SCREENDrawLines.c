@@ -78,14 +78,11 @@ static char seeAlsoString[] = "BlendFunction";
 
 PsychError SCREENDrawLines(void)  
 {
-
-	PsychColorType				color;		// To get rid of warnings;
-	int							whiteValue;
 	PsychWindowRecordType		*windowRecord;
-	int							depthValue, m,n,p, smooth;
+	int							m,n,p, smooth;
 	int							nrsize, nrcolors, nrvertices, mc, nc, pc, i;
 	boolean                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
-	double						*xy, *size, *center, *dot_type, *colors, *tmpcolors, *pcolors, *tcolors;
+	double						*xy, *size, *center, *dot_type, *colors;
 	unsigned char               *bytecolors;
 	float						linesizerange[2];
 	double						convfactor;
@@ -100,43 +97,18 @@ PsychError SCREENDrawLines(void)
 	
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
-		
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
 	
+	// Query, allocate and copy in all vectors...
+	nrvertices = 2;
+	nrsize = 1;
 
-	// Enable the rendering context of this window:
-	PsychSetGLContext(windowRecord);
+	colors = NULL;
+	bytecolors = NULL;
 
-	// Enable this windowRecords framebuffer as current drawingtarget:
-	PsychSetDrawingTarget(windowRecord);
-
-	// Setup alpha-blending properly:
-	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-
-	//get xy coordinates vector:
-	isArgThere = PsychIsArgPresent(PsychArgIn, 2);
-	if(!isArgThere){
-		PsychErrorExitMsg(PsychError_user, "No xy line positions argument supplied");
-	}
-
-	PsychAllocInDoubleMatArg(2, TRUE, &m, &n, &p, &xy);
-	if(p!=1 || m!=2 || n<2) PsychErrorExitMsg(PsychError_user, "xy must be a 2-rows vector of line endpoints with at least 2 columns.");
-	nrvertices = n;
-	
-	// Get line-width argument
-	isArgThere = PsychIsArgPresent(PsychArgIn, 3);
-	if(!isArgThere){
-            size = (double *) PsychMallocTemp(1 * sizeof(double));
-            size[0] = 1;
-			nrsize=1;
-	} else {
-		PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, &size);
-		if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a 1 row or 1 column vector.");
-		nrsize = m * n;
-		
-		if(nrsize!=1 && nrsize!=nrvertices/2) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a 1 row or 1 column vector with one entry per line.");
-	}
+	PsychPrepareRenderBatch(windowRecord, 2, &nrvertices, &xy, 4, &nc, &mc, &colors, &bytecolors, 3, &nrsize, &size);
+	isdoublecolors = (colors) ? TRUE:FALSE;
+	isuint8colors  = (bytecolors) ? TRUE:FALSE;
+	usecolorvector = (nc>1) ? TRUE:FALSE;
 
 	// Get center argument
 	isArgThere = PsychIsArgPresent(PsychArgIn, 5);
@@ -162,58 +134,6 @@ PsychError SCREENDrawLines(void)
 	// Child-protection: Alpha blending needs to be enabled for smoothing to work:
 	if (smooth>0 && windowRecord->actualEnableBlending!=TRUE) {
 		PsychErrorExitMsg(PsychError_user, "Line smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
-	}
-		
-	// Check if color argument is provided:
-	isArgThere = PsychIsArgPresent(PsychArgIn, 4);        
-	if(!isArgThere){
-		// No color argument provided - Use defaults:
-		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
-		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
-		usecolorvector=false;
-	}
-	else {
-		// Some color argument provided. Check first, if it's a valid color vector:
-		isdoublecolors = PsychAllocInDoubleMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &colors);
-		isuint8colors  = PsychAllocInUnsignedByteMatArg(4, kPsychArgAnything, &mc, &nc, &pc, &bytecolors);
-		
-		// Do we have a color vector, aka one element per vertex?
-		if((isdoublecolors || isuint8colors) && pc==1 && nc==nrvertices && nrvertices>1) {
-			// Looks like we might have a color vector... ... Double-check it:
-			if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
-			// Yes. colors is a valid pointer to it.
-			usecolorvector=true;
-			
-			if (isdoublecolors) {
-				if (fabs(windowRecord->colorRange)!=1) {
-					// We have to loop through the vector and divide all values by windowRecord->colorRange, so the input values
-					// 0-colorRange get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
-					// a color vector is passed in Double- or Float format.
-					// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
-					// specifications consistent in the PTB - API.
-					convfactor = 1.0 / fabs(windowRecord->colorRange);
-					tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
-					pcolors = colors;
-					tcolors = tmpcolors;
-					for (i=0; i<(nc*mc); i++) {
-						*(tcolors++)=(*pcolors++) * convfactor;
-					}
-				}
-				else {
-					// colorRange is == 1 --> No remapping needed as colors are already in proper range!
-					// Just setup pointer to our unaltered input color vector:
-					tmpcolors=colors;
-				}
-			}
-			else {
-				// Color vector in uint8 format. Nothing to do.
-			}
-		}
-		else {
-			// No color vector provided: Check for a single valid color triplet or quadruple:
-			usecolorvector=false;
-			isArgThere=PsychCopyInColorArg(4, TRUE, &color);                
-		}
 	}
 
 	// turn on antialiasing to draw anti-aliased lines:
@@ -241,14 +161,9 @@ PsychError SCREENDrawLines(void)
 	glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
 	
 	if (usecolorvector) {
-		if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, tmpcolors);
+		if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, colors);
 		if (isuint8colors)  glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
 		glEnableClientState(GL_COLOR_ARRAY);
-	}
-	else {
-		// Set up common color for all dots if no color vector has been provided:
-		PsychCoerceColorMode( &color);
-		PsychSetGLColor(&color, windowRecord);
 	}
 
 	// Enable fast rendering of arrays:

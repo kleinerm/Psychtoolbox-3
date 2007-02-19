@@ -29,7 +29,7 @@ function y = SerialComm(op, port, data)
 %  SerialComm( 'close', PORT ) closes the PORT. 
 %
 %  SerialComm( 'status', PORT ) prints some status info.
-
+%
 % Author: Tom Davis (tomldavis@comcast.net)
 % Date: October, 2006
 % 

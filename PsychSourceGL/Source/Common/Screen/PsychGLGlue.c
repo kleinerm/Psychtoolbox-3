@@ -81,8 +81,6 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
         PsychErrorExitMsg(PsychError_internal, "Illegal color specifier"); 
 }
 
-
-
 /*
     PsychGLRect()
 */
@@ -93,7 +91,6 @@ void PsychGLRect(double *psychRect)
             (GLdouble)(psychRect[kPsychRight]),
             (GLdouble)(psychRect[kPsychBottom]));
 }
-
 
 char *PsychGetGLErrorNameString(GLenum errorConstant)
 {
@@ -156,10 +153,7 @@ Boolean PsychGetGLErrorListString(const char **errorListStr)
 	return(isError);
 }
 
- 
-
-
- void PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName)
+void PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName)
 {
     boolean			isError;
 	const char		*glErrorListString;
@@ -172,10 +166,6 @@ Boolean PsychGetGLErrorListString(const char **errorListStr)
 						funcName, 
 						fileName);
 }
-						
-						 
-						
-
 
 /*
 	PsychExtractQuadVertexFromRect()
@@ -208,7 +198,142 @@ GLdouble *PsychExtractQuadVertexFromRect(double *rect, int vertexNumber, GLdoubl
 	return(vertex);
 }
 
-    
+/* PsychPrepareRenderBatch()
+ *
+ * Perform setup for a batch of render requests for a specific primitive. Some 2D Screen
+ * drawing commands allow to specify a list of primitives to draw instead of only a single
+ * one. E.g. 'DrawDots' allows to draw thousands of dots with one single DrawDots command.
+ * This helper routine is called by such batch-capable commands. It checks which input arguments
+ * are provided and if its a single one or multiple ones. It sets up the rendering pipe accordingly,
+ * performing required conversion steps. The actual drawing routine just needs to perform primitive
+ * specific code.
+ */
+void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos, int* coords_count, double** xy, int colors_pos, int* colors_count, int* colorcomponent_count, double** colors, unsigned char** bytecolors, int sizes_pos, int* sizes_count, double** size)
+{
+	PsychColorType							color;
+	int                                     whiteValue, m,n,p,mc,nc,pc,idot_type;
+	int                                     i, nrpoints, nrsize;
+	boolean                                 isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
+	double									*tmpcolors, *pcolors, *tcolors;
+	double									convfactor;
 
+	needxy = (coords_pos > 0) ? TRUE: FALSE;
+	coords_pos = abs(coords_pos);
+	colors_pos = abs(colors_pos);
+	sizes_pos = abs(sizes_pos);
+	
+	// Get mandatory or optional xy coordinates argument
+	isArgThere = PsychIsArgPresent(PsychArgIn, coords_pos);
+	if(!isArgThere && needxy) {
+		PsychErrorExitMsg(PsychError_user, "No position argument supplied");
+	}
+	
+	if (isArgThere) {
+		PsychAllocInDoubleMatArg(coords_pos, TRUE, &m, &n, &p, xy);
+		if(p!=1 || m!=*coords_count) {
+			printf("PTB-ERROR: Coordinates must be a %i tuple or a %i rows vector.\n", *coords_count, *coords_count);
+			PsychErrorExitMsg(PsychError_user, "Invalid format for coordinate specification.");
+		}
+		
+		nrpoints=n;
+		*coords_count = n;
+	}
+	else {
+		nrpoints = 0;
+		*coords_count = 0;
+	}
+	
+	if (size) {
+		// Get optional size argument
+		isArgThere = PsychIsArgPresent(PsychArgIn, sizes_pos);
+		if(!isArgThere){
+			// No size provided: Use a default size of 1.0:
+			*size = (double *) PsychMallocTemp(sizeof(double));
+			*size[0] = 1;
+			nrsize=1;
+		} else {
+			PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, size);
+			if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a vector with one column or row");
+			nrsize=m*n;
+			if (nrsize!=nrpoints && nrsize!=1 && *sizes_count!=1) PsychErrorExitMsg(PsychError_user, "Size vector must contain one size value per item.");
+		}
+		
+		*sizes_count = nrsize;
+	}	
 
-
+	// Check if color argument is provided:
+	isArgThere = PsychIsArgPresent(PsychArgIn, colors_pos);        
+	if(!isArgThere) {
+		// No color argument provided - Use defaults:
+		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
+		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+		usecolorvector=false;
+	}
+	else {
+		// Some color argument provided. Check first, if it's a valid color vector:
+		isdoublecolors = PsychAllocInDoubleMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, colors);
+		isuint8colors  = PsychAllocInUnsignedByteMatArg(colors_pos, kPsychArgAnything, &mc, &nc, &pc, bytecolors);
+		
+		// Do we have a color vector, aka one element per vertex?
+		if((isdoublecolors || isuint8colors) && pc==1 && nc==nrpoints && nrpoints>1) {
+			// Looks like we might have a color vector... ... Double-check it:
+			if (mc!=3 && mc!=4) PsychErrorExitMsg(PsychError_user, "Color vector must be a 3 or 4 row vector");
+			// Yes. colors is a valid pointer to it.
+			usecolorvector=true;
+			
+			if (isdoublecolors) {
+				if (fabs(windowRecord->colorRange)!=1) {
+					// We have to loop through the vector and divide all values by windowRecord->colorRange, so the input values
+					// 0-colorRange get mapped to the range 0.0-1.0, as OpenGL expects values in range 0-1 when
+					// a color vector is passed in Double- or Float format.
+					// This is inefficient, as it burns some cpu-cycles, but necessary to keep color
+					// specifications consistent in the PTB - API.
+					convfactor = 1.0 / fabs(windowRecord->colorRange);
+					tmpcolors=PsychMallocTemp(sizeof(double) * nc * mc);
+					pcolors = *colors;
+					tcolors = tmpcolors;
+					for (i=0; i<(nc*mc); i++) {
+						*(tcolors++)=(*pcolors++) * convfactor;
+					}
+				}
+				else {
+					// colorRange is == 1 --> No remapping needed as colors are already in proper range!
+					// Just setup pointer to our unaltered input color vector:
+					tmpcolors=*colors;
+				}
+				
+				*colors = tmpcolors;
+			}
+			else {
+				// Color vector in uint8 format. Nothing to do.
+			}
+		}
+		else {
+			// No color vector provided: Check for a single valid color triplet or quadruple:
+			usecolorvector=false;
+			isArgThere=PsychCopyInColorArg(colors_pos, TRUE, &color);                
+		}
+	}
+	
+	// Enable rendering context for windowRecord:
+	PsychSetGLContext(windowRecord);
+	
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
+	
+	// Setup alpha blending properly:
+	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
+	
+ 	// Setup common color for all objects if no color vector has been provided:
+	if (!usecolorvector) {
+		PsychCoerceColorMode(&color);
+		PsychSetGLColor(&color, windowRecord);
+		*colors_count = 1;
+	}
+	else {
+		*colors_count = nc;
+	}
+	*colorcomponent_count = mc;
+		
+	return;
+}
