@@ -217,8 +217,10 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Fixed framerate;
     *capturehandle = -1;
     error=noErr;
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	CodecNameSpecListPtr	codeclist = NULL;
-	
+#endif
+
     // We startup the Quicktime subsystem only on first invocation.
     if (firsttime) {
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -477,6 +479,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 		
 		if (PsychPrefStateGet_Verbosity() > 3) {
 			// Query and print list of all supported codecs on this setup:
+			#if PSYCH_SYSTEM == PSYCH_OSX
 			if ((GetCodecNameList(&codeclist, 1) == noErr) && (codeclist != NULL)) {
 				printf("PTB-INFO: The following codecs are supported on your system for video recording:\n");
 				for (i=0; i<codeclist->count; i++) {
@@ -485,6 +488,9 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 				printf("--------------------------------------------------------------------------------\n\n");
 				DisposeCodecNameList(codeclist); codeclist = NULL;
 			}
+			#else
+				printf("PTB-INFO: Printout of codec list not yet implemented on M$-Windows due to some Microsoft compiler brain-damage.\n");
+			#endif
 		}
 		
 		NativePathNameToFSSpec(targetmoviefilename, &recfile, 0);

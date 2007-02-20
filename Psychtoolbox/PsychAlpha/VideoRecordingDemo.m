@@ -56,7 +56,11 @@ if exist(moviename)
     error('Moviefile must not exist! Delete it or choose a different name.');
 end
 
-if nargin < 2 || isempty(codec)
+if nargin < 2
+   codec = [];
+end
+
+if isempty(codec)
     codec = '';
 else
     switch(codec)
@@ -85,7 +89,11 @@ else
     end
 end
 
-if nargin < 3 || isempty(withsound)
+if nargin < 3
+   withsound = [];
+end
+
+if isempty(withsound)
     withsound = 2;
 end
 

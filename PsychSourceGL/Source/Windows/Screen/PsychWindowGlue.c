@@ -583,13 +583,18 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
     
 	// Special debug override for faulty drivers with non-working extension:
-	if ((conserveVRAM & kPsychOverrideWglChoosePixelformat)) wglChoosePixelFormatARB = NULL;
+	if (conserveVRAM & kPsychOverrideWglChoosePixelformat) wglChoosePixelFormatARB = NULL;
 
 	// Step 2: Ok, we have an OpenGL rendering context with all known extensions bound:
-	// Do we have support for wglChoosePixelFormatARB?
-	if (wglChoosePixelFormatARB == NULL) {
-	  // Failed. We will have to live without it :(
-	  printf("PTB-WARNING: Could not bind wglChoosePixelFormat - Extension. Some features will be unavailable, e.g., Anti-Aliasing and high precision framebuffers.\n");
+	// Do we have (or want) support for wglChoosePixelFormatARB?
+   // We skip use of it if we can do without it, i.e., when we don't need unusual framebuffer
+   // configs (like non 8bpc fixed) and we don't need multisampling. This is a work-around
+   // for hardware that has trouble (=driver bugs) with wglChoosePixelformat() in some modes, e.g., the NVidia
+	// Quadro gfx card, which fails to enable quad-buffered stereo when using wglChoosePixelformat(),
+	// but does so perfectly well when using the old-style ChoosePixelFormat(). 
+	if ((wglChoosePixelFormatARB == NULL) || ((bpc==8) && (windowRecord->multiSample <= 0))) {
+	  // Failed (==NULL) or disabled via override.
+	  if ((wglChoosePixelFormatARB == NULL) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Could not bind wglChoosePixelFormat - Extension. Some features will be unavailable, e.g., Anti-Aliasing and high precision framebuffers.\n");
 	}
 	else {
 	  // Supported. We destroy the rendering context and window, then recreate it with
@@ -884,9 +889,6 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   // Release device context:
   ReleaseDC(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
   windowRecord->targetSpecific.deviceContext=NULL;
-
-  // Delete pixelformat:
-  // FIXME Don't know yet how to do this. We leak memory here!
 
   // Release the capture, whatever that means...
   ReleaseCapture();
