@@ -53,6 +53,8 @@ PsychError SCREENPutImage(void)
 	GLfloat			xZoom = 1, yZoom = -1;
 	
 	int di;
+	mxArray *dpixdata;
+	double *dp;
         
 	// All sub functions should have these two lines.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -121,8 +123,8 @@ PsychError SCREENPutImage(void)
 		
 		// Loop through all rows and columns of the pixel data passed from Matlab, extract it,
 		// and stick it into 'pixelData'.
-		for (ix = 0; ix < inputN; ix++) {
-			for (iy = 0; iy < inputM; iy++) {
+		for (iy = 0; iy < inputM; iy++) {
+			for (ix = 0; ix < inputN; ix++) {
 				if (inputP == 1) { // Grayscale
 					// Extract the grayscale value.
 					matrixGrayIndex = PsychIndexElementFrom3DArray(inputM, inputN, 1, iy, ix, 0);
