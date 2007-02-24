@@ -227,7 +227,8 @@ typedef struct _PsychWindowRecordType_{
 	float* inRedTable;
 	float* inGreenTable;
 	float* inBlueTable;
-	int    inTableSize;		// Number of slots in the LUT tables.
+	int    inTableSize;					// Number of slots in the LUT tables.
+	int    loadGammaTableOnNextFlip;	// Type of upload operation: 0 = None, 1 = Load on next Flip via OS gamma table routines, then reset flag.
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.

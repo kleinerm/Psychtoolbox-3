@@ -271,6 +271,7 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->inRedTable = NULL;
 	(*winRec)->inGreenTable = NULL;
 	(*winRec)->inBlueTable = NULL;
+	(*winRec)->loadGammaTableOnNextFlip = 0;
 }
 
 

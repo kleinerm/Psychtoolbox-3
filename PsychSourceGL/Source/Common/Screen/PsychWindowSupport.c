@@ -1281,7 +1281,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     tshouldflip = tshouldflip + slackfactor * currentflipestimate;        
     
     // Update of hardware gamma table in sync with flip requested?
-    if (windowRecord->inRedTable) {
+    if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
       // Yes! Call the update routine now. It should schedule the actual update for
       // the same VSYNC to which our bufferswap will lock. "Should" means, we have no
       // way of checking programmatically if it really worked, only via our normal deadline
@@ -1530,11 +1530,12 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     }
     
 	 // Cleanup temporary gamma tables if needed:
-	 if (windowRecord->inRedTable) {
+	 if ((windowRecord->inRedTable) && (windowRecord->loadGammaTableOnNextFlip > 0)) {
 		free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
 		free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
 		free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
 		windowRecord->inTableSize = 0;
+		windowRecord->loadGammaTableOnNextFlip = 0;
 	 }
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
@@ -1912,7 +1913,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     int stereo_mode=windowRecord->stereomode;
 	int imagingMode = windowRecord->imagingMode;
 	int viewid, hookchainid;
-	
+	GLint read_buffer, draw_buffer, blending_on;
     GLint auxbuffers;
 
     // Early reject: If this flag is set, then there's no need for any processing:
@@ -1964,7 +1965,6 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// clearmode 1 aka "Don't clear after flip, but retain backbuffer content"
 		else if (clearmode==1 && windowRecord->windowType==kPsychDoubleBufferOnscreen) {
 			// Backup current assignment of read- writebuffers:
-			GLint read_buffer, draw_buffer, blending_on;
 			glGetIntegerv(GL_READ_BUFFER, &read_buffer);
 			glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
 			blending_on = (int) glIsEnabled(GL_BLEND);
@@ -2005,6 +2005,44 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			glReadBuffer(read_buffer);
 			glDrawBuffer(draw_buffer);        
 		}
+
+		// Check if the finalizer blit chain is operational. This is the only blit chain available for preflip operations in non-imaging mode,
+		// useful for encoding special information into final framebuffer images, e.g., sync lines, time stamps, cluts...
+		// All other blit chains are only available in imaging mode - they need support for shaders and framebuffer objects...
+		if (PsychIsHookChainOperational(windowRecord, kPsychLeftFinalizerBlit) || PsychIsHookChainOperational(windowRecord, kPsychRightFinalizerBlit)) {
+			glGetIntegerv(GL_READ_BUFFER, &read_buffer);
+			glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
+			blending_on = (int) glIsEnabled(GL_BLEND);
+			glDisable(GL_BLEND);
+			
+			// Process each of the (up to two) streams:
+			for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo) ? 2 : 1); viewid++) {
+				
+				// Select drawbuffer:
+				if (stereo_mode == kPsychOpenGLStereo) {
+					// Quad buffered stereo: Select proper backbuffer:
+					glDrawBuffer((viewid==0) ? GL_BACK_LEFT : GL_BACK_RIGHT);
+				} else {
+					// Mono mode: Select backbuffer:
+					glDrawBuffer(GL_BACK);
+				}
+				
+				// This special purpose blit chains can be used to encode low-level information about frames into
+				// the frames or do other limited per-frame processing. Their main use (as of now) is to draw
+				// the blue-line sync signal into quad-buffered windows in quad-buffered stereo mode. One could
+				// use them e.g., to encode a frame index, a timestamp or a trigger signal into frames as well.
+				// Encoding CLUTs for devices like the Bits++ is conceivable as well - these would be automatically
+				// synchronous to frame updates and could be injected from our own gamma-table functions.
+				PsychPipelineExecuteHook(windowRecord, (viewid==0) ? kPsychLeftFinalizerBlit : kPsychRightFinalizerBlit, NULL, NULL, TRUE, FALSE, NULL, NULL, NULL, NULL);				
+			}
+			
+			// Restore blending mode:
+			if (blending_on) glEnable(GL_BLEND);
+			
+			// Restore assignment of read- writebuffers:
+			glReadBuffer(read_buffer);
+			glDrawBuffer(draw_buffer);
+		}		        
 	}	// End of traditional preflip path.
 	
 	if (imagingMode) {

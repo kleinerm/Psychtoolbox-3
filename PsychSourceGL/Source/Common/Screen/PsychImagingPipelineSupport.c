@@ -1797,6 +1797,16 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 				}
 				dispatched=TRUE;
 			}
+			if (strcmp(hookfunc->idString, "Builtin:RenderClutBits++")==0) {
+				// Compute the T-Lock encoded CLUT for Cambridge Research Bits++ system in Bits++ mode. The CLUT
+				// is set via the standard Screen('LoadNormalizedGammaTable', ..., loadOnNextFlip) call by setting
+				// loadOnNextFlip to a value of 2.
+				if (!PsychPipelineBuiltinRenderClutBitsPlusPlus(windowRecord, hookfunc)) {
+					// Operation failed!
+					return(FALSE);
+				}
+				dispatched=TRUE;
+			}
 		break;
 			
 		default:
@@ -2041,6 +2051,99 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
 		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
 	}
 	
+	// Done.
+	return(TRUE);
+}
+
+/* PsychPipelineBuiltinRenderClutBitsPlusPlus - Encode Bits++ CLUT into framebuffer.
+ * 
+ * This builtin routine takes the current gamma table for this windowRecord, encodes it into a Bits++
+ * compatible T-Lock CLUT and renders it into the framebuffer.
+ */
+boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
+{
+	const int bitshift = 16; // Bits++ expects 16 bit numbers, but ignores 2 least significant bits --> Effective 14 bit.
+	int i, j, x, y;
+	unsigned int r, g, b;
+	double t1, t2;
+	
+	if (windowRecord->loadGammaTableOnNextFlip != 0 || windowRecord->inRedTable == NULL) {
+		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Bits++ CLUT encoding failed. No suitable CLUT set in Screen('LoadNormalizedGammaTable'). Skipped!\n");
+		return(FALSE);
+	}
+	
+	if (windowRecord->inTableSize < 256) {
+		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Bits++ CLUT encoding failed. CLUT has less than the required 256 entries. Skipped!\n");
+		return(FALSE);
+	}
+	
+	if (PsychPrefStateGet_Verbosity() > 4) {  
+		glFinish();
+		PsychGetAdjustedPrecisionTimerSeconds(&t1);
+	}
+
+	// Render CLUT as sequence of single points:
+	// We render it twice in two lines, the 2nd line shifted horizontally by one pixel. This way at least one of
+	// the lines will always start at an even pixel location as mandated by Bits++ - More failsafe.
+	for (j=1; j<=2 ; j++) {
+		x=j;
+		y=j;
+		
+		glPointSize(1);
+		glBegin(GL_POINTS);
+		
+		// First the T-Lock unlock key:
+		glColor3ub(36, 106, 133);
+		glVertex2i(x++, y);
+		glColor3ub(63, 136, 163);
+		glVertex2i(x++, y);
+		glColor3ub(8, 19, 138);
+		glVertex2i(x++, y);
+		glColor3ub(211, 25, 46);
+		glVertex2i(x++, y);
+		glColor3ub(3, 115, 164);
+		glVertex2i(x++, y);
+		glColor3ub(112, 68, 9);
+		glVertex2i(x++, y);
+		glColor3ub(56, 41, 49);
+		glVertex2i(x++, y);
+		glColor3ub(34, 159, 208);
+		glVertex2i(x++, y);
+		glColor3ub(0, 0, 0);
+		glVertex2i(x++, y);
+		glColor3ub(0, 0, 0);
+		glVertex2i(x++, y);
+		glColor3ub(0, 0, 0);
+		glVertex2i(x++, y);
+		glColor3ub(0, 0, 0);
+		glVertex2i(x++, y);
+		
+		// Now the encoded CLUT: We encode 16 bit values in a high and a low pixel,
+		// Bits++ throws away the two least significant bits - get 14 bit output resolution.
+		for (i=0; i<256; i++) {
+			// Convert 0.0 - 1.0 float value into 0 - 2^14 -1 integer range of Bits++
+			r = (unsigned int)(windowRecord->inRedTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
+			g = (unsigned int)(windowRecord->inGreenTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
+			b = (unsigned int)(windowRecord->inBlueTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
+			
+			// Pixel with high-byte of 16 bit value:
+			glColor3ub((GLubyte) ((r >> 8) & 0xff), (GLubyte) ((g >> 8) & 0xff), (GLubyte) ((b >> 8) & 0xff));
+			glVertex2i(x++, y);
+			
+			// Pixel with low-byte of 16 bit value:
+			glColor3ub((GLubyte) (r & 0xff), (GLubyte) (g  & 0xff), (GLubyte) (b  & 0xff));
+			glVertex2i(x++, y);
+		}
+		
+		glEnd();
+	}		
+	
+	if (PsychPrefStateGet_Verbosity() > 4) {  
+		glFinish();
+		PsychGetAdjustedPrecisionTimerSeconds(&t2);
+		printf("PTB-DEBUG: Execution time of built-in Bits++ CLUT encoder was %lf ms.\n", (t2 - t1) * 1000.0f);
+	}
+
 	// Done.
 	return(TRUE);
 }

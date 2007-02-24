@@ -230,13 +230,20 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	
 	if (isArgThere) {
 		PsychAllocInDoubleMatArg(coords_pos, TRUE, &m, &n, &p, xy);
-		if(p!=1 || m!=*coords_count) {
+		if(p!=1 || (m!=*coords_count && (m*n)!=*coords_count)) {
 			printf("PTB-ERROR: Coordinates must be a %i tuple or a %i rows vector.\n", *coords_count, *coords_count);
 			PsychErrorExitMsg(PsychError_user, "Invalid format for coordinate specification.");
 		}
 		
-		nrpoints=n;
-		*coords_count = n;
+		if (m!=1) {
+			nrpoints=n;
+			*coords_count = n;
+		}
+		else {
+			// Special case: 1 row vector provided for single argument.
+			nrpoints=1;
+			*coords_count = 1;
+		}
 	}
 	else {
 		nrpoints = 0;

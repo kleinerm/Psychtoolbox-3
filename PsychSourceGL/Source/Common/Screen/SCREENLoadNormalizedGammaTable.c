@@ -101,18 +101,33 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		 
 		 // Sanity checks:
 		 if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "Target window for gamma table upload is not an onscreen window!");
-		 if (windowRecord->inRedTable) PsychErrorExitMsg(PsychError_user, "This window has already a new gamma table assigned for upload on next Flip!");
+		 if (windowRecord->inRedTable && loadOnNextFlip!=2) PsychErrorExitMsg(PsychError_user, "This window has already a new gamma table assigned for upload on next Flip!");
 		 
-		 // Allocate persistent memory:
-		 inRedTable=malloc(sizeof(float) * inM);
-		 inGreenTable=malloc(sizeof(float) * inM);
-		 inBlueTable=malloc(sizeof(float) * inM);
+		 if (windowRecord->inRedTable && windowRecord->inTableSize != inM) {
+			free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+			free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+			free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+		 }
 		 
-		 // Assign the pointers to the windowRecord:
-		 windowRecord->inRedTable = inRedTable;
-		 windowRecord->inGreenTable = inGreenTable;
-		 windowRecord->inBlueTable = inBlueTable;
-		 windowRecord->inTableSize = inM;
+		 if (windowRecord->inRedTable == NULL) {
+			 // Allocate persistent memory:
+			 inRedTable=malloc(sizeof(float) * inM);
+			 inGreenTable=malloc(sizeof(float) * inM);
+			 inBlueTable=malloc(sizeof(float) * inM);
+			 
+			 // Assign the pointers to the windowRecord:
+			 windowRecord->inRedTable = inRedTable;
+			 windowRecord->inGreenTable = inGreenTable;
+			 windowRecord->inBlueTable = inBlueTable;
+			 windowRecord->inTableSize = inM;
+		 }
+		 else {
+			inRedTable = windowRecord->inRedTable;
+			inGreenTable = windowRecord->inGreenTable;
+			inBlueTable = windowRecord->inBlueTable;
+		 }
+		
+		 windowRecord->loadGammaTableOnNextFlip = (loadOnNextFlip == 1) ? 1 : 0;
 	 }
 	 else {
 		 // Allocate temporary tables: We will update immediately.
