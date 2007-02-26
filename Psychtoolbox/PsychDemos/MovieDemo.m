@@ -154,9 +154,8 @@ try
 		r=[0 0 2 2]*(i);
         Screen(window,'FillRect', white);
 		Screen(window,'FillOval',black,r);
-        Screen(window, 'Flip');
         t=t+1;
-        s(t)=GetSecs;
+        s(t)=Screen(window, 'Flip');
 	end
 	ShowCursor;
 	s1Diffs=diff(s);
@@ -176,9 +175,8 @@ try
 		r=[0 0 2 2]*(i);
         Screen(window,'FillRect', white);
 		Screen(window,'FillOval',black,r);
-        Screen(window, 'Flip');
         t=t+1;
-        s(t)=GetSecs;
+        s(t)=Screen(window, 'Flip');
 	end
 	Priority(0);
 	ShowCursor;

@@ -147,28 +147,29 @@ try
         [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
 
         % Some output to the console:
-        fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
+        % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
         
+        % Print pts:
+        Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
+        if count>0
+            % Compute delta:
+            delta = (pts - oldpts) * 1000;
+            oldpts = pts;
+            Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
+        end;
+
         % If a texture is available, draw, show and release it.
         if (tex>0)
             % Draw new texture from framegrabber.
             Screen('DrawTexture', win, tex);
-
-            % Print pts:
-            Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);
-            if count>0
-                % Compute delta:
-                delta = (pts - oldpts) * 1000;
-                oldpts = pts;
-                Screen('DrawText', win, sprintf('%.4f', delta), 0, 20, 255);
-            end;
-
-            % Show it.
-            Screen('Flip', win);
             
             % Recycle this texture - faster:
             oldtex = tex;
         end;        
+
+        % Show it.
+        Screen('Flip', win);
+
         count = count + 1;
     end;
 
