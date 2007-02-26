@@ -15,7 +15,7 @@
 		10/12/04	awi		In useString: moved commas to inside [].  Filled in synopsis
 		1/14/05		awi		Commented out calls to enable alpha blending.
 		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
-		
+		2/25/07		cgb		Now lives in the GLfloat world.
  
   
 	TO DO:
@@ -38,6 +38,9 @@ static char synopsisString[] =
 	"left, and the rows are horizontal.";
 static char seeAlsoString[] = "GetImage";
 	
+// Macro version of a function found in MiniBox.c.  Eliminates the unneeded overhead required by a function call.
+// This improves speed by several milliseconds for medium to large images.
+#define PSYCHINDEXELEMENTFROM3DARRAY(mDim, nDim, pDim, m, n, p) (p*mDim*nDim + n*mDim + m)
 
 PsychError SCREENPutImage(void) 
 {
@@ -127,7 +130,7 @@ PsychError SCREENPutImage(void)
 			for (ix = 0; ix < inputN; ix++) {
 				if (inputP == 1) { // Grayscale
 					// Extract the grayscale value.
-					matrixGrayIndex = PsychIndexElementFrom3DArray(inputM, inputN, 1, iy, ix, 0);
+					matrixGrayIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 1, iy, ix, 0);
 					if (inputMatrixType == PsychArgType_uint8) {
 						// If the color range is > 255, then force it to 255 for 8-bit values.
 						matrixGrayValue = (GLfloat)inputMatrixByte[matrixGrayIndex];
@@ -139,7 +142,7 @@ PsychError SCREENPutImage(void)
 						}
 					}
 					else {
-						matrixGrayValue = (GLfloat)inputMatrixDouble[matrixGrayIndex] / (GLfloat)windowRecord->colorRange;
+						matrixGrayValue = (GLfloat)(inputMatrixDouble[matrixGrayIndex] / windowRecord->colorRange);
 					}
 			
 					// RGB will all be the same for grayscale.  We'll go ahead and fix alpha to the max value.
@@ -149,9 +152,9 @@ PsychError SCREENPutImage(void)
 					pixelData[pixelIndex++] = (GLfloat)1.0;	   // A
 				}
 				else if (inputP == 3) { // RGB
-					matrixRedIndex = PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 0);
-					matrixGreenIndex = PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 1);
-					matrixBlueIndex = PsychIndexElementFrom3DArray(inputM, inputN, 3, iy, ix, 2);
+					matrixRedIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 3, iy, ix, 0);
+					matrixGreenIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 3, iy, ix, 1);
+					matrixBlueIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 3, iy, ix, 2);
 					
 					if (inputMatrixType == PsychArgType_uint8) {
 						// If the color range is > 255, then force it to 255 for 8-bit values.
@@ -170,9 +173,9 @@ PsychError SCREENPutImage(void)
 						}
 					}
 					else {
-						matrixRedValue = (GLfloat)inputMatrixDouble[matrixRedIndex] / (GLfloat)windowRecord->colorRange;
-						matrixGreenValue = (GLfloat)inputMatrixDouble[matrixGreenIndex] / (GLfloat)windowRecord->colorRange;
-						matrixBlueValue = (GLfloat)inputMatrixDouble[matrixBlueIndex] / (GLfloat)windowRecord->colorRange;
+						matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / windowRecord->colorRange);
+						matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / windowRecord->colorRange);
+						matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / windowRecord->colorRange);
 					}
 					
 					pixelData[pixelIndex++] = matrixRedValue;
@@ -181,10 +184,10 @@ PsychError SCREENPutImage(void)
 					pixelData[pixelIndex++] = (GLfloat)1.0;
 				}
 				else if (inputP == 4) { // RGBA
-					matrixRedIndex = PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 0);
-					matrixGreenIndex = PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 1);
-					matrixBlueIndex = PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 2);
-					matrixAlphaIndex = PsychIndexElementFrom3DArray(inputM, inputN, 4, iy, ix, 3);
+					matrixRedIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 4, iy, ix, 0);
+					matrixGreenIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 4, iy, ix, 1);
+					matrixBlueIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 4, iy, ix, 2);
+					matrixAlphaIndex = PSYCHINDEXELEMENTFROM3DARRAY(inputM, inputN, 4, iy, ix, 3);
 					
 					if (inputMatrixType == PsychArgType_uint8) {
 						// If the color range is > 255, then force it to 255 for 8-bit values.
@@ -206,10 +209,10 @@ PsychError SCREENPutImage(void)
 						}
 					}
 					else {
-						matrixRedValue = (GLfloat)inputMatrixDouble[matrixRedIndex] / (GLfloat)windowRecord->colorRange;
-						matrixGreenValue = (GLfloat)inputMatrixDouble[matrixGreenIndex] / (GLfloat)windowRecord->colorRange;
-						matrixBlueValue = (GLfloat)inputMatrixDouble[matrixBlueIndex] / (GLfloat)windowRecord->colorRange;
-						matrixAlphaValue = (GLfloat)inputMatrixDouble[matrixAlphaIndex] / (GLfloat)windowRecord->colorRange;
+						matrixRedValue = (GLfloat)(inputMatrixDouble[matrixRedIndex] / windowRecord->colorRange);
+						matrixGreenValue = (GLfloat)(inputMatrixDouble[matrixGreenIndex] / (GLfloat)windowRecord->colorRange);
+						matrixBlueValue = (GLfloat)(inputMatrixDouble[matrixBlueIndex] / (GLfloat)windowRecord->colorRange);
+						matrixAlphaValue = (GLfloat)(inputMatrixDouble[matrixAlphaIndex] / (GLfloat)windowRecord->colorRange);
 					}
 					
 					pixelData[pixelIndex++] = matrixRedValue;
