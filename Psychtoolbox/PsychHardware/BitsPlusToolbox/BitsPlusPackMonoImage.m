@@ -12,15 +12,16 @@ function theColorImage = BitsPlusPackMonoImage(theMonoImage)
 %
 % This routine packs the bits properly for this function.
 %
-% 11/17/03   dhb, ip	Wrote it.
-% 8/13/04		 dhb			Fix bug, the data were not packed quite right.
+% 11/17/03  dhb, ip	Wrote it.
+% 8/13/04	dhb		Fix bug, the data were not packed quite right.
+% 2/26/07   mk      Bugfix for LSB conversion: Added modulo operation.
 
 [m,n] = size(theMonoImage);
 theColorImage = zeros(m,n,3);
 
 % Red channel gets high 8 bits
-theColorImage(:,:,1) = uint8(theMonoImage/256);
+theColorImage(:,:,1) = uint8(floor(theMonoImage/256));
 
 % Green channel gets low 6 bits, left justified
-theColorImage(:,:,2) = uint8(theMonoImage);
+theColorImage(:,:,2) = uint8(mod(theMonoImage, 256));
 
