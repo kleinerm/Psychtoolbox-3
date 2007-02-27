@@ -20,7 +20,7 @@ Screen('Preference', 'Verbosity', 5);
 
 % First load the graphics hardwares gamma table with an identity mapping,
 % so it doesn't interfere with Bits++
-LoadIdentityClut(window, 1);
+LoadIdentityClut(window);
 
 % Now enable finalizer hook chains and load them with the special Bits++
 % command. 

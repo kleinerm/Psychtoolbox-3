@@ -1,0 +1,72 @@
+/* Bits++_Color++_FormattingShader.frag.txt -- Color++ output formatter
+ *
+ * This shader converts a HDR texture into a RGBA8 8bpc framebuffer
+ * image, suitable for display with the CRS Bits++ system in Color++
+ * mode. It expects the RGB image data in the respective channels of
+ * the texture, with values ranging from 0.0 - 1.0, remaps it into
+ * the 16 bit data range of Bits++, then encodes the 16 bit values
+ * value into the red+green+blue channels of consecutive pixels. Each 16 bit
+ * valus is split into 8 Most significant bits and 8 least significant bits,
+ * and these are stored in consecutive color components of pixels. This way,
+ * two color components encode one color channel and one needs two consecutive
+ * horizontal pixels in the framebuffer to encode one Bits++ color pixel.
+ *
+ * Encoding schema:
+ * The high bytes are encoded in  components of even pixels,
+ * The low bytes are encoded in components of consecutive odd pixels,
+ * The alpha channel is set to a fixed maximum value of 1.0, because alpha
+ * blending on such an image would be an undefined operation.
+ *
+ * This approach reduces the effectively useable horizontl display resolution to
+ * half the "real" display resolution.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c)2007 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+#version 110
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    /* Get default texel read position (s,t): s is column, t is row of image. */
+    vec2 readpos = gl_TexCoord[0].st;
+
+    /* Update the s (==column) component to only read even or odd lines, replicating them. */
+    readpos.s = (readpos.s - mod(readpos.s, 2.0)) * 0.5;
+
+    /* Retrieve RGB HDR input color value for a virtual Bits++ pixel. */
+    vec3 incolor = texture2DRect(Image, readpos).rgb;
+
+    /* Remap all color channels from 0.0 - 1.0 to 0 to 65535: */
+    vec3 index = incolor * 65535.0 + 0.01;
+
+    /* Compute high bytes (8 MSBs) for all color components. */
+    vec3 hibytes = floor(index / 256.0) / 255.0;
+
+    /* Compute low bytes (8 LSBs) for color components. */
+    vec3 lobytes = mod(index, 256.0) / 255.0;
+
+    /* Distribution of bytes into output pixel components is dependent */
+    /* on our output pixel location. Are we writing an even or odd pixel? */
+    if (mod(gl_FragCoord.x, 2.0) < 1.0) {
+        /* Even output pixel: */
+        gl_FragColor.r = hibytes.r;
+        gl_FragColor.g = hibytes.g;
+        gl_FragColor.b = hibytes.b;
+    }
+    else {
+        /* Odd output pixel: */
+        gl_FragColor.r = lobytes.r;
+        gl_FragColor.g = lobytes.g;
+        gl_FragColor.b = lobytes.b;
+    }
+
+    /* Fix alpha channel to 1.0. */
+    gl_FragColor.a = 1.0;
+}

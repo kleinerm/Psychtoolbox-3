@@ -31,6 +31,7 @@
 %
 % Files:
 %
+% BitsPlusPlus.m                  -- Setup function for imaging pipelines built-in Bits++ support.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
 %
