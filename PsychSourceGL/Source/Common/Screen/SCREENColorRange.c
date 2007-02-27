@@ -62,7 +62,7 @@ PsychError SCREENColorRange(void)
 {
 	PsychWindowRecordType *windowRecord;
 	double maxvalue, clampcolors, oldclampcolors;
-	GLboolean enabled;
+	GLboolean enabled, enabled1, enabled2, enabled3;
 	
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -86,7 +86,8 @@ PsychError SCREENColorRange(void)
 	PsychCopyOutDoubleArg(1, FALSE, maxvalue);
 	PsychCopyOutDoubleArg(2, FALSE, clampcolors);
 	
-	// Get the optional new values:
+	// Get the optional new values: We default to clamping on.
+	clampcolors = 1;
 	PsychCopyInDoubleArg(2, FALSE, &maxvalue);
 	PsychCopyInDoubleArg(3, FALSE, &clampcolors);
 
@@ -108,12 +109,15 @@ PsychError SCREENColorRange(void)
 		}
 
 		// Check if the clamp en-/disable worked:
-		glGetBooleanv(GL_CLAMP_VERTEX_COLOR_ARB, &enabled);
-		if ((clampcolors==0 && enabled) || (clampcolors==1 && !enabled)) {
+		glGetBooleanv(GL_CLAMP_VERTEX_COLOR_ARB, &enabled1);
+		glGetBooleanv(GL_CLAMP_FRAGMENT_COLOR_ARB, &enabled2);
+		glGetBooleanv(GL_CLAMP_READ_COLOR_ARB, &enabled3);
+
+		if ((clampcolors==0 && (enabled1 || enabled2 || enabled3)) || (clampcolors==1 && (!enabled1 || !enabled2 || !enabled3))) {
 			if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Could not %s color value clamping as requested. Unsupported by your graphics hardware?\n", (clampcolors==1) ? "enable" : "disable");
 		}		
 	}
-	 
+	
 	// Encode maxcolor as well as clamping mode (in sign):
 	windowRecord->colorRange = (clampcolors>0) ? maxvalue : -maxvalue;
 	

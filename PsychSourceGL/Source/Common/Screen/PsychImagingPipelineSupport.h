@@ -96,6 +96,8 @@ GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, c
 
 // PsychPipelineBuiltinRenderClutBitsPlusPlus - Encode Bits++ CLUT into framebuffer.
 boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+// PsychPipelineBuiltinRenderStereoSyncLine - Rendering of blue-sync lines for stereo shutter glasses in quad-buffered stereo mode:
+boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 
 // Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
 // =============================================================================

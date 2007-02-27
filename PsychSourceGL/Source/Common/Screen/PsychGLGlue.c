@@ -79,6 +79,7 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
         glColor4dv(dVals);
     else
         PsychErrorExitMsg(PsychError_internal, "Illegal color specifier"); 
+	// printf("PTB-DEBUG: glColor4dv(%lf, %lf, %lf, %lf)\n", dVals[0], dVals[1], dVals[2], dVals[3]);
 }
 
 /*

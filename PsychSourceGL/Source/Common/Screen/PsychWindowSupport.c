@@ -2148,7 +2148,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// This gets skipped in mono-mode if no conversion needed and only single-pass image processing
 				// applied. In that case, the image processing state did the final blit already.
 				if (windowRecord->preConversionFBO[viewid] != windowRecord->finalizedFBO[viewid]) {
-					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>1)) printf("PTB-WARNING: Processing chain for output conversion disabled -- Using identity copy as workaround. Bug?!?\n");
+					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>3)) printf("PTB-INFO: Processing chain for output conversion disabled -- Using identity copy as workaround.\n");
 					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 				}
 			}
@@ -2159,7 +2159,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			// use them e.g., to encode a frame index, a timestamp or a trigger signal into frames as well.
 			// Encoding CLUTs for devices like the Bits++ is conceivable as well - these would be automatically
 			// synchronous to frame updates and could be injected from our own gamma-table functions.
-			PsychPipelineExecuteHook(windowRecord, (viewid==0) ? kPsychLeftFinalizerBlit : kPsychRightFinalizerBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
+			PsychPipelineExecuteHook(windowRecord, (viewid==0) ? kPsychLeftFinalizerBlit : kPsychRightFinalizerBlit, NULL, NULL, TRUE, FALSE, NULL, NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 		}
 		
 		// At this point we should have either a valid snapshot of the framebuffer in the finalizedFBOs, or

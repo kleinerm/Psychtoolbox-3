@@ -257,6 +257,18 @@ PsychError SCREENOpenWindow(void)
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
+	// On OS-X, if we are int quad-buffered frame sequential stereo mode, we automatically generate
+	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
+	// by default on Windows or Linux: These systems either don't have stereo capable hardware,
+	// or they have some and its drivers already take care of sync signal generation.
+	if ((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode==kPsychOpenGLStereo)) {
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Enabling internal blue line sync renderer for quad-buffered stereo...\n");
+		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", TRUE, "");
+		PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");		
+		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:RenderStereoSyncLine", TRUE, "");
+		PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");		
+	}
+
 	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
 	// will bind the correct rendertargets for the first time:
     PsychSetGLContext(windowRecord);

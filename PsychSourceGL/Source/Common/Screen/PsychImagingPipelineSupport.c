@@ -606,7 +606,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					glUseProgram(0);
 					
 					// Add shader to processing chain:
-					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", 840, 0);
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", (int) PsychGetWidthFromRect(windowRecord->rect)/2, 0);
 					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewRight", TRUE, glsl, blittercfg, 0);
 				}
 				else {
@@ -615,6 +615,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 				// Enable stereo compositor:
 				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
+			break;
+			
+			case kPsychOpenGLStereo:
+				// Nothing to do for now: Setup of blue-line syncing is done in SCREENOpenWindow.c, because it also
+				// applies to non-imaging mode...
 			break;
 			
 			default:
@@ -1807,6 +1812,17 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 				}
 				dispatched=TRUE;
 			}
+			
+			if (strcmp(hookfunc->idString, "Builtin:RenderStereoSyncLine")==0) {
+				// Draw a blue-line-sync sync line at the bottom of the current framebuffer. This is needed
+				// to drive stereo shutter glasses with blueline-sync in quad-buffered frame-sequential stereo
+				// mode.
+				if (!PsychPipelineBuiltinRenderStereoSyncLine(windowRecord, hookfunc)) {
+					// Operation failed!
+					return(FALSE);
+				}
+				dispatched=TRUE;
+			}
 		break;
 			
 		default:
@@ -1912,6 +1928,8 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 	boolean rc = TRUE;
 	PsychBlitterFunc blitterfnc = NULL;
 	GLenum glerr;
+	char*  pstrpos = NULL;
+	int texunit, texid;
 	
 	// Select proper blitter function:
 	
@@ -1940,7 +1958,20 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 	}
 	
 	// TODO: Common setup code for texturing, filtering, alpha blending, z-test and such...
-
+	
+	// Setup code for 1D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE1D")) {
+		if (2==sscanf(pstrpos, "TEXTURE1D(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glEnable(GL_TEXTURE_1D);
+			glBindTexture(GL_TEXTURE_1D, texid);
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_1D target of texunit %i\n", texid, texunit);
+		}
+		pstrpos++;
+	}
+	glActiveTextureARB(GL_TEXTURE0_ARB);
+	
 	// Need a shader for this blit op?
 	if (hookfunc->shaderid) {
 		// Setup shader, if any:
@@ -1978,6 +2009,18 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 	}
 	
 	// TODO: Common teardown code for texturing, filtering and such...
+
+	// Teardown code for 1D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE1D")) {
+		if (2==sscanf(pstrpos, "(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glBindTexture(GL_TEXTURE_1D, 0);
+			glDisable(GL_TEXTURE_1D);
+		}
+		pstrpos++;
+	}
+	glActiveTextureARB(GL_TEXTURE0_ARB);
 
 	// Reset shader assignment, if any:
 	if ((hookfunc->shaderid) && glUseProgram) glUseProgram(0);
@@ -2147,3 +2190,74 @@ boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *window
 	// Done.
 	return(TRUE);
 }
+
+/* PsychPipelineBuiltinRenderStereoSyncLine() -- Render sync trigger lines for quad-buffered stereo contexts.
+ *
+ * A builtin function to be called for drawing of blue-line-sync marker lines in quad-buffered stereo mode.
+ */
+boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
+{
+	GLenum draw_buffer;
+	char* strp;
+	float blackpoint, r, g, b;
+	float fraction = 0.25;
+	float w = PsychGetWidthFromRect(windowRecord->rect);
+	float h = PsychGetHeightFromRect(windowRecord->rect);
+	r=g=b=1.0;
+	
+	// Options provided?
+	
+	// Check for override vertical position for sync line. Default is last scanline of display.
+	if (strp=strstr(hookfunc->pString1, "yPosition=")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "yPosition=%i", &h)!=1) {
+			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: yPosition parameter for horizontal stereo blue-sync line position is invalid! Parse error...\n");
+		}
+	}
+
+	// Check for override horizontal fraction for sync line. Default is 25% for left eye, 75% for right eye.
+	if (strp=strstr(hookfunc->pString1, "hFraction=")) {
+		// Parse and assign offset:
+		if ((sscanf(strp, "hFraction=%f", &fraction)!=1) || (fraction < 0.0) || (fraction > 1.0)) {
+			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: hFraction parameter for horizontal stereo blue-sync line length is invalid!\n");
+		}
+	}
+	
+	// Check for override color of sync-line. Default is white.
+	if (strp=strstr(hookfunc->pString1, "Color=")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Color=%f %f %f", &r, &g, &b)!=3) {
+			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: Color spec for stereo sync-line is invalid!\n");
+		}
+	}
+
+	// Query current target buffer:
+	glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
+	
+	if (draw_buffer == GL_BACK_LEFT || draw_buffer == GL_FRONT_LEFT) {
+		// Left stereo buffer:
+		blackpoint = fraction;
+	}
+	else if (draw_buffer == GL_BACK_RIGHT || draw_buffer == GL_FRONT_RIGHT) {
+		// Right stereo buffer:
+		blackpoint = 1 - fraction;
+	}
+	else {
+		// No stereo buffer! No stereo mode. This routine is a no-op...
+		if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Stereo sync line renderer called on non-stereo framebuffer!?!\n");  
+		return(TRUE);
+	}
+	
+	glLineWidth(1);
+	glBegin(GL_LINES);
+	glColor3f(r, g, b);
+	glVertex2i(0, h);
+	glVertex2i(w*blackpoint, h);
+	glColor3f(0, 0, 0);
+	glVertex2i(w*blackpoint, h);
+	glVertex2i(w, h);
+	glEnd();
+
+	return(TRUE);
+}
+
