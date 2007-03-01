@@ -36,7 +36,9 @@ end
 
 % Convert via Bits++ toolbox:
 fprintf('Converting to color++ format\n');
+tic;
 packedImage = BitsPlusPackColorImage(theImage,0);
+toc
 
 % Show the image
 [m,n,p] = size(packedImage);
@@ -111,7 +113,11 @@ while 1
     Screen('DrawTexture',window,textureIndex, [], dstRect, [], 0);
 
     % Enforce finalizing the image before we can make a screenshot:
+glFinish;
+tic;
     Screen('DrawingFinished', window);
+glFinish;
+toc
 
     % Take screenshot of GPU converted image:
     convImage=Screen('GetImage', window, ScaleRect(dstRect, 2, 1),'backBuffer');
