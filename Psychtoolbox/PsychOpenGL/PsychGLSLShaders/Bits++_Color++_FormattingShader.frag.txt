@@ -44,7 +44,8 @@ void main()
     vec3 incolor = texture2DRect(Image, readpos).rgb;
 
     /* Remap all color channels from 0.0 - 1.0 to 0 to 65535: */
-    vec3 index = incolor * 65535.0 + 0.01;
+    /* Perform rounding for non-integral numbers and add a small epsilon to take numeric roundoff into account: */
+    vec3 index = floor(incolor * 65535.0 + 0.5) + 0.01;
 
     /* Compute high bytes (8 MSBs) for all color components. */
     vec3 hibytes = floor(index / 256.0) / 255.0;

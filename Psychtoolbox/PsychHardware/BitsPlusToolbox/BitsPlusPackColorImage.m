@@ -17,6 +17,7 @@ function outImage = BitsPlusPackColorImage(inImage,SPACESCALE,COLORSCALE)
 % 8/9/04	dhb		Wrote it.
 % 18/4/05   ejw     Converted it to run with OSX version of Psychtoolbox.
 % 26.2.07   mk      Bugfix for LSB conversion: Added modulo operation.
+% 3/01/07   mk      Bugfix for MSB conversion: Added floor operation.
 
 if (nargin < 2 | isempty(SPACESCALE))
 	SPACESCALE = 1;
@@ -63,7 +64,7 @@ end
 outImage = uint8(zeros(m,n,p));
 
 % First byte is high 8 bits
-outImage(:,1:2:end-1,:) = uint8(inImage/256);
+outImage(:,1:2:end-1,:) = uint8(floor(inImage/256));
 
 % Second byte is low 8 bits
 outImage(:,2:2:end,:) = uint8(mod(inImage, 256));

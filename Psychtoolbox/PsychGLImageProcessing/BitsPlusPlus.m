@@ -28,6 +28,10 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 
 debuglevel = 1;
 
+if strcmp(cmd, 'OpenWindowBits++')
+    error('Not yet implemented :(');
+end
+
 if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % Execute the Screen('OpenWindow') command with proper flags, followed
     % by our own Initialization. Return values of 'OpenWindow'.
@@ -77,10 +81,21 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
 
     % For imagingmode we need at least fast backingstore, the output
     % formatter enabled and some high precision color buffer. We default to
-    % 16 bpc fixed point, but the users imagingmode setting is free to
-    % override this with a 32 bpc float buffer. 16 bpc float works as well
+    % 32 bpc floating point, the only safe choice accross different graphics cards
+    % from different vendors, but the users imagingmode setting is free to
+    % override this with a 16 bpc fixed buffer. 16 bpc float works as well
     % but can't use the full Bits++ color range at full precision.
-    imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, kPsychNeed16BPCFixed)
+    if (imagingmode & kPsychNeed16BPCFloat) || (imagingmode & kPsychNeed16BPCFixed)
+        % User specified override: Use it.
+        ourspec = 0;
+    else
+        % No user specified accuracy. We play safe and choose the highest
+        % one:
+        ourspec = kPsychNeed32BPCFloat;
+    end
+    
+    % Imagingmode must at least include the following:
+    imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
 
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
     if nargin > 9
@@ -99,11 +114,15 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     LoadIdentityClut(win);
 
     % Set color range to 0.0 - 1.0: This makes more sense than the normal
-    % 0-255 values...
-    Screen('ColorRange', win, 1);
+    % 0-255 values. Try to disable color clamping. This may fail and
+    % produce a PTB warning, but if it succeeds then we're better off for
+    % the 2D drawing commands...
+    Screen('ColorRange', win, 1, 0);
 
     % Backup current gfx-settings, so we can restore them after
-    % modifications:
+    % modifications: The LoadGLSLProgramFromFiles() routine enables this
+    % implicitely. This is unwanted in case we are in pure 2D mode, so we
+    % need to undo it below...
     ogl = Screen('Preference', 'Enable3DGraphics');
     
     % Operate in Mono++ mode or Color++ mode?
@@ -127,10 +146,12 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
         % Color++ data formatting shader: We append the shader because it
         % absolutely must be the last shader to execute in that chain!
         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Color++ output formatting shader for CRS Bits++', shader);
-        
     end
 
-    % Setup shaders image source as the first texture unit, this is by definition of how the imaging pipe works:
+    % Setup shaders image source as the first texture unit, this is by
+    % definition of how the imaging pipe works. Don't think really needed,
+    % as this is the default, but its good practice to not rely on such
+    % things...
     glUseProgram(shader);
     glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
     glUseProgram(0);

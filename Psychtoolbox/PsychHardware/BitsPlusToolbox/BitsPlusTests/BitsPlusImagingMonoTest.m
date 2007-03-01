@@ -93,8 +93,9 @@ end
 tic;
 monoImage = BitsPlusPackMonoImage(inimg * 65535);
 toc
-
-for i=1:10
+msize=size(monoImage)
+mclass=class(monoImage)
+for i=1:1
 
     tex = Screen('MakeTexture', window, inimg, [], [], 2);
     Screen('DrawTexture', window, tex, [], dstrect, [], 0);
@@ -113,13 +114,14 @@ for i=1:10
     convImage = Screen('GetImage', window, dstrect,'backBuffer');
     Screen('Flip', window, 0, 0, 2);
 
-    rm=max(max(monoImage(:,:,1)));
-    gm=max(max(monoImage(:,:,2)));
-    bm=max(max(monoImage(:,:,3)));
-
-    rc=max(max(convImage(:,:,1)));
-    gc=max(max(convImage(:,:,2)));
-    bc=max(max(convImage(:,:,3)));
+    rm=max(max(monoImage(:,:,1)))
+    gm=max(max(monoImage(:,:,2)))
+    bm=max(max(monoImage(:,:,3)))
+    imwrite(monoImage, '/Users/kleinerm/Desktop/MEncoded.bmp');
+    rc=max(max(convImage(:,:,1)))
+    gc=max(max(convImage(:,:,2)))
+    bc=max(max(convImage(:,:,3)))
+    imwrite(convImage, '/Users/kleinerm/Desktop/GEncoded.bmp');
     
     diffred = abs(double(monoImage(:,:,1)) - double(convImage(:,:,1)));
     diffgreen = abs(double(monoImage(:,:,2)) - double(convImage(:,:,2)));

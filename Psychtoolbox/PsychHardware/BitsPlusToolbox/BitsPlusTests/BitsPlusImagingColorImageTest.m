@@ -1,24 +1,40 @@
-% BitsPlusImagingColorImageTest
-% 
-% Use of Color++ mode with imaging pipeline...
+function BitsPlusImagingColorImageTest(realimage)
+% BitsPlusImagingColorImageTest(realimage)
+%
+% Test use of Color++ mode with imaging pipeline...
+%
+% Renders a HDR color image, converts it to Bits++ Color++ format, once via
+% Matlab Bits++ toolbox function BitsPlusPackColorImage and once via GPU
+% based imaging pipeline. Reads back and compares results to assess
+% correctness and accuracy of the new GPU implementation.
+%
+% realimage = 0 (Default) Create color gradient pattern with all 65535
+% possible values for a systematic test.
+%
+% realimage = 1 Load an example HDR image of a "real" rendered scene for
+% comparison.
 %
 % UNFINISHED BETA CODE!
 %
-% 8/8/04	dhb		Started it.
-% 18/4/05   ejw     Converted it to run with OSX version of Psychtoolbox
-
-% Clear
-clear all;
 
 % Define screen
 whichScreen=max(Screen('Screens'));
 
 % First need an interesting test image.
 % Load it in.  This is an RGB image with
-% data in range 0-1.  
+% data in range 0-1.
 fprintf('Loading a high dynamic range test image\n');
 load colorPlusTest
 
+% If realimage ==0 or left out, create synthetic color test gradient:
+if nargin < 1 || isempty(realimage) || realimage==0
+    theImage=zeros(256,256,3);
+    theImage(:,:,1)=reshape(double(linspace(0, 2^16 - 1, 2^16)), 256, 256)' / (2^16 - 1);
+    theImage(:,:,2)=theImage(:,:,1);
+    theImage(:,:,3)=theImage(:,:,1);
+end
+
+% Convert via Bits++ toolbox:
 fprintf('Converting to color++ format\n');
 packedImage = BitsPlusPackColorImage(theImage,0);
 
@@ -26,51 +42,40 @@ packedImage = BitsPlusPackColorImage(theImage,0);
 [m,n,p] = size(packedImage);
 rect = [0 0 m n];
 fprintf('Showing image\n');
-% Open a double buffered fullscreen window
-% does not like opening it 24 bit deep, so stick with 32 bits,
-% though we don't want alpha!!
+
+% Open a double buffered fullscreen window with black background:
 [window,screenRect] = BitsPlusPlus('OpenWindowColor++', whichScreen, 0);
 
-% find out how big the window is
+% Find out how big the window is:
 [screenWidth, screenHeight]=Screen('WindowSize', window);
-
-% textures can't seem to be bigger than the screen, though they have to be
-% square. So the max texture size is the smaller of the screen dimensions!!
-max_texture_size = min([screenWidth screenHeight]);
 
 % Find the color values which correspond to white and black.  Though on OS
 % X we currently only support true color and thus, for scalar color
 % arguments,
 % black is always 0 and white 255, this rule is not true on other platforms will
-% not remain true on OS X after we add other color depth modes.  
+% not remain true on OS X after we add other color depth modes.
 white=WhiteIndex(whichScreen);
 black=BlackIndex(whichScreen);
 gray=(white+black)/2;
 if round(gray)==white
-	gray=black;
+    gray=black;
 end
 
-% the following is not necessary, it just stops you staring at a blank
-% screen if you are not in colour++ mode, and have a black LUT loaded into
-% Bits++ :<(
-%   restore the Bits++ LUT to a linear ramp
-%linear_lut =  repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
-%BitsPlusSetClut(window,linear_lut);
-
-% draw a gray background on front and back buffers
+% draw a black background on front and back buffers
 Screen('FillRect',window, black);
 Screen('Flip', window);
 Screen('FillRect',window, black);
 
 % make sure the graphics card LUT is set to a linear ramp
 % (else the encoded data will not be recognised by Bits++).
-% There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.   
-%Screen('LoadNormalizedGammaTable',window,linspace(0,(255/256),256)'*ones(1,3));
+% There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.
+Screen('LoadNormalizedGammaTable',window,linspace(0,(255/256),256)'*ones(1,3));
 
 % Disable Bits++ Color++ output formatter:
 Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
 
-% Show input image in LDR mode:
+% Show input image in LDR mode first. This will just show it with 8bpc on a
+% standard display, will probably create trash on the real Bits++
 textureIndex= Screen('MakeTexture',window, theImage, [], [], 2);
 dstRect = Screen('Rect', textureIndex);
 Screen('DrawTexture',window,textureIndex, [], dstRect);
@@ -78,11 +83,11 @@ Screen('DrawTexture',window,textureIndex, [], dstRect);
 Screen(window,'Flip');
 fprintf('Hit any character to continue\n');
 
-% GetChar causes problems so replace with KbWait
-%GetChar;
 KbWait;
 while KbCheck; end;
 
+% Repeated toggling between Bits++ box image and GPU image, until space key
+% pressed twice.
 while 1
     % Disable Bits++ Color++ output formatter:
     Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
@@ -94,8 +99,6 @@ while 1
     Screen(window,'Flip');
 
     fprintf('Hit any character to continue\n');
-    % GetChar causes problems so replace with KbWait
-    %GetChar;
     KbWait;
     while KbCheck; end;
 
@@ -105,40 +108,16 @@ while 1
     % Draw Color++ image as generated by PTB GPU imaging pipeline:
     textureIndex= Screen('MakeTexture',window, theImage, [], [], 2);
     dstRect = Screen('Rect', textureIndex);
-    Screen('DrawTexture',window,textureIndex, [], dstRect);
-    
+    Screen('DrawTexture',window,textureIndex, [], dstRect, [], 0);
+
+    % Enforce finalizing the image before we can make a screenshot:
     Screen('DrawingFinished', window);
+
+    % Take screenshot of GPU converted image:
     convImage=Screen('GetImage', window, ScaleRect(dstRect, 2, 1),'backBuffer');
-    
+
+    % Show it.
     Screen(window,'Flip');
-
-    diffred = abs(double(packedImage(:,:,1)) - double(convImage(:,:,1)));
-    diffgreen = abs(double(packedImage(:,:,2)) - double(convImage(:,:,2)));
-    diffblue = abs(double(packedImage(:,:,3)) - double(convImage(:,:,3)));
-
-    %diffidx = find(diffred > 0);
-    %numdiff = length(diffidx);
-    %diffidx
-    
-    mdr = max(max(diffred));
-    mdg = max(max(diffgreen));
-    mdb = max(max(diffblue));
-
-    fprintf('Maximum difference: red= %f green = %f blue = %f\n', mdr, mdg, mdb);
-
-    if mdr>0 || mdg>0 || mdb>0
-        close all;
-        imagesc(diffred);
-        figure;
-        imagesc(diffgreen);
-        figure;
-        imagesc(diffblue);
-    end
-    
-    fprintf('Hit any character to continue\n');
-
-    % GetChar causes problems so replace with KbWait
-    %GetChar;
 
     KbWait;
     [d1 d2 keycode]=KbCheck;
@@ -150,6 +129,67 @@ while 1
 end
 
 Screen('CloseAll');
+
+% Compute difference images and such...
+diffred = abs(double(packedImage(:,:,1)) - double(convImage(:,:,1)));
+diffgreen = abs(double(packedImage(:,:,2)) - double(convImage(:,:,2)));
+diffblue = abs(double(packedImage(:,:,3)) - double(convImage(:,:,3)));
+
+% Compute maximum deviation of framebuffer raw data:
+mdr = max(max(diffred));
+mdg = max(max(diffgreen));
+mdb = max(max(diffblue));
+
+fprintf('Maximum raw data difference: red= %f green = %f blue = %f\n', mdr, mdg, mdb);
+
+% If there is a difference, show plotted difference images:
+if mdr>0 || mdg>0 || mdb>0
+    close all;
+    imagesc(diffred);
+    figure;
+    imagesc(diffgreen);
+    figure;
+    imagesc(diffblue);
+end
+
+% Now compute a more meaningful difference: The difference between the
+% stimulus as the Bits++ box would see it (i.e. how much do the 16 bit
+% intensity values of each color channel differ?):
+convImage = double(convImage);
+packedImage = double(packedImage);
+
+% For each color channel do...
+for c=1:3
+    % Invert conversion: Compute 16 bpc color values from high/low byte
+    % pixel data:
+    deconvImage = (zeros(size(convImage,1), size(convImage,2)/2));
+    deconvImage(:,:) = 256 * convImage(:, 1:2:end-1, c) + convImage(:, 2:2:end, c);
+
+    depackImage = (zeros(size(packedImage,1), size(packedImage,2)/2));
+    depackImage(:,:) = 256 * packedImage(:, 1:2:end-1, c) + packedImage(:, 2:2:end, c);
+
+    % Difference image:
+    diffImage = (deconvImage - depackImage);
+
+    % Find locations where pixels differ:
+    idxdiff = find(abs(diffImage) > 0);
+    numdiff(c) = length(idxdiff);
+    numtot(c) = size(diffImage,1)*size(diffImage,2);
+    maxdiff(c) = max(max(abs(diffImage)));
+    [row col] = ind2sub(size(diffImage), idxdiff);
+
+    % Print out all pixels values which differ, and their difference:
+    for j=1:length(row)
+        fprintf('Diff: %.2f Input Value: %.20f\n', diffImage(row(j), col(j)), theImage(row(j), col(j), c) * 65535);
+    end
+end
+
+for c=1:3
+    % Summarize for this color channel:
+    fprintf('Channel %i: %i out of %i pixels differ. The maximum absolute difference is %i.\n', c, numdiff(c), numtot(c), maxdiff(c));
+end
+
+% Done for now.
 return;
 
 
@@ -159,7 +199,7 @@ if (whichScreen == 0)
     % restore the Bits++ LUT to a linear ramp
     linear_lut =  repmat(round(linspace(0, 2^16 -1, 256))', 1, 3);
     BitsPlusSetClut(window,linear_lut);
-    
+
     % draw a gray background on front and back buffers to clear out any old LUTs
     Screen('FillRect',window, gray);
     Screen('Flip', window);
@@ -167,7 +207,7 @@ if (whichScreen == 0)
     Screen('Flip', window);
 
     % Close the window.
-    Screen('CloseAll');    
+    Screen('CloseAll');
 else
     % Blank the screen
     BitsPlusSetClut(window,zeros(256,3));
@@ -179,6 +219,6 @@ else
     Screen('Flip', window);
 
     Screen('CloseAll');
-end 	 
+end
 
-	
+
