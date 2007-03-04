@@ -95,6 +95,8 @@ void InitializeSynopsis()
 	synopsis[i++] = "result = Eyelink('CalResult')";
 	synopsis[i++] = "Eyelink('SetOfflineMode')";
 	synopsis[i++] = "[version, versionString]  = Eyelink('GetTrackerVersion')";
+	synopsis[i++] = "[time =] Eyelink('TrackerTime')";
+	synopsis[i++] = "[offset =] Eyelink('TimeOffset')";
 
 	// Place Holder
 	synopsis[i++] = "\n\n\n\n% EyelinkToolbox version for the OpenGL PsychToolbox";

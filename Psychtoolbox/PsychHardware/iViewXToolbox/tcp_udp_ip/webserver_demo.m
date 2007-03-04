@@ -24,7 +24,7 @@ try,
                 disp(sprintf('Connection from host:%d.%d.%d.%d port:%d\n',ip,port));
                 pnet(con,'setreadtimeout',2);  % Avoid locking the server for slow/dead networks/browsers
                 pnet(con,'setwritetimeout',1);
-                pnet(con,'readline');
+%                 pnet(con,'readline');
                 pnet(con,'printf','HTTP/1.1 200 OK\n');
                 pnet(con,'printf','Content-Type: text/html\n\n');
                 pnet(con,'printf','<html><HEAD><TITLE>WEBSERVER DEMO</TITLE></HEAD>\n<body><h1>WEBSERVER DEMO</h1>\n');
