@@ -1,5 +1,5 @@
-function InitializeMatlabOpenGL(opengl_c_style, debuglevel)
-% InitializeMatlabOpenGL(opengl_c_style, debuglevel)
+function InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
+% InitializeMatlabOpenGL([opengl_c_style] [, debuglevel] [, noswitchto3D])
 %
 % InitializeMatlabOpenGL -- Initialize the OpenGL for Matlab wrapper 'mogl'.
 %
@@ -26,6 +26,13 @@ function InitializeMatlabOpenGL(opengl_c_style, debuglevel)
 % scripts execution if it detects any OpenGL error. A level of 2 provides
 % additional information that may help you to optimize your code. level 3
 % means to be very verbose.
+%
+% noswitchto3D: Setting this optional parameter to 1 will only load the GL
+% constants and moglcore, but it won't switch PTB itself into 3D mode. This
+% is useful if your code needs access to OpenGL for some configuration work
+% but doesn't intend to do real 3D rendering. Mostly called from PTB
+% internal helper functions, e.g., imaging pipeline. Defaults to zero, aka
+% "switch to real 3D mode".
 %
 % The 'OpenGL for Matlab' low level wrapper mogl was developed, implemented
 % and contributed to Psychtoolbox under GPL license by
@@ -60,6 +67,14 @@ end;
 if isempty(debuglevel)
     debuglevel = 1;
 end;
+
+if nargin < 3
+    noswitchto3D = [];
+end
+
+if isempty(noswitchto3D)
+    noswitchto3D = 0;
+end
 
 % Load all GL constants:
 evalin('caller','global AGL GL GLU');
@@ -102,7 +117,15 @@ end;
 moglcore('DEBUGLEVEL', debuglevel);
 
 % Enable support for OpenGL 3D graphics rendering in Psychtoolbox.
-Screen('Preference', 'Enable3DGraphics', 1);
+if noswitchto3D > 0
+    noswitchto3D = 0;
+else
+    noswitchto3D = 1;
+end
+
+% Conditionally enable full 3D mode of Screen. Enable it if noswitchto3D is
+% zero, which is the default:
+Screen('Preference', 'Enable3DGraphics', noswitchto3D);
 
 % Ready to rock!
 return;

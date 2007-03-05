@@ -12,7 +12,7 @@ function AssertGLSL
 persistent alreadycalled;
 global GL
 if isempty(GL)
-    InitializeMatlabOpenGL;
+    InitializeMatlabOpenGL([], [], 1);
 end;
 
 if isempty(alreadycalled)

@@ -24,13 +24,14 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, targetTexture]);";
-//                                                                 1              2                 3
+static char useString[] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, targetTexture] [, specialFlags]);";
+//                                                                 1              2                 3				   4
 static char synopsisString[] =
 	"CAUTION! EXPERIMENTAL FEATURE IN EARLY BETA STAGE, DON'T TRUST IT BLINDLY!\n\n"
 	"Apply an image processing operation to a texture 'sourceTexture' and store the processed result either in 'targetTexture' if "
 	"provided, or in a new texture (if 'targetTexture' is not provided). Return a handle 'transtexid' to the processed texture. "
 	"The image processing operation is defined in the processing hook chain 'UserDefinedBlit' of the proxy object 'transformProxyPtr'. "
+	"'specialFlags' optional flags to alter operation of this function: kPsychAssumeTextureNormalized."
 	"Read 'help PsychGLImageProcessing' for more infos on how to use this function.";
 	
 static char seeAlsoString[] = "";
@@ -38,7 +39,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTransformTexture(void) 
 {
 	PsychWindowRecordType	*sourceRecord, *targetRecord, *proxyRecord;
-	int testarg, tmpimagingmode;
+	int testarg, tmpimagingmode, specialFlags;
 	PsychFBO *fboptr;
 	GLint fboInternalFormat;
 	Boolean needzbuffer;
@@ -47,7 +48,7 @@ PsychError SCREENTransformTexture(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
     
-    PsychErrorExit(PsychCapNumInputArgs(3));   	
+    PsychErrorExit(PsychCapNumInputArgs(4));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(1));  
 	
@@ -70,6 +71,11 @@ PsychError SCREENTransformTexture(void)
     PsychAllocInWindowRecordArg(2, TRUE, &proxyRecord);
 	if (proxyRecord->windowType!=kPsychProxyWindow) PsychErrorExitMsg(PsychError_user, "'transformProxyPtr' argument must be a handle to a proxy object.");
 
+
+	// Test if optional specialFlags are provided:
+    specialFlags=0;
+    PsychCopyInIntegerArg(4, FALSE, &specialFlags);
+
 	// Activate rendering context of the proxy object and soft-reset the
 	// drawing engine, so we're in a well defined state:
 	PsychSetGLContext(proxyRecord);
@@ -78,7 +84,7 @@ PsychError SCREENTransformTexture(void)
 	
 	// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 	// that format. We require this standard orientation for simplified shader design.
-	PsychNormalizeTextureOrientation(sourceRecord);
+	if (!(specialFlags & 1)) PsychNormalizeTextureOrientation(sourceRecord);
 	
 	// Restore proper rendering context:
 	PsychSetGLContext(proxyRecord);

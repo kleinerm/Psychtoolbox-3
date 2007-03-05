@@ -76,7 +76,10 @@ alSourcei(source, AL.LOOPING, AL.TRUE);
 alSourcef(source, AL.GAIN, 1);
 
 % Start playback for this source:
+GetSecs;
+
 alSourcePlay(source);
+tstart = GetSecs;
 
 x=0;
 manual = 0;
@@ -113,10 +116,12 @@ while 1
     end
     
     % Select 3D position of source in space:
-    alSource3f(source, AL.POSITION, x, 0, z);
+    %alSource3f(source, AL.POSITION, x, 0, z);
     
     % Query current playback position in seconds since start of buffer:
-    % alGetSourcef(source, AL.SEC_OFFSET);
+    tref = (GetSecs - tstart);
+    taud = alGetSourcef(source, AL.SAMPLE_OFFSET)/16384;
+    fprintf('Delta: %f %f %f\n', tref - taud, tref, taud);
     
     % Pause for 10 milliseconds in order to yield the cpu to other processes:
     WaitSecs(0.01);

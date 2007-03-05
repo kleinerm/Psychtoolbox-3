@@ -26,7 +26,9 @@ function handle = LoadGLSLProgramFromFiles(filenames, debug)
 global GL;
 
 if isempty(GL)
-    InitializeMatlabOpenGL;
+    % Load & Initalize constants and moglcore, but don't set the 3D gfx
+    % flag for Screen():
+    InitializeMatlabOpenGL([], [], 1);
 end;
 
 if nargin < 2
