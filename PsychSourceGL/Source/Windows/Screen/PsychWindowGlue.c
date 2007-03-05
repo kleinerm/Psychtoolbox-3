@@ -174,12 +174,13 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
       // Scan the list of windows to find onscreen window with handle hWnd:
       PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
       for(i = 0; i < numWindows; i++) {
-	if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
-	    windowRecordArray[i]->targetSpecific.windowHandle == hWnd) {
-	  // This is it! Initiate bufferswap twice:
-	  PsychOSFlipWindowBuffers(windowRecordArray[i]);
-	  PsychOSFlipWindowBuffers(windowRecordArray[i]);
-	}
+			if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
+	    		 windowRecordArray[i]->targetSpecific.windowHandle == hWnd &&
+				 windowRecordArray[i]->stereomode == 0) {
+	  			// This is it! Initiate bufferswap twice:
+	  			PsychOSFlipWindowBuffers(windowRecordArray[i]);
+	  			PsychOSFlipWindowBuffers(windowRecordArray[i]);
+			}
       }
       PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
       // Done.
@@ -726,8 +727,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	 // Throw away any error-state this could have created on old hardware...
 	 glGetError();
 
-    // External 3D graphics support enabled?
-	 if (PsychPrefStateGet_3DGfx()) {
+    // External 3D graphics support enabled? Or OpenGL quad-buffered stereo enabled?
+	 // For the former, we need this code for OpenGL state isolation. For the latter we
+    // need this code as workaround for Windows brain-damage. For some reason it helps
+    // to properly shutdown stereo contexts on Windows...
+	 if (PsychPrefStateGet_3DGfx() || stereomode == kPsychOpenGLStereo) {
 		// Yes. We need to create an extra OpenGL rendering context for the external
 		// OpenGL code to provide optimal state-isolation. The context shares all
 		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
