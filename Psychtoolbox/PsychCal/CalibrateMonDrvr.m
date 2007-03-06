@@ -1,4 +1,4 @@
-function cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
+function cal = CalibrateMonDrvr(cal, USERPROMPT, whichMeterType, blankOtherScreen)
 % cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 %
 % Main script for monitor calibration.  May be called
@@ -46,6 +46,13 @@ function cal = CalibrateMonDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 10/23/06  cgb     OS/X, etc.
 % 11/08/06  dhb, cgb Living in the 0-1 world ....
 % 11/10/06  dhb     Get rid of round() around production of input levels.
+global g_usebitspp;
+
+% If the global flag for using Bits++ is empty, then it hasn't been
+% initialized and default it to 0.
+if isempty(g_usebitspp)
+    g_usebitspp = 0;
+end
 
 % Measurement parameters
 monWls = SToWls(cal.describe.S);
@@ -56,7 +63,7 @@ mGammaInputRaw = mGammaInputRaw(2:end);
 
 % Make manual measurements here if desired.  This needs to come first.
 if cal.manual.use
-    error('Manual measurements not yet converted to PTB-3.  Fix CalibrateManualDrvr if you need this.')
+    error('Manual measurements not yet converted to PTB-3.  Fix CalibrateManualDrvr if you need this.');
     CalibrateManualDrvr;
 end
 
@@ -81,7 +88,12 @@ end
 
 if blankOtherScreen
 	[window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
-	Screen('LoadNormalizedGammaTable', window1, zeros(256,3));
+    if g_usebitspp
+        Screen('LoadNormalizedGammaTable', window1, linspace(0, 1, 256)' * [1 1 1]);
+        BitsPlusSetClut(window1, zeros(256, 3));
+    else
+        Screen('LoadNormalizedGammaTable', window1, zeros(256,3));
+    end
 end
 
 % Blank screen to be measured
@@ -91,8 +103,13 @@ if (cal.describe.whichScreen == 0)
 else
 	%Screen('MatlabToFront');
 end
-theClut = zeros(256,3);
-Screen('LoadNormalizedGammaTable', window, theClut);
+theClut = zeros(256, 3);
+if g_usebitspp
+    Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * [1 1 1]);
+    BitsPlusSetClut(window, theClut);
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Draw a box in the center of the screen
 if ~isfield(cal.describe, 'boxRect')
@@ -103,20 +120,29 @@ else
 end
 theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
-Screen('LoadNormalizedGammaTable', window, theClut);
+if g_usebitspp
+    BitsPlusSetClut(window, theClut .* (2^16 - 1));
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Wait for user
 if USERPROMPT == 1
     FlushEvents;
     GetChar;
     fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
-    WaitSecs(cal.describe.leaveRoomTime);
+    %WaitSecs(cal.describe.leaveRoomTime);
     fprintf(' done\n');
 end
 
 % Put correct surround for measurements.
 theClut(1,:) = cal.bgColor';
-Screen('LoadNormalizedGammaTable', window, theClut);
+if g_usebitspp
+    Screen('FillRect', window, 1, boxRect);
+    BitsPlusSetClut(window, theClut .* (2^16 - 1));
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Start timing
 t0 = clock;
@@ -126,10 +152,10 @@ for a = 1:cal.describe.nAverage
     for i = 1:cal.nDevices
         disp(sprintf('Monitor device %g',i));
         Screen('FillRect', window, 1, boxRect);
-        Screen('Flip', window);
+        Screen('Flip', window, 0, g_usebitspp);
 
         % Measure ambient
-        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
+        darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
 
         % Measure full gamma in random order
         mGammaInput = zeros(cal.nDevices, cal.describe.nMeas);
@@ -137,11 +163,12 @@ for a = 1:cal.describe.nAverage
         sortVals = rand(cal.describe.nMeas,1);
         [null, sortIndex] = sort(sortVals);
         %fprintf(1,'MeasMonSpd run %g, device %g\n',a,i);
-        [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), cal.describe.S, [], whichMeterType);
+        [tempMon, cal.describe.S] = MeasMonSpd(window, mGammaInput(:,sortIndex), ...
+            cal.describe.S, [], whichMeterType, theClut);
         tempMon(:, sortIndex) = tempMon;
 
         % Take another ambient reading and average
-        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
+        darkAmbient2 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
         darkAmbient = ((darkAmbient1+darkAmbient2)/2)*ones(1, cal.describe.nMeas);
 
         % Subtract ambient

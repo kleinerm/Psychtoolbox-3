@@ -29,6 +29,13 @@ function cal = CalibrateAmbDrvr(cal,USERPROMPT,whichMeterType,blankOtherScreen)
 % 9/23/02   dhb, jmh  Force background to zero when measurements come on.
 % 2/26/03   dhb   Tidy comments.
 % 4/1/03    dhb   Fix ambient averaging.
+global g_usebitspp;
+
+% If the global flag for using Bits++ is empty, then it hasn't been
+% initialized and default it to 0.
+if isempty(g_usebitspp)
+    g_usebitspp = 0;
+end
 
 % Check meter
 if ~whichMeterType
@@ -60,7 +67,12 @@ end
 % Blank other screen
 if blankOtherScreen
     [window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen);
-	Screen('LoadNormalizedGammaTable', window1, zeros(256, 3));
+	if g_usebitspp
+        Screen('LoadNormalizedGammaTable', window1, linspace(0, 1, 256)' * [1 1 1]);
+        BitsPlusSetClut(window1, zeros(256, 3));
+    else
+        Screen('LoadNormalizedGammaTable', window1, zeros(256,3));
+    end
 end
 
 % Blank screen to be measured
@@ -71,14 +83,23 @@ else
 	%Screen('MatlabToFront');
 end
 theClut = zeros(256,3);
-Screen('LoadNormalizedGammaTable', window, theClut);
+if g_usebitspp
+    Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * [1 1 1]);
+    BitsPlusSetClut(window, theClut);
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Draw a box in the center of the screen
 boxRect = [0 0 cal.describe.boxSize cal.describe.boxSize];
 boxRect = CenterRect(boxRect, screenRect);
 theClut(2,:) = [1 1 1];
 Screen('FillRect', window, 1, boxRect);
-Screen('LoadNormalizedGammaTable', window, theClut);
+if g_usebitspp
+    BitsPlusSetClut(window, theClut .* (2^16 - 1));
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Wait for user
 if USERPROMPT == 1
@@ -91,7 +112,13 @@ end
 
 % Put in appropriate background.
 theClut(2,:) = cal.bgColor';
-Screen('LoadNormalizedGammaTable',window, theClut);
+if g_usebitspp
+    Screen('FillRect', window, 1, boxRect);
+    BitsPlusSetClut(window, theClut .* (2^16 - 1), [], false);
+    Screen('Flip', window, 0, 1);
+else
+    Screen('LoadNormalizedGammaTable', window, theClut);
+end
 
 % Start timing
 t0 = clock;
@@ -99,7 +126,7 @@ t0 = clock;
 ambient = zeros(cal.describe.S(3), 1);
 for a = 1:cal.describe.nAverage
     % Measure ambient
-    ambient = ambient + MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType);
+    ambient = ambient + MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
 end
 ambient = ambient / cal.describe.nAverage;
 

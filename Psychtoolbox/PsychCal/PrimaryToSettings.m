@@ -1,5 +1,5 @@
-function [settings, badIndex] = PrimaryToSettings(cal,primary)
-% [settings, badIndex] = PrimaryToSettings(cal,primary)
+function [settings, badIndex] = PrimaryToSettings(cal, primary)
+% [settings, badIndex] = PrimaryToSettings(cal, primary)
 %
 % Convert from primary color space coordinates to device
 % setting coordinates.
@@ -9,5 +9,5 @@ function [settings, badIndex] = PrimaryToSettings(cal,primary)
 % 9/26/93    dhb   Added calData argument, badIndex return.
 % 4/5/02     dhb, ly  New calling interface.
 
-[gamut,badIndex] = PrimaryToGamut(cal,primary);
-settings = GamutToSettings(cal,gamut);
+[gamut, badIndex] = PrimaryToGamut(cal, primary);
+settings = GamutToSettings(cal, gamut);

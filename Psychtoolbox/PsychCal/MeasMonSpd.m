@@ -1,5 +1,5 @@
-function [spd,S] = MeasMonSpd(window,settings,S,syncMode,whichMeterType)
-% [spd,S] = MeasMonSpd(window,settings,[S],[syncMode],[whichMeterType])
+function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bitsppClut)
+% [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType], [bitsppClut])
 %
 % Measure the Spd of a series of monitor settings.
 %
@@ -26,11 +26,18 @@ function [spd,S] = MeasMonSpd(window,settings,S,syncMode,whichMeterType)
 % 8/21/00   dhb   Remove dependence on RADIUS flag.  This is now handled inside of SetColor.
 %	        dhb   Change calling conventions to remove unused args.
 % 9/14/00   dhb   Sync mode is not actually used.  Arg still passed for backwards compat.
-% 2/27/02   dhb   Change noMeterAvail to whichMeterType.  
+% 2/27/02   dhb   Change noMeterAvail to whichMeterType.
+global g_usebitspp;
+
+% If the global flag for using Bits++ is empty, then it hasn't been
+% initialized and default it to 0.
+if isempty(g_usebitspp)
+    g_usebitspp = 0;
+end
 
 % Check args and make sure window is passed right.
 usageStr = 'Usage: [spd,S] = MeasMonSpd(window, settings, [S], [syncMode], [whichMeterType])';
-if nargin < 2 || nargin > 5 || nargout > 2
+if nargin < 2 || nargin > 6 || nargout > 2
 	error(usageStr);
 end
 if size(window,1) ~= 1 || size(window,2) ~= 1
@@ -42,8 +49,12 @@ defaultS = [380 5 81];
 defaultSync = 0;
 defaultWhichMeterType = 1;
 
-% Get the normalized gamma table.
-theClut = Screen('ReadNormalizedGammaTable',window);
+% Get the current gamma table.
+if g_usebitspp
+    theClut = bitsppClut;
+else
+    theClut = Screen('ReadNormalizedGammaTable',window);
+end
 
 % Check args and set defaults
 if nargin < 5 || isempty(whichMeterType)
@@ -65,12 +76,22 @@ for i = 1:nMeas
     switch whichMeterType
         case 0
             theClut(2,:) = settings(:, i)';
-            Screen('LoadNormalizedGammaTable',window, theClut);
-            spd(:,i) = sum(settings(:, i))*ones(S(3), 1);
+            if g_usebitspp
+                BitsPlusSetClut(window, theClut .* (2^16 - 1), [], false);
+                Screen('Flip', window, 0, 1);
+            else
+                Screen('LoadNormalizedGammaTable', window, theClut);
+            end
+            spd(:,i) = sum(settings(:, i)) * ones(S(3), 1);
             WaitSecs(.1);
         case 1
             theClut(2,:) = settings(:, i)';
-            Screen('LoadNormalizedGammaTable',window, theClut);
+            if g_usebitspp
+                BitsPlusSetClut(window, theClut .* (2^16 - 1), [], false);
+                Screen('Flip', window, 0, 1);
+            else
+                Screen('LoadNormalizedGammaTable',window, theClut);
+            end
             spd(:,i) = MeasSpd(S);
         case 2
             error('CVI interface not yet ported to PTB-3.');
