@@ -1970,6 +1970,43 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 		}
 		pstrpos++;
 	}
+
+	// Setup code for 2D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE2D")) {
+		if (2==sscanf(pstrpos, "TEXTURE2D(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glEnable(GL_TEXTURE_2D);
+			glBindTexture(GL_TEXTURE_2D, texid);
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_2D target of texunit %i\n", texid, texunit);
+		}
+		pstrpos++;
+	}
+
+	// Setup code for 2D rectangle textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURERECT2D")) {
+		if (2==sscanf(pstrpos, "TEXTURERECT2D(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glEnable(GL_TEXTURE_RECTANGLE_EXT);
+			glBindTexture(GL_TEXTURE_RECTANGLE_EXT, texid);
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_RECTANGLE_EXT target of texunit %i\n", texid, texunit);
+		}
+		pstrpos++;
+	}
+
+	// Setup code for 3D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE3D")) {
+		if (2==sscanf(pstrpos, "TEXTURE3D(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glEnable(GL_TEXTURE_3D);
+			glBindTexture(GL_TEXTURE_3D, texid);
+			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Binding gltexid %i to GL_TEXTURE_3D target of texunit %i\n", texid, texunit);
+		}
+		pstrpos++;
+	}
+
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 	
 	// Need a shader for this blit op?
@@ -2020,6 +2057,40 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 		}
 		pstrpos++;
 	}
+
+	// Teardown code for 2D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE2D")) {
+		if (2==sscanf(pstrpos, "(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glDisable(GL_TEXTURE_2D);
+		}
+		pstrpos++;
+	}
+
+	// Teardown code for 2D rectangle textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURERECT2D")) {
+		if (2==sscanf(pstrpos, "(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glBindTexture(GL_TEXTURE_2D, 0);
+			glDisable(GL_TEXTURE_2D);
+		}
+		pstrpos++;
+	}
+
+	// Teardown code for 3D textures:
+	pstrpos = hookfunc->pString1;
+	while (pstrpos=strstr(pstrpos, "TEXTURE3D")) {
+		if (2==sscanf(pstrpos, "(%i)=%i", &texunit, &texid)) {
+			glActiveTextureARB(GL_TEXTURE0_ARB + texunit);
+			glBindTexture(GL_TEXTURE_3D, 0);
+			glDisable(GL_TEXTURE_3D);
+		}
+		pstrpos++;
+	}
+
 	glActiveTextureARB(GL_TEXTURE0_ARB);
 
 	// Reset shader assignment, if any:
