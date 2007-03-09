@@ -706,7 +706,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 #else
     padding= 0;
 #endif
-    
+
     if (out_texture) {
         PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
         
@@ -730,14 +730,14 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     if (out_texture) {
         // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
-        
+
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content:
         PsychCreateTexture(out_texture);
 
         // Undo hack from above after texture creation: Now we need the real width of the
         // texture for proper texture coordinate assignments in drawing code et al.
-        PsychMakeRect(out_texture->rect, 0, 0, w-padding, h);    
+        PsychMakeRect(out_texture->rect, 0, 0, w, h);    
         // Ready to use the texture...
     }
     

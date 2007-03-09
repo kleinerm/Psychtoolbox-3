@@ -1214,8 +1214,8 @@ void PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean o
 	PtrPsychHookFunction hookfunc, hookiter;
 	PsychFBO* fboptr;
 	
-	// Imaging enabled? Do OpenGL specific cleanup:
-	if (windowRecord->imagingMode>0 && openglpart) {
+	// Do OpenGL specific cleanup:
+	if (openglpart) {
 		// Yes. Mode specific cleanup:
 		for (i=0; i<windowRecord->fboCount; i++) {
 			// Delete i'th FBO, if any:
