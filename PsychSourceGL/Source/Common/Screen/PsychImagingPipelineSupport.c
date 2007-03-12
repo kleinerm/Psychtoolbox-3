@@ -1101,7 +1101,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	PsychFBO *fboptr;
 	GLint fboInternalFormat;
 	Boolean needzbuffer;
-
+	int width, height;
+	
 	// The source texture sourceRecord could be in any of PTB's supported
 	// internal texture orientations. It may be upright as an Offscreen window,
 	// or flipped upside down as some textures from the video grabber or Quicktime,
@@ -1143,6 +1144,20 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// First need to know internal format of texture...
 		glBindTexture(PsychGetTextureTarget(sourceRecord), sourceRecord->textureNumber);
 		glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_INTERNAL_FORMAT, &fboInternalFormat);
+
+		// Need to query real size of underlying texture, not the logical size from sourceRecord->rect, otherwise we'd screw
+		// up for padded textures (from Quicktime movie/vidcap) where the real texture is a bit bigger than its logical size.
+		if (sourceRecord->textureOrientation > 1) {
+			// Non-transposed textures, width and height are correct:
+			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_WIDTH, &width);
+			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_HEIGHT, &height);
+		}
+		else {
+			// Transposed textures: Need to swap meaning of width and height:
+			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_WIDTH, &height);
+			glGetTexLevelParameteriv(PsychGetTextureTarget(sourceRecord), 0, GL_TEXTURE_HEIGHT, &width);
+		}
+		
 		glBindTexture(PsychGetTextureTarget(sourceRecord), 0);
 		
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
@@ -1164,7 +1179,7 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		}
 		
 		// Now create proper FBO:
-		PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, PsychGetWidthFromRect(sourceRecord->rect), PsychGetHeightFromRect(sourceRecord->rect));
+		PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height);
 		sourceRecord->drawBufferFBO[0] = 0;
 		sourceRecord->fboCount = 1;
 		
