@@ -3,18 +3,18 @@ function kbNameResult = KbName(arg)
 % 	
 % 	KbName maps between KbCheck-style keyscan codes and key names.
 % 	
-% 	« If arg is a string designating a key label then KbName returns the 
+% 	‚ If arg is a string designating a key label then KbName returns the 
 % 	  keycode of the indicated key.  
 %
-% 	« If arg is a keycode, KbName returns the label of the designated key. 
+% 	‚ If arg is a keycode, KbName returns the label of the designated key. 
 %
-% 	« If no argument is supplied then KbName waits one second and then 
+% 	‚ If no argument is supplied then KbName waits one second and then 
 %     calls KbCheck.  KbName then returns a cell array holding the names of
 %     all keys which were down at the time of the KbCheck call. The 
 %     one-second delay preceeding the call to KbCheck avoids catching the 
 %     <return> keypress used to execute the KbName function. 
 %
-%   « If arg is 'UnifyKeyNames', KbName will switch its internal naming
+%   ‚ If arg is 'UnifyKeyNames', KbName will switch its internal naming
 %     scheme from the operating system specific scheme (which was used in
 %     the old Psychtoolboxes on MacOS-9 and on Windows) to the MacOS-X
 %     naming scheme, thereby allowing to use one common naming scheme for
@@ -24,19 +24,19 @@ function kbNameResult = KbName(arg)
 % 	  CAUTION: This function may contain bugs. Please report them (or fix
 % 	  them) if you find some.
 %
-%   « If arg is 'KeyNames', KbName will print out a table of all
+%   ‚ If arg is 'KeyNames', KbName will print out a table of all
 %     keycodes->keynames mappings.
 %
-%   « If arg is 'KeyNamesOSX', KbName will print out a table of all
+%   ‚ If arg is 'KeyNamesOSX', KbName will print out a table of all
 %     keycodes->keynames mappings for MacOS-X.
 %
-%   « If arg is 'KeyNamesOS9', KbName will print out a table of all
+%   ‚ If arg is 'KeyNamesOS9', KbName will print out a table of all
 %     keycodes->keynames mappings for MacOS-9.
 %
-%   « If arg is 'KeyNamesWindows', KbName will print out a table of all
+%   ‚ If arg is 'KeyNamesWindows', KbName will print out a table of all
 %     keycodes->keynames mappings for M$-Windows.
 %
-%   « If arg is 'KeyNamesLinux', KbName will print out a table of all
+%   ‚ If arg is 'KeyNamesLinux', KbName will print out a table of all
 %     keycodes->keynames mappings for GNU/Linux, X11.
 %
 % 	KbName deals with keys, not characters. See KbCheck help for an 
@@ -151,6 +151,8 @@ function kbNameResult = KbName(arg)
 %                       remaps many of the Windows/Linux keynames to the OS-X naming scheme for
 %                       greater portability of newly written scripts.
 %   27.10.06    mk      Yet another bugfix for KbName, see forum message 5247.
+%   15.03.07    mk      Minimal fix to recognize uint8 type bools on Linux
+%                       to fix some issue with Matlab7 on Linux.
 
 %   TO DO
 %
@@ -374,7 +376,7 @@ if isempty(kkOSX)
 	kkOSX{48} = ']}';                               kkOS9{31}=']}'; 
 	kkOSX{49} = '\|';                               kkOS9{43}='\|';
 
-        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:ê* Dutch: <> Fren:*µ Ger: #ê Ital: ?? LatAm: }`] Nor:,* Span: }? Swed: ,* Swiss: $£ UK: #~.
+        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:?* Dutch: <> Fren:*µ Ger: #? Ital: ?? LatAm: }`] Nor:,* Span: }? Swed: ,* Swiss: $£ UK: #~.
 	kkOSX{50} = '#-';                               
 	
 	kkOSX{51} = ';:';                               kkOS9{42}=';:';   
@@ -428,11 +430,11 @@ if isempty(kkOSX)
 	kkOSX{99} = '.';                                kkOS9{66}='.';
 	
 	% Non-US.  
-	% Typical language mappings: Belg:<\> FrCa:?çŽ Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
+	% Typical language mappings: Belg:<\> FrCa:??? Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
 	% Typically near the Left-Shift key in AT-102 implementations.
 	kkOSX{100} = 'NonUS\|';                              
 	
-	% Windows key for Windows 95, and –Compose.”
+	% Windows key for Windows 95, and ?Compose.?
 	kkOSX{101} = 'Application';                     
 	
 	% Reserved for typical keyboard status or keyboard errors. Sent as a member of the keyboard array. Not a physical key.
@@ -572,7 +574,7 @@ if isempty(kkOSX)
 	kkOSX{225} = 'LeftShift';                       kkOS9{57}='LeftShift';      %double entry
 	kkOSX{226} = 'LeftAlt';                         kkOS9{59}='LeftAlt';        %double entry
 	
-	%Windows key for Windows 95, and –Compose.”  Windowing environment key, examples are Microsoft Left Win key, Mac Left Apple key, Sun Left Meta key
+	%Windows key for Windows 95, and ?Compose.?  Windowing environment key, examples are Microsoft Left Win key, Mac Left Apple key, Sun Left Meta key
 	kkOSX{227} = 'LeftGUI';                         kkOS9{56}='LeftGUI';        %double entry
 	
 	kkOSX{228} = 'RightControl';                    %kkOS9{60}='RightControl'; % FIX double entry
@@ -654,8 +656,9 @@ elseif isempty(arg)
 elseif islogical(arg) | (isa(arg,'double') & length(arg)==256) | (isa(arg,'uint8') & length(arg)==256)
     kbNameResult=KbName(find(arg));
 
-%if the argument is a single double or a list of doubles (list of keycodes) 
-elseif isa(arg,'double')
+%if the argument is a single double or a list of doubles (list of keycodes)
+%or a single uint8 or list of uint8's (list of keycodes).
+elseif isa(arg,'double') | isa(arg,'uint8')
     %single element, the base case, we look up the name.
     if length(arg) == 1
         if(arg < 1 | arg > 65535)

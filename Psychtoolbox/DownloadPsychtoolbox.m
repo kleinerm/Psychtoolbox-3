@@ -178,13 +178,14 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 %              will find the svn executable if its installation folder is
 %              included in the Matlab path.
 % 02/17/07 mk  Convert flavor spec to lower case in case it isn't.
+% 03/15/07 mk  Detection code for Windows 64 bit added.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
 % Check OS
-isWin=strcmp(computer,'PCWIN');
+isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
 if ~isWin && ~isOSX
 os=computer;
