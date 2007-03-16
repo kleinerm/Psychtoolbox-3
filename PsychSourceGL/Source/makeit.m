@@ -15,7 +15,7 @@ end
 
 if what == 1
    % Build WaitSecs.dll
-   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output WaitSecs -DPTBMODULE_WaitSecs -IC:\Programme\QuickTimeSDK\CIncludes -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c user32.lib winmm.lib
+   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output WaitSecs -DPTBMODULE_WaitSecs -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c user32.lib winmm.lib
    dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\WaitSecs.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\');
    dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\WaitSecs.dll C:\MATLABR11\toolbox\PsychToolbox\PsychBasic\');   
 end
