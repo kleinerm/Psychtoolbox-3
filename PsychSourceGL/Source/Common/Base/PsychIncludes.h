@@ -62,11 +62,6 @@
 	//#include <gl/gl.h>
 	//#include <gl/glu.h>
 	#include "../Screen/wglew.h"
-	
-        #include <Movies.h>
-        #include <CoreVideo.h>
-        #include <GXMath.h>
-        #include <ImageCompression.h>
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	#include <Types.h>

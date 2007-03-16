@@ -108,10 +108,26 @@ typedef unsigned char bool;
 
 // mwSize is a new type introduced around Matlab R2006b. Define
 // it to be an integer on older Matlab releases and other runtime
-// environments:
-#ifndef USE_MWSIZE
-typedef int mwSize;
+// environments: (MX_API_VER is defined in Matlabs matrix.h file)
+#ifndef MX_API_VER
+	// Old Matlab without Mex API version definition:
+	#define SELFMADE_MWSIZE 1
+#else
+	// Matlab with Mex API prior V7.3 (Release 2006b)?
+	#if  MX_API_VER < 0x07030000
+		#define SELFMADE_MWSIZE 1
+	#endif
 #endif
+
+// Do we need to define mwSize ourselves?
+#ifdef SELFMADE_MWSIZE
+	typedef int mwSize;
+#endif
+
+// Old style: manual setup. Not needed anymore...
+//#ifndef USE_MWSIZE
+//typedef int mwSize;
+//#endif
 
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
