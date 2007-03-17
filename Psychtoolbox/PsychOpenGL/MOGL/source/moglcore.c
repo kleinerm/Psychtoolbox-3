@@ -441,7 +441,7 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
 
     // Reset OpenGL error state so we can be sure that any of our error queries really
     // relate to errors caused by us:
-    if (glBeginLevel == 0 && debuglevel > 0) glGetError();
+    if (glBeginLevel == 0 && debuglevel > 0 && (strstr(cmd, "glGetError")==NULL)) glGetError();
         
     // look for command in manual command map
     if( (i=binsearch(gl_manual_map,gl_manual_map_count,cmd))>=0 ) {
@@ -590,6 +590,7 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
     if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
     if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
+    if (NULL == glGetUniformfv) glGetUniformfv = glGetUniformfvARB;
     if (NULL == glUniform1f) glUniform1f = glUniform1fARB;
     if (NULL == glUniform2f) glUniform2f = glUniform2fARB;
     if (NULL == glUniform3f) glUniform3f = glUniform3fARB;
