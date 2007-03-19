@@ -2402,8 +2402,15 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 						PsychErrorExitMsg(PsychError_user, "You tried to draw into a special power-of-two offscreen window or texture. Sorry, this is not supported.");
 					}
 					
-					// It also only works on RGB or RGBA textures, not Luminance or LA textures, but the code in PsychCreateFBO will catch that case in
-					// case we get something unsuitable for drawing.
+					// It also only works on RGB or RGBA textures, not Luminance or LA textures, and the texture needs to be upright.
+					// PsychNormalizeTextureOrientation takes care of swapping it upright and converting it into a RGB or RGBA format,
+					// if needed. Only if it were an upright non-RGB(A) texture, it would slip through this and trigger an error abort
+					// in the following PsychCreateShadowFBO... call. This however can't happen with textures created by 'OpenOffscreenWindow',
+					// textures from the Quicktime movie engine, the videocapture engine or other internal sources. Textures created via
+					// MakeTexture will be auto-converted as well, unless some special flags to MakeTexture are given.
+					// --> The user code needs to do something very unusual and special to trigger an error abort here, and if it triggers
+					// one, it will abort with a helpful error message, telling how to fix the problem very simply.
+					PsychNormalizeTextureOrientation(windowRecord);
 					
 					// Do we already have a framebuffer object for this texture? All textures start off without one,
 					// because most textures are just used for drawing them, not drawing *into* them. Therefore we
@@ -2480,14 +2487,36 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                             }
                             else {
 								// Texture for this one already exist: Bind and update it:
+								twidth  = (int) PsychGetWidthFromRect(currentRendertarget->rect);
+								theight = (int) PsychGetHeightFromRect(currentRendertarget->rect);
+								
+								// If this is a texture in non-normal orientation, we need to swap width and height, and reset orientation
+								// to upright:
+								if (!PsychIsOnscreenWindow(currentRendertarget)) {
+									// Texture. Handle size correctly:
+									if ((currentRendertarget->textureOrientation <= 1) && (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D)) {
+										// Transposed power of two texture. Need to realloc texture...
+										twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
+										theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
+										glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+
+										// Reassign real size:
+										twidth  = (int) PsychGetWidthFromRect(currentRendertarget->rect);
+										theight = (int) PsychGetHeightFromRect(currentRendertarget->rect);
+									}
+									
+									// After this backup-op, the texture orientation will be a nice upright one:
+									currentRendertarget->textureOrientation = 2;
+								}
+								
 								glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
 								if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
 									// Special case for power-of-two textures:
-									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
+									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, twidth, theight);
 								}
 								else {
 									// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
+									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, twidth, theight, 0); 
 								}
                             }
                         }
@@ -2517,6 +2546,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                     if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(windowRecord))) {
                         // Setup viewport and projections to fit new dimensions of new rendertarget:
                         PsychSetupView(windowRecord);
+						glPushMatrix();
+						glLoadIdentity();
 						
                         // Now we need to blit the new rendertargets texture into the framebuffer. We need to make
 						// sure that alpha-blending is disabled during this blit operation:
@@ -2530,7 +2561,10 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 							// Alpha blending not enabled. Just blit it:
 							PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
 						}
-                        // Ok, the framebuffer has been initialized with the content of our texture.
+                        
+						glPopMatrix();
+						
+						// Ok, the framebuffer has been initialized with the content of our texture.
                     }
                 }
                 

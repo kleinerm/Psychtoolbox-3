@@ -390,8 +390,8 @@ PsychError SCREENDrawText(void)
     
     if(!PsychPrefStateGet_TextAlphaBlending())
         PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
-    //we do not call PsychUpdateAlphaBlendingFactorLazily() here becuase it is always the responsibility of drawing function to do that before drawing.
-    
+//	PsychUpdateAlphaBlendingFactorLazily(winRec);
+   
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 
     

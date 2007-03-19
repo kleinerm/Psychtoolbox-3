@@ -850,19 +850,23 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT) {
 		// Framebuffer incomplete!
 		while(glGetError());
-		printf("PTB-ERROR: Failed to setup internal framebuffer objects color buffer attachment for imaging pipeline!\n");
-		if (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) {
-			printf("PTB-ERROR: Your graphics hardware does not support the selected or requested texture- or offscreen window format for drawing into it.\n");
+		printf("PTB-ERROR[Imaging pipeline]: Failed to setup color buffer attachment of internal FBO when trying to prepare drawing into a texture or window.\n");
+		if (fborc==GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT_EXT) {
+			printf("PTB-ERROR: Your graphics hardware does not support the provided or requested texture- or offscreen window format for drawing into it.\n");
 			printf("PTB-ERROR: Most graphics cards do not support drawing into textures or offscreen windows which are not true-color, i.e. 1 layer pure\n");
-			printf("PTB-ERROR: luminance or 2 layer luminance+alpha textures or offscreen windows may not work, but 3-layer RGB or 4-layer RGBA textures\n");
-			printf("PTB-ERROR: or offscreen windows will work. Another reason could be that the specific colordepth is not supported on your hardware:\n");
-			printf("PTB-ERROR: 8 bits per color component are supported on nearly all hardware, 16 bpc or 32 bpc floating point format only on recent\n");
-			printf("PTB-ERROR: hardware. 16 bpc fixed precision is not supported on many systems either, or only under restricted conditions.\n");
+			printf("PTB-ERROR: luminance or 2 layer luminance+alpha textures or offscreen windows won't work. Choose a 3-layer RGB or 4-layer RGBA texture\n");
+			printf("PTB-ERROR: or offscreen window and retry.\n");
+		}
+		else if (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) {
+			printf("PTB-ERROR: Your graphics hardware does not support the provided or requested texture- or offscreen window format for drawing into it.\n");
+			printf("PTB-ERROR: Could be that the specific color depth of the texture or offscreen window is not supported for drawing on your hardware:\n");
+			printf("PTB-ERROR: 8 bits per color component are supported on nearly all hardware, 16 bpc or 32 bpc floating point formats only on recent\n");
+			printf("PTB-ERROR: hardware. 16 bpc fixed precision is not supported on any NVidia hardware, and on many systems only under restricted conditions.\n");
+			printf("PTB-ERROR: Retry with the lowest acceptable (for your study) size and depth of the onscreen window or offscreen window.\n");
 		}
 		else {
-			printf("PTB-ERROR: Exact reason for failure is unknown, glCheckFramebufferStatus() returns code %i\n", fborc);
+			printf("PTB-ERROR: Exact reason for failure is unknown, most likely a Psychtoolbox bug, GL-driver bug or unintented use. glCheckFramebufferStatus() returns code %i\n", fborc);
 		}
-		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) size and depth of the onscreen window or offscreen window.\n");
 		return(FALSE);
 	}
 	
@@ -872,8 +876,8 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Trying to attach depth+stencil attachments to FBO...\n"); 
 		if (!glewIsSupported("GL_ARB_depth_texture")) {
 			printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline! Your graphics hardware does not support\n");
-			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5200 or ATI Radeon 9600\n");
-			printf("PTB-ERROR: for this to work.\n");
+			printf("PTB-ERROR: the required GL_ARB_depth_texture extension. You'll need at least a NVidia GeforceFX 5200, ATI Radeon 9600\n");
+			printf("PTB-ERROR: or Intel GMA-950 with recent graphics-drivers for this to work.\n");
 			return(FALSE);
 		}
 		
@@ -941,8 +945,8 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 					printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
 					printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
 					printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware. According to specs,\n");
-					printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5000 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
-					printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.8.\n"); 
+					printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5200 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
+					printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.9.\n"); 
 				}
 				
 				glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, 0);
@@ -1084,6 +1088,7 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolea
 	
 	return;
 }
+
 /* PsychNormalizeTextureOrientation() - On demand texture reswapping.
  *
  * PTB supports multiple different ways of orienting and formatting textures,
@@ -1092,7 +1097,9 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolea
  * processing pipeline (Screen('TransformTexture')) need to be in a standardized
  * upright, non-transposed format. This routine checks the orientation of a
  * texture and - if neccessary - transforms the texture from its current format
- * to the upright standard format.
+ * to the upright standard format. As a side effect, it also converts such textures
+ * from Luminance or Luminance+Alpha formats into RGB or RGBA formats. This is
+ * important, because only RGB(A) textures are suitable as FBO color buffer attachments.
  *
  */ 
 void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
@@ -1110,8 +1117,11 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	// cases for image processing would be a debug and maintenance nightmare.
 	// Therefore we check the format of the source texture and require it to be
 	// a normal upright orientation. If this isn't the case, we perform a preprocessing
-	// step to transform the texture into normalized orientation.
-	if (sourceRecord->textureOrientation != 2) {
+	// step to transform the texture into normalized orientation. We also perform a
+	// preprocessing step on any CoreVideo texture from Quicktime. Although such a
+	// texture may be properly oriented, it is of a non-renderable YUV color format, so
+	// we need to recreate it in a RGB renderable format.
+	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
 		// Soft-reset drawing engine:
@@ -1163,23 +1173,32 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		// Renderable format? Pure luminance or luminance+alpha formats are not renderable on most hardware.
 		
 		// Upgrade 8 bit luminace to 8 bit RGBA:
-		if (fboInternalFormat == GL_LUMINANCE8 || sourceRecord->depth == 8) fboInternalFormat = GL_RGBA8;
+		if (fboInternalFormat == GL_LUMINANCE8 || fboInternalFormat == GL_LUMINANCE8_ALPHA8|| sourceRecord->depth == 8) fboInternalFormat = GL_RGBA8;
 		
 		// Upgrade non-renderable floating point formats to their RGB or RGBA counterparts of matching precision:
 		if (sourceRecord->nrchannels < 3 && fboInternalFormat != GL_RGBA8) {
 			// Unsupported format for FBO rendertargets. Need to upgrade to something suitable...
 			if (sourceRecord->textureexternalformat == GL_LUMINANCE) {
 				// Upgrade luminance to RGB of matching precision:
+				// printf("UPGRADING TO RGBFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? 0:1);
 				fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_FLOAT16_APPLE) ? GL_RGB_FLOAT16_APPLE : GL_RGB_FLOAT32_APPLE;
 			}
 			else {
 				// Upgrade luminance+alpha to RGBA of matching precision:
+				// printf("UPGRADING TO RGBAFloat %i\n", (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? 0:1);
 				fboInternalFormat = (sourceRecord->textureinternalformat == GL_LUMINANCE_ALPHA_FLOAT16_APPLE) ? GL_RGBA_FLOAT16_APPLE : GL_RGBA_FLOAT32_APPLE;
 			}
 		}
 		
+		// Special case: Quicktime movie or video texture, created by CoreVideo in Apple specific YUV format.
+		// This is a non-framebuffer renderable color format. Need to upgrade it to something safe:
+		if (fboInternalFormat == GL_YCBCR_422_APPLE) fboInternalFormat = GL_RGBA8;
+		
 		// Now create proper FBO:
-		PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height);
+		if (!PsychCreateFBO(&(sourceRecord->fboTable[0]), (GLenum) fboInternalFormat, needzbuffer, width, height)) {
+			PsychErrorExitMsg(PsychError_internal, "Failed to normalize texture orientation - Creation of framebuffer object failed!");
+		}
+		
 		sourceRecord->drawBufferFBO[0] = 0;
 		sourceRecord->fboCount = 1;
 		
@@ -1187,8 +1206,14 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 		sourceRecord->imagingMode = 1;
 
 		// Set FBO of sourceRecord as rendertarget, including proper setup of render geometry:
-		PsychSetDrawingTarget(sourceRecord);
-
+		// We can't use PsychSetDrawingTarget() here, as we might get called by that function, i.e.
+		// infinite recursion or other side effects if we tried to use it.
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, sourceRecord->fboTable[0]->fboid);
+		PsychSetupView(sourceRecord);
+		// Reset MODELVIEW matrix, after backing it up...
+		glPushMatrix();
+		glLoadIdentity();
+		
 		// Now blit the old "disoriented" texture into the new FBO: The textureNumber of sourceRecord
 		// references the old texture, the PsychFBO of sourceRecord defines the new texture...
 		if (glIsEnabled(GL_BLEND)) {
@@ -1202,12 +1227,24 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 			PsychBlitTextureToDisplay(sourceRecord, sourceRecord, sourceRecord->rect, sourceRecord->rect, 0, 0, 1);
 		}
 		
+		// Restore modelview matrix:
+		glPopMatrix();
+		
 		sourceRecord->imagingMode = tmpimagingmode;
 		PsychSetDrawingTarget(NULL);
 
 		// At this point the color attachment of the sourceRecords FBO contains the properly oriented texture.
 		// Delete the old texture, attach the FBO texture as new one:
-		glDeleteTextures(1, &(sourceRecord->textureNumber));
+		if (sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
+			// Special case: CoreVideo texture:
+			PsychFreeMovieTexture(sourceRecord);
+		}
+		else {
+			// Standard case:
+			glDeleteTextures(1, &(sourceRecord->textureNumber));
+		}
+		
+		// Assign new texture:
 		sourceRecord->textureNumber = sourceRecord->fboTable[0]->coltexid;
 		
 		// Finally sourceRecord has the proper orientation:
