@@ -1,5 +1,5 @@
 % Clear
-%clear all;
+clear all;
 
 % Define screen
 whichScreen = max(Screen('Screens'));
@@ -21,7 +21,12 @@ gray = GrayIndex(whichScreen);
 % THE FOLLOWING STEP IS IMPORTANT.
 % make sure the graphics card LUT is set to a linear ramp
 % (else the encoded data will not be recognised by Bits++).
-Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * ones(1, 3));
+% There is a bug in some of the OpenGL drivers such that the 
+% gamma is incorrectly mapped from [0, 255/256] instead of [0, 1].
+% If you are having trouble using the DIO, try uncommenting the 2nd line
+% below.
+Screen('LoadNormalizedGammaTable', window, linspace(0, 255/256, 256)' * ones(1, 3));
+%Screen('LoadNormalizedGammaTable', window, linspace(0, 1, 256)' * ones(1, 3));
 
 % find out how big the window is
 [screenWidth, screenHeight] = Screen('WindowSize', window);
@@ -40,20 +45,17 @@ Screen('FillRect', window, gray);
 linear_lut =  repmat(round(linspace(0, 2^16 - 1, 256))', 1, 3);
 BitsPlusSetClut(window, linear_lut);
 
-% ramp over all possible values of the digital output
-Mask = 65535; %this controls which bits of the digital output we change
+% Ramp over all possible values of the digital output.
+Mask = 65535; % This controls which bits of the digital output we change.
 Command = 0;
-
-for output_value = 0:1024
+for output_value = 0:1023
     Data = ones(1, 248) * output_value;
     fprintf('%d\n', output_value);
-    bitsEncodeDIO(Mask, Data, Command, window);
-    
-    
+    bitsEncodeDIO(Mask, Data, Command, window);    
 end
 
-% reset the digital output data
-Mask = 0;
+% Reset the digital output data.
+Mask = 65535;
 Data = zeros(1, 248);
 bitsEncodeDIO(Mask, Data, Command, window);
 

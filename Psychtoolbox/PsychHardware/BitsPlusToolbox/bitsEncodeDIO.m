@@ -25,7 +25,12 @@ function encodedDIOdata = bitsEncodeDIO(Mask, Data, Command, windowPtr)
     % THE FOLLOWING STEP IS IMPORTANT.
     % make sure the graphics card LUT is set to a linear ramp
     % (else the encoded data will not be recognised by Bits++).
-    Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 1, 256)' * ones(1, 3));
+    % There is a bug in some of the OpenGL drivers such that the
+    % gamma is incorrectly mapped from [0, 255/256] instead of [0, 1].
+    % If you are having trouble using the DIO, try uncommenting the 2nd line
+    % below.
+    Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 255/256, 256)' * ones(1, 3));
+    %Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 1, 256)' * ones(1, 3));
 
     % Preparing data array
     encodedDIOdata = uint8(zeros(1, 508, 3));
