@@ -1,5 +1,5 @@
-function texturePtr = BitsPlusPlusClut2Texture(windowPtr, clut)
-% texturePtr = BitsPlusPlusClut2Texture(windowPtr, clut)
+function texturePtr = BitsPlusClut2Texture(windowPtr, clut)
+% texturePtr = BitsPlusClut2Texture(windowPtr, clut)
 %
 %   Generates a PsychToolbox texture containing the CLUT + magic code
 %   required to set the clut in Bits++ mode.
@@ -8,7 +8,7 @@ function texturePtr = BitsPlusPlusClut2Texture(windowPtr, clut)
 %   specified by Screen('ColorRange'), which is by default [0, 255].
 
 if nargin ~= 2
-    error('Usage: texturePtr = BitsPlusPlusClut2Texture(windowPtr, clut)');
+    error('Usage: texturePtr = BitsPlusClut2Texture(windowPtr, clut)');
 end
 
 % Convert the clut into the current color range.
