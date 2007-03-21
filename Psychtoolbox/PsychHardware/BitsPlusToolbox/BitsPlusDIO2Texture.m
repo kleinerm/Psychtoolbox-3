@@ -29,7 +29,7 @@ encodedDIOdata(1,10,2) = uint8(command);    % command code
 encodedDIOdata(1,10,1) = uint8(6);          % address
 
 % DIO output mask
-encodedDIOdata(1,12,3) = uint8(Mask);                 % LSB DIO Mask data
+encodedDIOdata(1,12,3) = uint8(mask);                 % LSB DIO Mask data
 encodedDIOdata(1,12,2) = uint8(bitshift(mask, -8));   % MSB DIO Mask data
 encodedDIOdata(1,12,1) = uint8(7);                    % address
 
