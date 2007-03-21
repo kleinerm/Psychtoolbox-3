@@ -579,6 +579,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			break;
 			
 			case kPsychFreeFusionStereo:
+			case kPsychFreeCrossFusionStereo:
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Creating internal dualview stereo compositing shader...\n");
 				
 				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
@@ -586,7 +587,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					// Bind it:
 					glUseProgram(glsl);
 					// Set channel to texture units assignments:
-					glUniform1i(glGetUniformLocation(glsl, "Image1"), 0);
+					glUniform1i(glGetUniformLocation(glsl, "Image1"), (windowRecord->stereomode == kPsychFreeFusionStereo) ? 0 : 1);
 					glUseProgram(0);
 					
 					// Add shader to processing chain:
@@ -602,7 +603,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					// Bind it:
 					glUseProgram(glsl);
 					// Set channel to texture units assignments:
-					glUniform1i(glGetUniformLocation(glsl, "Image1"), 1);
+					glUniform1i(glGetUniformLocation(glsl, "Image1"),  (windowRecord->stereomode == kPsychFreeFusionStereo) ? 1 : 0);
 					glUseProgram(0);
 					
 					// Add shader to processing chain:
@@ -617,6 +618,46 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
 			break;
 			
+			case kPsychCompressedTLBRStereo:
+			case kPsychCompressedTRBLStereo:
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Creating internal vertical split stereo compositing shader...\n");
+				
+				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
+				if (glsl) {
+					// Bind it:
+					glUseProgram(glsl);
+					// Set channel to texture units assignments:
+					glUniform1i(glGetUniformLocation(glsl, "Image1"), (windowRecord->stereomode == kPsychCompressedTLBRStereo) ? 0 : 1);
+					glUseProgram(0);
+					
+					// Add shader to processing chain:
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, 0, 1, 0.5);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedTop", TRUE, glsl, blittercfg, 0);
+				}
+				else {
+					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+				}
+				
+				glsl = PsychCreateGLSLProgram(passthroughshadersrc, NULL, NULL);
+				if (glsl) {
+					// Bind it:
+					glUseProgram(glsl);
+					// Set channel to texture units assignments:
+					glUniform1i(glGetUniformLocation(glsl, "Image1"),  (windowRecord->stereomode == kPsychCompressedTLBRStereo) ? 1 : 0);
+					glUseProgram(0);
+					
+					// Add shader to processing chain:
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, (int) PsychGetHeightFromRect(windowRecord->rect)/2, 1, 0.5);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedBottom", TRUE, glsl, blittercfg, 0);
+				}
+				else {
+					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
+				}
+
+				// Enable stereo compositor:
+				PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
+			break;
+
 			case kPsychOpenGLStereo:
 				// Nothing to do for now: Setup of blue-line syncing is done in SCREENOpenWindow.c, because it also
 				// applies to non-imaging mode...
@@ -1846,7 +1887,7 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 		case kPsychBuiltinFunc:
 			// Dispatch to a builtin function:
 			if (strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) { dispatched=TRUE; } // No op here. Done in upper layer...
-			if (strcmp(hookfunc->idString, "Builtin:IdentityBlit")==0) {
+			if (strstr(hookfunc->idString, "Builtin:IdentityBlit")) {
 				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
 				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
 					// Blitter failed!
@@ -2161,62 +2202,84 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	int w, h, x, y;
+	float sx, sy;
 	char* strp;
 	
-	// We only accept one (optional) parameter in the blitterString: An integral (x,y)
+	// Child protection:
+	if (!(srcfbo1 && (*srcfbo1))) {
+		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
+	}	
+
+	// Query dimensions of viewport:
+	w = (*srcfbo1)->width;
+	h = (*srcfbo1)->height;
+
+	// Check for offset parameter in the blitterString: An integral (x,y)
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without
 	// scaling or filtering it, to a different start location than (0,0):
-	x=0;
-	y=0;
-	
+	x=y=0;
 	if (strp=strstr(hookfunc->pString1, "Offset:")) {
 		// Parse and assign offset:
 		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Offset: blit string parameter is invalid! Parse error...\n");
 		}
 	}
-	
-	// We basically ignore all parameters and just blit the bound texture(s) into the
-	// attached rendertarget, assuming a one-to-one correspondence of texture coordinates to
-	// fragment coordinates, i.e., the geometry if fully specified by size of dstfbo:
-	if (srcfbo1 && (*srcfbo1)) {
-		// Query dimensions of viewport:
-		w = (*srcfbo1)->width;
-		h = (*srcfbo1)->height;
-		
-		// Do the blit, using a rectangular quad:
-		glBegin(GL_QUADS);
 
-		// Note the swapped y-coord for textures wrt. y-coord of vertex position!
-		// Texture coordinate system has origin at bottom-left, y-axis pointing upward,
-		// but PTB has framebuffer coordinate system with origin at top-left, with
-		// y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
-		// but PTB has to use a different system (changed by special gluOrtho2D) transform),
-		// because our 2D coordinate system needs to conform to the standards of the old
-		// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
-		
-		// Upper left vertex in window
-		glTexCoord2f(0, h);
-		glVertex2f(x, y);		
-
-		// Lower left vertex in window
-		glTexCoord2f(0, 0);
-		glVertex2f(x, h+y);		
-
-		// Lower right  vertex in window
-		glTexCoord2f(w, 0);
-		glVertex2f(w+x, h+y);		
-
-		// Upper right in window
-		glTexCoord2f(w, h);
-		glVertex2f(w+x, y);		
-
-		glEnd();
+	// Check for scaling parameter:
+	sx = sy = 1.0;
+	if (strp=strstr(hookfunc->pString1, "Scaling:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): Scaling: blit string parameter is invalid! Parse error...\n");
+		}
 	}
-	else {
-		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
+
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		
+		// Apply global (x,y) offset:
+		glTranslatef(x, y, 0);
+		
+		// Apply scaling:
+		glTranslatef(-w/2, -h/2, 0);
+//		glScalef(sx, sy, 1);
+		glTranslatef(w/2, h/2, 0);
 	}
 	
+	// Do the blit, using a rectangular quad:
+	glBegin(GL_QUADS);
+	
+	// Note the swapped y-coord for textures wrt. y-coord of vertex position!
+	// Texture coordinate system has origin at bottom-left, y-axis pointing upward,
+	// but PTB has framebuffer coordinate system with origin at top-left, with
+	// y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
+	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
+	// because our 2D coordinate system needs to conform to the standards of the old
+	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
+	
+	// Upper left vertex in window
+	glTexCoord2f(0, h);
+	glVertex2f(0, 0);		
+	
+	// Lower left vertex in window
+	glTexCoord2f(0, 0);
+	glVertex2f(0, h);		
+	
+	// Lower right  vertex in window
+	glTexCoord2f(w, 0);
+	glVertex2f(w, h);		
+	
+	// Upper right in window
+	glTexCoord2f(w, h);
+	glVertex2f(w, 0);		
+	
+	glEnd();
+	
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+		glPopMatrix();
+	}
+
 	// Done.
 	return(TRUE);
 }

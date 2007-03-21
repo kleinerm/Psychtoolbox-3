@@ -299,6 +299,7 @@ boolean ChangeScreenResolution (int screenNumber, int width, int height, int bit
 */
 boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
+  char winname[100];
   RECT winRec;
   PsychRectType             screenrect;
   CGDirectDisplayID         cgDisplayID;
@@ -363,6 +364,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     width=PsychGetWidthFromRect(windowRecord->rect);
     height=PsychGetHeightFromRect(windowRecord->rect);
 
+    // Assemble windows caption name from window index:
+    sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->WindowIndex);
+
     // Register our own window class for Psychtoolbox onscreen windows:
     // Only register the window class once - use hInstance as a flag.
     if (!hInstance) {
@@ -397,7 +401,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // Window class registered: Create a window of this class with some specific properties:
     hWnd = CreateWindowEx(windowExtendedStyle,
 			  "PTB-OpenGL",
-			  "PTB Onscreen window",
+			  winname,
 			  windowStyle,
 			  x, y, width, height, NULL, NULL, hInstance, NULL);
 
@@ -615,7 +619,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       windowRecord->targetSpecific.windowHandle=NULL;
 
 		// Ok, old window and stuff is dead. Create new window:
-    	hWnd = CreateWindowEx(windowExtendedStyle, "PTB-OpenGL", "PTB Onscreen window", windowStyle,
+    	hWnd = CreateWindowEx(windowExtendedStyle, "PTB-OpenGL", winname, windowStyle,
 			  						 x, y, width, height, NULL, NULL, hInstance, NULL);
     	if (hWnd == NULL) {
         printf("\nPTB-ERROR[CreateWindow() - II failed]: Unknown error, Win32 specific.\n\n");
