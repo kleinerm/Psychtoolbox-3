@@ -152,7 +152,7 @@ for a = 1:cal.describe.nAverage
     for i = 1:cal.nDevices
         disp(sprintf('Monitor device %g',i));
         Screen('FillRect', window, 1, boxRect);
-        Screen('Flip', window, 0, g_usebitspp);
+        Screen('Flip', window, 0, double(g_usebitspp));
 
         % Measure ambient
         darkAmbient1 = MeasMonSpd(window, [0 0 0]', cal.describe.S, 0, whichMeterType, theClut);
