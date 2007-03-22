@@ -1607,6 +1607,27 @@
 		832CE7EC094D03D100578C09 /* alutypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7DA094D03D100578C09 /* alutypes.h */; };
 		832CE7ED094D03D100578C09 /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
 		8330E9430B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */; };
+		833C1EEE0BB19D0100FB9B4F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
+		833C1EEF0BB19D0100FB9B4F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
+		833C1EF00BB19D0100FB9B4F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
+		833C1EF10BB19D0100FB9B4F /* ProjectTable.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22C038E2B6B017A7028 /* ProjectTable.c */; };
+		833C1EF20BB19D0100FB9B4F /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
+		833C1EF30BB19D0100FB9B4F /* PsychError.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F227038E2B6B017A7028 /* PsychError.c */; };
+		833C1EF40BB19D0100FB9B4F /* PsychHelp.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F229038E2B6B017A7028 /* PsychHelp.c */; };
+		833C1EF50BB19D0100FB9B4F /* PsychInit.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22D038E2B6B017A7028 /* PsychInit.c */; };
+		833C1EF60BB19D0100FB9B4F /* PsychMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22B038E2B6B017A7028 /* PsychMemory.c */; };
+		833C1EF70BB19D0100FB9B4F /* PsychRegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F228038E2B6B017A7028 /* PsychRegisterProject.c */; };
+		833C1EF80BB19D0100FB9B4F /* PsychStructGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F544E4E803C2336A01FD10C2 /* PsychStructGlue.c */; };
+		833C1EF90BB19D0100FB9B4F /* PsychTimeGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277403DBE1F301D453F7 /* PsychTimeGlue.c */; };
+		833C1EFA0BB19D0100FB9B4F /* PsychVersioning.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524C30421889A01A80165 /* PsychVersioning.c */; };
+		833C1EFC0BB19D0100FB9B4F /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
+		833C1EFE0BB19D0100FB9B4F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
+		833C1EFF0BB19D0100FB9B4F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
+		833C1F000BB19D0100FB9B4F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
+		833C1F010BB19D0100FB9B4F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
+		833C1F250BB1A49D00FB9B4F /* PsychPortAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */; };
+		833C1F260BB1A49D00FB9B4F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F230BB1A49D00FB9B4F /* RegisterProject.c */; };
+		833C1FD90BB1B17600FB9B4F /* libportaudio.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 833C1FD80BB1B17600FB9B4F /* libportaudio.a */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -3523,6 +3544,13 @@
 		832CE7DA094D03D100578C09 /* alutypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = alutypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/alutypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
 		8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = MirrorFaceCoreSynopsis.c; sourceTree = "<group>"; };
+		833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychPortAudio.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = PsychPortAudio.c; sourceTree = "<group>"; };
+		833C1F220BB1A49D00FB9B4F /* PsychPortAudio.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychPortAudio.h; sourceTree = "<group>"; };
+		833C1F230BB1A49D00FB9B4F /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
+		833C1F240BB1A49D00FB9B4F /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
+		833C1FD80BB1B17600FB9B4F /* libportaudio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libportaudio.a; path = ../../../Cohorts/PortAudio/libportaudio.a; sourceTree = SOURCE_ROOT; };
+		833C20BC0BB229F100FB9B4F /* pa_mac_core.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = pa_mac_core.h; path = ../../../Source/Common/PsychPortAudio/pa_mac_core.h; sourceTree = SOURCE_ROOT; };
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
@@ -4326,6 +4354,18 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		833C1EFD0BB19D0100FB9B4F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				833C1EFE0BB19D0100FB9B4F /* ApplicationServices.framework in Frameworks */,
+				833C1EFF0BB19D0100FB9B4F /* CoreAudio.framework in Frameworks */,
+				833C1F000BB19D0100FB9B4F /* CoreServices.framework in Frameworks */,
+				833C1F010BB19D0100FB9B4F /* OpenGL.framework in Frameworks */,
+				833C1FD90BB1B17600FB9B4F /* libportaudio.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		83C802710B8CB29300097021 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -4775,6 +4815,7 @@
 				F14A2B590AD4AC8000BFB68F /* MachPriority.mexmaci */,
 				F14A2B800AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.mexmaci */,
 				83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */,
+				833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -4782,6 +4823,7 @@
 		29B97314FDCFA39411CA2CEA /* TestPBMex */ = {
 			isa = PBXGroup;
 			children = (
+				833C1FD80BB1B17600FB9B4F /* libportaudio.a */,
 				832CE7B2094CFF5C00578C09 /* libOpenAL.ar */,
 				832CE770094CFB2300578C09 /* libopenal.a */,
 				2F685925072DD4C1003367CA /* Documentation */,
@@ -4877,6 +4919,7 @@
 				2F95010904E4458D007A7274 /* MachPriorityMex, Set and Get */,
 				CF29B2000803342100723921 /* MachAbsoluteTimeClockFrequency */,
 				83C802C80B8CECE500097021 /* MirrorFaceCore */,
+				833C1F200BB1A49D00FB9B4F /* PsychPortAudio */,
 				2F9ABA17045F3596007A7274 /* PsychHID */,
 				832CE63E094CE99F00578C09 /* PsychSound */,
 				2F58C8D405884625007A711C /* Rush */,
@@ -5376,6 +5419,20 @@
 			name = StaticOpenALLib;
 			path = ../../../Source/Common/PsychSound/StaticOpenALLib;
 			sourceTree = SOURCE_ROOT;
+		};
+		833C1F200BB1A49D00FB9B4F /* PsychPortAudio */ = {
+			isa = PBXGroup;
+			children = (
+				833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */,
+				833C1F220BB1A49D00FB9B4F /* PsychPortAudio.h */,
+				833C1F230BB1A49D00FB9B4F /* RegisterProject.c */,
+				833C1F240BB1A49D00FB9B4F /* RegisterProject.h */,
+				833C20BC0BB229F100FB9B4F /* pa_mac_core.h */,
+			);
+			comments = "Psychtoolbox sound i/o driver, using the Free software PortAudio V19 API (http://www.portaudio.org) for sound capture and sound playback. This driver is meant to provide low-latency audio playback, recording, feedback with well controlled timing.";
+			name = PsychPortAudio;
+			path = ../../../Source/Common/PsychPortAudio;
+			sourceTree = "<group>";
 		};
 		83C802C80B8CECE500097021 /* MirrorFaceCore */ = {
 			isa = PBXGroup;
@@ -7335,6 +7392,23 @@
 			productReference = 832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */;
 			productType = "com.apple.product-type.application";
 		};
+		833C1EEB0BB19D0100FB9B4F /* PsychPortAudio Intel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 833C1F030BB19D0100FB9B4F /* Build configuration list for PBXNativeTarget "PsychPortAudio Intel" */;
+			buildPhases = (
+				833C1EEC0BB19D0100FB9B4F /* Sources */,
+				833C1EFD0BB19D0100FB9B4F /* Frameworks */,
+				833C1F020BB19D0100FB9B4F /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PsychPortAudio Intel";
+			productName = foo;
+			productReference = 833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */;
+			productType = "com.apple.product-type.objfile";
+		};
 		83C8025F0B8CB29300097021 /* MirrorFaceCore Intel */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 83C802770B8CB29300097021 /* Build configuration list for PBXNativeTarget "MirrorFaceCore Intel" */;
@@ -7897,6 +7971,7 @@
 				F14A2B380AD4AC8000BFB68F /* MachPriority Intel */,
 				F14A2B5F0AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency Intel */,
 				83C8025F0B8CB29300097021 /* MirrorFaceCore Intel */,
+				833C1EEB0BB19D0100FB9B4F /* PsychPortAudio Intel */,
 			);
 		};
 /* End PBXProject section */
@@ -9210,6 +9285,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "touch ../../../Source/Common/Base/PsychVersioning.c";
+		};
+		833C1F020BB19D0100FB9B4F /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "touch ../../../Source/Common/Base/PsychVersioning.c\n\n";
 		};
 		83C802760B8CB29300097021 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -10885,6 +10973,29 @@
 				832CE61C094CE8C300578C09 /* PsychAuthors.c in Sources */,
 				832CE65A094CE9F600578C09 /* RegisterProject.c in Sources */,
 				832CE65C094CE9F600578C09 /* PsychSound.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		833C1EEC0BB19D0100FB9B4F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				833C1EEE0BB19D0100FB9B4F /* mexversion.c in Sources */,
+				833C1EEF0BB19D0100FB9B4F /* MiniBox.c in Sources */,
+				833C1EF00BB19D0100FB9B4F /* MODULEVersion.c in Sources */,
+				833C1EF10BB19D0100FB9B4F /* ProjectTable.c in Sources */,
+				833C1EF20BB19D0100FB9B4F /* PsychAuthors.c in Sources */,
+				833C1EF30BB19D0100FB9B4F /* PsychError.c in Sources */,
+				833C1EF40BB19D0100FB9B4F /* PsychHelp.c in Sources */,
+				833C1EF50BB19D0100FB9B4F /* PsychInit.c in Sources */,
+				833C1EF60BB19D0100FB9B4F /* PsychMemory.c in Sources */,
+				833C1EF70BB19D0100FB9B4F /* PsychRegisterProject.c in Sources */,
+				833C1EF80BB19D0100FB9B4F /* PsychStructGlue.c in Sources */,
+				833C1EF90BB19D0100FB9B4F /* PsychTimeGlue.c in Sources */,
+				833C1EFA0BB19D0100FB9B4F /* PsychVersioning.c in Sources */,
+				833C1EFC0BB19D0100FB9B4F /* PsychScriptingGlue.cc in Sources */,
+				833C1F250BB1A49D00FB9B4F /* PsychPortAudio.c in Sources */,
+				833C1F260BB1A49D00FB9B4F /* RegisterProject.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -19773,6 +19884,139 @@
 			};
 			name = Default;
 		};
+		833C1F040BB19D0100FB9B4F /* Development */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmaci;
+				EXPORTED_SYMBOLS_FILE = "";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = "";
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = "";
+				MATLAB_DIR_NAME = MATLAB73;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-Wl,-flat_namespace",
+					"-undefined",
+					suppress,
+					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychPortAudio;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = Development;
+		};
+		833C1F050BB19D0100FB9B4F /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmac;
+				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_MODEL_TUNING = G4;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				HEADER_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
+					/usr/lib/gcc/darwin/2.95.2,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = 10.2;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-flat_namespace",
+					"-undefined",
+					suppress,
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = DoNothing;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = "Development-Octavebuild";
+		};
+		833C1F060BB19D0100FB9B4F /* Deployment */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(LIBRARY_SEARCH_PATHS)",
+					/usr/lib/gcc/darwin/2.95.2,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				PREBINDING = NO;
+				PRODUCT_NAME = foo;
+				ZERO_LINK = NO;
+			};
+			name = Deployment;
+		};
+		833C1F070BB19D0100FB9B4F /* Default */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(LIBRARY_SEARCH_PATHS)",
+					/usr/lib/gcc/darwin/2.95.2,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				PREBINDING = NO;
+				PRODUCT_NAME = foo;
+			};
+			name = Default;
+		};
 		83C802780B8CB29300097021 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -23613,6 +23857,17 @@
 				8302E1E60A19234900AE269C /* Development-Octavebuild */,
 				832CE629094CE8C300578C09 /* Deployment */,
 				832CE62A094CE8C300578C09 /* Default */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Default;
+		};
+		833C1F030BB19D0100FB9B4F /* Build configuration list for PBXNativeTarget "PsychPortAudio Intel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				833C1F040BB19D0100FB9B4F /* Development */,
+				833C1F050BB19D0100FB9B4F /* Development-Octavebuild */,
+				833C1F060BB19D0100FB9B4F /* Deployment */,
+				833C1F070BB19D0100FB9B4F /* Default */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Default;
