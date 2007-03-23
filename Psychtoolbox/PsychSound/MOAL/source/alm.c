@@ -46,7 +46,7 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     ALCenum alcerr;
     static int firsttime = 1;
     char devicename[1000];
-    int attribs[] = {0, 0, 0, 0};
+    int attribs[] = {0, 0, 0, 0, 0, 0};
         
     if (device) mexErrMsgTxt("MOAL-ERROR: Tried to open sound device, but device already open!\n");
     
@@ -59,18 +59,29 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
         // Get device specifier string:
         mxGetString(prhs[0], devicename, 999);
     }
+
     
     // Open requested device:
     device = alcOpenDevice((devicename[0]!=0) ? devicename : NULL);
     if (device == NULL) mexErrMsgTxt("MOAL-ERROR: Could not open requested sound device, unknown error!\n");
+
+    // Only for testing of low-latency, didn't change anything: alcMacOSXMixerMaxiumumBusses(1);
 
     // Attributes provided?
     if (nrhs>1) {
         // First attribute parameter would be refresh rate, whatever that means...
         attribs[0]=ALC_REFRESH;
         attribs[1]=(int) mxGetScalar(prhs[1]);
+        printf("MOAL: ALC_REFRESH is %i\n", attribs[1]);
     }
     
+    if (nrhs>2) {
+        // 2nd attribute parameter would be native device sampling rate.
+        attribs[2]=ALC_FREQUENCY;
+        attribs[3]=(int) mxGetScalar(prhs[2]);
+        printf("MOAL: ALC_FREQUENCY is %i\n", attribs[3]);
+    }
+
     // Create OpenAL audio context and attach it to device:
     context = alcCreateContext(device, (attribs[0]) ? attribs : NULL);
     alcerr = alcGetError(device);
@@ -83,6 +94,7 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     // Activate audio rendering context:
     alcMakeContextCurrent(context);
     if (alcGetError(device))  mexErrMsgTxt("MOAL-ERROR: Could not activate OpenAL context for requested sound device. ALC says: Invalid context!\n");
+    // printf("MOAL: Native device sampling rate is %lf Hz.\n", (double) alcMacOSXGetMixerMaxiumumBusses());
     
     // Clear context error state:
     alGetError();
@@ -95,7 +107,7 @@ void glm_open(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]) {
     
     // Enable high quality mode for spatial 3D audio:
     alcMacOSXRenderingQuality(ALC_MAC_OSX_SPATIAL_RENDERING_QUALITY_HIGH);
-    
+        
     #endif
     
     // Clear context error state:

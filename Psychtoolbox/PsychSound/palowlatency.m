@@ -15,7 +15,7 @@ end
 
 deviceid
 
-reqlatencyclass = 1;
+reqlatencyclass = 4;
 freq = [];
 buffersize = [];
 
