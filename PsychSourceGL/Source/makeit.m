@@ -20,5 +20,12 @@ if what == 1
    dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\WaitSecs.dll C:\MATLABR11\toolbox\PsychToolbox\PsychBasic\');   
 end
 
+if what == 2
+   % Build PsychPortAudio.dll
+   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychPortAudio -DPTBMODULE_PsychPortAudio -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c user32.lib winmm.lib portaudio_x86.lib
+   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\PsychPortAudio.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\');
+   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\PsychPortAudio.dll C:\MATLABR11\toolbox\PsychToolbox\PsychBasic\');   
+end
+
 delete('C:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
 return;

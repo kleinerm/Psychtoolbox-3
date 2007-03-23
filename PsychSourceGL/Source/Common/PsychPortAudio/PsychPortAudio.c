@@ -77,7 +77,7 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
     float *in = (float*) inputBuffer;
     unsigned long i, silenceframes;
 	unsigned long channels;
-	unsigned int  playposition;
+	unsigned int  playposition, sbsize;
 	double now, firstsampleonset, onsetDelta;
 	int repeatCount;
 	
@@ -105,7 +105,7 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 	playposition = dev->playposition;
 
 	// Compute size of soundbuffer in samples:
-    unsigned int sbsize = dev->buffersize / sizeof(float);
+   sbsize = dev->buffersize / sizeof(float);
 
 	// Are we already playing back and/or capturing real audio data,
 	// or are we still on hot-standby? PsychPortAudio tries to start
@@ -351,6 +351,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
 	PaDeviceInfo* inputDevInfo, *outputDevInfo;
+	PaError err;
 	PaStream *stream = NULL;
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX
@@ -373,7 +374,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	latencyclass = 1;
 	mode = kPortAudioPlayBack;
 	deviceid = -1;
-	PaError err;
 	
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
