@@ -31,6 +31,9 @@
 // Module exit function: Stop and close all audio streams, terminate PortAudio...
 PsychError PsychPortAudioExit(void);
 
+// Init function: Can be called anytime to make sure that PortAudio is online...
+void PsychPortAudioInitialize(void);
+
 // Show command overview:
 PsychError PSYCHPORTAUDIODisplaySynopsis(void);
 
@@ -38,14 +41,23 @@ PsychError PSYCHPORTAUDIODisplaySynopsis(void);
 
 // Version:
 PsychError MODULEVersion(void); 
+// Level of verbosity:
+PsychError PSYCHPORTAUDIOVerbosity(void);
 
 // Open audio device:
 PsychError PSYCHPORTAUDIOOpen(void);
 // Close audio device, shutdown PortAudio if last device is closed:
 PsychError PSYCHPORTAUDIOClose(void);
+// Fill audio output buffer with data:
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void);
+// Start or schedule start of device:
 PsychError PSYCHPORTAUDIOStartAudioDevice(void);
+// Stop device immediately:
 PsychError PSYCHPORTAUDIOStopAudioDevice(void);
+// Enumerate audio devices:
+PsychError PSYCHPORTAUDIOGetDevices(void);
+// Return status of device:
+PsychError PSYCHPORTAUDIOGetStatus(void);
 //end include once
 #endif
 
