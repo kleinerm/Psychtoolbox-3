@@ -22,7 +22,15 @@ alGetString(alGetError)
 freq = 44100;
 
 % Start off with 10 seconds of 48 Khz random stereo noise as a fallback:
-mynoise = randn(2,freq * 0.1);
+%mynoise = randn(2,freq * 0.1);
+
+% Create sound data:
+freq = 44100;
+
+% Start off with 10 seconds of 48 Khz random stereo noise as a fallback:
+%mynoise = randn(2,freq * 0.1);
+mynoise(1,:) = 0.9 * MakeBeep(1000, 0.1, freq);
+mynoise(2,:) = mynoise(1,:);
 
 % Convert to 16 bit signed integer format, map range from -1.0 ; 1.0 to -32768 ; 32768.
 % This is one of two sound formats accepted by OpenAL, the other being unsigned 8 bit
@@ -71,7 +79,7 @@ KbWait;
 % Realtime scheduling:
 % Priority(MaxPriority(win));
 
-for i=1:5
+for i=1:10
 
 Screen('Flip', win);
 
@@ -103,16 +111,6 @@ fprintf('Sound started between %6.6f and  %6.6f\n', t1, t2);
 fprintf('Expected latency sound - visual = %6.6f\n', t2 - visual_onset);
 fprintf('First sound buffer played at %6.6f\n', t3);
 fprintf('Delay start vs. played: %6.6f secs, offset %f\n', t3 - t2, offset);
-
-% while ~KbCheck
-%     % Query current playback position in seconds since start of buffer:
-%     tref = (GetSecs - tstart);
-%     taud = alGetSourcef(source, AL.SAMPLE_OFFSET)/16384;
-%     %fprintf('Delta: %f %f %f\n', tref - taud, tref, taud);
-%     
-%     % Pause for 10 milliseconds in order to yield the cpu to other processes:
-%     WaitSecs(0.01);
-% end
 
 WaitSecs(0.2);
 
