@@ -365,7 +365,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     height=PsychGetHeightFromRect(windowRecord->rect);
 
     // Assemble windows caption name from window index:
-    sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->WindowIndex);
+    sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->windowIndex);
 
     // Register our own window class for Psychtoolbox onscreen windows:
     // Only register the window class once - use hInstance as a flag.

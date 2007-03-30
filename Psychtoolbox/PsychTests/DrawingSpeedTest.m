@@ -52,7 +52,7 @@ for i=1:1000
 end
 
 % Make sure the GPU is idle:
-glFinish;
+Screen('DrawingFinished', win, 2, 1);
 
 % Take end time, compute and print the stats:
 telapsed = Screen('Flip', win) - t1;
