@@ -95,7 +95,7 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord);
 
 
 //functions implementing Screen subcommands. 
-//PsychError	SCREENNull(void);					
+PsychError	SCREENNull(void);					
 PsychError 	SCREENTestStructures(void);				
 PsychError 	MODULEVersion(void);					
 PsychError 	SCREENComputer(void);					

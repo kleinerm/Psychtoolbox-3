@@ -171,7 +171,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
 	float rg, gg, bg;	// Gains for color channels and color masking for anaglyph shader setup.
-	char blittercfg[100];
+	char blittercfg[1000];
 
 	// Processing ends here after minimal "all off" setup, if pipeline is disabled:
 	if (imagingmode<=0) {
@@ -221,8 +221,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Do we need fast backing store?
 	needfastbackingstore = (imagingmode & kPsychNeedFastBackingStore) ? TRUE : FALSE;
 	
-	// Consolidate settings:
-	if (needoutputconversion || needimageprocessing || windowRecord->stereomode > 0) needfastbackingstore = TRUE;
+	// Consolidate settings: Most settings imply kPsychNeedFastBackingStore.
+	if (needoutputconversion || needimageprocessing || windowRecord->stereomode > 0 || fboInternalFormat!=GL_RGBA8) {
+		imagingmode|=kPsychNeedFastBackingStore;
+		needfastbackingstore = TRUE;
+	}
 	
 	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
 	if (!glewIsSupported("GL_EXT_framebuffer_object") || (!glewIsSupported("GL_EXT_texture_rectangle") && !glewIsSupported("GL_ARB_texture_rectangle") && !glewIsSupported("GL_NV_texture_rectangle"))) {
@@ -631,7 +634,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					glUseProgram(0);
 					
 					// Add shader to processing chain:
-					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, 0, 1, 0.5);
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, 0, 1.0, 0.5);
 					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedTop", TRUE, glsl, blittercfg, 0);
 				}
 				else {
@@ -647,7 +650,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					glUseProgram(0);
 					
 					// Add shader to processing chain:
-					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, (int) PsychGetHeightFromRect(windowRecord->rect)/2, 1, 0.5);
+					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, (int) PsychGetHeightFromRect(windowRecord->rect)/2, 1.0, 0.5);
 					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedBottom", TRUE, glsl, blittercfg, 0);
 				}
 				else {
@@ -2242,9 +2245,7 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
 		glTranslatef(x, y, 0);
 		
 		// Apply scaling:
-		glTranslatef(-w/2, -h/2, 0);
-//		glScalef(sx, sy, 1);
-		glTranslatef(w/2, h/2, 0);
+		glScalef(sx, sy, 1);
 	}
 	
 	// Do the blit, using a rectangular quad:

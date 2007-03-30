@@ -1662,6 +1662,8 @@
 		8370C6FC0969F28100BD4C8C /* PsychWindowSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */; };
 		8370C71D096A013600BD4C8C /* PsychTextureSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = 8370C71C096A013600BD4C8C /* PsychTextureSupport.h */; };
 		8370C71F096A014E00BD4C8C /* PsychTextureSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */; };
+		837A6DC20BBB106E003AB0BE /* SCREENNull.c in Sources */ = {isa = PBXBuildFile; fileRef = 837A6DC10BBB106E003AB0BE /* SCREENNull.c */; };
+		837A6DC30BBB106E003AB0BE /* SCREENNull.c in Sources */ = {isa = PBXBuildFile; fileRef = 837A6DC10BBB106E003AB0BE /* SCREENNull.c */; };
 		83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */ = {isa = PBXBuildFile; fileRef = 83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */; };
 		83C802620B8CB29300097021 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		83C802630B8CB29300097021 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
@@ -3568,6 +3570,7 @@
 		8370C6FB0969F28100BD4C8C /* PsychWindowSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychWindowSupport.h; path = ../../../Source/Common/Screen/PsychWindowSupport.h; sourceTree = SOURCE_ROOT; };
 		8370C71C096A013600BD4C8C /* PsychTextureSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychTextureSupport.h; path = ../../../Source/Common/Screen/PsychTextureSupport.h; sourceTree = SOURCE_ROOT; };
 		8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychTextureSupport.c; path = ../../../Source/Common/Screen/PsychTextureSupport.c; sourceTree = SOURCE_ROOT; };
+		837A6DC10BBB106E003AB0BE /* SCREENNull.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENNull.c; path = ../../../Source/Common/Screen/SCREENNull.c; sourceTree = SOURCE_ROOT; };
 		83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPreloadTextures.c; path = ../../../Source/Common/Screen/SCREENPreloadTextures.c; sourceTree = SOURCE_ROOT; };
 		83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MirrorFaceCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83C802C90B8CECE500097021 /* MirrorFaceCore.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = MirrorFaceCore.cc; sourceTree = "<group>"; };
@@ -3674,7 +3677,6 @@
 		F569F252038E2C77017A7028 /* SCREENFillRect.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillRect.c; path = ../../../Source/Common/Screen/SCREENFillRect.c; sourceTree = SOURCE_ROOT; };
 		F569F253038E2C77017A7028 /* ScreenExit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = ScreenExit.c; path = ../../../Source/Common/Screen/ScreenExit.c; sourceTree = SOURCE_ROOT; };
 		F569F254038E2C77017A7028 /* SCREENClose.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENClose.c; path = ../../../Source/Common/Screen/SCREENClose.c; sourceTree = SOURCE_ROOT; };
-		F569F255038E2C77017A7028 /* SCREENNull.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENNull.c; path = ../../../Source/Common/Screen/SCREENNull.c; sourceTree = SOURCE_ROOT; };
 		F569F256038E2C77017A7028 /* ScreenSynopsis.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = ScreenSynopsis.c; path = ../../../Source/Common/Screen/ScreenSynopsis.c; sourceTree = SOURCE_ROOT; };
 		F569F257038E2C77017A7028 /* SCREENPixelSize.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPixelSize.c; path = ../../../Source/Common/Screen/SCREENPixelSize.c; sourceTree = SOURCE_ROOT; };
 		F569F258038E2C77017A7028 /* SCREENFlip.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFlip.c; path = ../../../Source/Common/Screen/SCREENFlip.c; sourceTree = SOURCE_ROOT; };
@@ -5271,8 +5273,8 @@
 				83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */,
 				2FDA7942055F521C007A711C /* SCREENglPoint.c */,
 				2FDA7944055F6430007A711C /* SCREENgluDisk.c */,
+				837A6DC10BBB106E003AB0BE /* SCREENNull.c */,
 				F5D852D9039ED6E6017A7028 /* SCREENNominalFrameRate.c */,
-				F569F255038E2C77017A7028 /* SCREENNull.c */,
 				83C94B06092824730062DB0A /* SCREENOpenMovie.c */,
 				F5CF277203DA57B901D453F7 /* SCREENOpenOffscreenWindow.c */,
 				0F6B34370B6969D20000A951 /* SCREENOpenProxy.c */,
@@ -10796,6 +10798,7 @@
 				0F45C2A50B264AE6004ED5F0 /* PsychImagingPipelineSupport.c in Sources */,
 				0F6B34390B6969D20000A951 /* SCREENOpenProxy.c in Sources */,
 				0F6B343E0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
+				837A6DC20BBB106E003AB0BE /* SCREENNull.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11182,6 +11185,7 @@
 				0F45C2A40B264AE6004ED5F0 /* PsychImagingPipelineSupport.c in Sources */,
 				0F6B34380B6969D20000A951 /* SCREENOpenProxy.c in Sources */,
 				0F6B343D0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
+				837A6DC30BBB106E003AB0BE /* SCREENNull.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

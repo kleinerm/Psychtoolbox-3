@@ -112,7 +112,7 @@ PsychError PsychModuleInit(void)
 	//register named subfunctions
 	
 	//enable for debugging purposes
-//	PsychErrorExit(PsychRegister("Null",  &SCREENNull));
+	PsychErrorExit(PsychRegister("Null",  &SCREENNull));
 //	PsychErrorExit(PsychRegister("TestStructures",  &SCREENTestStructures));
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
 	PsychErrorExit(PsychRegister("Computer",  &SCREENComputer));

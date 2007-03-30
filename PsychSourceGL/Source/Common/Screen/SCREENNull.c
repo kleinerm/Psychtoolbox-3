@@ -87,7 +87,7 @@ PsychError SCREENNull(void)
 	
 
 
-
+return(PsychError_none);
 
 
 	//all sub functions should have these two lines

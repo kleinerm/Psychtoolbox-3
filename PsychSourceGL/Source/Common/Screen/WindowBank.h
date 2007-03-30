@@ -201,6 +201,7 @@ typedef struct _PsychWindowRecordType_{
         GLint                                   textureinternalformat;  // Explicit definition of glinternalformat for texture creation.
         GLenum                                  textureexternalformat;  // Explicit definitin of external format for texture creation.
         GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
+		GLuint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
 
 	//Used only when this structure holds a window:
 	PsychTextAttributes                     textAttributes;

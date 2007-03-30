@@ -37,7 +37,34 @@
 
 #include "Screen.h"
 
-	
+// Source code for a fragment shader that performs bilinear texture filtering.
+// This shader is used as a drop-in replacement for GL's GL_LINEAR built-in
+// texture filter, whenever that filter is not available: All current ATI
+// hardware and all pre GF6000 NVidia hardware can't filter float textures,
+// NVidia hardware can only filter 16bpc floats, not 32bpc floats.
+static char textureBilinearFilterShaderSrc[] =
+"#version 110 \n"
+" \n"
+"uniform sampler2DRect Image; \n"
+" \n"
+"void main() \n"
+"{ \n"
+"    /* Get wanted texture coordinate for which we should filter: */ \n"
+"    vec2 texinpos = gl_TexCoord[0].st; \n"
+"    /* Retrieve texel colors for 4 nearest neighbours: */ \n"
+"    vec4 tl=texture2DRect(Image, floor(texinpos)); \n"
+"    vec4 tr=texture2DRect(Image, floor(texinpos) + vec2(1.0, 0.0)); \n"
+"    vec4 bl=texture2DRect(Image, floor(texinpos) + vec2(0.0, 1.0)); \n"
+"    vec4 br=texture2DRect(Image, floor(texinpos) + vec2(1.0, 1.0)); \n"
+"    /* Perform weighted linear interpolation -- bilinear interpolation of the 4: */ \n"
+"    tl=mix(tl,tr,fract(texinpos.x)); \n"
+"    bl=mix(bl,br,fract(texinpos.x)); \n"
+"    vec4 texcolor = mix(tl, bl, fract(texinpos.y)); \n"
+"    /* Multiply filtered texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
+"    /* Assign result as output fragment color: */ \n"
+"    gl_FragColor = texcolor * gl_Color; \n"
+"} \n";
+
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0] [, floatprecision=0] [, textureOrientation=0]);";
 //                                                            1            2              3                          4                5                    6
@@ -447,6 +474,39 @@ PsychError SCREENMakeTexture(void)
     // Let's create and bind a new texture object and fill it with our new texture data.
     PsychCreateTexture(textureRecord);
     
+	// Is this a floating point texture?
+	if (usefloatformat) {
+		// Yes. Is floating point filtering supported for this texture type?
+		// Don't know of a way to query this, so we maintain a little blacklist
+		// of hardware we know can't do it: All ATI hardware can't do it. All
+		// hardware can't do it for 32bpc float aka usefloatformat == 2:
+		if (usefloatformat == 2 || strstr(glGetString(GL_VENDOR), "ATI")) {
+			// Floating point filtering unsupported. Do we have a filtershader
+			// already?
+			if (windowRecord->textureFilterShader == 0 && !usepoweroftwo) {
+				// Nope. Need to create one:
+				windowRecord->textureFilterShader = PsychCreateGLSLProgram(textureBilinearFilterShaderSrc, NULL, NULL);
+				if ((windowRecord->textureFilterShader == 0) && PsychPrefStateGet_Verbosity() > 1) {
+					printf("PTB-WARNING: Created a floating point texture as requested, but was unable to create a float filter shader.\n");
+					printf("PTB-WARNING: Filtering - and therefore anti-aliasing - of this texture won't work.\n");
+				}
+				else {
+					if (PsychPrefStateGet_Verbosity() > 3) {
+						printf("PTB-INFO: %i bpc Floating point texture created. This gfx-hardware doesn't support automatic filtering of such\n", 16 * usefloatformat);
+						printf("PTB-INFO: textures. A GLSL fragment filtershader was generated to work-around this.\n");
+					}
+				}
+			}
+			else if (usepoweroftwo && PsychPrefStateGet_Verbosity() > 1) {
+					printf("PTB-WARNING: Created a floating point power of two texture as requested, but don't have a float filter shader.\n");
+					printf("PTB-WARNING: Filtering - and therefore anti-aliasing - of power of two textures won't work.\n");
+			}
+			
+			// Assign our onscreen windows filtershader to this texture:
+			textureRecord->textureFilterShader = windowRecord->textureFilterShader;
+		}
+	}
+	
     // Texture ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(textureRecord);
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);

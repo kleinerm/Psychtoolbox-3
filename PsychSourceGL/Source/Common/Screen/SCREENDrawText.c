@@ -258,12 +258,13 @@ PsychError SCREENDrawText(void)
     
     // printf("Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]); 
     PsychNormalizeRect(textBoundsPRect, textBoundsPRectOrigin);
-    // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]); 
-    textWidth=PsychGetWidthFromRect(textBoundsPRectOrigin);
+    // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
+	// Denis found an off-by-one bug in the text width. Don't know where it should come from in our code, but
+	// my "solution" is to simply extend the width by one: 
+    textWidth=PsychGetWidthFromRect(textBoundsPRectOrigin) + 1.0;
     textHeight=PsychGetHeightFromRect(textBoundsPRectOrigin);
     // printf("N: Width %lf x Height %lf :: ", textWidth, textHeight); 
     PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
-    
     //Allocate memory the size of the texture.  The CG context is the same size.  It could be smaller, because Core Graphics surfaces don't have the power-of-two
     //constraint requirement.   
     textureWidth=PsychGetWidthFromRect(textureRect);

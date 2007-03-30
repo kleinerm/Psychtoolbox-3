@@ -125,6 +125,12 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
         win->textureinternalformat=0;
         win->textureexternalformat=0;
         win->textureexternaltype=0;
+		// Optional GLSL filtershader: This defaults to zero i.e. no such thing. SCREENMakeTexture.c will
+		// initialize this on demand: If a floating point texture is created on a piece of gfx-hardware that
+		// doesn't support float-texture filtering. Then a shader is created which can reimplement that for
+		// float-textures and the handle is stored in the onscreen window record and in the corresponding
+		// texture. The blitters can then optionally bind that shader if filtering is requested.
+		win->textureFilterShader=0;
 }
 
 
@@ -658,8 +664,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 break;
         }
-                        
-        // Setup texture wrap-mode: We usually default to clamping - the best we can do
+
+	// Linear filtering on non-capable hardware via shader emulation?
+	if (filterMode > 0 && source->textureFilterShader) {
+		// Yes. Bind the shader:
+		glUseProgram(source->textureFilterShader);
+	}
+	
+	// Setup texture wrap-mode: We usually default to clamping - the best we can do
 	// for the rectangle textures we usually use. Special case is the intentional
 	// use of power-of-two textures with a real power-of-two size. In that case we
 	// enable wrapping mode to allow for scrolling effects -- useful for drifting
@@ -753,6 +765,11 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	glBindTexture(texturetarget, 0);
         glDisable(texturetarget);
         
+	if (filterMode > 0 && source->textureFilterShader) {
+		// Filtershader was used. Unbind it:
+		glUseProgram(0);
+	}
+
         // Finished!
         return;
 }
