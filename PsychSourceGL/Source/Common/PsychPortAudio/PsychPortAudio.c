@@ -30,7 +30,6 @@
 #include "pa_mac_core.h"
 #endif
 
-
 #define MAX_SYNOPSIS_STRINGS 50  
 
 //declare variables local to this file.  
@@ -43,10 +42,11 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Maximum number of audio devices we handle:
 #define MAX_PSYCH_AUDIO_DEVS 10
 
+// Our device record:
 typedef struct PsychPADevice {
 	PaStream *stream;			// Pointer to associated portaudio stream.
 	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
-	double	 startTime;			// Requested playback start time in system time (secs). Returns real start time when available.
+	double	 startTime;			// Requested playback start time in system time (secs). Returns real start time after start.
 	int		 state;				// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing.
 	int		 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 buffer;			// Pointer to float memory buffer with sound output data.
@@ -54,7 +54,13 @@ typedef struct PsychPADevice {
 	unsigned int playposition;	// Current playposition in samples since start of playback (not frames, not bytes!)
 	unsigned int channels;		// Number of output channels.
 	unsigned int xruns;			// Number of over-/underflows of input-/output channel for this stream.
-	unsigned int batchsize;		// Maximum number of frames requested during callback invokation: Estimate of real buffersize. 
+	unsigned int paCalls;		// Number of callback invocations.
+	unsigned int noTime;		// Number of timestamp malfunction - Should not happen anymore.
+	unsigned int batchsize;		// Maximum number of frames requested during callback invokation: Estimate of real buffersize.
+	double	 predictedLatency;  // Latency that PortAudio predicts for current callbackinvocation. We will compensate for that when starting audio.
+	double   latencyBias;		// A bias value to add to the value that PortAudio reports for total buffer->Speaker latency.
+								// This value defaults to zero, but can be set up automatically on OS/X or manually on other OSes to compensate
+								// for slight mistakes in PA's estimate.
 } PsychPADevice;
 
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
@@ -63,8 +69,21 @@ unsigned int  verbosity = 4;
 
 boolean pa_initialized = FALSE;
 
-/* Very simple synthesis routine to generate two sine waves. */
-static int paOutCallback( const void *inputBuffer, void *outputBuffer,
+/* paCallback: PortAudo I/O processing callback. 
+ *
+ * This callback is called by PortAudios playback/capture engine whenever
+ * it needs new data for playback or has new data from capture. We are expected
+ * to take the inputBuffer's content and store it in our own recording buffers,
+ * and push data from our playback buffer queue into the outputBuffer.
+ *
+ * timeInfo tells us useful timing information, so we can estimate latencies,
+ * compensate for them, and so on...
+ *
+ * This callback is part of a realtime/interrupt/system context so don't do
+ * things like calling PortAudio functions, allocating memory, file i/o or
+ * other unbounded operations!
+ */
+static int paCallback( const void *inputBuffer, void *outputBuffer,
                              unsigned long framesPerBuffer,
                              const PaStreamCallbackTimeInfo* timeInfo,
                              PaStreamCallbackFlags statusFlags,
@@ -86,8 +105,11 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 	// processing of this stream:
     if (dev == NULL || dev->buffer == NULL) return(paAbort);
 
-	// Logical playback state is "stopped"? If so, abort.
-	if (dev->state == 0) return(paAbort);
+	// Count total number of calls:
+	dev->paCalls++;
+	
+	// Call number of timestamp failures:
+	if (timeInfo->currentTime == 0) dev->noTime++;
 	
 	// Keep track of maximum number of frames requested:
 	if (dev->batchsize < framesPerBuffer) dev->batchsize = framesPerBuffer;
@@ -105,7 +127,14 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 	playposition = dev->playposition;
 
 	// Compute size of soundbuffer in samples:
-   sbsize = dev->buffersize / sizeof(float);
+	sbsize = dev->buffersize / sizeof(float);
+
+	// Logical playback state is "stopped"? If so, abort.
+	if (dev->state == 0) {
+		// Prime the buffer with silence to avoid ugly noise.
+		memset(outputBuffer, 0, framesPerBuffer * channels * sizeof(float));
+		return(paAbort);
+	}
 
 	// Are we already playing back and/or capturing real audio data,
 	// or are we still on hot-standby? PsychPortAudio tries to start
@@ -114,15 +143,15 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 	// as closely as possible to that point in time) by use of the
 	// following trick: When the user script executes PsychPortAudio('Start'),
 	// our routine immediately starts processing of the portaudio stream,
-	// starting up the audio hardwares DACs/ADCs and portaudios engine.
-	// After a short latency, our paOutCallback() (this routine) gets called
+	// starting up the audio hardwares DACs/ADCs and Portaudios engine.
+	// After a short latency, our paCallback() (this routine) gets called
 	// by the realtime audio scheduler, requesting or providing audio sample
 	// data. In the provided timeInfo - variable, we are provided with the
 	// current playback time of the audio device (in seconds since stream start)
 	// and an estimate of when our first provided sample will hit the speakers.
-	// We convert these timestamps into system time, so we'll know how far the
-	// onset deadline is away. If the deadline is far away, so the samples for
-	// this callback iteration would hit the speaker to early, we simply return
+	// We convert these timestamps into system time, so we'll know how far the user
+	// provided onset deadline is away. If the deadline is far away, so the samples
+	// for this callback iteration would hit the speaker too early, we simply return
 	// a zero filled buffer --> We output silence. If the deadline is somewhere
 	// in the middle of this buffer, we fill the appropriate amount of bufferspace
 	// with zeros, then copy in our first real samples into the remaining buffer.
@@ -135,8 +164,45 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 	if (dev->state == 1) {
 		// Hot standby: Query and convert timestamps to system time.
 		PsychGetAdjustedPrecisionTimerSeconds(&now);
-		firstsampleonset = now + ((double) (timeInfo->outputBufferDacTime - timeInfo->currentTime));
+		// FIXME: PortAudio stable sets timeInfo->currentTime == 0 --> Breakage!!!
+		
+		#if PSYCH_SYSTEM == PSYCH_OSX
+			// On OS/X, DAC-time is already returned in the system timebase,
+			// at least with our modified version of PortAudio, so a simple
+			// query will return the onset time of the first sample. Well,
+			// looks as if we need to add the device inherent latency, because
+			// this describes everything up to the point where DMA transfer is
+			// initiated, but not device inherent latency. This additional latency
+			// is added via latencyBias, which is initialized in the Open-Function
+			// via a low-level driver query to CoreAudio:
+			firstsampleonset = (double) timeInfo->outputBufferDacTime + dev->latencyBias;
+			
+			// Store our measured PortAudio + CoreAudio + Driver + Hardware latency:
+			dev->predictedLatency = firstsampleonset - now;
+		#else
+			// Not yet verified how the other OSes or audio APIs behave. Play safe
+			// and perform timebase remapping: This also needs our special fixed
+			// PortAudio version where currentTime actually has a value:
+			firstsampleonset = ((double) (timeInfo->outputBufferDacTime - timeInfo->currentTime));
 
+			// Store our measured PortAudio + HostAPI + Driver + Hardware latency:
+			dev->predictedLatency = firstsampleonset + dev->latencyBias;
+
+			// Assign predicted (remapped to our time system) audio onset time for this buffer:
+			firstsampleonset = now + firstsampleonset + dev->latencyBias;
+		#endif
+		
+		if (FALSE) {
+			// Debug code to compare our two timebases against each other: On OS/X,
+			// luckily both timebases are identical, ie. our UpTime() timebase used
+			// everywhere in PTB and the CoreAudio AudioHostClock() are identical.
+			psych_uint64 ticks;
+			double  tickssec;
+			PsychGetPrecisionTimerTicksPerSecond(&tickssec);
+			PsychGetPrecisionTimerTicks(&ticks);
+			printf("AudioHostClock: %lf   vs. System clock: %lf\n", ((double) ticks) / tickssec, now); 
+		}
+		
 		// Compute difference between requested onset time and presentation time
 		// of the first sample of this callbacks returned buffer:
 		onsetDelta = dev->startTime - firstsampleonset;
@@ -144,7 +210,7 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 		// Time left until onset?
 		if (onsetDelta > 0) {
 			// Some time left: A full buffer duration?
-			if (onsetDelta >= (framesPerBuffer / dev->streaminfo->sampleRate)) {
+			if (onsetDelta >= ((double) framesPerBuffer / (double) dev->streaminfo->sampleRate)) {
 				// At least one buffer away. Fill our buffer with zeros, aka silence:
 				memset(outputBuffer, 0, framesPerBuffer * channels * sizeof(float));
 				
@@ -163,8 +229,9 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 				// Decrement remaining real audio data count:
 				framesPerBuffer-=silenceframes;
 
-				// Store real estimated onset time:
-				dev->startTime = firstsampleonset;
+				// dev->StartTime now exactly corresponds to onset of first non-silence sample.
+				// At least if everything works properly.
+
 				// Mark us as running:
 				dev->state = 2;
 			}
@@ -173,39 +240,37 @@ static int paOutCallback( const void *inputBuffer, void *outputBuffer,
 			// Ooops! We are late! Store real estimated onset in the startTime field and
 			// then hurry up!
 			dev->startTime = firstsampleonset;
+
 			// Mark us as running:
 			dev->state = 2;
 		}
 	}
     
-	// Copy requested number of samples for each channel into the output buffer:
+	// Copy requested number of samples for each channel into the output buffer: Take the case of
+	// "loop forever" and "loop repeatCount" times into account:
 	for (i=0; (i < framesPerBuffer * channels) && ((repeatCount == -1) || (playposition < (repeatCount * sbsize))); i++) {
 		*out++ = dev->buffer[playposition % sbsize];
 		playposition++;
 	}
 	
-	// End of playback reached due to repeatCount reached?
+	// Store updated playposition in device structure:
+	dev->playposition = playposition;
+
+	// End of playback reached due to maximum repeatCount reached?
 	if (i < framesPerBuffer * channels) {
 		// Premature stop of buffer filling because repeatCount exceeded.
 		// We need to zero-fill the remainder of the buffer and tell the engine
 		// to finish playback:
 		while(i < framesPerBuffer * channels) {
 			*out++ = 0.0;
-			playposition++;
 			i++;
 		}
-		
-		// Store updated playposition in device structure:
-		dev->playposition = playposition;
 		
 		// Signal that the filled buffers up to this point should be played,
 		// but after that the engine should stop the stream:
 		return(paComplete);
 	}
-	
-	// Store updated playposition in device structure:
-	dev->playposition = playposition;
-	
+
 	// Tell engine to continue stream processing, i.e., call us again...
     return(paContinue);
 }
@@ -238,7 +303,7 @@ void InitializeSynopsis()
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 	
-	synopsis[i++] = "PsychPortAudio - An interface to the PortAudio sound library:\n";
+	synopsis[i++] = "PsychPortAudio - A sound driver built around the PortAudio sound library:\n";
 	synopsis[i++] = "\nGeneral information:\n";
 	synopsis[i++] = "version = PsychPortAudio('Version');";
 	synopsis[i++] = "oldlevel = PsychPortAudio('Verbosity' [,level]);";
@@ -247,6 +312,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
+	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
 	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata);";
 	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] );";
 	synopsis[i++] = "startTime = PsychPortAudio('Stop', pahandle);";
@@ -279,11 +345,12 @@ PsychError PsychPortAudioExit(void)
 			// Close i'th stream, if it is open:
 			PsychPACloseStream(i);
 		}
-
+		audiodevicecount = 0;
+		
 		// Shutdown PortAudio itself:
 		err = Pa_Terminate();
 		if (err) {
-			printf("PTB-FATAL-ERROR: PsychPortAudio: Shutdown of port audio subsystem failed. Depending on the quality\n");
+			printf("PTB-FATAL-ERROR: PsychPortAudio: Shutdown of PortAudio subsystem failed. Depending on the quality\n");
 			printf("PTB-FATAL-ERROR: of your operating system, this may leave the sound system of your machine dead or confused.\n");
 			printf("PTB-FATAL-ERROR: Exit and restart Matlab/Octave. Windows users additionally may want to reboot...\n");
 			printf("PTB-FATAL-ERRRO: PortAudio reported the following error: %s\n\n", Pa_GetErrorText(err)); 
@@ -314,6 +381,8 @@ void PsychPortAudioInitialize(void)
 		for(i=0; i<MAX_PSYCH_AUDIO_DEVS; i++) {
 			audiodevices[i].stream = NULL;
 		}
+		
+		audiodevicecount=0;
 		
 		pa_initialized = TRUE;
 	}
@@ -351,6 +420,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
 	PaDeviceInfo* inputDevInfo, *outputDevInfo;
+	PaStreamFlags sflags;
 	PaError err;
 	PaStream *stream = NULL;
 	
@@ -385,6 +455,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Request optional mode of operation:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
 	if (mode < 1 || mode > 3) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid values are 1 to 3.");
+	
+	if (mode!=1) PsychErrorExitMsg(PsychError_unimplemented, "Sorry, recording and full-duplex mode not yet implemented, only sound playback.");
 	
 	// Request optional latency class:
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &latencyclass);
@@ -441,7 +513,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			buffersize = paFramesPerBufferUnspecified;
 		}
 		else {
-			buffersize = 32; // Dangerously low, but no risk, no fun...
+			buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
 		}
 	}
 	
@@ -481,6 +553,12 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		inputParameters.hostApiSpecificStreamInfo = (paMacCoreStreamInfo*) &hostapisettings;
 	}
 	#endif
+	
+	// Our stream shall be primed initially with our callbacks data, not just with zeros.
+	// In high latency-mode 0, we request sample clipping and dithering, so sound is more
+	// high quality on Windows. In low-latency mode, we safe the computation time for that.
+	sflags = paPrimeOutputBuffersUsingStreamCallback;
+	sflags = (latencyclass > 0) ? sflags : (sflags | paClipOff | paDitherOff);
 
 	// Try to create & open stream:
 	err = Pa_OpenStream(
@@ -489,8 +567,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			((mode & kPortAudioPlayBack) ? &outputParameters : NULL),	/* Requested input settings, or NULL in pure playback case. */
             freq,														/* Requested sampling rate. */
             buffersize,													/* Requested buffer size. */
-            paClipOff | paPrimeOutputBuffersUsingStreamCallback,		/* Don't clip out of range samples, prime outbuffers from our data. */
-            paOutCallback,												/* Our processing callback. */
+            sflags,														/* Define special stream property flags. */
+            paCallback,													/* Our processing callback. */
             &audiodevices[audiodevicecount]);							/* Our own device info structure */
             
 	if(err!=paNoError || stream == NULL) {
@@ -507,6 +585,19 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].buffer = NULL;
 	audiodevices[audiodevicecount].buffersize = 0;
 	audiodevices[audiodevicecount].channels = channels;
+	audiodevices[audiodevicecount].latencyBias = 0.0;
+	
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		// Query low-level audio driver of the CoreAudio HAL for hardware latency:
+		// Hmm, maybe not. Don't know if it is worth the hazzle... This is a constant that
+		// doesn't change throughout the lifetime of a machine, and it only makes up for about
+		// 0.3 msecs on a typical setup. Maybe if a user really needs that 0.3 msecs extra
+		// precision, he should simply download the free HALLab from Apple's Website or Developer
+		// tools, run it once, read the displayed constant and set it manually at PortAudio startup.
+		
+		// PaMacCoreStream* corestream = (PaMacCoreStream*) audiodevices[audiodevicecount].stream;
+		// audiodevices[audiodevicecount].latencyBias = 
+	#endif
 	
 	if (verbosity > 3) {
 		printf("PTB-INFO: New audio device with handle %i opened as PortAudio stream:\n",audiodevicecount);
@@ -514,29 +605,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
 				audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency,
 				audiodevices[audiodevicecount].streaminfo->outputLatency);
 	}
-	
-	if (verbosity > 4) {
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		printf("PTB-DEBUG: ");
-		
-	}
-	
+
 	// Return device handle:
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevicecount);
 	
-	// One more...
+	// One more audio device...
 	audiodevicecount++;
-	
-	
+
     return(PsychError_none);	
 }
 
@@ -587,8 +662,12 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
  	static char useString[] = "PsychPortAudio('FillBuffer', pahandle, bufferdata);";
 	static char synopsisString[] = 
 		"Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
-		"whose buffer is to be filled. 'bufferdata' is a Matlab matrix with audio data in double format. Each "
-		"row of the matrix specifies one sound channel, each column one sample for each channel. ";
+		"whose buffer is to be filled. 'bufferdata' is a Matlab double matrix with audio data in double format. Each "
+		"row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
+		"values in double precision are supported. Samples need to be in range -1.0 to +1.0, 0.0 for silence. This is "
+		"intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
+		"data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+		"expensive sample rate conversion, sample format conversion, and bounds checking/clipping. ";
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
   	
 	int inchannels, insamples, p, buffersize;
@@ -709,16 +788,18 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	// Reset statistics values:
 	audiodevices[pahandle].batchsize = 0;	
 	audiodevices[pahandle].xruns = 0;	
+	audiodevices[pahandle].paCalls = 0;
+	audiodevices[pahandle].noTime = 0;
 	
+	// Mark state as hot-started:
+	audiodevices[pahandle].state = 1;
+
 	// Try to start stream:
 	if ((err=Pa_StartStream(audiodevices[pahandle].stream))!=paNoError) {
 		printf("PTB-ERROR: Failed to start audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
 		PsychErrorExitMsg(PsychError_system, "Failed to start PortAudio audio device.");
 	}
-	
-	// Mark state as hot-started:
-	audiodevices[pahandle].state = 1;
-	
+		
 	if (waitForStart>0) {
 		// Wait for real start of device:
 		while(audiodevices[pahandle].state != 2) {
@@ -750,7 +831,10 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 		"Stop a PortAudio audio device. The 'pahandle' is the handle of the device to stop. "
 		"The optional return argument 'startTime' returns an estimate of when the stopped "
 		"stream actually started its playback. Its the same timestamp returned by the start "
-		"command when executed in waiting mode. ";		
+		"command when executed in waiting mode. 'endPositionSecs' is the final playback "
+		"position in seconds. 'xruns' is the number of buffer over- or underruns. This should "
+		"be zero if the playback was glitch-free, however a zero value doesn't imply glitch "
+		"free playback, as the algorithm can miss some types of glitches. ";		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	
 	PaError err;
@@ -804,11 +888,28 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 {
  	static char useString[] = "status = PsychPortAudio('GetStatus', pahandle);";
 	static char synopsisString[] = 
-		"Returns 'status', a struct with status information about the device 'pahandle'. ";
+		"Returns 'status', a struct with status information about the current state of device 'pahandle'. "
+		"Playing: Can be 1 if playback is active, or 0 if playback is stopped or not yet started. "
+		"StartTime: Is the real start time of the audio stream after start of playback. PositionSecs is "
+		"an estimate of the current stream playback position in seconds, its not totally accurate, because "
+		"it measures how much sound has been submitted to the sound system, not how much sound has left the "
+		"speakers, i.e., it doesn't take driver and hardware latency into account. XRuns: Number of dropouts "
+		"due to buffer overrun or underrun conditions. TotalCalls, TimeFailed and BufferSize are only for "
+		"debugging of PsychPortAudio itself. CPULoad: How much load does the playback engine impose on the "
+		"CPU? Values can range from 0.0 = 0% to 1.0 for 100%. Values close to 1.0 indicate that your system "
+		"can't handle the load and timing glitches or sound glitches are likely. In such a case, try to reduce "
+		"the load on your system. PredictedLatency: Is the latency of your driver+hardware combo. It tells you, "
+		"how far ahead of time a sound device must be started ahead of the requested onset time via "
+		"PsychPortAudio('Start'...) to make sure it actually starts playing in time. High quality systems like "
+		"Linux or MacOS/X may allow values as low as 5 msecs or less on standard hardware. Other operating "
+		"systems may require dozens or hundreds of milliseconds of headstart. LatencyBias is an additional bias "
+		"setting you can impose via PsychPortAudio('LatencyBias', pahandle, bias); in case our drivers estimate "
+		"is a bit off. Allows fine-tuning.";
 		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*status;
-	const char *FieldNames[]={	"Playing", "StartTime", "PositionSecs", "XRuns", "BufferSize", "CPULoad"};
+	const char *FieldNames[]={	"Playing", "StartTime", "PositionSecs", "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency",
+								"LatencyBias"};
 	int pahandle = -1;
 	int count = 0;
 	int i;
@@ -829,15 +930,18 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 6, FieldNames, &status);
+	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 10, FieldNames, &status);
 	
 	PsychSetStructArrayDoubleElement("Playing", 0, (audiodevices[pahandle].state == 2) ? 1 : 0, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
 	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].channels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("XRuns", 0, audiodevices[pahandle].xruns, status);
+	PsychSetStructArrayDoubleElement("TotalCalls", 0, audiodevices[pahandle].paCalls, status);
+	PsychSetStructArrayDoubleElement("TimeFailed", 0, audiodevices[pahandle].noTime, status);
 	PsychSetStructArrayDoubleElement("BufferSize", 0, audiodevices[pahandle].batchsize, status);
 	PsychSetStructArrayDoubleElement("CPULoad", 0, Pa_GetStreamCpuLoad(audiodevices[pahandle].stream), status);
-	
+	PsychSetStructArrayDoubleElement("PredictedLatency", 0, audiodevices[pahandle].predictedLatency, status);
+	PsychSetStructArrayDoubleElement("LatencyBias", 0, audiodevices[pahandle].latencyBias, status);
 	return(PsychError_none);
 }
 
@@ -876,6 +980,49 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
 	return(PsychError_none);
 }
 
+/* PsychPortAudio('LatencyBias') - Set a manual bias for the latencies we operate on.
+ */
+PsychError PSYCHPORTAUDIOLatencyBias(void) 
+{
+ 	static char useString[] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
+	static char synopsisString[] = 
+		"Set audio output latency bias in seconds to 'biasSecs' and/or return old bias for a device "
+		"'pahandle'. The device must be open for this setting to take effect. It is reset to zero at "
+		"each reopening of the device. PsychPortAudio computes a latency value for the expected latency "
+		"of an audio output device to get its timing right. If this latency value is slightly off for "
+		"some reason, you can provide a bias value with this function to correct the computed value. "
+		"See the online help for PsychPortAudio for more in depth explanation of latencies. ";		
+	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
+	
+	double bias= DBL_MAX;
+	int pahandle = -1;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+
+	// Copy in optional new bias value:
+	PsychCopyInDoubleArg(2, kPsychArgOptional, &bias);
+	
+	// Return current/old bias:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, audiodevices[pahandle].latencyBias);
+
+	// Set new bias, if one was provided:
+	if (bias!=DBL_MAX) audiodevices[pahandle].latencyBias = bias;
+	
+	return(PsychError_none);
+}
+
 /* PsychPortAudio('GetDevices') - Enumerate all available sound devices.
  */
 PsychError PSYCHPORTAUDIOGetDevices(void) 
@@ -884,7 +1031,16 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	static char synopsisString[] = 
 		"Returns 'devices', an array of structs, one struct for each available PortAudio device. "
 		"Each struct contains information about its associated PortAudio device. The optional "
-		"parameter 'devicetype' can be used to enumerate only devices of a specific class. ";
+		"parameter 'devicetype' can be used to enumerate only devices of a specific class (TODO). "
+		"On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
+		"On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
+		"latencies and very good timing, OSS is an older system which is less capable but not very "
+		"widespread in use anymore. On MS-Windows you'll have the ''choice'' between up to 5 different "
+		"audio subsystems: If you buy an expensive sound card with ASIO drivers, pick that API for low "
+		"latency, it may give you comparable performance to OS/X or Linux if you are lucky. 2nd best choice "
+		"would be WASAPI (on Vista) or WDMKS (on XP) for ok latency on good days. DirectSound is the next "
+		"worst choice if you have hardware with DirectSound support. If everything else fails, you'll be left "
+		"with MMS, a premium example of system misdesign successfully sold to paying customers.";
 		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*devices;

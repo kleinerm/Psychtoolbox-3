@@ -58,7 +58,7 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void);
 PsychError PSYCHPORTAUDIOGetDevices(void);
 // Return status of device:
 PsychError PSYCHPORTAUDIOGetStatus(void);
+// Set a manual bias for the latencies we operate on.
+PsychError PSYCHPORTAUDIOLatencyBias(void);
 //end include once
 #endif
-
-	
