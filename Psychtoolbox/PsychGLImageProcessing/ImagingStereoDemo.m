@@ -75,24 +75,26 @@ try
        scrnNum = 0;
     end
 
+    imagingmode = kPsychNeedFastBackingStore;
+    % Open double-buffered onscreen window with the requested stereo mode:
+    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode, 0, imagingmode);
+
     % Stimulus settings:
     numDots = 1000;
     vel = 1;   % pix/frames
-    dotSize = 4;
+    dotSize = 8;
     dots = zeros(3, numDots);
 
-    xmax = 300;
+    xmax = RectWidth(windowRect)/2;
+    ymax = RectHeight(windowRect)/2;
+    xmax = min(xmax, ymax) / 2;
     ymax = xmax;
-
+    
     f = 4*pi/xmax;
     amp = 16;
 
     dots(1, :) = 2*(xmax)*rand(1, numDots) - xmax;
     dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
-
-    imagingmode = kPsychNeedFastBackingStore;
-    % Open double-buffered onscreen window with the requested stereo mode:
-    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode, 0, imagingmode);
     
     % Set color gains. This depends on the anaglyph mode selected:
     switch stereoMode

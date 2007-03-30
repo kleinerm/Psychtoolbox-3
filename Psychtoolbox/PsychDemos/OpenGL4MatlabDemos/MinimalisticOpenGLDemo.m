@@ -1,4 +1,4 @@
-function MinimalisticOpenGLDemo
+function MinimalisticOpenGLDemo(multiSample)
 % MinimalisticOpenGLDemo - Demonstrate use of MATLAB-OpenGL toolbox
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script to
@@ -86,6 +86,10 @@ function MinimalisticOpenGLDemo
 % 19-Apr-2006 -- Derived from SpinningCubeDemo (MK)
 % 05-May-2006 -- Added some demo code for basic texture mapping (MK)
 
+if nargin < 1
+    multiSample = 0
+end
+
 % Is the script running in OpenGL Psychtoolbox? Abort, if not.
 AssertOpenGL;
 
@@ -97,7 +101,7 @@ screenid=max(Screen('Screens'));
 InitializeMatlabOpenGL;
 
 % Open a double-buffered full-screen window on the main displays screen.
-[win , winRect] = Screen('OpenWindow', screenid);
+[win , winRect] = Screen('OpenWindow', screenid, [],[],[],[],[],multiSample);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will

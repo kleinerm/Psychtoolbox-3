@@ -6,11 +6,13 @@ if nargin < 1
     fullscreen=0;
 end;
 
+screenid=max(Screen('Screens'));
+
 try
     if fullscreen<1
-        win=Screen('OpenWindow', screen, 0, [0 0 800 600]);
+        win=Screen('OpenWindow', screen, screenid, [0 0 800 600]);
     else
-        win=Screen('OpenWindow', screen, 0);
+        win=Screen('OpenWindow', screen, screenid);
     end;
 
     % Initial flip to a blank screen:

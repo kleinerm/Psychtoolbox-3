@@ -1,0 +1,32 @@
+/* Shader for bilinear filtering of textures during drawing.
+ * This is a "manual" do-it-yourself implementation of the standard GL_LINEAR bilinear
+ * texture filtering mode of the GPU. Normally you won't need it, because the hardware
+ * does this automatically (and faster). But some hardware (e.g., ATI X1000 series)
+ * can't do automatic filtering on floating point textures, so we need a manual
+ * implementation to support floating point texture filtering on such GPU's.
+ *
+ * This code is just here as a reference. PTB has the same code built into Screen().
+ *
+ * (w)2007 by Mario Kleiner.
+*/
+#version 110
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    /* Get wanted texture coordinate for which we should filter: */
+    vec2 texinpos = gl_TexCoord[0].st;
+    /* Retrieve texel colors for 4 nearest neighbours: */
+    vec4 tl=texture2DRect(Image, floor(texinpos));
+    vec4 tr=texture2DRect(Image, floor(texinpos) + vec2(1.0, 0.0));
+    vec4 bl=texture2DRect(Image, floor(texinpos) + vec2(0.0, 1.0));
+    vec4 br=texture2DRect(Image, floor(texinpos) + vec2(1.0, 1.0));
+    /* Perform weighted linear interpolation -- bilinear interpolation of the 4: */
+    tl=mix(tl,tr,fract(texinpos.x));
+    bl=mix(bl,br,fract(texinpos.x));
+    vec4 texcolor = mix(tl, bl, fract(texinpos.y));
+    /* Multiply filtered texcolor with incoming fragment color (GL_MODULATE emulation): */
+    /* Assign result as output fragment color: */
+    gl_FragColor = texcolor * gl_Color;
+}
