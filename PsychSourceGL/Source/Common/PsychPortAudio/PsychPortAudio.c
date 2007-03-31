@@ -340,11 +340,11 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
 	
 	#if PSYCH_SYSTEM == PSYCH_LINUX
 		// Try ALSA first...
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then JACK...
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then OSS...
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// then give up!
 		printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
 		return(paHostApiNotFound);
@@ -352,16 +352,16 @@ PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
 	
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
 		// Try ASIO first. It's supposed to be the lowest latency API on soundcards that suppport it.
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then WDM kernel streaming (Win2000, XP, maybe Vista). This is the best working free builtin
 		// replacement for the proprietary ASIO interface.
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then Vistas new WASAPI, which is supposed to replace WDMKS, but is still early alpha quality in PortAudio:
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers: 
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// Then Windows MME, a complete disaster, but better than silence...?!? 
-		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paMME))!=paHostApiNotFound) return(ai);
+		if (((ai=Pa_HostApiTypeIdToHostApiIndex(paMME))!=paHostApiNotFound) && (Pa_GetHostApiInfo(ai)->deviceCount > 0)) return(ai);
 		// then give up!
 		printf("PTB-ERROR: Could not find an operational audio subsystem on this Windows machine! Soundcard and driver installed and enabled?!?\n");
 		return(paHostApiNotFound);
@@ -697,9 +697,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	if (verbosity > 3) {
 		printf("PTB-INFO: New audio device with handle %i opened as PortAudio stream:\n",audiodevicecount);
+		printf("PTB-INFO: Audio subsystem is %s, Audio device name is ", Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->name);
+		printf("%s\n", Pa_GetDeviceInfo(outputParameters.device)->name);
 		printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
-				audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency,
-				audiodevices[audiodevicecount].streaminfo->outputLatency);
+				audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency * 1000.0,
+				audiodevices[audiodevicecount].streaminfo->outputLatency * 1000.0);
 	}
 
 	// Return device handle:
