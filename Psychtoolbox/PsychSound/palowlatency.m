@@ -1,4 +1,3 @@
-
 function palowlatency(exactstart, deviceid)
 
 % Establish key mapping: ESCape aborts, Space toggles between auto-

@@ -46,6 +46,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 typedef struct PsychPADevice {
 	PaStream *stream;			// Pointer to associated portaudio stream.
 	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
+	PaHostApiTypeId hostAPI;	// Type of host API.
 	double	 startTime;			// Requested playback start time in system time (secs). Returns real start time after start.
 	int		 state;				// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing.
 	int		 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
@@ -99,6 +100,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	unsigned int  playposition, sbsize;
 	double now, firstsampleonset, onsetDelta;
 	int repeatCount;
+	PaHostApiTypeId hA;
 	
 	// Sound output buffer attached to stream? If no sound buffer
 	// is attached, we can't continue and tell the engine to abort
@@ -159,15 +161,17 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// with real sampledata. Assuming the sound onset estimate provided by PA is
 	// correct, this should allow accurate sound onset. It all depends on the
 	// latency estimate...
+	hA=dev->hostAPI;
 	
 	// Hot standby?
 	if (dev->state == 1) {
 		// Hot standby: Query and convert timestamps to system time.
 		PsychGetAdjustedPrecisionTimerSeconds(&now);
 		// FIXME: PortAudio stable sets timeInfo->currentTime == 0 --> Breakage!!!
+		// That's why we currently have our own PortAudio version.
 		
-		#if PSYCH_SYSTEM == PSYCH_OSX
-			// On OS/X, DAC-time is already returned in the system timebase,
+		if (hA==paCoreAudio || hA==paDirectSound || hA==paMME || hA==paALSA) {
+			// On these systems, DAC-time is already returned in the system timebase,
 			// at least with our modified version of PortAudio, so a simple
 			// query will return the onset time of the first sample. Well,
 			// looks as if we need to add the device inherent latency, because
@@ -179,8 +183,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			
 			// Store our measured PortAudio + CoreAudio + Driver + Hardware latency:
 			dev->predictedLatency = firstsampleonset - now;
-		#else
-			// Not yet verified how the other OSes or audio APIs behave. Play safe
+		}
+		else {
+			// ASIO or unknown. ASIO needs to be checked, which category is correct.
+			// Not yet verified how these other audio APIs behave. Play safe
 			// and perform timebase remapping: This also needs our special fixed
 			// PortAudio version where currentTime actually has a value:
 			firstsampleonset = ((double) (timeInfo->outputBufferDacTime - timeInfo->currentTime));
@@ -190,7 +196,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 			// Assign predicted (remapped to our time system) audio onset time for this buffer:
 			firstsampleonset = now + firstsampleonset + dev->latencyBias;
-		#endif
+		}
 		
 		if (FALSE) {
 			// Debug code to compare our two timebases against each other: On OS/X,
@@ -310,7 +316,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype]);";
 	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
-	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize]);";
+	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
 	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata);";
@@ -323,6 +329,47 @@ void InitializeSynopsis()
 	}
 }
 
+PaHostApiIndex PsychPAGetLowestLatencyHostAPI(void)
+{
+	PaHostApiIndex ai;
+	
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		// CoreAudio or nothing ;-)
+		return(Pa_HostApiTypeIdToHostApiIndex(paCoreAudio));
+	#endif
+	
+	#if PSYCH_SYSTEM == PSYCH_LINUX
+		// Try ALSA first...
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paALSA))!=paHostApiNotFound) return(ai);
+		// Then JACK...
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paJACK))!=paHostApiNotFound) return(ai);
+		// Then OSS...
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paOSS))!=paHostApiNotFound) return(ai);
+		// then give up!
+		printf("PTB-ERROR: Could not find an operational audio subsystem on this Linux machine! Soundcard and driver installed and enabled?!?\n");
+		return(paHostApiNotFound);
+	#endif
+	
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		// Try ASIO first. It's supposed to be the lowest latency API on soundcards that suppport it.
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paASIO))!=paHostApiNotFound) return(ai);
+		// Then WDM kernel streaming (Win2000, XP, maybe Vista). This is the best working free builtin
+		// replacement for the proprietary ASIO interface.
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paWDMKS))!=paHostApiNotFound) return(ai);
+		// Then Vistas new WASAPI, which is supposed to replace WDMKS, but is still early alpha quality in PortAudio:
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paWASAPI))!=paHostApiNotFound) return(ai);
+		// Then DirectSound: Bad, but not a complete disaster if the sound card has DS native drivers: 
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paDirectSound))!=paHostApiNotFound) return(ai);
+		// Then Windows MME, a complete disaster, but better than silence...?!? 
+		if ((ai=Pa_HostApiTypeIdToHostApiIndex(paMME))!=paHostApiNotFound) return(ai);
+		// then give up!
+		printf("PTB-ERROR: Could not find an operational audio subsystem on this Windows machine! Soundcard and driver installed and enabled?!?\n");
+		return(paHostApiNotFound);
+	#endif
+	
+	printf("PTB-FATAL-ERROR: Impossible point in code execution reached! (End of PsychPAGetLowestLatencyHostAPI()\n");
+	return(paHostApiNotFound);
+}
 
 PsychError PSYCHPORTAUDIODisplaySynopsis(void)
 {
@@ -392,7 +439,7 @@ void PsychPortAudioInitialize(void)
  */
 PsychError PSYCHPORTAUDIOOpen(void) 
 {
- 	static char useString[] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize]);";
+ 	static char useString[] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency]);";
 	static char synopsisString[] = 
 		"Open a PortAudio audio device and initialize it. Returns a 'pahandle' device handle for the device. "
 		"All parameters are optional and have reasonable defaults. 'deviceid' Index to select amongst multiple "
@@ -412,11 +459,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		"'freq' Requested playback/capture rate in samples per second (Hz). Defaults to a value that depends on the "
 		"requested latency mode. 'channels' Number of audio channels to use, defaults to 2 for stereo. 'buffersize' "
 		"requested size and number of internal audio buffers, smaller numbers mean lower latency but higher system load "
-		"and some risk of overloading, which would cause audio dropouts. ";
+		"and some risk of overloading, which would cause audio dropouts. 'suggestedLatency' optional requested latency in "
+		"seconds. PortAudio selects internal operating parameters depending on sampleRate, suggestedLatency and buffersize "
+		"as well as device internal properties to optimize for low latency output. Best left alone, only here as manual "
+		"override in case all the auto-tuning cleverness fails. ";
+		
 	static char seeAlsoString[] = "Close GetDeviceSettings ";	 
   	
 	int freq, buffersize, channels, latencyclass, mode, deviceid, i;
+	double suggestedLatency, lowlatency;
 	PaDeviceIndex paDevice;
+	PaHostApiIndex paHostAPI;
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
 	PaDeviceInfo* inputDevInfo, *outputDevInfo;
@@ -432,7 +485,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(7));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
@@ -474,16 +527,31 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PsychCopyInIntegerArg(6, kPsychArgOptional, &buffersize);
 	if (buffersize < 0 || buffersize > 4096) PsychErrorExitMsg(PsychError_user, "Invalid buffersize provided. Valid values are 0 to 4096 samples.");
 
+	// Request optional suggestedLatency:
+	suggestedLatency = -1.0;
+	PsychCopyInDoubleArg(7, kPsychArgOptional, &suggestedLatency);
+	if (suggestedLatency!=-1 && (suggestedLatency < 0.0 || suggestedLatency > 1.0)) PsychErrorExitMsg(PsychError_user, "Invalid suggestedLatency provided. Valid values are 0.0 to 1.0 seconds.");
+
 	// FIXME: This needs to handle up to two devices for duplex case, not only one!!!
 	if (deviceid == -1) {
-		// Default device requested:
-		outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
-		inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default output device. */
+		// Default devices requested:
+		if (latencyclass == 0) {
+			// High latency mode: Simply pick system default devices:
+			outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
+			inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default output device. */
+		}
+		else {
+			// Low latency mode: Try to find the host API which is supposed to be the fastest on
+			// a platform, then pick its default devices:
+			paHostAPI = PsychPAGetLowestLatencyHostAPI();
+			outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
+			inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
+		}
 	}
 	else {
 		// Specific device requested: In valid range?
-		if (deviceid >= Pa_GetDeviceCount()) {
-			PsychErrorExitMsg(PsychError_user, "Invalid deviceid provided. Higher than the number of devices - 1.");
+		if (deviceid >= Pa_GetDeviceCount() || deviceid < 0) {
+			PsychErrorExitMsg(PsychError_user, "Invalid deviceid provided. Higher than the number of devices - 1 or lower than zero.");
 		}
 		
 		outputParameters.device = (PaDeviceIndex) deviceid;
@@ -536,8 +604,35 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Set requested latency: In class 0 we choose device recommendation for dropout-free operation, in
 	// all higher (lowlat) classes we request zero latency. PortAudio will
 	// clamp this request to something safe internally.
-	outputParameters.suggestedLatency = (latencyclass == 0) ? outputDevInfo->defaultHighOutputLatency : 0.0;
-	inputParameters.suggestedLatency  = (latencyclass == 0) ? inputDevInfo->defaultHighInputLatency : 0.0;
+	switch (Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type) {
+		case paCoreAudio:	// CoreAudio driver will automatically clamp to safe minimum. Around 0.7 msecs.
+		case paALSA:		// dto. for ALSA.
+		case paWDMKS:		// dto. for Windows kernel streaming.
+			lowlatency = 0.0;
+		break;
+		
+		case paMME:			// No such a thing as low latency, but easy to kill the machine with too low settings!
+			lowlatency = 0.1; // Play safe, request 100 msecs. Otherwise terrible things may happen!
+		break;
+		
+		case paDirectSound:	// DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
+			lowlatency = 0.01;	// Choose some half-way safe tradeoff: 10 msecs. Can't go below that anyway.
+		break;
+		
+		default:			// Not the safest assumption for non-verified Api's, but we'll see...
+			lowlatency = 0.0;
+	}
+	
+	if (suggestedLatency == -1.0) {
+		// None provided: Choose default based on latency mode:
+		outputParameters.suggestedLatency = (latencyclass == 0) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
+		inputParameters.suggestedLatency  = (latencyclass == 0) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+	}
+	else {
+		// Override provided: Use it.
+		outputParameters.suggestedLatency = suggestedLatency;
+		inputParameters.suggestedLatency  = suggestedLatency;
+	}
 	
 	// We default to generic system:
 	outputParameters.hostApiSpecificStreamInfo = NULL;
@@ -579,6 +674,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Setup our final device structure:
 	audiodevices[audiodevicecount].stream = stream;
 	audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(stream);
+	audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type;
 	audiodevices[audiodevicecount].startTime = 0.0;
 	audiodevices[audiodevicecount].state = 0;
 	audiodevices[audiodevicecount].repeatCount = 1;
