@@ -9,6 +9,7 @@ function directory=CalDataFolder(forceDemo)
 % Denis Pelli 7/25/96
 % Denis Pelli 2/28/98 change "CalDat" to "PsychCalData"
 % 8/14/00  dhb  Add alternate name, change names.
+% 4/1/07   dhb  Fix subtle bug in error message when there are duplicate cal folders on path.
 
 % Set forceDemo flag
 if (nargin < 1 | isempty(forceDemo))
@@ -21,11 +22,13 @@ alternateName ='PsychCalDemoData';
 % Find name.  If not there, find alternate
 if (~forceDemo)
 	directory = FindFolder(name);
+    duplicateMsgName = name;
 else
 	directory = [];
 end
 if isempty(directory)
 	directory=FindFolder(alternateName);
+    duplicateMsgName = alternateName;
 end
 
 % If both finds fail, print out error message.  This
@@ -41,5 +44,5 @@ if size(directory,1)>1
 	for i=1:size(directory,1)
 		disp(['DUPLICATE: ''' deblank(directory(i,:)) '''']);
 	end
-	error(['Found more than one ''' name ''' folder in the Matlab path.']);
+	error(['Found more than one ''' duplicateMsgName ''' folder in the Matlab path.']);
 end
