@@ -46,71 +46,6 @@ DEFUN_DLD(GetSecs, args, nargout,
  representation and wrap around.\" We suggest that you avoid CPUTIME, \n\
  and use GetSecs instead.\n\
 \n\
- OS 9: ___________________________________________________________________\n\
- \n\
- CALIBRATION: On most Power Macs, GetSecs uses an extremely stable\n\
- timebase (built into the PowerPC processor) but it may run a bit\n\
- fast or slow (around 1%). You may wish to run GetSecsTest, which\n\
- will calibrate your particular PowerPC chip's rate, and improve\n\
- timing accuracy to within 0.01%. The correction applies to all the\n\
- Psychtoolbox functions (GetSecs, WaitSecs, Screen PeekBlanking,\n\
- etc.) that use that timebase. See GetSecsTest.\n\
-  \n\
- THREE TIME BASES\n\
- \n\
- GetSecs uses the extremely stable PowerPC processor clock if the\n\
- UpTime routine is available (PowerMac with Mac OS 8.6 or better). \n\
- Otherwise, GetSecs uses the Time Manager's Microseconds routine. Most \n\
- time information on Macs (including Ticks, Microseconds, and Matlab's\n\
- CPUTIME) is derived from the Mac OS Time Manager's timebase, which\n\
- is interrupt-driven. The Time Manager loses time while interrupts are\n\
- suppressed, whereas UpTime is unaffected.\n\
- \n\
- GetSecs, WaitSecs, and several other Psychtoolbox MEX files \n\
- (KbCheck, KbWait, and Screen PeekBlanking) use the\n\
- VideoToolbox Seconds.c function as their timebase. Seconds.c uses\n\
- the Mac OS UpTime routine if available. (Otherwise it uses the Time\n\
- Manager's Microseconds routine.) UpTime returns the value of a\n\
- hardware counter inside the PowerPC processor, which provides\n\
- extremely stable reliable timing. \n\
- \n\
- The Mac OS conversion from an UpTime count to a time in secs uses an\n\
- Apple-supplied conversion factor that in Mac OS 9.0 was only accurate to\n\
- about 1%. Apparently that's been fixed, as in Mac OS 9.2.2 the factor\n\
- seems to be very accurate. See Apple's Technical Q&A HW31 \"UpTime's\n\
- values are consistently slow?\"\n\
- web http://developer.apple.com/qa/hw/hw31.html\n\
- Try running TimingTest.\n\
- If GetSecs is running slow or fast (e.g. because you're using Mac OS\n\
- 9.0) you can scale all values returned by Seconds.c by setting the scale\n\
- factor different from 1 in Screen Preference SecondsMultiplier. Run\n\
- GetSecsTest to do this automatically.\n\
- \n\
- THE CLOCK CHIP: The third timebase is the battery operated\n\
- clock chip, which counts whole seconds. Normally the Mac OS\n\
- reads this chip (by calling ReadDateTime) only at System startup and\n\
- writes to it only if you explicitly change the time of day (eg in\n\
- the Date & Time control panel). After startup, the time of day\n\
- (returned by GetDateTime) is updated by the Time Manager,\n\
- independent of the clock chip until the next restart. Changing the\n\
- time of day, which writes to the clock chip, does not affect the\n\
- time (since startup) returned by Microseconds and Ticks.\n\
- \n\
- OS9: TESTING: As noted above, the normal way to use GetSecs is\n\
-	s=GetSecs;\n\
- Another way to call GetSecs is documented below, but it violates a \n\
- Matlab rule, and is intended primarily for testing purposes, not \n\
- recommended for general use. The alternative way to call GetSecs, \n\
- is to ask GetSecs to modify the input argument:\n\
-	GetSecs(s)\n\
- Or you can specify a subscript for s:\n\
-	GetSecs(s,subscript)\n\
- which is nearly equivalent to writing:\n\
-	s(subscript)=GetSecs;\n\
- The only reason to ask GetSecs to modify the input argument is to\n\
- avoid asking the Memory Manager to allocate space, since that may\n\
- occasionally take a long time.\n\
-\n\
  Win : ___________________________________________________________________\n\
 \n\
  On Windows machines the high precision GetPerformanceCounter() call \n\
@@ -119,7 +54,6 @@ DEFUN_DLD(GetSecs, args, nargout,
  GetCurrentTick() is used. \n\
  \n\
  See also: GetSecsTick, WaitSecs, GetTicks, WaitTicks, GetSecsTest, \n\
- Screen PeekBlanking.\n\
 ")
 {
   octave_value_list octFunction(const octave_value_list &, const int);

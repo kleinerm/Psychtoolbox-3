@@ -350,7 +350,7 @@ void mxDestroyArray(mxArray *arrayPtr)
 mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const char** fieldNames)
 {
   mxArray* retval;
-#if PSYCH_SYSTEM != PSYCH_OSX
+
   if (numDims>2 || numDims<1) PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Anything else than 1D or 2D Struct-Arrays is not supported!");
   if (numFields<1) PsychErrorExitMsg(PsychError_internal, "FATAL Error: mxCreateStructArray: numFields < 1 ?!?");
 
@@ -380,9 +380,6 @@ mxArray* mxCreateStructArray(int numDims, int* ArrayDims, int numFields, const c
   octave_value* ovp = new octave_value(mymap);
   retval->o = (void*) ovp;
   retval->d = NULL;
-#else
-  PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: mxCreateStructArray: Not implemented on OS-X!");
-#endif
   
   return(retval);
 }
@@ -1242,7 +1239,7 @@ mxArray *mxCreateDoubleMatrix3D(int m, int n, int p)
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
 	
-	return mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxDOUBLE_CLASS, mxREAL);		
+	return mxCreateNumericArray(numDims, dimArray, mxDOUBLE_CLASS, mxREAL);		
 }
 
 /*
@@ -1263,7 +1260,7 @@ mxArray *mxCreateNativeBooleanMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims = (p==0 || p==1) ? 2 : 3;
-	newArray = mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxLOGICAL_CLASS, mxREAL);
+	newArray = mxCreateNumericArray(numDims, dimArray, mxLOGICAL_CLASS, mxREAL);
 
 	#if mxLOGICAL_CLASS == mxUINT8_CLASS
         #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -1291,7 +1288,7 @@ mxArray *mxCreateByteMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
-	return mxCreateNumericArray(numDims, (const mwSize*)dimArray, mxUINT8_CLASS, mxREAL);
+	return mxCreateNumericArray(numDims, dimArray, mxUINT8_CLASS, mxREAL);
 		
 } 
  

@@ -62,6 +62,7 @@ PsychError PSYCHHIDSetReport(void)
 	report=PsychGetInArgMxPtr(4); 
 	reportBuffer=(void *)mxGetData(report);
 	assert(reportBuffer!=NULL);
+#ifndef PTBOCTAVE
 	switch(mxGetClassID(report)){
 		case mxCHAR_CLASS:    
 		case mxINT8_CLASS: 
@@ -75,6 +76,7 @@ PsychError PSYCHHIDSetReport(void)
 			PrintfExit("\"report\" array must be char or integer (8-, 16-, or 32-bit).");
 			break;
 	}
+#endif
 	reportSize=mxGetElementSize(report)*mxGetNumberOfElements(report);
 	PsychHIDVerifyInit();
     device=PsychHIDGetDeviceRecordPtrFromIndex(deviceIndex);

@@ -16,27 +16,28 @@ extern "C" {
   // here just to keep the linker happy, but don't ever call it.
   void F77_FUNC(mexfunction,MEXFUNCTION)() {}
   const char *mexFunctionName = "Screen";
-} ;
+}
 
 DEFUN_DLD(Screen, args, nargout,
 "\
- Screen is a MEX file for precise control the video display. Screen has\n\
+ Screen is a MEX file for precise control of the video display. Screen has\n\
  many functions; type \"Screen\" for a list:\n\
  	Screen\n\
+\n\
  For explanation of any particular screen function, just add a question\n\
  mark \"?\". E.g. for 'OpenWindow', try either of these equivalent forms:\n\
  	Screen('OpenWindow?')\n\
  	Screen OpenWindow?\n\
+\n\
  All the Screen Preference settings are documented together:\n\
  	Screen Preference?\n\
  \n\
- Screen ARGUMENTS\n\
+ General Screen ARGUMENTS, common to most subfunctions of Screen:\n\
  \n\
  \"windowPtr\" argument: Screen 'OpenWindow' and 'OpenOffscreenWindow' both\n\
  return a windowPtr, a number that designates the window you just\n\
- created. You can create many windows. And you can obtain a windowPtr to\n\
- any of Matlab's windows. To use a window, you pass its windowPtr to the\n\
- Screen function you want to apply to that window.\n\
+ created. You can create many windows. To use a window, you pass its\n\
+ windowPtr to the Screen function you want to apply to that window.\n\
  \n\
  \"rect\" argument: \"rect\" is a 1x4 matrix containing the upper left and\n\
  lower right coordinates of an imaginary box containing all the pixels.\n\
@@ -47,13 +48,11 @@ DEFUN_DLD(Screen, args, nargout,
  screen (origin at upper left of screen), or \"global\", which follows\n\
  Apple's convention of treating the entire desktop (all your screens) as\n\
  one big screen, with origin at the upper left of the main screen, which\n\
- has the menu bar. You can rearrange the screens in the desktop by using\n\
- Apple's Control Panel: Monitors or Monitors and Sounds. Historically\n\
- we've had two different orderings of the elements of rect, so, for\n\
- general compatibility, all of the Psychophysics Toolbox refers to the\n\
- elements symbolically, through RectLeft, RectTop, etc. Since 2/97, we\n\
- use Apple's standard ordering: RectLeft=1, RectTop=2, RectRight=3,\n\
- RectBottom=4.\n\
+ has the menu bar. Historically we've had two different orderings of the\n\
+ elements of rect, so, for general compatibility, all of the Psychophysics\n\
+ Toolbox refers to the elements symbolically, through RectLeft, RectTop, etc.\n\
+ Since 2/97, we use Apple's standard ordering: RectLeft=1, RectTop=2,\n\
+ RectRight=3, RectBottom=4.\n\
  \n\
  [optional arguments]: Brackets in the function list, e.g. [color],\n\
  indicate optional arguments, not matrices. Optional arguments must be in\n\
@@ -65,106 +64,120 @@ DEFUN_DLD(Screen, args, nargout,
  If your computer only has one screen (the typical scenario) and your\n\
  program produces a Matlab error while your full-screen window is open,\n\
  you'll hear the beep, but you won't be able to see the Matlab Command\n\
- Window. Follow the instructions below for brining forward the command\n\
- widow, then type clear screen to flush just the Screen MEX file, or \n\
+ Window. Follow the instructions below for bringing forward the command\n\
+ window, then type clear screen to flush just the Screen MEX file, or \n\
  \"clear mex\" to flush all the MEX files. When flushed, as part of its \n\
  exit sequence, Screen closes all its windows, restores the screen's normal \n\
  color table, and shows the cursor. Or you can get just those effects, \n\
- without flushing, by calling \n\
- Screen('CloseAll')\n\
+ without flushing, by calling Screen('CloseAll') or sca - which is an \n\
+ abbreviation for Screen('CloseAll').\n\
+\n\
  You can use Matlab's EVAL command to do this for you automatically. E.g.\n\
  if your program is called \"foo.m\", run your program by calling EVAL:\n\
  	eval('foo','clear screen;error(''error in foo'')')\n\
+\n\
  If an error occurs in FOO, Matlab, instead of halting, will execute the\n\
  second argument to EVAL, which restores your screen and reports the\n\
  error.\n\
 \n\
- OSX: ___________________________________________________________________\n\
+ OpenGL: _________________________________________________________________\n\
 \n\
- Instead of offscreen windows, the OS X Psychtoolbox uses fast rendering\n\
+ Instead of offscreen windows, the OpenGL Psychtoolbox uses fast rendering\n\
  and OpenGL textures for animation. With the exception of matrices, all\n\
  drawing may be done during the animation loop directly to the  onscreen\n\
  window, rather than being rendered to offscreen windows before the start\n\
  of the movie.  Matrices are converted to Textures before the start of the\n\
  animation and, like offscreen windows in OS 9, may be quickly copied to\n\
- an onscreen window during movie play.  \n\
+ an onscreen window during movie play. Offscreen windows are still supported\n\
+ if you need to draw very complex stimuli. You can draw the stimulus into\n\
+ an offscreen window and then quickly copy the window into the onscreen\n\
+ window. For most purposes however, it is possible to draw directly into\n\
+ the backbuffer of your offscreen window and make the backbuffer visible\n\
+ on next vertical blank by a call to Screen('Flip', windowPtr).  \n\
 \n\
  See MovieDemoOSX and DriftDemoOSX for examples of how to create and show\n\
- movies in OS X.\n\
+ movies this way.\n\
 \n\
- OS9  &  Win: _______________________________________________________\n\
- \n\
  Off-screen windows are invisible, but useful as an intermediate place to\n\
  create and store images for later display. Copying from window to window\n\
- is very fast, e.g. 36 MB/s on a PowerMac 7500/100 and 171 MB/s on a\n\
- PowerBook G4/500. It's easy to precompute a series of off-screen windows\n\
+ is very fast. It's easy to precompute a series of off-screen windows\n\
  and then show them as a movie, in real time, one per video frame:\n\
 \n\
  		% make movie\n\
- 		window=Screen(0,'OpenWindow',0);\n\
+ 		window=Screen('OpenWindow', 0, 0);\n\
  		rect=[0 0 200 200];\n\
  		for i=1:100\n\
- 			movie(i)=Screen(window,'OpenOffscreenWindow',0,rect);\n\
- 			Screen(movie(i),'FillOval',255,[0 0 2 2]*(i-1));\n\
+ 			movie(i)=Screen('OpenOffscreenWindow', window, 0, rect);\n\
+ 			Screen('FillOval', movie(i), 255, [0 0 2 2]*(i-1));\n\
  		end;\n\
+\n\
  		% show movie\n\
  		for i=[1:100 100:-1:1] % forwards and backwards\n\
  			Screen('CopyWindow',movie(i),window,rect,rect);\n\
- 			Screen(window,'WaitBlanking');\n\
+ 			Screen('Flip', window);\n\
  		end;\n\
  		Screen('CloseAll');\n\
 \n\
 \n\
- OS9: ___________________________________________________________________\n\
-\n\
- The OS9 Psychtoolbox allows windows smaller than the entire screen. \n\
-\n\
- Command-period halts any program. (Type a period \".\" while holding the\n\
- apple-cloverleaf \"command\" key down.) If the command-period is\n\
- intercepted by any of our MEX files, all of Screen's windows will be\n\
- closed, and the cursor will be shown, to allow you to work normally in\n\
- the Matlab Command window.\n\
+ Stopping programs:\n\
 \n\
  Command-zero brings the Matlab Command window forward. (Type a zero\n\
  \"0\" while holding the apple-cloverleaf \"command\" key down.)\n\
 \n\
- WIN:_________________________________________________________________\n\
-\n\
  Ctrl-C halts any program.  (Type a \"c\" while holding down the \"Ctrl\"\n\
- key.) If Ctrl-C is intercepted by any of our .dll files, the .dll file\n\
- should exit, returning the user to the Matlab command window. However,\n\
- this feature is not yet supported by all the Win Psychtoolbox functions.\n\
- Additionally, Ctrl-C fails to halt progams executing in a Matlab process\n\
- run with the \"nojvm\" option. To halt a runaway Psychtoolbox script in\n\
- Win Psychtoolbox you might resort to the Windows Task Manager to kill\n\
+ key). Sometimes, Ctrl-C fails to halt progams executing in a Matlab process\n\
+ run with the \"-nojvm\" option. To halt a runaway Psychtoolbox script in\n\
+ Psychtoolbox you might resort to the Windows Task Manager to kill\n\
  the Matlab process.  (Use Ctrl-Alt-Delete to open a window from which\n\
  you can start the Task Manager.)\n\
- \n\
+\n\
+ Windows:\n\
+\n\
  Ctrl-Alt-Delete allows you to launch the Windows task manager, which\n\
  reduces the Psychtoolbox onscreen windows when it opens. (Simultaneosly\n\
  press the \"Ctrl\", \"Alt\", and \"Delete\" keys.)  There are also simpler ways of\n\
  reducing the Psychtoolbox window which are specific to particular\n\
  versions of Windows.\n\
  Windows 2000: 	Alt-Tab will bring another application to the foreground,\n\
- 				minimizing the Matlab Psychtoolbox window.\n\
+ 			minimizing the Matlab Psychtoolbox window.\n\
  \n\
- See also ScreenDemo, MovieDemo, ScreenTest, PrepareScreen, RestoreScreen, PasteImage, CopyImage.\n\
+ OS-X:\n\
+ Apple-Command-Escape executes \"Force Quit\" on Matlab, closing Matlab and all\n\
+ of its windows.\n\
+\n\
+ Linux:\n\
+ Ctrl-Alt-Escape, followed by a mouse click kills the onscreen windows and your\n\
+ Matlab session.\n\
+\n\
+\n\
+ See \"help PsychDemos\" for many demos which demonstrate Screen's capabilities.\n\
+\n\
+ Differences in Screens capabilities between different operating systems\n\
+ are discussed in the online help for the different subfunctions, our\n\
+ \"PsychDemos\" if differences apply, and on the Psychtoolbox Wiki under\n\
+ \"Platform Differences and writing portable code\".\n\
  \n\
  BUGS\n\
- All known bugs and fixes are eventually described at the web site on the OS9, \n\
- OSX, or Win page:\n\
+\n\
+ All known bugs and fixes are eventually described at the web site under \"Bugs\":\n\
  web http://psychtoolbox.org/ ;\n\
+\n\
  Initial reports appear first at the forum:\n\
  web http://www.yahoogroups.com/messages/psychtoolbox/ ;\n\
+\n\
  If you find a bug, please report it to the forum: \n\
  web mailto:psychtoolbox@yahoogroups.com ;\n\
+\n\
  It will help greatly if you can supply a  minimal-length program that exhibits \n\
- the bug. And please include a ScreenTest report to document the context in\n\
- which you're running.\n\
+ the bug. And please include as much information about your hardware and software\n\
+ setup to document the context in which you're running, e.g., Computer type, graphics\n\
+ card type and model, operating system, Matlab version, Psychtoolbox version and flavor\n\
+ and the output of PTB to the Matlab window.\n\
 ")
 {
   octave_value_list octFunction(const octave_value_list &, const int);
   return octFunction(args, nargout);
 }
+
 #endif
 

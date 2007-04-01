@@ -253,8 +253,10 @@ void ReportCallback(void *target,IOReturn result,void *refcon,void *sender,UInt3
 }
 
 void mexMakeMemoryPersistent(void *ptr);
+#ifndef PTBOCTAVE
 void mxFree(void *ptr);
 void *mxCalloc(size_t n, size_t size);
+#endif
 
 PsychError PSYCHHIDReceiveReports(void) 
 {

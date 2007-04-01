@@ -54,13 +54,14 @@
 	now works.
  */
 
-#include "HID_Utilities_External.h" // HIDGetReport
+// HIDGetReport
+#include "HID_Utilities_External.h" 
 // Get a report from an HID device.
 // Apple's HID Utilities Source/HID_Queue_Utilities.c
 long HIDGetReport(pRecDevice pDevice,const IOHIDReportType reportType, const UInt32 reportID, void* reportBuffer, UInt32* reportBufferSize);
+#include "PsychHID.h"
 
 //#include "IOHIDLib.h" // setInterruptReportHandlerCallback
-#include "PsychHID.h"
 
 static char useString[]= "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 static char synopsisString[]="FIRST VERSION THAT IS COMPATIBLE WITH THE PMD-1208FS. 4 April 2005. "

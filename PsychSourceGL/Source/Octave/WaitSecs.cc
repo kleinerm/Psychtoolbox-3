@@ -23,13 +23,13 @@ DEFUN_DLD(WaitSecs, args, nargout,
  WaitSecs(s)\n\
 \n\
  Waits \"s\" seconds with high precision.  The timing precision  depends on\n\
- the model of your computer, use GetSecsTick to report the  precision for\n\
- your computer.  \n\
+ the model of your computer, but a well configured system will be accurate\n\
+ to about 1 millisecond if your script is executed with realtime-priority\n\
+ (See help Priority) and well written.\n\
  \n\
  WaitSecs(s) is similar to Matlab's built-in PAUSE(s) command. The\n\
- advantage of WaitSecs(s) is that it is much more accurate, and can be\n\
- aborted by hitting Command-Period. However, PAUSE can be turned 'ON' and\n\
- 'OFF', which is useful for scripts.\n\
+ advantage of WaitSecs(s) is that it is much more accurate. However, PAUSE\n\
+ can be turned 'ON' and 'OFF', which is useful for scripts.\n\
  \n\
  TIMING ADVICE: the first time you access any MEX function or M file,\n\
  Matlab takes several hundred milliseconds to load it from disk.\n\
@@ -48,23 +48,6 @@ DEFUN_DLD(WaitSecs, args, nargout,
  setting.  \n\
 \n\
  WaitSecs ignores the OX MATLAB <ctrl>-C break key sequenece.\n\
-\n\
- OS 9: ___________________________________________________________________\n\
-\n\
- Uses the extremely accurate PowerPC processor clock if the UpTime trap is\n\
- available (PowerMac  with Mac OS 8.6 or better). Otherwise uses the Time\n\
- Manager's Microseconds trap. The Time Manager seems to lose time when\n\
- interrupts are suppressed, whereas UpTime is unaffected.\n\
-\n\
- GetSecs, WaitSecs, and several other MEX files use the VideoToolbox\n\
- Seconds.c function as their timebase. Seconds.c uses the Mac OS UpTime\n\
- trap if available. This trap is based on a hardware counter in the\n\
- PowerPC processor, which provides extremely stable reliable timing.\n\
- However, the Mac OS conversion from a count to a time uses an\n\
- Apple-supplied conversion factor that is only accurate to about 1%. To\n\
- make your timing more accurate you can scale all values returned by\n\
- Seconds.c by setting the scale factor different from 1 in Screen\n\
- Preference SecondsMultiplier. Run GetSecsTest to do this automatically.\n\
 \n\
  WINDOWS:_________________________________________________________________\n\
 \n\

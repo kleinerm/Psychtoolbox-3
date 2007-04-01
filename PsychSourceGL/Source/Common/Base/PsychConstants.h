@@ -27,8 +27,8 @@
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_PsychConstants
 #define PSYCH_IS_INCLUDED_PsychConstants
-
-#if !defined(__cplusplus)
+// !defined(PTBMODULE_PsychHID)
+#if !defined(__cplusplus) && !defined(bool) 
 #ifdef PTBOCTAVE
 typedef unsigned char bool;
 #endif
