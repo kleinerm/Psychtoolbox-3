@@ -24,9 +24,9 @@ CC=gcc
 
 all:  moglcore.mexglx
 
-moglcore.mexglx:  moglcore.o gl_auto.o gl_manual.o glew.o
+moglcore.mexglx:  moglcore.o gl_auto.o gl_manual.o glew.o mogl_rebinder.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.mexglx moglcore.o gl_auto.o gl_manual.o glew.o \
+		-o moglcore.mexglx mogl_rebinder.o moglcore.o gl_auto.o gl_manual.o glew.o \
 		/usr/X11R6/lib/libGLU.a
 	cp moglcore.mexglx ../core
 

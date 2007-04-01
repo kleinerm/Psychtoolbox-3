@@ -2,6 +2,9 @@
 
 DEFUN_DLD (castDouble2Float, args, ,
 "Helper routine for MOGL on Octave:\n"
+"out = castDouble2Float(invalue [direction=0])\n"
+"direction = 0 ==> out = single(invalue) packed in uint32.\n"
+"direction = 1 ==> out = double(invalue) which is a float packed int uint32.\n"
 "Converts double value objects into\n"
 "objects of type uint32 which internally\n"
 "store 32 bit single precision float values.\n"

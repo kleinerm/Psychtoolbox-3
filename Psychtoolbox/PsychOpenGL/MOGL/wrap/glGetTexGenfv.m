@@ -16,6 +16,7 @@ end
 
 params = moglsingle(NaN(4,1));
 moglcore( 'glGetTexGenfv', coord, pname, params );
+params = mogldouble(params);
 params = params(find(~isnan(params)));
 
 return

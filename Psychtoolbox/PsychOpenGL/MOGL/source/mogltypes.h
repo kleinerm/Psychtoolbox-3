@@ -61,8 +61,8 @@ static bool jettisoned = false;
 /* Includes specific to MacOS-X version of mogl: */
 #ifdef MACOSX
 
-#include <ApplicationServices/ApplicationServices.h>
-#include <Carbon/Carbon.h>
+//#include <ApplicationServices/ApplicationServices.h>
+//#include <Carbon/Carbon.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -70,7 +70,7 @@ static bool jettisoned = false;
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
-#include <AGL/agl.h>
+//#include <AGL/agl.h>
 #endif
 
 /* Includes specific to GNU/Linux version of mogl: */

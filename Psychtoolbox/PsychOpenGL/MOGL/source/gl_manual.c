@@ -54,11 +54,7 @@ void gl_samplepass( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
     // GLEW doesn't know this function and i couldn't find any definition of it
     // anywhere on the internet. We handle this manually by only exposing it on
     // MacOS-X:
-    #ifdef MACOSX
-	    glSamplePass((GLenum)mxGetScalar(prhs[0]));
-    #else
-        mogl_glunsupported("glSamplePass");
-    #endif
+	mogl_glunsupported("glSamplePass");
 }
 
 void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {

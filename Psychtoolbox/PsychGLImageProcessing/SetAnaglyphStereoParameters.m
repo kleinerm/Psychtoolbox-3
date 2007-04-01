@@ -115,15 +115,15 @@ catch
     glUseProgram(0);
     psychrethrow(psychlasterror);
 end
-    
+
     % Subcommand dispatch:
     if strcmpi(cmd, 'GetHandle')
         retval = glsl;
     end
-    
+
     if strcmpi(cmd, 'InvertedMode')
         % Switch to inverted display (Max di Lucas trick):
-        if isempty(find(inverted, win))
+        if isempty(find(inverted == win))
             % Switch needed: Add windowhandle to our list of inverted
             % windows:
             inverted = [inverted win];
@@ -131,7 +131,7 @@ end
             % Retrieve background color bias, check if its non-zero:
             uniloc = glGetUniformLocation(glsl, 'ChannelBias');
             retval = glGetUniformfv(glsl, uniloc) * WhiteIndex(win);
-            
+
             if max(abs(retval)) <= 0
                 % Bias is zero, that's not suitable for inverted mode. Set
                 % it to maximum output color, except for the components
@@ -151,7 +151,7 @@ end
 
     if strcmpi(cmd, 'StandardMode')
         % Switch to standard, non-inverted display:
-        winidx = find(inverted, win);
+        winidx = find(inverted == win);
         if ~isempty(winidx)
             % Switch needed: Remove windowhandle from our list of inverted
             % windows, actually null it out, don't remove:
@@ -199,17 +199,17 @@ end
             glUniform3fv(uniloc, 1, rgb);
         end
     end
-    
+
     if strcmpi(cmd, 'LeftGains')
         uniloc = glGetUniformLocation(glsl, 'Gains1');
         retval = abs(glGetUniformfv(glsl, uniloc));
-        
-        if find(inverted, win)
+
+        if find(inverted ==  win)
             inverter = -1;
         else
             inverter = 1;
         end
-        
+
         if nargin>=3
             if size(rgb)~=3
                 error('Provided call parameter must be a 3 component vector with color weights or gains.');
@@ -222,7 +222,7 @@ end
         uniloc = glGetUniformLocation(glsl, 'Gains2');
         retval = abs(glGetUniformfv(glsl, uniloc));
 
-        if find(inverted, win)
+        if find(inverted == win)
             inverter = -1;
         else
             inverter = 1;

@@ -20,6 +20,7 @@ global GL
 maxn=glGetIntegerv(GL.MAX_PIXEL_MAP_TABLE);
 values = moglsingle(NaN(maxn,1));
 moglcore( 'glGetPixelMapfv', map, values );
+params = mogldouble(values);
 values = values(~isnan(values));
 
 return

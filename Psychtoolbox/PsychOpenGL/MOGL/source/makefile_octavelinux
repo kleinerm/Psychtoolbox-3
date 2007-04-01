@@ -23,9 +23,9 @@ CC=g++
 
 all:  moglcore.oct
 
-moglcore.oct:  moglcore.o mogloctaveglue.o gl_auto.o gl_manual.o glew.o
+moglcore.oct:  moglcore.o mogloctaveglue.o gl_auto.o gl_manual.o glew.o mogl_rebinder.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.oct moglcore.o mogloctaveglue.o gl_auto.o gl_manual.o glew.o \
+		-o moglcore.oct mogl_rebinder.o moglcore.o mogloctaveglue.o gl_auto.o gl_manual.o glew.o \
 		/usr/X11R6/lib/libGLU.a
 	cp moglcore.oct ../core
 

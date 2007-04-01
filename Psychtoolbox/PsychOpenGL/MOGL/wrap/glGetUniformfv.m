@@ -22,7 +22,7 @@ end
 params = moglsingle(repmat(NaN,[ 16 1 ]));
 
 moglcore( 'glGetUniformfv', program, location, params );
-
+params = mogldouble(params);
 params = params(find(~isnan(params)));
 
 return

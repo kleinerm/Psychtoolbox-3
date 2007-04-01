@@ -17,6 +17,7 @@ end
 
 params = moglsingle(repmat(NaN,[ 32 1 ]));
 moglcore( 'glGetFloatv', pname, params );
+params = mogldouble(params);
 params = params(find(~isnan(params)));
 
 return

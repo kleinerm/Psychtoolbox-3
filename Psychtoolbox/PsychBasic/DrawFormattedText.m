@@ -70,6 +70,13 @@ end
 
 % Convert all conventional linefeeds into C-style newlines:
 newlinepos = strfind(tstring, char(10));
+
+% If '\n' is already encoded as a char(10) as in Octave, then
+% there's no need for replacemet.
+if char(10) == '\n'
+   newlinepos = [];
+end
+
 while ~isempty(newlinepos)
     % Replace first occurence of ASCII code 10 by a '\n':
     tstring = [ tstring(1:min(newlinepos)-1) '\n' tstring(min(newlinepos)+1:end)];

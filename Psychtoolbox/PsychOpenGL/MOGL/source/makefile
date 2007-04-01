@@ -26,9 +26,9 @@ CC=gcc
 
 all:  moglcore.mexmac
 
-moglcore.mexmac:  moglcore.o glm.o gl_auto.o gl_manual.o glew.o
+moglcore.mexmac:  moglcore.o glm.o gl_auto.o gl_manual.o glew.o mogl_rebinder.o
 	$(CC) ${MEXCC} ${MEXLD} ${OGLFLAGS} \
-		-o moglcore.mexmac moglcore.o glm.o gl_auto.o gl_manual.o glew.o
+		-o moglcore.mexmac mogl_rebinder.o moglcore.o glm.o gl_auto.o gl_manual.o glew.o
 	cp moglcore.mexmac ../core
 
 .c.o:
