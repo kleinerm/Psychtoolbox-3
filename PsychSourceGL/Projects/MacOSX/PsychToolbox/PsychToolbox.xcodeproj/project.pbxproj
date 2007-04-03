@@ -1667,7 +1667,6 @@
 		83836B030943858F007E4DF5 /* SCREENPreloadTextures.c in Sources */ = {isa = PBXBuildFile; fileRef = 83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */; };
 		8395A9B70BBF290900FC482E /* FontInfo.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9B60BBF290900FC482E /* FontInfo.cc */; };
 		8395A9B80BBF290900FC482E /* FontInfo.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9B60BBF290900FC482E /* FontInfo.cc */; };
-		8395A9D50BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */; };
 		8395A9D60BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */; };
 		8395A9DC0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
 		8395A9DD0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
@@ -11610,7 +11609,6 @@
 				F14A29B30AD49E4300BFB68F /* RegisterProject.c in Sources */,
 				F14A29B40AD49E4300BFB68F /* PsychScriptingGlue.cc in Sources */,
 				8395A9B70BBF290900FC482E /* FontInfo.cc in Sources */,
-				8395A9D50BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
