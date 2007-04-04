@@ -101,7 +101,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	double now, firstsampleonset, onsetDelta;
 	int repeatCount;
 	PaHostApiTypeId hA;
-	
+
 	// Sound output buffer attached to stream? If no sound buffer
 	// is attached, we can't continue and tell the engine to abort
 	// processing of this stream:
@@ -1043,6 +1043,12 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	return(PsychError_none);
 }
 
+/* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
+void PALogger(const char* msg)
+{
+	printf("PTB-DEBUG: PortAudio says: %s", msg);
+	return;
+}
 
 /* PsychPortAudio('Verbosity') - Set level of verbosity.
  */
@@ -1075,6 +1081,8 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
 	// Set new level, if one was provided:
 	if (level > -1) verbosity = level;
 	
+	if (verbosity > 5) PaUtil_SetDebugPrintFunction(PALogger);
+
 	return(PsychError_none);
 }
 
@@ -1129,24 +1137,26 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	static char synopsisString[] = 
 		"Returns 'devices', an array of structs, one struct for each available PortAudio device. "
 		"Each struct contains information about its associated PortAudio device. The optional "
-		"parameter 'devicetype' can be used to enumerate only devices of a specific class (TODO). "
+		"parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
+		"1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
+		"8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n "
 		"On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
 		"On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
 		"latencies and very good timing, OSS is an older system which is less capable but not very "
 		"widespread in use anymore. On MS-Windows you'll have the ''choice'' between up to 5 different "
 		"audio subsystems: If you buy an expensive sound card with ASIO drivers, pick that API for low "
-		"latency, it may give you comparable performance to OS/X or Linux if you are lucky. 2nd best choice "
-		"would be WASAPI (on Vista) or WDMKS (on XP) for ok latency on good days. DirectSound is the next "
+		"latency, it should give you comparable performance to OS/X or Linux. 2nd best choice "
+		"would be WASAPI (on Windows-Vista) or WDMKS (on Windows-2000/XP) for ok latency on good days. DirectSound is the next "
 		"worst choice if you have hardware with DirectSound support. If everything else fails, you'll be left "
 		"with MMS, a premium example of system misdesign successfully sold to paying customers.";
 		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*devices;
-	const char *FieldNames[]={	"HostAudioAPIId", "HostAudioAPIName", "DeviceName", "NrInputChannels", "NrOutputChannels", "LowInputLatency", "HighInputLatency", 
-								"LowOutputLatency", "HighOutputLatency",  "DefaultSampleRate", "xxx" };
+	const char *FieldNames[]={	"DeviceIndex", "HostAudioAPIId", "HostAudioAPIName", "DeviceName", "NrInputChannels", "NrOutputChannels", 
+								 		"LowInputLatency", "HighInputLatency", "LowOutputLatency", "HighOutputLatency",  "DefaultSampleRate", "xxx" };
 	int devicetype = -1;
 	int count = 0;
-	int i;
+	int i, ic, filteredcount;
 	PaDeviceInfo* padev = NULL;
 	PaHostApiInfo* hainfo = NULL;
 	
@@ -1167,27 +1177,43 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	// Query number of devices and allocate out struct array:
 	count = (int) Pa_GetDeviceCount();
 	if (count > 0) {
-		PsychAllocOutStructArray(1, kPsychArgOptional, count, 10, FieldNames, &devices);
+		filteredcount = count;
+		if (devicetype!=-1) {
+			filteredcount = 0;
+			// Filtering bz host API requested: Do it.
+			for (i=0; i<count; i++) {
+				padev = Pa_GetDeviceInfo((PaDeviceIndex) i);
+				hainfo = Pa_GetHostApiInfo(padev->hostApi);
+				if (hainfo->type == devicetype) filteredcount++;
+			}
+		}
+
+		PsychAllocOutStructArray(1, kPsychArgOptional, filteredcount, 11, FieldNames, &devices);
 	}
 	else {
 		PsychErrorExitMsg(PsychError_user, "PTB-ERROR: PortAudio can't detect any supported sound device on this system.");
 	}
 	
 	// Iterate through device list:
+	ic = 0;
 	for (i=0; i<count; i++) {
 		padev = Pa_GetDeviceInfo((PaDeviceIndex) i);
 		hainfo = Pa_GetHostApiInfo(padev->hostApi);
-		PsychSetStructArrayDoubleElement("HostAudioAPIId", i, hainfo->type, devices);
-		PsychSetStructArrayStringElement("HostAudioAPIName", i, hainfo->name, devices);
-		PsychSetStructArrayStringElement("DeviceName", i, padev->name, devices);
-		PsychSetStructArrayDoubleElement("NrInputChannels", i, padev->maxInputChannels, devices);
-		PsychSetStructArrayDoubleElement("NrOutputChannels", i, padev->maxOutputChannels, devices);
-		PsychSetStructArrayDoubleElement("LowInputLatency", i, padev->defaultLowInputLatency, devices);
-		PsychSetStructArrayDoubleElement("HighInputLatency", i, padev->defaultHighInputLatency, devices);
-		PsychSetStructArrayDoubleElement("LowOutputLatency", i, padev->defaultLowOutputLatency, devices);
-		PsychSetStructArrayDoubleElement("HighOutputLatency", i, padev->defaultHighOutputLatency, devices);
-		PsychSetStructArrayDoubleElement("DefaultSampleRate", i, padev->defaultSampleRate, devices);
-		// PsychSetStructArrayDoubleElement("xxx", i, 0, devices);
+		if ((devicetype==-1) || (hainfo->type == devicetype)) {
+			PsychSetStructArrayDoubleElement("DeviceIndex", ic, i, devices);
+			PsychSetStructArrayDoubleElement("HostAudioAPIId", ic, hainfo->type, devices);
+			PsychSetStructArrayStringElement("HostAudioAPIName", ic, hainfo->name, devices);
+			PsychSetStructArrayStringElement("DeviceName", ic, padev->name, devices);
+			PsychSetStructArrayDoubleElement("NrInputChannels", ic, padev->maxInputChannels, devices);
+			PsychSetStructArrayDoubleElement("NrOutputChannels", ic, padev->maxOutputChannels, devices);
+			PsychSetStructArrayDoubleElement("LowInputLatency", ic, padev->defaultLowInputLatency, devices);
+			PsychSetStructArrayDoubleElement("HighInputLatency", ic, padev->defaultHighInputLatency, devices);
+			PsychSetStructArrayDoubleElement("LowOutputLatency", ic, padev->defaultLowOutputLatency, devices);
+			PsychSetStructArrayDoubleElement("HighOutputLatency", ic, padev->defaultHighOutputLatency, devices);
+			PsychSetStructArrayDoubleElement("DefaultSampleRate", ic, padev->defaultSampleRate, devices);
+			// PsychSetStructArrayDoubleElement("xxx", ic, 0, devices);
+			ic++;
+		}
 	}
 	
 	return(PsychError_none);
