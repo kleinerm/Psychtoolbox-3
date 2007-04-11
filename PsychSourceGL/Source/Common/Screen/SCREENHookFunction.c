@@ -153,6 +153,7 @@ PsychError SCREENHookFunction(void)
 	if (strcmp(cmdString, "Dump")==0)    cmd=7;
 	if (strcmp(cmdString, "DumpAll")==0) cmd=8;
 	if (strcmp(cmdString, "ListAll")==0) cmd=9;
+	if (strcmp(cmdString, "Edit")==0)   cmd=10;
 	if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
 	
 	// Need hook name?
@@ -272,6 +273,24 @@ PsychError SCREENHookFunction(void)
 		case 9: // List all hook-chains:
 			PsychPipelineListAllHooks(windowRecord);
 		break;
+		
+		case 10: // Set properties of a slot in a specific hook-chain:
+			// Get the id string:
+			PsychAllocInCharArg(4, kPsychArgRequired, &idString);
+			
+			// Query everything that's there and copy it out:
+			slotid = PsychPipelineQueryHookSlot(windowRecord, hookString, &idString, &blitterString, &doubleptr, &shaderid, &luttexid1);
+			
+			if (slotid<0)  PsychErrorExitMsg(PsychError_user, "In 'Edit' No such hook slot in that hook chain for that object.");
+			// Copy out all infos:
+			PsychCopyOutDoubleArg(1, FALSE, slotid);
+			PsychCopyOutCharArg(2, FALSE, (idString) ? idString : "NONE");
+			PsychCopyOutCharArg(3, FALSE, (blitterString) ? blitterString : "NONE");
+			PsychCopyOutDoubleArg(4, FALSE, doubleptr);
+			PsychCopyOutDoubleArg(5, FALSE, shaderid);
+			PsychCopyOutDoubleArg(6, FALSE, luttexid1);
+		break;
+
 	}
 	
     // Done.

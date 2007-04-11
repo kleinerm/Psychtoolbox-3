@@ -230,7 +230,7 @@ void InitializeSynopsis()
 		synopsis[i++] = "\n% Support for plugins and for builtin high performance image processing pipeline:";
 		synopsis[i++] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, ...);";
 		synopsis[i++] = "proxyPtr = Screen('OpenProxy', windowPtr [, imagingmode]);";
-		synopsis[i++] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, targetTexture]);";
+		synopsis[i++] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, sourceTexture2][, targetTexture][, specialFlags]);";
 
         synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
