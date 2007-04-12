@@ -138,7 +138,7 @@ for i=1:10
         imagesc(diffgreen);
     end
 end
-
+KbWait;
 % Close the window.
 Screen('CloseAll');
 

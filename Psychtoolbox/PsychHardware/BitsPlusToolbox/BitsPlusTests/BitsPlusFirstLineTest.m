@@ -4,7 +4,7 @@
 
 % 10/8/02 dhb
 
-whichScreen=1;
+whichScreen=max(Screen('Screens'));
 
 % Open window. Fill frame buffer with zeros
 [window,screenRect] = Screen(whichScreen,'OpenWindow',0,[],32);

@@ -20,12 +20,12 @@ Screen('Preference', 'Verbosity', 5);
 
 % First load the graphics hardwares gamma table with an identity mapping,
 % so it doesn't interfere with Bits++
-LoadIdentityClut(window);
+LoadIdentityClut(whichScreen);
 
 % Now enable finalizer hook chains and load them with the special Bits++
 % command. 
 Screen('HookFunction', window, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', ''); 
-Screen('HookFunction', window, 'Enable', 'LeftFinalizerBlitChain');
+%Screen('HookFunction', window, 'Enable', 'LeftFinalizerBlitChain');
 
 % This only on quad-buffered stereo contexts:
 %Screen('HookFunction', window, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', ''); 
@@ -34,20 +34,29 @@ Screen('HookFunction', window, 'Enable', 'LeftFinalizerBlitChain');
 % Use BITS++ to set uniform lookup tables of increasing values.
 % Hit key to proceed through. Screen intensity should increase
 % monotonically.
-for colorval = linspace(0.0, 1.0, 2000)
+for colorval = linspace(0.0, 1.0, 20)
 	uniclut = colorval*ones(256,3);
 	fprintf('Setting to value %g\n',colorval);
     % The setting 2 means: Don't load hardware gamma table, but just
     % store clut for later use by the special Bits++ blitter at
     % Screen('Flip') time.
-    Screen('LoadNormalizedGammaTable', window, uniclut, 2);
+    % Screen('LoadNormalizedGammaTable', window, uniclut, 2);
 
+    
+    texturePtr = BitsPlusClut2Texture(window, uniclut * 255);
+    Screen('DrawTexture', window, texturePtr, [], Screen('Rect', texturePtr), [], 0);
+    
+    %BitsPlusSetClut(window, uniclut*16384);
     % Show it. Shows stimulus and updates CLUT by drawing the T-Lock stuff
     % into top left corner of display.
     Screen('Flip', window);
 
-    %KbWait;
-    %while KbCheck; end;
+    if KbCheck
+      %  break;
+    end
+    
+    KbWait;
+    while KbCheck; end;
 end
 
 KbWait;
