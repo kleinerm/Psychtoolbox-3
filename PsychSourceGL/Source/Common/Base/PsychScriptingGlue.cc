@@ -1239,7 +1239,7 @@ mxArray *mxCreateDoubleMatrix3D(int m, int n, int p)
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
 	
-	return mxCreateNumericArray(numDims, dimArray, mxDOUBLE_CLASS, mxREAL);		
+	return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxDOUBLE_CLASS, mxREAL);		
 }
 
 /*
@@ -1260,7 +1260,7 @@ mxArray *mxCreateNativeBooleanMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims = (p==0 || p==1) ? 2 : 3;
-	newArray = mxCreateNumericArray(numDims, dimArray, mxLOGICAL_CLASS, mxREAL);
+	newArray = mxCreateNumericArray(numDims, (mwSize*) dimArray, mxLOGICAL_CLASS, mxREAL);
 
 	#if mxLOGICAL_CLASS == mxUINT8_CLASS
         #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -1288,7 +1288,7 @@ mxArray *mxCreateByteMatrix3D(int m, int n, int p)
             dimArray[0]=m;dimArray[1]=n;dimArray[2]=p;
         }
 	numDims= (p==0 || p==1) ? 2 : 3;
-	return mxCreateNumericArray(numDims, dimArray, mxUINT8_CLASS, mxREAL);
+	return mxCreateNumericArray(numDims, (mwSize*) dimArray, mxUINT8_CLASS, mxREAL);
 		
 } 
  
