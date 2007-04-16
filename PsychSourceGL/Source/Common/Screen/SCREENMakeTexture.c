@@ -41,7 +41,7 @@
 // This shader is used as a drop-in replacement for GL's GL_LINEAR built-in
 // texture filter, whenever that filter is not available: All current ATI
 // hardware and all pre GF6000 NVidia hardware can't filter float textures,
-// NVidia hardware can only filter 16bpc floats, not 32bpc floats.
+// GF6/7 series NVidia hardware can only filter 16bpc floats, not 32bpc floats.
 static char textureBilinearFilterShaderSrc[] =
 "#version 110 \n"
 " \n"
@@ -50,7 +50,7 @@ static char textureBilinearFilterShaderSrc[] =
 "void main() \n"
 "{ \n"
 "    /* Get wanted texture coordinate for which we should filter: */ \n"
-"    vec2 texinpos = gl_TexCoord[0].st; \n"
+"    vec2 texinpos = (gl_TexCoord[0].st) - vec2(0.5, 0.5); \n"
 "    /* Retrieve texel colors for 4 nearest neighbours: */ \n"
 "    vec4 tl=texture2DRect(Image, floor(texinpos)); \n"
 "    vec4 tr=texture2DRect(Image, floor(texinpos) + vec2(1.0, 0.0)); \n"

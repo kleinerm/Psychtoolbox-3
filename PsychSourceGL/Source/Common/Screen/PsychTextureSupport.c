@@ -642,7 +642,17 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	glEnable(texturetarget);
 	glBindTexture(texturetarget, source->textureNumber);
 
-        // Select filter-mode for texturing:
+	// Linear filtering on non-capable hardware via shader emulation?
+	if (filterMode > 0 && source->textureFilterShader) {
+		// Yes. Bind the shader:
+		glUseProgram(source->textureFilterShader);
+		
+		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
+		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+	}
+	else {
+        // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
         switch (filterMode) {
                 case 0: // Nearest-Neighbour filtering:
                     glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -664,11 +674,6 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 break;
         }
-
-	// Linear filtering on non-capable hardware via shader emulation?
-	if (filterMode > 0 && source->textureFilterShader) {
-		// Yes. Bind the shader:
-		glUseProgram(source->textureFilterShader);
 	}
 	
 	// Setup texture wrap-mode: We usually default to clamping - the best we can do
@@ -770,8 +775,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glUseProgram(0);
 	}
 
-        // Finished!
-        return;
+	// Finished!
+	return;
 }
 
 /* PsychGetTextureTarget

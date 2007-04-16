@@ -9,6 +9,9 @@
 %   AlphaMultiplicationTest         - Test alpha multiplication by 0 and 1 for perfect precision.
 %   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.
 %   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
+%   DrawingIntoTexturesTest         - Tests if using a texture as an offscreen window, i.e., for drawing, works.
+%   DriftTexturePrecisionTest       - Test subpixel accuracy of texture interpolators: What is the smallest
+%                                     fraction of a pixel that one can scroll, using built-in bilinear interpolation?
 %   FitCumNormYNTest                - Fit a cumulative normal to yes-no data.
 %   CopyWindowTest                  - Test CopyWindow functionality.
 %   DaqTest                         - Test PsychHID and routines to control the  USB-1208FS digital acquistion device.
@@ -18,6 +21,7 @@
 %   FitWeibullTAFCTest              - Fit a Weibull to 2AFC data.
 %   FitWeibullYNTest                - Fit a Weibull to yes-no data.
 %   FlipTest                        - Test frame synchroniziation.
+%   FloatTexturePrecisionTest       - Test effective precision of floating point 16bpc textures.
 %   GetCharTest                     - Tests of GetChar.
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
