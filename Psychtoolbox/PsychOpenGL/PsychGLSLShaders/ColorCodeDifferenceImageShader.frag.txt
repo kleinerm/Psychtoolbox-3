@@ -1,0 +1,34 @@
+/* Shader for computing pixel-wise difference between two input textures and
+ * rendering of the difference image in a color coded fashion.
+ */
+
+#version 110
+
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+uniform float Delta;
+
+void main(void)
+{
+    float val1 = texture2DRect(Image1, gl_TexCoord[0].st).r;
+    float val2 = texture2DRect(Image2, gl_TexCoord[0].st).r;
+
+    float diff = val1 - val2;
+
+    if (abs(diff) > Delta) {
+        gl_FragColor.g = 0.0;
+        if (diff > 0.0) {
+            gl_FragColor.r = 1.0;
+            gl_FragColor.b = 0.0;
+        }
+        else {
+            gl_FragColor.r = 0.0;
+            gl_FragColor.b = 1.0;
+        }
+    }
+    else {
+        gl_FragColor.r = 0.0;
+        gl_FragColor.g = 1.0;
+        gl_FragColor.b = 0.0;
+    }
+}

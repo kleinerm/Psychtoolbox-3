@@ -1,0 +1,20 @@
+/* Simple color classification shader.
+ *
+ */
+
+#version 110
+
+uniform float minintensity;
+uniform float maxintensity;
+uniform float minratio;
+
+uniform sampler2DRect Image;
+
+void main(void)
+{
+    vec3 incolor = texture2DRect(Image, gl_TexCoord[0].st).rgb;
+    float accepted = step(incolor.r * minratio, incolor.g);
+    accepted = accepted * step(minintensity, incolor.g);
+    accepted = accepted * step(incolor.g, maxintensity);
+    gl_FragColor.rgba = vec4(accepted);
+}

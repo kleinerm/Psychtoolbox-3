@@ -1,0 +1,41 @@
+/* Simple tracking shader to track the mean positions of features.
+ *
+ */
+
+#version 110
+
+uniform sampler2DRect Image;
+uniform sampler2DRect OldPositions;
+
+void main(void)
+{
+    const float HalfWidth = 10.0;
+
+    vec2 newpos = vec2(0.0);
+    vec2 samplepos;
+    float count = 0.0;
+    float dx, dy;
+    float validpixel;
+
+    /* Perform lookup of last known position of center of feature: */
+    vec2 oldpos = texture2DRect(OldPositions, gl_TexCoord[0].st).rg;
+
+    for (dy = -HalfWidth; dy <= HalfWidth; dy++) {
+        for (dx = -HalfWidth; dx <= HalfWidth; dx++) {
+            samplepos = oldpos + vec2(dx, dy);
+            validpixel = texture2DRect(Image, samplepos).a;
+            newpos+= validpixel * samplepos;
+            count+= validpixel;
+        }
+    }
+
+    if (count > 0.0) {
+        gl_FragColor.rg = newpos / count;
+        gl_FragColor.b  = count;
+        gl_FragColor.a  = 1.0;
+    }
+    else {
+        gl_FragColor.rg = oldpos;
+        gl_FragColor.ba = vec2(0.0);
+    }
+}
