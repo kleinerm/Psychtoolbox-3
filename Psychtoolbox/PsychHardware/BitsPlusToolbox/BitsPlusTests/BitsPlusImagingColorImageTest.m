@@ -1,5 +1,5 @@
-function BitsPlusImagingColorImageTest(realimage, imagefile)
-% BitsPlusImagingColorImageTest([realimage][, imagefile])
+function BitsPlusImagingColorImageTest(realimage, imagefile, plotdiffs)
+% BitsPlusImagingColorImageTest([realimage][, imagefile][, plotdiffs])
 %
 % Test use of Color++ mode with imaging pipeline...
 %
@@ -20,6 +20,9 @@ function BitsPlusImagingColorImageTest(realimage, imagefile)
 % Define screen
 whichScreen=max(Screen('Screens'));
 
+if nargin < 3 || isempty(plotdiffs)
+    plotdiffs = 0;
+end
 
 % If realimage == 0 or left out, create synthetic color test gradient:
 if nargin < 1 || isempty(realimage) || realimage==0
@@ -39,6 +42,8 @@ else
     else
         % Load HDR image file:
         theImage = HDRRead(imagefile);
+        maxpixel = max(max(max(theImage)))
+        theImage = theImage / maxpixel;
     end
 end
 
@@ -76,11 +81,6 @@ end
 Screen('FillRect',window, black);
 Screen('Flip', window);
 Screen('FillRect',window, black);
-
-% make sure the graphics card LUT is set to a linear ramp
-% (else the encoded data will not be recognised by Bits++).
-% There is a bug with the underlying OpenGL function, hence the scaling 0 to 255/256.
-Screen('LoadNormalizedGammaTable',window,linspace(0,(255/256),256)'*ones(1,3));
 
 % Disable Bits++ Color++ output formatter:
 Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
@@ -161,7 +161,7 @@ mdb = max(max(diffblue));
 fprintf('Maximum raw data difference: red= %f green = %f blue = %f\n', mdr, mdg, mdb);
 
 % If there is a difference, show plotted difference images:
-if mdr>0 || mdg>0 || mdb>0
+if (mdr>0 || mdg>0 || mdb>0) && plotdiffs
     close all;
     imagesc(diffred);
     figure;
@@ -197,8 +197,10 @@ for c=1:3
     [row col] = ind2sub(size(diffImage), idxdiff);
 
     % Print out all pixels values which differ, and their difference:
-    for j=1:length(row)
-        fprintf('Diff: %.2f Input Value: %.20f\n', diffImage(row(j), col(j)), theImage(row(j), col(j), c) * 65535);
+    if plotdiffs
+        for j=1:length(row)
+            fprintf('Diff: %.2f Input Value: %.20f\n', diffImage(row(j), col(j)), theImage(row(j), col(j), c) * 65535);
+        end
     end
 end
 

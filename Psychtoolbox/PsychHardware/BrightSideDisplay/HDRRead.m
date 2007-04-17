@@ -1,5 +1,5 @@
-function img = HDRRead(imgfilename, continueOnError)
-% img = HDRRead(imgfilename[, continueOnError=0])
+function img = HDRRead(imgfilename, continueOnError, flipit)
+% img = HDRRead(imgfilename[, continueOnError=0][, flipit=0])
 % Read a high dynamic range image file and return it as Matlab double
 % matrix, suitable for use with Screen('MakeTexture') and friends.
 %
@@ -13,6 +13,9 @@ function img = HDRRead(imgfilename, continueOnError)
 % 'continueOnError' Optional flag. If set to 1, HDRRead won't abort on
 % error, but simply return an empty img matrix. Useful for probing if a
 % specific file type is supported.
+%
+% 'flipit' Optional flag: If set to 1, the loaded image is flipped upside
+% down.
 %
 % HDRRead is a dispatcher for a collection of reading routines for
 % different HDR image file formats. Currently supported are:
@@ -36,6 +39,10 @@ if nargin < 2 || isempty(continueOnError)
     continueOnError = 0;
 end
 
+if nargin < 3 || isempty(flipit)
+    flipit = 0;
+end
+
 % Format dispatcher:
 dispatched = 0;
 
@@ -44,9 +51,15 @@ if ~isempty(findstr(imgfilename, '.hdr'))
     dispatched = 1;
     try
         inimg = read_rle_rgbe(imgfilename);
-        img(:,:,1) = flipud(inimg(:,:,1));
-        img(:,:,2) = flipud(inimg(:,:,2));
-        img(:,:,3) = flipud(inimg(:,:,3));
+        if flipit
+            img(:,:,1) = flipud(inimg(:,:,1));
+            img(:,:,2) = flipud(inimg(:,:,2));
+            img(:,:,3) = flipud(inimg(:,:,3));
+        else
+            img(:,:,1) = inimg(:,:,1);
+            img(:,:,2) = inimg(:,:,2);
+            img(:,:,3) = inimg(:,:,3);
+        end
     catch
         if continueOnError
             img = [];
