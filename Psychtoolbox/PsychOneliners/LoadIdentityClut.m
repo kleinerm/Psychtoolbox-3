@@ -6,6 +6,8 @@ function LoadIdentityClut(windowPtr, loadOnNextFlip)
 % to Screen('Flip').  By default, the clut will be loaded immediately or on
 % the next vertical retrace.
 
+global GL;
+
 if nargin > 2 || nargin < 1
     error('Invalid number of arguments to LoadIdentityClut.');
 end
@@ -15,13 +17,49 @@ if nargin == 1
     loadOnNextFlip = 0;
 end
 
-if IsWin
-    % This works on WindowsXP with NVidia GeForce 7800:
+% Basic GL support loaded?
+if isempty(GL)
+    % No. Initialize MOGL, but don't enable PTB's 3D mode:
+    InitializeMatlabOpenGL([], [], 1);
+end
+
+% The following hack is used to detect what kind of graphics hardware is
+% installed to drive the display corresponding to 'windowPtr':
+
+% Enable OpenGL rendering context of window 'windowPtr':
+Screen('BeginOpenGL', windowPtr, 1);
+
+% Query vendor of associated graphics hardware:
+gfxhwtype = glGetString(GL.VENDOR);
+
+% Done. Disable rendering context:
+Screen('EndOpenGL', windowPtr);
+
+if isempty(strfind(gfxhwtype, 'NVIDIA')) == 0
+    % NVidia card:
+    gfxhwtype = 0;
+else
+    if isempty(strfind(gfxhwtype, 'ATI')) == 0
+        % ATI card:
+        gfxhwtype = 1;
+    else
+        % Unknown card: Default to NVidia behaviour:
+        gfxhwtype = 0;
+        warning('LoadIdentityClut: Warning! Unknown graphics hardware detected. Set up identity CLUT may be wrong!');
+    end
+end
+
+% We have different CLUT setup code for the different gfxhw-vendors:
+
+if gfxhwtype == 0
+    % This works on WindowsXP with NVidia GeForce 7800 and OS/X 10.4.9 PPC
+    % with GeForceFX-5200. Both are NVidia cards, so we assume this is a
+    % correct setup for NVidia hardware:
     Screen('LoadNormalizedGammaTable', windowPtr, (0:1/255:1)' * ones(1, 3), loadOnNextFlip);
 end
 
-if IsOSX
+if gfxhwtype == 1
     % This works on OS/X 10.4.9 on Intel MacBookPro with ATI Mobility
-    % Radeon X1600:
+    % Radeon X1600: We assume this is the correct setup for ATI hardware:
     Screen('LoadNormalizedGammaTable', windowPtr, ((1/256:1/256:1)' * ones(1, 3)), loadOnNextFlip);
 end
