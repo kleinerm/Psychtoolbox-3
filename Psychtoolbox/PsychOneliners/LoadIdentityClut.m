@@ -15,4 +15,13 @@ if nargin == 1
     loadOnNextFlip = 0;
 end
 
-Screen('LoadNormalizedGammaTable', windowPtr, (0:1/255:1)' * ones(1, 3), loadOnNextFlip);
+if IsWin
+    % This works on WindowsXP with NVidia GeForce 7800:
+    Screen('LoadNormalizedGammaTable', windowPtr, (0:1/255:1)' * ones(1, 3), loadOnNextFlip);
+end
+
+if IsOSX
+    % This works on OS/X 10.4.9 on Intel MacBookPro with ATI Mobility
+    % Radeon X1600:
+    Screen('LoadNormalizedGammaTable', windowPtr, ((1/256:1/256:1)' * ones(1, 3)), loadOnNextFlip);
+end

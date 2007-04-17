@@ -2315,9 +2315,10 @@ boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *window
 	// Render CLUT as sequence of single points:
 	// We render it twice in two lines, the 2nd line shifted horizontally by one pixel. This way at least one of
 	// the lines will always start at an even pixel location as mandated by Bits++ - More failsafe.
-	for (j=1; j<=2 ; j++) {
+	// Actually, we don't: Only render it once. These settings are the correct ones (empirically):
+	for (j=0; j<=0 ; j++) {
 		x=j;
-		y=j;
+		y=1;
 		
 		glPointSize(1);
 		glBegin(GL_POINTS);

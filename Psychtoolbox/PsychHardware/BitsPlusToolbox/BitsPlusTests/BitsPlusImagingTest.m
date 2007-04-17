@@ -42,6 +42,8 @@ for colorval = linspace(0.0, 1.0, 20)
     % Screen('Flip') time.
     Screen('LoadNormalizedGammaTable', window, uniclut, 2);
 
+    Screen('FillRect', window, [255 255 0], [0 0 400 400]);
+    
     % Show it. Shows stimulus and updates CLUT by drawing the T-Lock stuff
     % into top left corner of display.
     Screen('Flip', window);
@@ -52,6 +54,7 @@ end
 
 KbWait;
 
+% Restore Bits++ Identity CLUT so it can be used as normal display:
 linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
 Screen('LoadNormalizedGammaTable', window, linear_lut, 2);
 Screen('Flip', window);
