@@ -37,6 +37,11 @@
 %                            USB interface, 49 euros. "IOPort.mexmac" should be  
 %                            renamed "IOWarrior.mexmac".
 %                            web http://www.codemercs.com/E_index.html -browser;
+%
+% EyelinkToolbox      - All: Toolbox for control of the SR-Research Eyelink gazetrackers.
+% iViewXToolbox       - All: Toolbox for control of the MSI-Research iView gazetrackers.
+% NetStation          - All: Control the EGI Netstation EEG recording system via network.
+%
 % 
 % Minolta Toolbox
 % Set of m-files and sample code that can be used for reading luminance data

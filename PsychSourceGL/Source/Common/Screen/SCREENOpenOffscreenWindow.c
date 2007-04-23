@@ -197,9 +197,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 
 	// Default number of channels:
 	windowRecord->nrchannels=depth / 8;
-		
-    // Assign the computed rect:
-    PsychCopyRect(windowRecord->rect, rect);
+
+    // Assign the computed rect, but normalize it to start with top-left at (0,0):
+    PsychNormalizeRect(rect, windowRecord->rect);
 
 	if (targetWindow->imagingMode & kPsychNeedFastBackingStore) {
 		// Imaging mode for this window enabled: Use new way of creating the offscreen window:		

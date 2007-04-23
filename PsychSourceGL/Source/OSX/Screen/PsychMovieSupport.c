@@ -559,7 +559,8 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     Rect rect;
     float rate;
     double targetdelta, realdelta, frames;
-   
+	PsychRectType outRect;
+
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
     }
@@ -726,7 +727,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         texid = CVOpenGLTextureGetName(newImage);
         
         // Assign texture rectangle:
-        PsychMakeRect(out_texture->rect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
+        PsychMakeRect(outRect, fabs(upperLeft[0]), fabs(upperLeft[1]), fabs(lowerRight[0]), fabs(lowerRight[1]));    
         
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = (CVOpenGLTextureIsFlipped(newImage)) ? 3 : 4;
@@ -780,7 +781,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Undo hack from above after texture creation: Now we need the real width of the
         // texture for proper texture coordinate assignments in drawing code et al.
         rect.right = rect.right - 4;
-        PsychMakeRect(out_texture->rect, rect.left, rect.top, rect.right, rect.bottom);    
+        PsychMakeRect(outRect, rect.left, rect.top, rect.right, rect.bottom);    
 
         // Unlock GWorld surface. We do a glFinish() before, for safety reasons...
         //glFinish();
@@ -789,6 +790,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Ready to use the texture... We're done.
     }
     
+	// Normalize texture rectangle and assign it:
+	PsychNormalizeRect(outRect, out_texture->rect);
+	
     rate = FixedToFloat(GetMovieRate(theMovie));
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...

@@ -1,217 +1,52 @@
-function Eyetrackertest(moviename)
+function Eyetrackertest(imfilename)
 % Eyetrackertest -- Testscript to test out a few weird
 % ideas about Computervision + GLSL based eye tracking
 % Not seriously useful for anything in the near future.
 %
 % Written by Mario Kleiner.
 
+global rayvisdisplaylist;
 
-%try
-    KbName('UnifyKeyNames');
-    esc   = KbName('ESCAPE');
-    space = KbName('space');
-    upArrow = KbName('UpArrow');
-    downArrow = KbName('DownArrow');
+try
     
     % Assign default name for test-image or test-movie:
-    if nargin < 1 | isempty(moviename)
-        moviename = '/Users/kleinerm/Desktop/EyeMovie.mov';
+    if nargin < 1 | isempty(imfilename)
+        if IsWin
+            imfilename='U:/test/eyeroi.jpg';
+        end;
+        if IsLinux
+            imfilename='/home/kleinerm/test/eyeroi.jpg';
+        end;
     end;
-    moviename
+    imfilename
+
+    % Read test-image:
+    inimage=imread(imfilename);
+    inimage=rgb2gray(inimage);
+    inimage=inimage(1:128, 1:128);
+    size(inimage)
+
+    kernel = fspecial('gaussian', 11, 5.5);
+    inimage2=single(inimage);
+    myimg=conv2(kernel, inimage2);
+    tic;
+    for i=1:1000
+        myimg=conv2(kernel, inimage2);
+    end
+    toc
     
     AssertOpenGL;
     oldsynctest = Screen('Preference','SkipSyncTests',1);
-    %InitializeMatlabOpenGL;
+    InitializeMatlabOpenGL;
+    moglcore('DEBUGLEVEL',2);
     
-    imagingmode = kPsychNeedFastBackingStore;
-    
-    [win , winRect] = Screen('OpenWindow', max(Screen('Screens')), 0, [], [], [], [], [], imagingmode);
-    vbl = Screen('Flip', win);
-    
+    [win , winRect] = Screen('OpenWindow', max(Screen('Screens')));
+    Screen('FillRect', win, [0 0 255]);
+    Screen('Flip', win);
+
     width=RectWidth(winRect);
     height=RectHeight(winRect);
-
     AssertGLSL;
-
-    rgb2grayshader = LoadGLSLProgramFromFiles('RGB2GrayConversionShader', 1);
-    preprocoperator = CreateGLProcessingOperatorFromShader(win, rgb2grayshader, 'RGB to Gray conversion shader');
-    
-    diskdetectorshader = LoadGLSLProgramFromFiles('HoughDiskDetectionShader', 1);
-    diskdetector = CreateGLProcessingOperatorFromShader(win, diskdetectorshader, 'Hough Disk detection shader');
-        
-    % Open movie file:
-    [movie duration fps width height count] = Screen('OpenMovie', win, moviename);
-
-    % Build resolution pyramid:
-    lw = width;
-    lh = height;
-    for level = 1:6
-        inlevel(level) = Screen('OpenOffscreenWindow', win, 0, [0 0 lw lh], 32);
-        lw = lw / 2;
-        lh = lh / 2;
-    end
-    lw
-    lh
-
-    
-    HideCursor;
-    
-    texid = 0;
-    idx = 0;
-    ox = -1;
-    oy = -1;
-    roirect = [0 0 0 0];
-    
-    while texid>=0 && idx < count
-        texid = Screen('GetMovieImage', win, movie, 1);
-        
-        if texid>0
-            dstRect=Screen('Rect', texid);
-            Screen('DrawTexture', win, texid, [], dstRect);
-            vbl = Screen('Flip', win, vbl + 0.2);
-            idx = idx + 1;
-
-            [isdown secs keycode] = KbCheck;
-            if isdown
-                if keycode(esc)
-                    break;
-                end
-
-                if keycode(space)
-                    % Stop "playback" let the user select a frame:
-                    while(1)
-                        [x y buttons] = GetMouse(win);
-                        if buttons(1)
-                            if ox==-1
-                                ox = x;
-                                oy = y;
-                                roirect = [ox oy x y];
-                            else
-                                roirect = [min(ox,x) min(oy, y) max(ox, x) max(oy, y)];
-                            end
-                        else
-                            if ox~=-1
-                                roirect = [min(ox,x) min(oy, y) max(ox, x) max(oy, y)];
-                                ox = -1;
-                                oy = -1;
-                            end
-                        end
-
-                        if buttons(2)
-                            break;
-                        end
-
-                        Screen('DrawTexture', win, texid, [], dstRect);
-                        Screen('FrameOval', win, [255 255 0], roirect);
-                        [xc, yc] = RectCenter(roirect);
-                        halfwidth = 30;
-                        Screen('FrameRect', win, [255 255 0], [xc-halfwidth, yc-halfwidth, xc+halfwidth, yc+halfwidth]);
-
-                        Screen('DrawLine', win, [255 0 0], x-5, y-5, x+5, y+5);
-                        Screen('DrawLine', win, [255 0 0], x-5, y+5, x+5, y-5);
-                        
-                        Screen('Flip', win);
-                    end
-                    
-                    % Break out of outer while loop:
-                    break;
-                end
-            end
-
-            Screen('Close', texid);
-            texid = 0;
-        end
-    end
-
-    ShowCursor;
-    
-    % Do we have a roirect ROI for tracking?
-    if ~isempty(roirect)
-        % Determine center of rect - The startposition for tracking:
-        [xc, yc] = RectCenter(roirect);
-        yc = RectHeight(Screen('Rect', texid)) - yc;
-        radius= 0.25 * (RectWidth(roirect) + RectHeight(roirect));
-        graythreshold = 0.01;
-        trackedrect = [xc-halfwidth, yc-halfwidth, xc+halfwidth, yc+halfwidth];
-        % trackedrect = dstRect;
-        glUseProgram(diskdetectorshader);
-        glUniform1f(glGetUniformLocation(diskdetectorshader, 'RadiusSquared'), radius*radius);
-        glUniform1f(glGetUniformLocation(diskdetectorshader, 'GrayThreshold'), graythreshold);
-        glUniform1f(glGetUniformLocation(diskdetectorshader, 'HalfWidth'), halfwidth);
-        glUniform4fv(glGetUniformLocation(diskdetectorshader, 'Roi'), 1, trackedrect);
-        
-        glUseProgram(0);
-
-        % Cut out ROI anc copy it to 'templatetex' for use as
-        % trackingtemplate:
-        templatetex = Screen('OpenOffscreenWindow', win, 0, roirect, 32);
-        Screen('DrawTexture', inlevel(1), texid);
-        Screen('DrawTexture', templatetex, inlevel(1), roirect, [], [], 0);
-        
-        % Release old frame:
-        Screen('Close', texid);
-        
-        % Tracking loop: Try to track until end of movie:
-        while texid>=0
-            texid = Screen('GetMovieImage', win, movie, 1);
-            
-            if texid>0
-                idx = idx + 1;
-
-                Screen('TransformTexture', texid, preprocoperator, [], inlevel(1));
-                
-                texid = Screen('TransformTexture', inlevel(1), diskdetector, [], texid);
-                % Screen('DrawTexture', inlevel(1), texid);
-                % Perform trackingstep:
-                %trackresult = Screen('TransformTexture', texid, trackingoperator, templatetex);
-                trackedrect = roirect;
-                
-                % Visualize results:
-                Screen('DrawTexture', win, inlevel(1), [], dstRect);
-                Screen('DrawTexture', win, texid, [], AdjoinRect(dstRect, dstRect, RectRight));
-%                Screen('DrawTexture', win, templatetex);
-                Screen('FrameRect', win, [255 255 0], trackedrect);
-                Screen('Flip', win);
-
-                % Release this frame:
-                Screen('Close', texid);
-                texid = 0;
-
-                % Check keyboard:
-                [isdown secs keycode] = KbCheck;
-                if isdown
-                    if keycode(esc)
-                        break;
-                    end
-
-                    if keycode(space)
-                        while KbCheck; end;
-                        KbWait;
-                        while KbCheck; end;
-                    end
-                    
-                    if keycode(upArrow)
-                        graythreshold = graythreshold + 0.01
-                    end
-                    
-                    if keycode(downArrow)
-                        graythreshold = graythreshold - 0.01;
-                    end
-
-                    glUseProgram(diskdetectorshader);
-                    glUniform1f(glGetUniformLocation(diskdetectorshader, 'RadiusSquared'), radius*radius);
-                    glUniform1f(glGetUniformLocation(diskdetectorshader, 'GrayThreshold'), graythreshold);
-                    glUniform1f(glGetUniformLocation(diskdetectorshader, 'HalfWidth'), halfwidth);
-                    glUseProgram(0);
-                end
-            end
-        end
-    end
-    
-    Screen('CloseMovie', movie);
-    
-    sca;
-return;
 
     % Create texture from input image:
     imtex=Screen('MakeTexture', win, inimage);
@@ -369,7 +204,7 @@ toc
     %catch
     Screen('CloseAll');
     psychrethrow(lasterror);
-
+end;
 
 function Waitkey
     while KbCheck; end;

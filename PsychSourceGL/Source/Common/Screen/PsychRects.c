@@ -149,10 +149,10 @@ void PsychNormalizeRect(double *rect, double *normRect)
 	
 	//x
 	normRect[kPsychLeft]=(double)0;								//normRect[kPsychLeft]=rect[kPsychLeft]-rect[kPsychLeft];
-	normRect[kPsychRight]=rect[kPsychRight]-rect[kPsychLeft];
+	normRect[kPsychRight]=fabs(rect[kPsychRight]-rect[kPsychLeft]);
 	//y
 	normRect[kPsychTop]=(double)0;								//normRect[kPsychTop]=rect[kPsychTop]-rect[kPsychTop];
-	normRect[kPsychBottom]=rect[kPsychBottom]-rect[kPsychTop];
+	normRect[kPsychBottom]=fabs(rect[kPsychBottom]-rect[kPsychTop]);
 }
 
 

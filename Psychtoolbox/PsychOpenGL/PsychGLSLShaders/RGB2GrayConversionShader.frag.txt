@@ -3,13 +3,14 @@
  * (w)2006 by Mario Kleiner.
 */
 
-const vec4 ColorToGrayWeights = { 0.3, 0.59, 0.11, 0.0 }; 
+#version 110
+const vec3 ColorToGrayWeights = vec3(0.3, 0.59, 0.11); 
 uniform sampler2DRect Image;
 
 void main()
 {
     vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
-    float luminance = dot(incolor, ColorToGrayWeights);
+    float luminance = dot(incolor.rgb, ColorToGrayWeights);
     gl_FragColor.a = incolor.a;
-    gl_FragColor.rgb = luminance;
+    gl_FragColor.rgb = vec3(luminance);
 }
