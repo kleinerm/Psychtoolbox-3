@@ -727,7 +727,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         texid = CVOpenGLTextureGetName(newImage);
         
         // Assign texture rectangle:
-        PsychMakeRect(outRect, fabs(upperLeft[0]), fabs(upperLeft[1]), fabs(lowerRight[0]), fabs(lowerRight[1]));    
+        PsychMakeRect(outRect, upperLeft[0], upperLeft[1], lowerRight[0], lowerRight[1]);    
         
         // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
         out_texture->textureOrientation = (CVOpenGLTextureIsFlipped(newImage)) ? 3 : 4;

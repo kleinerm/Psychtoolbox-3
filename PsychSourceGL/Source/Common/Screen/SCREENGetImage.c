@@ -123,7 +123,16 @@ PsychError SCREENGetImage(void)
 	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
 		// Special case: Imaging pipeline active - We need to activate system framebuffer
 		// so we really read the content of the framebuffer and not of some FBO:
-		PsychSetDrawingTarget(NULL);
+		if (PsychIsOnscreenWindow(windowRecord)) {
+			// It's an onscreen window: Activate system framebuffer:
+			PsychSetDrawingTarget(NULL);
+		}
+		else {
+			// Offscreen window or texture: Select drawing target as usual,
+			// but set color attachment as read buffer:
+			PsychSetDrawingTarget(windowRecord);
+			whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
+		}
 	}
 	else {
 		// Normal case: No FBO based imaging - Select drawing target as usual:

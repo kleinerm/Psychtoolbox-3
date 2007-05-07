@@ -603,9 +603,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
             sourceHeight=PsychGetHeightFromRect(source->rect);
 			sourceWidth=PsychGetWidthFromRect(source->rect);
 			sourceX=sourceRect[kPsychLeft];
-            sourceY=sourceRect[kPsychTop];
+            sourceY=sourceHeight - sourceRect[kPsychBottom];
             sourceXEnd=sourceRect[kPsychRight];
-            sourceYEnd=sourceRect[kPsychBottom];
+            sourceYEnd=sourceHeight - sourceRect[kPsychTop];
         }
 
         // Special case handling for GL_TEXTURE_2D textures. We need to map the
@@ -697,7 +697,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // value of each texel and the globalAlpha value. --> Can apply global alpha value for
         // global blending without need for a texture alpha-channel...
         glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-	glColor4f(1, 1, 1, globalAlpha);
+		// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
+		// has done it already. Used in SCREENDrawTexture for a global override color...
+		if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, globalAlpha);
 
         // Apply a rotation transform for rotated drawing:
         glMatrixMode(GL_MODELVIEW);

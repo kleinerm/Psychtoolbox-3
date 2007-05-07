@@ -561,7 +561,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					glUniform3f(glGetUniformLocation(glsl, "Gains2"), rg, gg, bg);
 					
 					// Define default weights for RGB -> Luminance conversion: We default to the standardized NTSC color weights.
-					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.3, 0.59, 0.11);
+					glUniform3f(glGetUniformLocation(glsl, "ColorToGrayWeights"), 0.299, 0.587, 0.114);
 					// Define background bias color to add: Normally zero for standard anaglyph:
 					glUniform3f(glGetUniformLocation(glsl, "ChannelBias"), 0.0, 0.0, 0.0);
 

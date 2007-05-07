@@ -49,8 +49,8 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha]);";
-//                                               1              2                3             4                5                6              7
+static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor]);";
+//                                               1              2                3             4                5                6              7				8
 static char synopsisString[] = 
 	"Draw the texture specified via 'texturePointer' into the target window specified via 'windowPointer'. "
 	"In the the OS X Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
@@ -62,7 +62,13 @@ static char synopsisString[] =
         "if sourceRect and destinationRect do not have the same size or if sourceRect specifies fractional pixel values. 0 = Nearest "
         "neighbour filtering, 1 = Bilinear filtering - this is the default. 'globalAlpha' A global alpha transparency value to apply "
         "to the whole texture for blending. Range is 0 = fully transparent to 1 = fully opaque, defaults to one. If both, an alpha-channel "
-        "and globalAlpha are provided, then the final alpha is the product of both values.";
+        "and globalAlpha are provided, then the final alpha is the product of both values. 'modulateColor', if provided, overrides the "
+		"'globalAlpha' value. If 'modulateColor' is specified, the 'globalAlpha' value will be ignored. 'modulateColor' will be a global "
+		"color that gets applied to the texture as a whole, i.e., it modulates each color channel. E.g., modulateColor = [128 255 0] would "
+		"leave the green- and alpha-channel untouched, but it would multiply the blue channel with 0 - set it to zero blue intensity, and "
+		"it would multiply each texel in the red channel by 128/255 - reduce its intensity to 50%. The most interesting application of "
+		"'modulateColor' is drawing of arbitrary complex shapes of selectable color: Simply generate an all-white luminance texture of "
+		"arbitrary shape, possibly with alpha channel, then draw it with 'modulateColor' set to the wanted color and global alpha value. ";
 	  
 static char seeAlsoString[] = "MakeTexture";
 
@@ -71,8 +77,9 @@ PsychError SCREENDrawTexture(void)
 	PsychWindowRecordType		*source, *target;
 	PsychRectType			sourceRect, targetRect, tempRect;
 	double rotationAngle = 0;   // Default rotation angle is zero deg. = upright.
-        int filterMode = 1;         // Default filter mode is bilinear filtering.
-        double globalAlpha = 1.0;   // Default global alpha is 1 == no effect.
+	int filterMode = 1;         // Default filter mode is bilinear filtering.
+	double globalAlpha = 1.0;   // Default global alpha is 1 == no effect.
+	PsychColorType	color;
         
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -80,7 +87,7 @@ PsychError SCREENDrawTexture(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(7));   	
+    PsychErrorExit(PsychCapNumInputArgs(8));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(0)); 
 	
@@ -124,6 +131,17 @@ PsychError SCREENDrawTexture(void)
     
     PsychSetGLContext(target); 
     PsychUpdateAlphaBlendingFactorLazily(target);
+	
+	if(PsychCopyInColorArg(8, kPsychArgOptional, &color)) {
+		// set globalAlpha to DBL_MAX to signal that PsychBlitTexture() shouldn't
+		// use this parameter and not set any modulate color, cause we do it.
+		globalAlpha = DBL_MAX;
+		
+		// Setup global vertex color as modulate color for texture drawing:
+		PsychCoerceColorMode(&color);
+		PsychSetGLColor(&color, target);
+	}
+
     PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
 
     // Mark end of drawing op. This is needed for single buffered drawing:
