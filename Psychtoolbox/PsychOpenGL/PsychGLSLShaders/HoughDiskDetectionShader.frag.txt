@@ -1,0 +1,36 @@
+/* Generic 2D box blur fragment shader for 2D rectangle textures.
+// OpenGL program has to setup the texture unit 'FilterMap' with a lookup
+// table texture for the per-outputpixel location boxfilter half-width and bind
+// texture unit 'Image' with the image to be box-filtered. Texture filtering
+// mode needs to be GL_NEAREST for defined results!
+//
+// (w)2007 by Mario Kleiner.
+*/
+#version 110
+
+uniform sampler2DRect Image;
+uniform vec4 Roi;
+uniform float RadiusSquared;
+uniform float HalfWidth; 
+
+void main()
+{
+    float dx, dy, indisk;
+    float sum = 0.0;
+    float sample;
+
+    if (gl_FragCoord.x < Roi.x || gl_FragCoord.y < Roi.y || gl_FragCoord.x > Roi.z || gl_FragCoord.y > Roi.w) discard;
+
+    for (dy = -HalfWidth; dy <= HalfWidth; dy++) {
+      for (dx = -HalfWidth; dx <= HalfWidth; dx++) {
+        sample = texture2DRect(Image, gl_FragCoord.xy + vec2(dx, dy)).a;
+        indisk = (2.0 * step((dx * dx + dy * dy), RadiusSquared)) - 1.0;
+
+        sum += sample * indisk;
+      }
+    }
+
+    gl_FragColor.rg  = gl_FragCoord.xy;
+    gl_FragColor.ba  = vec2(sum);
+}
+
