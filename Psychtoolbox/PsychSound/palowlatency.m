@@ -22,10 +22,11 @@ deviceid
 
 reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
 freq = 96000;        % Must set this. 96khz, 48khz, 44.1khz.
-buffersize = [];     % Pointless to set this. Auto-selected to be optimal.
+buffersize = 64;     % Pointless to set this. Auto-selected to be optimal.
 
 % Take hardware delay of MacBookPro into account: Assign it as bias.
 latbias = (30 / freq)
+%latbias = -0.001
 
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize);
 prelat = PsychPortAudio('LatencyBias', pahandle, latbias)
@@ -63,7 +64,7 @@ for i=1:10
     if exactstart
         % Schedule start of audio at exactly the predicted visual
         % stimulus onset caused by the next flip command:
-        PsychPortAudio('Start', pahandle, 1, visonset1 + ifi, 0);
+        PsychPortAudio('Start', pahandle, 1, visonset1 + ifi + 0.00098, 0);
     end
 
     % Ok, the next flip will do a black-white transition...

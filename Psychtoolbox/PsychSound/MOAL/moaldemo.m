@@ -28,8 +28,9 @@ mynoise = randn(1,44100 * 10);
 % Try to load some impressive sound...
 if IsOSX
    try
-      mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
-      freq = 16384;
+      %mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
+      freq = 44100;
+      mynoise = wavread('/Users/kleinerm/Documents/MaedchenMitPlan.wav');
    catch
       % Load Matlabs demo sound matrix if everything else fails..
       load handel;
@@ -111,17 +112,17 @@ while 1
     if ~manual
        % Auto mode, source moves along a 3D circle in space:
        t=GetSecs;
-       x=sin(t)*3;
-       z=cos(t)*3;
+       z=sin(t)*3;
+       x=cos(t)*3;
     end
-    
+    g=10;
     % Select 3D position of source in space:
-    %alSource3f(source, AL.POSITION, x, 0, z);
+    alSource3f(source, AL.POSITION, g*x, g*z, -5);
     
     % Query current playback position in seconds since start of buffer:
     tref = (GetSecs - tstart);
     taud = alGetSourcef(source, AL.SAMPLE_OFFSET)/16384;
-    fprintf('Delta: %f %f %f\n', tref - taud, tref, taud);
+    %fprintf('Delta: %f %f %f\n', tref - taud, tref, taud);
     
     % Pause for 10 milliseconds in order to yield the cpu to other processes:
     WaitSecs(0.01);

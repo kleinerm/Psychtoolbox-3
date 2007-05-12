@@ -952,8 +952,8 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	// Try to stop stream:
-	if ((err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError) {
+	// Try to stop stream. Skip if already stopped/not yet started:
+	if ((audiodevices[pahandle].state > 0) && ((err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError)) {
 		printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
 		PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
 	}
