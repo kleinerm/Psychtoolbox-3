@@ -309,6 +309,7 @@ function oldPriority=Priority(newPriority)
 % 8/02/06   mk   We now detect if we're running on a OS-X 10.4.7 system or
 %                later. We do not kill and restart the system update process
 %                anymore in that case as it isn't necessary anymore.
+% 5/15/07   mk   Priority.dll on Windoze replaced by code in this M-File.
 
 persistent killUpdateNotNeeded;
 
@@ -435,4 +436,28 @@ if IsOSX
             didPriorityKillUpdate=0;
         end
     end
+end;
+
+% Microsoft Windows?
+if IsWin
+   % Yes. We do not use a separate MEX file anymore. Instead we use a
+   % built-in helper subroutine of Screen(), accessed via the special code -3
+   % when calling the 'GetMouseHelper' subfunction.
+   if nargin < 1
+      newPriority = [];
+   end
+   
+   if isempty(newPriority)
+      % No priority provided: Just return the current level:
+      oldPriority = Screen('GetMouseHelper', -3);
+   else
+      % New priority provided: Query and return old level, set new one:
+      if newPriority<0 | newPriority>2
+         error('Invalid Priority level specified! Not one of 0, 1 or 2.');
+      end
+      
+      oldPriority = Screen('GetMouseHelper', -3, newPriority);
+   end
+
+   % Done for Windows...
 end;
