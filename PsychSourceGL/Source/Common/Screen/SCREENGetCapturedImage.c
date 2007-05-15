@@ -27,7 +27,11 @@ static char synopsisString[] =
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
 "a texturePtr of zero, or -1 if none will become ready because capture has been stopped. Set 'waitForImage' = 2 if you just want to get the "
-"summed intensity or timestamp of the image. 'oldTexture' (if provided) allows you to pass the texture handle of an already existing texture. "
+"summed intensity or timestamp of the image. 'waitForImage' = 3 will behave as a setting of 2, but it will only poll, not block. The setting "
+"'waitForImage' = 4 is special: It will not block, nor will it return any information, but will make sure the capture engine keeps running. "
+"This is useful if you want PTB to perform harddisk recording of video footage in the background without any need to access information about "
+"the capture process or the actual video data from within Matlab. This is the least ressource consuming way of doing this.\n"
+"'oldTexture' (if provided) allows you to pass the texture handle of an already existing texture. "
 "Psychtoolbox will reuse that texture by overwriting its previous image content with the new image, instead of creating a completely new "
 "texture for the new image. Use of this ''recycling facility'' may allow for higher capture framerates and lower latencies on low-end "
 "graphics hardware in some cases. Providing a value of 'oldTexture'=0 is the same as leaving it out. The optional argument 'specialmode' "
@@ -78,6 +82,19 @@ PsychError SCREENGetCapturedImage(void)
     // isn't any new image available.
     PsychCopyInIntegerArg(3, FALSE, &waitForImage);
 
+	// Special case waitForImage == 4? This would ask to call into the capture driver, but
+	// not wait for any image to arrive and not return any information. This is only useful
+	// on OS/X and Windows when using the capture engine for video recording to harddisk. In
+	// that case we are not interested at all in the captured live video, we just want it to
+	// get written to harddisk in the background. To keep the video encoder going, we need to
+	// call its SGIdle() routine and waitForImage==4 does just that, call SGIdle().
+	if (waitForImage == 4) {
+		// Perform the null-call to the capture engine, ie a SGIdle() on OS/X and Windows:
+		PsychGetTextureFromCapture(windowRecord, capturehandle, 1, 0.0, NULL, NULL, NULL);
+		// Done. Nothing to return...
+		return(PsychError_none);
+	}
+	
     // Get the optional textureRecord for the optional texture handle. If the calling script
     // provides the texture handle of an existing Psychtoolbox texture that has a matching
     // format, then that texture is recycled by overwriting its previous content with the
@@ -94,7 +111,7 @@ PsychError SCREENGetCapturedImage(void)
     while (rc==-1) {
       //  We pass a checkForImage value of 2 if waitForImage>0. This way we can signal if we are in polling or blocking mode.
       // On Linux this allows to do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
-      rc = PsychGetTextureFromCapture(windowRecord, capturehandle, ((waitForImage>0) ? 2 : 1), 0.0, NULL, &presentation_timestamp, NULL);
+      rc = PsychGetTextureFromCapture(windowRecord, capturehandle, ((waitForImage>0 && waitForImage<3) ? 2 : 1), 0.0, NULL, &presentation_timestamp, NULL);
         if (rc==-2) {
             // No image available and there won't be any in the future, because capture has been stopped.
 
@@ -108,7 +125,7 @@ PsychError SCREENGetCapturedImage(void)
             // Ready!
             return(PsychError_none);
         }
-        else if (rc==-1 && waitForImage == 0) {
+        else if (rc==-1 && (waitForImage == 0 || waitForImage == 3)) {
             // We should just poll once and no new texture available: Return a null-handle:
             PsychCopyOutDoubleArg(1, TRUE, 0);
             // ...and the current timestamp:
@@ -126,7 +143,7 @@ PsychError SCREENGetCapturedImage(void)
     }
 
     // rc == 0 --> New image available: Go ahead...
-    if (waitForImage!=2) {
+    if (waitForImage!=2 && waitForImage!=3) {
       // Ok, we need a texture for the image. Did script provide an old one for recycling?
       if (textureRecord) {
 	// Old texture provided for reuse? Some basic sanity check: Everything else is

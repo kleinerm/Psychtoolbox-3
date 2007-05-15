@@ -639,10 +639,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     int nrdropped;
 
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
-    
-    // Activate OpenGL context of target window: We'll need it for texture fetch...
-    PsychSetGLContext(win);
-    
+        
     // Sanity checks:
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || vidcapRecordBANK[capturehandle].gworld == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
@@ -687,11 +684,6 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     // if a new frame is available in our GWorld:
 
     // Synchronous texture fetch code for GWorld rendering mode:
-        
-    // Disable client storage on OS-X, if it is enabled for some reason:
-    #if PSYCH_SYSTEM == PSYCH_OSX
-      glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-    #endif
     
     // Build a standard PTB texture record:    
     
@@ -731,6 +723,14 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
 
+		// Activate OpenGL context of target window: We'll need it for texture fetch...
+		PsychSetGLContext(win);
+		
+		// Disable client storage on OS-X, if it is enabled for some reason:
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+		#endif
+		
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content:
         PsychCreateTexture(out_texture);
@@ -841,6 +841,9 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
 		SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
 	}
 	
+	framerate = FloatToFixed((float) capturerate);
+	SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
+
 	// Wait until start deadline reached:
 	if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
 
@@ -854,8 +857,6 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
         vidcapRecordBANK[capturehandle].nr_droppedframes = 0;
         vidcapRecordBANK[capturehandle].frame_ready = 0;
         vidcapRecordBANK[capturehandle].grabber_active = 1;
-        framerate = FloatToFixed((float) capturerate);
-        SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
         SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
         if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture framerate is reported as: %lf\n", vidcapRecordBANK[capturehandle].fps);
