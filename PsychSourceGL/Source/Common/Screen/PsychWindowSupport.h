@@ -51,6 +51,7 @@ void    PsychSetupView(PsychWindowRecordType *windowRecord);
 void	PsychSetUserspaceGLFlag(Boolean inuserspace);
 boolean PsychIsUserspaceRendering(void);
 double	PsychGetWhiteValueFromWindow(PsychWindowRecordType *windowRecord);
+void	PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif

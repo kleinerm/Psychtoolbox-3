@@ -153,6 +153,12 @@ PsychError SCREENBeginOpenGL(void)
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, fboid);
 			}
 		}
+		
+		// Running without imaging pipeline and a stereo mode is active?
+		if ((windowRecord->stereomode) > 0 && !(windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
+			// Perform setup work for stereo drawbuffers in fixed function mode:
+			PsychSwitchFixedFunctionStereoDrawbuffer(windowRecord);
+		}
 	}
     
 	// Check for GL errors:

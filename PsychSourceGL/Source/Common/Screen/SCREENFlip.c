@@ -93,9 +93,9 @@ PsychError SCREENFlip(void)
         
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
-
-	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen)
-		PsychErrorExitMsg(PsychError_user, "Flip called on window without backbuffers. Specify numberOfBuffers=2 in Screen('OpenWindow') if you want to use Flip.");
+	
+	if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "Flip called on something else than an onscreen window. You can only flip onscreen windows.");
+	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) PsychErrorExitMsg(PsychError_user, "Flip called on window without backbuffers. Specify numberOfBuffers=2 in Screen('OpenWindow') if you want to use Flip.");
 
         // Query optional dont_clear argument: 0 (default) clear backbuffer to background color after flip.
         // 1 == Restore backbuffer to state before flip - this allows incremental drawing/updating of stims.

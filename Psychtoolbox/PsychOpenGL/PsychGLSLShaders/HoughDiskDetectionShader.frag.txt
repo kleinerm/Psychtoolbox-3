@@ -19,18 +19,18 @@ void main()
     float sum = 0.0;
     float sample;
 
-    if (gl_FragCoord.x < Roi.x || gl_FragCoord.y < Roi.y || gl_FragCoord.x > Roi.z || gl_FragCoord.y > Roi.w) discard;
+    if (gl_TexCoord[0].x < Roi.x || gl_TexCoord[0].y < Roi.y || gl_TexCoord[0].x > Roi.z || gl_TexCoord[0].y > Roi.w) discard;
 
     for (dy = -HalfWidth; dy <= HalfWidth; dy++) {
       for (dx = -HalfWidth; dx <= HalfWidth; dx++) {
-        sample = texture2DRect(Image, gl_FragCoord.xy + vec2(dx, dy)).a;
+        sample = texture2DRect(Image, gl_TexCoord[0].xy + vec2(dx, dy)).a;
         indisk = (2.0 * step((dx * dx + dy * dy), RadiusSquared)) - 1.0;
 
         sum += sample * indisk;
       }
     }
 
-    gl_FragColor.rg  = gl_FragCoord.xy;
+    gl_FragColor.rg  = gl_TexCoord[0].xy;
     gl_FragColor.ba  = vec2(sum);
 }
 

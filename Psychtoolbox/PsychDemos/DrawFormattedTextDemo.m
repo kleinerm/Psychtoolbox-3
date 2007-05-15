@@ -43,6 +43,7 @@ try
         lcount = lcount + 1;
     end
     fclose(fd);
+    mytext = [mytext char(10)];
     
     Screen('DrawText', w, 'Top-Left aligned, 40 chars wide: Hit any key to continue.', 0, 0, [255, 0, 0, 255]);
 

@@ -32,6 +32,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 10/17/06  Written (MK).
 % 11/01/06  Add support for correct handling of 3D rendering mode (MK).
 % 11/22/06  More 3D handling: Save/restore backface cull state (MK).
+% 05/14/07  Return a more meaningful end cursor position (printf - semantics) (MK)
 
 % We need GL for drawing in 3D rendering mode:
 global GL;
@@ -219,9 +220,11 @@ maxy = maxy + theight;
 
 % Create final bounding box:
 textbounds = SetRect(minx, miny, maxx, maxy);
-% Create new cursor position:
-nx = maxx;
-ny = maxy;
+% Create new cursor position. The cursor is positioned to allow
+% to continue to print text directly after the drawn text.
+% Basically behaves like printf or fprintf formatting.
+nx = xp;
+ny = yp;
 
 % Was this drawing in 3D mode?
 if gl3dmode > 0

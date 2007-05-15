@@ -277,10 +277,10 @@ global GL;
         houghimage = Screen('OpenOffscreenWindow', win, 0, texRect, 64);
         inimage = Screen('OpenOffscreenWindow', win, 0, texRect);
         
-        markerbinimage = 0;
-        initialmarkerpositions = zeros(1, 6, 4);
+        markerbinimage = 0; nmarkers = 4;
+        initialmarkerpositions = zeros(1, nmarkers, 4);
         
-        for i=1:6
+        for i=1:4
             [clicks,x,y] = GetClicks(win);
             initialmarkerpositions(1,i,1) = x;
             initialmarkerpositions(1,i,2) = base_y - y;
@@ -288,13 +288,13 @@ global GL;
         oldmarkerpositionstex = Screen('MakeTexture', win, initialmarkerpositions, [], [], 1);
         newmarkerpositionstex = 0;
         
-        bottomleft  = squeeze(initialmarkerpositions(1,4,1:2))';
-        bottomright = squeeze(initialmarkerpositions(1,5,1:2))';
-        refdeltavect = (bottomright - bottomleft)
-        refscale = norm(refdeltavect);
-        meanposition = squeeze(mean(initialmarkerpositions(1,:,1:2)))';
+%        bottomleft  = squeeze(initialmarkerpositions(1,4,1:2))';
+%        bottomright = squeeze(initialmarkerpositions(1,5,1:2))';
+%        refdeltavect = (bottomright - bottomleft)
+%        refscale = norm(refdeltavect);
+%        meanposition = squeeze(mean(initialmarkerpositions(1,:,1:2)))';
 %        refoffsetvect = (pupil - meanposition) / refscale;
-        refoffsetvect = (pupil - meanposition);
+%        refoffsetvect = (pupil - meanposition);
         trackthemarkers = 0;
         idx = 0;
         tlgaze = [];
@@ -339,24 +339,32 @@ global GL;
                 end
 
                 
-                bottomleft  = markertrackeroutput(1:2,4)';
-                bottomright = markertrackeroutput(1:2,5)';
+                %bottomleft  = markertrackeroutput(1:2,4)';
+                %bottomright = markertrackeroutput(1:2,5)';
                 %offsetvect = bottomleft + (refoffsetvect * norm(bottomright - bottomleft));
+
                 markermeanposition = mean(markertrackeroutput(1:2, :)');
-%                offsetvect = markermeanposition + (refoffsetvect * norm(bottomright - bottomleft));
-                offsetvect = markermeanposition + refoffsetvect;
-                            
+roileft = min(markertrackeroutput(1,:));
+roiright = max(markertrackeroutput(1,:));
+roitop = min(markertrackeroutput(2,:));
+roibottom = max(markertrackeroutput(2,:));
+roirect = [roileft roitop roiright roibottom];
+
+                %                offsetvect = markermeanposition + (refoffsetvect * norm(bottomright - bottomleft));
+                %offsetvect = markermeanposition + refoffsetvect;
+                offsetvect = markermeanposition;
+                
                 x=offsetvect(1);
                 y=offsetvect(2);
                 %y = base_y - y;
-                y=y+roiwidth;
+                %y=y+roiwidth;
                 
-                roirect = [x-1.5*roiwidth, y-1*roiwidth, x+1.5*roiwidth, y+1*roiwidth];
+%                roirect = [x-1.5*roiwidth, y-1*roiwidth, x+1.5*roiwidth, y+1*roiwidth];
                 glUseProgram(diskdetectorshader);
                 glUniform4fv(glGetUniformLocation(diskdetectorshader, 'Roi'), 1, roirect);
                 glUseProgram(0);
                 y = base_y - y;
-                roirect = [x-1.5*roiwidth, y-roiwidth, x+1.5*roiwidth, y+roiwidth];
+%                roirect = [x-1.5*roiwidth, y-roiwidth, x+1.5*roiwidth, y+roiwidth];
                 %trackedrect = [x-roiwidth, y-roiwidth, x+roiwidth, y+roiwidth];
 
                 % Preprocess it, store to preallocated inlevel(1):
@@ -388,7 +396,7 @@ global GL;
                 Screen('DrawTexture', win, inlevel(1), [], dstRect);
                 Screen('DrawTexture', win, houghimage, [], AdjoinRect(dstRect, dstRect, RectRight));
                 Screen('DrawTexture', win, markerbinimage, [], AdjoinRect(dstRect, dstRect, RectBottom));
-                Screen('FrameRect', win, [0 0 255], roirect);
+                Screen('FrameRect', win, [0 0 255], [roileft, base_y - roibottom, roiright, base_y - roitop]);
                 Screen('FrameRect', win, [255 255 0], [640 480 640+256 480+256]);
                 Screen('FrameRect', win, [0 255 0], [(640 + ycb_low) (480+256-ycr_high) (640 + ycb_high) (480+256-ycr_low)]);
                 
@@ -469,7 +477,7 @@ global GL;
                         Screen('Close', oldpositionstex);
                         [x y] = RectCenter(roirect);
                         initialpositions(1,:,1) = x ; %- roiwidth + rand(1, 10) * 2 * roiwidth;
-                        initialpositions(1,:,2) = base_y - y ; % - roiwidth + rand(1, 10) * 2 * roiwidth;
+                        initialpositions(1,:,2) = y ; % - roiwidth + rand(1, 10) * 2 * roiwidth;
                         oldpositionstex = Screen('MakeTexture', win, initialpositions, [], [], 1);
                     end
                 end

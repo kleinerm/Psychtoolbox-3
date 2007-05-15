@@ -142,9 +142,9 @@ try
     Screen('TextSize', w, 24);
     
     % Slide 1: The static grating texture:
-    [xp yp] = DrawFormattedText(w, 'Step 1: Generate a single static texture which shows the periodic grating pattern: The texture must contain at least two full periods of the pattern.\nPress a key to continue.', 0, 0, 0, 50);
+    [xp yp] = DrawFormattedText(w, 'Step 1: Generate a single static texture which shows the periodic grating pattern: The texture must contain at least two full periods of the pattern.\nPress a key to continue.\n\n', 0, 0, 0, 50);
     cmd = 'gratingtex = Screen(''MakeTexture'', w, gratingmatrix);\nScreen(''DrawTexture'', w, gratingtex);';
-    [xp yp] = DrawFormattedText(w, cmd, 0, yp + 20, 255);
+    [xp yp] = DrawFormattedText(w, cmd, xp, yp, 255);
     Screen('DrawTexture', w, gratingtex);
     Screen('Flip', w);
 
@@ -185,10 +185,10 @@ try
         end
                 
         if autodrift == 0
-            [xp yp] = DrawFormattedText(w, 'Step 2: Cut out a rectangular subregion ''srcRect'' from the texture and draw it to the screen area ''dstRect'' of same size. The texture is shown through an aperture.\nMoving the aperture creates apparent smooth motion. - Try it with the mouse!\nPress a key to continue.', 0, 0, 0, 50);
+            [xp yp] = DrawFormattedText(w, 'Step 2: Cut out a rectangular subregion ''srcRect'' from the texture and draw it to the screen area ''dstRect'' of same size. The texture is shown through an aperture.\nMoving the aperture creates apparent smooth motion. - Try it with the mouse!\nPress a key to continue.\n\n', 0, 0, 0, 50);
         else
             if autodrift >= 1
-                [xp yp] = DrawFormattedText(w, 'Step 3: Horizontal shifting of the cut-out aperture region ''srcRect'' creates a nice drifting pattern. Subpixel accurate movements are possible due to hardware bilinear texture interpolation.\nPress a key to continue.', 0, 0, 0, 50);
+                [xp yp] = DrawFormattedText(w, 'Step 3: Horizontal shifting of the cut-out aperture region ''srcRect'' creates a nice drifting pattern. Subpixel accurate movements are possible due to hardware bilinear texture interpolation.\nPress a key to continue.\n\n', 0, 0, 0, 50);
                 if angle~=0
                     [xp yp] = DrawFormattedText(w, '\nIt is also possible to rotate the ''dstRect'' destination region by some angle to create a rotated grating.\n', 0, yp, 0, 50);
                 end
@@ -206,9 +206,9 @@ try
         cmd = 'dstRect';
         [xp] = DrawFormattedText(w, cmd, xp, yp, [255 255 0]);
         if angle==0
-            cmd = ');';
+            cmd = ');\n';
         else
-            cmd = [', ' num2str(angle) ');'];
+            cmd = [', ' num2str(angle) ');\n'];
         end
         [xp yp] = DrawFormattedText(w, cmd, xp, yp, 255);
         
@@ -235,7 +235,7 @@ try
         if autodrift == 2
             maskRect = CenterRectOnPoint(dstRect, x, y);
             xp = 0;
-            cmd = sprintf('Screen(''DrawTexture'', w, masktex, [], [%i %i %i %i], %f);', maskRect(1), maskRect(2), maskRect(3), maskRect(4), angle);
+            cmd = sprintf('Screen(''DrawTexture'', w, masktex, [], [%i %i %i %i], %f);\n', maskRect(1), maskRect(2), maskRect(3), maskRect(4), angle);
             [xp] = DrawFormattedText(w, cmd, xp, yp, 255);
             Screen('DrawTexture', w, masktex, [], maskRect, angle);
         end

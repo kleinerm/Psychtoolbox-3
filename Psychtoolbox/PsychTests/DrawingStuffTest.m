@@ -5,7 +5,7 @@
 % 7/24/03   awi     Wrote it. 
 
 s=max(Screen('Screens'));
-w=Screen('OpenWindow', s,[],[],32,2);
+w=Screen('OpenWindow', s,[],[],[],[],[],0);
 Screen('FillRect', w, 0);
 
 % Test drawing some frame rects
@@ -15,7 +15,8 @@ r3=OffsetRect(r1, 250,250);
 r4=OffsetRect(r1, 300,300);
 Screen('FrameRect',w, [255 255 0], r2, 1);
 Screen('FrameRect',w, [255 0 0], r3, 4);
-Screen('FrameRect',w, [0 255 0], r4, 8);
+Screen('FrameRect',w, [0 255 0], r4, 9);
+Screen('FrameRect',w, [255 0 255], r4, 1);
 
 % Test drawing a line
 Screen('DrawLine', w, 255, 100,100, 400,400, 3);
@@ -35,5 +36,5 @@ polyCenterY=150;
 polyPoints=round([ [cos(angles)*polyRadius+polyCenterX]', [sin(angles)*polyRadius+polyCenterY]']);
 Screen('FramePoly', w, [0 0 255], polyPoints,2);
 Screen('Flip', w);
-GetChar;
+KbWait;
 Screen('CloseAll');

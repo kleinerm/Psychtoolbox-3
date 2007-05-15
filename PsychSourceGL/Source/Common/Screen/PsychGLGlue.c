@@ -260,7 +260,7 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 			*size[0] = 1;
 			nrsize=1;
 		} else {
-			PsychAllocInDoubleMatArg(3, TRUE, &m, &n, &p, size);
+			PsychAllocInDoubleMatArg(sizes_pos, TRUE, &m, &n, &p, size);
 			if(p!=1) PsychErrorExitMsg(PsychError_user, "Size must be a scalar or a vector with one column or row");
 			nrsize=m*n;
 			if (nrsize!=nrpoints && nrsize!=1 && *sizes_count!=1) PsychErrorExitMsg(PsychError_user, "Size vector must contain one size value per item.");

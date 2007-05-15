@@ -108,12 +108,16 @@ PsychError SCREENGetMouseHelper(void)
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	static unsigned char disabledKeys[256];
 	static unsigned char firsttime = 1;
-	int keysdown, i;
+	int keysdown, i, priorityLevel;
 	unsigned char keyState[256];
 	double* buttonArray;
 	double numButtons, timestamp;
 	PsychNativeBooleanType* buttonStates;
 	POINT		point;
+	HANDLE	   currentProcess;
+	DWORD   oldPriority = NORMAL_PRIORITY_CLASS;
+    const  DWORD   realtime_class = REALTIME_PRIORITY_CLASS;
+
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
@@ -205,6 +209,66 @@ PsychError SCREENGetMouseHelper(void)
 			// Special case: Null out last element:
 			buttonStates[255] = (PsychNativeBooleanType) 0;
 	    }
+	  }
+	  
+	  if (numButtons==-3) {
+		// Priority() - helper mode: The 2nd argument is the priority level:
+
+		// Determine our processID:
+		currentProcess = GetCurrentProcess();
+    
+		// Get current scheduling policy:
+		oldPriority = GetPriorityClass(currentProcess);
+		
+		// Map to PTB's scheme:
+		switch(oldPriority) {
+			case NORMAL_PRIORITY_CLASS:
+				priorityLevel = 0;
+			break;
+
+			case HIGH_PRIORITY_CLASS:
+				priorityLevel = 1;
+			break;
+
+			case REALTIME_PRIORITY_CLASS:
+				priorityLevel = 2;
+			break;
+
+			default:
+				priorityLevel = 0;
+		}
+        
+		// Copy it out as optional return argument:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) priorityLevel);
+		
+		// Query if a new level should be set:
+		priorityLevel = -1;
+		PsychCopyInIntegerArg(2, kPsychArgOptional, &priorityLevel);
+
+		// Priority level provided?
+		if (priorityLevel > -1) {
+			// Map to new scheduling class:
+			if (priorityLevel > 2) PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "Invalid Priority level: Requested Priority() level must not exceed 2.");
+
+			switch(priorityLevel) {
+				case 0: // Standard scheduling:
+					SetPriorityClass(currentProcess, NORMAL_PRIORITY_CLASS);
+				break;
+				
+				case 1: // High priority scheduling:
+					SetPriorityClass(currentProcess, HIGH_PRIORITY_CLASS);
+				break;
+				
+				case 2: // Realtime scheduling:
+					// This can fail if Matlab is not running under a user account with proper permissions:
+					if (0 == SetPriorityClass(currentProcess, REALTIME_PRIORITY_CLASS)) {
+						// Failed to get RT-Scheduling. Let's try at least high priority scheduling:
+						SetPriorityClass(currentProcess, HIGH_PRIORITY_CLASS);
+					}
+				break;
+			}
+		}
+		// End of Priority() helper for Win32.
 	  }
 	}
 #endif
