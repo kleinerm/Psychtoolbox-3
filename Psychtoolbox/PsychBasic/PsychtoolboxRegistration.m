@@ -83,7 +83,12 @@ try
 
     if IsWin
         ostype = 'Windows';
-        osversion = 'Unknown';
+        try
+            osversion = deblank([system_dependent('getos'),' ',system_dependent('getwinsys')]);
+        catch
+            osversion = 'Unknown';
+        end
+        
         % Define machine architecture to be Intel.
         arch = 'Intel';
         % Define path to our own netcat executable for M$-Windows:

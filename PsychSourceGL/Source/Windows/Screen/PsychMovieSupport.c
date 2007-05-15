@@ -34,10 +34,10 @@
 
 // We typedef all missing functions on Windows away...
 // typedef void* QTVisualContextRef;
-Boolean QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
-OSErr QTVisualContextCopyImageForTime(void* a, int blobber, void* b, void* c) { return(noErr); };
-void QTVisualContextRelease(void* a) { return; }
-void QTVisualContextTask(void *a) { return; }
+//Boolean QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
+//OSErr QTVisualContextCopyImageForTime(void* a, int blobber, void* b, void* c) { return(noErr); };
+//void QTVisualContextRelease(void* a) { return; }
+//void QTVisualContextTask(void *a) { return; }
 void CVOpenGLTextureRelease(void* a) { return; }
 GLuint CVOpenGLTextureGetName(void* a) { return(0); }
 void CVOpenGLTextureGetCleanTexCoords(void* a, float* b, float* c, float* d, float* e) { return; }
@@ -156,8 +156,8 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     int i;
 	 int slotid;
     OSErr error;
-    CFStringRef movieLocation;
-    CFStringRef coreAudioDeviceUID;
+//    CFStringRef movieLocation;
+//    CFStringRef coreAudioDeviceUID;
     boolean trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
     int propcount = 0;

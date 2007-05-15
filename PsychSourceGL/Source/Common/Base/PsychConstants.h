@@ -54,7 +54,8 @@ typedef unsigned char bool;
 
 //platform dependent macro defines 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-
+        #define FALSE   0
+        #define TRUE    1
 #elif PSYCH_SYSTEM == PSYCH_OS9
         #define FALSE   0
         #define TRUE    1
