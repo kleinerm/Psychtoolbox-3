@@ -89,6 +89,10 @@ try
             osversion = 'Unknown';
         end
         
+        if isempty(osversion)
+           osversion = 'Unknown';
+        end
+        
         % Define machine architecture to be Intel.
         arch = 'Intel';
         % Define path to our own netcat executable for M$-Windows:
