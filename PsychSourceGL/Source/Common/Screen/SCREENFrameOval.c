@@ -7,9 +7,8 @@
   
     PLATFORMS:
 	
-		Only OS X for now.
-    
-    
+		All.
+
     HISTORY:
 	
 		mm/dd/yy	
@@ -52,7 +51,7 @@ static char synopsisString[] =
             "Draw the outline of an oval.  \"color\" is the clut index (scalar or [r g b] "
             "triplet) that you want to poke into each pixel; default produces black with the "
             "standard CLUT for this window's pixelSize. Default \"rect\" is entire window. "
-            "Default pen size is 1,1.  OSX: The penMode argumenet is ignored.  The penWidth must "
+            "Default pen size is 1,1. The penMode argumenet is ignored.  The penWidth must "
             "equal the penHeight.  If non-equal arguments are given FrameOval will choose the maximum "
             "value.  The pen width will be non-uniform for non-circular ovals, this is a bug.";
 static char seeAlsoString[] = "FillOval";	
@@ -150,8 +149,3 @@ PsychError SCREENFrameOval(void)
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-
-
-
-
-

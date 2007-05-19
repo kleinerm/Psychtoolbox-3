@@ -22,7 +22,7 @@
 
 #include "Screen.h"
 
-static char useString[] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth]);";
+static char useString[] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader]);";
 static char synopsisString[] = 
 "Provides information about an external OpenGL texture to make it acessible for PTB as PTB texture."
 "\"windowPtr\" is the handle of the onscreen window to which texture should be attached. "
@@ -31,7 +31,17 @@ static char synopsisString[] =
 "the OpenGL texture id of a valid OpenGL texture object. 'target' is the type of texture "
 "(e.g., GL_TEXTURE_2D) Optionally you can pass in the intended width and height as well "
 "as pixeldepth of the texture if they should be different from the values that PTB can autodetect from "
-"the given texture object. "
+"the given texture object.\n"
+"'textureShader' - optional: If you provide the handle of an OpenGL GLSL shader program, then this shader program will be "
+"executed (bound) during drawing of this texture via the Screen('DrawTexture',...); command -- The normal texture drawing "
+"operation is replaced by your customized algorithm. This is useful for two purposes: a) Very basic on-the-fly image processing "
+"on the texture. b) Procedural shading: Your texture matrix doesn't encode an image, but only per-pixel parameters is input "
+"for some formula to compute the real image during drawing. E.g., instead of defining a gabor patch as image or other standard "
+"stimulus, one could define it as a mathematical formula to be evaluated at draw-time. The Screen('SetOpenGLTexture') command "
+"allows you to create purely virtual textures, that only consist of such a shader and some virtual size, but don't have any "
+"real data matrix associated with it -- all content is generated on the fly. Create such a texture by providing a textureShader "
+"that will algorithmically generate the texture content, and the virtual size of the texture in glWidth, glHeight and glDepth, "
+"but set the glTexid texture handle to zero. \n"
 "The function returns (optionally) the textureHandle of the PTB texture and its defining rectangle. "
 "This routine allows external OpenGL code to inject textures into PTB for use "
 "with it. For more info about OpenGL textures, read an OpenGL book. ";
@@ -40,7 +50,7 @@ static char seeAlsoString[] = "GetOpenGLTexture";
 PsychError SCREENSetOpenGLTexture(void) 
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
-    int texid, w, h, d, testarg;
+    int texid, w, h, d, testarg, textureShader;
     GLenum target = 0;
     texid=w=h=d=-1;
     
@@ -48,7 +58,7 @@ PsychError SCREENSetOpenGLTexture(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(7));     //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(8));     //The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(4)); //The required number of inputs	
     PsychErrorExit(PsychCapNumOutputArgs(2));    //The maximum number of outputs
     
@@ -104,6 +114,10 @@ PsychError SCREENSetOpenGLTexture(void)
     // Query optional override depth:
     PsychCopyInIntegerArg(7, FALSE, &d);
 
+	// Get optional texture shader handle:
+	textureShader = 0;
+	PsychCopyInIntegerArg(8, FALSE, &textureShader);
+
     // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
     PsychSetGLContext(windowRecord);
     PsychSetDrawingTarget(windowRecord);
@@ -143,6 +157,15 @@ PsychError SCREENSetOpenGLTexture(void)
     // Orientation is set to 2 - like an upright Offscreen window texture:
     textureRecord->textureOrientation = 2;
     textureRecord->textureNumber = texid;
+
+	// User specified override shader for this texture provided? This is useful for
+	// basic image processing and procedural texture shading:
+	if (textureShader!=0) {
+		// Assign provided shader as filtershader to this texture: We negate it so
+		// that the texture blitter routines know this is a custom shader, not our
+		// built in filter shader:
+		textureRecord->textureFilterShader = -1 * textureShader;
+	}
 
     // Unbind texture:
     glBindTexture(target, 0);

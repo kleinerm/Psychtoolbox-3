@@ -201,7 +201,7 @@ typedef struct _PsychWindowRecordType_{
         GLint                                   textureinternalformat;  // Explicit definition of glinternalformat for texture creation.
         GLenum                                  textureexternalformat;  // Explicit definitin of external format for texture creation.
         GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
-		GLuint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
+		GLint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
 
 	//Used only when this structure holds a window:
 	PsychTextAttributes                     textAttributes;
@@ -251,6 +251,10 @@ typedef struct _PsychWindowRecordType_{
 
 	PsychFBO*				fboTable[MAX_FBOTABLE_SLOTS];			// This array contains pointers to the FBO structs which are referenced by the indices above.
 	int						fboCount;								// This contains the number of FBO's in fboTable.
+	
+	// Cached handles for display lists -- used for recycling in compute intense drawing functions:
+	GLuint					fillOvalDisplayList;
+	GLuint					frameOvalDisplayList;
 	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c

@@ -150,10 +150,3 @@ PsychError SCREENDrawTexture(void)
     return(PsychError_none);
 
 }
-
-
-
-
-
-
-

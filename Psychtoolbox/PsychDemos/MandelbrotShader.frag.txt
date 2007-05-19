@@ -1,0 +1,52 @@
+/*
+
+File: MandelbrotShader.frag.txt
+
+Abstract: Mandelbrot Shader (from the "orange book")
+			 
+Copyright (C) 2002-2006  3Dlabs Inc. Ltd.
+All rights reserved.
+
+See 3Dlabs-License.txt for license information
+
+*/
+
+uniform vec2  center;
+uniform float zoom;
+
+void main() {
+        const float maxiter = 150.0;
+
+        float real    = ((gl_TexCoord[0].x - 0.5) * 5.0 * zoom + center.x);
+        float imag    = ((gl_TexCoord[0].y - 0.5) * 5.0 * zoom + center.y);
+        float Creal   = real;
+        float Cimag   = imag;
+
+        float r2      = 0.0;
+        float iter;
+        float tempreal;
+
+        vec3  InnerColor  = vec3(0.0, 0.0, 0.0);
+        vec3  OuterColor1 = vec3(0.0, 0.0, 0.4);
+        vec3  OuterColor2 = vec3(1.0, 1.0, 1.0);
+
+        vec3  color;
+
+        for (iter = 0.0; (iter < maxiter) && (r2 < 4.0) ; iter += 1.0) {
+                tempreal = real;
+
+                real = (tempreal * tempreal) - (imag * imag) + Creal;
+                imag = (2.0 * tempreal * imag + Cimag);
+                r2   = (real * real) + (imag * imag);
+        }
+
+	tempreal = fract(iter * 0.01);
+
+	if (r2 < 4.0)
+          color = InnerColor;
+     else
+          color = mix(OuterColor1, OuterColor2, tempreal);
+
+	gl_FragColor = vec4(color, 1.0);
+
+}

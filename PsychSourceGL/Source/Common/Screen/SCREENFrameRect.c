@@ -147,6 +147,8 @@ PsychError SCREENFrameRect(void)
 			glLineWidth((GLfloat) penSize);
 		}
 		
+		if (IsPsychRectEmpty(rect)) continue;
+		
 		if (penSize > 1) {
 			// Width > 1
 			glBegin(GL_LINES);

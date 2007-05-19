@@ -66,8 +66,8 @@ static char textureBilinearFilterShaderSrc[] =
 "} \n";
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, enforcepot=0] [, floatprecision=0] [, textureOrientation=0]);";
-//                                                            1            2              3                          4                5                    6
+static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
+//                                                            1            2              3                          4                5                    6						7
 static char synopsisString[] = 
 	"Convert the 2D or 3D matrix 'imageMatrix' into an OpenGL texture and return an index which may be passed to 'DrawTexture' to specify the texture. "
 	"In the the OS X Psychtoolbox textures replace offscreen windows for fast drawing of images during animation."
@@ -75,11 +75,16 @@ static char synopsisString[] =
 	"A is alpha, the transparency of a pixel. Alpha values range between zero (=fully transparent) and 255 (=fully opaque). "
 	"You need to enable Alpha-Blending via Screen('BlendFunction',...) for the transparency values to have an effect. "
 	"The argument 'optimizeForDrawAngle' if provided, asks Psychtoolbox to optimize the texture for especially fast "
-	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'enforcepot' is set "
+	"drawing at the specified rotation angle. The default is 0 == Optimize for upright drawing. If 'specialFlags' is set "
 	"to 1 and the width and height of the imageMatrix are powers of two (e.g., 64 x 64, 256 x 256, 512 x 512, ...), then "
 	"the texture is created as an OpenGL power-of-two texture of type GL_TEXTURE_2D. Otherwise Psychtoolbox will try to "
 	"pick the most optimal format for fast drawing and low memory consumption. Power-of-two textures are especially useful "
 	"for animation of drifting gratings (see the demos) and for simple use with the OpenGL 3D graphics functions. "
+	"If 'specialFlags' is set to 2 then PTB will try to use an own high quality texture filtering algorithm for drawing "
+	"of bilinearly filtered textures instead of the hardwares built-in method. This only works on modern hardware with "
+	"fragment shader support and is slower than using the hardwares built in filtering, but it may provide higher precision "
+	"on some hardware. Please note that PTB automatically enables its own filter algorithm when used with floating point "
+	"textures on some old hardware.\n"
 	"'floatprecision' defines the precision with which the texture should be stored and processed. Default value is zero, "
 	"which asks to store textures with 8 bit per color component precision, a suitable format for standard images read via "
 	"imread(). A non-zero value will store the textures color component values as floating point precision numbers, useful "
@@ -95,11 +100,17 @@ static char synopsisString[] =
 	"optimized format. A setting of 2 will tell PTB that the Matlab matrix has been already converted into optimal format, "
 	"so no further processing is needed. A value of 3 tells PTB that the texture is completely isotropic, with no real orientation,"
 	"therefore no conversion is required. This latter setting only makes sense for random noise textures or other textures generated "
-	"from a distribution with uncorrelated noise-like pixels, e.g., some power spectrum distribution. ";
-	  
+	"from a distribution with uncorrelated noise-like pixels, e.g., some power spectrum distribution.\n"
+	"'textureShader' - optional: If you provide the handle of an OpenGL GLSL shader program, then this shader program will be "
+	"executed (bound) during drawing of this texture via the Screen('DrawTexture',...); command -- The normal texture drawing "
+	"operation is replaced by your customized algorithm. This is useful for two purposes: a) Very basic on-the-fly image processing "
+	"on the texture. b) Procedural shading: Your texture matrix doesn't encode an image, but only per-pixel parameters is input "
+	"for some formula to compute the real image during drawing. E.g., instead of defining a gabor patch as image or other standard "
+	"stimulus, one could define it as a mathematical formula to be evaluated at draw-time. The Screen('SetOpenGLTexture') command "
+	"allows you to create purely virtual textures, that only consist of such a shader and some virtual size, but don't have any "
+	"real data matrix associated with it -- all content is generated on the fly.";
+
 static char seeAlsoString[] = "DrawTexture TransformTexture BlendFunction";
-
-
 	 
 PsychError SCREENMakeTexture(void) 
 {
@@ -116,7 +127,7 @@ PsychError SCREENMakeTexture(void)
 	GLfloat								*texturePointer_f;
     double *rp, *gp, *bp, *ap;    
     GLubyte *rpb, *gpb, *bpb, *apb;    
-    int                                 usepoweroftwo, usefloatformat, assume_texorientation;
+    int                                 usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
     double                              optimized_orientation;
     Boolean                             bigendian;
 
@@ -135,7 +146,7 @@ PsychError SCREENMakeTexture(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(6));   	
+    PsychErrorExit(PsychCapNumInputArgs(7));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(1)); 
     
@@ -148,6 +159,10 @@ PsychError SCREENMakeTexture(void)
 	// Get optional texture orientation flag:
 	assume_texorientation = 0;
 	PsychCopyInIntegerArg(6, FALSE, &assume_texorientation);
+	
+	// Get optional texture shader handle:
+	textureShader = 0;
+	PsychCopyInIntegerArg(7, FALSE, &textureShader);
 	
     //get the argument and sanity check it.
     isImageMatrixBytes=PsychAllocInUnsignedByteMatArg(2, kPsychArgAnything, &ySize, &xSize, &numMatrixPlanes, &byteMatrix);
@@ -186,7 +201,7 @@ PsychError SCREENMakeTexture(void)
     PsychCopyInIntegerArg(4, FALSE, &usepoweroftwo);
 
     // Check if size constraints are fullfilled for power-of-two mode:
-    if (usepoweroftwo) {
+    if (usepoweroftwo & 1) {
       for(ix = 1; ix < xSize; ix*=2);
       if (ix!=xSize) {
 	PsychErrorExitMsg(PsychError_inputMatrixIllegalDimensionSize, "Power-of-two texture requested but width of imageMatrix is not a power of two!");
@@ -238,7 +253,7 @@ PsychError SCREENMakeTexture(void)
     texturePointer=textureRecord->textureMemory;
     
     // Does script explicitely request usage of a GL_TEXTURE_2D power-of-two texture?
-    if (usepoweroftwo) {
+    if (usepoweroftwo & 1) {
       // Enforce creation as a power-of-two texture:
       textureRecord->texturetarget=GL_TEXTURE_2D;
     }
@@ -474,30 +489,34 @@ PsychError SCREENMakeTexture(void)
     // Let's create and bind a new texture object and fill it with our new texture data.
     PsychCreateTexture(textureRecord);
     
-	// Is this a floating point texture?
-	if (usefloatformat) {
+	// Is this a floating point texture or any texture and shader based filtering is requested?
+	if (usefloatformat || (usepoweroftwo & 2)) {
 		// Yes. Is floating point filtering supported for this texture type?
 		// Don't know of a way to query this, so we maintain a little blacklist
 		// of hardware we know can't do it: All ATI hardware can't do it. All
 		// hardware can't do it for 32bpc float aka usefloatformat == 2:
-		if (usefloatformat == 2 || strstr(glGetString(GL_VENDOR), "ATI")) {
-			// Floating point filtering unsupported. Do we have a filtershader
-			// already?
-			if (windowRecord->textureFilterShader == 0 && !usepoweroftwo) {
+		if ((usepoweroftwo & 2) || usefloatformat == 2 || strstr(glGetString(GL_VENDOR), "ATI")) {
+			// Floating point filtering unsupported or manual filtering requested.
+			// Do we have a filtershader already?
+			if (windowRecord->textureFilterShader == 0 && !(usepoweroftwo & 1)) {
 				// Nope. Need to create one:
 				windowRecord->textureFilterShader = PsychCreateGLSLProgram(textureBilinearFilterShaderSrc, NULL, NULL);
 				if ((windowRecord->textureFilterShader == 0) && PsychPrefStateGet_Verbosity() > 1) {
-					printf("PTB-WARNING: Created a floating point texture as requested, but was unable to create a float filter shader.\n");
-					printf("PTB-WARNING: Filtering - and therefore anti-aliasing - of this texture won't work.\n");
+					printf("PTB-WARNING: Created a floating point texture as requested or manual filtering wanted, but was unable to create a float filter shader.\n");
+					printf("PTB-WARNING: (Custom) Filtering - and therefore anti-aliasing - of this texture won't work or at least not at the requested precision.\n");
 				}
 				else {
-					if (PsychPrefStateGet_Verbosity() > 3) {
+					if (PsychPrefStateGet_Verbosity() > 3 && usefloatformat > 0) {
 						printf("PTB-INFO: %i bpc Floating point texture created. This gfx-hardware doesn't support automatic filtering of such\n", 16 * usefloatformat);
 						printf("PTB-INFO: textures. A GLSL fragment filtershader was generated to work-around this.\n");
 					}
+					
+					if (PsychPrefStateGet_Verbosity() > 3 && (usepoweroftwo & 2)) {
+						printf("PTB-INFO: GLSL fragment filtershader created for this texture for custom high quality texture filtering.\n");
+					}					
 				}
 			}
-			else if (usepoweroftwo && PsychPrefStateGet_Verbosity() > 1) {
+			else if ((usepoweroftwo & 1) && PsychPrefStateGet_Verbosity() > 1) {
 					printf("PTB-WARNING: Created a floating point power of two texture as requested, but don't have a float filter shader.\n");
 					printf("PTB-WARNING: Filtering - and therefore anti-aliasing - of power of two textures won't work.\n");
 			}
@@ -505,6 +524,15 @@ PsychError SCREENMakeTexture(void)
 			// Assign our onscreen windows filtershader to this texture:
 			textureRecord->textureFilterShader = windowRecord->textureFilterShader;
 		}
+	}
+	
+	// User specified override shader for this texture provided? This is useful for
+	// basic image processing and procedural texture shading:
+	if (textureShader!=0) {
+		// Assign provided shader as filtershader to this texture: We negate it so
+		// that the texture blitter routines know this is a custom shader, not our
+		// built in filter shader:
+		textureRecord->textureFilterShader = -1 * textureShader;
 	}
 	
     // Texture ready. Mark it valid and return handle to userspace:

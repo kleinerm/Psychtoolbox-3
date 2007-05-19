@@ -15139,7 +15139,7 @@
 					/usr/lib/gcc/darwin/3.3/,
 					"$(LIBRARY_SEARCH_PATHS)",
 				);
-				MATLAB_DIR_NAME = MATLAB73;
+				MATLAB_DIR_NAME = MATLAB74;
 				USER_HEADER_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/src $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include $(USER_HEADER_SEARCH_PATHS)";
 			};
 			name = Development;
@@ -20452,14 +20452,14 @@
 					MATLAB_MEX_FILE,
 					USE_MWSIZE,
 				);
-				HEADER_SEARCH_PATHS = /Applications/MATLAB73/extern/include;
+				HEADER_SEARCH_PATHS = /Applications/MATLAB74/extern/include;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = /Applications/MATLAB73/bin/maci;
+				LIBRARY_SEARCH_PATHS = /Applications/MATLAB74/bin/maci;
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
-				MATLAB_DIR_NAME = MATLAB73;
+				MATLAB_DIR_NAME = MATLAB74;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -20468,7 +20468,7 @@
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
-					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-Wl,-exported_symbols_list,/Applications/MATLAB74/extern/lib/maci/mexFunction.map",
 					"-lmx",
 					"-lmex",
 					"-lmat",
@@ -20478,6 +20478,7 @@
 				PRODUCT_NAME = Screen;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
 				STRIP_STYLE = all;
+				USER_HEADER_SEARCH_PATHS = "$(inherited)";
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
 			name = Development;

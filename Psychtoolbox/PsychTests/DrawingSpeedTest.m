@@ -27,11 +27,18 @@ end
 AssertOpenGL;
 
 screenid = max(Screen('Screens'));
-[win winrect] = Screen('OpenWindow', screenid, 128);
+[win winrect] = Screen('OpenWindow', screenid, 128, [], [], [], [], 8);
+Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 w=RectWidth(winrect);
 h=RectHeight(winrect);
 sizeX=80;
 sizeY=80;
+msize = min(w,h);
+
+if primitivetype == 1002
+    template = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 msize msize]);
+    Screen('FillOval', template, 255);
+end
 
 % Generate a matrix which specs n filled rectangles, with randomized
 % position, color and (dot-,line-)size parameter
@@ -57,6 +64,17 @@ for i=1:10000
             Screen('FillRect', win, colors, myrect);            
         case 1,
             Screen('FrameRect', win, colors, myrect, sizes);
+        case 2,
+            Screen('FillOval', win, colors, myrect); % , 800);            
+
+%                         for j=1:n
+%                 Screen('FillOval', win, colors(:,j)', myrect(:,j)');
+%             end;
+        case 1002,
+            for j=1:n
+                Screen('DrawTexture', win, template, [], myrect(:,j)', [], 0, [], colors(:,j)');
+            end;
+            
     end
 
     % Flip it. Don't clear buffers, don't sync to retrace. We want the raw

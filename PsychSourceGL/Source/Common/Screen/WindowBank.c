@@ -272,6 +272,11 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->inGreenTable = NULL;
 	(*winRec)->inBlueTable = NULL;
 	(*winRec)->loadGammaTableOnNextFlip = 0;
+	
+	// Set cached display list handles for drawing functions to "uninitialized":
+	(*winRec)->fillOvalDisplayList = 0;
+	(*winRec)->frameOvalDisplayList = 0;
+
 }
 
 

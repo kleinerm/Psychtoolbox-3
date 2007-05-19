@@ -636,16 +636,23 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	  sourceYEnd=sourceYEnd / tHeight;
 	}
 
-        // MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
+	// MK: We need to reenable the proper texturing mode. This fixes bug reported in Forum message 3055,
 	// because SCREENDrawText glDisable'd GL_TEXTURE_RECTANGLE_EXT, without this routine reenabling it.
 	glDisable(GL_TEXTURE_2D);
-	glEnable(texturetarget);
-	glBindTexture(texturetarget, source->textureNumber);
 
+	// Only enable actual texture hardware if a real texture is provided.
+	// In the case of no real texture, we don't bind a real texture, don't
+	// enable texture mapping and just blit the quad, with interpolated
+	// texture coordinates set up for purely procedural shading.
+	if (source->textureNumber > 0) {
+		glEnable(texturetarget);
+		glBindTexture(texturetarget, source->textureNumber);
+	}
+	
 	// Linear filtering on non-capable hardware via shader emulation?
-	if (filterMode > 0 && source->textureFilterShader) {
+	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
-		glUseProgram(source->textureFilterShader);
+		glUseProgram((GLuint) source->textureFilterShader);
 		
 		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
 		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
@@ -674,6 +681,16 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 break;
         }
+	}
+	
+	// Support for basic shading during texture blitting: Useful for very simple
+	// single-pass isotropic image processing and for procedural texture mapping:
+	if (source->textureFilterShader < 0) {
+		// User supplied texture shader for either some on-the-fly texture image processing,
+		// or for procedural texture shading/on-the-fly texture synthesis. These can be
+		// assigned in Screen('MakeTexture') for procedural texture shading or via a
+		// optional shader handle to Screen('DrawTexture');
+		glUseProgram((GLuint) (-1 * source->textureFilterShader));
 	}
 	
 	// Setup texture wrap-mode: We usually default to clamping - the best we can do
@@ -768,11 +785,14 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         // Undo rotation transform, if any...
         glPopMatrix();
 
+	// Only disable texture mapping if we actually enabled it.
+	if (source->textureNumber > 0) {
         // Unbind texture:
-	glBindTexture(texturetarget, 0);
+		glBindTexture(texturetarget, 0);
         glDisable(texturetarget);
-        
-	if (filterMode > 0 && source->textureFilterShader) {
+	}
+	
+	if ((filterMode > 0 && source->textureFilterShader > 0) || (source->textureFilterShader < 0)) {
 		// Filtershader was used. Unbind it:
 		glUseProgram(0);
 	}
