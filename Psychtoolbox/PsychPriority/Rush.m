@@ -164,9 +164,18 @@ function Rush(rushedCode, priorityLevel)
 % 2/4/00    dgp Updated for Mac OS 9.
 % 12/16/03  awi Wrote OS X Documentation and merged with OS 9 + Windows Rush.m.
 % 7/16/04   awi Cosmetic.  Restored HISTORY.
+% 5/22/07   mk  Reimplemented Rush() in this script. Long-term we wanna get
+%               rid of the mex files.
 
-% On all platforms there should be a mex version of this file which
-% executes instead of this file.  See Help PsychAssert. 
-PsychAssertMex;     
-   
-    
+if nargin < 2
+    error('You must specify both, the string with code to rush as well as the rush priority level!');
+end
+
+try
+    Priority(priorityLevel);
+    eval(rushedCode);
+    Priority(0);
+catch
+    Priority(0);
+    psychrethrow(psychlasterror);
+end

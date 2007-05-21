@@ -87,6 +87,55 @@ catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
 end
 
+% Special case handling for different Matlab releases on MS-Windoze:
+if IsWin & ~IsOctave
+    try
+        % Is this a Release2007a or later Matlab?
+        if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008'))
+            % This is a R2007a or post R2007a Matlab:
+
+            % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
+            % path:
+            rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR11/'];
+            rmpath(rdir);
+        else
+            % This is a pre-R2007a Matlab:
+            % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
+            % path:
+            rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR2007a/'];
+            rmpath(rdir);
+        end
+
+        if exist('savepath')
+            savepath;
+        else
+            path2rc;
+        end
+    catch
+        fprintf('=====================================================================');
+        fprintf('ERROR: Failed to remove folder %s from Matlab path!\n', rdir);
+        fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
+        fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
+        fprintf('ERROR: If everything else fails, remove this folder manually.\n');
+        fprintf('ERROR: Try to continue but will likely fail soon.\n\n');
+        fprintf('=====================================================================');
+    end
+
+    try
+        % Try if Screen MEX file works...
+        v = WaitSecs(0.1);
+    catch
+        % Failed! Either screwed setup of path or missing VC++ 2005 runtime
+        % libraries.
+        fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
+        fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n');
+        fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
+        fprintf('ERROR: fix this problem. After fixing the problem, restart this installation/update routine.\n');
+        fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
+        return;
+    end
+end
+
 % Try to execute online registration routine: This should be fail-safe in case
 % of no network connection.
 fprintf('\n\n');
