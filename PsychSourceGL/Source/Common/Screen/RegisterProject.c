@@ -99,21 +99,20 @@
 
 PsychError PsychModuleInit(void)
 {
-        //register the project exit function
-        PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function.");
+	// Register the project exit function
+	PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function.");
 	
-	//register the project function which is called when the module
-	//is invoked with no arguments:
+	// Register the project function which is called when the module
+	// is invoked with no arguments:
 	PsychErrorExitMsg(PsychRegister(NULL,  &PsychDisplayScreenSynopsis), "Failed to register the Screen synopsis function.");
 
-	//register the module name
+	// Register the module name
  	PsychErrorExitMsg(PsychRegister("Screen", NULL), "Failed to register the Screen module name.");
 
-	//register named subfunctions
+	// Register named subfunctions
 	
-	//enable for debugging purposes
+	// Enable for debugging purposes
 	PsychErrorExit(PsychRegister("Null",  &SCREENNull));
-//	PsychErrorExit(PsychRegister("TestStructures",  &SCREENTestStructures));
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
 	PsychErrorExit(PsychRegister("Computer",  &SCREENComputer));
 	PsychErrorExit(PsychRegister("Screens", &SCREENScreens));
@@ -130,7 +129,6 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("HideCursorHelper", &SCREENHideCursorHelper));
 	PsychErrorExit(PsychRegister("ShowCursorHelper", &SCREENShowCursorHelper));
 	PsychErrorExit(PsychRegister("SetMouseHelper", &SCREENSetMouseHelper)); 
-	//PsychErrorExit(PsychRegister("SetMouse", &SCREENPositionCursor));
 	PsychErrorExit(PsychRegister("Rect", &SCREENRect));
 	PsychErrorExit(PsychRegister("WindowScreenNumber", &SCREENWindowScreenNumber));
 	PsychErrorExit(PsychRegister("Windows", &SCREENWindows));
@@ -207,11 +205,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("HookFunction", &SCREENHookFunction));
  	PsychErrorExit(PsychRegister("OpenProxy", &SCREENOpenProxy));
 	PsychErrorExit(PsychRegister("TransformTexture", &SCREENTransformTexture));
-	//Experiments
+	PsychErrorExit(PsychRegister("DrawTextures", &SCREENDrawTextures));
 
-
-	//PsychErrorExit(PsychRegister("SetGLSynchronous", &SCREENSetGLSynchronous));
-	//InitializeVideoSubsystem();  //SDL_Init or whatever.  Keep this because we might need it for theh Windows implementation.  
 	
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");
@@ -226,7 +221,6 @@ PsychError PsychModuleInit(void)
 	InitWindowBank();
 	PsychMovieInit();
 	PsychVideoCaptureInit();
-        
 	PrepareScreenPreferences();
     
 	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
@@ -234,9 +228,4 @@ PsychError PsychModuleInit(void)
 	PsychSetUserspaceGLFlag(FALSE);
 
 	return(PsychError_none);
-
 }
-
-
-
-

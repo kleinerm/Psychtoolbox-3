@@ -71,14 +71,14 @@ void InitializeSynopsis()
 
 	synopsis[i++] = "Usage:";
 
-        // OS-9 PTB emulation:
-        synopsis[i++] = "\n% Activate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:";
-        synopsis[i++] = "oldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);";
+	// OS-9 PTB emulation:
+	synopsis[i++] = "\n% Activate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:";
+	synopsis[i++] = "oldEnableFlag=Screen('Preference', 'EmulateOldPTB', [enableFlag]);";
 
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
-        synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";	
 	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
 	synopsis[i++] = "Screen('CloseAll');";
@@ -87,15 +87,15 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n%  Draw lines and solids like QuickDraw and DirectX (OS 9 and Windows):";
 	synopsis[i++] = "Screen('SelectStereoDrawBuffer', windowPtr, bufferid);";
 	synopsis[i++] = "Screen('DrawLine', windowPtr [,color], fromH, fromV, toH, toV [,penWidth]);";
-        synopsis[i++] = "Screen('DrawArc',windowPtr,[color],[rect],startAngle,arcAngle)";
-        synopsis[i++] = "Screen('FrameArc',windowPtr,[color],[rect],startAngle,arcAngle[,penWidth] [,penHeight] [,penMode])";
-        synopsis[i++] = "Screen('FillArc',windowPtr,[color],[rect],startAngle,arcAngle)";
-        synopsis[i++] = "Screen('FillRect', windowPtr [,color] [,rect] );";
+	synopsis[i++] = "Screen('DrawArc',windowPtr,[color],[rect],startAngle,arcAngle)";
+	synopsis[i++] = "Screen('FrameArc',windowPtr,[color],[rect],startAngle,arcAngle[,penWidth] [,penHeight] [,penMode])";
+	synopsis[i++] = "Screen('FillArc',windowPtr,[color],[rect],startAngle,arcAngle)";
+	synopsis[i++] = "Screen('FillRect', windowPtr [,color] [,rect] );";
 	synopsis[i++] = "Screen('FrameRect', windowPtr [,color] [,rect] [,penWidth]);";
 	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";
 	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";
 	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList);";	
-	
+		
 	
 	// New OpenGL-based functions for OS X
 	synopsis[i++] = "\n% New OpenGL functions for OS X:";
@@ -103,7 +103,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
 	synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
 	synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
-        synopsis[i++] = "[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);";
+	synopsis[i++] = "[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);";
 
 	// Draw Text in windows
 	synopsis[i++] = "\n% Draw Text in windows";
@@ -119,9 +119,10 @@ void InitializeSynopsis()
 	
 	// Copy an image, very quickly, between textures and onscreen windows
 	synopsis[i++] = "\n% Copy an image, very quickly, between textures, offscreen windows and onscreen windows.";
-        synopsis[i++] = "[resident [texidresident]] = Screen('PreloadTextures', windowPtr [, texids]);";
+	synopsis[i++] = "[resident [texidresident]] = Screen('PreloadTextures', windowPtr [, texids]);";
 	synopsis[i++] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor]);";	
-        synopsis[i++] = "Screen('CopyWindow', srcWindowPtr, dstWindowPtr, [srcRect], [dstRect], [copyMode])";
+	synopsis[i++] = "Screen('DrawTextures', windowPointer, texturePointer(s) [, sourceRect(s)] [, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)] [, modulateColor(s)]);";
+	synopsis[i++] = "Screen('CopyWindow', srcWindowPtr, dstWindowPtr, [srcRect], [dstRect], [copyMode])";
 
 	// Copy an image, slowly, between matrices and windows
 	synopsis[i++] = "\n% Copy an image, slowly, between matrices and windows :";
@@ -131,8 +132,8 @@ void InitializeSynopsis()
 	// Synchronize with the window's screen (on-screen only):
 	synopsis[i++] = "\n% Synchronize with the window's screen (on-screen only):";
 	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('Flip', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
-        synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";
-        synopsis[i++] = "framesSinceLastWait = Screen('WaitBlanking', windowPtr [, waitFrames]);";
+	synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";
+	synopsis[i++] = "framesSinceLastWait = Screen('WaitBlanking', windowPtr [, waitFrames]);";
 
 	// Load color lookup table of the window's screen (on-screen only)
 	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
@@ -193,46 +194,47 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Movie and multimedia playback functions:";
 	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0]);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
-        synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
+	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
         
-        // Video capture support:
+	// Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
-        synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags]);";
-        synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
-        synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
-        synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
-        synopsis[i++] = "[texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode]);";
+	synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags]);";
+	synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
+    synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
+    synopsis[i++] = "droppedframes = Screen('StopVideoCapture', capturePtr);";
+    synopsis[i++] = "[texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode]);";
 	synopsis[i++] = "oldvalue = Screen('SetVideoCaptureParameter', capturePtr, 'parameterName' [, value]);"; 
 
 	// Low level OpenGL calls - directly translated to C via very thin wrapper functions:
 	synopsis[i++] = "\n% Low level direct access to OpenGL-API functions:";
 	synopsis[i++] = "% Online info for each function available by opening a terminal window";
 	synopsis[i++] = "% and typing 'man Functionname' + Enter.\n";
-        synopsis[i++] = "Screen('glPushMatrix', windowPtr);";
-        synopsis[i++] = "Screen('glPopMatrix', windowPtr);";
-        synopsis[i++] = "Screen('glLoadIdentity', windowPtr);";
-        synopsis[i++] = "Screen('glTranslate', windowPtr, tx, ty [, tz]);";
-        synopsis[i++] = "Screen('glScale', windowPtr, sx, sy [, sz]);";
-        synopsis[i++] = "Screen('glRotate', windowPtr, angle, [rx = 0], [ry = 0] ,[rz = 1]);";
-        
-        // Interfacing with external OpenGL rendering code (MOGL and external OpenGL Mexfiles):
+	synopsis[i++] = "Screen('glPushMatrix', windowPtr);";
+	synopsis[i++] = "Screen('glPopMatrix', windowPtr);";
+	synopsis[i++] = "Screen('glLoadIdentity', windowPtr);";
+	synopsis[i++] = "Screen('glTranslate', windowPtr, tx, ty [, tz]);";
+	synopsis[i++] = "Screen('glScale', windowPtr, sx, sy [, sz]);";
+	synopsis[i++] = "Screen('glRotate', windowPtr, angle, [rx = 0], [ry = 0] ,[rz = 1]);";
+	
+	// Interfacing with external OpenGL rendering code (MOGL and external OpenGL Mexfiles):
 	synopsis[i++] = "\n% Support for 3D graphics rendering and for interfacing with external OpenGL code:";
-        synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);  % Enable 3D gfx support.";
-        synopsis[i++] = "Screen('BeginOpenGL', windowPtr [, sharecontext]);  % Prepare window for external OpenGL drawing.";
-        synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
+	synopsis[i++] = "Screen('Preference', 'Enable3DGraphics', [enableFlag]);  % Enable 3D gfx support.";
+	synopsis[i++] = "Screen('BeginOpenGL', windowPtr [, sharecontext]);  % Prepare window for external OpenGL drawing.";
+	synopsis[i++] = "Screen('EndOpenGL', windowPtr);  % Finish external OpenGL drawing.";
 	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTextureFromMemPointer', windowPtr, textureHandle, imagePtr, width, height, depth [, upsidedown][, target][, glinternalformat][, gltype][, extdataformat]);";
-        synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader]);";
-        synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
+	synopsis[i++] = "[textureHandle rect] = Screen('SetOpenGLTexture', windowPtr, textureHandle, glTexid, target [, glWidth] [, glHeight] [, glDepth] [, textureShader]);";
+	synopsis[i++] = "[ gltexid gltextarget texcoord_u texcoord_v ] =Screen('GetOpenGLTexture', windowPtr, textureHandle [, x][, y]);";
+	
+	synopsis[i++] = "\n% Support for plugins and for builtin high performance image processing pipeline:";
+	synopsis[i++] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, ...);";
+	synopsis[i++] = "proxyPtr = Screen('OpenProxy', windowPtr [, imagingmode]);";
+	synopsis[i++] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, sourceTexture2][, targetTexture][, specialFlags]);";
+	
+	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 
-		synopsis[i++] = "\n% Support for plugins and for builtin high performance image processing pipeline:";
-		synopsis[i++] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, ...);";
-		synopsis[i++] = "proxyPtr = Screen('OpenProxy', windowPtr [, imagingmode]);";
-		synopsis[i++] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, sourceTexture2][, targetTexture][, specialFlags]);";
-
-        synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
 	}

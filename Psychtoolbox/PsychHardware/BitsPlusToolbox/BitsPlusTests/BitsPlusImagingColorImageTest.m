@@ -46,9 +46,9 @@ else
 end
 
 % Normalize to 0.0 - 1.0 intensity range:
-maxpixel = max(max(max(theImage)))
-theImage = theImage / maxpixel * 10;
-theImage = theImage.^0.4545;
+%maxpixel = max(max(max(theImage)))
+%theImage = theImage / maxpixel * 10;
+%theImage = theImage.^0.4545;
 % Convert input image via Bits++ toolbox routines (Matlab code):
 fprintf('Converting to color++ format\n');
 tic;

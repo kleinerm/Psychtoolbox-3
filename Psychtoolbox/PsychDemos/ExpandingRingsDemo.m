@@ -43,7 +43,6 @@ screenid = max(Screen('Screens'));
 % Open a fullscreen onscreen window on that display, choose a background
 % color of 128 = gray with 50% max intensity:
 [win winRect]= Screen('OpenWindow', screenid, 128);
-Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 % Query window size: Need this to define center and radius of expanding
 % disk stimulus:

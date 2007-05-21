@@ -57,9 +57,9 @@ if debug>0
 end;
 
 % Read shader source code from file:
-fid=fopen(filename, 'rt');
+[fid errmsg]=fopen(filename, 'rt');
 if fid<0
-    error('Could not open shader definition file!');
+    error('Could not open shader definition file %s [%s]!', filename, errmsg);
 end;
 shadersrc = fread(fid);
 fclose(fid);

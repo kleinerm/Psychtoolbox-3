@@ -1,5 +1,5 @@
-function DrawingSpeedTest(n,primitivetype)
-% DrawingSpeedTest([n=800][,primitivetype=0])
+function DrawingSpeedTest(n,primitivetype,mode)
+% DrawingSpeedTest([n=800][,primitivetype=0][,mode=0])
 %
 % Tests batch-drawing performance of some Screen functions. Batch drawing
 % is a way to submit multiple primitives, e.g., Filled Rects, at once. This
@@ -7,11 +7,20 @@ function DrawingSpeedTest(n,primitivetype)
 % and drawing should be significantly faster than when issuing single
 % drawing commands in a loop.
 %
-% This currently only tests filled rects and framed rects. Dots and Lines are nicely
-% demonstrated by DotDemo and LinesDemo.
+% This currently only tests filled rects and framed rects as well as filled
+% ovals. It also provides a way to test drawing by texture mapping.
+% Dots and Lines are nicely demonstrated by DotDemo and LinesDemo.
 %
 % The optional parameter n allows to specifiy the number of primitives to
-% draw each frame, default is 800.
+% draw each frame, default is 800. The test loop will draw 1000 identical
+% frames and measure the time needed.
+%
+% 'primitivetype' type of primitive: 0 = filled rects, 1 = framed rects, 2
+% = filled ovals.
+%
+% 'mode' type of drawing: 0 = One by one submission (slowest), 1 = batch
+% submission, 2 = texture mapping for drawing, 3 = texture mapping with
+% batch submission of textures.
 
 % History:
 % 04/30/07 mk Wrote it.
@@ -24,20 +33,45 @@ if nargin < 2 || isempty(primitivetype)
     primitivetype = 0;
 end
 
+if nargin < 3 || isempty(mode)
+    mode = 0;
+end
+
+% Check proper PTB installation:
 AssertOpenGL;
 
+% Open window with gray background on secondary display (if any):
 screenid = max(Screen('Screens'));
-[win winrect] = Screen('OpenWindow', screenid, 128, [], [], [], [], 8);
-Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+[win winrect] = Screen('OpenWindow', screenid, 128, [], [], [], [], 0);
+
+% Setup stim parameters:
 w=RectWidth(winrect);
 h=RectHeight(winrect);
 sizeX=80;
 sizeY=80;
 msize = min(w,h);
 
-if primitivetype == 1002
+% In mode 2 or 3, we draw a prototype stimulus into an offscreen window,
+% using the alpha-channel to mask out all non-stimulus shape pixels. We
+% will use this texture image of a prototype stim later on to draw the
+% stimulus shape, rescaling it and changing its color and alpha as
+% requested:
+if mode == 2 || mode == 3
+    % Need alpha-blending - Enable it:
+    Screen('Blendfunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    % Open offscreen window 'template' of reasonable size msize x msize
+    % pixels. Set it to a black transparent background [r g b a] = [0 0 0 0]
     template = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 msize msize]);
-    Screen('FillOval', template, 255);
+    % Draw prototype primitive which covers the full window and has a color
+    % and alpha value of 255 ie. white and fully opaque:
+    switch primitivetype
+        case 0,
+            Screen('FillRect', template, 255);
+        case 1,
+            Screen('FrameRect', template, 255, [0 0 msize msize], 50);
+        case 2,
+            Screen('FillOval', template, 255);
+    end
 end
 
 % Generate a matrix which specs n filled rectangles, with randomized
@@ -50,6 +84,8 @@ for j = 1:n
     sizes(j) = floor(rand * 10)+1;
 end
 
+% Need color and shape vectors transposed, i.e., 4 row by n columns
+% matrices:
 colors = transpose(colors);
 myrect = transpose(myrect);
 
@@ -57,24 +93,57 @@ myrect = transpose(myrect);
 t1 = Screen('Flip', win);
 
 % Timing loop, 1000 trials:
-for i=1:10000
+for i=1:1000
     % Batch draw:
-    switch primitivetype
-        case 0,
-            Screen('FillRect', win, colors, myrect);            
-        case 1,
-            Screen('FrameRect', win, colors, myrect, sizes);
-        case 2,
-            Screen('FillOval', win, colors, myrect); % , 800);            
+    if mode < 2
+        switch primitivetype
+            case 0,
+                if mode == 1
+                    % Batch drawing version of FillRect - submit all
+                    % primitives at once:
+                    Screen('FillRect', win, colors, myrect);
+                end
 
-%                         for j=1:n
-%                 Screen('FillOval', win, colors(:,j)', myrect(:,j)');
-%             end;
-        case 1002,
+                if mode == 0
+                    for j=1:n
+                        % One part at a time submission:
+                        Screen('FillRect', win, colors(:,j)', myrect(:,j)');
+                    end
+                end
+            case 1,
+                if mode == 1
+                    Screen('FrameRect', win, colors, myrect, sizes);
+                end
+
+                if mode == 0
+                    for j=1:n
+                        Screen('FrameRect', win, colors(:,j)', myrect(:,j)', sizes(j));
+                    end
+                end
+
+            case 2,
+                if mode == 1
+                    Screen('FillOval', win, colors, myrect);
+                end
+
+                if mode == 0
+                    for j=1:n
+                        Screen('FillOval', win, colors(:,j)', myrect(:,j)');
+                    end
+                end
+
+        end
+    else
+        % mode > 2: Use DrawTexture to draw template primitive:
+        if mode == 2
             for j=1:n
+                % DrawTexture in a loop:
                 Screen('DrawTexture', win, template, [], myrect(:,j)', [], 0, [], colors(:,j)');
             end;
-            
+        else
+            % Batch drawing version DrawTextures:
+            Screen('DrawTextures', win, template, [], myrect, 0, 0, 0, colors);
+        end
     end
 
     % Flip it. Don't clear buffers, don't sync to retrace. We want the raw
@@ -87,12 +156,13 @@ Screen('DrawingFinished', win, 2, 1);
 
 % Take end time, compute and print the stats:
 telapsed = GetSecs - t1;
-tavg = telapsed
-tperrect = tavg / n
+tavg = telapsed;
+tperrect = tavg / n;
 
 fprintf('Rendered 1000 frames, each with %i rectangles of size %i x %i.\n', n, sizeX,sizeY);
 fprintf('Total time %6.6f seconds. Time per rectangle %6.6f msecs.\n', telapsed, tperrect);
 
 %Done.
 Screen('CloseAll');
+
 return;

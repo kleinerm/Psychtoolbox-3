@@ -165,8 +165,34 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % History:
 % 22.04.2007 Written (MK).
 
+global GL;
+
+% Flag for validation: If not set to one, then this routine will check if
+% proper operation of Bitsplusplus with GPU imaging has been verified.
+persistent validated;
+
 % Default debuglevel for output during initialization:
 debuglevel = 1;
+
+if isempty(validated)
+    validated = 0;
+end
+
+if strcmp(cmd, 'ForceUnvalidatedRun')
+    % Enforce use of this routine without verification of correct function
+    % of the imaging pipeline. This is used by the correctness test itself
+    % in order to be able to run the validation.
+    validated = 1;
+    return;
+end
+
+if strcmp(cmd, 'StoreValidation')
+    % Enforce use of this routine without verification of correct function
+    % of the imaging pipeline. This is used by the correctness test itself
+    % in order to be able to run the validation.
+    ValidateBitsPlusImaging(arg, 1);
+    return;
+end
 
 if strcmp(cmd, 'LoadIdentityClut')
     % Load an identity CLUT into Bits++ at next Screen('Flip'). This is
@@ -247,6 +273,14 @@ if strcmp(cmd, 'OpenWindowBits++')
         Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', '');
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
+    
+    % Check validation:
+    if ~validated
+        ValidateBitsPlusImaging(win, 0);
+    end
+    
+    % Reset validation flag after first run:
+    validated = 0;
     
     % Ready!
     return;
@@ -385,8 +419,77 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % Restore old graphics preferences:
     Screen('Preference', 'Enable3DGraphics', ogl);
 
+    % Check validation:
+    if ~validated
+        ValidateBitsPlusImaging(win, 0);
+    end
+
+    % Reset validation flag after first run:
+    validated = 0;
+
     % Ready!
     return;
 end
 
 error('BitsPlusPlus: Unknown subcommand provided. Read "help BitsPlusPlus".');
+end
+
+% Helper function: Check if system already validated for current settings:
+function ValidateBitsPlusImaging(win, writefile)
+    
+    % Compute fingerprint of this system configuration:
+    validated = 0;
+    global GL;
+    
+    [w, h] = Screen('WindowSize', win);
+    d = Screen('PixelSize', win);
+    v = Screen('Version');
+    v = v.version;
+    gfxconfig = [ glGetString(GL.VENDOR) ':' glGetString(GL.RENDERER) ':' glGetString(GL.VERSION) ];
+    gfxconfig = sprintf('%s : Screen %i : Resolution %i x %i x %i : ScreenVersion = %s', gfxconfig, Screen('WindowScreenNumber', win), w, h, d, v);
+    
+    if ~writefile
+        % Check if a validation file exists and if it contains this
+        % configuration:
+        fid = fopen([PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], 'r');
+        if fid~=-1
+            while ~feof(fid)
+                vconf = fgetl(fid);
+                if strcmp(vconf, gfxconfig)
+                    validated = 1;
+                    break;
+                end
+            end
+            fclose(fid)
+        end
+
+        if ~validated
+            fprintf('\n\n------------------------------------------------------------------------------------------------------------------\n')
+            fprintf('\n\nThis specific configuration of graphics hardware, graphics driver and Psychtoolbox version has not yet been tested\n');
+            fprintf('for correct working with Bits++ for the given display screen, screen resolution and color depths.\n\n');
+            fprintf('Please run the test script "BitsPlusImagingPipelineTest(%i);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
+            fprintf('After that test script suceeded, re-run your experiment script.\nThanks.\n');
+            fprintf('\n');
+            fprintf('Configuration to verify: %s\n', gfxconfig);
+            
+            Screen('CloseAll'); ShowCursor; Priority(0);
+            
+            error('Configuration not yet verified. Please do it now.');
+        end
+    end
+    
+    if writefile
+        % Append current configuration to file to mark it as verified:
+        [fid msg]= fopen([PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], 'a');
+        if fid == -1
+            sca;
+            errtxt = sprintf('Could not write validation file %s to filesystem [%s].', [PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], msg);
+            error(errtxt);
+        end
+
+        % Append line:
+        fprintf(fid, [gfxconfig '\n']);
+        fclose(fid);
+    end
+end
+
