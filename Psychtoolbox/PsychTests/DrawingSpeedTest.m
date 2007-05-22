@@ -80,7 +80,7 @@ for j = 1:n
     posx = rand * w;
     posy = rand * h;
     colors(j, 1:3) = [ rand * 255, rand * 255, rand * 255];
-    myrect(j, 1:4) = [ posx, posy, posx + rand * sizeX, posy + rand * sizeY];
+    myrect(j, 1:4) = floor([ posx, posy, posx + rand * sizeX, posy + rand * sizeY]);
     sizes(j) = floor(rand * 10)+1;
 end
 
