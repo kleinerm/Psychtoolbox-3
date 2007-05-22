@@ -26,6 +26,9 @@
 // In this function, we try to detect such OS dependent quirks and try to work around them...
 void mogl_rebindARBExtensionsToCore(void)
 {   
+#ifndef NULL
+#define NULL 0
+#endif
     // Remap unsupported OpenGL 2.0 core functions for GLSL to supported ARB extension counterparts:
     if (NULL == glCreateProgram) glCreateProgram = glCreateProgramObjectARB;
     if (NULL == glCreateShader) glCreateShader = glCreateShaderObjectARB;
@@ -35,7 +38,11 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glLinkProgram) glLinkProgram = glLinkProgramARB;
     if (NULL == glUseProgram) glUseProgram = glUseProgramObjectARB;
     if (NULL == glGetAttribLocation) glGetAttribLocation = glGetAttribLocationARB;
+#ifndef TARGET_OS_WIN32
     if (NULL == glGetUniformLocation) glGetUniformLocation = (GLint (*)(GLint, const GLchar*)) glGetUniformLocationARB;
+#else
+    if (NULL == glGetUniformLocation) glGetUniformLocation = glGetUniformLocationARB;
+#endif
     if (NULL == glGetUniformfv) glGetUniformfv = glGetUniformfvARB;
     if (NULL == glUniform1f) glUniform1f = glUniform1fARB;
     if (NULL == glUniform2f) glUniform2f = glUniform2fARB;
