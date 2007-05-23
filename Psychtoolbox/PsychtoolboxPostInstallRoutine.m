@@ -92,23 +92,27 @@ end
 if IsWin & ~IsOctave
     rc = 0;
     try
+        % Remove DLL folders from path:
+        rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\']);
+        rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
+        
         % Is this a Release2007a or later Matlab?
         if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008'))
             % This is a R2007a or post R2007a Matlab:
-            % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
-            % path:
-            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\'];
-            fprintf('Matlab release 2007a or later detected. Will remove the following\n');
-            fprintf('folder from your Matlab path: %s ...\n', rdir);
-            rmpath(rdir);
-        else
-            % This is a pre-R2007a Matlab:
-            % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
+            % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
             % path:
             rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
-            fprintf('Matlab release prior to R2007a detected. Will remove the following\n');
-            fprintf('folder from your Matlab path: %s ...\n', rdir);
-            rmpath(rdir);
+            fprintf('Matlab release 2007a or later detected. Will prepend the following\n');
+            fprintf('folder to your Matlab path: %s ...\n', rdir);
+            addpath(rdir);
+        else
+            % This is a pre-R2007a Matlab:
+            % Add PsychBasic/MatlabWindowsFilesR11/ subfolder to Matlab
+            % path:
+            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\'];
+            fprintf('Matlab release prior to R2007a detected. Will prepend the following\n');
+            fprintf('folder to your Matlab path: %s ...\n', rdir);
+            addpath(rdir);
         end
 
         if exist('savepath')
@@ -122,18 +126,21 @@ if IsWin & ~IsOctave
 
     if rc > 0
         fprintf('=====================================================================');
-        fprintf('ERROR: Failed to remove folder %s from Matlab path!\n', rdir);
+        fprintf('ERROR: Failed to prepend folder %s to Matlab path!\n', rdir);
         fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
         fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
-        fprintf('ERROR: If everything else fails, remove this folder manually.\n');
+        fprintf('ERROR: If everything else fails, add this folder manually to the.\n');
+        fprintf('ERROR: top of your Matlab path.');
         fprintf('ERROR: Trying to continue but will likely fail soon.\n\n');
         fprintf('=====================================================================');
     end
     
     try
         % Rehash the Matlab toolbox cache:
-        rehash path;
-        rehash toolbox;
+        path(path);
+        rehash pathreset;
+        rehash toolboxreset;
+        clear WaitSecs;
     catch
         fprintf('WARNING: rehashing the Matlab toolbox cache failed. I may fail and recommend\n');
         fprintf('WARNING: Quitting and restarting Matlab, then retry.\n');

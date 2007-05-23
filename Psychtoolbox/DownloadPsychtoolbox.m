@@ -513,6 +513,7 @@ fprintf('run the UpdatePsychtoolbox script.\n\n');
 
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % Notify the post-install routine of the download and its flavor.
+   clear PsychtoolboxPostInstallRoutine;
    PsychtoolboxPostInstallRoutine(0, flavor);
 end
 

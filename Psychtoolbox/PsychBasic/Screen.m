@@ -159,3 +159,4 @@ function Screen
 % 10/4/05   awi  Note here cosmetic changes by dgp on unknown date between 7/12/04 and 10/4/05
 % 11/16/06  mk   Rewritten to more closely match reality on PTB-3.
 % 01/25/07  mk   Refined again.
+AssertMex;

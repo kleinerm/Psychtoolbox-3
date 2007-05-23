@@ -46,3 +46,4 @@ function s=GetSecs(s,subscript)
 % 6/16/00  dgp  Cosmetic.
 % 10/25/05 awi  Divided into general section and OS 9 & Win specific sections.
 %               Imported into OS X PTB. 
+AssertMex;

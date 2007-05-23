@@ -154,6 +154,7 @@ fprintf('Fully done. Your new Psychtoolbox folder is ready to use. Enjoy!\n\n')
 if exist('PsychtoolboxPostInstallRoutine.m', 'file')
    % We pass the information about downloaded flavor and that this is a download (=0) to the
    % post-install routine...
+   clear PsychtoolboxPostInstallRoutine;
    PsychtoolboxPostInstallRoutine(1);
 end;
 
