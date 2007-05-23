@@ -97,7 +97,7 @@ if IsWin & ~IsOctave
             % This is a R2007a or post R2007a Matlab:
             % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
             % path:
-            rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR11/'];
+            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR11\'];
             fprintf('Matlab release 2007a or later detected. Will remove the following\n');
             fprintf('folder from your Matlab path: %s ...\n', rdir);
             rmpath(rdir);
@@ -105,7 +105,7 @@ if IsWin & ~IsOctave
             % This is a pre-R2007a Matlab:
             % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
             % path:
-            rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR2007a/'];
+            rdir = [PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\'];
             fprintf('Matlab release prior to R2007a detected. Will remove the following\n');
             fprintf('folder from your Matlab path: %s ...\n', rdir);
             rmpath(rdir);
