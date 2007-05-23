@@ -28,6 +28,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 %            robust (MK).
 % 14/10/2006 Update web page pointers at end, just to point at new wiki (DHB).
 % 28/10/2006 Accept 'current' as synonym for 'beta'. (DHB)
+% 23/05/2007 Add Matlab R2007 vs. earlier detection to Windows version (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -89,41 +90,58 @@ end
 
 % Special case handling for different Matlab releases on MS-Windoze:
 if IsWin & ~IsOctave
+    rc = 0;
     try
         % Is this a Release2007a or later Matlab?
         if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008'))
             % This is a R2007a or post R2007a Matlab:
-
             % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
             % path:
             rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR11/'];
+            fprintf('Matlab release 2007a or later detected. Will remove the following\n');
+            fprintf('folder from your Matlab path: %s ...\n', rdir);
             rmpath(rdir);
         else
             % This is a pre-R2007a Matlab:
             % Remove PsychBasic/MatlabWindowsFilesR11/ subfolder from Matlab
             % path:
             rdir = [PsychtoolboxRoot 'PsychBasic/MatlabWindowsFilesR2007a/'];
+            fprintf('Matlab release prior to R2007a detected. Will remove the following\n');
+            fprintf('folder from your Matlab path: %s ...\n', rdir);
             rmpath(rdir);
         end
 
         if exist('savepath')
-            savepath;
+            rc = savepath;
         else
-            path2rc;
+            rc = path2rc;
         end
     catch
+        rc = 2;
+    end
+
+    if rc > 0
         fprintf('=====================================================================');
         fprintf('ERROR: Failed to remove folder %s from Matlab path!\n', rdir);
         fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
         fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
         fprintf('ERROR: If everything else fails, remove this folder manually.\n');
-        fprintf('ERROR: Try to continue but will likely fail soon.\n\n');
+        fprintf('ERROR: Trying to continue but will likely fail soon.\n\n');
         fprintf('=====================================================================');
     end
-
+    
+    try
+        % Rehash the Matlab toolbox cache:
+        rehash path;
+        rehash toolbox;
+    catch
+        fprintf('WARNING: rehashing the Matlab toolbox cache failed. I may fail and recommend\n');
+        fprintf('WARNING: Quitting and restarting Matlab, then retry.\n');
+    end
+    
     try
         % Try if Screen MEX file works...
-        v = WaitSecs(0.1);
+        WaitSecs(0.1);
     catch
         % Failed! Either screwed setup of path or missing VC++ 2005 runtime
         % libraries.
