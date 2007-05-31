@@ -47,8 +47,10 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	settings->textMode=kPsychTextFill;
 	settings->textPositionX=0;
 	settings->textPositionY=0;
-	settings->textSize=12;		//should be read from preferences but for now we just make it up.
-	settings->textStyle=0;		// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
+	// We use a different textSize (18 vs. 12) on Windoofs to compensate for its broken text renderer.
+	// We also compensate for more MS-Braindamage by selecting bold text by default.
+	settings->textSize=18;		//should be read from preferences but for now we just make it up.
+	settings->textStyle=1;		// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
 
 #ifdef COMMENTEDOUT
 	// FIXME!

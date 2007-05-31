@@ -887,11 +887,17 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, (*fbo)->fboid);
 	
 	// Attach the texture as color buffer zero:
-    glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid, 0);
+   glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->coltexid, 0);
 	
+	if (glGetError()!=GL_NO_ERROR) {
+		printf("PTB-ERROR: Failed to attach internal framebuffer objects color buffer attachment for imaging pipeline!\n");
+		printf("PTB-ERROR: Maybe the requested size & depth of the window or texture is not supported by your graphics hardware.\n");
+		return(FALSE);
+	}
+
 	// Check for framebuffer completeness:
 	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT) {
+	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT && fborc!=0) {
 		// Framebuffer incomplete!
 		while(glGetError());
 		printf("PTB-ERROR[Imaging pipeline]: Failed to setup color buffer attachment of internal FBO when trying to prepare drawing into a texture or window.\n");
@@ -912,6 +918,16 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 			printf("PTB-ERROR: Exact reason for failure is unknown, most likely a Psychtoolbox bug, GL-driver bug or unintented use. glCheckFramebufferStatus() returns code %i\n", fborc);
 		}
 		return(FALSE);
+	}
+	else if (fborc == 0) {
+		// Checking command itself failed?!?
+		if (PsychPrefStateGet_Verbosity() > 2) {
+			// Warn the user:
+			printf("PTB-WARNING: In setup of framebuffer object color attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+			printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
+			printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
+		}
+		while(glGetError());
 	}
 	
 	// Do we need additional buffers for 3D rendering?
@@ -980,7 +996,8 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
 			
 			// See if we are framebuffer complete:
-			if (GL_FRAMEBUFFER_COMPLETE_EXT != glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT)) {
+			fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
+			if (GL_FRAMEBUFFER_COMPLETE_EXT != fborc && 0 != fborc) {
 				// Nope. Our trick doesn't work, this hardware won't let us attach a stencil buffer at all. Remove it
 				// and live with a depth-buffer only setup.
 				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Stencil renderbuffer attachment failed! Detaching stencil buffer...\n"); 
@@ -997,6 +1014,16 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 				glDeleteRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
 				(*fbo)->stexid = 0;
 			}
+			else if (fborc == 0) {
+				// Checking command itself failed?!?
+				if (PsychPrefStateGet_Verbosity() > 2) {
+					// Warn the user:
+					printf("PTB-WARNING: In setup of framebuffer object stencil attachment: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+					printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
+					printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
+				}
+				while(glGetError());
+			}
 		}
 	}
 	else {
@@ -1012,7 +1039,7 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 	
 	// Check for framebuffer completeness:
 	fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);
-	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT) {
+	if (fborc!=GL_FRAMEBUFFER_COMPLETE_EXT && fborc!=0) {
 		// Framebuffer incomplete!
 		while(glGetError());
 		printf("PTB-ERROR: Failed to setup internal framebuffer object for imaging pipeline [%s]! The most likely cause is that your hardware does not support\n", (fborc==GL_FRAMEBUFFER_UNSUPPORTED_EXT) ? "Unsupported format" : "Unknown error");
@@ -1020,7 +1047,17 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		printf("PTB-ERROR: You may want to retry with the lowest acceptable (for your study) display resolution or with 3D rendering support disabled.\n");
 		return(FALSE);
 	}
-	
+	else if (fborc == 0) {
+		// Checking command itself failed?!?
+		if (PsychPrefStateGet_Verbosity() > 2) {
+			// Warn the user:
+			printf("PTB-WARNING: In setup of framebuffer object: glCheckFramebufferStatusEXT() malfunctioned. (glGetError reports: %s)\n", gluErrorString(glGetError()));
+			printf("PTB-WARNING: Therefore can't determine if FBO setup worked or not. Will continue and hope for the best :(\n");
+			printf("PTB-WARNING: This is most likely a graphics driver bug. You may want to update your graphics drivers, maybe it helps.\n");
+		}
+		while(glGetError());
+	}
+
 	if (PsychPrefStateGet_Verbosity()>4) {
 		// Output framebuffer properties:
 		glGetIntegerv(GL_RED_BITS, &bpc);

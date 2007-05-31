@@ -561,13 +561,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	// value at two measurements 2 ms apart...
 	i=(int) CGDisplayBeamPosition(cgDisplayID);
 	PsychWaitIntervalSeconds(0.002);
-	if (((int) CGDisplayBeamPosition(cgDisplayID)) == i) {
+	if ((((int) CGDisplayBeamPosition(cgDisplayID)) == i) || (i < -1)) {
 	  // CGDisplayBeamPosition returns the same value at two different points in time?!?
 	  // That's impossible on anything else than a high-precision 500 Hz display!
 	  // --> CGDisplayBeamPosition is not working correctly for some reason.
 	  sync_trouble = true;
 	  if(PsychPrefStateGet_Verbosity()>1)
-	    printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value)\n");
+	    if (i >=-1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
+	    if (i < -1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);		
 	}
 	else {
 	  // CGDisplayBeamPosition works: Use it to find VBL-Endline...
@@ -598,13 +599,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	PsychRealtimePriority(false);
 	
 	// Is the VBL endline >= VBL startline - 1, aka screen height?
-	if (VBL_Endline < (int) vbl_startline - 1) {
+	if ((VBL_Endline < (int) vbl_startline - 1) || (VBL_Endline > vbl_startline * 1.25)) {
 	  // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
 	  // as invalid so it doesn't get used anywhere:
 	  sync_trouble = true;
 	  ifi_beamestimate = 0;
-	  if(PsychPrefStateGet_Verbosity()>1)
+	  if(PsychPrefStateGet_Verbosity()>1) {
 	    printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
+	    printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
+	  }
 	}
 	else {
 	  // Compute ifi from beampos:
@@ -706,7 +709,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
               printf("PTB-Info: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
           }
           else {
-              printf("PTB-Info: Beamposition queries unsupported on this system. Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+              printf("PTB-Info: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
       }
       printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
@@ -1394,11 +1397,28 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // First we calculate the number of scanlines that have passed since start of VBL area:
         vbl_endline = windowRecord->VBL_Endline;
-        vbl_lines_elapsed, onset_lines_togo;
         
         // VBL_Endline is determined in a calibration loop in PsychOpenOnscreenWindow above.
         // If this fails for some reason, we mark it as invalid by setting it to -1.
         if ((windowRecord->VBL_Endline != -1) && (vbltimestampmode>=0)) {
+
+				// One more sanity check to account for the existence of the most
+				// insane OS on earth: Check for impossible beamposition values although
+				// we've already verified correct working of the queries during startup.
+				if ((*beamPosAtFlip < 0) || (*beamPosAtFlip > vbl_endline)) {
+					// Ok, this is completely foo-bared.
+					printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, vbl_endline);
+					printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+					printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
+					printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
+					
+					// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
+					windowRecord->VBL_Endline = -1;
+
+					// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
+					*beamPosAtFlip = vbl_startline;
+				}
+
             if (*beamPosAtFlip >= vbl_startline) {
                 vbl_lines_elapsed = *beamPosAtFlip - vbl_startline;
                 onset_lines_togo = vbl_endline - (*beamPosAtFlip) + 1;
