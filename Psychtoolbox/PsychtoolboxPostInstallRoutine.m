@@ -125,14 +125,14 @@ if IsWin & ~IsOctave
     end
 
     if rc > 0
-        fprintf('=====================================================================');
+        fprintf('=====================================================================\n');
         fprintf('ERROR: Failed to prepend folder %s to Matlab path!\n', rdir);
         fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
         fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
-        fprintf('ERROR: If everything else fails, add this folder manually to the.\n');
-        fprintf('ERROR: top of your Matlab path.');
-        fprintf('ERROR: Trying to continue but will likely fail soon.\n\n');
-        fprintf('=====================================================================');
+        fprintf('ERROR: If everything else fails, add this folder manually to the\n');
+        fprintf('ERROR: top of your Matlab path.\n');
+        fprintf('ERROR: Trying to continue but will likely fail soon.\n');
+        fprintf('=====================================================================\n\n');
     end
     
     try
