@@ -566,9 +566,10 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  // That's impossible on anything else than a high-precision 500 Hz display!
 	  // --> CGDisplayBeamPosition is not working correctly for some reason.
 	  sync_trouble = true;
-	  if(PsychPrefStateGet_Verbosity()>1)
-	    if (i >=-1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
-	    if (i < -1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);		
+	  if(PsychPrefStateGet_Verbosity()>1) {
+			if (i >=-1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
+			if (i < -1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a negative value %i)\n", i);
+	  }
 	}
 	else {
 	  // CGDisplayBeamPosition works: Use it to find VBL-Endline...
@@ -587,6 +588,18 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	    }
 	    told=tnew;
 	    
+		// Another (in)sanity check. Negative values immediately after retrace?
+		if((int) CGDisplayBeamPosition(cgDisplayID) < 0) {
+			// Driver bug! Abort this...
+			VBL_Endline = -1;
+			tnew = -1;
+			
+			if(PsychPrefStateGet_Verbosity()>1) printf("WARNING: Measured a negative beam position value after VBL onset!?! Broken display driver!!\n");
+
+			// Break out of measurement loop:
+			break;
+		}
+		
 	    // Update global maximum with current sample:
 	    if (maxline > VBL_Endline) VBL_Endline = maxline;
 	  }
@@ -775,6 +788,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       while(glGetError()!=GL_NO_ERROR);
     }
     
+	// Master override: If context isolation is disabled then we use the PTB internal context...
+	if ((conserveVRAM & kPsychDisableContextIsolation) && (PsychPrefStateGet_Verbosity()>1)) {
+		printf("PTB-WARNING: You disabled OpenGL context isolation. This will increase the probability of cross-talk between\n");
+		printf("PTB-WARNING: Psychtoolbox and Matlab-OpenGL code. Only use this switch to work around broken graphics drivers,\n");
+		printf("PTB-WARNING: try if a driver update would be a more sane option.\n");
+	}
+
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:
     PsychDetectTextureTarget(*windowRecord);
 

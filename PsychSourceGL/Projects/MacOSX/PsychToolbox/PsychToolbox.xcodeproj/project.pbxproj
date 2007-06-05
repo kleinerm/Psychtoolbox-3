@@ -1607,6 +1607,8 @@
 		832CE7EC094D03D100578C09 /* alutypes.h in Headers */ = {isa = PBXBuildFile; fileRef = 832CE7DA094D03D100578C09 /* alutypes.h */; };
 		832CE7ED094D03D100578C09 /* libOpenAL.ar in Frameworks */ = {isa = PBXBuildFile; fileRef = 832CE7DB094D03D100578C09 /* libOpenAL.ar */; };
 		8330E9430B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c in Sources */ = {isa = PBXBuildFile; fileRef = 8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */; };
+		83347DB30C13692200293498 /* SCREENGetWindowInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83347DB20C13692200293498 /* SCREENGetWindowInfo.c */; };
+		83347DB40C13692200293498 /* SCREENGetWindowInfo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83347DB20C13692200293498 /* SCREENGetWindowInfo.c */; };
 		833C1EEE0BB19D0100FB9B4F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		833C1EEF0BB19D0100FB9B4F /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		833C1EF00BB19D0100FB9B4F /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3434,7 +3436,7 @@
 		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
-		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
@@ -3565,6 +3567,7 @@
 		832CE7DA094D03D100578C09 /* alutypes.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = alutypes.h; path = ../../../Source/Common/PsychSound/StaticOpenALLib/alutypes.h; sourceTree = SOURCE_ROOT; };
 		832CE7DB094D03D100578C09 /* libOpenAL.ar */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libOpenAL.ar; path = ../../../Source/Common/PsychSound/StaticOpenALLib/libOpenAL.ar; sourceTree = SOURCE_ROOT; };
 		8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = MirrorFaceCoreSynopsis.c; sourceTree = "<group>"; };
+		83347DB20C13692200293498 /* SCREENGetWindowInfo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENGetWindowInfo.c; path = ../../../Source/Common/Screen/SCREENGetWindowInfo.c; sourceTree = SOURCE_ROOT; };
 		833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychPortAudio.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = PsychPortAudio.c; sourceTree = "<group>"; };
 		833C1F220BB1A49D00FB9B4F /* PsychPortAudio.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychPortAudio.h; sourceTree = "<group>"; };
@@ -5315,6 +5318,7 @@
 				83C94B08092824A90062DB0A /* SCREENGetMovieTimeIndex.c */,
 				8365A7880999223B006FF0F4 /* SCREENGetOpenGLTexture.c */,
 				2FC9548F079F3A9C00414619 /* SCREENGetTimeList.c */,
+				83347DB20C13692200293498 /* SCREENGetWindowInfo.c */,
 				2FE448CD0749C5AA003CF1C3 /* SCREENGlobalRect.c */,
 				F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */,
 				0F45C2970B263A74004ED5F0 /* SCREENHookFunction.c */,
@@ -10907,6 +10911,7 @@
 				0F6B34390B6969D20000A951 /* SCREENOpenProxy.c in Sources */,
 				0F6B343E0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
 				837A6DC20BBB106E003AB0BE /* SCREENNull.c in Sources */,
+				83347DB40C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11311,6 +11316,7 @@
 				0F6B34380B6969D20000A951 /* SCREENOpenProxy.c in Sources */,
 				0F6B343D0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
 				837A6DC30BBB106E003AB0BE /* SCREENNull.c in Sources */,
+				83347DB30C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -84,7 +84,10 @@ PsychError SCREENBeginOpenGL(void)
 	sharecontext = 0;
 	PsychCopyInIntegerArg(2, FALSE, &sharecontext);
 	if (sharecontext<0 || sharecontext>2) PsychErrorExitMsg(PsychError_user, "Invalid value for 'sharecontext' provided. Not in range 0 to 2.");
-
+	
+	// Master override: If context isolation is disabled then we use the PTB internal context...
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychDisableContextIsolation) sharecontext = 1;
+	
     // Switch to windows internal OpenGL context:
     PsychSetGLContext(windowRecord); 
     

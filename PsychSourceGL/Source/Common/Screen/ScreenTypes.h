@@ -159,6 +159,8 @@ typedef struct {
 #define kPsychDontCacheTextures 2
 // Do not use wglChoosePixelformat - extension on M$-Windows:
 #define kPsychOverrideWglChoosePixelformat 4
+// Do not use separate GL contexts for PTB vs. MOGL on f%%%% M$-Windows and its broken drivers: 
+#define kPsychDisableContextIsolation 8
 
 //function protoptypes
 

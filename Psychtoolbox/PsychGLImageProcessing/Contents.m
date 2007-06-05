@@ -35,6 +35,9 @@
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
 %
+% PsychImaging.m                  -- Generic setup routine for the imaging pipeline. Allows to setup
+%                                    and initialize the pipeline for many common tasks.
+%
 % SetAnaglyphStereoParameters.m   -- Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
 

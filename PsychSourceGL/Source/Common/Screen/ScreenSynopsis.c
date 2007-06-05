@@ -157,6 +157,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
 	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
+	synopsis[i++] = "info = Screen('GetWindowInfo', windowPtr [, beamposOnly=0]);";
 
 	// Get and set information about the environment, computer, and video card (i.e. screen):
 	synopsis[i++] = "\n% Get/set details of environment, computer, and video card (i.e. screen):";

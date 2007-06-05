@@ -731,21 +731,39 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	 // Throw away any error-state this could have created on old hardware...
 	 glGetError();
 
+	 if (PsychPrefStateGet_Verbosity()>4) {
+		 printf("PTB-DEBUG: Window and master OpenGL context creation finished.\n");
+		 fflush(NULL);
+	 }
+	 
     // External 3D graphics support enabled? Or OpenGL quad-buffered stereo enabled?
 	 // For the former, we need this code for OpenGL state isolation. For the latter we
     // need this code as workaround for Windows brain-damage. For some reason it helps
     // to properly shutdown stereo contexts on Windows...
-	 if (PsychPrefStateGet_3DGfx() || stereomode == kPsychOpenGLStereo) {
+	// One can disable this mechanism via the flag kPsychDisableContextIsolation to account
+	// for even more MS brain-damage.
+	 if ((!(conserveVRAM & kPsychDisableContextIsolation)) && (PsychPrefStateGet_3DGfx() || stereomode == kPsychOpenGLStereo)) {
 		// Yes. We need to create an extra OpenGL rendering context for the external
 		// OpenGL code to provide optimal state-isolation. The context shares all
 		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
 		// starts off as an identical copy of PTB's context as of here.
-      windowRecord->targetSpecific.glusercontextObject = wglCreateContext(hDC);
+		
+		if (PsychPrefStateGet_Verbosity()>4) {
+			printf("PTB-DEBUG: Setup of userspace rendering context...\n");
+			fflush(NULL);
+		}
+
+		windowRecord->targetSpecific.glusercontextObject = wglCreateContext(hDC);
 		if (windowRecord->targetSpecific.glusercontextObject == NULL) {
          ReleaseDC(hDC, hWnd);
          DestroyWindow(hWnd);
 			printf("\nPTB-ERROR[UserContextCreation failed]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
 			return(FALSE);
+		}
+
+		if (PsychPrefStateGet_Verbosity()>4) {
+			printf("PTB-DEBUG: wglCreateContext() done. Now copying context state...\n");
+			fflush(NULL);
 		}
 
 		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
@@ -759,6 +777,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			}
 		}
 
+		if (PsychPrefStateGet_Verbosity()>4) {
+			printf("PTB-DEBUG: wglCopyContext() done. Now enabling ressource sharing..\n");
+			fflush(NULL);
+		}
+
 	   // Enable ressource sharing with master context for this window:
 		if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject)) {
 			// This is ugly, but not fatal...
@@ -767,6 +790,15 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			}		
 		}
 
+		if (PsychPrefStateGet_Verbosity()>4) {
+			printf("PTB-DEBUG: Userspace context setup done..\n");
+			fflush(NULL);
+		}
+	 }
+
+	 if (PsychPrefStateGet_Verbosity()>4) {
+		printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
+		fflush(NULL);
 	 }
 
     // Finally, show our new window:
@@ -809,9 +841,10 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     }
 
     // Ok, we should be ready for OS independent setup...
-
-    //printf("\nPTB-INFO: Low-level (Windoze) setup of onscreen window finished!\n");
-    //fflush(NULL);
+	 if (PsychPrefStateGet_Verbosity()>4) {
+		 printf("PTB-DEBUG: Final low-level window setup finished. Continuing with OS-independent setup.\n");
+		 fflush(NULL);
+	 }
 
     // Well Done!
     return(TRUE);

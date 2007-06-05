@@ -46,9 +46,10 @@ try
     oldpts = 0;
     count = 0;
     ftex = 0;
+    tex = 0;
     t=GetSecs;
     while ~KbCheck        
-        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1);
+        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1, tex);
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
         
         if (tex>0)
@@ -58,9 +59,6 @@ try
             
             % Show it.
             Screen('Flip', win);
-            Screen('Close', tex);
-%            Screen('Close', ftex);
-            tex=0;
         end;        
         
         count = count + 1;

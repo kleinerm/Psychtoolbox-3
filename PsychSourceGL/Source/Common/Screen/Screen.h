@@ -188,9 +188,8 @@ PsychError		SCREENHookFunction(void);
 PsychError		SCREENOpenProxy(void);
 PsychError		SCREENTransformTexture(void);
 PsychError		SCREENDrawTextures(void) ;
-
-//experimental
-PsychError SCREENGetMouseHelper(void);
+PsychError		SCREENGetWindowInfo(void);
+PsychError		SCREENGetMouseHelper(void);
 
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 

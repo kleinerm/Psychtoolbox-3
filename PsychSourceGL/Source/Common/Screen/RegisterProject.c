@@ -206,7 +206,7 @@ PsychError PsychModuleInit(void)
  	PsychErrorExit(PsychRegister("OpenProxy", &SCREENOpenProxy));
 	PsychErrorExit(PsychRegister("TransformTexture", &SCREENTransformTexture));
 	PsychErrorExit(PsychRegister("DrawTextures", &SCREENDrawTextures));
-
+	PsychErrorExit(PsychRegister("GetWindowInfo", &SCREENGetWindowInfo));
 	
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");

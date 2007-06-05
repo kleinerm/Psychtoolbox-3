@@ -9,17 +9,13 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 % 
 %    secs           time of keypress as returned by GetSecs.
 % 
-%    keyCode        OS9 & OSX: a 128-element logical array.  Each bit
+%    keyCode        A 256-element logical array.  Each bit
 %                   within the logical array represents one keyboard key. 
 %                   If a key is pressed, its bit is set, othewise the bit 
 %                   is clear. To convert a keyCode to a vector of key  
 %                   numbers use FIND(keyCode). To find a key's keyNumber 
 %                   use KbName or KbDemo.
 % 
-%                   WIN: a 256-element array. It seems that the first 
-%                   128 elements correspond to the ascii sequence of the 
-%                   characters, and may be consistent with the Mac key codes.
-%
 % KbCheck and KbWait determine whether any key is down now, including the
 % meta keys: <caps lock>, <shift>, <command>, <control>, and <option>. The
 % only key not reported is the start key (triangle) used to power on your
@@ -34,6 +30,15 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 % will be reported as pressed. You can work around this problem by passing
 % a list of keycodes to be ignored by KbCheck and KbWait. See
 % "help DisableKeysForKbCheck" on how to do this.
+%
+% Keys pressed by the subject often show up in the Matlab command window as
+% well, cluttering that window with useless character junk. You can prevent
+% this from happening by disabling keyboard input to Matlab: Add a
+% ListenChar(2); command at the beginning of your script and a
+% ListenChar(0); to the end of your script to enable/disable transmission of
+% keypresses to Matlab. If your script should abort and your keyboard is
+% dead, press CTRL+C to reenable keyboard input -- It is the same as
+% ListenChar(0). See 'help ListenChar' for more info.
 %
 % GetChar and CharAvail are character-oriented (and slow), whereas KbCheck
 % and KbWait are keypress-oriented (and fast). If only a meta key was hit,

@@ -340,9 +340,9 @@ if strcmp(cmd, 'renderMesh')
     end;
     
     % Copy vertices and normals to rendebuffers:
-    vertices = keyvertices(:, :, arg1);
+    vertices(:,:) = keyvertices(:, :, arg1);
     if usenormals
-        normals = keynormals(:,:,arg1);
+        normals(:,:) = keynormals(:,:,arg1);
     end;
 
     updatecount = updatecount + 1;
