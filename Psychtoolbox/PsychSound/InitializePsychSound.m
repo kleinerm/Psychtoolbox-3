@@ -1,7 +1,7 @@
 function InitializePsychSound(reallyneedlowlatency)
 % InitializePsychSound([reallyneedlowlatency=0])
 %
-% This routine loads the PsychSound sound driver for high-precision,
+% This routine loads the PsychPortAudio sound driver for high-precision,
 % low-latency, multi-channel sound playback.
 %
 % Call it at the beginning of your experiment script, optionally providing
@@ -13,7 +13,7 @@ function InitializePsychSound(reallyneedlowlatency)
 %
 % On Microsoft Windows, things are more complicated and painful as always:
 %
-% By default PsychPortAudio on Windows will use the "psychportaudio_x86.dll"
+% By default PsychPortAudio on Windows will use the "portaudio_x86.dll"
 % low-level sound driver included in the Psychtoolbox/PsychSound/
 % subfolder. This driver supports the Windows MME (MultiMediaExtensions)
 % and DirectSound sound systems. Apart from being buggy on some systems,
@@ -23,7 +23,7 @@ function InitializePsychSound(reallyneedlowlatency)
 % with a standard deviation of about 1 millisecond, which is still good
 % enough for many purposes.
 %
-% If you need really low-latency, high precision sound on Windows, there's
+% If you need really low latency or high precision sound on Windows, there's
 % a second option which, for legal and technical reasons, requires a bit
 % more effort and paper-work. Some (usually more expensive > 100$) sound
 % cards ship with ASIO enabled sound drivers, or at least there's such a
@@ -48,7 +48,7 @@ function InitializePsychSound(reallyneedlowlatency)
 %
 % 3. Restart Matlab.
 %
-% 4. Perform if installation worked by running ASIOSupportTest.m
+% 4. Run this function, it'll tell you if ASIO is supported.
 %
 % If everything suceeds and your ASIO enabled driver and sound card are of
 % sufficiently high quality, you can enjoy latencies as low as 5 msecs and
@@ -70,7 +70,7 @@ end
 % The usual tricks for MS-Windows:
 if IsWin
     % Special ASIO enabled low-latency driver installed?
-    if exist([PsychtoolboxRoot 'portaudio_x86.dll']) == 2
+    if exist([PsychtoolboxRoot 'portaudio_x86.dll']) >= 2
         % Yes! Use it:
         fprintf('Detected an ASIO enhanced PortAudio driver. Good! Will try to use it.\n');
         driverloadpath = PsychtoolboxRoot;
