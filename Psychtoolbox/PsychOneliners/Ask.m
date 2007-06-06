@@ -22,6 +22,8 @@ function reply = Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAl
 % 8/14/04  dgp	As suggested by Paul Thiem, added an example (and better argument checking) 
 %               to make it clear that replyFun must be supplied as a string and rectAlign1 as a value.
 % 8/14/04  dgp	Call Screen 'WindowToFront'.
+% 6/6/07   mk   remove Screen('WindowToFron') unsupported on PTB-3, other
+%               small fixes...
 
 if ~Screen(window, 'WindowKind')
 	error('Invalid window')
@@ -33,9 +35,15 @@ Screen('TextSize', window, 30);
 
 % Create the box to hold the text that will be drawn on the screen.
 screenRect = Screen('Rect', window);
-[tbx, tby] = Screen('TextBounds', window, message);
-width = tbx(3);
-height = tbx(4);
+if ~isempty(message)
+    [tbx, tby] = Screen('TextBounds', window, message);
+    width = tbx(3);
+    height = tbx(4);
+else
+    width = 0;
+    height = 0;
+end
+
 r = [0 0 width+30 height];
 r = AlignRect(r, screenRect, RectRight, RectTop);
 
