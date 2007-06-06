@@ -1,7 +1,11 @@
 %   Psychtoolbox:PsychProbability.
 %  
+%   Computation/Evaluation of probability distributions, basic sampling and
+%   randomization.
+%
 %   help Psychtoolbox % For an overview, triple-click me & hit enter.
 %  
+%     BalanceFactors      - Balance a set of factors given the factor levels.
 %     BuildMarkovK        - Build covariance matrix for Markov process.
 %     ChiSqrCumulative    - Chi-squared distribution probability function.
 %     ChiSquarePDF        - Chi-squared distribution PDF.
@@ -24,4 +28,7 @@
 %     Ranint              - Get random integer sample. Same as Randi, but David prefers it.
 %     Sample              - Get a random sample from a list.
 %     Shuffle             - Randomly reorder the entries of vector/matrix.
-
+%
+%
+%   BalanceFactors.m was contributed by David E. Fencsik (fencsik@gmail.com), thanks!
+%
