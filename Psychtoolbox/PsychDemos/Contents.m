@@ -6,6 +6,7 @@
 %    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemo         - A variant of AlphaImageDemoOSX, demonstrates rotated drawing.
 %    ArcDemo                 - Demonstrate the 'FrameArc', 'FillArc' functions.
+%    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() sound driver.
 %    BubbleDemo              - Like GazeContingentDemoOSX, but with multiple apertures.
 %    CalDemo                 - Demonstrate use of calibration structure and associated routines.
 %    ClutAnimDemo            - Demonstrate lookup table animation.
