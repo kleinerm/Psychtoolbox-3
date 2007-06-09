@@ -72,7 +72,7 @@ if IsWin
     % Special ASIO enabled low-latency driver installed?
     if exist([PsychtoolboxRoot 'portaudio_x86.dll']) >= 2
         % Yes! Use it:
-        fprintf('Detected an ASIO enhanced PortAudio driver. Good! Will try to use it.\n');
+        fprintf('Detected an ASIO enhanced PortAudio driver. Good!\n');
         driverloadpath = PsychtoolboxRoot;
         asio = 1;
     else
@@ -100,13 +100,13 @@ if IsWin
         % ASIO requested?
         if asio
             % Comply with the license...
-            fprintf('\n"ASIO is a trademark and software of Steinberg Media Technologies GmbH."\n');
+            fprintf('\n\nDisclaimer: "ASIO is a trademark and software of Steinberg Media Technologies GmbH."\n');
             
             % Found ASIO device?
             if ~isempty(d)
                 % And some more commercials as required by the license...
-                fprintf('Found at least one ASIO enabled soundcard in your system. Good, will try to use that!\n');
-                fprintf('"ASIO Interface Technology by Steinberg Media Technologies GmbH"\n');
+                fprintf('Using "ASIO Interface Technology by Steinberg Media Technologies GmbH"\n\n');
+                fprintf('Found at least one ASIO enabled soundcard in your system. Good, will use that in low-latency mode!\n');
             else
                 % ASIO PsychPortAudio driver, but no ASIO device in system!
                 fprintf('PTB-Warning: Although using the ASIO enabled Psychtoolbox sound driver,\n');
