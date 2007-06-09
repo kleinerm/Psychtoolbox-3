@@ -148,11 +148,11 @@ persistent verbose;
 
 if isempty(isOpen)
      isOpen = 0;
-
-     exposureinc = KbName('Right');
-     exposuredec = KbName('Left');
-     gaininc = KbName('Up');
-     gaindec = KbName('Down');
+     KbName('UnifyKeyNames');
+     exposureinc = KbName('RightArrow');
+     exposuredec = KbName('LeftArrow');
+     gaininc = KbName('UpArrow');
+     gaindec = KbName('DownArrow');
      brightinc = KbName('b');
      brightdec = KbName('d');
 end

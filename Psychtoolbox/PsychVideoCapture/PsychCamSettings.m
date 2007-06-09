@@ -128,17 +128,18 @@ end
 
 % Query model and vendor, match it against our camlist:
 vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname');
-model  = rc = Screen('SetVideoCaptureParameter', grabber, 'GetModelname');
+model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname');
+rc = model;
 
 % Check for Unibrain Fire-i...
-if !isempty(strfind(vendor, 'Unibrain')) && !isempty(strfind(model, 'Fire-i'))
+if ~isempty(strfind(vendor, 'Unibrain')) && ~isempty(strfind(model, 'Fire-i'))
    IsFirei = 1;
 else
    IsFirei = 0;
 end
 
 % Check for Basler A602f...
-if !isempty(strfind(vendor, 'Basler')) && !isempty(strfind(model, 'A602f'))
+if ~isempty(strfind(vendor, 'Basler')) && ~isempty(strfind(model, 'A602f'))
    IsA602f = 1;
 else
    IsA602f = 0;
@@ -296,7 +297,7 @@ if strcmp(cmd, 'BacklightCompensation')
      return;
 end
 
-if !isempty(strfind(cmd, 'ExposureTime'))
+if ~isempty(strfind(cmd, 'ExposureTime'))
      if nargin > 2
         inval = varargin{1};
      else
@@ -315,11 +316,11 @@ if !isempty(strfind(cmd, 'ExposureTime'))
      else
         % Unknown camera. We just fall-through, mapping exposure time to
 	% Exposure setting.
-	cmd = 'Exposure'
+	cmd = 'Exposure';
      end
 end
 
-if (IsA602f || IsFirei) && (!isempty(strfind(cmd, 'Exposure')) | !isempty(strfind(cmd, 'Shutter')))
+if (IsA602f || IsFirei) && (~isempty(strfind(cmd, 'Exposure')) | ~isempty(strfind(cmd, 'Shutter')))
      % These settings are ignored on the Unibrain Fire-i and Basler A 602f.
      % They either control ExposureTime - for which we have a nice function -
      % or they control special settings...     
