@@ -1,3 +1,4 @@
+function varargout = PsychPortAudio(varargin)
 % PsychPortAudio - High precision sound driver for Psychtoolbox-3.
 %
 % PsychPortAudio is a new sounddriver for PTB-3. It is meant to become a
