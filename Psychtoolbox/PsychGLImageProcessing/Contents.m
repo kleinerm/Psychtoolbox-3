@@ -32,6 +32,7 @@
 % Files:
 %
 % BitsPlusPlus.m                  -- Setup function for imaging pipelines built-in Bits++ support.
+% HookProcessingChains.m          -- Documentation about hook chains and their options.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
 %

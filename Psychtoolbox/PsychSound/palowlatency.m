@@ -1,45 +1,57 @@
-function palowlatency(exactstart, deviceid)
+function PsychPortAudioTimingTest(exactstart, deviceid)
 
-% Establish key mapping: ESCape aborts, Space toggles between auto-
-% movement of sound source or user mouse controlled movement:
-KbName('UnifyKeynames');
-space = KbName('space');
-esc = KbName('ESCAPE');
 
+% Force GetSecs and WaitSecs into memory to avoid latency later on:
 dummy=GetSecs;
 WaitSecs(0.1);
 
+% If 'exactstart' wasn't provided, assume user wants to test exact sync of
+% audio and video onset, instead of testing total onset latency:
 if nargin < 1 || isempty(exactstart)
     exactstart = 1;
 end
 exactstart
 
+% Default to auto-selected default output device if none specified:
 if nargin < 2 || isempty(deviceid)
     deviceid = -1;
 end
 
 deviceid
 
+% Request latency mode 2, which used to be the best one in our measurement:
 reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
+
+% Requested output frequency, may need adaptation on some audio-hw:
 freq = 96000;        % Must set this. 96khz, 48khz, 44.1khz.
 buffersize = 64;     % Pointless to set this. Auto-selected to be optimal.
 
 % Take hardware delay of MacBookPro into account: Assign it as bias.
+% Needs to determined via measurement once for each piece of audio
+% hardware:
 latbias = (30 / freq)
 %latbias = -0.001
 
+% Initialize driver, request low-latency preinit:
+InitializePsychSound(1);
+
+% Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize);
+
+% Tell driver about hardwares inherent latency, determined via calibration
+% once:
 prelat = PsychPortAudio('LatencyBias', pahandle, latbias)
 postlat = PsychPortAudio('LatencyBias', pahandle)
 
-
 %mynoise = randn(2,freq * 0.1);
+% Generate some beep sound 1000 Hz, 0.1 secs, 90% amplitude:
 mynoise(1,:) = 0.9 * MakeBeep(1000, 0.1, freq);
 mynoise(2,:) = mynoise(1,:);
+
 % Fill buffer with data:
 PsychPortAudio('FillBuffer', pahandle, mynoise);
 
-% Perform some preflip to heat up the pipe:
+% Setup display:
 screenid = max(Screen('Screens'));
 win = Screen('OpenWindow', screenid, 0);
 ifi = Screen('GetFlipInterval', win);
@@ -51,8 +63,11 @@ KbWait;
 % Realtime scheduling:
 % Priority(MaxPriority(win));
 
+% Ten measurement trials:
 for i=1:10
 
+    % This flip clears the display to black and returns timestamp of black
+    % onset:
     [vbl1 visonset1]= Screen('Flip', win);
 
     % Prepare black white transition:
@@ -71,6 +86,8 @@ for i=1:10
     [vbl visual_onset t1] = Screen('Flip', win, vbl1+0.002);
 
     if ~exactstart
+        % No test of scheduling, but of absolute latency: Start audio
+        % playback immediately:
         audio_onset = PsychPortAudio('Start', pahandle, 1, 0, 0);
     end
 
@@ -118,6 +135,7 @@ for i=1:10
 
 end
 
+% Done, close driver and display:
 Priority(0);
 
 PsychPortAudio('Close');

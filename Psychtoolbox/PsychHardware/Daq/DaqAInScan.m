@@ -51,6 +51,7 @@ function [data,params]=DaqAInScan(device,options)
 %     13          5 (single-ended)
 %     14          6 (single-ended)
 %     15          7 (single-ended)
+%
 % "options.range" is a vector of the same length as options.channel, with  
 %     values of 0 to 7, specifying the desired gain (and voltage range) for
 %     the corresponding channel. By default, DaqAInScan sends this for you
@@ -58,10 +59,12 @@ function [data,params]=DaqAInScan(device,options)
 %     command. When options.range is not specified DaqAInScan assumes a
 %     value of 3 in computing the scale factor applied to the results to
 %     convert them into volts.
-%     0 for 1x (+-20 V),  1 for 2x (+-20 V),
-%     2 for 4x (+-20 V),  3 for 5x (+-20 V),
-%     4 for 8x (+-20 V),  5 for 10x (+-20 V),
-%     6 for 16x (+-20 V), 7 for 20x (+-1 V).
+%
+%     0 for Gain 1x (+-20 V),   1 for Gain 2x (+-10 V),
+%     2 for Gain 4x (+-5 V),    3 for Gain 5x (+-4 V),
+%     4 for Gain 8x (+-2.5 V),  5 for Gain 10x (+-2 V),
+%     6 for Gain 16x (+-1.25 V),  7 for Gain 20x (+-1 V).
+%
 % "options.lowChannel" (0 to 15) is the first channel of the scan. NOT 
 %     RECOMMENDED; use options.channel instead. If you specify lowChannel
 %     and highChannel then don't specify channel and range, above.
@@ -455,8 +458,10 @@ if options.end
     for i=1:length(reports)
         data=[data double(reports(i).report(1:bytes))];
     end
+
     % Combine two bytes for each reading.
     data=(data(1:2:end)+data(2:2:end)*256)/65535;
+
     % Discard any extra 16-bit words at the end of the last report.
     if length(data)>c*options.count
         if 2*(length(data)-options.count*c)>60

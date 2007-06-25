@@ -75,7 +75,7 @@ PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, 
 int		PsychGetHookByName(const char* hookName);
 
 // Setup source -> rendertarget binding for next rendering pass:
-void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo);
+void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, boolean scissor_ignore);
 
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
 Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height);
@@ -106,6 +106,7 @@ boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRe
 // This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
 // when no special (non-default) blitter is requested by core code or users blitter parameter string:
 boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 //end include once
 #endif

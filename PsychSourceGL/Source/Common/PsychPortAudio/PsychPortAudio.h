@@ -60,5 +60,7 @@ PsychError PSYCHPORTAUDIOGetDevices(void);
 PsychError PSYCHPORTAUDIOGetStatus(void);
 // Set a manual bias for the latencies we operate on.
 PsychError PSYCHPORTAUDIOLatencyBias(void);
+// Retrieve buffer with captured audio data:
+PsychError PSYCHPORTAUDIOGetAudioData(void);
 //end include once
 #endif

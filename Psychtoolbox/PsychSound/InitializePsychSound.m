@@ -124,7 +124,30 @@ end
 
 % Maybe some tricks (in the future) for OS/X? None yet.
 if IsOSX
-    fprintf('PsychPortAudio initialized. Will use CoreAudio for output.\n');
+    try
+        % We force loading+linking+init of the driver here, so in case
+        % something goes wrong we can catch this and output useful
+        % troubleshooting tips to the user:
+        d = PsychPortAudio('GetDevices');
+        fprintf('PsychPortAudio initialized. Will use CoreAudio for output.\n');
+    catch
+        fprintf('Failed to load PsychPortAudio driver!\n\n');
+        fprintf('The most likely cause is that the helper library libportaudio.0.0.19.dylib is not\n');
+        fprintf('stored in one of the library directories. This is the case at first use of the new\n');
+        fprintf('sound driver.\n\n');
+        fprintf('A copy of this file can be found in %s \n', [PsychtoolboxRoot 'PsychSound/libportaudio.0.0.19.dylib']);
+        fprintf('You need to copy that file into one of the following directories, then retry:\n');
+        fprintf('If you have administrator permissions, copy it to (at your option): /usr/local/lib\n');
+        fprintf('or /usr/lib  -- you may need to create that directories first.\n\n');
+        fprintf('If you are a normal user, you can also create a subdirectory lib/ in your home folder\n');
+        fprintf('then copy the file there. E.g., your user name is lisa, then copy the file into\n');
+        fprintf('/Users/lisa/lib/ \n\n');
+        fprintf('Please try this steps, then restart your script.\n\n');
+        em = psychlasterror;
+        fprintf('The exact error message of the linker was: %s\n', em.message);
+        fprintf('\n\n');
+        error('Failed to load PsychPortAudio driver.');
+    end
 end
 
 return;

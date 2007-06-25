@@ -1746,7 +1746,10 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 	PsychFBO *mysrcfbo1, *mysrcfbo2, *mydstfbo, *mynxtfbo; 
 	boolean gfxprocessing;
 	GLint restorefboid = 0;
-	
+	boolean scissor_ignore = FALSE;
+	boolean scissor_enabled = FALSE;
+	int sciss_x, sciss_y, sciss_w, sciss_h;
+
 	// Child protection:
 	if (hookId<0 || hookId>=MAX_SCREEN_HOOKS) PsychErrorExitMsg(PsychError_internal, "In PsychPipelineExecuteHook: Was asked to execute unknown (non-existent) hook chain with invalid id!");
 
@@ -1773,6 +1776,9 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 	if (gfxprocessing) {
 		// Prepare gfx-processing:
 
+		// Backup scissoring state:
+		scissor_enabled = glIsEnabled(GL_SCISSOR_BIT);
+		
 		// If this is a multi-pass chain we'll need a bounce buffer FBO:
 		if ((pendingFBOpingpongs > 0 && bouncefbo == NULL) || (pendingFBOpingpongs > 1 && ((*dstfbo)->fboid == 0))) {
 			printf("PTB-ERROR: Hook processing chain '%s' is a multi-pass processing chain with %i passes,\n", PsychHookPointNames[hookId], pendingFBOpingpongs + 1);
@@ -1808,7 +1814,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 		}
 		
 		// Setup initial source -> target binding:
-		PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo);
+		PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo, scissor_ignore);
 	}
 
 	
@@ -1857,16 +1863,41 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 			if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: SWAPPING PING-PONG FBOS, %i swaps pending...\n", pendingFBOpingpongs);
 			
 			// Set new src -> dst binding:
-			PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo);
+			PsychPipelineSetupRenderFlow(mysrcfbo1, mysrcfbo2, mydstfbo, scissor_ignore);
 		}
 		else {
-			// Normal hook function - Process this hook function:
-			if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {
-				// Failed!
-				if (PsychPrefStateGet_Verbosity()>0) {
-					printf("PTB-ERROR: Failed in processing of Hookchain '%s' : Slot %i: Id='%s'  --> Aborting chain processing. Set verbosity to 5 for extended debug output.\n", PsychHookPointNames[hookId], i, hookfunc->idString);
+			// Restricted area processing?
+			if (hookfunc->hookfunctype == kPsychBuiltinFunc && strstr(hookfunc->idString, "Builtin:RestrictToScissorROI")) {
+				// Restrict pixel processing to specified region of interest ROI by setting
+				// up a proper scissor rectangle and enabling scissor tests. The special
+				// ROI (-1,-1,-1,-1) means: Disable scissor testing -> Unrestrict. 
+				if (4!=sscanf(hookfunc->pString1, "%i:%i:%i:%i", &sciss_x, &sciss_y, &sciss_w, &sciss_h)) {
+					if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: In PsychPipelineExecuteHook: Builtin:RestrictToScissorROI - Parameter parse error in string %s\n", hookfunc->idString);
+					return(FALSE);
 				}
-				return(FALSE);
+				
+				if (sciss_x==-1 && sciss_y==-1 && sciss_w==-1 && sciss_h==-1) {
+					// Disable scissor tests:
+					glDisable(GL_SCISSOR_TEST);
+					scissor_ignore = FALSE;
+				}
+				else {
+					// Setup and enable scissor test:
+					glEnable(GL_SCISSOR_TEST);
+					glScissor(sciss_x, sciss_y, sciss_w, sciss_h);
+					// Make sure PsychSetupRenderFlow() ignores scissor setup:
+					scissor_ignore = TRUE;
+				}
+			}
+			else {
+				// Normal hook function - Process this hook function:
+				if (!PsychPipelineExecuteHookSlot(windowRecord, hookId, hookfunc, hookUserData, hookBlitterFunction, srcIsReadonly, allowFBOSwizzle, &mysrcfbo1, &mysrcfbo2, &mydstfbo, &mynxtfbo)) {
+					// Failed!
+					if (PsychPrefStateGet_Verbosity()>0) {
+						printf("PTB-ERROR: Failed in processing of Hookchain '%s' : Slot %i: Id='%s'  --> Aborting chain processing. Set verbosity to 5 for extended debug output.\n", PsychHookPointNames[hookId], i, hookfunc->idString);
+					}
+					return(FALSE);
+				}
 			}
 		}
 		
@@ -1877,10 +1908,18 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 
 	if (gfxprocessing) {
 		// Disable renderflow:
-		PsychPipelineSetupRenderFlow(NULL, NULL, NULL);
+		PsychPipelineSetupRenderFlow(NULL, NULL, NULL, scissor_ignore);
 		
 		// Restore old FBO bindings:
 		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, restorefboid);
+		
+		// Restore scissor state:
+		if (scissor_enabled) {
+			glEnable(GL_SCISSOR_TEST);
+		}
+		else {
+			glDisable(GL_SCISSOR_TEST);
+		}
 	}
 
 	// Done.
@@ -1893,7 +1932,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	boolean dispatched = FALSE;
-	
+
 	// Dispatch by hook function type:
 	switch(hookfunc->hookfunctype) {
 		case kPsychShaderFunc:
@@ -1926,7 +1965,10 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 			
 		case kPsychBuiltinFunc:
 			// Dispatch to a builtin function:
+
 			if (strcmp(hookfunc->idString, "Builtin:FlipFBOs")==0) { dispatched=TRUE; } // No op here. Done in upper layer...
+			if (strstr(hookfunc->idString, "Builtin:RestrictToScissorROI")) { dispatched=TRUE; } // No op here. Done in upper layer...
+
 			if (strstr(hookfunc->idString, "Builtin:IdentityBlit")) {
 				// Perform the most simple blit operation: A simple one-to-one copy of input FBO to output FBO:
 				if (!PsychPipelineExecuteBlitter(windowRecord, hookfunc, NULL, NULL, TRUE, FALSE, srcfbo1, NULL, dstfbo, NULL)) {
@@ -1956,6 +1998,7 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 				}
 				dispatched=TRUE;
 			}
+
 		break;
 			
 		default:
@@ -1970,7 +2013,7 @@ boolean PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int ho
 	return(TRUE);
 }
 
-void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo)
+void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, boolean scissor_ignore)
 {
 	static int ow=0;
 	static int oh=0;
@@ -2036,7 +2079,7 @@ void PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO
 			
 			// Setup viewport and scissor for full FBO area:
 			glViewport(0, 0, w, h);
-			glScissor(0, 0, w, h);
+			if (!scissor_ignore) glScissor(0, 0, w, h);
 			
 			// Setup projection matrix for a proper orthonormal projection for this framebuffer:
 			glMatrixMode(GL_PROJECTION);
@@ -2074,6 +2117,9 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 		// Standard blitter? This one does a one-to-one copy without special geometric transformations.
 		if (strstr(hookfunc->pString1, "Blitter:IdentityBlit")) blitterfnc = &PsychBlitterIdentity; // Assign our standard one-to-one blitter.
 		
+		// Displaylist blitter? This one calls an externally setup OpenGL display list to perform complex geometric transformations:
+		if (strstr(hookfunc->pString1, "Blitter:DisplayListBlit")) blitterfnc = &PsychBlitterDisplayList;
+
 		// Blitter assigned?
 		if (blitterfnc == NULL) {
 			if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Invalid (unknown) blitter specified in blitter string. Blit aborted.\n");
@@ -2316,6 +2362,110 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
 	
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
+	}
+
+	// Done.
+	return(TRUE);
+}
+
+/* PsychBlitterDisplayList()  -- Displaylist blitter.
+ *
+ * Blits from srcfbo1 color attachment to dstfbo by calling a premade OpenGL display list.
+ * Useful for application of geometric transformations, e.g., warping during blit. Typically
+ * used for geometric display undistortion.
+ */
+boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
+{
+	int w, h, x, y;
+	GLuint gllist;
+	float sx, sy;
+	char* strp;
+	boolean bilinearfiltering;
+	
+	// Child protection:
+	if (!(srcfbo1 && (*srcfbo1))) {
+		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): srcfbo1 is a NULL - Pointer!!!");
+	}	
+
+	// Query display list handle:
+	if (strp=strstr(hookfunc->pString1, "Handle:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Handle:%i", &gllist)!=1) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Handle: Parse error fetching display list handle!\n");
+		}
+	}
+	else {
+		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): No display list handle provided or parse-error fetching display list handle!\n");
+	}
+	
+	// Handle valid?
+	if (!glIsList(gllist)) PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Invalid display list handle provided!\n");
+	
+	// Query dimensions of viewport:
+	w = (*srcfbo1)->width;
+	h = (*srcfbo1)->height;
+
+	// Bilinear filtering of srcfbo1 texture requested?
+	if (strstr(hookfunc->pString1, "Bilinear")) {
+		// Yes. Enable it.
+		bilinearfiltering = TRUE;
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else {
+		bilinearfiltering = FALSE;
+	}
+
+	// Check for offset parameter in the blitterString: An integral (x,y)
+	// offset for the destination of the blit. This allows to blit the srcfbo1, without
+	// scaling or filtering it, to a different start location than (0,0):
+	x=y=0;
+	if (strp=strstr(hookfunc->pString1, "Offset:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Offset:%i:%i", &x, &y)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Offset: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+
+	// Check for scaling parameter:
+	sx = sy = 1.0;
+	if (strp=strstr(hookfunc->pString1, "Scaling:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "Scaling:%f:%f", &sx, &sy)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Scaling: blit string parameter is invalid! Parse error...\n");
+		}
+	}
+
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		
+		// Apply global (x,y) offset:
+		glTranslatef(x, y, 0);
+		
+		// Apply scaling:
+		glScalef(sx, sy, 1);
+	}
+	
+	// Note the swapped y-coord for textures wrt. y-coord of vertex position!
+	// Texture coordinate system has origin at bottom-left, y-axis pointing upward,
+	// but PTB has framebuffer coordinate system with origin at top-left, with
+	// y-axis pointing downward! Normally OpenGL would have origin always bottom-left,
+	// but PTB has to use a different system (changed by special gluOrtho2D) transform),
+	// because our 2D coordinate system needs to conform to the standards of the old
+	// Psychtoolboxes and of typical windowing systems. -- A tribute to the past.
+	
+	// Call the display list: This will perform the blit operation.
+	glCallList(gllist);
+	
+	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
+		glPopMatrix();
+	}
+
+	if (bilinearfiltering) {
+		// Disable filtering again:
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
 	// Done.

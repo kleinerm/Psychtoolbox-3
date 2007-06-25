@@ -52,7 +52,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
 	PsychErrorExit(PsychRegister("GetStatus", &PSYCHPORTAUDIOGetStatus));
 	PsychErrorExit(PsychRegister("LatencyBias", &PSYCHPORTAUDIOLatencyBias));
-
+	PsychErrorExit(PsychRegister("GetAudioData", &PSYCHPORTAUDIOGetAudioData));
+	
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 

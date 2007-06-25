@@ -48,19 +48,14 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % in your script directly! Some of them may disappear in the future,
 % getting subsumed by Screen()'s internal imaging pipeline.
 %
-% BrightSideHDR('BeginDrawing', win); -- Mark start of drawing operations into
-% the high dynamic range backbuffer. After this command you can issue
-% standard Screen or mogl OpenGL commands to draw into the high resolution
-% framebuffer.
-%
-% BrightSideHDR('EndDrawing', win); -- Mark end of drawing operations. This will
-% convert the HDR image content in the HDR backbuffer into the special data
-% format needed by the HDR display hardware. After execution of this
-% command you can simply call the usual Screen('Flip', win, ...) command to
-% trigger display of the HDR image on the HDR display.
+% BrightSideHDR('BrightSideExecuteBlit', win); -- This will convert
+% the HDR image content in the HDR backbuffer into the special data
+% format needed by the HDR display hardware. This is called by PTB
+% automatically, don't call it yourself!
 %
 % BrightSideHDR('Shutdown'); -- Shut down the HDR device and core library,
-% switch PTB back to standard LDR output.
+% switch PTB back to standard LDR output. This is called by PTB
+% automatically, don't call it yourself!
 
 % History:
 % 10/30/2006 Initial prototype implementation. MK & Oguz Ahmet Akyuz (Dept. of
@@ -69,24 +64,24 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % 12/12/2006 Integrate initial hook-plugin support for PTB's imaging
 % pipeline, so user code does not need to call these functions anymore.
 % 12/13/2006 Built-in 'OpenWindow' for simplified setup...
+% 06/24/2007 Rewritten to work with current PTB, which has a full
+% implementation of the floating point imaging pipeline. (MK)
 
 global GL;
 persistent windowPtr;
 persistent winwidth;
 persistent winheight;
-persistent hdrfbo;
 persistent hdrtexid;
 persistent online;
-persistent inhdrdrawmode;
 persistent dummymode;
 persistent debuglevel;
 
 % Cold start: Setup our variables to safe defaults.
 if isempty(online)
     online = 0;
-    inhdrdrawmode = 0;
     dummymode = 0;
     debuglevel = 0;
+    hdrtexid = 0;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -110,17 +105,22 @@ if strcmp(cmd, 'Debuglevel')
 end
 
 if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Initialize')
+
+    % OpenGL mode of Psychtoolbox already initialized?
+    if isempty(GL)
+        % Nope. Do it now, but don't enable full 3D support, but only
+        % support for calling MOGL commands, not z-/stencilbuffers and
+        % context isolation:
+        InitializeMatlabOpenGL([], [], 1);
+    end
+
+    % Open onscreen window as well or just perform initialization?
     if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow')
         % Execute the Screen('OpenWindow') command with proper flags, followed
         % by our own Initialization. Return values of 'OpenWindow'.
         % BrightSideHDR('OpenWindow', ...) is a drop-in replacement for
         % Screen('OpenWindow', ...):
 
-        % OpenGL mode of Psychtoolbox already initialized?
-        if isempty(GL)
-            % Nope. Do it now:
-            InitializeMatlabOpenGL;
-        end
 
         % Assign screen index:
         if nargin < 2 || isempty(arg) || ~isa(arg, 'double')
@@ -160,18 +160,26 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
         if nargin >= 9
             imagingmode = varargin{6};
         else
-            imagingmode = [];
+            imagingmode = 0;
         end
         
-        % TODO for the future: Set imagingmode flags based on all previous
-        % input parameters... For now a no-op.
+        % We need at least fast backing store and support for final output
+        % conversion:
+        imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
         
+        % We require 32 bit floating point framebuffers if user doesn't
+        % explicitely request the lower resolution, but higher speed 16 bit
+        % floating point framebuffers:
+        if (imagingmode & kPsychNeed16BPCFloat) == 0
+            imagingmode = mor(imagingmode, kPsychNeed32BPCFloat);
+        end
+                
         % Open the window, pass all parameters (partially modified or
         % overriden), return Screen's return values:
         if nargin > 9
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, imagingmode, varargin{7:end});
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode, varargin{7:end});
         else
-            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, imagingmode);
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode);
         end
         
         % Ok, if we reach this point then we've got a proper onscreen
@@ -206,12 +214,6 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
         dummymode = dummy;
     end
     
-    % OpenGL mode of Psychtoolbox already initialized?
-    if isempty(GL)
-        % Nope. Do it now:
-        InitializeMatlabOpenGL;
-    end
-
     % Another bit of child protection:
     AssertGLSL;
 
@@ -224,17 +226,7 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
     % of our HDR framebuffer:
     windowPtr = arg;
     [winwidth, winheight] = Screen('WindowSize', windowPtr);
-    
-    % Step 1: Create a floating point precision RGBA framebuffer object
-    % with a RGBA32FLOAT color buffer attached. We don't attach depth
-    % buffers or stencil buffer yet. This fbo will be the rendertarget for
-    % HDR drawing and its color buffer texture will be the input to the HDR
-    % core library for the HDR blit operation:
-    [hdrfbo, hdrtexid] = moglCreateFBO(winwidth, winheight);
-    
-    % We have our framebuffer. Pass the location of the HDR config file and
-    % the texture handle of the framebuffers HDR colorbuffer texture to the
-    % core library and initialize it:
+        
     if ~dummymode
         % Initiate loading, linking and initialization of the core:
 
@@ -255,20 +247,12 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
             % Now that it is (hopefully) properly loaded, we can revert the working
             % directory to its previous setting:
             cd(olddir);
-        end;
-        
-        % Initialize the libraries and display device:
-        BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/Resources'], 'DR-37P-beta.xml', hdrtexid, 0);
+        end;        
     end
     
-    % Reset draw mode:
-    inhdrdrawmode = 0;
-
     % Add proper callback functions to Screen's hook-chains:
-    Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''EndDrawing'', win)');
+    Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''BrightSideExecuteBlit'', win)');
     Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
-    Screen('HookFunction', windowPtr, 'AppendMFunction', 'UserspaceBufferDrawingPrepare', 'Prepare FBO for drawing', 'BrightSideHDR(''BeginDrawing'', win)');
-    Screen('HookFunction', windowPtr, 'Enable', 'UserspaceBufferDrawingPrepare');
     Screen('HookFunction', windowPtr, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''Shutdown'', win)');
     Screen('HookFunction', windowPtr, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
@@ -282,15 +266,6 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
 
     % Eat up all OpenGL errors caused by this:
     while glGetError; end;
-
-    % Bind our HDR framebuffer as rendertarget. This will unbind its color
-    % buffer texture hdrtexid automatically and setup the viewport,
-    % projection and modelview matrices for orthonormal drawing
-    % automatically:
-    moglChooseFBO(hdrfbo);
-
-    % Ready:
-    inhdrdrawmode = 1;
 
     % We are online:
     online = 1;
@@ -311,58 +286,44 @@ if strcmp(cmd, 'Shutdown')
         BrightSideCore(1);
     end
 
-    % Destroy our HDR framebuffer and its textures:
-    moglDeleteFBO(hdrfbo);
-
     % Reset to preinit state:
-    hdrfbo = 0;
     hdrtexid = 0;
     windowPtr = 0;
     dummymode = 0;
-    inhdrdrawmode = 0;
 
     % Shutdown complete, we're offline:
     online = 0;    
     return;
 end
 
-if strcmp(cmd, 'BeginDrawing')
-    % Drawing preparation command:
+if strcmp(cmd, 'BrightSideExecuteBlit')
+    % Initiate float FBO -> Backbuffer data conversion to convert a HDR
+    % float image into data format required by BrightSide HDR:
     if ~online
-        error('BrightSideHDR: "BeginDrawing" command called, although display is offline.');
-    end
-
-    if inhdrdrawmode
-        return;
-    end
-    
-    % Bind our HDR framebuffer as rendertarget. This will unbind its color
-    % buffer texture hdrtexid automatically and setup the viewport,
-    % projection and modelview matrices for orthonormal drawing
-    % automatically:
-    moglChooseFBO(hdrfbo);
-
-    % Ready:
-    inhdrdrawmode = 1;
-    return;
-end
-
-if strcmp(cmd, 'EndDrawing')
-    % Preflip command:
-    if ~online
-        error('BrightSideHDR: "EndDrawing" command called, although display is offline.');
-    end
-
-    if ~inhdrdrawmode
-        return;
+        error('BrightSideHDR: "BrightSideExecuteBlit" command called, although display is offline.');
     end
 
     % Disable shaders, if any active:
     glUseProgram(0);
 
-    % Unbind our HDR framebuffer as rendertarget, so its color buffer
-    % texture can be used for blitting by the core library:
-    moglChooseFBO(0);
+    % 'hdrtexid' of source color texture already assigned?
+    if hdrtexid == 0
+        % No. But the texture currently bound to unit 0 is the proper one,
+        % so query its id. We know that the texture is bound to the
+        % rectangle texture target and that unit 0 is active, due to the
+        % semantics of PTB's imaging pipeline:
+        hdrtexid = glGetIntegerv(GL.TEXTURE_BINDING_RECTANGLE_EXT);
+        
+        if hdrtexid <= 0
+            error('Fatal error: Failed to query color buffer texture id in BrightSideHDR("BrightSideExecuteBlit")!');
+        end
+        
+        % Need to do first-time init of HDR libary with this 'hdrtexid':
+        needhdrinit = 1;
+    else
+        % No need to first-time init HDR library:
+        needhdrinit = 0;
+    end
     
     if ~dummymode
         % Setup special projection matrices for the BrightSide core lib:
@@ -391,10 +352,7 @@ if strcmp(cmd, 'EndDrawing')
         glMatrixMode (GL.MODELVIEW);
         glPushMatrix;
         glLoadIdentity;
-    end
-    
-    % Perform HDR-->LDR conversion:
-    if ~dummymode
+
         % Call the BrightSide core library to do the conversion:
         % It is crucial to backup & restore at least the GL_ENABLE_BIT
         % state around the call to BrightSides core libraries. They seem to
@@ -407,27 +365,32 @@ if strcmp(cmd, 'EndDrawing')
         % know what your software vendor will screw in its next release ;)
         % glPushAttrib(GL.ENABLE_BIT);
 
-        % Do it!
+        if needhdrinit == 1
+            % First time initialization of the libraries and display
+            % device. We do it here because we need the 'hdrtexid' of the
+            % source color texture, which is only available on first
+            % invokation of this subroutine:
+            BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/Resources'], 'DR-37P-beta.xml', hdrtexid, 0);
+        end
+        
+        % Perform actual conversion-blit:
         BrightSideCore(2);
 
         % Restore saved state:
         glPopAttrib;
-    else
-        % Dummy mode: We do it ourselves.
-        glColor4f(1,1,1,1);
-        moglBlitTexture(hdrtexid);
-    end
 
-    if ~dummymode
         % Restore normal matrices:
         glMatrixMode(GL.PROJECTION);
         glPopMatrix;
         glMatrixMode (GL.MODELVIEW);
         glPopMatrix;
+    else
+        % Dummy mode: We do it ourselves.
+        glColor4f(1,1,1,1);
+        moglBlitTexture(hdrtexid);
     end
     
     % Ready:
-    inhdrdrawmode = 0;
     return;
 end
 

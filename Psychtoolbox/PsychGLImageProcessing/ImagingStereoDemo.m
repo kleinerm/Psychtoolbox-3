@@ -6,7 +6,9 @@ function ImagingStereoDemo(stereoMode)
 % pipeline allows for more flexible and high quality stereo display modes,
 % but it requires graphics hardware with support for at least framebuffer
 % objects and Shadermodel 2.0. See the Psychtoolbox Wiki about gfx-hardware
-% recommendations.
+% recommendations. The demo also shows how to configure the pipeline to
+% restrict image processing to some subregion of the display, e.g., to save
+% some computation time on low-end hardware.
 %
 % Press escape key to abort demo, space key to toggle modes of specific
 % algorithms.
@@ -17,16 +19,21 @@ function ImagingStereoDemo(stereoMode)
 %
 % 1 == Flip frame stereo (temporally interleaved) - You'll need shutter
 % glasses that are supported by the operating system, e.g., the
-% CrystalEyes-Shutterglasses.
+% CrystalEyes-Shutterglasses. Psychtoolbox will automatically generate blue
+% sync lines at the bottom of the display.
 %
 % 2 == Top/bottom image stereo with lefteye=top also for use with special
 % CrystalEyes-hardware.
 %
 % 3 == Same, but with lefteye=bottom.
 %
-% 4 == Free fusion (lefteye=left, righteye=right)
+% 4 == Free fusion (lefteye=left, righteye=right): Left-eye view displayed
+% in left half of window, right-eye view displayed in right-half of window.
+% Use this for dual-display setups (binocular video goggles, haploscopes,
+% polarized stereo setups etc.)
 %
-% 5 == Cross fusion (lefteye=right ...)
+% 5 == Cross fusion (lefteye=right ...): Like mode 4, but with views
+% switched.
 %
 % 6-9 == Different modes of anaglyph stereo for color filter glasses:
 %
@@ -35,16 +42,22 @@ function ImagingStereoDemo(stereoMode)
 % 8 == Red-Blue
 % 9 == Blue-Red
 %
+% If you have a different set of filter glasses, e.g., red-magenta, you can
+% simply select one of above modes, then use the
+% SetStereoAnglyphParameters() command to change color gain settings,
+% thereby implementing other anaglyph color combinations.
 %
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
 % Mario Kleiner     - mario.kleiner at tuebingen.mpg.de
 %
 
+% We start of with non-inverted display:
 inverted = 0;
 
+% Default to stereoMode 8 -- Red-Green stereo:
 if nargin < 1
-    stereoMode=1;
+    stereoMode=8;
 end;
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
@@ -54,6 +67,8 @@ end;
 % an OpenGL Psychtoolbox
 AssertOpenGL;
 
+% Define response key mappings, unify the names of keys across operating
+% systems:
 KbName('UnifyKeyNames');
 space = KbName('space');
 escape = KbName('ESCAPE');
@@ -65,6 +80,8 @@ try
     % the stimulus display.  Chosing the display with the highest dislay number is
     % a best guess about where you want the stimulus displayed.
     scrnNum = max(Screen('Screens'));
+    
+    % Increase level of verbosity for debug purposes:
     %Screen('Preference', 'Verbosity', 6);
     
     % Windows-Hack: If mode 4 or 5 is requested, we select screen zero
@@ -75,10 +92,28 @@ try
        scrnNum = 0;
     end
 
-    imagingmode = kPsychNeedFastBackingStore;
-    % Open double-buffered onscreen window with the requested stereo mode:
-    [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode, 0, imagingmode);
+    % Open double-buffered onscreen window with the requested stereo mode,
+    % setup imaging pipeline for additional on-the-fly processing:
+    
+    % Prepare pipeline for configuration. This marks the start of a list of
+    % requirements/tasks to be met/executed in the pipeline:
+    PsychImaging('PrepareConfiguration');
+    
+    % Ask to restrict stimulus processing to some subarea (ROI) of the
+    % display. This will only generate the stimulus in the selected ROI and
+    % display the background color in all remaining areas, thereby saving
+    % some computation time for pixel processing: We select the center
+    % 512x512 pixel area of the screen:
+    PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 
+    % Consolidate the list of requirements (error checking etc.), open a
+    % suitable onscreen window and configure the imaging pipeline for that
+    % window according to our specs. The syntax is the same as for
+    % Screen('OpenWindow'):
+    [windowPtr, windowRect]=PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+
+    % Oldstyle:   [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
+    
     % Stimulus settings:
     numDots = 1000;
     vel = 1;   % pix/frames
@@ -96,7 +131,11 @@ try
     dots(1, :) = 2*(xmax)*rand(1, numDots) - xmax;
     dots(2, :) = 2*(ymax)*rand(1, numDots) - ymax;
     
-    % Set color gains. This depends on the anaglyph mode selected:
+    % Set color gains. This depends on the anaglyph mode selected. The
+    % values set here as default need to be fine-tuned for any specific
+    % combination of display device, color filter glasses and (probably)
+    % lighting conditions and subject. The current settings do ok on a
+    % MacBookPro flat panel.
     switch stereoMode
         case 6,
             SetAnaglyphStereoParameters('LeftGains', windowPtr,  [1.0 0.0 0.0]);
@@ -136,12 +175,32 @@ try
     xvel = 2*vel*rand(1,1)-vel;
     yvel = 2*vel*rand(1,1)-vel;
 
+    Screen('Flip', windowPtr);
+    
     % Perform a flip to sync us to vbl and take start-timestamp in t:
     t = Screen('Flip', windowPtr);
 
     % Run until a key is pressed:
     while 1
-        % Compute dot positions and offsets for this frame:
+        
+        % Select left-eye image buffer for drawing:
+        Screen('SelectStereoDrawBuffer', windowPtr, 0);
+        
+        % Draw left stim:
+        Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, [windowRect(3:4)/2], 1);
+
+        % Select right-eye image buffer for drawing:
+        Screen('SelectStereoDrawBuffer', windowPtr, 1);
+        
+        % Draw right stim:
+        Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
+        
+        % Tell PTB drawing is finished for this frame:
+        Screen('DrawingFinished', windowPtr);
+        
+        % Now all non-drawing tasks:
+        
+        % Compute dot positions and offsets for next frame:
         center = center + [xvel yvel];
         if center(1) > xmax | center(1) < -xmax
             xvel = -xvel;
@@ -153,19 +212,10 @@ try
 
         dots(3, :) = -amp.*exp(-(dots(1, :) - center(1)).^2 / (2*sigma*sigma)).*exp(-(dots(2, :) - center(2)).^2 / (2*sigma*sigma));
 
-        % Select left-eye image buffer for drawing:
-        Screen('SelectStereoDrawBuffer', windowPtr, 0);
-        % Draw left stim:
-        Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, [windowRect(3:4)/2], 1);
-
-        % Select right-eye image buffer for drawing:
-        Screen('SelectStereoDrawBuffer', windowPtr, 1);
-        % Draw right stim:
-        Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
-        
+        % Keyboard queries and key handling:
         [pressed dummy keycode] = KbCheck;
-        
         if pressed
+            % SPACE key toggles between non-inverted and inverted display:
             if keycode(space) & ismember(stereoMode, [6 7 8 9]);
                 while KbCheck; end;
                 inverted = 1 - inverted;
@@ -178,17 +228,21 @@ try
                 end
             end
             
+            % ESCape key exits the demo:
             if keycode(escape)
                 break;
             end
         end
-        
-        % Take timestamp of stimulus-onset after displaying the new stimulus
-        % and record it in vector t:
+
+        % Flip stim to display and take timestamp of stimulus-onset after
+        % displaying the new stimulus and record it in vector t:
         onset = Screen('Flip', windowPtr);
         t = [t onset];
     end
 
+    % Last Flip:
+    Screen('Flip', windowPtr);
+    
     % Done. Close the onscreen window:
     Screen('CloseAll')
 
@@ -198,7 +252,7 @@ try
     disp(sprintf('%d\t%5.3f\t%5.3f\t%5.2f\t%5.2f\n', numDots, mean(dt), max(dt), sum(dt > 0.020)/length(dt), sum(dt > 0.030)/length(dt)));
 
     % We're done.
-
+    return;
 catch
     % Executes in case of an error: Closes onscreen window:
     Screen('CloseAll');

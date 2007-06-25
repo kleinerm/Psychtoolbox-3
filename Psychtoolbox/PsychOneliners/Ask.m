@@ -1,37 +1,61 @@
-function reply = Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlign2)
-% reply = Ask(window,message,[textColor],[bgColor],[replyFun],[rectAlign1],[rectAlign2])
+function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlign2,fontsize)
+% reply = Ask(window,message,[textColor],[bgColor],[replyFun],[rectAlign1],[rectAlign2],[fontSize=30])
 %
 % Draw the message, using textColor, right-justified in the upper right of
 % the window, call reply=eval(replyFun), then erase (by drawing text again
 % using bgColor) and return. The default "replyFun" is 'GetClicks'. You may
-% want to use 'GetString', 'GetEchoString', or 'GetNumber'.
+% want to use 'GetChar' or 'GetString'.
 % 
 % "rectAlign1" and "rectAlign2", if present, are applied after the above
 % alignment. The values should be selected from: RectLeft, RectRight,
 % RectTop, RectBottom.
 % 
+% "fontSize" is the font size you want text typed in; will restore old
+% fontsize before returning.
+%
 % Typical uses:
-% reply=Ask(window,'Click when ready.');
-% reply=Ask(window,'What''s your name?',[],[],'GetString');
-% reply=Ask(window,'Who are you?',[],[],'GetEchoString',RectLeft,RectTop);
+% reply=Ask(window,'Click when ready.'); % Wait for (multiple) mouse clicks, return number of clicks.
+% reply=Ask(window,'What''s your name?',[],[],'GetString'); % Accept keyboard input, but don't show it.
+% reply=Ask(window,'Who are you?',[],[],'GetChar',RectLeft,RectTop); % Accept keyboard input, echo it to screen.
 % 
-% See also GetString, GetEchoString, GetNumber.
+% See also GetString.
 
 % 3/9/97  dgp	Wrote it, based on dhb's WaitForClick.m
 % 3/19/00  dgp	Suggest turning off font smoothing. Default colors.
 % 8/14/04  dgp	As suggested by Paul Thiem, added an example (and better argument checking) 
 %               to make it clear that replyFun must be supplied as a string and rectAlign1 as a value.
 % 8/14/04  dgp	Call Screen 'WindowToFront'.
+% 1/19/07  asg  Modified to work in OSX (for asg's purposes).
 % 6/6/07   mk   remove Screen('WindowToFron') unsupported on PTB-3, other
 %               small fixes...
 
-if ~Screen(window, 'WindowKind')
-	error('Invalid window')
+if nargin < 2
+    error('Ask: Must provide at least the first two arguments.');
 end
 
-% Make the look a bit nicer than the default.
-Screen('TextFont', window, 'Times');
-Screen('TextSize', window, 30);
+if ~Screen(window, 'WindowKind')
+	error('Invalid window handle provided.')
+end
+
+screenRect = Screen('Rect', window);
+
+if nargin > 7 && ~isempty(fontsize)
+    oldFontSize=Screen('TextSize', window, fontsize);
+else
+    oldFontSize=Screen('TextSize', window, 30);
+end;
+
+if nargin>4
+	if isempty(replyFun)
+		replyFun='GetClicks';
+    end
+
+    if isa(replyFun,'double')
+		error('Ask: replyFun must be [] or a string, e.g. ''GetClicks''.');
+    end
+else
+    replyFun='GetClicks';
+end
 
 % Create the box to hold the text that will be drawn on the screen.
 screenRect = Screen('Rect', window);
@@ -42,52 +66,111 @@ if ~isempty(message)
 else
     width = 0;
     height = 0;
+    message = '';
 end
 
-r = [0 0 width+30 height];
-r = AlignRect(r, screenRect, RectRight, RectTop);
+r=[0 0 width height+30];
+if strcmp(replyFun,'GetChar')
+    % In 'GetChar' mode we default to left-alignment of message:
+    r=AlignRect(r,screenRect,RectLeft,RectTop); % asg changed to align on Left side of screen
+else
+    % For other replyFun's we default to good ol' right-alignment:
+    r=AlignRect(r,screenRect,RectRight,RectTop);
+end
 
-if nargin > 6
+if nargin>6 && ~isempty(rectAlign2)
 	if ~isa(rectAlign2,'double')
 		error('Ask: rectAlign2 must be a double, e.g. RectLeft.');
 	end
-	r = AlignRect(r,screenRect,rectAlign2);
+	r=AlignRect(r,screenRect,rectAlign2);
 end
-if nargin > 5
+
+if nargin>5  && ~isempty(rectAlign1)
 	if ~isa(rectAlign1,'double')
 		error('Ask: rectAlign1 must be a double, e.g. RectLeft.');
 	end
-	r = AlignRect(r, screenRect, rectAlign1);
-end
-if nargin > 4 
-	if isempty(replyFun)
-		replyFun = 'GetClicks';
-	end
-	if isa(replyFun, 'double')
-		error('Ask: replyFun must be [] or a string, e.g. ''GetClicks''.');
-	end
-end
-if nargin < 5
-	replyFun = 'GetClicks';
-end
-if nargin < 4 || isempty(bgColor)
-	bgColor = WhiteIndex(window);
-end
-if nargin < 3 || isempty(textColor)
-	textColor = BlackIndex(window);
+	r=AlignRect(r,screenRect,rectAlign1);
 end
 
-% Draw our message on the screen and wait for the reply.
-Screen('DrawText', window, message, r(RectLeft), r(RectBottom), textColor);
-Screen('Flip', window, 0, 1);
-reply = eval(replyFun);
+if nargin<4 || isempty(bgColor)
+	bgColor=WhiteIndex(window);
+end
 
-% Erase the text off the screen.
-bounds = [0 0 width height];
-bounds = AlignRect(bounds, r, RectBottom,RectLeft);
-% Text may extend beyond the nominal bounds suggested 
-% by start and end points and line spacing. So we extend our erasing box
-% by a generous amount to make sure we erase all traces of what we drew.
-bounds = InsetRect(bounds, -2*height, -height);
-Screen('FillRect', window, bgColor, bounds);
-Screen('Flip', window, 0, 1);
+if nargin<3 || isempty(textColor)
+	textColor=BlackIndex(window);
+end
+
+%Screen(window,'WindowToFront');       % asg commented out
+
+[oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
+Screen('Flip', window, 0, 1);      % asg added
+
+if strcmp(replyFun,'GetChar')
+    FlushEvents('keyDown');
+    i=1;
+    reply(i)=GetChar(0,1);  % get the 1st typed character (with no timing info. and ascii codes only)
+    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor); % put coverted ascii code letter on screen
+    Screen('Flip', window, 0, 1);   % flip it to the screen
+    i=2;
+    reply(i)=GetChar(0,1);  % get the 2nd typed character (with no timing info. and ascii codes only)
+
+    while reply(i)==8  % backspace/delete was typed
+        i=1;
+        Screen('FillRect', window, bgColor);
+        [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor); % redraw text with no response letters
+        Screen('Flip', window, 0, 1);   % flip it to the screen
+        reply(i)=GetChar(0,1);  % get the next typed character (with no timing info. and ascii codes only)
+        if reply(i)~=8
+            [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
+            Screen('Flip', window, 0, 1);
+            i=2;
+            reply(i)=GetChar(0,1);
+        end;
+    end;
+
+    while ~eq(reply(i),10)  % until they hit RETURN
+        [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),newX(i-1),newY(i-1),textColor); % put coverted ascii code letter on screen
+        Screen('Flip', window, 0, 1);   % flip it to the screen
+        i=i+1;
+        reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
+        while reply(i)==8  % backspace/delete was typed
+            i=i-1;
+            if i<2  % can't backspace too far!
+                i=1;
+                Screen('FillRect', window, bgColor);
+                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);% redraw text with no response letters
+                Screen('Flip', window, 0, 1);   % flip it to the screen
+                reply(i)=GetChar(0,1);
+                if reply(i)~=8
+                    [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
+                    Screen('Flip', window, 0, 1);
+                    i=2;
+                    reply(i)=GetChar(0,1);
+                end;
+            elseif i>1
+                Screen('FillRect', window, bgColor);
+                [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
+                [newX(i-1), newY(i-1)]=Screen(window,'DrawText',char(reply(1:i-1)), oldX, oldY, textColor); % put old letters on screen
+                Screen('Flip', window, 0, 1);   % flip it to the screen
+                reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
+            end;
+        end;
+    end;
+
+    Screen('FillRect', window, bgColor);
+    Screen('Flip', window);
+
+    for d=min(find(reply==8))
+        reply = reply(1:d);
+    end;
+    
+    % Convert to char() string:
+    reply=char(reply);
+else
+    reply=eval(replyFun);
+end;
+
+% Restore text size:
+Screen('TextSize', window ,oldFontSize);
+
+return;

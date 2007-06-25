@@ -33,6 +33,15 @@ function BrightSideCore(varargin)
 % History:
 % October 2006  Written by Mario Kleiner (MPIK) and Oguz Ahmet Akyuz - Dept. of
 % Computer Science, University of Central Florida.
+persistent alreadywarned;
 
-error('The BrightSideCore MEX file seems to be either invalid, not loadable or missing in your setup!');
+if IsWin
+    error('The BrightSideCore MEX file seems to be either invalid, not loadable or missing in your setup!');
+else
+    if isempty(alreadywarned)
+        alreadywarned = 1;
+        warning('BrightSide HDR support not available on non-Windows platforms. Will use (imperfect) emulation.');
+    end    
+end
+
 return

@@ -25,14 +25,17 @@ function v=DaqAIn(device,channel,range)
 %     14          6 (single-ended)
 %     15          7 (single-ended)
 % "range" (0 to 7) sets the gain (and voltage range):
-%     0 for 1x (+-20 V),  1 for 2x (+-20 V),
-%     2 for 4x (+-20 V),  3 for 5x (+-20 V),
-%     4 for 8x (+-20 V),  5 for 10x (+-20 V),
-%     6 for 16x (+-20 V), 7 for 20x (+-1 V).
+%     0 for Gain 1x (+-20 V),   1 for Gain 2x (+-10 V),
+%     2 for Gain 4x (+-5 V),    3 for Gain 5x (+-4 V),
+%     4 for Gain 8x (+-2.5 V),  5 for Gain 10x (+-2 V),
+%     6 for Gain 16x (+-1.25 V),  7 for Gain 20x (+-1 V).
 % See also Daq, DaqFunctions, DaqPins, TestDaq, TestPsychHid,
 % DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
 
 % 4/15/05 dgp Wrote it.
+% 1/21/07 asg changed normalization value from 2^16 to 2^15 to account for 16th bit as a sign bit (not data bit)
+%             and modified the "range" value help.
+% 6/17/07 mk  Add proper sign handling for negative voltages.
 
 err=PsychHID('ReceiveReports',device);
 err=PsychHID('ReceiveReportsStop',device);
@@ -53,11 +56,18 @@ if err.n
     fprintf('DaqAIn GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
 if length(report)==3
+    % Mapping table value -> voltage for different gains:
     vmax=[20,10,5,4,2.5,2,1.25,1];
+    
+    % Extract and strip sign bit from high-byte:
+    sign = double(-1 * bitget(report(3), 8));
+    report(3) = bitand(report(3), 1+2+4+8+16+32+64);
     report=double(report);
-    v=vmax(range+1)*(report(2)+report(3)*256)/65535;
+    
+    % Reassemble low-byte, high-byte and sign into signed voltage level:
+    v=sign * vmax(range+1)*(report(2)+report(3)*256)/32768;    % added/changed by asg due to advice from Mario (forum post #5713)
 else
-%     fprintf('length(report) %d\n',length(report));
+%   fprintf('length(report) %d\n',length(report));
     v=nan;
 end
 err=PsychHID('ReceiveReportsStop',device);

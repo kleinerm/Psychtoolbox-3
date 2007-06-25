@@ -460,8 +460,8 @@ catch
     % shuts down realtime-scheduling of Matlab:
     Screen('CloseAll');
     % Disable realtime-priority in case of errors.
-    finalprio = Priority(0)
-    rethrow(lasterr);
+    finalprio = Priority(0);
+    psychrethrow(psychlasterror);
 end %try..catch..
 
 return

@@ -39,12 +39,24 @@ function [rc winRect] = PsychImaging(cmd, varargin)
 % 'whichTask' contains the name string of one of the supported
 % actions:
 %
+% * 'RestrictProcessing' Restrict stimulus processing to a specific subarea
+%   of the screen. If your visual stimulus only covers a subarea of the
+%   display screen you can restrict PTB's output processing to that
+%   subarea. This may save some computation time to allow for higher
+%   display redraw rates.
+%
+%   Syntax: PsychImaging('AddTask', whichChannel, 'RestrictProcessing', ROI);
+%   ROI is a rectangle defining the area to process ROI = [left top right bottom];
+%   E.g., ROI = [400 400 800 800] would only create output pixels in the
+%   screen area with top-left corner (400,400) and bottom-right corner
+%   (800, 800).
+%
 % * 'FlipHorizontal' and 'FlipVertical' flip your output images
-% horizontally (left- and right interchanged) or vertically (upside down).
+%   horizontally (left- and right interchanged) or vertically (upside down).
 %
 % * More actions will be supported in the future. If you can think of an
-% action of common interest not yet supported by this framework, please
-% file a feature request on our Wiki (Mainpage -> Feature Requests).
+%   action of common interest not yet supported by this framework, please
+%   file a feature request on our Wiki (Mainpage -> Feature Requests).
 %
 %
 % imagingMode = PsychImaging('FinalizeConfiguration');
@@ -66,7 +78,7 @@ function [rc winRect] = PsychImaging(cmd, varargin)
 % Performs all the setup work to be done after the window was created.
 %
 %
-% [windowPtr, windowRect] = PsychImaging('OpenImagingWindow', screenid,
+% [windowPtr, windowRect] = PsychImaging('OpenWindow', screenid,
 % [backgroundcolor], ....);
 % - Finish the setup phase for imaging pipeline, create a suitable onscreen
 % window and perform all remaining configuration steps.
@@ -113,8 +125,17 @@ if strcmp(cmd, 'AddTask')
         error('Call PsychImaging(''PrepareConfiguration''); first to prepare the configuration phase!');
     end
         
-    % Store requirement in our cell array of requirements:
-    reqs = [reqs ; varargin];
+    % Store requirement in our cell array of requirements. We need to
+    % extend each requirement vector to some number of max elements, so all
+    % rows in the cell array have the same length:
+    x = varargin;
+    maxreqarg = 10;
+    if length(x) < maxreqarg
+        for i=length(x)+1:maxreqarg
+            x{i}='';
+        end
+    end
+    reqs = [reqs ; x];
 
     rc = 0;
     return;
@@ -152,13 +173,9 @@ if strcmp(cmd, 'PostConfiguration')
     return;
 end
     
-if strcmp(cmd, 'OpenImagingWindow')
+if strcmp(cmd, 'OpenWindow')
     if configphase_active ~= 1
         error('You tried to OpenImagingWindow, but didn''t specify any imaging configuration!');
-    end
-
-    if isempty(reqs)
-        error('You tried to OpenImagingWindow, but you did not specify any requirements or tasks for the imaging pipeline!');
     end
 
     if nargin < 2
@@ -231,6 +248,11 @@ if strcmp(cmd, 'OpenImagingWindow')
     else
         [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
     end
+        
+    % Perform double-flip, so both back- and frontbuffer get initialized to
+    % background color:
+    Screen('Flip', win);
+    Screen('Flip', win);
     
     % Window open. Perform imaging pipe postconfiguration:
     rc = PostConfiguration(reqs, win);
@@ -417,6 +439,57 @@ end
 
 % --- End of the flipping stuff ---
 
+% --- Restriction of processing area ROI requested? ---
+
+% This should be at the end of setup, so we can reliably prepend the
+% command to each chain to guarantee that restriction applies to all
+% processing:
+floc = find(strcmp(reqs, 'RestrictProcessing'));
+if ~isempty(floc)
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Extract scissor rectangle:
+            scissorrect = reqs{row, 3};
+            if size(scissorrect,1)~=1 || size(scissorrect,2)~=4
+                error('Task "RestrictProcessing" in channel %s expects a 1-by-4 ROI rectangle to define the ROI, e.g, [left top right bottom]!', reqs{row,1});
+            end
+
+            ox = scissorrect(RectLeft);
+            oy = scissorrect(RectTop);
+            w  = RectWidth(scissorrect);
+            h  = RectHeight(scissorrect);
+            
+            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
+                % Need to restrict left view processing:
+                Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+            end
+
+            if strcmp(reqs{row, 1}, 'RightView') || strcmp(reqs{row, 1}, 'AllViews')
+                % Need to restrict right view processing:
+                Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+            end
+            
+            if (strcmp(reqs{row, 1}, 'AllViews') || strcmp(reqs{row, 1}, 'Compositor')) && winfo.StereoMode > 5
+                % Needed to restrict both views processing and a
+                % compositing mode is active. If both views are restricted
+                % in their output area then it makes sense to restrict the
+                % compositor to the same area. We also restrict the
+                % compositor if that was requested.
+                Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+            end
+
+            if strcmp(reqs{row, 1}, 'FinalFormatting')
+                % Need to restrict final formatting blit processing:
+                Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+            end
+            
+        end
+    end
+end
+
+% --- End of Restriction of processing area ROI ---
 
 % Return reqs array, for whatever reason...
 rc = reqs;
