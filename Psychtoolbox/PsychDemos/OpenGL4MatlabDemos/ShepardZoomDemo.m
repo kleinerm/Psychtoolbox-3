@@ -58,6 +58,9 @@ screenid = max(Screen('Screens'));
 % aspect ratio later on:
 [width height] = Screen('WindowSize', win);
 
+ifi=Screen('GetFlipInterval', win);
+vbl=Screen('Flip', win);
+
 % Some specs for the zoom...
 showlayer =[1,1,1,1,1];
 hold=0;
@@ -419,7 +422,7 @@ while 1
     end
     
     % Perform flip in sync with retrace.
-    Screen('Flip', win);
+    vbl = Screen('Flip', win, vbl + 1.5 * ifi);
     
     % Activate our own OpenGL rendering code again for drawing the next frame:
     Screen('BeginOpenGL', win);

@@ -98,7 +98,7 @@ if isempty(withsound)
 end
 
 if withsound > 0
-    withsound = 2;
+    withsound = 3;
 end
 
 if nargin < 4
@@ -108,7 +108,7 @@ end
 if showit > 0
     waitforimage = 1;
 else
-    waitforimage = 2;
+    waitforimage = 4;
 end
 
 try
@@ -122,14 +122,16 @@ try
     Screen('TextSize', win, 24);
             
     % Capture video + audio to disk:
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480],[] ,[], [] , [moviename codec], withsound);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 320 240],[] ,[], [] , [moviename codec], withsound);
 
     % Start capture, request 60 fps. Capture hardware will fall back to
     % fastest supported framerate if its not supported (i think).
     Screen('StartVideoCapture', grabber, 60, 1);
 
     oldtex = 0;
+    tex = 0;
     oldpts = 0;
+    pts = 0;
     count = 0;
     t=GetSecs;
     
@@ -144,8 +146,12 @@ try
         % as texture, if waitforimage == 2, do not return it (no preview,
         % but faster). oldtex contains the handle of previously fetched
         % textures - recycling is not only good for the environment, but also for speed ;)
-        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
-
+        if waitforimage~=4
+            [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, waitforimage, oldtex);
+        else
+            Screen('GetCapturedImage', win, grabber, waitforimage);
+        end
+        
         % Some output to the console:
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
         

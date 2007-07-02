@@ -49,6 +49,9 @@
 
 #include "Screen.h"
 
+// Need AGL headers for windowed and multi-screen rendering:
+#include <AGL/agl.h>
+
 // Includes for low-level access to IOKit Framebuffer device:
 #include <CoreFoundation/CoreFoundation.h>
 #include <ApplicationServices/ApplicationServices.h>
@@ -198,59 +201,121 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 {
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
-    CGLError					error;
+    CGLError						error;
     CGDirectDisplayID				cgDisplayID;
     CGLPixelFormatAttribute			attribs[32];
-    long					numVirtualScreens;
-    GLboolean					isDoubleBuffer, isFloatBuffer;
+    long							numVirtualScreens;
+    GLboolean						isDoubleBuffer, isFloatBuffer;
     GLint bpc;
 	GLenum glerr;
-	
+	PsychRectType					screenrect;
     int attribcount=0;
     int i;
+	boolean							useAGL;
+	WindowRef						carbonWindow;
+	AGLPixelFormat pf = NULL;
+ 	AGLContext glcontext = NULL;
 
+	// NULL-out Carbon window handle, so this is well-defined in case of error:
+	windowRecord->targetSpecific.windowHandle = NULL;
+
+	// Window rect provided which has a different size than screen?
+	useAGL = TRUE;
+	
+	// We do not use windowed mode if the provided window rectangle either
+	// matches the target screens rectangle (and therefore its exact size)
+	// or its screens global rectangle.
+	PsychGetScreenRect(screenSettings->screenNumber, screenrect);
+	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
+	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
+	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
+	
+	// Do we need to use windowed mode with AGL?
+	if (useAGL) {
+		// Yes. Need to create Carbon window and attach OpenGL to it via AGL:		
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using Carbon + AGL for onscreen window creation...\n");
+		
+		// Create onscreen Carbon window of requested position and size:
+		Rect winRect;
+		winRect.top = (short) windowRecord->rect[kPsychTop];
+		winRect.left = (short) windowRecord->rect[kPsychLeft];
+		winRect.bottom = (short) windowRecord->rect[kPsychBottom];
+		winRect.right = (short) windowRecord->rect[kPsychRight];
+//		if (noErr !=CreateNewWindow(kOverlayWindowClass, kWindowNoAttributes, &winRect, &carbonWindow)) {
+		if (noErr !=CreateNewWindow(kOverlayWindowClass, kWindowNoUpdatesAttribute, &winRect, &carbonWindow)) {
+			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
+			return(FALSE);
+		}
+		
+		// Show it!
+		ShowWindow(carbonWindow);
+
+		// Store window handle in windowRecord:
+		windowRecord->targetSpecific.windowHandle = carbonWindow;
+	}
+	else {
+		// No. Standard CGL setup for fullscreen single display windows:
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using CGL for onscreen window creation...\n");
+	}
+	
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
-    attribs[attribcount++]=kCGLPFAFullScreen;
-    attribs[attribcount++]=kCGLPFADisplayMask;
-    attribs[attribcount++]=displayMask;
+	if (!useAGL) {
+		attribs[attribcount++]=kCGLPFAFullScreen;
+		attribs[attribcount++]=kCGLPFADisplayMask;
+		attribs[attribcount++]=displayMask;
 
-    // 10 bit per component framebuffer requested (10-10-10-2)?
-    if (windowRecord->depth == 30) {
-      // Request a 10 bit per color component framebuffer with 2 bit alpha channel:
-      printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
-	  attribs[attribcount++]=kCGLPFANoRecovery;
-	  attribs[attribcount++]=kCGLPFAAccelerated;
-      attribs[attribcount++]=kCGLPFAColorSize;
-      attribs[attribcount++]=16*3;
-      attribs[attribcount++]=kCGLPFAAlphaSize;
-      attribs[attribcount++]=16;
-    }
-
-    // 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
-    if (windowRecord->depth == 64) {
-      // Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
-      printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
-      attribs[attribcount++]=kCGLPFAColorFloat;
-      attribs[attribcount++]=kCGLPFAColorSize;
-      attribs[attribcount++]=16*3;
-      attribs[attribcount++]=kCGLPFAAlphaSize;
-      attribs[attribcount++]=16;
-    }
-
-    // 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
-    if (windowRecord->depth == 128) {
-      // Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
-      printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
-      attribs[attribcount++]=kCGLPFAColorFloat;
-      attribs[attribcount++]=kCGLPFAColorSize;
-      attribs[attribcount++]=32*3;
-      attribs[attribcount++]=kCGLPFAAlphaSize;
-      attribs[attribcount++]=32;
-    }
-
+		// 10 bit per component framebuffer requested (10-10-10-2)?
+		if (windowRecord->depth == 30) {
+			// Request a 10 bit per color component framebuffer with 2 bit alpha channel:
+			printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
+			attribs[attribcount++]=kCGLPFANoRecovery;
+			attribs[attribcount++]=kCGLPFAAccelerated;
+			attribs[attribcount++]=kCGLPFAColorSize;
+			attribs[attribcount++]=16*3;
+			attribs[attribcount++]=kCGLPFAAlphaSize;
+			attribs[attribcount++]=16;
+		}
+		
+		// 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
+		if (windowRecord->depth == 64) {
+			// Request a floating point framebuffer in 16-bit half-float format, i.e., RGBA = 16 bits per component.
+			printf("PTB-INFO: Trying to enable 16 bpc float framebuffer...\n");
+			attribs[attribcount++]=kCGLPFAColorFloat;
+			attribs[attribcount++]=kCGLPFAColorSize;
+			attribs[attribcount++]=16*3;
+			attribs[attribcount++]=kCGLPFAAlphaSize;
+			attribs[attribcount++]=16;
+		}
+		
+		// 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
+		if (windowRecord->depth == 128) {
+			// Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
+			printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
+			attribs[attribcount++]=kCGLPFAColorFloat;
+			attribs[attribcount++]=kCGLPFAColorSize;
+			attribs[attribcount++]=32*3;
+			attribs[attribcount++]=kCGLPFAAlphaSize;
+			attribs[attribcount++]=32;
+		}
+	}
+	else {
+		// AGL specific pixelformat setup:
+		attribs[attribcount++]= AGL_RGBA;
+		attribs[attribcount++]=	AGL_RED_SIZE;
+		attribs[attribcount++]= 8;
+		attribs[attribcount++]=	AGL_GREEN_SIZE;
+		attribs[attribcount++]= 8;
+		attribs[attribcount++]=	AGL_BLUE_SIZE;
+		attribs[attribcount++]= 8;
+		attribs[attribcount++]=	AGL_ALPHA_SIZE;
+		attribs[attribcount++]= 8;
+		attribs[attribcount++]= AGL_PIXEL_SIZE;
+		attribs[attribcount++]= 32;
+	}
+	
     // Support for 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
         // Yes. Allocate a 24-Bit depth and 8-Bit stencilbuffer for this purpose:
@@ -293,56 +358,142 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // Init to zero:
     windowRecord->targetSpecific.pixelFormatObject = NULL;
 	windowRecord->targetSpecific.glusercontextObject = NULL;
-	
-    // First try in choosing a matching format for multisample mode:
-    if (windowRecord->multiSample > 0) {
-      error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-      if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-	// Failed. Probably due to too demanding multisample requirements: Lets lower them...
-	for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
-	while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
-	  attribs[i+1]--;
-	  windowRecord->multiSample--;
-          error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+		
+	if (!useAGL) {
+		// Context setup for CGL (non-windowed, non-multiscreen mode):
+		
+		// First try in choosing a matching format for multisample mode:
+		if (windowRecord->multiSample > 0) {
+			error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+			if (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+				// Failed. Probably due to too demanding multisample requirements: Lets lower them...
+				for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
+				while (windowRecord->targetSpecific.pixelFormatObject==NULL && windowRecord->multiSample > 0) {
+					attribs[i+1]--;
+					windowRecord->multiSample--;
+					error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+				}
+				if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
+					for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
+					attribs[i+1]=0;
+				}
+			}
+		}
+		
+		// Choose a matching display configuration and create the window and rendering context:
+		// If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
+		// requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
+		if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
+		if (error) {
+			printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
+			return(FALSE);
+		}
+		
+		// Create an OpenGL rendering context with the selected pixelformat
+		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, NULL, &(windowRecord->targetSpecific.contextObject));
+		if (error) {
+			printf("\nPTB-ERROR[ContextCreation failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
+			return(FALSE);
+		}
+		
+		// Enable the OpenGL rendering context associated with our window:
+		error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
+		if (error) {
+			printf("\nPTB-ERROR[SetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
+			return(FALSE);
+		}
+		
+		// Switch to fullscreen display: We don't support windowed display on OS-X
+		error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
+		if (error) {
+			printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
+			CGLSetCurrentContext(NULL);
+			return(FALSE);
+		}
 	}
-	if (windowRecord->multiSample == 0 && windowRecord->targetSpecific.pixelFormatObject==NULL) {
-	  for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
-	  attribs[i+1]=0;
-	}
-      }
-    }
+	else {
+		// Context setup for AGL (windowed or multiscreen mode):
 
-    // Choose a matching display configuration and create the window and rendering context:
-    // If one of these two fails, then the installed gfx hardware is not good enough to satisfy our
-    // requirements, or we have massive ressource shortage in the system. -> Screwed up anyway, so we abort.
-    if (windowRecord->targetSpecific.pixelFormatObject==NULL) error=CGLChoosePixelFormat(attribs, &(windowRecord->targetSpecific.pixelFormatObject), &numVirtualScreens);
-    if (error) {
-        printf("\nPTB-ERROR[ChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-        return(FALSE);
-    }
-    
-    // Create an OpenGL rendering context with the selected pixelformat
-    error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, NULL, &(windowRecord->targetSpecific.contextObject));
-    if (error) {
-        printf("\nPTB-ERROR[ContextCreation failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-        return(FALSE);
-    }
-    
-    // Enable the OpenGL rendering context associated with our window:
-    error=CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
-    if (error) {
-        printf("\nPTB-ERROR[SetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
-        return(FALSE);
-    }
-    
-    // Switch to fullscreen display: We don't support windowed display on OS-X
-    error=CGLSetFullScreen(windowRecord->targetSpecific.contextObject);
-    if (error) {
-        printf("\nPTB-ERROR[CGLSetFullScreen failed: %s]:The specified display may not support the current color depth -\nPlease switch to 'Millions of Colors' in Display Settings.\n\n", CGLErrorString(error));
-        CGLSetCurrentContext(NULL);
-        return(FALSE);
-    }
-    
+		// First try in choosing a matching format for multisample mode:
+		if (windowRecord->multiSample > 0) {
+			pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+			if (pf==NULL && windowRecord->multiSample > 0) {
+				// Failed. Probably due to too demanding multisample requirements: Lets lower them...
+				for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
+				while (pf==NULL && windowRecord->multiSample > 0) {
+					attribs[i+1]--;
+					windowRecord->multiSample--;
+					pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+				}
+				
+				if (windowRecord->multiSample == 0 && pf==NULL) {
+					for (i=0; i<attribcount && attribs[i]!=kCGLPFASampleBuffers; i++);
+					attribs[i+1]=0;
+				}
+			}
+		}
+
+		// Choose matching pixelformat:
+		pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+		if (pf == NULL) {
+			printf("\nPTB-ERROR[aglChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			DisposeWindow(carbonWindow); 
+			return(FALSE);
+		}
+		
+		// Create OpenGL rendering context for format:
+		glcontext = aglCreateContext(pf, NULL);
+		if (glcontext == NULL) {
+			printf("\nPTB-ERROR[aglCreateContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+		
+		// Make it the current rendering context:
+		if (!aglSetCurrentContext(glcontext)) {
+			printf("\nPTB-ERROR[aglSetCurrentContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglDestroyContext(glcontext);
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+		
+		// Attach context to our Carbon windows drawable area:
+		if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
+			printf("\nPTB-ERROR[aglSetDrawable failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglSetCurrentContext(NULL);
+			aglDestroyContext(glcontext);
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+		
+		// Ok, theoretically we should have a fully functional OpenGL rendering context, attached to a fully
+		// functional and visible onscreen window at this point.
+		
+		// Query CGL context and pixelformat for the AGL context and pixelformat, so all further code can use them:
+		if (!aglGetCGLPixelFormat(pf, &(windowRecord->targetSpecific.pixelFormatObject))) {
+			printf("\nPTB-ERROR[aglGetCGLPixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglSetCurrentContext(NULL);
+			aglDestroyContext(glcontext);
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+		
+		if (!aglGetCGLContext(glcontext, &(windowRecord->targetSpecific.contextObject))) {
+			printf("\nPTB-ERROR[aglGetCGLContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglSetCurrentContext(NULL);
+			aglDestroyContext(glcontext);
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+		
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Carbon window + AGL context setup finished..\n");
+	}
+			
 	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
 	// available OpenGL extensions via GLEW:
 	glerr = glewInit();
@@ -366,9 +517,17 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
         isDoubleBuffer=false;
         glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
         if(!isDoubleBuffer){
-            CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
-            CGLSetCurrentContext(NULL);
-            CGLClearDrawable(windowRecord->targetSpecific.contextObject ) ;
+			if (!useAGL) {
+				CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
+				CGLSetCurrentContext(NULL);
+				CGLClearDrawable(windowRecord->targetSpecific.contextObject ) ;
+			}
+			else {
+				aglSetCurrentContext(NULL);
+				aglDestroyContext(glcontext);
+				aglDestroyPixelFormat(pf);
+				DisposeWindow(carbonWindow);
+			}
             return(FALSE);
         }
     }
@@ -379,27 +538,71 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		// OpenGL code to provide optimal state-isolation. The context shares all
 		// heavyweight ressources likes textures, FBOs, VBOs, PBOs, display lists and
 		// starts off as an identical copy of PTB's context as of here.
-		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
-		if (error) {
-			printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-			return(FALSE);
+
+		if (!useAGL) {
+			error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, windowRecord->targetSpecific.contextObject, &(windowRecord->targetSpecific.glusercontextObject));
+			if (error) {
+				printf("\nPTB-ERROR[UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+				return(FALSE);
+			}
+			// Attach it to our onscreen drawable:
+			error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
+			if (error) {
+				printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+				CGLSetCurrentContext(NULL);
+				return(FALSE);
+			}
+			// Copy full state from our main context:
+			error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
+			if (error) {
+				printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
+				CGLSetCurrentContext(NULL);
+				return(FALSE);
+			}
 		}
-	    // Attach it to our onscreen drawable:
-		error=CGLSetFullScreen(windowRecord->targetSpecific.glusercontextObject);
-		if (error) {
-			printf("\nPTB-ERROR[CGLSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-			CGLSetCurrentContext(NULL);
-			return(FALSE);
-		}
-		// Copy full state from our main context:
-		error = CGLCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS);
-		if (error) {
-			printf("\nPTB-ERROR[CGLCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", CGLErrorString(error));
-			CGLSetCurrentContext(NULL);
-			return(FALSE);
+		else {
+			AGLContext usercontext = NULL;
+			usercontext = aglCreateContext(pf, glcontext);
+			if (usercontext == NULL) {
+				printf("\nPTB-ERROR[AGL-UserContextCreation failed: %s]: Creating a private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
+				// Ok, this is dirty, but better than nothing...
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+
+			// Attach it to our onscreen drawable:
+			if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
+				printf("\nPTB-ERROR[aglSetDrawable for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+				// Ok, this is dirty, but better than nothing...
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+
+			// Copy full state from our main context:
+			if (!aglCopyContext(glcontext, usercontext, GL_ALL_ATTRIB_BITS)) {
+				printf("\nPTB-ERROR[aglCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+				// Ok, this is dirty, but better than nothing...
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+
+			// Retrieve CGL context for userspace context:
+			if (!aglGetCGLContext(usercontext, &(windowRecord->targetSpecific.glusercontextObject))) {
+				printf("\nPTB-ERROR[aglGetCGLContext failed: %s]: Getting CGL userspace context for Matlab OpenGL failed for unknown reasons.\n\n", aglErrorString(aglGetError()));
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
 		}
 	}
-	
+
+	// Ok, if we reached this point and AGL is used, we should store its onscreen Carbon window handle:
+	if (useAGL) {
+		windowRecord->targetSpecific.windowHandle = carbonWindow;
+	}
+	else {
+		windowRecord->targetSpecific.windowHandle = NULL;
+	}
+
     // Initialize a low-level mapping of Framebuffer device data structures into
     // our address space: Needed for additional timing checks:
 
@@ -423,7 +626,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to gain access to kernel-level vbl handler [IOConnectMapMemory()] - Fallback path for time stamping won't be available.\n");
 			}
 			else {
-				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler establised (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
+				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Connection to kernel-level vbl handler established (shmem = %p).\n",  fbsharedmem[screenSettings->screenNumber].shmem);
 			}
         }
         else {
@@ -524,19 +727,24 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // Disable rendering context:
     CGLSetCurrentContext(NULL);
  
-    // MK: Hack, needed to work around a "screen corruption on shutdown" bug.
-    // When closing stereo display windows, it sometimes leads to a completely
-    // messed up and unusable display.
-    if (PsychIsOnscreenWindow(windowRecord)) {
-        PsychReleaseScreen(windowRecord->screenNumber);
-        // Destroy onscreen window, detach context:
-        CGLClearDrawable(windowRecord->targetSpecific.contextObject);
-		if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
-        PsychCaptureScreen(windowRecord->screenNumber);
-    }
-    // Destroy pixelformat object:
+	if (windowRecord->targetSpecific.windowHandle == NULL) {
+		// Shutdown sequence for CGL, i.e., no AGL+Carbon mode:
+		// MK: Hack, needed to work around a "screen corruption on shutdown" bug.
+		// When closing stereo display windows, it sometimes leads to a completely
+		// messed up and unusable display.
+		if (PsychIsOnscreenWindow(windowRecord)) {
+			PsychReleaseScreen(windowRecord->screenNumber);
+			// Destroy onscreen window, detach context:
+			CGLClearDrawable(windowRecord->targetSpecific.contextObject);
+			if (windowRecord->targetSpecific.glusercontextObject) CGLClearDrawable(windowRecord->targetSpecific.glusercontextObject);
+			PsychCaptureScreen(windowRecord->screenNumber);
+		}
+	}
+
+	// Destroy pixelformat object:
     CGLDestroyPixelFormat(windowRecord->targetSpecific.pixelFormatObject);
-    // Destroy rendering context:
+    
+	// Destroy rendering context:
     CGLDestroyContext(windowRecord->targetSpecific.contextObject);
 	if (windowRecord->targetSpecific.glusercontextObject) CGLDestroyContext(windowRecord->targetSpecific.glusercontextObject);
 
@@ -557,6 +765,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
         // Cleanup done.
     }
     
+	// Destroy Carbon onscreen window, if any:
+	if (windowRecord->targetSpecific.windowHandle) DisposeWindow(windowRecord->targetSpecific.windowHandle);
+
     return;
 }
 
@@ -564,7 +775,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  * PsychOSFlipWindowBuffers() -- OS-X swapbuffers call.
  */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
-{
+{	
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
     CGLFlushDrawable(windowRecord->targetSpecific.contextObject);
 }

@@ -73,7 +73,7 @@ KbName('UnifyKeyNames');
 space = KbName('space');
 escape = KbName('ESCAPE');
 
-try
+%try
     % Get the list of Screens and choose the one with the highest screen number.
     % Screen 0 is, by definition, the display with the menu bar. Often when
     % two monitors are connected the one without the menu bar is used as
@@ -253,8 +253,8 @@ try
 
     % We're done.
     return;
-catch
+%catch
     % Executes in case of an error: Closes onscreen window:
     Screen('CloseAll');
     psychrethrow(psychlasterror);
-end;
+%end;

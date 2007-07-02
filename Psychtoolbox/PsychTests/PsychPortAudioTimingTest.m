@@ -32,6 +32,11 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias)
 %                Unit is seconds. Defaults to zero on MS-Windows, defaults
 %                to the expected bias of a Intel MacBookPro on OS/X.
 
+% Initialize driver, request low-latency preinit:
+InitializePsychSound(1);
+
+PsychPortAudio('Verbosity', 10);
+
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
 dummy=GetSecs;
 WaitSecs(0.1);
@@ -84,8 +89,8 @@ end
 reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
 
 % Requested output frequency, may need adaptation on some audio-hw:
-freq = 96000;        % Must set this. 96khz, 48khz, 44.1khz.
-buffersize = 64;     % Pointless to set this. Auto-selected to be optimal.
+freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
+buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 
 % Needs to determined via measurement once for each piece of audio
 % hardware:
@@ -105,9 +110,6 @@ if nargin < 3 || isempty(latbias)
         latbias = 0;
     end
 end
-
-% Initialize driver, request low-latency preinit:
-InitializePsychSound(1);
 
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize);

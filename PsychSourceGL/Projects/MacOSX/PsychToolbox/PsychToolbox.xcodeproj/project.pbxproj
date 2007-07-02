@@ -1739,6 +1739,8 @@
 		83CBD6850BC02323007CB68C /* mogloctaveglue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD67B0BC02323007CB68C /* mogloctaveglue.cc */; };
 		83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */ = {isa = PBXBuildFile; fileRef = 83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
+		83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
+		83DBBD010C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -3261,23 +3263,6 @@
 		};
 /* End PBXBuildRule section */
 
-/* Begin PBXBuildStyle section */
-		836DEC830C3091DE00CFE76B /* Development */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-			};
-			name = Development;
-		};
-		836DEC840C3091DE00CFE76B /* Deployment */ = {
-			isa = PBXBuildStyle;
-			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-			};
-			name = Deployment;
-		};
-/* End PBXBuildStyle section */
-
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -3495,7 +3480,7 @@
 		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
 		2FD6171507306668008DA6B4 /* Rush.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rush.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
-		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
 		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
 		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
@@ -3667,6 +3652,7 @@
 		83CBD67D0BC02323007CB68C /* octavemex.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = octavemex.h; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/octavemex.h; sourceTree = SOURCE_ROOT; };
 		83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = mogl_rebinder.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogl_rebinder.c; sourceTree = SOURCE_ROOT; };
 		83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTextureFromMemPointer.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTextureFromMemPointer.c; sourceTree = SOURCE_ROOT; };
+		83DBBCFF0C332374002B3C93 /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
 		83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLTracker2D.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLTracker2D.h; sourceTree = "<absolute>"; };
 		83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = VLTracker2D.cc; sourceTree = "<group>"; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
@@ -4332,6 +4318,7 @@
 				2FEBA9900989ACD500F4165F /* QuickTime.framework in Frameworks */,
 				2FEBA9DB0989AD1900F4165F /* System.framework in Frameworks */,
 				2FEBA9DC0989AD1A00F4165F /* SystemConfiguration.framework in Frameworks */,
+				83DBBD010C332374002B3C93 /* AGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4518,6 +4505,7 @@
 				F089BCFC0AD42DF500663D86 /* QuickTime.framework in Frameworks */,
 				F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */,
 				F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */,
+				83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4930,6 +4918,7 @@
 		29B97314FDCFA39411CA2CEA /* TestPBMex */ = {
 			isa = PBXGroup;
 			children = (
+				83DBBCFF0C332374002B3C93 /* AGL.framework */,
 				83CBD6640BC02124007CB68C /* GLUT.framework */,
 				83CBD6600BC02109007CB68C /* AGL.framework */,
 				833C1FD80BB1B17600FB9B4F /* libportaudio.a */,
@@ -8046,12 +8035,6 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
-			buildSettings = {
-			};
-			buildStyles = (
-				836DEC830C3091DE00CFE76B /* Development */,
-				836DEC840C3091DE00CFE76B /* Deployment */,
-			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -20677,7 +20660,11 @@
 				COPY_PHASE_STRIP = NO;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
-				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_1)",
+				);
+				FRAMEWORK_SEARCH_PATHS_QUOTED_1 = "\"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks\"";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_MODEL_TUNING = "";
@@ -20722,6 +20709,11 @@
 		F089BD060AD42DF500663D86 /* Development-Octavebuild */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(FRAMEWORK_SEARCH_PATHS_QUOTED_1)",
+				);
+				FRAMEWORK_SEARCH_PATHS_QUOTED_1 = "\"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks\"";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				PRODUCT_NAME = Screen;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;

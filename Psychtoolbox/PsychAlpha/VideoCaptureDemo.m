@@ -21,7 +21,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 1280 960]);
     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -43,29 +43,29 @@ try
         
         [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1);
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-        
+        texrect = Screen('Rect', tex)
         if (tex>0)
             % Setup mirror transformation for horizontal flipping:
             
             % xc, yc is the geometric center of the text.
-            [xc, yc] = RectCenter(Screen('Rect', win));
+            %[xc, yc] = RectCenter(Screen('Rect', win));
             
             % Make a backup copy of the current transformation matrix for later
             % use/restoration of default state:
-            Screen('glPushMatrix', win);
+            %Screen('glPushMatrix', win);
             % Translate origin into the geometric center of text:
-            Screen('glTranslate', win, xc, 0, 0);
+            %Screen('glTranslate', win, xc, 0, 0);
             % Apple a scaling transform which flips the direction of x-Axis,
             % thereby mirroring the drawn text horizontally:
-            Screen('glScale', win, -1, 1, 1);
+            %Screen('glScale', win, -1, 1, 1);
             % We need to undo the translations...
-            Screen('glTranslate', win, -xc, 0, 0);
+            %Screen('glTranslate', win, -xc, 0, 0);
             % The transformation is ready for mirrored drawing:
 
             % Draw new texture from framegrabber.
-            Screen('DrawTexture', win, tex, [], Screen('Rect', win));
+            Screen('DrawTexture', win, tex); %, [], Screen('Rect', win));
 
-            Screen('glPopMatrix', win);
+            %Screen('glPopMatrix', win);
 
             % Print pts:
             Screen('DrawText', win, sprintf('%.4f', pts - t), 0, 0, 255);

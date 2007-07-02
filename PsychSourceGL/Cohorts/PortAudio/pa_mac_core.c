@@ -851,7 +851,9 @@ static PaError OpenAndSetupOneAudioUnit(
        UInt32 size = sizeof( *actualOutputFramesPerBuffer );
        ERR_WRAP( AudioUnitSetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
-                            kAudioUnitScope_Input,
+// MK CHANGED PTB                            kAudioUnitScope_Input,
+                            kAudioUnitScope_Output,
+
                             OUTPUT_ELEMENT,
                             actualOutputFramesPerBuffer,
                             sizeof(unsigned long) ) );
@@ -866,7 +868,8 @@ static PaError OpenAndSetupOneAudioUnit(
        /*UInt32 size = sizeof( *actualInputFramesPerBuffer );*/
        ERR_WRAP( AudioUnitSetProperty( *audioUnit,
                             kAudioUnitProperty_MaximumFramesPerSlice,
-                            kAudioUnitScope_Output,
+// MK CHANGED PTB                            kAudioUnitScope_Output,
+							kAudioUnitScope_Input,
                             INPUT_ELEMENT,
                             actualInputFramesPerBuffer,
                             sizeof(unsigned long) ) );

@@ -2,7 +2,7 @@ function InitializePsychSound(reallyneedlowlatency)
 % InitializePsychSound([reallyneedlowlatency=0])
 %
 % This routine loads the PsychPortAudio sound driver for high-precision,
-% low-latency, multi-channel sound playback.
+% low-latency, multi-channel sound playback and recording.
 %
 % Call it at the beginning of your experiment script, optionally providing
 % the 'reallyneedlowlatency' flag set to one to push really hard for low
@@ -25,7 +25,7 @@ function InitializePsychSound(reallyneedlowlatency)
 %
 % If you need really low latency or high precision sound on Windows, there's
 % a second option which, for legal and technical reasons, requires a bit
-% more effort and paper-work. Some (usually more expensive > 100$) sound
+% more effort of you: Some (usually more expensive > 150$) sound
 % cards ship with ASIO enabled sound drivers, or at least there's such a
 % driver available from the support area of your sound card vendors website.
 %
@@ -41,7 +41,7 @@ function InitializePsychSound(reallyneedlowlatency)
 % special ASIO enabled version of the "portaudio_x86.dll" driver plugin for
 % Psychtoolbox:
 %
-% 1. Contact Mario Kleiner for instructions on how to get the driver.
+% 1. Contact Mario Kleiner and ask him for a copy of the driver.
 %
 % 2. When you have the driver, copy it into your Psychtoolbox root folder -
 % the top level folder named "Psychtoolbox".
@@ -81,7 +81,7 @@ if IsWin
         fprintf('really accurate sound onset timing and latency < 30 msecs, please read\n');
         fprintf('"help InitializePsychSound" carefully and follow the instructions.\n');
         fprintf('Will use our standard driver instead of enhanced driver...\n');
-        driverloadpath = [PsychtoolboxRoot 'PsychSound\'];
+        driverloadpath = [PsychtoolboxRoot 'PsychSound'];
         asio = 0;
     end
 

@@ -125,9 +125,10 @@ typedef struct PsychFBO {
 typedef struct{
         CGLContextObj		contextObject;
         CGLPixelFormatObj	pixelFormatObject;
-		CGLContextObj		glusercontextObject;   // OpenGL context for userspace rendering code, e.g., moglcore...
-        CVOpenGLTextureRef QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
-        void*              deviceContext;          // Dummy pointer, just here for compatibility to Windows-Port (simplifies code)
+		CGLContextObj		glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
+        CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
+        void*               deviceContext;          // Dummy pointer, just here for compatibility to Windows-Port (simplifies code)
+		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
 } PsychTargetSpecificWindowRecordType;
 #endif 
 

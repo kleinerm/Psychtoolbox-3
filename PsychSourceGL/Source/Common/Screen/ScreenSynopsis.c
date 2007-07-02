@@ -168,8 +168,6 @@ void InitializeSynopsis()
 	synopsis[i++] = "psychTableVersion=Screen('Preference', 'PsychTableVersion');";
 	synopsis[i++] = "mexFunctionName=Screen('Preference', 'PsychTableCreator');";
 	synopsis[i++] = "proc=Screen('Preference', 'Process');";   
-	synopsis[i++] = "oldBool=Screen('Preference','Backgrounding');";
-	synopsis[i++] = "oldSecondsMultiplier=Screen('Preference', 'SecondsMultiplier');";
 	synopsis[i++] = "Screen('Preference','SkipSyncTests', skipTest);";
 	synopsis[i++] = "Screen('Preference','VisualDebugLevel', level (valid values between 0 and 5));";
 	synopsis[i++] = "Screen('Preference', 'ConserveVRAM', mode (valid values between 0 and 3));";

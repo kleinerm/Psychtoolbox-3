@@ -31,6 +31,7 @@
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
 %   PsychHIDTest                    - PsychHID MEX file for HID-compliant USB devices.
 %   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
+%   PsychPortAudioTimingTest        - Test signal generator for test of PsychPortAudios timing with external measurement equipment.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
 %   ScreenTest                      - Thorough test of hardware/software performance.
 %   SimpleTimingTest                - 

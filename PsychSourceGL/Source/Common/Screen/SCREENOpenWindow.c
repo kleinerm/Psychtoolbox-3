@@ -72,15 +72,15 @@ static char seeAlsoString[] = "OpenOffscreenWindow, SelectStereoDrawBuffer";
 PsychError SCREENOpenWindow(void) 
 
 {
-    int					screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
-    PsychRectType 			rect;
+    int						screenNumber, numWindowBuffers, stereomode, multiSample, imagingmode;
+    PsychRectType 			rect, screenrect;
     PsychColorType			color;
-    PsychColorModeType  		mode; 
-    boolean				isArgThere, settingsMade, didWindowOpen;
-    PsychScreenSettingsType		screenSettings;
-    PsychWindowRecordType		*windowRecord;
+    PsychColorModeType  	mode; 
+    boolean					isArgThere, settingsMade, didWindowOpen, useAGL;
+    PsychScreenSettingsType	screenSettings;
+    PsychWindowRecordType	*windowRecord;
     double dVals[4];
-    PsychDepthType		specifiedDepth, possibleDepths, currentDepth, useDepth;
+    PsychDepthType			specifiedDepth, possibleDepths, currentDepth, useDepth;
 	int dummy1;
 	double dummy2, dummy3, dummy4;
 	Boolean EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
@@ -140,13 +140,35 @@ PsychError SCREENOpenWindow(void)
     }else //otherwise use the default
         PsychCopyDepthStruct(&useDepth, &currentDepth);
 
-    //find the rect.
+    // Initialize the rect argument to the screen rectangle:
     PsychGetScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
 
     // Override it with a user supplied rect, if one was supplied:
     isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );
     if (IsPsychRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "OpenWindow called with invalid (empty) rect argument.");
 
+	if (PSYCH_SYSTEM == PSYCH_OSX) {
+		// OS/X system: Need to decide if we use a Carbon window + AGL
+		// or a fullscreen context with CGL:
+		
+		// Default to AGL, switch to CGL if below constraints are met:
+		useAGL = TRUE;
+	
+		// Window rect provided which has a different size than screen?
+
+		// We do not use windowed mode if the provided window rectangle either
+		// matches the target screens rectangle (and therefore its exact size)
+		// or its screens global rectangle.
+		PsychGetScreenRect(screenNumber, screenrect);
+		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
+		PsychGetGlobalScreenRect(screenNumber, screenrect);
+		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
+	}
+	else {
+		// Non OS/X system: Do not use AGL ;-)
+		useAGL = FALSE;
+	}
+	
     //find the number of specified buffers. 
 
     //OS X:	The number of backbuffers is not a property of the display mode but an attribute of the pixel format.
@@ -191,7 +213,7 @@ PsychError SCREENOpenWindow(void)
     // Here is where all the work goes on:
 
     // If the screen is not already captured then to that:
-    if(~PsychIsScreenCaptured(screenNumber)) {
+    if(!PsychIsScreenCaptured(screenNumber) && !useAGL) {
         PsychCaptureScreen(screenNumber);
 
         settingsMade=PsychSetScreenSettings(screenNumber, &screenSettings);
@@ -207,7 +229,7 @@ PsychError SCREENOpenWindow(void)
       // now.
 
       // Release the captured screen:
-        PsychReleaseScreen(screenNumber);
+	  PsychReleaseScreen(screenNumber);
 
 	// Output warning text:
         printf("PTB-ERROR: Your display screen %i is not running at the required color depth of at least 30 bit.\n", screenNumber);
@@ -229,7 +251,7 @@ PsychError SCREENOpenWindow(void)
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
 
     if (!didWindowOpen) {
-        PsychReleaseScreen(screenNumber);
+        if (!useAGL) PsychReleaseScreen(screenNumber);
 
         // We use this dirty hack to exit with an error, but without printing
         // an error message. The specific error message has been printed in
@@ -257,7 +279,7 @@ PsychError SCREENOpenWindow(void)
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
-	// On OS-X, if we are int quad-buffered frame sequential stereo mode, we automatically generate
+	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this
 	// by default on Windows or Linux: These systems either don't have stereo capable hardware,
 	// or they have some and its drivers already take care of sync signal generation.
@@ -317,5 +339,3 @@ PsychError SCREENOpenWindow(void)
 
     return(PsychError_none);   
 }
-
-

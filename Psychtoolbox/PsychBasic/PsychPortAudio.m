@@ -3,13 +3,13 @@ function varargout = PsychPortAudio(varargin)
 %
 % PsychPortAudio is a new sounddriver for PTB-3. It is meant to become a
 % replacement for all other Matlab based sound drivers and PTB's old SND()
-% function. It's early beta currently, so use it with care, may still have
+% function. It's currently early beta, so use it with care, may still have
 % some problems.
 %
 % PsychPortAudio provides (or will provide) the following features:
 %
 % - Allows instant start of sound playback with a very low onset latency
-% compared to other sound drivers.
+%   compared to other sound drivers.
 %
 % - Allows start of playback at a scheduled future system time: E.g.,
 %   schedule sound onset for a specific time in the future (e.g., visual
@@ -29,8 +29,8 @@ function varargout = PsychPortAudio(varargin)
 %
 % - Support multi-channel devices, e.g., 8-channel sound cards.
 %
-% - Will also support multi-channel sound capture and full-duplex capture
-%   and playback of sound in the future.
+% - Supports multi-channel sound capture and full-duplex capture
+%   and playback of sound on some systems.
 %
 % - Enumerate, open and use multiple sound cards in parallel.
 %
@@ -39,7 +39,12 @@ function varargout = PsychPortAudio(varargin)
 % - Efficient, causes only very low cpu load.
 %
 % See the "help InitializePsychSound" for more info on low-latency
-% configurations. See "help BasicSoundOutputDemo" for a very basic demo.
+% configurations. See "help BasicSoundOutputDemo" for a very basic demo of
+% sound output (without special emphasis on low-latency). See
+% "BasicSoundInputDemo" for a basic demo of sound capture.
+% "PsychPortAudioTimingTest" is a script that we used for testing PA's
+% sound onset latency and accuracy...
+%
 % Type "PsychPortAudio" for an overview of supported subfunctions and
 % "PsychPortAudio Subfunctionname?" for help on a specific subfunction.
 %
