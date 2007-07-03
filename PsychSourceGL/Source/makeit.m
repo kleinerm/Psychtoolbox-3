@@ -15,13 +15,13 @@ end
 if what == 1
    % Build WaitSecs.dll
    mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output WaitSecs -DPTBMODULE_WaitSecs -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\WaitSecs -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\WaitSecs\*.c user32.lib winmm.lib
-   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\Screen.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
+   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\WaitSecs.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
 end
 
 if what == 2
    % Build PsychPortAudio.dll
    mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output PsychPortAudio -DPTBMODULE_PsychPortAudio -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\PsychPortAudio -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\PsychPortAudio\*.c user32.lib winmm.lib portaudio_x86.lib
-   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\Screen.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
+   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\PsychPortAudio.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
 end
 
 delete('C:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
