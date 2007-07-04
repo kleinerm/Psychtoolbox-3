@@ -852,8 +852,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       }
       
       // Abort right here if sync tests are enabled:
-      if (!skip_synctests) return(FALSE);
-
+		if (!skip_synctests) {
+			// We abort! Close the onscreen window:
+			PsychOSCloseWindow(*windowRecord);
+			// Free the windowRecord:
+			FreeWindowRecordFromPntr(*windowRecord);
+			// Done. Return failure:
+			return(FALSE);
+		}
+		
       // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
       PsychVisualBell((*windowRecord), 1, 2);
     }
@@ -904,7 +911,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
     // Assign our best estimate of the scanline which marks end of vertical blanking interval:
     (*windowRecord)->VBL_Endline = VBL_Endline;
-    
+	// Store estimated video refresh cycle from beamposition method as well:
+    (*windowRecord)->ifi_beamestimate = ifi_beamestimate;
     //mark the contents of the window record as valid.  Between the time it is created (always with PsychCreateWindowRecord) and when it is marked valid 
     //(with PsychSetWindowRecordValid) it is a potential victim of PsychPurgeInvalidWindows.  
     PsychSetWindowRecordValid(*windowRecord);
@@ -1661,14 +1669,15 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
         tstart = tnew;
-        
+		told = -1;
+		
         // Take samples during consecutive refresh intervals:
         // We measure until either:
         // - A maximum measurment time of maxsecs seconds has elapsed... (This is the emergency switch to prevent infinite loops).
         // - Or at least numSamples valid samples have been taken AND measured standard deviation is below the requested deviation stddev.
         for (i=0; (fallthroughcount<10) && ((tnew - tstart) < *maxsecs) && (n < *numSamples || ((n >= *numSamples) && (tstddev > reqstddev))); i++) {
             // Schedule a buffer-swap on next VBL:
-	    PsychOSFlipWindowBuffers(windowRecord);
+			PsychOSFlipWindowBuffers(windowRecord);
             
             // Wait for it, aka VBL start: See PsychFlipWindowBuffers for explanation...
             glBegin(GL_POINTS);
@@ -1685,7 +1694,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             PsychGetAdjustedPrecisionTimerSeconds(&tnew);
             
             // We skip the first measurement, because we first need to establish an initial base-time 'told'
-            if (i>0) {
+            if (told > 0) {
                 // Compute duration of this refresh interval in tnew:
                 tdur = tnew - told;
                 
@@ -1725,10 +1734,20 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                     tavgsq = tavgsq + (tdur * tdur);
                     n=windowRecord->nrIFISamples;
                     tstddev = (n>1) ? sqrt( ( tavgsq - ( tavg * tavg / n ) ) / (n-1) ) : 10000.0f;
+
+					// Update reference timestamp:
+					told = tnew;
                 }
+				else {
+					// Rejected sample: Better invalidate told as well:
+					told = -1;
+				}
             }
-            // Update reference timestamp:
-            told = tnew;
+			else {
+				// (Re-)initialize reference timestamp:
+				told = tnew;
+			}
+			
         } // Next measurement loop iteration...
         
         // Switch back to old scheduling after timing tests:

@@ -34,15 +34,18 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 
 PsychError SCREENGetWindowInfo(void) 
 {
-    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
-							   "VBLEndline", "GLVendor", "GLRenderer", "GLVersion"};
-	const int  fieldCount = 11;
+    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+							   "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion"};
+	const int  fieldCount = 15;
 	PsychGenericScriptType	*s;
 	
     PsychWindowRecordType *windowRecord;
-    double beamposition;
+    double beamposition, lastvbl;
 	int beamposonly = 0;
 	CGDirectDisplayID displayId;
+	psych_uint64 postflip_vblcount;
+	double vbl_startline;
+	long scw, sch;
 	
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -72,17 +75,49 @@ PsychError SCREENGetWindowInfo(void)
 	else {
 		// Return all information:
 		PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
+
 		// Rasterbeam position:
 		PsychSetStructArrayDoubleElement("Beamposition", 0, beamposition, s);
+
 		// Time of last vertical blank when a double-buffer swap occured:
 		PsychSetStructArrayDoubleElement("LastVBLTimeOfFlip", 0, windowRecord->time_at_last_vbl, s);
+
+		// Try to determine system time of last VBL on display, independent of any
+		// flips / bufferswaps.
+		lastvbl = -1;
+		postflip_vblcount = 0;
+		
+		#if PSYCH_SYSTEM == PSYCH_OSX
+			// On OS/X we can query the OS for the system time of last VBL, so we can
+			// use the most recent VBL timestamp as baseline for timing calculations, 
+			// instead of one far in the past.
+			lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+		#endif
+
+		// If we couldn't determine this information we just set lastvbl to the last known
+		// vbl timestamp of last flip -- better than nothing...
+		if (lastvbl < 0) lastvbl = windowRecord->time_at_last_vbl;
+		PsychSetStructArrayDoubleElement("LastVBLTime", 0, lastvbl, s);
+		PsychSetStructArrayDoubleElement("VBLCount", 0, (double) postflip_vblcount, s);
+
 		// Misc. window parameters:
 		PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);
 		PsychSetStructArrayDoubleElement("ImagingMode", 0, windowRecord->imagingMode, s);
 		PsychSetStructArrayDoubleElement("MultiSampling", 0, windowRecord->multiSample, s);
 		PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);
+		
+		// Query real size of the underlying display in order to define the vbl_startline:
+		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
+		vbl_startline = (double) sch;
+		PsychSetStructArrayDoubleElement("VBLStartline", 0, vbl_startline, s);
+
+		// And VBL endline:
 		PsychSetStructArrayDoubleElement("VBLEndline", 0, windowRecord->VBL_Endline, s);
+
+		// Video refresh interval duration from beamposition method:
+		PsychSetStructArrayDoubleElement("VideoRefreshFromBeamposition", 0, windowRecord->ifi_beamestimate, s);
+		
 		// Renderer information:
 		PsychSetGLContext(windowRecord);
 		PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);

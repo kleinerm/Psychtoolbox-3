@@ -28,12 +28,14 @@
 %     KbWait               - Wait for key press and return its time.
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
+%     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 
 %     SetMouse             - Set mouse position.
 %     ShowCursor           - Show the cursor, and set cursor type.
 %     Snd                  - Play sounds.
+%     VideoRefreshFromMeasurement - Alternative calibration procedure to find exact video refresh interval.
 %     WaitSecs             - Wait specified time.
 %     WaitTicks            - Wait specified number of 60.15 Hz ticks.
 

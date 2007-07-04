@@ -210,6 +210,8 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     char msgerr[10000];
     char errdesc[1000];
     Rect movierect, newrect;
+	ComponentDescription desc;
+	Component mydevice;
     SeqGrabComponent seqGrab = NULL;
     SGChannel *sgchanptr = NULL;
 	SGChannel *sgchanaudioptr = NULL;
@@ -245,7 +247,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     }
 
     if (deviceIndex < 0) {
-        PsychErrorExitMsg(PsychError_internal, "Invalid (negative) deviceIndex passed!");
+        PsychErrorExitMsg(PsychError_user, "Invalid (negative) deviceIndex passed!");
     }
 
     if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
@@ -269,10 +271,31 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     // Open sequence grabber:
     // ======================
     
-    // Open the default sequence grabber: The deviceIndex is currently ignored.
-    seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
+	// Definition of a sequence grabber:
+	desc.componentType = SeqGrabComponentType;
+	desc.componentSubType = 0;
+	desc.componentManufacturer = 0;
+	desc.componentFlags = 0;
+	desc.componentFlagsMask = 0;
+	
+	// Device index in range?
+	if (deviceIndex < 0 || deviceIndex >= CountComponents(&desc)) {
+		printf("PTB-ERROR: deviceIndex %i of requested video source is not in allowed range 0 to %i.\n", deviceIndex, CountComponents(&desc) - 1);
+		printf("PTB-ERROR: Please make sure that at least %i video sources are connected if you think your setting is correct.\n", deviceIndex + 1);
+        PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified. Negative or higher than number of installed video sources - 1.");
+	}
+	
+	// Yes. Iterate over component list to find corresponding device:
+	mydevice = 0;
+	for (i=0; i<= deviceIndex; i++) mydevice = FindNextComponent(mydevice, &desc);
+	if (mydevice == 0) PsychErrorExitMsg(PsychError_internal, "Failed to locate associated sequence grabber for deviceIndex!");
+	
+	
+    // seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
+	seqGrab = OpenComponent(mydevice);
     if (seqGrab == NULL) {
-        PsychErrorExitMsg(PsychError_internal, "Failed to open the default sequence grabber for video capture!");
+		printf("PTB-ERROR: Failed to open sequence grabber video capture component for deviceIndex %i!", deviceIndex);
+        PsychErrorExitMsg(PsychError_internal, "Failed to open requested sequence grabber for video capture!");
     }
     
     // Initialize the sequence grabber component:
@@ -349,7 +372,14 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         movierect.bottom-=movierect.top;
         movierect.left=0;
         movierect.top=0;
-        
+		
+		// retrieve a channelÕs current sample description, the channel returns a sample description that is
+		// appropriate to the type of data being captured
+		//ImageDescriptionHandle imageDesc = (ImageDescriptionHandle) NewHandle(0);
+		//error = SGGetChannelSampleDescription(*sgchanptr, (Handle)imageDesc);
+		//printf("PTB-INFO: Capture rectangle width = %i x height = %i ...\n", (int) ((ImageDescription)(**imageDesc)).width, (int) ((ImageDescription)(**imageDesc)).height);
+		//DisposeHandle((Handle) imageDesc);
+		
         // Now that we know the movierect of our ROI,
         // destroy the channel, assign a properly sized GWorld
         // and recreate the channel:

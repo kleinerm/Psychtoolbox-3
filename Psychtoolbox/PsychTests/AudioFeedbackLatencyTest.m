@@ -34,6 +34,8 @@ function AudioFeedbackLatencyTest(trigger, nrtrials, freq, freqout)
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
 
+deviceid = []
+
 if nargin < 1
     trigger = [];
 end
@@ -79,11 +81,11 @@ PsychPortAudio('Verbosity', 6);
 % and a required latencyclass of zero 2 == low-latency mode, as well as
 % a frequency of 44100 Hz and 2 sound channels for stereo capture.
 % This returns a handle to the audio device:
-pahandlerec = PsychPortAudio('Open', [], 2, 2, freq, 2);
+pahandlerec = PsychPortAudio('Open', deviceid, 2, 2, freq, 2);
 
 % Open 2nd audio device for playback of our test signal with same settings
 % otherwise:
-pahandleout = PsychPortAudio('Open', [], 1, 2, freqout, 2);
+pahandleout = PsychPortAudio('Open', deviceid, 1, 2, freqout, 2);
 
 % Build 1khZ, 90% peak amplitude beep tone of 0.1 secs duration, suitable
 % for playback at 'freq' Hz:
