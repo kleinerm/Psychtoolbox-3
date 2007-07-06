@@ -221,6 +221,12 @@ if ~IsOctave
             OSX_JAVA_GETCHAR.register;
         end
 
+        % Make sure the Matlab window has keyboard focus:
+        if exist('commandwindow', 'builtin')==5
+            % Call builtin implementation:
+            builtin('commandwindow', msg);
+        end
+        
         % Loop until we receive character input.
         keepChecking = 1;
         while keepChecking
@@ -228,6 +234,9 @@ if ~IsOctave
             % we've found one.
             charValue = OSX_JAVA_GETCHAR.getChar;
             keepChecking = charValue == 0;
+            if keepChecking
+                drawnow;
+            end
         end
 
         % Throw an error if we've exceeded the buffer size.

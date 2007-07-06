@@ -66,6 +66,8 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % 12/13/2006 Built-in 'OpenWindow' for simplified setup...
 % 06/24/2007 Rewritten to work with current PTB, which has a full
 % implementation of the floating point imaging pipeline. (MK)
+% 07/05/2007 Bugfixes to rewrite. Improvements. Now its really ready for
+% use with the new imaging pipeline. (MK)
 
 global GL;
 persistent windowPtr;
@@ -104,7 +106,7 @@ if strcmp(cmd, 'Debuglevel')
     return;
 end
 
-if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Initialize')
+if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'Initialize')
 
     % OpenGL mode of Psychtoolbox already initialized?
     if isempty(GL)
@@ -115,7 +117,7 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
     end
 
     % Open onscreen window as well or just perform initialization?
-    if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow')
+    if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow')
         % Execute the Screen('OpenWindow') command with proper flags, followed
         % by our own Initialization. Return values of 'OpenWindow'.
         % BrightSideHDR('OpenWindow', ...) is a drop-in replacement for
@@ -166,14 +168,14 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
         % We need at least fast backing store and support for final output
         % conversion:
         imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
-        
+
         % We require 32 bit floating point framebuffers if user doesn't
         % explicitely request the lower resolution, but higher speed 16 bit
         % floating point framebuffers:
-        if (imagingmode & kPsychNeed16BPCFloat) == 0
+        if bitand(imagingmode, kPsychNeed16BPCFloat) == 0
             imagingmode = mor(imagingmode, kPsychNeed32BPCFloat);
         end
-                
+
         % Open the window, pass all parameters (partially modified or
         % overriden), return Screen's return values:
         if nargin > 9
@@ -218,7 +220,7 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
     AssertGLSL;
 
     % Step 1: Make sure we got a window handle for a valid onscreen window:
-    if isempty(find(Screen('Windows')==arg)) || Screen('WindowKind', arg)~=1
+    if isempty(find(Screen('Windows')==arg, 1)) || Screen('WindowKind', arg)~=1
         error('BrightSideHDR: "Initialize" called with something else than a valid onscreen window handle.');
     end
     
@@ -227,6 +229,7 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
     windowPtr = arg;
     [winwidth, winheight] = Screen('WindowSize', windowPtr);
         
+    % Only setup the BrightSide drivers and libraries in non-dummy mode:
     if ~dummymode
         % Initiate loading, linking and initialization of the core:
 
@@ -248,21 +251,30 @@ if strcmp(cmd, 'OpenWindow') | strcmp(cmd, 'DummyOpenWindow') | strcmp(cmd, 'Ini
             % directory to its previous setting:
             cd(olddir);
         end;        
+
+        % Startup & Initialize the BrightSideHDR driver library. We pass the
+        % path to all configuration files and the name of the master
+        % configuration file to the startup routine.
+        BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/Resources'], 'DR-37P-beta.xml');
+
+        % Add the BrightSideHDR blitter callback to the final output
+        % formatter blitchain: This will trigger data conversion at each
+        % invocation of Screen('Flip'):
+        Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''BrightSideExecuteBlit'')');
+        Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
     end
-    
-    % Add proper callback functions to Screen's hook-chains:
-    Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''BrightSideExecuteBlit'', win)');
-    Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
-    Screen('HookFunction', windowPtr, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''Shutdown'', win)');
+
+    % Add a shutdown callback - Always called (even in dummy mode) to
+    % teardown the BrightSide-Lib (if active) and to reset our internal
+    % data structures:
+    Screen('HookFunction', windowPtr, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''Shutdown'')');
     Screen('HookFunction', windowPtr, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
     % Disable color clamping in the GL pipeline. It's not useful for our
     % purpose, unless we are in dummymode. Also set color scaling to 1.0,
     % i.e. do not scale color values at all - Doesn't make much sense with
     % the BrightSide HDR display.
-    if ~dummymode
-        Screen('ColorRange', windowPtr, 1, 0);
-    end
+    Screen('ColorRange', windowPtr, 1, 0);
 
     % Eat up all OpenGL errors caused by this:
     while glGetError; end;
@@ -277,7 +289,7 @@ if strcmp(cmd, 'Shutdown')
 
     % Child protection:
     if ~online
-        warning('BrightSideHDR: "Shutdown" command called, although display is already offline.');
+        warning('BrightSideHDR: "Shutdown" command called, although display is already offline.'); %#ok<WNTAG>
         return;
     end
     
@@ -311,13 +323,24 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
         % No. But the texture currently bound to unit 0 is the proper one,
         % so query its id. We know that the texture is bound to the
         % rectangle texture target and that unit 0 is active, due to the
-        % semantics of PTB's imaging pipeline:
-        hdrtexid = glGetIntegerv(GL.TEXTURE_BINDING_RECTANGLE_EXT);
-        
+        % semantics of PTB's imaging pipeline. This subroutine is called
+        % from the 'OutputFormattingBlit'-Hookchain of Screen('Flip'). Part
+        % of the hookchain execution sequence is setup of proper source
+        % textures and target FBOs, so we know the currently bound texture
+        % is the floating point source texture and the currently bound
+        % framebuffer is the target framebuffer (FBO or system
+        % framebuffer):
+        hdrtexid = double(glGetIntegerv(GL.TEXTURE_BINDING_RECTANGLE_EXT));
+        fboid = double(glGetIntegerv(GL.FRAMEBUFFER_BINDING_EXT));
+
         if hdrtexid <= 0
             error('Fatal error: Failed to query color buffer texture id in BrightSideHDR("BrightSideExecuteBlit")!');
         end
         
+        if fboid < 0
+            error('Fatal error: Failed to query Framebuffer object id in BrightSideHDR("BrightSideExecuteBlit")!');
+        end
+
         % Need to do first-time init of HDR libary with this 'hdrtexid':
         needhdrinit = 1;
     else
@@ -366,11 +389,12 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
         % glPushAttrib(GL.ENABLE_BIT);
 
         if needhdrinit == 1
-            % First time initialization of the libraries and display
-            % device. We do it here because we need the 'hdrtexid' of the
-            % source color texture, which is only available on first
-            % invokation of this subroutine:
-            BrightSideCore(0, [fileparts(which('BrightSideCore')) '/BSRuntimeLibs/Resources'], 'DR-37P-beta.xml', hdrtexid, 0);
+            % Setup of source texture and target FBO for HDR -> Framebuffer
+            % conversion. We do it here because we need the 'hdrtexid' of the
+            % source color texture, which is only reliably available at first
+            % invocation of this subroutine. Same for 'fboid' (although
+            % this will be zero in 99.99% of all PTB applications ;-) )
+            BrightSideCore(3, hdrtexid, fboid);
         end
         
         % Perform actual conversion-blit:
@@ -384,10 +408,6 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
         glPopMatrix;
         glMatrixMode (GL.MODELVIEW);
         glPopMatrix;
-    else
-        % Dummy mode: We do it ourselves.
-        glColor4f(1,1,1,1);
-        moglBlitTexture(hdrtexid);
     end
     
     % Ready:
@@ -396,4 +416,3 @@ end
 
 % Unknown command.
 error('BrightSideHDR: Unknown subcommand specified! Type ''help BrightSideHDR'' for usage info.');
-return

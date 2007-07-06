@@ -7,7 +7,7 @@
  *
  * Build instructions:
  * 1. Change into the Psychtoolbox/PsychHardware/BrightSideDisplay folder.
- * 2. mex -v -output BrightSideCore -IBSRuntimeLibs\outputlib\include BSRuntimeLibs\outputlib\lib\GL_OutputLibrary.lib BrightSideCore.cpp
+ * 2. mex -v -g -output BrightSideCore -IBSRuntimeLibs\outputlib\include BSRuntimeLibs\outputlib\lib\GL_OutputLibrary.lib BrightSideCore.cpp
  *
  * Requires:
  * - A recent C++ compiler to handle the complex templates in the BrightSide libraries.
@@ -73,10 +73,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 	    if (nrhs<3 || !mxIsChar(prhs[1]) || !mxIsChar(prhs[2])) {
 	      mexErrMsgTxt("BrightSideCore: Missing or invalid basepath or name for config file!\n");
             }
-
-            if (nrhs<5 || !mxIsDouble(prhs[3]) || !mxIsDouble(prhs[4])) {
-	      mexErrMsgTxt("BrightSideCore: Missing or invalid source texid or target fbo id!\n");
-            }
 	    
             // Retrieve path and config file name:
             mxGetString(prhs[1], basepath, sizeof(basepath));
@@ -85,9 +81,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
             // Initialize Brightside display controller and core library:
             // BrightSide::DCGI.Initialize( "../", "DR-37P-beta.xml" );
             BrightSide::DCGI.Initialize(basepath, configname);
-
-            // When display is called, the texture in tex will be rendered to the back buffer
-            BrightSide::DCGI.SetInputOutput((unsigned int) mxGetScalar(prhs[3]), (unsigned int) mxGetScalar(prhs[4]));
+            if (debuglevel>0) mexPrintf("BrightSideCore: Initialize done...\n");
 
 			// Try to bind the glClampColorARB command, so we can disable color clamping in the GL pipeline:
 			glBSClampColorARB = (PROCglBSClampColorARB) wglGetProcAddress("glClampColorARB");
@@ -109,19 +103,20 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
         break;
         
         case 2: // Convert & Blit request to library:
-            if (debuglevel>0) mexPrintf("BrightSideCore: Conversion blit request...\n");
+            if (debuglevel>0) mexPrintf("BrightSideCore: Conversion blit request... %p", BrightSide::DCGI);
             BrightSide::DCGI.Display();
+            if (debuglevel>0) mexPrintf("...Done.\n");
         break;
         
         case 3: // Change rendersource and target for conversion library:
-            if (debuglevel>0) mexPrintf("BrightSideCore: Change of render source and target...\n");
-
             if (nrhs<3 || !mxIsDouble(prhs[1]) || !mxIsDouble(prhs[2])) {
                 mexErrMsgTxt("BrightSideCore: Missing or invalid source texid or target fbo id!\n");
             }
 
             // When display is called, the texture in tex will be rendered to the given framebuffer:
+            if (debuglevel>0) mexPrintf("BrightSideCore: Change of render source to %i and target to %i...\n", (unsigned int) mxGetScalar(prhs[1]), (unsigned int) mxGetScalar(prhs[2]));
             BrightSide::DCGI.SetInputOutput((unsigned int) mxGetScalar(prhs[1]), (unsigned int) mxGetScalar(prhs[2]));
+            if (debuglevel>0) mexPrintf("BrightSideCore: Change of render source and target done.\n");
         break;
 
         case 4: // Change LED intensity multiplier:

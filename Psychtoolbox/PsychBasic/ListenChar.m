@@ -61,6 +61,14 @@ if ~IsOctave
         if listenFlag
             % Start listening for characters.
             OSX_JAVA_GETCHAR.register;
+            
+            % Make sure the Matlab window has keyboard focus:
+            if exist('commandwindow', 'builtin')==5
+                % Call builtin implementation:
+                builtin('commandwindow', msg);
+                drawnow;
+            end
+
             % Should we block output of characters to Matlab?
             if listenFlag > 1
                 % Disable redispatching:

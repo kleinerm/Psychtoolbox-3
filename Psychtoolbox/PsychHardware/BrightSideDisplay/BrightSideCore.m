@@ -7,10 +7,9 @@ function BrightSideCore(varargin)
 %
 % Low-Level command codes:
 %
-% BrightSideCore(0, configpath, configfile, texid, fboid);
+% BrightSideCore(0, configpath, configfile);
 % - Initialize core, read config file 'configfile' located in path
-% 'configpath'. Use OpenGL texture 'texid' as input texture and framebuffer
-% 'fboid' for HDR --> LDR conversion blit.
+% 'configpath'.
 %
 % BrightSideCore(1);
 % - Shut down brightside system, release all ressources.
