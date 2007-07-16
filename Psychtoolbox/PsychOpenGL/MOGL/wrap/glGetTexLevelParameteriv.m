@@ -14,8 +14,9 @@ if nargin~=3,
     error('invalid number of arguments');
 end
 
-params = int32(0);
+params = int32(zeros(2,1));
 
 moglcore( 'glGetTexLevelParameteriv', target, level, pname, params );
+params = params(1,1);
 
 return

@@ -12,12 +12,17 @@ if nargin < 2
 end;
 
 try
-    %InitializeMatlabOpenGL;
-%    Screen('Preference', 'Verbosity', 6);
-    [win winRect]=Screen('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
+    %Screen('Preference', 'Verbosity', 10);
+    % Prepare pipeline for configuration. This marks the start of a list of
+    % requirements/tasks to be met/executed in the pipeline:
+    PsychImaging('PrepareConfiguration');
+    
+    % Ask pipeline to horizontally flip/mirror the output image, so user
+    % doesn't get confused by orientation of its mirror image ;-)
+    PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
+    PsychImaging('AddTask', 'AllViews', 'GeometryCorrection');
 
-    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', 'Offset:1680:0:Scaling:-1.0:1.0');
-    Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+    [win winRect]=PsychImaging('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
 
     % Initial flip to a blank screen:
     Screen('Flip',win);
@@ -51,7 +56,8 @@ try
     while ~KbCheck        
         [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1, tex);
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-        
+        Screen('FillRect', win, [255 0 0], [1 1 1680 1050]);
+        Screen('FillRect', win, [0 255 0], [0 0 10 10]);
         if (tex>0)
             ftex = Screen('TransformTexture', tex, bluroperator, blurmaptex, ftex);
             % Draw new texture from framegrabber.

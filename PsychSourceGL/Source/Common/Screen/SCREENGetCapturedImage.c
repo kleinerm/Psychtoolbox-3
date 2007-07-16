@@ -90,7 +90,7 @@ PsychError SCREENGetCapturedImage(void)
 	// call its SGIdle() routine and waitForImage==4 does just that, call SGIdle().
 	if (waitForImage == 4) {
 		// Perform the null-call to the capture engine, ie a SGIdle() on OS/X and Windows:
-		PsychGetTextureFromCapture(windowRecord, capturehandle, 1, 0.0, NULL, NULL, NULL);
+		PsychGetTextureFromCapture(windowRecord, capturehandle, 4, 0.0, NULL, NULL, NULL);
 		// Done. Nothing to return...
 		return(PsychError_none);
 	}

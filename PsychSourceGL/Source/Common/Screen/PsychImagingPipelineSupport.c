@@ -1840,7 +1840,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 					break;
 					
 				case kPsychBuiltinFunc:
-					printf("Builtin-Function : Name= %s\n", hookfunc->idString);
+					printf("Builtin-Function : Name= %s : Params= %s\n", hookfunc->idString, hookfunc->pString1);
 					break;
 			}
 		}
@@ -2109,10 +2109,14 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 	
 	// Select proper blitter function:
 	
+	// Initialize with master blitter function (if any). If none set,
+	// this will init to NULL:
+	blitterfnc = hookBlitterFunction;
+	
 	// Any special override blitter defined in parameter string?
 	if (strstr(hookfunc->pString1, "Blitter:")) {
 		// Yes. Which one?
-		hookBlitterFunction = NULL;
+		blitterfnc = NULL;
 		
 		// Standard blitter? This one does a one-to-one copy without special geometric transformations.
 		if (strstr(hookfunc->pString1, "Blitter:IdentityBlit")) blitterfnc = &PsychBlitterIdentity; // Assign our standard one-to-one blitter.
@@ -2127,13 +2131,9 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 		}
 	}
 	
-	// Master blitter function set?
-	if (hookBlitterFunction == NULL) {
+	if (blitterfnc == NULL) {
 		// No blitter set up to now. Assign the default blitter:
 		blitterfnc = &PsychBlitterIdentity; // Assign our standard one-to-one blitter.
-	} else {
-		// Override blitter defined: Assign it.
-		blitterfnc = (PsychBlitterFunc) hookBlitterFunction;
 	}
 	
 	// TODO: Common setup code for texturing, filtering, alpha blending, z-test and such...

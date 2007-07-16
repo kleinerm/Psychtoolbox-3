@@ -54,6 +54,15 @@ function [rc winRect] = PsychImaging(cmd, varargin)
 % * 'FlipHorizontal' and 'FlipVertical' flip your output images
 %   horizontally (left- and right interchanged) or vertically (upside down).
 %
+% * 'GeometryCorrection' Apply some geometric warping operation during
+%   rendering of the final stimulus image to correct for geometric
+%   distortion of your physical display device. You need to measure the
+%   geometric distortion of your display with a suitable calibration
+%   procedure, then compute an inverse warp transformation to undo this
+%   distortion, then provide that transformation to this function.
+%
+%   Syntax: PsychImaging('AddTask', whichChannel, 'GeometryCorrection');
+%
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
@@ -296,8 +305,7 @@ else
     % Any command that applies to 'AllViews' naturally needs the image
     % processing:
     if ~isempty(find(strcmp(reqs, 'AllViews')))
-        oiker  = 1
-        imagingMode = mor(imagingMode, kPsychNeedImageProcessing)
+        imagingMode = mor(imagingMode, kPsychNeedImageProcessing);
     end
 end
 
@@ -321,15 +329,30 @@ if imagingMode & kPsychNeedImageProcessing
     end
 end
 
+% Final output formatting stage needed?
+if ~isempty(find(strcmp(reqs, 'FinalFormatting')))
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+end
+
 return;
 end      % Of FinalizeConfiguration subroutine.
 
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
 function rc = PostConfiguration(reqs, win)
+
+global GL;
+
+if isempty(GL)
+    % Perform minimal OpenGL init, so we can call OpenGL commands and use
+    % GL constants. We do not activate a full 3D rendering context:
+    InitializeMatlabOpenGL([], [], 1);
+end
+
 % Number of used slots in left- and right processing chain:
 leftcount = 0;
 rightcount = 0;
+outputcount = 0;
 
 % Flags for horizontal/vertical flip operations:
 leftUDFlip = 0;
@@ -438,6 +461,106 @@ if winfo.StereoMode > 0
 end
 
 % --- End of the flipping stuff ---
+
+% --- Geometry correction via warped blit ---
+floc = find(strcmp(reqs, 'GeometryCorrection'));
+if ~isempty(floc)
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Extract first parameter:
+            calibmatrix = reqs{row, 3};
+
+            % Is it a display list handle?
+            if ndims(calibmatrix)==2 && length(calibmatrix)==1
+                % One single value: This must be a display list handle.
+                gld = double(calibmatrix);
+                if ~glIsList(gld)
+                    % Game over:
+                    Screen('CloseAll');
+                    error('PsychImaging: Passed a handle to ''GeometryCorrection'' which is not a valid OpenGL display list!');
+                end
+            else
+                % Its hopefully the filename of a calibration file:
+
+                % Build OpenGL display list which contains the warp-mapping:
+                [w, h] = Screen('WindowSize', win);
+                subdivision = 100;
+                xnum = 2;
+                ynum = 2;
+                gld = glGenLists(1);
+                glNewList(gld, GL.COMPILE);
+                frompts = zeros(2, 2, 2);
+                frompts(:, 1, 1) = [0 h];
+                frompts(:, 1, 2) = [w h];
+                frompts(:, 2, 2) = [w 0];
+                frompts(:, 2, 1) = [0 0];
+
+                topts = zeros(3, ynum, xnum);
+                % Top-Left:
+                topts(:, 1, 1) = [0 0 0];
+                % Top-Middle:
+                topts(:, 1, 2) = [w/2 0 0];
+                % Top-Right
+                topts(:, 1, 3) = [w 0 0];
+                % Bottom-Right:
+                topts(:, 2, 3) = [w h 0];
+                % Bottom-Middle:
+                topts(:, 2, 2) = [w/2 h 0];
+                % Bottom-Left:
+                topts(:, 2, 1) = [0 h 0];
+
+                glMap2d(GL.MAP2_VERTEX_3, 0, 1, 3, size(topts,2), 0, 1, 3*size(topts,2), size(topts,3), topts);
+                glMap2d(GL.MAP2_TEXTURE_COORD_2, 0, 1, 2, size(frompts,2), 0, 1, 2*size(frompts,2), size(frompts,3), frompts);
+                glEnable(GL.MAP2_VERTEX_3);
+                glEnable(GL.MAP2_TEXTURE_COORD_2);
+                glMapGrid2d(subdivision, 0, 1, subdivision, 0, 1);
+                glEvalMesh2(GL.FILL, 0, subdivision, 0, subdivision);
+                glDisable(GL.MAP2_VERTEX_3);
+                glDisable(GL.MAP2_TEXTURE_COORD_2);
+                glEndList;
+            end
+
+            % Ok, 'gld' should contain a valid OpenGL display list for
+            % geometry correction. Attach proper blitter to proper chain:
+            
+            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
+                % Need to setup left view warp:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            if strcmp(reqs{row, 1}, 'RightView') || (strcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
+                % Need to setup right view warp:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+            
+            if strcmp(reqs{row, 1}, 'FinalFormatting')
+                % Need to setup final formatting warp:
+                if outputcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+                outputcount = outputcount + 1;
+            end            
+        end
+    end
+end
+% --- End of geometry correction via warped blit ---
 
 % --- Restriction of processing area ROI requested? ---
 

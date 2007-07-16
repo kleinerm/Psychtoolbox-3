@@ -21,7 +21,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 1280 960]);
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -31,7 +31,7 @@ try
     vendor = Screen('SetVideoCaptureParameter', grabber, 'GetVendorname')
     model  = Screen('SetVideoCaptureParameter', grabber, 'GetModelname')
 
-    Screen('StartVideoCapture', grabber, 60, 1);
+    Screen('StartVideoCapture', grabber, 30, 1);
 
     oldpts = 0;
     count = 0;
@@ -43,7 +43,7 @@ try
         
         [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1);
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-        texrect = Screen('Rect', tex)
+%        texrect = Screen('Rect', tex)
         if (tex>0)
             % Setup mirror transformation for horizontal flipping:
             

@@ -28,6 +28,8 @@
 %                              drawn through an aperture to demonstrate fast masking.
 %    FitGammaDemo            - Demonstrate gamma fitting routine FitGamma.
 %    FontDemo                - How to check for font availability and set font.
+%    GarboriumDemo           - Demonstrate superimposed drawing of many Gabors by use of alpha-
+%                              blending, 'DrawTextures' batch drawing and PTB imaging pipeline.
 %    GazeContingentDemo      - Implementation of a simple gaze contingent display 
 %    GLSLClutAnimDemo        - Demonstrates use of function moglClutBlit to
 %                              perform CLUT animation with GLSL in an OS independent way.

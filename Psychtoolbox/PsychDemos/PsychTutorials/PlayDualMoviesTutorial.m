@@ -43,9 +43,9 @@ try
 
     % Open onscreen window:
     screen=max(Screen('Screens'));
-    [win, scr_rect] = Screen('OpenWindow', screen);
+    [win, scr_rect] = Screen('OpenWindow', screen, 0, [], [], [], 8, [], kPsychNeedFastBackingStore);
     Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    
+    SetAnaglyphStereoParameters('LeftGains', win, [0.6 0.0 0.0]);
     % Retrieve duration of a single video refresh interval:
     ifi = Screen('GetFlipInterval', win);
     
@@ -67,7 +67,7 @@ mymax =     max(max(maskblob(:,:,transLayer)))
 
     
     % Clear screen to background color:
-    Screen('FillRect', win, background);
+    %Screen('FillRect', win, background);
     
     % Initial display and sync to timestamp:
     vbl=Screen('Flip',win);
@@ -129,6 +129,7 @@ mymax =     max(max(maskblob(:,:,transLayer)))
                 % Valid texture returned?
                 if tex>0
                     % Draw the new texture immediately to screen:
+                    Screen('SelectStereoDrawBuffer', win, 0);
                     Screen('DrawTexture', win, tex, [], rect1);
                     % Release texture:
                     Screen('Close', tex);
@@ -137,6 +138,7 @@ mymax =     max(max(maskblob(:,:,transLayer)))
                 % Valid 2nd texture returned?
                 if tex2>0
                     % Draw the new texture immediately to screen:
+                    Screen('SelectStereoDrawBuffer', win, 1);
                     Screen('DrawTexture', win, tex2, [], rect2, angle, [], alpha);
                     % Release texture:
                     Screen('Close', tex2);

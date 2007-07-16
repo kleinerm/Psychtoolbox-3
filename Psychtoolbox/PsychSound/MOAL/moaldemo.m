@@ -30,7 +30,7 @@ if IsOSX
    try
       %mynoise = wavread('/Users/kleinerm/Music/iTunes/iTunes Music/Unknown Artist/Unknown Album/sound_bubbles.wav');
       freq = 44100;
-      mynoise = wavread('/Users/kleinerm/Documents/MaedchenMitPlan.wav');
+      mynoise = wavread('/Users/kleinerm/Documents/One.wav');
    catch
       % Load Matlabs demo sound matrix if everything else fails..
       load handel;
@@ -76,6 +76,10 @@ alSourcei(source, AL.LOOPING, AL.TRUE);
 % Set emission volume to 100%, aka a gain of 1.0:
 alSourcef(source, AL.GAIN, 1);
 
+alListenerfv(AL.POSITION, [0, 0, 0]);
+alListenerfv(AL.VELOCITY, [0, 0, 0]);
+alListenerfv(AL.ORIENTATION, [0, 0, -1, 0, 1, 0]);
+
 % Start playback for this source:
 GetSecs;
 
@@ -112,12 +116,13 @@ while 1
     if ~manual
        % Auto mode, source moves along a 3D circle in space:
        t=GetSecs;
-       z=sin(t)*3;
+       z=-sin(t)*3;
        x=cos(t)*3;
     end
-    g=10;
+    g=1;
     % Select 3D position of source in space:
-    alSource3f(source, AL.POSITION, g*x, g*z, -5);
+%    alSource3f(source, AL.POSITION, g*x, 0, g*z);
+    alSource3f(source, AL.POSITION, g*x, 0, g*z);
     
     % Query current playback position in seconds since start of buffer:
     tref = (GetSecs - tstart);

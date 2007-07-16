@@ -42,6 +42,7 @@
 
 // Record which defines all state for a capture device:
 typedef struct {
+	unsigned int		recordingflags; // Flags specified at device open time.
     GWorldPtr           gworld;       // Offscreen GWorld into which captured frame is decompressed.
     SeqGrabComponent 	seqGrab;	     // Sequence grabber handle.
     SGChannel           sgchanVideo;  // Handle for video channel of sequence grabber.
@@ -86,7 +87,10 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
 
 	// Check if we're called on a video channel. If we're called on a sound channel,
 	// we simply return -- nothing to do in that case.
-	if (vidcapRecordBANK[handle].sgchanVideo != c) return(noErr);
+	if (vidcapRecordBANK[handle].sgchanVideo != c) {
+		// printf("AUDIOCALLBACK AT %lf ...\n", tstart);
+		return(noErr);
+	}
 	
     // Compute capture timestamp:
     err = SGGetChannelTimeScale(c, &timeScale);
@@ -219,6 +223,11 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Fixed framerate;
     *capturehandle = -1;
     error=noErr;
+	TimeBase soundTimeBase = NULL;
+	TimeBase sgTimeBase = NULL;
+	Component clockComponent = NULL;
+	ComponentDescription looking;
+
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 	CodecNameSpecListPtr	codeclist = NULL;
 #endif
@@ -312,7 +321,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     // if the flag seqGrabDontMakeMovie is used, the sequence grabber still calls
     // your data function, but does not write any data to the movie file
     // writeType will always be set to seqGrabWriteAppend
-    error = SGSetDataRef(seqGrab, 0, 0, seqGrabDontMakeMovie);
+    error = SGSetDataRef(seqGrab, 0, 0, (targetmoviefilename == NULL) ? seqGrabDontMakeMovie : seqGrabToDisk);
     if (error !=noErr) {
         if (seqGrab) CloseComponent(seqGrab);
         PsychErrorExitMsg(PsychError_internal, "SGSetDataRef for capture device failed!");            
@@ -455,16 +464,22 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     //    movierect.right = (**imageDesc).width;
     //    movierect.bottom = (**imageDesc).height 
     //    DisposeHandle((Handle)imageDesc);
-    
-    // Specify a data callback function: Gets called whenever a new frame is ready...
-	error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
-	if (error !=noErr) {
-		DisposeGWorld(vidcapRecordBANK[slotid].gworld);
-		vidcapRecordBANK[slotid].gworld = NULL;
-		SGDisposeChannel(seqGrab, *sgchanptr);
-		*sgchanptr = NULL;
-		CloseComponent(seqGrab);
-		PsychErrorExitMsg(PsychError_internal, "Assignment of capture callback fcn. to capture device failed!");            
+
+    // Specify a data callback function: Gets called whenever a new frame is ready.
+	// We only spec a callback if this is either pure live video capture and processing,
+	// or if this is video (and sound) recording as well and recordingflags don't tell
+	// us this is "recording only". The callback is needed for video processing by
+	// Matlab+PTB but it comes at a bit of extra overhead:
+	if ((targetmoviefilename == NULL) || !(recordingflags & 4)) {
+		error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
+		if (error !=noErr) {
+			DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+			vidcapRecordBANK[slotid].gworld = NULL;
+			SGDisposeChannel(seqGrab, *sgchanptr);
+			*sgchanptr = NULL;
+			CloseComponent(seqGrab);
+			PsychErrorExitMsg(PsychError_internal, "Assignment of capture callback fcn. to capture device failed!");            
+		}
 	}
 	
     // Store a reference to our slotid for this channel. This gets passed to the
@@ -524,6 +539,14 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 		}
 		
 		NativePathNameToFSSpec(targetmoviefilename, &recfile, 0);
+
+		if ((recordingflags & 1) && (recordingflags & 2)) {
+			// Sound recording and memory recording requested? This is a no go, it doesn't work
+			// as of OS/X 10.4.10, so sound overrides this: Switch to disk recording.
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Both, sound recording and recording to memory requested. This doesn't work! Switching to direct disk recording instead...\n");
+			recordingflags = recordingflags & (~1);
+		}
+		 
 		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
 		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
 		error = SGSetDataOutput(seqGrab, &recfile, ((recordingflags & 1) ? seqGrabToMemory : seqGrabToDisk));
@@ -550,6 +573,45 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         PsychErrorExitMsg(PsychError_internal, "Assignment of SGSetDataOutput() to capture device failed!");            
     }
 
+	// Setup of timebase for sequence grabber:
+	
+	// Retrieve current timebase of sequence grabber:
+	if (noErr != SGGetTimeBase(seqGrab, &sgTimeBase)) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Video capture engine could not retrieve timebase. Capture timestamps and/or audio-video sync may be inaccurate!\n");
+	}
+	else {
+		// Sound recording requested?
+		if (recordingflags & 2) {
+			// Sound recording: We assign the masterclock of the sound timebase as master for sequence grabber.
+			// This should give best possible audio-video sync:
+			if (noErr != GetComponentInfo((Component)GetTimeBaseMasterClock(sgTimeBase), &looking, NULL, NULL, NULL)) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: (I) Video recording engine could not assign sound timebase as master timebase: Audio-video sync may be inaccurate!\n");
+			}
+			
+			if (noErr != (error = SGGetChannelTimeBase(vidcapRecordBANK[slotid].sgchanAudio, &soundTimeBase))) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: (II) Video recording engine could not assign sound timebase as master timebase: Audio-video sync may be inaccurate! [QT-Error %i]\n", error);
+			}
+			else {
+				SetTimeBaseMasterClock(sgTimeBase, (Component) GetTimeBaseMasterClock(soundTimeBase), NULL);
+			}
+		}
+		else {
+			// Only video recording/capture: We assign the system clock as masterclock for sequence grabber.
+			// This provides capturetimestamps that are in sync with all other PTB clocks:
+			looking.componentType = clockComponentType;
+			looking.componentSubType = systemMicrosecondClock;
+			looking.componentManufacturer = 0;
+			looking.componentFlags = 0;
+			looking.componentFlagsMask = 0;
+			clockComponent = FindNextComponent(NULL, &looking);
+			if (clockComponent == NULL) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Video recording engine could not assign system timebase as master timebase: Capture timestamps may be inaccurate!\n");
+			}
+			else {
+				SetTimeBaseMasterClock(sgTimeBase, clockComponent, NULL);
+			}
+		}
+	}
     // Get ready!
     error = SGPrepare(seqGrab, false, true);
     if (error !=noErr) {
@@ -592,6 +654,9 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     // Reset framecounter:
     vidcapRecordBANK[slotid].nrframes = 0;
 
+	// Store final recordingflags:
+	vidcapRecordBANK[slotid].recordingflags = recordingflags;
+	
     if (PsychPrefStateGet_Verbosity()>3) printf("W x h = %i x  %i at %lf fps...\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
 
     return(TRUE);
@@ -683,6 +748,15 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychGetTextureFromCapture(): SGIdle() returns error code %i\n", (int) error);
 	}
     
+	// Ist this device in "recording only" mode? If so then it doesn't have a
+	// callback proc assigned, therefore all the processing below this line would
+	// just cause a deadlock. The only allowed mode is checkForImage == 4 in this
+	// case:
+	if ((vidcapRecordBANK[capturehandle].recordingflags & 4) && (checkForImage!=4)) {
+		// Invalid mode of invocation!
+		PsychErrorExitMsg(PsychError_user, "Capturedevice was opened in ''disk recording only'' mode: You must specify a 'waitForImage' flag of 4 in your Screen('GetCapturedImage') call!");
+	}
+	
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
     // ...and clear out the ready flag immediately:
