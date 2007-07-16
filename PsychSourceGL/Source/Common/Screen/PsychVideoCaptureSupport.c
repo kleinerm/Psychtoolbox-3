@@ -223,12 +223,12 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     Fixed framerate;
     *capturehandle = -1;
     error=noErr;
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	TimeBase soundTimeBase = NULL;
 	TimeBase sgTimeBase = NULL;
 	Component clockComponent = NULL;
 	ComponentDescription looking;
 
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	CodecNameSpecListPtr	codeclist = NULL;
 #endif
 
@@ -573,7 +573,10 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         PsychErrorExitMsg(PsychError_internal, "Assignment of SGSetDataOutput() to capture device failed!");            
     }
 
-	// Setup of timebase for sequence grabber:
+	// Setup of timebase for sequence grabber: This only works on OS/X, not
+	// with Quicktime SDK for Windows, at least not with the brain-damaged MS-Compiler:
+
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	
 	// Retrieve current timebase of sequence grabber:
 	if (noErr != SGGetTimeBase(seqGrab, &sgTimeBase)) {
@@ -612,6 +615,9 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 			}
 		}
 	}
+
+#endif
+
     // Get ready!
     error = SGPrepare(seqGrab, false, true);
     if (error !=noErr) {
