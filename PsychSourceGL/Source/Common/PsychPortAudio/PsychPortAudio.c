@@ -633,7 +633,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			buffersize = paFramesPerBufferUnspecified;
 		}
 		else {
-			buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
+			if (Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type != paASIO) {
+				buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
+			}
+			else {
+				// ASIO: Leave it unspecified to get optimal selection by lower level driver:
+				buffersize = paFramesPerBufferUnspecified;
+			}
 		}
 	}
 	
@@ -668,9 +674,16 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		break;
 		
 		case paDirectSound:	// DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
-			lowlatency = 0.01;	// Choose some half-way safe tradeoff: 10 msecs. Can't go below that anyway.
+			lowlatency = 0.02;	// Choose some half-way safe tradeoff: 20 msecs.
 		break;
 		
+		case paASIO:		
+			// ASIO: A value of zero would set safe (and high latency!) defaults. Too small values get
+			// clamped to a safe minimum by the driver, so we select a very small positive value, say
+			// 1 msec to get lowest possible latency:
+			lowlatency = 0.001;
+		break;
+
 		default:			// Not the safest assumption for non-verified Api's, but we'll see...
 			lowlatency = 0.0;
 	}
