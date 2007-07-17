@@ -32,6 +32,16 @@
 // MK: core_expt.h must be included for M$-Windows build:
 #include "core_expt.h"
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// MK: More workarounds for MS compiler braindamage...
+typedef UINT8 UInt8;
+typedef UINT16 UInt16;
+typedef UINT32 UInt32;
+typedef INT8 Int8;
+typedef INT16 Int16;
+typedef INT32 Int32;
+#endif
+
 /////////////////////////////////////////////////////////////////////////
 // Global variables used throughout eyelink C files
 
