@@ -43,7 +43,11 @@ WaitSecs(0.1);
 
 % If 'exactstart' wasn't provided, assume user wants to test exact sync of
 % audio and video onset, instead of testing total onset latency:
-if nargin < 1 || isempty(exactstart)
+if nargin < 1 
+   exactstart = [];
+end
+
+if isempty(exactstart)
     exactstart = 1;
 end
 
@@ -61,7 +65,11 @@ else
 end
 
 % Default to auto-selected default output device if none specified:
-if nargin < 2 || isempty(deviceid)
+if nargin < 2 
+   deviceid = [];
+end
+
+if isempty(deviceid)
     deviceid = -1;
 end
 
@@ -94,7 +102,11 @@ buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 
 % Needs to determined via measurement once for each piece of audio
 % hardware:
-if nargin < 3 || isempty(latbias)
+if nargin < 3 
+   latbias = [];
+end
+
+if isempty(latbias)
     if IsOSX
         % Take hardware delay of MacBookPro into account: Assign it as bias.
         % The DAC delay of Intel HDA onboard audio on MacBookPro is 30 frames,
