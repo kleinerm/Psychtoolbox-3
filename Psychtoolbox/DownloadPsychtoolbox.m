@@ -179,6 +179,7 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 %              included in the Matlab path.
 % 02/17/07 mk  Convert flavor spec to lower case in case it isn't.
 % 03/15/07 mk  Detection code for Windows 64 bit added.
+% 07/18/07 mk  Changed default for flavor from 'stable' to 'beta'.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -215,7 +216,7 @@ end
 
 % Set flavor defaults and synonyms
 if (nargin<1 | isempty(flavor))
-    flavor='stable';
+    flavor='beta';
 end
 
 % Make sure that flavor is lower-case:
