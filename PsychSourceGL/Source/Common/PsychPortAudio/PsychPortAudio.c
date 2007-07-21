@@ -57,7 +57,7 @@ typedef struct PsychPADevice {
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
 	int		 outputbuffersize;	// Size of output buffer in bytes.
 	unsigned int playposition;	// Current playposition in samples since start of playback (not frames, not bytes!)
-
+	unsigned int writeposition; // Current writeposition in samples since start of playback (for incremental filling).
 	float*	 inputbuffer;		// Pointer to float memory buffer with sound input data (captured sound data).
 	int		 inputbuffersize;	// Size of input buffer in bytes.
 	unsigned int recposition;	// Current record position in samples since start of capture.
@@ -369,7 +369,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
-	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata);";
+	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
 	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] );";
 	synopsis[i++] = "[startTime endPositionSecs xruns] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0]);";
 	synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs=0]);";
@@ -825,7 +825,7 @@ PsychError PSYCHPORTAUDIOClose(void)
  */
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void) 
 {
- 	static char useString[] = "PsychPortAudio('FillBuffer', pahandle, bufferdata);";
+ 	static char useString[] = "PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
 	static char synopsisString[] = 
 		"Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
 		"whose buffer is to be filled. 'bufferdata' is a Matlab double matrix with audio data in double format. Each "
@@ -833,19 +833,28 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		"values in double precision are supported. Samples need to be in range -1.0 to +1.0, 0.0 for silence. This is "
 		"intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
 		"data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
-		"expensive sample rate conversion, sample format conversion, and bounds checking/clipping. ";
+		"expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
+		"'streamingrefill' optional: If set to 1, ask the driver to refill the buffer immediately while playback "
+		"is active. You can think of this as appending the audio data to the audio data already present in the buffer. "
+		"This is useful for streaming playback or for creating live audio feedback loops. However, the current implementation "
+		"doesn't really append the audio data. Instead it replaces already played audio data with your new data. This means "
+		"that if you try to refill more than what has been actually played, this function will wait until enough storage space "
+		"is available. It will also fail if you try to refill more than the total buffer capacity. Default is to not do "
+		"streaming refills, i.e., the bufferis filled in one batch while playback is stopped.";
+		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
   	
 	int inchannels, insamples, p, buffersize;
 	double*	indata = NULL;
 	float*  outdata = NULL;
 	int pahandle   = -1;
+	int streamingrefill = 0;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(0));	 // The maximum number of outputs
 
@@ -862,39 +871,89 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
 	}
 	
-	if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample in you audio buffer!");
+	if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample in your audio buffer!");
 	if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
 	
-	// Wait for playback on this stream to finish, before refilling it:
-	while (audiodevices[pahandle].state > 0) {
-		// Sleep a millisecond:
-		PsychWaitIntervalSeconds(0.001);
+	// Get optional streaming refill flag:
+	PsychCopyInIntegerArg(3, kPsychArgOptional, &streamingrefill);
+	
+	// Full refill or streaming refill?
+	if (streamingrefill <= 0) {
+		// Standard refill with possible buffer reallocation. Engine needs to be
+		// stopped, full reset of engine at refill:
+		// Wait for playback on this stream to finish, before refilling it:
+		while (audiodevices[pahandle].state > 0) {
+			// Sleep a millisecond:
+			PsychWaitIntervalSeconds(0.001);
+		}
+		
+		// Ok, everything sane, fill the buffer:
+		buffersize = sizeof(float) * inchannels * insamples;
+		if (audiodevices[pahandle].outputbuffer && (audiodevices[pahandle].outputbuffersize != buffersize)) {
+			free(audiodevices[pahandle].outputbuffer);
+			audiodevices[pahandle].outputbuffer = NULL;
+			audiodevices[pahandle].outputbuffersize = 0;
+		}
+		
+		if (audiodevices[pahandle].outputbuffer == NULL) {
+			audiodevices[pahandle].outputbuffersize = buffersize;
+			audiodevices[pahandle].outputbuffer = (float*) malloc(buffersize);
+			if (audiodevices[pahandle].outputbuffer==NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate audio buffer.");
+		}
+		
+		// Reset play position:
+		audiodevices[pahandle].playposition = 0;
+		
+		// Copy the data, convert it from double to float:
+		outdata = audiodevices[pahandle].outputbuffer;
+		while(buffersize) {
+			*(outdata++) = (float) *(indata++);
+			buffersize-=sizeof(float);
+		}
+				
+		// Reset write position to end of buffer:
+		audiodevices[pahandle].writeposition = inchannels * insamples;
+	}
+	else {
+		// Streaming refill while playback is running:
+
+		// Engine stopped?
+		if (audiodevices[pahandle].state == 0) PsychErrorExitMsg(PsychError_user, "Audiodevice not in playback mode! Can't do a streaming buffer refill while stopped.");
+
+		// No buffer allocated?
+		if (audiodevices[pahandle].outputbuffer == NULL) PsychErrorExitMsg(PsychError_user, "No audio buffer allocated! You must call this method once before start of playback to initially allocate a buffer of sufficient size.");
+
+		// Buffer of sufficient size for a streaming refill of this amount?
+		buffersize = sizeof(float) * inchannels * insamples;
+		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
+
+		// Boundary conditions met. Can we refill immediately or do we need to wait for playback
+		// position to progress far enough?
+		while ((audiodevices[pahandle].playposition - audiodevices[pahandle].writeposition - inchannels) <= (inchannels * insamples)) {
+			// Sleep a millisecond:
+			PsychWaitIntervalSeconds(0.001);
+		} 
+		
+		// Ok enough headroom for batch streaming refill:
+		
+		// Copy the data, convert it from double to float, take ringbuffer wraparound into account:
+		while(buffersize > 0) {
+			// Fetch next sample and copy it to matrix:
+			audiodevices[pahandle].outputbuffer[(audiodevices[pahandle].writeposition % (audiodevices[pahandle].outputbuffersize / sizeof(float)))] = (float) *(indata++);
+			
+			// Update sample write counter:
+			audiodevices[pahandle].writeposition++;
+			
+			// Decrement copy counter:
+			buffersize-=sizeof(float);
+		}
+		
+		// MK-FIXME: Is this correct? It fixes the audible clicks, but i can't see why it fixes it?!?
+		// and there's other audio artifacts, albeit at lower frequency, so does this fix or just postpone
+		// occurence of the real bug???
+		audiodevices[pahandle].writeposition-=inchannels;
 	}
 
-	// Ok, everything sane, fill the buffer:
-	buffersize = sizeof(float) * inchannels * insamples;
-	if (audiodevices[pahandle].outputbuffer && (audiodevices[pahandle].outputbuffersize != buffersize)) {
-		free(audiodevices[pahandle].outputbuffer);
-		audiodevices[pahandle].outputbuffer = NULL;
-		audiodevices[pahandle].outputbuffersize = 0;
-	}
-	
-	if (audiodevices[pahandle].outputbuffer == NULL) {
-		audiodevices[pahandle].outputbuffersize = buffersize;
-		audiodevices[pahandle].outputbuffer = (float*) malloc(buffersize);
-		if (audiodevices[pahandle].outputbuffer==NULL) PsychErrorExitMsg(PsychError_outofMemory, "Out of system memory when trying to allocate audio buffer.");
-	}
-	
-	// Reset play position:
-	audiodevices[pahandle].playposition = 0;
-	
-	// Copy the data, convert it from double to float:
-	outdata = audiodevices[pahandle].outputbuffer;
-	while(buffersize) {
-		*(outdata++) = (float) *(indata++);
-		buffersize-=sizeof(float);
-	}
-	
 	// Buffer ready.
 	return(PsychError_none);
 }

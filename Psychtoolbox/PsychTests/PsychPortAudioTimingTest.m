@@ -1,5 +1,5 @@
-function PsychPortAudioTimingTest(exactstart, deviceid, latbias)
-% PsychPortAudioTimingTest([exactstart=1] [, deviceid=-1] [, latbias])
+function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes)
+% PsychPortAudioTimingTest([exactstart=1] [, deviceid=-1] [, latbias=0] [, waitframes=1])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -31,6 +31,11 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias)
 %                measurement - allows to PA to correct for it if provided.
 %                Unit is seconds. Defaults to zero on MS-Windows, defaults
 %                to the expected bias of a Intel MacBookPro on OS/X.
+%
+% 'waitframes' = Time to wait (in video refresh intervals) before emitting beep + flash.
+%                Defaults to a value of 1, may need to be set higher for
+%                high latency sound hardware (where absolute latency > 1
+%                video refresh duration).
 
 % Initialize driver, request low-latency preinit:
 InitializePsychSound(1);
@@ -123,6 +128,16 @@ if isempty(latbias)
     end
 end
 
+if nargin < 4
+    waitframes = [];
+end
+
+if isempty(waitframes)
+    waitframes = 1;
+end
+
+waitframes
+
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize);
 
@@ -167,20 +182,19 @@ for i=1:10
     if exactstart
         % Schedule start of audio at exactly the predicted visual
         % stimulus onset caused by the next flip command:
-        PsychPortAudio('Start', pahandle, 1, visonset1 + ifi + 0.00098, 0);
+        PsychPortAudio('Start', pahandle, 1, visonset1 + waitframes * ifi, 0);
     end
 
     % Ok, the next flip will do a black-white transition...
-    [vbl visual_onset t1] = Screen('Flip', win, vbl1+0.002);
+    [vbl visual_onset t1] = Screen('Flip', win, vbl1 + (waitframes - 0.5) * ifi);
 
     if ~exactstart
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
-        audio_onset = PsychPortAudio('Start', pahandle, 1, 0, 0);
+        PsychPortAudio('Start', pahandle, 1, 0, 0);
     end
 
     t2 = GetSecs;
-    tstart = t2;
 
     % Spin-Wait until hw reports the first sample is played...
     offset = 0;
@@ -212,10 +226,10 @@ for i=1:10
     fprintf('PortAudio expects audio onset  at %6.6f secs.\n', audio_onset);
     fprintf('Expected audio-visual delay    is %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
 
-    WaitSecs(0.3);
-
     % Stop playback:
-    PsychPortAudio('Stop', pahandle);
+    PsychPortAudio('Stop', pahandle, 1);
+
+    WaitSecs(0.3);
 
     Screen('FillRect', win, 0);
     telapsed = Screen('Flip', win) - visual_onset;

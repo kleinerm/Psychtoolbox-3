@@ -61,7 +61,13 @@ function [rc winRect] = PsychImaging(cmd, varargin)
 %   procedure, then compute an inverse warp transformation to undo this
 %   distortion, then provide that transformation to this function.
 %
-%   Syntax: PsychImaging('AddTask', whichChannel, 'GeometryCorrection');
+%   Syntax: PsychImaging('AddTask', whichChannel, 'GeometryCorrection', calibfilename);
+%
+%   'calibfilename' is the filename of a calibration file which specified
+%   the type of undistortion to apply. Calibration files can be created by
+%   interactive calibration procedures. See 'help CreateDisplayWarp' for a
+%   list of calibration methods. One of the supported procedures is, e.g.,
+%   "DisplayUndistortionBezier"
 %
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
@@ -96,6 +102,13 @@ function [rc winRect] = PsychImaging(cmd, varargin)
 
 % History:
 % 3.6.2007 Written. (MK)
+%
+% 19.7.2007 Added our own implementation mystrcmp() of Matlabs strcmp().
+% The strcmp() of Octave is not as powerful as Matlab 7's strcmp(). We need
+% a powerful implementation that works for both runtime environments, so we
+% reimplemented in in a portable way.
+%
+% 19.7.2007 Added initial support for display geometry correction. (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -133,7 +146,7 @@ if strcmp(cmd, 'AddTask')
     if configphase_active ~= 1
         error('Call PsychImaging(''PrepareConfiguration''); first to prepare the configuration phase!');
     end
-        
+    
     % Store requirement in our cell array of requirements. We need to
     % extend each requirement vector to some number of max elements, so all
     % rows in the cell array have the same length:
@@ -144,8 +157,17 @@ if strcmp(cmd, 'AddTask')
             x{i}='';
         end
     end
-    reqs = [reqs ; x];
 
+    % First use of 'reqs' array?
+    if isempty(reqs)
+        % Yes: Initialize the array with content of 'x':
+        reqs = x;
+    else
+        % No: Just concatenate new line with requirements 'x' to existing
+        % array 'reqs':
+        reqs = [reqs ; x];
+    end
+    
     rc = 0;
     return;
 end
@@ -292,7 +314,7 @@ imagingMode = kPsychNeedFastBackingStore;
 % Set stereoMode to don't care:
 stereoMode = -1;
 
-if ~isempty(find(strcmp(reqs, 'LeftView'))) || ~isempty(find(strcmp(reqs, 'RightView')))
+if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
     stereoMode = -2;
     
@@ -304,7 +326,7 @@ else
     % other spec that would require the image processing stage:
     % Any command that applies to 'AllViews' naturally needs the image
     % processing:
-    if ~isempty(find(strcmp(reqs, 'AllViews')))
+    if ~isempty(find(mystrcmp(reqs, 'AllViews')))
         imagingMode = mor(imagingMode, kPsychNeedImageProcessing);
     end
 end
@@ -312,8 +334,8 @@ end
 % Image processing stage needed?
 if imagingMode & kPsychNeedImageProcessing
     % Yes. How many commands per chain?
-    nrslots = max(length(find(strcmp(reqs, 'LeftView'))), length(find(strcmp(reqs, 'RightView'))));
-    nrslots = max(nrslots, length(find(strcmp(reqs, 'AllViews'))));
+    nrslots = max(length(find(mystrcmp(reqs, 'LeftView'))), length(find(mystrcmp(reqs, 'RightView'))));
+    nrslots = max(nrslots, length(find(mystrcmp(reqs, 'AllViews'))));
     
     % More than one slot per chain? Otherwise we use the default
     % single-pass chain:
@@ -330,11 +352,12 @@ if imagingMode & kPsychNeedImageProcessing
 end
 
 % Final output formatting stage needed?
-if ~isempty(find(strcmp(reqs, 'FinalFormatting')))
+if ~isempty(find(mystrcmp(reqs, 'FinalFormatting')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
 return;
+
 end      % Of FinalizeConfiguration subroutine.
 
 % PostConfiguration is called after the onscreen window is open: Performs
@@ -366,18 +389,18 @@ winfo = Screen('GetWindowInfo', win);
 % --- First action in pipe is a horizontal- or vertical flip, if any ---
 
 % Any flip horizontal requested?
-floc = find(strcmp(reqs, 'FlipHorizontal'));
+floc = find(mystrcmp(reqs, 'FlipHorizontal'));
 if ~isempty(floc)
     % Which channel?
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
         for row=rows'
-            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % LeftView horizontal flip.
                 leftLRFlip = 1;
             end
 
-            if strcmp(reqs{row, 1}, 'RightView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'RightView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % LeftView horizontal flip.
                 rightLRFlip = 1;
             end
@@ -386,18 +409,18 @@ if ~isempty(floc)
 end
 
 % Any flip vertical requested?
-floc = find(strcmp(reqs, 'FlipVertical'));
+floc = find(mystrcmp(reqs, 'FlipVertical'));
 if ~isempty(floc)
     % Which channel?
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
         for row=rows'
-            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % LeftView vertical flip.
                 leftUDFlip = 1;
             end
 
-            if strcmp(reqs{row, 1}, 'RightView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'RightView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % LeftView vertical flip.
                 rightUDFlip = 1;
             end
@@ -463,100 +486,86 @@ end
 % --- End of the flipping stuff ---
 
 % --- Geometry correction via warped blit ---
-floc = find(strcmp(reqs, 'GeometryCorrection'));
+floc = find(mystrcmp(reqs, 'GeometryCorrection'));
 if ~isempty(floc)
     % Which channel?
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
         for row=rows'
-            % Extract first parameter:
-            calibmatrix = reqs{row, 3};
-
+            % Extract first parameter - This should be the name of a
+            % calibration file:
+            calibfilename = reqs{row, 3};
+            
+            if isempty(calibfilename)
+                Screen('CloseAll');
+                error('PsychImaging: Parameter for ''GeometryCorrection'' missing!');
+            end
+            
+            % We accept names of calibration files or calibration structs:
+            if isstruct(calibfilename)
+                % Warpstruct passed: Use it.
+                warpstruct = calibfilename;
+            else
+                if ~ischar(calibfilename)
+                    Screen('CloseAll');
+                    error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of a calibration file!');
+                end
+            
+                % Use helper function to read the calibration file and build a
+                % proper warp-function:
+                warpstruct = CreateDisplayWarp(win, calibfilename);
+            end
+            
             % Is it a display list handle?
-            if ndims(calibmatrix)==2 && length(calibmatrix)==1
-                % One single value: This must be a display list handle.
-                gld = double(calibmatrix);
+            if ~isempty(warpstruct.gld) && isempty(warpstruct.glsl)
+                % This must be a display list handle for pure display list
+                % blitting:
+                gld = warpstruct.gld;
                 if ~glIsList(gld)
                     % Game over:
                     Screen('CloseAll');
                     error('PsychImaging: Passed a handle to ''GeometryCorrection'' which is not a valid OpenGL display list!');
                 end
+
+                % Ok, 'gld' should contain a valid OpenGL display list for
+                % geometry correction. Attach proper blitter to proper chain:
+                if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                    % Need to setup left view warp:
+                    if leftcount > 0
+                        % Need a bufferflip command:
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                    end
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                    leftcount = leftcount + 1;
+                end
+
+                if mystrcmp(reqs{row, 1}, 'RightView') || (mystrcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
+                    % Need to setup right view warp:
+                    if rightcount > 0
+                        % Need a bufferflip command:
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                    end
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                    rightcount = rightcount + 1;
+                end
+
+                if mystrcmp(reqs{row, 1}, 'FinalFormatting')
+                    % Need to setup final formatting warp:
+                    if outputcount > 0
+                        % Need a bufferflip command:
+                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                    end
+                    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+                    outputcount = outputcount + 1;
+                end
             else
-                % Its hopefully the filename of a calibration file:
-
-                % Build OpenGL display list which contains the warp-mapping:
-                [w, h] = Screen('WindowSize', win);
-                subdivision = 100;
-                xnum = 2;
-                ynum = 2;
-                gld = glGenLists(1);
-                glNewList(gld, GL.COMPILE);
-                frompts = zeros(2, 2, 2);
-                frompts(:, 1, 1) = [0 h];
-                frompts(:, 1, 2) = [w h];
-                frompts(:, 2, 2) = [w 0];
-                frompts(:, 2, 1) = [0 0];
-
-                topts = zeros(3, ynum, xnum);
-                % Top-Left:
-                topts(:, 1, 1) = [0 0 0];
-                % Top-Middle:
-                topts(:, 1, 2) = [w/2 0 0];
-                % Top-Right
-                topts(:, 1, 3) = [w 0 0];
-                % Bottom-Right:
-                topts(:, 2, 3) = [w h 0];
-                % Bottom-Middle:
-                topts(:, 2, 2) = [w/2 h 0];
-                % Bottom-Left:
-                topts(:, 2, 1) = [0 h 0];
-
-                glMap2d(GL.MAP2_VERTEX_3, 0, 1, 3, size(topts,2), 0, 1, 3*size(topts,2), size(topts,3), topts);
-                glMap2d(GL.MAP2_TEXTURE_COORD_2, 0, 1, 2, size(frompts,2), 0, 1, 2*size(frompts,2), size(frompts,3), frompts);
-                glEnable(GL.MAP2_VERTEX_3);
-                glEnable(GL.MAP2_TEXTURE_COORD_2);
-                glMapGrid2d(subdivision, 0, 1, subdivision, 0, 1);
-                glEvalMesh2(GL.FILL, 0, subdivision, 0, subdivision);
-                glDisable(GL.MAP2_VERTEX_3);
-                glDisable(GL.MAP2_TEXTURE_COORD_2);
-                glEndList;
+                % Game over:
+                Screen('CloseAll');
+                error('PsychImaging: Passed a handle for a not yet implemented display undistortion method!');
             end
-
-            % Ok, 'gld' should contain a valid OpenGL display list for
-            % geometry correction. Attach proper blitter to proper chain:
-            
-            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
-                % Need to setup left view warp:
-                if leftcount > 0
-                    % Need a bufferflip command:
-                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
-                end
-                Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
-                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
-                leftcount = leftcount + 1;
-            end
-
-            if strcmp(reqs{row, 1}, 'RightView') || (strcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
-                % Need to setup right view warp:
-                if rightcount > 0
-                    % Need a bufferflip command:
-                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
-                end
-                Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
-                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
-                rightcount = rightcount + 1;
-            end
-            
-            if strcmp(reqs{row, 1}, 'FinalFormatting')
-                % Need to setup final formatting warp:
-                if outputcount > 0
-                    % Need a bufferflip command:
-                    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
-                end
-                Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
-                Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
-                outputcount = outputcount + 1;
-            end            
         end
     end
 end
@@ -567,7 +576,7 @@ end
 % This should be at the end of setup, so we can reliably prepend the
 % command to each chain to guarantee that restriction applies to all
 % processing:
-floc = find(strcmp(reqs, 'RestrictProcessing'));
+floc = find(mystrcmp(reqs, 'RestrictProcessing'));
 if ~isempty(floc)
     % Which channel?
     for x=floc
@@ -584,17 +593,17 @@ if ~isempty(floc)
             w  = RectWidth(scissorrect);
             h  = RectHeight(scissorrect);
             
-            if strcmp(reqs{row, 1}, 'LeftView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % Need to restrict left view processing:
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
 
-            if strcmp(reqs{row, 1}, 'RightView') || strcmp(reqs{row, 1}, 'AllViews')
+            if mystrcmp(reqs{row, 1}, 'RightView') || mystrcmp(reqs{row, 1}, 'AllViews')
                 % Need to restrict right view processing:
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
             
-            if (strcmp(reqs{row, 1}, 'AllViews') || strcmp(reqs{row, 1}, 'Compositor')) && winfo.StereoMode > 5
+            if (mystrcmp(reqs{row, 1}, 'AllViews') || mystrcmp(reqs{row, 1}, 'Compositor')) && winfo.StereoMode > 5
                 % Needed to restrict both views processing and a
                 % compositing mode is active. If both views are restricted
                 % in their output area then it makes sense to restrict the
@@ -603,7 +612,7 @@ if ~isempty(floc)
                 Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
 
-            if strcmp(reqs{row, 1}, 'FinalFormatting')
+            if mystrcmp(reqs{row, 1}, 'FinalFormatting')
                 % Need to restrict final formatting blit processing:
                 Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
             end
@@ -619,3 +628,36 @@ rc = reqs;
 return;
 
 end % Of PostConfiguration subroutine.
+
+function rcmatch = mystrcmp(myhaystack, myneedle)
+
+    if ~iscell(myhaystack) && ~ischar(myhaystack)
+        error('First argument to mystrcmp must be a cell-array or a character array (string)!');
+    end
+    
+    if isempty(myhaystack)
+        rcmatch = logical(0);
+        return;
+    end
+
+    if iscell(myhaystack)
+        % Cell array of strings: Check each element, return result matrix:
+        rcmatch=logical(zeros(size(myhaystack)));
+        rows = size(myhaystack, 1);
+        cols = size(myhaystack, 2);
+        for r=1:rows
+            for c=1:cols
+                if iscellstr(myhaystack(r,c))
+                    rcmatch(r,c) = logical(strcmpi(char(myhaystack(r,c)), myneedle));
+                else
+                    rcmatch(r,c) = logical(0);
+                end
+            end
+        end
+    else
+        % Single character string: Do single check and return result:
+        rcmatch=logical(strcmpi(myhaystack, myneedle));
+    end
+
+    return;
+end

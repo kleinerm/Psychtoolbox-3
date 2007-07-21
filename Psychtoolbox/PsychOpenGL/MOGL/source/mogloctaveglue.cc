@@ -278,7 +278,7 @@ double mxGetScalar (const mxArray* ptr)
 int mxGetString(const mxArray* arrayPtr, char* outstring, int outstringsize)
 {
   if (!mxIsChar(arrayPtr)) PsychErrorExitMsg(PsychError_internal, "FATAL Error: Tried to convert a non-string into a string!");
-  return(((snprintf(outstring, outstringsize, "%s", GETOCTPTR(arrayPtr)->string_value().c_str()))>0) ? 0 : 1);
+  return(((snprintf(outstring, outstringsize, "%s", GETOCTPTR(arrayPtr)->string_value().c_str()))>=0) ? 0 : 1);
 }
 
 void mxDestroyArray(mxArray *arrayPtr)

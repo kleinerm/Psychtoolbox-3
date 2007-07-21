@@ -1,5 +1,5 @@
 function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, imagename, screenid, stereomode, winrect, calibinfilename)
-% DisplayUndistortionBezier(caliboutfilename [, xnum=2][, ynum=2][, subdivision=100][, imagename=default][, screenid=max][, stereomode=0][, winrect=[]][, calibinfilename])
+% DisplayUndistortionBezier([caliboutfilename] [, xnum=2][, ynum=2][, subdivision=100][, imagename=default][, screenid=max][, stereomode=0][, winrect=[]][, calibinfilename])
 %
 % UNFINISHED ALPHA CODE -- NOT READY FOR USE BY PURE MORTALS!
 %
@@ -66,14 +66,68 @@ function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, im
 % a 3 by 3 grid of control points xnum=3 and ynum=3 may suffice. However,
 % you are not limited by any upper bound...
 %
+% 'subdivision' Number of vertical and horizontal subdivisions of the
+% bezier surface - the grid resolution: Higher numbers mean higher accuracy
+% but also higher computational overhead in your script. However, recent
+% graphics hardware shouldn't have much problems handling reasonably sized
+% meshes. Defaults to a 100 by 100 grid.
 %
+% 'imagename' Name of the image file for the test image to be rendered as
+% an alternative to the mesh grid. We default to our standard 'konintjes'
+% image.
+%
+% 'screenid' screen id of the target display for calibration.
+% max(Screen('Screens')) by default.
+%
+% 'stereomode' Stereomode for which calibration should be applied: Defaults
+% to 0 == Mono mode. [6 1] would mean: "Use stereomode 6 (Anaglyph stereo)
+% and the right-eye view (1)".
+%
+% 'winrect' Size of the calibration window: Defaults to full-screen.
+%
+% 'calibinfilename' Defaults to none. If provided, results of a previous
+% calibration are loaded from file 'calibinfilename' instead of starting
+% from scratch. Useful for incremental calibration.
+%
+% 2. After startup, the script will display a grid onscreen, which
+% represents the displayed area after calibration. Your job is to tweak,
+% shift and bend that grid so that it looks as flat and rectilinear as
+% possible on your display from the viewpoint of your subject. The grid has
+% green control points placed at regular intervals. These are the tweakable
+% points that you can move: Moving these control points will bend the
+% calibration grid in a smooth fashion, as if the grid would be attached to
+% the points with some springs.
+%
+% Mouse operation:
+%
+% To select a control point, just move the mouse pointer close to it, then
+% press a mouse key. The selected control point will change color to yellow
+% and a yellow line will connect its current position to its original
+% position in the uncalibrated display.
+%
+% You can move the point by moving the mouse pointer while keeping the
+% mouse key pressed.
+%
+% 
+% Keys and their meaning:
+%
+% You can also move the currently selected control point via the Cursor
+% keys, at slow speed, or at a faster speed when holding down the shift
+% key.
+%
+% Press the 'space' key to toggle between grid display and display of the
+% test image 'imagename'. A good way to test the calibration would be to
+% load a screenshot of one of your typical stimuli as image file
+% 'imagename'.
+%
+% You finish the calibration and write it into a calibration file by
+% pressing the ESCape key. This will end the calibration script.
 
 % History:
 % 07/16/07 Initial (incomplete) version. (MK)
 
 % Running on PTB-3? Abort otherwise:
 AssertOpenGL;
-% Screen('Preference', 'Verbosity', 10);
 
 % No need for synctests here...
 oldsynclevel = Screen('Preference', 'SkipSyncTests', 1);
@@ -144,11 +198,20 @@ if nargin < 8 || isempty(winrect)
     winrect = [];
 end
 
+if nargin < 9
+    calibinfilename = [];
+end
+
 InitializeMatlabOpenGL([], [], 1);
 win = Screen('OpenWindow', screenid, 0, winrect, [], [], stereomode, [], mor(kPsychNeedFastBackingStore, kPsychNeedOutputConversion));
+
+% Allocate display list handle and build initial warpstruct:
 gld = glGenLists(1);
+warpstruct.glsl = [];
+warpstruct.gld = gld;
+
 PsychImaging('PrepareConfiguration');
-PsychImaging('AddTask', 'FinalFormatting', 'GeometryCorrection', gld);
+PsychImaging('AddTask', 'FinalFormatting', 'GeometryCorrection', warpstruct);
 PsychImaging('FinalizeConfiguration');
 PsychImaging('PostConfiguration', win);
 
@@ -162,6 +225,43 @@ Screen('SelectStereoDrawBuffer', win, viewid);
 % Determine width and height of window:
 [w, h] = Screen('WindowSize', win);
 
+% Read parameters from previous calibration file?
+if ~isempty(calibinfilename)
+    % Old file provided: Setup from that file:
+    calib = load(calibinfilename);
+    if ~strcmp(calib.warptype, 'BezierDisplayList')
+        Screen('CloseAll');
+        error('Provided input calibration file %s does not describe a calibration created with this routine!', calibinfilename);
+    end
+    
+    subdivision = calib.subdivision;
+    frompts = calib.frompts;
+    topts = calib.topts;
+else
+    % No old file: Initialize based on call arguments:
+
+    % Setup initial mapping table for texture coordinates (source image control
+    % points):
+    frompts = zeros(2, 2, 2);
+    frompts(:, 1, 1) = [0 h];
+    frompts(:, 1, 2) = [w h];
+    frompts(:, 2, 2) = [w 0];
+    frompts(:, 2, 1) = [0 0];
+
+    % Setup initial mapping table for vertex coordinates (target image control
+    % points). We start with a uniform rectilinear spacing of points:
+    topts = zeros(3, ynum, xnum);
+    dx = w / (xnum - 1);
+    dy = h / (ynum - 1);
+
+    for y=1:ynum
+        for x=1:xnum
+            topts(1, y, x) = ((x-1) * dx);
+            topts(2, y, x) = ((y-1) * dy);
+        end
+    end
+end
+
 % Setup a 2D parametric grid with 'subdivision' subdivisions:
 glMapGrid2d(subdivision, 0, 1, subdivision, 0, 1);
 
@@ -169,42 +269,8 @@ glMapGrid2d(subdivision, 0, 1, subdivision, 0, 1);
 glEnable(GL.MAP2_VERTEX_3);
 glEnable(GL.MAP2_TEXTURE_COORD_2);
 
-% Setup initial mapping table for texture coordinates (source image control
-% points):
-frompts = zeros(2, 2, 2);
-frompts(:, 1, 1) = [0 h];
-frompts(:, 1, 2) = [w h];
-frompts(:, 2, 2) = [w 0];
-frompts(:, 2, 1) = [0 0];
-
 % Establish mapping for texture coordinates:
 glMap2d(GL.MAP2_TEXTURE_COORD_2, 0, 1, 2, size(frompts,2), 0, 1, 2*size(frompts,2), size(frompts,3), frompts);
-
-% Setup initial mapping table for vertex coordinates (target image control
-% points). We start with a uniform rectilinear spacing of points:
-topts = zeros(3, ynum, xnum);
-dx = w / (xnum - 1);
-dy = h / (ynum - 1);
-
-for y=1:ynum
-    for x=1:xnum
-        topts(1, y, x) = ((x-1) * dx);
-        topts(2, y, x) = ((y-1) * dy);
-    end
-end
-
-% % Top-Left:
-% topts(:, 1, 1) = [0 0 0];
-% % Top-Middle:
-% topts(:, 1, 2) = [w/2 0 0];
-% % Top-Right
-% topts(:, 1, 3) = [w 0 0];
-% % Bottom-Right:
-% topts(:, 2, 3) = [w h 0];
-% % Bottom-Middle:
-% topts(:, 2, 2) = [w/2 h 0];
-% % Bottom-Left:
-% topts(:, 2, 1) = [0 h 0];
 
 % Make sure all mouse buttons are released:
 oldbuttons = 1;
@@ -360,7 +426,17 @@ Screen('Preference', 'SkipSyncTests', oldsynclevel);
 glDisable(GL.MAP2_VERTEX_3);
 glDisable(GL.MAP2_TEXTURE_COORD_2);
 
-% TODO: Writeout calibration/undistortion matrices:
+% Writeout of calibration/undistortion matrices:
+
+% Define type of mapping for this calibration method:
+warptype = 'BezierDisplayList';
+
+% Save relevant calibration variables to file 'caliboutfilename':
+if ~IsOctave
+    save(caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts', '-mat', '-V6');
+else
+    save('-mat', caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts');
+end
 
 % Close Display:
 Screen('CloseAll');
