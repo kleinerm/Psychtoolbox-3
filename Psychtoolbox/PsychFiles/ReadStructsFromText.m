@@ -16,14 +16,15 @@ function theStructs = ReadStructsFromText(filename)
 
 % 6/15/03   dhb			Wrote it.
 % 07/01/03  dhb 		Support string as well as numeric data.
-% 07/02/03	dhb, jg	Handle white space in column headers.
-% 07/03/03   dhb     More little tweaks.
-% 08/06/03  dhb      Handle fgetl returns empty string.
+% 07/02/03	dhb, jg     Handle white space in column headers.
+% 07/03/03  dhb         More little tweaks.
+% 08/06/03  dhb         Handle fgetl returns empty string.
+% 08/22/07  dhb         This was modified on disk but not commented our uploaded to SVN repository.
 
 % Open the file
 fid = fopen(filename);
 if (fid == -1)
-	error(sprintf('Cannot open file %s',filename));
+	error('Cannot open file %s', filename);
 end
 
 % Read first line to get field names for returned structure

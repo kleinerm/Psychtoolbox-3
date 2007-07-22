@@ -24,7 +24,7 @@ function CMCheckInit(meterType)
 % 10/05/06 dhb, cgb OSX version.
 
 % Set default meterType.
-if nargin<1 | isempty(meterType)
+if nargin<1 || isempty(meterType)
   meterType = 1;
 end
 
