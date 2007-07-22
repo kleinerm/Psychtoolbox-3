@@ -1,4 +1,4 @@
-function AudioFeedbackLatencyTest(trigger, nrtrials, freq, freqout)
+function AudioFeedbackLatencyTest(trigger, nrtrials, freq, freqout, fullduplex)
 % AudioFeedbackLatencyTest([trigger=0.1] [, nrtrials=10] [, freq=44100][, freqout=44100])
 %
 % Tries to test sound onset accuracy of PsychPortAudio without need for
@@ -68,6 +68,14 @@ if isempty(freqout)
     freqout = 44100;
 end
 
+if nargin < 5
+   fullduplex = [];
+end
+
+if isempty(fullduplex)
+   fullduplex = 0;
+end
+
 % Wait for release of all keys on keyboard:
 while KbCheck; end;
 
@@ -77,15 +85,25 @@ InitializePsychSound(1);
 
 PsychPortAudio('Verbosity', 6);
 
-% Open the default audio device [], with mode 2 (== Only audio capture),
-% and a required latencyclass of zero 2 == low-latency mode, as well as
-% a frequency of 44100 Hz and 2 sound channels for stereo capture.
-% This returns a handle to the audio device:
-pahandlerec = PsychPortAudio('Open', deviceid, 2, 2, freq, 2);
-
-% Open 2nd audio device for playback of our test signal with same settings
-% otherwise:
-pahandleout = PsychPortAudio('Open', deviceid, 1, 2, freqout, 2);
+if fullduplex
+   % Open the default audio device [], with mode 3 (== Full-Duplex),
+   % and a required latencyclass of zero 2 == low-latency mode, as well as
+   % a frequency of 44100 Hz and 2 sound channels for stereo capture.
+   % This returns a handle to the audio device:
+   pahandlerec = PsychPortAudio('Open', deviceid, 3, 2, freq, 2, [], 0.005);
+   pahandleout = pahandlerec;
+else
+   % Open the default audio device [], with mode 2 (== Only audio capture),
+   % and a required latencyclass of zero 2 == low-latency mode, as well as
+   % a frequency of 44100 Hz and 2 sound channels for stereo capture.
+   % This returns a handle to the audio device:
+   pahandlerec = PsychPortAudio('Open', deviceid, 2, 2, freq, 2);
+      
+   % Open 2nd audio device for playback of our test signal with same settings
+   % otherwise:
+   pahandleout = PsychPortAudio('Open', deviceid, 1, 2, freqout, 2);
+   
+end
 
 % Build 1khZ, 90% peak amplitude beep tone of 0.1 secs duration, suitable
 % for playback at 'freq' Hz:
@@ -109,8 +127,10 @@ for i=0:nrtrials
     % Return estimated timestamp of when the first sample hit the
     % microphone/sound input jack. We set the number of 'repetitions' to zero,
     % i.e. record until recording is manually stopped.
-    recstart = PsychPortAudio('Start', pahandlerec, 0, 0, 1);
-
+    if ~fullduplex
+       recstart = PsychPortAudio('Start', pahandlerec, 0, 0, 1);
+    end
+    
     % Start scheduled playback of test sound in one second from now, one
     % repetition, wait for start, retrieve estimated onset timestamp t2:
     t1 = GetSecs + 1;
@@ -118,6 +138,10 @@ for i=0:nrtrials
     delta = t2 - t1;
     
     failed = 0;
+    
+    if fullduplex
+       recstart = t2;
+    end
     
     % Audiotrigger codee: Fetch audio data and check against threshold:
     level = 0;
@@ -169,8 +193,10 @@ for i=0:nrtrials
 
     % Stop capture after one more second:
     WaitSecs(0.1);
-    PsychPortAudio('Stop', pahandlerec);
-
+    if ~fullduplex
+       PsychPortAudio('Stop', pahandlerec);
+    end
+    
     % Stop playback:
     outstatus = PsychPortAudio('GetStatus', pahandleout);
     PsychPortAudio('Stop', pahandleout);
