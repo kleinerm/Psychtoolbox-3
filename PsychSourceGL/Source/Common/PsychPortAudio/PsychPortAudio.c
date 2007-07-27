@@ -765,8 +765,17 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	if (verbosity > 3) {
 		printf("PTB-INFO: New audio device with handle %i opened as PortAudio stream:\n",audiodevicecount);
-		printf("PTB-INFO: Audio subsystem is %s, Audio device name is ", Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->name);
-		printf("%s\n", Pa_GetDeviceInfo(outputParameters.device)->name);
+
+		if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
+			printf("PTB-INFO: For Playback: Audio subsystem is %s, Audio device name is ", Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->name);
+			printf("%s\n", Pa_GetDeviceInfo(outputParameters.device)->name);
+		}
+
+		if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
+			printf("PTB-INFO: For Capture: Audio subsystem is %s, Audio device name is ", Pa_GetHostApiInfo(Pa_GetDeviceInfo(inputParameters.device)->hostApi)->name);
+			printf("%s\n", Pa_GetDeviceInfo(inputParameters.device)->name);
+		}
+		
 		printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
 				audiodevices[audiodevicecount].streaminfo->sampleRate, audiodevices[audiodevicecount].streaminfo->inputLatency * 1000.0,
 				audiodevices[audiodevicecount].streaminfo->outputLatency * 1000.0);
@@ -825,7 +834,7 @@ PsychError PSYCHPORTAUDIOClose(void)
  */
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void) 
 {
- 	static char useString[] = "PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+ 	static char useString[] = "underflow = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
 	static char synopsisString[] = 
 		"Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
 		"whose buffer is to be filled. 'bufferdata' is a Matlab double matrix with audio data in double format. Each "
@@ -849,6 +858,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	float*  outdata = NULL;
 	int pahandle   = -1;
 	int streamingrefill = 0;
+	int underrun = 0;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -856,7 +866,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	
 	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(0));	 // The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
@@ -927,9 +937,12 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		buffersize = sizeof(float) * inchannels * insamples;
 		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
 
+		// Check for buffer underrun:
+		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
+
 		// Boundary conditions met. Can we refill immediately or do we need to wait for playback
 		// position to progress far enough?
-		while ((audiodevices[pahandle].playposition - audiodevices[pahandle].writeposition - inchannels) <= (inchannels * insamples)) {
+		while (((audiodevices[pahandle].outputbuffersize / sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - inchannels) <= (inchannels * insamples)) {
 			// Sleep a millisecond:
 			PsychWaitIntervalSeconds(0.001);
 		} 
@@ -948,11 +961,14 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 			buffersize-=sizeof(float);
 		}
 		
-		// MK-FIXME: Is this correct? It fixes the audible clicks, but i can't see why it fixes it?!?
-		// and there's other audio artifacts, albeit at lower frequency, so does this fix or just postpone
-		// occurence of the real bug???
-		audiodevices[pahandle].writeposition-=inchannels;
+		// Check for buffer underrun:
+		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
+
+		if ((underrun > 0) && (verbosity > 1)) printf("PsychPortAudio-WARNING: Underrun of audio playback buffer detected during streaming refill. Some sound data will be skipped!\n");
 	}
+
+	// Copy out underrun flag:
+	PsychCopyOutDoubleArg(1, FALSE, (double) underrun);
 
 	// Buffer ready.
 	return(PsychError_none);

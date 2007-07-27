@@ -1,15 +1,30 @@
-function BasicSoundFeedbackDemo(reqlatency)
-% BasicSoundFeedbackDemo([reqlatency=0])
+function BasicSoundFeedbackDemo(reqlatency, duplex)
+% BasicSoundFeedbackDemo([reqlatency=7.5 ms] [,duplex=0])
+%
+% THIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!
+% TEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK
+% TIMING!!!
 %
 % Demonstrates very basic usage of the new Psychtoolbox sound driver
 % PsychPortAudio() for audio feedback.
 %
-% Sound is captured from the default recording device and then immediately
-% played back via the default output device. Waveform data of captured
-% sound is also plotted to a Matlab figure window during feedback.
+% Sound is captured from the default recording device and then - with a
+% selectable delay - played back via the default output device.
 %
-% By default, feedback is tried with minimum latency, but you can ask for a
-% specific latency by providing the optional parameter 'reqlatency'.
+% By default, feedback is tried with a latency of 7.5 ms plus hardware and
+% system inherent delay, but you can ask for a specific latency in msecs by
+% providing the optional parameter 'reqlatency'. Achievable latency will be
+% constrained by the capabilities of your hardware. Choosing too low of a
+% value will create audible artifacts in the sound and the driver may
+% output warning about 'buffer underflows during streaming refill...'.
+%
+% Depending on your sound hardware you'll have to either leave 'duplex' at
+% its default of zero (2 times half-duplex mode) or set it to 1
+% (full-duplex mode): ASIO driven hardware -- typically on MS-Windows --
+% will usually need full-duplex mode. On Macintosh OS/X it depends on the
+% sound hardware. IntelMacs are happy with half-duplex mode, some PowerMacs
+% may need full-duplex mode.
+%
 %
 % If you need low-latency, make sure to read "help InitializePsychSound"
 % carefully or contact the forum.
@@ -21,43 +36,69 @@ function BasicSoundFeedbackDemo(reqlatency)
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
 
+if IsLinux
+    error('Sorry this demo is not yet supported under GNU/Linux.');
+end
+
+fprintf('\n\nTHIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!\nTEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK\nTIMING!!!\n\n');
+
 % Latency provided?
 if nargin < 1
     reqlatency = [];
 end
 
 if isempty(reqlatency)
-    reqlatency = 0;
+    reqlatency = 7.5;
 end
 
-duplex = 0;
-lat =  0.05;
-freq = 96000;
+if nargin < 2
+    duplex = [];
+end
+
+if isempty(duplex)
+    duplex =0;
+end
+
+lat =  reqlatency / 1000;
+
+% Try a sample rate of 48kHz. Should be supported by most hardware:
+freq = 48000;
+
 % Wait for release of all keys on keyboard:
 while KbCheck; end;
 
 % Perform low-level initialization of the sound driver:
 InitializePsychSound(1);
 
-PsychPortAudio('Verbosity', 10);
+% Provide some debug output:
+%PsychPortAudio('Verbosity', 10);
 
-pushedoutput = [];
-
-% Open the default audio device [], with mode 2 (== Only audio capture),
-% and a required latencyclass of 2 == low-latency mode, as well as
-% a frequency of freq Hz and 2 sound channels for stereo capture.
-% This returns a handle to the audio device:
-painput = PsychPortAudio('Open', [], 2, 2, freq, 2);
+if ~duplex
+    % Open the default audio device [], with mode 2 (== Only audio capture),
+    % and a required latencyclass of 2 == low-latency mode, as well as
+    % a frequency of freq Hz and 2 sound channels for stereo capture.
+    % This returns a handle to the audio device:
+    painput = PsychPortAudio('Open', [], 2, 2, freq, 2);
+else
+    % Same procedure, but open for full-duplex operation:
+    painput = PsychPortAudio('Open', [], 2+1, 2, freq, 2);
+    % Output- and input device are the same...
+    paoutput = painput;
+end
 
 % Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
 PsychPortAudio('GetAudioData', painput, 10);
 
-% Open default audio device [] for playback (mode 0), low latency, 48khz,
-% stereo output:
-paoutput = PsychPortAudio('Open', [], [], 2, freq, 2);
+if ~duplex
+    % Open default audio device [] for playback (mode 1), low latency (2), freq Hz,
+    % stereo output:
+    paoutput = PsychPortAudio('Open', [], 1, 2, freq, 2);
+end
+
+% Full duplex mode. Doesn't work yet...
 if duplex
-    paoutput = painput;
-    PsychPortAudio('FillBuffer', paoutput, zeros(2, freq * lat));
+    % Prefill playback buffer with silence...
+    PsychPortAudio('FillBuffer', paoutput, zeros(2, freq * 2 * lat));
 end
 
 % Start audio capture immediately and wait for the capture to start.
@@ -66,7 +107,9 @@ end
 % i.e. record until recording is manually stopped.
 capturestart = PsychPortAudio('Start', painput, 0, 0, 1);
 
-% Wait for at least lat msecs of sound data to become available:
+% Wait for at least lat secs of sound data to become available: This
+% directly defines a lower bound on real feedback latency. Its also a weak
+% point, because waiting longer than 'lat' will increase output latency...
 availsecs = 0;
 while availsecs < lat
     WaitSecs(0.001);
@@ -74,39 +117,53 @@ while availsecs < lat
     availsecs = s.RecordedSecs;
 end
 
-% Quickly readout available sound and initialize sound output buffer with
-% it:
+% Quickly readout available sound and initialize sound output buffer with it:
 [audiodata offset]= PsychPortAudio('GetAudioData', painput);
-PsychPortAudio('FillBuffer', paoutput, audiodata);
 
-if duplex == 0
-    % Start the playback engine and wait for start:
+if ~duplex
+    % Feed everything into the initial sound output buffer:
+    PsychPortAudio('FillBuffer', paoutput, audiodata);
+
+    % Start the playback engine immediately and wait for start, let it run
+    % until manually stopped:
     playbackstart = PsychPortAudio('Start', paoutput, 0, 0, 1);
+else
+    % Duplex mode: We don't get separate timestamps for capture and
+    % playback yet. Set them to be the same - The best we can do for now...
+    playbackstart = capturestart;
 end
 
-% Now the playback engine should output the first 20 msecs of our sound,
-% while the capture engine captures the next msecs...
+% Now the playback engine should output the first lat msecs of our sound,
+% while the capture engine captures the next msecs. Compute expected
+% latency. This is what the driver thinks, accuracy depends on the quality
+% of implementation of the underlying sound subsystem, so its dependent on
+% operating system and sound driver/sound hardware:
 expecteddelay = (playbackstart - capturestart) * 1000;
 fprintf('Expected latency at least %f msecs.\n', expecteddelay);
 
 % Feedback loop: Runs until keypress ...
 while ~KbCheck
-    % Sleep about lat/2 msecs to give the engines time to at least capture and
-    % output lat/2 msecs worth of sound ...
+    % Sleep about lat/2 secs to give the engines time to at least capture and
+    % output lat/2 secs worth of sound ...
     WaitSecs(lat/2);
     
     % Get new captured sound data ...
     [audiodata offset overrun]= PsychPortAudio('GetAudioData', painput);
+    
     % ... and stream it into our output buffer:
     while size(audiodata, 2) > 0
+        % Make sure to never push more data in the buffer than it can
+        % actually hold, ie not more than half its maximum capacity:
         fetch = min(size(audiodata, 2), freq * lat/2);
+        % We feed data in chunks...
         pushdata = audiodata(:, 1:fetch);
         audiodata = audiodata(:, fetch+1:end);
+        % Perform streaming buffer refill. As long as we don't push more
+        % than a buffer size, the driver will take care of the rest...
         PsychPortAudio('FillBuffer', paoutput, pushdata, 1);
-        %pushedoutput = [pushedoutput pushdata];
     end
     
-    % Done.
+    % Done. Next iteration...
 end
 
 % Done. Stop the capture engine:
@@ -115,13 +172,13 @@ PsychPortAudio('Stop', painput, 1);
 % Drain its capture buffer...
 [audiodata offset]= PsychPortAudio('GetAudioData', painput);
 
-% Stop the playback engine:
-PsychPortAudio('Stop', paoutput, 1);
+if ~duplex
+    % Stop the playback engine:
+    PsychPortAudio('Stop', paoutput, 1);
+end
 
 % Ok, done. Close engines and exit.
 PsychPortAudio('Close');
-
-%plot(pushedoutput(1,:));
 
 % Done.
 fprintf('Demo finished, bye!\n');
