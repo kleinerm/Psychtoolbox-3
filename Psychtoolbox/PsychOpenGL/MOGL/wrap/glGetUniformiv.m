@@ -19,6 +19,6 @@ end
 params=int32(repmat(intmax, [ 16 1 ]));
 
 moglcore( 'glGetUniformiv', program, location, params );
-params = params(find(params~=intmax)));
+params = params(find(params~=intmax));
 
 return

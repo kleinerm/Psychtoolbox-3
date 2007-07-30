@@ -64,11 +64,15 @@ void mogl_usageerr();
 // more picky about function pointer assignments and will abort for hacks like in
 // mogl_rebind...  -> Move this function into separate file, compile that file as
 // C file, make the compiler happy.
-#ifndef TARGET_OS_WIN32
-extern "C" void mogl_rebindARBExtensionsToCore(void);
-#else
+
+// Strange: Needed different cases of Windows and OS/X, but now (10.4.10), the compiler
+// on OS/X mandates the same function prototype as on Windows?!?
+
+//#ifndef TARGET_OS_WIN32
+//extern "C" void mogl_rebindARBExtensionsToCore(void);
+//#else
 extern void mogl_rebindARBExtensionsToCore(void);
-#endif
+//#endif
 
 // Automatic checking and handling for glError's and GLSL errors.
 void mogl_checkerrors(const char* cmd, mxArray *prhs[]);
