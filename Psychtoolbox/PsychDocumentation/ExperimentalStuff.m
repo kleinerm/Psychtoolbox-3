@@ -64,7 +64,11 @@
 %
 % PSYCHSOUND: (Mario Kleiner)
 %
-% PsychSound is supposed to be a well working replacement for the Snd
+% PsychSound is obsolete! It only worked on OS/X PowerPC and has been
+% superseded by PsychPortAudio(). Its left in the distribution for
+% backwards compatibility.
+%
+% PsychSound was supposed to be a well working replacement for the Snd
 % function in the far future. As of now, it only works on MacOS-X for
 % PowerPC computers and it is only useable for capture of sound input,
 % not for sound playback. Sound capture works well, but the interface
@@ -74,15 +78,12 @@
 % EYELINKTOOLBOX: (Frans Cornellisen, Christopher Burns and others)
 %
 % The version of the Eyelink toolbox bundled with this release is a
-% working beta version for OS-X on PowerPC computers and for Microsoft
-% Windows.
+% working beta version for OS-X and for Microsoft Windows.
 %
 % It should work well for basic control and use of the Eyelink eyetracker, but some
 % of the more advanced features are missing, the help texts are not
 % yet fully updated and the demos are in need for cleanup. The toolbox
-% is not yet available for GNU/Linux or MacOS-X on the new IntelMacs.
-% Availability of OS-X IntelMac support will depend on the future
-% availability of runtime libraries from SR-Research systems.
+% is not yet available for GNU/Linux.
 %
 % MOGL OpenGL for Matlab support: (Richard F. Murray, Mario Kleiner)
 %

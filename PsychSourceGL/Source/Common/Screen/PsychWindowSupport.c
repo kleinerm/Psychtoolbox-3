@@ -162,7 +162,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
  
 */
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample)
+boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow)
 {
     PsychRectType dummyrect;
     double ifi_nominal=0;    
@@ -221,6 +221,13 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Assign requested color buffer depth:
     (*windowRecord)->depth = screenSettings->depth.depths[0];
     
+	// OpenGL context ressource sharing requested?
+	if (sharedContextWindow) {
+		// A pointer to a previously created onscreen window was provided and the OpenGL context of
+		// the new window shall share ressources with the context of the provided window:
+		(*windowRecord)->slaveWindow = sharedContextWindow;
+	}
+	
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
     
     // Call the OS specific low-level Window & Context setup routine:
@@ -328,7 +335,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // but both views are encoded in one video frame and can be decoded by external stereo-hardware,
     // e.g., the one available from CrystalEyes, this allows for potentially faster refresh.
     // Mode 4/5 is implemented by simple manipulations to the glViewPort...
-    (*windowRecord)->stereomode = (stereomode>=0 && stereomode<=9) ? stereomode : 0;
+    (*windowRecord)->stereomode = stereomode;
     
     // Setup timestamps and pipeline state for 'Flip' and 'DrawingFinished' commands of Screen:
     (*windowRecord)->time_at_last_vbl = 0;
@@ -733,10 +740,11 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       if ((*windowRecord)->stereomode==kPsychAnaglyphGRStereo) printf("PTB-INFO: Stereo display via Anaglyph Green-Red stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychAnaglyphRBStereo) printf("PTB-INFO: Stereo display via Anaglyph Red-Blue stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychAnaglyphBRStereo) printf("PTB-INFO: Stereo display via Anaglyph Blue-Red stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychDualWindowStereo) printf("PTB-INFO: Stereo display via dual window output with imaging pipeline enabled.\n");
       if ((PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) && (strstr(glGetString(GL_EXTENSIONS), "GL_APPLE_client_storage")==NULL)) {
-	// User wants us to use client storage, but client storage is unavailable :(
-	printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
-	printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
+		// User wants us to use client storage, but client storage is unavailable :(
+		printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
+		printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
       }
       if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
       if (multiSample>0) {
@@ -1145,6 +1153,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double preflip_vbltimestamp = -1;
     double postflip_vbltimestamp = -1;
 	unsigned int vbltimestampquery_retrycount = 0;
+	double time_at_swaprequest=0;			// Timestamp taken immediately before requesting buffer swap. Used for consistency checks.
 	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     
@@ -1210,7 +1219,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     
     if (vbl_synclevel==2) {
         // We are requested to flip immediately, instead of syncing to VBL. Disable VBL-Sync.
-	PsychOSSetVBLSyncLevel(windowRecord, 0);
+		PsychOSSetVBLSyncLevel(windowRecord, 0);
+		// Disable also for a slave window, if any:
+		if (windowRecord->slaveWindow) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 0);
     }
     
     if (multiflip > 0) {
@@ -1222,7 +1233,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Disable VBL-Sync for all onscreen windows except our primary one:
         for(i=0;i<numWindows;i++) {
             if (PsychIsOnscreenWindow(windowRecordArray[i]) && (windowRecordArray[i]!=windowRecord)) {
-	      PsychOSSetVBLSyncLevel(windowRecordArray[i], 0);
+				PsychOSSetVBLSyncLevel(windowRecordArray[i], 0);
             }
         }
     }
@@ -1332,9 +1343,15 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
     #endif
     
+	// Take preswap timestamp:
+	PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
+
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
     PsychOSFlipWindowBuffers(windowRecord);
-    
+	
+	// Also swap the slave window, if any:
+	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
+
     // Multiflip with vbl-sync requested?
     if (multiflip==1) {
         //  Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace"
@@ -1388,6 +1405,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // Query and return rasterbeam position immediately after Flip and before timestamp:
         *beamPosAtFlip=(int) CGDisplayBeamPosition(displayID);
+
          // We take a timestamp here and return it to "userspace"
         PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 
@@ -1490,6 +1508,19 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             *time_at_onset=time_at_vbl;
         }
         
+		// Another consistency check: Computed swap/VBL timestamp should never be earlier than
+		// the system time when bufferswap request was initiated - Can't complete swap before
+		// actually starting it!
+		if (time_at_vbl < time_at_swaprequest) {
+			// Ohoh! Broken timing. Disable advanced timestamping for future operations, warn user.
+			PsychPrefStateSet_VBLTimestampingMode(-1);
+			printf("\n\nPTB-ERROR: Screen('Flip'); timestamping computed an *impossible value* %lf, which would indicate that\n", time_at_vbl);
+			printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest possible %lf).\n", time_at_swaprequest);
+			printf("PTB-ERROR: Something is broken in your systems timestamping. High-precision timestamping disabled,\n");
+			printf("PTB-ERROR: reported timestamps will be less robust and accurate, but hopefully at least not completely wrong.\n");
+			printf("PTB-ERROR: Please try to find and fix the problem if you rely on exact stimulus timing.\n\n");
+		}
+		
         // Check for missed / skipped frames: We exclude the very first "Flip" after
         // creation of the onscreen window from the check, as deadline-miss is expected
         // in that case:
@@ -1554,7 +1585,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     
     // If we disabled (upon request) VBL syncing, we have to reenable it here:
     if (vbl_synclevel==2 || (windowRecord->inRedTable && (PSYCH_SYSTEM == PSYCH_WINDOWS))) {
-      PsychOSSetVBLSyncLevel(windowRecord, 1);
+		PsychOSSetVBLSyncLevel(windowRecord, 1);
+		// Reenable also for a slave window, if any:
+		if (windowRecord->slaveWindow) PsychOSSetVBLSyncLevel(windowRecord->slaveWindow, 1);
     }
     
     // Was this an experimental Multiflip with "hard" busy flipping?
@@ -2096,7 +2129,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			// Restore assignment of read- writebuffers:
 			glReadBuffer(read_buffer);
 			glDrawBuffer(draw_buffer);
-		}		        
+		}
+		
+		// Restore modelview matrix:
+		glPopMatrix();
+
 	}	// End of traditional preflip path.
 	
 	if (imagingMode) {
@@ -2143,8 +2180,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// user defined (or stereo) image processing.
 		
 		// Stereo processing: This depends on selected stereomode...
-		if (stereo_mode <= kPsychOpenGLStereo) {
-			// No stereo or quad-buffered stereo - Nothing to do in merge stage.
+		if (stereo_mode <= kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo) {
+			// No stereo or quad-buffered stereo or dual-window stereo - Nothing to do in merge stage.
 		}
 		else if (stereo_mode <= kPsychAnaglyphBRStereo) {
 			// Merged stereo - All work is done by the anaglyph shader that was created for this purpose
@@ -2178,7 +2215,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Each FBO is either a real FBO for framebuffer "screenshots" or the system framebuffer for final output into the backbuffer.
 
 		// Process each of the (up to two) streams:
-		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo) ? 2 : 1); viewid++) {
+		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo) ? 2 : 1); viewid++) {
 
 			// Select final drawbuffer if our target is the system framebuffer:
 			if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
@@ -2234,13 +2271,40 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Restore all state, including blending and texturing state:
 		glPopAttrib();
 		
+		// Restore modelview matrix:
+		glPopMatrix();
+		
+		// In dual-window stereomode we need to copy the finalizedFBO[1] into the backbuffer of
+		// the slave-window:
+		if (stereo_mode == kPsychDualWindowStereo) {
+			if (windowRecord->slaveWindow == NULL) {
+				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode...\n");
+			}
+			else {
+				// Perform blit operation: This looks weird. Due to the peculiar implementation of PsychPipelineExecuteHook() we must
+				// pass slaveWindow as reference, so its GL context is activated. That means we will execute its default identity
+				// blit chain (which was setup in SCREENOpenWindow.c). We blit from windowRecords finalizedFBO[1] - which is a color
+				// texture with the final stimulus image for slaveWindow into finalizedFBO[0], which is just a pseudo-FBO representing
+				// the system framebuffer - and therefore the backbuffer of slaveWindow.
+				// -> This is a bit dirty and convoluted, but its the most efficient procedure for this special case.
+				PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);				
+
+				// Paranoia mode: A dual-window stereo display configuration must swap both display windows in
+				// close sync with each other and the vertical retraces of their respective display heads. Due
+				// to the non-atomic submission of the swap-commands this config is especially prone to one display
+				// missing the VBL deadline and flipping one video refresh too late. We try to reduce the chance of
+				// this happening by forcing both rendering contexts of both displays to finish rendering now. That
+				// way both backbuffers will be ready for swap and likelihood of a asymetric miss is much lower.
+				// This may however cost a bit of performance on some setups...
+				glFinish();
+				
+				// Restore current context and glFinish it as well:
+				PsychSetGLContext(windowRecord);
+				glFinish();
+			}
+		}
+		
 	}	// End of preflip operations for imaging mode:
-
-	// EXPERIMENTAL: Execute hook chain for final backbuffer data formatting after stereo composition and post processing:
-	// PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
-
-    // Restore modelview matrix:
-    glPopMatrix();
     
     // Tell Flip that backbuffer backup has been done already to avoid redundant backups. This is a bit of a
 	// unlucky name. It actually signals that all the preflip processing has been done, the old name is historical.

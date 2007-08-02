@@ -321,10 +321,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			   None, (char **)NULL, 0, &sizehints);
   }
 
-  // Create associated GLX OpenGL rendering context: We don't use ressource
-  // sharing of textures and display lists yet (NULL) and we request a direct
+  // Create associated GLX OpenGL rendering context: We use ressource
+  // sharing of textures, display lists, FBO's and shaders if 'slaveWindow'
+  // is assigned for that purpose as master-window. We request a direct
   // rendering context (True) if possible:
-  ctx = glXCreateContext(dpy, visinfo, NULL, True );
+  ctx = glXCreateContext(dpy, visinfo, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), True );
   if (!ctx) {
     printf("\nPTB-ERROR:[glXCreateContext() failed] OpenGL context creation failed!\n\n");
     return(FALSE);

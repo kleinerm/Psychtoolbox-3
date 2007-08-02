@@ -31,7 +31,8 @@ static char synopsisString[] =
     "Get/set the font style for future text draws in this window. Useful values for "
     "style follow; they may be OR'd. See Inside Mac TextFace() for more. On M$-Windows "
     "and GNU/Linux, only a subset of these settings is honored - All settings are accepted, "
-    "but some of them are silently ignored on Windows and Linux. "
+    "but some of them are silently ignored on Windows and Linux. On Windows the default "
+	"text style is bold, because this increases readability on that system. "
     "0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend.";
 static char seeAlsoString[] = "";
 
@@ -61,7 +62,7 @@ PsychError SCREENTextStyle(void)
     //Fetch and set the new size if it is specified. 
     doSetStyle= PsychCopyInIntegerArg(2, FALSE, &newTextStyle);
     if(doSetStyle) {
-      windowRecord->textAttributes.needsRebuild=(windowRecord->textAttributes.textStyle != newTextStyle) ? TRUE : FALSE;
+      windowRecord->textAttributes.needsRebuild|=(windowRecord->textAttributes.textStyle != newTextStyle) ? TRUE : FALSE;
       windowRecord->textAttributes.textStyle=newTextStyle;
     }
     return(PsychError_none);

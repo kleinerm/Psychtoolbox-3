@@ -26,6 +26,9 @@
 
 #include "Screen.h"
 
+// Pointer to master onscreen window during setup phase of stereomode 10 (Dual-window stereo):
+static PsychWindowRecordType* sharedContextWindow = NULL;
+
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] =  "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect][,pixelSize][,numberOfBuffers][,stereomode][,multisample][,imagingmode]);";
 //                                                               1                         2        3      4           5                 6            7             8
@@ -38,9 +41,10 @@ static char synopsisString[] =
 	"window. If a screenNumber is supplied then \"rect\" is in screen coordinates "
 	"(origin at upper left), and defaults to the whole screen. (In all cases, "
 	"subsequent references to this new window will use its coordinates: origin at its "
-	"upper left.) The Windows and OS-X version accepts \"rect\" but disregards it, the window is "
-	"always the size of the display on which it appears. \"pixelSize\" sets the depth "
-	"(in bits) of each pixel; default is to leave depth unchanged. "
+	"upper left.). Please note that while providing a \"rect\" parameter to open a normal "
+	"window instead of a fullscreen window is convenient for debugging, but drawing performance, "
+	"stimulus onset timing and onset timestamping may be impaired, so be careful.\n"
+	"\"pixelSize\" sets the depth (in bits) of each pixel; default is to leave depth unchanged. "
         "\"numberOfBuffers\" is the number of buffers to use. Setting anything else than 2 will be "
         "useful for development/debugging of PTB itself but will mess up any real experiment. "
         "\"stereomode\" Type of stereo display algorithm to use: 0 (default) means: Monoscopic viewing. "
@@ -49,7 +53,10 @@ static char synopsisString[] =
         "3 means left view compressed into bottom half, right view compressed into top half. 4 and 5 allow split "
         "screen display where left view is shown in left half, right view is shown in right half or the display. "
         "A value of 5 does the opposite (cross-fusion). Values of 6,7,8 and 9 enable Anaglyph stereo rendering "
-        "of types left=Red, right=Green, vice versa and left=Red, right=Blue and vice versa. "
+        "of types left=Red, right=Green, vice versa and left=Red, right=Blue and vice versa. A value of 10 "
+		"enables multi-window stereo: Open one window for left eye view, one for right eye view, treat both "
+		"of them as one single stereo window. See StereoDemo.m for examples of usage of the different stereo "
+		"modes. See ImagingStereoDemo.m for more advanced usage on modern hardware.\n"
         "\"multisample\" This parameter, if provided and set to a value greater than zero, enables automatic "
         "hardware anti-aliasing of the display: For each pixel, 'multisample' color samples are computed and "
         "combined into a single output pixel color. Higher numbers provide better quality but consume more "
@@ -58,8 +65,8 @@ static char synopsisString[] =
         "supported by your hardware if you ask for too much. On very old hardware, the value will be ignored. "
         "Read 'help AntiAliasing' for more in-depth information about multi-sampling. "
 		"\"imagingmode\" This optional parameter enables PTB's internal image processing pipeline. The pipeline is "
-		"off by default. Read 'help PsychImagingMode' for information about this feature. "
-        "Opening or closing a window takes about two to three seconds, depending on type of connected display. "
+		"off by default. Read 'help PsychGLImageprocessing' for information about this feature.\n"
+        "Opening or closing a window takes about one to three seconds, depending on type of connected display. "
         "COMPATIBILITY TO OS-9 PTB: If you absolutely need to run old code for the old MacOS-9 or Windows "
         "Psychtoolbox, you can switch into a compatibility mode by adding the command "
         "Screen('Preference', 'EmulateOldPTB', 1) at the very top of your script. This will restore "
@@ -192,7 +199,7 @@ PsychError SCREENOpenWindow(void)
 
     stereomode=0;
     PsychCopyInIntegerArg(6,FALSE,&stereomode);
-    if(stereomode < 0 || stereomode > 9) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 9).");
+    if(stereomode < 0 || stereomode > 10) PsychErrorExitMsg(PsychError_user, "Invalid stereomode provided (Valid between 0 and 10).");
 	if (stereomode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, stereo display functions are not supported in OS-9 PTB emulation mode.");
 
     multiSample=0;
@@ -204,6 +211,14 @@ PsychError SCREENOpenWindow(void)
     PsychCopyInIntegerArg(8,FALSE,&imagingmode);
     if(imagingmode < 0) PsychErrorExitMsg(PsychError_user, "Invalid imaging mode provided (See 'help PsychImagingMode' for usage info).");
 	if (imagingmode!=0 && EmulateOldPTB) PsychErrorExitMsg(PsychError_user, "Sorry, imaging pipeline functions are not supported in OS-9 PTB emulation mode.");
+	
+	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
+	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
+	if (stereomode==kPsychDualWindowStereo) {
+		// Dual window stereo requested, but imaging pipeline not enabled. Enable it:
+		imagingmode|= kPsychNeedFastBackingStore;
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode...\n");
+	}
 	
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
     PsychGetScreenSettings(screenNumber, &screenSettings);    
@@ -225,13 +240,13 @@ PsychError SCREENOpenWindow(void)
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
     // On M$-Windows we currently only support - and therefore require >= 30 bpp color depth.
     if (PsychGetScreenDepthValue(screenNumber) < 30) {
-      // Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
-      // now.
+		// Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
+		// now.
 
-      // Release the captured screen:
-	  PsychReleaseScreen(screenNumber);
+		// Release the captured screen:
+		PsychReleaseScreen(screenNumber);
 
-	// Output warning text:
+		// Output warning text:
         printf("PTB-ERROR: Your display screen %i is not running at the required color depth of at least 30 bit.\n", screenNumber);
         printf("PTB-ERROR: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
         printf("PTB-ERROR: This will not work on Microsoft Windows operating systems.\n");
@@ -240,18 +255,28 @@ PsychError SCREENOpenWindow(void)
         printf("PTB-ERROR: to restart Matlab after applying the change...\n");
         fflush(NULL);
 
-	// Abort with Matlab error:
-	PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 30 bpp).");
+		// Reset master assignment to prepare possible further dual-window config operations:
+		sharedContextWindow = NULL;
+
+		// Abort with Matlab error:
+		PsychErrorExitMsg(PsychError_user, "Insufficient color depth setting for display device (smaller than 30 bpp).");
     }
 
 #endif
 
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOpenOnscreenWindow\n");
     PsychCopyDepthStruct(&(screenSettings.depth), &useDepth);
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample);
-
+	
+	// Create the onscreen window and perform initialization of everything except
+	// imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
+	// the new window will share its OpenGL context ressources with sharedContextWindow.
+	// This is typically used for dual-window stereo mode.
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample, sharedContextWindow);
     if (!didWindowOpen) {
         if (!useAGL) PsychReleaseScreen(screenNumber);
+
+		// Reset master assignment to prepare possible further dual-window config operations:
+		sharedContextWindow = NULL;
 
         // We use this dirty hack to exit with an error, but without printing
         // an error message. The specific error message has been printed in
@@ -275,6 +300,50 @@ PsychError SCREENOpenWindow(void)
     isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
     if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(windowRecord)); //or use the default
     PsychCoerceColorMode(&color);
+
+	// Special setup code for dual window stereomode:
+	if (stereomode == kPsychDualWindowStereo) {
+		if (sharedContextWindow) {
+			// This is creation & setup of the slave onscreen window, ie. the one
+			// representing the right-eye view. This window doesn't do much. It
+			// is not used or referenced in the users experiment script. It receives
+			// its final image content during Screen('Flip') operation of the master
+			// onscreen window, then gets flipped in sync with the master window.
+			
+			// Ok, we already have the slave window open and it shares its OpenGL context
+			// with the master window. Reset its internal reference to the master:
+			windowRecord->slaveWindow = NULL;
+			
+			// Reset imagingmode for this window prior to imaging pipeline setup. This
+			// window is totally passive so it doesn't need the imaging pipeline.
+			imagingmode = 0;
+						
+			// Assign this window to the master window as a slave:
+			sharedContextWindow->slaveWindow = windowRecord;
+			
+			// Reset master assignment to prepare possible further dual-window config operations:
+			sharedContextWindow = NULL;
+
+			// Activate the IdentitiyBlitChain for the slave window and add a single identity blit
+			// operation to it: This is needed in PsychPreFlipOperations() for final copy of stimulus
+			// image into this slave window:
+			PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", TRUE, "");
+			PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
+
+			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo display mode...\n");
+
+			// Special config finished. The master-slave combo should work from now on...
+		}
+		else {
+			// This is initial setup & creation of the master onscreen window, ie. the one
+			// representing the left-eye view and doing all the heavy work, acting as a
+			// proxy for both windows.
+			
+			// Not much to do here. Just store its windowRecord as a reference for creation
+			// of the slave window. We'll need it for that purpose...
+			sharedContextWindow = windowRecord;
+		}
+	}
 
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);

@@ -389,8 +389,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			return(FALSE);
 		}
 		
-		// Create an OpenGL rendering context with the selected pixelformat
-		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, NULL, &(windowRecord->targetSpecific.contextObject));
+		// Create an OpenGL rendering context with the selected pixelformat: Share its ressources with 'slaveWindow's context, if slaveWindow is non-NULL:
+		error=CGLCreateContext(windowRecord->targetSpecific.pixelFormatObject, ((windowRecord->slaveWindow) ? windowRecord->slaveWindow->targetSpecific.contextObject : NULL), &(windowRecord->targetSpecific.contextObject));
 		if (error) {
 			printf("\nPTB-ERROR[ContextCreation failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", CGLErrorString(error));
 			return(FALSE);
@@ -410,6 +410,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			CGLSetCurrentContext(NULL);
 			return(FALSE);
 		}
+		
+		// NULL-out the AGL context field, just for safety...
+		windowRecord->targetSpecific.deviceContext = NULL;
 	}
 	else {
 		// Context setup for AGL (windowed or multiscreen mode):
@@ -441,8 +444,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			return(FALSE);
 		}
 		
-		// Create OpenGL rendering context for format:
-		glcontext = aglCreateContext(pf, NULL);
+		// Create OpenGL rendering context for format: Share its ressources with 'slaveWindow' if that's non-NULL:
+		glcontext = aglCreateContext(pf, (windowRecord->slaveWindow) ? (AGLContext)(windowRecord->slaveWindow->targetSpecific.deviceContext) : NULL);
 		if (glcontext == NULL) {
 			printf("\nPTB-ERROR[aglCreateContext failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
 			aglDestroyPixelFormat(pf);
@@ -490,6 +493,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			DisposeWindow(carbonWindow);
 			return(FALSE);
 		}
+				
+		// Store AGLContext for reference...
+		windowRecord->targetSpecific.deviceContext = (void*) glcontext;
 		
 		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Carbon window + AGL context setup finished..\n");
 	}

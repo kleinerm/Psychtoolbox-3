@@ -65,7 +65,7 @@ PsychError SCREENTextMode(void)
         nameError=PsychGetTextDrawingModeConstantFromTextDrawingModeName(&newCopyMode, newCopyModeName);
         if(nameError)
             PsychErrorExitMsg(PsychError_user, "Invalid text copy mode.  See Screen('TextModes') for a list of allowable modes");
-	windowRecord->textAttributes.needsRebuild=(windowRecord->textAttributes.textMode != newCopyMode) ? TRUE : FALSE;
+	windowRecord->textAttributes.needsRebuild|=(windowRecord->textAttributes.textMode != newCopyMode) ? TRUE : FALSE;
         windowRecord->textAttributes.textMode=newCopyMode;	
     }
         

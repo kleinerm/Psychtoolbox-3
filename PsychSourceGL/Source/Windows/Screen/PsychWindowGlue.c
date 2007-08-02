@@ -801,6 +801,17 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		fflush(NULL);
 	 }
 
+	 // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
+	 if (windowRecord->slaveWindow) {
+		 // Enable ressource sharing with slaveWindow context for this window:
+		 if (!wglShareLists(windowRecord->slaveWindow->targetSpecific.contextObject, windowRecord->targetSpecific.contextObject)) {
+			 // This is ugly, but not fatal...
+			 if (PsychPrefStateGet_Verbosity()>0) {
+				 printf("\nPTB-WARNING[wglShareLists for slaveWindow context failed]: Ressource sharing with OpenGL context for slave window failed for unknown reasons. Dual-Window stereo may not work.\n\n");
+			 }		
+		 }
+	 }
+	 
     // Finally, show our new window:
     ShowWindow(hWnd, SW_SHOW);
 

@@ -32,7 +32,7 @@
 
 #include "Screen.h"
 
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample);
+boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow);
 boolean PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
 void	PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychCloseWindow(PsychWindowRecordType *windowRecord);

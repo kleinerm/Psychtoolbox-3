@@ -127,7 +127,7 @@ typedef struct{
         CGLPixelFormatObj	pixelFormatObject;
 		CGLContextObj		glusercontextObject;    // OpenGL context for userspace rendering code, e.g., moglcore...
         CVOpenGLTextureRef  QuickTimeGLTexture;     // Used for textures returned by movie routines in PsychMovieSupport.c
-        void*               deviceContext;          // Dummy pointer, just here for compatibility to Windows-Port (simplifies code)
+        void*				deviceContext;          // Pointer to an AGLContext object, or a NULL-pointer.
 		WindowRef			windowHandle;			// Handle for Carbon + AGL window when using windowed mode. (NULL in non-windowed mode).
 } PsychTargetSpecificWindowRecordType;
 #endif 
@@ -214,6 +214,7 @@ typedef struct _PsychWindowRecordType_{
         
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.
         int                                     stereodrawbuffer;       // MK: Which drawbuffer is active in stereo? 0=left, 1=right, 2=none
+		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.
         bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.

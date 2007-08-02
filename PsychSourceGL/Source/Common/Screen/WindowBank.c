@@ -262,11 +262,13 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->stippleFactor=1;
 	(*winRec)->stippleEnabled=FALSE;
 
-        // Initialize stereo settings:
-		  (*winRec)->stereomode=0;
-        (*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
-        (*winRec)->auxbuffer_dirty[0]=FALSE;            // AUX-Buffers clean on startup.
-        (*winRec)->auxbuffer_dirty[1]=FALSE;
+	// Initialize stereo settings:
+	(*winRec)->stereomode=0;
+	(*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
+	(*winRec)->slaveWindow=NULL;					// No slave window attached.
+	(*winRec)->auxbuffer_dirty[0]=FALSE;            // AUX-Buffers clean on startup.
+	(*winRec)->auxbuffer_dirty[1]=FALSE;
+	
 	// Initialize gamma table pointers for deferred loading:
 	(*winRec)->inRedTable = NULL;
 	(*winRec)->inGreenTable = NULL;

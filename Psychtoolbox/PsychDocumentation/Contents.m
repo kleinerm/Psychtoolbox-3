@@ -3,6 +3,10 @@
 % This folder contains help files and info on different topics
 % related to PTBs use, technical implementation and troubleshooting.
 %
+% ConserveVRAMSettings   - Explanation of some flags that you can use to
+%                          enable special workarounds in Screen() for
+%                          broken graphics drivers or hardware.
+%
 % ExperimentalStuff      - Read this for a description of features that
 %                          are currently in a beta state, i.e., they
 %                          are not yet fully mature and polished, so

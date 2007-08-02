@@ -212,33 +212,39 @@ void PsychCreateTextureForWindow(PsychWindowRecordType *win)
 
 void PsychCreateTexture(PsychWindowRecordType *win)
 {
-        GLenum                          texturetarget;
-	GLenum				textureHint;
-	double				sourceWidth, sourceHeight;
-        GLint                           glinternalFormat, gl_realinternalformat = 0;
-        static GLint                    gl_lastrequestedinternalFormat = 0;
-	GLint gl_rbits=0, gl_gbits=0, gl_bbits=0, gl_abits=0, gl_lbits=0;
-	long screenWidth, screenHeight;
-        int twidth, theight;
-	void* texmemptr;
-	bool recycle = FALSE;
-// TEST:
-if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
-        // Enable the proper OpenGL rendering context for the window associated with this
-        // texture:
+	GLenum                          texturetarget, oldtexturetarget;
+	GLenum							textureHint;
+	double							sourceWidth, sourceHeight;
+	GLint                           glinternalFormat, gl_realinternalformat = 0;
+	static GLint                    gl_lastrequestedinternalFormat = 0;
+	GLint							gl_rbits=0, gl_gbits=0, gl_bbits=0, gl_abits=0, gl_lbits=0;
+	long							screenWidth, screenHeight;
+	int								twidth, theight, pass;
+	void*							texmemptr;
+	bool							recycle = FALSE;
+	GLenum							glerr;
+	
+	// Setup for renderswap, if requested:
+	if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
+
+	// Enable the proper OpenGL rendering context for the window associated with this
+	// texture:
 	PsychSetGLContext(win);
 
-        // Setup texture-target if not already done:
-        PsychDetectTextureTarget(win);
-        
+	// Make sure we don't have any dangling GL errors from other operations...
+	PsychTestForGLErrors();
+	
+	// Setup texture-target if not already done:
+	PsychDetectTextureTarget(win);
+	
 	// Assign proper texturetarget for creation:
 	texturetarget = PsychGetTextureTarget(win);
-
-        // Check if user requested explicit use of clientstorage + Use of System RAM for
-        // storage of textures instead of VRAM caching in order to conserve VRAM memory on
-        // low-mem gfx-cards. Enable clientstorage, if so...
-        clientstorage = (PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) ? TRUE : FALSE;
-        
+	
+	// Check if user requested explicit use of clientstorage + Use of System RAM for
+	// storage of textures instead of VRAM caching in order to conserve VRAM memory on
+	// low-mem gfx-cards. Enable clientstorage, if so...
+	clientstorage = (PsychPrefStateGet_ConserveVRAM() & kPsychDontCacheTextures) ? TRUE : FALSE;
+	
 	// Create a unique texture handle for this texture:
 	// If the texture already has a handle assigned then this means that we shouldn't
 	// create and setup a new OpenGL texture from scratch, but bind and recycle the
@@ -260,128 +266,215 @@ if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
 	glEnable(texturetarget);
 
 	// Create & bind a new OpenGL texture object and attach it to our new texhandle:
-        glBindTexture(texturetarget, win->textureNumber);
-
-        // Setup texture parameters like optimization, storage format et al.
-
+	glBindTexture(texturetarget, win->textureNumber);
+	
+	// Setup texture parameters like optimization, storage format et al.
+	
 	// Choose the texture acceleration extension out of GL_STORAGE_PRIVATE_APPLE, GL_STORAGE_CACHED_APPLE, GL_STORAGE_SHARED_APPLE
-        // We normally use CACHED storage for caching textures in gfx-cards VRAM for high-perf drawing,
-        // but if user explicitely requests client storage for saving VRAM memory, we do so and
-        // use SHARED storage in system RAM --> Slower but saves VRAM memory.
-	#if PSYCH_SYSTEM == PSYCH_OSX
-	    textureHint= (clientstorage) ? GL_STORAGE_SHARED_APPLE : GL_STORAGE_CACHED_APPLE;  
-            glTexParameteri(texturetarget, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
-	    glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, (clientstorage) ? GL_TRUE : GL_FALSE);
-        #endif
-
-        // Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
-        // when testing with a G5-Mac with 1.6Ghz CPU and 256 MB RAM, MacOS-X 10.3.7, using 12 textures of 800x800 pixels each.
-        // Rendering times with this code are around 6 msecs, while original PTB 1.0.40 code took 17 ms on average...
-        // Can't test this on other machines like G4 or machines with more RAM...
-        // -> Sometimes, GL_STORAGE_SHARED_APPLE is faster, but only if texture width and height are divisable by 16 and
-        // all used memory is page-aligned and a couple other conditions are met. So... Sometimes you are 20% faster, but most of
-        // the time you are 2 to 3 times slower than without this extensions...
-        // The "Principle of least surprise" would suggest to disable the extension, because the end-user doesn't
-        // expect sudden and random changes in performance of his PTB scripts.
-        // Alternatively one could code up different path's depending on if the preconditions are met or not...
-        //
-        // We could reenable the extension, if wanted, but then the MakeTexture code needs to be modified in a way
-        // that will slow down MakeTexture a bit. It's a tradeoff between speed of DrawTexture and speed of MakeTexture.
-        //
-        // BTW -> Does disabling the extension solve "severe tearing bug" reported in Forum message 3007?
-        // Explanation: GL_STORAGE_SHARED_APPLE enables texture fetches over AGP bus via DMA operations and
-        // should increase performance. But DMA only triggers when texture width is divisible by 8, in all other
-        // cases it's disabled. Bug in message 3007 only happens when texture width is divisible by 8. Could this
-        // be a bug in the G4 Laptops graphics hardware (DMA-Engine) or in its OpenGL driver???
-        // Would be interesting to find out...
-
-        // Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
-        // width or height is not divisible by 4.
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        
-        // Override for 4-Byte aligned Quicktime textures created via GWorlds:
-        if (win->textureOrientation==3) glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-        
-        // The texture object is ready for use: Assign it our texture data:
-        
-        // Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
-        if (win->textureOrientation==0 || win->textureOrientation==1) {
-            // Transposed case: Optimized for fast MakeTexture from Matlab image matrix.
-            // This is true for all calls from MakeTexure.
-            sourceHeight=PsychGetWidthFromRect(win->rect);
-            sourceWidth=PsychGetHeightFromRect(win->rect);
-        }
-        else {
-            // Non-transposed upright case: This is used for textures created by 'OpenOffscreenWindow'
-            // One can directly draw to these textures as rendertargets aka OpenGL framebuffer objects...
-            sourceHeight=PsychGetHeightFromRect(win->rect);
-            sourceWidth=PsychGetWidthFromRect(win->rect);
-        }
-
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, sourceWidth);
-
-        // We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
-        // This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time
-        // in MakeTexture - In theory...
-        // Reality is: We always use GL_RGBA8 as internal format, except for pure luminance textures.
-        // This obviously wastes storage space for LA and RGB textures, but it is the only mode that is
-        // well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
-        // are capable of handling the other formats natively in hardware :-(
-	if (texturetarget==GL_TEXTURE_2D) {
-          // This hardware doesn't support rectangle textures. We create and use power of two
-          // textures to emulate rectangle textures...
-	  
-          // Compute smallest power of two dimension that fits the texture.
-	  twidth=1;
-	  while (twidth<sourceWidth) twidth*=2;
-	  theight=1;
-	  while (theight<sourceHeight) theight*=2;
-	  // First we only use glTexImage2D with NULL data pointer to create a properly sized empty texture:
-	  texmemptr=NULL;
+	// We normally use CACHED storage for caching textures in gfx-cards VRAM for high-perf drawing,
+	// but if user explicitely requests client storage for saving VRAM memory, we do so and
+	// use SHARED storage in system RAM --> Slower but saves VRAM memory.
+#if PSYCH_SYSTEM == PSYCH_OSX
+	textureHint= (clientstorage) ? GL_STORAGE_SHARED_APPLE : GL_STORAGE_CACHED_APPLE;  
+	glTexParameteri(texturetarget, GL_TEXTURE_STORAGE_HINT_APPLE , textureHint);
+	glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, (clientstorage) ? GL_TRUE : GL_FALSE);
+#endif
+	
+	// Not using GL_STORAGE_SHARED_APPLE provided increased reliability of timing and significantly shorter rendering times
+	// when testing with a G5-Mac with 1.6Ghz CPU and 256 MB RAM, MacOS-X 10.3.7, using 12 textures of 800x800 pixels each.
+	// Rendering times with this code are around 6 msecs, while original PTB 1.0.40 code took 17 ms on average...
+	// Can't test this on other machines like G4 or machines with more RAM...
+	// -> Sometimes, GL_STORAGE_SHARED_APPLE is faster, but only if texture width and height are divisable by 16 and
+	// all used memory is page-aligned and a couple other conditions are met. So... Sometimes you are 20% faster, but most of
+	// the time you are 2 to 3 times slower than without this extensions...
+	// The "Principle of least surprise" would suggest to disable the extension, because the end-user doesn't
+	// expect sudden and random changes in performance of his PTB scripts.
+	// Alternatively one could code up different path's depending on if the preconditions are met or not...
+	//
+	// We could reenable the extension, if wanted, but then the MakeTexture code needs to be modified in a way
+	// that will slow down MakeTexture a bit. It's a tradeoff between speed of DrawTexture and speed of MakeTexture.
+	//
+	// BTW -> Does disabling the extension solve "severe tearing bug" reported in Forum message 3007?
+	// Explanation: GL_STORAGE_SHARED_APPLE enables texture fetches over AGP bus via DMA operations and
+	// should increase performance. But DMA only triggers when texture width is divisible by 8, in all other
+	// cases it's disabled. Bug in message 3007 only happens when texture width is divisible by 8. Could this
+	// be a bug in the G4 Laptops graphics hardware (DMA-Engine) or in its OpenGL driver???
+	// Would be interesting to find out...
+	
+	// Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
+	// width or height is not divisible by 4.
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	
+	// Override for 4-Byte aligned Quicktime textures created via GWorlds:
+	if (win->textureOrientation==3) glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	
+	// The texture object is ready for use: Assign it our texture data:
+	
+	// Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
+	if (win->textureOrientation==0 || win->textureOrientation==1) {
+		// Transposed case: Optimized for fast MakeTexture from Matlab image matrix.
+		// This is true for all calls from MakeTexure.
+		sourceHeight=PsychGetWidthFromRect(win->rect);
+		sourceWidth=PsychGetHeightFromRect(win->rect);
 	}
 	else {
-	  // Hardware supports rectangular textures: Use texture as-is:
-	  twidth=sourceWidth;
-	  theight=sourceHeight;
-	  texmemptr=win->textureMemory;
+		// Non-transposed upright case: This is used for textures created by 'OpenOffscreenWindow'
+		// One can directly draw to these textures as rendertargets aka OpenGL framebuffer objects...
+		sourceHeight=PsychGetHeightFromRect(win->rect);
+		sourceWidth=PsychGetWidthFromRect(win->rect);
 	}
-
+	
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, sourceWidth);
+	
+	// We used to have different cases for Luminance, Luminance+Alpha, RGB, RGBA.
+	// This way we saved texture memory for the source->textureMemory -- Arrays, as well as copy-time
+	// in MakeTexture - In theory...
+	// Reality is: We always use GL_RGBA8 as internal format, except for pure luminance textures.
+	// This obviously wastes storage space for LA and RGB textures, but it is the only mode that is
+	// well supported (=fast) on all common gfx-hardware. Only the very latest models of NVidia and ATI
+	// are capable of handling the other formats natively in hardware :-(
+	if (texturetarget==GL_TEXTURE_2D) {
+		// This hardware doesn't support rectangle textures. We create and use power of two
+		// textures to emulate rectangle textures...
+		
+		// Compute smallest power of two dimension that fits the texture.
+		twidth=1;
+		while (twidth<sourceWidth) twidth*=2;
+		theight=1;
+		while (theight<sourceHeight) theight*=2;
+		// First we only use glTexImage2D with NULL data pointer to create a properly sized empty texture:
+		texmemptr=NULL;
+	}
+	else {
+		// Hardware supports rectangular textures: Use texture as-is:
+		twidth=sourceWidth;
+		theight=sourceHeight;
+		texmemptr=win->textureMemory;
+	}
+	
 	// We only execute this pass for really new textures, not for recycled ones:
 	if (!recycle) {
-	  if (win->textureinternalformat==0) {
-	    // Standard path: Derive texture format and such from requested pixeldepth:
-	    switch(win->depth) {
-            case 8:
-	      glinternalFormat=GL_LUMINANCE8;
-	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, texmemptr);
-	      break;
-	      
-            case 16:
-	      //glinternalFormat=GL_LUMINANCE8_ALPHA8;
-	      glinternalFormat=GL_RGBA8;
-	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texmemptr);
-	      break;
-	      
-            case 24:
-	      //glinternalFormat=GL_RGB8;
-	      glinternalFormat=GL_RGBA8;
-	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGB, GL_UNSIGNED_BYTE, texmemptr);
-	      break;
-	      
-            case 32:
-	      glinternalFormat=GL_RGBA8;
-	      glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texmemptr);
-	      break;
-	    }
-	  }
-	  else {
-	    // Requested internal format and external data representation are explicitely requested: Use it.
-	    glTexImage2D(texturetarget, 0, win->textureinternalformat, (GLsizei) twidth, (GLsizei) theight, 0, win->textureexternalformat,
-			 win->textureexternaltype, texmemptr);
-	    glinternalFormat = win->textureinternalformat;
-	  }
-	}
+		// This is a two-pass procedure. First we check with a proxy-texture if texture
+		// creation will succeed without trouble, then we either fail in case of error,
+		// or we do the real thing and create the texture:
+		for (pass=0; pass < 2; pass++) {
+		
+			if (pass == 0) {
+				// Prepare proxy-pass:
+				oldtexturetarget = texturetarget;
+				texturetarget = (texturetarget == GL_TEXTURE_2D) ? GL_PROXY_TEXTURE_2D : GL_PROXY_TEXTURE_RECTANGLE_ARB;
+			}
+			else {
+				// Restore real texture target from saved one in pass 1:
+				texturetarget = oldtexturetarget;
+			}
+			
+			if (win->textureinternalformat==0) {
+				// Standard path: Derive texture format and such from requested pixeldepth:
+				switch(win->depth) {
+					case 8:
+						glinternalFormat=GL_LUMINANCE8;
+						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE, GL_UNSIGNED_BYTE, texmemptr);
+						break;
+						
+					case 16:
+						//glinternalFormat=GL_LUMINANCE8_ALPHA8;
+						glinternalFormat=GL_RGBA8;
+						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texmemptr);
+						break;
+						
+					case 24:
+						//glinternalFormat=GL_RGB8;
+						glinternalFormat=GL_RGBA8;
+						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_RGB, GL_UNSIGNED_BYTE, texmemptr);
+						break;
+						
+					case 32:
+						glinternalFormat=GL_RGBA8;
+						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texmemptr);
+						break;
+				}
+			}
+			else {
+				// Requested internal format and external data representation are explicitely requested: Use it.
+				glTexImage2D(texturetarget, 0, win->textureinternalformat, (GLsizei) twidth, (GLsizei) theight, 0, win->textureexternalformat,
+							 win->textureexternaltype, texmemptr);
+				glinternalFormat = win->textureinternalformat;
+			}
 
+			// Request sizes of created (proxy-)texture:
+			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
+			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
+			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
+			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
+			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
+			
+			// Sanity check: A sum of zero over all texture channels would indicate that texture
+			// creation failed, most likely due to an out of memory condition in the graphics
+			// hardwares VRAM:
+			if ((gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0) || (glerr = glGetError())!=0) {
+				// Texture creation failed or malfunctioned!
+				if (PsychPrefStateGet_Verbosity() > 0) {
+					// Abort with error:
+					
+					// First eat up any pending GL errors to make sure our shutdown path doesn't fail:
+					while(glGetError());
+					
+					if (glerr == GL_INVALID_VALUE || (gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0)) {
+						// Most likely texture too big for implementation or out of memory condition in VRAM or unsupported format:
+						printf("\n\nPTB-ERROR: Texture creation failed or malfunctioned for a texture of requested size w x h = %i x %i texels\n", twidth, theight);
+						printf("PTB-ERROR: and at least %i bytes VRAM memory consumption per texel.\n", (glinternalFormat==GL_RGBA8) ? 4 : win->depth / 8);
+						
+						// Query maximum size of textures supported by hardware:
+						glGetIntegerv((texturetarget == GL_TEXTURE_2D || texturetarget == GL_PROXY_TEXTURE_2D) ? GL_MAX_TEXTURE_SIZE : GL_MAX_RECTANGLE_TEXTURE_SIZE_ARB, &gl_rbits);
+						if (gl_rbits < twidth || gl_rbits < theight) {
+							// Hard hardware limit exceeded:
+							printf("PTB-ERROR: Your image or texture exceeds the maximum width and/or height of %i texels supported by your graphics hardware.\n", gl_rbits);
+							printf("PTB-ERROR: You'll have to either reduce the size of your images below that limit, or upgrade your hardware.\n\n");
+						}
+						else {
+							// Either out-of-memory in VRAM for such large textures, or unsupported format/precision:
+							if (glinternalFormat!=GL_LUMINANCE8 && glinternalFormat!=GL_RGBA8 && !glewIsSupported("GL_APPLE_float_pixels") && !glewIsSupported("GL_ATI_texture_float") && !glewIsSupported("GL_ARB_texture_float")) {
+								// Requested format is not one of the 8bpc fixed-point LDR formats, but a HDR format which
+								// doesn't seem to be supported by the GL implementation:
+								printf("PTB-ERROR: The image is of a high precision (HDR) format, not of a standard 8bpc (LDR) format.\n");
+								printf("PTB-ERROR: Seems that such texture formats are not supported by your graphics hardware. You'll need to\n");
+								printf("PTB-ERROR: update your graphics driver and probably your graphics hardware to make use of HDR textures.\n");
+							}
+							else {
+								if (glinternalFormat!=GL_LUMINANCE8 && glinternalFormat!=GL_RGBA8) {
+									printf("PTB-ERROR: The image is of a high precision (HDR) format, not of a standard 8bpc (LDR) format.\n");
+									printf("PTB-ERROR: Such HDR textures have very high VRAM memory demands.\n");
+								}
+								
+								printf("PTB-ERROR: The most likely cause of failure is that your graphics hardware doesn't have sufficient amounts of\n");
+								printf("PTB-ERROR: free VRAM memory. Try to reduce the precision and/or size of your texture image to the lowest\n");
+								printf("PTB-ERROR: acceptable setting for your purpose.\n");
+								printf("PTB-ERROR: Read the online help for Screen MakeTexture? or Screen OpenOffscreenWindow? for information\n");
+								printf("PTB-ERROR: about how to reduce the number of color channels and/or precision of the texture.\n");
+								printf("PTB-ERROR: It may also help to reduce general VRAM memory consumption:\n");
+								printf("PTB-ERROR: Reduce the display resolution to the smallest acceptable resolution or disable the 2nd\n");
+								printf("PTB-ERROR: display of a dual-display setup if it isn't strictly needed for your study.\n");
+								printf("PTB-ERROR: Other than that you could upgrade to more powerful graphics hardware (more VRAM) or try to split\n");
+								printf("PTB-ERROR: your oversized image into multiple separate subimages and draw them sequentially to the screen.\n");
+								printf("PTB-ERROR: That way you'll be able to draw larger images, albeit at drastically lowered performance and more\n");
+								printf("PTB-ERROR: coding hazzle.\n\n");
+							}
+						}
+						
+						PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient VRAM memory.");
+					}
+					else {
+						// Some other error:
+						printf("\n\nPTB-ERROR: Texture creation failed! OpenGL reported the following error condition: %s.\n", gluErrorString(glerr));
+						PsychErrorExitMsg(PsychError_user, "Texture creation failed for unknown reason. You may want to contact the Psychtoolbox forum for help.");
+					}			
+				}
+			}	// End of error checking...
+		}  // End of dual-pass texture creation (check + create).
+	}  // End of new texture creation.
+	
+	// Stage 2: If its a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
 	if (texturetarget==GL_TEXTURE_2D || recycle) {
 	  // Special setup code for pot2 textures: Fill the empty power of two texture object with content:
 	  // We only fill a subrectangle (of sourceWidth x sourceHeight size) with our images content. The
@@ -413,96 +506,91 @@ if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
 	    glinternalFormat = win->textureinternalformat;
 	  }
 	}
-        
-        // New internal format requested?
-        if (gl_lastrequestedinternalFormat != glinternalFormat && !recycle) {
-            // Seems so...
-            gl_lastrequestedinternalFormat = glinternalFormat;
-            
-            // Query real internal format and params...
-            glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &gl_realinternalformat);
-            // If there is a mismatch between wish and reality, report it:
-            if (false || gl_realinternalformat != glinternalFormat) {
-                // Mismatch between requested format and format that the OpenGL has chosen:
-                printf("In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=%x\n", win->depth, gl_realinternalformat);
-                // Request sizes as well:
-                glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
-                glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
-                glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
-                glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
-                glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
-                printf("Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
-                fflush(NULL);
-            }
-        }
-        
-        ///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
-        if (win->textureOrientation == 1 && renderswap) {
-            // Turn off alpha-blending - We want the texture "as is", overwriting any previous
-            // framebuffer content completely!
-            glDisable(GL_BLEND);
-            glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-            glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-            glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-            glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-            
-            // Render full texture with swapped texture coords into lower-left corner of framebuffer:
-            glBegin(GL_QUADS);
-            //lower left
-            glTexCoord2f((GLfloat) 0, (GLfloat) 0);			//lower left vertex in texture
-            glVertex2f((GLfloat) 0, (GLfloat)0);			//upper left vertex in window
-            
-            //upper left
-            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) 0);		//upper left vertex in texture
-            glVertex2f((GLfloat) 0, (GLfloat)sourceWidth);		//lower left vertex in window
-            
-            //upper right
-            glTexCoord2f((GLfloat) sourceWidth, (GLfloat) sourceHeight);//upper right vertex in texture
-            glVertex2f((GLfloat) sourceHeight, (GLfloat) sourceWidth );	//lower right  vertex in window
-            
-            //lower right
-            glTexCoord2f((GLfloat) 0, (GLfloat) sourceHeight);		//lower right in texture
-            glVertex2f((GLfloat) sourceHeight, (GLfloat)0);		//upper right in window
-            glEnd();
 
-            // Assign proper dimensions, now that the texture is "reswapped to normal" :)
-            sourceHeight=PsychGetHeightFromRect(win->rect);
-            sourceWidth=PsychGetWidthFromRect(win->rect);
-            
-            PsychGetScreenSize(win->screenNumber, &screenWidth, &screenHeight);
-            
-            // Texture is now displayed/stored in the top-left corner of the framebuffer
-            // in its proper (upright 0 deg.) orientation. Let's make a screenshot and
-            // store it as a "new" texture into our current texture object - effectively
-            // transposing the texture into normal format:                        
-            glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, screenHeight - sourceHeight, sourceWidth, sourceHeight, 0);
-            
-            // Reenable alpha-blending:
-            glEnable(GL_BLEND);
-
-            // Flush the command buffers to enforce start of texture swap operation so that it
-            // really runs in parallel to the MakeTexture() C-Code...
-            glFlush();
-        }
-        
-        ///////// END OF EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
-                
-        // Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
-        if (!clientstorage) {
-            if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
-            win->textureMemory=NULL;
-            win->textureMemorySizeBytes=0;
-        }
-        
-        // Texture object ready for future use. Unbind it:
+	// New internal format requested?
+	if (gl_lastrequestedinternalFormat != glinternalFormat && !recycle) {
+		// Seems so...
+		gl_lastrequestedinternalFormat = glinternalFormat;
+		
+		// Query real internal format and params...
+		glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_INTERNAL_FORMAT, &gl_realinternalformat);
+		// If there is a mismatch between wish and reality, report it:
+		if (false || gl_realinternalformat != glinternalFormat) {
+			// Mismatch between requested format and format that the OpenGL has chosen:
+			printf("PTB-WARNING: In glTexImage2D: Mismatch between requested and real format: depth=%i, fcode=%x\n", win->depth, gl_realinternalformat);
+			printf("PTB-WARNING: Requested size = %i bits, real size = %i bits.\n", win->depth, gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits); 
+			printf("PTB-WARNING: This could mean that something went wrong when creating the texture!\n");
+			fflush(NULL);
+		}
+	}
+	
+	///////// EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
+	if (win->textureOrientation == 1 && renderswap) {
+		// Turn off alpha-blending - We want the texture "as is", overwriting any previous
+		// framebuffer content completely!
+		glDisable(GL_BLEND);
+		glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
+		glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		// Render full texture with swapped texture coords into lower-left corner of framebuffer:
+		glBegin(GL_QUADS);
+		//lower left
+		glTexCoord2f((GLfloat) 0, (GLfloat) 0);			//lower left vertex in texture
+		glVertex2f((GLfloat) 0, (GLfloat)0);			//upper left vertex in window
+		
+		//upper left
+		glTexCoord2f((GLfloat) sourceWidth, (GLfloat) 0);		//upper left vertex in texture
+		glVertex2f((GLfloat) 0, (GLfloat)sourceWidth);		//lower left vertex in window
+		
+		//upper right
+		glTexCoord2f((GLfloat) sourceWidth, (GLfloat) sourceHeight); //upper right vertex in texture
+		glVertex2f((GLfloat) sourceHeight, (GLfloat) sourceWidth );	//lower right  vertex in window
+		
+		//lower right
+		glTexCoord2f((GLfloat) 0, (GLfloat) sourceHeight);		//lower right in texture
+		glVertex2f((GLfloat) sourceHeight, (GLfloat)0);		//upper right in window
+		glEnd();
+		
+		// Assign proper dimensions, now that the texture is "reswapped to normal" :)
+		sourceHeight=PsychGetHeightFromRect(win->rect);
+		sourceWidth=PsychGetWidthFromRect(win->rect);
+		
+		PsychGetScreenSize(win->screenNumber, &screenWidth, &screenHeight);
+		
+		// Texture is now displayed/stored in the top-left corner of the framebuffer
+		// in its proper (upright 0 deg.) orientation. Let's make a screenshot and
+		// store it as a "new" texture into our current texture object - effectively
+		// transposing the texture into normal format:                        
+		glCopyTexImage2D(texturetarget, 0, glinternalFormat, 0, screenHeight - sourceHeight, sourceWidth, sourceHeight, 0);
+		
+		// Reenable alpha-blending:
+		glEnable(GL_BLEND);
+		
+		// Flush the command buffers to enforce start of texture swap operation so that it
+		// really runs in parallel to the MakeTexture() C-Code...
+		glFlush();
+	}
+	
+	///////// END OF EXPERIMENTAL SWAPRENDER->COPY-CODE ////////////////
+	
+	// Free system RAM backing memory buffer, if client storage extensions are not used for this texture:
+	if (!clientstorage) {
+		if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+		win->textureMemory=NULL;
+		win->textureMemorySizeBytes=0;
+	}
+	
+	// Texture object ready for future use. Unbind it:
 	glBindTexture(texturetarget, 0);
-        // Reset pixel storage parameter:
-        glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-  
-        // Finished!
-        return;
+	// Reset pixel storage parameter:
+	glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	
+	// Finished!
+	return;
 }
 
 /*

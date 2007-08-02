@@ -280,10 +280,10 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     // Open sequence grabber:
     // ======================
     
-	// Definition of a sequence grabber:
-	desc.componentType = SeqGrabComponentType;
-	desc.componentSubType = 0;
-	desc.componentManufacturer = 0;
+	// Definition of a sequence grabber video input source:
+	desc.componentType = SeqGrabChannelType;
+	desc.componentSubType = 'vide';
+	desc.componentManufacturer = 'appl';
 	desc.componentFlags = 0;
 	desc.componentFlagsMask = 0;
 	
@@ -296,12 +296,15 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 	
 	// Yes. Iterate over component list to find corresponding device:
 	mydevice = 0;
-	for (i=0; i<= deviceIndex; i++) mydevice = FindNextComponent(mydevice, &desc);
-	if (mydevice == 0) PsychErrorExitMsg(PsychError_internal, "Failed to locate associated sequence grabber for deviceIndex!");
+	for (i=0; i<= deviceIndex; i++) {
+		mydevice = FindNextComponent(mydevice, &desc);
+		if (mydevice == 0) break;
+	}
 	
+	if (mydevice == 0) PsychErrorExitMsg(PsychError_internal, "Failed to locate associated video capture device for deviceIndex!");
 	
-    // seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
-	seqGrab = OpenComponent(mydevice);
+    seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
+	// seqGrab = OpenComponent(mydevice);
     if (seqGrab == NULL) {
 		printf("PTB-ERROR: Failed to open sequence grabber video capture component for deviceIndex %i!", deviceIndex);
         PsychErrorExitMsg(PsychError_internal, "Failed to open requested sequence grabber for video capture!");
@@ -332,7 +335,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 
     // Create and setup video channel on sequence grabber:
     sgchanptr = &(vidcapRecordBANK[slotid].sgchanVideo);
-    error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
+    error = SGNewChannelFromComponent(seqGrab, sgchanptr, mydevice);
     if (error == noErr) {
         // Retrieve size of the capture rectangle - and therefore size of
         // our GWorld for offscreen rendering:
@@ -412,7 +415,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
         }
 
         // Create and setup video channel on sequence grabber:
-        error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
+        error = SGNewChannelFromComponent(seqGrab, sgchanptr, mydevice);
         if (error !=noErr) {
           DisposeGWorld(vidcapRecordBANK[slotid].gworld);
           vidcapRecordBANK[slotid].gworld = NULL;

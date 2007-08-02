@@ -209,8 +209,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Do we need additional depth buffer attachments?
 	needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 	
-	// Do we need separate streams for stereo? Only for OpenGL quad-buffered mode:
-	needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo) ? TRUE : FALSE;
+	// Do we need separate streams for stereo? Only for OpenGL quad-buffered mode and dual-window stereo mode:
+	needseparatestreams = (windowRecord->stereomode == kPsychOpenGLStereo || windowRecord->stereomode == kPsychDualWindowStereo) ? TRUE : FALSE;
 
 	// Do we need some intermediate image processing?
 	needimageprocessing= (imagingmode & kPsychNeedImageProcessing) ? TRUE : FALSE;
@@ -269,7 +269,28 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->finalizedFBO[1]=fbocount;
 	fbocount++;
 
-	// Now we preinit all further stages with the finalizedFBO assignment. This way 
+	if (windowRecord->stereomode == kPsychDualWindowStereo) {
+		// Dual-window stereo is a special case: This window contains the imaging pipeline for
+		// both views, but its OpenGL context and framebuffer only represents the left-view channel.
+		// The right-view channel is represented by a slave window and its associated context. We
+		// create a framebuffer object and attach it to finalizedFBO[1]. This way, the final left view
+		// stimulus image gets blitted directly into the system framebuffer for this window, but the
+		// right view stimulus gets blitted into our real finalizedFBO[1]. PsychPreflipOperations() will
+		// perform a last blitcopy operation at the end of pipeline processing, where it copies the content
+		// of finalizedFBO[1] into the real system framebuffer for the onscreen window which represents the
+		// user visible right view.
+		
+		// This is by default always a standard 8bpc fixed point RGBA8 framebuffer without stencil- and z-buffers etc.
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), GL_RGBA8, FALSE, winwidth, winheight)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
+		}
+		
+		windowRecord->finalizedFBO[1]=fbocount;
+		fbocount++;
+	}
+
+	// Now we preinit all further stages with the finalizedFBO assignment.
 	
 	if (needfastbackingstore) {
 		// We need at least the 1st level drawBufferFBO's as rendertargets for all
@@ -666,6 +687,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 				// applies to non-imaging mode...
 			break;
 			
+			case kPsychDualWindowStereo:
+				// Nothing to do for now.
+			break;
+			
 			default:
 				PsychErrorExitMsg(PsychError_internal, "Unknown stereo mode encountered! FIX SCREENOpenWindow.c to catch this at the appropriate place!\n");
 		}
@@ -980,20 +1005,28 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 			// Attach the texture as depth buffer...
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
 			PsychTestForGLErrors();
-			// ... and as stencil buffer ...
-			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
-			if (glGetError()) {
-                // Attaching stencil buffer doesnt work :( We try to live without it...
-                while(glGetError());
-				if (PsychPrefStateGet_Verbosity()>1) {
-					printf("PTB-WARNING: OpenGL stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
-					printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
-					printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
-					printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers. According to specs,\n");
-					printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5200 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
-					printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.9.\n"); 
+			
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
+				// ... and as stencil buffer ...
+				glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
+				if (glGetError()) {
+					// Attaching stencil buffer doesnt work :( We try to live without it...
+					while(glGetError());
+					if (PsychPrefStateGet_Verbosity()>1) {
+						printf("PTB-WARNING: OpenGL stencil buffers not supported in imagingmode by your hardware. This won't affect Screen 2D drawing functions and won't affect\n");
+						printf("PTB-WARNING: the majority of OpenGL (MOGL) 3D drawing code either, but OpenGL code that needs a stencil buffer will misbehave or fail in random ways!\n");
+						printf("PTB-WARNING: If you need to use such code, you'll either have to disable the internal imaging pipeline, or carefully work-around this limitation by\n");
+						printf("PTB-WARNING: proper modifications and testing of the affected code. Good luck... Alternatively, upgrade your graphics hardware or drivers. According to specs,\n");
+						printf("PTB-WARNING: all gfx-cards starting with GeForceFX 5200 on Windows and Linux and all cards on Intel-Macs except the Intel GMA cards should work, whereas\n");
+						printf("PTB-WARNING: none of the PowerPC hardware is supported as of OS-X 10.4.9.\n"); 
+					}
 				}
-            }
+			}
+			else {
+				// Override: Do not attach stencil attachment!
+				(*fbo)->stexid = 0;
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Won't attach a stencil buffer to FBO due to user override...\n"); 
+			}
 		}
 		else {
 			// Packed depth+stencil textures unsupported :( 
@@ -1009,11 +1042,18 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 			// Attach the texture as depth buffer...
 			glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_TEXTURE_RECTANGLE_EXT, (*fbo)->ztexid, 0);
 			
-			// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
-			glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
-			glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
-			glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, width, height);
-			glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
+			if (!(PsychPrefStateGet_ConserveVRAM() & kPsychDontAttachStencilToFBO)) {
+				// Create and attach renderbuffer as a stencil buffer of 8 bit depths:
+				glGenRenderbuffersEXT(1, (GLuint*) &((*fbo)->stexid));
+				glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, (*fbo)->stexid);
+				glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8_EXT, width, height);
+				glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, (*fbo)->stexid);
+			}
+			else {
+				// Override: Do not attach stencil attachment!
+				(*fbo)->stexid = 0;
+				if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychCreateFBO(): Pathway-2: Won't attach a stencil buffer to FBO due to user override...\n"); 
+			}
 			
 			// See if we are framebuffer complete:
 			fborc = glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT);

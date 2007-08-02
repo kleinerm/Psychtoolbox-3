@@ -96,6 +96,8 @@ static char useString[] = "oldPreferenceValue = Screen('Preference', preferenceN
 //                                                         0             1                2
 static char synopsisString[] = 
 	"Get or set a Psychtoolbox preference."
+	"Preference settings are global - they affect all operations of a module until changed."
+	""
 	"\noldBool = Screen('Preference', 'IgnoreCase', [bool]);"
 	"\ntick0Secs = Screen('Preference', 'Tick0Secs', tick0Secs);"
 	"\npsychTableVersion = Screen('Preference', 'PsychTableVersion');"
@@ -106,9 +108,11 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'DefaultTextYPositionIsBaseline', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
+	"\n\nWorkaround flags to work around all kind of deficient drivers and hardware:\n"
+	"See 'help ConserveVRAMSettings' for settings and their effect.\n"
 	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
-	"\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
-	"\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);"
+	"\n\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
+	"\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);\n"
 	"\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"

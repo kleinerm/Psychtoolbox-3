@@ -89,6 +89,7 @@ typedef enum  {
         kPsychAnaglyphGRStereo = 7,       // Stereo via color filter glasses (Anaglyph principle): Green-Red
         kPsychAnaglyphRBStereo = 8,       // Stereo via color filter glasses (Anaglyph principle): Red-Blue
         kPsychAnaglyphBRStereo = 9,       // Stereo via color filter glasses (Anaglyph principle): Blue-Red
+		kPsychDualWindowStereo = 10		  // Stereo for dual-display setups, where each view is rendered into its own onscreen window. (Imaging pipe only!)
 } PsychStereoDisplayType;
 
 
@@ -161,6 +162,8 @@ typedef struct {
 #define kPsychOverrideWglChoosePixelformat 4
 // Do not use separate GL contexts for PTB vs. MOGL on f%%%% M$-Windows and its broken drivers: 
 #define kPsychDisableContextIsolation 8
+// Do not attach stencil buffer attachments to framebuffer objects in order to work around broken drivers:
+#define kPsychDontAttachStencilToFBO 16
 
 //function protoptypes
 
