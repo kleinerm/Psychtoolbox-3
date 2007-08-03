@@ -19,6 +19,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 % 08/02/07 dhb  Optional pass of nInputLevels.
 %          dhb  Don't allow a long string of zeros at the start.
 %          dhb  Reduce redundant code for higher order terms by pulling out of switch
+% 08/03/07 dhb  Debug.  Add call to MakeMonotonic for first three components.
 
 % Set nInputLevels
 if (nargin < 2 | isempty(nInputLevels))
@@ -106,7 +107,10 @@ switch(cal.describe.gamma.fitType)
 end
 
 % Fix contingous zeros at start problem
-mGammatFit1 = FixZerosAtStart(mGammaFit1);
+mGammaFit1 = FixZerosAtStart(mGammaFit1);
+for j = 1:size(mGammaFit1,2)
+    mGammaFit1(:,j) = MakeMonotonic(mGammaFit1(:,j));
+end
 
 % Handle higher order terms, which are just fit with a polynomial
 if (cal.nPrimaryBases > 1)
@@ -133,19 +137,19 @@ return
 % The OS/X routines need the fit gamma function to be monotonically
 % increasing.  One way that sometimes fails is when a whole bunch of
 % entries at the start are zero.  This routine fixes that up.
-function output = FixZerosAtStart(input)
+function output = FixZerosAtStart(input,nPrimaryBases)
 
 output = input;
-for i = 1:size(input,2)
-    for j = 1:size(input,1)
+for j = 1:size(input,2)
+    for i = 1:size(input,1)
         if (input(i,j) > 0)
             break;
         end
     end
-    if (j == size(input,1))
+    if (i == size(input,1))
         error('Entire passed gamma function is zero');
     end
-    output(1:j,i) = linspace(0,min([0.0001 input(j+1,i)/2]),j)';
+    output(1:i,j) = linspace(0,min([0.0001 input(i+1,j)/2]),i)';
 end
 
 return
