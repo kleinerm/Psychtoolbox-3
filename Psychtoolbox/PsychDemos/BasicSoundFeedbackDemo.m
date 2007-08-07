@@ -71,15 +71,15 @@ while KbCheck; end;
 InitializePsychSound(1);
 
 % Provide some debug output:
-%PsychPortAudio('Verbosity', 10);
+PsychPortAudio('Verbosity', 10);
 
-if (reqlatency == 0) && duplex
+if (reqlatency == 0) & duplex
     % Special case: Full-duplex mode with minimum latency. We bypass Matlab
     % by activating PsychPortAudios full-duplex monitoring mode. The driver
     % itself will feed back all captured sound to the outputs with lowest
     % possible latency. However we don't have any control over latency or
     % sound and this only works on full-duplex hardware...
-    pa = PsychPortAudio('Open', [], 4+2+1, 2, freq, 2);
+    pa = PsychPortAudio('Open', [], 4+2+1, 2, freq, 2, [], 0.010);
     PsychPortAudio('Start', pa, 0, 0, 1);
     while ~KbCheck
         WaitSecs(0.5);
@@ -99,7 +99,7 @@ if ~duplex
     painput = PsychPortAudio('Open', [], 2, 2, freq, 2);
 else
     % Same procedure, but open for full-duplex operation:
-    painput = PsychPortAudio('Open', [], 2+1, 2, freq, 2);
+    painput = PsychPortAudio('Open', [], 2+1, 2, freq, 2, [], 0.010);
     % Output- and input device are the same...
     paoutput = painput;
 end
