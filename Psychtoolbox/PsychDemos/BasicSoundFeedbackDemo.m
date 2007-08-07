@@ -73,6 +73,24 @@ InitializePsychSound(1);
 % Provide some debug output:
 %PsychPortAudio('Verbosity', 10);
 
+if (reqlatency == 0) && duplex
+    % Special case: Full-duplex mode with minimum latency. We bypass Matlab
+    % by activating PsychPortAudios full-duplex monitoring mode. The driver
+    % itself will feed back all captured sound to the outputs with lowest
+    % possible latency. However we don't have any control over latency or
+    % sound and this only works on full-duplex hardware...
+    pa = PsychPortAudio('Open', [], 4+2+1, 2, freq, 2);
+    PsychPortAudio('Start', pa, 0, 0, 1);
+    while ~KbCheck
+        WaitSecs(0.5);
+        s=PsychPortAudio('GetStatus', pa);
+        disp(s);
+    end
+    PsychPortAudio('Stop', pa);
+    PsychPortAudio('Close');
+    return;
+end
+
 if ~duplex
     % Open the default audio device [], with mode 2 (== Only audio capture),
     % and a required latencyclass of 2 == low-latency mode, as well as
@@ -102,10 +120,9 @@ if duplex
 end
 
 % Start audio capture immediately and wait for the capture to start.
-% Return estimated timestamp of when the first sample hit the
-% microphone/sound input jack. We set the number of 'repetitions' to zero,
-% i.e. record until recording is manually stopped.
-capturestart = PsychPortAudio('Start', painput, 0, 0, 1);
+% We set the number of 'repetitions' to zero, i.e. record/play until
+% manually stopped.
+painputstart = PsychPortAudio('Start', painput, 0, 0, 1);
 
 % Wait for at least lat secs of sound data to become available: This
 % directly defines a lower bound on real feedback latency. Its also a weak
@@ -118,7 +135,7 @@ while availsecs < lat
 end
 
 % Quickly readout available sound and initialize sound output buffer with it:
-[audiodata offset]= PsychPortAudio('GetAudioData', painput);
+[audiodata offset overflow capturestart]= PsychPortAudio('GetAudioData', painput);
 
 if ~duplex
     % Feed everything into the initial sound output buffer:
@@ -130,7 +147,7 @@ if ~duplex
 else
     % Duplex mode: We don't get separate timestamps for capture and
     % playback yet. Set them to be the same - The best we can do for now...
-    playbackstart = capturestart;
+    playbackstart = painputstart;
 end
 
 % Now the playback engine should output the first lat msecs of our sound,

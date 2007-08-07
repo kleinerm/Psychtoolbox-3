@@ -44,7 +44,7 @@
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "[ret1, ret2, ...] = Screen('HookFunction', windowPtr, 'Subcommand', 'HookName', arg1, arg2, arg3, arg4);";
-//                                                               1           2             3          4     5     6     7
+//																		1           2             3          4     5     6     7
 static char synopsisString[] = 
     "Manage Screen processing hook chains. Hook chains are a way to extend PTBs behaviour with plugins for generic processing or "
 	"fast image processing. They should allow to interface PTB seamlessly with 3rd party special response collection devices or "
@@ -114,6 +114,10 @@ static char synopsisString[] =
 	"Screen('HookFunction', windowPtr, 'DumpAll'); \n"
 	"Print out all chains for the given onscreen window 'windowPtr' to the Matlab console in a human readable format - Useful for debugging."
 	"\n\n"
+	"oldImagingMode = Screen('HookFunction', proxyPtr, 'ImagingMode' [, imagingMode]); \n"
+	"Change or query imagingMode flags of provided proxy window 'proxyPtr' to 'imagingMode'. Proxy windows are used to define "
+	"image processing operations, mostly for Screen('TransformTexture'). Returns old imaging mode."
+	"\n\n"
 	"General notes:\n\n"
 	"* Hook chains are per onscreen window, so each window can have a different configuration and enable state.\n"
 	"* Read all available documentation on the Psychtoolbox imaging pipeline in 'help PsychGLImageprocessing', the PsychDocumentation folder "
@@ -154,10 +158,12 @@ PsychError SCREENHookFunction(void)
 	if (strcmp(cmdString, "DumpAll")==0) cmd=8;
 	if (strcmp(cmdString, "ListAll")==0) cmd=9;
 	if (strcmp(cmdString, "Edit")==0)   cmd=10;
+	if (strcmp(cmdString, "ImagingMode")==0) cmd=11;
+	
 	if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
 	
 	// Need hook name?
-	if(cmd!=9 && cmd!=8) {
+	if(cmd!=9 && cmd!=8 && cmd!=11) {
 		// Get it:
 		PsychAllocInCharArg(3, kPsychArgRequired, &hookString);
 	}
@@ -291,6 +297,17 @@ PsychError SCREENHookFunction(void)
 			PsychCopyOutDoubleArg(6, FALSE, luttexid1);
 		break;
 
+		case 11: // Change imagingMode flags for a proxy window:
+			if (windowRecord->windowType!=kPsychProxyWindow) PsychErrorExitMsg(PsychError_user, "In 'ImagingMode' Invalid windowPtr provided. Must be a proxy window!");
+			PsychCopyOutDoubleArg(1, FALSE, (double) windowRecord->imagingMode);
+			
+			luttexid1 = -1;
+			PsychCopyInDoubleArg(3, FALSE, &luttexid1);
+			if (luttexid1 < 0 && luttexid1!=-1) PsychErrorExitMsg(PsychError_user, "In 'ImagingMode' Invalid imagingMode flags provided. Must be positive!");
+			if (luttexid1!=-1) {
+				windowRecord->imagingMode = (unsigned int) luttexid1;
+			}
+		break;
 	}
 	
     // Done.

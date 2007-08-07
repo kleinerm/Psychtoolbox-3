@@ -18,7 +18,9 @@ function StereoDemo(stereoMode)
 %
 % 3 == Same, but with lefteye=bottom.
 %
-% 4 == Free fusion (lefteye=left, righteye=right)
+% 4 == Free fusion (lefteye=left, righteye=right): This - together wit a
+% screenid of zero - is what you'll want to use on MS-Windows dual-display
+% setups for stereo output.
 %
 % 5 == Cross fusion (lefteye=right ...)
 %
@@ -29,6 +31,12 @@ function StereoDemo(stereoMode)
 % 8 == Red-Blue
 % 9 == Blue-Red
 %
+% 10 == Dual-Window stereo: Open two onscreen windows, first one will
+% display left-eye view, 2nd one right-eye view. Direct all drawing and
+% flip commands to the first window, PTB will take care of the rest. This
+% mode is mostly useful for dual-display stereo on MacOS/X. It only works
+% on reasonably modern graphics hardware, will abort with an error on
+% unsupported hardware.
 %
 % Authors:
 % Finnegan Calabro  - fcalabro@bu.edu
@@ -36,7 +44,9 @@ function StereoDemo(stereoMode)
 %
 
 if nargin < 1
-    stereoMode=1;
+    % When no stereoMode is given, we start with Anaglyph stereo, a safe
+    % choice on any display hardware...
+    stereoMode=8;
 end;
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
@@ -62,6 +72,17 @@ try
        scrnNum = 0;
     end
 
+    % Dual display dual-window stereo requested?
+    if stereoMode == 10
+        % Yes. Do we have at least two separate displays for both views?
+        if length(Screen('Screens')) < 2
+            error('Sorry, for stereoMode 10 you''ll need at least 2 separate display screens in non-mirrored mode.');
+        end
+        
+        % Assign left-eye view (the master window) to main display:
+        scrnNum = 0;
+    end
+    
     % Stimulus settings:
     numDots = 1000;
     vel = 1;   % pix/frames
@@ -80,6 +101,17 @@ try
     % Open double-buffered onscreen window with the requested stereo mode:
     [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode);
 
+    if stereoMode == 10
+        % In dual-window, dual-display mode, we open the slave window on
+        % the secondary screen. Please note that, after opening this window
+        % with the same parameters as the "master-window", we won't touch
+        % it anymore until the end of the experiment. PTB will take care of 
+        % managing this window automatically as appropriate for a stereo
+        % display setup. That is why we are not even interested in the window
+        % handles of this window:
+        Screen('OpenWindow', 1, BlackIndex(1), [], [], [], stereoMode);
+    end
+    
     % Initially fill left- and right-eye image buffer with black background
     % color:
     Screen('SelectStereoDrawBuffer', windowPtr, 0);
@@ -89,7 +121,7 @@ try
 
     % Show cleared start screen:
     Screen('Flip', windowPtr);
-
+    
     % Set up alpha-blending for smooth (anti-aliased) drawing of dots:
     Screen('BlendFunction', windowPtr, 'GL_SRC_ALPHA', 'GL_ONE_MINUS_SRC_ALPHA');
 
@@ -104,7 +136,8 @@ try
 
     % Perform a flip to sync us to vbl and take start-timestamp in t:
     t = Screen('Flip', windowPtr);
-
+    onset = t;
+    
     % Run until a key is pressed:
     while ~KbCheck
         % Compute dot positions and offsets for this frame:
@@ -131,7 +164,7 @@ try
 
         % Take timestamp of stimulus-onset after displaying the new stimulus
         % and record it in vector t:
-        onset = Screen('Flip', windowPtr);
+        onset = Screen('Flip', windowPtr, onset+0.001);
         t = [t onset];
     end
 

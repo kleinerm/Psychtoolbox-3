@@ -740,6 +740,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	// Linear filtering on non-capable hardware via shader emulation?
 	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
+		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
 		glUseProgram((GLuint) source->textureFilterShader);
 		
 		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
@@ -778,6 +779,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		// or for procedural texture shading/on-the-fly texture synthesis. These can be
 		// assigned in Screen('MakeTexture') for procedural texture shading or via a
 		// optional shader handle to Screen('DrawTexture');
+		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture shader, but your hardware doesn't support GLSL shaders.");
 		glUseProgram((GLuint) (-1 * source->textureFilterShader));
 	}
 	

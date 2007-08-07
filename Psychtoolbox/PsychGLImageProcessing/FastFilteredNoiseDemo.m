@@ -1,5 +1,5 @@
-function FastFilteredNoiseDemo(filtertype, rectSize, kwidth, scale, syncToVBL, dontclear, validate)
-% FastFilteredNoiseDemo([filtertype=1][, rectSize=128][, kwidth=5][, scale=1][, syncToVBL=1][, dontclear=0][, validate=0])
+function FastFilteredNoiseDemo(validate, filtertype, rectSize, kwidth, scale, syncToVBL, dontclear)
+% FastFilteredNoiseDemo([validate=1][, filtertype=1][, rectSize=128][, kwidth=5][, scale=1][, syncToVBL=1][, dontclear=0])
 %
 % Demonstrates how to generate, filter and draw noise patches on-the-fly 
 % in a fast way by use of GLSL fragment shaders.
@@ -55,23 +55,27 @@ AssertOpenGL;
 % Assign default values for all unspecified input parameters:
 numRects = 1;
 
-if nargin < 1 || isempty(filtertype)
+if nargin < 1 || isempty(validate)
+    validate = 1; % Perform validation of the filter result by default:
+end
+
+if nargin < 2 || isempty(filtertype)
     filtertype = 1; % Gaussian blur by default.
 end
 
-if nargin < 2 || isempty(rectSize)
+if nargin < 3 || isempty(rectSize)
     rectSize = 128; % Default patch size is 128 by 128 noisels.
 end
 
-if nargin < 3 || isempty(kwidth)
+if nargin < 4 || isempty(kwidth)
     kwidth = 5; % Kernel width is 5 x 5 by default.
 end
 
-if nargin < 4 || isempty(scale)
+if nargin < 5 || isempty(scale)
     scale = 1; % Don't up- or downscale patch by default.
 end
 
-if nargin < 5 || isempty(syncToVBL)
+if nargin < 6 || isempty(syncToVBL)
     syncToVBL = 1; % Synchronize to vertical retrace by default.
 end
 
@@ -81,7 +85,7 @@ else
     asyncflag = 2;
 end
 
-if nargin < 6 || isempty(dontclear)
+if nargin < 7 || isempty(dontclear)
     dontclear = 0; % Clear backbuffer to background color by default after each bufferswap.
 end
 
@@ -90,10 +94,6 @@ if dontclear > 0
     % bufferswap. In that case it is your responsibility to take care of
     % that, but you'll might save up to 1 millisecond.
     dontclear = 2;
-end
-
-if nargin < 7 || isempty(validate)
-    validate = 0;
 end
 
 try
@@ -106,7 +106,7 @@ try
     % Open fullscreen onscreen window on that screen. Background color is
     % gray, double buffering is enabled. Return a 'win'dowhandle and a
     % rectangle 'winRect' which defines the size of the window:
-    [win, winRect] = Screen('OpenWindow', screenid, 128);
+    [win, winRect] = Screen('OpenWindow', screenid, 128); %, [],[],[],[],[],kPsychNeedFastBackingStore);
     
     % Build a filter kernel:
     stddev = kwidth / 3;
@@ -120,15 +120,14 @@ try
             kernel = fspecial('prewitt');
     end
 
-stype = 0;
+stype = 2;
 channels = 1;
 
     if filtertype > 0
         % Build shader from kernel:
         shader = EXPCreateStatic2DConvolutionShader(kernel, channels, 1, stype,1);
         %shader = Create2DGaussianBlurShader;
-        % Enable shader: It will apply to any further drawing operation:
-        glUseProgram(shader);
+        convoperator = CreateGLOperator(win, [], shader, 'Convolution operator.');
     end
 
     glFinish;
@@ -157,9 +156,13 @@ channels = 1;
     glFinish;
     tstart = GetSecs;
     endtime = tstart + 5;
+    xtex = 0;
     
     % Run noise image drawing loop for 20 seconds.
     while GetSecs < endtime
+        % Increase our frame counter:
+        count = count + 1;
+
         % Generate and draw 'numRects' noise images:
         for i=1:numRects
             % Compute noiseimg noise image matrix with Matlab:
@@ -169,11 +172,12 @@ channels = 1;
 
             if validate
                 noiseimg=uint8(noiseimg);
+                noiseimg=double(noiseimg);
             end
             
             % Convert it to a texture 'tex':
-            tex=Screen('MakeTexture', win, noiseimg);
-
+            tex=Screen('MakeTexture', win, noiseimg,[],[],0);
+            
             % Draw the texture into the screen location defined by the
             % destination rectangle 'dstRect(i,:)'. If dstRect is bigger
             % than our noise image 'noiseimg', PTB will automatically
@@ -183,15 +187,20 @@ channels = 1;
             % neighbour filtering. This is important to preserve the
             % statistical independence of the noise pixels in the noise
             % texture! The default bilinear filtering would introduce local
-            % correlatio
+            % correlations:
             if validate
                 glFinish;
                 tic
-                Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
+                % Apply filter to texture:
+                xtex = Screen('TransformTexture', tex, convoperator, [], xtex);
+                Screen('DrawTexture', win, xtex, [], dstRect(i,:), [], 0);
+                %Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0, [], [], shader);
                 glFinish;
-                gpu = toc
+                gput(count) = toc;
             else                
-                Screen('DrawTexture', win, tex, [], dstRect(i,:), [], 0);
+                % Apply filter to texture:
+                xtex = Screen('TransformTexture', tex, convoperator, [], xtex);
+                Screen('DrawTexture', win, xtex, [], dstRect(i,:), [], 0);
             end
             
             if validate
@@ -199,7 +208,7 @@ channels = 1;
                 noiseimg = single(noiseimg);
                 tic
                 ref = conv2(noiseimg, kernel, 'same');
-                cpu = toc
+                cput(count) = toc;
                 ref = uint8(0.5 + ref);
             end
             
@@ -215,27 +224,20 @@ channels = 1;
         
         if validate
             gpu = (Screen('GetImage', win, dstRect(1,:)));
+            %gpu = Screen('GetImage', xtex);
             difference = gpu(:,:,1) - ref;
             difference = difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel));
             maxdiff = max(max(difference))
-        end
-        
-        % Increase our frame counter:
-        count = count + 1;
+        end        
     end
 
     % We're done: Output average framerate:
     glFinish;
     telapsed = GetSecs - tstart
     updaterate = count / telapsed
-    
-    % Disable shader: Standard fixed-function pipeline is activated.
-    glUseProgram(0);
-
     if validate
+        avgspeedup=mean(cput(2:end)) / mean(gput(2:end))
         imagesc(difference);
-        figure;
-        imagesc(noiseimg);
     end
 
     % Done. Close Screen, release all ressouces:

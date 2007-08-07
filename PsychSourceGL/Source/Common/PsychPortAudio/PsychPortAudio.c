@@ -41,6 +41,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioPlayBack 1
 #define kPortAudioCapture  2
 #define kPortAudioFullDuplex 3
+#define kPortAudioMonitoring 4
 
 // Maximum number of audio devices we handle:
 #define MAX_PSYCH_AUDIO_DEVS 10
@@ -51,7 +52,14 @@ typedef struct PsychPADevice {
 	PaStream *stream;			// Pointer to associated portaudio stream.
 	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
 	PaHostApiTypeId hostAPI;	// Type of host API.
-	double	 startTime;			// Requested playback start time in system time (secs). Returns real start time after start.
+	double	 startTime;			// Requested start time in system time (secs). Returns real start time after start.
+								// The real start time is the time when the first sample hit the speaker in playback or full-duplex mode.
+								// Its the time when the first sample was captured in pure capture mode - or when the first sample should
+								// be captured in pure capture mode with scheduled start. Whenever playback is active, startTime only
+								// refers to the output stage.
+	double	 captureStartTime;	// Time when first captured sample entered the sound hardware in system time (secs). This information is
+								// redundant in pure capture mode - its identical to startTime. In full duplex mode, this is an estimate of
+								// when the first sample was captured, whereas startTime is an estimate of when the first sample was output.
 	int		 state;				// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing.
 	int		 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
@@ -114,8 +122,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// Sound buffer attached to stream? If no sound buffer
 	// is attached, we can't continue and tell the engine to abort
 	// processing of this stream:
-    if ((dev == NULL) || ((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
-		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL))) return(paAbort);
+	if (dev == NULL) return(paAbort);
+	
+	// Check if all required buffers are there. In monitoring mode, we don't need them.
+    if ((dev->opmode & kPortAudioMonitoring == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
+		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)))) return(paAbort);
 
 	// Count total number of calls:
 	dev->paCalls++;
@@ -202,6 +213,12 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			
 			// Store our measured PortAudio + CoreAudio + Driver + Hardware latency:
 			dev->predictedLatency = firstsampleonset - now;
+			
+			if (dev->opmode & kPortAudioCapture) {
+				// Store estimated capturetime in captureStartTime. This is only important in
+				// full-duplex mode, redundant in pure half-duplex capture mode:
+				dev->captureStartTime = (double) timeInfo->inputBufferAdcTime;
+			}
 		}
 		else {
 			// ASIO or unknown. ASIO needs to be checked, which category is correct.
@@ -222,6 +239,12 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 			// Assign predicted (remapped to our time system) audio onset time for this buffer:
 			firstsampleonset = now + firstsampleonset + dev->latencyBias;
+			
+			if (dev->opmode & kPortAudioCapture) {
+				// Store estimated capturetime in captureStartTime. This is only important in
+				// full-duplex mode, redundant in pure half-duplex capture mode:
+				dev->captureStartTime = now + ((double) (timeInfo->inputBufferAdcTime - timeInfo->currentTime));
+			}
 		}
 		
 		if (FALSE) {
@@ -279,6 +302,21 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		}
 	}
     
+	// This code only executes in live monitoring mode - a mode where all
+	// sound data is fed back immediately with shortest possible latency
+	// from input to output, without any involvement of Matlab/Octave code:
+	if (dev->opmode & kPortAudioMonitoring) {
+		// Copy input buffer to output buffer:
+		memcpy(out, in, framesPerBuffer * channels * sizeof(float));
+		
+		// Store updated positions in device structure:
+		dev->playposition = playposition + (framesPerBuffer * channels);
+		dev->recposition = dev->playposition;
+		
+		// Return from callback:
+		return(paContinue);
+	}
+	
 	// This code retrieves and stores captured sound data, if any:
 	if (dev->opmode & kPortAudioCapture) {
 		// This is the simple case (compared to playback processing).
@@ -559,7 +597,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	// Request optional mode of operation:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
-	if (mode < 1 || mode > 3) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid values are 1 to 3.");
+	if (mode < 1 || mode > 7) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid values are 1 to 7.");
 	
 	// if (mode==3) PsychErrorExitMsg(PsychError_unimplemented, "Sorry, full-duplex mode not yet implemented.");
 	
@@ -722,14 +760,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
 
 	// Try to create & open stream:
 	err = Pa_OpenStream(
-            &stream,													/* Return stream pointer here on success. */
-            ((mode & kPortAudioCapture) ?  &inputParameters : NULL),	/* Requested input settings, or NULL in pure playback case. */
-			((mode & kPortAudioPlayBack) ? &outputParameters : NULL),	/* Requested input settings, or NULL in pure playback case. */
-            freq,														/* Requested sampling rate. */
-            buffersize,													/* Requested buffer size. */
-            sflags,														/* Define special stream property flags. */
-            paCallback,													/* Our processing callback. */
-            &audiodevices[audiodevicecount]);							/* Our own device info structure */
+            &stream,															/* Return stream pointer here on success. */
+            ((mode & kPortAudioCapture) ?  &inputParameters : NULL),			/* Requested input settings, or NULL in pure playback case. */
+			((mode & kPortAudioPlayBack) ? &outputParameters : NULL),			/* Requested input settings, or NULL in pure playback case. */
+            freq,																/* Requested sampling rate. */
+            buffersize,															/* Requested buffer size. */
+            sflags,																/* Define special stream property flags. */
+            paCallback,															/* Our processing callback. */
+            &audiodevices[audiodevicecount]);									/* Our own device info structure */
             
 	if(err!=paNoError || stream == NULL) {
 			printf("PTB-ERROR: Failed to open audio device %i. PortAudio reports this error: %s \n", audiodevicecount, Pa_GetErrorText(err));
@@ -1128,8 +1166,10 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	// Copy out overrun flag:
 	PsychCopyOutDoubleArg(3, FALSE, (double) overrun);
 
-	// Return capture timestamp in system time of first captured sample in this session:
-	PsychCopyOutDoubleArg(4, FALSE, audiodevices[pahandle].startTime);
+	// Return capture timestamp in system time of first captured sample in this session. This is a bit problematic,
+	// in full-duplex mode, at least OS/X doesn't return separate timestamps, so we'll provide the playback onset time
+	// instead - the best we can do. In pure capture mode we get a capture timestamp...
+	PsychCopyOutDoubleArg(4, FALSE, (audiodevices[pahandle].captureStartTime > 0) ? audiodevices[pahandle].captureStartTime : audiodevices[pahandle].startTime);
 	
 	// Buffer ready.
 	return(PsychError_none);
@@ -1150,7 +1190,12 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 		"do its best to start the device at the requested time, but the accuracy of start depends on the "
 		"operating system, audio hardware and system load. If 'waitForStart' is set to non-zero value, ie "
 		"if PTB should wait for sound onset, then the optional return argument 'startTime' will contain an "
-		"estimate of when the first audio sample hit the speakers, i.e., the real start time.\n";
+		"estimate of when the first audio sample hit the speakers, i.e., the real start time.\n"
+		"Please note that the 'when' value always refers to playback, so it defines the starttime of "
+		"playback. The start time of capture is related to the start time of playback in duplex mode, "
+		"but it isn't the same. In pure capture mode (without playback), 'when' will be ignored and "
+		"capture always starts immediately. See the help for subfunction 'GetStatus' for more info on "
+		"the meaning of the different timestamps. ";
 		
 	static char seeAlsoString[] = "Open";	 
   	
@@ -1173,8 +1218,11 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
-	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].outputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound outputbuffer doesn't contain any sound to play?!?");
-	if ((audiodevices[pahandle].opmode & kPortAudioCapture) && (audiodevices[pahandle].inputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound inputbuffer not prepared/allocated for capture?!?");
+	if ((audiodevices[pahandle].opmode & kPortAudioMonitoring) == 0) {
+		// Not in monitoring mode: We must have in/outbuffers allocated:
+		if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].outputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound outputbuffer doesn't contain any sound to play?!?");
+		if ((audiodevices[pahandle].opmode & kPortAudioCapture) && (audiodevices[pahandle].inputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound inputbuffer not prepared/allocated for capture?!?");
+	}
 	if (audiodevices[pahandle].state > 0) PsychErrorExitMsg(PsychError_user, "Device already started.");
 
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &repetitions);
@@ -1197,6 +1245,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	audiodevices[pahandle].xruns = 0;	
 	audiodevices[pahandle].paCalls = 0;
 	audiodevices[pahandle].noTime = 0;
+	audiodevices[pahandle].captureStartTime = 0;
 	
 	// Reset recorded samples counter:
 	audiodevices[pahandle].recposition = 0;
@@ -1319,8 +1368,13 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	static char synopsisString[] = 
 		"Returns 'status', a struct with status information about the current state of device 'pahandle'.\n"
 		"The struct contains the following fields:\n"
-		"Playing: Can be 1 if playback or recording is active, or 0 if playback/recording is stopped or not yet started.\n"
-		"StartTime: Is the real start time of the audio stream after start of playback/recording.\n"
+		"Active: Can be 1 if playback or recording is active, or 0 if playback/recording is stopped or not yet started.\n"
+		"StartTime: Is the real start time of the audio stream after start of playback/recording. If both, playback and "
+		"recording are active (full-duplex mode), it is the start time of sound playback, ie an estimate of when the first "
+		"sample hit the speakers. Same goes for pure playback. \n"
+		"CaptureStartTime: Start time of audio capture (if any is active) - an estimate of when the first sound sample was "
+		"captured. In pure capture mode, this is nearly identical to StartTime, but whenever playback is active, StartTime and "
+		"CaptureStartTime will differ. CaptureStartTime doesn't take the user provided 'LatencyBias' into account.\n"
 		"PositionSecs is an estimate of the current stream playback position in seconds, its not totally accurate, because "
 		"it measures how much sound has been submitted to the sound system, not how much sound has left the "
 		"speakers, i.e., it doesn't take driver and hardware latency into account.\n"
@@ -1343,7 +1397,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*status;
-	const char *FieldNames[]={	"Playing", "StartTime", "PositionSecs", "RecordedSecs", "ReadSecs", "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency",
+	const char *FieldNames[]={	"Active", "StartTime", "CaptureStartTime", "PositionSecs", "RecordedSecs", "ReadSecs", "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency",
 								"LatencyBias", "SampleRate"};
 	int pahandle = -1;
 	int count = 0;
@@ -1365,10 +1419,11 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 13, FieldNames, &status);
+	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 14, FieldNames, &status);
 	
-	PsychSetStructArrayDoubleElement("Playing", 0, (audiodevices[pahandle].state == 2) ? 1 : 0, status);
+	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state == 2) ? 1 : 0, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
+	PsychSetStructArrayDoubleElement("CaptureStartTime", 0, audiodevices[pahandle].captureStartTime, status);
 	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].channels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("RecordedSecs", 0, ((double)(audiodevices[pahandle].recposition / audiodevices[pahandle].channels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("ReadSecs", 0, ((double)(audiodevices[pahandle].readposition / audiodevices[pahandle].channels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);

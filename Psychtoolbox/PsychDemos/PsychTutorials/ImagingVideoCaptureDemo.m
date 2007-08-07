@@ -20,7 +20,8 @@ try
     % Ask pipeline to horizontally flip/mirror the output image, so user
     % doesn't get confused by orientation of its mirror image ;-)
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
-    PsychImaging('AddTask', 'AllViews', 'GeometryCorrection');
+    %PsychImaging('AddTask', 'AllViews', 'FlipVertical');
+    PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/tmp/BezierCalibdata.mat');
 
     [win winRect]=PsychImaging('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
 
@@ -36,7 +37,7 @@ try
     glUniform1i(glGetUniformLocation(blurshader, 'Image'), 0);
     glUniform1i(glGetUniformLocation(blurshader, 'FilterMap'), 1);
     glUseProgram(0);
-    bluroperator = CreateGLProcessingOperatorFromShader(win, blurshader, 'Parametric box blur operator.');
+    bluroperator = CreateGLOperator(win, [], blurshader, 'Parametric box blur operator.');
     
     
     grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
@@ -87,4 +88,5 @@ try
     avgfps = count / telapsed
 catch
    Screen('CloseAll');
+   psychrethrow(psychlasterror);
 end;

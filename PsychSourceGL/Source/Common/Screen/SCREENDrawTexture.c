@@ -69,14 +69,21 @@ static char synopsisString[] =
 	"leave the green- and alpha-channel untouched, but it would multiply the blue channel with 0 - set it to zero blue intensity, and "
 	"it would multiply each texel in the red channel by 128/255 - reduce its intensity to 50%. The most interesting application of "
 	"'modulateColor' is drawing of arbitrary complex shapes of selectable color: Simply generate an all-white luminance texture of "
-	"arbitrary shape, possibly with alpha channel, then draw it with 'modulateColor' set to the wanted color and global alpha value. "
+	"arbitrary shape, possibly with alpha channel, then draw it with 'modulateColor' set to the wanted color and global alpha value.\n"
+	"'textureShader' (optional): If you provide a valid handle of a GLSL shader, this shader will be applied to the texture during "
+	"drawing. If the texture already has a shader assigned (via Screen('MakeTexture') or automatically by PTB for some reason), then "
+	"the shader provided here as 'textureShader' will silently override the shader assigned earlier. Application of shaders this way "
+	"is mostly useful for application of simple single-pass image processing operations to a texture, e.g., a simple blur or a "
+	"deinterlacing operation for a video texture. If you intend to use this texture multiple times or if you need more complex image "
+	"processing, e.g., multi-pass operations, better use the Screen('TransformTexture') command. It allows for complex operations to "
+	"be applied and is more flexible."
 	"\n\n"
 	"If you want to draw many textures to the same onscreen- or offscreen window, use the function Screen('DrawTextures'). "
 	"It accepts the same arguments as this function, but is optimized to draw many textures in one call.";
 	
 	// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-	static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor]);";
-	//                                               1              2                3             4                5                6              7				8
+	static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor] [, textureShader]);";
+	//                                               1              2                3             4                5                6              7				8					9
 
 	PsychWindowRecordType		*source, *target;
 	PsychRectType			sourceRect, targetRect, tempRect;
@@ -84,14 +91,15 @@ static char synopsisString[] =
 	int filterMode = 1;         // Default filter mode is bilinear filtering.
 	double globalAlpha = 1.0;   // Default global alpha is 1 == no effect.
 	PsychColorType	color;
-        
+	int textureShader, backupShader;
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(8));   	
+    PsychErrorExit(PsychCapNumInputArgs(9));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(0)); 
 	
@@ -146,8 +154,19 @@ static char synopsisString[] =
 		PsychSetGLColor(&color, target);
 	}
 
-    PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
-
+	// Assign optional override texture shader, if any provided:
+	textureShader = -1;
+    PsychCopyInIntegerArg(9, kPsychArgOptional, &textureShader);
+	if (textureShader > -1) {
+		backupShader = source->textureFilterShader;
+		source->textureFilterShader = -1 * textureShader;
+		PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+		source->textureFilterShader = backupShader;
+	}
+	else {
+		PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+	}
+	
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(target);
 
@@ -159,8 +178,8 @@ static char synopsisString[] =
 PsychError SCREENDrawTextures(void) 
 {
 	// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c 1 2 3 4 5 6 7 8
-	static char useString[] = "Screen('DrawTextures', windowPointer, texturePointer(s) [, sourceRect(s)] [, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)] [, modulateColor(s)]);";
-	//                                               1              2                    3                 4                      5                    6                 7				    8
+	static char useString[] = "Screen('DrawTextures', windowPointer, texturePointer(s) [, sourceRect(s)] [, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)] [, modulateColor(s)] [, textureShader]);";
+	//                                               1              2                    3                 4                      5                    6                 7				    8					9
 	
 	static char synopsisString[] = "Draw many textures at once, either one texture to many locations or many textures.\n"
 	"This function accepts the same parameters as Screen('DrawTexture'), but it is optimized for drawing many textures. "
@@ -183,6 +202,7 @@ PsychError SCREENDrawTextures(void)
 	int								numTexs, numdstRects, numsrcRects, i, j, nc, mc, nrsize, m, n, p, numAngles, numFilterModes, numAlphas, numRef;
 	double*							texids;
 	double							rotationAngle, globalAlpha, filterMode;
+	int textureShader, backupShader;
 	
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -190,7 +210,7 @@ PsychError SCREENDrawTextures(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreen GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(8));   	
+    PsychErrorExit(PsychCapNumInputArgs(9));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(0)); 
 	
@@ -333,6 +353,10 @@ PsychError SCREENDrawTextures(void)
 		PsychErrorExitMsg(PsychError_user, "Inconsistent number of arguments provided to Screen('DrawTextures').");
 	}
 
+	// Assign optional override texture shader, if any provided:
+	textureShader = -1;
+    PsychCopyInIntegerArg(9, kPsychArgOptional, &textureShader);
+
 	// Ok, everything consistent so far.
 	
 	// Texture blitting loop:
@@ -440,8 +464,16 @@ PsychError SCREENDrawTextures(void)
 			PsychErrorExitMsg(PsychError_user, "filterMode needs to be 0 for nearest neighbour filter, or 1 for bilinear filter, or 2 for mipmapped filter or 3 for mipmapped-linear filter.");    
 		}
 
-		// Perform blit operation for i'th texture:
-		PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+		// Perform blit operation for i'th texture, either with or without an override texture shader applied:
+		if (textureShader > -1) {
+			backupShader = source->textureFilterShader;
+			source->textureFilterShader = -1 * textureShader;
+			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+			source->textureFilterShader = backupShader;
+		}
+		else {
+			PsychBlitTextureToDisplay(source, target, sourceRect, targetRect, rotationAngle, filterMode, globalAlpha);	
+		}
 
 		// Next one...
 	}
