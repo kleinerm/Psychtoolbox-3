@@ -101,7 +101,7 @@ try
     screenid = max(Screen('Screens'));
 
     % Initialize OpenGL. We need it for the image processing:
-    InitializeMatlabOpenGL;
+    InitializeMatlabOpenGL([], [], 0);
     
     % Open fullscreen onscreen window on that screen. Background color is
     % gray, double buffering is enabled. Return a 'win'dowhandle and a

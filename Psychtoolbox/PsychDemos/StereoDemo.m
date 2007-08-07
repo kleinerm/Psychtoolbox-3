@@ -79,8 +79,13 @@ try
             error('Sorry, for stereoMode 10 you''ll need at least 2 separate display screens in non-mirrored mode.');
         end
         
-        % Assign left-eye view (the master window) to main display:
-        scrnNum = 0;
+        if ~IsWin
+            % Assign left-eye view (the master window) to main display:
+            scrnNum = 0;
+        else
+            % Assign left-eye view (the master window) to main display:
+            scrnNum = 1;
+        end
     end
     
     % Stimulus settings:
@@ -109,7 +114,12 @@ try
         % managing this window automatically as appropriate for a stereo
         % display setup. That is why we are not even interested in the window
         % handles of this window:
-        Screen('OpenWindow', 1, BlackIndex(1), [], [], [], stereoMode);
+        if IsWin
+            slaveScreen = 2;
+        else
+            slaveScreen = 1;
+        end
+        Screen('OpenWindow', slaveScreen, BlackIndex(slaveScreen), [], [], [], stereoMode);
     end
     
     % Initially fill left- and right-eye image buffer with black background
