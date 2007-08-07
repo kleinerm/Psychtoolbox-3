@@ -63,6 +63,9 @@ if ~isempty(findstr(imgfilename, '.hdr'))
     catch
         if continueOnError
             img = [];
+            warning(['HDR file ' imgfilename ' failed to load.']);
+            msg = psychlasterror;
+            disp(msg.message);
             return;
         else
             psychrethrow(psychlasterror);
@@ -75,6 +78,7 @@ if dispatched == 0
         error(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
     else
         img = [];
+        warning(['HDR file ' imgfilename ' is of unknown type. No loader available.']);
         return;
     end
 end

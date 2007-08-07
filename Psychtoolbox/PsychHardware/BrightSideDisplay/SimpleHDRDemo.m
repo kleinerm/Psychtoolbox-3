@@ -102,7 +102,7 @@ try
     % amount of memory and bandwidth though and they can't be anti-aliased
     % via bilinear filtering during drawing on current hardware - unless
     % you are happy with a framerate of 0.5 fps.
-    texid = Screen('MakeTexture', win, img, [], [], 1);
+    texid = Screen('MakeTexture', win, img, [], [], 2);
     
     rotAngle = 0;
     framecounter = 0;

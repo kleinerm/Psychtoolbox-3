@@ -70,6 +70,9 @@ end
 imfilenames = dir(imfilepattern)
 
 try
+    % Disable keypress output to Matlab window:
+    ListenChar(2);
+    
     % Find screen to display: We choose the one with the highest number,
     % assuming this is the HDR display:
     screenid=max(Screen('Screens'));
@@ -96,19 +99,6 @@ try
     Screen('TextSize', win, 40);
     Screen('TextStyle', win , 0);
 
-    % Load our bias and rescale shader:
-    glslnormalizer = LoadGLSLProgramFromFiles('ScaleAndBiasShader');
-    prebias = glGetUniformLocation(glslnormalizer, 'prescaleoffset');
-    postbias = glGetUniformLocation(glslnormalizer, 'postscaleoffset');
-    scalefactor = glGetUniformLocation(glslnormalizer, 'scalefactor');
-
-    % Activate it for setup:
-    glUseProgram(glslnormalizer);
-
-    % Set no bias to be applied:
-    glUniform1f(prebias, 0.0);
-    glUniform1f(postbias, 0.0);
-
     % Multiply all image values by a scaling factor: The HDR accepts
     % values between zero and infinity, but the useable range seems to be
     % zero (Dark) to something around 3000-4000. At higher values, it
@@ -119,8 +109,6 @@ try
     % their Siggraph 2004 paper its supposed to be more than 14000 levels,
     % covering the full operating range in steps of single JND's. Who
     % knows...
-    glUniform1f(scalefactor, 1.0);
-    glUseProgram(0);
 
     % Initial flip to black background:
     Screen('Flip', win);
@@ -151,30 +139,23 @@ try
             end
         end
         
-        % Build a Psychtoolbox 16 bpc half-float texture from the image array
-        % by setting the (optional) 'floatprecision' flag to 1. If you need
-        % even more precision you can provide the value 2 instead of 1,
-        % creating full 32 bpc float textures. These will take up twice the
-        % amount of memory and bandwidth though and they can't be anti-aliased
-        % via bilinear filtering during drawing on current hardware - unless
-        % you are happy with a framerate of 0.5 fps.
-        texid = Screen('MakeTexture', win, img, [], [], 1);
-            
+        % Build a Psychtoolbox 32 bpc float texture from the image array
+        % by setting the (optional) 'floatprecision' flag to 2.
+        texid = Screen('MakeTexture', win, img, [], 2, 2);
+
+        % Build also a version of the image that is quantized to 8 Bit:
+        quantimg = uint8((img / max(max(max(img)))) * 255 + 0.5);
+        ldrtexid = Screen('MakeTexture', win, quantimg, [], 2);
+        
         needupdate = 1;
         zoomset = 0;
         xleft=0;
         xtop=0;
         xright=-1;
         xbottom=-1;
+        hdrmode = 1;
         
-        while(needupdate)
-
-            % Enable texture shader, used for realtime intensity scaling:
-            glUseProgram(glslnormalizer);
-            
-            % Set scaling factor for texture:
-            glUniform1f(scalefactor, sf);
-            
+        while(needupdate)            
             % Compute source and destination regions for zoom mode:
             srcleft=min(xleft, xright);
             srctop=min(xtop, xbottom);
@@ -196,13 +177,22 @@ try
             
             % Draw selected srcrect region of our HDR image to selected
             % dstrect region of the screen:
-            Screen('DrawTexture', win, texid, srcrect, dstrect);
-
-            % Disable texture shader:
-            glUseProgram(0);
-
+            if hdrmode
+                % Draw HDR texture:
+                Screen('DrawTexture', win, texid, srcrect, dstrect, [], [], [], [sf sf sf]);
+            else
+                % Draw quantized 8bpc version:
+                Screen('DrawTexture', win, ldrtexid, srcrect, dstrect, [], [], [], [sf sf sf]);
+            end
+            
             % Some status text:
-            DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ], 0, 0, [0 255 0]);
+            if hdrmode
+                quantized = 'Floating point HDR';
+            else
+                quantized = 'Quantized to 8 bpc LDR';
+            end
+            
+            DrawFormattedText(win, ['Image: ' imagename ' : Zoom=' num2str(rscale) ' : Intensity scaling: ' num2str(sf) ' : ' quantized ], 0, 0, [0 255 0]);
 
             % Show selected ROI during zoom selection, if any:
             if xright~=-1 & xbottom~=-1 & zoomset==1
@@ -222,10 +212,21 @@ try
                 if keycode(KbName('space'))
                     % Load next image in folder:
                     needupdate = 0;
+
                     % Debounce key:
                     while KbCheck; end;
                 end
 
+                if keycode(KbName('q'))
+                    % Switch between display of float32 HDR image and 8 bpc
+                    % LDR image:
+                    needupdate = 1;
+                    hdrmode = 1 - hdrmode;
+                    
+                    % Debounce key:
+                    while KbCheck; end;
+                end
+                
                 if keycode(KbName('ESCAPE'))
                     % Exit viewer:
                     needupdate = 0;
@@ -280,9 +281,14 @@ try
         
         % Done with this image. Release its texture and next one...
         Screen('Close', texid);
+        Screen('Close', ldrtexid);
         clear img;
+        clear quantimg;
     end
 
+    % Enable keypress output to Matlab window:
+    ListenChar(0);
+    
     % Release all textures, close all windows, shutdown BrightSide library:
     Screen('CloseAll');
     
@@ -291,6 +297,9 @@ try
 catch
     % Error handler: If something goes wrong between try and catch, we
     % close the window and abort.
+
+    % Enable keypress output to Matlab window:
+    ListenChar(0);
 
     % Release all textures, close all windows, shutdown BrightSide library:
     Screen('CloseAll');
