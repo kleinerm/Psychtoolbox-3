@@ -70,7 +70,9 @@ static bool jettisoned = false;
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
+#ifndef PTBOCTAVE 
 #include <AGL/agl.h>
+#endif
 #endif
 
 /* Includes specific to GNU/Linux version of mogl: */

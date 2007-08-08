@@ -65,14 +65,14 @@ void mogl_usageerr();
 // mogl_rebind...  -> Move this function into separate file, compile that file as
 // C file, make the compiler happy.
 
-// Strange: Needed different cases of Windows and OS/X, but now (10.4.10), the compiler
-// on OS/X mandates the same function prototype as on Windows?!?
-
-//#ifndef TARGET_OS_WIN32
-//extern "C" void mogl_rebindARBExtensionsToCore(void);
-//#else
+// Need different cases for C++ compilation vs. C compilation: On OS/X we do C
+// compiles for Matlab builds, but C++ compiles for Octave builds. On Windows
+// (i think) we do pure C builds.
+#ifdef PTBOCTAVE
+extern "C" void mogl_rebindARBExtensionsToCore(void);
+#else
 extern void mogl_rebindARBExtensionsToCore(void);
-//#endif
+#endif
 
 // Automatic checking and handling for glError's and GLSL errors.
 void mogl_checkerrors(const char* cmd, mxArray *prhs[]);
