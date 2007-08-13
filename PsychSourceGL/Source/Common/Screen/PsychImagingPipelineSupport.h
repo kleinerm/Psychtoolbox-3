@@ -60,7 +60,8 @@ void	PsychPipelineDumpHook(PsychWindowRecordType *windowRecord, const char* hook
 void	PsychPipelineDisableHook(PsychWindowRecordType *windowRecord, const char* hookString);
 void	PsychPipelineEnableHook(PsychWindowRecordType *windowRecord, const char* hookString);
 void	PsychPipelineResetHook(PsychWindowRecordType *windowRecord, const char* hookString);
-int		PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, char** idString, char** blitterString, double* doubleptr, double* shaderid, double* luttexid1);
+int		PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, char** insertString, char** idString, char** blitterString, double* doubleptr, double* shaderid, double* luttexid1);
+void	PsychPipelineDeleteHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, int slotid);
 void	PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, const char* configString);
 void	PsychPipelineAddRuntimeFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, const char* evalString);
 void	PsychPipelineAddCFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, void* procPtr);

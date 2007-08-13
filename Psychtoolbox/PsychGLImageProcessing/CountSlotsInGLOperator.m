@@ -4,6 +4,9 @@ function nrslots = CountSlotsInGLOperator(gloperator)
 % Returns number of processing slots (== individual processing operations)
 % in the given GL image processing operator 'gloperator'.
 
+% History:
+% 08/11/07 Written (MK).
+
 if nargin < 1 || isempty(gloperator) || Screen('WindowKind', gloperator)~=4
     error('You must provide the handle of a valid GL imaging operator ''gloperator''!');
 end

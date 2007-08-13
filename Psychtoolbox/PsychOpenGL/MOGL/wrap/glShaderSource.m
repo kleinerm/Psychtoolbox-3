@@ -35,6 +35,12 @@ if nargin < 3
     debug = 0;
 end;
 
-moglcore('glShaderSource', shader, transpose(char(shadersource)), debug);
+shadersource = char(shadersource);
+sssi = size(shadersource,1)
+if size(shadersource,1)==1
+    shadersource = transpose(shadersource);
+end
+
+moglcore('glShaderSource', shader, transpose(shadersource), debug);
 
 return

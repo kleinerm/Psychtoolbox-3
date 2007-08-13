@@ -84,6 +84,12 @@ PsychError SCREENTransformTexture(void)
 	PsychSetDrawingTarget(NULL);
 	glUseProgram(0);
 	
+	// Save all state:
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+		
+	// Disable alpha-blending:
+	glDisable(GL_BLEND);
+
 	// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 	// that format. We require this standard orientation for simplified shader design.
 	if (!(specialFlags & 1)) PsychNormalizeTextureOrientation(sourceRecord);
@@ -179,6 +185,9 @@ PsychError SCREENTransformTexture(void)
 	// swizzle allowed (FALSE), sourceRecord is source, targetRecord is destination, bounce buffers provided by proxyRecord,
 	// no secondary FBO available (NULL).
 	PsychPipelineExecuteHook(proxyRecord, kPsychUserDefinedBlit, NULL, NULL, TRUE, FALSE, &(sourceRecord->fboTable[sourceRecord->drawBufferFBO[0]]), (sourceRecord2) ? &(sourceRecord2->fboTable[sourceRecord2->drawBufferFBO[0]]) : NULL, &(targetRecord->fboTable[targetRecord->drawBufferFBO[0]]), (proxyRecord->drawBufferFBO[0]!=-1) ? &(proxyRecord->fboTable[proxyRecord->drawBufferFBO[0]]) : NULL);
+
+	// Restore previous settings:
+	glPopAttrib();
 
 	//Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, targetRecord->windowIndex);

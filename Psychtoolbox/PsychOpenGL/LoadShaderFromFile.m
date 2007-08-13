@@ -16,7 +16,7 @@ function handle = LoadShaderFromFile(filename, shadertype, debug)
 global GL;
 
 if isempty(GL)
-    InitializeMatlabOpenGL;
+    InitializeMatlabOpenGL([],[],1);
 end;
 
 % Make sure we run on a GLSL capable system.

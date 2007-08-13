@@ -31,7 +31,13 @@
 %
 % Files:
 %
+% Add2DConvolutionToGLOperator.m  -- Create and add a shader for 2D image convolution to a GLOperator.
+% Add2DSeparableConvolutionToGLOperator.m  -- Create and add a shader for 2D separable image convolution to a GLOperator.
+% AddToGLOperator.m               -- Add a shader with options to a GLOperator.
 % BitsPlusPlus.m                  -- Setup function for imaging pipelines built-in Bits++ support.
+% CountSlotsInGLOperator.m        -- Count number of processing slots in a given GLOperator.
+% CreateDisplayWarp.m             -- Internal helper function for setup of geometric display undistortion.
+% CreateGLOperator.m              -- Create a new GLOperator as container for imaging operations.
 % HookProcessingChains.m          -- Documentation about hook chains and their options.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
@@ -41,7 +47,7 @@
 %
 % SetAnaglyphStereoParameters.m   -- Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
-
+%
 % Constants for imagingmode flag of Screen('OpenWindow', ...., imagingmode);
 % One can 'or' them together, e.g., imagingmode = mor(kPsychNeed16BPCFixed, kPsychNeedFastBackingStore);
 %

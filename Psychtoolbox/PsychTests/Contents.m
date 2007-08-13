@@ -8,6 +8,7 @@
 %   AlphaBlendSettingTest           - Set and readback alpha blending settings by screen; verify match. 
 %   AlphaMultiplicationTest         - Test alpha multiplication by 0 and 1 for perfect precision.
 %   AlphaMultiplicationAccuracyTest - Test precision of alpha multiplication for values between 0 and 1.
+%   ConvolutionKernelTest.m         - Test routine for correctness, accuracy and speed of PTB imaging convolution shaders.
 %   DeinterlacerTest                - Simple correctness test for GLSL video image deinterlacer. INCOMPLETE.
 %   DrawingIntoTexturesTest         - Tests if using a texture as an offscreen window, i.e., for drawing, works.
 %   DriftTexturePrecisionTest       - Test subpixel accuracy of texture interpolators: What is the smallest
@@ -22,6 +23,7 @@
 %   FitWeibullYNTest                - Fit a Weibull to yes-no data.
 %   FlipTest                        - Test frame synchroniziation.
 %   FloatTexturePrecisionTest       - Test effective precision of floating point 16bpc textures.
+%   FrameSequentialStereoTest.m     - Test routine for timing and stimulus onset on quad-buffered frame-sequential stereo hardware.
 %   GetCharTest                     - Tests of GetChar.
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.

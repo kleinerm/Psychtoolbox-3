@@ -536,7 +536,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Setup our default chain: This chain is executed if some stage of the imaging pipe is set up according
 	// to imagingMode, but the corresponding hook-chain is empty or disabled. In that case we need to copy
 	// the data for that stage from its input buffers to its output buffers via a simple blit operation.
-	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", TRUE, "");
+	PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
 	PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
 
 	// Setup of GLSL stereo shaders for stereo modes that need some merging operations:
@@ -591,7 +591,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 					if (glsl) {
 						// Add shader to processing chain:
-						PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderAnaglyph", TRUE, glsl, "", 0) ;
+						PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderAnaglyph", INT_MAX, glsl, "", 0) ;
 						
 						// Enable stereo compositor:
 						PsychPipelineEnableHook(windowRecord, "StereoCompositingBlit");		
@@ -616,7 +616,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Add shader to processing chain:
 					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", 0, 0);
-					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewLeft", TRUE, glsl, blittercfg, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewLeft", INT_MAX, glsl, blittercfg, 0);
 				}
 				else {
 					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
@@ -632,7 +632,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Add shader to processing chain:
 					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i", (int) PsychGetWidthFromRect(windowRecord->rect)/2, 0);
-					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewRight", TRUE, glsl, blittercfg, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderDualViewRight", INT_MAX, glsl, blittercfg, 0);
 				}
 				else {
 					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
@@ -656,7 +656,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Add shader to processing chain:
 					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, 0, 1.0, 0.5);
-					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedTop", TRUE, glsl, blittercfg, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedTop", INT_MAX, glsl, blittercfg, 0);
 				}
 				else {
 					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create left channel dualview stereo processing shader -- Dualview stereo won't work!\n");
@@ -672,7 +672,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 					
 					// Add shader to processing chain:
 					sprintf(blittercfg, "Builtin:IdentityBlit:Offset:%i:%i:Scaling:%f:%f", 0, (int) PsychGetHeightFromRect(windowRecord->rect)/2, 1.0, 0.5);
-					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedBottom", TRUE, glsl, blittercfg, 0);
+					PsychPipelineAddShaderToHook(windowRecord, "StereoCompositingBlit", "StereoCompositingShaderCompressedBottom", INT_MAX, glsl, blittercfg, 0);
 				}
 				else {
 					PsychErrorExitMsg(PsychError_user, "PTB-ERROR: Failed to create right channel dualview stereo processing shader -- Dualview stereo won't work!\n");
@@ -698,12 +698,12 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	}
 	
 
-	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "FinalOutputFormattingBlit", "Builtin:IdentityBlit", TRUE, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "FinalOutputFormattingBlit", "Builtin:IdentityBlit", INT_MAX, "");
 	//PsychPipelineEnableHook(windowRecord, "FinalOutputFormattingBlit");
 
-	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
-	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:FlipFBOs", TRUE, "");
-	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", TRUE, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", INT_MAX, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:FlipFBOs", INT_MAX, "");
+	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", INT_MAX, "");
 	//PsychPipelineEnableHook(windowRecord, "StereoLeftCompositingBlit");
 
 	// Perform a full reset of current drawing target. This is a warm-start of PTB's drawing
@@ -1483,14 +1483,14 @@ int	PsychGetHookByName(const char* hookName)
  * windowRecord - The windowRecord of the window to attach to.
  * hookString   - String with the human-readable name of the hook-chain to attach to.
  * idString     - Arbitrary name string for this hook function (for debugging and finding it programmatically)
- * where        - Attachment point: 0 = Prepend to chain (Recommended). 1 = Append to chain (Use with care!).
+ * where        - Attachment point: 0 = Prepend to chain (Recommended). INT_MAX = Append to chain (Use with care!), or insert at position 'where'.
  * hookfunctype - Symbolic hook function type id, needed for interpreter to distinguish different types.
  *
  */
 PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, int hookfunctype)
 {
-	int hookidx;
-	PtrPsychHookFunction hookfunc, hookiter;
+	int hookidx, hookslotidx;
+	PtrPsychHookFunction hookfunc, hookiter, *hookpreiter;
 	
 	// Lookup hook-chain idx for this name, if any:
 	if ((hookidx=PsychGetHookByName(hookString))==-1) PsychErrorExitMsg(PsychError_user, "AddHook: Unknown (non-existent) hook name provided.");
@@ -1513,8 +1513,23 @@ PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, 
 		}
 		else {
 			hookiter = windowRecord->HookChain[hookidx];
-			while (hookiter->next) hookiter = hookiter->next;
-			hookiter->next = hookfunc;
+			hookslotidx = 0;
+			hookpreiter = &(windowRecord->HookChain[hookidx]);
+			
+			while ((hookiter->next) && (hookslotidx!=where)) {
+				hookpreiter = &(hookiter->next);
+				hookiter = hookiter->next;
+				hookslotidx++;
+			}
+			if (hookslotidx==where) {
+				// Target slot index for insertion reached: Insert here.
+				hookfunc->next = hookiter;
+				*hookpreiter = hookfunc;
+			}
+			else {
+				// End of chain reached: Append new slot, regardless of index:
+				hookiter->next = hookfunc;
+			}
 		}
 	}
 	
@@ -1658,6 +1673,45 @@ void PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, 
 	return;
 }
 
+/* PsychPipelineDeleteHookSlot
+ * Remove slot at index 'slotid', move all slots past this slot one slot up.
+ */
+void PsychPipelineDeleteHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, int slotid)
+{
+	PtrPsychHookFunction hookfunc;
+	PtrPsychHookFunction *prehookfunc;
+	int targetidx, idx;
+	int hookidx=PsychGetHookByName(hookString);
+	if (hookidx==-1) PsychErrorExitMsg(PsychError_user, "RemoveHook: Unknown (non-existent) hook name provided.");
+
+	// Perform linear search until proper slot reached or proper name reached:
+	idx=0;	
+	hookfunc = windowRecord->HookChain[hookidx]; 
+	prehookfunc = &(windowRecord->HookChain[hookidx]);
+	while(hookfunc && idx<slotid) {
+		prehookfunc = &(hookfunc->next);
+		hookfunc = hookfunc->next;
+		idx++;
+	}
+
+	// Anything found?
+	if(hookfunc == NULL) return;
+	
+	// hookfunc is to be deleted.
+	
+	// Detach it from hookchain, update predecessors next pointer so it points to successor:
+	*prehookfunc = hookfunc->next;
+	
+	// Detached. Delete hookfunc:
+	free(hookfunc->pString1);
+	free(hookfunc->idString);
+	free(hookfunc);
+	hookfunc = NULL;
+	
+	// Done.
+	return;
+}
+
 /* PsychPipelineQueryHookSlot
  * Query properties of a specific hook slot in a specific hook chain of a specific window:
  * windowRecord - Query for this window/texture.
@@ -1667,17 +1721,20 @@ void PsychPipelineAddBuiltinFunctionToHook(PsychWindowRecordType *windowRecord, 
  *				  matches are also accepted to search for substrings...
  *
  * On successfull return, the following values are assigned, on unsuccessfull return (=-1), nothing is assigned:
+ * insertString = The subcommand one would need to issue to (re-)add this slot at exactly the same place. E.g., 'InsertAt4MFunction' if slot is a M-Function at position 4.
  * idString = The name string of this slot *Read-Only*
  * blitterString = Config string for this slot.
  * doubleptr = Double encoded void* to the C-Callback function, if any.
  * shaderid = Double encoded shader handle for GLSL shader, if any.
  * luttexid = Double encoded lut texture handle for unit 1, if any.
  *
- * The return value contains the hook slot type. 
+ * The return value contains the hook slot index where the function was found, or -1 if no matching function could be found. 
  */
-int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, char** idString, char** blitterString, double* doubleptr, double* shaderid, double* luttexid1)
+int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* hookString, char** insertString, char** idString, char** blitterString, double* doubleptr, double* shaderid, double* luttexid1)
 {
 	PtrPsychHookFunction hookfunc;
+	char myinsertString[100];
+	char mytypeString[100];
 	int targetidx, idx;
 	int nrassigned = sscanf((*idString), "%i", &targetidx);
 	int hookidx=PsychGetHookByName(hookString);
@@ -1694,6 +1751,7 @@ int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* 
 	
 	// If hookfunc is non-NULL then we found our slot:
 	if (hookfunc==NULL) {
+		*insertString = NULL;
 		*idString = NULL;
 		*blitterString = NULL;
 		*doubleptr = 0;
@@ -1702,12 +1760,35 @@ int PsychPipelineQueryHookSlot(PsychWindowRecordType *windowRecord, const char* 
 		return(-1);
 	}
 	
+	switch(hookfunc->hookfunctype) {
+		case kPsychBuiltinFunc:
+			sprintf(mytypeString, "Builtin");
+		break;
+		
+		case kPsychMFunc:
+			sprintf(mytypeString, "MFunction");
+		break;
+
+		case kPsychCFunc:
+			sprintf(mytypeString, "CFunction");
+		break;
+
+		case kPsychShaderFunc:
+			sprintf(mytypeString, "Shader");
+		break;
+
+		default:
+			PsychErrorExitMsg(PsychError_internal, "Unknown id for hookfunction in PsychPipelineQueryHookSlot()! Update the code and recompile!!");
+	}
+	
+	sprintf(myinsertString, "InsertAt%i%s", idx, mytypeString);
+	*insertString = strdup(myinsertString);
 	*idString = hookfunc->idString;
 	*blitterString = hookfunc->pString1;
 	*doubleptr = PsychPtrToDouble(hookfunc->cprocfunc);
 	*shaderid = (double) hookfunc->shaderid;
 	*luttexid1= (double) hookfunc->luttexid1;
-	return(hookfunc->hookfunctype);
+	return(idx);
 }
 
 /* PsychPipelineDumpHook

@@ -1,12 +1,23 @@
-function shader = EXPCreateStatic2DConvolutionShader(kernel, inputchannels, filteredoutchannels, shadertype, debug)
-% EXPCreateStatic2DConvolutionShader(kernel [, inputchannels=3][, filteredoutchannels=3][, shadertype][, debug])
+function [shader configstring] = EXPCreateStatic2DConvolutionShader(kernel, nrinputchannels, nroutchannels, debug, shadertype)
+% [shader configstring] = EXPCreateStatic2DConvolutionShader(kernel [, nrinputchannels=3][, nroutchannels=3][, debug][, shadertype])
 % 
 % Creates a GLSL fragment shader for 2D convolution of textures with
 % the 2D or 1D convolution kernel 'kernel' and returns a handle 'shader'
-% to it. The shader can then be applied to any texture by
-% calling glUseProgram(shader) before drawing the texture.
+% to it, as well as a blitter config options string as needed by the
+% PTB imaging pipeline.
 %
-% The kernel is a simple m-by-n matrix of floating point numbers with m and
+% Usually you won't call this routine directly, but use
+% Add2DConvolutionToGLOperator() instead. It allows convenient setup of
+% convolution operators of arbitrary size and complexity to GLOperators
+% for use with Screen('TransformTexture'); and for use with the stimulus
+% post-processing pipeline. Only if you want to create small convolution
+% kernels for single-pass convolution of textures, you'll use this routine
+% directly and use the returned 'shader' as argument to Screen('DrawTexture')
+% or Screen('MakeTexture') as 'textureShader' argument.
+%
+% Parameters:
+%
+% 'kernel' is a simple 2D m-by-n matrix of floating point numbers with m and
 % n being odd numbers, e.g., 1x1, 3x3, 5x5, 7x7, 9x9,..., 1x3, 1x9, 7x1 ...
 % Each entry in the kernel is used as a weight factor.
 %
@@ -14,30 +25,35 @@ function shader = EXPCreateStatic2DConvolutionShader(kernel, inputchannels, filt
 % kernel = fspecial(...); fspecial is part of the Matlab image
 % processing toolbox, see "help fspecial" for more information.
 %
-% 'inputchannels' = The number of texture channels to use as input for the
-% convolution. Possible values are: 3 = Red,Green and Blue color channels are
-% provided as part of a true-color texture, don't use the alpha channel (if
-% any) for convolution but just pass it through unmodified. 1 = The texture
+% 'nrinputchannels' = The number of image channels to use as input for the
+% convolution. Possible values are: 3 = Red, Green and Blue color channels are
+% provided as part of a true-color image, don't use the alpha channel (if
+% any) for convolution but just pass it through unmodified. 1 = The image
 % only defines a luminance channel for convolution, an (optional) alpha
 % channel is passed through unmodified. 4 = Use all four channels (Red,
 % green, blue, alpha) for convolution.
 %
-% 'filteredoutchannels' = The number of channels to convolve as output: 3 =
+% 'nroutchannels' = The number of channels to convolve as output: 3 =
 % Convolve each of the three color channels red, green and blue separately
-% by the kernel. An (optional) alpha channel is passed through unmodified.
+% by the same kernel. An (optional) alpha channel is passed through unmodified.
 % 1 = Output a filtered luminance channel, and an (optional) unmodified
-% alpha channel. If input is a 3 channel RGB image, then the rgb image will
+% alpha channel. If input is a 3 channel RGB image, then the RGB image will
 % get converted to luminance before convolution. 4 = Filter all four
 % channels independently.
 %
 % Typical settings:
-% Filter a RGB(A) image: inputchannels = 3, filteredoutchannels = 3.
-% Filter a RGB(A) image into greyscale: inputchannels = 3,
-% filteredoutchannels = 1.
-% Filter a luminance(A) image: inputchannels = 1, filteredoutchannels = 1.
-% Generic filtering of 4-channel data: inputchannels = 4,
-% filteredoutchannels = 4.
 %
+% Filter a RGB(A) image: nrinputchannels = 3, nroutchannels = 3.
+% Filter a RGB(A) image into grayscale: nrinputchannels = 3, nroutchannels = 1.
+% Filter a luminance(A) image: inputchannels = 1, filteredoutchannels = 1.
+% Generic filtering of 4-channel data: nrinputchannels = 4, nroutchannels = 4.
+%
+% 'debug' Optional debug flag: If set to non-zero, will output some debug
+% info about the shader.
+%
+% 'shadertype' (Optional) The type of internal implementation to choose for
+% the operator. This parameter is best left alone, unless you really know
+% what you are doing.
 %
 % CAUTION:
 %
@@ -62,22 +78,6 @@ if isempty(kernel)
     error('CreateStatic2DConvolutionShader: No kernel provided!');
 end
 
-if nargin < 2 || isempty(inputchannels)
-    inputchannels = 3;
-end
-
-if nargin < 3 || isempty(filteredoutchannels)
-    filteredoutchannels = 3;
-end
-
-if nargin < 4 || isempty(shadertype)
-    shadertype = 0;
-end
-
-if nargin < 5 || isempty(debug);
-    debug = 0;
-end;
-
 % Query size of kernel:
 kernelw = size(kernel,1);
 kernelh = size(kernel,2);
@@ -86,6 +86,33 @@ kernelh = size(kernel,2);
 if kernelw < 1 | kernelh < 1 | mod(kernelw,2)~=1 | mod(kernelh,2)~=1
     error('CreateStatic2DConvolutionShader: Only odd-sized kernels of at least size 3x3 supported!');
 end;
+
+if nargin < 2 || isempty(nrinputchannels)
+    % Default to RGB channels as separate input channels:
+    nrinputchannels = 3;
+end
+
+if nargin < 3 || isempty(nroutchannels)
+    % Default to output of filtered RGB channels:
+    nroutchannels = 3;
+end
+
+if nargin < 4 || isempty(debug);
+    % No debug mode provided: Disable debug output by default:
+    debug = 0;
+end;
+
+if nargin < 5 || isempty(shadertype)
+    % No explicit shadertype provided. We use some guess-o-matic here, that
+    % tries to do its best for different types of hardware, depending on
+    % kernel-size:
+    
+    % Query type of graphics hardware (vendor and model):
+    shadertype = 3;
+end
+
+% Preinit configstring to empty - the most common setting:
+configstring = [];
 
 % First time invocation?
 if isempty(initialized)
@@ -102,7 +129,6 @@ if isempty(initialized)
     % Clear any OpenGL error state.
     while (glGetError~=GL.NO_ERROR); end;
 
-%    maxinstructions = glGetIntegerv(GL.MAX_OPTIMIZED_VERTEX_SHADER_INSTRUCTIONS_EXT)
     maxuniforms = glGetIntegerv(GL.MAX_FRAGMENT_UNIFORM_COMPONENTS)
     
     % We are initialized:
@@ -112,11 +138,11 @@ end % of initialization.
 % Compute half-width and linear shader coefficient array:
 hwx = (kernelw - 1) / 2;
 hwy = (kernelh - 1) / 2;
-shaderkernel = single(reshape(kernel, kernelw * kernelh, 1));
+shaderkernel = reshape(kernel, kernelw * kernelh, 1);
 
 if shadertype == 3
     % Generic shader, using a texture bound to 2nd unit as lookup table for
-    % the convolution kernel. This method is way less efficient than
+    % the convolution kernel. This method is *way* less efficient than
     % lookups of the kernel in internal uniform registers or compiled-in
     % constants, but it scales up to very large kernels, whereas the former
     % methods are limited in kernel size by how many constants can be
@@ -124,16 +150,27 @@ if shadertype == 3
     % GPU.
 
     % Load our shader for convolution blit operations:
-    shader = LoadGLSLProgramFromFiles('Convolve2DRectTextureShader.frag.txt', 1);
+    if nrinputchannels == 1
+        % 1-channel case: Convolve Red/Luminance channel with kernel,
+        % replicate result into RGB/Luminance channel. Pass alpha channel
+        % unmodified:
+        shader = LoadGLSLProgramFromFiles('Convolve2DRectTexture1ChannelShader.frag.txt', 1);
+    else
+        % 4-channel case: Convolve all 4 channels by same kernel:
+        shader = LoadGLSLProgramFromFiles('Convolve2DRectTextureShader.frag.txt', 1);
+    end
+    
     % Assign proper texture units for input image and clut:
     glUseProgram(shader);
     shader_image = glGetUniformLocation(shader, 'Image');
     shader_clut  = glGetUniformLocation(shader, 'Kernel');
-    shader_kernelsize  = glGetUniformLocation(shader, 'KernelHalfWidth');
+    shader_kernelsizeX  = glGetUniformLocation(shader, 'KernelHalfWidthX');
+    shader_kernelsizeY  = glGetUniformLocation(shader, 'KernelHalfWidthY');
 
     glUniform1i(shader_image, 0);
     glUniform1i(shader_clut, 1);
-    glUniform1f(shader_kernelsize, hwx);
+    glUniform1f(shader_kernelsizeX, hwx);
+    glUniform1f(shader_kernelsizeY, hwy);
 
     glUseProgram(0);
 
@@ -143,8 +180,7 @@ if shadertype == 3
     glActiveTexture(GL.TEXTURE1);
     luttex = glGenTextures(1);
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, luttex);
-    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, GL.LUMINANCE_FLOAT32_APPLE, kernelw, kernelh, 0, GL.LUMINANCE, GL.FLOAT, shaderkernel);
-    %glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, GL.LUMINANCE8, kernelw, kernelh, 0, GL.LUMINANCE, GL.FLOAT, shaderkernel);
+    glTexImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, GL.LUMINANCE_FLOAT32_APPLE, kernelw, kernelh, 0, GL.LUMINANCE, GL.FLOAT, moglsingle(shaderkernel));
 
     % Make sure we use nearest neighbour sampling:
     glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
@@ -155,7 +191,12 @@ if shadertype == 3
     glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_WRAP_T, GL.CLAMP);
     
     % Default CLUT setup done: Switch back to texture unit 0:
+    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
     glActiveTexture(GL.TEXTURE0);
+    
+    % Create shader config string so this lut texture gets used when
+    % convolving:
+    configstring = sprintf('TEXTURERECT2D(%i)=%i', 1, luttex);
 end
 
 if shadertype == 2
@@ -172,19 +213,19 @@ if shadertype == 2
     src = [src '#version 110' char(10)  char(10) ...
         'uniform sampler2DRect Image;' char(10) char(10)];
 
-    switch(inputchannels)
+    switch(nrinputchannels)
         case 1
             dtype  = '  float sum = float(0.0);';
             ifetch = '.r';
-            douti  = '  gl_FragColor.rgba = vec4(sum);';
+            douti  = '  gl_FragColor.rgb = vec3(sum); gl_FragColor.a = texture2DRect(Image, gl_TexCoord[0].st).a;';
         case 2
             dtype  = '  vec2 sum = vec2(0.0);';
             ifetch = '.rg';
-            douti  = '  gl_FragColor.rg = sum;';
+            douti  = '  gl_FragColor.rg = sum; gl_FragColor.a = texture2DRect(Image, gl_TexCoord[0].st).a;';
         case 3
             dtype  = '  vec3 sum = vec3(0.0);';
             ifetch = '.rgb';
-            douti  = '  gl_FragColor.rgb = sum;';
+            douti  = '  gl_FragColor.rgb = sum; gl_FragColor.a = texture2DRect(Image, gl_TexCoord[0].st).a;';
         case 4
             dtype  = '  vec4 sum = vec4(0.0);';
             ifetch = '.rgba';
@@ -210,13 +251,13 @@ if shadertype == 2
     % Generate tail:
     src = [src douti char(10) '}' char(10) char(10)];
     % Ok, we have our shader source string:
-    if debug > 0
+    if debug > 3
         src
     end
 
     % Create shader object, assign sourcecode and compile it:
     shandle = glCreateShader(GL.FRAGMENT_SHADER);
-    if debug > 1
+    if debug > 5
         glShaderSource(shandle, src, debug);
     else
         glShaderSource(shandle, src);
@@ -250,13 +291,13 @@ if shadertype < 2
         '// Kernel Size is ' num2str(kernelw) ' by ' num2str(kernelh) char(10) ...
         '// Auto-Generated by Psychtoolbox convolution shader generator.'  char(10) ...
         '*/'  char(10)];
-
+    
     src = [src '#version 110' char(10)  char(10) ...
         'const int KernelHalfWidthX = ' num2str(hwx) ';' char(10) ...
         'const int KernelHalfWidthY = ' num2str(hwy) ';' char(10) ...
         'uniform sampler2DRect Image;' char(10)];
 
-    if (inputchannels==3) && (filteredoutchannels==1)
+    if (nrinputchannels==3) && (nroutchannels==1)
         src = [src 'const vec3 rgb2grayweights = vec3(0.3, 0.59, 0.11);' char(10) ];
     end
 
@@ -266,7 +307,7 @@ if shadertype < 2
         src = [src 'uniform float kernel[' num2str(kernelw * kernelh) '];' char(10) char(10)];
     end
 
-    switch(inputchannels)
+    switch(nrinputchannels)
         case 1 % Filter luminance channel only, but replicate filtered result to RGB. Alpha is passed through.
             dtype  = '  float tmp, sum = float(0.0);';
             ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).r;';
@@ -278,7 +319,7 @@ if shadertype < 2
             iupdate= '      sum += tmp * vec2(kernel[i]);';
             douti  = '  gl_FragColor.rg = sum; gl_FragColor.a = texture2DRect(Image, gl_TexCoord[0].st).a;';
         case 3 % Input is RGB. Alpha is passed through, ...
-            if (filteredoutchannels == 3)
+            if (nroutchannels == 3)
                 % Filter each R,G,B channel separately...
                 dtype  = '  vec3 tmp, sum = vec3(0.0);';
                 ifetch = '      tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(float(dx), float(dy))).rgb;';
@@ -329,13 +370,13 @@ if shadertype < 2
         '}' char(10) char(10)];
 
     % Ok, we have our shader source string:
-    if debug > 0
-        src
+    if debug > 3
+        fprintf(src);
     end
 
     % Create shader object, assign sourcecode and compile it:
     shandle = glCreateShader(GL.FRAGMENT_SHADER);
-    if debug > 1
+    if debug > 4
         glShaderSource(shandle, src, debug);
     else
         glShaderSource(shandle, src);

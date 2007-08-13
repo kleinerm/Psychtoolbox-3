@@ -96,7 +96,7 @@ if dontclear > 0
     dontclear = 2;
 end
 
-try
+%try
     % Find screen with maximal index:
     screenid = max(Screen('Screens'));
 
@@ -106,18 +106,33 @@ try
     % Open fullscreen onscreen window on that screen. Background color is
     % gray, double buffering is enabled. Return a 'win'dowhandle and a
     % rectangle 'winRect' which defines the size of the window:
-    [win, winRect] = Screen('OpenWindow', screenid, 128); %, [],[],[],[],[],kPsychNeedFastBackingStore);
+    [win, winRect] = Screen('OpenWindow', screenid, 128, [],[],[],[],[],kPsychNeedFastBackingStore);
     
     % Build a filter kernel:
-    stddev = kwidth / 3;
+    stddev = kwidth / 2;
 
     switch(filtertype)
         case 0
-            kernel = [];
+            kernel = [1];
         case 1
             kernel = fspecial('gaussian', kwidth, stddev);
         case 2
             kernel = fspecial('prewitt');
+        case 3
+            kernel = fspecial('sobel');
+        case 4
+            kernel = fspecial('laplacian');
+        case 5
+            kernel = fspecial('gaussian', kwidth, stddev);
+            kernel1 = fspecial('gaussian', [kwidth, 1], stddev);
+            kernel2 = fspecial('gaussian', [1, kwidth], stddev);
+        case 6
+            kernel = randn(kwidth, kwidth);
+        case 7
+            kernel = ones(kwidth, kwidth)*1;
+            for i=1:length(kernel)*length(kernel)
+%                kernel(i) = 1 - 2*mod(i,2);
+            end
     end
 
 stype = 2;
@@ -125,9 +140,16 @@ channels = 1;
 
     if filtertype > 0
         % Build shader from kernel:
-        shader = EXPCreateStatic2DConvolutionShader(kernel, channels, 1, stype,1);
-        %shader = Create2DGaussianBlurShader;
-        convoperator = CreateGLOperator(win, [], shader, 'Convolution operator.');
+%        shader = EXPCreateStatic2DConvolutionShader(kernel, channels, 1, 1, stype);
+        convoperator = CreateGLOperator(win, kPsychNeed32BPCFloat);
+        if filtertype~=5
+            Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
+        else
+            Add2DSeparableConvolutionToGLOperator(convoperator, kernel1, kernel2, [], channels, 1, 4, stype);
+        end
+        
+%        Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
+%        Add2DConvolutionToGLOperator(convoperator, kernel, [], channels, 1, 4, stype);
     end
 
     glFinish;
@@ -169,7 +191,8 @@ channels = 1;
             % Normally distributed noise with mean 128 and stddev. 50, each
             % pixel computed independently:
             noiseimg=(50*randn(rectSize, rectSize) + 128);
-
+            %noiseimg=ones(rectSize, rectSize)*255;
+            %noiseimg=imread([PsychtoolboxRoot '/PsychDemos/konijntjes1024x768gray.jpg']);
             if validate
                 noiseimg=uint8(noiseimg);
                 noiseimg=double(noiseimg);
@@ -205,11 +228,16 @@ channels = 1;
             
             if validate
                 % Compute same convolution on CPU:
-                noiseimg = single(noiseimg);
+                %noiseimg = single(noiseimg);
                 tic
-                ref = conv2(noiseimg, kernel, 'same');
+                if filtertype ~=5
+                    ref = conv2(noiseimg, single(kernel), 'same');
+                else
+                    ref = conv2(single(kernel1), single(kernel2), noiseimg, 'same');
+                end
                 cput(count) = toc;
-                ref = uint8(0.5 + ref);
+                %ref = uint8(0.5 + ref);
+                %ref = single(ref);
             end
             
             % After drawing, we can discard the noise texture.
@@ -223,10 +251,18 @@ channels = 1;
         Screen('Flip', win, 0, dontclear, asyncflag);
         
         if validate
-            gpu = (Screen('GetImage', win, dstRect(1,:)));
-            %gpu = Screen('GetImage', xtex);
+            %gpu = (Screen('GetImage', win, dstRect(1,:)));
+            gpu = Screen('GetImage', xtex, [], [], 1, 1) * 255;
+            blah = class(gpu)
+            bluh = class(ref)
+            m0=size(gpu)
+            m1=max(max(gpu))
+            m2=min(min(gpu))
+            m3=max(max(ref))
+            m4=min(min(ref))
+            
             difference = gpu(:,:,1) - ref;
-            difference = difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel));
+            difference = abs(difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel)));
             maxdiff = max(max(difference))
         end        
     end
@@ -237,14 +273,19 @@ channels = 1;
     updaterate = count / telapsed
     if validate
         avgspeedup=mean(cput(2:end)) / mean(gput(2:end))
+        close all;
         imagesc(difference);
+        figure;
+        imagesc(ref);
+        figure;
+        imagesc(gpu);
     end
 
     % Done. Close Screen, release all ressouces:
     Screen('CloseAll');
-catch
+%catch
     % Our usual error handler: Close screen and then...
-    Screen('CloseAll');
+%    Screen('CloseAll');
     % ... rethrow the error.
-    psychrethrow(psychlasterror);
-end
+%    psychrethrow(psychlasterror);
+%end

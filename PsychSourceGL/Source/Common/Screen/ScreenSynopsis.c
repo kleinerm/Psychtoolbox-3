@@ -85,7 +85,7 @@ void InitializeSynopsis()
 	
 	// Draw lines lines solids like QuickDraw and DirectX (OS 9 and Windows)
 	synopsis[i++] = "\n%  Draw lines and solids like QuickDraw and DirectX (OS 9 and Windows):";
-	synopsis[i++] = "Screen('SelectStereoDrawBuffer', windowPtr, bufferid);";
+	synopsis[i++] = "currentbuffer = Screen('SelectStereoDrawBuffer', windowPtr [, bufferid] [, param1]);";
 	synopsis[i++] = "Screen('DrawLine', windowPtr [,color], fromH, fromV, toH, toV [,penWidth]);";
 	synopsis[i++] = "Screen('DrawArc',windowPtr,[color],[rect],startAngle,arcAngle)";
 	synopsis[i++] = "Screen('FrameArc',windowPtr,[color],[rect],startAngle,arcAngle[,penWidth] [,penHeight] [,penMode])";
@@ -126,7 +126,7 @@ void InitializeSynopsis()
 
 	// Copy an image, slowly, between matrices and windows
 	synopsis[i++] = "\n% Copy an image, slowly, between matrices and windows :";
-	synopsis[i++] = "imageArray=Screen('GetImage', windowPtr [,rect] [,bufferName]);";
+	synopsis[i++] = "imageArray=Screen('GetImage', windowPtr [,rect] [,bufferName] [,floatprecision=0] [,nrchannels=3])";
 	synopsis[i++] = "Screen('PutImage', windowPtr, imageArray [,rect]);";
 	
 	// Synchronize with the window's screen (on-screen only):

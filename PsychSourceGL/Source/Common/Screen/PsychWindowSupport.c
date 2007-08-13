@@ -221,11 +221,26 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // Assign requested color buffer depth:
     (*windowRecord)->depth = screenSettings->depth.depths[0];
     
-	// OpenGL context ressource sharing requested?
+	// Explicit OpenGL context ressource sharing requested?
 	if (sharedContextWindow) {
 		// A pointer to a previously created onscreen window was provided and the OpenGL context of
 		// the new window shall share ressources with the context of the provided window:
 		(*windowRecord)->slaveWindow = sharedContextWindow;
+	}
+	
+	// Automatic OpenGL context ressource sharing? By default, if no explicit sharing with
+	// a specific sharedContextWindow is requested and context sharing is not disabled via
+	// some 'ConserveVRAM' flag, we will try to share ressources of all OpenGL contexts
+	// to simplify multi-window operations.
+	if ((sharedContextWindow == NULL) && ((conserveVRAM & kPsychDontShareContextRessources) == 0) && (PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen) > 0)) {
+		// Try context ressource sharing: Assign first onscreen window as sharing window:
+		i = PSYCH_FIRST_WINDOW - 1;
+		do {
+			i++;
+			FindWindowRecord(i, &((*windowRecord)->slaveWindow));
+		} while (((*windowRecord)->slaveWindow->windowType != kPsychDoubleBufferOnscreen) && ((*windowRecord)->slaveWindow->windowType != kPsychSingleBufferOnscreen));
+		// Ok, now we should have the first onscreen window assigned as slave window.
+		if(PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: This oncreen window tries to share OpenGL context ressources with window %i.\n", i);
 	}
 	
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering PsychOSOpenOnscreenWindow\n");
@@ -237,6 +252,11 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         return(FALSE);
     }
 
+	if ((sharedContextWindow == NULL) && ((*windowRecord)->slaveWindow)) {
+		// Undo slave window assignment from context sharing:
+		(*windowRecord)->slaveWindow = NULL;
+	}
+	
     // Now we have a valid, visible onscreen (fullscreen) window with valid
     // OpenGL context attached. We mark it immediately as Onscreen window,
     // so in case of an error, the Screen('CloseAll') routine can properly
@@ -1154,6 +1174,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double postflip_vbltimestamp = -1;
 	unsigned int vbltimestampquery_retrycount = 0;
 	double time_at_swaprequest=0;			// Timestamp taken immediately before requesting buffer swap. Used for consistency checks.
+	boolean flipcondition_satisfied;
 	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     
@@ -1340,7 +1361,24 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
     #if PSYCH_SYSTEM == PSYCH_OSX
         // OS-X only: Low level queries to the driver:
-        preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
+		// We query the timestamp and count of the last vertical retrace. This is needed for
+		// correctness checking and timestamp computation on gfx-hardware without beamposition
+		// queries (IntelMacs as of OS/X 10.4.10).
+		// In frame-sequential stereo mode it also allows to lock bufferswaps either to even
+		// or odd video refresh intervals (if windowRecord->targetFlipFieldType specifies this).
+		// That way one can require stereo stimulus onset with either the left eye view or the
+		// right eye view, depending on flip field selection. In other stereo modes or mono
+		// mode one usually doesn't care about onset in even or odd fields.
+		flipcondition_satisfied = FALSE;
+		do {
+			// Query driver:
+			preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
+			// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
+			// if we don't care about this:
+			flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType);
+			// If in wrong video cycle, we simply sleep a millisecond, then retry...
+			if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
+		} while (!flipcondition_satisfied);
     #endif
     
 	// Take preswap timestamp:

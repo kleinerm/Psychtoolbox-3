@@ -24,17 +24,18 @@ uniform sampler2DRect Kernel;
 void main()
 {
     float dx, dy;
-    vec4 sum = vec4(0.0);
-    vec4 tmp;
+    float sum = float(0.0);
+    float tmp;
     float kernelvalue;
 
     for (dy = -KernelHalfWidthY; dy <= KernelHalfWidthY; dy++) {
         for (dx = -KernelHalfWidthX; dx <= KernelHalfWidthX; dx++) {
             kernelvalue = texture2DRect(Kernel, vec2(dx + KernelHalfWidthX, dy + KernelHalfWidthY)).r;
-            tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(dx, dy));
+            tmp = texture2DRect(Image, gl_TexCoord[0].st + vec2(dx, dy)).r;
             sum += tmp * kernelvalue;
         }
     }
 
-    gl_FragColor = sum;
+    gl_FragColor.rgb = vec3(sum);
+    gl_FragColor.a   = texture2DRect(Image, gl_TexCoord[0].st).a;
 }

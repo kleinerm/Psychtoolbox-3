@@ -164,6 +164,9 @@ typedef struct {
 #define kPsychDisableContextIsolation 8
 // Do not attach stencil buffer attachments to framebuffer objects in order to work around broken drivers:
 #define kPsychDontAttachStencilToFBO 16
+// Do not share heavyweight ressources like shaders, VBO's, FBO's, display lists, textures etc. between
+// OpenGL contexts:
+#define kPsychDontShareContextRessources 32
 
 //function protoptypes
 

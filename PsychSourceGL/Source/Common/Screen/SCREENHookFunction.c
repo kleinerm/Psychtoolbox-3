@@ -57,7 +57,7 @@ static char synopsisString[] =
 	"in a human readable format - Useful as a reference for coding. "
 	"The 'windowPtr' argument is optional. If left out (replaced by empty [] brackets) it prints all implemented chains."
 	"\n\n"
-	"[slot idstring blittercfg voidptr glslid luttexid] = Screen('HookFunction', windowPtr, 'Query', hookname, slotnameOrIndex);\n"
+	"[slot idstring blittercfg voidptr glslid luttexid insertString] = Screen('HookFunction', windowPtr, 'Query', hookname, slotnameOrIndex);\n"
 	"Query information about a specific command slot in a specific hook processing chain: "
 	"'hookname' is the name of the chain to query, e.g., 'StereoCompositingBlit' for the stereo processing chain. Use the subcommand "
 	"'ListAll' for a printout of all available processing hooks and a short help on them. "
@@ -70,7 +70,8 @@ static char synopsisString[] =
 	"GLSL shader for image processing on the GPU, 0 otherwise. 'luttexid' OpenGL texture handle of the first assigned lookup texture, "
 	"0 if none assigned. 'voidptr' Memory pointer (encoded as double) to a C callback function, if one is assigned to this slot, 0 "
 	"otherwise. 'blittercfg' either a parameter string with a meaning dependent of slot type, or the string 'NONE' if none assigned. "
-	"'idstring' The symbolic name of this slot if any assigned, 'NONE' otherwise."
+	"'idstring' The symbolic name of this slot if any assigned, 'NONE' otherwise. 'insertString' the subcommand to use for reinserting "
+	"this slot at the place it was after a deletion."
 	"\n\n"
 	"Screen('HookFunction', windowPtr, 'AppendShader', hookname, idString, glslid [, blittercfg] [luttexid1]); \n"
 	"Append a new instruction slot to the end of hook processing chain 'hookname', assign the symbolic name 'idString' for later query "
@@ -98,6 +99,15 @@ static char synopsisString[] =
 	"Screen('HookFunction', windowPtr, 'AppendBuiltin', hookname, idString, builtincmd); \n"
 	"Screen('HookFunction', windowPtr, 'PrependBuiltin', hookname, idString, builtincmd); \n"
 	"Add a call to a PTB built-in function 'builtincmd'."
+	"\n\n"
+	"You can also insert a hook function somewhere at a specific slot index via:\n"
+	"Screen('HookFunction', windowPtr, 'InsertAtXXXYYY', ...);\n"
+	"where XXX is a numeric slot id and YYY is the type specifier. Example: Insert a Builtin function\n"
+	"at index 4 in hook 'UserDefinedBlit':\n"
+	"Screen('HookFunction', windowPtr, 'InsertAt4Builtin', 'UserDefinedBlit', ...);\n"
+	"\n\n"
+	"Screen('Hookfunction', windowPtr, 'Remove', hookname, slotindex);\n"
+	"Remove slot at index 'slotindex' in hookchain 'hookname'. The slot after this slot will move up by one.\n"
 	"\n\n"
 	"Screen('HookFunction', windowPtr, 'Enable', hookname); \n"
 	"Screen('HookFunction', windowPtr, 'Disable', hookname); \n"
@@ -128,8 +138,9 @@ static char seeAlsoString[] = "";
 PsychError SCREENHookFunction(void) 
 {
 	PsychWindowRecordType	*windowRecord;
-	char					*cmdString, *hookString, *idString, *blitterString;
-	int						i, cmd, slotid;
+	char					numString[10];
+	char					*cmdString, *hookString, *idString, *blitterString, *insertString;
+	int						i, cmd, slotid, whereloc = 0;
 	double					doubleptr;
 	double					shaderid, luttexid1 = 0;
 
@@ -141,15 +152,15 @@ PsychError SCREENHookFunction(void)
     
     PsychErrorExit(PsychCapNumInputArgs(7));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(6));  
+    PsychErrorExit(PsychCapNumOutputArgs(7));  
 
     // Get the subcommand string:
 	PsychAllocInCharArg(2, kPsychArgRequired, &cmdString);
 	
 	// Subcommand dispatcher:
 	cmd=0;
-	if (strstr(cmdString, "Append"))  cmd=1;
-	if (strstr(cmdString, "Prepend")) cmd=2;
+	if (strstr(cmdString, "Append"))  { cmd=1; whereloc = INT_MAX; }
+	if (strstr(cmdString, "Prepend")) { cmd=2; whereloc = 0; }	
 	if (strcmp(cmdString, "Reset")==0)   cmd=3;
 	if (strcmp(cmdString, "Enable")==0)  cmd=4;
 	if (strcmp(cmdString, "Disable")==0) cmd=5;
@@ -159,8 +170,11 @@ PsychError SCREENHookFunction(void)
 	if (strcmp(cmdString, "ListAll")==0) cmd=9;
 	if (strcmp(cmdString, "Edit")==0)   cmd=10;
 	if (strcmp(cmdString, "ImagingMode")==0) cmd=11;
+	if (strstr(cmdString, "InsertAt")) { cmd=12; whereloc = -1; sscanf(cmdString, "InsertAt%i", &whereloc); }
+	if (strstr(cmdString, "Remove")) cmd=13;
 	
 	if(cmd==0) PsychErrorExitMsg(PsychError_user, "Unknown subcommand specified to 'HookFunction'.");
+	if(whereloc < 0) PsychErrorExitMsg(PsychError_user, "Unknown/Invalid/Unparseable insert location specified to 'HookFunction' 'InsertAtXXX'.");
 	
 	// Need hook name?
 	if(cmd!=9 && cmd!=8 && cmd!=11) {
@@ -173,8 +187,9 @@ PsychError SCREENHookFunction(void)
     PsychAllocInWindowRecordArg(1, (cmd!=9) ? TRUE : FALSE, &windowRecord);
     
 	switch(cmd) {
-		case 1: // Append:
-		case 2: // Prepend:
+		case 1:  // Append:
+		case 2:  // Prepend:
+		case 12: // Insert at location 'whereloc':
 			// Add a new hook function callback to chain, either at beginning or end.
 			
 			// What type of callback/handler is to be added?
@@ -194,7 +209,7 @@ PsychError SCREENHookFunction(void)
 				PsychCopyInDoubleArg(7, FALSE, &luttexid1);
 				
 				// Add shader: 
-				PsychPipelineAddShaderToHook(windowRecord, hookString, idString, (cmd==1) ? 1:0, (unsigned int) shaderid, blitterString, (unsigned int) luttexid1);
+				PsychPipelineAddShaderToHook(windowRecord, hookString, idString, whereloc, (unsigned int) shaderid, blitterString, (unsigned int) luttexid1);
 			}
 			else if(strstr(cmdString, "CFunction")) {
 				// C callback function:
@@ -206,7 +221,7 @@ PsychError SCREENHookFunction(void)
 				PsychCopyInDoubleArg(5, TRUE, &doubleptr);
 				
 				// Add the function void* to the chain:
-				PsychPipelineAddCFunctionToHook(windowRecord, hookString, idString, (cmd==1) ? 1:0, PsychDoubleToPtr(doubleptr));
+				PsychPipelineAddCFunctionToHook(windowRecord, hookString, idString, whereloc, PsychDoubleToPtr(doubleptr));
 				
 			}
 			else if(strstr(cmdString, "MFunction")) {
@@ -219,7 +234,7 @@ PsychError SCREENHookFunction(void)
 				PsychAllocInCharArg(5, TRUE, &blitterString);
 				
 				// Add the function to the chain:
-				PsychPipelineAddRuntimeFunctionToHook(windowRecord, hookString, idString, (cmd==1) ? 1:0, blitterString);
+				PsychPipelineAddRuntimeFunctionToHook(windowRecord, hookString, idString, whereloc, blitterString);
 				
 			}
 			else if(strstr(cmdString, "Builtin")) {
@@ -232,7 +247,7 @@ PsychError SCREENHookFunction(void)
 				PsychAllocInCharArg(5, TRUE, &blitterString);
 				
 				// Add the function to the chain:
-				PsychPipelineAddBuiltinFunctionToHook(windowRecord, hookString, idString, (cmd==1) ? 1:0, blitterString);				
+				PsychPipelineAddBuiltinFunctionToHook(windowRecord, hookString, idString, whereloc, blitterString);				
 			}
 			else {
 				// Unknown?!?
@@ -254,10 +269,20 @@ PsychError SCREENHookFunction(void)
 		
 		case 6: // Query properties of a slot in a specific hook-chain:
 			// Get the id string:
-			PsychAllocInCharArg(4, kPsychArgRequired, &idString);
+			if (PsychGetArgType(4)!=PsychArgType_char) {
+				// No id string provided: Try to get numeric slot id and
+				// turn it into an id string:
+				PsychCopyInIntegerArg(4, TRUE, &slotid);
+				sprintf(numString, "%i", slotid);
+				idString = (char*) &numString[0];
+				slotid = -1;
+			}
+			else {
+				PsychAllocInCharArg(4, TRUE, &idString);
+			}
 			
 			// Query everything that's there and copy it out:
-			slotid = PsychPipelineQueryHookSlot(windowRecord, hookString, &idString, &blitterString, &doubleptr, &shaderid, &luttexid1);
+			slotid = PsychPipelineQueryHookSlot(windowRecord, hookString, &insertString, &idString, &blitterString, &doubleptr, &shaderid, &luttexid1);
 			
 			// Copy out all infos:
 			PsychCopyOutDoubleArg(1, FALSE, slotid);
@@ -266,6 +291,7 @@ PsychError SCREENHookFunction(void)
 			PsychCopyOutDoubleArg(4, FALSE, doubleptr);
 			PsychCopyOutDoubleArg(5, FALSE, shaderid);
 			PsychCopyOutDoubleArg(6, FALSE, luttexid1);
+			PsychCopyOutCharArg(7, FALSE, (insertString) ? insertString : "NONE");
 		break;
 
 		case 7: // Dump specific hook-chain:
@@ -285,7 +311,7 @@ PsychError SCREENHookFunction(void)
 			PsychAllocInCharArg(4, kPsychArgRequired, &idString);
 			
 			// Query everything that's there and copy it out:
-			slotid = PsychPipelineQueryHookSlot(windowRecord, hookString, &idString, &blitterString, &doubleptr, &shaderid, &luttexid1);
+			slotid = PsychPipelineQueryHookSlot(windowRecord, hookString, &insertString, &idString, &blitterString, &doubleptr, &shaderid, &luttexid1);
 			
 			if (slotid<0)  PsychErrorExitMsg(PsychError_user, "In 'Edit' No such hook slot in that hook chain for that object.");
 			// Copy out all infos:
@@ -307,6 +333,13 @@ PsychError SCREENHookFunction(void)
 			if (luttexid1!=-1) {
 				windowRecord->imagingMode = (unsigned int) luttexid1;
 			}
+		break;
+		
+		// case 12 see at top.
+		
+		case 13: // Remove slot at given index.
+			PsychCopyInIntegerArg(4, TRUE, &slotid);
+			PsychPipelineDeleteHookSlot(windowRecord, hookString, slotid);
 		break;
 	}
 	

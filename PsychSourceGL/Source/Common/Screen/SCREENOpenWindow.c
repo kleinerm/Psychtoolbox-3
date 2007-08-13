@@ -327,7 +327,7 @@ PsychError SCREENOpenWindow(void)
 			// Activate the IdentitiyBlitChain for the slave window and add a single identity blit
 			// operation to it: This is needed in PsychPreFlipOperations() for final copy of stimulus
 			// image into this slave window:
-			PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", TRUE, "");
+			PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
 			PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
 
 			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo display mode...\n");
@@ -354,9 +354,9 @@ PsychError SCREENOpenWindow(void)
 	// or they have some and its drivers already take care of sync signal generation.
 	if ((PSYCH_SYSTEM == PSYCH_OSX) && (windowRecord->stereomode==kPsychOpenGLStereo)) {
 		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Enabling internal blue line sync renderer for quad-buffered stereo...\n");
-		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", TRUE, "");
+		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "LeftFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
 		PsychPipelineEnableHook(windowRecord, "LeftFinalizerBlitChain");		
-		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:RenderStereoSyncLine", TRUE, "");
+		PsychPipelineAddBuiltinFunctionToHook(windowRecord, "RightFinalizerBlitChain", "Builtin:RenderStereoSyncLine", INT_MAX, "");
 		PsychPipelineEnableHook(windowRecord, "RightFinalizerBlitChain");		
 	}
 

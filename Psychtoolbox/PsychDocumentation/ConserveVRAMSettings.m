@@ -52,6 +52,12 @@
 % workaround for some broken MS-Windows graphics drivers to make the 3D +
 % imaging combo work at least when no stencil buffer is needed.
 %
+% 32 == kPsychDontShareContextRessources: Do not share ressources between
+% different onscreen windows. Usually you want PTB to share all ressources
+% like offscreen windows, textures and GLSL shaders among all open onscreen
+% windows. If that causes trouble for some weird reason, you can prevent
+% automatic sharing with this flag.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

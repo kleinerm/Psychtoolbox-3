@@ -16,10 +16,9 @@ if nargin~=1,
 end
 
 % a hack to find out how many values are returned
-f=glGetFloatv(pname);
-
-params=int32(zeros(size(f)));
+params=int32(repmat(intmax,[ 32 1 ]));
 moglcore( 'glGetIntegerv', pname, params );
+params = params(find(params~=intmax));
 
 return
 

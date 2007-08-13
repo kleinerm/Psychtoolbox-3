@@ -324,6 +324,9 @@ PsychError SCREENDrawText(void)
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
+	// Save all state:
+	glPushAttrib(GL_ALL_ATTRIB_BITS);
+
     if(!PsychPrefStateGet_TextAlphaBlending()){
         PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
         PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -396,6 +399,8 @@ PsychError SCREENDrawText(void)
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 
     
+	glPopAttrib();
+	
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
     winRec->textAttributes.textPositionX = quadRight;

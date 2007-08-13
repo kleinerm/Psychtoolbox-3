@@ -266,6 +266,7 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->stereomode=0;
 	(*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
 	(*winRec)->slaveWindow=NULL;					// No slave window attached.
+	(*winRec)->targetFlipFieldType=-1;				// Don't care if flipping should only happen in even or odd video refresh frames.
 	(*winRec)->auxbuffer_dirty[0]=FALSE;            // AUX-Buffers clean on startup.
 	(*winRec)->auxbuffer_dirty[1]=FALSE;
 	
