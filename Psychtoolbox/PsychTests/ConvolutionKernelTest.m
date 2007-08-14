@@ -355,6 +355,12 @@ try
         Screen('Close');
     end
 
+    for i=1:length(shadertype)
+        if maxdiff2(i)>1
+            speedup(i)=0;
+        end
+    end
+    
     [maxspeedup bestid] = max(speedup);
     bestid = gloperatorid(bestid);
 
