@@ -641,7 +641,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  ifi_beamestimate = 0;
 	  if(PsychPrefStateGet_Verbosity()>1) {
 	    printf("\nWARNING: Couldn't determine end-line of vertical blanking interval for your display! Trouble with beamposition queries?!?\n");
-	    printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
+	    printf("\nWARNING: Detected end-line is %i, which is either lower or more than 25%% higher than vbl startline %i --> Out of sane range!\n", VBL_Endline, vbl_startline);
 	  }
 	}
 	else {

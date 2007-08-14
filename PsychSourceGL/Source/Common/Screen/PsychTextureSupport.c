@@ -877,6 +877,12 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 
 	// Only disable texture mapping if we actually enabled it.
 	if (source->textureNumber > 0) {
+		// Reset filters to nearest: This is important in case this texture
+		// is used as color buffer attachment of a FBO, because using the
+		// FBO would fail in puzzling ways if filtermode!=GL_NEAREST.
+		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
         // Unbind texture:
 		glBindTexture(texturetarget, 0);
         glDisable(texturetarget);

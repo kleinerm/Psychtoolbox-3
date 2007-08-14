@@ -103,6 +103,7 @@ char *PsychGetGLErrorNameString(GLenum errorConstant)
     static char GL_STACK_UNDERFLOW_str[] = "GL_STACK_UNDERFLOW";
     static char GL_OUT_OF_MEMORY_str[] = "GL_OUT_OF_MEMORY";
     static char GL_TABLE_TOO_LARGE_str[] = "GL_TABLE_TOO_LARGE";
+	static char GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str[] = "GL_INVALID_FRAMEBUFFER_OPERATION_EXT";
     static char unrecognized_error_str[] = "unrecognized GL error constant";
     
     switch(errorConstant){
@@ -114,9 +115,9 @@ char *PsychGetGLErrorNameString(GLenum errorConstant)
         case GL_STACK_UNDERFLOW: return(GL_STACK_UNDERFLOW_str);
         case GL_OUT_OF_MEMORY: return(GL_OUT_OF_MEMORY_str);
         case GL_TABLE_TOO_LARGE: return(GL_TABLE_TOO_LARGE_str);
+		case GL_INVALID_FRAMEBUFFER_OPERATION_EXT: return(GL_INVALID_FRAMEBUFFER_OPERATION_EXT_str);
     }
     return(unrecognized_error_str);
-           
 }
 
 /*
