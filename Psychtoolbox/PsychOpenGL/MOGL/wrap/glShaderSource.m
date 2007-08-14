@@ -36,7 +36,6 @@ if nargin < 3
 end;
 
 shadersource = char(shadersource);
-sssi = size(shadersource,1)
 if size(shadersource,1)==1
     shadersource = transpose(shadersource);
 end

@@ -57,6 +57,12 @@ function [passed difference speedup] = ConvolutionKernelTest(win, nrinchannels, 
 %
 % THIS SCRIPT IS NOT COMPLETELY FINISHED YET.
 
+% Benchmark results for convolution:
+% Case 1: Gaussian kernel, 2D single-pass, 1->1 channel, 512 x 512 image:
+%
+% WindowsXP + Matlab 7.4 + PentiumIV, 3.0 Ghz DualCore (CPU) vs. NVidia
+% Geforce7800-GTX:
+
 % History:
 % 10/13/2007 Written (MK).
 
@@ -101,9 +107,15 @@ if nargin < 8 || isempty(debug)
     debug = 0;
 end
 
-if nargin < 1 || isempty(win)
+if nargin < 1 || isempty(win) || win < 10
     % No window provided: Open a suitable one:
-    win = Screen('OpenWindow', 0, 0, [], [], [], [], [], kPsychNeedFastBackingStore);
+    if nargin >=1 && ~isempty(win) && win < 10
+        screenid = win;
+        win = 0;
+    else
+        screenid = max(Screen('Screens'));
+    end
+    win = Screen('OpenWindow', screenid, 0, [], [], [], [], [], kPsychNeedFastBackingStore);
     doclose = 1;
 else
     doclose = 0;
@@ -124,17 +136,23 @@ try
         % Create operator of maximum precision:
         gloperator(i) = CreateGLOperator(win, kPsychNeed32BPCFloat);
 
-        % Separable or non-separable?
-        if isempty(kernel2)
-            % Non-separable: Full blown single-pass 2D convolution:
-            Add2DConvolutionToGLOperator(gloperator(i), kernel1, [], nrinchannels, nroutchannels, debug, shadertype(i));
-        else
-            % Separable: Two 1D convolutions:
-            Add2DSeparableConvolutionToGLOperator(gloperator(i), kernel1, kernel2, [], nrinchannels, nroutchannels, debug, shadertype(i));
+        try
+            % Separable or non-separable?
+            if isempty(kernel2)
+                % Non-separable: Full blown single-pass 2D convolution:
+                Add2DConvolutionToGLOperator(gloperator(i), kernel1, [], nrinchannels, nroutchannels, debug, shadertype(i));
+            else
+                % Separable: Two 1D convolutions:
+                Add2DSeparableConvolutionToGLOperator(gloperator(i), kernel1, kernel2, [], nrinchannels, nroutchannels, debug, shadertype(i));
+            end
+        catch
+            % Shader creation failed, e.g., GLSL compile/link failure due
+            % to shader which would overload hardware ressources. Mark this
+            % mode as invalid:
+            gloperator(i)=-1;
         end
-
     end
-
+    
     % Test correctness and accuracy:
 
     % Build test-image: Random noise with mean 128 and stddev. +/- 50:
@@ -165,6 +183,12 @@ try
     kernel = kernel1;
     
     for i=1:length(shadertype)
+        if gloperator(i)==-1
+            maxdiff(i)=inf;
+            fprintf('Shadertype %i: Excluded - Beyond hardware limits.\n', shadertype(i));
+            continue;
+        end
+        
         % On GPU: Apply filter to texture:
         xtex = Screen('TransformTexture', tex, gloperator(i));
 
@@ -178,6 +202,7 @@ try
         end
 
         % Readback result from GPU with highest precision (ie. float):
+        clear gpu;
         gpu = Screen('GetImage', xtex, [], [], 1, 1) * 255;
 
         % Compute difference matrix:
@@ -220,7 +245,7 @@ try
             xtex = Screen('TransformTexture', tex, gloperator(i));
 
             Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
-            Screen('DrawTexture', win, xtex, [], AdjoinRect(Screen('Rect', xtex), Screen('Rect', tex), RectRight));
+            Screen('DrawTexture', win, xtex, [], AdjoinRect(Screen('Rect', xtex), Screen('Rect', tex), RectRight),0,0);
             DrawFormattedText(win, sprintf('Benchmarking mode %i.\nCan take more than 10 seconds - Please wait...\n', shadertype(i)), 'center', 'center');
             Screen('Flip', win);
 
@@ -229,13 +254,11 @@ try
 
             count = 0;
             tstart=GetSecs;
-
             % Do as many xforms as possible in 5 seconds...
             while GetSecs - tstart < 5
                 % We recycle the cached xtex target texture as we would do in a
                 % real experiment script:
                 xtex = Screen('TransformTexture', tex, gloperator(i), [], xtex);
-
                 % Increment counter:
                 count = count + 1;
             end
@@ -246,6 +269,32 @@ try
 
             avggpu(i) = telapsed / count;
 
+            % Retain last texture for double-checking:
+            clear gpu;
+            %err = glGetError;
+            %fprintf('GL-ERROR1: %i %s\n', err, gluErrorString(err));
+            gpu = Screen('GetImage', xtex, [], [], 1, 1) * 255;
+            %err = glGetError;
+            %fprintf('GL-ERROR2: %i %s\n', err, gluErrorString(err));
+
+            % Compute difference matrix:
+            difference = gpu(:,:,1) - ref;
+
+            % Only look at inner region, ie. ignore borders the size of the kernel
+            % to make sure we don't get confused by boundary artefacts. Compute
+            % absolute difference ie. discard sign:
+            kernel = kernel1;
+            difference = abs(difference(length(kernel):end-length(kernel), length(kernel):end-length(kernel)));
+
+            % Compute maximum difference:
+            maxdiff2(i) = max(max(difference));
+            
+            if maxdiff2(i) > 1
+                fprintf('Shadertype %i FAILED revalidation with error %f!\n', shadertype(i), maxdiff2(i));
+            else
+                fprintf('Shadertype %i revalidated with error %f!\n', shadertype(i), maxdiff2(i));                
+            end
+            
             % Close texture:
             Screen('Close', xtex);
             xtex = 0;
