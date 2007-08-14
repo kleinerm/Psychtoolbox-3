@@ -57,11 +57,34 @@ function [passed difference speedup] = ConvolutionKernelTest(win, nrinchannels, 
 %
 % THIS SCRIPT IS NOT COMPLETELY FINISHED YET.
 
-% Benchmark results for convolution:
-% Case 1: Gaussian kernel, 2D single-pass, 1->1 channel, 512 x 512 image:
+% Some Benchmark results for convolution:
+%
+% MacOS/X 10.4.10 + Matlab 7.1 + PowerPC G5 1.6 Ghz single core vs. NVidia
+% GeforceFX-5200 Ultra:
+%
+% Gaussian kernel, 2D single pass, 1->1 channels, 512 x 512 image:
+% Kernel of size 3x3: Speedup 2.5x
+%
+% Gaussian kernel, 1D separable dual pass, 1->1 channels, 512 x 512 image:
+% Kernels of size 9: Speedup 3.5x
+%
+% -> Kernels greater than 3x3 2D or 9 1D are unsupported on GF5200, can
+% cause a system crash!
 %
 % WindowsXP + Matlab 7.4 + PentiumIV, 3.0 Ghz DualCore (CPU) vs. NVidia
 % Geforce7800-GTX:
+%
+% Case 1: Gaussian kernel, 2D single-pass, 1->1 channels, 512 x 512 image:
+% 
+% Kernel of size 3x3: Speedup   21.0x
+% Kernel of size 5x5: Speedup   12.3x
+% Kernel of size 7x7: Speedup   10.5x
+% Kernel of size 9x9: Speedup    3.4x
+% Kernel of size 11x11: Speedup  6.9x
+% Kernel of size 13x13: Speedup  6.8x
+% Kernel of size 15x15: Speedup  7.0x
+% Kernel of size 17x17: Speedup  6.8x
+% Kernel of size 19x19: Speedup  6.9x
 
 % History:
 % 10/13/2007 Written (MK).
@@ -355,7 +378,7 @@ try
         Screen('Close');
     end
 
-    for i=1:length(shadertype)
+    for i=1:length(maxdiff2)
         if maxdiff2(i)>1
             speedup(i)=0;
         end
