@@ -51,6 +51,9 @@ const char *PsychPrefStateGet_PsychTableCreator(void);
 int  PsychPrefStateGet_TextYPositionIsBaseline(void);
 void PsychPrefStateSet_TextYPositionIsBaseline(int textPosIsBaseline);
 
+int PsychPrefStateGet_TextAntiAliasing(void);
+void PsychPrefStateSet_TextAntiAliasing(int mode);
+
 void PsychPrefStateGet_DefaultFontName(const char **fontName);
 void PsychPrefStateSet_DefaultFontName(const char *newName);
 

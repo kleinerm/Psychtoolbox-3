@@ -40,19 +40,22 @@ void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  Psyc
 	ATSUFontID				atsuFontID;
 	Fixed					atsuFontSize;
 	ATSURGBAlphaColor		atsuFontColor;
+	ATSStyleRenderingOptions atsuRenderOptions;
 	GLdouble				colorVector[4];
 	OSStatus				callError;
-	ATSUAttributeTag		aaTags[] =  {kATSUFontTag, kATSUSizeTag, kATSURGBAlphaColorTag };
-	ByteCount				aaSizes[] = {sizeof(ATSUFontID), sizeof(Fixed), sizeof(ATSURGBAlphaColor) };
-	ATSUAttributeValuePtr   aaValue[] = {&atsuFontID, &atsuFontSize, &atsuFontColor};
+	ATSUAttributeTag		aaTags[] =  {kATSUFontTag, kATSUSizeTag, kATSURGBAlphaColorTag, kATSUStyleRenderingOptionsTag };
+	ByteCount				aaSizes[] = {sizeof(ATSUFontID), sizeof(Fixed), sizeof(ATSURGBAlphaColor), sizeof(ATSStyleRenderingOptions) };
+	ATSUAttributeValuePtr   aaValue[] = {&atsuFontID, &atsuFontSize, &atsuFontColor, &atsuRenderOptions};
 	
 	//set the font index
 	PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
 	if(psychFontRecord==NULL)
 		PsychErrorExitMsg(PsychError_internal, "Failed to lookup the font from the font number");
 	atsuFontID=psychFontRecord->fontFMRef;
+
 	//set the font size
 	atsuFontSize=Long2Fix((long)(winRec->textAttributes.textSize));
+
 	//set the color
 	PsychCoerceColorMode(&(winRec->textAttributes.textColor));
 	PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
@@ -60,8 +63,15 @@ void PsychSetATSUStyleAttributesFromPsychWindowRecord(ATSUStyle atsuStyle,  Psyc
 	atsuFontColor.green=(float)colorVector[1];
 	atsuFontColor.blue=(float)colorVector[2];
 	atsuFontColor.alpha=(float)colorVector[3];
+	
+	// Set anti-aliasing mode (on/off): Default is to leave it up to the system to decide when
+	// to anti-alias and when not. But this flag allows to always force anti-aliasin on or off:
+	atsuRenderOptions = kATSStyleNoOptions;
+	if(PsychPrefStateGet_TextAntiAliasing()==0) atsuRenderOptions = kATSStyleNoAntiAliasing; 
+	if(PsychPrefStateGet_TextAntiAliasing()> 0) atsuRenderOptions = kATSStyleApplyAntiAliasing; 
+	
 	//assign attributes to the style object
-	callError=ATSUSetAttributes(atsuStyle, 3, aaTags, aaSizes, aaValue);
+	callError=ATSUSetAttributes(atsuStyle, 4, aaTags, aaSizes, aaValue);
 }
     
 

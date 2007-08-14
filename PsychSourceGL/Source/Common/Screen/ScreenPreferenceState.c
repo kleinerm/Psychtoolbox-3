@@ -44,6 +44,7 @@ static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
 static int								defaultTextStyle=0; // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 static Boolean                                                          textAlphaBlending=FALSE;
+static int								textAntiAliasing=-1; // -1=System defined (don't care), 0=Always off, 1=Always on.
 static int                                                              screenSkipSyncTests=0;
 //Debug preference state
 static Boolean                                                          TimeMakeTextureFlag=FALSE;
@@ -112,6 +113,16 @@ int PsychPrefStateGet_TextYPositionIsBaseline(void)
 void PsychPrefStateSet_TextYPositionIsBaseline(int textPosIsBaseline)
 {
 	defaultTextYPositionIsBaseline = (textPosIsBaseline > 0) ? 1 : 0;
+}
+
+int PsychPrefStateGet_TextAntiAliasing(void)
+{
+	return(textAntiAliasing);
+}
+
+void PsychPrefStateSet_TextAntiAliasing(int mode)
+{
+	textAntiAliasing = mode;
 }
 
 /*
