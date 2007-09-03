@@ -42,21 +42,21 @@ static char								PsychTableCreator[]="Screen";   //there is no psych table yet
 static int								defaultTextYPositionIsBaseline=0; // Use new style of text positioning by default: y-pos is top of text.
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
-static int								defaultTextStyle=0; // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
-static Boolean                                                          textAlphaBlending=FALSE;
-static int								textAntiAliasing=-1; // -1=System defined (don't care), 0=Always off, 1=Always on.
-static int                                                              screenSkipSyncTests=0;
+static int								defaultTextStyle=0;             // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
+static Boolean                          textAlphaBlending=FALSE;
+static int								textAntiAliasing=-1;            // -1=System defined (don't care), 0=Always off, 1=Always on.
+static int                              screenSkipSyncTests=0;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
 //Debug preference state
-static Boolean                                                          TimeMakeTextureFlag=FALSE;
+static Boolean                          TimeMakeTextureFlag=FALSE;
 static int								screenVisualDebugLevel=4;
-static int                                                              screenConserveVRAM=0;
+static int                              screenConserveVRAM=0;
 // If EmulateOldPTB is set to true, then try to behave like the old OS-9 PTB:
-static Boolean                                                          EmulateOldPTB=FALSE;
+static Boolean                          EmulateOldPTB=FALSE;
 // Support for real 3D rendering enabled?
-static Boolean                                                          Enable_3d_gfx=FALSE;
+static Boolean                          Enable_3d_gfx=FALSE;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
-static int                                                              screenVBLTimestampingMode=1;
+static int                              screenVBLTimestampingMode=1;
 
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)

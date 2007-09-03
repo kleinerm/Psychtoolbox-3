@@ -68,7 +68,9 @@ static char synopsisString[] =
     "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin, assuming "
     "that the text will be drawn at the current position of the text drawing cursor. Currently, only the "
     "OS-X version returns a perfect bounding box. The M$-Windows and GNU/Linux versions return a bounding "
-    "box which doesn't take letters with descenders into account - Descenders are outside the returned box. ";
+    "box which doesn't take letters with descenders into account - Descenders are outside the returned box. "
+	"See help for Screen('DrawText') for info about accepted text string formats... ";
+
 static char seeAlsoString[] = "";
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -96,7 +98,9 @@ PsychError SCREENTextBounds(void)
 	TextEncoding			textEncoding;
 	ATSUStyle			atsuStyle;
 	Boolean				foundFont;
-	
+	int				dummy1, dummy2;
+	double*			unicodedoubles;
+
 	//for ATSU  style attributes
 	PsychFontStructPtrType  psychFontRecord;
 
@@ -111,36 +115,43 @@ PsychError SCREENTextBounds(void)
         PsychErrorExit(PsychCapNumOutputArgs(2));
 	
 	//get the window pointer and the text string and check that the window record has a font set
-        PsychAllocInWindowRecordArg(1, kPsychArgRequired, &winRec);
+	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &winRec);
 	foundFont=PsychGetFontRecordFromFontNumber(winRec->textAttributes.textFontNumber, &psychFontRecord);
 	if(!foundFont)
 		PsychErrorExitMsg(PsychError_user, "Attempt to determine the bounds of text with no font or invalid font number");
 		//it would be better to both prevent the user from setting invalid font numbers and init to the OS 9  default font.
-	
-	//read in the string and get its length and convert it to a unicode string.
-	PsychAllocInCharArg(2, kPsychArgRequired, &textCString);
-	stringLengthChars=strlen(textCString);
-	if(stringLengthChars < 1) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
-	if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
-	CopyCStringToPascal(textCString, textPString);
-	uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
-	uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
-	uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
-	textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
 
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+	// Get starting position for text cursor: This is optional.
+	PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
     PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
 
-	//Using a TextEncoding type describe the encoding of the text to be converteed.  
-	textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
-	//Take apart the encoding we just made to check it:
-        textEncodingBase=GetTextEncodingBase(textEncoding);
-        textEncodingVariant=GetTextEncodingVariant(textEncoding);
-        textEncodingFormat=GetTextEncodingFormat(textEncoding);
-	//Create a structure holding conversion information from the text encoding type we just created.
-	callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
-	//Convert the text to a unicode string
-	callError=ConvertFromPStringToUnicode(textToUnicodeInfo, textPString, (ByteCount)uniCharBufferLengthBytes,	&uniCharStringLengthBytes,	textUniString);
+	//read in the string and get its length and convert it to a unicode string.
+    if (PsychGetArgType(2) == PsychArgType_char) {
+		PsychAllocInCharArg(2, TRUE, &textCString);
+		stringLengthChars=strlen(textCString);
+		if(stringLengthChars < 1) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
+		if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
+		CopyCStringToPascal(textCString, textPString);
+		uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
+		uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
+		uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
+		textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
+		//Using a TextEncoding type describe the encoding of the text to be converteed.  
+		textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
+		//Create a structure holding conversion information from the text encoding type we just created.
+		callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
+		//Convert the text to a unicode string
+		callError=ConvertFromPStringToUnicode(textToUnicodeInfo, textPString, (ByteCount)uniCharBufferLengthBytes,	&uniCharStringLengthBytes,	textUniString);
+	}
+	else {
+		// Not a character string: Check if it's a double matrix for Unicode text encoding:
+		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
+		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
+		if(stringLengthChars < 1) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
+		textUniString=(UniChar*) malloc(sizeof(UniChar) * stringLengthChars);
+		for (dummy1=0; dummy1<stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) unicodedoubles[dummy1];
+	}
+
 	//create the text layout object
 	callError=ATSUCreateTextLayout(&textLayout);			
 	//associate our unicode text string with the text layout object

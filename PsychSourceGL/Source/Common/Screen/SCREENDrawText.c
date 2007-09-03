@@ -77,7 +77,11 @@ static char seeAlsoString[] = "";
 #define USE_ATSU_TEXT_RENDER			1
 
 static char synopsisString[] = 
-    "Draw text. \"text\" may include two-byte (16 bit) characters (e.g. Chinese). "
+    "Draw text. \"text\" may include two-byte (16 bit) Unicode characters (e.g. Chinese). "
+	"A standard Matlab/Octave text string is interpreted as 8 bit ASCII string. If you "
+	"want to pass a string which contains 16 bit UTF-16 unicode characters, convert the "
+	"text to a double matrix, ie, mytext = double(myunicodetext); then pass the double "
+	"matrix to this function.\n"
     "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
     "g b] triplet) that you want to poke into each pixel; default produces black with "
     "the standard CLUT for this window's pixelSize. \"backgroundColor\" is the color of "
@@ -86,8 +90,9 @@ static char synopsisString[] =
 	"pen location defines the base line of drawn text, otherwise it defines the top of the "
 	"drawn text. Old PTB's had a behaviour equivalent to setting 1, unfortunately this behaviour "
 	"wasn't replicated in pre 3.0.8 PTB's so now we stick to the new behaviour by default. "
-	"\"newX, newY\" return the final pen location.";
-
+	"\"newX, newY\" return the final pen location.\n"
+	"Btw.: Screen('Preference', ...); provides a couple of interesting text preference "
+	"settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.";
 
 //Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 
 //GL_UNPACK_CLIENT_STORAGE_APPLE constant, an argument to glPixelStorei() which specifies the packing format of pixel the data passed to 
@@ -138,6 +143,8 @@ PsychError SCREENDrawText(void)
     double			quadLeft, quadRight, quadTop, quadBottom;
     int				yPositionIsBaseline;
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
+	int				dummy1, dummy2;
+	double*			unicodedoubles;
 	int ix;
 	GLubyte* rpb;
 	Boolean bigendian;
@@ -169,7 +176,7 @@ PsychError SCREENDrawText(void)
     PsychGetRectFromWindowRecord(windowRect, winRec);
     
     //Get the text string (it is required)
-    PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+    //PsychAllocInCharArg(2, kPsychArgRequired, &textString);
     
     //Get the X and Y positions.
     PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
@@ -185,23 +192,34 @@ PsychError SCREENDrawText(void)
     
     /////////////common to TextBounds and DrawText:create the layout object////////////////// 
     //read in the string and get its length and convert it to a unicode string.
-    PsychAllocInCharArg(2, kPsychArgRequired, &textCString);
-    stringLengthChars=strlen(textCString);
-	 if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.
-    if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
-    CopyCStringToPascal(textCString, textPString);
-    uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
-    uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
-    uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
-    textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
-    //Using a TextEncoding type describe the encoding of the text to be converteed.  
-    textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
-    //Create a structure holding conversion information from the text encoding type we just created.
-    callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
-    //Convert the text to a unicode string
-    callError=ConvertFromPStringToUnicode(textToUnicodeInfo, textPString, (ByteCount)uniCharBufferLengthBytes,	&uniCharStringLengthBytes,	textUniString);
-    //create the text layout object
-    callError=ATSUCreateTextLayout(&textLayout);			
+    if (PsychGetArgType(2) == PsychArgType_char) {
+		PsychAllocInCharArg(2, TRUE, &textCString);
+		stringLengthChars=strlen(textCString);
+		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.
+		if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
+		CopyCStringToPascal(textCString, textPString);
+		uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
+		uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
+		uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
+		textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
+		//Using a TextEncoding type describe the encoding of the text to be converteed.  
+		textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
+		//Create a structure holding conversion information from the text encoding type we just created.
+		callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
+		//Convert the text to a unicode string
+		callError=ConvertFromPStringToUnicode(textToUnicodeInfo, textPString, (ByteCount)uniCharBufferLengthBytes,	&uniCharStringLengthBytes,	textUniString);
+	}
+	else {
+		// Not a character string: Check if it's a double matrix for Unicode text encoding:
+		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
+		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
+		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
+		textUniString=(UniChar*) malloc(sizeof(UniChar) * stringLengthChars);
+		for (dummy1=0; dummy1<stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) unicodedoubles[dummy1];
+	}
+	
+	//create the text layout object
+    callError=ATSUCreateTextLayout(&textLayout);
     //associate our unicode text string with the text layout object
     callError=ATSUSetTextPointerLocation(textLayout, textUniString, kATSUFromTextBeginning, kATSUToTextEnd, (UniCharCount)stringLengthChars);
     //create an ATSU style object and tie it to the layout object in a style run.

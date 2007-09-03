@@ -853,7 +853,12 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
     long myinterval = (long) swapInterval;
     error=CGLSetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
     if (error) {
-        if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to enable synchronization to vertical retrace!\n\n");
+        if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace!\n\n", (swapInterval>0) ? "enable" : "disable");
+    }
+
+    error=CGLGetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
+    if (error || (myinterval != (long) swapInterval)) {
+        if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to %s synchronization to vertical retrace (System ignored setting)!\n\n", (swapInterval>0) ? "enable" : "disable");
     }
 }
 
