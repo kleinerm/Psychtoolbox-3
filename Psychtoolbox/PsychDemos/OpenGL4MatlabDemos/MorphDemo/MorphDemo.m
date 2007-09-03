@@ -120,7 +120,7 @@ if ( textureon==1 )
         % Rectangle texture: We need to rescale our texcoords as they are made for
         % power-of-two textures, not rectangle textures:
         texcoords(1,:) = texcoords(1,:) * size(texture,1);
-        texcoords(2,:) = texcoords(2,:) * size(texture,1);
+        texcoords(2,:) = texcoords(2,:) * size(texture,2);
     end;
 end
 

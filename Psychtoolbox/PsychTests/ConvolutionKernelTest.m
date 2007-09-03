@@ -85,7 +85,18 @@ function [passed difference speedup] = ConvolutionKernelTest(win, nrinchannels, 
 % Kernel of size 15x15: Speedup  7.0x
 % Kernel of size 17x17: Speedup  6.8x
 % Kernel of size 19x19: Speedup  6.9x
-
+%
+% 3x3 Sobel, Prewitt, Laplace: Speedup 70x
+%
+% Case 2: Gaussian kernel, 1D dual-pass, 1->1 channels, 512 x 512 image:
+% size   5: 0.65ms vs. 21.7ms: Speedup 33.0x
+% size  15: 1.62ms vs. 55.5ms: Speedup 34.3x
+% size  33: 3.78ms vs. 115ms:  Speedup 30.6x
+% size  65: 7.57ms vs. 242ms:  Speedup 32.0x
+% size 129:14.85ms vs. 603ms:  Speedup 40.6x
+%
+% --> 4-channels vs. 1 channel: CPU x4, GPU const. ---> Speedup times 4!
+%
 % History:
 % 10/13/2007 Written (MK).
 

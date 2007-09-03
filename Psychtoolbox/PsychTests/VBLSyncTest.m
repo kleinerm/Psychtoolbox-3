@@ -197,6 +197,36 @@ function VBLSyncTest(n, numifis, loadjitter, clearmode, stereo, flushpipe, synch
 % Author: Mario Kleiner  (mario.kleiner at tuebingen.mpg.de)
 %
 
+%%% VBLSyncTest(1000, 0, 0.6, 0, 0, 1, 0)
+
+if nargin < 1
+    n = 600;
+end
+
+if nargin < 2
+    numifis = 1;
+end
+
+if nargin < 3
+    loadjitter = 0;
+end
+
+if nargin < 4
+    clearmode = 0;
+end
+
+if nargin < 5
+    stereo = 0;
+end
+
+if nargin < 6
+    flushpipe = 0;
+end
+
+if nargin < 7
+    synchronous = 0;
+end
+
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
 	% versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the

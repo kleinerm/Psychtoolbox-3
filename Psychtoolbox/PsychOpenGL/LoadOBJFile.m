@@ -66,6 +66,7 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 % HISTORY
 % 31/03/06, written by Mario Kleiner, derived from W.S. Harwins code.
 % 18/09/06, Speedup for common OBJ files due to memory preallocation. (MK)
+% 02/09/07, We now handle triangle faces with non-equal vertex/tex/normal indices by remapping to a common index. (MK)
 
 if nargin<1 
   error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
@@ -97,7 +98,8 @@ if preparse>0
     % preparse-pass: We may allocate slightly too much, but this should not be
     % a problem, as the real parse pass will correct this.
     Vertices=zeros(3,prevnum);
-    Faces=zeros(3,pref3num);
+    %Faces=zeros(3,pref3num);
+    Faces=zeros(9,pref3num);
     Texcoords=zeros(3,prevtnum);
     Normals=zeros(3,prevnnum);
     QuadFaces=[];
@@ -144,12 +146,15 @@ while Lyn>=0
             if nvrts == 3
                 if nslash ==3 % vertex and textures
                     f1=sscanf(Lyn,'%f/%f');
-                    f1=f1([1 3 5]);
+                    %f1=f1([1 3 5]);
+                    f1=f1([1 3 5 2 4 6 1 3 5]);
                 elseif nslash==6 % vertex, textures and normals,
                     f1=sscanf(Lyn,'%f/%f/%f');
-                    f1=f1([1 4 7]);
+                    %f1=f1([1 4 7]);
+                    f1=f1([1 4 7 2 5 8 3 6 9]);
                 elseif nslash==0
                     f1=sscanf(Lyn,'%f');
+                    f1=f1([1 2 3 1 2 3 1 2 3]);
                 else
                     if (debug>1), disp(['xyx' Lyn]); end;
                     f1=[];
@@ -216,7 +221,7 @@ while Lyn>=0
         % Display progress output:
         totalcount = totalcount + 1;
         if mod(totalcount, 5000)==0
-            disp(['At line ' num2str(totalcount)]);
+            disp(['LoadOBJFile: Parsing progress: At line ' num2str(totalcount)]);
         end;
     end;
 
@@ -224,6 +229,22 @@ while Lyn>=0
 end;
 
 fclose(fid);
+
+% Decrement by one: This shall be the true counts:
+vnum=vnum - 1;
+f3num=f3num - 1;
+f4num=f4num - 1;
+vtnum=vtnum - 1;
+vnnum=vnnum - 1;
+
+if debug > 0
+    fprintf('Mesh %s contains:\n', modelname);
+    fprintf('Triangles: %i\n', f3num);
+    fprintf('Quads: %i\n', f4num);
+    fprintf('Vertices: %i\n', vnum);
+    fprintf('Texture coordinates: %i\n', vtnum);
+    fprintf('Normal vectors: %i\n', vnnum);
+end
 
 if exist('Faces', 'var')==0
     % No triangles defined. Are there any quads defined?
@@ -236,7 +257,74 @@ if exist('Faces', 'var')==0
         Faces = [];    
     end;
 else
-    % Take difference in indexing between OpenGL and OBJ into account:
+    % Triangles defined in Faces:
+
+    % Do texture coordinates exist?
+    if vtnum > 0
+        % Yes. Check if face indices for vertices and textures are
+        % completely identical:
+        idxdiff = sum(abs(Faces(1,:) - Faces(4,:))) + sum(abs(Faces(2,:) - Faces(5,:))) + sum(abs(Faces(3,:) - Faces(6,:)));
+        if idxdiff~=0
+            % Texture indices differ (at least sometimes) from vertex
+            % indices. This can't be easily handled by OpenGL, at least not
+            % at high performance. We perform manual remapping, permutating
+            % the read texture coordinate array, so at the end we can index
+            % into the texture array with the same indices as the ones we
+            % use for the vertex array. This is more memory intense, but
+            % much faster for postprocessing and rendering...
+            
+            if debug>0
+                fprintf('Inconsistent vertex vs. texture indexing: Remapping...\n');
+            end
+            
+            SrcTexCoords = Texcoords;
+            Texcoords = zeros(size(SrcTexCoords, 1), vnum);
+            
+            % Remap/rebuild for each of the f3num faces:
+            for i=1:f3num
+                Texcoords(:, Faces(1,i)) = SrcTexCoords(:, Faces(4,i));
+                Texcoords(:, Faces(2,i)) = SrcTexCoords(:, Faces(5,i));
+                Texcoords(:, Faces(3,i)) = SrcTexCoords(:, Faces(6,i));
+            end
+        end
+    end
+    
+    % Do normal coordinates exist?
+    if vnnum > 0
+        % Yes. Check if face indices for vertices and normals are
+        % completely identical:
+        idxdiff = sum(abs(Faces(1,:) - Faces(7,:))) + sum(abs(Faces(2,:) - Faces(8,:))) + sum(abs(Faces(3,:) - Faces(9,:)));
+        if idxdiff~=0
+            % Normal indices differ (at least sometimes) from vertex
+            % indices. This can't be easily handled by OpenGL, at least not
+            % at high performance. We perform manual remapping, permutating
+            % the read normals coordinate array, so at the end we can index
+            % into the normals array with the same indices as the ones we
+            % use for the vertex array. This is more memory intense, but
+            % much faster for postprocessing and rendering...
+
+            if debug>0
+                fprintf('Inconsistent vertex vs. normals indexing: Remapping...\n');
+            end
+
+            SrcNormals = Normals;
+            Normals = zeros(size(SrcNormals, 1), vnum);
+            
+            % Remap/rebuild for each of the f3num faces:
+            for i=1:f3num
+                Normals(:, Faces(1,i)) = SrcNormals(:, Faces(7,i));
+                Normals(:, Faces(2,i)) = SrcNormals(:, Faces(8,i));
+                Normals(:, Faces(3,i)) = SrcNormals(:, Faces(9,i));
+            end
+        end
+    end
+    
+    % Strip (now redundant) face indices for textures and normals. Either
+    % they were identical from the beginning, or they are now identical
+    % after our remap operation:
+    Faces = Faces(1:3, :);
+
+    % Take difference in indexing between OpenGL and OBJ into account.
     Faces = Faces - 1;
 
     % Array with triangle definitions exists. Check for additional quad-definitions:
@@ -256,4 +344,8 @@ objobject{meshcount}.normals = Normals;
 objobject{meshcount}.texcoords = Texcoords;
 
 % Done.
+if debug > 0
+    fprintf('LoadOBJFile: Loading of mesh %s done.\n\n', modelname);
+end
+
 return;

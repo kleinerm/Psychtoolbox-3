@@ -21,7 +21,7 @@ try
     % doesn't get confused by orientation of its mirror image ;-)
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
     %PsychImaging('AddTask', 'AllViews', 'FlipVertical');
-    PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/tmp/BezierCalibdata.mat');
+    %PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/tmp/BezierCalibdata.mat');
 
     [win winRect]=PsychImaging('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
 

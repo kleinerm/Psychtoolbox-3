@@ -43,9 +43,9 @@ try
 
     % Open onscreen window:
     screen=max(Screen('Screens'));
-    [win, scr_rect] = Screen('OpenWindow', screen, 0, [], [], [], 8, [], kPsychNeedFastBackingStore);
+    [win, scr_rect] = Screen('OpenWindow', screen, 0, [], [], [], 0, [], kPsychNeedFastBackingStore);
     Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    SetAnaglyphStereoParameters('LeftGains', win, [0.6 0.0 0.0]);
+    %SetAnaglyphStereoParameters('LeftGains', win, [0.6 0.0 0.0]);
     % Retrieve duration of a single video refresh interval:
     ifi = Screen('GetFlipInterval', win);
     

@@ -631,15 +631,15 @@ end % Of PostConfiguration subroutine.
 
 function rcmatch = mystrcmp(myhaystack, myneedle)
 
+    if isempty(myhaystack) || isempty(myneedle)
+            rcmatch = logical(0);
+            return;
+    end
+
     if ~iscell(myhaystack) && ~ischar(myhaystack)
         error('First argument to mystrcmp must be a cell-array or a character array (string)!');
     end
     
-    if isempty(myhaystack)
-        rcmatch = logical(0);
-        return;
-    end
-
     if iscell(myhaystack)
         % Cell array of strings: Check each element, return result matrix:
         rcmatch=logical(zeros(size(myhaystack)));
