@@ -196,9 +196,9 @@ global OSX_JAVA_GETCHAR;
 % Java based GetChar is only supported on Matlab, not on Octave, due to
 % Octaves lack of a Java virtual machine.
 if ~IsOctave
-    % This is Matlab. Is the Java VM and AWT running?
-    if psychusejava('awt')
-        % Java virtual machine and AWT are running. Use our Java based
+    % This is Matlab. Is the Java VM and AWT and Desktop running?
+    if psychusejava('desktop')
+        % Java virtual machine and AWT and Desktop are running. Use our Java based
         % GetChar.
         
         % If no command line argument was passed we'll assume that the user only
@@ -222,9 +222,9 @@ if ~IsOctave
         end
 
         % Make sure the Matlab window has keyboard focus:
-        if exist('commandwindow', 'builtin')==5
+        if exist('commandwindow')
             % Call builtin implementation:
-            builtin('commandwindow', msg);
+            commandwindow;
         end
         
         % Loop until we receive character input.
@@ -281,7 +281,7 @@ if ~IsOctave
             return;
         else
             % There's no replacement for Java GetChar on OS-X or Linux :(
-            error('Sorry! GetChar is not supported in ''matlab -nojvm'' mode on MacOS-X or GNU/Linux.');
+            error('Sorry! GetChar is not supported in ''matlab -nojvm'' or ''matlab -nodesktop'' mode on MacOS-X or GNU/Linux.');
         end
     end
 else

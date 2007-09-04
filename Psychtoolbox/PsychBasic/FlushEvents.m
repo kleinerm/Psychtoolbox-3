@@ -39,7 +39,7 @@ global OSX_JAVA_GETCHAR;
 
 if ~IsOctave
     % This is Matlab. Is the Java VM and AWT running?
-    if psychusejava('awt')
+    if psychusejava('desktop')
         % Make sure that the GetCharJava class is loaded and registered with
         % the java focus manager.
         if isempty(OSX_JAVA_GETCHAR)
@@ -81,7 +81,7 @@ if ~IsOctave
             return;
         else
             % There's no replacement for Java FlushEvents on OS-X or Linux :(
-            error('Sorry! FlushEvents is not supported in ''matlab -nojvm'' mode on MacOS-X or GNU/Linux.');
+            error('Sorry! FlushEvents is not supported in ''matlab -nojvm'' or ''matlab -nodesktop'' mode on MacOS-X or GNU/Linux.');
         end
     end
 else

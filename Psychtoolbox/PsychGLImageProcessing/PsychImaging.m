@@ -1,4 +1,4 @@
-function [rc winRect] = PsychImaging(cmd, varargin)
+function [rc, winRect] = PsychImaging(cmd, varargin)
 % rc = PsychImaging(subcommand [,arg1][,arg2][....,argn]) - Control common
 % functions of the Psychtoolbox GPU image processing pipeline.
 %
@@ -298,15 +298,14 @@ end
 
 % Catch all for unknown commands:
 error('Unknown subcommand specified! Read "help PsychImaging" for usage info.');
-
-end
+return;
 
 % Internal helper routines:
 
 % FinalizeConfiguration consolidates the current set of requirements and
 % derives the needed stereoMode settings and imagingMode setting to pass to
 % Screen('OpenWindow') for pipeline preconfiguration.
-function [imagingMode stereoMode] = FinalizeConfiguration(reqs)
+function [imagingMode, stereoMode] = FinalizeConfiguration(reqs)
 
 % Set imagingMode to minimum: Pipeline enabled...
 imagingMode = kPsychNeedFastBackingStore;
@@ -358,7 +357,7 @@ end
 
 return;
 
-end      % Of FinalizeConfiguration subroutine.
+% End of FinalizeConfiguration subroutine.
 
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
@@ -627,37 +626,36 @@ end
 rc = reqs;
 return;
 
-end % Of PostConfiguration subroutine.
+% End of PostConfiguration subroutine.
 
 function rcmatch = mystrcmp(myhaystack, myneedle)
 
-    if isempty(myhaystack) || isempty(myneedle)
-            rcmatch = logical(0);
-            return;
-    end
-
-    if ~iscell(myhaystack) && ~ischar(myhaystack)
-        error('First argument to mystrcmp must be a cell-array or a character array (string)!');
-    end
-    
-    if iscell(myhaystack)
-        % Cell array of strings: Check each element, return result matrix:
-        rcmatch=logical(zeros(size(myhaystack)));
-        rows = size(myhaystack, 1);
-        cols = size(myhaystack, 2);
-        for r=1:rows
-            for c=1:cols
-                if iscellstr(myhaystack(r,c))
-                    rcmatch(r,c) = logical(strcmpi(char(myhaystack(r,c)), myneedle));
-                else
-                    rcmatch(r,c) = logical(0);
-                end
-            end
-        end
-    else
-        % Single character string: Do single check and return result:
-        rcmatch=logical(strcmpi(myhaystack, myneedle));
-    end
-
+if isempty(myhaystack) || isempty(myneedle)
+    rcmatch = logical(0);
     return;
 end
+
+if ~iscell(myhaystack) && ~ischar(myhaystack)
+    error('First argument to mystrcmp must be a cell-array or a character array (string)!');
+end
+
+if iscell(myhaystack)
+    % Cell array of strings: Check each element, return result matrix:
+    rcmatch=logical(zeros(size(myhaystack)));
+    rows = size(myhaystack, 1);
+    cols = size(myhaystack, 2);
+    for r=1:rows
+        for c=1:cols
+            if iscellstr(myhaystack(r,c))
+                rcmatch(r,c) = logical(strcmpi(char(myhaystack(r,c)), myneedle));
+            else
+                rcmatch(r,c) = logical(0);
+            end
+        end
+    end
+else
+    % Single character string: Do single check and return result:
+    rcmatch=logical(strcmpi(myhaystack, myneedle));
+end
+
+return;

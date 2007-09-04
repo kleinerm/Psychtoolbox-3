@@ -41,7 +41,7 @@ global OSX_JAVA_GETCHAR;
 % no operation.
 if ~IsOctave
     % This is Matlab. Is the JVM running?
-    if psychusejava('awt')
+    if psychusejava('desktop')
         % Java enabled. There's work to do.
         if nargin == 0
             listenFlag = 1;
@@ -63,9 +63,9 @@ if ~IsOctave
             OSX_JAVA_GETCHAR.register;
             
             % Make sure the Matlab window has keyboard focus:
-            if exist('commandwindow', 'builtin')==5
+            if exist('commandwindow')
                 % Call builtin implementation:
-                builtin('commandwindow', msg);
+                commandwindow;
                 drawnow;
             end
 

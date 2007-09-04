@@ -59,7 +59,7 @@ if IsOS9
     avail = EventAvail('keyDown');
 else
     if ~IsOctave
-        if psychusejava('awt')
+        if psychusejava('desktop')
             % Make sure that the GetCharJava class is loaded and registered with
             % the java focus manager.
             if isempty(OSX_JAVA_GETCHAR)
@@ -91,7 +91,7 @@ else
                 return;
             else
                 % There's no replacement for Java GetChar on OS-X or Linux :(
-                error('Sorry! CharAvail is not supported in ''matlab -nojvm'' mode on MacOS-X or GNU/Linux.');
+                error('Sorry! CharAvail is not supported in ''matlab -nojvm''or ''matlab -nodesktop'' mode on MacOS-X or GNU/Linux.');
             end
         end
     else
