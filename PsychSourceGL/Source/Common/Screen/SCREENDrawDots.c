@@ -131,8 +131,11 @@ PsychError SCREENDrawDots(void)
 	}
 	
 	// Child-protection: Alpha blending needs to be enabled for smoothing to work:
+	// Ok, not such a good idea :-( The flag also enables drawing of round dots and
+	// there are applications were we want to set the flag without using alpha blending...
+	// Therefore disabled -> May want to turn this into some kind of warning or hint in the future...
 	if (idot_type>0 && windowRecord->actualEnableBlending!=TRUE) {
-		PsychErrorExitMsg(PsychError_user, "Point smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
+		//PsychErrorExitMsg(PsychError_user, "Point smoothing doesn't work with alpha-blending disabled! See Screen('BlendFunction') on how to enable it.");
 	}
 	
 	// Turn on antialiasing to draw circles	
