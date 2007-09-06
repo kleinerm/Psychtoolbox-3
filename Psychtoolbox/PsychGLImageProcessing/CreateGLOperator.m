@@ -1,5 +1,5 @@
 function gloperator = CreateGLOperator(windowPtr, imagingmode, shaderhandle, opname, varargin)
-% gloperator = CreateGLProcessingOperatorFromShader(windowPtr [, imagingmode] [, shaderhandle] [, opname] [,..shader options])
+% gloperator = CreateGLOperator(windowPtr [, imagingmode] [, shaderhandle] [, opname] [,..shader options])
 %
 % Creates an image processing operator for use with the Screen('TransformTexture')
 % function (to be passed as 'transformProxy' argument) and returns

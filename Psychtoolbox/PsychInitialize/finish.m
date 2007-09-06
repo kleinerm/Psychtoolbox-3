@@ -27,5 +27,12 @@
 
 
 if(IsOSX)
-    StartUpdateProcess;
+    try
+        % Try restarting update process if needed. As of OS/X 10.4.7, this
+        % is not needed anymore...
+        StartUpdateProcess;
+    catch
+        % No op. Matlab is about to shut down, so no point outputting any
+        % warning here...
+    end
 end

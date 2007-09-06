@@ -34,10 +34,32 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % the action to both, left- and right eye view channels of a stereo
 % configuration or to the single monoscopic channel of a mono display
 % configuration. Other options are 'Compositor', 'FinalFormatting' and
-% 'Finalizer' for special purpose channels.
+% 'Finalizer' for special purpose channels. Set this to 'General' if the
+% command doesn't apply to a specific view, but is a general requirement.
 %
 % 'whichTask' contains the name string of one of the supported
 % actions:
+%
+% * 'FloatingPoint16Bit' Ask for a 16 bit floating point precision
+%   framebuffer. This allows more than 8 bit precision for complex drawing,
+%   compositing and image processing operations. It also allows
+%   alpha-blending with signed color values and intermediate results that
+%   are outside the displayable range, e.g., negative. Precision is about 3
+%   digits behind the dezimal point or 1024 discriminable displayable
+%   levels. If you need higher precision, choose 'FloatingPoint32Bit'.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
+%
+% * 'FloatingPoint32Bit' Ask for a 32 bit floating point precision
+%   framebuffer. This allows more than 8 bit precision for complex drawing,
+%   compositing and image processing operations. It also allows
+%   alpha-blending with signed color values and intermediate results that
+%   are outside the displayable range, e.g., negative. Precision is about
+%   6.5 digits behind the dezimal point or 8 million discriminable displayable
+%   levels.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
+%
 %
 % * 'RestrictProcessing' Restrict stimulus processing to a specific subarea
 %   of the screen. If your visual stimulus only covers a subarea of the
@@ -312,6 +334,16 @@ imagingMode = kPsychNeedFastBackingStore;
 
 % Set stereoMode to don't care:
 stereoMode = -1;
+
+% 16 bpc float framebuffers needed?
+if ~isempty(find(mystrcmp(reqs, 'FloatingPoint16Bit')))
+    imagingMode = mor(imagingMode, kPsychNeed16BPCFloat);    
+end
+
+% 32 bpc float framebuffers needed?
+if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32Bit')))
+    imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+end
 
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.

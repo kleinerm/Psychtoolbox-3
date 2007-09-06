@@ -1,0 +1,27 @@
+/* Shader for warping/distortion of textures during drawing.
+ * This shader is meant for image distortion/warping. It is used by
+ * the high-level routine AddImageWarpToGLOperator.m
+ *
+ * The shader is meant for blitting a texture to the framebuffer. It
+ * perturbs the texture lookup coordinates by some 2D offset, which it
+ * reads from a distortion/warpmap bound to the "WarpMap" sampler.
+ *
+ * (w)2007 by Mario Kleiner.
+*/
+#version 110
+
+uniform sampler2DRect Image;
+uniform sampler2DRect WarpMap;
+
+void main()
+{
+    /* Get wanted texture coordinate for which we should perform lookup: */
+    vec2 texinpos = gl_TexCoord[0].st;
+
+    /* Retrieve texture lookup 2D offset from red and green channels of WarpMap: */
+    vec2 delta = texture2DRect(WarpMap, texinpos).rg;
+
+    /* Perform perturbed lookup in source image texture and */
+    /* assign result as output fragment color: */
+    gl_FragColor = texture2DRect(Image, texinpos + delta);
+}

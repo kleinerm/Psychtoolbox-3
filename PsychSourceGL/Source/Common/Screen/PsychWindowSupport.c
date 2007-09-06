@@ -1811,7 +1811,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
                 }
 				else {
 					// Rejected sample: Better invalidate told as well:
-					told = -1;
+					//told = -1;
+					// MK: Ok, i have no clue why above told = -1 is wrong, but doing it makes OS/X 10.4.10 much
+					// more prone to sync failures, whereas not doing it makes it more reliable. Doesn't make
+					// sense, but we are better off reverting to the old strategy...
 				}
             }
 			else {
