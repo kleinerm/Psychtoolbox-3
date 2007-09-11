@@ -58,6 +58,7 @@
 %                                    at two render passes for processing.
 % kPsychNeedFastBackingStore.m    -- Enable minimal imaging pipeline. This flag is implied when using any
 %                                    of the other flags.
+% kPsychNeedFastOffscreenWindows.m - Only enable support for fast Offscreen windows, nothing else.
 % kPsychNeedImageProcessing.m     -- Request explicit support for image processing.
 % kPsychNeedMultiPass.m           -- Indicate that some of the used plugins will need more than two passes.
 % kPsychNeedOutputConversion.m    -- Indicate that display output is going to some special output device that
