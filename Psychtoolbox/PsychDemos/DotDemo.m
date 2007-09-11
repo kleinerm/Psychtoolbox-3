@@ -61,7 +61,7 @@ try
     fix_r       = 0.15; % radius of fixation point (deg)
     f_kill      = 0.05; % fraction of dots to kill each frame (limited lifetime)    
     differentcolors =1; % Use a different color for each point if == 1. Use common color white if == 0.
-    differentsizes = 3; % Use different sizes for each point if >= 1. Use one common size if == 0.
+    differentsizes = 2; % Use different sizes for each point if >= 1. Use one common size if == 0.
     waitframes = 1;     % Show new dot-images at each waitframes'th monitor refresh.
     
     if differentsizes>0  % drawing large dots is a bit slower
