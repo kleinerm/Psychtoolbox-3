@@ -178,19 +178,46 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		imagingmode=0;
 		return;
 	}
-	
-	// Safe default:
-	targetisfinalFB = FALSE;
-	
+		
 	// Activate rendering context of this window:
 	PsychSetGLContext(windowRecord);
 
+	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
+	if (!glewIsSupported("GL_EXT_framebuffer_object") || (!glewIsSupported("GL_EXT_texture_rectangle") && !glewIsSupported("GL_ARB_texture_rectangle") && !glewIsSupported("GL_NV_texture_rectangle"))) {
+		// Unsupported! This is a complete no-go :(
+		printf("PTB-ERROR: Initialization of the built-in image processing pipeline failed. Your graphics hardware or graphics driver does not support\n");
+		printf("PTB-ERROR: the required OpenGL framebuffer object extension. You may want to upgrade to the latest drivers or if that doesn't help, to a\n");
+		printf("PTB-ERROR: more recent graphics card. You'll need at minimum a NVidia GeforceFX-5000 or a ATI Radeon 9600 or Intel GMA 950 for this to work.\n");
+		printf("PTB-ERROR: See the www.psychtoolbox.org Wiki for recommendations. You can still use basic stereo support (with restricted performance and features)\n");
+		printf("PTB-ERROR: by disabling the imaging pipeline (imagingmode = 0) but still selecting a stereomode in the 'OpenWindow' subfunction.\n");
+		fflush(NULL);
+		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
+	}
+
+	// Another child protection:
+	if ((windowRecord->windowType != kPsychDoubleBufferOnscreen) || PsychPrefStateGet_EmulateOldPTB()>0) {
+		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, imaging pipeline only supported on double buffered onscreen windows in non-emulation mode for old PTB.\n");
+	}
+
 	// Specific setup of pipeline if real imaging ops are requested:
-	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline starting up for window with requested imagingmode %i ...\n", imagingmode);
-	fflush(NULL);
 	
 	// Setup mode switch in record:
 	windowRecord->imagingMode = imagingmode;
+
+	// Is this a request for fast Offscreen window support only? The special flag kPsychNeedFastOffscreenWindows,
+	// if provided without any other flags, will not startup the full pipeline, but only allow creation of FBO-backed
+	// offscreen windows and fast switching between them and the system framebuffer.
+	if (imagingmode == kPsychNeedFastOffscreenWindows) {
+		if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline starting up in minimal configuration: Only support for fast OffscreenWindows.\n");
+		fflush(NULL);
+		return;
+	}
+
+	if (PsychPrefStateGet_Verbosity()>2) printf("PTB-INFO: Psychtoolbox imaging pipeline starting up for window with requested imagingmode %i ...\n", imagingmode);
+	fflush(NULL);
+
+	// Safe default:
+	targetisfinalFB = FALSE;
 	
 	// Determine required precision for our framebuffer objects:
 
@@ -227,23 +254,6 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		needfastbackingstore = TRUE;
 	}
 	
-	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
-	if (!glewIsSupported("GL_EXT_framebuffer_object") || (!glewIsSupported("GL_EXT_texture_rectangle") && !glewIsSupported("GL_ARB_texture_rectangle") && !glewIsSupported("GL_NV_texture_rectangle"))) {
-		// Unsupported! This is a complete no-go :(
-		printf("PTB-ERROR: Initialization of the built-in image processing pipeline failed. Your graphics hardware or graphics driver does not support\n");
-		printf("PTB-ERROR: the required OpenGL framebuffer object extension. You may want to upgrade to the latest drivers or if that doesn't help, to a\n");
-		printf("PTB-ERROR: more recent graphics card. You'll need at minimum a NVidia GeforceFX-5000 or a ATI Radeon 9600 or Intel GMA 950 for this to work.\n");
-		printf("PTB-ERROR: See the www.psychtoolbox.org Wiki for recommendations. You can still use basic stereo support (with restricted performance and features)\n");
-		printf("PTB-ERROR: by disabling the imaging pipeline (imagingmode = 0) but still selecting a stereomode in the 'OpenWindow' subfunction.\n");
-		fflush(NULL);
-		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, your graphics card does not meet the minimum requirements for use of the imaging pipeline.");
-	}
-
-	// Another child protection:
-	if ((windowRecord->windowType != kPsychDoubleBufferOnscreen) || PsychPrefStateGet_EmulateOldPTB()>0) {
-		PsychErrorExitMsg(PsychError_user, "Imaging Pipeline setup: Sorry, imaging pipeline only supported on double buffered onscreen windows in non-emulation mode for old PTB.\n");
-	}
-
 	// Try to allocate and configure proper FBO's:
 	fbocount = 0;
 	

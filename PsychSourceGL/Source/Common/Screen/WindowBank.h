@@ -94,6 +94,7 @@ T0 DO:
 #define kPsychNeed16BPCFixed	   128		// fixed point 16 bpc FBO's needed?
 #define kPsychNeedDualPass         256      // At least support for dual-pass processing needed?
 #define kPsychNeedMultiPass        512      // Support for multi-pass processing needed?
+#define kPsychNeedFastOffscreenWindows 1024 // Only support for fast FBO-backed Offscreen windows, everything else off.
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;

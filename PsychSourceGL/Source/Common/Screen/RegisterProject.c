@@ -207,6 +207,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("TransformTexture", &SCREENTransformTexture));
 	PsychErrorExit(PsychRegister("DrawTextures", &SCREENDrawTextures));
 	PsychErrorExit(PsychRegister("GetWindowInfo", &SCREENGetWindowInfo));
+	PsychErrorExit(PsychRegister("GetOpenGLDrawMode", &SCREENGetOpenGLDrawMode));
 	
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");

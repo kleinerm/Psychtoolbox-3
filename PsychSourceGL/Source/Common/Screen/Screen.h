@@ -180,6 +180,7 @@ PsychError      SCREENGetCapturedImage(void);
 PsychError      SCREENSetVideoCaptureParameter(void); 
 PsychError      SCREENBeginOpenGL(void);
 PsychError      SCREENEndOpenGL(void);
+PsychError		SCREENGetOpenGLDrawMode(void);
 PsychError      SCREENLoadCLUT(void);
 PsychError      SCREENDisplaySize(void);
 PsychError      SCREENSetOpenGLTextureFromMemPointer(void);

@@ -228,6 +228,42 @@ PsychError SCREENEndOpenGL(void)
     return(PsychError_none);
 }
 
+PsychError SCREENGetOpenGLDrawMode(void)
+{
+    static char useString[] = "[targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');";
+    static char synopsisString[] = "Return information about current OpenGL rendering state.\n"
+        "'targetwindow' is the window handle of the window that is currently enabled for "
+		"drawing. That is, the last window a Screen drawing command was drawing to, or "
+		"the window which is the current target for OpenGL rendering commands.\n"
+		"'IsOpenGLRendering' if equal to zero, then normal 2D Screen drawing is active. "
+		"If greater than zero, then Matlab OpenGL drawing is active, ie. a Screen('BeginOpenGL'); "
+		"command was executed and OpenGL code can draw into 'targetwindow'. ";
+		
+    static char seeAlsoString[] = "BeginOpenGL EndOpenGL SetOpenGLTexture GetOpenGLTexture moglcore";	
+
+	PsychWindowRecordType	*windowRecord;
+    
+	//all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    //check for superfluous arguments
+    PsychErrorExit(PsychCapNumInputArgs(0));        // The maximum number of inputs
+    PsychErrorExit(PsychRequireNumInputArgs(0));    // Number of required inputs.
+    PsychErrorExit(PsychCapNumOutputArgs(2));       // The maximum number of outputs
+
+	windowRecord = PsychGetDrawingTarget();
+
+	// Return window handle of currently active drawing target window:
+	PsychCopyOutDoubleArg(1, FALSE, (double) ((windowRecord) ? windowRecord->windowIndex : 0));
+	
+	// Return draw mode: OpenGL userspace rendering or Screen() internal rendering?
+	PsychCopyOutDoubleArg(2, FALSE, (double) PsychIsUserspaceRendering());
+
+	// Ready:
+    return(PsychError_none);
+}
+
 PsychError SCREENglPushMatrix(void)  
 {
         // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c

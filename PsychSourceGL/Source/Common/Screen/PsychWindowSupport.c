@@ -2071,8 +2071,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
     
-	// The following code is for traditional non-imaging rendering:
-	if (imagingMode == 0) {
+	// The following code is for traditional non-imaging rendering. Its also executed for
+	// the special case of FBO backed Offscreen windows only:
+	if (imagingMode == 0 || imagingMode == kPsychNeedFastOffscreenWindows) {
 		// Check for compressed stereo handling...
 		if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
 			if (auxbuffers<2) {
@@ -2177,7 +2178,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 
 	}	// End of traditional preflip path.
 	
-	if (imagingMode) {
+	if (imagingMode && imagingMode!=kPsychNeedFastOffscreenWindows) {
 		// Preflip operations for imaging mode:
 
 		// Detach any active drawing targets:
@@ -2383,7 +2384,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     PsychSetGLContext(windowRecord);
 
 	// Imaging pipeline off?
-	if (windowRecord->imagingMode==0) {
+	if (windowRecord->imagingMode==0 || windowRecord->imagingMode == kPsychNeedFastOffscreenWindows) {
 		// Imaging pipeline disabled: This is the old-style way of doing things:
 		
 		// Set transform matrix to well-defined state:
@@ -2454,7 +2455,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 	} // End of traditional postflip implementation for non-imaging mode:
 	
 	// Imaging pipeline enabled?
-    if (windowRecord->imagingMode > 0) {
+    if (windowRecord->imagingMode > 0 && windowRecord->imagingMode != kPsychNeedFastOffscreenWindows) {
 		// Yes. This is rather simple. In dontclear=2 mode we do nothing, except reenable
 		// the windowRecord as drawing target again. In dontclear=1 mode ditto, because
 		// our backing store FBO's already retained a backup of the preflip-framebuffer.
@@ -2551,8 +2552,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 
 			// Check if the imaging pipeline is enabled for this window. If so, we will use
 			// the fast FBO based rendertarget implementation:
-            if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
-                // Imaging pipeline active for this window. Use OpenGL framebuffer objects: This is the fast-path!
+            if ((windowRecord->imagingMode & kPsychNeedFastBackingStore) || (windowRecord->imagingMode == kPsychNeedFastOffscreenWindows)) {
+                // Imaging pipeline (at least partially) active for this window. Use OpenGL framebuffer objects: This is the fast-path!
 
                 // Transition to offscreen rendertarget?
                 if (windowRecord->windowType == kPsychTexture) {
@@ -2582,16 +2583,26 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 				} // Special setup for offscreen windows or textures finished.
 				else {
 					// Bind onscreen window as drawing target:
-					// We either bind the drawBufferFBO for the left channel or right channel, depending
-					// on stereo mode and selected stereo buffer:
-					if ((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) {
-						// We are in stereo mode and want to draw into the right-eye channel. Bind FBO-1
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]]->fboid);
+					
+					if (windowRecord->imagingMode == kPsychNeedFastOffscreenWindows) {
+						// Only fast offscreen windows active: Onscreen window is the system framebuffer.
+						// Revert to it:
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
 					}
 					else {
-						// We are either in stereo mode and want to draw into left-eye channel or we are
-						// in mono mode. Bind FBO-0:
-						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
+						// Full pipeline active:
+						
+						// We either bind the drawBufferFBO for the left channel or right channel, depending
+						// on stereo mode and selected stereo buffer:
+						if ((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) {
+							// We are in stereo mode and want to draw into the right-eye channel. Bind FBO-1
+							glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]]->fboid);
+						}
+						else {
+							// We are either in stereo mode and want to draw into left-eye channel or we are
+							// in mono mode. Bind FBO-0:
+							glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
+						}
 					}
 				}
 

@@ -87,7 +87,8 @@ PsychError SCREENOpenOffscreenWindow(void)
     int ix;
 	GLenum fboInternalFormat;
 	boolean needzbuffer;
-
+	boolean overridedepth = FALSE;
+	
     // Detect endianity (byte-order) of machine:
     ix=255;
     rpb=(GLubyte*) &ix;
@@ -121,7 +122,7 @@ PsychError SCREENOpenOffscreenWindow(void)
         // in such a case.
         depth=(PsychIsOffscreenWindow(exampleWindowRecord)) ? exampleWindowRecord->depth : 32;
 		// unless it is a FBO backed onscreen window in imaging mode: Then we can use the depth from it.
-		if (exampleWindowRecord->imagingMode & kPsychNeedFastBackingStore) depth = exampleWindowRecord->depth;
+		if (exampleWindowRecord->imagingMode & kPsychNeedFastBackingStore || exampleWindowRecord->imagingMode & kPsychNeedFastOffscreenWindows) depth = exampleWindowRecord->depth;
         targetScreenNumber=exampleWindowRecord->screenNumber;
         targetWindow=exampleWindowRecord;
     } else if(PsychIsScreenNumberArg(1)){
@@ -151,14 +152,14 @@ PsychError SCREENOpenOffscreenWindow(void)
     if (IsPsychRectEmpty(rect)) PsychErrorExitMsg(PsychError_user, "Invalid rect value provided: Empty rects are not allowed.");
 
 	// Copy in optional depth: This gets overriden in many ways if imaging pipeline is on:
-    PsychCopyInIntegerArg(4,FALSE, &depth); 
+    if (PsychCopyInIntegerArg(4,FALSE, &depth)) overridedepth = TRUE;
 
     // If any of the no longer supported values 0, 1, 2 or 4 is provided, we
     // silently switch to 32 bits per pixel, which is the safest and fastest setting:
     if (depth==0 || depth==1 || depth==2 || depth==4) depth=32;
 
     // Final sanity check:
-	if (!(targetWindow->imagingMode & kPsychNeedFastBackingStore) && (depth==64 || depth==128)) {
+	if (!(targetWindow->imagingMode & kPsychNeedFastOffscreenWindows) && !(targetWindow->imagingMode & kPsychNeedFastBackingStore) && (depth==64 || depth==128)) {
       PsychErrorExitMsg(PsychError_user, "Invalid depth value provided. Must be 8 bpp, 16 bpp, 24 bpp or 32 bpp, unless you enable the imaging pipeline, which provides you with more options!");
 	}
 	
@@ -170,7 +171,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// is requested, then we only accept depths of at least 32 bit, i.e. RGBA windows. We override any lower
 	// precision spec. This is because some common hardware only supports rendering to RGBA textures, not to
 	// RGB, LA or Luminance textures.
-	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore) && (depth < 32)) depth = 32;
+	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore || targetWindow->imagingMode & kPsychNeedFastOffscreenWindows) && (depth < 32)) depth = 32;
 
     //find the color for the window background.  
     wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
@@ -201,13 +202,13 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Assign the computed rect, but normalize it to start with top-left at (0,0):
     PsychNormalizeRect(rect, windowRecord->rect);
 
-	if (targetWindow->imagingMode & kPsychNeedFastBackingStore) {
+	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore) || (targetWindow->imagingMode & kPsychNeedFastOffscreenWindows)) {
 		// Imaging mode for this window enabled: Use new way of creating the offscreen window:		
 		PsychSetGLContext(targetWindow);
 		PsychSetDrawingTarget(NULL);
 		
 		// Overriden for imagingmode: There we always have 4 channels...
-		if (targetWindow->imagingMode & kPsychNeedFastBackingStore) windowRecord->nrchannels=4;
+		windowRecord->nrchannels=4;
 
 		// Start off with standard 8 bpc fixed point:
 		fboInternalFormat = GL_RGBA8; windowRecord->depth=32;
@@ -220,6 +221,27 @@ PsychError SCREENOpenOffscreenWindow(void)
 		
 		// Need 32 bpc floating point precision?
 		if (targetWindow->imagingMode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128; }
+		
+		// Override depth value provided?
+		if (overridedepth) {
+			// Manual depth specified: Override with that depth:
+			switch(depth) {
+				case 32:
+					fboInternalFormat = GL_RGBA8; windowRecord->depth=32;
+				break;
+
+				case 64:
+					fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64;
+				break;
+
+				case 128:
+					fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128;
+				break;
+				
+				default:
+					fboInternalFormat = GL_RGBA8; windowRecord->depth=32;				
+			}
+		}
 		
 		// Do we need additional depth buffer attachments?
 		needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
@@ -330,6 +352,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 
 		// Set background fill color:
 		PsychSetGLColor(&color, windowRecord);
+
+		// Setup alpha-blending:
+		PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
 		// Fullscreen fill of a non-onscreen window:
 		PsychGLRect(windowRecord->rect);
