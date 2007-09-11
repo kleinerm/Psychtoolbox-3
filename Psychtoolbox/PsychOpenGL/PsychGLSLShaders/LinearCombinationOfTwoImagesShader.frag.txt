@@ -1,0 +1,24 @@
+/* LinearCombinationOfTwoImagesShader.frag.txt
+ * A fragment shader that computes a pixel-wise weighted linear combination
+ * of two input image textures bound to Image1 and Image2:
+ * outimage(x,y) = (Image1Weight * Image1(x,y)) + (Image2Weight * Image2(x,y));
+ *
+ * This one is e.g., used by the new moglmorpher.m for fast shape morphing
+ * on the GPU.
+ *
+ * (c) 2007 by Mario Kleiner, licensed to you under GPLv2 or any later version.
+ */
+
+#version 110
+
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+uniform float Image1Weight;
+uniform float Image2Weight;
+
+void main()
+{
+    vec4 img1 = texture2DRect(Image1, gl_TexCoord[0].st) * Image1Weight;
+    vec4 img2 = texture2DRect(Image2, gl_TexCoord[0].st) * Image2Weight;
+    gl_FragColor = img1 + img2;
+}

@@ -97,7 +97,7 @@ else
    rect = [0 0 500 500];
 end;
 
-[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
+[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -124,6 +124,20 @@ if ( textureon==1 )
     end;
 end
 
+% Reset moglmorpher:
+moglmorpher('reset');
+
+% Add the OBJS to moglmorpher for use as morph-shapes:
+for i=1:size(objs,2)
+    if ( textureon==1 )
+        objs{i}.texcoords = texcoords; % Add modified texture coords.
+    end
+    meshid(i) = moglmorpher('addMesh', objs{i});
+end
+
+% Output count of morph shapes:
+count = moglmorpher('getMeshCount')
+
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
 % draw into the onscreen window 'win':
@@ -146,20 +160,6 @@ if ( textureon==1 )
     % reflection properties of the the objects surface:
     glTexEnvfv(GL.TEXTURE_ENV,GL.TEXTURE_ENV_MODE,GL.MODULATE);
 end
-
-% Reset moglmorpher:
-moglmorpher('reset');
-
-% Add the OBJS to moglmorpher for use as morph-shapes:
-for i=1:size(objs,2)
-    if ( textureon==1 )
-        objs{i}.texcoords = texcoords; % Add modified texture coords.
-    end
-    meshid(i) = moglmorpher('addMesh', objs{i});
-end
-
-% Output count of morph shapes:
-count = moglmorpher('getMeshCount')
 
 % Get the aspect ratio of the screen, we need to correct for non-square
 % pixels if we want undistorted displays of 3D objects:
@@ -250,11 +250,12 @@ ang = 0.0;      % Initial rotation angle
 % left as an exercise to the reader.
 eye_halfdist=3;
 
+% Finish OpenGL setup and check for OpenGL errors:
+Screen('EndOpenGL', win);
+
 % Compute initial morphed shape for next frame, based on initial weights:
 moglmorpher('computeMorph', w);
 
-% Finish OpenGL setup and check for OpenGL errors:
-Screen('EndOpenGL', win);
 
 % Retrieve duration of a single monitor flip interval: Needed for smooth
 % animation.
@@ -336,29 +337,30 @@ while ((GetSecs - t) < 60)
         
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
-    
-    if ( KeyIsDown==1 & KeyCode(closer)==1 )
-        zz=zz-0.1;
-        KeyIsDown=0;
-    end
-    
-    if ( KeyIsDown==1 & KeyCode(farther)==1 )
-        zz=zz+0.1;
-        KeyIsDown=0;
-    end
-    
-    if ( KeyIsDown==1 & KeyCode(rotateright)==1 )
-        ang=ang+1.0;
-        KeyIsDown=0;
-    end
-    
-    if ( KeyIsDown==1 & KeyCode(rotateleft)==1 )
-        ang=ang-1.0;
-        KeyIsDown=0;
-    end
-    
-    if ( KeyIsDown==1 & KeyCode(quitkey)==1 )
-        break;
+    if KeyIsDown
+        if ( KeyIsDown==1 & KeyCode(closer)==1 )
+            zz=zz-0.1;
+            KeyIsDown=0;
+        end
+
+        if ( KeyIsDown==1 & KeyCode(farther)==1 )
+            zz=zz+0.1;
+            KeyIsDown=0;
+        end
+
+        if ( KeyIsDown==1 & KeyCode(rotateright)==1 )
+            ang=ang+1.0;
+            KeyIsDown=0;
+        end
+
+        if ( KeyIsDown==1 & KeyCode(rotateleft)==1 )
+            ang=ang-1.0;
+            KeyIsDown=0;
+        end
+
+        if ( KeyIsDown==1 & KeyCode(quitkey)==1 )
+            break;
+        end
     end
 
     % Update frame animation counter:
@@ -368,13 +370,20 @@ while ((GetSecs - t) < 60)
 
     % Show rendered image 'waitframes' refreshes after the last time
     % the display was updated and in sync with vertical retrace:
-    vbl = Screen('Flip', win, vbl + (waitframes - 0.5) * ifi);
+%    vbl = Screen('Flip', win, vbl + (waitframes - 0.5) * ifi);
+    Screen('Flip', win, 0, 0, 2);
 end
+
+vbl = Screen('Flip', win);
 
 % Calculate and display average framerate:
 fps = framecount / (vbl - tstart)
 
+% Reset moglmorpher:
+moglmorpher('reset');
+
 % Close onscreen window and release all other ressources:
+%Screen('Flip', win);
 Screen('CloseAll');
 
 % Reenable Synctests after this simple demo:
