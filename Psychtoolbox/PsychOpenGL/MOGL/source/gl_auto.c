@@ -456,16 +456,6 @@ void gl_colormaterial( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[
 
 }
 
-void gl_colorpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glColorPointer) mogl_glunsupported("glColorPointer");
-	glColorPointer((GLint)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*)mxGetData(prhs[3]));
-
-}
-
 void gl_colorsubtable( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glColorSubTable) mogl_glunsupported("glColorSubTable");
@@ -768,16 +758,6 @@ void gl_drawbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 }
 
-void gl_drawelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glDrawElements) mogl_glunsupported("glDrawElements");
-	glDrawElements((GLenum)mxGetScalar(prhs[0]),
-		(GLsizei)mxGetScalar(prhs[1]),
-		(GLenum)mxGetScalar(prhs[2]),
-		(const GLvoid*)mxGetData(prhs[3]));
-
-}
-
 void gl_drawpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glDrawPixels) mogl_glunsupported("glDrawPixels");
@@ -786,18 +766,6 @@ void gl_drawpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 		(GLenum)mxGetScalar(prhs[2]),
 		(GLenum)mxGetScalar(prhs[3]),
 		(const GLvoid*)mxGetData(prhs[4]));
-
-}
-
-void gl_drawrangeelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glDrawRangeElements) mogl_glunsupported("glDrawRangeElements");
-	glDrawRangeElements((GLenum)mxGetScalar(prhs[0]),
-		(GLuint)mxGetScalar(prhs[1]),
-		(GLuint)mxGetScalar(prhs[2]),
-		(GLsizei)mxGetScalar(prhs[3]),
-		(GLenum)mxGetScalar(prhs[4]),
-		(const GLvoid*)mxGetData(prhs[5]));
 
 }
 
@@ -1908,15 +1876,6 @@ void gl_normal3sv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) 
 
 }
 
-void gl_normalpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glNormalPointer) mogl_glunsupported("glNormalPointer");
-	glNormalPointer((GLenum)mxGetScalar(prhs[0]),
-		(GLsizei)mxGetScalar(prhs[1]),
-		(const GLvoid*)mxGetData(prhs[2]));
-
-}
-
 void gl_ortho( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glOrtho) mogl_glunsupported("glOrtho");
@@ -2294,19 +2253,6 @@ void gl_readbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] )
 
 	if (NULL == glReadBuffer) mogl_glunsupported("glReadBuffer");
 	glReadBuffer((GLenum)mxGetScalar(prhs[0]));
-
-}
-
-void gl_readpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glReadPixels) mogl_glunsupported("glReadPixels");
-	glReadPixels((GLint)mxGetScalar(prhs[0]),
-		(GLint)mxGetScalar(prhs[1]),
-		(GLsizei)mxGetScalar(prhs[2]),
-		(GLsizei)mxGetScalar(prhs[3]),
-		(GLenum)mxGetScalar(prhs[4]),
-		(GLenum)mxGetScalar(prhs[5]),
-		(GLvoid*)mxGetData(prhs[6]));
 
 }
 
@@ -2746,16 +2692,6 @@ void gl_texcoord4sv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] 
 
 }
 
-void gl_texcoordpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glTexCoordPointer) mogl_glunsupported("glTexCoordPointer");
-	glTexCoordPointer((GLint)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*)mxGetData(prhs[3]));
-
-}
-
 void gl_texenvf( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glTexEnvf) mogl_glunsupported("glTexEnvf");
@@ -3179,16 +3115,6 @@ void gl_vertex4sv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) 
 
 	if (NULL == glVertex4sv) mogl_glunsupported("glVertex4sv");
 	glVertex4sv((const GLshort*)mxGetData(prhs[0]));
-
-}
-
-void gl_vertexpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexPointer) mogl_glunsupported("glVertexPointer");
-	glVertexPointer((GLint)mxGetScalar(prhs[0]),
-		(GLenum)mxGetScalar(prhs[1]),
-		(GLsizei)mxGetScalar(prhs[2]),
-		(const GLvoid*)mxGetData(prhs[3]));
 
 }
 
@@ -4077,16 +4003,6 @@ void gl_isbuffer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 }
 
-void gl_bufferdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glBufferData) mogl_glunsupported("glBufferData");
-	glBufferData((GLenum)mxGetScalar(prhs[0]),
-		(GLsizei)mxGetScalar(prhs[1]),
-		(const GLvoid*)mxGetData(prhs[2]),
-		(GLenum)mxGetScalar(prhs[3]));
-
-}
-
 void gl_buffersubdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
 
 	if (NULL == glBufferSubData) mogl_glunsupported("glBufferSubData");
@@ -4447,18 +4363,6 @@ void gl_vertexattrib4usv( int nlhs, mxArray *plhs[], int nrhs, const mxArray *pr
 	if (NULL == glVertexAttrib4usv) mogl_glunsupported("glVertexAttrib4usv");
 	glVertexAttrib4usv((GLuint)mxGetScalar(prhs[0]),
 		(const GLushort*)mxGetData(prhs[1]));
-
-}
-
-void gl_vertexattribpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
-
-	if (NULL == glVertexAttribPointer) mogl_glunsupported("glVertexAttribPointer");
-	glVertexAttribPointer((GLuint)mxGetScalar(prhs[0]),
-		(GLint)mxGetScalar(prhs[1]),
-		(GLenum)mxGetScalar(prhs[2]),
-		(GLboolean)mxGetScalar(prhs[3]),
-		(GLsizei)mxGetScalar(prhs[4]),
-		(const GLvoid*)mxGetData(prhs[5]));
 
 }
 
@@ -6512,7 +6416,7 @@ void gl_samplepatternsgis( int nlhs, mxArray *plhs[], int nrhs, const mxArray *p
 
 }
 
-int gl_auto_map_count=738;
+int gl_auto_map_count=729;
 cmdhandler gl_auto_map[] = {
 { "glAccum",                         gl_accum                            },
 { "glActiveTexture",                 gl_activetexture                    },
@@ -6535,7 +6439,6 @@ cmdhandler gl_auto_map[] = {
 { "glBlendEquationSeparate",         gl_blendequationseparate            },
 { "glBlendFunc",                     gl_blendfunc                        },
 { "glBlendFuncSeparate",             gl_blendfuncseparate                },
-{ "glBufferData",                    gl_bufferdata                       },
 { "glBufferSubData",                 gl_buffersubdata                    },
 { "glCallList",                      gl_calllist                         },
 { "glCallLists",                     gl_calllists                        },
@@ -6582,7 +6485,6 @@ cmdhandler gl_auto_map[] = {
 { "glColor4usv",                     gl_color4usv                        },
 { "glColorMask",                     gl_colormask                        },
 { "glColorMaterial",                 gl_colormaterial                    },
-{ "glColorPointer",                  gl_colorpointer                     },
 { "glColorSubTable",                 gl_colorsubtable                    },
 { "glColorTable",                    gl_colortable                       },
 { "glColorTableParameterfv",         gl_colortableparameterfv            },
@@ -6639,9 +6541,7 @@ cmdhandler gl_auto_map[] = {
 { "glDrawArrays",                    gl_drawarrays                       },
 { "glDrawBuffer",                    gl_drawbuffer                       },
 { "glDrawBuffers",                   gl_drawbuffers                      },
-{ "glDrawElements",                  gl_drawelements                     },
 { "glDrawPixels",                    gl_drawpixels                       },
-{ "glDrawRangeElements",             gl_drawrangeelements                },
 { "glEdgeFlag",                      gl_edgeflag                         },
 { "glEdgeFlagPointer",               gl_edgeflagpointer                  },
 { "glEdgeFlagv",                     gl_edgeflagv                        },
@@ -6877,7 +6777,6 @@ cmdhandler gl_auto_map[] = {
 { "glNormal3iv",                     gl_normal3iv                        },
 { "glNormal3s",                      gl_normal3s                         },
 { "glNormal3sv",                     gl_normal3sv                        },
-{ "glNormalPointer",                 gl_normalpointer                    },
 { "glOrtho",                         gl_ortho                            },
 { "glPassThrough",                   gl_passthrough                      },
 { "glPixelMapfv",                    gl_pixelmapfv                       },
@@ -6938,7 +6837,6 @@ cmdhandler gl_auto_map[] = {
 { "glRasterPos4s",                   gl_rasterpos4s                      },
 { "glRasterPos4sv",                  gl_rasterpos4sv                     },
 { "glReadBuffer",                    gl_readbuffer                       },
-{ "glReadPixels",                    gl_readpixels                       },
 { "glRectd",                         gl_rectd                            },
 { "glRectdv",                        gl_rectdv                           },
 { "glRectf",                         gl_rectf                            },
@@ -7017,7 +6915,6 @@ cmdhandler gl_auto_map[] = {
 { "glTexCoord4iv",                   gl_texcoord4iv                      },
 { "glTexCoord4s",                    gl_texcoord4s                       },
 { "glTexCoord4sv",                   gl_texcoord4sv                      },
-{ "glTexCoordPointer",               gl_texcoordpointer                  },
 { "glTexEnvf",                       gl_texenvf                          },
 { "glTexEnvfv",                      gl_texenvfv                         },
 { "glTexEnvi",                       gl_texenvi                          },
@@ -7149,7 +7046,6 @@ cmdhandler gl_auto_map[] = {
 { "glVertexAttrib4ubvNV",            gl_vertexattrib4ubvnv               },
 { "glVertexAttrib4uiv",              gl_vertexattrib4uiv                 },
 { "glVertexAttrib4usv",              gl_vertexattrib4usv                 },
-{ "glVertexAttribPointer",           gl_vertexattribpointer              },
 { "glVertexAttribPointerNV",         gl_vertexattribpointernv            },
 { "glVertexAttribs1dvNV",            gl_vertexattribs1dvnv               },
 { "glVertexAttribs1fvNV",            gl_vertexattribs1fvnv               },
@@ -7164,7 +7060,6 @@ cmdhandler gl_auto_map[] = {
 { "glVertexAttribs4fvNV",            gl_vertexattribs4fvnv               },
 { "glVertexAttribs4svNV",            gl_vertexattribs4svnv               },
 { "glVertexAttribs4ubvNV",           gl_vertexattribs4ubvnv              },
-{ "glVertexPointer",                 gl_vertexpointer                    },
 { "glViewport",                      gl_viewport                         },
 { "glWindowPos2d",                   gl_windowpos2d                      },
 { "glWindowPos2dv",                  gl_windowpos2dv                     },

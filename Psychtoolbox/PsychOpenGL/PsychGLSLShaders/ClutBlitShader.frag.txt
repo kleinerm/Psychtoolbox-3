@@ -9,6 +9,7 @@
  * (w)2006 by Mario Kleiner.
 */
 #version 110
+#extension GL_ARB_texture_rectangle : enable
 
 uniform sampler2DRect Image;
 uniform sampler2DRect clut;

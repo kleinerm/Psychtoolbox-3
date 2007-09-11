@@ -1,8 +1,14 @@
-function retpixels = glReadPixels( x, y, width, height, format, type )
+function retpixels = glReadPixels( x, y, width, height, format, type, bufferoffset )
 
 % glReadPixels  Interface to OpenGL function glReadPixels
 %
-% usage:  retpixels = glReadPixels( x, y, width, height, format, type )
+% usage:  
+% For standard readback into a Matlab or Octave image matrix:
+% retpixels = glReadPixels( x, y, width, height, format, type )
+%
+% For readback into the currently bound OpenGL Pixelbuffer object (PBO):
+% glReadPixels( x, y, width, height, format, type, bufferoffset )
+% where bufferoffset is the positive integer byte-offset into the PBO.
 %
 % C function:  void glReadPixels(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* retpixels)
 
@@ -13,10 +19,33 @@ function retpixels = glReadPixels( x, y, width, height, format, type )
 % ---allocate---
 % ---protected---
 
-if nargin~=6,
-    error('invalid number of arguments');
-end
+if nargout > 0
+    % Standard path: Readback pixels to host memory, return image in return
+    % argument 'retpixels':
 
+    if nargin~=6,
+        error('Invalid number of arguments: Must be (x, y, width, height, format, type) for readback to host-memory.');
+    end
+    
+    bufferoffset = -1;
+else
+    % PBO backed path: Readback into a Pixelbuffer object. Nothing is
+    % directly returned to Matlab, but instead the read pixels are written
+    % to the currently bound pixelbuffer object at the offset provided by
+    % 'bufferoffset'
+    if nargin~=7,
+        error('Invalid number of arguments: Must be (x, y, width, height, format, type, bufferoffset) for readback into PBO.');
+    end
+    
+    if isempty(bufferoffset)
+        error('You must provide a valid "bufferoffset" into the PBO!');
+    end
+    
+    if bufferoffset < 0
+        error('You must provide a valid, zero or positive integral "bufferoffset" into the PBO!');
+    end
+end    
+ 
 % check format and type
 global GL
 
@@ -52,37 +81,44 @@ switch(type)
         error('Invalid type passed to glReadPixels.');
 end;
 
-% Allocate memory:
-pixels=zeros(numperpixel, width, height);
+if bufferoffset == -1
+    % Readback to host memory, aka Matlab- or Octave- matrix:
+    % Allocate memory:
+    pixels=zeros(numperpixel, width, height);
 
-% Tell OpenGL that we accept byte-aligned aka unaligned data.
-glPixelStorei(GL.PACK_ALIGNMENT, 1);
+    % Tell OpenGL that we accept byte-aligned aka unaligned data.
+    glPixelStorei(GL.PACK_ALIGNMENT, 1);
 
-% Perform proper type-cast:
-switch(type)
-    case GL.UNSIGNED_BYTE
-        pixels = uint8(pixels);
-    case GL.BYTE
-        pixels = int8(pixels);
-    case GL.UNSIGNED_SHORT
-        pixels = uint16(pixels);
-    case GL.SHORT
-        pixels = int16(pixels);
-    case GL.UNSIGNED_INT
-        pixels = uint32(pixels);
-    case GL.INT
-        pixels = int32(pixels);
-    case GL.FLOAT
-        pixels = moglsingle(pixels);
-end;
+    % Perform proper type-cast:
+    switch(type)
+        case GL.UNSIGNED_BYTE
+            pixels = uint8(pixels);
+        case GL.BYTE
+            pixels = int8(pixels);
+        case GL.UNSIGNED_SHORT
+            pixels = uint16(pixels);
+        case GL.SHORT
+            pixels = int16(pixels);
+        case GL.UNSIGNED_INT
+            pixels = uint32(pixels);
+        case GL.INT
+            pixels = int32(pixels);
+        case GL.FLOAT
+            pixels = moglsingle(pixels);
+    end;
 
-% Execute actual call:
-moglcore( 'glReadPixels', x, y, width, height, format, type, pixels );
+    % Execute actual call:
+    moglcore( 'glReadPixels', x, y, width, height, format, type, pixels );
 
-% Rearrange data in Matlab friendly format:
-for i=1:numperpixel
-retpixels(:,:,i) = pixels(i,:,:);
-end;
+    % Rearrange data in Matlab friendly format:
+    for i=1:numperpixel
+        retpixels(:,:,i) = pixels(i,:,:);
+    end;
+else
+    % Readback into bound Pixelbuffer object PBO:
+    moglcore( 'glReadPixels', x, y, width, height, format, type, bufferoffset );
+    retpixels = [];
+end
 
 return
 

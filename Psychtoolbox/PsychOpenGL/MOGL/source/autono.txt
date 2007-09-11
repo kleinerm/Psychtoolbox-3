@@ -30,3 +30,14 @@ glSamplePass        - implemented manually
 - these need our special malloc(),calloc(),free() buffer management to work on Matlab & Octave:
 glFeedbackBuffer    - implemented manually
 glSelectBuffer      - implemented manually
+
+- these needed some patches (therefore stored in gl_manual.c) to allow their use with VBOs and PBOs and special pointer magic
+glBufferData
+glColorPointer
+glDrawElements
+glDrawRangeElements
+glNormalPointer
+glReadPixels
+glTexCoordPointer
+glVertexAttribPointer
+glVertexPointer

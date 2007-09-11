@@ -244,20 +244,125 @@ void moglcopymatrixtobuffer(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
   memcpy(dst, src, nin);
 }
 
+void gl_bufferdata( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glBufferData) mogl_glunsupported("glBufferData");
+	glBufferData((GLenum)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) : (void*) (unsigned int) mxGetScalar(prhs[2]),
+		(GLenum)mxGetScalar(prhs[3]));
+
+}
+
+void gl_readpixels( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glReadPixels) mogl_glunsupported("glReadPixels");
+	glReadPixels((GLint)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(GLsizei)mxGetScalar(prhs[3]),
+		(GLenum)mxGetScalar(prhs[4]),
+		(GLenum)mxGetScalar(prhs[5]),
+		(GLvoid*) (mxGetM(prhs[6]) * mxGetN(prhs[6]) > 1) ? mxGetData(prhs[6]) :  (void*) (unsigned int) mxGetScalar(prhs[6]));
+
+}
+
+void gl_vertexpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexPointer) mogl_glunsupported("glVertexPointer");
+	glVertexPointer((GLint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+
+}
+
+void gl_normalpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glNormalPointer) mogl_glunsupported("glNormalPointer");
+	glNormalPointer((GLenum)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(const GLvoid*) (mxGetM(prhs[2]) * mxGetN(prhs[2]) > 1) ? mxGetData(prhs[2]) :  (void*) (unsigned int) mxGetScalar(prhs[2]));
+
+}
+
+void gl_texcoordpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glTexCoordPointer) mogl_glunsupported("glTexCoordPointer");
+	glTexCoordPointer((GLint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+
+}
+
+void gl_colorpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glColorPointer) mogl_glunsupported("glColorPointer");
+	glColorPointer((GLint)mxGetScalar(prhs[0]),
+		(GLenum)mxGetScalar(prhs[1]),
+		(GLsizei)mxGetScalar(prhs[2]),
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+
+}
+
+void gl_vertexattribpointer( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glVertexAttribPointer) mogl_glunsupported("glVertexAttribPointer");
+	glVertexAttribPointer((GLuint)mxGetScalar(prhs[0]),
+		(GLint)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(GLboolean)mxGetScalar(prhs[3]),
+		(GLsizei)mxGetScalar(prhs[4]),
+		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  (void*) (unsigned int) mxGetScalar(prhs[5]));
+
+}
+
+void gl_drawelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glDrawElements) mogl_glunsupported("glDrawElements");
+	glDrawElements((GLenum)mxGetScalar(prhs[0]),
+		(GLsizei)mxGetScalar(prhs[1]),
+		(GLenum)mxGetScalar(prhs[2]),
+		(const GLvoid*) (mxGetM(prhs[3]) * mxGetN(prhs[3]) > 1) ? mxGetData(prhs[3]) :  (void*) (unsigned int) mxGetScalar(prhs[3]));
+
+}
+
+void gl_drawrangeelements( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[] ) {
+
+	if (NULL == glDrawRangeElements) mogl_glunsupported("glDrawRangeElements");
+	glDrawRangeElements((GLenum)mxGetScalar(prhs[0]),
+		(GLuint)mxGetScalar(prhs[1]),
+		(GLuint)mxGetScalar(prhs[2]),
+		(GLsizei)mxGetScalar(prhs[3]),
+		(GLenum)mxGetScalar(prhs[4]),
+		(const GLvoid*) (mxGetM(prhs[5]) * mxGetN(prhs[5]) > 1) ? mxGetData(prhs[5]) :  (void*) (unsigned int) mxGetScalar(prhs[5]));
+
+}
+
 // command map:  moglcore string commands and functions that handle them
 // *** it's important that this list be kept in alphabetical order, 
 //     and that gl_manual_map_count be updated
 //     for each new entry ***
-int gl_manual_map_count=16;
+int gl_manual_map_count=25;
 cmdhandler gl_manual_map[] = {
+{ "glBufferData",                   gl_bufferdata                       },
+{ "glColorPointer",                 gl_colorpointer                     },
+{ "glDrawElements",                 gl_drawelements                     },
+{ "glDrawRangeElements",            gl_drawrangeelements                },
 { "glFeedbackBuffer",               gl_feedbackbuffer                   },
 { "glGetBufferPointerv",            gl_getbufferpointerv                },
 { "glGetPointerv",                  gl_getpointerv                      },
 { "glGetString",                    gl_getstring                        },
 { "glGetVertexAttribPointerv",      gl_getvertexattribpointerv          },
+{ "glNormalPointer",                gl_normalpointer                    },
+{ "glReadPixels",                   gl_readpixels                       },
 { "glSamplePass",                   gl_samplepass                       },
 { "glSelectBuffer",                 gl_selectbuffer                     },
 { "glShaderSource",                 gl_shadersource                     },
+{ "glTexCoordPointer",              gl_texcoordpointer                  },
+{ "glVertexAttribPointer",          gl_vertexattribpointer              },
+{ "glVertexPointer",                gl_vertexpointer                    },
 { "gluErrorString",                 glu_errorstring                     },
 { "gluGetString",                   glu_getstring                       },
 { "moglcalloc",                     moglcalloc                          },
