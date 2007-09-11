@@ -1,5 +1,5 @@
-function MorphDemo(textureon, dotson, normalson, stereomode)
-% function MorphDemo(textureon, dotson, normalson, stereomode)
+function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwindows)
+% function MorphDemo([textureon][, dotson][, normalson][, stereomode][, usefastoffscreenwindows])
 % MorphDemo -- Demonstrates use of "moglmorpher" for fast morphing
 % and rendering of 3D shapes. See "help moglmorpher" for info on
 % moglmorphers purpose and capabilities.
@@ -32,6 +32,10 @@ function MorphDemo(textureon, dotson, normalson, stereomode)
 % built-in stereo display algorithms is used to present the 3D stimulus. This
 % is very preliminary so it doesn't work that well yet.
 %
+% usefastoffscreenwindows = If set to 0 (default), work on any graphics
+% card. If you have recent hardware, set it to 1. That will enable support
+% for fast offscreen windows - and a much faster implementation of shape
+% morphing.
 %
 % This demo and the morpheable OBJ shapes were contributed by
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
@@ -66,6 +70,11 @@ if nargin < 4 | isempty(stereomode)
 end;
 stereomode
 
+if nargin < 5 | isempty(usefastoffscreenwindows)
+    usefastoffscreenwindows = 0;
+end
+usefastoffscreenwindows
+
 % Response keys: Mapping of keycodes to keynames.
 closer = KbName('a');
 farther = KbName('z');
@@ -97,7 +106,11 @@ else
    rect = [0 0 500 500];
 end;
 
-[win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
+if usefastoffscreenwindows
+    [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode, [], kPsychNeedFastOffscreenWindows);
+else
+    [win , winRect] = Screen('OpenWindow', screenid, 0, rect, [], [], stereomode);
+end
 
 % Setup texture mapping if wanted:
 if ( textureon==1 )
@@ -370,8 +383,8 @@ while ((GetSecs - t) < 60)
 
     % Show rendered image 'waitframes' refreshes after the last time
     % the display was updated and in sync with vertical retrace:
-%    vbl = Screen('Flip', win, vbl + (waitframes - 0.5) * ifi);
-    Screen('Flip', win, 0, 0, 2);
+    vbl = Screen('Flip', win, vbl + (waitframes - 0.5) * ifi);
+    %Screen('Flip', win, 0, 0, 2);
 end
 
 vbl = Screen('Flip', win);
