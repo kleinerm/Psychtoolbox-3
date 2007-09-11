@@ -3,8 +3,6 @@
  * (w)2006 by Mario Kleiner.
 */
 
-#version 110
-
 const mat3 rgb2ycbcrMatrix = mat3(0.299, -0.168736, 0.5, 0.587, -0.331264, -0.418688, 0.114, 0.5, -0.081312);
 const vec3 rgb2y = vec3(0.299, 0.587, 0.114);
 const vec3 rgb2cb = vec3(-0.168736, -0.331264, 0.5);

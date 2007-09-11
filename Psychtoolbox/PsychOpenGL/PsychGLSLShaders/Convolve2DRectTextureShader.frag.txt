@@ -14,7 +14,6 @@
 //
 // (w)2006 by Mario Kleiner.
 */
-#version 110
 
 uniform float KernelHalfWidthX;
 uniform float KernelHalfWidthY;

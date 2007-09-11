@@ -2,8 +2,6 @@
  *
  */
 
-#version 110
-
 uniform float minintensity;
 uniform float maxintensity;
 uniform float minratio;

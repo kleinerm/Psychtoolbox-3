@@ -3,7 +3,6 @@
  * (w)2006 by Mario Kleiner.
 */
 
-#version 110
 const vec3 ColorToGrayWeights = vec3(0.3, 0.59, 0.11); 
 uniform sampler2DRect Image;
 

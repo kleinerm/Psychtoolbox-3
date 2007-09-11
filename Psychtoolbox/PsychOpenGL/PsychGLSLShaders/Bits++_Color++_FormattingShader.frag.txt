@@ -28,8 +28,6 @@
  *
  */
 
-#version 110
-
 uniform sampler2DRect Image;
 
 void main()

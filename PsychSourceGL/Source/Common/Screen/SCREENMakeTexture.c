@@ -43,7 +43,7 @@
 // hardware and all pre GF6000 NVidia hardware can't filter float textures,
 // GF6/7 series NVidia hardware can only filter 16bpc floats, not 32bpc floats.
 static char textureBilinearFilterShaderSrc[] =
-"#version 110 \n"
+"\n"
 " \n"
 "uniform sampler2DRect Image; \n"
 " \n"

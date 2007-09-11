@@ -8,7 +8,6 @@
  *
  * (w)2007 by Mario Kleiner.
 */
-#version 110
 
 uniform sampler2DRect Image;
 uniform sampler2DRect WarpMap;
