@@ -16,7 +16,7 @@ function DrawingSpeedTest(n,primitivetype,mode)
 % frames and measure the time needed.
 %
 % 'primitivetype' type of primitive: 0 = filled rects, 1 = framed rects, 2
-% = filled ovals.
+% = filled ovals, 3 = framed ovals.
 %
 % 'mode' type of drawing: 0 = One by one submission (slowest), 1 = batch
 % submission, 2 = texture mapping for drawing, 3 = texture mapping with
@@ -71,6 +71,8 @@ if mode == 2 || mode == 3
             Screen('FrameRect', template, 255, [0 0 msize msize], 50);
         case 2,
             Screen('FillOval', template, 255);
+        case 3,
+            Screen('FrameOval', template, 255);
     end
 end
 
@@ -129,6 +131,16 @@ for i=1:1000
                 if mode == 0
                     for j=1:n
                         Screen('FillOval', win, colors(:,j)', myrect(:,j)');
+                    end
+                end
+            case 3,
+                if mode == 1
+                    Screen('FrameOval', win, colors, myrect);
+                end
+
+                if mode == 0
+                    for j=1:n
+                        Screen('FrameOval', win, colors(:,j)', myrect(:,j)');
                     end
                 end
 

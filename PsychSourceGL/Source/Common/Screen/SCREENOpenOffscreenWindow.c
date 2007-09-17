@@ -345,7 +345,7 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
     windowRecord->textureOrientation = 2;
     
-	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
+	if ((windowRecord->imagingMode & kPsychNeedFastBackingStore) || (windowRecord->imagingMode & kPsychNeedFastOffscreenWindows)) {
 		// Last step for FBO backed Offscreen window: Clear it to its background color:
 		PsychSetGLContext(windowRecord);
 		PsychSetDrawingTarget(windowRecord);

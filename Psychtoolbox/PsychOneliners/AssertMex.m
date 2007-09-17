@@ -123,8 +123,12 @@ if isempty(inputNames) | ismember(computer, inputNames)
     fprintf('In place of the expected mex file this file was executed:\n');
     fprintf(['  ' callerName '\n']);
     fprintf('This mex file seems to be missing:\n')
-    fprintf(['  ' mexFilename '\n']);
-    error('Missing Psychtoolbox mex file for this operating system. Unsupported?');
+    fprintf(['  ' mexFilename '\n\n']);
+    fprintf('One reason could be that your Matlab path is wrong. You may\n');
+    fprintf('want to run SetupPsychtoolbox to fix possible path problems.\n\n');
+    fprintf('Another reason could be insufficient access permissions or \n');
+    fprintf('some missing 3rd party libraries on your system.\n\n');
+    error('Missing Psychtoolbox Mex file for this operating system. Unsupported?');
 end
         
 

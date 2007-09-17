@@ -1,4 +1,4 @@
-function PsychHID 
+function PsychHID(varargin) 
 % 
 % returnValues=PsychHID(subcommand, arg1 [,arg2] ...)
 %  
@@ -77,3 +77,5 @@ function PsychHID
 %  
 % See also: TestPsychHID, Daq, TestDaq, KbCheck, Gamepad, PsychHardware. 
 % web http://psychtoolbox.org/usb.html -browser;
+
+AssertMex;
