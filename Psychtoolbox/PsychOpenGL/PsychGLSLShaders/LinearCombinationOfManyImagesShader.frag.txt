@@ -1,0 +1,25 @@
+/* LinearCombinationOfManyImagesShader.frag.txt
+ * A fragment shader that computes a pixel-wise weighted linear combination
+ * of two input image textures bound to Image1 and Image2:
+ * outimage(x,y) = (Image1Weight * Image1(x,y)) + (Image2Weight * Image2(x,y));
+ *
+ * This one is e.g., used by the new moglmorpher.m for fast shape morphing
+ * on the GPU.
+ *
+ * (c) 2007 by Mario Kleiner, licensed to you under GPLv2 or any later version.
+ */
+
+uniform sampler2DRect Image[gl_MaxTextureImageUnits];
+uniform float ImageWeight[gl_MaxTextureImageUnits];
+
+void main()
+{
+    vec4 imgsum = vec4(0.0);
+    int i;
+
+    for (i=0; i < gl_MaxTextureImageUnits; i++) {
+        imgsum+= texture2DRect(Image[i], gl_TexCoord[0].st) * ImageWeight[i];
+    }
+
+    gl_FragColor = imgsum;
+}

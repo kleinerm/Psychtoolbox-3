@@ -1,0 +1,29 @@
+/* MultiMorphShader.frag.txt
+ * A fragment shader that computes a pixel-wise weighted linear combination
+ * of many input images, stored in one texture bound to Image:
+ * outimage(x,y) = (Image1Weight * Image1(x,y)) + (Image2Weight * Image2(x,y));
+ *
+ * This one is e.g., used by the new moglmorpher.m for fast shape morphing
+ * on the GPU.
+ *
+ * (c) 2007 by Mario Kleiner, licensed to you under GPLv2 or any later version.
+ */
+
+uniform sampler2DRect Image;
+uniform sampler2DRect WeightImage;
+uniform int Count;
+uniform int Stride;
+
+void main()
+{
+    vec4 imgsum = vec4(0.0);
+    int i;
+    float weight;
+
+    for (i=0; i < Count; i++) {
+        weight = texture2DRect(WeightImage, vec2(float(i), 0.0)).r;
+        imgsum+= texture2DRect(Image, gl_FragCoord.xy + vec2(0.0, float(i * Stride))) * weight;
+    }
+
+    gl_FragColor = imgsum;
+}
