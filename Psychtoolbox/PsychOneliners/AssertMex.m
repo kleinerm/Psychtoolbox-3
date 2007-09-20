@@ -69,8 +69,8 @@ end;
 
 % Initialize the persistent variables.
 if isempty(okNames)
-    okNames = {'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
-    mexExtensions = {'dll',   '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
+    okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
+    mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
     okSupNames = {'WINDOWS', 'WIN', 'OS9', 'OSX'};
     okSupNameMatches = {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
 end

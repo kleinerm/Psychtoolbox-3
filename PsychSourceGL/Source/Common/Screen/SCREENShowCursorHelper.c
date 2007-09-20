@@ -36,37 +36,116 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+#include <X11/cursorfont.h>
+#endif
+
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('ShowCursorHelper', windowPntr);";
-//                                              1
+static char useString[] = "Screen('ShowCursorHelper', screenIndex [, cursorshapeid]);";
+//													  1			    2
 static char synopsisString[] = 
 	"This is a helper function called by ShowCursor.  Do not call Screen(\'ShowCursorHelper\'), use "
 	"ShowCursor instead.\n"
-	"Show the mouse pointer";
+	"Show the mouse pointer. If optional cursorshapeid is given, select a specific cursor shape as well.";
 static char seeAlsoString[] = "HideCursorHelper";
 	 
 PsychError SCREENShowCursorHelper(void) 
 {
-	int	screenNumber;
+	int	screenNumber, cursorid;
  
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
-	PsychErrorExit(PsychCapNumInputArgs(1));   //The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(2));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
         
 	PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
 	PsychShowCursor(screenNumber);
+	
+	// Copy in optional cursor shape id argument: The default of -1 means to
+	// not change cursor appearance. Any other positive value changes to an
+	// OS dependent shape (== the mapping of numbers to shapes is OS dependent).
+	cursorid = -1;
+	PsychCopyInIntegerArg(2, FALSE, &cursorid);
+	
+	// Cursor change request?
+	if (cursorid!=-1) {
+		// Yes.
+#if PSYCH_SYSTEM == PSYCH_OSX
+		// Not yet implemented on OS/X :-(
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Changing the mouse cursor appearance is not yet implemented on MacOS/X. Ignored...\n");
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+		// GNU/Linux with X11 windowing system:
+		
+		// Map screenNumber to X11 display handle and screenid:
+		CGDirectDisplayID dpy;
+		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+		// Create cursor spec from passed cursorid:
+		Cursor mycursor = XCreateFontCursor(dpy, (unsigned int) cursorid);
+		// Set cursor for our window:
+		XDefineCursor(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
+		// Done (hopefully).
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		// Microsoft Windows:
+		LPCTSTR lpCursorName;
+		
+		// Map provided cursor id to a Windows system id for such a cursor:
+		switch(cursorid) {
+			case 0:
+				// Standard arrow cursor:
+				lpCursorName = IDC_ARROW;
+				break;
+
+			case 1:
+				// haircross cursor:
+				lpCursorName = IDC_CROSS;
+				break;
+
+			case 2:
+				// hand cursor:
+				lpCursorName = IDC_HAND;
+				break;
+
+			case 3:
+				// Arrows in all 4 directions cursor:
+				lpCursorName = IDC_SIZEALL;
+				break;
+
+			case 4:
+				// north-south cursor:
+				lpCursorName = IDC_SIZENS;
+				break;
+
+			case 5:
+				// east-west cursor:
+				lpCursorName = IDC_SIZEWE;
+				break;
+
+			case 6:
+				// hourglass cursor:
+				lpCursorName = IDC_WAIT;
+				break;
+
+			case 7:
+				// No cursor:
+				lpCursorName = IDC_NO;
+				break;
+
+			default:
+				// Default for unknown id is the standard arrow cursor:
+				lpCursorName = IDC_ARROW;
+		}
+		
+		// Load and set a cursor, based on the selected lpCursorName cursor id string:
+		SetCursor(LoadCursor(NULL, lpCursorName));
+#endif
+		// End of cursor shape setup.
+	}
+	
 	return(PsychError_none);	
 }
-
-
-	
-	
-
-
-
-
-
-

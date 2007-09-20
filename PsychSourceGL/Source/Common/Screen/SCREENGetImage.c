@@ -134,12 +134,12 @@ PsychError SCREENGetImage(void)
 	
 	// Enable this windowRecords framebuffer as current drawingtarget. This should
 	// also allow us to "GetImage" from Offscreen windows:
-	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
+	if ((windowRecord->imagingMode & kPsychNeedFastBackingStore) || (windowRecord->imagingMode & kPsychNeedFastOffscreenWindows)) {
 		// Special case: Imaging pipeline active - We need to activate system framebuffer
 		// so we really read the content of the framebuffer and not of some FBO:
 		if (PsychIsOnscreenWindow(windowRecord)) {
 			// It's an onscreen window:
-			if (buffername && (strcmp(buffername, "drawBuffer")==0)) {
+			if (buffername && (strcmp(buffername, "drawBuffer")==0) && (windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
 				// Activate drawBufferFBO:
 				PsychSetDrawingTarget(windowRecord);
 				whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
