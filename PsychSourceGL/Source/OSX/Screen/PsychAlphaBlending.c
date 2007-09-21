@@ -248,6 +248,9 @@ void PsychUpdateAlphaBlendingFactorLazily(PsychWindowRecordType *winRec)
 		winRec->actualDestinationAlphaBlendingFactor = winRec->nextDestinationAlphaBlendingFactor;
 		glBlendFunc(winRec->actualSourceAlphaBlendingFactor, winRec->actualDestinationAlphaBlendingFactor);
 	}
+	else {
+		glBlendFunc(GL_ONE, GL_ZERO);
+	}
 }
 
 

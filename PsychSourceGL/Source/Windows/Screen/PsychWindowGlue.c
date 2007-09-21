@@ -100,8 +100,16 @@ boolean PsychRealtimePriority(boolean enable_realtime)
       // Check if realtime scheduling isn't already active.
       // If we are already in RT mode (e.g., Priority(2) call in Matlab), we skip the switch...
       if (oldPriority != realtime_class) {
-	// RT scheduling not yet active -> Switch to it.
-	SetPriorityClass(currentProcess, realtime_class);
+			// RT scheduling not yet active -> Switch to it.
+			SetPriorityClass(currentProcess, realtime_class);
+			
+			// Check if transition to realtime class worked. If not then retry
+			// with high priority class -- better than nothing...
+			if (GetPriorityClass(currentProcess)!=realtime_class) {
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Could not enable REALTIME_PRIORITY_CLASS scheduling! Retrying with HIGH_PRIORITY_CLASS...\n");
+				SetPriorityClass(currentProcess, HIGH_PRIORITY_CLASS);
+				if ((GetPriorityClass(currentProcess)!=HIGH_PRIORITY_CLASS) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Could not enable HIGH_PRIORITY_CLASS scheduling. OS malfunction? Timing may be noisy...\n");
+			}
       }
     }
     else {
