@@ -76,8 +76,8 @@ PsychError SCREENShowCursorHelper(void)
 	if (cursorid!=-1) {
 		// Yes.
 #if PSYCH_SYSTEM == PSYCH_OSX
-		// Not yet implemented on OS/X :-(
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Changing the mouse cursor appearance is not yet implemented on MacOS/X. Ignored...\n");
+		// OS/X:
+		SetThemeCursor((ThemeCursor) cursorid);
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX

@@ -8,7 +8,7 @@ function oldType = ShowCursor(type, screenid)
 % The return value 'oldType' is always zero, as this query mechanism is not
 % supported with PTB-3. Just returned for backwards-compatibility.
 % 
-% WINDOWS, LINUX: ________________________________________________________
+% OSX, WINDOWS, LINUX: ___________________________________________________
 %
 % Cursor shape can be selected. Four types are defined by name:
 %
@@ -24,7 +24,10 @@ function oldType = ShowCursor(type, screenid)
 %  select from a wide range of numbers from 0 up to (at least) 152, maybe
 %  more, depending on your setup. See the C header file "X11/cursorfont.h"
 %  for a mapping of numbers to shapes. Passing invalid numbers can create
-%  errors.
+%  errors. On OS/X, numbers between zero and 17 are currently valid. You
+%  can find a list of mappings from type to number for OS/X at:
+%  http://developer.apple.com/documentation/macos8/HumanInterfaceToolbox/Ap
+%  pManager/ProgWithAppearanceMgr/Appearance.9d.html#10244
 %
 % OSX: ___________________________________________________________________
 %
@@ -92,7 +95,7 @@ else
         % Name string provided. We can map a few symbolic names to proper
         % id's for the different operating systems:
         if strcmpi(type, 'Arrow');
-            % True for Windows and maybe OS/X:
+            % True for Windows and OS/X:
             type = 0;
             
             if IsLinux
@@ -104,6 +107,10 @@ else
             % True for Windows:
             type = 1;
             
+            if IsOSX
+                type = 5;
+            end
+            
             if IsLinux
                 type = 34;
             end
@@ -113,6 +120,10 @@ else
             % True for Windows:
             type = 2;
             
+            if IsOSX
+                type = 10;
+            end
+
             if IsLinux
                 type = 58;
             end
@@ -122,6 +133,10 @@ else
             % True for Windows:
             type = 6;
             
+            if IsOSX
+                type = 7;
+            end
+
             if IsLinux
                 type = 26;
             end
