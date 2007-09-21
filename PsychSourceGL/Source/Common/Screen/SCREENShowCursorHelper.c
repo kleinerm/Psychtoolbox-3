@@ -37,6 +37,7 @@
 #include "Screen.h"
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
+#include <X11/X.h>
 #include <X11/cursorfont.h>
 #endif
 
@@ -52,7 +53,9 @@ static char seeAlsoString[] = "HideCursorHelper";
 PsychError SCREENShowCursorHelper(void) 
 {
 	int	screenNumber, cursorid;
- 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+	Cursor  mycursor;
+#endif
 	//all subfunctions should have these two lines.  
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -84,7 +87,7 @@ PsychError SCREENShowCursorHelper(void)
 		CGDirectDisplayID dpy;
 		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
 		// Create cursor spec from passed cursorid:
-		Cursor mycursor = XCreateFontCursor(dpy, (unsigned int) cursorid);
+		mycursor = XCreateFontCursor(dpy, (unsigned int) cursorid);
 		// Set cursor for our window:
 		XDefineCursor(dpy, RootWindow(dpy, PsychGetXScreenIdForScreen(screenNumber)), mycursor);
 		// Done (hopefully).

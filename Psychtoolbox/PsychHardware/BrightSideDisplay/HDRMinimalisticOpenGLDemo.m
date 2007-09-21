@@ -2,6 +2,11 @@ function HDRMinimalisticOpenGLDemo
 % HDRMinimalisticOpenGLDemo - Demonstrate use of MATLAB-OpenGL toolbox with
 % the BrightSide-Technologies High Dynamic Range Display.
 %
+% It differs from the normal MinimalisticOpenGLDemo only by the OpenWindow
+% call that requests BrightSide HDR support, and the setup of lightsource
+% intensities to make better use of the large dynamic range of the HDR
+% display.
+%
 % This demo demonstrates use of OpenGL commands in a Matlab script to
 % perform some very boring 3D rendering in Psychtoolbox.
 %
@@ -165,9 +170,10 @@ glLoadIdentity;
 
 % Our point lightsource is at position (x,y,z) == (1,2,3)...
 glLightfv(GL.LIGHT0,GL.POSITION,[ 1 2 3 0 ]);
-glLightfv(GL.LIGHT0,GL.AMBIENT,[ 1000 1000 1000 0 ]);
-glLightfv(GL.LIGHT0,GL.DIFFUSE,[ 1000 1000 1000 0 ]);
+glLightfv(GL.LIGHT0,GL.AMBIENT,[ 10 10 10 0 ]);
+glLightfv(GL.LIGHT0,GL.DIFFUSE,[ 100 100 100 0 ]);
 glLightfv(GL.LIGHT0,GL.SPECULAR,[ 1000 1000 1000 0 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS, 100);
 
 % Cam is located at 3D position (3,3,5), points upright (0,1,0) and fixates
 % at the origin (0,0,0) of the worlds coordinate system:
@@ -199,8 +205,8 @@ glTranslatef(0, 0, +2);
 % material - of the following objects to greenish. We only change ambient and
 % diffuse reflection properties. The color for specular reflection is left
 % to its default of "white":
-glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.0 600 0.0 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 0.0 600 0.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.0 0.600 0.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 0.0 0.600 0.0 1 ]);
 
 % Draw a solid sphere of radius 0.25
 glutSolidSphere(0.25, 100, 100);
@@ -213,8 +219,8 @@ glTranslatef(1.5, 0, -1);
 % material of the following objects - to blue. We only change ambient and
 % diffuse reflection properties. The color for specular reflection is left
 % to its default of "white":
-glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.0 0.0 1000.0 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 0.0 0.0 1000.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 0.0 0.0 1.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 0.0 0.0 1.0 1 ]);
 
 % Draw some solid cube:
 glutSolidCube(0.25);
@@ -227,8 +233,8 @@ glTranslatef(0, 0.125, 0);
 glRotatef(-90, 1, 0, 0);
 
 % change material reflection properties again to red:
-glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 1000.0 0.0 0.0 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 1000.0 0.0 0.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 1.0 0.0 0.0 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 1.0 0.0 0.0 1 ]);
 
 % And draw some cone on top of the cube:
 glutSolidCone(0.25, 0.25, 100, 100);
@@ -249,7 +255,7 @@ while KbCheck; end;
 
 % Prepare texture to by applied to the sphere: Load & create it from an image file:
 myimg = imread([PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']);
-myimg = double(myimg) * 0.01;
+%myimg = double(myimg) * 0.01;
 
 % Make a special power-of-two texture from the image by setting the enforcepot - flag to 1
 % when calling 'MakeTexture'. GL_TEXTURE_2D textures (==power of two textures) are
@@ -261,7 +267,7 @@ myimg = double(myimg) * 0.01;
 % Psychtoolbox also supports rectangular textures of arbitrary size, so called
 % GL_TEXTURE_RECTANGLE_2D textures. These are normally used for Screen's drawing
 % commands, but they are more difficult to handle in standard OpenGL code...
-mytex = Screen('MakeTexture', win, myimg, [], 1, 1);
+mytex = Screen('MakeTexture', win, myimg, [], 1);
 
 % Retrieve OpenGL handles to the PTB texture. These are needed to use the texture
 % from "normal" OpenGL code:
@@ -290,9 +296,10 @@ glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
 
 % Set basic "color" of object to white to get a nice interaction between the texture
 % and the objects lighting:
-glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ 1000 1000 1000 1 ]);
-glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ 1000 1000 1000 1 ]);
-
+glMaterialfv(GL.FRONT_AND_BACK,GL.AMBIENT, [ .1 .1 .1 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.DIFFUSE, [ .4 .4 .4 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.SPECULAR, [ 1 1 1 1 ]);
+glMaterialfv(GL.FRONT_AND_BACK,GL.SHININESS, 100);
 % Reset our virtual camera and all geometric transformations:
 glMatrixMode(GL.MODELVIEW);
 glLoadIdentity;
@@ -332,7 +339,7 @@ while ~KbCheck
   % the sphere into 100 slices in elevation and 100 sectors in azimuth: Higher values
   % provide a better approximation, but they take longer to draw. Live is full of
   % trade-offs...
-  gluSphere(mysphere, 0.7, 100, 100);
+  gluSphere(mysphere, 0.7, 1000, 1000);
 
   % Finish OpenGL rendering into PTB window. This will switch back to the
   % standard 2D drawing functions of Screen and will check for OpenGL errors.

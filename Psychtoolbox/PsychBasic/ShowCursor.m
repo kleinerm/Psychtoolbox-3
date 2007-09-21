@@ -128,6 +128,7 @@ else
         end
 
         if ischar(type)
+            sca;
             error('Unknown "type" shape specification passed to ShowCursor()!');
         end
     end

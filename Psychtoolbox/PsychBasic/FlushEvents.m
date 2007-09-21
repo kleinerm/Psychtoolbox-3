@@ -34,10 +34,19 @@ function FlushEvents(varargin)
 %               We now check for valid event descriptors.
 %
 % 11/14/06 mk   Ugly while CharAvail, GetChar; hack to fix more GetChar brain-damage.
+% 09/21/07 mk   Added a drawnow() on top to prevent Matlabs GUI from
+%               receiving mouse clicks that were meant to be only processed by the
+%               experiment script. In other words: Fix more Matlab
+%               brain-damage.
 
 global OSX_JAVA_GETCHAR;
 
 if ~IsOctave
+    % Execute a single drawnow() to kick in Matlabs event processing.
+    % This will nicely eat up pending mouse-clicks, so they can't "spill over"
+    % into Matlab GUI after end of an experiment script.
+    drawnow;
+    
     % This is Matlab. Is the Java VM and AWT running?
     if psychusejava('desktop')
         % Make sure that the GetCharJava class is loaded and registered with
