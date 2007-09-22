@@ -101,6 +101,10 @@
 % connectors on the computer. This bug is resolved in the latest releases of MacOS-X, i.e.,
 % 10.4.5 and later.
 %
+% Troubleshooting: Update to the latest graphics drivers for your graphics
+% card and operating system. A large number of problems can be resolved by
+% a simple driver update!
+%
 % 2. Driver/Hardware limitations: On Microsoft Windows, some ATI graphics adapters are only
 % capable of syncing to retrace, if the onscreen window is a full-screen window. Synchronization
 % fails if the onscreen window only covers part of the screen (i.e., when providing a 'rect'
