@@ -62,7 +62,10 @@ void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 boolean PsychCheckScreenSettingsLock(int screenNumber);
-//boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+
+// This is actually a function in PsychWindowGlue.c, we redefine the prototype here to make compiler happy:
+extern boolean ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -273,9 +276,6 @@ void PsychReleaseScreen(int screenNumber)
     CGDisplayErr  error=0;
     
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
-    // On Windows we restore the original display settings of the to be released screen:
-    PsychRestoreScreenSettings(screenNumber);
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to release display");
     PsychUnlockScreenSettings(screenNumber);
 }
 
@@ -332,7 +332,6 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** h
 {
     int i, rc, numPossibleModes;
     DEVMODE result;
-    long tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
 
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
 
@@ -373,7 +372,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** h
     static PsychGetCGModeFromVideoSettings()
    
 */
-boolean  PsychGetCGModeFromVideoSettings(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+boolean  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
   /*
     FIXME - We just return a 1.
@@ -626,7 +625,7 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     // Change the display mode.   
 	// We do this in PsychOSOpenWindow() if necessary for fullscreen-mode, but without changing any settings except
 	// switch to fullscreen mode. Here we call PsychOSOpenWindow's helper routine to really change video settings:
-	return(ChangeScreenResolution(settings->screenNumber, PsychGetWidthFromRect(setting->rect), PsychGetHeightFromRect(setting->rect), PsychGetValueFromDepthStruct(0,&(setting->depth)), setting->nominalFrameRate));
+	return(ChangeScreenResolution(settings->screenNumber, PsychGetWidthFromRect(settings->rect), PsychGetHeightFromRect(settings->rect), PsychGetValueFromDepthStruct(0,&(settings->depth)), settings->nominalFrameRate));
 }
 
 /*

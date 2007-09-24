@@ -243,10 +243,6 @@ PsychError SCREENOpenWindow(void)
 		// Display running at less than 30 bpp. OpenWindow will fail on M$-Windows anyway, so let's abort
 		// now.
 
-		// Release the captured screen:
-		PsychRestoreScreenSettings(screenNumber);
-		PsychReleaseScreen(screenNumber);
-
 		// Output warning text:
         printf("PTB-ERROR: Your display screen %i is not running at the required color depth of at least 30 bit.\n", screenNumber);
         printf("PTB-ERROR: The current setting is %i bit color depth..\n", PsychGetScreenDepthValue(screenNumber));
@@ -256,7 +252,11 @@ PsychError SCREENOpenWindow(void)
         printf("PTB-ERROR: to restart Matlab after applying the change...\n");
         fflush(NULL);
 
-		// Reset master assignment to prepare possible further dual-window config operations:
+		// Release the captured screen:
+		PsychRestoreScreenSettings(screenNumber);
+		PsychReleaseScreen(screenNumber);
+
+        // Reset master assignment to prepare possible further dual-window config operations:
 		sharedContextWindow = NULL;
 
 		// Abort with Matlab error:
