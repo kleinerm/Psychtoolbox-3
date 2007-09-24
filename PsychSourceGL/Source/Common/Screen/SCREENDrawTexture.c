@@ -116,7 +116,7 @@ static char synopsisString[] =
     if (IsPsychRectEmpty(sourceRect)) return(PsychError_none);
 
 
-    if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
+    if (target->specialflags & kPsychHalfWidthWindow) {
       // Special case for stereo: Only half the real window width:
       PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
 		    target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
@@ -407,7 +407,7 @@ PsychError SCREENDrawTextures(void)
 		} else {
 			// No destination rect provided: Center the current sourceRect in the current
 			// target window and use that as destination:
-			if (target->stereomode==kPsychFreeFusionStereo || target->stereomode==kPsychFreeCrossFusionStereo) {
+			if (target->specialflags & kPsychHalfWidthWindow) {
 				// Special case for stereo: Only half the real window width:
 				PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
 							  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);

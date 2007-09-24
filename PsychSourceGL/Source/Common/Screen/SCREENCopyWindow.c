@@ -68,7 +68,7 @@ PsychError SCREENCopyWindow(void)
 	PsychAllocInWindowRecordArg(1, TRUE, &sourceWin);
 	PsychCopyRect(sourceRect, sourceWin->rect);
 
-	if (sourceWin->stereomode==kPsychFreeFusionStereo || sourceWin->stereomode==kPsychFreeCrossFusionStereo) {
+	if (sourceWin->specialflags & kPsychHalfWidthWindow) {
 		// Special case for stereo: Only half the real window width:
 		PsychMakeRect(&sourceRect, sourceWin->rect[kPsychLeft], sourceWin->rect[kPsychTop],
 						  sourceWin->rect[kPsychLeft] + PsychGetWidthFromRect(sourceWin->rect)/2, sourceWin->rect[kPsychBottom]);
@@ -81,7 +81,7 @@ PsychError SCREENCopyWindow(void)
    // By default, the targetRect is equal to the sourceRect, but centered in
    // the target window.
 	PsychCopyRect(targetRect, targetWin->rect);
-	if (targetWin->stereomode==kPsychFreeFusionStereo || targetWin->stereomode==kPsychFreeCrossFusionStereo) {
+	if (targetWin->specialflags & kPsychHalfWidthWindow) {
 		// Special case for stereo: Only half the real window width:
 		PsychMakeRect(&targetRect, targetWin->rect[kPsychLeft], targetWin->rect[kPsychTop],
 						  targetWin->rect[kPsychLeft] + PsychGetWidthFromRect(targetWin->rect)/2, targetWin->rect[kPsychBottom]);

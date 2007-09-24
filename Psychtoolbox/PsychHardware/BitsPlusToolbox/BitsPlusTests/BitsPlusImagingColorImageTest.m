@@ -171,9 +171,12 @@ end
 Screen('CloseAll');
 
 % Compute difference images and such...
-diffred = abs(double(packedImage(:,:,1)) - double(convImage(:,:,1)));
-diffgreen = abs(double(packedImage(:,:,2)) - double(convImage(:,:,2)));
-diffblue = abs(double(packedImage(:,:,3)) - double(convImage(:,:,3)));
+ww = Screen('WindowSize', whichScreen);
+ww = min(ww / 2, size(packedImage,2));
+
+diffred = abs(double(packedImage(:,1:ww,1)) - double(convImage(:,1:ww,1)));
+diffgreen = abs(double(packedImage(:,1:ww,2)) - double(convImage(:,1:ww,2)));
+diffblue = abs(double(packedImage(:,1:ww,3)) - double(convImage(:,1:ww,3)));
 
 % Compute maximum deviation of framebuffer raw data:
 mdr = max(max(diffred));

@@ -38,12 +38,14 @@
 %    MapIndexColorThroughClut - Convert an index color image and clut to a true color image.
 %    NameBytes               - Nicely format memory size for human readers.
 %    NameFrequency           - Nicely format clock rate for human readers.
+%    NearestResolution       - Find a screen resolution that most closely matches a requested resolution.
 %    OSName                  - Convential English-language name of your operating system.
 %    PackColorImage          - Pack three color planes into one m by n by three matrix.
 %    PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
 %    RemoveSVNPaths          - Removes .svn folders from the path.
 %    sca                     - Shorthand for Screen('CloseAll').  Using this is a good way to make your code obscure.
 %    ScreenDacBits           - What is precision of the graphics boardDACs. Currently returns 8 always.
+%    SetResolution           - Change display resolution, refresh rate and color depths to requested values.
 %    Stopwatch               - Time intervals.
 %    streq                   - strcmp.
 %    TextBounds              - Draw string, return enclosing rect.

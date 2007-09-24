@@ -1,48 +1,23 @@
 /*
-
 	SCREENCloseAll.c		
-
-  
 
 	AUTHORS:
 
-	
-
-		Allen.Ingling@nyu.edu		awi 
-
-  
+		Allen.Ingling@nyu.edu				awi 
+		mario.kleiner at tuebingen.mpg.de	mk
 
 	PLATFORMS:	
 
-		
-
-		Only OS X for now.  
-
-    
-
-
+		All.  
 
 	HISTORY:
 
-		
-
 		01/23/02	awi		Wrote It.
-
 		10/12/04	awi		Changed "SCREEN" to "Screen" and "Close" to "CloseAll" in useString .
-
 		1/25/04		awi		Merged in a fix provide by mk.  Splits off parts of SCREENCloseAll into ScreenCloseAllWindows()  
-
 							 to be called from ScreenExit(). 
 
-
-
- 
-
-    
-
 	T0 DO:
-
- 
 
 */
 
@@ -51,7 +26,7 @@
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('CloseAll');";
 static char synopsisString[] = 
-	"Close all open onscreen and offscreen windows and textures";  
+	"Close all open onscreen and offscreen windows and textures, movies and video sources. Release nearly all ressources.";  
 static char seeAlsoString[] = "OpenWindow, OpenOffscreenWindow";	 
 
 PsychError SCREENCloseAll(void)
@@ -101,10 +76,13 @@ void ScreenCloseAllWindows(void)
     // Release all captured displays, unhide the cursor on each of them:
     numScreens=PsychGetNumDisplays();
     for(i=0;i<numScreens;i++){
-        if(PsychIsScreenCaptured(i)) PsychReleaseScreen(i);
+        if(PsychIsScreenCaptured(i)) {
+			PsychRestoreScreenSettings(i);
+			PsychReleaseScreen(i);
+		}
+		 
 		PsychShowCursor(i);
     }
 
     return;
 }
-

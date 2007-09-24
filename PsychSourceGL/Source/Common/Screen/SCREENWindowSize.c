@@ -60,7 +60,7 @@ PsychError SCREENWindowSize(void)
 		rectWidth=PsychGetWidthFromRect(windowRecord->rect);
 		rectHeight=PsychGetHeightFromRect(windowRecord->rect);
 
-		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			rectWidth = rectWidth / 2;
 		}

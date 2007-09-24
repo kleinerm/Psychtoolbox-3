@@ -312,7 +312,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		winheight=PsychGetHeightFromRect(windowRecord->rect);
 
 		// Adapt it for some stereo modes:
-		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			winwidth = winwidth / 2;
 		}
@@ -355,7 +355,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		winheight=PsychGetHeightFromRect(windowRecord->rect);
 
 		// Adapt it for some stereo modes:
-		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			winwidth = winwidth / 2;
 		}

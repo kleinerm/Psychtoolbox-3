@@ -322,12 +322,58 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     return;    
 }
 
+/*   PsychGetAllSupportedScreenSettings()
+ *
+ *	 Queries the display system for a list of all supported display modes, ie. all valid combinations
+ *	 of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
+ *	 and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
+ */
+int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp)
+{
+    int i, rc, numPossibleModes;
+    DEVMODE result;
+    long tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
+
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+
+	// First pass: How many modes are supported?
+	i=-1;
+	do {
+        result.dmSize = sizeof(DEVMODE);
+        result.dmDriverExtra = 0;
+        rc = EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), i, &result);
+        i++;
+	} while (rc!=0);
+
+    // Get a list of avialable modes for the specified display:
+    numPossibleModes= i;
+	
+	// Allocate output arrays: These will get auto-released at exit
+	// from Screen():
+	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	
+	// Fetch modes and store into arrays:
+    for(i=0; i < numPossibleModes; i++) {
+        result.dmSize = sizeof(DEVMODE);
+        result.dmDriverExtra = 0;
+        rc = EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), i, &result);
+		(*widths)[i] = (long)  result.dmPelsWidth;
+		(*heights)[i] = (long)  result.dmPelsHeight;
+		(*hz)[i] = (long) result.dmDisplayFrequency;
+		(*bpp)[i] = (long) result.dmBitsPerPel;
+    }
+
+	return(numPossibleModes);
+}
 
 /*
     static PsychGetCGModeFromVideoSettings()
    
 */
-boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+boolean  PsychGetCGModeFromVideoSettings(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
   /*
     FIXME - We just return a 1.
@@ -544,12 +590,10 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
     //variable, since basicially every core graphics function goes through this deal.    
     if(settings->screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
+        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychSetScreenSettings() is out of range");
 
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    if(PsychCheckScreenSettingsLock(settings->screenNumber))
-        return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
-    
+    // MK: Disabled : if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
     
     //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in 
     //the screen state made through the control panel after the Psychtoolbox was launched. That is, OpenWindow will by default continue to 
@@ -579,11 +623,10 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     isCaptured=PsychIsScreenCaptured(settings->screenNumber);
     if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
         
-    //Change the display mode.   
-	 // FIXME: Not yet implemented. We do this in PsychOSOpenWindow() if necessary for fullscreen-mode...
-	 // Would be better to do it here though...
-    
-    return(true);
+    // Change the display mode.   
+	// We do this in PsychOSOpenWindow() if necessary for fullscreen-mode, but without changing any settings except
+	// switch to fullscreen mode. Here we call PsychOSOpenWindow's helper routine to really change video settings:
+	return(ChangeScreenResolution(settings->screenNumber, PsychGetWidthFromRect(setting->rect), PsychGetHeightFromRect(setting->rect), PsychGetValueFromDepthStruct(0,&(setting->depth)), setting->nominalFrameRate));
 }
 
 /*
@@ -603,8 +646,7 @@ boolean PsychRestoreScreenSettings(int screenNumber)
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
 
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    if(PsychCheckScreenSettingsLock(screenNumber))
-        return(false);  //calling function will issue error for attempt to change display settings while windows were open.
+    // Disabled: if(PsychCheckScreenSettingsLock(screenNumber)) return(false);  //calling function will issue error for attempt to change display settings while windows were open.
     
     //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
     //return true. 

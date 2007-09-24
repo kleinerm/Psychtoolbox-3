@@ -222,8 +222,7 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
     CFNumberRef n;
     int i, numPossibleModes;
     long currentWidth, currentHeight, tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
-    
-    
+
     if(screenNumber>=numDisplays)
         PsychErrorExit(PsychError_invalidScumber); //also checked within SCREENPixelSizes
      
@@ -257,6 +256,55 @@ void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)
 
 }
 
+/*   PsychGetAllSupportedScreenSettings()
+ *
+ *	 Queries the display system for a list of all supported display modes, ie. all valid combinations
+ *	 of resolution, pixeldepth and refresh rate. Allocates temporary arrays for storage of this list
+ *	 and returns it to the calling routine. This function is basically only used by Screen('Resolutions').
+ */
+int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp)
+{
+    CFDictionaryRef tempMode;
+    CFArrayRef modeList;
+    CFNumberRef n;
+    int i, numPossibleModes;
+    long tempWidth, tempHeight, currentFrequency, tempFrequency, tempDepth;
+
+    if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
+
+    // Get a list of avialable modes for the specified display:
+    modeList = CGDisplayAvailableModes(displayCGIDs[screenNumber]);
+    numPossibleModes= CFArrayGetCount(modeList);
+	
+	// Allocate output arrays: These will get auto-released at exit
+	// from Screen():
+	*widths = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*heights = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*hz = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	*bpp = (long*) PsychMallocTemp(numPossibleModes * sizeof(int));
+	
+	// Fetch modes and store into arrays:
+    for(i=0; i<numPossibleModes; i++) {
+        tempMode = CFArrayGetValueAtIndex(modeList,i);
+        n=CFDictionaryGetValue(tempMode, kCGDisplayWidth);
+        CFNumberGetValue(n,kCFNumberLongType, &tempWidth);
+		(*widths)[i] = tempWidth;
+		
+        n=CFDictionaryGetValue(tempMode, kCGDisplayHeight);
+        CFNumberGetValue(n,kCFNumberLongType, &tempHeight);
+		(*heights)[i] = tempHeight;
+
+        n=CFDictionaryGetValue(tempMode, kCGDisplayRefreshRate);
+        CFNumberGetValue(n, kCFNumberLongType, &tempFrequency) ;
+		(*hz)[i] = tempFrequency;
+
+		n=CFDictionaryGetValue(tempMode, kCGDisplayBitsPerPixel);
+		CFNumberGetValue(n, kCFNumberLongType, &tempDepth) ;
+		(*bpp)[i] = tempDepth;
+    }
+
+	return(numPossibleModes);
+}
 
 /*
     static PsychGetCGModeFromVideoSettings()
@@ -520,8 +568,7 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
         PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
 
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    if(PsychCheckScreenSettingsLock(settings->screenNumber))
-        return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
+    // MK: Disabled if(PsychCheckScreenSettingsLock(settings->screenNumber)) return(false);  //calling function should issue an error for attempt to change display settings while windows were open.
     
     
     //store the original display mode if this is the first time we have called this function.  The psychtoolbox will disregard changes in 
@@ -556,7 +603,7 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     //Change the display mode.   
     error=CGDisplaySwitchToMode(displayCGIDs[settings->screenNumber], cgMode);
     
-    return(true);
+    return(error == (int) 0);
 }
 
 /*
@@ -571,32 +618,25 @@ boolean PsychRestoreScreenSettings(int screenNumber)
     boolean 			isCaptured;
     CGDisplayErr 		error;
 
-
-    if(screenNumber>=numDisplays)
-        PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetScreenDepths() is out of range"); //also checked within SCREENPixelSizes
+    if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range");
 
     //Check for a lock which means onscreen or offscreen windows tied to this screen are currently open.
-    if(PsychCheckScreenSettingsLock(screenNumber))
-        return(false);  //calling function will issue error for attempt to change display settings while windows were open.
+    // MK: Disabled    if(PsychCheckScreenSettingsLock(screenNumber)) return(false);  //calling function will issue error for attempt to change display settings while windows were open.
     
     //Check to make sure that the original graphics settings were cached.  If not, it means that the settings were never changed, so we can just
     //return true. 
-    if(!displayOriginalCGSettingsValid[screenNumber])
-        return(true);
+    if(!displayOriginalCGSettingsValid[screenNumber]) return(true);
     
     //Check to make sure that this display is captured, which OpenWindow should have done.  If it has not been done, then exit with an error.  
     isCaptured=CGDisplayIsCaptured(displayCGIDs[screenNumber]);
-    if(!isCaptured)
-        PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
+    if(!isCaptured) PsychErrorExitMsg(PsychError_internal, "Attempt to change video settings without capturing the display");
     
     //Change the display mode.   
-    error=CGDisplaySwitchToMode(displayCGIDs[screenNumber], displayOriginalCGSettings[kPsychMaxPossibleDisplays]);
-    if(error)
-        PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
-            
+    error=CGDisplaySwitchToMode(displayCGIDs[screenNumber], displayOriginalCGSettings[screenNumber]);
+    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to set switch video modes");
+
     return(true);
 }
-
 
 void PsychHideCursor(int screenNumber)
 {

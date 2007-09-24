@@ -208,6 +208,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("DrawTextures", &SCREENDrawTextures));
 	PsychErrorExit(PsychRegister("GetWindowInfo", &SCREENGetWindowInfo));
 	PsychErrorExit(PsychRegister("GetOpenGLDrawMode", &SCREENGetOpenGLDrawMode));
+	PsychErrorExit(PsychRegister("Resolutions", &SCREENResolutions));
+	PsychErrorExit(PsychRegister("Resolution", &SCREENResolution));
 	
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dhb");

@@ -191,6 +191,8 @@ PsychError		SCREENTransformTexture(void);
 PsychError		SCREENDrawTextures(void) ;
 PsychError		SCREENGetWindowInfo(void);
 PsychError		SCREENGetMouseHelper(void);
+PsychError		SCREENResolution(void);
+PsychError		SCREENResolutions(void);
 
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 

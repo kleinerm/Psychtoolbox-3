@@ -124,7 +124,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % Screen('MakeTexture') and set the optional flag 'floatprecision' to 1 or
 % 2, i.e., hdrtex = Screen('MakeTexture', win, myHDRImage, [], [], 2);
 %
-% Psychtoolbox will represent such images with an internal precision of 11
+% Psychtoolbox will represent such images with an internal precision of 10
 % bits + 1 bit sign if you choose the 'floatprecision' flag to be 1. If you
 % choose a 'floatprecision' flag of 2, PTB will represent the images with
 % an internal precision of 23 bits + 1 bit sign. You can provide negative
@@ -141,10 +141,10 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % you employ an NVidia Geforce 8000 series graphics card. If you need
 % alpha-blending on older/other hardware then specify the optional flag
 % 'kPsychNeed16BPCFloat' for the 'imagingmode' argument. This will reduce
-% effective accuracy of the framebuffer to 11 bit precision, but allow for
-% fast alpha-blending. 11 Bit precision are 3 bits less than the 14 bits
-% that Bits++ can provide, but it will be possible to use the extra 14-11 =
-% 3 bits for gamma correction of the display by employing a gamma
+% effective accuracy of the framebuffer to 10 bit precision, but allow for
+% fast alpha-blending. 10 Bit precision are 4 bits less than the 14 bits
+% that Bits++ can provide, but it will be possible to use the extra 14-10 =
+% 4 bits for gamma correction of the display by employing a gamma
 % correction shader.
 %
 % Graphics hardware requirements: Mono++ and Color++ mode require use of the
@@ -339,7 +339,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % from different vendors, but the users imagingmode setting is free to
     % override this with a 16 bpc fixed buffer. 16 bpc float works as well
     % but can't use the full Bits++ color range at full precision.
-    if (imagingmode & kPsychNeed16BPCFloat) || (imagingmode & kPsychNeed16BPCFixed)
+    if bitand(imagingmode, kPsychNeed16BPCFloat) || bitand(imagingmode, kPsychNeed16BPCFixed)
         % User specified override: Use it.
         ourspec = 0;
     else
@@ -351,6 +351,13 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % Imagingmode must at least include the following:
     imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
 
+    if strcmp(cmd, 'OpenWindowColor++')
+        % In Color++ mode we only have half the effective horizontal
+        % resolution. Tell PTB to take this into account for all relevant
+        % calculations:
+        imagingmode = mor(imagingmode, kPsychNeedHalfWidthWindow);
+    end
+    
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
     if nargin > 9
         [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode, varargin{7:end});
@@ -399,7 +406,10 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
         % Now enable output formatter hook chain and load them with the special Bits++
         % Color++ data formatting shader: We append the shader because it
         % absolutely must be the last shader to execute in that chain!
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Color++ output formatting shader for CRS Bits++', shader);
+        % We apply a scaling of 2.0 in horizontal direction for the output
+        % blit, to take the fact into account that the internal window
+        % buffers only have half display width.
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Color++ output formatting shader for CRS Bits++', shader, 'Scaling:2.0:1.0');
     end
 
     % Setup shaders image source as the first texture unit, this is by
@@ -441,12 +451,13 @@ function ValidateBitsPlusImaging(win, writefile)
     validated = 0;
     global GL;
     
-    [w, h] = Screen('WindowSize', win);
+    screenid = Screen('WindowScreenNumber', win);
+    [w, h] = Screen('WindowSize', screenid);
     d = Screen('PixelSize', win);
     v = Screen('Version');
     v = v.version;
     gfxconfig = [ glGetString(GL.VENDOR) ':' glGetString(GL.RENDERER) ':' glGetString(GL.VERSION) ];
-    gfxconfig = sprintf('%s : Screen %i : Resolution %i x %i x %i : ScreenVersion = %s', gfxconfig, Screen('WindowScreenNumber', win), w, h, d, v);
+    gfxconfig = sprintf('%s : Screen %i : Resolution %i x %i x %i : ScreenVersion = %s', gfxconfig, screenid, w, h, d, v);
     
     if ~writefile
         % Check if a validation file exists and if it contains this

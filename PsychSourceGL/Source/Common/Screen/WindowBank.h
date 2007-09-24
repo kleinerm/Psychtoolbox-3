@@ -95,6 +95,7 @@ T0 DO:
 #define kPsychNeedDualPass         256      // At least support for dual-pass processing needed?
 #define kPsychNeedMultiPass        512      // Support for multi-pass processing needed?
 #define kPsychNeedFastOffscreenWindows 1024 // Only support for fast FBO-backed Offscreen windows, everything else off.
+#define kPsychHalfWidthWindow		   2048 // This flag is also used as specialflag for onscreen windows. Ask for windows with half-width, e.g., for dualview stereo...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -213,6 +214,7 @@ typedef struct _PsychWindowRecordType_{
 	GLint					stippleFactor;
 	boolean					stippleEnabled;
         
+		unsigned int							specialflags;			// Container for all kind of special flags...
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.
         int                                     stereodrawbuffer;       // MK: Which drawbuffer is active in stereo? 0=left, 1=right, 2=none
 		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.

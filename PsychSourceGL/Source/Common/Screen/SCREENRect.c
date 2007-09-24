@@ -53,7 +53,7 @@ PsychError SCREENRect(void)
 		PsychCopyOutRectArg(1, FALSE, rect);
 	}else if(PsychIsWindowIndexArg(1)){
 	   PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
-		if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],
 							  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/2,windowRecord->rect[kPsychBottom]);

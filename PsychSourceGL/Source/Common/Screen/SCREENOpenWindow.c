@@ -106,7 +106,7 @@ PsychError SCREENOpenWindow(void)
     //get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
     if(screenNumber==-1)
-        PsychErrorExitMsg(PsychError_user, "The specified offscreen window has no ancestral screen."); 
+        PsychErrorExitMsg(PsychError_user, "The specified onscreen window has no ancestral screen."); 
 
     /*
       The depth checking is ugly because of this stupid depth structure stuff.  
@@ -244,6 +244,7 @@ PsychError SCREENOpenWindow(void)
 		// now.
 
 		// Release the captured screen:
+		PsychRestoreScreenSettings(screenNumber);
 		PsychReleaseScreen(screenNumber);
 
 		// Output warning text:
@@ -273,7 +274,10 @@ PsychError SCREENOpenWindow(void)
 	// This is typically used for dual-window stereo mode.
     didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample, sharedContextWindow);
     if (!didWindowOpen) {
-        if (!useAGL) PsychReleaseScreen(screenNumber);
+        if (!useAGL) {
+			PsychRestoreScreenSettings(screenNumber);
+			PsychReleaseScreen(screenNumber);
+		}
 
 		// Reset master assignment to prepare possible further dual-window config operations:
 		sharedContextWindow = NULL;
@@ -345,6 +349,14 @@ PsychError SCREENOpenWindow(void)
 		}
 	}
 
+	// Set special half-width flag for window if we are either in a dual-display/dual-view stereo mode or if
+	// if is requested as part of the imagingMode flag. This will cause PTB 2D drawing routines and window size
+	// query routines etc. to return an effective window width or window rect only half the real width.
+	if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo || (imagingmode & kPsychHalfWidthWindow)) {
+		windowRecord->specialflags = windowRecord->specialflags | kPsychHalfWidthWindow;
+		imagingmode = imagingmode & (~kPsychHalfWidthWindow);
+	}
+
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
@@ -395,7 +407,7 @@ PsychError SCREENOpenWindow(void)
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
 	 // rect argument needs special treatment in stereo mode:
-	 if (windowRecord->stereomode==kPsychFreeFusionStereo || windowRecord->stereomode==kPsychFreeCrossFusionStereo) {
+	 if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],
 							  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/2,windowRecord->rect[kPsychBottom]);

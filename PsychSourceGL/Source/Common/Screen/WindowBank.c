@@ -280,6 +280,8 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->fillOvalDisplayList = 0;
 	(*winRec)->frameOvalDisplayList = 0;
 
+	// No special flags set by default:
+	(*winRec)->specialflags = 0;
 }
 
 

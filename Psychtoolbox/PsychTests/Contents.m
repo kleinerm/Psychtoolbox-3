@@ -35,6 +35,7 @@
 %   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
 %   PsychPortAudioTimingTest        - Test signal generator for test of PsychPortAudios timing with external measurement equipment.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
+%   ResolutionTest                  - Use Screen Resolutions to print table of display resolutions.
 %   ScreenTest                      - Thorough test of hardware/software performance.
 %   SimpleTimingTest                - 
 %   StandaloneTimingTest            - Test for timing glitch outside of MATLAB process. 

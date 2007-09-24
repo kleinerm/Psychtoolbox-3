@@ -1694,6 +1694,8 @@
 		8395A9D60BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */; };
 		8395A9DC0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
 		8395A9DD0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
+		83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
+		83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
 		83C802620B8CB29300097021 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		83C802630B8CB29300097021 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		83C802640B8CB29300097021 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3621,6 +3623,7 @@
 		8395A9B60BBF290900FC482E /* FontInfo.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = FontInfo.cc; path = ../../../Source/Octave/FontInfo.cc; sourceTree = SOURCE_ROOT; };
 		8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychPortAudio.cc; path = ../../../Source/Octave/PsychPortAudio.cc; sourceTree = SOURCE_ROOT; };
 		8395A9DB0BBF370800FC482E /* PsychHID.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychHID.cc; path = ../../../Source/Octave/PsychHID.cc; sourceTree = SOURCE_ROOT; };
+		83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENResolutions.c; path = ../../../Source/Common/Screen/SCREENResolutions.c; sourceTree = SOURCE_ROOT; };
 		83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MirrorFaceCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83C802C90B8CECE500097021 /* MirrorFaceCore.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = MirrorFaceCore.cc; sourceTree = "<group>"; };
 		83C802CA0B8CECE500097021 /* MirrorFaceCore.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = MirrorFaceCore.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/MirrorFaceCore.h; sourceTree = "<absolute>"; };
@@ -5386,6 +5389,7 @@
 				F5C3396703F2539D01A80168 /* SCREENPutImage.c */,
 				F56F533003EA19E401A80168 /* SCREENReadNormalizedGammaTable.c */,
 				F50D529A03D51B64012326C4 /* SCREENRect.c */,
+				83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */,
 				F5CC1A0903947EEF017A7028 /* SCREENScreens.c */,
 				2F66ABBF09063E1100128812 /* SCREENSelectStereoDrawBuffer.c */,
 				F569F251038E2C77017A7028 /* SCREENSetGLSynchronous.c */,
@@ -10983,6 +10987,7 @@
 				0F6B343E0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
 				837A6DC20BBB106E003AB0BE /* SCREENNull.c in Sources */,
 				83347DB40C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
+				83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11412,6 +11417,7 @@
 				0F6B343D0B696A0D0000A951 /* SCREENTransformTexture.c in Sources */,
 				837A6DC30BBB106E003AB0BE /* SCREENNull.c in Sources */,
 				83347DB30C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
+				83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

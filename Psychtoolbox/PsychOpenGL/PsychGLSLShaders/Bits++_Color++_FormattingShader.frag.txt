@@ -32,8 +32,8 @@ uniform sampler2DRect Image;
 
 void main()
 {
-    /* Get default texel read position (s,t): s is column, t is row of image. */
-    vec2 readpos = gl_TexCoord[0].st;
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 readpos = gl_FragCoord.xy;
 
     /* Update the s (==column) component to only read even or odd lines, replicating them. */
     readpos.s = (readpos.s - mod(readpos.s, 2.0)) * 0.5;
