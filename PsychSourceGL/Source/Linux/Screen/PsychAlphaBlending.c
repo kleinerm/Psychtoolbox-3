@@ -230,16 +230,26 @@ void PsychUpdateAlphaBlendingFactorLazily(PsychWindowRecordType *winRec)
 	
 	Boolean		changeSetting, setEnable;
 	
-	changeSetting= winRec->actualSourceAlphaBlendingFactor != winRec->nextSourceAlphaBlendingFactor || winRec->actualDestinationAlphaBlendingFactor != winRec->nextDestinationAlphaBlendingFactor;
-	setEnable= (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO) && !winRec->actualEnableBlending;
+//	changeSetting= winRec->actualSourceAlphaBlendingFactor != winRec->nextSourceAlphaBlendingFactor || winRec->actualDestinationAlphaBlendingFactor != winRec->nextDestinationAlphaBlendingFactor;
+//	setEnable= (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO) && !winRec->actualEnableBlending;
+	changeSetting= TRUE;
+	setEnable= (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO);
 	if(setEnable){
-		winRec->actualEnableBlending=TRUE;	
+		winRec->actualEnableBlending=TRUE;
 		glEnable(GL_BLEND);
 	}
-	if(changeSetting){
+	else {
+		winRec->actualEnableBlending=FALSE;
+		glDisable(GL_BLEND);
+	}
+	
+	if(setEnable && changeSetting){
 		winRec->actualSourceAlphaBlendingFactor=winRec->nextSourceAlphaBlendingFactor;
 		winRec->actualDestinationAlphaBlendingFactor = winRec->nextDestinationAlphaBlendingFactor;
 		glBlendFunc(winRec->actualSourceAlphaBlendingFactor, winRec->actualDestinationAlphaBlendingFactor);
+	}
+	else {
+		glBlendFunc(GL_ONE, GL_ZERO);
 	}
 }
 

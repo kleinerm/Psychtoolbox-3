@@ -29,11 +29,6 @@ function oldType = ShowCursor(type, screenid)
 %  http://developer.apple.com/documentation/macos8/HumanInterfaceToolbox/Ap
 %  pManager/ProgWithAppearanceMgr/Appearance.9d.html#10244
 %
-% OSX: ___________________________________________________________________
-%
-% The 'type' argument specifying the cursor shape is ignored. The
-% cursor shape can not be set yet.
-%
 % OS9: ___________________________________________________________________ 
 %
 % ShowCursor.mex asks the Macintosh OS to cancel one call to HideCursor.
