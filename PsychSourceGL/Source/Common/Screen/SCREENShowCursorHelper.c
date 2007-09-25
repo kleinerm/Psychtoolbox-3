@@ -97,6 +97,10 @@ PsychError SCREENShowCursorHelper(void)
 		// Microsoft Windows:
 		LPCTSTR lpCursorName;
 		
+		#ifndef IDC_HAND
+		#define IDC_HAND MAKEINTRESOURCE(32649)
+		#endif
+
 		// Map provided cursor id to a Windows system id for such a cursor:
 		switch(cursorid) {
 			case 0:
