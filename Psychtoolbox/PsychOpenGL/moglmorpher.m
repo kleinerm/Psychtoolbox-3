@@ -205,6 +205,7 @@ persistent feedbacksize;
 persistent win;
 persistent gpubasedmorphing;
 persistent keyshapes;
+persistent masterkeyshapetex;
 persistent morphbuffer;
 persistent vbo;
 persistent ibo;
@@ -214,7 +215,16 @@ persistent vbonormalstart;
 
 persistent morphshader;
 persistent morphOperator;
+persistent morphOperatorNoNormals;
 persistent shadermorphweight;
+
+persistent multimorphshader;
+persistent multishadermorphcount;
+persistent multimorphOperator;
+persistent multimorphOperatorNoNormals;
+
+persistent isbuggyatidriver;
+
 
 % Sanity check:
 if nargin < 1
@@ -272,6 +282,17 @@ if isempty(win)
             error('You must open at least one onscreen window before calling any moglmorpher() subfunctions!');
         end
         win = windows(1);
+    end
+end
+
+% Check if our renderer is an ATI Radeon X-1600 under MacOS/X. If so, set
+% the buggy renderer flag to take some bug of that gpu or its driver on
+% OS/X into account...
+if isempty(isbuggyatidriver)
+    if ~isempty(findstr(glGetString(GL.RENDERER), 'Radeon X1600')) & IsOSX
+        isbuggyatidriver = 1;
+    else
+        isbuggyatidriver = 0;
     end
 end
 
@@ -382,6 +403,12 @@ if strcmp(cmd, 'reset')
        end
        keyshapes = [];
        
+       % Reset masterkeyshape texture, if any:
+       if ~isempty(masterkeyshapetex)
+           Screen('Close', masterkeyshapetex);
+           masterkeyshapetex = [];
+       end
+
        % Release Offscreen windows:
        Screen('Close', morphbuffer(1));
        Screen('Close', morphbuffer(2));
@@ -390,10 +417,21 @@ if strcmp(cmd, 'reset')
        % Release shader:
        shadermorphweights = [];
        Screen('Close', morphOperator);
+       Screen('Close', morphOperatorNoNormals);
+       morphOperatorNoNormals = [];
        morphOperator = [];
+       
+       Screen('Close', multimorphOperator);
+       Screen('Close', multimorphOperatorNoNormals);
+       multimorphOperatorNoNormals = [];
+       multimorphOperator = [];
+       
        glDeleteProgram(morphshader);
        morphshader = [];
-
+       
+       glDeleteProgram(multimorphshader);
+       multimorphshader = [];
+       
        if IsOpenGLRendering
            % Reenable OpenGL mode:
            Screen('BeginOpenGL', targetwindow);
@@ -591,6 +629,12 @@ if strcmp(cmd, 'addMesh')
         % Screen('TransformTexture') (orientation == 1):
         keyshapes(objcount) = Screen('MakeTexture', win, myshapeimg, [], [], 2, 1);
            
+        % Reset masterkeyshape texture, if any:
+        if ~isempty(masterkeyshapetex)
+            Screen('Close', masterkeyshapetex);
+            masterkeyshapetex = [];
+        end
+
         % First time invocation?
         if objcount == 1
             % Yes! Need to allocate and setup FBO's PBO's and VBO's and create
@@ -600,7 +644,11 @@ if strcmp(cmd, 'addMesh')
             % on GPU:
             morphshader = LoadGLSLProgramFromFiles('LinearCombinationOfTwoImagesShader.frag.txt');
             morphOperator = CreateGLOperator(win, kPsychNeed32BPCFloat, morphshader, 'Multiply-Accumulate operator for shape morphing');
-
+            morphOperatorNoNormals = CreateGLOperator(win, kPsychNeed32BPCFloat, morphshader, 'No normals Multiply-Accumulate operator for shape morphing');
+            if usenormals
+                Screen('HookFunction', morphOperatorNoNormals, 'PrependBuiltin', 'UserDefinedBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', 0, 0, ncols, nrows/2));
+            end
+            
             % Need 'shadermorphweight' uniform location, so we can assign a
             % different weight for morphing of each keyshape in morph-loop:
             shadermorphweight = glGetUniformLocation(morphshader, 'Image1Weight');
@@ -617,7 +665,26 @@ if strcmp(cmd, 'addMesh')
             glUniform1i(glGetUniformLocation(morphshader, 'Image2'), 1);
             glUseProgram(0);
 
-            
+            multimorphshader = LoadGLSLProgramFromFiles('MultiMorphShader.frag.txt');
+            multimorphOperator = CreateGLOperator(win, kPsychNeed32BPCFloat, multimorphshader, 'Singlepass Multiply-Accumulate operator for shape morphing');
+            multimorphOperatorNoNormals = CreateGLOperator(win, kPsychNeed32BPCFloat, multimorphshader, 'No normals Singlepass Multiply-Accumulate operator for shape morphing');
+            if usenormals
+                Screen('HookFunction', multimorphOperatorNoNormals, 'PrependBuiltin', 'UserDefinedBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', 0, 0, ncols, nrows/2));
+            end
+
+            % Query needed locations of shader uniforms:
+            multishadermorphcount = glGetUniformLocation(multimorphshader, 'Count');
+            multishadermorphstride = glGetUniformLocation(multimorphshader, 'Stride');
+
+            % Setup all other uniforms to their fixed values:
+            glUseProgram(multimorphshader);
+
+            % Assign texture unit to sampler:
+            glUniform1i(glGetUniformLocation(multimorphshader, 'Image'), 0);
+            glUniform1i(glGetUniformLocation(multimorphshader, 'WeightImage'), 1);
+            glUniform1i(multishadermorphstride, nrows);
+            glUseProgram(0);
+
             % Create offscreen floating point windows as morph-accumulation
             % buffers: Need two of them for buffer-pingpong...
             % We request 128 bpp == 32 bpc float precision:
@@ -641,7 +708,7 @@ if strcmp(cmd, 'addMesh')
                 nrows= nrows / 2;
             end
 
-            buffersize = arraycount * ncols*nrows*3*4;
+            buffersize = arraycount * ncols*nrows*4*4;
             
             if ~usetextures
                 % Allocate but don't initialize it, ie NULL pointer == 0    
@@ -660,7 +727,7 @@ if strcmp(cmd, 'addMesh')
             end
             
             if usenormals
-                vbonormalstart = vbovertexstart + (size(invertices, 1) * size(invertices, 2) * 4);
+                vbonormalstart = vbovertexstart + (4 * size(invertices, 2) * 4);
             else
                 vbonormalstart = 0;
             end
@@ -689,9 +756,10 @@ if strcmp(cmd, 'addMesh')
             % requests to not morph normal vectors, this will guarantee
             % that the normal vectors of the last added mesh will be used
             % instead of the morphed normals:
+            mynormals = moglsingle([ normals ; zeros(1, size(normals, 2))]);
             Screen('BeginOpenGL', win);
             glBindBuffer(GL.ARRAY_BUFFER, vbo);
-            glBufferSubData(GL.ARRAY_BUFFER, vbonormalstart, (size(normals, 1) * size(normals, 2) * 4), normals);
+            glBufferSubData(GL.ARRAY_BUFFER, vbonormalstart, (4 * size(normals, 2) * 4), mynormals);
             glBindBuffer(GL.ARRAY_BUFFER, 0);
             Screen('EndOpenGL', win);
         end
@@ -703,7 +771,7 @@ if strcmp(cmd, 'addMesh')
             Screen('BeginOpenGL', targetwindow);
         end
     end
-    
+        
     % Increment total count of updates:
     updatecount = updatecount + 1;
 
@@ -747,7 +815,7 @@ if strcmp(cmd, 'renderMesh')
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, vbo);
         
         % Read back whole shape texture, including normals:
-        glReadPixels(0, 0, w, h, GL.RGB, GL.FLOAT, vbovertexstart);
+        glReadPixels(0, 0, w, h, GL.RGBA, GL.FLOAT, vbovertexstart);
 
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, 0);
         Screen('EndOpenGL', keyshapes(arg1));
@@ -779,6 +847,9 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         error('Morph weight vector contains more coefficients than available keyshapes!');
     end;
     
+    if size(arg1, 1)~=1
+        arg1 = transpose(arg1);
+    end
     
     % By default we morph normal vectors as well. As this is not mathematically correct,
     % the parent-code can prevent normal morphing by providing the optional morphnormals=0
@@ -817,33 +888,100 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             % Disable OpenGL mode:
             Screen('EndOpenGL', targetwindow);
         end
-        
-        % Initialize our morphbuffer(1) offscreen window with empty shape:
-        Screen('FillRect', morphbuffer(1), [0 0 0 0]);
 
-        % Initial src- dst- assignement for buffer-pingpong:
-        currentsrcbuffer = 1;
-        currentdstbuffer = 2;
+        % Switch to OpenGL mode and copy morphbuffer into our VBO:
+        [w, h] = Screen('WindowSize', morphbuffer(1));
 
-        % Morph-Loop for multiply-accumulate morph operation:
-        for i=1:length(arg1)
-            % Store morph weight for i'th shape in uniform for shader:
-            glUseProgram(morphshader);
-            glUniform1f(shadermorphweight, arg1(i));
-            glUseProgram(0);
-
-            % xform pass: Blit sum of new keyshape texture and currentsrcbuffer
-            % morphbuffer into currentdstbuffer morphbuffer, applying proper
-            % morph weight:
-            morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperator, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
-
-            % Switch source and destination buffers for next morph-pass:
-            j = currentsrcbuffer;
-            currentsrcbuffer = currentdstbuffer;
-            currentdstbuffer = j;
-            % Next morph-iteration...
+        % Do we already have a master keyshape texture which collects all
+        % keyshapes (textures) into one single big texture?
+        if isempty(masterkeyshapetex)
+            % No. This must be the first invocation after a call to
+            % 'addMesh'. Try to build the huge keyshape texture:
+            if (h * objcount < glGetIntegerv(GL.MAX_RECTANGLE_TEXTURE_SIZE_EXT))
+                % Number and size of keyshapes fits within contraints of
+                % hardware. Build unified keyshape texture:
+                masterkeyshapetex = Screen('OpenOffscreenWindow', win, [0 0 0 0], [0 0 w h*objcount], 128);
+                for i=1:objcount
+                    Screen('DrawTexture', masterkeyshapetex, keyshapes(objcount+1-i), [], OffsetRect([0 0 w h], 0, h*(i-1)), 0, 0);
+                end
+            
+                % Store total count of objects to morph in shader:
+                if isbuggyatidriver
+                    driverslack = 1;
+                else
+                    driverslack = 0;
+                end
+                
+                glUseProgram(multimorphshader);
+                glUniform1i(multishadermorphcount, objcount + driverslack);
+                glUseProgram(0);
+            end
         end
 
+        % Which path to use?
+        if isempty(masterkeyshapetex)
+            % Iterative path. Used when number and size of keyshapes
+            % doesn't fit into hardware constraints for a single shape
+            % texture.
+            % We iterate over all keyshape() textures, and morph-in (aka
+            % multiply-accumulate) one keyshape per iteration:
+
+            % Initialize our morphbuffer(1) offscreen window with empty shape:
+            Screen('Blendfunction', morphbuffer(1), GL_ONE, GL_ZERO);
+            Screen('Blendfunction', morphbuffer(2), GL_ONE, GL_ZERO);
+            Screen('FillRect', morphbuffer(1), [0 0 0 0]);
+
+            % Initial src- dst- assignement for buffer-pingpong:
+            currentsrcbuffer = 1;
+            currentdstbuffer = 2;
+
+            % Morph-Loop for multiply-accumulate morph operation:
+            for i=1:length(arg1)
+                % Store morph weight for i'th shape in uniform for shader:
+                glUseProgram(morphshader);
+                glUniform1f(shadermorphweight, arg1(i));
+                glUseProgram(0);
+
+                % xform pass: Blit sum of new keyshape texture and currentsrcbuffer
+                % morphbuffer into currentdstbuffer morphbuffer, applying proper
+                % morph weight:
+                if morphnormals
+                    % Normal morphing requested: Run full operator...
+                    morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperator, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
+                else
+                    % No normal morphing: Run restricted operator...
+                    morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperatorNoNormals, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
+                end
+                
+                % Switch source and destination buffers for next morph-pass:
+                j = currentsrcbuffer;
+                currentsrcbuffer = currentdstbuffer;
+                currentdstbuffer = j;
+                % Next morph-iteration...
+            end
+        else
+            % Single pass case: All shapes fit into one texture. Assign all
+            % morph-weights to a weight texture.
+            % Perform whole morph in one single blit-operation:
+            currentsrcbuffer = 1;
+            
+            % Convert weight-vector into float texture:
+            weighttex = Screen('MakeTexture', win, arg1, [], [], 2, 2);
+
+            % xform pass: Blit all subsections of masterkeyshapetex into
+            % the destination buffer, applying the multimorph-shader:
+            if morphnormals
+                % Normal morphing requested: Run full operator...
+                morphbuffer(currentsrcbuffer) = Screen('TransformTexture', masterkeyshapetex, multimorphOperator, weighttex, morphbuffer(currentsrcbuffer));
+            else
+                % No normal morphing: Run restricted operator...
+                morphbuffer(currentsrcbuffer) = Screen('TransformTexture', masterkeyshapetex, multimorphOperatorNoNormals, weighttex, morphbuffer(currentsrcbuffer));
+            end
+
+            % Release weight texture:
+            Screen('Close', weighttex);
+        end
+        
         % Ok, morphbuffer(currentsrcbuffer) should contain the final morph
         % result:
 
@@ -853,10 +991,17 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         %    minimum=    min(min(min(intex1)))
         %    maximum=    max(max(max(intex1)))
 
-        % Switch to OpenGL mode and copy morphbuffer into our VBO:
-        [w,h] = Screen('WindowSize', morphbuffer(currentsrcbuffer));
+        % I have no clue why this glFlush helps to prevent a crash on OS/X
+        % 10.4.10 with ATI Radeon X1600 when usercode has alpha-blending
+        % enabled, but it does. Without this glFlush() everything fine on
+        % WindowsXP+NVidia, but crash on OS/X ATI...
+        % Well, some clue, after some exchange on the apple mailing lists,
+        % it seems to be an ATI driver bug...
+        glFlush;
 
+        % Switch to OpenGL mode and copy morphbuffer into our VBO:
         Screen('BeginOpenGL', morphbuffer(currentsrcbuffer));
+
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, vbo);
         
         % Do we have normals, and if so, do we want to morph them?
@@ -864,11 +1009,11 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             % We have normals, but don't wanna morph them: Only read back
             % half of the morphbuffers height, so we omit copying the new
             % morphed normals to the normal-array section of our VBO:
-            glReadPixels(0, 0, w, h/2, GL.RGB, GL.FLOAT, vbovertexstart);
+            glReadPixels(0, 0, w, h/2, GL.RGBA, GL.FLOAT, vbovertexstart);
         else
             % We either don't have normals or we have 'em and want to morph
             % them. In both cases, readback the whole morphbuffer:
-            glReadPixels(0, 0, w, h, GL.RGB, GL.FLOAT, vbovertexstart);
+            glReadPixels(0, 0, w, h, GL.RGBA, GL.FLOAT, vbovertexstart);
         end
         
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, 0);
@@ -994,7 +1139,7 @@ if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
         % GPU based rendering: Setup buffer mappings for our VBO's, then
         % render:
         glBindBuffer(GL.ARRAY_BUFFER, vbo);
-        glVertexPointer(3, GL.FLOAT, 0, vbovertexstart);
+        glVertexPointer(4, GL.FLOAT, 0, vbovertexstart);
 
         if usetextures
             % Enable texture coordinate arrays:
@@ -1009,7 +1154,7 @@ if strcmp(cmd, 'render') | strcmp(cmd, 'renderToDisplaylist')
             % Enable normal vector arrays:
             glEnableClientState(GL.NORMAL_ARRAY);
             % Set pointer to start of normal array:
-            glNormalPointer(GL.FLOAT, 0, vbonormalstart);
+            glNormalPointer(GL.FLOAT, 4*4, vbonormalstart);
         else
             glDisableClientState(GL.NORMAL_ARRAY);
         end
@@ -1127,7 +1272,7 @@ if strcmp(cmd, 'getVertexPositions')
    if gpubasedmorphing
        % Set pointer to start of vertex array and bind our VBO:
        glBindBuffer(GL.ARRAY_BUFFER, vbo);
-       glVertexPointer(3, GL.FLOAT, 0, vbovertexstart);
+       glVertexPointer(4, GL.FLOAT, 0, vbovertexstart);
    else
        % Set pointer to start of vertex array:
        glVertexPointer(size(vertices,1), usetype, 0, vertices);
