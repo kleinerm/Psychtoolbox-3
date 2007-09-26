@@ -39,7 +39,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwin
 %
 % This demo and the morpheable OBJ shapes were contributed by
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
-
+morphnormals = 1;
 global win;
 
 % Is the script running in OpenGL Psychtoolbox?
@@ -267,7 +267,7 @@ eye_halfdist=3;
 Screen('EndOpenGL', win);
 
 % Compute initial morphed shape for next frame, based on initial weights:
-moglmorpher('computeMorph', w);
+moglmorpher('computeMorph', w, morphnormals);
 
 
 % Retrieve duration of a single monitor flip interval: Needed for smooth
@@ -346,7 +346,7 @@ while ((GetSecs - t) < 60)
     w(2)=1-w(1);
 
     % Compute morphed shape for next frame, based on new weight vector:
-    moglmorpher('computeMorph', w);
+    moglmorpher('computeMorph', w, morphnormals);
         
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
