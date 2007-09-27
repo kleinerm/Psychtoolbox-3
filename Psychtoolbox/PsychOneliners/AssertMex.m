@@ -69,8 +69,8 @@ end;
 
 % Initialize the persistent variables.
 if isempty(okNames)
-    okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2'};
-    mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex'};
+    okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2', 'MACI'};
+    mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex', 'mexmaci'};
     okSupNames = {'WINDOWS', 'WIN', 'OS9', 'OSX'};
     okSupNameMatches = {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
 end
@@ -120,22 +120,40 @@ if isempty(inputNames) | ismember(computer, inputNames)
         mexFilenameHead = callerName;
     end
     mexFilename=[mexFilenameHead '.' extensionName];
-    fprintf('In place of the expected mex file this file was executed:\n');
-    fprintf(['  ' callerName '\n']);
-    fprintf('This mex file seems to be missing:\n')
+    fprintf('\nIn place of the expected mex file this placeholder file was executed:\n\n');
+    fprintf(['  ' callerName '\n\n']);
+    fprintf('This mex file seems to be missing or inaccessible on your Matlab/Octave path or it is dysfunctional:\n\n')
     fprintf(['  ' mexFilename '\n\n']);
-    fprintf('One reason could be that your Matlab path is wrong. You may\n');
-    fprintf('want to run SetupPsychtoolbox to fix possible path problems.\n\n');
-    fprintf('Another reason could be insufficient access permissions or \n');
-    fprintf('some missing 3rd party libraries on your system.\n\n');
-    error('Missing Psychtoolbox Mex file for this operating system. Unsupported?');
+    
+    if isempty(which(mexFilename))
+        fprintf('Hmm. I cannot find the file on your Matlab path?!?\n\n');
+        fprintf('One reason could be that your Matlab path is wrong or not up to date\n');
+        fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
+        fprintf('fix possible path problems.\n\n');
+    else
+        fprintf('A reason could be insufficient access permissions or \n');
+        fprintf('some missing 3rd party libraries on your system.\n\n');
+
+        if IsWin & ~IsOctave
+            fprintf('On Microsoft Windows with recent Matlab versions (>= V7.4) it could also be that\n');
+            fprintf('the required Visual C++ 2005 runtime libraries are missing on your system.\n');
+            fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
+            fprintf('fix this problem. After fixing the problem, retry.\n\n');
+
+            if strcmp(computer,'PCWIN64')
+                % 64 bit Matlab running on 64 bit Windows?!? That won't work.
+                fprintf('And another possible reason for failure:\n\n');
+                fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');
+                fprintf('That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
+                fprintf('of Matlab.\n');
+                fprintf('You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
+                fprintf('make Psychtoolbox work on your 64 bit Windows. You do this by adding the\n');
+                fprintf('startup option -win32 to the matlab.exe start command, ie.\n');
+                fprintf('matlab.exe -win32\n');
+                fprintf('If you do not know how to do this, consult the Matlab help about startup\n');
+                fprintf('options for Windows.\n\n');
+            end
+        end
+    end    
+    error('Missing or dysfunctional Psychtoolbox Mex file for this operating system. Read the help text above carefully!!');
 end
-        
-
-
-    
-    
-
-
-
- 

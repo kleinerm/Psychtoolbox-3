@@ -274,6 +274,10 @@ if strcmp(cmd, 'OpenWindowBits++')
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
     
+    % Load an identity CLUT into the Bits++ to start with:
+    linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
+    Screen('LoadNormalizedGammaTable', win, linear_lut, 2);
+    
     % Check validation:
     if ~validated
         ValidateBitsPlusImaging(win, 0);

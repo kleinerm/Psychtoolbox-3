@@ -156,6 +156,21 @@ if IsWin & ~IsOctave
         fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n');
         fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
         fprintf('ERROR: fix this problem. After fixing the problem, restart this installation/update routine.\n');
+
+        if strcmp(computer,'PCWIN64')
+            % 64 bit Matlab running on 64 bit Windows?!? That won't work.
+            fprintf('ERROR:\n');
+            fprintf('ERROR: It seems that you are running a 64-bit version of Matlab on your system.\n');
+            fprintf('ERROR: That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
+            fprintf('ERROR: of Matlab.\n');
+            fprintf('ERROR: You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
+            fprintf('ERROR: make Psychtoolbox work on your 64 bit Windows. You do this by adding the\n');
+            fprintf('ERROR: startup option -win32 to the matlab.exe start command, ie.\n');
+            fprintf('ERROR: matlab.exe -win32\n');
+            fprintf('ERROR: If you do not know how to do this, consult the Matlab help about startup\n');
+            fprintf('ERROR: options for Windows.\n\n');
+        end
+        
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
         return;
     end

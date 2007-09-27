@@ -964,7 +964,7 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             % morph-weights to a weight texture.
             % Perform whole morph in one single blit-operation:
             currentsrcbuffer = 1;
-            
+
             % Convert weight-vector into float texture:
             weighttex = Screen('MakeTexture', win, arg1, [], [], 2, 2);
 
@@ -991,18 +991,31 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         %    minimum=    min(min(min(intex1)))
         %    maximum=    max(max(max(intex1)))
 
-        % I have no clue why this glFlush helps to prevent a crash on OS/X
-        % 10.4.10 with ATI Radeon X1600 when usercode has alpha-blending
-        % enabled, but it does. Without this glFlush() everything fine on
-        % WindowsXP+NVidia, but crash on OS/X ATI...
-        % Well, some clue, after some exchange on the apple mailing lists,
-        % it seems to be an ATI driver bug...
-        glFlush;
+        if IsOSX
+            % I have no clue why this glFlush helps to prevent a crash on OS/X
+            % 10.4.10 with ATI Radeon X1600 when usercode has alpha-blending
+            % enabled, but it does. Without this glFlush() everything fine on
+            % WindowsXP+NVidia, but crash on OS/X ATI...
+            % Well, some clue, after some exchange on the Apple mailing lists,
+            % it seems to be an ATI driver bug...
+            glFlush;
+        end
 
         % Switch to OpenGL mode and copy morphbuffer into our VBO:
-        Screen('BeginOpenGL', morphbuffer(currentsrcbuffer));
+        % We use PTB's internal context here, our state mods should be safe
+        % for Screen():
+        Screen('BeginOpenGL', morphbuffer(currentsrcbuffer), 1);
 
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, vbo);
+
+        % Disable alpha-blending around glReadPixels if its enabled. While
+        % this is not needed on OS/X, NVidia Geforce 7800 under WinXP falls
+        % back to software path if alpha-blending is on... Doesn't make
+        % sense to me, maybe a driver bug?
+        alphablending = glIsEnabled(GL.BLEND);
+        if alphablending
+            glDisable(GL.BLEND);
+        end
         
         % Do we have normals, and if so, do we want to morph them?
         if ~morphnormals & usenormals
@@ -1015,7 +1028,12 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             % them. In both cases, readback the whole morphbuffer:
             glReadPixels(0, 0, w, h, GL.RGBA, GL.FLOAT, vbovertexstart);
         end
-        
+
+        if alphablending
+            % Reenable alpha blending if it got disabled by us:
+            glEnable(GL.BLEND);
+        end
+
         glBindBuffer(GL.PIXEL_PACK_BUFFER_ARB, 0);
         Screen('EndOpenGL', morphbuffer(currentsrcbuffer));
         

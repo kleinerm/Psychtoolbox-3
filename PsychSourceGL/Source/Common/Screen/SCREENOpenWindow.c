@@ -231,7 +231,12 @@ PsychError SCREENOpenWindow(void)
     if(!PsychIsScreenCaptured(screenNumber) && !useAGL) {
         PsychCaptureScreen(screenNumber);
 
-        settingsMade=PsychSetScreenSettings(screenNumber, &screenSettings);
+		// We disable the call to PsychSetScreenSettings here: Its not useful, as it
+		// could only change color depth - which is something we don't want to do anyway here.
+		// If people want to change displays settings, they should use Screen('Resolution') instead,
+		// which is a more clever interface to PsychSetScreenSettings().
+		
+        // settingsMade=PsychSetScreenSettings(screenNumber, &screenSettings);
         //Capturing the screen and setting its settings always occur in conjunction
         //There should be a check above to see if the display is captured and openWindow is attempting to chang
         //the bit depth

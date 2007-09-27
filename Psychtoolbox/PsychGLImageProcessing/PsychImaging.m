@@ -45,10 +45,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   compositing and image processing operations. It also allows
 %   alpha-blending with signed color values and intermediate results that
 %   are outside the displayable range, e.g., negative. Precision is about 3
-%   digits behind the dezimal point or 1024 discriminable displayable
+%   digits behind the decimal point or 1024 discriminable displayable
 %   levels. If you need higher precision, choose 'FloatingPoint32Bit'.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
+%
 %
 % * 'FloatingPoint32Bit' Ask for a 32 bit floating point precision
 %   framebuffer. This allows more than 8 bit precision for complex drawing,
@@ -56,9 +57,67 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   alpha-blending with signed color values and intermediate results that
 %   are outside the displayable range, e.g., negative. Precision is about
 %   6.5 digits behind the dezimal point or 8 million discriminable displayable
-%   levels.
+%   levels. Be aware that only the most recent hardware (NVidia Geforce
+%   8000 series, ATI Radeon HD 2000 series) is able to perform
+%   alpha-blending at full speed in this mode. Enabling alpha-blending on
+%   older hardware may cause a significant decrease in drawing performance.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
+%
+%
+% * 'EnableBrightSideHDROutput' Enable the high-performance driver for
+%   BrightSide Technologies High dynamic range display device for 16 bit
+%   per color channel output precision. See "help BrightSideHDR" for
+%   detailed explanation. Please note that you'll need to install the 3rd
+%   party driver libraries for that display as described in the help file.
+%   PTB doesn't come bundled with that libraries for copyright reasons.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
+%
+%
+% * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
+%   Cambridge Research Systems Bits++ box. This loads the graphics
+%   hardwares gamma table with an identity mapping so it can't interfere
+%   with Bits++ T-Lock system. It also sets up automatic generation of
+%   Bits++ T-Lock codes: You will be able to upload new CLUT's into the
+%   Bits++ by use of the Screen('LoadNormalizedGammaTable', window, clut, 2);
+%   command. CLUT updates will be synchronized with Screen('Flip')
+%   commands, because PTB will generate and draw the proper T-Lock code
+%   into the top line of your onscreen window. Please note that while
+%   Bits++ CLUT mode works even with very old graphics hardware, this is a
+%   pretty cumbersome way of driving the Bits++. On recent hardware, you
+%   will want to use Mono++ or Color++ mode (see below). That allows to
+%   draw arbitrarily complex stimuli with as many colors as you want and
+%   PTB will take care of conversion into the Color++ or Mono++ format for
+%   Bits++.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+%
+%
+% * 'EnableBits++Mono++Output' Enable the high-performance driver for the
+%   Mono++ mode of Cambridge Research Systems Bits++ box. This is the
+%   fastest and most elegant way of driving the Bits++ box with 14 bit
+%   luminance output precision. See "help BitsPlusPlus" for more
+%   information. Selecting this mode implies use of 32 bit floating point
+%   framebuffers, unless you specify use of a 16 bit floating point
+%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
+%   will not be able to use the full 14 bit output precision of Bits++, but
+%   only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');
+%
+%
+% * 'EnableBits++Color++Output' Enable the high-performance driver for the
+%   Color++ mode of Cambridge Research Systems Bits++ box. This is the
+%   fastest and most elegant way of driving the Bits++ box with 14 bit
+%   per color channel output precision. See "help BitsPlusPlus" for more
+%   information. Selecting this mode implies use of 32 bit floating point
+%   framebuffers, unless you specify use of a 16 bit floating point
+%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
+%   will not be able to use the full 14 bit output precision of Bits++, but
+%   only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 %
 %
 % * 'RestrictProcessing' Restrict stimulus processing to a specific subarea
@@ -73,8 +132,10 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   screen area with top-left corner (400,400) and bottom-right corner
 %   (800, 800).
 %
+%
 % * 'FlipHorizontal' and 'FlipVertical' flip your output images
 %   horizontally (left- and right interchanged) or vertically (upside down).
+%
 %
 % * 'GeometryCorrection' Apply some geometric warping operation during
 %   rendering of the final stimulus image to correct for geometric
@@ -89,12 +150,27 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   the type of undistortion to apply. Calibration files can be created by
 %   interactive calibration procedures. See 'help CreateDisplayWarp' for a
 %   list of calibration methods. One of the supported procedures is, e.g.,
-%   "DisplayUndistortionBezier"
+%   "DisplayUndistortionBezier", read "help DisplayUndistortionBezier"
+%
 %
 % * More actions will be supported in the future. If you can think of an
 %   action of common interest not yet supported by this framework, please
 %   file a feature request on our Wiki (Mainpage -> Feature Requests).
 %
+%
+% After adding all wanted task specifications and other requirements,
+% call...
+%
+% [windowPtr, windowRect] = PsychImaging('OpenWindow', screenid, [backgroundcolor], ....);
+%
+% - Finishes the setup phase for imaging pipeline, creates a suitable onscreen
+% window and performs all remaining configuration steps. After this
+% command, your onscreen window will be ready for drawing and display of
+% stimuli. All specified imaging operations will get automatically applied
+% to your stimulus before stimulus onset.
+%
+%
+% The following commands are only for specialists:
 %
 % imagingMode = PsychImaging('FinalizeConfiguration');
 % - Finish the configuration phase for this window. This will compute an
@@ -104,7 +180,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % you'd like to have for your window. After that, you'll have to call
 % PsychImaging('PostConfiguration') to really apply and setup all your
 % configuration settings. If you don't have unusual needs, you can simplify
-% these steps by simply calling PsychImaging('OpenImagingWindow', ....);
+% these steps by simply calling PsychImaging('OpenWindow', ....);
 % with the same parameters that you'd pass to Screen('OpenWindow', ....);
 % PsychImaging will perform all necessary steps to upon return, you'll have
 % your window properly configured.
@@ -115,12 +191,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % Performs all the setup work to be done after the window was created.
 %
 %
-% [windowPtr, windowRect] = PsychImaging('OpenWindow', screenid,
-% [backgroundcolor], ....);
-% - Finish the setup phase for imaging pipeline, create a suitable onscreen
-% window and perform all remaining configuration steps.
-%
-%
+
 
 % History:
 % 3.6.2007 Written. (MK)
@@ -131,6 +202,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % reimplemented in in a portable way.
 %
 % 19.7.2007 Added initial support for display geometry correction. (MK).
+%
+% 27.9.2007 Added support for floating point framebuffer, Bits++ and
+%           Brightside-HDR. Documentation cleanup. (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -295,13 +369,80 @@ if strcmp(cmd, 'OpenWindow')
     
     imagingMode = mor(imagingMode, imagingovm);
     
-    % Open onscreen window with proper imagingMode and stereomode set up:
-    if nargin > 10
-        [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
-    else
-        [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+    % Open onscreen window with proper imagingMode and stereomode set up.
+    % We have a couple of special cases here for BrightSide HDR display and
+    % the CRS Bits++...
+    win = [];
+
+    if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
+        % Special case: Need to open BrightSide HDR driver. We delegate the
+        % openwindow procedure to the BrightSideHDR.m file:
+        if ~isempty(win)
+            error('You specified multiple conflicting output display device drivers! This will not work.');
+        end
+
+        if nargin > 10
+            [win, winRect] = BrightSideHDR('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BrightSideHDR('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+        end        
     end
-        
+
+    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Bits++Output')))
+        % Special case: Need to open Bits++ Bits++ driver. We delegate the
+        % openwindow procedure to the BitsPlusPlus.m file:
+        if ~isempty(win)
+            error('You specified multiple conflicting output display device drivers! This will not work.');
+        end
+
+        if nargin > 10
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BitsPlusPlus('OpenWindowBits++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+        end        
+    end
+
+    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output')))
+        % Special case: Need to open Bits++ Mono++ driver. We delegate the
+        % openwindow procedure to the BitsPlusPlus.m file:
+        if ~isempty(win)
+            error('You specified multiple conflicting output display device drivers! This will not work.');
+        end
+
+        if nargin > 10
+            [win, winRect] = BitsPlusPlus('OpenWindowMono++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BitsPlusPlus('OpenWindowMono++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+        end        
+    end
+
+    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+        % Special case: Need to open Bits++ Color++ driver. We delegate the
+        % openwindow procedure to the BitsPlusPlus.m file:
+        if ~isempty(win)
+            error('You specified multiple conflicting output display device drivers! This will not work.');
+        end
+
+        if nargin > 10
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BitsPlusPlus('OpenWindowColor++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+        end        
+    end
+
+    if isempty(win)
+        % Standard openwindow path:
+        if ~isempty(win)
+            error('You specified multiple conflicting output display device drivers! This will not work.');
+        end
+
+        if nargin > 10
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+        end
+    end
+    
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
@@ -343,6 +484,18 @@ end
 % 32 bpc float framebuffers needed?
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32Bit')))
     imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+end
+
+if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+end
+
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output')))
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+end
+
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion, kPsychNeedHalfWidthWindow);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
