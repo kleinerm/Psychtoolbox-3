@@ -100,7 +100,7 @@ fprintf('%s\n', updatecommand);
 if isOSX
     [err, result]=system(updatecommand);
 else
-    [err, result]=dos(updatecommand);
+    [err, result]=dos(updatecommand, '-echo');
 end
 if err
     fprintf('Sorry. The update command failed:\n');
