@@ -80,16 +80,17 @@ PsychError SCREENTransformTexture(void)
 
 	// Activate rendering context of the proxy object and soft-reset the
 	// drawing engine, so we're in a well defined state:
-	PsychSetGLContext(proxyRecord);
-	PsychSetDrawingTarget(NULL);
-	glUseProgram(0);
-	
+	PsychSetGLContext(proxyRecord);    
+    PsychSetDrawingTarget(NULL);
+
 	// Save all state:
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
 		
 	// Disable alpha-blending:
 	glDisable(GL_BLEND);
-
+    
+    glUseProgram(0);
+	
 	// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 	// that format. We require this standard orientation for simplified shader design.
 	if (!(specialFlags & 1)) PsychNormalizeTextureOrientation(sourceRecord);
