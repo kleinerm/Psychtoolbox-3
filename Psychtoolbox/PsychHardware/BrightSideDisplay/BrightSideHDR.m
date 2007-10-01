@@ -262,6 +262,10 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
         % invocation of Screen('Flip'):
         Screen('HookFunction', windowPtr, 'AppendMFunction', 'FinalOutputFormattingBlit', 'Execute BrightSide blit operation', 'BrightSideHDR(''BrightSideExecuteBlit'')');
         Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
+        
+        % Load the gfx-hardware gamma-tables / CLUT's with identity, so
+        % they can't mess with BrightSide encoded image data:
+        LoadIdentityClut(windowPtr);
     end
 
     % Add a shutdown callback - Always called (even in dummy mode) to
