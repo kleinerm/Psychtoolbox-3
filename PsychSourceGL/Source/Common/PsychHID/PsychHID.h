@@ -13,6 +13,7 @@
 		3/15/05  dgp        Added Get/SetReport
 		3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
         4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
+		8/23/07  rpw		Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
 	TO DO:
 
 		DONE	1- Emulate KbCheck
@@ -72,6 +73,13 @@ PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
 PsychError PSYCHHIDGetCollections(void);			// PsychHIDGetCollections.c
 PsychError PSYCHHIDKbCheck(void);				// PsychHIDKbCheck.c
 PsychError PSYCHHIDKbWait(void);				// PsychHIDKbWait.c 
+PsychError PSYCHHIDKbTriggerWait(void);				// PsychTriggerWait.c
+PsychError PSYCHHIDKbQueueCreate(void);			// PsychHIDKbQueueCreate.c
+PsychError PSYCHHIDKbQueueStart(void);			// PsychHIDKbQueueStart.c
+PsychError PSYCHHIDKbQueueStop(void);			// PsychHIDKbQueueStop.c
+PsychError PSYCHHIDKbQueueCheck(void);			// PsychHIDKbQueueCheck.c
+PsychError PSYCHHIDKbQueueFlush(void);			// PsychHIDKbQueueFlush.c
+PsychError PSYCHHIDKbQueueRelease(void);		// PsychHIDKbQueueRelease.c
 PsychError PSYCHHIDGetReport(void);				// PsychHIDGetReport.c
 PsychError PSYCHHIDSetReport(void);				// PsychHIDSetReport.c
 PsychError PSYCHHIDReceiveReports(void);		// PsychHIDReceiveReports.c

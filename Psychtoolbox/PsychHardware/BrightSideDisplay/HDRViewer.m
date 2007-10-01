@@ -18,7 +18,8 @@ function HDRViewer(imfilepattern, dummymode, sf)
 %
 % You can cycle through all images by pressing the space-bar. You can change
 % image intensity scaling by pressing the cursor up- and down-keys. You can
-% exit the viewer by pressing ESCape.
+% exit the viewer by pressing ESCape. By pressing the 'q' key, you can
+% toggle between float precision HDR and 256 level 8 bit quantized output.
 %
 % Zoom mode:
 % Pressing the left mouse button will enable zoom mode. Dragging the mouse
@@ -144,7 +145,7 @@ try
         texid = Screen('MakeTexture', win, img, [], 2, 2);
 
         % Build also a version of the image that is quantized to 8 Bit:
-        quantimg = uint8((img / max(max(max(img)))) * 255 + 0.5);
+        quantimg = uint8((img / max(max(max(img)))) * 255);
         ldrtexid = Screen('MakeTexture', win, quantimg, [], 2);
         
         needupdate = 1;

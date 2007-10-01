@@ -138,6 +138,16 @@ void InitPsychAuthorList(void)
 		"chrg@sas.upenn.edu",
 		"http://color.psych.upenn.edu/lab/"
 	);
+	PsychAddAuthor(
+	// Queue/Thread based keyboard checks via PsychHID for reliable
+	// response collection from fORP et al.: 
+		"Roger",
+		"P.",
+		"Woods",
+		"rpw",
+		"rwoods@ucla.edu",
+		"http://www.ucla.edu"
+	);
 }
 
 

@@ -11,6 +11,7 @@
   HISTORY:
   5/05/03  awi		Created.
   4/19/05  dgp      cosmetic.
+  8/23/07  rpw      added PsychHIDKbQueueRelease() to PsychHIDCleanup()
   
   TO DO:
   
@@ -41,6 +42,7 @@ PsychError PsychHIDCleanup(void)
 {
 	long error;
 
+	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
 	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
     if(HIDHaveDeviceList())HIDReleaseDeviceList();
     return(PsychError_none);

@@ -39,7 +39,14 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck',[deviceNumber])";
 	synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 	synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
-
+	synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
+	synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber], [keyFlags])";
+	synopsis[i++] = "PsychHID('KbQueueRelease')"; 
+	synopsis[i++] = "PsychHID('KbQueueFlush')"; 
+	synopsis[i++] = "PsychHID('KbQueueStart')"; 
+	synopsis[i++] = "PsychHID('KbQueueStop')"; 
+	synopsis[i++] = "[keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes, lastKeyReleaseTimes]=PsychHID('KbQueueCheck')"; 
+	synopsis[i++] = "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])"; 
 	synopsis[i++] = NULL;  // this tells PsychDisplayPsychHIDSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);

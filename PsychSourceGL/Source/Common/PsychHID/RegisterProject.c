@@ -11,17 +11,12 @@
   HISTORY:
   4/16/03  awi		Created. 
   4/15/05  dgp		Added Get/SetReport. 
+  8/23/07  rpw      Added PsychHIDKbQueue suite and PsychHIDKbTriggerWait
 
 */
 
 #include "Psych.h"
 #include "PsychHID.h"
-
-
-// PsychModuleInit is in Screen.cpp
-// PsychProjectExit is in Screen.cpp
-// PsychProjectSelectFunction is in Screen.cpp
-
 
 PsychError PsychModuleInit(void)
 {
@@ -49,6 +44,13 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("CalibratedState",  &PSYCHHIDGetCalibratedState));
 	PsychErrorExit(PsychRegister("KbCheck",  &PSYCHHIDKbCheck));
 	PsychErrorExit(PsychRegister("KbWait",  &PSYCHHIDKbWait));
+	PsychErrorExit(PsychRegister("KbTriggerWait", &PSYCHHIDKbTriggerWait));
+	PsychErrorExit(PsychRegister("KbQueueCreate", &PSYCHHIDKbQueueCreate));
+	PsychErrorExit(PsychRegister("KbQueueStart", &PSYCHHIDKbQueueStart));
+	PsychErrorExit(PsychRegister("KbQueueStop", &PSYCHHIDKbQueueStop));
+	PsychErrorExit(PsychRegister("KbQueueCheck", &PSYCHHIDKbQueueCheck));
+	PsychErrorExit(PsychRegister("KbQueueFlush", &PSYCHHIDKbQueueFlush));
+	PsychErrorExit(PsychRegister("KbQueueRelease", &PSYCHHIDKbQueueRelease));
 	PsychErrorExit(PsychRegister("GetReport",  &PSYCHHIDGetReport));
 	PsychErrorExit(PsychRegister("ReceiveReports",  &PSYCHHIDReceiveReports));
 	PsychErrorExit(PsychRegister("ReceiveReportsStop",  &PSYCHHIDReceiveReportsStop));
@@ -56,13 +58,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("SetReport",  &PSYCHHIDSetReport));
 
 	PsychSetModuleAuthorByInitials("awi");
-
-	//InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.  
+	PsychSetModuleAuthorByInitials("dgp");
+	PsychSetModuleAuthorByInitials("mk");
+	PsychSetModuleAuthorByInitials("rpw");
 
 	return(PsychError_none);
-
 }
-
-
-
-

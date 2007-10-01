@@ -1549,6 +1549,20 @@
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
 		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
 		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
+		8325CEC30CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */; };
+		8325CEC40CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */; };
+		8325CEC60CAF15B700B498CD /* PsychHIDKbQueueCreate.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */; };
+		8325CEC70CAF15B700B498CD /* PsychHIDKbQueueCreate.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */; };
+		8325CEC90CAF15C100B498CD /* PsychHIDKbQueueFlush.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC80CAF15C100B498CD /* PsychHIDKbQueueFlush.c */; };
+		8325CECA0CAF15C100B498CD /* PsychHIDKbQueueFlush.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC80CAF15C100B498CD /* PsychHIDKbQueueFlush.c */; };
+		8325CECC0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CECB0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c */; };
+		8325CECD0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CECB0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c */; };
+		8325CECF0CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CECE0CAF15D400B498CD /* PsychHIDKbQueueStart.c */; };
+		8325CED00CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CECE0CAF15D400B498CD /* PsychHIDKbQueueStart.c */; };
+		8325CED20CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CED10CAF15DC00B498CD /* PsychHIDKbQueueStop.c */; };
+		8325CED30CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CED10CAF15DC00B498CD /* PsychHIDKbQueueStop.c */; };
+		8325CED50CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CED40CAF15E900B498CD /* PsychHIDKbTriggerWait.c */; };
+		8325CED60CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CED40CAF15E900B498CD /* PsychHIDKbTriggerWait.c */; };
 		832CE4AE094CA6AF00578C09 /* SCREENFillArc.c in Sources */ = {isa = PBXBuildFile; fileRef = 832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */; };
 		832CE5F7094CE8C300578C09 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
 		832CE5F8094CE8C300578C09 /* PsychMemory.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F238038E2BE2017A7028 /* PsychMemory.h */; };
@@ -3565,6 +3579,14 @@
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
 		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
 		830572260984860000EB51EE /* SCREENWaitBlanking.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENWaitBlanking.c; path = ../../../Source/Common/Screen/SCREENWaitBlanking.c; sourceTree = SOURCE_ROOT; };
+		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
+		8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCheck.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCheck.c; sourceTree = SOURCE_ROOT; };
+		8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCreate.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCreate.c; sourceTree = SOURCE_ROOT; };
+		8325CEC80CAF15C100B498CD /* PsychHIDKbQueueFlush.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueFlush.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueFlush.c; sourceTree = SOURCE_ROOT; };
+		8325CECB0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueRelease.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueRelease.c; sourceTree = SOURCE_ROOT; };
+		8325CECE0CAF15D400B498CD /* PsychHIDKbQueueStart.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueStart.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueStart.c; sourceTree = SOURCE_ROOT; };
+		8325CED10CAF15DC00B498CD /* PsychHIDKbQueueStop.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueStop.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueStop.c; sourceTree = SOURCE_ROOT; };
+		8325CED40CAF15E900B498CD /* PsychHIDKbTriggerWait.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbTriggerWait.c; path = ../../../Source/Common/PsychHID/PsychHIDKbTriggerWait.c; sourceTree = SOURCE_ROOT; };
 		832CE4AD094CA6AF00578C09 /* SCREENFillArc.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENFillArc.c; path = ../../../Source/Common/Screen/SCREENFillArc.c; sourceTree = SOURCE_ROOT; };
 		832CE62B094CE8C300578C09 /* PsychSound.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PsychSound.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		832CE62D094CE8C300578C09 /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing copy.plist"; sourceTree = "<group>"; };
@@ -5205,6 +5227,7 @@
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
 				CF566E7307F7D2FC00D4957A /* PsychHID.h */,
+				8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */,
 				CF566E6607F7D2FC00D4957A /* PsychHIDErrors.c */,
 				CF566E6707F7D2FC00D4957A /* PsychHIDGetCalibratedState.c */,
 				CF566E7807F7D2FC00D4957A /* PsychHIDGetCollections.c */,
@@ -5218,6 +5241,13 @@
 				2F5434D70904C5DB0051D6CC /* PsychHIDGiveMeReports.c */,
 				CF566E7407F7D2FC00D4957A /* PsychHIDHelpers.c */,
 				CF566E6E07F7D2FC00D4957A /* PsychHIDKbCheck.c */,
+				8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */,
+				8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */,
+				8325CEC80CAF15C100B498CD /* PsychHIDKbQueueFlush.c */,
+				8325CECB0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c */,
+				8325CECE0CAF15D400B498CD /* PsychHIDKbQueueStart.c */,
+				8325CED10CAF15DC00B498CD /* PsychHIDKbQueueStop.c */,
+				8325CED40CAF15E900B498CD /* PsychHIDKbTriggerWait.c */,
 				CF566E6D07F7D2FC00D4957A /* PsychHIDKbWait.c */,
 				2F5434E40904C61F0051D6CC /* PsychHIDReceiveReports.c */,
 				2F5434E60904C6A40051D6CC /* PsychHIDReceiveReportsStop.c */,
@@ -10809,6 +10839,13 @@
 				2FEBA91E0989911200F4165F /* RegisterProject.c in Sources */,
 				835CD2670A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
 				8395A9DC0BBF370800FC482E /* PsychHID.cc in Sources */,
+				8325CEC30CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */,
+				8325CEC60CAF15B700B498CD /* PsychHIDKbQueueCreate.c in Sources */,
+				8325CEC90CAF15C100B498CD /* PsychHIDKbQueueFlush.c in Sources */,
+				8325CECC0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c in Sources */,
+				8325CECF0CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */,
+				8325CED20CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
+				8325CED50CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11469,6 +11506,13 @@
 				F14A27EB0AD48C1200BFB68F /* RegisterProject.c in Sources */,
 				F14A27EC0AD48C1200BFB68F /* PsychScriptingGlue.cc in Sources */,
 				8395A9DD0BBF370800FC482E /* PsychHID.cc in Sources */,
+				8325CEC40CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */,
+				8325CEC70CAF15B700B498CD /* PsychHIDKbQueueCreate.c in Sources */,
+				8325CECA0CAF15C100B498CD /* PsychHIDKbQueueFlush.c in Sources */,
+				8325CECD0CAF15CA00B498CD /* PsychHIDKbQueueRelease.c in Sources */,
+				8325CED00CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */,
+				8325CED30CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
+				8325CED60CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -22341,45 +22385,18 @@
 		F14A2A170AD4A02B00BFB68F /* Development-Octavebuild */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				EXECUTABLE_EXTENSION = mexmac;
-				EXPORTED_SYMBOLS_FILE = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/lib/mac/mexFunction.map";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_MODEL_TUNING = G4;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
-				HEADER_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
-				);
-				INSTALL_PATH = /usr/local/lib;
-				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = (
-					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/mac",
-					/usr/lib/gcc/darwin/2.95.2,
-				);
-				LINK_WITH_STANDARD_LIBRARIES = YES;
-				MACH_O_TYPE = mh_bundle;
-				MACOSX_DEPLOYMENT_TARGET = 10.2;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
 				);
-				OTHER_LDFLAGS = (
-					"-flat_namespace",
-					"-undefined",
-					suppress,
-					"-lmx",
-					"-lmex",
-					"-lmat",
-					"-lstdc++",
-				);
-				PREBINDING = NO;
+				PREBINDING = YES;
 				PRODUCT_NAME = Gestalt;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
-				STRIP_STYLE = all;
+				SKIP_INSTALL = NO;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
 			name = "Development-Octavebuild";
