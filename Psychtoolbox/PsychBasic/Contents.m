@@ -25,6 +25,13 @@
 %     InitCocoaEventBridge - Prepare GetChar helper "CocoaEventBridge" 
 %     KbCheck              - Get instantaneous keyboard state.
 %     KbName               - Convert keycode to key name.
+%     KbQueueCreate        - Create keyboard queue (OS/X only).
+%     KbQueueRelease       - Destroy keyboard queue (OS/X only).
+%     KbQueueFlush         - Empty keyboard queue (OS/X only).
+%     KbQueueStart         - Start recording of key presses into queue.
+%     KbQueueStop          - Stop recording of key presses into queue.
+%     KbQueueCheck         - Check keyboard queue for key presses/releases.
+%     KbTriggerWait        - Wait for trigger keys on keyboard (OS/X only).
 %     KbWait               - Wait for key press and return its time.
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  

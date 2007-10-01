@@ -52,6 +52,8 @@ PsychError PSYCHPORTAUDIOClose(void);
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void);
 // Start or schedule start of device:
 PsychError PSYCHPORTAUDIOStartAudioDevice(void);
+// Reschedule start of audio device:
+PsychError PSYCHPORTAUDIORescheduleStart(void);
 // Stop device immediately:
 PsychError PSYCHPORTAUDIOStopAudioDevice(void);
 // Enumerate audio devices:

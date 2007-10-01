@@ -47,6 +47,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Open", &PSYCHPORTAUDIOOpen));
 	PsychErrorExit(PsychRegister("Close", &PSYCHPORTAUDIOClose));
 	PsychErrorExit(PsychRegister("Start", &PSYCHPORTAUDIOStartAudioDevice));
+	PsychErrorExit(PsychRegister("RescheduleStart", &PSYCHPORTAUDIORescheduleStart));
 	PsychErrorExit(PsychRegister("Stop", &PSYCHPORTAUDIOStopAudioDevice));
 	PsychErrorExit(PsychRegister("FillBuffer", &PSYCHPORTAUDIOFillAudioBuffer));
 	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
