@@ -635,6 +635,10 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
 	
+	// We default to generic system settings for host api specific settings:
+	outputParameters.hostApiSpecificStreamInfo = NULL;
+	inputParameters.hostApiSpecificStreamInfo  = NULL;
+
 	// Request optional deviceid:
 	PsychCopyInIntegerArg(1, kPsychArgOptional, &deviceid);
 	if (deviceid < -1) PsychErrorExitMsg(PsychError_user, "Invalid deviceid provided. Valid values are -1 to maximum number of devices.");
@@ -736,6 +740,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 					outhostapisettings.flags = paAsioUseChannelSelectors;
 					outhostapisettings.channelSelectors = (int*) &outputmappings[0];
 					for (i=0; i<mynrchannels[0]; i++) outputmappings[i] = (int) mychannelmap[i * m];
+					if (verbosity > 3) {
+						printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound output to audio stream %i :\n", audiodevicecount); 
+						for (i=0; i<mynrchannels[0]; i++) printf("%i --> %i : ", i+1, outputmappings[i]);
+						printf("\n\n");
+					}
 				}
 				
 				if (mode & kPortAudioCapture) {
@@ -748,6 +757,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 					inhostapisettings.channelSelectors = (int*) &inputmappings[0];
 					// Index into first row of one-row matrix or 2nd row of two-row matrix:
 					for (i=0; i<mynrchannels[1]; i++) inputmappings[i] = (int) mychannelmap[(i * m) + (m-1)];
+					if (verbosity > 3) {
+						printf("PTB-INFO: Will try to use the following logical channel -> device channel mappings for sound capture from audio stream %i :\n", audiodevicecount); 
+						for (i=0; i<mynrchannels[1]; i++) printf("%i --> %i : ", i+1, inputmappings[i]);
+						printf("\n\n");
+					}
 				}
 				// Mappings setup up. The PortAudio library will sanity check this further against device constraints...
 			}
@@ -851,10 +865,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		outputParameters.suggestedLatency = suggestedLatency;
 		inputParameters.suggestedLatency  = suggestedLatency;
 	}
-	
-	// We default to generic system:
-	outputParameters.hostApiSpecificStreamInfo = NULL;
-	inputParameters.hostApiSpecificStreamInfo  = NULL;
 
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	// Apply OS/X CoreAudio specific optimizations:
