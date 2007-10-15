@@ -123,6 +123,7 @@ Screen('FillRect', window, 1, boxRect);
 if g_usebitspp
     BitsPlusSetClut(window, theClut .* (2^16 - 1));
 else
+	Screen('Flip', window);
     Screen('LoadNormalizedGammaTable', window, theClut);
 end
 
