@@ -1,0 +1,30 @@
+/* ColorKeyedTextureBlitShader: Shader for masked blitting of 2D rectangle textures.
+// OpenGL program has to setup the texture unit 'ColorKeyImage' with a window-
+// sized texture which defines for each output pixel location the "color-key"
+// value that is allowed to pass through at that location. The polygon/fragment
+// color of the current fragment is compared to that key value. Only fragments
+// with matching color key are allowed to pass through == their corresponding
+// texel color value from the input texture 'Image' gets drawn.
+//
+// Texture filtering mode needs to be GL_NEAREST for defined results!
+//
+// (w)2007 by Mario Kleiner.
+*/
+
+uniform sampler2DRect Image;
+uniform sampler2DRect ColorKeyImage;
+const float epsilon = 0.001;
+
+void main()
+{
+    /* Fetch wanted RGB color key value at pixel position: */
+    vec3 colorkey = texture2DRect(ColorKeyImage, gl_FragCoord.xy).rgb;
+
+    /* If fragment polygon color doesn't match key --> Discard fragment */
+    if (distance(gl_Color.rgb, colorkey) > epsilon) discard;
+
+    /* Test passed: Assign textures texel RGB color to output color: */
+    vec4 texcolor = texture2DRect(Image, gl_TexCoord[0].st);
+    gl_FragColor.rgb = texcolor.rgb;
+    gl_FragColor.a = texcolor.a * gl_Color.a;
+}

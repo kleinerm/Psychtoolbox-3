@@ -1,5 +1,5 @@
-function GarboriumDemo(ngabors)
-% GarboriumDemo([ngabors=200]) -- An aquarium full of cute little gabors!
+function GarboriumDemo(ngabors, internalRotation)
+% GarboriumDemo([ngabors=200] [, internalRotation=0]) -- An aquarium full of cute little gabors!
 %
 % This demo shows how to use the Screen('DrawTextures') command to draw a
 % large number of similar images quickly - in this case, Gabor patches of
@@ -34,6 +34,10 @@ end
 
 fprintf('Will draw %i gabor patches per frame.\n', ngabors);
 
+if nargin < 2
+    internalRotation = 0;
+end
+
 % Select screen with maximum id for output window:
 screenid = max(Screen('Screens'));
 
@@ -53,7 +57,13 @@ ifi = Screen('GetFlipInterval', win);
 Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE);
 
 % Create prototypical gabor patch of 65 x 65 pixels:
-s=32;
+si = 32;
+if internalRotation
+    s = ceil(si * sqrt(2));
+else
+    s = si;
+end
+
 [x,y]=meshgrid(-s:s, -s:s);
 angle=0*pi/180; % 30 deg orientation.
 f=0.1*2*pi; % cycles/pixel
@@ -95,11 +105,19 @@ vbl = Screen('Flip', win);
 tstart = vbl;
 count = 0;
 
+if internalRotation
+    sflags = 1;
+    srcRect = CenterRect([0 0 (2*si+1) (2*si+1)], Screen('Rect', gabortex));
+else
+    sflags = 0;
+    srcRect = [];
+end
+
 % Animation loop: Run until keypress:
 while ~KbCheck
     % Step one: Batch-Draw all gabor patches at the positions and
     % orientations computed during last loop iteration:
-    Screen('DrawTextures', win, gabortex, [], dstRects, rotAngles, [], 0.5, []);
+    Screen('DrawTextures', win, gabortex, srcRect, dstRects, rotAngles, [], 0.5, [], [], sflags);
     
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame:

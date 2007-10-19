@@ -111,13 +111,3 @@ PsychError SCREENGetFlipInterval(void)
     // Done.
     return(PsychError_none);
 }
-
-
-	
-	
-
-
-
-
-
-

@@ -797,84 +797,100 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	  // Default: Clamp to edge.
 	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
 	  glTexParameteri(texturetarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        }
+	}
 
-        // We use GL_MODULATE texture application mode together with the special rectangle color
-        // (1,1,1,globalAlpha) -- This way, the alpha blending value is the product of the alpha-
-        // value of each texel and the globalAlpha value. --> Can apply global alpha value for
-        // global blending without need for a texture alpha-channel...
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-		// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
-		// has done it already. Used in SCREENDrawTexture for a global override color...
-		if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, globalAlpha);
+	// We use GL_MODULATE texture application mode together with the special rectangle color
+	// (1,1,1,globalAlpha) -- This way, the alpha blending value is the product of the alpha-
+	// value of each texel and the globalAlpha value. --> Can apply global alpha value for
+	// global blending without need for a texture alpha-channel...
+	glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
 
-        // Apply a rotation transform for rotated drawing:
-        glMatrixMode(GL_MODELVIEW);
-        glPushMatrix();
-        transX=(targetRect[kPsychRight] + targetRect[kPsychLeft]) * 0.5; 
-        transY=(targetRect[kPsychTop] + targetRect[kPsychBottom]) * 0.5; 
-        
-        glTranslated(+transX, +transY, 0);
-        glRotated(rotationAngle, 0, 0, 1);
-        glTranslated(-transX, -transY, 0);
-        // Rotation transform ready...
-        
-        // matchups for inverted Y coordinate frame (which is inverted?)
-        // MK: Texture coordinate assignments have been changed.
-        // Explanation: Matlab stores matrices in column-major order, but OpenGL requires
-        // textures in row-major order. The old implementation of AWI performed row-column
-        // swapping in MakeTexture via C-Code on the CPU. This makes copy-loop implementation
-        // complex and creates "Cash trashing" effects on the processor. --> slow MakeTexture performance.
-        // Now we store the textures as provided by Matlab, simplifying MakeTexture's implementation,
-        // and let the Graphics hardware do the job of "swapping" during rendering, by drawing the texture
-        // in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
-		glBegin(GL_QUADS);
-        // Coordinate assignments depend on internal texture orientation...
-        // Override for special case: Corevideo texture from Quicktime-subsystem.
-        if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
-            source->textureOrientation == 3 || source->textureOrientation == 4) {
-	  // NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
-	  // is the fastest case --> Most common orientation has highest performance.
-	  //lower left
-	  glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);
-	  glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
-            
-	  //upper left
-	  glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);
-	  glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
-            
-	  //upper right
-	  glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);
-	  glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );		//lower right  vertex in window
-            
-	  //lower right
-	  glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
-	  glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
-        }
-        else {
-	  // OLD CODE: Uses swapped texture coordinates....
-	  //lower left
-	  glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);						//lower left vertex in  window
-	  glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
-	  
-	  //upper left
-	  glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);					        //upper left vertex in texture
-	  glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
-	  
-	  //upper right
-	  glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);					//upper right vertex in texture
-	  glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );	        //lower right  vertex in window
-	  
-	  //lower right
-	  glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);					        //lower right in texture
-	  glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
-        }            
-        
-        glEnd();
-                
-        // Undo rotation transform, if any...
-        glPopMatrix();
-
+	// A globalAlpha of DBL_MAX means: Don't set vertex color here, higher-level code
+	// has done it already. Used in SCREENDrawTexture for a global override color...
+	if (globalAlpha != DBL_MAX) glColor4f(1, 1, 1, globalAlpha);
+	
+	// Apply a rotation transform for rotated drawing, either to modelview-,
+	// or texture matrix.
+	if (rotationAngle != 0.0) {
+		if (!(source->specialflags & kPsychUseTextureMatrixForRotation)) {
+			// Standard case: Transform quad -> Modelview matrix.
+			glMatrixMode(GL_MODELVIEW);
+			transX=(targetRect[kPsychRight] + targetRect[kPsychLeft]) * 0.5; 
+			transY=(targetRect[kPsychTop] + targetRect[kPsychBottom]) * 0.5; 
+		}
+		else {
+			// Transform texture coordinates -> Texture matrix.
+			glMatrixMode(GL_TEXTURE);
+			transX=(sourceX + sourceXEnd) * 0.5; 
+			transY=(sourceY + sourceYEnd) * 0.5; 
+		}
+		
+		glPushMatrix();
+		glTranslated(+transX, +transY, 0);
+		glRotated(rotationAngle, 0, 0, 1);
+		glTranslated(-transX, -transY, 0);
+		// Rotation transform ready...
+	}
+			
+	// matchups for inverted Y coordinate frame (which is inverted?)
+	// MK: Texture coordinate assignments have been changed.
+	// Explanation: Matlab stores matrices in column-major order, but OpenGL requires
+	// textures in row-major order. The old implementation of AWI performed row-column
+	// swapping in MakeTexture via C-Code on the CPU. This makes copy-loop implementation
+	// complex and creates "Cash trashing" effects on the processor. --> slow MakeTexture performance.
+	// Now we store the textures as provided by Matlab, simplifying MakeTexture's implementation,
+	// and let the Graphics hardware do the job of "swapping" during rendering, by drawing the texture
+	// in some rotated and mirrored order. This is way faster, as the GPU is optimized for such things...
+	glBegin(GL_QUADS);
+	// Coordinate assignments depend on internal texture orientation...
+	// Override for special case: Corevideo texture from Quicktime-subsystem.
+	if ((source->textureOrientation == 1 && renderswap) || source->textureOrientation == 2 || source->targetSpecific.QuickTimeGLTexture ||
+		source->textureOrientation == 3 || source->textureOrientation == 4) {
+		// NEW CODE: Uses "normal" coordinate assignments, so that the rotation == 0 deg. case
+		// is the fastest case --> Most common orientation has highest performance.
+		//lower left
+		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);
+		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
+		
+		//upper left
+		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);
+		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
+		
+		//upper right
+		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);
+		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );		//lower right  vertex in window
+		
+		//lower right
+		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);
+		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
+	}
+	else {
+		// OLD CODE: Uses swapped texture coordinates....
+		//lower left
+		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceY);						//lower left vertex in  window
+		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychTop]));		//upper left vertex in window
+		
+		//upper left
+		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceY);					        //upper left vertex in texture
+		glVertex2f((GLfloat)(targetRect[kPsychLeft]), (GLfloat)(targetRect[kPsychBottom]));		//lower left vertex in window
+		
+		//upper right
+		glTexCoord2f((GLfloat)sourceXEnd, (GLfloat)sourceYEnd);					//upper right vertex in texture
+		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychBottom]) );	        //lower right  vertex in window
+		
+		//lower right
+		glTexCoord2f((GLfloat)sourceX, (GLfloat)sourceYEnd);					        //lower right in texture
+		glVertex2f((GLfloat)(targetRect[kPsychRight]), (GLfloat)(targetRect[kPsychTop]));		//upper right in window
+	}            
+	
+	glEnd();
+	
+	// Undo rotation transform, if any...
+	if (rotationAngle != 0.0) {
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
+	}
+	
 	// Only disable texture mapping if we actually enabled it.
 	if (source->textureNumber > 0) {
 		// Reset filters to nearest: This is important in case this texture

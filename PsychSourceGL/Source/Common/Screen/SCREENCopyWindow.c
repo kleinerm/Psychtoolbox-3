@@ -152,7 +152,7 @@ PsychError SCREENCopyWindow(void)
 
             // Copy into texture:
             glCopyTexSubImage2D(PsychGetTextureTarget(targetWin), 0, targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom],
-                                (int) PsychGetWidthFromRect(sourceRect)+1, (int) PsychGetHeightFromRect(sourceRect)+1);
+                                (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect));
 
             // Unbind texture object:
             glBindTexture(PsychGetTextureTarget(targetWin), 0);
@@ -172,7 +172,7 @@ PsychError SCREENCopyWindow(void)
 				// Zoom factor if rectangle sizes don't match:
             glPixelZoom(PsychGetWidthFromRect(targetRect) / PsychGetWidthFromRect(sourceRect), PsychGetHeightFromRect(targetRect) / PsychGetHeightFromRect(sourceRect));
             // Perform pixel copy operation:
-				glCopyPixels(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect)+1, (int) PsychGetHeightFromRect(sourceRect)+1, GL_COLOR);
+				glCopyPixels(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], (int) PsychGetWidthFromRect(sourceRect), (int) PsychGetHeightFromRect(sourceRect), GL_COLOR);
             // That's it.
             glPixelZoom(1,1);
             // Flush drawing commands and wait for render-completion in single-buffer mode:
@@ -185,6 +185,3 @@ PsychError SCREENCopyWindow(void)
         // Done.
         return(PsychError_none);
 }
-
-
-

@@ -1736,6 +1736,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // Enable this windowRecords framebuffer as current drawingtarget:
         PsychSetDrawingTarget(windowRecord);
 
+		// ...and immediately disable it in imagingmode, because it won't be the system backbuffer,
+		// but a FBO -- which would break sync of glFinish() with bufferswaps and vertical retrace.
+		if ((windowRecord->imagingMode > 0) && (windowRecord->imagingMode != kPsychNeedFastOffscreenWindows)) PsychSetDrawingTarget(NULL);
+		
         glDrawBuffer(GL_BACK_LEFT);
         
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
