@@ -586,13 +586,16 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     
     if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
       // Ooops. Couldn't get the requested stereo-context from hardware :(
-      ReleaseDC(hDC, hWnd);
-      DestroyWindow(hWnd);
+
+	  // We handle this in higher-level code now, so error-handling is a bit nicer...
+
+      // ReleaseDC(hDC, hWnd);
+      // DestroyWindow(hWnd);
       
       printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
 	     "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
       
-      return(FALSE);
+      // return(FALSE);
     }
     
 	// Special debug override for faulty drivers with non-working extension:
@@ -723,13 +726,16 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
       if ((stereomode==kPsychOpenGLStereo) && ((pfd.dwFlags & PFD_STEREO)==0)) {
          // Ooops. Couldn't get the requested stereo-context from hardware :(
-         ReleaseDC(hDC, hWnd);
-         DestroyWindow(hWnd);
+
+		 // We handle this in higher-level code now, so error-handling is a bit nicer...
+
+         //ReleaseDC(hDC, hWnd);
+         //DestroyWindow(hWnd);
 
          printf("PTB-ERROR: OpenGL native stereo mode unavailable. Your hardware may not support it,\n"
 	             "PTB-ERROR: or at least not on a flat-panel? Expect abortion of your script soon...");
 
-         return(FALSE);
+         //return(FALSE);
       }		
 		// Done with final window and OpenGL context setup. We've got our final context enabled.
 	 }

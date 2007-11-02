@@ -46,6 +46,7 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
             valueArray[0]=color->value.rgb.r/deno;
             valueArray[1]=color->value.rgb.g/deno;
             valueArray[2]=color->value.rgb.b/deno;
+			valueArray[3]=1.0;	// Needed to init the valueArray completely.
             return(3); 
         case kPsychRGBAColor:
             valueArray[0]=color->value.rgba.r/deno;
@@ -67,16 +68,15 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
 */
 void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 {
-    GLdouble dVals[4]; 
     int numVals;
     
-    numVals=PsychConvertColorToDoubleVector(color, windowRecord, dVals);
+    numVals=PsychConvertColorToDoubleVector(color, windowRecord, &(windowRecord->currentColor));
     if(numVals==1)
         PsychErrorExitMsg(PsychError_internal, "palette mode not yet implemented");
     else if(numVals==3)
-        glColor3dv(dVals);
+        glColor3dv(windowRecord->currentColor);
     else if(numVals==4)
-        glColor4dv(dVals);
+        glColor4dv(windowRecord->currentColor);
     else
         PsychErrorExitMsg(PsychError_internal, "Illegal color specifier"); 
 	// printf("PTB-DEBUG: glColor4dv(%lf, %lf, %lf, %lf)\n", dVals[0], dVals[1], dVals[2], dVals[3]);

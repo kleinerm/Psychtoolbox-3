@@ -78,15 +78,23 @@ static char synopsisString[] =
 	"processing, e.g., multi-pass operations, better use the Screen('TransformTexture') command. It allows for complex operations to "
 	"be applied and is more flexible.\n"
 	"'specialFlags' optional argument: Allows to pass a couple of special flags to influence the drawing. The flags can be combined "
-	"by mor() ing them together. A value of 1 will use a different mode of operation for drawing of rotated textures, where the drawn "
-	"texture rectangle is always upright, but texels are retrieved at rotated positions. "
+	"by mor() ing them together. A value of kPsychUseTextureMatrixForRotation will use a different mode of operation for drawing of "
+	"rotated textures, where the drawn 'dstRect' texture rectangle is always upright, but texels are retrieved at rotated positions, "
+	"as if the 'srcRect' rectangle would be rotated. If you set a value of kPsychDontDoRotation then the rotation angle will not be "
+	"used to rotate the texture. Instead it will be passed to a bount texture shader (if any), which is free to interpret the "
+	"'rotationAngle' parameters is it wants - e.g., to implement custom texture rotation."
+	"\n\n"
+	"'auxParameters' optional argument: If this is set as a vector with at least 4 components, and a multiple of four components, "
+	"then these values are passed to a shader (if any is bound) as 'auxParameter0....n'. The current implementation supports at "
+	"most 32 values per draw call. This is mostly useful when drawing procedural textures if one needs to pass more additional "
+	"parameters to define the texture than can fit into other parameter fields. See 'help ProceduralShadingAPI' for more info. "
 	"\n\n"
 	"If you want to draw many textures to the same onscreen- or offscreen window, use the function Screen('DrawTextures'). "
 	"It accepts the same arguments as this function, but is optimized to draw many textures in one call.";
 	
 	// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-	static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor] [, textureShader] [, specialFlags]);";
-	//                                               1              2                3             4                5                6              7				8					9				10
+	static char useString[] = "Screen('DrawTexture', windowPointer, texturePointer [,sourceRect] [,destinationRect] [,rotationAngle] [, filterMode] [, globalAlpha] [, modulateColor] [, textureShader] [, specialFlags] [, auxParameters]);";
+	//                                               1              2                3             4                5                6              7				8					9				10				 11
 
 	PsychWindowRecordType		*source, *target;
 	PsychRectType			sourceRect, targetRect, tempRect;
@@ -95,15 +103,17 @@ static char synopsisString[] =
 	double globalAlpha = 1.0;   // Default global alpha is 1 == no effect.
 	PsychColorType	color;
 	int textureShader, backupShader;
+	double*							auxParameters;
+	int								numAuxParams, numAuxComponents, m, n, p;
 	int specialFlags = 0;
-	
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
     //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(10));   	
+    PsychErrorExit(PsychCapNumInputArgs(11));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(0)); 
 	
@@ -140,10 +150,10 @@ static char synopsisString[] =
         PsychErrorExitMsg(PsychError_user, "filterMode needs to be 0 for nearest neighbour filter, or 1 for bilinear filter, or 2 for mipmapped filter or 3 for mipmapped-linear filter.");    
     }
 
+	// Copy in optional 'globalAlpha': We don't put restrictions on its valid range
+	// anymore - That made sense for pure fixed function LDR rendering, but no longer
+	// for HDR rendering or procedural shading.
     PsychCopyInDoubleArg(7, kPsychArgOptional, &globalAlpha);
-    if (globalAlpha<0 || globalAlpha>1) {
-        PsychErrorExitMsg(PsychError_user, "globalAlpha needs to be in range 0 for fully transparent to 1 for fully opaque.");    
-    }
     
     PsychSetGLContext(target); 
     PsychUpdateAlphaBlendingFactorLazily(target);
@@ -155,7 +165,7 @@ static char synopsisString[] =
 		
 		// Setup global vertex color as modulate color for texture drawing:
 		PsychCoerceColorMode(&color);
-		PsychSetGLColor(&color, target);
+		PsychSetGLColor(&color, target);		
 	}
 
 	// Assign optional override texture shader, if any provided:
@@ -167,7 +177,26 @@ static char synopsisString[] =
 	
 	// Set rotation mode flag for texture matrix rotation if secialFlags is set accordingly:
 	if (specialFlags & kPsychUseTextureMatrixForRotation) source->specialflags|=kPsychUseTextureMatrixForRotation;
+	// Set rotation mode flag for no fixed function pipeline rotation if secialFlags is set accordingly:
+	if (specialFlags & kPsychDontDoRotation) source->specialflags|=kPsychDontDoRotation;
 
+	// Optional auxParameters:
+	auxParameters = NULL;
+	m=n=p=0;
+	if (PsychAllocInDoubleMatArg(11, kPsychArgOptional, &m, &n, &p, &auxParameters)) {
+		if ((p!=1) || (m * n < 4) || (((m*n) % 4)==0)) PsychErrorExitMsg(PsychError_user, "The 11th argument must be a vector of 'auxParameter' values with a multiple of 4 components.");
+	}
+	numAuxParams = m*n;
+	target->auxShaderParamsCount = numAuxParams;
+
+	// Pass auxParameters for current primitive in the auxShaderParams field.
+	if (numAuxParams > 0) {
+		target->auxShaderParams = auxParameters;
+	}
+	else {
+		target->auxShaderParams = NULL;
+	}
+	
 	if (textureShader > -1) {
 		backupShader = source->textureFilterShader;
 		source->textureFilterShader = -1 * textureShader;
@@ -179,7 +208,10 @@ static char synopsisString[] =
 	}
 	
 	// Reset rotation mode flag:
-	source->specialflags &= ~kPsychUseTextureMatrixForRotation;
+	source->specialflags &= ~(kPsychUseTextureMatrixForRotation | kPsychDontDoRotation);
+	
+	target->auxShaderParams = NULL;
+	target->auxShaderParamsCount = 0;
 	
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(target);
@@ -192,8 +224,8 @@ static char synopsisString[] =
 PsychError SCREENDrawTextures(void) 
 {
 	// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c 1 2 3 4 5 6 7 8
-	static char useString[] = "Screen('DrawTextures', windowPointer, texturePointer(s) [, sourceRect(s)] [, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)] [, modulateColor(s)] [, textureShader] [, specialFlags]);";
-	//                                               1              2                    3                 4                      5                    6                 7				    8					9				 10
+	static char useString[] = "Screen('DrawTextures', windowPointer, texturePointer(s) [, sourceRect(s)] [, destinationRect(s)] [, rotationAngle(s)] [, filterMode(s)] [, globalAlpha(s)] [, modulateColor(s)] [, textureShader] [, specialFlags] [, auxParameters]);";
+	//                                               1              2                    3                 4                      5                    6                 7				    8					9				 10					11
 	
 	static char synopsisString[] = "Draw many textures at once, either one texture to many locations or many textures.\n"
 	"This function accepts the same parameters as Screen('DrawTexture'), but it is optimized for drawing many textures. "
@@ -216,6 +248,9 @@ PsychError SCREENDrawTextures(void)
 	int								numTexs, numdstRects, numsrcRects, i, j, nc, mc, nrsize, m, n, p, numAngles, numFilterModes, numAlphas, numRef;
 	double*							texids;
 	double							rotationAngle, globalAlpha, filterMode;
+	double*							auxParameters;
+	int								numAuxParams, numAuxComponents;
+
 	int textureShader, backupShader;
 	int specialFlags = 0;
 
@@ -225,11 +260,11 @@ PsychError SCREENDrawTextures(void)
     
     //Get the window structure for the onscreen window.  It holds the onscreen GL context which we will need in the
     //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(10));   	
+    PsychErrorExit(PsychCapNumInputArgs(11));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(0)); 
 	
-	// The target window is the only fixed parameter for the whole call:
+	// The target window is a fixed parameter:
     PsychAllocInWindowRecordArg(1, kPsychArgRequired, &target);
 	
 	// First get all source texture handles:
@@ -324,6 +359,15 @@ PsychError SCREENDrawTextures(void)
 	numAlphas = m * n;
 	globalAlpha = (numAlphas == 1) ? globalAlphas[0] : 1.0;
 	
+	// Optional auxParameters:
+	auxParameters = NULL;
+	m=n=p=0;
+	if (PsychAllocInDoubleMatArg(11, kPsychArgOptional, &m, &n, &p, &auxParameters)) {
+		if ((p!=1) || (m < 4) || ((m % 4) !=0)|| (n < 1)) PsychErrorExitMsg(PsychError_user, "The 11th argument must be a column vector or matrix of 'auxParameter' values with at least 4 components and component count a multiple of four.");
+	}
+	numAuxParams = n;
+	numAuxComponents = m;
+	
 	// Check for consistency: Each parameter must be either not present, present once,
 	// or present as many times as all other multi-parameters:
 	numRef = (numsrcRects > numdstRects) ? numsrcRects : numdstRects;
@@ -332,6 +376,7 @@ PsychError SCREENDrawTextures(void)
 	numRef = (numRef > numAlphas) ? numRef : numAlphas;
 	numRef = (numRef > numFilterModes) ? numRef : numFilterModes;
 	numRef = (numRef > numAngles) ? numRef : numAngles;
+	numRef = (numRef > numAuxParams) ? numRef : numAuxParams;
 
 	if (numTexs > 1 && numTexs != numRef) {
 		printf("PTB-ERROR: Number of provided texture handles %i doesn't match number of other primitives %i!\n", numTexs, numRef);
@@ -365,6 +410,11 @@ PsychError SCREENDrawTextures(void)
 
 	if (nc > 1 && nc != numRef) {
 		printf("PTB-ERROR: Number of provided modulateColors %i doesn't match number of other primitives %i!\n", nc, numRef);
+		PsychErrorExitMsg(PsychError_user, "Inconsistent number of arguments provided to Screen('DrawTextures').");
+	}
+
+	if (numAuxParams > 1 && numAuxParams != numRef) {
+		printf("PTB-ERROR: Number of provided 'auxParameter' column vectors %i doesn't match number of other primitives %i!\n", numAuxParams, numRef);
 		PsychErrorExitMsg(PsychError_user, "Inconsistent number of arguments provided to Screen('DrawTextures').");
 	}
 
@@ -446,12 +496,22 @@ PsychError SCREENDrawTextures(void)
 		if (numAlphas > 1) globalAlpha = globalAlphas[i];
 		
 		// Disable alpha if modulateColor active:
-		if (nc > 0) {
-			globalAlpha = DBL_MAX;
-		} else if (globalAlpha<0 || globalAlpha>1) {
-			PsychErrorExitMsg(PsychError_user, "globalAlpha needs to be in range 0 for fully transparent to 1 for fully opaque.");    
-		}
+		if (nc > 0) globalAlpha = DBL_MAX;
 
+		// Pass auxParameters for current primitive in the auxShaderParams field.
+		target->auxShaderParamsCount = numAuxComponents;
+		if (numAuxParams > 0) {
+			if (numAuxParams == 1) {
+				target->auxShaderParams = auxParameters;
+			}
+			else {
+				target->auxShaderParams = &(auxParameters[i * numAuxComponents]);
+			}
+		}
+		else {
+			target->auxShaderParams = NULL;
+		}
+		
 		// Multiple modulateColors provided?
 		if (nc > 1) {
 			// Yes. Set it up as current vertex color:
@@ -459,20 +519,36 @@ PsychError SCREENDrawTextures(void)
 				if (colors) {
 					// RGB double:
 					glColor3dv(&(colors[i*3]));
+					target->currentColor[0]=colors[i*3 + 0];
+					target->currentColor[1]=colors[i*3 + 1];
+					target->currentColor[2]=colors[i*3 + 2];
+					target->currentColor[3]=1.0;
 				}
 				else {
 					// RGB uint8:
 					glColor3ubv(&(bytecolors[i*3]));
+					target->currentColor[0]=((double) bytecolors[i*3 + 0] / 255.0);
+					target->currentColor[1]=((double) bytecolors[i*3 + 1] / 255.0);
+					target->currentColor[2]=((double) bytecolors[i*3 + 2] / 255.0);
+					target->currentColor[3]=1.0;
 				}
 			}
 			else {
 				if (colors) {
 					// RGBA double:
 					glColor4dv(&(colors[i*4]));
+					target->currentColor[0]=colors[i*4 + 0];
+					target->currentColor[1]=colors[i*4 + 1];
+					target->currentColor[2]=colors[i*4 + 2];
+					target->currentColor[3]=colors[i*4 + 3];
 				}
 				else {
 					// RGBA uint8:
 					glColor4ubv(&(bytecolors[i*4]));
+					target->currentColor[0]=((double) bytecolors[i*4 + 0] / 255.0);
+					target->currentColor[1]=((double) bytecolors[i*4 + 1] / 255.0);
+					target->currentColor[2]=((double) bytecolors[i*4 + 2] / 255.0);
+					target->currentColor[3]=((double) bytecolors[i*4 + 3] / 255.0);
 				}					
 			}			
 		}
@@ -484,6 +560,7 @@ PsychError SCREENDrawTextures(void)
 
 		// Set rotation mode flag for texture matrix rotation if secialFlags is set accordingly:
 		if (specialFlags & kPsychUseTextureMatrixForRotation) source->specialflags|=kPsychUseTextureMatrixForRotation;
+		if (specialFlags & kPsychDontDoRotation) source->specialflags|=kPsychDontDoRotation;
 
 		// Perform blit operation for i'th texture, either with or without an override texture shader applied:
 		if (textureShader > -1) {
@@ -497,10 +574,13 @@ PsychError SCREENDrawTextures(void)
 		}
 
 		// Reset rotation mode flag:
-		source->specialflags &= ~kPsychUseTextureMatrixForRotation;
+		source->specialflags &= ~(kPsychUseTextureMatrixForRotation | kPsychDontDoRotation);
 
 		// Next one...
 	}
+
+	target->auxShaderParams = NULL;
+	target->auxShaderParamsCount = 0;
 
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(target);

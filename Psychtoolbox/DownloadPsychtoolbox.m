@@ -182,6 +182,9 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % 07/18/07 mk  Changed default for flavor from 'stable' to 'beta'.
 % 09/27/07 mk  Add another fallback path: Download via https protocol to
 %              maybe bypass proxy-servers.
+% 10/29/07 mk  Small fix for Kerstin Preuschoffs bugreport: Download of old
+%              versions didn't work anymore, becuase 'flavor' string was
+%              lower-cased.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -221,8 +224,12 @@ if (nargin<1 | isempty(flavor))
     flavor='beta';
 end
 
-% Make sure that flavor is lower-case:
-flavor = lower(flavor);
+% Make sure that flavor is lower-case, unless its a 'Psychtoolbox-x.y.z'
+% spec string which is longer than 10 characters and mixed case:
+if length(flavor) < 10
+    % One of the short flavor spec strings: lowercase'em:
+    flavor = lower(flavor);
+end
 
 switch (flavor)
     % 'current' is a synonym for 'beta'.

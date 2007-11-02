@@ -233,6 +233,16 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Need 32 bpc floating point precision?
 	if (imagingmode & kPsychNeed32BPCFloat) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 
+	// Want dynamic adaption of buffer precision?
+	if (imagingmode & kPsychUse32BPCFloatAsap) {
+		// Yes. Here should be detection code to check if the gfx-hardware is capable
+		// of unrestricted hardware-accelerated 32 bpc float framebuffer blending. If
+		// capable hardware -> use 32bpc float for drawBufferFBOs, if not -> use 16 bpc.
+		
+		// FIXME TODO: For now we just use 16 bpc for the stage 0 FBO's.
+		fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+	}
+
 	// Do we need additional depth buffer attachments?
 	needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 	
@@ -345,6 +355,9 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		windowRecord->nrchannels = 4;
 
 	}
+	
+	// Upgrade to 32 bpc float FBO's needed, starting with the 2nd stage of the pipe?
+	if (imagingmode & kPsychUse32BPCFloatAsap) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 	
 	// Do we need 2nd stage FBOs? We need them as targets for the processed data if support for misc image processing ops is requested.
 	if (needimageprocessing) {

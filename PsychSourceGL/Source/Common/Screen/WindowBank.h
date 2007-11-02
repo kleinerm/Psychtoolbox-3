@@ -96,10 +96,13 @@ T0 DO:
 #define kPsychNeedMultiPass        512      // Support for multi-pass processing needed?
 #define kPsychNeedFastOffscreenWindows 1024 // Only support for fast FBO-backed Offscreen windows, everything else off.
 #define kPsychHalfWidthWindow		   2048 // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with half-width, e.g., for dualview stereo...
-
-
+#define kPsychUse32BPCFloatAsap		   4096 // This flag asks to use 32 bpc float FBOs for all stages of the pipeline after the initial drawBufferFBO. The initial drawBufferFBO
+											// should also be a 32 bpc float FBO if the hardware reliably supports framebuffer blending in 32bpc. Otherwise it should be a 16 bpc
+											// float FBO to allow for hardware accelerated framebuffer blending.
 #define kPsychUseTextureMatrixForRotation 1 // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via texture matrix, not via modelview matrix. To be set as flag in 'DrawTexture(s)'
+#define kPsychDontDoRotation 2				// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
+											// rotated drawing of textures via shader, not via matrices, ie., just pass rotation angle to shader. To be set as flag in 'DrawTexture(s)'
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -244,6 +247,7 @@ typedef struct _PsychWindowRecordType_{
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.
+	double					currentColor[4];						// Current unclamped but colorrange remapped RGBA drawcolor for whatever drawop, as spec'd by PsychSetGLColor().
 	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
 	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.
 	Boolean					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.
@@ -266,6 +270,10 @@ typedef struct _PsychWindowRecordType_{
 	// Cached handles for display lists -- used for recycling in compute intense drawing functions:
 	GLuint					fillOvalDisplayList;
 	GLuint					frameOvalDisplayList;
+
+	// Pointer to double-array of auxiliary parameters for bound shaders - or NULL by default.
+	double*					auxShaderParams;
+	int						auxShaderParamsCount;
 	
 	//Used only when this structure holds a window:
 	//platform specific stuff goes within the targetSpecific structure.  Defined in PsychVideoGlue and accessors are in PsychWindowGlue.c

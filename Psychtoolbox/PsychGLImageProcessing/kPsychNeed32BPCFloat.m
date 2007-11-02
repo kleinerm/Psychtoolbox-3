@@ -8,12 +8,11 @@ function rval = kPsychNeed32BPCFloat
 %
 % If requested and supported by the graphics hardware, Psychtoolbox will
 % configure itself to store and process all color information as 32 bit
-% floating point numbers, so called OpenGL half_floats.
-%
+% floating point numbers.
 % FIXME: More info...
 %
-% It is part of the Psychtoolbox imaging pipeline and only works on modern
-% graphics hardware, e.g., ATI Radeon 9600 and later, NVidia GeforceFX 5000
+% This is part of the Psychtoolbox imaging pipeline and only works on modern
+% graphics hardware, e.g., ATI Radeon X1000 and later, NVidia Geforce-6000
 % and later. Check the www.psychtoolbox.org Wiki for graphics hardware
 % recommendations and for a description of PTB's image processing
 % capabilities.

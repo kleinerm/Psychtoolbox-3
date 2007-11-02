@@ -252,6 +252,29 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         return(FALSE);
     }
 
+	// Query if OpenGL stereo is supported:
+	glGetBooleanv(GL_STEREO, &isFloatBuffer);
+	if (!isFloatBuffer && stereomode==kPsychOpenGLStereo) {
+		// OpenGL native stereo was requested, but is obviously not supported :-(
+		// Let's abort here with some error message.
+        printf("\nPTB-ERROR: Asked for OpenGL native stereo (frame-sequential mode) but this doesn't seem to be supported by your graphics hardware or driver.\n");
+		if (PSYCH_SYSTEM == PSYCH_OSX) {
+			printf("PTB-ERROR: Frame-sequential stereo should be supported on all recent ATI and NVidia cards on OS/X, except for the Intel-GMA chips,\n");
+			printf("PTB-ERROR: at least in fullscreen mode with OS/X 10.5, and also mostly on OS/X 10.4. If it doesn't work, check for OS updates etc.\n\n");
+		}
+		else {
+			printf("PTB-ERROR: Frame-sequential stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
+			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI FireGL series. Probably also with professional 3DLabs hardware.\n");
+			printf("PTB-ERROR: If you happen to have such a card, check your driver settings and/or update your graphics driver. This mode may also not\n");
+			printf("PTB-ERROR: work on flat panels, due to their too low refresh rate.\n\n");
+		}
+		printf("PTB-ERROR: You may also check if your display resolution is too demanding, so your hardware runs out of VRAM memory.\n\n");
+
+		PsychOSCloseWindow(*windowRecord);
+        FreeWindowRecordFromPntr(*windowRecord);
+        return(FALSE);		
+	}
+
 	if ((sharedContextWindow == NULL) && ((*windowRecord)->slaveWindow)) {
 		// Undo slave window assignment from context sharing:
 		(*windowRecord)->slaveWindow = NULL;
@@ -384,8 +407,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     PsychSetDrawingTarget(*windowRecord);
     
 	if(PsychPrefStateGet_Verbosity()>2) {
-		  printf("\n\nPTB-INFO: This is the OpenGL-Psychtoolbox version %i.%i.%i. ", PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber());
-		  printf("Type 'PsychtoolboxVersion' for more detailed version information.\n"); 
+		  printf("\n\nPTB-INFO: This is the %s OpenGL-Psychtoolbox version %i.%i.%i. (Build date: %s)\n", PSYCHTOOLBOX_OS_NAME, PsychGetMajorVersionNumber(), PsychGetMinorVersionNumber(), PsychGetPointVersionNumber(), PsychGetBuildDate());
+		  printf("PTB-INFO: Type 'PsychtoolboxVersion' for more detailed version information.\n"); 
 		  printf("PTB-INFO: Psychtoolbox is licensed to you under terms of the GNU General Public License (GPL). See file 'License.txt' in the\n");
 		  printf("PTB-INFO: Psychtoolbox root folder for a copy of the GPL license.\n\n");
 		

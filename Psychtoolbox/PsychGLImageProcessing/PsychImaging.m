@@ -65,6 +65,19 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
 %
 %
+% * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
+%   rendering of up to 1768 different levels of gray on a standard - but
+%   well calibrated - color monitor and 8 bit graphics card. This is done
+%   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
+%   Selecting this mode implies use of 32 bit floating point
+%   framebuffers, unless you specify use of a 16 bit floating point
+%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
+%   will not quite be able to use the full 10.8 bit output precision, but
+%   only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
+%
+%
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
 %   BrightSide Technologies High dynamic range display device for 16 bit
 %   per color channel output precision. See "help BrightSideHDR" for
@@ -498,6 +511,16 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion, kPsychNeedHalfWidthWindow);
 end
 
+if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
+    % Enable output formatter chain:
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+    % been explicitely requested:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+end
+
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
     stereoMode = -2;
@@ -754,6 +777,22 @@ if ~isempty(floc)
     end
 end
 % --- End of geometry correction via warped blit ---
+
+% --- Final output formatter for Pseudo-Gray processing requested? ---
+if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
+    % Load output formatting shader for Pseudo-Gray:
+    pgshader = LoadGLSLProgramFromFiles('PseudoGray_FormattingShader', 1);
+
+    if outputcount > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'PseudoGray output formatting shader', pgshader);
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    outputcount = outputcount + 1;
+    
+end
+% --- End of output formatter for Pseudo-Gray processing requested? ---
 
 % --- Restriction of processing area ROI requested? ---
 

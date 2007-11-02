@@ -633,11 +633,12 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordType *target, double *sourceRect, double *targetRect,
                                double rotationAngle, int filterMode, double globalAlpha)
 {
-        GLdouble       			 sourceWidth, sourceHeight, tWidth, tHeight;
-        GLdouble                         sourceX, sourceY, sourceXEnd, sourceYEnd;
-		double                           transX, transY;
-        GLenum                           texturetarget;
-
+        GLdouble				sourceWidth, sourceHeight, tWidth, tHeight;
+        GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
+		double                  transX, transY;
+        GLenum                  texturetarget;
+		GLuint					shader, attrib;
+		
         // Activate rendering context of target window:
 		PsychSetGLContext(target);
 
@@ -771,18 +772,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                 break;
         }
 	}
-	
-	// Support for basic shading during texture blitting: Useful for very simple
-	// single-pass isotropic image processing and for procedural texture mapping:
-	if (source->textureFilterShader < 0) {
-		// User supplied texture shader for either some on-the-fly texture image processing,
-		// or for procedural texture shading/on-the-fly texture synthesis. These can be
-		// assigned in Screen('MakeTexture') for procedural texture shading or via a
-		// optional shader handle to Screen('DrawTexture');
-		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture shader, but your hardware doesn't support GLSL shaders.");
-		glUseProgram((GLuint) (-1 * source->textureFilterShader));
-	}
-	
+
 	// Setup texture wrap-mode: We usually default to clamping - the best we can do
 	// for the rectangle textures we usually use. Special case is the intentional
 	// use of power-of-two textures with a real power-of-two size. In that case we
@@ -811,7 +801,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	
 	// Apply a rotation transform for rotated drawing, either to modelview-,
 	// or texture matrix.
-	if (rotationAngle != 0.0) {
+	if ((rotationAngle != 0.0) && !(source->specialflags & kPsychDontDoRotation)) {
 		if (!(source->specialflags & kPsychUseTextureMatrixForRotation)) {
 			// Standard case: Transform quad -> Modelview matrix.
 			glMatrixMode(GL_MODELVIEW);
@@ -831,7 +821,67 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		glTranslated(-transX, -transY, 0);
 		// Rotation transform ready...
 	}
-			
+
+	// Support for basic shading during texture blitting: Useful for very simple
+	// single-pass isotropic image processing and for procedural texture mapping:
+	if (source->textureFilterShader < 0) {
+		// User supplied texture shader for either some on-the-fly texture image processing,
+		// or for procedural texture shading/on-the-fly texture synthesis. These can be
+		// assigned in Screen('MakeTexture') for procedural texture shading or via a
+		// optional shader handle to Screen('DrawTexture');
+		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a user defined texture shader or procedural texture, but your hardware doesn't support GLSL shaders.");
+		shader = (GLuint) (-1 * source->textureFilterShader);
+		glUseProgram(shader);
+		
+		// Parameter transfer for advanced procedural shading:
+		// We encode all parameters about the blit operation into additional
+		// vertex attributes so a complex shader can derive useful information.
+		
+		// 'srcRect' parameter: The glTexCoord() calls below encode texture coordinates
+		// - and thereby the corners of 'srcRect' - into each vertex, however this
+		// info gets potentially transformed by the texture matrix, also each vertex
+		// only sees one corner of the srcRect: Therefore we encode srcrect = [left top right bottom]
+		// on demand:
+		if ((attrib = glGetAttribLocationARB(shader, "srcRect")) >= 0) glVertexAttrib4fARB(attrib, sourceRect[kPsychLeft], sourceRect[kPsychTop], sourceRect[kPsychRight], sourceRect[kPsychBottom]);
+
+		// 'dstRect' parameter: The glVertex() calls below encode target pixel coordinates
+		// - and thereby the corners of 'dstRect' - into each vertex, however this
+		// info gets potentially transformed by the modelview/proj. matrix, also each vertex
+		// only sees one corner of the dstRect: Therefore we encode dstrect = [left top right bottom]
+		// on demand:
+		if ((attrib = glGetAttribLocationARB(shader, "dstRect")) >= 0) glVertexAttrib4fARB(attrib, targetRect[kPsychLeft], targetRect[kPsychTop], targetRect[kPsychRight], targetRect[kPsychBottom]);
+
+		// 'sizeAngleFilterMode' - if requested - encodes texture width in .x component, height in .y
+		// requested rotationAngle in .z and the 'filterMode' flags in .w:
+		if ((attrib = glGetAttribLocationARB(shader, "sizeAngleFilterMode")) >= 0) glVertexAttrib4fARB(attrib, (GLfloat) sourceWidth, (GLfloat) sourceHeight, (GLfloat) rotationAngle, (GLfloat) filterMode);
+		
+		// 'modulateColor' - if requested - encodes the RGBA 'modulateColor' after normalization
+		// via the colorrange value of Screen('ColorRange').
+		if ((attrib = glGetAttribLocationARB(shader, "modulateColor")) >= 0) {
+			if(globalAlpha == DBL_MAX) {
+				// globalAlpha disabled: Pass the 'modulateColor' vector:
+				glVertexAttrib4dvARB(attrib, target->currentColor);
+			}
+			else {
+				// modulateColor disabled: Pass (1,1,1) as RGB color and globalAlpha as alpha:
+				glVertexAttrib4fARB(attrib, 1.0, 1.0, 1.0, (GLfloat) globalAlpha);
+			}
+		}
+		
+		// 'auxParameters0' is the first for components (rows) of the 'auxParameters' argument
+		// of Screen('DrawTexture(s)') - if such an argument was spec'd:
+		if (target->auxShaderParams) {
+			if ((target->auxShaderParamsCount >=4) && ((attrib = glGetAttribLocationARB(shader, "auxParameters0")) >= 0)) glVertexAttrib4dvARB(attrib, target->auxShaderParams);
+			if ((target->auxShaderParamsCount >=8) && ((attrib = glGetAttribLocationARB(shader, "auxParameters1")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[4]));
+			if ((target->auxShaderParamsCount >=12) && ((attrib = glGetAttribLocationARB(shader, "auxParameters2")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[8]));
+			if ((target->auxShaderParamsCount >=16) && ((attrib = glGetAttribLocationARB(shader, "auxParameters3")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[12]));
+			if ((target->auxShaderParamsCount >=20) && ((attrib = glGetAttribLocationARB(shader, "auxParameters4")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[16]));
+			if ((target->auxShaderParamsCount >=24) && ((attrib = glGetAttribLocationARB(shader, "auxParameters5")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[20]));
+			if ((target->auxShaderParamsCount >=28) && ((attrib = glGetAttribLocationARB(shader, "auxParameters6")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[24]));
+			if ((target->auxShaderParamsCount >=32) && ((attrib = glGetAttribLocationARB(shader, "auxParameters7")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[28]));
+		}
+	}
+
 	// matchups for inverted Y coordinate frame (which is inverted?)
 	// MK: Texture coordinate assignments have been changed.
 	// Explanation: Matlab stores matrices in column-major order, but OpenGL requires
@@ -886,7 +936,7 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	glEnd();
 	
 	// Undo rotation transform, if any...
-	if (rotationAngle != 0.0) {
+	if ((rotationAngle != 0.0) && !(source->specialflags & kPsychDontDoRotation)) {
 		glPopMatrix();
 		glMatrixMode(GL_MODELVIEW);
 	}

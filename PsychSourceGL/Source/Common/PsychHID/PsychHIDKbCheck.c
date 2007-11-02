@@ -36,16 +36,16 @@ static char seeAlsoString[] = "";
  
 PsychError PSYCHHIDKbCheck(void) 
 {
-    pRecDevice          	deviceRecord;
+    pRecDevice			deviceRecord;
     pRecElement			currentElement;
-    int				i, deviceIndex, numDeviceIndices;
-    long			KeysUsagePage=7;
-    long			KbDeviceUsagePage= 1, KbDeviceUsage=6; 
-    int				deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
-    pRecDevice			deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    boolean 			isDeviceSpecified, foundUserSpecifiedDevice, isKeyArgPresent, isTimeArgPresent;
-    double			*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
-    	 
+    int					i, deviceIndex;
+	static int			numDeviceIndices = -1;
+    long				KeysUsagePage=7;
+    long				KbDeviceUsagePage= 1, KbDeviceUsage=6; 
+    static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
+    static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
+    boolean				isDeviceSpecified, foundUserSpecifiedDevice, isKeyArgPresent, isTimeArgPresent;
+    double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -53,10 +53,13 @@ PsychError PSYCHHIDKbCheck(void)
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(1));  	//Specifies the number of the keyboard to scan.  
     
-    PsychHIDVerifyInit();
-    
-    //Choose the device index and its record
-    PsychHIDGetDeviceListByUsage(KbDeviceUsagePage, KbDeviceUsage, &numDeviceIndices, deviceIndices, deviceRecords);  
+	// We query keyboard devices only on first invocation, then cache and recycle the data:
+	if (numDeviceIndices == -1) {
+		PsychHIDVerifyInit();
+        PsychHIDGetDeviceListByUsage(KbDeviceUsagePage, KbDeviceUsage, &numDeviceIndices, deviceIndices, deviceRecords);
+	}
+	
+    // Choose the device index and its record
     isDeviceSpecified=PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
     if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard.
         for(i=0;i<numDeviceIndices;i++){
@@ -84,7 +87,6 @@ PsychError PSYCHHIDKbCheck(void)
 	memset((void*) keyArrayOutput, 0, sizeof(double) * 256);
 	
     //step through the elements of the device.  Set flags in the return array for down keys.
-
     for(currentElement=HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput); 
         currentElement != NULL; 
         currentElement=HIDGetNextDeviceElement(currentElement, kHIDElementTypeInput))
@@ -95,8 +97,6 @@ PsychError PSYCHHIDKbCheck(void)
             *isKeyDownOutput= keyArrayOutput[currentElement->usage - 1] || *isKeyDownOutput; 
         }
     }
-        
-        
+
     return(PsychError_none);	
 }
-
