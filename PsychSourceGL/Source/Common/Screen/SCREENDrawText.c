@@ -674,6 +674,14 @@ PsychError SCREENDrawText(void)
     float                 accumWidth, maxHeight, textHeightToBaseline;
 
     static GLuint	        base=0;	     // Base Display List For The Font Set
+
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+		 // Use GDI based text renderer on Windows, instead of display list based one?
+		 if (TRUE) {
+			// Call the GDI based renderer instead:
+			return(SCREENDrawTextGDI());
+	 	 }
+	 #endif
     
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -698,8 +706,7 @@ PsychError SCREENDrawText(void)
     
     //Get the depth from the window, we need this to interpret the color argument.
     depthValue=PsychGetWindowDepthValueFromWindowRecord(winRec);
-    
-
+   
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
     if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
@@ -800,5 +807,289 @@ PsychError SCREENDrawText(void)
     return(PsychError_none);
 }
 
-#endif
+// NEW WINDOWS GDI IMPLEMENTATION!!!
+PsychError SCREENDrawTextGDI(void)
+{
+    PsychWindowRecordType *winRec;
+    PsychRectType		     windowRect;
+    char			           *textString;
+	 double*					  unicodedoubles;
+	 int 						  stringLengthChars;
+	 WCHAR*                textUniString;
+	 int  					  dummy1, dummy2;
+    Boolean			        doSetColor, doSetBackgroundColor;
+    PsychColorType		  colorArg, backgroundColorArg;
+    int				        i, yPositionIsBaseline;
+	 GLdouble 				  incolors[4];
+	 unsigned char         bincolors[4];
+    GLenum					  normalSourceBlendFactor, normalDestinationBlendFactor;
 
+    static HFONT			  font=NULL;	  // Handle to current font.
+	 POINT 					  xy;
+
+	 static HDC				  dc = NULL;
+    int BITMAPINFOHEADER_SIZE = sizeof(BITMAPINFOHEADER) ;
+	 BITMAPINFOHEADER abBitmapInfo;
+    BITMAPINFOHEADER* pBMIH = (BITMAPINFOHEADER*) &abBitmapInfo;
+	 static BYTE* pBits ;
+	 static HBITMAP hbmBuffer;
+	 static int oldWidth=-1;
+	 static int oldHeight=-1;
+	 RECT trect;
+	 unsigned char colorkeyvalue;
+	 unsigned char* scanptr;
+
+    // All subfunctions should have these two lines.  
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    PsychErrorExit(PsychCapNumInputArgs(7));   	
+    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+    PsychErrorExit(PsychCapNumOutputArgs(2));  
+
+    //Get the window structure for the onscreen window.
+    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
+    
+    //Get the dimensions of the target window
+    PsychGetRectFromWindowRecord(windowRect, winRec);
+
+    // Standard 1 byte ASCII or UTF-16 Unicode?
+	 if (PsychGetArgType(2) == PsychArgType_char) {
+    	// Get standard 1 byte ASCII string:
+    	PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+		if(strlen(textString)<1) goto drawtext_skipped; // We skip most of the code if string is empty.	
+		unicodedoubles = NULL;
+	 }
+	 else {
+		// Not a character string: Check if it's a double matrix for Unicode text encoding:
+		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
+		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
+		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
+		textUniString=(WCHAR*) malloc(sizeof(WCHAR) * stringLengthChars);
+		for (dummy1=0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (WCHAR) unicodedoubles[dummy1];
+	 }
+
+    //Get the X and Y positions.
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
+      
+    //Get the new color record, coerce it to the correct mode, and store it.  
+    doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
+    if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
+
+    // Same for background color: FIXME This is currently a no-op. Don't know yet how to
+    // map this to the Windows way of font rendering...
+    doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
+    if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
+
+	// Special handling of offset for y position correction:
+	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+
+    PsychSetGLContext(winRec);
+
+    // Enable this windowRecords framebuffer as current drawingtarget:
+    PsychSetDrawingTarget(winRec);
+
+	 PsychCoerceColorMode( &(winRec->textAttributes.textColor));
+    PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
+
+	// Reallocate device context and bitmap if needed:
+	if ((dc!=NULL) && (oldWidth != PsychGetWidthFromRect(winRec->rect) || oldHeight!=PsychGetHeightFromRect(winRec->rect))) {
+		// Target windows size doesn't match size of our backingstore: Reallocate...
+		DeleteObject((HGDIOBJ) hbmBuffer);
+		DeleteObject((HGDIOBJ) dc);
+		hbmBuffer = NULL;
+		dc = NULL;		
+	}
+
+	// (Re-)allocation of memory device context and DIB bitmap needed?
+	if (dc==NULL) {
+		oldWidth=(int) PsychGetWidthFromRect(winRec->rect);
+		oldHeight=(int) PsychGetHeightFromRect(winRec->rect);
+
+	   // Fill in the header info.
+	   memset(pBMIH, 0, BITMAPINFOHEADER_SIZE);
+   	pBMIH->biSize         = sizeof(BITMAPINFOHEADER);
+	   pBMIH->biWidth        = oldWidth;
+   	pBMIH->biHeight       = oldHeight;
+	   pBMIH->biPlanes       = 1;
+	   pBMIH->biBitCount     = 32; 
+	   pBMIH->biCompression  = BI_RGB; 
+
+	   //
+   	// Create the new 32-bpp DIB section.
+   	//
+	   dc = CreateCompatibleDC(NULL);
+   	hbmBuffer = CreateDIBSection( 		  dc,
+      	                     (BITMAPINFO*) pBMIH,
+         	                                DIB_RGB_COLORS,
+            	                   (VOID **) &pBits,
+               	                          NULL,
+                  	                       0);
+	   // Select DIB into DC.
+   	SelectObject(dc, hbmBuffer);
+	}
+
+    // Does the font (better, its display list) need to be build or rebuild, because
+    // font name, size or settings have changed?
+    // This routine will check it and perform all necessary ops if so...
+	 if (winRec->textAttributes.needsRebuild) {
+			// Delete the old font object, if any:
+			if (font) DeleteObject(font);
+			font = NULL; 
+
+			// Create new font object, according to new/changed specs:
+  			font = CreateFont(	((int) (-MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(dc, LOGPIXELSY), 72))),	// Height Of Font, aka textSize
+										0,							                // Width Of Font: 0=Match to height
+										0,							                // Angle Of Escapement
+										0,							                // Orientation Angle
+										((winRec->textAttributes.textStyle & 1) ? FW_BOLD : FW_NORMAL),		// Font Weight
+										((winRec->textAttributes.textStyle & 2) ? TRUE : FALSE),		// Italic
+										((winRec->textAttributes.textStyle & 4) ? TRUE : FALSE),		// Underline
+										FALSE,		                // Strikeout: Set it to false until we know what it actually means...
+										ANSI_CHARSET,			// Character Set Identifier: Would need to be set different for "WingDings" fonts...
+										OUT_TT_PRECIS,			// Output Precision:   We try to get TrueType fonts if possible, but allow fallback to low-quality...
+										CLIP_DEFAULT_PRECIS,		// Clipping Precision: Use system default.
+										(PsychPrefStateGet_TextAntiAliasing() != 0) ? ANTIALIASED_QUALITY : NONANTIALIASED_QUALITY,		// Output Quality wrt. Anti-Aliasing.
+										FF_DONTCARE|DEFAULT_PITCH,	// Family And Pitch:   Use system default.
+										winRec->textAttributes.textFontName);		// Font Name as requested by user.
+  
+			  // Child-protection:
+			  if (font==NULL) {
+				    // Something went wrong...
+				    PsychErrorExitMsg(PsychError_user, "Couldn't select the requested font with the requested font settings from Windows-OS! ");
+			  }
+
+			// Clear rebuild flag:
+	 		winRec->textAttributes.needsRebuild = FALSE;
+	 }
+
+	 // Select the font we created:
+	 SelectObject(dc, font);
+
+	if (yPositionIsBaseline) {
+		// Y position of drawing cursor defines distance between top of text and
+		// baseline of text, i.e. the textheight excluding descenders of letters:
+
+		// Set text alignment mode to obey and update the drawing cursor position, with the
+		// y position being the text baseline:
+	 	SetTextAlign(dc, TA_UPDATECP | TA_LEFT | TA_BASELINE);
+	}
+	else {
+		// Y position of drawing cursor defines top of text:
+	 	// Set text alignment mode to obey and update the drawing cursor position, with the
+		// y position being the top of the text bounding box:
+	 	SetTextAlign(dc, TA_UPDATECP | TA_LEFT | TA_TOP);
+	}
+
+	 // Define targetrectangle/cliprectangle for all drawing: It is simply the full
+	 // target window area:
+	 trect.left = 0;
+	 trect.right = oldWidth-1;
+	 trect.top = 0;
+	 trect.bottom = oldHeight-1;
+
+	 // Convert PTB color into text RGBA color and set it as text color:
+	 PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, incolors);
+	 
+	 // "Erase" DIB with black background color:
+	 memset((void*) pBits, 0, oldWidth * oldHeight * 4);
+
+	 // Text drawing shall be transparent where no text pixels are drawn:
+	 SetBkMode(dc, TRANSPARENT);
+
+	 // Set text color to full white:
+	 SetTextColor(dc, RGB(255, 255, 255));
+
+	 // Set drawing cursor to requested position:
+	 MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
+
+	 // Draw the textString:
+	 if (unicodedoubles) {
+		// Drawing of Unicode text:
+		DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP); // DT_TOP | DT_LEFT);
+		free(textUniString);
+	 }
+	 else {
+		// Drawing of standard ASCII text:
+		DrawText(dc, textString, -1, &trect, DT_NOCLIP); // DT_TOP | DT_LEFT);
+	 }
+
+	 // Sync the GDI so we have a final valid bitmap after this call:
+	 GdiFlush();
+
+	 // Loop through the bitmap: Set the unused MSB of each 32 bit DWORD to a
+	 // meaningful alpha-value for OpenGL.
+	 bincolors[0] = (unsigned int)(incolors[0] * 255);
+    bincolors[1] = (unsigned int)(incolors[1] * 255);
+    bincolors[2] = (unsigned int)(incolors[2] * 255);
+    bincolors[3] = (unsigned int)(incolors[3] * 255);
+
+	 scanptr = (unsigned char*) pBits;
+	 for (i=0; i<oldWidth * oldHeight; i++) {
+		*(scanptr++) = bincolors[0];	 // Copy blue text color to blue byte.
+		*(scanptr++) = bincolors[1];	 // Copy green text color to green byte.
+		// Copy red byte to alpha-channel:
+		colorkeyvalue = (unsigned char)((((unsigned int) *scanptr) * bincolors[3]) >> 8);
+		*(scanptr++) = bincolors[2];	 // Copy red text color to red byte.
+		*(scanptr++) = colorkeyvalue;	 // Copy alpha value to alpha byte.
+	 }
+
+	 // Save all GL state:
+    glPushAttrib(GL_ALL_ATTRIB_BITS);
+
+	 // Enable alpha-blending for anti-aliasing, unless user script requests us to obey
+	 // the global blending settings set via Screen('Blendfunction') - which may be
+	 // suboptimal for anti-aliased text drawing:
+    if(!PsychPrefStateGet_TextAlphaBlending()){
+        PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
+        PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    }
+    PsychUpdateAlphaBlendingFactorLazily(winRec);
+
+    // Backup modelview matrix:
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+
+    // Setup unpack mode and position for blitting of the bitmap to screen:
+	 glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	 glRasterPos2i(0,oldHeight);
+
+	 // Enable alpha-test against an alpha-value greater zero during blit. This
+	 // This way, non-text pixess (with alpha equal to zero) are discarded. 
+    glEnable(GL_ALPHA_TEST);
+    glAlphaFunc(GL_GREATER, 0);
+
+	 // Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
+	 glDrawPixels(oldWidth, oldHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBits);
+
+	 // Disable alpha test after blit:
+    glDisable(GL_ALPHA_TEST);
+
+    // Restore state:
+    if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
+
+    glPopMatrix();
+
+	 glPopAttrib();
+
+    // Mark end of drawing op. This is needed for single buffered drawing:
+    PsychFlushGL(winRec);
+
+    // Update drawing cursor: Place cursor so that text could
+    // be appended right-hand of the drawn text.
+    // Get updated "cursor position":
+	 GetCurrentPositionEx(dc, &xy);
+    winRec->textAttributes.textPositionX = xy.x;
+    winRec->textAttributes.textPositionY = xy.y;
+
+// We jump directly to this position in the code if the textstring is empty --> No op.
+drawtext_skipped:    
+    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
+    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
+
+    return(PsychError_none);
+}
+
+#endif
