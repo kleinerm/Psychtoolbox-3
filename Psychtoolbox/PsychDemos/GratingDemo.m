@@ -1,9 +1,10 @@
 function GratingDemo
 % GratingDemo
 %
-% Displays a grating.  See also DriftDemo, EpsDemo.
+% Displays a stationary grating.  See also DriftDemo, DriftDemo2, DriftDemo3 and DriftWaitDemo.
 
 % ---------- Program History ----------
+
 % 07/01/1999 dgp Added arbitrary orientation.
 % 12/10/2001 awi Added font conditional.
 % 02/21/2002 dgp Mentioned DriftDemo.
@@ -16,6 +17,7 @@ function GratingDemo
 % 10/04/2006 dhb Minimize warnings.
 % 10/11/2006 dhb Use maximum available screen.
 % 10/14/2006 dhb Save and restore altered prefs, more extensive comments for them
+% 07/12/2006 prf Changed method of rotating the grating
 
 % ---------- Parameter Setup ----------
 % Initializes the program's parameters.
@@ -24,7 +26,7 @@ function GratingDemo
 echo off
 
 % *** To rotate the grating, set tiltInDegrees to a new value.
-tiltInDegrees = 17; % The tilt of the grating in degrees.
+tiltInDegrees = 7; % The tilt of the grating in degrees.
 tiltInRadians = tiltInDegrees * pi / 180; % The tilt of the grating in radians.
 
 % *** To lengthen the period of the grating, increase pixelsPerPeriod.
@@ -84,6 +86,9 @@ try
 	black = BlackIndex(window);  % Retrieves the CLUT color code for black.
 	white = WhiteIndex(window);  % Retrieves the CLUT color code for white.
 	gray = (black + white) / 2;  % Computes the CLUT color code for gray.
+	if round(gray)==white
+		gray=black;
+    end
 	 
 	% Taking the absolute value of the difference between white and gray will
 	% help keep the grating consistent regardless of whether the CLUT color
@@ -98,24 +103,22 @@ try
 	% the grid, x = x(x0, y0) corresponds to the x-coordinate of element "i"
 	% and y = y(x0, y0) corresponds to the y-coordinate of element "i"
 	[x y] = meshgrid(widthArray, widthArray);
+    
+    % Replaced original method of changing the orientation of the grating
+    % (gradient = y - tan(tiltInRadians) .* x) with sine and cosine (adapted from DriftDemo). 
+    % Use of tangent was breakable because it is undefined for theta near pi/2 and the period
+    % of the grating changed with change in theta.  
 
-	% The equation of a line passing through the origin with angle theta
-	% from the horizontal is "y = tan(theta) * x"
-	% The equation of a line passing through the y-intercept "b" with angle
-	% theta from the horizontal is "y = tan(theta) * x + b" which can be 
-	% rewritten "y - tan(theta) * x = b," where different values of "b" correspond to
-	% different lines.
-	% Imposing the relationship "y - tan(theta) .* x = gradientMeshGrid"
-	% will create a mesh such that elements along a line with angle theta have
-	% the same value.
-	gradientMeshGrid = y - tan(tiltInRadians) .* x;
+    a=cos(tiltInRadians)*radiansPerPixel;
+	b=sin(tiltInRadians)*radiansPerPixel;
 	 
-	% Converts gradientMeshGrid into a sinusoidal grating, where elements
+	% Converts meshgrid into a sinusoidal grating, where elements
 	% along a line with angle theta have the same value and where the
-	% period of the sinusoid is approximately equal to "pixelsPerPeriod" pixels.
+	% period of the sinusoid is equal to "pixelsPerPeriod" pixels.
 	% Note that each entry of gratingMatrix varies between minus one and
 	% one; -1 <= gratingMatrix(x0, y0)  <= 1
-	gratingMatrix = sin(radiansPerPixel .* gradientMeshGrid);
+    gratingMatrix = sin(a*x+b*y);
+    
 	 
 	% Creates a circular Gaussian mask centered at the origin, where the number
 	% of pixels covered by one standard deviation of the radius is

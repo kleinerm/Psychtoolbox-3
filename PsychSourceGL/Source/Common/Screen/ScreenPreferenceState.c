@@ -45,6 +45,7 @@ static int								defaultTextSize=12;
 static int								defaultTextStyle=0;             // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 static Boolean                          textAlphaBlending=FALSE;
 static int								textAntiAliasing=-1;            // -1=System defined (don't care), 0=Always off, 1=Always on.
+static int								textRenderer=0;					// 0=Default OS specific (fast one), 1=OS specific High quality.
 static int                              screenSkipSyncTests=0;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
 //Debug preference state
 static Boolean                          TimeMakeTextureFlag=FALSE;
@@ -123,6 +124,16 @@ int PsychPrefStateGet_TextAntiAliasing(void)
 void PsychPrefStateSet_TextAntiAliasing(int mode)
 {
 	textAntiAliasing = mode;
+}
+
+int PsychPrefStateGet_TextRenderer(void)
+{
+	return(textRenderer);
+}
+
+void PsychPrefStateSet_TextRenderer(int mode)
+{
+	textRenderer = mode;
 }
 
 /*

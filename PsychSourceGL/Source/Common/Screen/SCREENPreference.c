@@ -106,7 +106,8 @@ static char synopsisString[] =
 	"\nproc = Screen('Preference', 'DebugMakeTexture', enableDebugging);"
 	"\noldEnableFlag = Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'DefaultTextYPositionIsBaseline', [enableFlag]);"
-	"\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable]);"
+	"\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable, 2 = EnableHighQuality]);"
+	"\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Default OS-specific [fast]), 1 = HighQ OS-specific]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\n\nWorkaround flags to work around all kind of deficient drivers and hardware:\n"
@@ -262,6 +263,14 @@ PsychError SCREENPreference(void)
 			if(numInputArgs==2){
 				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
 				PsychPrefStateSet_TextAntiAliasing(tempInt);
+			}
+			preferenceNameArgumentValid=TRUE;
+		}else 
+		if(PsychMatch(preferenceName, "TextRenderer")){
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_TextRenderer());
+			if(numInputArgs==2){
+				PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+				PsychPrefStateSet_TextRenderer(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 

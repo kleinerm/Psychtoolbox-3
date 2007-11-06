@@ -1,13 +1,14 @@
 /*
-	ScreenPreferenceState.c		
+	ScreenPreferenceState.h		
 
 	AUTHORS:
 		
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu					awi
+		mario dot kleiner at tuebingen.mpg.de	mk
 
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
 
 	HISTORY:
 	
@@ -16,15 +17,11 @@
 		5/30/05  mk         New preference setting screenVisualDebugLevel.
 		3/7/06   awi        Added state for new preference flag SuppressAllWarnings. 
 
-
 	DESCRIPTION:
-
 	
 		This file holds state for the Screen Preference command
 
-
 */
-
 
 #include "Screen.h"
 
@@ -32,11 +29,7 @@
 #ifndef PSYCH_IS_INCLUDED_ScreenPreferenceState
 #define PSYCH_IS_INCLUDED_ScreenPreferenceState
 
-
-
-
 //function prototypes
-
 
 void PrepareScreenPreferences(void);
 
@@ -53,6 +46,9 @@ void PsychPrefStateSet_TextYPositionIsBaseline(int textPosIsBaseline);
 
 int PsychPrefStateGet_TextAntiAliasing(void);
 void PsychPrefStateSet_TextAntiAliasing(int mode);
+
+int PsychPrefStateGet_TextRenderer(void);
+void PsychPrefStateSet_TextRenderer(int mode);
 
 void PsychPrefStateGet_DefaultFontName(const char **fontName);
 void PsychPrefStateSet_DefaultFontName(const char *newName);
@@ -99,8 +95,5 @@ void PsychPrefStateSet_Verbosity(int level);
 int PsychPrefStateGet_VBLTimestampingMode(void);
 void PsychPrefStateSet_VBLTimestampingMode(int level);
 
-
 //end include once
 #endif
-
-
