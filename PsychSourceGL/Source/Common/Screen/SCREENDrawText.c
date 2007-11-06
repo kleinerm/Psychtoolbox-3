@@ -439,6 +439,9 @@ drawtext_skipped:
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
+// Define function prototype which is needed later:
+PsychError SCREENDrawTextGDI(void);
+
 // Microsoft-Windows implementation of DrawText...
 // The code below will need to be restructured and moved to the proper
 // places in PTB's source tree when things have stabilized a bit...
@@ -685,8 +688,7 @@ PsychError SCREENDrawText(void)
     Boolean			        doSetColor, doSetBackgroundColor;
     PsychColorType		  colorArg, backgroundColorArg;
     int				        depthValue, whiteValue, i, yPositionIsBaseline;
-    float                 accumWidth, maxHeight, textHeightToBaseline;
-
+    float                 accumWidth, maxHeight, textHeightToBaseline, scalef; 
     static GLuint	        base=0;	     // Base Display List For The Font Set
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -782,7 +784,9 @@ PsychError SCREENDrawText(void)
     glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY - textHeightToBaseline + winRec->textAttributes.textSize, -0.5f);
 
     // Scale to final size:
-    glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
+    // glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
+	 scalef = MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
+    glScalef(scalef, -1 * scalef, 1);
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -897,9 +901,10 @@ PsychError SCREENDrawTextGDI(void)
     int							BITMAPINFOHEADER_SIZE = sizeof(BITMAPINFOHEADER) ;
 	BITMAPINFOHEADER			abBitmapInfo;
     BITMAPINFOHEADER*			pBMIH = (BITMAPINFOHEADER*) &abBitmapInfo;
-	RECT						trect;
+	RECT						trect, brect;
 	unsigned char				colorkeyvalue;
 	unsigned char*				scanptr;
+	int skiplines;	
 	DWORD outputQuality;
 	
     // All subfunctions should have these two lines.  
@@ -1070,9 +1075,6 @@ PsychError SCREENDrawTextGDI(void)
 	// Convert PTB color into text RGBA color and set it as text color:
 	PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, incolors);
 	
-	// "Erase" DIB with black background color:
-	memset((void*) pBits, 0, oldWidth * oldHeight * 4);
-	
 	// Text drawing shall be transparent where no text pixels are drawn:
 	SetBkMode(dc, TRANSPARENT);
 	
@@ -1081,36 +1083,65 @@ PsychError SCREENDrawTextGDI(void)
 	
 	// Set drawing cursor to requested position:
 	MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
-	
-	// Draw the textString:
+
+	brect = trect;
+	// printf("PRE: ltrb %d %d %d %d\n", brect.left, brect.top, brect.right, brect.bottom);
+
+	// Pseudo-Draw the textString: Don't rasterize, just find bounding box.
 	if (unicodedoubles) {
 		// Drawing of Unicode text:
-		DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP); // DT_TOP | DT_LEFT);
+		DrawTextW(dc, textUniString, stringLengthChars, &brect, DT_CALCRECT);
+		MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
+	 }
+	else {
+		// Drawing of standard ASCII text:
+		DrawText(dc, textString, -1, &brect, DT_CALCRECT);
+		MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
+	 }
+
+	// printf("POST: ltrb %d %d %d %d\n", brect.left, brect.top, brect.right, brect.bottom);
+
+	if (yPositionIsBaseline) {
+		skiplines = oldHeight - (((brect.bottom - brect.top) - winRec->textAttributes.textSize) + (int) winRec->textAttributes.textPositionY);
+	}
+	else {
+		skiplines = oldHeight - ((brect.bottom - brect.top) + (int) winRec->textAttributes.textPositionY);
+	}
+
+	// "Erase" DIB with black background color:
+	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
+	memset((void*) scanptr, 0, oldWidth * ((int) brect.bottom - (int) brect.top) * 4);
+	
+	// Really draw the textString: Rasterize!
+	if (unicodedoubles) {
+		// Drawing of Unicode text:
+		DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP);
 		free(textUniString);
 	 }
 	else {
 		// Drawing of standard ASCII text:
-		DrawText(dc, textString, -1, &trect, DT_NOCLIP); // DT_TOP | DT_LEFT);
+		DrawText(dc, textString, -1, &trect, DT_NOCLIP);
 	 }
-	
+
 	// Sync the GDI so we have a final valid bitmap after this call:
 	GdiFlush();
 	
 	// Loop through the bitmap: Set the unused MSB of each 32 bit DWORD to a
 	// meaningful alpha-value for OpenGL.
 	bincolors[0] = (unsigned int)(incolors[0] * 255);
-    bincolors[1] = (unsigned int)(incolors[1] * 255);
-    bincolors[2] = (unsigned int)(incolors[2] * 255);
-    bincolors[3] = (unsigned int)(incolors[3] * 255);
-	
-	scanptr = (unsigned char*) pBits;
-	for (i=0; i<oldWidth * oldHeight; i++) {
+   bincolors[1] = (unsigned int)(incolors[1] * 255);
+   bincolors[2] = (unsigned int)(incolors[2] * 255);
+   bincolors[3] = (unsigned int)(incolors[3] * 255);
+
+	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
+	for (i=0; i<oldWidth * ((int) brect.bottom - (int) brect.top); i++) {
 		*(scanptr++) = bincolors[0];	 // Copy blue text color to blue byte.
 		*(scanptr++) = bincolors[1];	 // Copy green text color to green byte.
 										 // Copy red byte to alpha-channel:
 		colorkeyvalue = (unsigned char)((((unsigned int) *scanptr) * bincolors[3]) >> 8);
 		*(scanptr++) = bincolors[2];	 // Copy red text color to red byte.
 		*(scanptr++) = colorkeyvalue;	 // Copy alpha value to alpha byte.
+//		*(scanptr++) = (unsigned char)(128 + colorkeyvalue/2);	 // Copy alpha value to alpha byte.
 	}
 	
 	// Save all GL state:
@@ -1131,7 +1162,8 @@ PsychError SCREENDrawTextGDI(void)
 	
     // Setup unpack mode and position for blitting of the bitmap to screen:
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glRasterPos2i(0,oldHeight);
+//	glRasterPos2i(0,oldHeight);
+	glRasterPos2i(0,(int) oldHeight - skiplines);
 	
 	// Enable alpha-test against an alpha-value greater zero during blit. This
 	// This way, non-text pixess (with alpha equal to zero) are discarded. 
@@ -1139,7 +1171,9 @@ PsychError SCREENDrawTextGDI(void)
     glAlphaFunc(GL_GREATER, 0);
 	
 	// Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
-	glDrawPixels(oldWidth, oldHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBits);
+	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
+	glDrawPixels(oldWidth, ((int) brect.bottom - (int) trect.top), GL_RGBA, GL_UNSIGNED_BYTE, scanptr);
+//	glDrawPixels(oldWidth, oldHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBits);
 	
 	// Disable alpha test after blit:
     glDisable(GL_ALPHA_TEST);
