@@ -1941,7 +1941,7 @@ boolean PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId
 		// Prepare gfx-processing:
 
 		// Backup scissoring state:
-		scissor_enabled = glIsEnabled(GL_SCISSOR_BIT);
+		scissor_enabled = glIsEnabled(GL_SCISSOR_TEST);
 		
 		// If this is a multi-pass chain we'll need a bounce buffer FBO:
 		if ((pendingFBOpingpongs > 0 && bouncefbo == NULL) || (pendingFBOpingpongs > 1 && ((*dstfbo)->fboid == 0))) {
@@ -2750,32 +2750,38 @@ boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRe
 	float h = PsychGetHeightFromRect(windowRecord->rect);
 	r=g=b=1.0;
 	
+	// We default to display height minus 1 for position of sync-line, instead of the lower most row
+	// of the display: This is to account for a few display drivers that are off-by-one, so they would
+	// actually clip the line outside display area if provided with correct coordinates (e.g., NVidia Geforce8600M on OS/X 10.4.10 and 10.5)!
+	h = h - 1;
+	
 	// Options provided?
-	
-	// Check for override vertical position for sync line. Default is last scanline of display.
-	if (strp=strstr(hookfunc->pString1, "yPosition=")) {
-		// Parse and assign offset:
-		if (sscanf(strp, "yPosition=%i", &h)!=1) {
-			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: yPosition parameter for horizontal stereo blue-sync line position is invalid! Parse error...\n");
+	if (strlen(hookfunc->pString1)>0) {
+		// Check for override vertical position for sync line. Default is last scanline of display.
+		if (strp=strstr(hookfunc->pString1, "yPosition=")) {
+			// Parse and assign offset:
+			if (sscanf(strp, "yPosition=%f", &h)!=1) {
+				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: yPosition parameter for horizontal stereo blue-sync line position is invalid! Parse error...\n");
+			}
 		}
-	}
 
-	// Check for override horizontal fraction for sync line. Default is 25% for left eye, 75% for right eye.
-	if (strp=strstr(hookfunc->pString1, "hFraction=")) {
-		// Parse and assign offset:
-		if ((sscanf(strp, "hFraction=%f", &fraction)!=1) || (fraction < 0.0) || (fraction > 1.0)) {
-			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: hFraction parameter for horizontal stereo blue-sync line length is invalid!\n");
+		// Check for override horizontal fraction for sync line. Default is 25% for left eye, 75% for right eye.
+		if (strp=strstr(hookfunc->pString1, "hFraction=")) {
+			// Parse and assign offset:
+			if ((sscanf(strp, "hFraction=%f", &fraction)!=1) || (fraction < 0.0) || (fraction > 1.0)) {
+				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: hFraction parameter for horizontal stereo blue-sync line length is invalid!\n");
+			}
+		}
+		
+		// Check for override color of sync-line. Default is white.
+		if (strp=strstr(hookfunc->pString1, "Color=")) {
+			// Parse and assign offset:
+			if (sscanf(strp, "Color=%f %f %f", &r, &g, &b)!=3) {
+				PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: Color spec for stereo sync-line is invalid!\n");
+			}
 		}
 	}
 	
-	// Check for override color of sync-line. Default is white.
-	if (strp=strstr(hookfunc->pString1, "Color=")) {
-		// Parse and assign offset:
-		if (sscanf(strp, "Color=%f %f %f", &r, &g, &b)!=3) {
-			PsychErrorExitMsg(PsychError_user, "builtin:RenderStereoSyncLine: Color spec for stereo sync-line is invalid!\n");
-		}
-	}
-
 	// Query current target buffer:
 	glGetIntegerv(GL_DRAW_BUFFER, &draw_buffer);
 	
@@ -2793,16 +2799,26 @@ boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRe
 		return(TRUE);
 	}
 	
+	// There must not be any image content below the sync-lines! Clear out everything to black:
+	glColor3f(0, 0, 0);
+	glBegin(GL_QUADS);
+	glVertex2f(0, h-2);
+	glVertex2f(w, h-2);
+	glVertex2f(w, PsychGetHeightFromRect(windowRecord->rect)+1);
+	glVertex2f(0, PsychGetHeightFromRect(windowRecord->rect)+1);
+	glEnd();
+
+	// Draw the sync-lines:
 	glLineWidth(1);
 	glBegin(GL_LINES);
 	glColor3f(r, g, b);
-	glVertex2i(0, h);
-	glVertex2i(w*blackpoint, h);
+	glVertex2f(0, h);
+	glVertex2f(w*blackpoint, h);
 	glColor3f(0, 0, 0);
-	glVertex2i(w*blackpoint, h);
-	glVertex2i(w, h);
+	glVertex2f(w*blackpoint, h);
+	glVertex2f(w, h);
 	glEnd();
-
+	
 	return(TRUE);
 }
 
