@@ -8,7 +8,7 @@
   
     PLATFORMS:	
 	
-		Contains separate implementations for OS-X and M$-Windows.
+		Contains separate implementations for OS-X and M$-Windows and Linux.
     
 
     HISTORY:
@@ -67,8 +67,10 @@ static char synopsisString[] =
     "Accept a window pointer and a string.  Return in normBoundsRect a rect defining the size of the text "
     "in units of pixels.  Return in offsetBoundsRect offsets of the text bounds from the origin, assuming "
     "that the text will be drawn at the current position of the text drawing cursor. Currently, only the "
-    "OS-X version returns a perfect bounding box. The M$-Windows and GNU/Linux versions return a bounding "
-    "box which doesn't take letters with descenders into account - Descenders are outside the returned box. "
+    "OS-X version returns a perfect bounding box. The M$-Windows version returns a perfect bounding box if "
+	"the GDI text renderer is enabled, but not with the default renderer. GNU/Linux versions and Windows "
+	"with default renderer return a bounding box which doesn't take letters with descenders into account "
+    "- Descenders are outside the returned box.\n"
 	"See help for Screen('DrawText') for info about accepted text string formats... ";
 
 static char seeAlsoString[] = "";
@@ -322,18 +324,24 @@ PsychSetATSUTStyleAttributesFromPsychAttributes(ATSUStyle style, PsychTextAttrib
 
 // M$-Windows and Linux/X11 version of TextBounds:
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Define function prototype which is needed later: This is defined in SCREENDrawText.c ...
+PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
+#endif
+
 // This function PsychOSRebuildFont() is implemented in the Windows-portion
 // of SCREENDrawText.c
 boolean PsychOSRebuildFont(PsychWindowRecordType *winRec);
 
 PsychError SCREENTextBounds(void)
 {
-   PsychWindowRecordType  *winRec;
-   char			           *textString;
-   int                    stringl, i;
-	PsychRectType			  resultPsychRect, resultPsychNormRect;
-   float                  accumWidth, maxHeight;
-
+    PsychWindowRecordType  *winRec;
+    char			       *textString;
+    int                    stringl, i;
+	PsychRectType		   resultPsychRect, resultPsychNormRect;
+    float                  accumWidth, maxHeight;
+	PsychError			   dterr;
+	
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -342,11 +350,32 @@ PsychError SCREENTextBounds(void)
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(2));  
 
+    #if PSYCH_SYSTEM == PSYCH_WINDOWS
+		 // Use GDI based text renderer on Windows, instead of display list based one?
+		 if (PsychPrefStateGet_TextRenderer()==1) {
+			// Call the GDI based renderer function in 'TextBounds' mode. It will calculate
+			// the bounding box for us:
+			if ((dterr=SCREENDrawTextGDI(&resultPsychRect))!=PsychError_none) return(dterr);
+			
+			// Ok, have a valid resultPsychRect bounding box. Calculate normalized bounding box
+			// as well:
+			PsychNormalizeRect(resultPsychRect, resultPsychNormRect);
+			 
+			// Return optional values:
+			PsychCopyOutRectArg(1, FALSE, resultPsychNormRect);
+			PsychCopyOutRectArg(2, FALSE, resultPsychRect);
+			
+			// Done.
+			return(PsychError_none);			
+	 	 }
+	#endif
+
     //Get the window structure for the onscreen window.
     PsychAllocInWindowRecordArg(1, TRUE, &winRec);
     
     //Get the text string (it is required)
     PsychAllocInCharArg(2, kPsychArgRequired, &textString);
+	if(strlen(textString) < 1) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
 
     PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
     PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));

@@ -440,7 +440,7 @@ drawtext_skipped:
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
 // Define function prototype which is needed later:
-PsychError SCREENDrawTextGDI(void);
+PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
 
 // Microsoft-Windows implementation of DrawText...
 // The code below will need to be restructured and moved to the proper
@@ -665,7 +665,7 @@ static char synopsisString[] =
 	"Screen('Preference', 'TextRenderer', 1); inserted at the top of your script.\n"
 	"With the default fast, low quality renderer, neither anti-aliasing nor Unicode are "
 	"supported and text positioning may be a bit less accurate.\n"
-	"On Linux, Unicode isn't supported yet.\n"
+	"On Linux, Unicode and anti-aliasing aren't supported yet.\n"
     "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
     "g b] triplet) that you want to poke into each pixel; default produces black with "
     "the standard CLUT for this window's pixelSize.  \"yPositionIsBaseline\" If specified, "
@@ -695,9 +695,9 @@ PsychError SCREENDrawText(void)
 		 // Use GDI based text renderer on Windows, instead of display list based one?
 		 if (PsychPrefStateGet_TextRenderer()==1) {
 			// Call the GDI based renderer instead:
-			return(SCREENDrawTextGDI());
+			return(SCREENDrawTextGDI(NULL));
 	 	 }
-	 #endif
+	#endif
     
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -882,10 +882,10 @@ void CleanupDrawTextGDI(void)
 	return;
 }
 
-PsychError SCREENDrawTextGDI(void)
+PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 {
     PsychWindowRecordType		*winRec;
-    PsychRectType				windowRect;
+    PsychRectType				windowRect, boundingRect;
     char						*textString;
 	double*						unicodedoubles;
 	int							stringLengthChars;
@@ -904,16 +904,19 @@ PsychError SCREENDrawTextGDI(void)
 	RECT						trect, brect;
 	unsigned char				colorkeyvalue;
 	unsigned char*				scanptr;
-	int skiplines;	
+	int skiplines, renderheight;	
 	DWORD outputQuality;
+	textUniString = NULL;
 	
-    // All subfunctions should have these two lines.  
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    
-    PsychErrorExit(PsychCapNumInputArgs(7));   	
-    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(2));  
+	if (boundingbox == NULL) {
+		// All subfunctions should have these two lines.  
+		PsychPushHelp(useString, synopsisString, seeAlsoString);
+		if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+		
+		PsychErrorExit(PsychCapNumInputArgs(7));   	
+		PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+		PsychErrorExit(PsychCapNumOutputArgs(2));  
+	}
 	
     //Get the window structure for the onscreen window.
     PsychAllocInWindowRecordArg(1, TRUE, &winRec);
@@ -925,13 +928,15 @@ PsychError SCREENDrawTextGDI(void)
 	if (PsychGetArgType(2) == PsychArgType_char) {
     	// Get standard 1 byte ASCII string:
     	PsychAllocInCharArg(2, kPsychArgRequired, &textString);
-		if(strlen(textString)<1) goto drawtext_skipped; // We skip most of the code if string is empty.	
+		if((strlen(textString) < 1) && boundingbox) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
+		if(strlen(textString) < 1) goto drawtext_skipped; // We skip most of the code if string is empty.	
 		unicodedoubles = NULL;
 	}
 	else {
 		// Not a character string: Check if it's a double matrix for Unicode text encoding:
 		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
 		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
+		if((stringLengthChars < 1) && boundingbox) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
 		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
 		textUniString=(WCHAR*) malloc(sizeof(WCHAR) * stringLengthChars);
 		for (dummy1=0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (WCHAR) unicodedoubles[dummy1];
@@ -941,27 +946,39 @@ PsychError SCREENDrawTextGDI(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
     PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
 	
-    //Get the new color record, coerce it to the correct mode, and store it.  
-    doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
-    if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
-	
-    // Same for background color: FIXME This is currently a no-op. Don't know yet how to
-    // map this to the Windows way of font rendering...
-    doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
-    if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
-	
-	// Special handling of offset for y position correction:
-	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
-	
-    PsychSetGLContext(winRec);
-	
-    // Enable this windowRecords framebuffer as current drawingtarget:
-    PsychSetDrawingTarget(winRec);
-	
-	PsychCoerceColorMode( &(winRec->textAttributes.textColor));
-    PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
-	
+	// 'DrawText' mode?
+	if (boundingbox == NULL) {
+		// DRAWTEXT mode:
+		
+		//Get the new color record, coerce it to the correct mode, and store it.  
+		doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
+		if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
+		
+		// Same for background color: FIXME This is currently a no-op. Don't know yet how to
+		// map this to the Windows way of font rendering...
+		doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
+		if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
+		
+		// Special handling of offset for y position correction:
+		yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+		PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+
+		PsychSetGLContext(winRec);
+		
+		// Enable this windowRecords framebuffer as current drawingtarget:
+		PsychSetDrawingTarget(winRec);
+		
+		PsychCoerceColorMode( &(winRec->textAttributes.textColor));
+		PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
+	}
+	else {
+		// TEXTBOUNDS mode:
+		// Special handling of offset for y position correction: In 'TextBounds' mode,
+		// this is the 5th argument, instead of the 7th in 'DrawText' mode:
+		yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+		PsychCopyInIntegerArg(5, kPsychArgOptional, &yPositionIsBaseline);	
+	}
+		
 	// Reallocate device context and bitmap if needed:
 	if ((dc!=NULL) && (oldWidth != PsychGetWidthFromRect(winRec->rect) || oldHeight!=PsychGetHeightFromRect(winRec->rect))) {
 		// Target windows size doesn't match size of our backingstore: Reallocate...
@@ -1099,24 +1116,70 @@ PsychError SCREENDrawTextGDI(void)
 		MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
 	 }
 
-	// printf("POST: ltrb %d %d %d %d\n", brect.left, brect.top, brect.right, brect.bottom);
+	// renderheight is the total height of the rendered textbox, not taking clipping into account.
+	// Its the number of pixelrows to process...
+	renderheight = (int) brect.bottom - (int) brect.top;
 
+	// Calculate skiplines - the number of pixelrows to skip from start of the DIB/from
+	// bottom of targetwindow. Need to take into account, what the y position actually means:
 	if (yPositionIsBaseline) {
-		skiplines = oldHeight - (((brect.bottom - brect.top) - winRec->textAttributes.textSize) + (int) winRec->textAttributes.textPositionY);
+		// y-Position is the baseline of text: Take height of "descender" area into account:
+		skiplines = oldHeight - ((renderheight - winRec->textAttributes.textSize) + (int) winRec->textAttributes.textPositionY);
 	}
 	else {
-		skiplines = oldHeight - ((brect.bottom - brect.top) + (int) winRec->textAttributes.textPositionY);
+		// y-Position is top of texts bounding box:
+		skiplines = oldHeight - (renderheight + (int) winRec->textAttributes.textPositionY);
 	}
 
+	// Calculate and store bounding rectangle:
+	boundingRect[kPsychTop]    = oldHeight - 1 - skiplines - renderheight;
+	boundingRect[kPsychBottom] = oldHeight - 1 - skiplines;
+	boundingRect[kPsychLeft]   = winRec->textAttributes.textPositionX;
+	boundingRect[kPsychRight]  = winRec->textAttributes.textPositionX + (double) ((int) brect.right - (int) brect.left);
+
+	// Is this a 'Textbounds' op?
+	if (boundingbox) {
+		// 'Textbounds" op, no real text drawing. Assign final bounding box, then return:
+		PsychCopyRect(boundingbox, boundingRect);
+
+		// Release unicode textstring, if any:
+		if (textUniString) free(textUniString);
+		
+		// Done, return:
+		return(PsychError_none);
+	}
+
+	// Bounds checking: Need to take text into account that is partially or fully outside
+	// the windows drawing area:
+	if (skiplines < 0) {
+		// Lower bound of text is below lower border of window.
+		// Reduce size of processing area by the difference (we add a negative value == subtract):
+		renderheight = renderheight + skiplines;
+		
+		// Start at bottom of screen and DIB with processing:
+		skiplines = 0;
+	}
+	
+	if ((skiplines + renderheight) > (oldHeight - 1)) {
+		// Upper bound of text is above upper border of window.
+		// Reduce size of processing area by the difference:
+		renderheight = renderheight - ((skiplines + renderheight) - (oldHeight - 1));
+	}
+
+	// Negative or zero renderheight? In that case we would be done, because the area of text
+	// to really draw would be empty or less than empty!
+	if (renderheight <= 0) goto drawtext_noop;
+	
+	// Ok, bounds checking left us with something to process and draw - Do it:
+	
 	// "Erase" DIB with black background color:
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
-	memset((void*) scanptr, 0, oldWidth * ((int) brect.bottom - (int) brect.top) * 4);
+	memset((void*) scanptr, 0, oldWidth * renderheight * 4);
 	
 	// Really draw the textString: Rasterize!
 	if (unicodedoubles) {
 		// Drawing of Unicode text:
 		DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP);
-		free(textUniString);
 	 }
 	else {
 		// Drawing of standard ASCII text:
@@ -1129,51 +1192,59 @@ PsychError SCREENDrawTextGDI(void)
 	// Loop through the bitmap: Set the unused MSB of each 32 bit DWORD to a
 	// meaningful alpha-value for OpenGL.
 	bincolors[0] = (unsigned int)(incolors[0] * 255);
-   bincolors[1] = (unsigned int)(incolors[1] * 255);
-   bincolors[2] = (unsigned int)(incolors[2] * 255);
-   bincolors[3] = (unsigned int)(incolors[3] * 255);
+    bincolors[1] = (unsigned int)(incolors[1] * 255);
+    bincolors[2] = (unsigned int)(incolors[2] * 255);
+    bincolors[3] = (unsigned int)(incolors[3] * 255);
 
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
-	for (i=0; i<oldWidth * ((int) brect.bottom - (int) brect.top); i++) {
+	for (i=0; i<oldWidth * renderheight; i++) {
 		*(scanptr++) = bincolors[0];	 // Copy blue text color to blue byte.
 		*(scanptr++) = bincolors[1];	 // Copy green text color to green byte.
-										 // Copy red byte to alpha-channel:
+		// Copy red byte to alpha-channel (its our anti-aliasing alpha-value), but
+		// multiply with user spec'd alpha. This multiply-shift is a fast trick to
+		// get normalization of the 16 bit multiply:
 		colorkeyvalue = (unsigned char)((((unsigned int) *scanptr) * bincolors[3]) >> 8);
 		*(scanptr++) = bincolors[2];	 // Copy red text color to red byte.
-		*(scanptr++) = colorkeyvalue;	 // Copy alpha value to alpha byte.
+		*(scanptr++) = colorkeyvalue;	 // Copy final alpha value to alpha byte.
 //		*(scanptr++) = (unsigned char)(128 + colorkeyvalue/2);	 // Copy alpha value to alpha byte.
 	}
 	
 	// Save all GL state:
     glPushAttrib(GL_ALL_ATTRIB_BITS);
 	
-	// Enable alpha-blending for anti-aliasing, unless user script requests us to obey
+	// Setup alpha-blending for anti-aliasing, unless user script requests us to obey
 	// the global blending settings set via Screen('Blendfunction') - which may be
 	// suboptimal for anti-aliased text drawing:
-    if(!PsychPrefStateGet_TextAlphaBlending()){
+    if(!PsychPrefStateGet_TextAlphaBlending()) {
         PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
         PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     }
     PsychUpdateAlphaBlendingFactorLazily(winRec);
 	
-    // Backup modelview matrix:
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-	
-    // Setup unpack mode and position for blitting of the bitmap to screen:
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-//	glRasterPos2i(0,oldHeight);
-	glRasterPos2i(0,(int) oldHeight - skiplines);
-	
 	// Enable alpha-test against an alpha-value greater zero during blit. This
 	// This way, non-text pixess (with alpha equal to zero) are discarded. 
     glEnable(GL_ALPHA_TEST);
     glAlphaFunc(GL_GREATER, 0);
-	
+
+	// To conform to the OS/X behaviour, we only draw a background if user-defined alpha blending
+	// is enabled:
+    if(PsychPrefStateGet_TextAlphaBlending()) {
+		// Draw a background color quad:
+		
+		// Set GL drawing color:
+		PsychSetGLColor(&(winRec->textAttributes.textBackgroundColor), winRec);
+
+		// Draw background rect:
+		PsychGLRect(boundingRect);
+	}
+
+    // Setup unpack mode and position for blitting of the bitmap to screen:
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	glRasterPos2i(0,(int) oldHeight - 1 - skiplines);
+
 	// Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
-	glDrawPixels(oldWidth, ((int) brect.bottom - (int) trect.top), GL_RGBA, GL_UNSIGNED_BYTE, scanptr);
-//	glDrawPixels(oldWidth, oldHeight, GL_RGBA, GL_UNSIGNED_BYTE, pBits);
+	glDrawPixels(oldWidth, renderheight, GL_RGBA, GL_UNSIGNED_BYTE, scanptr);
 	
 	// Disable alpha test after blit:
     glDisable(GL_ALPHA_TEST);
@@ -1181,13 +1252,14 @@ PsychError SCREENDrawTextGDI(void)
     // Restore state:
     if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
 	
-    glPopMatrix();
-	
 	glPopAttrib();
 	
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(winRec);
-	
+
+	// We jump directly to this position if text appears to be completely outside the window:
+drawtext_noop:
+
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
     // Get updated "cursor position":
@@ -1197,8 +1269,11 @@ PsychError SCREENDrawTextGDI(void)
 	
 	// We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:    
-		PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
+	PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
     PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
+	
+	// Release unicode textstring, if any:
+	if (textUniString) free(textUniString);
 	
     return(PsychError_none);
 }

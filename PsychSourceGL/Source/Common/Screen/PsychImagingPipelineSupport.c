@@ -2501,6 +2501,8 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
 		glScalef(sx, sy, 1);
 	}
 	
+	if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: PsychBlitterIdentity: Blitting x=%i y=%i sx=%f sy=%f w=%i h=%i\n", x, y, sx, sy, w, h);
+	
 	// Do the blit, using a rectangular quad:
 	glBegin(GL_QUADS);
 	

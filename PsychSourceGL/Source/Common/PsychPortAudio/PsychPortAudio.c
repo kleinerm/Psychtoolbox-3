@@ -67,7 +67,7 @@ typedef struct PsychPADevice {
 	double	 captureStartTime;	// Time when first captured sample entered the sound hardware in system time (secs). This information is
 								// redundant in pure capture mode - its identical to startTime. In full duplex mode, this is an estimate of
 								// when the first sample was captured, whereas startTime is an estimate of when the first sample was output.
-	int		 state;				// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing.
+	int		 state;				// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing, 3=Aborting playback.
 	int		 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
 	int		 outputbuffersize;	// Size of output buffer in bytes.
@@ -165,8 +165,8 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	outsbsize = dev->outputbuffersize / sizeof(float);
 	insbsize = dev->inputbuffersize / sizeof(float);
 
-	// Logical playback state is "stopped"? If so, abort.
-	if (dev->state == 0) {
+	// Logical playback state is "stopped" or "aborting" ? If so, abort.
+	if ((dev->state == 0) || (dev->state == 3)) {
 		// Prime the outputbuffer with silence to avoid ugly noise.
 		if (outputBuffer) memset(outputBuffer, 0, framesPerBuffer * outchannels * sizeof(float));
 		return(paComplete);
@@ -598,7 +598,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	PaHostApiIndex paHostAPI;
 	PaStreamParameters outputParameters;
 	PaStreamParameters inputParameters;
-	PaDeviceInfo* inputDevInfo, *outputDevInfo;
+	PaDeviceInfo* inputDevInfo, *outputDevInfo, *referenceDevInfo;
 	PaStreamFlags sflags;
 	PaError err;
 	PaStream *stream = NULL;
@@ -635,6 +635,9 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
 	
+	// Sanity check: Any hardware found?
+	if (Pa_GetDeviceCount() == 0) PsychErrorExitMsg(PsychError_user, "Could not find *any* audio hardware on your system! Either your machine doesn't have audio hardware, or somethings seriously screwed.");
+	
 	// We default to generic system settings for host api specific settings:
 	outputParameters.hostApiSpecificStreamInfo = NULL;
 	inputParameters.hostApiSpecificStreamInfo  = NULL;
@@ -650,6 +653,52 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Request optional latency class:
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &latencyclass);
 	if (latencyclass < 0 || latencyclass > 4) PsychErrorExitMsg(PsychError_user, "Invalid reqlatencyclass provided. Valid values are 0 to 4.");
+
+	if (deviceid == -1) {
+		// Default devices requested:
+		if (latencyclass == 0) {
+			// High latency mode: Simply pick system default devices:
+			outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
+			inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default input device. */
+		}
+		else {
+			// Low latency mode: Try to find the host API which is supposed to be the fastest on
+			// a platform, then pick its default devices:
+			paHostAPI = PsychPAGetLowestLatencyHostAPI();
+			outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
+			inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
+		}
+	}
+	else {
+		// Specific device requested: In valid range?
+		if (deviceid >= Pa_GetDeviceCount() || deviceid < 0) {
+			PsychErrorExitMsg(PsychError_user, "Invalid deviceid provided. Higher than the number of devices - 1 or lower than zero.");
+		}
+		
+		outputParameters.device = (PaDeviceIndex) deviceid;
+		inputParameters.device = (PaDeviceIndex) deviceid;
+	}
+
+	// Query properties of selected device(s):
+	inputDevInfo  = Pa_GetDeviceInfo(inputParameters.device);
+	outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
+
+	// Select one of them as "reference" info devices: It's properties are used whenever
+	// no more specialized info is available. We use the output device (if any) as reference,
+	// otherwise fall back to the inputdevice.
+	referenceDevInfo = (outputDevInfo) ? outputDevInfo : inputDevInfo;
+
+	// Sanity check: Any hardware found?
+	if (referenceDevInfo == NULL) PsychErrorExitMsg(PsychError_user, "Could not find *any* audio hardware on your system - or at least not with the provided deviceid, if any!");
+
+	// Check if current set of selected/available devices is compatible with our playback mode:
+	if (((mode & kPortAudioPlayBack) || (mode & kPortAudioMonitoring)) && ((outputDevInfo == NULL) || (outputDevInfo && outputDevInfo->maxOutputChannels <= 0))) {
+		PsychErrorExitMsg(PsychError_user, "Audio output requested, but there isn't any audio output device available or you provided a deviceid for something else than an output device!");
+	}
+
+	if (((mode & kPortAudioCapture) || (mode & kPortAudioMonitoring)) && ((inputDevInfo == NULL) || (inputDevInfo && inputDevInfo->maxInputChannels <= 0))) {
+		PsychErrorExitMsg(PsychError_user, "Audio input requested, but there isn't any audio input device available or you provided a deviceid for something else than an input device!");
+	}
 	
 	// Request optional frequency:
 	PsychCopyInIntegerArg(4, kPsychArgOptional, &freq);
@@ -659,9 +708,10 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	numel = 0; nrchannels = NULL;
 	PsychAllocInIntegerListArg(5, kPsychArgOptional, &numel, &nrchannels);
 	if (numel == 0) {
-		// No optional channelcount argument provided: Default to two for playback and recording:
-		mynrchannels[0] = 2;
-		mynrchannels[1] = 2;
+		// No optional channelcount argument provided: Default to two for playback and recording, unless device is
+		// a mono device -- then we default to one:
+		mynrchannels[0] = (outputDevInfo && outputDevInfo->maxOutputChannels < 2) ? outputDevInfo->maxOutputChannels : 2;
+		mynrchannels[1] = (inputDevInfo && inputDevInfo->maxInputChannels < 2) ? inputDevInfo->maxInputChannels : 2;
 	}
 	else if (numel == 1) {
 		// One argument provided: Set same count for playback and recording:
@@ -692,32 +742,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	suggestedLatency = -1.0;
 	PsychCopyInDoubleArg(7, kPsychArgOptional, &suggestedLatency);
 	if (suggestedLatency!=-1 && (suggestedLatency < 0.0 || suggestedLatency > 1.0)) PsychErrorExitMsg(PsychError_user, "Invalid suggestedLatency provided. Valid values are 0.0 to 1.0 seconds.");
-
-	if (deviceid == -1) {
-		// Default devices requested:
-		if (latencyclass == 0) {
-			// High latency mode: Simply pick system default devices:
-			outputParameters.device = Pa_GetDefaultOutputDevice(); /* Default output device. */
-			inputParameters.device  = Pa_GetDefaultInputDevice(); /* Default output device. */
-		}
-		else {
-			// Low latency mode: Try to find the host API which is supposed to be the fastest on
-			// a platform, then pick its default devices:
-			paHostAPI = PsychPAGetLowestLatencyHostAPI();
-			outputParameters.device = Pa_GetHostApiInfo(paHostAPI)->defaultOutputDevice;
-			inputParameters.device  = Pa_GetHostApiInfo(paHostAPI)->defaultInputDevice;
-		}
-	}
-	else {
-		// Specific device requested: In valid range?
-		if (deviceid >= Pa_GetDeviceCount() || deviceid < 0) {
-			PsychErrorExitMsg(PsychError_user, "Invalid deviceid provided. Higher than the number of devices - 1 or lower than zero.");
-		}
-		
-		outputParameters.device = (PaDeviceIndex) deviceid;
-		inputParameters.device = (PaDeviceIndex) deviceid;
-	}
-
+	
 	// Get optional channel map:
 	mychannelmap = NULL;
 	PsychAllocInDoubleMatArg(8, kPsychArgOptional, &m, &n, &p, &mychannelmap);
@@ -729,7 +754,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		
 		// Basic check ok. Build ASIO host specific mapping structure:
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-			if (Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type == paASIO) {
+			// Check for ASIO: This only works for ASIO host API...
+			if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paASIO) {
 				// MS-Windows and connected to an ASIO device. Good. Try to assign channel mapping:
 				if (mode & kPortAudioPlayBack) {
 					// Playback mappings:
@@ -775,10 +801,6 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			if (verbosity > 2) printf("PTB-WARNING: Provided 'selectchannels' channel mapping is ignored because this is not MS-Windows running on an ASIO enabled sound device.\n");
 		#endif
 	}
-
-	// Query properties of selected device(s):
-	inputDevInfo  = Pa_GetDeviceInfo(inputParameters.device);
-	outputDevInfo = Pa_GetDeviceInfo(outputParameters.device);
 	
 	// Set channel count:
 	outputParameters.channelCount = mynrchannels[0];	// Number of output channels.
@@ -799,7 +821,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			buffersize = paFramesPerBufferUnspecified;
 		}
 		else {
-			if (Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type != paASIO) {
+			if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type != paASIO) {
 				buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
 			}
 			else {
@@ -816,7 +838,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		// No specific frequency requested:
 		if (latencyclass < 3) {
 			// At levels < 3, we select the device specific default.
-			freq = outputDevInfo->defaultSampleRate;
+			freq = referenceDevInfo->defaultSampleRate;
 		}
 		else {
 			freq = 96000; // Go really high...
@@ -828,7 +850,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// Set requested latency: In class 0 we choose device recommendation for dropout-free operation, in
 	// all higher (lowlat) classes we request zero latency. PortAudio will
 	// clamp this request to something safe internally.
-	switch (Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type) {
+	switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
 		case paCoreAudio:	// CoreAudio driver will automatically clamp to safe minimum. Around 0.7 msecs.
 		case paALSA:		// dto. for ALSA.
 		case paWDMKS:		// dto. for Windows kernel streaming.
@@ -857,8 +879,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	
 	if (suggestedLatency == -1.0) {
 		// None provided: Choose default based on latency mode:
-		outputParameters.suggestedLatency = (latencyclass == 0) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
-		inputParameters.suggestedLatency  = (latencyclass == 0) ? inputDevInfo->defaultHighInputLatency : lowlatency;
+		outputParameters.suggestedLatency = (latencyclass == 0 && outputDevInfo) ? outputDevInfo->defaultHighOutputLatency : lowlatency;
+		inputParameters.suggestedLatency  = (latencyclass == 0 && inputDevInfo) ? inputDevInfo->defaultHighInputLatency : lowlatency;
 	}
 	else {
 		// Override provided: Use it.
@@ -903,7 +925,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].opmode = mode;
 	audiodevices[audiodevicecount].stream = stream;
 	audiodevices[audiodevicecount].streaminfo = Pa_GetStreamInfo(stream);
-	audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->type;
+	audiodevices[audiodevicecount].hostAPI = Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type;
 	audiodevices[audiodevicecount].startTime = 0.0;
 	audiodevices[audiodevicecount].state = 0;
 	audiodevices[audiodevicecount].repeatCount = 1;
@@ -931,13 +953,13 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		printf("PTB-INFO: New audio device with handle %i opened as PortAudio stream:\n",audiodevicecount);
 
 		if (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) {
-			printf("PTB-INFO: For %i channels Playback: Audio subsystem is %s, Audio device name is ", audiodevices[audiodevicecount].outchannels, Pa_GetHostApiInfo(Pa_GetDeviceInfo(outputParameters.device)->hostApi)->name);
-			printf("%s\n", Pa_GetDeviceInfo(outputParameters.device)->name);
+			printf("PTB-INFO: For %i channels Playback: Audio subsystem is %s, Audio device name is ", audiodevices[audiodevicecount].outchannels, Pa_GetHostApiInfo(outputDevInfo->hostApi)->name);
+			printf("%s\n", outputDevInfo->name);
 		}
 
 		if (audiodevices[audiodevicecount].opmode & kPortAudioCapture) {
-			printf("PTB-INFO: For %i channels Capture: Audio subsystem is %s, Audio device name is ", audiodevices[audiodevicecount].inchannels, Pa_GetHostApiInfo(Pa_GetDeviceInfo(inputParameters.device)->hostApi)->name);
-			printf("%s\n", Pa_GetDeviceInfo(inputParameters.device)->name);
+			printf("PTB-INFO: For %i channels Capture: Audio subsystem is %s, Audio device name is ", audiodevices[audiodevicecount].inchannels, Pa_GetHostApiInfo(inputDevInfo->hostApi)->name);
+			printf("%s\n", inputDevInfo->name);
 		}
 		
 		printf("PTB-INFO: Real samplerate %f Hz. Input latency %f msecs, Output latency %f msecs.\n",
@@ -1561,18 +1583,30 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 {
  	static char useString[] = "[startTime endPositionSecs xruns] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0]);";
 	static char synopsisString[] = 
-		"Stop a PortAudio audio device. The 'pahandle' is the handle of the device to stop. "
-		"'waitForEndOfPlayback' - If set to non-zero value, this method will wait until playback "
-		"of the audio stream finishes by itself. This only makes sense if you perform playback with "
+		"Stop a PortAudio audio device. The 'pahandle' is the handle of the device to stop.\n"
+		"'waitForEndOfPlayback' - If set to 1, this method will wait until playback of the "
+		"audio stream finishes by itself. This only makes sense if you perform playback with "
 		"a limited number of repetitions. The flag will be ignored when infinite repetition is "
-		"requested (as playback would never stop by itself) or if this is pure recording.\n"
+		"requested (as playback would never stop by itself, resulting in a hang) or if this is "
+		"a pure recording session.\n"
+		"A setting of 0 (which is the default) requests stop of playback without waiting for all "
+		"the sound to be finished playing. Sound may continue to be played back for multiple "
+		"milliseconds after this call, as this is a polite request to the hardware to finish up.\n"
+		"A setting of 2 requests abortion of playback and/or capture as soon as possible with your "
+		"sound hardware, even if this creates audible artifacts etc. Abortion may or may not be faster "
+		"than a normal stop, this depends on your specific hardware, but our driver tries as hard as "
+		"possible to get the hardware to shut up. In a worst-case setting, the hardware would continue "
+		"to playback the sound data that is stored in its internal buffers, so the latency for stopping "
+		"sound would be the the same as the latency for starting sound as quickly as possible. E.g., "
+		"a 2nd generation Intel MacBook Pro seems to have a stop-delay of roughly 5-6 msecs under "
+		"optimal conditions (buffersize = 64, frequency=96000, OS/X 10.4.10, no other sound apps running).\n"
 		"The optional return argument 'startTime' returns an estimate of when the stopped "
 		"stream actually started its playback and/or recording. Its the same timestamp as the one "
 		"returned by the start command when executed in waiting mode. 'endPositionSecs' is the final "
 		"playback/recording position in seconds. 'xruns' is the number of buffer over- or underruns. "
-		"This should be zero if the operation was glitch-free, however a zero value doesn't imply glitch "
-		"free operation, as the algorithm can miss some types of glitches. ";
-		
+		"This should be zero if the playback operation was glitch-free, however a zero value doesn't "
+		"imply glitch free operation, as the glitch detection algorithm can miss some types of glitches. ";
+	
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	
 	PaError err;
@@ -1599,17 +1633,36 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 	// Wait for automatic stop of playback if requested: This only makes sense if we
 	// are in playback mode and not in infinite playback mode! Would not make sense in
 	// looping mode (infinite repetitions of playback) or pure recording mode:
-	if ((waitforend > 0) && (audiodevices[pahandle].state > 0) && (audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].repeatCount != -1)) {
+	if ((waitforend == 1) && (audiodevices[pahandle].state > 0) && (audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].repeatCount != -1)) {
 		// Wait until stream finishes by itself:
 		while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychWaitIntervalSeconds(0.001);
 	}
 	
-	// Try to stop stream. Skip if already stopped/not yet started:
-	if ((audiodevices[pahandle].state > 0) && ((err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError)) {
-		printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
-		PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
+	// Soft stop requested (as opposed to fast stop)?
+	if (waitforend!=2) {
+		// Softstop: Try to stop stream. Skip if already stopped/not yet started:
+		if ((audiodevices[pahandle].state > 0) && ((err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError)) {
+			printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
+			PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
+		}
 	}
-	
+	else {
+		// Faststop: Try to abort stream. Skip if already stopped/not yet started:
+
+		// Stream active?
+		if (audiodevices[pahandle].state > 0) {
+			// Yes. Set the 'state' flag to signal our IO-Thread not to push any audio
+			// data anymore, but only zeros for silence.
+			audiodevices[pahandle].state = 3;
+			
+			// Now send abort request to hardware:
+			if ((err=Pa_AbortStream(audiodevices[pahandle].stream))!=paNoError) {
+				printf("PTB-ERROR: Failed to abort audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
+				PsychErrorExitMsg(PsychError_system, "Failed to fast stop (abort) PortAudio audio device.");
+			}
+		}
+	}
+
 	// Wait for real stop:
 	while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychWaitIntervalSeconds(0.001);
 	
@@ -1689,7 +1742,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 
 	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 14, FieldNames, &status);
 	
-	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state == 2) ? 1 : 0, status);
+	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state >= 2) ? 1 : 0, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
 	PsychSetStructArrayDoubleElement("CaptureStartTime", 0, audiodevices[pahandle].captureStartTime, status);
 	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
