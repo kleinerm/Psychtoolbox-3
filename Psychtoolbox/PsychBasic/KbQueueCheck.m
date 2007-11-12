@@ -137,20 +137,9 @@ function [pressed, firstPress, firstRelease, lastPress, lastRelease] = KbQueueCh
 global ptb_kbcheck_disabledKeys;
 
 persistent macosxrecent;
+
 if isempty(macosxrecent)
-   macosxrecent = IsOSX;
-   if macosxrecent
-		%If we are major version 10, we need to check minor version
-		gestaltbits=Gestalt('sys1');
-		majorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
-		if majorversion == 10
-			gestaltbits=Gestalt('sys2');
-			minorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
-			if minorversion<3
-				macosxrecent=false;
-			end
-		end
-	end
+    macosxrecent = IsOSX;
 end
 
 if macosxrecent

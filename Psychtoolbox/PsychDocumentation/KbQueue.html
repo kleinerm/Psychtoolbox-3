@@ -1,0 +1,257 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+        "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+	<title>KbQueueCheck and KbQueueWait</title>
+</head>
+<body>
+	<h3>Using KbQueueCheck, KbQueueWait and KbTriggerWait</h3>
+	<h4>When to use these functions</h4>
+	<p>
+		The Psychophysics Toolbox includes the functions KbCheck, KbWait, 
+		CharAvail and GetChar for responding to keyboard events. These easily
+		used functions provide sufficient functionality for many types of task
+		design. The functions KbQueueCheck, KbQueueWait and KbTriggerWait
+		provide more complex alternatives that may be advantageous under 
+		selected circumstances requiring any of the following:
+	</p>
+	<ul>
+		<li>Detection of key presses that are too brief to be reliably
+		detected even by the most tightly written KbCheck loop</li>
+		
+		<li>Detection of keyboard events that take place while other code is
+		actively executing</li>
+		
+		<li>Detection of keyboard events with maximal timing accuracy</li>
+		
+		<li>Accurate measurement of the duration of keypresses</li>
+		
+		<li>Detection of only certain keys while ignoring all other keys</li>
+	</ul>
+	<h4>Overview</h4>
+	<p>
+		The Psychophysics Toolbox function KbCheck looks to see which keys are
+		depressed each time that it is called. In effect, KbCheck answers the
+		question "Which keys are pressed right now?". By asking this question
+		repetitively in a tight Mablab code loop, it is possible to get a 
+		reasonably accurate estimate of the time at which a key was pressed.
+		However, if a keypress is very brief, it can take place in between
+		successive calls to KbCheck and can potentially be lost. For example,
+		the Fiber Optic Response Pad (FORP) manufactured by Current Designs for
+		use with functional magnetic resonance imaging (fMRI) transduces a 
+		trigger signal from the MRI scanner into an apparent keypress that lasts 
+		only 8 msec; such signals are often missed even with the fastest 
+		processors. 
+	</p>
+	<p>
+		In contrast to KbCheck, the function GetChar answers the question "What
+		characters have been input to allow this function to return?" where it 
+		is possible that the relevant characters were input (and released) even
+		before GetChar was invoked thanks to an internal queueing mechanism
+		(note that a call to KbCheck might therefore miss characters 
+		identifiable by a call to GetChar). However, GetChar requires Matlab's 
+		Java and is not recommended for situations requiring precision timing 
+		because it is slow and because the timebase used by Java can differ 
+		substantially from the timebase used by GetSecs (the documentation for 
+		GetChar indicates that discrepancies can be tens or even hundreds of 
+		miiliseconds).
+	</p>
+	<p>
+		Like GetChar, KbQueueCheck makes use of an internal queue to record
+		events asynchronously, but, like KbCheck, it is fast, does not require
+		Java, and uses the same timebase as GetSecs, making it suitable for
+		high precision timing. Indeed, since the timestamps of keyboard events
+		are assigned directly by the operating system, their accuracy does not
+		require the KbQueueCheck be called in a tight loop like KbCheck.
+	</p>
+	<p>
+		To use KbQueueCheck, it is first necessary to set up the internal 
+		queue. This is accomplished by a call to KbQueueCreate. Only one 
+		keyboard device can be used at any given time with this internal queue, 
+		so when multiple keyboards are present, the desired keyboard should be 
+		specified explicitly. If it is not, the first device is the default 
+		(like KbCheck). It is also possible to restrict the keys that are 
+		recorded in the queue to some specific set of keys of interest when the 
+		queue is created. Once it has been created, a queue can be reused 
+		multiple times so long as the keyboard of interest and keys of interest 
+		remain unchanged. To change to a different keyboard of interest or set 
+		of keys of interest, simply call KbQueueCreate again with the new
+		specification. It is not necessary to call KbQueueRelease before a 
+		second call to KbQueueCreate, but KbQueueRelease (or 'clear mex') should 
+		be called once the queue is no longer needed to release queue-associated 
+		resources.
+	</p>
+	<p>
+		Since creation of a queue involves some computational overhead, delivery
+		of keyboard events to the queue is not started automatically. This
+		allows the queue to be created in advance during a phase that is not
+		time critical and then subsequently efficiently started in a phase that
+		is potentially time critical. Delivery of events to the queue is started
+		by a call to KbQueueStart. Delivery can subsequently be stopped (without
+		losing any queued events that have not yet been retrieved) by a call to
+		KbQueueStop. 
+	</p>
+	<p>
+		Events can be retrieved by calling KbQueueCheck, which will report about
+		new events since the most recent call to KbQueueStart, KbQueueCheck,
+		KbQueueFlush or KbQueueWait. Although a call to KbQueueStart should 
+		suffice to flush a queue that is not actively receiving events, 
+		KbQueueFlush should be used preferentially to flush events from an 
+		actively running queue.
+	</p>
+	<p>
+		Analogously to KbWait, the function KbQueueWait can be used to pause
+		execution until a keypress has taken place (and unlike KbWait, will 
+		respond to very brief events). Like KbWait, KbQueueWait does not 
+		directly identify the specific key that was pressed, and it should be 
+		kept in mind that the keypress will already have been removed from
+		the queue when KbQueueWait returns and its identity therefore cannot be 
+		recovered by an immediate call to KbQueueCheck. If the identity of the 
+		pressed key is needed, KbQueueCheck should be called directly in a 
+		tight loop instead of using KbQueueWait. If only one key is of interest,
+		another option is to specify only that key when creating the queue with
+		KbQueueCreate.
+	</p>
+	<p>
+		In the specific setting where it is important to recognize a brief
+		trigger event consisting of a signal that a specific key has been
+		pressed (e.g., in the setting of fMRI where the trigger from the
+		scanner may only be present for 8 msec), it is possible to unify the
+		functionality of KbQueueCreate, KbQueueStart, KbQueueWait and
+		KbQueueRelease into a single command, KbTriggerWait. The trigger key and
+		optionally the device number of the keyboard must be specified, and no
+		queue created by KbQueueCreate should exist when this convenience 
+		function is called. Note that a call to KbTriggerWait involves more 
+		short term overhead than a call to KbWait since the a queue must be
+		automatically created (and automaticaly destroyed) each time it is 
+		called.
+	</p>
+	
+	<h4>Sample Code</h4>
+		To detect all keypresses from the default device and when they occurred relative to some start time:<br>
+		<pre>
+	KbQueueCreate;
+	% Perform some other initializations, etc
+	startTime=GetSecs;
+	KbQueueStart;
+	% Do some other computations, display things on screen, play sounds, etc
+	[ pressed, firstPress]=KbQueueCheck; % Collect keyboard events since KbQueueStart was invoked
+	if pressed
+		pressedCodes=find(firstPress);
+		for i=1:size(pressedCodes,2)
+			fprintf('The %s key was pressed at time %.3f seconds\n', KbName(pressedCodes(i)), firstPress(pressedCodes(i))-startTime);
+		end
+	else
+		fprintf("No key presses were detected\n");
+	end
+	% Do additional computations, possibly including more calls to KbQueueCheck, etc
+	KbQueueRelease;
+		</pre>
+		
+	<hr>
+		To detect keypresses involving only the 'r', 'g', 'b' and 'y' keys on the default device:<br>
+		<pre>
+	keysOfInterest=zeros(1,256);
+	keysOfInterest(KbName({'r', 'g', 'b', 'y'}))=1;
+	KbQueueCreate(-1, keysOfInterest);
+	% Perform some other initializations
+	KbQueueStart;
+	% Perform some other tasks while key events are being recorded
+	[ pressed, firstPress]=KbQueueCheck; % Collect keyboard events since KbQueueStart was invoked
+	if pressed
+		if firstPress(KbName('r'))
+			% Handle press of 'r' key
+		end
+		if firstPress(KbName('g'))
+			% Handle press of 'g' key
+		end
+		if firstPress(KbName('b'))
+			% Handle press of 'b' key
+		end
+		if firstPress(KbName('y'))
+			% Handle press of 'y' key
+		end
+	end
+	% Do additional computations
+	KbQueueRelease;
+		</pre>
+		
+	<hr>
+		To detect a 't' trigger from an fMRI scanner using a Fiber Optic Response Pad and then process events from the 'r', 'g', 'b' and 'y' keys:<br>
+		<pre>
+	psychtoolbox_forp_id=-1;
+	
+	% List of vendor IDs for valid FORP devices:
+	vendorIDs = [1240 6171];
+    
+	Devices = PsychHID('Devices');
+	% Loop through all KEYBOARD devices with the vendorID of FORP's vendor:
+	for i=1:size(Devices,2)
+		if strcmp(Devices(i).usageName,'Keyboard') & ismember(Devices(i).vendorID, vendorIDs)
+			psychtoolbox_forp_id=i;
+			break;
+		end
+	end
+	
+	if psychtoolbox_forp_id==-1;
+		error('No FORP-Device detected on your system');
+	end
+	keysOfInterest=zeros(1,256);
+	keysOfInterest(KbName('t'))=1;
+	KbQueueCreate(psychtoolbox_forp_id, keysOfInterest);	% First queue
+	% Perform other initializations
+	KbQueueStart;
+	KbQueueWait; % Wait until the 't' key signal is sent
+	keysOfInterest=zeros(1,256);
+	keysOfInterest(KbName({'r', 'g', 'b', 'y'}))=1;
+	KbQueueCreate(psychtoolbox_forp_id, keysOfInterest);	% New queue
+	% Perform some other initializations
+	KbQueueStart;
+	% Perform some other tasks while key events are being recorded
+	[ pressed, firstPress]=KbQueueCheck;	% Collect keyboard events since KbQueueStart was invoked
+	if pressed
+		if firstPress(KbName('r'))
+			% Handle press of 'r' key
+		end
+		if firstPress(KbName('g'))
+			% Handle press of 'g' key
+		end
+		if firstPress(KbName('b'))
+			% Handle press of 'b' key
+		end
+		if firstPress(KbName('y'))
+			% Handle press of 'y' key
+		end
+	end
+	% Do additional computations
+	KbQueueRelease;
+		</pre>
+	<hr>
+		To detect a 't' trigger from an fMRI scanner via a Fiber Optic Response Pad without creating a persistent queue:
+		<pre>
+	psychtoolbox_forp_id=-1;
+	
+	% List of vendor IDs for valid FORP devices:
+	vendorIDs = [1240 6171];
+    
+	Devices = PsychHID('Devices');
+	% Loop through all KEYBOARD devices with the vendorID of FORP's vendor:
+	for i=1:size(Devices,2)
+		if strcmp(Devices(i).usageName,'Keyboard') & ismember(Devices(i).vendorID, vendorIDs)
+			psychtoolbox_forp_id=i;
+			break;
+		end
+	end
+	
+	if psychtoolbox_forp_id==-1;
+		error('No FORP-Device detected on your system');
+	end
+	% Note that KbTriggerWait will not respond to interrupts reliably--
+	% if no trigger is generated, you may have to kill Matlab to break out
+	% of the call to KbTriggerWait
+	KbTriggerWait(KbName('t'), psychtoolbox_forp_id);
+	% Trigger has been detected, proceed with other tasks
+		</pre>
+
+</body>
+</html>

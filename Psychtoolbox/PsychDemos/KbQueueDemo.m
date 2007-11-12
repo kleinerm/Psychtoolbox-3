@@ -1,0 +1,266 @@
+function KbQueueDemo
+%% KbQueueDemo
+% Shows how to detect when the user has pressed a key.
+% See KbQueueCheck, KbQueueWait, KbName, KbCheck, KbWait, GetChar, CharAvail.
+%
+% The KbQueueXXX functions are low-level like KbCheck and KbWait, but, like
+% GetChar/CharAvail, they use a queue so that brief events can be captured.
+% 
+% Like GetChar/CharAvail, KbQueueXXX functions may be used
+% asychronously - the OS will pick up the character whether your code
+% is currently looking for it or not so long as the queue has already been 
+% created(using KbQueueCreate) and started (using KbQueueStart).
+%
+% Unlike GetChar/CharAvail, KbQueueXXX functions can detect isolated presses
+% of modifier keys. Also, the times of key presses should be more accurate than
+% those associated with GetChar/CharAvail or with KbCheck and the timebase is
+% the same as that returned by GetSecs (unlike GetChar/CharAvail).
+%
+% The first four demos here are analogous to those in KbDemo.m
+
+% Roger Woods, November, 2007
+
+% 11/3/07	rpw Wrote demos 1-5
+
+if ~IsOSX
+	fprintf('KbQueueDemo requires Mac OS X\n');
+	return;
+end
+
+% Enable unified mode of KbName, so KbName accepts identical key names on
+% all operating systems:
+KbName('UnifyKeyNames');
+
+%% Runs 5 demos in sequence
+
+% Report keyboard key number for any pressed keys, including
+% modifier keys such as <shift>, <control>, <caps lock> and <option>.  The
+% only key not reported is the start key, which turns on the computer.
+KbQueueDemoPart1;
+WaitSecs(0.5);
+
+% Report time of keypress, using KbQueueCheck.
+KbQueueDemoPart2;
+WaitSecs(0.5);
+
+% Report time of keypress, using KbQueueWait.
+KbQueueDemoPart3;
+WaitSecs(0.5);
+
+% Use keys as real-time controls of a dynamic display.
+KbQueueDemoPart4;
+
+% Identify keys pressed while other code is executing
+KbQueueDemoPart5;
+return
+
+%% Part 1
+function KbQueueDemoPart1
+% Displays the key number when the user presses a key.
+
+fprintf('1 of 5.  Testing KbQueueCheck and KbName: press a key to see its number.\n');
+fprintf('Press the escape key to proceed to the next demo.\n');
+escapeKey = KbName('ESCAPE');
+KbQueueCreate;
+while KbCheck; end % Wait until all keys are released.
+
+KbQueueStart;
+
+while 1
+    % Check the queue for key presses.
+    [ pressed, firstPress]=KbQueueCheck;
+
+    % If the user has pressed a key, then display its code number and name.
+    if pressed
+
+        % Note that we use find(firstPress) because firstPress is an array with
+        % zero values for unpressed keys and non-zero values for pressed keys
+        %
+        % The fprintf statement implicitly assumes that only one key will have
+        % been pressed. If this assumption is not correct, an error will result
+
+        fprintf('You pressed key %i which is %s\n', find(firstPress), KbName(firstPress));
+
+        if firstPress(escapeKey)
+            break;
+        end
+    end
+end
+KbQueueRelease;
+return
+
+%% Part 2
+function KbQueueDemoPart2
+% Displays the number of seconds that have elapsed when the user presses a
+% key.
+fprintf('\n2 of 5. Testing KbQueueCheck timing: please type a few keys.  (Try shift keys too.)\n');
+fprintf('Type the escape key to proceed to the next demo.\n');
+escapeKey = KbName('ESCAPE');
+startSecs = GetSecs;
+
+KbQueueCreate;
+KbQueueStart;
+
+while 1
+    [ pressed, firstPress]=KbQueueCheck;
+	timeSecs = firstPress(find(firstPress));
+	if pressed
+	
+		% Again, fprintf will give an error if multiple keys have been pressed
+		fprintf('"%s" typed at time %.3f seconds\n', KbName(firstPress), timeSecs - startSecs);
+        
+		if firstPress(escapeKey)
+			break;
+        end
+	end
+end
+KbQueueRelease;
+return
+
+%% Part 3
+function KbQueueDemoPart3
+
+% Wait for the "a" key with KbQueueWait.
+keysOfInterest=zeros(1,256);
+keysOfInterest(KbName('a'))=1;
+KbQueueCreate(-1, keysOfInterest);
+fprintf('\n3 of 5.  Testing KbQueueWait: waiting for a press of the "a" key; all others will be ignored\n');
+startSecs = GetSecs;
+KbQueueStart;
+timeSecs = KbQueueWait;
+
+fprintf('The "a" key was pressed at time %.3f seconds\n', timeSecs - startSecs);
+KbQueueRelease;
+return
+
+%% Part 4
+function KbQueueDemoPart4
+% Control a screen spot with the keyboard.
+
+% Here are the parameters for this demo.
+spotRadius = 25; % The radius of the spot.
+rotationRadius = 200; % The radius of the rotation.
+initialRotationAngle = 3 * pi / 2; % The initial rotation angle in radians.
+
+try
+
+    % Removes the blue screen flash and minimize extraneous warnings.
+	Screen('Preference', 'VisualDebugLevel', 3);
+    Screen('Preference', 'SuppressAllWarnings', 1);
+	
+    % Find out how many screens and use largest screen number.
+    whichScreen = max(Screen('Screens'));
+    
+    % Open a new window.
+    [ window, windowRect ] = Screen('OpenWindow', whichScreen);
+    
+    % Set text display options. We skip on Linux.
+    if ~IsLinux
+        Screen('TextFont', window, 'Arial');
+        Screen('TextSize', window, 18);
+    end
+
+    % Set colors.
+    black = BlackIndex(window);
+    
+    % Set keys.
+    rightKey = KbName('RightArrow');
+    leftKey = KbName('LeftArrow');
+    escapeKey = KbName('ESCAPE');
+    
+    keysOfInterest=zeros(1,256);
+	keysOfInterest(rightKey)=1;
+	keysOfInterest(leftKey)=1;
+	keysOfInterest(escapeKey)=1;
+    
+    % Use the parameters.
+    spotDiameter = spotRadius * 2;
+    spotRect = [0 0 spotDiameter spotDiameter];
+    centeredspotRect = CenterRect(spotRect, windowRect); % Center the spot.
+    rotationAngle = initialRotationAngle;
+    
+    % Set up the timer.
+    startTime = now;
+    durationInSeconds = 60 * 2;
+    numberOfSecondsRemaining = durationInSeconds;
+    
+    KbQueueCreate(-1, keysOfInterest);
+    KbQueueStart;
+    
+    % Loop while there is time.
+    while numberOfSecondsRemaining > 0
+            numberOfSecondsElapsed = round((now - startTime) * 10 ^ 5);
+            numberOfSecondsRemaining = durationInSeconds - numberOfSecondsElapsed;
+        
+            Screen('DrawText', window, '4 of 5.  Press the left or right arrow key to move, or the escape key to quit.', 20,  20, black);
+            Screen('DrawText', window, sprintf('%i seconds remaining...', numberOfSecondsRemaining), 20, 50, black);
+            
+            xOffset = rotationRadius * cos(rotationAngle);
+            yOffset = rotationRadius * sin(rotationAngle);
+            offsetCenteredspotRect = OffsetRect(centeredspotRect, xOffset, yOffset);
+            Screen('FillOval', window, [0 0 127], offsetCenteredspotRect);
+            Screen('Flip', window);
+            
+            % Note that holding down the arrow key without releasing it will
+            % not cause he dot to keep moving since this generates only a
+            % single key press event (compare to comparable demo in KbDemo.m)
+            %
+            % We could work around this by making note of whether the key
+            % has been released using the call:
+            % [pressed, firstPress, firstRelease, lastPress, lastRelease]= KbQueueCheck()
+            % and noting whether lastRelease is more recent than lastPress for
+            % the keys of interest, tracking the status across loop iterations.
+           	% However,it would be easier to use KbCheck, which reflects the
+           	% current status of the key directly (see KbDemo.m)
+            
+            [ pressed, firstPress]=KbQueueCheck;
+           
+            if pressed
+                if firstPress(rightKey)
+                    if rotationAngle < 2 * pi
+                        rotationAngle = rotationAngle + 0.1;
+                    else
+                        rotationAngle = 0;
+                    end
+                elseif firstPress(leftKey)
+                    if rotationAngle > 0
+                        rotationAngle = rotationAngle - 0.1;
+                    else
+                        rotationAngle = 2 * pi;
+                    end
+                elseif firstPress(escapeKey)
+                    break;
+                end
+            end
+            
+    end
+    Screen('CloseAll');
+    KbQueueRelease;	% Note that KbQueueRelease is also in the catch clause
+    fprintf('\n4 of 5.  Done.\n');    
+
+catch
+	KbQueueRelease;
+    Screen('CloseAll');
+    psychrethrow(psychlasterror);
+end
+return
+
+
+%% Part 5
+function KbQueueDemoPart5
+% Prints a list of keys that were pressed while other code was executing
+
+fprintf('5 of 5.  Testing KbQueueCheck asynchronously:\nPress one or more keys during the next 10 seconds.\n');
+KbQueueCreate;
+KbQueueStart;
+WaitSecs(10);
+fprintf('\n');
+KbQueueStop;	% Stop delivering events to the queue
+fprintf('Keypresses during the next 5 seconds will be ignored\n\n');
+WaitSecs(5);
+[ pressed, firstPress]=KbQueueCheck;
+fprintf('You pressed the following keys during the interval when keypresses were being recorded:\n');
+pressedKeys=KbName(firstPress)
+
+KbQueueRelease;
+return
