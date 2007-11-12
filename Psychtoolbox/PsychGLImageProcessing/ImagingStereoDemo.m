@@ -92,6 +92,22 @@ escape = KbName('ESCAPE');
        scrnNum = 0;
     end
 
+    % Dual display dual-window stereo requested?
+    if stereoMode == 10
+        % Yes. Do we have at least two separate displays for both views?
+        if length(Screen('Screens')) < 2
+            error('Sorry, for stereoMode 10 you''ll need at least 2 separate display screens in non-mirrored mode.');
+        end
+        
+        if ~IsWin
+            % Assign left-eye view (the master window) to main display:
+            scrnNum = 0;
+        else
+            % Assign left-eye view (the master window) to main display:
+            scrnNum = 1;
+        end
+    end
+    
     % Open double-buffered onscreen window with the requested stereo mode,
     % setup imaging pipeline for additional on-the-fly processing:
     
@@ -113,7 +129,23 @@ escape = KbName('ESCAPE');
     [windowPtr, windowRect]=PsychImaging('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
 
     % Oldstyle:   [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, 0, [], [], [], stereoMode);
-    
+
+    if stereoMode == 10
+        % In dual-window, dual-display mode, we open the slave window on
+        % the secondary screen. Please note that, after opening this window
+        % with the same parameters as the "master-window", we won't touch
+        % it anymore until the end of the experiment. PTB will take care of 
+        % managing this window automatically as appropriate for a stereo
+        % display setup. That is why we are not even interested in the window
+        % handles of this window:
+        if IsWin
+            slaveScreen = 2;
+        else
+            slaveScreen = 1;
+        end
+        Screen('OpenWindow', slaveScreen, BlackIndex(slaveScreen), [], [], [], stereoMode);
+    end
+        
     % Stimulus settings:
     numDots = 1000;
     vel = 1;   % pix/frames

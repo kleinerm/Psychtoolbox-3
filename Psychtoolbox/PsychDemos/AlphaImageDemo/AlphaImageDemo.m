@@ -132,7 +132,7 @@ try
     fprintf('Size  mask texture: %d x %d\n', RectWidth(mRect), RectHeight(mRect));
 
     % Blank sceen
-    Screen('FillRect',w, gray);
+    Screen('FillRect',w, uint8(gray));
     Screen('Flip', w);
 
     % initialize mouse position at center

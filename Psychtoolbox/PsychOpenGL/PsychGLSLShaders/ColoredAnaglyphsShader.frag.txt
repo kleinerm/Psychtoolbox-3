@@ -1,0 +1,49 @@
+/* ColoredAnaglyphsShader.frag.txt
+ *
+ * A more complex conversion shader for color anaglyphs than the one
+ * hard-wired into PTBs Screen command. Applies full 3x3 color gain
+ * matrices to colors of each view channel, then adds them up, then
+ * optionally applies gamma correction to the red output channel.
+ *
+ * Standard anaglyph conversion is implemented by the default shader in
+ * Screen() and can be parameterized by SetAnaglyphParameters.
+ *
+ * This shader is used for more complex/exotic ways of anaglyph conversion.
+ *
+ * Loaded/initialized and used by SetAnaglyphParameters.m as part of
+ * the PTB imaging pipelines color anaglyph shading support.
+ *
+ * (C) 2007 Mario Kleiner - Released to you under GPLv2.
+ */
+
+/* Left image channel and right image channel: */
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+
+/* 3 by 3 color gain matrices for left- right- channel: */
+uniform mat3 GainsLeft;
+uniform mat3 GainsRight;
+
+/* Gamma value for red out channel - Set zero for no gamma correction! */
+uniform float RedGamma;
+
+void main()
+{
+    /* Lookup RGB pixel colors in left- and right buffer: */
+    vec3 incolor1 = texture2DRect(Image1, gl_TexCoord[0].st).rgb;
+    vec3 incolor2 = texture2DRect(Image2, gl_TexCoord[0].st).rgb;
+
+    /* Multiply each vector with its corresponding xform matrix: */
+    vec3 channel1 = GainsLeft  * incolor1;
+    vec3 channel2 = GainsRight * incolor2;
+
+    /* Add them up to form final output fragment RGB color: */
+    gl_FragColor.rgb = channel1 + channel2;
+
+    /* Alpha is forced to 1 - It does not matter anymore: */
+    gl_FragColor.a = 1.0;
+
+    /* Apply gamma correction to red channel, if requested: */
+    /* Note: This op is expensive on GPUs without dynamic flow control! */
+    if (RedGamma > 0.0) gl_FragColor.r = pow(gl_FragColor.r, RedGamma);
+}
