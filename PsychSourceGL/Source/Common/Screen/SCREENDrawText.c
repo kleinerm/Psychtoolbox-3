@@ -3,7 +3,7 @@
   
     AUTHORS:
     
-		Allen.Ingling@nyu.edu				awi
+		Allen.Ingling@nyu.edu					awi
 		mario.kleiner at tuebingen.mpg.de	mk
   
     PLATFORMS:
@@ -22,45 +22,21 @@
 		11/01/05    mk      Removal of dead code + beautification.
 		11/21/05    mk      Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
 		01/01/06    mk      Code branch for M$-Windoze implementation of DrawText added.
+		11/11/07		mk		  New GDI based Windoze text renderer implemented.
 
     DESCRIPTION:
+
+		Unified file with text renderers for all platforms (OS/X, Windows, Linux).
   
     REFERENCES:
 	
 		http://oss.sgi.com/projects/ogl-sample/registry/APPLE/client_storage.txt
 		http://developer.apple.com/samplecode/Sample_Code/Graphics_3D/TextureRange.htm
-	
   
     TO DO:
-  
-		- Set the alpha channel value in forground and background text correctly so that we only overwrite the portions of the target window where the text goes.
-	
-		- If we fail to set the font before calling this function we crash.  Fix that. 
-	
-		- Drawing White text works but othewise the colors don't seem to map onto the componenets correctlty.  Need to fix that.
-	
-		- By the way, there is something wrong with FillRect and the alpha channel does not clear the screen.
-		
-		- Accept 16-bit characters
-	
-		And remember:
-	
-		Destroy the shadow window after we are done with it. 
-	
-		Fix the color bug  See RBGA not in code below. 
-		
-		 
-		UPDATE 3/9/05
-		
-		quick fix:		-Make the texture the nearest power of two which encloses the window, 
-                                        -Set source alpha to 1 and target to 1-source alpha.
-                                        -Use a rectangular subtexture of the full texture
-		
-		more complicated fix: 
-		
-                                        -Use size of bounding text box to determine texture size.  
-                                        -(Optionally isolate rotine for bounding box to match text width of OS 9)
-                                        -Obey alpha blending rules.  This makes sense when we only overwrite with a bounding box.
+
+		Platform specific code should be in the platform folders, not here in the Common folder! Sort this out some time.
+		This file is in need for extensive cleanup and refactoring!!!
 							
 */
 
@@ -1232,6 +1208,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		// Draw a background color quad:
 		
 		// Set GL drawing color:
+		PsychCoerceColorMode( &(winRec->textAttributes.textBackgroundColor));
 		PsychSetGLColor(&(winRec->textAttributes.textBackgroundColor), winRec);
 
 		// Draw background rect:
@@ -1240,7 +1217,11 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 
     // Setup unpack mode and position for blitting of the bitmap to screen:
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glRasterPos2i(0,(int) oldHeight - 1 - skiplines);
+	// MK: Subracting one should be correct, but isn't (visually). Maybe a
+	// a side-effect of gfx-rasterizer inaccuracy or off-by-one error in our
+	// PsychSetupView() code?!?
+	// glRasterPos2i(0,(int) oldHeight - 1 - skiplines);
+	glRasterPos2i(0,(int) oldHeight - 0 - skiplines);
 
 	// Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
