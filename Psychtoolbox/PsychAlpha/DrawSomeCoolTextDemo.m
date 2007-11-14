@@ -31,9 +31,19 @@ try
         Screen('TextSize',w, 48);
         Screen('TextStyle', w, 0);
     end;
+    
+    fid = fopen([PsychtoolboxRoot 'PsychDemos/japanese_shiftJIS.txt'], 'r', 'n','Shift_JIS');
+    japanesetext = native2unicode(fread(fid),'Shift_JIS');
+    fclose(fid);
+    disp(japanesetext);
+    
+    
+    
     y=200;
-    [x1, y1] = Screen('DrawText', w, double('Hello')+1000, 300, y, [255, 0, 255, 255], [], 1)
-    [x2, y2] = Screen('DrawText', w, double('World!')+1000, [], [], [], [], 1)
+    [x1, y1] = Screen('DrawText', w, double('Hello'), 300, y, [255, 0, 255, 255], [], 1)
+    [x2, y2] = Screen('DrawText', w, double('World!'), [], [], [], [], 1)
+    Screen('TextFont', w, 29);
+    Screen('DrawText', w, double(japanesetext'), 20, y+100, [0 0 0 255], [], 1);
     
 %    Screen('DrawText', w, double('Hello World!xyq')+1000, 100, y, [255, 0, 255], [], 0);
     Screen('FrameRect', w, 255, [100 y 600 y+48]);
