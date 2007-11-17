@@ -185,6 +185,8 @@ function DownloadPsychtoolbox(flavor,targetdirectory)
 % 10/29/07 mk  Small fix for Kerstin Preuschoffs bugreport: Download of old
 %              versions didn't work anymore, becuase 'flavor' string was
 %              lower-cased.
+% 11/17/07 mk  Prioritized https:// checkout over http:// checkout --> More
+%              likely to bypass proxy servers and succeed.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -453,12 +455,12 @@ else
 end
 
 if err
-    % Failed! Let's retry it via http protocol. This may work-around overly
+    % Failed! Let's retry it via https protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+    fprintf('Will retry now by use of alternative https protocol...\n');
+    checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX
@@ -469,12 +471,12 @@ if err
 end
 
 if err
-    % Failed! Let's retry it via https protocol. This may work-around overly
+    % Failed! Let's retry it via http protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+    fprintf('Will retry now by use of alternative http protocol...\n');
+    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX
