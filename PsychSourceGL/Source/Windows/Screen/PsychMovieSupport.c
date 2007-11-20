@@ -138,6 +138,10 @@ double PsychDetermineMovieFramecountAndFps(Movie theMovie, int* nrframes)
     return((double) GetMovieTimeScale(theMovie) / (double) myDuration);    
 }
 
+int PsychGetMovieCount(void) {
+	return(numMovieRecords);
+}
+
 /*
  *      PsychCreateMovie() -- Create a movie object.
  *
