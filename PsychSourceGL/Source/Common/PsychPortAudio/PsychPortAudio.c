@@ -200,7 +200,17 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// Hot standby?
 	if (dev->state == 1) {
 		// Hot standby: Query and convert timestamps to system time.
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// Super ugly hack for the most broken system in existence: Force
+			// the audio thread to cpu core 1, hope that repeated redundant
+			// calls don't create scheduling overhead or excessive other overhead.
+			// The explanation for this can be found in Source/Windows/Base/PsychTimeGlue.c
+			SetThreadAffinityMask(GetCurrentThread(), 1);
+		#endif
+		
+		// Retrieve current system time:
 		PsychGetAdjustedPrecisionTimerSeconds(&now);
+		
 		// FIXME: PortAudio stable sets timeInfo->currentTime == 0 --> Breakage!!!
 		// That's why we currently have our own PortAudio version.
 		

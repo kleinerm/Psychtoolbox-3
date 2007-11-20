@@ -35,8 +35,8 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 PsychError SCREENGetWindowInfo(void) 
 {
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
-							   "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion"};
-	const int  fieldCount = 15;
+							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion"};
+	const int  fieldCount = 16;
 	PsychGenericScriptType	*s;
 	
     PsychWindowRecordType *windowRecord;
@@ -106,6 +106,7 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("MultiSampling", 0, windowRecord->multiSample, s);
 		PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);
+		PsychSetStructArrayDoubleElement("GuesstimatedMemoryUsageMB", 0, (double) windowRecord->surfaceSizeBytes / 1024 / 1024, s);
 		
 		// Query real size of the underlying display in order to define the vbl_startline:
 		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);

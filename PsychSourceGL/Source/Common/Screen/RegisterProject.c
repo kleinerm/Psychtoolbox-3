@@ -226,6 +226,10 @@ PsychError PsychModuleInit(void)
 	PsychVideoCaptureInit();
 	PrepareScreenPreferences();
     
+	// Call wait-routine for 0.1 secs: This to initialize the time glue on MS-Windows,
+	// so the first call to a timing function won't delay:
+	PsychWaitIntervalSeconds(0.1);
+	
 	// Reset the "userspaceGL" flag which tells PTB that userspace GL rendering was active
 	// due to Screen('BeginOpenGL') command.
 	PsychSetUserspaceGLFlag(FALSE);

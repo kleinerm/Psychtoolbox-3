@@ -58,6 +58,9 @@ void ScreenCloseAllWindows(void)
 	// due to Screen('BeginOpenGL') command.
 	PsychSetUserspaceGLFlag(FALSE);
 	
+	// Check for stale texture ressources:
+	PsychRessourceCheckAndReminder(TRUE);	
+	
     // Shutdown Quicktime subsystems if active:
     PsychExitMovies();
     PsychExitVideoCapture();

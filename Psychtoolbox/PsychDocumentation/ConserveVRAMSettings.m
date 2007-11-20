@@ -58,6 +58,14 @@
 % windows. If that causes trouble for some weird reason, you can prevent
 % automatic sharing with this flag.
 %
+% 64 == kPsychUseSoftwareRenderer: Request use of a software implemented
+% renderer instead of the GPU hardware renderer. This request is silently
+% ignored if your platform doesn't support software rendering. Currently
+% only MacOS/X 10.4 and later in windowed mode (i.e. not fullscreen)
+% supports this via the Apple floating point renderer. Mostly useful for
+% testing and debugging of scripts that need floating point support on
+% hardware that doesn't support this. Not generally useful for production
+% use.
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

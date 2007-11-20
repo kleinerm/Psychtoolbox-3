@@ -64,6 +64,10 @@ static Boolean clientstorage = FALSE;
 // GL_TEXTURE_2D... This switch defines the global mode for the texture mapping engine...
 static GLenum  texturetarget = 0;
 
+// A rough guess of how much memory is currently consumed by textures... Can be grossly wrong,
+// only used if texture creation failed and out-of-memory is a likely suspect.
+static unsigned int texmemguesstimate = 0;
+
 void PsychDetectTextureTarget(PsychWindowRecordType *win)
 {
     // First time invocation?
@@ -219,7 +223,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	static GLint                    gl_lastrequestedinternalFormat = 0;
 	GLint							gl_rbits=0, gl_gbits=0, gl_bbits=0, gl_abits=0, gl_lbits=0;
 	long							screenWidth, screenHeight;
-	int								twidth, theight, pass;
+	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
 	bool							recycle = FALSE;
 	GLenum							glerr;
@@ -447,7 +451,24 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 									printf("PTB-ERROR: Such HDR textures have very high VRAM memory demands.\n");
 								}
 								
-								printf("PTB-ERROR: The most likely cause of failure is that your graphics hardware doesn't have sufficient amounts of\n");
+								// Check if a general out-of-memory condition is the likely culprit, due to wrong texture management
+								// on the users side:
+								texcount = PsychRessourceCheckAndReminder(FALSE);
+								printf("PTB-ERROR: Currently there are already %i textures, offscreen windows, movies or proxies open.\n", texcount);								
+								printf("PTB-ERROR: All these objects consume system memory and could lead to ressource shortage.\n");
+								printf("PTB-ERROR: My current (rough and probably way too low) estimate is that at least %f MB of memory are\n", (float) texmemguesstimate / 1024 / 1024);
+								printf("PTB-ERROR: consumed for textures, offscreen windows and similar objects.\n");
+								if (texcount > 100) {
+									printf("PTB-ERROR: The count is above one hundred objects. Could it be that you forgot to dispose no longer\n");
+									printf("PTB-ERROR: needed objects from previous experiment trials (missing Screen('Close' [, texturePtr]) or Screen('CloseMovie', moviePtr))??");
+								}
+
+								if (texmemguesstimate > 100 * 1024 * 1024) {
+									printf("PTB-ERROR: At least 100 MB memory consumed for textures, probably much more. Could it be that you forgot to dispose no longer\n");
+									printf("PTB-ERROR: needed textures from previous experiment trials (missing Screen('Close' [, texturePtr]))??");
+								}
+								
+								printf("PTB-ERROR: Another cause of failure could be that your graphics hardware doesn't have sufficient amounts of\n");
 								printf("PTB-ERROR: free VRAM memory. Try to reduce the precision and/or size of your texture image to the lowest\n");
 								printf("PTB-ERROR: acceptable setting for your purpose.\n");
 								printf("PTB-ERROR: Read the online help for Screen MakeTexture? or Screen OpenOffscreenWindow? for information\n");
@@ -462,7 +483,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 							}
 						}
 						
-						PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient VRAM memory.");
+						PsychErrorExitMsg(PsychError_user, "Texture creation failed, most likely due to unsupported precision or insufficient free memory.");
 					}
 					else {
 						// Some other error:
@@ -472,6 +493,11 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				}
 			}	// End of error checking...
 		}  // End of dual-pass texture creation (check + create).
+		
+		// Accounting... ...this is only a rough guesstimate:
+		win->surfaceSizeBytes = ((glinternalFormat==GL_RGBA8) ? 4 : win->depth / 8) * twidth * theight;
+		texmemguesstimate+= win->surfaceSizeBytes;
+				
 	}  // End of new texture creation.
 	
 	// Stage 2: If its a 2D texture or a recycled texture, fill it with content via glTexSubImage2D:
@@ -616,8 +642,16 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
         // We need to use glFinish() here. FinishObjectApple would be better (more async operations) but it doesn't
         // work for some strange reason :(
         if ((win->textureMemory) && (win->textureNumber > 0)) glFinish(); // FinishObjectAPPLE(GL_TEXTURE_2D, win->textureNumber);
-        // Perform standard OpenGL texture cleanup:
-        glDeleteTextures(1, &win->textureNumber);
+
+        // Perform standard OpenGL texture cleanup if needed:
+		if (&win->textureNumber != 0) {
+			glDeleteTextures(1, &win->textureNumber);
+
+			// Accounting... ...this is only a rough guesstimate:
+			texmemguesstimate-= win->surfaceSizeBytes;
+			if (texmemguesstimate < 0) texmemguesstimate = 0;
+		}
+		
         PsychTestForGLErrors();
     }
 

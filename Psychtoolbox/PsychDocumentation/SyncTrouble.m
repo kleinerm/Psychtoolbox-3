@@ -71,7 +71,7 @@
 % any computer system can cause some deviation from the expected value. Samples that don't
 % pass this basic test are rejected. Valid samples are used to update a mean value, standard
 % deviation of the mean is also calculated: The measurement loop ends when at least 50 valid
-% samples have been taken and the standard deviation from the mean is less than 100 microseconds.
+% samples have been taken and the standard deviation from the mean is less than 200 microseconds.
 % If it is not possible to satisfy this criteria during a five second measurement interval, then the
 % calibration is aborted and repeated for up to three times. Failure to get a valid measurement
 % during up to three calibration runs is indicating massive timing problems or the inability

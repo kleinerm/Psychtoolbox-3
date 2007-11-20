@@ -272,7 +272,6 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			// Request a 10 bit per color component framebuffer with 2 bit alpha channel:
 			printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
 			attribs[attribcount++]=kCGLPFANoRecovery;
-			attribs[attribcount++]=kCGLPFAAccelerated;
 			attribs[attribcount++]=kCGLPFAColorSize;
 			attribs[attribcount++]=16*3;
 			attribs[attribcount++]=kCGLPFAAlphaSize;
@@ -303,17 +302,36 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	}
 	else {
 		// AGL specific pixelformat setup:
-		attribs[attribcount++]= AGL_RGBA;
-		attribs[attribcount++]=	AGL_RED_SIZE;
-		attribs[attribcount++]= 8;
-		attribs[attribcount++]=	AGL_GREEN_SIZE;
-		attribs[attribcount++]= 8;
-		attribs[attribcount++]=	AGL_BLUE_SIZE;
-		attribs[attribcount++]= 8;
-		attribs[attribcount++]=	AGL_ALPHA_SIZE;
-		attribs[attribcount++]= 8;
-		attribs[attribcount++]= AGL_PIXEL_SIZE;
-		attribs[attribcount++]= 32;
+
+		// Possible to request use of the Apple floating point software renderer:
+		if (conserveVRAM & kPsychUseSoftwareRenderer) {
+			#ifndef kCGLRendererGenericFloatID
+			#define kCGLRendererGenericFloatID    0x00020400
+			#endif
+			attribs[attribcount++]=AGL_RENDERER_ID;
+			attribs[attribcount++]=kCGLRendererGenericFloatID;
+		}
+
+		// 32 bit per component, 128 bit framebuffer requested (32-32-32-32)?
+		if (windowRecord->depth == 128) {
+			// Request a floating point framebuffer in 32-bit float format, i.e., RGBA = 32 bits per component.
+			printf("PTB-INFO: Trying to enable 32 bpc float framebuffer...\n");
+			attribs[attribcount++]= AGL_RGBA;
+			attribs[attribcount++]= AGL_COLOR_FLOAT;
+		}
+		else {
+			attribs[attribcount++]= AGL_RGBA;
+			attribs[attribcount++]=	AGL_RED_SIZE;
+			attribs[attribcount++]= 8;
+			attribs[attribcount++]=	AGL_GREEN_SIZE;
+			attribs[attribcount++]= 8;
+			attribs[attribcount++]=	AGL_BLUE_SIZE;
+			attribs[attribcount++]= 8;
+			attribs[attribcount++]=	AGL_ALPHA_SIZE;
+			attribs[attribcount++]= 8;
+			attribs[attribcount++]= AGL_PIXEL_SIZE;
+			attribs[attribcount++]= 32;
+		}
 	}
 	
     // Support for 3D rendering requested?

@@ -261,7 +261,8 @@ PsychError SCREENOpenOffscreenWindow(void)
 		windowRecord->textureMemorySizeBytes = 0;
 		windowRecord->textureMemory = NULL;
 		windowRecord->texturetarget = GL_TEXTURE_RECTANGLE_EXT;
-		
+		windowRecord->surfaceSizeBytes = PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8);
+
 		// Initial setup done, continues below after some shared code...
 	}
 	else {
@@ -360,7 +361,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		PsychGLRect(windowRecord->rect);
 
 		// Ready. Unbind it.
-		PsychSetDrawingTarget(NULL);
+		PsychSetDrawingTarget(NULL);		
 	}
 	else {
 		// Old-style setup for non-FBO Offscreen windows:

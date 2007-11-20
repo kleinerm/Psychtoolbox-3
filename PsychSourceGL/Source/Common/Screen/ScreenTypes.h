@@ -167,6 +167,11 @@ typedef struct {
 // Do not share heavyweight ressources like shaders, VBO's, FBO's, display lists, textures etc. between
 // OpenGL contexts:
 #define kPsychDontShareContextRessources 32
+// Request explicit use of a software implemented renderer instead of the GPU. This may or may not
+// be supported on a specific platform and is silently ignored if unsupported. On MacOS/X, this
+// selects the Apple software floating point renderer -- Allows float rendering on non-capable hardware,
+// e.g., for testing etc.
+#define kPsychUseSoftwareRenderer 64
 
 //function protoptypes
 

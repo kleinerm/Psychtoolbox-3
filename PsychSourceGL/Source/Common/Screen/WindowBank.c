@@ -285,6 +285,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// No aux param vector set by default:
 	(*winRec)->auxShaderParams = NULL;
 	(*winRec)->auxShaderParamsCount = 0;
+
+	// Reset memory accounting info for this windowRecord:
+	(*winRec)->surfaceSizeBytes = 0;
 }
 
 

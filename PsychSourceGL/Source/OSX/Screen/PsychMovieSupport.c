@@ -194,6 +194,10 @@ void* PsychAsyncCreateMovie(void* mi)
     return(NULL);
 }
 
+int PsychGetMovieCount(void) {
+	return(numMovieRecords);
+}
+
 /*
  *      PsychCreateMovie() -- Create a movie object.
  *
