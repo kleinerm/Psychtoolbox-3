@@ -1,9 +1,5 @@
 function GetSecsTest(n)
 
-if ~IsWin
-    error('GetSecsTest is currently only supported on Microsoft Windows.');
-end
-
 % Set default number of samples to 10000:
 if nargin < 1
     n = [];
