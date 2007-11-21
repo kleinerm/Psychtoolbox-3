@@ -2836,8 +2836,9 @@ boolean PsychIsUserspaceRendering(void)
 }
 
 int PsychRessourceCheckAndReminder(boolean displayMessage) {
-	int i,j;
+	int i,j = 0;
 
+	#if PSYCH_SYSTEM != PSYCH_LINUX
 	// Check for open movies:
 	j = PsychGetMovieCount();
 	if (j > 0) {
@@ -2851,7 +2852,8 @@ int PsychRessourceCheckAndReminder(boolean displayMessage) {
 			printf("PTB-INFO: conditions or even crashes of Matlab/Octave (in rare cases). Please check your code.\n\n");
 		}
 	}
-	
+	#endif
+
 	// Check for open textures and proxies at close time. Might be indicative of missing
 	// close calls for releasing texture -- ie. leaked memory:
 	i = PsychCountOpenWindows(kPsychTexture) + PsychCountOpenWindows(kPsychProxyWindow);
