@@ -64,6 +64,12 @@ PsychError GETSECSGetSecs(void)
 			// A positive opmode value allows to change the thread affinity mask of the PTB Thread.
 			// The old affinity mask is returned in that case. This to check for TSC sync across cpu cores:
 			if (opmode > 0) PsychCopyOutDoubleArg(5, FALSE, (double) SetThreadAffinityMask(GetCurrentThread(), (DWORD) opmode));
+			// An opmode setting of smaller than -1 will try to cancel our timeBeginPeriod(1) requests, as
+			// automatically done by the PsychTimeGlue: We try to reset the low-res timer to something
+			// like its normal 10 or 15 msecs duty cycle. Could help to spot timers that are actually
+			// broken, but do work with the new PTB due to the increased IRQ load and therefore the
+			// reduced power management. Post-hoc test if timing was reliable in earlier PTB releases.
+			if (opmode < -1) timeEndPeriod(1);
 		}
 	 #else
 		// For MacOS/X and Linux, we return gettimeofday() as reference value and
