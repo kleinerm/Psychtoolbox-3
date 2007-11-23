@@ -47,7 +47,7 @@ if IsWin
         fprintf('Startup config file C:\\boot.ini looks like this:\n');
         disp(bootini);
 
-        if ~isempty(strfind(bootini, '/usepmtimer'))
+        if ~isempty(findstr(bootini, '/usepmtimer'))
             fprintf('Seems that your system vendor applied some proper fixes for timing on your system... - Good! ;-)\n\n\n');
         else
             fprintf('No special configuration options found in your startup file. Either not neccessary, or your\n');
@@ -199,10 +199,10 @@ if IsWin
     % Compute increment between successive low-res timer ticks:
     tickinc = diff(ticks);
     plot(tickinc * 1000);
-    title('Delta of low-res timer (msecs) between consecutive samples:');
+    title('Block II: Delta of low-res timer (msecs) between consecutive samples:');
     figure;
     hist(tickinc * 1000, 50);
-    title('Distribution of low-res timer deltas (msecs):');
+    title('Block II: Distribution of low-res timer deltas (msecs):');
 
     % Find average duration of a timer tick: This should be 1 msec...
     avgtickdelta = median(tickinc(find(tickinc > 0)));
@@ -231,11 +231,11 @@ if IsWin
 
     figure;
     plot(ticks, raw);
-    title('Elapsed time (msecs) of low-res (x-axis) vs. high-res (y-axis) timer:');
+    title('Block II: Elapsed time (msecs) of low-res (x-axis) vs. high-res (y-axis) timer:');
 
     figure;
     plot((raw - ticks)*1000);
-    title('Lag of high-res timer vs. low-res timer, plotted against sample count:');
+    title('Block II: Lag of high-res timer vs. low-res timer, plotted against sample count:');
     avglag = mean(raw-ticks)*1000;
     lag1 = (raw(1) - ticks(1)) * 1000;
     lagn = (raw(n) - ticks(n)) * 1000;
