@@ -29,6 +29,11 @@ function ProceduralGaborDemo(benchmark)
 % stimuli. This is just the error given the settings in this script.
 % Typical speed is 2800 frames per second.
 %
+% Typical result on Intel Pentium IV, running on WindowsXP with a NVidia
+% Geforce7800 and up to date drivers: Error is 0.0000146741 units, ie. one
+% part in 68000, therefore perfect even on a display device with 15 bit
+% DAC's. The framerate is about 2344 frames per second.
+%
 % If you want to draw many gabors, you wouldn't do it like in this script,
 % but use the batch-drawing version of Screen('DrawTextures', ...) instead,
 % as demonstrated, e.g., in DrawingSpeedTest.m
