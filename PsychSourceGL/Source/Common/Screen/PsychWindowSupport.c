@@ -1892,6 +1892,13 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 					// If we'd reset our told at each invalid sample, we would need over 3 times the amount of
 					// samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
 					// sample (see above), so the VBL period will be over before we manage to try to swap again.
+					
+					// Reinitialize told to tnew, otherwise errors can accumulate:
+					told = tnew;
+
+					// Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
+					// of the VBL period of the successfull swap.
+					PsychWaitIntervalSeconds(0.002);
 				}
 				
 				// Store current sample in samplebuffer if requested:
