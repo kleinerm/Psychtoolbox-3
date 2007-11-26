@@ -48,6 +48,7 @@ inputimage = uint8(edge(inputimage, 'canny'));
 %inputimage(:,:)=0;
 %inputimage(100:105,:)=255;
 
+Screen('EndOpenGL', win);
 
 
 % ...and convert it to texture:
@@ -56,6 +57,10 @@ inputtex = Screen('MakeTexture', win, inputimage);
 
 % Retrieve an OpenGL handle to it:
 texin = Screen('GetOpenGLTexture', win, inputtex);
+
+Screen('BeginOpenGL', win);
+
+
 
 maxattachnr = glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)
 
@@ -158,8 +163,8 @@ numiters = 100
 gvfcinput = double(inputimage);
 
 tic
-%[gvfc_v,gvfc_u] = GVFC(gvfcinput, mu, numiters);
-gvfcduration = toc
+[gvfc_v,gvfc_u] = GVFC(gvfcinput, mu, numiters);
+gvfcduration = toc * 1000
 gvfcdurationperiter = gvfcduration / numiters
 
 % This performs stage 1 of GVF initialization: Normalize all edge map
@@ -324,6 +329,7 @@ tic;
 % GVF iterative ping-pong update loop:
 bufferid = 0;
 for i=1:numiters
+%tic
     % Compute drawbuffers id and its texturehandle:
     bufferid = 1 - bufferid;
     futuretex = buffertex(bufferid + 1);
@@ -349,6 +355,8 @@ for i=1:numiters
 
     % Assign source texture for next pass:
     inputtex = futuretex;
+%glFinish;
+%gpupass = toc * 1000
 end;
 
 glFinish

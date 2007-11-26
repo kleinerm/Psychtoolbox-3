@@ -1,0 +1,70 @@
+/* PseudoGray_FormattingShader.frag.txt -- PseudoGray output formatter
+ *
+ * This shader converts a HDR texture into a RGBA8 8bpc framebuffer
+ * image, suitable for display on a standard monitor. It is meant for
+ * display of pure luminance (grayscale) stimuli and uses a technique
+ * known as "pseudo gray" or "bit stealing" to allow to display more than
+ * 256 levels of luminance (exactly 1768 levels) on a standard 8 bit display.
+ * 
+ * It expects the luminance image data in the red channel of
+ * the texture, with values ranging from 0.0 - 1.0, remaps it into
+ * the 12 bit data range needed for pseudo gray rendering, then applies
+ * the pseudo gray algorithm to get 8bpc RGB pixels with an effective
+ * luminance range of 1768 levels.
+ *
+ * The alpha channel is set to a fixed maximum value of 1.0, because alpha
+ * blending on such an image would be an undefined operation.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c)2007 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+uniform sampler2DRect Image;
+
+void main()
+{
+    vec3 boost;
+
+    /* Retrieve RGBA HDR input color value, but only use the red channel: */
+    /* The red channel encodes luminance in 0.0 - 1.0 range. */
+    float luminance = texture2DRect(Image, gl_TexCoord[0].xy).r;
+
+    /* Remap luminance from 0.0 - 1.0 to 0 to 4095, aka 12 bits: */
+    float index = luminance * 4095.0 + 0.01;
+
+    /* Compute 8 most significant bits and replicate them to RGB channels: */
+    /* Hmmm: Sometimes not perfectly accurate... Needed at all? The gfx- */
+    /* does it anyway */
+    vec3 outcolor = vec3(floor(index / 16.0) / 255.0);
+
+    /* Compute 4 least significant bits as index into "boost table": */
+    float boostidx = floor(mod(index, 16.0));
+
+    if (0.0  <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (1.0  <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (2.0  <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (3.0  <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (4.0  <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (5.0  <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (6.0  <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (7.0  <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (8.0  <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (9.0  <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (10.0 <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (11.0 <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (12.0 <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (13.0 <= boostidx) boost = vec3(0.0,1.0,0.0);
+    if (14.0 <= boostidx) boost = vec3(1.0,0.0,0.0);
+    if (15.0 <= boostidx) boost = vec3(0.0,1.0,0.0);
+
+    /* Lookup proper boost values from LUT, add'em to base color and assign */
+    /* result as RGB output color for this fragment: */
+    gl_FragColor.rgb = outcolor + boost;
+gl_FragColor.b = boostidx / 15.0;
+    /* Fix alpha channel to 1.0. */
+    gl_FragColor.a = 1.0;
+}

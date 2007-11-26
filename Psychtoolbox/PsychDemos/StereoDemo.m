@@ -122,13 +122,6 @@ try
         Screen('OpenWindow', slaveScreen, BlackIndex(slaveScreen), [], [], [], stereoMode);
     end
     
-    % Initially fill left- and right-eye image buffer with black background
-    % color:
-    Screen('SelectStereoDrawBuffer', windowPtr, 0);
-    Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-    Screen('SelectStereoDrawBuffer', windowPtr, 1);
-    Screen('FillRect', windowPtr, BlackIndex(scrnNum));
-
     % Show cleared start screen:
     Screen('Flip', windowPtr);
     

@@ -207,6 +207,12 @@ void InitCGDisplayIDList(void)
     // Users are free to override the default. This behaviour will be changed in the future when multi-display support
     // for DirectDraw has been properly implemented and tested:
     PsychPrefStateSet_VBLTimestampingMode(-1);
+	printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
+	printf("PTB-INFO: default on MS-Windows multi-display setups. If you want to use them, first run the 'PerceptualVBLSyncTest'\n");
+	printf("PTB-INFO: script to verify they're working correctly on your setup. Then you can add the command:\n");
+	printf("PTB-INFO: Screen('Preference', 'VBLTimestampingMode', 1); at the top of your script to manually enable them.\n");
+	printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
+	printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n\n");
   }
 
   // Ready.

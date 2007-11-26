@@ -23,6 +23,7 @@
 %    hexstr                  - Hex string of lowest 32 bits of any number.
 %    ImageToVec              - Convert a grayscale image to vector format.
 %    IsLinux                 - Shorthand for testing whether running under Linux.
+%    IsMinimumOSXVersion     - Query if this is a specific OS/X version or higher.
 %    IsOctave                - Shortand for testing whether running under Octave.
 %    IsOS9                   - Shorthand for streq(computer,'MAC2').
 %    IsOSX                   - Shorthand for streq(computer,'MAC').

@@ -46,6 +46,7 @@ PsychError SCREENGetWindowInfo(void)
 	psych_uint64 postflip_vblcount;
 	double vbl_startline;
 	long scw, sch;
+	bool onscreen;
 	
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -57,17 +58,20 @@ PsychError SCREENGetWindowInfo(void)
     
     // Get the window record:
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
-    if(!PsychIsOnscreenWindow(windowRecord)) {
-        PsychErrorExitMsg(PsychError_user, "GetWindowInfo called on something else than an onscreen window.");
-    }
+	onscreen = PsychIsOnscreenWindow(windowRecord);
     
     // Query beamposonly flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &beamposonly);
 
-	// Query rasterbeam position: Will return -1 if unsupported.
-	PsychGetCGDisplayIDFromScreenNumber(&displayId, windowRecord->screenNumber);
-	beamposition = (double) CGDisplayBeamPosition(displayId);
-
+	if (onscreen) {
+		// Query rasterbeam position: Will return -1 if unsupported.
+		PsychGetCGDisplayIDFromScreenNumber(&displayId, windowRecord->screenNumber);
+		beamposition = (double) CGDisplayBeamPosition(displayId);
+	}
+	else {
+		beamposition = -1;
+	}
+	
 	if (beamposonly) {
 		// Return the measured beamposition:
 		PsychCopyOutDoubleArg(1, FALSE, beamposition);
@@ -91,7 +95,7 @@ PsychError SCREENGetWindowInfo(void)
 			// On OS/X we can query the OS for the system time of last VBL, so we can
 			// use the most recent VBL timestamp as baseline for timing calculations, 
 			// instead of one far in the past.
-			lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+			if (onscreen) { lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount); }
 		#endif
 
 		// If we couldn't determine this information we just set lastvbl to the last known
@@ -124,7 +128,6 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
 		PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
 		PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
-
 	}
 	
     // Done.

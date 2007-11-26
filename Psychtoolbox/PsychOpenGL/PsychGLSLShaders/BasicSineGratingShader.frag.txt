@@ -1,0 +1,27 @@
+/*
+ * File: BasicSineGratingShader.frag.txt
+ * Shader for drawing of basic parameterized sine grating patches.
+ *
+ * (c) 2007 by Mario Kleiner, licensed under GPL.
+ *		 
+ */
+
+uniform vec4 Offset;
+
+varying vec4  baseColor;
+varying float Phase;
+varying float FreqTwoPi;
+
+void main()
+{
+    /* Query current output texel position: */
+    float pos = gl_TexCoord[0].x;
+
+    /* Evaluate sine grating at requested position, frequency and phase: */
+    float sv = sin(pos * FreqTwoPi + Phase);
+
+    /* Multiply/Modulate base color and alpha with calculated sine            */
+    /* values, add some constant color/alpha Offset, assign as final fragment */
+    /* output color: */
+    gl_FragColor = (baseColor * sv) + Offset;
+}

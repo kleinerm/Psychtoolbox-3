@@ -184,7 +184,7 @@ static char synopsisString[] =
 	auxParameters = NULL;
 	m=n=p=0;
 	if (PsychAllocInDoubleMatArg(11, kPsychArgOptional, &m, &n, &p, &auxParameters)) {
-		if ((p!=1) || (m * n < 4) || (((m*n) % 4)==0)) PsychErrorExitMsg(PsychError_user, "The 11th argument must be a vector of 'auxParameter' values with a multiple of 4 components.");
+		if ((p!=1) || (m * n < 4) || (((m*n) % 4)!=0)) PsychErrorExitMsg(PsychError_user, "The 11th argument must be a vector of 'auxParameter' values with a multiple of 4 components.");
 	}
 	numAuxParams = m*n;
 	target->auxShaderParamsCount = numAuxParams;

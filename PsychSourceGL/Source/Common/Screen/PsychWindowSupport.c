@@ -769,6 +769,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
           }
           else {
               if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
+              if (PsychPrefStateGet_VBLTimestampingMode()< 0) printf("PTB-Info: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\\n");
           }
       }
       else {
@@ -1199,6 +1200,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double postflip_vbltimestamp = -1;
 	unsigned int vbltimestampquery_retrycount = 0;
 	double time_at_swaprequest=0;			// Timestamp taken immediately before requesting buffer swap. Used for consistency checks.
+	int line_at_swaprequest = -1;			// Scanline of display at time of swaprequest.
 	boolean flipcondition_satisfied;
 	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
@@ -1409,8 +1411,28 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// Take preswap timestamp:
 	PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
 
-    // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace":
+	// Some check for buggy drivers: If VBL synched flipping is requested, we expect that at least 2 msecs
+	// should pass between consecutive bufferswaps. 2 msecs is chosen because the VBL period of most displays
+	// at most settings does not last longer than 2 msecs (usually way less than 1 msec), and this would still allow
+	// for an update rate of 500 Hz -- more than any current display can do.
+	if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002)) {
+		// Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
+		// Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
+		// if already a swap happened in a VBL --> Multiple swaps per refresh cycle if this routine is
+		// called fast enough, ie. multiple times during one single VBL period. Not good!
+		// We try to enforce correct behaviour by waiting until at least 2 msecs have elapsed before the next
+		// bufferswap:
+		PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
+
+		// Take updated preswap timestamp:
+		PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
+	}
+	
+    // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
+	// take a measurement of the beamposition at time of swap request:
+	line_at_swaprequest = (int) CGDisplayBeamPosition(displayID);
     PsychOSFlipWindowBuffers(windowRecord);
+	line_at_swaprequest = (line_at_swaprequest + (int) CGDisplayBeamPosition(displayID)) * 0.5;
 	
 	// Also swap the slave window, if any:
 	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
@@ -1506,24 +1528,24 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // If this fails for some reason, we mark it as invalid by setting it to -1.
         if ((windowRecord->VBL_Endline != -1) && (vbltimestampmode>=0)) {
 
-				// One more sanity check to account for the existence of the most
-				// insane OS on earth: Check for impossible beamposition values although
-				// we've already verified correct working of the queries during startup.
-				if ((*beamPosAtFlip < 0) || (*beamPosAtFlip > vbl_endline)) {
-					// Ok, this is completely foo-bared.
-					printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
-					printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
-					printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
-					printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
-					printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
-					
-					// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
-					windowRecord->VBL_Endline = -1;
-
-					// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
-					*beamPosAtFlip = vbl_startline;
-				}
-
+			// One more sanity check to account for the existence of the most
+			// insane OS on earth: Check for impossible beamposition values although
+			// we've already verified correct working of the queries during startup.
+			if ((*beamPosAtFlip < 0) || (*beamPosAtFlip > vbl_endline)) {
+				// Ok, this is completely foo-bared.
+				printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+				printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+				printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
+				printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
+				printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+				
+				// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
+				windowRecord->VBL_Endline = -1;
+				
+				// Create fake beampos value for this invocation of Flip so we return an ok timestamp:
+				*beamPosAtFlip = vbl_startline;
+			}
+			
             if (*beamPosAtFlip >= vbl_startline) {
                 vbl_lines_elapsed = *beamPosAtFlip - vbl_startline;
                 onset_lines_togo = vbl_endline - (*beamPosAtFlip) + 1;
@@ -1577,7 +1599,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// actually starting it! We test for this, but allow for a slack of 50 microseconds,
 		// because a small "too early" offset could be just due to small errors in refresh rate
 		// calibration or other sources of harmless timing errors.
-		if (time_at_vbl < time_at_swaprequest - 0.00005) {
+		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_at_swaprequest > 0) && (line_at_swaprequest < vbl_startline))) {
 			// Ohoh! Broken timing. Disable advanced timestamping for future operations, warn user.
 			PsychPrefStateSet_VBLTimestampingMode(-1);
 			printf("\n\nPTB-ERROR: Screen('Flip'); timestamping computed an *impossible value* %lf secs, which would indicate that\n", time_at_vbl);
@@ -1733,7 +1755,7 @@ void PsychUnsetGLContext(void)
 */
 double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* numSamples, double* maxsecs, double* stddev, double intervalHint)
 {
-    int i;
+    int i, j;
     double told, tnew, tdur, tstart;
     double tstddev=10000.0f;
     double tavg=0;
@@ -1741,7 +1763,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     double n=0;
     double reqstddev=*stddev;   // stddev contains the requested standard deviation.
     int fallthroughcount=0;
-    
+    double* samples = NULL;
+	int maxlogsamples = 0;
+	
     // Child protection: We only work on double-buffered onscreen-windows...
     if (windowRecord->windowType != kPsychDoubleBufferOnscreen) {
         PsychErrorExitMsg(PsychError_InvalidWindowRecord, "Tried to query/measure monitor refresh interval on a window that's not double-buffered and on-screen.");
@@ -1751,6 +1775,12 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
     if (*numSamples>0) {
         // Calibration run of 'numSamples' requested. Let's do it.
         
+		if (PsychPrefStateGet_Verbosity()>4) {
+			// Allocate a sample logbuffer for maxsecs duration at 1000 hz refresh:
+			maxlogsamples =  (int) (ceil(*maxsecs) * 1000);
+			samples = calloc(sizeof(double), maxlogsamples);
+		}
+		
         // Switch to RT scheduling for timing tests:
         PsychRealtimePriority(true);
 
@@ -1773,6 +1803,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         PsychGetAdjustedPrecisionTimerSeconds(&tnew);
         tstart = tnew;
 		told = -1;
+		
+		// Schedule a buffer-swap on next VBL:
+		PsychOSFlipWindowBuffers(windowRecord);
 		
         // Take samples during consecutive refresh intervals:
         // We measure until either:
@@ -1840,6 +1873,10 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 
 					// Update reference timestamp:
 					told = tnew;
+					
+					// Pause for 2 msecs after a valid sample was taken. This to guarantee we're out
+					// of the VBL period of the successfull swap.
+					PsychWaitIntervalSeconds(0.002);
                 }
 				else {
 					// Rejected sample: Better invalidate told as well:
@@ -1847,11 +1884,26 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 					// MK: Ok, i have no clue why above told = -1 is wrong, but doing it makes OS/X 10.4.10 much
 					// more prone to sync failures, whereas not doing it makes it more reliable. Doesn't make
 					// sense, but we are better off reverting to the old strategy...
+					// Update: I think i know why. Some (buggy!) drivers, e.g., the ATI Radeon X1600 driver on
+					// OS/X 10.4.10, do not limit the number of bufferswaps to 1 per refresh cycle as mandated
+					// by the spec, but they allow as many bufferswaps as you want, as long as all of them happen
+					// inside the VBL period! Basically the swap-trigger seems to be level-triggered instead of
+					// edge-triggered. This leads to a ratio of 2 invalid samples followed by 1 valid sample.
+					// If we'd reset our told at each invalid sample, we would need over 3 times the amount of
+					// samples for a useable calibration --> No go. Now we wait for 2 msecs after each successfull
+					// sample (see above), so the VBL period will be over before we manage to try to swap again.
 				}
+				
+				// Store current sample in samplebuffer if requested:
+				if (samples && i < maxlogsamples) samples[i] = tdur;
             }
 			else {
 				// (Re-)initialize reference timestamp:
 				told = tnew;
+
+				// Pause for 2 msecs after a first sample was taken. This to guarantee we're out
+				// of the VBL period of the successfull swap.
+				PsychWaitIntervalSeconds(0.002);
 			}
 			
         } // Next measurement loop iteration...
@@ -1876,6 +1928,16 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         
         *numSamples = n;
         *stddev = tstddev;
+		
+		// Verbose output requested? We dump our whole buffer of samples to the console:
+		if (samples) {
+			printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
+			for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %lf\n", j, samples[j]);
+			printf("PTB-DEBUG: End of calibration data for this run...\n\n");
+			free(samples);
+			samples = NULL;
+		}
+		
     } // End of IFI measurement code.
     else {
         // No measurements taken...
