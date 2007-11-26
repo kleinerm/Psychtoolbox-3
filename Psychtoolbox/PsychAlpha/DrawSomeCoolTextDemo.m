@@ -32,8 +32,8 @@ try
         Screen('TextStyle', w, 0);
     end;
     
-    fid = fopen([PsychtoolboxRoot 'PsychDemos/japanese_shiftJIS.txt'], 'r', 'n','Shift_JIS');
-    japanesetext = native2unicode(fread(fid),'Shift_JIS');
+    fid = fopen([PsychtoolboxRoot 'PsychDemos/japanese_shiftJIS.txt']);
+    japanesetext = native2unicode(fread(fid, '*char'),'Shift_JIS');
     fclose(fid);
     disp(japanesetext);
     
