@@ -11,7 +11,7 @@ function ProceduralGaborDemo(benchmark)
 % set individually.
 %
 % This demo is both, a speed benchmark, and a correctness test. If executed
-% with the optional benchmark flag set to zero, it will execute a loop
+% with the optional benchmark flag set to 2, it will execute a loop
 % where it repeatedly draws a gabor patch both on the GPU (new style) and
 % with Matlab code, then reads back and verifies the images, evaluating the
 % maximum error between the old Matlab method and the new GPU method. The
@@ -20,6 +20,8 @@ function ProceduralGaborDemo(benchmark)
 % sufficient for your purpose. In benchmark mode (flag set to 1), the gabor
 % is drawn as fast as possible, testing the maximum rate at which your
 % system can draw gabors.
+%
+% At a default setting of benchmark==0, it just shows nicely drawn gabor.
 %
 % Typical results on a MacBookPro with Radeon X1600 under OS/X 10.4.11 are:
 % Accuracy: Error wrt. Matlab reference code is 0.0005536900, i.e., about
@@ -42,6 +44,7 @@ function ProceduralGaborDemo(benchmark)
 % History:
 % 11/26/2007 Written (MK).
 
+% Default to mode 0 - Just a nice demo.
 if nargin < 1
     benchmark = [];
 end
@@ -71,7 +74,7 @@ oldSyncLevel = Screen('Preference', 'SkipSyncTests', 2);
 screenid = max(Screen('Screens'));
 
 % Setup imagingMode and window position/size depending on mode:
-if ~benchmark
+if benchmark==2
     rect = [0 0 res(1) res(2)];
     imagingMode = kPsychNeed32BPCFloat;
 else
@@ -107,11 +110,17 @@ totmax = 0;
 while count < 10000
     count = count + 1;
     
+    % Set new rotation angle:
     tilt = count/10;
 
+    % Drift phase as well...
+    if benchmark == 0
+        phase = count * 10;
+    end
+    
     % In non-benchmark mode, we also compute a gabor patch in Matlab, as a
     % reference for the optimal outcome:
-    if ~benchmark
+    if benchmark == 2
         sf = freq;
         [gab_x gab_y] = meshgrid(0:(res(1)-1), 0:(res(2)-1));
         a=cosd(tilt)*sf*360;
@@ -131,14 +140,19 @@ while count < 10000
     % optional 'auxParameters'.
     Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180 freq sc contrast]);
     
-    % Go as fast as you can without any sync to retrace and without
-    % clearing the backbuffer -- we want to measure gabor drawing speed,
-    % not how fast the display is going etc.
-    Screen('Flip', win, 0, 2, 2);
-
+    if benchmark > 0
+        % Go as fast as you can without any sync to retrace and without
+        % clearing the backbuffer -- we want to measure gabor drawing speed,
+        % not how fast the display is going etc.
+        Screen('Flip', win, 0, 2, 2);
+    else
+        % Go at normal refresh rate for good looking gabors:
+        Screen('Flip', win);
+    end
+    
     % In non-benchmark mode, we now readback the drawn gabor from the
     % framebuffer and then compare it against the Matlab reference:
-    if ~benchmark
+    if benchmark == 2
         % Read back, only the first color channel, but in floating point
         % precision:
         mgpu = Screen('GetImage', win, [], 'drawBuffer', 1, 1);
@@ -161,8 +175,10 @@ while count < 10000
         % Show color-coded difference image:
         imagesc(dimg);
         colorbar;
-        drawnow;
-        
+        drawnow;        
+    end
+    
+    if benchmark~=1
         % Abort requested? Test for keypress:
         if KbCheck
             break;
@@ -179,7 +195,7 @@ avgfps = count / (tend - ts);
 fprintf('The average framerate was %f frames per second.\n', avgfps);
 
 % Print error measure in non-benchmark mode:
-if ~benchmark
+if benchmark == 2
     fprintf('The maximum difference between GPU and Matlab was %5.10f units.\n', totmax);
 end
 

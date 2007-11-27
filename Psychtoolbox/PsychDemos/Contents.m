@@ -11,17 +11,16 @@
 %    BubbleDemo              - Like GazeContingentDemoOSX, but with multiple apertures.
 %    CalDemo                 - Demonstrate use of calibration structure and associated routines.
 %    ClutAnimDemo            - Demonstrate lookup table animation.
-%    ContrastModulatedNoiseTheClumsyStyleDemo.m - Demonstrate creation of
-%    contrast modulated noise. Clumsy and inefficient, but works on old
-%    hardware.
+%    ContrastModulatedNoiseTheClumsyStyleDemo - Demonstrate creation of contrast modulated noise.
+%                                               Clumsy and inefficient, but works on old hardware.
 %
-%    ContrastModulatedNoiseTheElegantStyleDemo.m - Demonstrate creation of
-%    contrast modulated noise. Elegant and efficient, but needs recent hardware.
-%
+%    ContrastModulatedNoiseTheElegantStyleDemo - Demonstrate creation of contrast modulated noise.
+%                                                Elegant and efficient, but needs recent hardware.
 %
 %    DotDemo                 - Animate dots with Screen('DrawDots).
 %    DKLDemo                 - Demonstrate DKL color space.
 %    DrawFormattedTextDemo   - Demonstrate formatted text drawing via DrawFormattedText()
+%    DrawHighQualityUnicodeTextDemo - Demonstrate drawing of high quality, anti-aliased and Unicode text.
 %    DrawMirroredTextDemo    - Shows how to draw horizontally mirrored text.
 %    DrawSomeTextDemo        - Very simple example of using 'DrawText'.
 %    DriftDemo               - Animation of grating using textures.
