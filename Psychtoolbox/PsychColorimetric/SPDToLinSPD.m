@@ -9,7 +9,11 @@ function output = SPDToLinSPD(input,B)
 %  (n-wavelengths by number-of-lights)
 % B - linear model for spectral power distributions
 %  (number-of-wavelengths by n-dimension)
+%
+% History:
+% 30/11/07  Change call to non-existent SPDToLinWgts.m into call to 
+%           FindModelWeights.m, as suggested by Mickey Rowe.         (MK)
 
 % Just expand the weights, which we find 
-% in function SPDToLinWgts
-output = B*SPDToLinWgts(input,B);
+% in function FindModelWeights
+output = B*FindModelWeights(input,B);
