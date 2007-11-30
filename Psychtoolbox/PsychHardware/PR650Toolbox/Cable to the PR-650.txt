@@ -42,3 +42,32 @@ ctrll.  The switch should be set to ctrlr.
 David Brainard
 March 13, 1997
 
+%%%%%%%%%
+
+Although I still use a cable like that for connecting to an old Mac G3, 
+I find it a little hard to believe that anyone new will still find the
+above information useful.  I think that by now the most common method 
+for talking to even an old spectroradiometer like the PR-650 is through
+a USB cable.  PhotoResearch sells a USB to RS-232 adapter.  I asked them
+what it cost, but I found one for only $6, so it didn't bother me when 
+PhotoResearch didn't answer my question.
+
+I had a lot of trouble trying to use the adapter when calling PR650init 
+directly, but apparently calling it many times in rapid succession (as 
+CMCheckInit will do) solves most of those problems.  The other major 
+problem I had to face was that the device driver that came with my adapter
+would not work with my system.  The company that made my adapter apparently
+isn't proud of their handiwork.  I could not find any hint of a company name
+(other than PnP) anywhere on the package.  I was able to determine that the 
+chip that forms the heart of the device is PLP-2303XH.  If you can find any 
+adapter based on the PLP-2303 chip (made by Prolific: 
+http://www.prolific.com.tw/eng/Products.asp?ID=59), you should be alright,
+but you may have to download (or otherwise obtain) the latest driver
+from the Prolific website.
+
+Mickey Rowe
+November 26, 2007
+
+
+
+

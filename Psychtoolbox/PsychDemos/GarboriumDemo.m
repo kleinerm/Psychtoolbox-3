@@ -106,7 +106,7 @@ tstart = vbl;
 count = 0;
 
 if internalRotation
-    sflags = 1;
+    sflags = kPsychUseTextureMatrixForRotation;
     srcRect = CenterRect([0 0 (2*si+1) (2*si+1)], Screen('Rect', gabortex));
 else
     sflags = 0;
