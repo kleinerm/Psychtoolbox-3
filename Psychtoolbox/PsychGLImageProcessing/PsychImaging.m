@@ -40,6 +40,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 'whichTask' contains the name string of one of the supported
 % actions:
 %
+%
 % * 'FloatingPoint16Bit' Ask for a 16 bit floating point precision
 %   framebuffer. This allows more than 8 bit precision for complex drawing,
 %   compositing and image processing operations. It also allows
@@ -133,13 +134,68 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 %
 %
+% * 'MirrorDisplayTo2ndOutputHead' Mirror the content of the onscreen
+%   window to given 2nd screen, ie., to a 2nd output connector (head)
+%   of a dualhead graphics card. This should give the same result as if one
+%   switches the graphics card into "Mirror mode" or "Clone mode" via the
+%   display settings panel of your operating system. Use of the "Mirror
+%   Mode" or "Clone Mode" of your operating system and graphics card is
+%   preferable to use of this command, if that works for you. The OS
+%   builtin facilities are usually faster, more efficient and thereby
+%   more reliable wrt. timing and synchronization!
+%
+%   This function only works for monoscopic displays, ie., it can not be
+%   used simultaneously with any stereo display mode. The reason is that it
+%   internally uses stereomode 10 with a few modifications to get its job
+%   done, so obviously neither mode 10 nor any other mode can be used
+%   without interference.
+%
+%   Only use this function for mirroring onto the 2nd head of a dual-head
+%   graphics card under MacOS/X, or if you need to mirror onto a 2nd head
+%   on MS-Windows and can't use "desktop spanning" mode on Windows to
+%   achieve dual display output. If possible on your setup and OS, rather use
+%   'MirrorDisplayToSingleSplitWindow' (see below). That mode should work
+%   well on dual-head graphics cards on MS-Windows or GNU/Linux, as well as
+%   in conjunction with a hardware display splitter attached to a single
+%   head on any operating system. It has the advantage of consuming less
+%   memory and compute ressources, so it is potentially faster or provides
+%   a more reliable overall timing.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayTo2ndOutputHead', mirrorscreen);
+%
+%   The content of the onscreen window shall be shown not only on the
+%   display associated with the screen given to PsychImaging('OpenWindow',
+%   ...); but also (as a copy) on the screen with the index 'mirrorscreen'.
+%
+%
+% * 'MirrorDisplayToSingleSplitWindow' Mirror the content of the onscreen
+%   window to the right half of the desktop (if desktop spanning on a
+%   dual-display setup is enabled) or the right-half of the virtual screen
+%   if a display splitter (e.g., Matrox Dualhead2Go (TM)) is attached to a
+%   single head of a graphics card. This should give the same result as if one
+%   switches the graphics card into "Mirror mode" or "Clone mode" via the
+%   display settings panel of your operating system. Use of the "Mirror
+%   Mode" or "Clone Mode" of your operating system and graphics card is
+%   preferable to use of this command, if that works for you. The OS
+%   builtin facilities are usually faster, more efficient and thereby
+%   more reliable wrt. timing and synchronization!
+%
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayToSingleSplitWindow');
+%
+%   Optionally, you can add the command...
+%   PsychImaging('AddTask', 'General', 'DontUsePipelineIfPossible');
+%   ... if you don't intend to use the imaging pipeline for anything else
+%   than display mirroring. This will allow further optimizations.
+%
+%
 % * 'RestrictProcessing' Restrict stimulus processing to a specific subarea
 %   of the screen. If your visual stimulus only covers a subarea of the
 %   display screen you can restrict PTB's output processing to that
 %   subarea. This may save some computation time to allow for higher
 %   display redraw rates.
 %
-%   Syntax: PsychImaging('AddTask', whichChannel, 'RestrictProcessing', ROI);
+%   Usage: PsychImaging('AddTask', whichChannel, 'RestrictProcessing', ROI);
+%
 %   ROI is a rectangle defining the area to process ROI = [left top right bottom];
 %   E.g., ROI = [400 400 800 800] would only create output pixels in the
 %   screen area with top-left corner (400,400) and bottom-right corner
@@ -149,6 +205,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % * 'FlipHorizontal' and 'FlipVertical' flip your output images
 %   horizontally (left- and right interchanged) or vertically (upside down).
 %
+%   Usage: PsychImaging('AddTask', whichChannel, 'FlipHorizontal');
+%   Usage: PsychImaging('AddTask', whichChannel, 'FlipVertical');
+%
 %
 % * 'GeometryCorrection' Apply some geometric warping operation during
 %   rendering of the final stimulus image to correct for geometric
@@ -157,7 +216,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   procedure, then compute an inverse warp transformation to undo this
 %   distortion, then provide that transformation to this function.
 %
-%   Syntax: PsychImaging('AddTask', whichChannel, 'GeometryCorrection', calibfilename);
+%   Usage: PsychImaging('AddTask', whichChannel, 'GeometryCorrection', calibfilename);
 %
 %   'calibfilename' is the filename of a calibration file which specified
 %   the type of undistortion to apply. Calibration files can be created by
@@ -362,8 +421,18 @@ if strcmp(cmd, 'OpenWindow')
             error('Your requirements demand a stereo presentation mode, but you didn''t specify one!');
         else
             if (needStereoMode > -1) && (stereomode ~= needStereoMode)
-                warning('Your provided "stereomode" conflicts with required stereomode for imaging pipeline. Overriden...');
+                % Need a specific mode: Override current setting by our needs:
                 stereomode = needStereoMode;
+
+                % Give feedback about stereomode override. If the user
+                % didn't provide a stereomode, we just output an info.
+                % Otherweise we output a warning about the conflict and our
+                % override...
+                if nargin < 7 || isempty(varargin{6})
+                    fprintf('PsychImaging-Info: Stereomode %i required - Enabling it.\n', stereomode);
+                else
+                    warning('Your provided "stereomode" conflicts with required stereomode for imaging pipeline. Overriden...');
+                end
             end
         end
     end
@@ -456,6 +525,29 @@ if strcmp(cmd, 'OpenWindow')
         end
     end
     
+    % Display mirroring in stereomode 10 requested?
+    if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+        % Yes. Need to open secondary slave window:
+        floc = find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead'));
+        [rows cols]= ind2sub(size(reqs), floc);
+        % Extract first parameter - This should be the name of a
+        % calibration file:
+        slavescreenid = reqs{rows, 3};
+
+        if isempty(slavescreenid)
+            Screen('CloseAll');
+            error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of the secondary screen "slavescreen"!');
+        end
+        
+        if ~any(ismember(Screen('Screens'), slavescreenid))
+            Screen('CloseAll');
+            error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
+        end
+        
+        Screen('OpenWindow', slavescreenid, [255 0 0], [], [], [], stereomode);
+    end
+
+    
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
@@ -483,37 +575,72 @@ return;
 % Screen('OpenWindow') for pipeline preconfiguration.
 function [imagingMode, stereoMode] = FinalizeConfiguration(reqs)
 
-% Set imagingMode to minimum: Pipeline enabled...
-imagingMode = kPsychNeedFastBackingStore;
+% Set imagingMode to minimum: Pipeline disabled. All latter task
+% requirements will setup imagingMode to fullfill their needs. A few
+% tasks/requirements don't need the full pipeline at all. E.g, Support for
+% fast offscreen windows only needs that, but not the full pipeline. Some
+% of the "software based mirror modes" herein only need the finalizer blit
+% chains, but not the imaging pipeline. Bits++ setup for pure CLUT imaging
+% (Bits++ mode) doesn't need imaging pipe either...
+imagingMode = 0;
 
 % Set stereoMode to don't care:
 stereoMode = -1;
 
+
+% Stereomode 10 for display replication needed?
+if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+    % Yes: Must use stereomode 10. This implies kPsychNeedFastBackingStore,
+    % automatically set by Screen('OpenWindow') itself, so no need t do it
+    % here:
+    stereoMode = 10;    
+end
+
+% Replication of left half of window into right half needed?
+% This is used for a software implementation of mirror mode displays,
+% e.g., in conjunction with desktop-spanning display mode on MS-Windows or
+% in conjunction with a display splitter on a single output head:
+if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
+    % We simply request that window size is reported and handled as if the
+    % window would be only half the width --> right half remains empty and
+    % can be used as target for the cloning op of the left half.
+    % This works even without imaging pipe enabled, only uses finalizer
+    % blit chains:
+    imagingMode = mor(imagingMode, kPsychNeedHalfWidthWindow);
+end
+
 % 16 bpc float framebuffers needed?
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint16Bit')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeed16BPCFloat);    
 end
 
 % 32 bpc float framebuffers needed?
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32Bit')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion, kPsychNeedHalfWidthWindow);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
     % Enable output formatter chain:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested:
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
@@ -524,7 +651,9 @@ end
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
     stereoMode = -2;
-    
+
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+
     % Also need image processing stage, because only it can provide
     % separate processing for both eyes:
     imagingMode = mor(imagingMode, kPsychNeedImageProcessing);
@@ -534,6 +663,7 @@ else
     % Any command that applies to 'AllViews' naturally needs the image
     % processing:
     if ~isempty(find(mystrcmp(reqs, 'AllViews')))
+        imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
         imagingMode = mor(imagingMode, kPsychNeedImageProcessing);
     end
 end
@@ -560,6 +690,7 @@ end
 
 % Final output formatting stage needed?
 if ~isempty(find(mystrcmp(reqs, 'FinalFormatting')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
@@ -794,6 +925,22 @@ if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
 end
 % --- End of output formatter for Pseudo-Gray processing requested? ---
 
+% --- GPU based mirroring of left half of onscreen window to right half requested? ---
+if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))
+    
+    % Simply set up the left finalizer chain with a glCopyPixels command
+    % that copies the left half of the system backbuffer to the right half
+    % of the system backbuffer. As kPsychHalfWidthWindow was requested at
+    % window creation time, the reported 'WindowSize' will be already the
+    % virtual size of the window, ie., half the real size...
+    
+    [w, h] = Screen('WindowSize', win);
+    myblitstring = sprintf('glRasterPos2f(%f, %f); glCopyPixels(0, 0, %f, %f, 6144);', w, h, w, h);
+    Screen('Hookfunction', win, 'AppendMFunction', 'LeftFinalizerBlitChain', 'MirrorSplitWindowToSplitWindow', myblitstring);
+    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
+end
+% --- End of GPU based mirroring of left half of onscreen window to right half requested? ---
+
 % --- Restriction of processing area ROI requested? ---
 
 % This should be at the end of setup, so we can reliably prepend the
@@ -845,6 +992,30 @@ if ~isempty(floc)
 end
 
 % --- End of Restriction of processing area ROI ---
+
+% --- GPU based mirroring of onscreen window to secondary display head requested? ---
+if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
+    % Yes: This means that stereomode 10 is active and that we (ab)use it
+    % for the purpose of replicating the framebuffer of the master onscreen
+    % window to the slave windows framebuffer.
+    
+    % What we do: We use the right finalizer blit chain to copy the contents
+    % of the master window's system backbuffer (which is bound during
+    % execution of the right finalizer blit chain) to the colorbuffer
+    % texture of the special finalizedFBO[1] - the shadow framebuffer FBO
+    % of the slave window. Once we did this, the processing code of
+    % stereomode 10 in Screens PsychPreFlipOperations() routine will take
+    % care of the rest --> Blitting that FBO's and its texture to the system
+    % backbuffer of the slave window, thereby cloning the master windows
+    % framebuffer to the slave windows framebuffer:
+    
+    [w, h] = Screen('WindowSize', win);
+    myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
+    Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
+    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');    
+end
+% --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
+
 
 % Return reqs array, for whatever reason...
 rc = reqs;

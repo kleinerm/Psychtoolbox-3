@@ -1,8 +1,22 @@
-function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer)
-% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer)
+function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration)
+% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration)
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
 % Screen('WaitBlanking') to the vertical retrace.
+%
+% Arguments:
+% 'screen' Either a single screen handle, or none (in which case the
+% display with the maximum id will be used), or a vector of two handles in
+% stereomode 10, e.g., [0 1] if you want to output to screens 0 and 1.
+%
+% 'stereomode' Which stereomode to use? Defaults to zero, ie. no stereo.
+%
+% 'fullscreen' Fullscreen presentation? Defaults to 1 ie. yes.
+%
+% 'doublebuffer' Single- or double-buffering (1). Defaults to 1.
+%
+% 'maxduration' Maximum runtime of test: Runs until keypress or maxduration
+% seconds have elapsed (Default is 10 seconds).
 %
 % After starting this test, you should see a flickering greyish background
 % that flickers in a homogenous way - without cracks or weird moving patterns
@@ -49,8 +63,20 @@ if nargin < 3
 end;
 
 if nargin < 1
-    screen=max(Screen('Screens'));
+    if stereomode == 10
+        screen(1) = max(Screen('Screens')) - 1;
+        screen(2) = max(Screen('Screens'));
+        if screen(1)<0
+            error('Stereomode 10 only works on setups with two attached displays!');
+        end
+    else
+        screen=max(Screen('Screens'));
+    end
 end;
+
+if nargin < 5
+    maxduration = 10;
+end
 
 try
    if fullscreen
@@ -65,11 +91,24 @@ try
    pause;
    while KbCheck; end;
    
-   [win , winRect]=Screen('OpenWindow', screen, 0, rect, 32, doublebuffer, stereomode);
+   if stereomode~=10
+       % Standard case:
+       [win , winRect]=Screen('OpenWindow', screen, 0, rect, 32, doublebuffer, stereomode);
+   else
+       % Special case for dual-window stereo:
+
+       % Setup master window:
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect, 32, doublebuffer, stereomode);
+       % Setup slave window:
+       Screen('OpenWindow', screen(2), 0, rect, 32, doublebuffer, stereomode);       
+   end
+   
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
-   deadline = GetSecs + 10;
+   deadline = GetSecs + maxduration;
    beampos=0;
+   
+   VBLTimestamp = Screen('Flip', win, 0, 2);
    
    while (~KbCheck) & (GetSecs < deadline)
       % Draw left eye view (if stereo enabled):
@@ -88,7 +127,7 @@ try
       
       if doublebuffer>1
          % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, 0, 2);
+         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + 0.002, 2);
       	%beampos=400 + 100 * sin(GetSecs);   
       else
          % Just wait a bit in non-buffered case:
