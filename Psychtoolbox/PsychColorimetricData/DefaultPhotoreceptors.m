@@ -11,6 +11,7 @@ function photoreceptors = DefaultPhotoreceptors(kind)
 %  IsomerizationsInEyeDemo, IsomerizationsInDishDemo 
 %
 % 7/25/03  dhb  Wrote it.
+% 12/04/07 dhb  Added dog parameters
 
 % Default
 if (nargin < 1 | isempty(kind))
@@ -32,6 +33,20 @@ switch (kind)
 		photoreceptors.nomogram.S = [380 1 401];
 		photoreceptors.nomogram.lambdaMax = [558.9 530.3 420.7]';
 		photoreceptors.types = {'FovealLCone' 'FovealMCone' 'FovealSCone'};
+		photoreceptors.quantalEfficiency.source = 'Generic';
+    case 'LivingDog'
+		photoreceptors.species = 'Dog';
+		photoreceptors.OSlength.source = 'PennDog';
+		photoreceptors.ISdiameter.source = 'PennDog';
+		photoreceptors.specificDensity.source = 'Generic';
+		photoreceptors.lensDensity.source = 'None';
+		photoreceptors.macularPigmentDensity.source = 'None';
+		photoreceptors.pupilDiameter.source = 'PennDog';
+		photoreceptors.eyeLengthMM.source = 'PennDog';
+		photoreceptors.nomogram.source = 'Govardovskii';
+		photoreceptors.nomogram.S = [380 1 401];
+		photoreceptors.nomogram.lambdaMax = [555 429 506]';
+		photoreceptors.types = {'LCone' 'SCone' 'Rod'};
 		photoreceptors.quantalEfficiency.source = 'Generic';
 	case 'GuineaPig'
 		photoreceptors.species = 'GuineaPig';

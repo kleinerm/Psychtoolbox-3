@@ -58,6 +58,7 @@ function [diam,area,trolands] = PupilDiameterFromLum(lum,source)
 % 4/2/99  dhb  Wrote it.
 % 5/8/99  dhb  Consolidated different methods.
 % 7/8/03  dhb  Accept strings without dashes.
+% 12/4/07 dhb  Added dog case, with a place holder number of 8 mm.
 
 % Set default methods
 if (nargin < 2 | isempty(source))
@@ -72,6 +73,8 @@ switch (source)
 		diam = 10.^(0.8558-4.01*1e-4*((log10(lum)+8.6).^3));		
 	case {'MoonSpencer', 'Moon_Spencer'},
 		diam = 4.9 - 3*tanh(0.4*(log10(lum)+1));
+    case 'PennDog'
+        diam = 8;
 end
 
 % Compute ancillary information

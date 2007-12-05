@@ -21,6 +21,7 @@ function photoreceptors = FIllInPhotoreceptors(photoreceptors)
 %
 % 7/25/03  dhb  Wrote it.
 
+
 % Define common wavelength sampling for this function.
 S = photoreceptors.nomogram.S;
 

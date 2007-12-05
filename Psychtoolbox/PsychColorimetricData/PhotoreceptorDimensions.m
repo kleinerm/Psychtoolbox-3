@@ -26,7 +26,7 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 % 	OSdiam, ISdiam, OSlength.
 % 
 % Supported species:
-%		Human (Default), GuineaPig.
+%		Human (Default), GuineaPig, Dog
 %
 % Supported sources:
 %   Rodeick (Default).
@@ -34,10 +34,12 @@ function dimensions = PhotoreceptorDimensions(receptorTypes,whichDimension,speci
 %   Hendrickson (Human Rod OS length)
 % 	SterlingLab (GuineaPig dimensions).
 %   Generic.
+%   PennDog (Dog dimensions).
 %
 % The Generic type returns a single number for all species/type.
 %
 % 7/11/03  dhb  Wrote it.
+% 12/04/07 dhb  Added dog but with placeholder numbers.
 
 % Fill in defaults
 if (nargin < 3 | isempty(species))
@@ -73,8 +75,41 @@ for i = 1:length(dimensions)
 					dimensions(i) = 2;
 				otherwise
 					error('Unsupported dimension requested');
-			end
-			
+            end
+		
+        % Numbers we use for dog eyes at Penn.  Currently just a placeholder
+        % with human numbers until we figure out the best numbers for dog.
+        case ('PennDog')
+			switch (species)
+				case {'Dog'}
+					switch (whichDimension)
+						case 'OSlength',
+							switch (type)	
+								case {'LCone', 'SCone'}
+									dimensions(i) = 33;
+								case {'Rod'}
+									dimensions(i) = 31.2;
+								otherwise,
+									error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
+										type,whichDimension,source,species));
+							end
+						case 'ISdiam'
+							switch (type)	
+								case {'LCone', 'SCone'}
+									dimensions(i) = 2.3;
+								case {'Rod'}
+									dimensions(i) = 2.22;
+								otherwise,
+									error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
+										type,whichDimension,source,species));
+							end
+						otherwise,
+							error(sprintf('Unsupported dimension %s requested',whichDimension));
+					end					
+			otherwise,
+				error(sprintf('%s estimates not available for species %s',source,species));
+            end
+            
 		% From Rodieck's "standard observer", Appendix B
 		% in The First Steps of Seeing.
 		case ('Rodieck')
@@ -111,7 +146,7 @@ for i = 1:length(dimensions)
 
 		% These numbers are my encapsulations of CVRL's summary of a variety of data.
 		% See CVRL summary text at:
-    %   http://cvrl.ioo.ucl.ac.uk/database/text/intros/introlength.htm.
+        %   http://cvrl.ioo.ucl.ac.uk/database/text/intros/introlength.htm.
 		case {'CVRL'}
 			switch (species)
 				case {'Human'}
@@ -138,9 +173,9 @@ for i = 1:length(dimensions)
 			end
 
 		% From Hendrickson and Drucker, numbers provided at CVRL database:
-    % http://cvrl.ioo.ucl.ac.uk/database/text/outseg/length.htm.  40 um
+        % http://cvrl.ioo.ucl.ac.uk/database/text/outseg/length.htm.  40 um
 		% is the number provided for mid-peripheral rods, 40-45 is cited for
-    % parafoveal rods.  This routines returns 40.
+        % parafoveal rods.  This routines returns 40.
 		case {'Hendrickson'}
 			switch (species)
 				case {'Human'}

@@ -14,7 +14,10 @@
 clear all; close all;
 
 % Set some photoreceptor properties.
-photoreceptors = DefaultPhotoreceptors('LivingHumanFovea');
+whatCalc = 'LivingDog';
+%whatCalc = 'LivingHumanFovea';
+
+photoreceptors = DefaultPhotoreceptors(whatCalc);
 photoreceptors = FillInPhotoreceptors(photoreceptors);
 
 % Define common wavelength sampling for this script.
@@ -36,7 +39,7 @@ switch (whichLight)
 		irradianceWatts = SplineSpd(S_xenonArc,irradianceWatts,S);
 	
 		% Another way to do this calculation.  Pupil size should cancel out.  Should get
-	  % same answer as above.
+	    % same answer as above.
 		pupilSizeMM = 2;
 		pupilAreaMM = pi*(pupilSizeMM/2)^2;
 		luminance = TrolandsToLum(trolands,pupilAreaMM);
@@ -76,7 +79,7 @@ switch (whichLight)
 		% Load corneal cone sensitivities in energy units, convert to quantal sensitivities
 		% and set specified peak absorbtance.
 		%
-		%	Note that overwriting the isomerizationAbsorbtance in the photoreceptors structure
+		% Note that overwriting the isomerizationAbsorbtance in the photoreceptors structure
 		% makes the isomerization computation work, but not the absorbtions calculation, which
 		% will be done with what was produced by FillInPhotoreceptors called above.  This is
 		% not a recommended compute path for the toolbox code, but is done here to match Wandell's
@@ -173,4 +176,18 @@ fprintf('Isomerization Rate             |\t%4.2e\t%4.2e\t%4.2e\t iso/photorecept
 fprintf('In log10 units                 |\t%8.2f\t%8.2f\t%8.2f\t log10(iso)/photoreceptor-sec\n',...
 	 log10(isoPerConeSec));
 fprintf('______________________________________________________________________________________\n');
+
+% Allow dumping out of photoreceptor sensitivities into a file for use elsewhere.  We want energy sensitivities
+% for this purpose
+switch (whatCalc)
+    % Dog receptors (L, S, rod) in energy units, normalized to max of 1.
+    case 'LivingDog'
+        T_dogrec = EnergyToQuanta(S,photoreceptors.isomerizationAbsorbtance')';
+        for i = 1:3
+            T_dogrec(i,:) = T_dogrec(i,:)/max(T_dogrec(i,:));
+        end
+        S_dogrec = S;
+        save T_docrec T_dogrec S_dogrec
+    otherwise
+end
 
