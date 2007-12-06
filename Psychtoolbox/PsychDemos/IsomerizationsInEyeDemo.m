@@ -187,7 +187,7 @@ switch (whatCalc)
             T_dogrec(i,:) = T_dogrec(i,:)/max(T_dogrec(i,:));
         end
         S_dogrec = S;
-        save T_docrec T_dogrec S_dogrec
+        save T_dogrec T_dogrec S_dogrec
     otherwise
 end
 

@@ -77,8 +77,8 @@ for i = 1:length(dimensions)
 					error('Unsupported dimension requested');
             end
 		
-        % Numbers we use for dog eyes at Penn.  Currently just a placeholder
-        % with human numbers until we figure out the best numbers for dog.
+        % Numbers we use for dog eyes at Penn.  Got these from
+        % Gus Aguirre.  See emails sent about 12/5/07.
         case ('PennDog')
 			switch (species)
 				case {'Dog'}
@@ -86,9 +86,9 @@ for i = 1:length(dimensions)
 						case 'OSlength',
 							switch (type)	
 								case {'LCone', 'SCone'}
-									dimensions(i) = 33;
+									dimensions(i) = 13;
 								case {'Rod'}
-									dimensions(i) = 31.2;
+									dimensions(i) = 13.5;
 								otherwise,
 									error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
 										type,whichDimension,source,species));
@@ -96,13 +96,23 @@ for i = 1:length(dimensions)
 						case 'ISdiam'
 							switch (type)	
 								case {'LCone', 'SCone'}
-									dimensions(i) = 2.3;
+									dimensions(i) = 2;
 								case {'Rod'}
-									dimensions(i) = 2.22;
+									dimensions(i) = 2;
 								otherwise,
 									error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
 										type,whichDimension,source,species));
-							end
+                            end
+                        case 'OSdiam'
+                            switch (type)	
+								case {'LCone', 'SCone'}
+									dimensions(i) = 1.25;
+								case {'Rod'}
+									dimensions(i) = 1;
+								otherwise,
+									error(sprintf('Unsupported receptor type %s/%s for %s estimates in %s',...
+										type,whichDimension,source,species));
+                            end
 						otherwise,
 							error(sprintf('Unsupported dimension %s requested',whichDimension));
 					end					

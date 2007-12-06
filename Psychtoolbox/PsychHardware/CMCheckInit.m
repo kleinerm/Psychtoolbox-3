@@ -1,5 +1,5 @@
-function CMCheckInit(meterType)
-% CMCheckInit([meterType])
+function CMCheckInit(meterType, PortString)
+% CMCheckInit([meterType], [PortString])
 %
 % Initialize the color meter.  The routine calls the
 % lower level CMETER.  If the low level routine
@@ -29,9 +29,23 @@ function CMCheckInit(meterType)
 
 DefaultNumberOfTries = 5;
 
-% Set default meterType.
-if nargin<1 || isempty(meterType)
-  meterType = 1;
+% Set default the defaults.
+switch nargin
+	case 0
+		meterType = 1;
+		PortString = 'usbserial';
+	case 1
+		if isempty(meterType)
+			meterType = 1;
+		end
+		PortString = 'usbserial';
+	case 2
+		if isempty(meterType)
+			meterType = 1;
+		end
+		if isempty(PortString)
+			PortString = 'usbserial';
+		end
 end
 
 % I wrote the function FindSerialPort before I discovered CMCheckInit had
@@ -54,7 +68,7 @@ switch meterType
             if IsWin
                 portNameIn = 'COM5';
             elseif IsOSX
-                portNameIn = FindSerialPort;
+                portNameIn = FindSerialPort(PortString);
             else
                 error(['Unsupported OS ' computer]);
             end
