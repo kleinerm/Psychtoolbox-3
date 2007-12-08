@@ -1505,6 +1505,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
             // in IOKits workloop can do its job. But first let's try to do it without yielding...
 			vbltimestampquery_retrycount = 0;
+                        PsychWaitIntervalSeconds(0.00025);
 			postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
 
 			// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
@@ -1528,10 +1529,13 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
 			}
 			
-			if (postflip_vbltimestamp > time_at_vbl) {
+                        // We try to detect wrong order of events, but again allow for a bit of slack,
+                        // as some drivers (this time on PowerPC) have their own share of trouble.
+			if (postflip_vbltimestamp - time_at_vbl > 0.002) {
 				// VBL irq queries broken! Disable them.
 				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
 				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
+				printf("PTB-ERROR: postflip - time at vbl == %lf secs.\n", postflip_vbltimestamp - time_at_vbl);
 			}
         }
         #endif
