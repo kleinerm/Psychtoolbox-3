@@ -41,6 +41,20 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % actions:
 %
 %
+% * 'UseFastOffscreenWindows' Ask for support of fast Offscreen windows.
+%   These use a more efficient storage, backed by OpenGL framebuffer
+%   objects (FBO's). Drawing into them isn't faster, but *switching*
+%   between drawing into onscreen- and offscreen windows, or switching
+%   between drawing into different offscreen windows is faster. They also
+%   support a couple of other advanced features and performance
+%   improvements in conjunction with the imaging pipeline.
+%   If you only specify this task, then you'll get the benefit of fast
+%   windows, without the cost of other features of the pipeline you might
+%   not need.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseFastOffscreenWindows');
+%
+%
 % * 'FloatingPoint16Bit' Ask for a 16 bit floating point precision
 %   framebuffer. This allows more than 8 bit precision for complex drawing,
 %   compositing and image processing operations. It also allows
@@ -403,17 +417,17 @@ if strcmp(cmd, 'OpenWindow')
     
     % Override numbuffers -- always 2:
     numbuffers = 2;
-    
-    % Compute correct imagingMode - Settings for current configuration and
-    % return it:
-    [imagingMode needStereoMode] = FinalizeConfiguration(reqs);
-    
+        
     if nargin < 7 || isempty(varargin{6})
         stereomode = 0;
     else
         stereomode = varargin{6};
     end
-    
+        
+    % Compute correct imagingMode - Settings for current configuration and
+    % return it:
+    [imagingMode needStereoMode] = FinalizeConfiguration(reqs, stereomode);
+
     % Override stereomode derived from requirements?
     if needStereoMode ~= -1
         if needStereoMode == -2 && stereomode == 0
@@ -573,7 +587,7 @@ return;
 % FinalizeConfiguration consolidates the current set of requirements and
 % derives the needed stereoMode settings and imagingMode setting to pass to
 % Screen('OpenWindow') for pipeline preconfiguration.
-function [imagingMode, stereoMode] = FinalizeConfiguration(reqs)
+function [imagingMode, stereoMode] = FinalizeConfiguration(reqs, userstereomode)
 
 % Set imagingMode to minimum: Pipeline disabled. All latter task
 % requirements will setup imagingMode to fullfill their needs. A few
@@ -587,6 +601,11 @@ imagingMode = 0;
 % Set stereoMode to don't care:
 stereoMode = -1;
 
+% Does usercode request a stereomode?
+if userstereomode > 0
+    % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+end
 
 % Stereomode 10 for display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
@@ -692,6 +711,16 @@ end
 if ~isempty(find(mystrcmp(reqs, 'FinalFormatting')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+end
+
+% Support for fast offscreen windows (aka FBO backed offscreen windows)
+% needed?
+if ~isempty(find(mystrcmp(reqs, 'UseFastOffscreenWindows')))
+    % Need fast offscreen windows. They are included if any non-zero imagingMode
+    % is set, so we only request'em if imagingMode is still zero:
+    if imagingMode == 0
+        imagingMode = kPsychNeedFastOffscreenWindows;
+    end
 end
 
 return;

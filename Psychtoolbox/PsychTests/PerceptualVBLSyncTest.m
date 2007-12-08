@@ -7,13 +7,26 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 % Arguments:
 % 'screen' Either a single screen handle, or none (in which case the
 % display with the maximum id will be used), or a vector of two handles in
-% stereomode 10, e.g., [0 1] if you want to output to screens 0 and 1.
+% stereomode 10, e.g., [0 1] if you want to output to screens 0 and 1. You
+% can also pass a vector of two screens when stereomode is not set to 10.
+% In this case two separate (non-stereo) onscreen windows will be opened on
+% both displays and they will get flipped in multiflip mode 2. That means
+% that the first display (first element of 'screen') is synced to VBL, but
+% the 2nd one is synced to bufferswaps of the first one. This is a
+% straightforward test to check if two displays of a stereosetup run with a
+% synchronized retrace cycle (good!) or if they are phase-shifted or
+% drifting against each other (not good!).
 %
 % 'stereomode' Which stereomode to use? Defaults to zero, ie. no stereo.
 %
-% 'fullscreen' Fullscreen presentation? Defaults to 1 ie. yes.
+% 'fullscreen' Fullscreen presentation? Defaults to 1 ie. yes. In
+% non-fullscreen mode, no proper synchronization of bufferswaps can be
+% expected.
 %
-% 'doublebuffer' Single- or double-buffering (1). Defaults to 1.
+% 'doublebuffer' Single- or double-buffering (1). Defaults to 1. In single
+% buffer mode there is no sync to retrace, so this is a good way to
+% simulate the tearing artifacts that would happen on sync failure, just to
+% get an impression.
 %
 % 'maxduration' Maximum runtime of test: Runs until keypress or maxduration
 % seconds have elapsed (Default is 10 seconds).
@@ -26,7 +39,7 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 % If you don't know what this means, you can test this script with parameter
 % doublebuffer == 0 to artificially create a synchronization failure.
 %
-% On OS-X you should also see some emerging pattern of yellow horizontal lines.
+% On many systems you should also see some emerging pattern of yellow horizontal lines.
 % These lines should be tightly concentrated/clustered in the topmost area of
 % the screen. Lots of yellow lines in the middle or bottom area or even
 % randomly distributed lines indicate some bug in the driver of your graphics
@@ -93,7 +106,10 @@ try
    
    if stereomode~=10
        % Standard case:
-       [win , winRect]=Screen('OpenWindow', screen, 0, rect, 32, doublebuffer, stereomode);
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect, 32, doublebuffer, stereomode);
+       if length(screen)>1
+           win2 = Screen('OpenWindow', screen(2), 0, rect, 32, doublebuffer, stereomode);
+       end
    else
        % Special case for dual-window stereo:
 
@@ -107,6 +123,8 @@ try
    color = 0;
    deadline = GetSecs + maxduration;
    beampos=0;
+   
+   ifi = Screen('GetFlipInterval', win);
    
    VBLTimestamp = Screen('Flip', win, 0, 2);
    
@@ -122,12 +140,21 @@ try
       Screen('FillRect', win, color, flickerRect);
       if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos); end;
       
+      if stereomode == 0 && length(screen)>1
+          Screen('FillRect', win2, color, flickerRect);
+          Screen('DrawingFinished', win2, 0, 2);
+          Screen('DrawingFinished', win, 0, 2);
+          multiflip = 2;
+      else
+          multiflip = 0;
+      end
+      
       % Alternate drawing color from white -> black, or black -> white
       color=255 - color;
       
       if doublebuffer>1
          % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + 0.002, 2);
+         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
       	%beampos=400 + 100 * sin(GetSecs);   
       else
          % Just wait a bit in non-buffered case:

@@ -86,7 +86,7 @@ try
         vbl = Screen('Flip', w, vbl);
         
         t1=GetSecs;
-        t1=vbl
+        t1=vbl;
         tavg=tavg+(t1-t0);
         t0=t1;
         i=i+1;

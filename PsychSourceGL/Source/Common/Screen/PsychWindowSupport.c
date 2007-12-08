@@ -1420,6 +1420,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
 		// if already a swap happened in a VBL --> Multiple swaps per refresh cycle if this routine is
 		// called fast enough, ie. multiple times during one single VBL period. Not good!
+		// An example is the ATI Mobility Radeon X1600 in 2nd generation MacBookPro's under OS/X 10.4.10
+		// and 10.4.11 -- probably most cards operated by the same driver have the same problem...
+		//
 		// We try to enforce correct behaviour by waiting until at least 2 msecs have elapsed before the next
 		// bufferswap:
 		PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
@@ -1500,17 +1503,34 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         if (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1)) {
             // OS-X only: Low level query to the driver: We need to yield the cpu for a couple of
             // microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
-            // in IOKits workloop can do its job.
+            // in IOKits workloop can do its job. But first let's try to do it without yielding...
 			vbltimestampquery_retrycount = 0;
-            do {
+			postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+
+			// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
+			// happen inside a VBL interval (in which case this would be a legal condition), we retry the
+			// query up to 8 times, each time sleeping for 0.25 msecs, for a total retry time of 2 msecs.
+			// The sleeping is meant to release the processor to other system tasks which may be crucial for
+			// correct timestamping, but preempted by our Matlab thread in realtime mode. If we don't succeed
+			// in 2 msecs then something's pretty screwed and we should just give up.
+            while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
 				vbltimestampquery_retrycount++;
-            } while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 10000));
+			}
 			
-			if (vbltimestampquery_retrycount>=10000) {
+			// Some diagnostics at high debug-levels:
+			if (vbltimestampquery_retrycount > 0 && PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychFlipWindowBuffers(), VBLTimestamping: RETRYCOUNT %i : Delta Swaprequest - preflip_vbl timestamp: %lf secs.\n", vbltimestampquery_retrycount, time_at_swaprequest - preflip_vbltimestamp);
+			
+			if (vbltimestampquery_retrycount>=8) {
 				// VBL irq queries broken! Disable them.
-				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
+				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup  [Query failed multiple times]! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
+				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
+			}
+			
+			if (postflip_vbltimestamp > time_at_vbl) {
+				// VBL irq queries broken! Disable them.
+				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
 				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
 			}
         }
