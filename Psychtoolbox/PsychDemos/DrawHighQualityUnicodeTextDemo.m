@@ -4,6 +4,27 @@
 % japanese text encoded in Unicode on Apple MacOS/X and Microsoft Windows.
 % GNU/Linux is not yet supported for anti-aliased and unicode text rendering.
 %
+% MacOS/X has text fonts with support for japanese characters preinstalled,
+% so this should just work out of the box. Have a look at the code of the
+% demo on how to select a suitable font, and how to read unicode text from
+% the filesystem. The (commented out) reading code for SHIFT_JIS -> Unicode
+% conversion would only work on recent Matlab releases. Older releases need
+% different approaches - also different wrt. PowerPC vs. IntelMac. That's
+% why we hard-coded the text in this demo -- Want to have it working even
+% on old Matlab 6...
+% 
+% On MS-Windows you will need to install the special east-asian font
+% support kit in order to be able to draw japanese text.
+% How to do this? See...
+%
+% http://www.coscom.co.jp/japanesefont/index.html
+%
+% with some more info here:
+% http://www.alanwood.net/unicode/fonts_windows.html#japanese
+%
+% After that, text drawing seems to "just work" with our "Courier New"
+% font. If you don't install the font pack, you'll just see funny little
+% squares instead of nice japanese characters...
 
 % 11/26/07  mk      Wrote it. Derived from Allens DrawSomeTextDemo.
 
@@ -21,10 +42,10 @@ try
     % each operating system. On OS/X, its rather meaningless, because
     % you'll always get the HQ renderer, on Linux its also meaningless,
     % because there's only a low quality renderer. On Microsoft windows,
-    % the default renderer is a fast but low-quality, renderer with limited
-    % features, so this command enables the high quality, unicode capable
+    % the default renderer is the high quality, unicode capable
     % renderer - which is about 10x slower on average, but still
-    % sufficiently fast for most purposes.
+    % sufficiently fast for most purposes. We just have the command here
+    % for illustrative purpose...
     Screen('Preference', 'TextRenderer', 1);
 
     % This command uncoditionally enables text anti-aliasing for high
