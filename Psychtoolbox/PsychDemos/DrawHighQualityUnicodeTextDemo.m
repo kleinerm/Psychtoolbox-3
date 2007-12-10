@@ -191,7 +191,7 @@ try
     vbl=Screen('Flip',w);
     tstart=vbl;
     count=-100;
-    while ~KbCheck && count < 1200
+    while ~KbCheck & count < 1200
         % Draw text baseline in green...
         Screen('DrawLine', w, [0 255 0], 100, count, 1400, count);
         % Compute texts bounding box...
