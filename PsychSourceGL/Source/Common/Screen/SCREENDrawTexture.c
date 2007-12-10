@@ -129,16 +129,9 @@ static char synopsisString[] =
     PsychCopyInRectArg(3, kPsychArgOptional, sourceRect);
     if (IsPsychRectEmpty(sourceRect)) return(PsychError_none);
 
-
-    if (target->specialflags & kPsychHalfWidthWindow) {
-      // Special case for stereo: Only half the real window width:
-      PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
-		    target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
-    }
-    else {
-      // Normal case:
-      PsychCopyRect(tempRect,target->rect);
-    }
+	PsychMakeRect(&tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
+				  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+				  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
     
     PsychCenterRectInRect(sourceRect, tempRect, targetRect);
     PsychCopyInRectArg(4, kPsychArgOptional, targetRect);
@@ -475,15 +468,9 @@ PsychError SCREENDrawTextures(void)
 		} else {
 			// No destination rect provided: Center the current sourceRect in the current
 			// target window and use that as destination:
-			if (target->specialflags & kPsychHalfWidthWindow) {
-				// Special case for stereo: Only half the real window width:
-				PsychMakeRect(&tempRect, target->rect[kPsychLeft],target->rect[kPsychTop],
-							  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/2,target->rect[kPsychBottom]);
-			}
-			else {
-				// Normal case:
-				PsychCopyRect(tempRect,target->rect);
-			}
+			PsychMakeRect(&tempRect, target->rect[kPsychLeft], target->rect[kPsychTop],
+						  target->rect[kPsychLeft] + PsychGetWidthFromRect(target->rect)/((target->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+						  target->rect[kPsychTop] + PsychGetHeightFromRect(target->rect)/((target->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
 			
 			PsychCenterRectInRect(sourceRect, tempRect, targetRect);
 		}

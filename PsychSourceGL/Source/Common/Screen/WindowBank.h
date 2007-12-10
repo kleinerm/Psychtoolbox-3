@@ -103,6 +103,7 @@ T0 DO:
 											// rotated drawing of textures via texture matrix, not via modelview matrix. To be set as flag in 'DrawTexture(s)'
 #define kPsychDontDoRotation 2				// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via shader, not via matrices, ie., just pass rotation angle to shader. To be set as flag in 'DrawTexture(s)'
+#define kPsychHalfHeightWindow		   8192 // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with half-height, e.g., for interleaved stereo...
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;

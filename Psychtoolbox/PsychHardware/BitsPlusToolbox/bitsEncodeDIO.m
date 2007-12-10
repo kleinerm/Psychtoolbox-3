@@ -15,7 +15,9 @@
 %	the gamma table will be assumed to be linear.  By default, this is set
 %	to 1.
 
+% History:
 % 18/4/05 ejw Converted it to run with OSX version of Psychtoolbox
+% 12/10/2007 Modified to use common code in BitsPlusDIO2Matrix. (MK)
 
 function encodedDIOdata = bitsEncodeDIO(Mask, Data, Command, windowPtr, setGammaTable)
 % Make sure the correct number of arguments are passed.
@@ -48,32 +50,8 @@ if setGammaTable
     %Screen('LoadNormalizedGammaTable', windowPtr, linspace(0, 1, 256)' * ones(1, 3));
 end
 
-% Preparing data array
-encodedDIOdata = uint8(zeros(1, 508, 3));
-
-% Putting the unlock code for DVI Data Packet
-encodedDIOdata(1,1:8,1:3) =  ...
-    uint8([69  40  19  119 52  233 41  183;  ...
-    33  230 190 84  12  108 201 124;  ...
-    56  208 102 207 192 172 80  221])';
-
-% Length of a packet - it could be changed
-encodedDIOdata(1,9,3) = uint8(249); % length of data packet = number + 1
-
-% Command - data packet
-encodedDIOdata(1,10,3) = uint8(2);          % this is a command from the digital output group
-encodedDIOdata(1,10,2) = uint8(Command);    % command code
-encodedDIOdata(1,10,1) = uint8(6);          % address
-
-% DIO output mask
-encodedDIOdata(1,12,3) = uint8(Mask);                 % LSB DIO Mask data
-encodedDIOdata(1,12,2) = uint8(bitshift(Mask, -8));   % MSB DIO Mask data
-encodedDIOdata(1,12,1) = uint8(7);                    % address
-
-% vectorised
-encodedDIOdata(1,14:2:508,3) = uint8(bitand(Data, 255));
-encodedDIOdata(1,14:2:508,2) = uint8(bitshift(bitand(Data, 768), -8));
-encodedDIOdata(1,14:2:508,1) = uint8(8:255);
+% Call common encoder routine to create T-Lock image matrix:
+encodedDIOdata = BitsPlusDIO2Matrix(Mask, Data, Command);
 
 % Display the Tlock packet on the back buffer starting at the bottom
 % left.

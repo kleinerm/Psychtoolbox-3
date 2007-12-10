@@ -30,6 +30,45 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % Screen('Flip', window); will actually upload the identity clut into
 % Bits++.
 %
+%
+% Schedule a Bits++ DIO command for execution on next Screen('Flip'):
+%
+% BitsPlusPlus('DIOCommand', window, repetitions, mask, data, command [, xpos, ypos]);
+%
+% This will draw the proper T-Lock control codes at positions (xpos, ypos)
+% for execution of the Bits++ DIO commands (mask, data, command).
+%
+% You can specify multiple codes at once: If mask, data, command, xpos and
+% ypos are matrices or vectors with 'num' rows, then each of the 'num' rows
+% defines one T-Lock code. If mask, command, xpos and ypos are scalars and
+% data is a one row vector, then only the corresponding T-Lock line is
+% drawn.
+%
+% For each DIO command:
+% 'mask' must be a 8 bit integer value, 'command' must be a 8 bit integer
+% value, whereas 'data' must be a a 248 element row vector of bytes. 
+%
+% Consult your Bits++ manual for explanation of the meaning of the values.
+%
+% xpos and ypos are optional: By default, the T-Lock code is drawn into the
+% 3rd pixel row of the output image, so it can't collide with a potential
+% T-Lock code for CLUT updates.
+%
+% The DIO command will become effective during the next flip command. The
+% T-Lock code is drawn during 'repetitions' successive invocations of
+% Screen('Flip'). If you set 'repetitions' to -1, then the code will be
+% drawn until you stop it via a call to BitsPlusPlus('DIOCommandReset', window);
+%
+%
+% Disable use of the DIO T-Lock code blitting:
+%
+% BitsPlusPlus('DIOCommandReset', window);
+% Stops blitting of T-Lock command codes immediately. If you want to use
+% them again, you have to respecify codes via the BitsPlusPlus('DIOCommand',...);
+%
+%
+%
+%
 % Open a full-screen window on the Bits++ display as with
 % Screen('OpenWindow', ...), perform all initialization:
 %
@@ -171,11 +210,128 @@ global GL;
 % proper operation of Bitsplusplus with GPU imaging has been verified.
 persistent validated;
 
+% Encoded T-Lock display list handle for driving Bits++ DIO:
+persistent tlockhandle;
+% Counter of pending T-Lock display list blits: Zero == Disabled.
+persistent blitTLockCode;
+
+if nargin < 1
+    error('You must specify a command in argument "cmd"!');
+end
+
+if cmd == 1
+    % Fast callback path for PTB imaging pipeline. We got called from the
+    % finalizer blit chain of the imaging pipeline, asking us to perform
+    % some post-processing on the final framebuffer image, immediately
+    % before bufferswap.
+    %
+    % Currently, the only supported operation is drawing of a DIO T-Lock
+    % code into the framebuffer, for control of the DIO pins of the Bits++
+    % box. The T-Lock code has been generated already by a call to
+    % 'DIOCommand'. We just have to blit that "Code Image" to the
+    % framebuffer. We can't use Screen() commands here as we are called
+    % from inside Screen -- Screen is not reentrant!
+    %
+    % We only blit if there is something to blit. Then we reset to nothing
+    % to blit:
+    if blitTLockCode ~= 0
+        glCallList(tlockhandle);
+        blitTLockCode = blitTLockCode - 1;
+    end
+    
+    return;
+end
+
 % Default debuglevel for output during initialization:
 debuglevel = 1;
 
 if isempty(validated)
     validated = 0;
+    tlockhandle = 0;
+    blitTLockCode = 0;
+end
+
+if strcmp(cmd, 'DIOCommand')
+
+    % Reset to safe default:
+    blitTLockCode = 0;
+    
+    if nargin < 2 || isempty(arg)
+        error('window handle for Bits++ onscreen window missing!');
+    end
+    
+    if nargin < 3 || isempty(dummy)
+        error('Number of repetitions for DIO command missing!');
+    end
+
+    if nargin < 6
+        error('DIOCommand must have the parameters "Mask", "Command" and "Data"!');
+    end
+
+    mask = varargin{1};
+    data = varargin{2};
+    command = varargin{3};
+
+    % Create or recreate our display list:
+    glNewList(tlockhandle, GL.COMPILE);
+    
+    for i=1:size(mask, 1)
+        % Process i'th row of command sequence:
+
+        % Generate DIO T-Lock image as Matlab matrix:
+        tlockdata = BitsPlusDIO2Matrix(mask(i), data(i,:), command(i));
+
+        % Convert from Matlab matrix to OpenGL pixel format:
+        encodedDIOdata = uint8(zeros(3, 508));
+        % Pack 3 separate RGB planes into rows 1,2,3. As Matlabs data format is
+        % column major order, this will end up as tightly packed pixel array in
+        % format RGBRGBRGB.... just as glDrawPixels likes it.
+        encodedDIOdata(1,:) = tlockdata(1,:,1);
+        encodedDIOdata(2,:) = tlockdata(1,:,2);
+        encodedDIOdata(3,:) = tlockdata(1,:,3);
+
+        if nargin >= 7
+            % Optional x, y blit position provided:
+            xDIO = varargin{4};
+            yDIO = varargin{5};
+            xDIO = xDIO(i);
+            yDIO = yDIO(i);
+            
+            if yDIO < 1
+                yDIO = 1;
+            end
+        else
+            % Set default position: 3rd scanline of display, so we don't get
+            % into the way of a possible CLUT T-Lock code:
+            xDIO = 0;
+            yDIO = 3;
+        end
+        
+        % Add command sequence for this T-Lock code to display list:
+        glRasterPos2i(xDIO, yDIO);
+        glDrawPixels(508, 1, GL.RGB, GL.UNSIGNED_BYTE, encodedDIOdata);
+    end
+    
+    % Finish display list;
+    glEndList;
+        
+    % Assign number of repetitions:
+    blitTLockCode = dummy;
+
+    % Done. Return.
+    return;
+
+end
+
+if strcmp(cmd, 'DIOCommandReset')
+    % Dummy error check: arg will be used in later revisions...
+    if nargin < 2 || isempty(arg)
+        error('window handle for Bits++ onscreen window missing!');
+    end
+    
+    % Disable T-Lock blitting:
+    blitTLockCode = 0;
+    return;
 end
 
 if strcmp(cmd, 'ForceUnvalidatedRun')
@@ -273,7 +429,17 @@ if strcmp(cmd, 'OpenWindowBits++')
         Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', '');
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
-    
+
+    % We need the GL for DIO T-Lock setup:
+    if isempty(GL)
+        % Load & Initalize constants and moglcore, but don't set the 3D gfx
+        % flag for Screen():
+        InitializeMatlabOpenGL([], [], 1);
+    end;
+
+    % Setup finalizer callback for DIO T-Lock updates:
+    tlockhandle = SetupDIOFinalizer(win, stereomode);
+
     % Load an identity CLUT into the Bits++ to start with:
     linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
     Screen('LoadNormalizedGammaTable', win, linear_lut, 2);
@@ -430,6 +596,9 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % comes first.
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
 
+    % Setup finalizer callback for DIO T-Lock updates:
+    tlockhandle = SetupDIOFinalizer(win, stereomode);
+    
     % Restore old graphics preferences:
     Screen('Preference', 'Enable3DGraphics', ogl);
 
@@ -508,3 +677,22 @@ function ValidateBitsPlusImaging(win, writefile)
     end
 end
 
+% Helper function for setup of finalizer blit chains in all modes. Sets up
+% callback into our file for T-Lock drawing etc...
+function displist = SetupDIOFinalizer(win, stereomode)
+
+    % Generate unique display list handle for later use:
+    displist = glGenLists(1);
+    
+    % Now enable finalizer hook chains and load them with the special Bits++
+    % command for T-Lock based Bits++ DIO updates:
+    Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Render T-Lock DIO data callback', 'BitsPlusPlus(1);');
+    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
+
+    if (~isempty(stereomode) && stereomode == 1)
+        % This is only needed on quad-buffered stereo contexts.
+        Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Render T-Lock DIO data callback',  'BitsPlusPlus(1);');
+        Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
+    end
+
+end

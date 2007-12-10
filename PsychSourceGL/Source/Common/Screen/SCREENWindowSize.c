@@ -65,6 +65,11 @@ PsychError SCREENWindowSize(void)
 			rectWidth = rectWidth / 2;
 		}
 
+		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
+			// Special case for stereo: Only half the real window width:
+			rectHeight = rectHeight / 2;
+		}
+
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, rectWidth);
 		PsychCopyOutDoubleArg(2, kPsychArgOptional, rectHeight);
 	}else

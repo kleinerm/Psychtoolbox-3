@@ -32,6 +32,18 @@
 
 #include "Screen.h"
 
+// Default textrenderer already defined? E.g., Compile time options?
+#ifndef PTB_DEFAULT_TEXTRENDERER
+// Nope: Set it, depending on OS...
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Windows: We default to the new GDI based slower, but high quality and flexible renderer:
+#define PTB_DEFAULT_TEXTRENDERER 1
+#else
+// OS/X and Linux: Only one renderer available (renderer 0)
+// Which is a high quality render on OS/X and what we've got on Linux:
+#define PTB_DEFAULT_TEXTRENDERER 0
+#endif
+#endif
 
 //PsychTable preference state
 static int								psychTableVersion;				//there is no psych table yet, this is provided for the future. 
@@ -45,7 +57,7 @@ static int								defaultTextSize=12;
 static int								defaultTextStyle=0;             // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
 static Boolean                          textAlphaBlending=FALSE;
 static int								textAntiAliasing=-1;            // -1=System defined (don't care), 0=Always off, 1=Always on.
-static int								textRenderer=0;					// 0=Default OS specific (fast one), 1=OS specific High quality.
+static int								textRenderer=PTB_DEFAULT_TEXTRENDERER;	// 0=Default OS specific (fast one), 1=OS specific High quality.
 static int                              screenSkipSyncTests=0;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
 //Debug preference state
 static Boolean                          TimeMakeTextureFlag=FALSE;

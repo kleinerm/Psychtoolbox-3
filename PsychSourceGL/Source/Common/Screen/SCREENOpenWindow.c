@@ -362,6 +362,15 @@ PsychError SCREENOpenWindow(void)
 		imagingmode = imagingmode & (~kPsychHalfWidthWindow);
 	}
 
+	// Similar handling for windows of half the real height, except that none of our built-in stereo modes requires these,
+	// so this is only done on request from external code via the imagingmode flag kPsychHalfHeightWindow.
+	// One use of this is when using interleaved line stereo mode (PsychImaging(...'InterleavedLineStereo')) where windows
+	// only have a useable net height of half their physical height:
+	if (imagingmode & kPsychHalfHeightWindow) {
+		windowRecord->specialflags = windowRecord->specialflags | kPsychHalfHeightWindow;
+		imagingmode = imagingmode & (~kPsychHalfHeightWindow);
+	}
+
 	// Initialize internal image processing pipeline if requested:
 	PsychInitializeImagingPipeline(windowRecord, imagingmode);
 	
@@ -411,16 +420,11 @@ PsychError SCREENOpenWindow(void)
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
-	 // rect argument needs special treatment in stereo mode:
-	 if (windowRecord->specialflags & kPsychHalfWidthWindow) {
-			// Special case for stereo: Only half the real window width:
-			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],
-							  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/2,windowRecord->rect[kPsychBottom]);
-	 }
-	 else {
-			// Normal case:
-			PsychMakeRect(&rect, windowRecord->rect[kPsychLeft],windowRecord->rect[kPsychTop],windowRecord->rect[kPsychRight],windowRecord->rect[kPsychBottom]);
-	 }
+	// rect argument needs special treatment in stereo mode:
+	 		PsychMakeRect(&rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
+						  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+						  windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+			
     PsychCopyOutRectArg(2, FALSE, rect);
 
     return(PsychError_none);   

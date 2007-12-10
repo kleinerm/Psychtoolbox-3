@@ -327,6 +327,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			winwidth = winwidth / 2;
 		}
 
+		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
+			// Special case for stereo: Only half the real window height:
+			// winheight = winheight / 2;
+		}
+
 		// These FBO's may need a z-buffer or stencil buffer as well if 3D rendering is
 		// enabled:
 		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), fboInternalFormat, needzbuffer, winwidth, winheight)) {
@@ -371,6 +376,11 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		if (windowRecord->specialflags & kPsychHalfWidthWindow) {
 			// Special case for stereo: Only half the real window width:
 			winwidth = winwidth / 2;
+		}
+
+		if (windowRecord->specialflags & kPsychHalfHeightWindow) {
+			// Special case for stereo: Only half the real window height:
+			// winheight = winheight / 2;
 		}
 
 		// Is the target of imageprocessing (our processedDrawBufferFBO) the final destination? This is true if there is no further need
@@ -2469,6 +2479,16 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
 	// Query dimensions of viewport:
 	w = (*srcfbo1)->width;
 	h = (*srcfbo1)->height;
+
+	// Check for override width x height parameter in the blitterString: An integral (w,h)
+	// size the blit. This allows to blit a target quad with a size different from srcfbo1, without
+	// scaling or filtering it. Mostly useful in conjunction with specific shaders.
+	if (strp=strstr(hookfunc->pString1, "OvrSize:")) {
+		// Parse and assign offset:
+		if (sscanf(strp, "OvrSize:%i:%i", &w, &h)!=2) {
+			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): OvrSize: blit string parameter is invalid! Parse error...\n");
+		}
+	}
 
 	// Check for offset parameter in the blitterString: An integral (x,y)
 	// offset for the destination of the blit. This allows to blit the srcfbo1, without

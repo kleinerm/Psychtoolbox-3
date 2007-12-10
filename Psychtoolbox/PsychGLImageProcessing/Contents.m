@@ -61,7 +61,8 @@
 % kPsychNeedFastBackingStore.m    -- Enable minimal imaging pipeline. This flag is implied when using any
 %                                    of the other flags.
 % kPsychNeedFastOffscreenWindows.m - Only enable support for fast Offscreen windows, nothing else.
-% kPsychNeedHalfWidthWindow       -- Tell imaging pipe to create internal buffers half the real window size. Internal flag, not useful for end-user code.
+% kPsychNeedHalfWidthWindow       -- Tell imaging pipe to create internal buffers half the real window width. Internal flag, not useful for end-user code.
+% kPsychNeedHalfHeightWindow      -- Tell imaging pipe to create internal buffers half the real window height. Internal flag, not useful for end-user code.
 % kPsychNeedImageProcessing.m     -- Request explicit support for image processing.
 % kPsychNeedMultiPass.m           -- Indicate that some of the used plugins will need more than two passes.
 % kPsychNeedOutputConversion.m    -- Indicate that display output is going to some special output device that

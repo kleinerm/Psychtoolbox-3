@@ -1,0 +1,46 @@
+/* InterleavedLineStereoShader.frag.txt - Shader for interleaved line stereo:
+ *
+ * Used in the stereo compositing chain of the Psychtoolbox imaging pipeline.
+ *
+ * Composes an interleaved stereo image by putting the left eye images pixel
+ * lines into the even rows of the output buffer and the right eye images pixel
+ * lines into the odd rows of the output buffer, thereby interleaving the
+ * content of both eyes buffers into one unified interlaced buffer.
+ *
+ * This stereo encoding can be used by some stereo goggles, e.g., the
+ * "iGlasses 3D Video Goggles".
+ *
+ * Written 2007 by Mario Kleiner, part of the Psychtoolbox-3, licensed under
+ * GPL.
+ *
+ */ 
+
+/* Input image rectangle textures: Image1 = Left, Image2 = Right eye */
+uniform sampler2DRect Image1;
+uniform sampler2DRect Image2;
+uniform vec2 Offset;
+
+void main()
+{
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 pos = gl_TexCoord[0].xy;
+
+    /* oddrow == 1 for odd lines, 0 for even lines: */
+    float oddrow = mod(pos.y, 2.0);
+    
+    /* Update the y component to only read upper half of all lines in images: */
+    pos.y = (pos.y - oddrow) / 2.0; 
+    pos   = pos + Offset;
+
+    /* Read the image pixel from the modified readpos, output it to framebuffer. */
+    /* Choose between left- and right- image input buffer, depending if this is  */
+    /* an even or an odd output row: */
+    if (oddrow < 1.0) {
+        /* Even row: Left image */
+        gl_FragColor = texture2DRect(Image1, pos);
+    }
+    else {
+        /* Odd row: Right image */
+        gl_FragColor = texture2DRect(Image2, pos);
+    }
+}

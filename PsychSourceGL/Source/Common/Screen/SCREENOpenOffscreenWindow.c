@@ -116,6 +116,12 @@ PsychError SCREENOpenOffscreenWindow(void)
 			rect[kPsychRight] = rect[kPsychRight] / 2;
 		}
 
+		if (PsychIsOnscreenWindow(exampleWindowRecord) && (exampleWindowRecord->specialflags & kPsychHalfHeightWindow)) {
+			// Special case: Example window is a dualview stereo onscreen window: Its effective size is only half the real window width,
+			// so we cut the width of the examplerect in half to not be wasteful:
+			rect[kPsychBottom] = rect[kPsychBottom] / 2;
+		}
+
         // We copy depth only from exampleWindow if it is a offscreen window (=texture). Copying from
         // onscreen windows doesn't make sense, e.g. depth=16 for onscreen means RGBA8 window, but it
         // would map onto a LUMINANCE+ALPHA texture for the offscreen window! We always use 32 bit RGBA8
