@@ -26,6 +26,7 @@
 %   FrameSequentialStereoTest       - Test routine for timing and stimulus onset on quad-buffered frame-sequential stereo hardware.
 %   GetCharTest                     - Tests of GetChar.
 %   GetSecsTest                     - Timing test of clock used by Psychtoolbox, e.g., GetSecs, WaitSecs, Screen...
+%   GraphicsDisplaySyncAcrossDualHeadsTest - Test synchronization of refresh cycles of different display heads.
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
