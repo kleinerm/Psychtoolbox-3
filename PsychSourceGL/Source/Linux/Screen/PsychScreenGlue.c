@@ -29,17 +29,27 @@
 	
 	TO DO: 
 	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
+		ï¿½ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
 		name by their placement in a directory tree.
 		
-		¥ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
+		ï¿½ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
 */
 
 
 #include "Screen.h"
 
+// We build with VidModeExtension support unless forcefully disabled at compile time via a -DNO_VIDMODEEXTS
+#ifndef NO_VIDMODEEXTS
+#define USE_VIDMODEEXTS 1
+#endif
+
+#ifdef USE_VIDMODEEXTS
 // Functions for setup and query of hw gamma CLUTS and for monitor refresh rate query:
 #include <X11/extensions/xf86vmode.h>
+
+#else
+#define XF86VidModeNumberErrors 0
+#endif
 
 // file local variables
 
@@ -429,6 +439,8 @@ int PsychGetScreenDepthValue(int screenNumber)
 
 float PsychGetNominalFramerate(int screenNumber)
 {
+#ifdef USE_VIDMODEEXTS
+
   // Information returned by the XF86VidModeExtension:
   XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
   int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
@@ -456,10 +468,15 @@ float PsychGetNominalFramerate(int screenNumber)
 
   // Done.
   return(vrefresh);
+#else
+  return(0);
+#endif
 }
 
 float PsychSetNominalFramerate(int screenNumber, float requestedHz)
 {
+#ifdef USE_VIDMODEEXTS
+
   // Information returned by/sent to the XF86VidModeExtension:
   XF86VidModeModeLine mode_line;  // The mode line of the current video mode.
   int dot_clock;                  // The RAMDAC / TDMS pixel clock frequency.
@@ -540,6 +557,9 @@ float PsychSetNominalFramerate(int screenNumber, float requestedHz)
 
   // Done.
   return(vrefresh);
+#else
+  return(0);
+#endif
 }
 
 /* Returns the physical display size as reported by X11: */
@@ -805,6 +825,8 @@ void PsychPositionCursor(int screenNumber, int x, int y)
 */
 void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable)
 {
+#ifdef USE_VIDMODEEXTS
+
   CGDirectDisplayID	cgDisplayID;
   static  float localRed[256], localGreen[256], localBlue[256];
   
@@ -827,11 +849,14 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
 
   // The LUT's always have 256 slots for the 8-bit framebuffer:
   *numEntries= 256;
+#endif
   return;
 }
 
 void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
+#ifdef USE_VIDMODEEXTS
+
   CGDirectDisplayID	cgDisplayID;
   int     i;        
   psych_uint16	RTable[256];
@@ -852,6 +877,8 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
   // Set new gammaTable:
   PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
   XF86VidModeSetGammaRamp(cgDisplayID, PsychGetXScreenIdForScreen(screenNumber), 256, (unsigned short*) RTable, (unsigned short*) GTable, (unsigned short*) BTable);
+#endif
+
   return;
 }
 

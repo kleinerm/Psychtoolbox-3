@@ -45,4 +45,4 @@ function WaitSecs(s)
 % 2/4/00    dgp     Updated for Mac OS 9.
 % 7/2/04    awi     Divided into separate sections for OS X, Mac and Windows.  
 % 7/10/04   awi     Edits for clarity.
-AssertMex;
+AssertMex('WaitSecs.m');

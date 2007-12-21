@@ -1,0 +1,439 @@
+#! /bin/sh
+#
+# mkoctfile -- create a .oct file suitable for dynamic linking by
+# Octave.
+
+# Exit immediately on any error.
+
+set -e
+
+# Default values for these variables are filled in when Octave is
+# compiled. 
+
+: ${SED="/bin/sed"}
+
+: ${CPPFLAGS=""}
+: ${INCFLAGS="-I/usr/include/octave-2.1.73 -I/usr/include/octave-2.1.73/octave"}
+: ${F2C=""}
+: ${F2CFLAGS=""}
+: ${F77="/usr/bin/gfortran"}
+: ${FFLAGS="-O2"}
+: ${FPICFLAG="-fPIC"}
+: ${CC="/usr/bin/gcc"}
+: ${CFLAGS="-O2 -g"}
+: ${CPICFLAG="-fPIC"}
+: ${CXX="/usr/bin/g++"}
+: ${CXXFLAGS="-O2 -g"}
+: ${CXXPICFLAG="-fPIC"}
+: ${XTRA_CFLAGS="-mieee-fp"}
+: ${XTRA_CXXFLAGS="-mieee-fp"}
+
+: ${DEPEND_FLAGS="-M"}
+: ${DEPEND_EXTRA_SED_PATTERN=""}
+
+: ${DL_LD="/usr/bin/g++"}
+: ${DL_LDFLAGS="-shared -Wl,-Bsymbolic"}
+
+: ${RLD_FLAG="-Wl,-rpath -Wl,/usr/lib/octave-2.1.73"}
+: ${RDYNAMIC_FLAG="-rdynamic"}
+: ${LIBOCTAVE=-loctave}
+: ${LIBOCTINTERP=-loctinterp}
+: ${LIBREADLINE=-lreadline}
+: ${LIBCRUFT=-lcruft}
+: ${BLAS_LIBS="-llapack-3 -lblas-3"}
+: ${FFTW_LIBS="-lfftw3"}
+: ${LIBS="-lreadline  -lncurses -ldl -lhdf5 -lz -lm "}
+: ${FLIBS="-L/usr/lib/gcc/i486-linux-gnu/4.1.2 -L/usr/lib/gcc/i486-linux-gnu/4.1.2/../../../../lib -L/lib/../lib -L/usr/lib/../lib -lhdf5 -lz -lm"}
+: ${LD_CXX="/usr/bin/g++"}
+: ${LDFLAGS="-fPIC"}
+: ${LD_STATIC_FLAG=""}
+: ${LFLAGS="-L/usr/lib/octave-2.1.73"}
+
+: ${ALL_FFLAGS="$FFLAGS"}
+
+: ${ALL_CFLAGS="$INCFLAGS $XTRA_CFLAGS $CFLAGS"}
+
+: ${ALL_CXXFLAGS="$INCFLAGS $XTRA_CXXFLAGS $CXXFLAGS"}
+
+: ${ALL_LDFLAGS="$LD_STATIC_FLAG $CPICFLAG $LDFLAGS"}
+
+: ${OCTAVE_LIBS="$LIBOCTINTERP $LIBOCTAVE $SPECIAL_MATH_LIB $LIBCRUFT"}
+: ${PSYCHSTATIC_LIBS=""}
+# Local variables.
+
+usage_msg="usage: mkoctfile [options] file ..."
+
+cfiles=
+ccfiles=
+f77files=
+objfiles=
+octfiles=
+octfile=
+outputfile=
+incflags=
+defs=
+ldflags=
+dbg=:
+pass_on_options=
+strip=false
+no_oct_file_strip_on_this_platform=false
+link=true
+link_stand_alone=false
+depend=false
+compile=true
+
+if [ $# -eq 0 ]; then
+  echo $usage_msg 1>&2
+  exit 1
+fi
+
+while [ $# -gt 0 ]; do
+  file=
+  case "$1" in
+    *.c)
+      file=$1
+      cfiles="$cfiles $file"
+    ;;
+    *.cc | *.C | *.cpp)
+      file=$1
+      ccfiles="$ccfiles $file"
+    ;;
+    *.f | *.F)
+      file=$1
+      f77files="$f77files $file"
+    ;;
+    *.o)
+      file=$1
+      objfiles="$objfiles $file"
+    ;;
+    *.a)
+      file=$1
+      PSYCHSTATIC_LIBS="$PSYCHSTATIC_LIBS $file"
+    ;;
+    -d | --debug | -v | --verbose)
+      dbg=echo
+    ;;
+    -h | -\? | --help)
+      echo $usage_msg 1>&2
+      cat << EOF
+
+Options:
+
+  -h, -?, --help          Print this message.
+
+  -IDIR                   Add -IDIR to compile commands.
+
+  -DDEF                   Add -DDEF to compile commands.
+
+  -lLIB                   Add library LIB to link command.
+
+  -LDIR                   Add -LDIR to link command.
+
+  -M, --depend            Generate dependency files (.d) for C and C++
+                          source files.
+
+  -RDIR                   Add -RDIR to link command.
+
+  -W                      Pass flags though the compiler like -Wl,-rpath=...
+
+  -c, --compile           Compile, but do not link.
+
+  -o FILE, --output FILE  Output file name.  Default extension is .oct
+                          unless linking a stand-alone executable.
+
+  -p VAR, --print VAR     Print configuration variable VAR.  Recognized
+                          variables are:
+
+                            CPPFLAGS      CPICFLAG
+                            INCFLAGS      CXX
+                            F2C           CXXFLAGS
+                            F2CFLAGS      CXXPICFLAG
+                            F77           XTRA_CFLAGS
+                            FFLAGS        XTRA_CXXFLAGS
+                            FPICFLAG      SHLEXT
+                            CC            DL_LD
+                            CFLAGS        DL_LDFLAGS
+
+                            LD_CXX        LFLAGS
+                            LDFLAGS       LD_STATIC_FLAG
+                            RLD_FLAG      RDYNAMIC_FLAG
+
+                            LIBOCTAVE     LIBCRUFT
+                            LIBOCTINTERP  OCTAVE_LIBS
+                            BLAS_LIBS     FFTW_LIBS
+                            LIBS          FLIBS
+
+  --link-stand-alone      Link a stand-alone executable file.
+
+  -s, --strip             Strip output file.
+
+  -v, --verbose           Echo commands as they are executed.
+
+  FILE                    Compile or link FILE.  Recognized file types are:
+
+                            .c    C source
+                            .cc   C++ source
+                            .C    C++ source
+                            .cpp  C++ source
+                            .f    Fortran source
+                            .F    Fortran source
+                            .o    object file
+
+EOF
+      exit 0
+    ;;
+    -I*)
+      incflags="$incflags $1"
+    ;;
+    -D*)
+      defs="$defs $1"
+    ;;
+    -[lLR]*)
+      ldflags="$ldflags $1"
+    ;;
+    -M | --depend)
+      depend=true
+      compile=false
+    ;;
+    -o | --output)
+      shift
+      if [ $# -gt 0 ]; then
+        outputfile="$1"
+      else
+        echo "mkoctfile: output file name missing" 1>&2
+      fi
+    ;;
+    -p | --print)
+      shift
+      if [ $# -gt 0 ]; then
+        eval echo \${$1}
+        exit 0
+      else
+        echo "mkoctfile: --print requires argument" 1>&2
+        exit 1
+      fi
+    ;;
+    -s | --strip)
+      if $no_oct_file_strip_on_this_platform; then
+        echo "mkoctfile: stripping disabled on this platform" 1>&2
+      else
+        strip=true
+      fi
+    ;;
+    -c | --compile)
+      link=false
+    ;;
+    --link-stand-alone)
+      link_stand_alone=true
+    ;;
+    -W*)
+      pass_on_options="$pass_on_options $1"
+    ;;
+    *)
+      echo "mkoctfile: unrecognized argument $1" 1>&2
+    ;;
+  esac
+  if [ -n "$file" ]; then
+    if [ -z "$octfile" ]; then
+      octfile="$file"
+    fi
+  fi
+  shift
+done
+
+if $link_stand_alone; then
+  if [ -n "$outputfile" ]; then
+    output_option="-o $outputfile"
+  fi
+else
+  if [ -n "$outputfile" ]; then
+    octfile="$outputfile"
+  else
+    octfile=`echo $octfile | $SED 's,\.[^.]*$,,'`.oct
+  fi
+fi
+
+# Generate dependency files for C and C++ files.
+
+if $depend; then
+  if [ -n "$cfiles" ]; then
+    for f in $cfiles; do
+      b=`echo $f | $SED 's,\.c$,,'`
+      d=$b.d
+      cmd="rm -f $d"
+      $dbg $cmd
+      eval $cmd
+      cmd="$CC $DEPEND_FLAGS $CPPFLAGS $ALL_CFLAGS $incflags $def $f | $SED $DEPEND_EXTRA_SED_PATTERN -e 's,^[^:]*/\(.*\.o\):,\1:,' -e 's,$b\.o,pic/& & $d,g' > $d-t && mv $d-t $d"
+      $dbg $cmd
+      eval $cmd
+    done
+  fi
+
+  if [ -n "$ccfiles" ]; then
+    for f in $ccfiles; do
+      case $f in
+        *.cc)
+          b=`echo $f | $SED 's,\.cc$,,'`
+        ;;
+        *.C)
+          b=`echo $f | $SED 's,\.C$,,'`
+        ;;
+        *.cpp)
+          b=`echo $f | $SED 's,\.cpp$,,'`
+        ;;
+      esac
+      d=$b.d
+      cmd="rm -f $d"
+      $dbg $cmd
+      eval $cmd
+      cmd="$CXX $DEPEND_FLAGS $CPPFLAGS $ALL_CXXFLAGS $incflags $defs $f | $SED $DEPEND_EXTRA_SED_PATTERN -e 's,^[^:]*/\(.*\.o\):,\1:,' -e 's,$b\.o,pic/& & $d,g' > $d-t && mv $d-t $d"
+      $dbg $cmd
+      eval $cmd
+    done
+  fi
+  # If generating dependencies, that's all we do.
+  exit 0
+fi
+
+# Compile Fortran, C, and C++ files.  Add the name of each object file
+# that is produced to the overall list of object files.
+
+if [ -n "$f77files" ]; then
+  for f in $f77files; do
+    case $f in
+      *.f)
+        b=`echo $f | $SED 's,\.f$,,'`
+      ;;
+      *.F)
+        b=`echo $f | $SED 's,\.F$,,'`
+      ;;
+    esac
+    if [ -n "$F77" ]; then
+      if [ -n "$outputfile" ]; then
+	if $link; then 
+	  o=$b.o
+	else
+	  o=$outputfile
+	fi
+      else
+        o=$b.o
+      fi
+      objfiles="$objfiles $o"
+      cmd="$F77 -c $FPICFLAG $ALL_FFLAGS $pass_on_options $f -o $o"
+      $dbg $cmd
+      eval $cmd
+    elif [ -n "$F2C" ]; then
+      c=$b.c
+      cfiles="$cfiles $c"
+      cmd="$F2C $F2CFLAGS < $f > $c"
+      $dbg $cmd
+      eval $cmd
+    else
+      echo "mkoctfile: no way to compile Fortran file $f" 1>&2
+    fi
+  done
+fi
+
+if [ -n "$ccfiles" ]; then
+  for f in $ccfiles; do
+    if [ -n "$CXX" ]; then
+      case $f in
+	*.cc)
+	  b=`echo $f | $SED 's,\.cc$,,'`
+	;;
+	*.C)
+	  b=`echo $f | $SED 's,\.C$,,'`
+	;;
+	*.cpp)
+	  b=`echo $f | $SED 's,\.cpp$,,'`
+	;;
+      esac
+      if [ -n "$outputfile" ]; then
+	if $link; then
+	  o=$b.o
+	else
+	  o=$outputfile
+	fi
+      else
+	o=$b.o
+      fi
+      objfiles="$objfiles $o"
+      cmd="$CXX -c $CPPFLAGS $CXXPICFLAG $ALL_CXXFLAGS $pass_on_options $incflags $defs $f -o $o"
+      $dbg $cmd
+      eval $cmd
+    else
+      echo "mkoctfile: no way to compile C++ file $f" 1>&2
+    fi
+  done
+fi
+
+if [ -n "$cfiles" ]; then
+  for f in $cfiles; do
+    if [ -n  "$CC" ]; then
+      b=`echo $f | $SED 's,\.c$,,'`
+      if [ -n "$outputfile" ]; then
+	if $link; then
+	  o=$b.o
+	else
+	  o=$outputfile
+	fi
+      else
+	o=$b.o
+      fi
+      objfiles="$objfiles $o"
+      cmd="$CC -c $CPPFLAGS $CPICFLAG $ALL_CFLAGS $pass_on_options $incflags $defs $f -o $o"
+      $dbg $cmd
+      eval $cmd
+    else
+      echo "mkoctfile: no way to compile C++ file $f" 1>&2
+    fi
+  done
+fi
+
+## Uncomment the following group of lines if you get `Text file busy'
+## errors from ld.  This may happen if the .oct file is currently
+## running while you are trying to recompile it.  We try moving first,
+## since on some systems (HP-UX, maybe others) it is possible to
+## rename running programs but not remove them.
+
+## if [ -f "$octfile" ]; then
+##   cmd="mv $octfile $octfile.bak"
+##   $dbg $cmd
+##   eval $cmd
+##   cmd="rm -f $octfile.bak"
+##   $dbg $cmd
+##   eval $cmd
+## fi
+
+# Link all the object files.
+echo Test0
+
+if $link; then
+  if $link_stand_alone; then
+    if [ -n "$LD_CXX" ]; then
+      cmd="$LD_CXX $CPPFLAGS $ALL_CXXFLAGS $RDYNAMIC_FLAG $ALL_LDFLAGS $pass_on_options $output_option $objfiles $ldflags $LFLAGS $RLD_FLAG $OCTAVE_LIBS $BLAS_LIBS $FFTW_LIBS $LIBREADLINE $LIBS $FLIBS"
+      $dbg $cmd
+      eval $cmd
+    else
+      echo "mkoctfile: no way to link stand-alone executable file" 1>&2
+      exit 1
+    fi
+  else
+    echo Test1
+    LINK_DEPS="$LFLAGS $OCTAVE_LIBS $LDFLAGS $BLAS_LIBS $FFTW_LIBS $LIBS $FLIBS $PSYCHSTATIC_LIBS"
+    cmd="$DL_LD $DL_LDFLAGS $pass_on_options -o $octfile $objfiles $ldflags $LINK_DEPS"
+    $dbg $cmd
+    eval $cmd
+    echo Test2
+  fi
+
+# Maybe strip it.
+
+  if $strip; then
+    cmd="strip $octfile"
+    $dbg $cmd
+    eval $cmd
+  fi
+fi
+
+exit 0

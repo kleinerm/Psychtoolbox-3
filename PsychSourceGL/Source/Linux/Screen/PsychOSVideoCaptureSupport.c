@@ -35,6 +35,20 @@
 #include "Screen.h"
 #include <float.h>
 
+#ifndef PTBVIDEOCAPTURE_LIBDC
+// Dummy definitions to keep compiler happy when we're not building with libdc1394-2 Firewire capture support:
+
+void PsychVideoCaptureInit(void) {return;}
+bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags) { return(FALSE);}
+void PsychCloseVideoCaptureDevice(int capturehandle) { return; }
+void PsychDeleteAllCaptureDevices(void) { return; }
+int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity) { return(-2); }
+int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime) { return(0); }
+double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value) { return(0); }
+void PsychExitVideoCapture(void) { return; }
+#else
+// Real implementation for libdc1394-V2 based Firewire video capture:
+
 #include <libraw1394/raw1394.h>
 #include <dc1394/dc1394_control.h>
 #include <dc1394/dc1394_utils.h>
@@ -1566,4 +1580,6 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
   // Return the old value. Could be DBL_MAX if parameter was unknown or not accepted for some reason.
   return(oldvalue);
 }
+
+#endif
 
