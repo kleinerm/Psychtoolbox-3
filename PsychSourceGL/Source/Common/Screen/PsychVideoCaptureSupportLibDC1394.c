@@ -1,68 +1,61 @@
 /*
-	Linux/Screen/PsychOSVideoCaptureSupport.c
-	
+	PsychSourceGL/Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c
+
 	PLATFORMS:	
 	
-		This is the GNU/Linux specific version.
-		The header file with the API is shared with the OS-X and Windows versions and
-		located in Common/Screen/PsychVideoCaptureSupport.h
+		GNU/Linux, Apple MacOS/X and (limited and experimental support for) MS-Windows
 
-		--> Linux version has same API but substantially different implementation.
-				
 	AUTHORS:
 	
 		Mario Kleiner           mk              mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 	
-        DESCRIPTION:
+	DESCRIPTION:
 	
-	Psychtoolbox functions for dealing with video capture devices on GNU/Linux.
+		This is the videocapture engine based on the free, open-source
+		LibDC-1394 V2 library. It only supports video capture, no sound capture and
+		no recording of video or sound.
 
-	For now, we only support machine vision cameras that are connected via the IEEE-1394
-	Firewire-bus and that conform to the IIDC-1.0 (and later) standard for firewire
-	machine vision cameras. These cameras are handled on Linux via the (statically linked)
-	libdc1394-2.0 in combination with libraw1394. They provide high performance streaming of
-	uncompressed camera data over firewire and a lot of features (e.g., external sync.
-	triggers) not useful for consumer cameras, but very useful for computer vision
-	applications and things like eye-trackers, ...
+		It only supports machine vision cameras that are connected via the IEEE-1394
+		Firewire-bus and that conform to the IIDC-1.0 (and later) standard for firewire
+		machine vision cameras. These cameras are handled via the (statically linked)
+		libdc1394-2.0 in combination with (on Linux) libraw1394.
+		
+		The functions provide high performance streaming of uncompressed camera data over
+		firewire and a lot of features (e.g., external sync. triggers) not useful for
+		consumer cameras, but very useful for computer vision applications and things
+		like eye-trackers, ...
 	
 	NOTES:
 
+	TODO:
+		- Check what happened to the framedropping flag?
+		- Implemented Query/WaitTrigger support via new Basler smart feature api.
+		- Implement the new generic frame format conversion routines.
 */
 
 
 #include "Screen.h"
 #include <float.h>
 
-#ifndef PTBVIDEOCAPTURE_LIBDC
-// Dummy definitions to keep compiler happy when we're not building with libdc1394-2 Firewire capture support:
+#ifdef PTBVIDEOCAPTURE_LIBDC
 
-void PsychVideoCaptureInit(void) {return;}
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags) { return(FALSE);}
-void PsychCloseVideoCaptureDevice(int capturehandle) { return; }
-void PsychDeleteAllCaptureDevices(void) { return; }
-int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity) { return(-2); }
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime) { return(0); }
-double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value) { return(0); }
-void PsychExitVideoCapture(void) { return; }
-#else
-// Real implementation for libdc1394-V2 based Firewire video capture:
-
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// On Linux we use the syslog facility for logging, and libraw1394 for low-level access
+// to the firewire bus:
 #include <libraw1394/raw1394.h>
-#include <dc1394/dc1394_control.h>
-#include <dc1394/dc1394_utils.h>
-#include <dc1394/dc1394_conversions.h>
 #include <syslog.h>
+#endif
 
-dc1394error_t dc1394_free_iso_channel_and_bandwidth(dc1394camera_t *);
-
-#define PSYCH_MAX_CAPTUREDEVICES 10
+// This is the master include file for libdc1394. It includes all other public header files:
+#include <dc1394/dc1394.h>
 
 // Record which defines all state for a capture device:
 typedef struct {
   int valid;                        // Is this a valid device record? zero == Invalid.
   dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
+  dc1394video_frame_t *frame;		// Ptr to a structure which contains the most recently captured/dequeued frame.
   int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
   int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
   dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
@@ -90,6 +83,11 @@ typedef struct {
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 static Boolean firsttime = TRUE;
+static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
+
+// Forward declaration of internal helper function:
+void PsychDCDeleteAllCaptureDevices(void);
+
 
 /*    PsychGetVidcapRecord() -- Given a handle, return ptr to video capture record.
  *    --> Internal helper function of PsychVideoCaptureSupport.
@@ -113,13 +111,13 @@ PsychVidcapRecordType* PsychGetVidcapRecord(int deviceIndex)
   return(&vidcapRecordBANK[deviceIndex]);
 }
 
-/*
+/* CHECKED
  *     PsychVideoCaptureInit() -- Initialize video capture subsystem.
  *     This routine is called by Screen's RegisterProject.c PsychModuleInit()
  *     routine at Screen load-time. It clears out the vidcapRecordBANK to
  *     bring the subsystem into a clean initial state.
  */
-void PsychVideoCaptureInit(void)
+void PsychDCVideoCaptureInit(void)
 {
   // Initialize vidcapRecordBANK with NULL-entries:
   int i;
@@ -127,57 +125,62 @@ void PsychVideoCaptureInit(void)
     vidcapRecordBANK[i].valid = 0;
   }    
   numCaptureRecords = 0;
+  libdc = NULL;
   
   return;
 }
 
-/*
+/* CHECKED
  *  void PsychExitVideoCapture() - Shutdown handler.
  *
  *  This routine is called by Screen('CloseAll') and on clear Screen time to
  *  do final cleanup. It deletes all capture objects
  *
  */
-void PsychExitVideoCapture(void)
+void PsychDCExitVideoCapture(void)
 {
   // Release all capture devices
-  PsychDeleteAllCaptureDevices();
+  PsychDCDeleteAllCaptureDevices();
+  
+  // Shutdown library:
+  if (libdc && !firsttime) dc1394_free(libdc);
+  libdc = NULL;
   
   // Reset firsttime flag to get a cold restart on next invocation of Screen:
   firsttime = TRUE;
   return;
 }
 
-/*
+/*  CHECKED
  *  PsychDeleteAllCaptureDevices() -- Delete all capture objects and release all associated ressources.
  */
-void PsychDeleteAllCaptureDevices(void)
+void PsychDCDeleteAllCaptureDevices(void)
 {
   int i;
   for (i=0; i<PSYCH_MAX_CAPTUREDEVICES; i++) {
-    if (vidcapRecordBANK[i].valid) PsychCloseVideoCaptureDevice(i);
+    if (vidcapRecordBANK[i].valid) PsychDCCloseVideoCaptureDevice(i);
   }
   return;
 }
 
-/*
+/*  CHECKED
  *  PsychCloseVideoCaptureDevice() -- Close a capture device and release all associated ressources.
  */
-void PsychCloseVideoCaptureDevice(int capturehandle)
+void PsychDCCloseVideoCaptureDevice(int capturehandle)
 {
   // Retrieve device record for handle:
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
         
   // Stop capture immediately if it is still running:
-  PsychVideoCaptureRate(capturehandle, 0, 0, NULL);
+  PsychDCVideoCaptureRate(capturehandle, 0, 0, NULL);
 
   // Initiate a power-down cycle to bring camera into standby mode:
-  if (dc1394_set_camera_power(capdev->camera, DC1394_OFF)!=DC1394_SUCCESS) {
+  if (dc1394_camera_set_power(capdev->camera, DC1394_OFF)!=DC1394_SUCCESS) {
     printf("PTB-WARNING: Tried to power down camera %i, but powerdown-cycle failed for some reason!\n", capturehandle); fflush(NULL);
   }
 
   // Close & Shutdown camera, release ressources:
-  dc1394_free_camera(capdev->camera);
+  dc1394_camera_free(capdev->camera);
   capdev->camera = NULL;
 
   // Invalidate device record to free up this slot in the array:
@@ -190,12 +193,13 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
   return;
 }
 
-/*
+/* CHECKED
  *      PsychOpenVideoCaptureDevice() -- Create a video capture object.
  *
  *      This function tries to open and initialize a connection to a IEEE1394
  *      Firewire machine vision camera and return the associated captureHandle for it.
  *
+ *		slotid = Number of slot in vidcapRecordBANK[] array to use for this camera.
  *      win = Pointer to window record of associated onscreen window.
  *      deviceIndex = Index of the grabber device. (Currently ignored)
  *      capturehandle = handle to the new capture object.
@@ -205,47 +209,26 @@ void PsychCloseVideoCaptureDevice(int capturehandle)
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
  *		targetmoviefilename and recordingflags are currently ignored, they would refer to video harddics recording capabilities.
  */
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
-    PsychVidcapRecordType* capdev = NULL;
-    dc1394camera_t **cameras=NULL;
-    uint_t numCameras;
-    int err;
+    PsychVidcapRecordType *capdev = NULL;
+    dc1394camera_list_t   *cameras=NULL;
+    unsigned int		  numCameras;
+    int					  err;
+    int					  i;
+    char                  msgerr[10000];
 
-    int i, slotid;
-    char msgerr[10000];
-    // char errdesc[1000];
-    //    Rect movierect, newrect;
     *capturehandle = -1;
-
     
     if (firsttime) {
-      // Nothing to do for now...
+      // First time invocation: Initialize library:
+	  libdc = dc1394_new();
+	  if (libdc == NULL) PsychErrorExitMsg(PsychError_user, "Failed to initialize libDC1394 V2 Firewire video capture library! Capture engine unavailable.");
       firsttime = FALSE;
     }
     
-    // Sanity checks:
-    if (!PsychIsOnscreenWindow(win)) {
-      PsychErrorExitMsg(PsychError_user, "Provided windowPtr is not an onscreen window.");
-    }
-    
-    if (deviceIndex < -1) {
-      PsychErrorExitMsg(PsychError_internal, "Invalid (negative) deviceIndex passed!");
-    }
-
-    if (numCaptureRecords >= PSYCH_MAX_CAPTUREDEVICES) {
-      PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
-    }
-
-    // Search first free slot in vidcapRecordBANK:
-    for (i=0; (i < PSYCH_MAX_CAPTUREDEVICES) && (vidcapRecordBANK[i].valid); i++);
-    if (i>=PSYCH_MAX_CAPTUREDEVICES) {
-      PsychErrorExitMsg(PsychError_user, "Allowed maximum number of simultaneously open capture devices exceeded!");
-    }
-    
-    // Slot slotid will contain the record for our new capture object:
-    slotid=i;
+    // Slot 'slotid' will contain the record for our new capture object:
     
     // Initialize new record:
     vidcapRecordBANK[slotid].valid = 1;
@@ -258,8 +241,7 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     capdev->scratchbuffer = NULL;        
 
     // Query a list of all available (connected) Firewire cameras:
-    err=dc1394_find_cameras(&cameras, &numCameras);
-
+    err=dc1394_camera_enumerate(libdc, &cameras);
     if (err!=DC1394_SUCCESS) {
       // Failed to detect any cameras: Invalidate our record.
       capdev->valid = 0;
@@ -268,19 +250,23 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
 			"Ask your system administrator for assistance or read 'help LinuxFirewire'.");
     }
 
+	// Get number of detected cameras:
+	numCameras = cameras->num;
+	
     // Any cameras?
     if (numCameras<1) {
       // Failed to find a camera: Invalidate our record.
       capdev->valid = 0;
       PsychErrorExitMsg(PsychError_user, "Unable to find any Firewire camera: Please make sure that there's actually one connected.\n"
-			"Please note that we only support IDDC compliant machine vision cameras, not standard consumer DV cameras!");
+						"Please note that we only support IIDC compliant machine vision cameras, not standard consumer DV cameras!");
     }
 
     // Specific cam requested?
     if (deviceIndex==-1) {
       // Nope. We just use the first one.
-      capdev->camera=cameras[0];
+      capdev->camera = dc1394_camera_new(libdc, cameras->ids[0].guid);
       printf("PTB-INFO: Opening the first Firewire camera on the IEEE1394 bus.\n");
+	  deviceIndex = 0;
     }
     else {
       // Does a camera with requested index exist?
@@ -293,18 +279,27 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
       }
 
       // Ok, valid device index: Assign cam:
-      capdev->camera=cameras[deviceIndex];
+      capdev->camera = dc1394_camera_new(libdc, cameras->ids[deviceIndex].guid);
       printf("PTB-INFO: Opening the %i. Firewire camera (deviceIndex=%i) out of %i cams on the IEEE1394 bus.\n",
 	     deviceIndex + 1, deviceIndex, numCameras);
     }
 
     fflush(NULL);
 
+	// Prepare error message in case its needed below:
+	sprintf(msgerr, "PTB-ERROR: Opening the %i. Firewire camera (deviceIndex=%i) failed! Failed to initialize camera with GUID %"PRIx64"\n", deviceIndex + 1, deviceIndex, cameras->ids[deviceIndex].guid);
+
     // Free the unused cameras:
-    for (i=0; i<numCameras; i++) if (cameras[i]!=capdev->camera) dc1394_free_camera(cameras[i]);
-    free(cameras);
+	dc1394_camera_free_list(cameras);
     cameras=NULL;
-    
+
+	// Error abort if camera init failed:
+	if(capdev->camera == NULL) {
+		// Error abort here:
+		capdev->valid = 0;
+		PsychErrorExitMsg(PsychError_user, msgerr);
+    }
+	
     // ROI rectangle specified?
     if (capturerectangle) {
       PsychCopyRect(capdev->roirect, capturerectangle);
@@ -343,18 +338,19 @@ bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, in
     fflush(NULL);
 
     // Initiate a power-up cycle in case the camera is in standby mode:
-    if (dc1394_set_camera_power(capdev->camera, DC1394_ON)!=DC1394_SUCCESS) {
+    if (dc1394_camera_set_power(capdev->camera, DC1394_ON)!=DC1394_SUCCESS) {
       printf("PTB-WARNING: Tried to power up camera %i, but powerup-cycle failed for some reason!\n", deviceIndex); fflush(NULL);
     }
 
     // Initiate a reset-cycle on the camera to bring it into a clean state to start with:
-    if (dc1394_reset_camera(capdev->camera)!=DC1394_SUCCESS) {
+    if (dc1394_camera_reset(capdev->camera)!=DC1394_SUCCESS) {
       printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
     }
 
     return(TRUE);
 }
 
+// CHECKED
 /* Internal function: Find best matching non-Format 7 mode:
  */
 int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
@@ -547,6 +543,7 @@ int PsychVideoFindNonFormat7Mode(PsychVidcapRecordType* capdev, double capturera
   return(true);
 }
 
+// CHECKED
 /* Internal function: Find best matching Format 7 mode:
  * Returns calculated optimal iso-packet size.
  */
@@ -683,7 +680,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
     // image size and image depth + some IIDC spec. restrictions...
 
     // First we query the range of available packet sizes:
-    if (dc1394_format7_get_packet_para(capdev->camera, mode, &pbmin, &pbmax)!=DC1394_SUCCESS) continue;
+    if (dc1394_format7_get_packet_parameters(capdev->camera, mode, &pbmin, &pbmax)!=DC1394_SUCCESS) continue;
     // Special case handling:
     if (pbmin==0) pbmin = pbmax;
     
@@ -830,7 +827,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
 }
 
 
-/*
+/*  CHECKED
  *  PsychVideoCaptureRate() - Start- and stop video capture.
  *
  *  capturehandle = Grabber to start-/stop.
@@ -840,7 +837,7 @@ int PsychVideoFindFormat7Mode(PsychVidcapRecordType* capdev, double capturerate)
  *  startattime = Deadline (in system time) for which to wait before real start of capture.
  *  Returns Number of dropped frames during capture.
  */
-int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
+int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime)
 {
   int dropped = 0;
   float framerate = 0;
@@ -902,6 +899,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
       packetsize = 0;
     }
 
+	// The PsychVideoFind(Non)Format7Mode() logic above already set the ROI for capture...
+	
     // Setup capture hardware and DMA engine:
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
       PsychErrorExitMsg(PsychError_user, "Unable to query bus-speed - Start of video capture failed!");
@@ -926,61 +925,78 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
     // Setup DMA engine:
     // =================
 
+	// Set ISO speed:
+	err = dc1394_video_set_iso_speed(capdev->camera, speed);
+    if (err != DC1394_SUCCESS) {      
+		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting ISO speed failed!");
+	}
+
+	// Set Mode:
+	err = dc1394_video_set_mode(capdev->camera, mode);
+    if (err != DC1394_SUCCESS) {      
+		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting mode failed!");
+	}
+
+	// Set Framerate for non-Format7 modes: This is redundant in Format7 mode...
+	err = dc1394_video_set_framerate(capdev->camera, dc1394_framerate);
+    if (err != DC1394_SUCCESS) {      
+		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting fixed framerate failed!");
+	}
+
     // Format-7 capture?
     if (packetsize > 0) {
-      // Format-7 capture DMA setup:
-      err = dc1394_dma_setup_format7_capture(capdev->camera, mode, color_code, speed, packetsize,
-					     (unsigned int) capdev->roirect[kPsychLeft],
-					     (unsigned int) capdev->roirect[kPsychTop],
-					     (unsigned int) PsychGetWidthFromRect(capdev->roirect),
-					     (unsigned int) PsychGetHeightFromRect(capdev->roirect),
-					     capdev->num_dmabuffers, dropframes);
+      // Format-7 capture DMA setup: We only set mode, color format, packetsize (and thereby framerate) and ROI (and thereby imagesize):
+	  err = dc1394_format7_set_roi(capdev->camera, mode, color_code, packetsize, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop], (unsigned int) PsychGetWidthFromRect(capdev->roirect), (unsigned int) PsychGetHeightFromRect(capdev->roirect));
+		if (err != DC1394_SUCCESS) {      
+			PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting Format7 ROI failed!");
+		}
     }
     else {
-      // Non-Format-7 capture DMA setup:
-      err = dc1394_dma_setup_capture(capdev->camera, mode, speed, dc1394_framerate, capdev->num_dmabuffers, dropframes);
+      // Non-Format-7 capture DMA setup: mode encodes image size, ROI and color format.
+	  // Nothing to do for now...
     }
-
+	
+	// MK TODO CHECK: Is the 'dropframes' flag not supported anymore?!?
+	
+	// Finally setup and start DMA video capture engine with default flags (auto allocation and
+	// release of iso bandwidth and channels) and num_dmabuffers DMA buffer slots in internal video FIFO:
+	err = dc1394_capture_setup(capdev->camera, capdev->num_dmabuffers, DC1394_CAPTURE_FLAGS_DEFAULT);
     if (err != DC1394_SUCCESS) {      
       // Failed! We clean up and either fail or retry in non-DMA mode:
 
-      // Shutdown DMA engine:
-      dc1394_dma_unlisten(capdev->camera);
-
-      // Release DMA engine:
-      dc1394_dma_release_camera(capdev->camera);
-
-      // We release the cams iso channel and bandwidth allocation in the hope that this
-      // will get us ready again...
-      dc1394_free_iso_channel_and_bandwidth(capdev->camera);
-
       // Are we allowed to use non-DMA capture if DMA capture doesn't work?
       if (capdev->allow_nondma_fallback) {
-	// Yes. Try to activate non-DMA capture. Less efficient...
-	printf("PTB-WARNING: Could not setup DMA capture engine! Trying non-DMA capture engine as a slow, inefficient and limited fallback.\n");
-	if (dc1394_setup_capture(capdev->camera, mode, speed, dc1394_framerate) != DC1394_SUCCESS) {
-	  // Non-DMA setup failed as well. That's the end my friend...
-
-	  // We release the cams iso channel and bandwidth allocation in the hope that this
-	  // will get us ready again...
-	  dc1394_free_iso_channel_and_bandwidth(capdev->camera);
-	  PsychErrorExitMsg(PsychError_user, "Unable to setup and start non-DMA capture engine as well - Start of video capture failed!");
-	}
-	else {
-	  // Signal use of non-DMA mode:
-	  capdev->dma_mode = 0;
-	}
+		  // Yes. Try to activate non-DMA capture. Less efficient...
+		  printf("PTB-WARNING: Could not setup DMA capture engine! Trying non-DMA capture engine as a slow, inefficient and limited fallback.\n");
+		  
+		  // TODO CHECK: non-DMA path no longer supported by current libdc?!?
+		  PsychErrorExitMsg(PsychError_unimplemented, "Unable to setup and start DMA capture engine and not possible to use non-DMA fallback path due to lack of support - Start of video capture failed!");
+		  
+		  /*
+		  if (dc1394_setup_capture(capdev->camera, mode, speed, dc1394_framerate) != DC1394_SUCCESS) {
+			  // Non-DMA setup failed as well. That's the end my friend...
+			  
+			  // We release the cams iso channel and bandwidth allocation in the hope that this
+			  // will get us ready again...
+			  dc1394_free_iso_channel_and_bandwidth(capdev->camera);
+			  PsychErrorExitMsg(PsychError_user, "Unable to setup and start non-DMA capture engine as well - Start of video capture failed!");
+		  }
+		  else {
+			  // Signal use of non-DMA mode:
+			  capdev->dma_mode = 0;
+		  }
+		  */
       }
       else {
-	// Nope! Exit with error-message:
-	PsychErrorExitMsg(PsychError_user, "Unable to setup and start DMA capture engine and not allowed to use non-DMA fallback path - Start of video capture failed!");
+		  // Nope! Exit with error-message:
+		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start DMA capture engine and not allowed to use non-DMA fallback path - Start of video capture failed!");
       }
     }
     else {
-      // Signal use of DMA engine:
-      capdev->dma_mode = 1;
+		// Signal use of DMA engine:
+		capdev->dma_mode = 1;
     }
-
+	
     // Ready to go! Now we just need to tell the camera to start its capture cycle:
 
     // Wait until start deadline reached:
@@ -988,20 +1004,25 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
 
     // Start DMA driven isochronous data transfer:
     if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
-      if (capdev->dma_mode > 0) {
-	// Shutdown DMA engine:
-	dc1394_dma_unlisten(capdev->camera);
-	// Release DMA engine:
-	dc1394_dma_release_camera(capdev->camera);
-      }
-      else {
-	dc1394_release_camera(capdev->camera);
-      }
+		// Failed! Shutdown DMA capture engine again:
+		dc1394_capture_stop(capdev->camera);
 
-      // We release the cams iso channel and bandwidth allocation in the hope that this
-      // will get us ready again...
-      dc1394_free_iso_channel_and_bandwidth(capdev->camera);
-      
+		/* NOT NEEDED ANYMORE:
+		if (capdev->dma_mode > 0) {
+			// Shutdown DMA engine:
+			dc1394_dma_unlisten(capdev->camera);
+			// Release DMA engine:
+			dc1394_dma_release_camera(capdev->camera);
+		}
+		else {
+			dc1394_release_camera(capdev->camera);
+		}
+		
+		// We release the cams iso channel and bandwidth allocation in the hope that this
+		// will get us ready again...
+		dc1394_free_iso_channel_and_bandwidth(capdev->camera);
+		*/
+		
       PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
     }
     
@@ -1027,63 +1048,68 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
     capdev->grabber_active = 1;
     
     // Allocate conversion buffer if needed for YUV->RGB conversions.
+	// FIXME TODO: libdc provides better method for this now!!!
     if (capdev->pixeldepth == 24 && color_code!=DC1394_COLOR_CODING_RGB8) {
       // Software conversion of YUV -> RGB needed. Allocate a proper scratch-buffer:
       capdev->scratchbuffer = malloc(capdev->width * capdev->height * 3);
     }
 
-    if(PsychPrefStateGet_Verbosity()>1){
-      printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle,
-	     capdev->width, capdev->height, capdev->fps);
+    if(PsychPrefStateGet_Verbosity()>1) {
+      printf("PTB-INFO: Capture started on device %i - Width x Height = %i x %i - Framerate: %f fps.\n", capturehandle, capdev->width, capdev->height, capdev->fps);
     }
   }
   else {
-    // Stop capture:
-    if (capdev->grabber_active) {
-      // Stop isochronous data transfer from camera:
-      if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
-	PsychErrorExitMsg(PsychError_user, "Unable to stop video transfer on camera! (dc1394_video_set_transmission(DC_OFF) failed)!");
-      }
-
-      if (capdev->dma_mode > 0) {
-	// Shutdown DMA engine:
-	dc1394_dma_unlisten(capdev->camera);
-	
-	// Release DMA engine:
-	dc1394_dma_release_camera(capdev->camera);
-      }
-      else {
-	dc1394_release_camera(capdev->camera);
-      }
-
-      // Ok, capture is now stopped.
-      capdev->frame_ready = 0;
-      capdev->grabber_active = 0;
-    
-      if (capdev->scratchbuffer) {
-	// Release scratch-buffer:
-	free(capdev->scratchbuffer);
-	capdev->scratchbuffer = NULL;
-      }
-
-      // MK: FIXME: Need to undo reqpixeldepth = reqpixeldepth * 8 in start capture!
-      // Need to rethink definition of reqpixeldepth...
-      capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
-
-      if(PsychPrefStateGet_Verbosity()>1){
-	// Output count of dropped frames:
-	if ((dropped=capdev->nr_droppedframes) > 0) {
-	  printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
-	}
-	
-	if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
-	printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %lf milliseconds.\n", capdev->avg_decompresstime * 1000.0f);
-	if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
-	printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
-      }
-    }
+	  // Stop capture:
+	  if (capdev->grabber_active) {
+		  // Stop isochronous data transfer from camera:
+		  if (dc1394_video_set_transmission(capdev->camera, DC1394_OFF) !=DC1394_SUCCESS) {
+			  PsychErrorExitMsg(PsychError_user, "Unable to stop video transfer on camera! (dc1394_video_set_transmission(DC_OFF) failed)!");
+		  }
+		  
+		  // Stop capture engine:
+		  dc1394_capture_stop(capdev->camera);
+		  
+		  /* NOT NEEDED ANYMORE:
+		  if (capdev->dma_mode > 0) {
+			  // Shutdown DMA engine:
+			  dc1394_dma_unlisten(capdev->camera);
+			  
+			  // Release DMA engine:
+			  dc1394_dma_release_camera(capdev->camera);
+		  }
+		  else {
+			  dc1394_release_camera(capdev->camera);
+		  }
+		  */
+		  
+		  // Ok, capture is now stopped.
+		  capdev->frame_ready = 0;
+		  capdev->grabber_active = 0;
+		  
+		  if (capdev->scratchbuffer) {
+			  // Release scratch-buffer:
+			  free(capdev->scratchbuffer);
+			  capdev->scratchbuffer = NULL;
+		  }
+		  
+		  // MK: FIXME: Need to undo reqpixeldepth = reqpixeldepth * 8 in start capture!
+		  // Need to rethink definition of reqpixeldepth...
+		  capdev->reqpixeldepth = capdev->reqpixeldepth / 8;
+		  
+		  if(PsychPrefStateGet_Verbosity()>1){
+			  // Output count of dropped frames:
+			  if ((dropped=capdev->nr_droppedframes) > 0) {
+				  printf("PTB-INFO: Video capture dropped %i frames on device %i to keep capture running in sync with realtime.\n", dropped, capturehandle); 
+			  }
+			  
+			  if (capdev->nrframes>0) capdev->avg_decompresstime/= (double) capdev->nrframes;
+			  printf("PTB-INFO: Average time spent in video decompressor (waiting/polling for new frames) was %lf milliseconds.\n", capdev->avg_decompresstime * 1000.0f);
+			  if (capdev->nrgfxframes>0) capdev->avg_gfxtime/= (double) capdev->nrgfxframes;
+			  printf("PTB-INFO: Average time spent in GetCapturedImage (intensity calculation Video->OpenGL texture conversion) was %lf milliseconds.\n", capdev->avg_gfxtime * 1000.0f);
+		  }
+	  }
   }
-
+  
   fflush(NULL);
     
   // Reset framecounters and statistics:
@@ -1097,7 +1123,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
 }
 
 
-/*
+/*  CHECKED
  *  PsychGetTextureFromCapture() -- Create an OpenGL texturemap from a specific videoframe from given capture object.
  *
  *  win = Window pointer of onscreen window for which a OpenGL texture should be created.
@@ -1111,7 +1137,7 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
  *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
  *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
  */
-int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
+int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
 			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
 {
     GLuint texid;
@@ -1148,11 +1174,13 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	// blocking mode, so we will wait here until a new frame arrives.
 	if (capdev->dma_mode > 0) {
 	  // DMA wait & capture:
-	  error = dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_WAIT);
+	  error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_WAIT, &(capdev->frame));
 	}
 	else {
 	  // Non-DMA wait & capture:
-	  error = dc1394_capture(&(capdev->camera), 1);
+	  // Currently disabled: Used to be supported in pre6, but apparently missing in rc9...
+	  PsychErrorExitMsg(PsychError_unimplemented, "Non-DMA'ed fallback path not yet supported in current libdc1394!!");
+	  // FIXME: Will this come back? Reenable if so:error = dc1394_capture(&(capdev->camera), 1);
 	}
 
 	if (error == DC1394_SUCCESS) {	  
@@ -1174,7 +1202,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	  return(-2);
 	}
 
-	if (dc1394_dma_capture(&(capdev->camera), 1, DC1394_VIDEO1394_POLL) == DC1394_SUCCESS) {
+	if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) == DC1394_SUCCESS) {
 	  // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
 	  capdev->frame_ready = 1;
 	}
@@ -1194,8 +1222,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
 	capdev->avg_decompresstime+=(tend - tstart);
 
 	if (capdev->dma_mode > 0) {
-	  // Query capture timestamp from Firewire subsystem and convert to seconds:
-	  capdev->current_pts = ((double) capdev->camera->capture.filltime.tv_sec) + (((double) capdev->camera->capture.filltime.tv_usec) / 1000000.0f);
+	  // Query capture timestamp (in microseconds) and convert to seconds:
+	  capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
 	}
 	else {
 	  // We do not get a timestamp from firewire subsystem in non-DMA mode: Use the best we have, which should still be pretty good:
@@ -1228,7 +1256,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     padding= 0;
 
     // input_image points to the image buffer in our cam:
-    input_image = (unsigned char*) (capdev->camera->capture.capture_buffer);
+    input_image = (unsigned char*) (capdev->frame->image);
 
     // Do we want to do something with the image data and have a
     // scratch buffer for color conversion alloc'ed?
@@ -1236,7 +1264,6 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
       // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
       // into the scratch buffer and set scratch buffer as source for
       // all further operations:
-
       dc1394_convert_to_RGB8(input_image, capdev->scratchbuffer, capdev->width,
 			     capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
 
@@ -1284,7 +1311,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
 
     // Release the capture buffer. Return it to the DMA ringbuffer pool:
-    if (capdev->dma_mode > 0) dc1394_dma_done_with_buffer(capdev->camera);
+    if (capdev->dma_mode > 0) dc1394_capture_enqueue((capdev->camera), (capdev->frame));
 
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
     if (capdev->dma_mode < 1) {
@@ -1310,7 +1337,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     }
     else {
       // New style - Only works with DMA capture engine. Just take values from Firewire subsystem:
-      nrdropped = (int) capdev->camera->capture.num_dma_buffers_behind;
+      nrdropped = (int) capdev->frame->frames_behind;
     }
     
     // Update total count of dropped (or pending) frames:
@@ -1329,6 +1356,7 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     return(nrdropped);
 }
 
+// CHECKED
 /* Set capture device specific parameters:
  * Currently, the named parameters are a subset of the parameters supported by the
  * IIDC specification, mapped to more convenient names.
@@ -1339,14 +1367,12 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
  *
  * Returns: Old value of the setting
  */
-double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
+double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value)
 {
   dc1394featureset_t features;
   dc1394feature_t feature;
   dc1394bool_t present;
   unsigned int minval, maxval, intval, oldintval;
-  unsigned int lowadr, hiadr;
-  octlet_t triggercounteraddress;
   int triggercount;
 
   double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
@@ -1372,66 +1398,16 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
       return(-1);
     }
 
-    // It is a Basler cam. Try to get a handle to the proper register:
-    //capdev->camera->advanced_features_csr = 0xf2f00000;
-    hiadr=lowadr=0xDEADBEEF;
-    if(GetCameraAdvControlRegister(capdev->camera, 0x00, &lowadr)!=DC1394_SUCCESS) return(-11);
-    if(GetCameraAdvControlRegister(capdev->camera, 0x04, &hiadr)!=DC1394_SUCCESS) return(-12);
-    printf("Hi = %x Lo = %x  == ", hiadr, lowadr);
-
-    
-    // Step 0: Unlock Advanced features by writing Baslers unlock - key into access control register:
-    if(SetCameraAdvControlRegister(capdev->camera, 0x00, 0x0030533B)!=DC1394_SUCCESS) return(-2);
-    if(SetCameraAdvControlRegister(capdev->camera, 0x04, 0x73C3F000)!=DC1394_SUCCESS) return(-3);
-    if(GetCameraAdvControlRegister(capdev->camera, 0x00, &lowadr)!=DC1394_SUCCESS) return(-31);
-    if(GetCameraAdvControlRegister(capdev->camera, 0x04, &hiadr)!=DC1394_SUCCESS) return(-32);
-    if(lowadr == 0xFFFFFFFF && hiadr == 0xFFFFFFFF) {
-      // Failed! Advanced Features not supported on this Basler camera:
-      return(-33);
-    }
-    printf("TIMEOUT %i\n", (int) (hiadr & 0xFFFF));
-
-    // Step 1: Write GUID of Trigger counter register to "Smart Features Inquiry Register"
-    if(SetCameraAdvControlRegister(capdev->camera, 0x10, 0x16C31A78)!=DC1394_SUCCESS) return(-4);
-    if(SetCameraAdvControlRegister(capdev->camera, 0x14, 0x11D83F75)!=DC1394_SUCCESS) return(-5);
-    if(SetCameraAdvControlRegister(capdev->camera, 0x18, 0x1000EC94)!=DC1394_SUCCESS) return(-6);
-    if(SetCameraAdvControlRegister(capdev->camera, 0x1C, 0x55AE5B5A)!=DC1394_SUCCESS) return(-7);
-    // Step 2: Query address of Trigger counter reg. from "Smart Features Address Register"
-    if(GetCameraAdvControlRegister(capdev->camera, 0x20, &lowadr)!=DC1394_SUCCESS) return(-8);
-    if(GetCameraAdvControlRegister(capdev->camera, 0x24, &hiadr)!=DC1394_SUCCESS) return(-9);
-    if(lowadr == 0 && hiadr == 0) {
-      // Failed! Feature not supported, just return -1:
-      return(-10);
-    }
-    printf("Hi = %i Lo = %i  == ", hiadr, lowadr);
-
-    // Step 3: Assemble final address of trigger counter reg.
-    triggercounteraddress = (octlet_t) (((octlet_t) hiadr << 32) | (octlet_t) lowadr);
-
-    // Step 4: Read counter:
-    lowadr = 0xDEADBEEF;
-    if(GetCameraROMValue(capdev->camera, triggercounteraddress, &lowadr)!=DC1394_SUCCESS) return(-11);
-    triggercount = (int)(lowadr >> 16);
-    printf("%p\n", (void*) lowadr);
-    return((int) lowadr);
+    // It is a Basler cam. Go ahead:
+	// TODO FIXME: IMPLEMENT IT!
+	return(-2);
   }
 
   if (strcmp(pname, "PrintParameters")==0) {
     // Special command: List and print all features...
-    if (dc1394_get_camera_info(capdev->camera) !=DC1394_SUCCESS) {
+	printf("PTB-INFO: The camera provides the following information and featureset:\n");
+    if (dc1394_camera_print_info(capdev->camera, stdout) !=DC1394_SUCCESS) {
       printf("PTB-WARNING: Unable to query general information about camera.\n");
-    }
-    else {
-      printf("PTB-INFO: The camera provides the following generic information:\n");
-      dc1394_print_camera_info(capdev->camera);
-    }
-
-    if (dc1394_get_camera_feature_set(capdev->camera, &features) !=DC1394_SUCCESS) {
-      printf("PTB-WARNING: Unable to query feature set of camera.\n");
-    }
-    else {
-      printf("PTB-INFO: The camera provides the following feature set:\n");
-      dc1394_print_feature_set(&features);
     }
 
     fflush(NULL);    
@@ -1582,4 +1558,3 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
 }
 
 #endif
-

@@ -28,8 +28,8 @@ const char *FieldNames[]={"width", "height", "pixelSize", "hz"};
 
 PsychError SCREENResolution(void) 
 {
-	static char useString[] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize]);";
-	//															  1				2				3			4			5
+	static char useString[] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize] [, specialMode]);";
+	//															  1				2				3			4			5			    6
 	static char synopsisString[] =	"Query or change display settings for screen \"screenNumber\".\n"
 									"Returns a struct \"oldResolutions\" with the current settings for screen "
 									"resolution, refresh rate and pixel depth. Optionally sets new settings "
@@ -49,16 +49,29 @@ PsychError SCREENResolution(void)
 									"If you call this command without ever opening onscreen windows and closing them "
 									"at some point, Psychtoolbox will not restore display settings automatically.\n"
 									"You can query a list of all supported combinations of display settings via the "
-									"Screen('Resolutions') command. ";
+									"Screen('Resolutions') command. \"specialMode\" is a flag you must not touch, "
+									"unless you really know what you're doing, that's why we don't tell you its purpose.";
 									
 	static char seeAlsoString[] = "Screen('Resolutions')";
 	
     PsychGenericScriptType	*oldResStructArray;
 	PsychScreenSettingsType screenSettings;
 	PsychDepthType			useDepth;
-    int						screenNumber;
+    int						screenNumber, specialMode;
 	long					newWidth, newHeight, newHz, newBpp;
 	boolean					rc;
+	
+	// Purpose of 'specialMode': If bit zero is set, then its possible to switch display settings while
+	// onscreen windows - possibly fullscreen windows and display capture - are open/active. This is mostly
+	// useful for temporarilly changing display framerate, e.g., from a wanted value of x Hz to a intermittent
+	// value of y Hz, then back to x Hz. Such an approach may be useful for "drift-syncing" multiple displays
+	// whose video refresh cycles are not perfectly in sync (not yet clear if this will really work), but that's
+	// about the only useful purpose. Changing other settings - or changing any settings permanently - while
+	// windows are already open will likely subvert display calibration and lead to severe timing problems
+	// and possible worse things - like complete hangs of the graphics subsystem and the need for a hard
+	// machine reset!
+	// Other bits of specialMode will trigger other sync related actions - implementation and semantics may
+	// change without notice!
 	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -66,7 +79,7 @@ PsychError SCREENResolution(void)
 
     // Check to see if the user supplied superfluous arguments
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(5));
+    PsychErrorExit(PsychCapNumInputArgs(6));
     
 	// Get the screen number from the windowPtrOrScreenNumber.  This also checks to make sure that the specified screen exists.  
     PsychCopyInScreenNumberArg(kPsychUseDefaultArgPosition, TRUE, &screenNumber);
@@ -90,8 +103,12 @@ PsychError SCREENResolution(void)
 
 	// Any new settings provided? Otherwise we skip this:
 	if(PsychGetNumInputArgs() > 1) {
-		// Make sure we're not called while windows are open.
-		if (PsychCountOpenWindows(kPsychAnyWindow) > 0) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
+		// Get optional specialMode flag, default to zero:
+		specialMode = 0;
+		PsychCopyInIntegerArg(6, FALSE, &specialMode);
+
+		// Make sure we're not called while windows are open. Only allow calling with open windows if Bit zero of specialMode is set:
+		if ((PsychCountOpenWindows(kPsychAnyWindow) > 0) && !(specialMode & 1)) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
 
 		// Copy in optional new settings:
 		PsychCopyInIntegerArg(2, FALSE, &newWidth);
@@ -115,9 +132,9 @@ PsychError SCREENResolution(void)
 		if (!PsychCheckVideoSettings(&screenSettings)) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");
 		
 		// Perform actual switch:
-        PsychCaptureScreen(screenNumber);
+        if (!(specialMode & 1)) PsychCaptureScreen(screenNumber);
 		rc = PsychSetScreenSettings( TRUE, &screenSettings);
-        PsychReleaseScreen(screenNumber);
+        if (!(specialMode & 1)) PsychReleaseScreen(screenNumber);
 
 		// Check if successfull:
 		if (!rc) PsychErrorExitMsg(PsychError_user, "Invalid or mutually incompatible video settings requested!\nOne or more of the values are invalid or unsupported by your display device.");

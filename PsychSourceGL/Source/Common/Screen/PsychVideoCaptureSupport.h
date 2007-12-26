@@ -23,19 +23,49 @@
 #ifndef PSYCH_IS_INCLUDED_PsychVideoCaptureSupport
 #define PSYCH_IS_INCLUDED_PsychVideoCaptureSupport
 
+// Maximum number of allowed simultaneously open capture devices. As structures are allocated
+// statically, this should not be increased beyond reasonable limits. 100 is always a nice number:
+#define PSYCH_MAX_CAPTUREDEVICES 100
+
+// Unconditionally enable Quicktime Sequencegrabber capture support on OS/X and Windows:
+#if PSYCH_SYSTEM != PSYCH_LINUX
+#define PTBVIDEOCAPTURE_QT 1
+#endif
+
 #include "Screen.h"
 
+// These are the generic entry points, to be called by SCREENxxxx videocapture functions and
+// other parts of screen. They dispatch into API specific versions, depending on users choice
+// of capture system and support by OS:
 void PsychVideoCaptureInit(void);
-bool PsychOpenVideoCaptureDevice(PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
 void PsychCloseVideoCaptureDevice(int capturehandle);
-void PsychDeleteAllCaptureDevices(void);
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 void PsychExitVideoCapture(void);
 
-//end include once
+// These are the prototypes for Quicktime/SequenceGrabber versions, supported on OS/X and Windows:
+#ifdef PTBVIDEOCAPTURE_QT
+void PsychQTVideoCaptureInit(void);
+bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+void PsychQTCloseVideoCaptureDevice(int capturehandle);
+int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
+int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
+double PsychQTVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychQTExitVideoCapture(void);
 #endif
 
+// These are the prototypes for LibDC1394 V2 versions, supported on GNU/Linx, OS/X and in a experimental version on MS-Windows:
+#ifdef PTBVIDEOCAPTURE_LIBDC
+void PsychDCVideoCaptureInit(void);
+bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+void PsychDCCloseVideoCaptureDevice(int capturehandle);
+int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
+int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
+double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychDCExitVideoCapture(void);
+#endif
 
-
+//end include once
+#endif

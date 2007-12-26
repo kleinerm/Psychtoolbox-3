@@ -45,6 +45,14 @@
 #endif
 #endif
 
+#if PSYCH_SYSTEM == PSYCH_LINUX
+// Linux: Default capture engine is LibDC1394 V2:
+#define PTB_DEFAULTVIDCAPENGINE 1
+#else
+// Other OS: Default engine is Quicktime SequenceGrabbers:
+#define PTB_DEFAULTVIDCAPENGINE 0
+#endif
+
 //PsychTable preference state
 static int								psychTableVersion;				//there is no psych table yet, this is provided for the future. 
 static char								PsychTableCreator[]="Screen";   //there is no psych table yet, this is provided for the future.
@@ -70,6 +78,8 @@ static Boolean                          Enable_3d_gfx=FALSE;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode=1;
+
+static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire.
 
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)
@@ -316,6 +326,17 @@ Boolean PsychPrefStateGet_3DGfx(void)
 void PsychPrefStateSet_3DGfx(Boolean level)
 {
     Enable_3d_gfx = level;
+}
+
+// Default for selection of video capture engine:
+int PsychPrefStateGet_VideoCaptureEngine(void)
+{
+	return(videoCaptureEngineId);
+}
+
+void PsychPrefStateSet_VideoCaptureEngine(int mode)
+{
+	videoCaptureEngineId = mode;
 }
 
 //****************************************************************************************************************

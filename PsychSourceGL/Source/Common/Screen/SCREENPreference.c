@@ -118,8 +118,9 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
+	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire)]);"
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
-			
+
 static char seeAlsoString[] = "";	
 
 
@@ -312,6 +313,14 @@ PsychError SCREENPreference(void)
                             PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
                             PsychPrefStateSet_VBLTimestampingMode(tempInt);
 			}
+			preferenceNameArgumentValid=TRUE;
+		}else
+			if(PsychMatch(preferenceName, "DefaultVideocaptureEngine")){
+				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_VideoCaptureEngine());
+				if(numInputArgs==2){
+					PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+					PsychPrefStateSet_VideoCaptureEngine(tempInt);
+				}
 			preferenceNameArgumentValid=TRUE;
 		}else 
 			if(PsychMatch(preferenceName, "ConserveVRAM")){

@@ -1549,6 +1549,10 @@
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
 		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
 		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
+		8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
+		8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
+		8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */; };
+		8320C1BA0D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */; };
 		8325CEC30CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */; };
 		8325CEC40CAF15AB00B498CD /* PsychHIDKbQueueCheck.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */; };
 		8325CEC60CAF15B700B498CD /* PsychHIDKbQueueCreate.c in Sources */ = {isa = PBXBuildFile; fileRef = 8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */; };
@@ -3579,6 +3583,8 @@
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
 		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
 		830572260984860000EB51EE /* SCREENWaitBlanking.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENWaitBlanking.c; path = ../../../Source/Common/Screen/SCREENWaitBlanking.c; sourceTree = SOURCE_ROOT; };
+		8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportQuickTime.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
+		8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibDC1394.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c; sourceTree = SOURCE_ROOT; };
 		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
 		8325CEC20CAF15AB00B498CD /* PsychHIDKbQueueCheck.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCheck.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCheck.c; sourceTree = SOURCE_ROOT; };
 		8325CEC50CAF15B700B498CD /* PsychHIDKbQueueCreate.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychHIDKbQueueCreate.c; path = ../../../Source/Common/PsychHID/PsychHIDKbQueueCreate.c; sourceTree = SOURCE_ROOT; };
@@ -5283,6 +5289,8 @@
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
+				8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */,
+				8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */,
 				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
 			);
 			name = Common;
@@ -11025,6 +11033,8 @@
 				837A6DC20BBB106E003AB0BE /* SCREENNull.c in Sources */,
 				83347DB40C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
 				83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */,
+				8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */,
+				8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11455,6 +11465,8 @@
 				837A6DC30BBB106E003AB0BE /* SCREENNull.c in Sources */,
 				83347DB30C13692200293498 /* SCREENGetWindowInfo.c in Sources */,
 				83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */,
+				8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */,
+				8320C1BA0D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -16950,6 +16962,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					PTBVIDEOCAPTURE_LIBDC,
 					PTBMODULE_Screen,
 					MATLAB_MEX_FILE,
 					USE_MWSIZE,
@@ -16967,6 +16980,7 @@
 					"-no-cpp-precomp",
 				);
 				OTHER_LDFLAGS = (
+					/usr/local/lib/libdc1394.a,
 					"-flat_namespace",
 					"-undefined",
 					suppress,
@@ -20721,6 +20735,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					PTBVIDEOCAPTURE_LIBDC,
 					PTBMODULE_Screen,
 					MATLAB_MEX_FILE,
 					USE_MWSIZE,
@@ -20738,6 +20753,7 @@
 					"-no-cpp-precomp",
 				);
 				OTHER_LDFLAGS = (
+					/usr/local/lib/libdc1394.a,
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
@@ -20765,6 +20781,14 @@
 				);
 				FRAMEWORK_SEARCH_PATHS_QUOTED_1 = "\"$(SYSTEM_DEVELOPER_DIR)/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks\"";
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					PTBVIDEOCAPTURE_LIBDC,
+					"$(inherited)",
+				);
+				OTHER_LDFLAGS = (
+					/usr/local/lib/libdc1394.a,
+					"$(inherited)",
+				);
 				PRODUCT_NAME = Screen;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
 				SKIP_INSTALL = NO;
