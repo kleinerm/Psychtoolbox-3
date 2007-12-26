@@ -5,10 +5,10 @@
 #./mex2oct_ubuntugutsy -r Octave/WaitSecs.cc -IOctave -ICommon/Base -ILinux/Base -ICommon/WaitSecs Common/Base/*.cc -ICommon/Screen Linux/Base/*.c Common/Base/*.c Common/WaitSecs/*.c -g -lc -v
 
 # Build Screen.oct with libdc1394 video capture support...
-#./mex2oct_ubuntugutsy -r Octave/Screen.cc -DPTBVIDEOCAPTURE_LIBDC -IOctave -I/usr/X11R6/include -ICommon/Base -ILinux/Base -ILinux/Screen -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Linux/Screen/*.c Common/Screen/*.c /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a -L/usr/X11R6/lib -g -lc -lGL -lX11 -lXext -v 
+./mex2oct_ubuntugutsy -r Octave/Screen.cc -DPTBVIDEOCAPTURE_LIBDC -IOctave -I/usr/X11R6/include -ICommon/Base -ILinux/Base -ILinux/Screen -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Linux/Screen/*.c Common/Screen/*.c /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a -L/usr/X11R6/lib -g -lc -lGL -lX11 -lXext -v 
 
 # Build Screen.oct without libdc1394 video capture support...
 #./mex2oct_ubuntugutsy -r Octave/Screen.cc -IOctave -I/usr/X11R6/include -ICommon/Base -ILinux/Base -ILinux/Screen -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Linux/Screen/*.c Common/Screen/*.c /usr/lib/libXxf86vm.a /usr/lib/libGLU.a -L/usr/X11R6/lib -g -lc -lGL -lX11 -lXext -v 
 
 # Build Screen.oct without libdc1394 video capture support and without vidmode extensions!!!...
-./mex2oct_ubuntugutsy -r Octave/Screen.cc -DNO_VIDMODEEXTS -IOctave -I/usr/X11R6/include -ICommon/Base -ILinux/Base -ILinux/Screen -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Linux/Screen/*.c Common/Screen/*.c /usr/lib/libGLU.a -L/usr/X11R6/lib -g -lc -lGL -lX11 -lXext -v 
+#./mex2oct_ubuntugutsy -r Octave/Screen.cc -DNO_VIDMODEEXTS -IOctave -I/usr/X11R6/include -ICommon/Base -ILinux/Base -ILinux/Screen -ICommon/Screen Common/Base/*.cc Linux/Base/*.c Common/Base/*.c Linux/Screen/*.c Common/Screen/*.c /usr/lib/libGLU.a -L/usr/X11R6/lib -g -lc -lGL -lX11 -lXext -v 
