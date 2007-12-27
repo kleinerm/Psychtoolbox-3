@@ -62,7 +62,7 @@ theImage(:,:,3)=theImage(:,:,1);
 
 % Convert input image via Bits++ toolbox routines (Matlab code):
 fprintf('Converting test stim to color++ format\n');
-packedImage = BitsPlusPackColorImage(theImage, 0);
+packedImage = BitsPlusPackColorImage(theImage, 0, 1);
 [m,n,p] = size(packedImage);
 rect = [0 0 m n];
 
