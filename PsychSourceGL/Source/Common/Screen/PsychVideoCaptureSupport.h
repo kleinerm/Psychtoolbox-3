@@ -34,13 +34,20 @@
 
 #include "Screen.h"
 
+typedef struct rawcapimgdata {
+	int w;
+	int h;
+	int depth;
+	void* data;
+} rawcapimgdata;
+
 // These are the generic entry points, to be called by SCREENxxxx videocapture functions and
 // other parts of screen. They dispatch into API specific versions, depending on users choice
 // of capture system and support by OS:
 void PsychVideoCaptureInit(void);
 bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
 void PsychCloseVideoCaptureDevice(int capturehandle);
-int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
+int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 void PsychExitVideoCapture(void);
@@ -50,7 +57,7 @@ void PsychExitVideoCapture(void);
 void PsychQTVideoCaptureInit(void);
 bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
 void PsychQTCloseVideoCaptureDevice(int capturehandle);
-int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
+int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychQTVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 void PsychQTExitVideoCapture(void);
@@ -61,7 +68,7 @@ void PsychQTExitVideoCapture(void);
 void PsychDCVideoCaptureInit(void);
 bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
 void PsychDCCloseVideoCaptureDevice(int capturehandle);
-int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity);
+int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
 void PsychDCExitVideoCapture(void);

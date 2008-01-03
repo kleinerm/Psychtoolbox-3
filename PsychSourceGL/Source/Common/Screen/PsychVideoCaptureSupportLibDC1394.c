@@ -30,8 +30,7 @@
 	NOTES:
 
 	TODO:
-		- Check what happened to the framedropping flag?
-		- Implemented Query/WaitTrigger support via new Basler smart feature api.
+		- Implement Query/WaitTrigger support via new Basler smart feature api.
 		- Implement the new generic frame format conversion routines.
 */
 
@@ -56,8 +55,9 @@ typedef struct {
   int valid;                        // Is this a valid device record? zero == Invalid.
   dc1394camera_t *camera;           // Ptr to a DC1394 camera object that holds the internal state for such cams.
   dc1394video_frame_t *frame;		// Ptr to a structure which contains the most recently captured/dequeued frame.
-  int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers.
-  int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed?
+  int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers. (Obsolete)
+  int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed? (Obsolete)
+  int dropframes;					// 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
   dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
   dc1394framerate_t dc_framerate;   // Encodes framerate.
   dc1394color_coding_t colormode;   // Encodes color encoding of cameras data.
@@ -329,6 +329,9 @@ bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
     
     // Use of low-performance non-DMA fallback path allowed in case of trouble with DMA engine?
+	// This flag currently has no meaning, as the final V2 release of libdc doesn't support non-DMA
+	// capture anymore, so we can't support it either. Same goes for the derived capdev->dma_mode
+	// flag, which will always be 1 and is no longer checked or used anywhere...
     capdev->allow_nondma_fallback = allow_lowperf_fallback;
 
     // Reset framecounter:
@@ -956,44 +959,21 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	  // Nothing to do for now...
     }
 	
-	// MK TODO CHECK: Is the 'dropframes' flag not supported anymore?!?
+	// Framedropping is no longer supported by libdc, so we implement it ourselves.
+	// Store the 'dropframes' flag in our capdev struct, so the PsychDCGetTextureFromCapture()
+	// knows how to handle this:
+	capdev->dropframes = (dropframes > 0) ? 1 : 0;
 	
 	// Finally setup and start DMA video capture engine with default flags (auto allocation and
 	// release of iso bandwidth and channels) and num_dmabuffers DMA buffer slots in internal video FIFO:
 	err = dc1394_capture_setup(capdev->camera, capdev->num_dmabuffers, DC1394_CAPTURE_FLAGS_DEFAULT);
     if (err != DC1394_SUCCESS) {      
-      // Failed! We clean up and either fail or retry in non-DMA mode:
-
-      // Are we allowed to use non-DMA capture if DMA capture doesn't work?
-      if (capdev->allow_nondma_fallback) {
-		  // Yes. Try to activate non-DMA capture. Less efficient...
-		  printf("PTB-WARNING: Could not setup DMA capture engine! Trying non-DMA capture engine as a slow, inefficient and limited fallback.\n");
-		  
-		  // TODO CHECK: non-DMA path no longer supported by current libdc?!?
-		  PsychErrorExitMsg(PsychError_unimplemented, "Unable to setup and start DMA capture engine and not possible to use non-DMA fallback path due to lack of support - Start of video capture failed!");
-		  
-		  /*
-		  if (dc1394_setup_capture(capdev->camera, mode, speed, dc1394_framerate) != DC1394_SUCCESS) {
-			  // Non-DMA setup failed as well. That's the end my friend...
-			  
-			  // We release the cams iso channel and bandwidth allocation in the hope that this
-			  // will get us ready again...
-			  dc1394_free_iso_channel_and_bandwidth(capdev->camera);
-			  PsychErrorExitMsg(PsychError_user, "Unable to setup and start non-DMA capture engine as well - Start of video capture failed!");
-		  }
-		  else {
-			  // Signal use of non-DMA mode:
-			  capdev->dma_mode = 0;
-		  }
-		  */
-      }
-      else {
-		  // Nope! Exit with error-message:
-		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start DMA capture engine and not allowed to use non-DMA fallback path - Start of video capture failed!");
-      }
+		// Failed! We clean up and fail:
+		// Non-DMA path no longer supported by final libdc V2, so this is the end of the game...
+		PsychErrorExitMsg(PsychError_unimplemented, "Unable to setup and start DMA capture engine - Start of video capture failed!");		  
     }
     else {
-		// Signal use of DMA engine:
+		// Signal use of DMA engine: Meaningless as of 1st January 2008...
 		capdev->dma_mode = 1;
     }
 	
@@ -1007,23 +987,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Failed! Shutdown DMA capture engine again:
 		dc1394_capture_stop(capdev->camera);
 
-		/* NOT NEEDED ANYMORE:
-		if (capdev->dma_mode > 0) {
-			// Shutdown DMA engine:
-			dc1394_dma_unlisten(capdev->camera);
-			// Release DMA engine:
-			dc1394_dma_release_camera(capdev->camera);
-		}
-		else {
-			dc1394_release_camera(capdev->camera);
-		}
-		
-		// We release the cams iso channel and bandwidth allocation in the hope that this
-		// will get us ready again...
-		dc1394_free_iso_channel_and_bandwidth(capdev->camera);
-		*/
-		
-      PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
+		PsychErrorExitMsg(PsychError_user, "Unable to start isochronous data transfer from camera - Start of video capture failed!");
     }
     
     // Record real start time:
@@ -1068,20 +1032,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		  
 		  // Stop capture engine:
 		  dc1394_capture_stop(capdev->camera);
-		  
-		  /* NOT NEEDED ANYMORE:
-		  if (capdev->dma_mode > 0) {
-			  // Shutdown DMA engine:
-			  dc1394_dma_unlisten(capdev->camera);
-			  
-			  // Release DMA engine:
-			  dc1394_dma_release_camera(capdev->camera);
-		  }
-		  else {
-			  dc1394_release_camera(capdev->camera);
-		  }
-		  */
-		  
+
 		  // Ok, capture is now stopped.
 		  capdev->frame_ready = 0;
 		  capdev->grabber_active = 0;
@@ -1135,10 +1086,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
  *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
+ *  outrawbuffer = An optional ptr to a memory buffer of sufficient size. If non-NULL, the buffer will be filled with the captured raw image data, e.g., for use inside Matlab or whatever...
  *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
  */
 int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex,
-			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
+			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     GLuint texid;
     int w, h, padding;
@@ -1153,86 +1105,110 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     int nrdropped;
     unsigned char* input_image = NULL;
 
-    int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
-
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
 
+	// Compute width, height and padding for later creation of textures etc. Need to do this here,
+	// so we can return the values for raw data retrieval:
+	w=capdev->width;
+    h=capdev->height;
+    padding= 0;
+
+	// If a outrawbuffer struct is provided, we fill it with info needed to allocate a
+	// sufficient memory buffer for returned raw image data later on:
+	if (outrawbuffer) {
+		outrawbuffer->w = w;
+		outrawbuffer->h = h;
+		outrawbuffer->depth = ((capdev->pixeldepth == 24) ? 3 : 1);
+	}
+
+    int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
+	
+	// A mode 4 means "no op" with the libdc capture engine.
+	if (checkForImage == 4) return(0);
+		
     // Take start timestamp for timing stats:
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
-        
+	
     // Should we just check for new image?
     if (checkForImage) {
-      if (capdev->grabber_active == 0) {
-	// Grabber stopped. We'll never get a new image:
-	return(-2);
-      }
-
-      // Grabber active: Polling mode or wait for new frame mode?
-      if (waitforframe) {
-	// Check for image in blocking mode: We actually try to capture a frame in
-	// blocking mode, so we will wait here until a new frame arrives.
-	if (capdev->dma_mode > 0) {
-	  // DMA wait & capture:
-	  error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_WAIT, &(capdev->frame));
-	}
-	else {
-	  // Non-DMA wait & capture:
-	  // Currently disabled: Used to be supported in pre6, but apparently missing in rc9...
-	  PsychErrorExitMsg(PsychError_unimplemented, "Non-DMA'ed fallback path not yet supported in current libdc1394!!");
-	  // FIXME: Will this come back? Reenable if so:error = dc1394_capture(&(capdev->camera), 1);
-	}
-
-	if (error == DC1394_SUCCESS) {	  
-	  // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
-	  capdev->frame_ready = 1;
-	}
-	else {
-	  // Blocking wait failed! Somethings seriously wrong:
-	  PsychErrorExitMsg(PsychError_internal, "Blocking wait for new frame failed!!!");
-	}
-      }
-      else {
-	// Check for image in polling mode: We capture in non-blocking mode:	
-	if (capdev->dma_mode <= 0) {
-	  // Oops. Tried to use polling mode in non-DMA capture. This is not supported.
-	  printf("PTB-ERROR: Tried to call Screen('GetCapturedImage') in polling mode during non-DMA capture\n");
-	  printf("PTB-ERROR: This is not supported. Will return error code -2...\n");
-	  fflush(NULL);
-	  return(-2);
-	}
-
-	if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) == DC1394_SUCCESS) {
-	  // Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
-	  capdev->frame_ready = 1;
-	}
-	else {
-	  // No new frame ready yet...
-	  capdev->frame_ready = 0;
-	}
-      }
-
-      if (capdev->frame_ready) {
-	// Update stats for decompression:
-	PsychGetAdjustedPrecisionTimerSeconds(&tend);
-
-	// Increase counter of decompressed frames:
-	capdev->nrframes++;
-	// Update avg. decompress time:
-	capdev->avg_decompresstime+=(tend - tstart);
-
-	if (capdev->dma_mode > 0) {
-	  // Query capture timestamp (in microseconds) and convert to seconds:
-	  capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
-	}
-	else {
-	  // We do not get a timestamp from firewire subsystem in non-DMA mode: Use the best we have, which should still be pretty good:
-	  capdev->current_pts = tend;
-	}
-      }
-
-      // Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
-      return((capdev->frame_ready) ? 0 : -1);
+		if (capdev->grabber_active == 0) {
+			// Grabber stopped. We'll never get a new image:
+			return(-2);
+		}
+		
+		// Grabber active: Polling mode or wait for new frame mode?
+		if (waitforframe) {
+			// Check for image in blocking mode: We actually try to capture a frame in
+			// blocking mode, so we will wait here until a new frame arrives.
+			error = dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_WAIT, &(capdev->frame));
+			
+			if (error == DC1394_SUCCESS) {	  
+				// Ok, new frame ready and dequeued from DMA ringbuffer. We'll return it on next non-poll invocation.
+				capdev->frame_ready = 1;
+			}
+			else {
+				// Blocking wait failed! Somethings seriously wrong:
+				PsychErrorExitMsg(PsychError_internal, "Blocking wait for new frame failed!!!");
+			}
+		}
+		else {
+			// Check for image in polling mode: We capture in non-blocking mode:			
+			if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) == DC1394_SUCCESS) {
+				// Ok, call succeeded. If the 'frame' pointer is non-NULL then there's a new frame ready and dequeued from DMA
+				// ringbuffer. We'll return it on next non-poll invocation. Otherwise no new video data ready yet:
+				capdev->frame_ready = (capdev->frame != NULL) ? 1 : 0;
+			}
+			else {
+				// Polling wait failed for some reason...
+				PsychErrorExitMsg(PsychError_internal, "Polling for new video frame failed!!!");
+			}
+		}
+		
+		if (capdev->frame_ready) {
+			// Store count of currently queued frames (in addition to the one just fetched).
+			// This is an indication of how well the users script is keeping up with the video stream,
+			// technically the number of frames that would need to be dropped to keep in sync with the
+			// stream.
+			nrdropped = (int) capdev->frame->frames_behind;
+			
+			// Ok, at least one new frame ready. If more than one frame has queued up and
+			// we are in 'dropframes' mode, ie. we should always deliver the most recent available
+			// frame, then we quickly fetch & discard all queued frames except the last one.
+			while((capdev->dropframes) && ((int) capdev->frame->frames_behind > 0)) {
+				// We just poll - fetch the frames. As we know there are some queued frames, it
+				// doesn't matter if we poll or block, but polling sounds like a bit less overhead
+				// at the OS level:
+				
+				// First enqueue the recently dequeued buffer...
+				if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
+					PsychErrorExitMsg(PsychError_system, "Requeuing of discarded video frame failed while dropping frames (dropframes=1)!!!");
+				}
+				
+				// Then fetch the next one:
+				if (dc1394_capture_dequeue(capdev->camera, DC1394_CAPTURE_POLICY_POLL,  &(capdev->frame)) != DC1394_SUCCESS || capdev->frame == NULL) {
+					// Polling failed for some reason...
+					PsychErrorExitMsg(PsychError_system, "Polling for new video frame failed while dropping frames (dropframes=1)!!!");
+				}
+				
+			}
+			
+			// Update stats for decompression:
+			PsychGetAdjustedPrecisionTimerSeconds(&tend);
+			
+			// Increase counter of decompressed frames:
+			capdev->nrframes++;
+			
+			// Update avg. decompress time:
+			capdev->avg_decompresstime+=(tend - tstart);
+			
+			// Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
+			// engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
+			capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
+		}
+		
+		// Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
+		return((capdev->frame_ready) ? 0 : -1);
     }
     
     // This point is only reached if checkForImage == FALSE, which only happens
@@ -1240,115 +1216,92 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     
     // Presentation timestamp requested?
     if (presentation_timestamp) {
-      // Return it:
-      *presentation_timestamp = capdev->current_pts;
+		// Return it:
+		*presentation_timestamp = capdev->current_pts;
     }
-
+	
     // Synchronous texture fetch: Copy content of capture buffer into a texture:
     // =========================================================================
 
-    // Build a standard PTB texture record:    
-    
-    // Assign texture rectangle:
-    w=capdev->width;
-    h=capdev->height;
-    
-    padding= 0;
-
     // input_image points to the image buffer in our cam:
     input_image = (unsigned char*) (capdev->frame->image);
-
+	
     // Do we want to do something with the image data and have a
     // scratch buffer for color conversion alloc'ed?
     if ((capdev->scratchbuffer) && ((out_texture) || (summed_intensity))) {
-      // Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
-      // into the scratch buffer and set scratch buffer as source for
-      // all further operations:
-      dc1394_convert_to_RGB8(input_image, capdev->scratchbuffer, capdev->width,
-			     capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
-
-      // Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
-      // Set scratch buffer as our new image source for all further processing:
-      input_image = (unsigned char*) capdev->scratchbuffer;
+		// Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
+		// into the scratch buffer and set scratch buffer as source for
+		// all further operations:
+		dc1394_convert_to_RGB8(input_image, capdev->scratchbuffer, capdev->width,
+							   capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
+		
+		// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
+		// Set scratch buffer as our new image source for all further processing:
+		input_image = (unsigned char*) capdev->scratchbuffer;
     }
-
+	
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
-      PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
-      
-      // Set NULL - special texture object as part of the PTB texture record:
-      out_texture->targetSpecific.QuickTimeGLTexture = NULL;
-      
-      // Set texture orientation as if it were an inverted Offscreen window: Upside-down.
-      out_texture->textureOrientation = 3;
-      
-      // Setup a pointer to our GWorld as texture data pointer: Setting memsize to zero
-      // prevents unwanted free() operation in PsychDeleteTexture...
-      out_texture->textureMemorySizeBytes = 0;
-
-      // Set texture depth: Could be 8, 16, 24 or 32 bpp.
-      out_texture->depth = capdev->reqpixeldepth;
-    
-      // This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
-      out_texture->textureMemory = (GLuint*) input_image;
-
-      // Let PsychCreateTexture() do the rest of the job of creating, setting up and
-      // filling an OpenGL texture with content:
-      PsychCreateTexture(out_texture);
-      
-      // Undo hack from above after texture creation: Now we need the real width of the
-      // texture for proper texture coordinate assignments in drawing code et al.
-      PsychMakeRect(out_texture->rect, 0, 0, w, h);    
-      // Ready to use the texture...
+		PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
+		
+		// Set NULL - special texture object as part of the PTB texture record:
+		out_texture->targetSpecific.QuickTimeGLTexture = NULL;
+		
+		// Set texture orientation as if it were an inverted Offscreen window: Upside-down.
+		out_texture->textureOrientation = 3;
+		
+		// Setup a pointer to our GWorld as texture data pointer: Setting memsize to zero
+		// prevents unwanted free() operation in PsychDeleteTexture...
+		out_texture->textureMemorySizeBytes = 0;
+		
+		// Set texture depth: Could be 8, 16, 24 or 32 bpp.
+		out_texture->depth = capdev->reqpixeldepth;
+		
+		// This will retrieve an OpenGL compatible pointer to the pixel data and assign it to our texmemptr:
+		out_texture->textureMemory = (GLuint*) input_image;
+		
+		// Let PsychCreateTexture() do the rest of the job of creating, setting up and
+		// filling an OpenGL texture with content:
+		PsychCreateTexture(out_texture);
+		
+		// Undo hack from above after texture creation: Now we need the real width of the
+		// texture for proper texture coordinate assignments in drawing code et al.
+		PsychMakeRect(out_texture->rect, 0, 0, w, h);    
+		// Ready to use the texture...
     }
     
     // Sum of pixel intensities requested?
     if(summed_intensity) {
-      pixptr = (unsigned char*) input_image;
-      count = (w*h*((capdev->pixeldepth == 24) ? 3 : 1));
-      for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
-      *summed_intensity = ((double) intensity) / w / h / ((capdev->pixeldepth == 24) ? 3 : 1);
+		pixptr = (unsigned char*) input_image;
+		count = (w*h*((capdev->pixeldepth == 24) ? 3 : 1));
+		for (i=0; i<count; i++) intensity+=(unsigned int) pixptr[i];
+		*summed_intensity = ((double) intensity) / w / h / ((capdev->pixeldepth == 24) ? 3 : 1);
     }
-
+	
+	// Raw data requested?
+	if (outrawbuffer) {
+		// Copy it out:
+		outrawbuffer->w = w;
+		outrawbuffer->h = h;
+		outrawbuffer->depth = ((capdev->pixeldepth == 24) ? 3 : 1);
+		count = (w * h * outrawbuffer->depth);
+		memcpy(outrawbuffer->data, (const void *) input_image, count);
+	}
+	
     // Release the capture buffer. Return it to the DMA ringbuffer pool:
-    if (capdev->dma_mode > 0) dc1394_capture_enqueue((capdev->camera), (capdev->frame));
-
-    // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
-    if (capdev->dma_mode < 1) {
-      // Old style: Heuristic based on comparison of capture timestamps:
-      // Expected delta between successive presentation timestamps:
-      targetdelta = 1.0f / capdev->fps;
-    
-      // Compute real delta:
-      realdelta = capdev->current_pts - capdev->last_pts;
-      if (realdelta<0) realdelta = 0;
-      frames = realdelta / targetdelta;
-      
-      // Dropped frames?
-      if (frames > 1 && capdev->last_pts>=0) {
-	nrdropped = (int) (frames - 1 + 0.5);
-      }
-      else {
-	nrdropped = 0;
-      }
-
-      // Record timestamp as reference for next check:    
-      capdev->last_pts = capdev->current_pts;
-    }
-    else {
-      // New style - Only works with DMA capture engine. Just take values from Firewire subsystem:
-      nrdropped = (int) capdev->frame->frames_behind;
-    }
-    
+	if (dc1394_capture_enqueue((capdev->camera), (capdev->frame)) != DC1394_SUCCESS) {
+		PsychErrorExitMsg(PsychError_system, "Re-Enqueuing processed video frame failed.");
+	}
+	
     // Update total count of dropped (or pending) frames:
     capdev->nr_droppedframes += nrdropped;
-
+	
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
-
+	
     // Increase counter of retrieved textures:
     capdev->nrgfxframes++;
-
+	
     // Update average time spent in texture conversion:
     capdev->avg_gfxtime+=(tend - tstart);
     

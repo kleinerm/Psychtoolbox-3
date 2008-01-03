@@ -3,10 +3,11 @@ function varargout = PsychPortAudio(varargin)
 %
 % PsychPortAudio is a new sounddriver for PTB-3. It is meant to become a
 % replacement for all other Matlab based sound drivers and PTB's old SND()
-% function. It's currently early beta, so use it with care, may still have
-% some problems.
+% function. It is pretty new and therefore got limited real world testing,
+% so use it with care, may still have some problems on some combos of sound
+% hardware!
 %
-% PsychPortAudio provides (or will provide) the following features:
+% PsychPortAudio provides the following features:
 %
 % - Allows instant start of sound playback with a very low onset latency
 %   compared to other sound drivers.
@@ -42,13 +43,17 @@ function varargout = PsychPortAudio(varargin)
 % configurations. See "help BasicSoundOutputDemo" for a very basic demo of
 % sound output (without special emphasis on low-latency). See
 % "BasicSoundInputDemo" for a basic demo of sound capture.
+% "BasicSoundFeedbackDemo" shows how to implement a simple audio feedback
+% loop with controllable delay.
+%
 % "PsychPortAudioTimingTest" is a script that we used for testing PA's
-% sound onset latency and accuracy...
+% sound onset latency and accuracy. It also serves as an example on how to
+% get perfectly synched audio-visual stimulus onsets.
 %
 % Type "PsychPortAudio" for an overview of supported subfunctions and
 % "PsychPortAudio Subfunctionname?" for help on a specific subfunction.
 %
-% WARNING: EARLY BETA STAGE - USE WITH CAUTION!
+% WARNING: BETA STAGE - USE WITH CAUTION!
 %
 % PsychPortAudio is built around a modified version of the free, open-source
 % PortAudio sound library for portable realtime sound: http://www.portaudio.com
@@ -57,4 +62,4 @@ function varargout = PsychPortAudio(varargin)
 % 06/07/2007 Written (MK).
 
 % Some check for not yet supported operating systems:
-AssertMex;
+AssertMex('PsychPortAudio.m');

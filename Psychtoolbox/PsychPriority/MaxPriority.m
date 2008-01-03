@@ -22,61 +22,6 @@ function priorityLevel=MaxPriority(varargin);
 % To preserve compatability with other platforms we recommend using
 % MaxPriority in your script on OS X, insted of the constant 9.
 %
-%
-% OS 9: ___________________________________________________________________
-% 
-% If you include 'WaitBlanking', 'PeekBlanking', 'BlankingInterrupt',
-% 'SetClut', or 'ClutMovie' they must be preceded by a
-% windowPtrOrScreenNumber. "BlankingInterrupt" is not a function name, its
-% priority is MaxPriorityForBlankingInterrupt.
-% 
-% PeekBlanking is complicated. If you need the GetSecs feature of
-% PeekBlanking, please include both 'PeekBlanking' and 'GetSecs' in the
-% call to MaxPriority. MaxPriority tries to determine whether your call to
-% PeekBlanking will need the blanking interrupt. If you do need the
-% interrupt then it assigns MaxPriorityForBlankingInterrupt, otherwise it
-% assigns priority 7. MaxPriority decides that you need the blanking
-% interrupt if SetClutPunchesBlankingClock is false or you don't include
-% either 'SetClut' or 'WaitBlanking'. If you know that you need the
-% blanking interrupt, you can say so by including 'BlankingInterrupt'.
-% 
-% MaxPriority uses RUSH's extended concept of priorityLevel. The standard
-% integer priorityLevels 0 ... 7 simply set the processor priority. The
-% additional new fractional priorityLevel 0.5 sets the processor priority
-% to 0, but runs the code as a "deferred" task. The effect of this is to
-% block all other deferred tasks, making it somewhat like running at raised
-% processor priority.
-% 
-% The max priorityLevel associated with each function is based on
-% information from Apple about the priorityLevel of the associated hardware
-% interrupts (see PRIORITY), confirmed by empirical tests with RUSH to see
-% how high the priority can be raised without impairing function.
-% 
-% WARNING: All functions that use the File Manager, e.g. FOPEN, will hang
-% forever if deferred tasks are blocked, so they have max priority of 0,
-% and RUSH will provide little or no benefit. For functions that can be
-% used with or without the File Manager, MaxPriority assumes you're NOT
-% using the File Manager. E.g. MaxPriority('fprintf') returns 7, assuming
-% that you're writing to the console, but if you write to disk (which uses
-% the File Manager) the max priority would be 0. Be careful; don't try to
-% RUSH the File Manager; it'll hang.
-% 
-% MaxPriority checks to see if Virtual Memory or RAM Doubler is in use.
-% They may access the disk any time you access memory (eg a Matlab array).
-% For Virtual Memory, we play safe by setting MaxPriority to 0. For RAM
-% Doubler, the priority is allowed its normal range. In either case, you're
-% warned only once. We're taking a small chance here, relying on the fact
-% that under typical conditions of use, RAM Doubler does not access the
-% disk. This MaxPriority of zero under VM defeats most of the benefit of
-% Rush. So we suggest that you buy more memory and turn off VM, to regain
-% the benefits of Rush. Memory is so cheap now ($0.25/megabyte) that this
-% is a very reasonable path for most users. E.g. web http://dealram.com/ ;
-% 
-% Nearly all functions (that don't use the File Manager) not included in
-% the function list above are unaffected by processor priority and thus
-% have a "max priority" of 7. Please let us know if something's missing.
-% web mailto:psychtoolbox@yahoogroups.com ;
-%
 % WINDOWS: ________________________________________________________________
 %
 % Priority levels returned by MaxPriority are 0, 1 and 2.
@@ -85,6 +30,13 @@ function priorityLevel=MaxPriority(varargin);
 % to use levels > 1 as this can interfere with execution of a lot of
 % important system processes and severely reduce the stability of
 % Windows execution.
+%
+% LINUX: __________________________________________________________________
+%
+% MaxPriority always returns 1, although levels of up to 99 are possible.
+% We recommend to sticking to the lowest level, unless some tweaking for a
+% specific setup or situation is neccessary.
+%
 % _________________________________________________________________________
 %
 % See RUSH, Priority, MovieDemo, ScreenTest, SCREEN Preference MaxPriorityForBlankingInterrupt,
@@ -488,9 +440,9 @@ elseif IsOSX
 
 %_______________________________________________________________________________________________________________________________
 elseif IsLinux
-    % We only differentiante between 0 = Normal priority, 1 = High Priority, 2 = Realtime Priority, 3 = mlocked Realtime, 4 = Take
-    % all conceivable measures to be fast.
-    priorityLevel=4;
+    % We only differentiante between 0 = Normal priority, 1-99 = Realtime Priority mlocked Realtime.
+    % We suggest 1 as a good level. The user is free to take higher numbers of course...
+    priorityLevel=1;
 else
     error('OS not supported by Psychtoolbox MaxPriority.m');
 end

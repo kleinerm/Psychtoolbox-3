@@ -14,3 +14,4 @@ clearScreen;
 clearGetSecs;
 clearWaitSecs;
 clearmoglcore;
+clearPsychPortAudio;

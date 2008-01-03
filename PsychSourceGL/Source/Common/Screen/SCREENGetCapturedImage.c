@@ -21,7 +21,7 @@ Psychtoolbox3/Source/Common/SCREENGetCapturedImage.c
 
 #include "Screen.h"
 
-static char useString[] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensity]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode]);";
+static char useString[] = "[ texturePtr [capturetimestamp] [droppedcount] [summed_intensityOrRawImageMatrix]]=Screen('GetCapturedImage', windowPtr, capturePtr [, waitForImage=1] [,oldTexture] [,specialmode] [,targetmemptr]);";
 static char synopsisString[] = 
 "Try to fetch a new image from video capture device 'capturePtr' for visual playback/display in window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
@@ -36,10 +36,14 @@ static char synopsisString[] =
 "texture for the new image. Use of this ''recycling facility'' may allow for higher capture framerates and lower latencies on low-end "
 "graphics hardware in some cases. Providing a value of 'oldTexture'=0 is the same as leaving it out. The optional argument 'specialmode' "
 "allows to request special treatment of textures. Currently, specialmode = 1 will force PTB to use power-of-two textures instead of other "
-"formats. This is usually less efficient, unless you want to do realtime blurring of images. "
+"formats. This is usually less efficient, unless you want to do realtime blurring of images. If you set specialmode = 2, then "
+"the optional return value 'summed_intensityOrRawImageMatrix' will not return the summed pixel intensity, but a Matlab uint8 Matrix with "
+"the captured raw image data for direct use within Matlab, e.g., via the image processing toolbox. If you set 'specialmode = 4 and "
+"provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that buffer. The buffer is "
+"expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
 "'capturetimestamp' contains the exact system time when the returned image was captured. The (optional) return value 'droppedcount' contains the "
 "number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. The (optional) return "
-"value 'summed_intensity' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
+"value 'summed_intensityOrRawImageMatrix' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
 "Only query this value if you really need it, its computation is time consuming.";
 
 static char seeAlsoString[] = "CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
@@ -48,19 +52,22 @@ PsychError SCREENGetCapturedImage(void)
 {
     PsychWindowRecordType		*windowRecord;
     PsychWindowRecordType		*textureRecord;
-    PsychRectType			rect;
-    double                              summed_intensity;
-    int                                 capturehandle = -1;
-    int                                 waitForImage = TRUE;
-    int                                 specialmode = 0;
-    double                              presentation_timestamp = 0;
-    int rc=-1;
-    
+    PsychRectType				rect;
+    double                      summed_intensity;
+    int                         capturehandle = -1;
+    int                         waitForImage = TRUE;
+    int                         specialmode = 0;
+    double                      presentation_timestamp = 0;
+    int							rc=-1;
+    double						targetmemptr = 0;
+	psych_uint8					*targetmatrixptr = NULL;
+	static rawcapimgdata		rawCaptureBuffer = {0, 0, 0, NULL};
+
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 5 input args.
+    PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
     PsychErrorExit(PsychCapNumOutputArgs(4));           // Max. 4 output args.
     
@@ -90,7 +97,7 @@ PsychError SCREENGetCapturedImage(void)
 	// call its SGIdle() routine and waitForImage==4 does just that, call SGIdle().
 	if (waitForImage == 4) {
 		// Perform the null-call to the capture engine, ie a SGIdle() on OS/X and Windows:
-		PsychGetTextureFromCapture(windowRecord, capturehandle, 4, 0.0, NULL, NULL, NULL);
+		PsychGetTextureFromCapture(windowRecord, capturehandle, 4, 0.0, NULL, NULL, NULL, NULL);
 		// Done. Nothing to return...
 		return(PsychError_none);
 	}
@@ -109,9 +116,9 @@ PsychError SCREENGetCapturedImage(void)
     PsychCopyInIntegerArg(5, FALSE, &specialmode);
 
     while (rc==-1) {
-      //  We pass a checkForImage value of 2 if waitForImage>0. This way we can signal if we are in polling or blocking mode.
-      // On Linux this allows to do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
-      rc = PsychGetTextureFromCapture(windowRecord, capturehandle, ((waitForImage>0 && waitForImage<3) ? 2 : 1), 0.0, NULL, &presentation_timestamp, NULL);
+      // We pass a checkForImage value of 2 if waitForImage>0. This way we can signal if we are in polling or blocking mode.
+      // With the libdc1394 engine this allows to do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
+      rc = PsychGetTextureFromCapture(windowRecord, capturehandle, ((waitForImage>0 && waitForImage<3) ? 2 : 1), 0.0, NULL, &presentation_timestamp, NULL, &rawCaptureBuffer);
         if (rc==-2) {
             // No image available and there won't be any in the future, because capture has been stopped.
 
@@ -202,13 +209,38 @@ PsychError SCREENGetCapturedImage(void)
     }
 
     // Try to fetch an image from the capture object and return it as texture:
-    if (PsychGetNumOutputArgs() > 3) {
+    if ((PsychGetNumOutputArgs() > 3) && !(specialmode & 0x2)) {
         // Return sum of pixel intensities for all channels of this image:
-        rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, &summed_intensity);
+        rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, &summed_intensity, NULL);
         PsychCopyOutDoubleArg(4, FALSE, summed_intensity);
     }
     else {
-        rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, NULL);
+		// Return either only texture/timestamp and/or raw image:
+		targetmatrixptr = NULL;
+		
+		// Shall we return a Matlab matrix?
+		if ((PsychGetNumOutputArgs() > 3) && (specialmode & 0x2)) {
+			// We shall return a matrix with raw image data. Allocate a uint8 matrix
+			// of sufficient size:
+			PsychAllocOutUnsignedByteMatArg(4, TRUE, rawCaptureBuffer.depth, rawCaptureBuffer.w, rawCaptureBuffer.h, &targetmatrixptr);
+		}
+		
+		// Shall we return data into preallocated memory buffer?
+		if (specialmode & 0x4) {
+			// Copy in memory address (which itself is encoded in a double value):
+			PsychCopyInDoubleArg(6, TRUE, &targetmemptr);
+			targetmatrixptr = (psych_uint8*) PsychDoubleToPtr(targetmemptr);
+		}
+		
+		if (targetmatrixptr == NULL) {
+			// Standard fetch of a texture and its timestamp:
+			rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, NULL, NULL);
+		}
+		else {
+			// Fetch of a memory raw image buffer + timestamp + possibly a texture:
+			rawCaptureBuffer.data = (void*) targetmatrixptr;
+			rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, NULL, &rawCaptureBuffer);			
+		}
     }
 
     // Real texture requested?

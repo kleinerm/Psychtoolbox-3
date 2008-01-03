@@ -1,5 +1,5 @@
-function ProceduralGaborDemo(benchmark)
-% ProceduralGaborDemo([benchmark=0])
+function ProceduralGaborDemo(benchmark, nonsymmetric)
+% ProceduralGaborDemo([benchmark=0][, nonsymmetric=0])
 %
 % This demo demonstrates fast drawing of Gabor patches via use procedural
 % texture mapping. It only works on hardware with support for the GLSL
@@ -9,6 +9,13 @@ function ProceduralGaborDemo(benchmark)
 % procedural texture shader - is executed on the graphics processor (GPU).
 % This is very fast and efficient! All parameters of the gabor patch can be
 % set individually.
+%
+% By default - if the optional 'nonsymmetric' flag is not provided or set
+% to zero - only symmetric circular gabors are drawn. If the flag is set to
+% 1 then gabors with an aspect ratio ~= 1, ie., elliptical gabors, are
+% drawn as well. Restricting drawing to symmetric gabors allows for an
+% additional speedup in drawing (about 15% on a MacBookPro 2nd generation),
+% so this may be interesting if you are in "need for speed(TM)".
 %
 % This demo is both, a speed benchmark, and a correctness test. If executed
 % with the optional benchmark flag set to 2, it will execute a loop
@@ -28,21 +35,32 @@ function ProceduralGaborDemo(benchmark)
 % 1 part in 2000, equivalent to a perfect display on a gfx-system with 11 bit 
 % DAC resolution. Note that errors scale with spatial frequency and
 % absolute magnitude, so real-world errors are usually smaller for typical
-% stimuli. This is just the error given the settings in this script.
+% stimuli. This is just the error, given the settings hardcoded in this script.
 % Typical speed is 2800 frames per second.
 %
 % Typical result on Intel Pentium IV, running on WindowsXP with a NVidia
-% Geforce7800 and up to date drivers: Error is 0.0000146741 units, ie. one
-% part in 68000, therefore perfect even on a display device with 15 bit
-% DAC's. The framerate is about 2344 frames per second.
+% Geforce7800 and up-to-date drivers: Error is 0.0000146741 units, ie. one
+% part in 68000, therefore display would be perfect even on a display device
+% with 15 bit DAC's. The framerate is about 2344 frames per second.
 %
-% If you want to draw many gabors, you wouldn't do it like in this script,
+% Please note that results in performance and accuracy *will* vary,
+% depending on the model of your graphics card, gfx-driver version and
+% possibly operating system. For consistent results, always check before you
+% measure on different setups! However, the more recent the graphics card,
+% the faster and more accurate -- the latest generation of cards is
+% supposed to be "just perfect" for vision research...
+%
+% If you want to draw many gabors per frame, you wouldn't do it like in this script,
 % but use the batch-drawing version of Screen('DrawTextures', ...) instead,
-% as demonstrated, e.g., in DrawingSpeedTest.m
+% as demonstrated, e.g., in DrawingSpeedTest.m. That way you could submit
+% the specs (parameters) of all gabors in one single matrix via one single
+% Screen('DrawTextures'); call - this is more efficient and therefore extra
+% fast!
 %
 
 % History:
 % 11/26/2007 Written (MK).
+% 01/03/2008 Fine tuning, help update, support for asymmetric gabors. (MK).
 
 % Default to mode 0 - Just a nice demo.
 if nargin < 1
@@ -51,6 +69,14 @@ end
 
 if isempty(benchmark)
     benchmark = 0;
+end
+
+if nargin < 2
+    nonsymmetric = [];
+end
+
+if isempty(nonsymmetric)
+    nonsymmetric = 0;
 end
 
 % Close previous figure plots:
@@ -66,6 +92,7 @@ sc = 50.0;
 freq = .1;
 tilt = 0;
 contrast = 100.0;
+aspectratio = 1.0;
 
 % Disable synctests for this quick demo:
 oldSyncLevel = Screen('Preference', 'SkipSyncTests', 2);
@@ -93,12 +120,12 @@ y=th/2;
 
 % Build a procedural gabor texture for a gabor with a support of tw x th
 % pixels, and a RGB color offset of 0.5 -- a 50% gray.
-gabortex = CreateProceduralGabor(win, tw, th, 0, [0.5 0.5 0.5 0.0]);
+gabortex = CreateProceduralGabor(win, tw, th, nonsymmetric, [0.5 0.5 0.5 0.0]);
 
 % Draw the gabor once, just to make sure the gfx-hardware is ready for the
 % benchmark run below and doesn't do one time setup work inside the
 % benchmark loop: See below for explanation of parameters...
-Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180, freq, sc, contrast]);
+Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]);
 
 % Perform initial flip to gray background and sync us to the retrace:
 vbl = Screen('Flip', win);
@@ -113,9 +140,10 @@ while count < 10000
     % Set new rotation angle:
     tilt = count/10;
 
-    % Drift phase as well...
+    % Drift phase and aspectratio as well...
     if benchmark == 0
         phase = count * 10;
+        aspectratio = 1 + count * 0.01;
     end
     
     % In non-benchmark mode, we also compute a gabor patch in Matlab, as a
@@ -123,12 +151,12 @@ while count < 10000
     if benchmark == 2
         sf = freq;
         [gab_x gab_y] = meshgrid(0:(res(1)-1), 0:(res(2)-1));
-        a=cosd(tilt)*sf*360;
-        b=sind(tilt)*sf*360;
+        a=cos(deg2rad(tilt))*sf*360;
+        b=sin(deg2rad(tilt))*sf*360;
         multConst=1/(sqrt(2*pi)*sc);
         x_factor=-1*(gab_x-x).^2;
         y_factor=-1*(gab_y-y).^2;
-        sinWave=sind(a*(gab_x - x) + b*(gab_y - y)+phase);
+        sinWave=sin(deg2rad(a*(gab_x - x) + b*(gab_y - y)+phase));
         varScale=2*sc^2;
         m=0.5 + contrast*(multConst*exp(x_factor/varScale+y_factor/varScale).*sinWave)';
         %imshow(m);
@@ -138,7 +166,7 @@ while count < 10000
     % Draw the Gabor patch: We simply draw the procedural texture as any other
     % texture via 'DrawTexture', but provide the parameters for the gabor as
     % optional 'auxParameters'.
-    Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180 freq sc contrast]);
+    Screen('DrawTexture', win, gabortex, [], [], 90+tilt, [], [], [], [], kPsychDontDoRotation, [phase+180 freq sc contrast, aspectratio, 0, 0, 0]);
     
     if benchmark > 0
         % Go as fast as you can without any sync to retrace and without
@@ -172,10 +200,12 @@ while count < 10000
         maxdiff = max(max(dimg));
         totmax = max([maxdiff totmax]);
 
-        % Show color-coded difference image:
-        imagesc(dimg);
-        colorbar;
-        drawnow;        
+        if ~IsOctave
+	  % Show color-coded difference image:
+          imagesc(dimg);
+	  colorbar;
+          drawnow;
+        end
     end
     
     if benchmark~=1
@@ -207,3 +237,7 @@ Screen('Preference', 'SkipSyncTests', oldSyncLevel);
 
 % Done.
 return;
+
+function radians = deg2rad(degrees)
+    radians = degrees * pi / 180;
+return

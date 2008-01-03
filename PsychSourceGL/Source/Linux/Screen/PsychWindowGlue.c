@@ -13,35 +13,29 @@
 	HISTORY:
 	
 	        2/20/06                 mk              Created - Derived from Windows version.
+
 	DESCRIPTION:
 	
 		Functions in this file comprise an abstraction layer for probing and controlling window state, except for window content.  
 		
 		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
-		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are different.  The platform 
+		should be platform-neutral, despite that the calls in OS X and Linux to detect available pixel sizes are different.  The platform 
 		specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, PsychWindowTextClue.
 
 	NOTES:
 	
 	TO DO: 
-	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
- 
+	 
 */
 
 #include "Screen.h"
 
+/* These are needed for realtime scheduling control: */
 #include <sched.h>
 #include <errno.h>
 
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
-
-
-// typedef int (*GLXEXTVSYNCCONTROLPROC) (int);
-// GLXEXTVSYNCCONTROLPROC PTBglXSwapIntervalSGI = NULL;
-
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority on Linux.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(>0) would do in Matlab).
@@ -371,6 +365,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   else {
     printf("PTB-INFO: Using GLEW version %s for automatic detection of OpenGL extensions...\n", glewGetString(GLEW_VERSION));
   }
+  
+  fflush(NULL);
 
   // Increase our own open window counter:
   x11_windowcount++;
@@ -390,6 +386,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
     printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
   }
+  fflush(NULL);
 
   // Check for availability of VSYNC extension:
   // PTBglXSwapIntervalSGI=(GLXEXTVSYNCCONTROLPROC) glXGetProcAddressARB("glXSwapIntervalSGI");
@@ -400,7 +397,18 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somehow in a manner that is\n");
     printf("PTB-WARNING: dependent on the type of gfx-card and driver. Google is your friend...\n");
   }
+  fflush(NULL);
 
+  // ATI Radeon X1000 or later AND first opened onscreen window?
+  if ((x11_windowcount == 1) && strstr(glGetString(GL_VENDOR), "ATI") && strstr(glGetString(GL_RENDERER), "Radeon")) {
+	  if (strstr(glGetString(GL_RENDERER), "X") || strstr(glGetString(GL_RENDERER), "HD")) {
+	  	// Probably an X1000 or later or an HD 2000/3000/later series chip.
+		// Try to map its PCI register space to allow for our implementation of
+		// beamposition queries:
+		if (PsychScreenMapRadeonCntlMemory()) printf("PTB-INFO: ATI-Radeon of model series X1000, HD2000, HD3000 or later detected -- Beamposition queries enabled.\n");
+	  }
+  }
+  
   // Ok, we should be ready for OS independent setup...
   fflush(NULL);
 
@@ -473,6 +481,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     // (Re-)enable X-Windows screensavers if they were enabled before opening windows:
     // Set screensaver to previous settings, potentially enabling it:
     XSetScreenSaver(dpy, -1, 0, DefaultBlanking, DefaultExposures);
+    
+    // Unmap/release possibly mapped device memory: Defined in PsychScreenGlue.c
+    PsychScreenUnmapDeviceMemory();
   }
 
   // Done.
@@ -546,14 +557,6 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
   glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
-}
-
-int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
-{
-  // FIXME: Don't know how to do this on Linux/X11. Don't think this is supported.
-  // We return -1 as an indicator to high-level routines that we don't
-  // know the rasterbeam position.
-  return(-1);
 }
 
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,

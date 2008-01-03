@@ -32,10 +32,10 @@
 	
 	TO DO: 
 	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
+		ï¿½ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
 		name by their placement in a directory tree.
 		
-		¥ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
+		ï¿½ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
 */
 
 
@@ -710,15 +710,19 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
     
 }
 
-    
-
-
-
-
-
-            
-
-
-    
-    
-
+// PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
+// It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
+// deciding which display pipe to query, whatever of both is more efficient or suitable for the
+// host platform -- This is ugly, but neccessary, because the mapping with only one of these
+// specifiers would be either ambigous (wrong results!) or usage would be inefficient and slow
+// (bad for such a time critical low level call!). On some systems it may even ignore the arguments,
+// because it's not capable of querying different pipes - ie., it will always query a hard-coded pipe.
+//
+// On MacOS/X, this is a simple wrapper around the OSX CoreGraphics call CGDisplayBeamPosition().
+// That call is currently supported by all gfx-chips/drivers on old PowerPC based Macs. It's also
+// supported for NVidia cards on the Intel based Macs, starting with OS/X 10.4.10 and later, 10.5
+// and later. On IntelMacs with ATI or Intel gfx, the call returns 0 or -1 (unsupported).
+int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
+{
+	return((int) CGDisplayBeamPosition(cgDisplayId));
+}

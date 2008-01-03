@@ -108,14 +108,14 @@ PsychError SCREENWaitBlanking(void)
     }
     
     // Check if beamposition queries are supported by this OS and working properly:
-    if (-1 != CGDisplayBeamPosition(cgDisplayID) && windowRecord->VBL_Endline >= 0) {
+    if (-1 != PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber) && windowRecord->VBL_Endline >= 0) {
         // Beamposition queries supported and fine. We can wait for VBL without bufferswap-tricks:
         // This is the OS-X way of doing things. We query the rasterbeamposition and compare it
         // to the known values for the VBL area. If we enter VBL, we take a timestamp and return -
         // or wait for the next VBL if waitFrames>0
         
         // Query current beamposition when entering WaitBlanking:
-        beampos = CGDisplayBeamPosition(cgDisplayID);
+        beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
         // Are we in VBL when entering WaitBlanking? If so, we should wait for one additional frame,
         // because by definition, WaitBlanking should always wait for at least one monitor refresh
         // interval...
@@ -124,15 +124,15 @@ PsychError SCREENWaitBlanking(void)
         while(waitFrames > 0) {
             // Enough time for a sleep? If the beam is far away from VBL area, we try to sleep to
             // yield some CPU time to other processes in the system -- we are nice citizens ;)
-            beampos = CGDisplayBeamPosition(cgDisplayID);
+            beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
             while (( ((float)(vbl_startline - beampos)) / (float) windowRecord->VBL_Endline * ifi) > 0.002) {
                 // At least 2 milliseconds left until retrace. We sleep for 1 millisecond.
                 PsychWaitIntervalSeconds(0.001);
-                beampos = CGDisplayBeamPosition(cgDisplayID);
+                beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
             }
             
             // Less than 2 ms away from retrace. Busy-Wait for retrace...
-            while (CGDisplayBeamPosition(cgDisplayID) < vbl_startline);
+            while (PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber) < vbl_startline);
             
             // Retrace! Take system timestamp of VBL onset:
             PsychGetAdjustedPrecisionTimerSeconds(&tvbl);
@@ -143,7 +143,7 @@ PsychError SCREENWaitBlanking(void)
             // Matlab script some extra Millisecond for drawing...
             if (waitFrames>1) { 
                 beampos = vbl_startline;
-                while ((beampos<=windowRecord->VBL_Endline) && (beampos>=vbl_startline)) { beampos = CGDisplayBeamPosition(cgDisplayID); };
+                while ((beampos<=windowRecord->VBL_Endline) && (beampos>=vbl_startline)) { beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber); };
             }
             
             // Done with this refresh interval...

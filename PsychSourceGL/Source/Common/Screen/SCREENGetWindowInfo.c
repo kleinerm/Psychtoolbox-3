@@ -66,7 +66,7 @@ PsychError SCREENGetWindowInfo(void)
 	if (onscreen) {
 		// Query rasterbeam position: Will return -1 if unsupported.
 		PsychGetCGDisplayIDFromScreenNumber(&displayId, windowRecord->screenNumber);
-		beamposition = (double) CGDisplayBeamPosition(displayId);
+		beamposition = (double) PsychGetDisplayBeamPosition(displayId, windowRecord->screenNumber);
 	}
 	else {
 		beamposition = -1;

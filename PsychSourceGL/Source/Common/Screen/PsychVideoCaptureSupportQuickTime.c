@@ -711,9 +711,10 @@ void PsychQTDeleteAllCaptureDevices(void)
  *  out_texture = Pointer to the Psychtoolbox texture-record where the new texture should be stored.
  *  presentation_timestamp = A ptr to a double variable, where the presentation timestamp of the returned frame should be stored.
  *  summed_intensity = An optional ptr to a double variable. If non-NULL, then sum of intensities over all channels is calculated and returned.
+ *  outrawbuffer = An optional ptr to a memory buffer of sufficient size. If non-NULL, the buffer will be filled with the captured raw image data, e.g., for use inside Matlab or whatever...
  *  Returns Number of pending or dropped frames after fetch on success (>=0), -1 if no new image available yet, -2 if no new image available and there won't be any in future.
  */
-int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity)
+int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     OSErr		error = noErr;
     GLuint texid;
@@ -728,11 +729,32 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     int nrdropped;
 
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
-        
+
     // Sanity checks:
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES || vidcapRecordBANK[capturehandle].gworld == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided.");
     }
+
+	// Compute width, height and padding for later creation of textures etc. Need to do this here,
+	// so we can return the values for raw data retrieval:
+    w=vidcapRecordBANK[capturehandle].width;
+    h=vidcapRecordBANK[capturehandle].height;
+
+    // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
+    // image row padding:
+#if PSYCH_SYSTEM == PSYCH_OSX
+    padding = 4 + (4 - (w % 4)) % 4;
+#else
+    padding= 0;
+#endif
+
+	// If a outrawbuffer struct is provided, we fill it with info needed to allocate a
+	// sufficient memory buffer for returned raw image data later on:
+	if (outrawbuffer) {
+		outrawbuffer->w = w + padding;
+		outrawbuffer->h = h;
+		outrawbuffer->depth = 4;
+	}
     
     // Grant some processing time to the sequence grabber engine:
     if ((error=SGIdle(vidcapRecordBANK[capturehandle].seqGrab))!=noErr) {
@@ -786,17 +808,6 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Build a standard PTB texture record:    
     
     // Assign texture rectangle:
-    w=vidcapRecordBANK[capturehandle].width;
-    h=vidcapRecordBANK[capturehandle].height;
-
-    // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
-    // image row padding:
-#if PSYCH_SYSTEM == PSYCH_OSX
-    padding = 4 + (4 - (w % 4)) % 4;
-#else
-    padding= 0;
-#endif
-
     if (out_texture) {
         PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
         
@@ -852,10 +863,20 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         }
         // Try to discount the w*h*255 alpha channel values, if alpha channel is fixed to 255:
         // Some video digitizers set alpha component correctly to 255, some leave it at the
-        // false value of zero :(
+        // wrong value of zero :(
         if (alphacount >= w*h) intensity = intensity - (w * h * 255);
         *summed_intensity = ((double) intensity) / w / h / 3;
     }
+
+	// Raw data requested?
+	if (outrawbuffer) {
+		// Copy it out:
+		outrawbuffer->w = w + padding;
+		outrawbuffer->h = h;
+		outrawbuffer->depth = 4;
+		count = (w * h * outrawbuffer->depth);
+		memcpy(outrawbuffer->data, (const void *) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld)), count);
+	}
 
     // Unlock GWorld surface.
     UnlockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));

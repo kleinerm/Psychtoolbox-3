@@ -95,6 +95,14 @@ unsigned int  verbosity = 4;
 
 boolean pa_initialized = FALSE;
 
+/* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
+void PALogger(const char* msg)
+{
+	if (verbosity > 5) printf("PTB-DEBUG: PortAudio says: %s", msg);
+	return;
+}
+
+
 /* paCallback: PortAudo I/O processing callback. 
  *
  * This callback is called by PortAudios playback/capture engine whenever
@@ -517,6 +525,9 @@ PsychError PsychPortAudioExit(void)
 			pa_initialized = FALSE;
 		}
 	}
+
+	// Detach our callback function for low-level debug output:
+	PaUtil_SetDebugPrintFunction(NULL);
 	
 	return(PsychError_none);
 }
@@ -528,6 +539,9 @@ void PsychPortAudioInitialize(void)
 	
 	// PortAudio already initialized?
 	if (!pa_initialized) {
+		// Setup callback function for low-level debug output:
+		PaUtil_SetDebugPrintFunction(PALogger);
+
 		if ((err=Pa_Initialize())!=paNoError) {
 			printf("PTB-ERROR: Portaudio initialization failed with following port audio error: %s \n", Pa_GetErrorText(err));
 			PsychErrorExitMsg(PsychError_system, "Failed to initialize PortAudio subsystem.");
@@ -541,7 +555,7 @@ void PsychPortAudioInitialize(void)
 		}
 		
 		audiodevicecount=0;
-		
+
 		pa_initialized = TRUE;
 	}
 }
@@ -831,11 +845,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			buffersize = paFramesPerBufferUnspecified;
 		}
 		else {
-			if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type != paASIO) {
+			if (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type == paCoreAudio) {
 				buffersize = 64; // Lowest setting that is safe on a fast MacBook-Pro.
 			}
 			else {
-				// ASIO: Leave it unspecified to get optimal selection by lower level driver:
+				// ASIO/ALSA/others: Leave it unspecified to get optimal selection by lower level driver:
+				// Esp. on Windows/ASIO and with Linux/ALSA, basically any choice other than paFramesPerBufferUnspecified
+				// will just lead to trouble and less optimal results, as the sound subsystems are very good at
+				// choosing this parameter optimally if allowed, but have a hard job to cope with any user-enforced choices.
 				buffersize = paFramesPerBufferUnspecified;
 			}
 		}
@@ -862,12 +879,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	// clamp this request to something safe internally.
 	switch (Pa_GetHostApiInfo(referenceDevInfo->hostApi)->type) {
 		case paCoreAudio:	// CoreAudio driver will automatically clamp to safe minimum. Around 0.7 msecs.
-		case paALSA:		// dto. for ALSA.
 		case paWDMKS:		// dto. for Windows kernel streaming.
 			lowlatency = 0.0;
 		break;
 		
-		case paMME:			// No such a thing as low latency, but easy to kill the machine with too low settings!
+		case paMME:		// No such a thing as low latency, but easy to kill the machine with too low settings!
 			lowlatency = 0.1; // Play safe, request 100 msecs. Otherwise terrible things may happen!
 		break;
 		
@@ -881,6 +897,14 @@ PsychError PSYCHPORTAUDIOOpen(void)
 			// 1 msec to get lowest possible latency for latencyclass of at least 2. In latency class 1
 			// we play a bit safer and go for 5 msecs:
 			lowlatency = (latencyclass >= 2) ? 0.001 : 0.005;
+		break;
+
+		case paALSA:	
+			// For ALSA we choose 10 msecs by default, lowering to 5 msecs if exp. requested. Experience
+			// shows that the effective latency will be only a fraction of this, so we are good.
+			// Otoh going too low could cause dropouts on the tested MacbookPro 2nd generation...
+			// This will need more lab testing and tweaking - and the user can override anyway...
+			lowlatency = (latencyclass > 2) ? 0.005 : 0.010;
 		break;
 
 		default:			// Not the safest assumption for non-verified Api's, but we'll see...
@@ -1769,13 +1793,6 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	return(PsychError_none);
 }
 
-/* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
-void PALogger(const char* msg)
-{
-	printf("PTB-DEBUG: PortAudio says: %s", msg);
-	return;
-}
-
 /* PsychPortAudio('Verbosity') - Set level of verbosity.
  */
 PsychError PSYCHPORTAUDIOVerbosity(void) 
@@ -1806,8 +1823,6 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
 
 	// Set new level, if one was provided:
 	if (level > -1) verbosity = level;
-	
-	if (verbosity > 5) PaUtil_SetDebugPrintFunction(PALogger);
 
 	return(PsychError_none);
 }

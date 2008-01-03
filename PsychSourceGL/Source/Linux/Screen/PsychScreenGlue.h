@@ -7,21 +7,19 @@
 				
 	AUTHORS:
 	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+	Mario Kleiner		mk		mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
 	
-		10/20/02		awi			Wrote it mostly by adding in SDL-specific refugeess (from an experimental SDL Psychtoolbox) from header and source files.
-		11/16/04		awi			added  PsychGetGlobalScreenRect.  Enhanced DESCRIPTION text.  
-
+	2/20/06                 mk              Wrote it. Derived from Windows version.
         							
 	DESCRIPTION:
 	
 		Functions in this file comprise an abstraction layer for probing and controlling screen state.  
 		
 		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
-		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are
-		different.  Platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, 
+		should be platform-neutral, despite that the calls in OS X and Linux to detect available pixel sizes are
+		different.  The platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, 
 		PsychWindowTextClue.
 	
 		In addition to glue functions for windows and screen there are functions which implement shared functionality between between Screen commands,
@@ -30,14 +28,7 @@
 	NOTES:
 	
 	TO DO: 
-	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		¥ All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
- 
-		
-     							
+
 */
 
 //include once
@@ -52,21 +43,21 @@ void						PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int 
 void						PsychCaptureScreen(int screenNumber);
 void						PsychReleaseScreen(int screenNumber);
 boolean						PsychIsScreenCaptured(int screenNumber);
-int							PsychGetNumDisplays(void);
+int						PsychGetNumDisplays(void);
 void						PsychGetScreenDepths(int screenNumber, PsychDepthType *depths);
-int							PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp);
+int						PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp);
 boolean						PsychCheckVideoSettings(PsychScreenSettingsType *setting);
 void						PsychGetScreenDepth(int screenNumber, PsychDepthType *depth);   //dont' use this and get rid  of it.
-int							PsychGetScreenDepthValue(int screenNumber);
-int							PsychGetNumScreenPlanes(int screenNumber);
+int						PsychGetScreenDepthValue(int screenNumber);
+int						PsychGetNumScreenPlanes(int screenNumber);
 float						PsychGetNominalFramerate(int screenNumber);
-float                       PsychSetNominalFramerate(int screenNumber, float requestedHz);
+float                       			PsychSetNominalFramerate(int screenNumber, float requestedHz);
 void						PsychGetScreenSize(int screenNumber, long *width, long *height);
 void						PsychGetGlobalScreenRect(int screenNumber, double *rect);
 void						PsychGetScreenRect(int screenNumber, double *rect);
-void                        PsychGetDisplaySize(int screenNumber, int *width, int *height);
-PsychColorModeType			PsychGetScreenMode(int screenNumber);
-int							PsychGetDacBitsFromDisplay(int screenNumber);		//from display, not from preferences
+void                        			PsychGetDisplaySize(int screenNumber, int *width, int *height);
+PsychColorModeType				PsychGetScreenMode(int screenNumber);
+int						PsychGetDacBitsFromDisplay(int screenNumber);		//from display, not from preferences
 void						PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings);
 boolean						PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *settings);
 boolean						PsychRestoreScreenSettings(int screenNumber);
@@ -75,6 +66,13 @@ void						PsychShowCursor(int screenNumber);
 void						PsychPositionCursor(int screenNumber, int x, int y);
 void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 void						PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
+int                         			PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
+
+// Internal helper routines for memory mapped gfx-hardware register low level access: Called
+// from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines
+// to setup and tear-down memory mappings...
+boolean 					PsychScreenMapRadeonCntlMemory(void);
+void 						PsychScreenUnmapDeviceMemory(void);
 
 //end include once
 #endif

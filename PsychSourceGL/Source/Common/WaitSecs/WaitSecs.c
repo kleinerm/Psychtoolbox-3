@@ -3,26 +3,25 @@
 	
 	PLATFORMS:	
 	
-		Only OS X for now
-			
-	
+		All.
+
 	AUTHORS:
 
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
+		Mario Kleiner		mk		mario.kleiner@tuebingen.mpg.de
 
 	HISTORY:
 
 		1/20/02			awi		wrote it.
 		4/6/05			awi		Use mach_wait_until() instead of looping.  Mario's suggestion.  
-		4/7/05			awi		Relocate mach_wait_until() call within PsychWaitIntervalSeconds().  
+		4/7/05			awi		Relocate mach_wait_until() call within PsychWaitIntervalSeconds().
+		1/2/08			mk		Add subfunction for waiting until absolute time, and return of wakeup time. 
 		
-	
+
 	NOTES: 
 	
 		We add a small error here by doing some stuff before calling PsychWaitIntervalSeconds.  The error should be small.  
 		If we need to do better, mark time from the entry point into WAITSECSWaitSecs().
-		
-		---
 		
 		We add a compile flag to the project MachTimebase settings: "-Wno-long-double" turns off a warning caused by using type long double.  
 		The warning is:
@@ -33,63 +32,88 @@
 		that's not going to break anything.  
 			
 		The -Wno-long-double flag is appended to the project setting "Other Warning Flags".
-
-		   
   
 */
 
 
 #include "WaitSecs.h"
 
+void WAITSECSSynopsis(void)
+{
+	printf("WaitSecs - Timed waits:\n");
+	printf("-----------------------\n");
+	printf("\n");
+	printf("[realWakeupTimeSecs] = WaitSecs(waitPeriodSecs);        -- Wait for at least 'waitPeriodSecs' seconds.\n");
+	printf("[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs); -- Wait until at least time 'whenSecs'.\n");
+	printf("The optional 'realWakeupTimeSecs' is the real system time when WaitSecs finished waiting,\n");
+	printf("just as if you'd call realWakeupTimeSecs = GetSecs; after calling WaitSecs. This for your\n");
+	printf("convenience and to reduce call overhead and drift a bit for this common combo of commands.\n\n");
+}
 
 PsychError WAITSECSWaitSecs(void) 
 {
     double	waitPeriodSecs;
+    double	now;
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
     
-    PsychCopyInDoubleArg(1,TRUE,&waitPeriodSecs);
-	 PsychWaitIntervalSeconds(waitPeriodSecs);
+    if (!PsychCopyInDoubleArg(1, FALSE, &waitPeriodSecs)) {
+	// Called without arguments. Output synopsis:
+	WAITSECSSynopsis();
+	return(PsychError_none);
+    }
+
+    // Wait for requested interval:
+    PsychWaitIntervalSeconds(waitPeriodSecs);
+
+    // Return current system time at end of sleep:
+    PsychGetAdjustedPrecisionTimerSeconds(&now);
+    PsychCopyOutDoubleArg(1, FALSE, now);
 
     return(PsychError_none);	
 }
 
-
-// The older version, before we moved the part that does the work into our library of Psycthtoolbox core functions.
-// We mark time from the entry point.  
-
-/*
-PsychError WAITSECSWaitSecs(void) 
+PsychError WAITSECSWaitUntilSecs(void)
 {
-    double							*waitPeriodSecs;
-    long double						clockPeriodNSecs, clockFrequencyHz, waitPeriodTicks;	
-    mach_timebase_info_data_t		tbinfo;
-	kern_return_t					waitResult;
-	uint64_t						startTime, deadline;
+    static char useString[] = "[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs);";
+    //                                                                      1 
+    static char synopsisString[] = 
+    "Wait until at least system time \"whenSecs\" has been reached. "
+    "Optionally, return the real wakeup time \"realWakeupTimeSecs\".\n"
+    "This allows conveniently waiting until an absolute point in time "
+    "has been reached, or to allow drift-free waiting for a well defined "
+    "interval, more accurate than the standard WaitSecs() call.\n"
+    "Example:\n"
+    "Wait until 0.6 secs after last stimulus onset, if vbl=Screen('Flip', window); "
+    "was the onset timestamp vbl from a previous flip:\n"
+    "realwakeup = WaitSecs('UntilTime', vbl + 0.6);\n\n"
+    "In a perfect world, realwakeup == vbl + 0.6, in reality it will be\n"
+    "realwakeup == vbl + 0.6 + randomjitter; with randomjitter being the "
+    "hopefully small scheduling delay of your operating system. If the "
+    "delay is high or varies a lot between trials then your system has "
+    "noisy timing or real timing problems.\n";
 	
-	startTime = mach_absolute_time();
+    static char seeAlsoString[] = "";	
+
+    double	waitUntilSecs;
+    double	now;
+
+    //all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //check to see if the user supplied superfluous arguments
-    PsychErrorExit(PsychCapNumOutputArgs(0));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));
     
-    //Allocate a return matrix and load it with the depth values.
-    PsychAllocInDoubleArg(1,TRUE,&waitPeriodSecs);
-	
-    mach_timebase_info(&tbinfo);
-    clockPeriodNSecs = ((long double) tbinfo.numer) / ((long double) tbinfo.denom);
-    clockFrequencyHz = 1000000000.0 / clockPeriodNSecs;
-	waitPeriodTicks= clockFrequencyHz * *waitPeriodSecs;
-	deadline= startTime + (uint64_t)waitPeriodTicks;
-    waitResult=mach_wait_until(deadline);   
+    PsychCopyInDoubleArg(1,TRUE,&waitUntilSecs);
+    PsychWaitUntilSeconds(waitUntilSecs);
+
+    // Return current system time at end of sleep:
+    PsychGetAdjustedPrecisionTimerSeconds(&now);
+    PsychCopyOutDoubleArg(1, FALSE, now);
 
     return(PsychError_none);	
 }
-*/
-
-
-
-
-	

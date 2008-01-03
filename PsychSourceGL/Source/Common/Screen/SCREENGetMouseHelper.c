@@ -4,21 +4,30 @@
 	AUTHORS:
 
 		Allen.Ingling@nyu.edu		awi 
-  
+  		mario.kleiner@tuebingen.mpg.de	mk
 	PLATFORMS:
 	
-		Only OS X for now.
-    
-
+		All, with platform dependent code and lots of uglyness.
+ 
 	HISTORY:
 
 		10/11/04	awi		Created.  
-  
+ 		??/??/??	mk		Add support for Windows and Linux, add lots of other stuff... 
  
 	DESCRIPTION:
   
-		Returns the position of the mouse pointer.  Experimental.  
+		* Returns the position of the mouse pointer.
+
+		* Also does lots of other tasks - this is kind of a trashbin for lazy Mario:
+			- Implements KbChecks/KbWaits on Windows and Linux.
+			- Implements GetChar on Linux.
+			- Implements Priority() for Windows and Linux.
 		
+		The command syntax and arguments described in the online help do the mouse queries.
+		Secret command codes (encoded as negative 'numButtons' arguments) trigger all other
+		functions. One needs to read the M-Files for KbCheck, GetChar, Priority etc. to find
+		out what means what and why.
+
 	NOTES
 	
 		We need these ingredients:
@@ -51,6 +60,14 @@
 
 
 #include "Screen.h"
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+
+/* These are needed for realtime scheduling and memory locking control: */
+#include <sched.h>
+#include <errno.h>
+#include <sys/mman.h>
+#endif
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber]);";
@@ -288,6 +305,8 @@ PsychError SCREENGetMouseHelper(void)
 	XEvent event_return;
 	XKeyPressedEvent keypressevent;
 	int screenNumber;
+	int priorityLevel;
+	struct sched_param schedulingparam;
 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -295,11 +314,13 @@ PsychError SCREENGetMouseHelper(void)
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
 
 	// Retrieve optional screenNumber argument:
-	screenNumber = 0;
-	PsychCopyInScreenNumberArg(2, FALSE, &screenNumber);
-
-	// Map screenNumber to X11 display handle and screenid:
-	PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+	if (numButtons!=-5) {
+		screenNumber = 0;
+		PsychCopyInScreenNumberArg(2, FALSE, &screenNumber);
+	
+		// Map screenNumber to X11 display handle and screenid:
+		PsychGetCGDisplayIDFromScreenNumber(&dpy, screenNumber);
+	}
 
 	// Are we operating in 'GetMouseHelper' mode? numButtons>=0 indicates this.
 	if (numButtons>=0) {
@@ -426,8 +447,80 @@ PsychError SCREENGetMouseHelper(void)
 /* 	    // Copy out time: */
 /* 	    PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) keypressevent.time); */
 	  }
-	}
+	  else if (numButtons==-5) {
+		// Priority() - helper mode: The 2nd argument is the priority level:
+
+		// Query RT priority level (if RT scheduling active):
+		sched_getparam(0, &schedulingparam);
+		// Query scheduling mode:
+		priorityLevel = sched_getscheduler(0);
+		// If scheduling mode is a realtime mode (RoundRobin realtime RR, or FIFO realtime),
+		// then assign RT priority level (range 1-99) as current priorityLevel, otherwise
+		// assign non realtime priority level zero:
+		priorityLevel = (priorityLevel == SCHED_RR || priorityLevel == SCHED_FIFO) ? schedulingparam.sched_priority : 0;
+        
+		// Copy it out as optional return argument:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) priorityLevel);
+		
+		// Query if a new level should be set:
+		priorityLevel = -1;
+		PsychCopyInIntegerArg(2, kPsychArgOptional, &priorityLevel);
+
+		errno=0;
+		// Priority level provided?
+		if (priorityLevel > -1) {
+			// Map to new scheduling class:
+			if (priorityLevel > 99 || priorityLevel < 0) PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "Invalid Priority level: Requested Priority() level must be between zero and 99!");
+
+			if (priorityLevel > 0) {
+				// Realtime RoundRobin scheduling and all pages of Matlab/Octave locked into memory:
+				schedulingparam.sched_priority = priorityLevel;
+				priorityLevel = sched_setscheduler(0, SCHED_RR, &schedulingparam);
+				if (priorityLevel == -1) {
+					// Failed!
+					if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	    					printf("PTB-ERROR: Failed to enable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
+						if (errno==EPERM) {
+							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges for this to work.\n");
+						}
+					}
+					errno=0;
+				}
+				else {
+					// RT-Scheduling active. Lock all current and future memory:
+					priorityLevel = mlockall(MCL_CURRENT | MCL_FUTURE);
+					if (priorityLevel!=0) {
+						// Failed! Report problem as warning, but don't worry further. 
+	    					if(!PsychPrefStateGet_SuppressAllWarnings()) printf("PTB-WARNING: Failed to enable system memory locking with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
+						// Undo any possibly partial mlocks....
+						munlockall();
+						errno=0;
+					}
+				}
+			}
+			else {
+				// Standard scheduling and no memory locking:
+				schedulingparam.sched_priority = 0;
+				priorityLevel = sched_setscheduler(0, SCHED_OTHER, &schedulingparam);
+				if (priorityLevel == -1) {
+					// Failed!
+					if(!PsychPrefStateGet_SuppressAllWarnings()) {
+	    					printf("PTB-ERROR: Failed to disable realtime-scheduling with Priority(%i) [%s]!\n", schedulingparam.sched_priority, strerror(errno));
+						if (errno==EPERM) {
+							printf("PTB-ERROR: You need to run Matlab/Octave with root-privileges for this to work.\n");
+						}
+					}
+					errno=0;
+				}
+
+				munlockall();
+				errno=0;
+			}
+			// End of setup of new Priority...
+		}
+		// End of Priority() helper for Linux.
+	  }
+	}	// End of special functions handling for Linux...
 #endif
 	return(PsychError_none);	
 }
-

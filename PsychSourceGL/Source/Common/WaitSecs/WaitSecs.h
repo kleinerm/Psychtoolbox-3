@@ -26,6 +26,7 @@
 //function prototypes
 PsychError MODULEVersion(void);			//MODULEVersion.c
 PsychError WAITSECSWaitSecs(void);
+PsychError WAITSECSWaitUntilSecs(void);
 
 //end include once
 #endif

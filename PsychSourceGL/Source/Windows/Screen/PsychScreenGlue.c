@@ -757,7 +757,25 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 // and VerticalBlankStatus(). This is supposed to work on Windows 2000 and later.
 // See http://msdn.microsoft.com/archive/default.asp?url=/archive/en-us/ddraw7/directdraw7/ddref_2n5j.asp
 //
-int CGDisplayBeamPosition(CGDirectDisplayID cgDisplayId)
+// This seems to work on all recent NVidia, ATI and Intel gfx-chips.
+//
+// On MS-Windows, the display specifier (cgDisplayId, screenNumber) is ignored! We always query
+// the "default" pipeline due to current lack of support for mapping display specs to pipes.
+// The choice of "default" pipeline is OS/Driver dependent and depends on the display settings
+// and choices made by the user in the Windows display settings panel, usually the "primary display",
+// which is reasonable (always correct on single display setup, user selectable on dual-display setup
+// by assignment of primary monitor, irrelevant in dual-display desktop spanning mode for binocular
+// stimulation, as both display pipes are synchronized in that case). 
+//
+// PsychGetDisplayBeampPosition() contains the implementation of display beamposition queries.
+// It requires both, a cgDisplayID handle, and a logical screenNumber and uses one of both for
+// deciding which display pipe to query, whatever of both is more efficient or suitable for the
+// host platform -- This is ugly, but neccessary, because the mapping with only one of these
+// specifiers would be either ambigous (wrong results!) or usage would be inefficient and slow
+// (bad for such a time critical low level call!). On some systems it may even ignore the arguments,
+// because it's not capable of querying different pipes - ie., it will always query a hard-coded pipe.
+//
+int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {
   HRESULT rc;
   psych_uint32 beampos = 0;

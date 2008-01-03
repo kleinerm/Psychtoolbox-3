@@ -582,15 +582,15 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
       }
       
-      // Now we try if CGDisplayBeamPosition works and try to estimate monitor refresh from it
+      // Now we try if PsychGetDisplayBeamPosition works and try to estimate monitor refresh from it
       // as well...
       
       // Check if a beamposition of 0 is returned at two points in time on OS-X:
       i = 0;
-      if (((int) CGDisplayBeamPosition(cgDisplayID) == 0) && (PSYCH_SYSTEM == PSYCH_OSX)) {
+      if (((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber) == 0) && (PSYCH_SYSTEM == PSYCH_OSX)) {
         // Recheck after 2 ms on OS-X:
         PsychWaitIntervalSeconds(0.002);
-        if ((int) CGDisplayBeamPosition(cgDisplayID) == 0) {
+        if ((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber) == 0) {
 	  // A constant value of zero is reported on OS-X -> Beam position queries unsupported
 	  // on this combo of gfx-driver and hardware :(
 	  i=12345;
@@ -599,21 +599,21 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       
       // Check if a beamposition of -1 is returned: This would indicate that beamposition queries
       // are not available on this system: This always happens on Linux as that feature is unavailable.
-      if ((-1 != ((int) CGDisplayBeamPosition(cgDisplayID))) && (i!=12345)) {
+      if ((-1 != ((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber))) && (i!=12345)) {
 	// Switch to RT scheduling for timing tests:
 	PsychRealtimePriority(true);
 	
 	// Code for estimating the final scanline of the vertical blank interval of display (needed by Screen('Flip')):
 	
-	// Check if CGDisplayBeamPosition is working properly:
+	// Check if PsychGetDisplayBeamPosition is working properly:
 	// The first test checks, if it returns changing values at all or if it returns a constant
 	// value at two measurements 2 ms apart...
-	i=(int) CGDisplayBeamPosition(cgDisplayID);
+	i=(int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber);
 	PsychWaitIntervalSeconds(0.002);
-	if ((((int) CGDisplayBeamPosition(cgDisplayID)) == i) || (i < -1)) {
-	  // CGDisplayBeamPosition returns the same value at two different points in time?!?
+	if ((((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber)) == i) || (i < -1)) {
+	  // PsychGetDisplayBeamPosition returns the same value at two different points in time?!?
 	  // That's impossible on anything else than a high-precision 500 Hz display!
-	  // --> CGDisplayBeamPosition is not working correctly for some reason.
+	  // --> PsychGetDisplayBeamPosition is not working correctly for some reason.
 	  sync_trouble = true;
 	  if(PsychPrefStateGet_Verbosity()>1) {
 			if (i >=-1) printf("\nWARNING: Querying rasterbeam-position doesn't work on your setup! (Returns a constant value %i)\n", i);
@@ -621,14 +621,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	  }
 	}
 	else {
-	  // CGDisplayBeamPosition works: Use it to find VBL-Endline...
+	  // PsychGetDisplayBeamPosition works: Use it to find VBL-Endline...
 	  // Sample over 50 monitor refresh frames:
 	  double told, tnew;
 	  for (i=0; i<50; i++) {
 	    // Take beam position samples from current monitor refresh interval:
 	    maxline = -1;
 	    // We spin-wait until retrace and record our highest measurement:
-	    while ((bp=(int) CGDisplayBeamPosition(cgDisplayID)) >= maxline) maxline=bp;
+	    while ((bp=(int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber)) >= maxline) maxline=bp;
 	    // We also take timestamps for "yet another way" to measure monitor refresh interval...
 	    PsychGetAdjustedPrecisionTimerSeconds(&tnew);
 	    if (i>0) {
@@ -638,7 +638,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	    told=tnew;
 	    
 		// Another (in)sanity check. Negative values immediately after retrace?
-		if((int) CGDisplayBeamPosition(cgDisplayID) < 0) {
+		if((int) PsychGetDisplayBeamPosition(cgDisplayID, (*windowRecord)->screenNumber) < 0) {
 			// Driver bug! Abort this...
 			VBL_Endline = -1;
 			tnew = -1;
@@ -769,7 +769,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
           }
           else {
               if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
-              if (PsychPrefStateGet_VBLTimestampingMode()< 0) printf("PTB-Info: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\\n");
+              if (PsychPrefStateGet_VBLTimestampingMode()< 0) printf("PTB-Info: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
       }
       else {
@@ -1433,9 +1433,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
 	// take a measurement of the beamposition at time of swap request:
-	line_at_swaprequest = (int) CGDisplayBeamPosition(displayID);
+	line_at_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
     PsychOSFlipWindowBuffers(windowRecord);
-	line_at_swaprequest = (line_at_swaprequest + (int) CGDisplayBeamPosition(displayID)) * 0.5;
+	line_at_swaprequest = (line_at_swaprequest + (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber)) * 0.5;
 	
 	// Also swap the slave window, if any:
 	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
@@ -1457,7 +1457,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Wait for VBL onset via experimental busy-waiting spinloop instead of
             // blocking: We spin-wait until the rasterbeam of our master-display enters the
             // VBL-Area of the display:
-            while (vbl_startline > (int) CGDisplayBeamPosition(displayID));
+            while (vbl_startline > (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber));
         }
         else {
             // Standard blocking wait for flip/VBL onset requested:
@@ -1492,7 +1492,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
         
         // Query and return rasterbeam position immediately after Flip and before timestamp:
-        *beamPosAtFlip=(int) CGDisplayBeamPosition(displayID);
+        *beamPosAtFlip=(int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
 
          // We take a timestamp here and return it to "userspace"
         PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
@@ -2123,7 +2123,7 @@ void PsychVisualBell(PsychWindowRecordType *windowRecord, double duration, int b
         glFinish();
 
         // Query and visualize scanline immediately after VBL onset, aka return of glFinish();
-        scanline=(int) CGDisplayBeamPosition(cgDisplayID);    
+        scanline=(int) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);    
         if (belltype==3) {
             glColor3f(1,1,0);
             glBegin(GL_LINES);

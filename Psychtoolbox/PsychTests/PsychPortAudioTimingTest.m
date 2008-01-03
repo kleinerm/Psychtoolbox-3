@@ -40,7 +40,9 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes)
 % Initialize driver, request low-latency preinit:
 InitializePsychSound(1);
 
-PsychPortAudio('Verbosity', 10);
+if ~IsLinux
+  PsychPortAudio('Verbosity', 10);
+end
 
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
 dummy=GetSecs;
@@ -148,7 +150,7 @@ postlat = PsychPortAudio('LatencyBias', pahandle)
 
 %mynoise = randn(2,freq * 0.1);
 % Generate some beep sound 1000 Hz, 0.1 secs, 90% amplitude:
-mynoise(1,:) = 0.9 * MakeBeep(1000, 0.1, freq);
+mynoise(1,:) = 0.5 * MakeBeep(1000, 0.1, freq);
 mynoise(2,:) = mynoise(1,:);
 
 % Fill buffer with data:
@@ -169,6 +171,13 @@ KbWait;
 % Ten measurement trials:
 for i=1:10
 
+    % Start the playback engine with an infinite start deadline, ie.,
+    % start hardware, but don't play sound:
+    PsychPortAudio('Start', pahandle, 1, inf, 0);
+
+    % Wait a bit, say 100msecs, so hardware is certainly running and settled:
+    WaitSecs(0.1);
+
     % This flip clears the display to black and returns timestamp of black
     % onset:
     [vbl1 visonset1]= Screen('Flip', win);
@@ -177,12 +186,10 @@ for i=1:10
     Screen('FillRect', win, 255);
     Screen('DrawingFinished', win);
 
-    %pause(0.6);
-
     if exactstart
         % Schedule start of audio at exactly the predicted visual
         % stimulus onset caused by the next flip command:
-        PsychPortAudio('Start', pahandle, 1, visonset1 + waitframes * ifi, 0);
+        PsychPortAudio('RescheduleStart', pahandle, visonset1 + waitframes * ifi, 0);
     end
 
     % Ok, the next flip will do a black-white transition...
@@ -191,7 +198,7 @@ for i=1:10
     if ~exactstart
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
-        PsychPortAudio('Start', pahandle, 1, 0, 0);
+        PsychPortAudio('RescheduleStart', pahandle, 0, 0);
     end
 
     t2 = GetSecs;
