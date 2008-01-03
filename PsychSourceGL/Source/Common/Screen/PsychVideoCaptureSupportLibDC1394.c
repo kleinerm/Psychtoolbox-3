@@ -57,7 +57,7 @@ typedef struct {
   dc1394video_frame_t *frame;		// Ptr to a structure which contains the most recently captured/dequeued frame.
   int dma_mode;                     // 0 == Non-DMA fallback path. 1 == DMA-Transfers. (Obsolete)
   int allow_nondma_fallback;        // Use of Non-DMA fallback path allowed? (Obsolete)
-  int dropframes;					// 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
+  int dropframes;		    // 1 == Always deliver most recent frame in FIFO, even if dropping of frames is neccessary.
   dc1394video_mode_t dc_imageformat;// Encodes image size and pixelformat.
   dc1394framerate_t dc_framerate;   // Encodes framerate.
   dc1394color_coding_t colormode;   // Encodes color encoding of cameras data.
@@ -70,7 +70,8 @@ typedef struct {
   int width;                        // Width x height of captured images.
   int height;
   double last_pts;                  // Capture timestamp of previous frame.
-  double current_pts;               // Capture timestamp of current frame
+  double current_pts;               // Capture timestamp of current frame.
+  int current_dropped;              // Dropped count for this fetch cycle...
   int nr_droppedframes;             // Counter for dropped frames.
   int frame_ready;                  // Signals availability of new frames for conversion into GL-Texture.
   int grabber_active;               // Grabber running?
@@ -325,7 +326,7 @@ bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     // Requested output texture pixel depth in layers:
     capdev->reqpixeldepth = reqdepth;
     
-    // Number of DMA ringbuffers to use in DMA capture mode:
+    // Number of DMA ringbuffers to use in DMA capture mode: If no number provided (==0), set it to 8 buffers...
     capdev->num_dmabuffers = (num_dmabuffers>0) ? num_dmabuffers : 8;
     
     // Use of low-performance non-DMA fallback path allowed in case of trouble with DMA engine?
@@ -350,6 +351,8 @@ bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
       printf("PTB-WARNING: Tried to reset camera %i, but reset cycle failed for some reason!\n", deviceIndex); fflush(NULL);
     }
 
+    printf("PTB-INFO: Camera successfully opened...\n"); fflush(NULL);
+    
     return(TRUE);
 }
 
@@ -902,7 +905,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
       packetsize = 0;
     }
 
-	// The PsychVideoFind(Non)Format7Mode() logic above already set the ROI for capture...
+    // The PsychVideoFind(Non)Format7Mode() logic above already set the ROI for capture...
 	
     // Setup capture hardware and DMA engine:
     if (dc1394_video_get_iso_speed(capdev->camera, &speed)!=DC1394_SUCCESS) {
@@ -915,6 +918,7 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     if (strstr(capdev->camera->vendor, "Unibrain") && strstr(capdev->camera->model, "Fire-i")) {
       // Unibrain Fire-i: Enforce correct speed:
       speed = DC1394_ISO_SPEED_400;
+      if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Unibrain Fire-i detected. Setting override bus speed 400 MBit...\n"); fflush(NULL);
     }
 
     // Assign final mode and framerate:
@@ -928,31 +932,41 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     // Setup DMA engine:
     // =================
 
-	// Set ISO speed:
-	err = dc1394_video_set_iso_speed(capdev->camera, speed);
+    // Set ISO speed:
+    if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting ISO speed... "); fflush(NULL);
+    err = dc1394_video_set_iso_speed(capdev->camera, speed);
     if (err != DC1394_SUCCESS) {      
 		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting ISO speed failed!");
-	}
+    }
 
-	// Set Mode:
-	err = dc1394_video_set_mode(capdev->camera, mode);
+    if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
+
+    // Set Mode:
+    if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting mode..."); fflush(NULL);
+    err = dc1394_video_set_mode(capdev->camera, mode);
     if (err != DC1394_SUCCESS) {      
 		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting mode failed!");
 	}
+    if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
 
-	// Set Framerate for non-Format7 modes: This is redundant in Format7 mode...
-	err = dc1394_video_set_framerate(capdev->camera, dc1394_framerate);
+    // Set Framerate for non-Format7 modes: This is redundant in Format7 mode...
+    if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting framerate (even in nonFormat-7!)..."); fflush(NULL);
+    err = dc1394_video_set_framerate(capdev->camera, dc1394_framerate);
     if (err != DC1394_SUCCESS) {      
 		  PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting fixed framerate failed!");
 	}
+    if(PsychPrefStateGet_Verbosity()>5) printf("...done.\n"); fflush(NULL);
 
     // Format-7 capture?
     if (packetsize > 0) {
       // Format-7 capture DMA setup: We only set mode, color format, packetsize (and thereby framerate) and ROI (and thereby imagesize):
-	  err = dc1394_format7_set_roi(capdev->camera, mode, color_code, packetsize, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop], (unsigned int) PsychGetWidthFromRect(capdev->roirect), (unsigned int) PsychGetHeightFromRect(capdev->roirect));
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting format-7 ROI..."); fflush(NULL);
+        err = dc1394_format7_set_roi(capdev->camera, mode, color_code, packetsize, (unsigned int) capdev->roirect[kPsychLeft], (unsigned int) capdev->roirect[kPsychTop], (unsigned int) PsychGetWidthFromRect(capdev->roirect), (unsigned int) PsychGetHeightFromRect(capdev->roirect));
 		if (err != DC1394_SUCCESS) {      
 			PsychErrorExitMsg(PsychError_user, "Unable to setup and start capture engine: Setting Format7 ROI failed!");
 		}
+        if(PsychPrefStateGet_Verbosity()>5) printf("...done. \n"); fflush(NULL);
+
     }
     else {
       // Non-Format-7 capture DMA setup: mode encodes image size, ROI and color format.
@@ -963,9 +977,11 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	// Store the 'dropframes' flag in our capdev struct, so the PsychDCGetTextureFromCapture()
 	// knows how to handle this:
 	capdev->dropframes = (dropframes > 0) ? 1 : 0;
-	
+
+    
 	// Finally setup and start DMA video capture engine with default flags (auto allocation and
 	// release of iso bandwidth and channels) and num_dmabuffers DMA buffer slots in internal video FIFO:
+        if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Setting up DMA capture now!"); fflush(NULL);
 	err = dc1394_capture_setup(capdev->camera, capdev->num_dmabuffers, DC1394_CAPTURE_FLAGS_DEFAULT);
     if (err != DC1394_SUCCESS) {      
 		// Failed! We clean up and fail:
@@ -976,13 +992,16 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		// Signal use of DMA engine: Meaningless as of 1st January 2008...
 		capdev->dma_mode = 1;
     }
+
+    if(PsychPrefStateGet_Verbosity()>5) printf(" DMA-Engine started.\n"); fflush(NULL);
 	
     // Ready to go! Now we just need to tell the camera to start its capture cycle:
 
     // Wait until start deadline reached:
-    PsychWaitUntilSeconds(*startattime);
-
+    if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
+    
     // Start DMA driven isochronous data transfer:
+    if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Enabling cameras ISO transmission -- Start of capture...\n"); fflush(NULL);
     if (dc1394_video_set_transmission(capdev->camera, DC1394_ON) !=DC1394_SUCCESS) {
 		// Failed! Shutdown DMA capture engine again:
 		dc1394_capture_stop(capdev->camera);
@@ -992,6 +1011,8 @@ int PsychDCVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     
     // Record real start time:
     PsychGetAdjustedPrecisionTimerSeconds(startattime);
+
+    if(PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Capture engine fully running...\n"); fflush(NULL);
 
     // Map framerate enum to floating point value and assign it:
     if (packetsize == 0) {
@@ -1102,7 +1123,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     double tstart, tend;
     unsigned int pixval, alphacount;
     dc1394error_t error;
-    int nrdropped;
+    int nrdropped = 0;
     unsigned char* input_image = NULL;
 
     // Retrieve device record for handle:
@@ -1132,6 +1153,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	
     // Should we just check for new image?
     if (checkForImage) {
+                // Reset current dropped count to zero:
+                capdev->current_dropped = 0;
+        
 		if (capdev->grabber_active == 0) {
 			// Grabber stopped. We'll never get a new image:
 			return(-2);
@@ -1170,7 +1194,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 			// This is an indication of how well the users script is keeping up with the video stream,
 			// technically the number of frames that would need to be dropped to keep in sync with the
 			// stream.
-			nrdropped = (int) capdev->frame->frames_behind;
+			capdev->current_dropped = (int) capdev->frame->frames_behind;
 			
 			// Ok, at least one new frame ready. If more than one frame has queued up and
 			// we are in 'dropframes' mode, ie. we should always deliver the most recent available
@@ -1228,12 +1252,12 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	
     // Do we want to do something with the image data and have a
     // scratch buffer for color conversion alloc'ed?
-    if ((capdev->scratchbuffer) && ((out_texture) || (summed_intensity))) {
+    if ((capdev->scratchbuffer) && ((out_texture) || (summed_intensity) || (outrawbuffer))) {
 		// Yes. Perform color-conversion YUV->RGB from cameras DMA buffer
 		// into the scratch buffer and set scratch buffer as source for
 		// all further operations:
 		dc1394_convert_to_RGB8(input_image, capdev->scratchbuffer, capdev->width,
-							   capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
+                                       capdev->height, DC1394_BYTE_ORDER_UYVY, capdev->colormode, 8);
 		
 		// Ok, at this point we should have a RGB8 texture image ready in scratch_buffer.
 		// Set scratch buffer as our new image source for all further processing:
@@ -1294,7 +1318,9 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	}
 	
     // Update total count of dropped (or pending) frames:
-    capdev->nr_droppedframes += nrdropped;
+    capdev->nr_droppedframes += capdev->current_dropped;
+    nrdropped = capdev->current_dropped;
+    capdev->current_dropped = 0;
 	
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
