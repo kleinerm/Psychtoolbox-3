@@ -77,6 +77,9 @@
 %                    internal latency of the camera for known models,
 %                    currently Basler A602f and Unibrain Fire.i
 %
+% PsychOpenEyes    - Control interface for PTB's integrated vision based
+%                    eyetracker, based on the OpenEyes toolkit.
+%
 % PsychSetupCamera - Interactive tool for setting up a camera and writing
 %                    the final settings into a .mat file for later use
 %                    by experiment scripts.

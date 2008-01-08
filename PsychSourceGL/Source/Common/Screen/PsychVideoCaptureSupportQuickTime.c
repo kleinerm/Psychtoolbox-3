@@ -56,6 +56,7 @@ typedef struct {
     double fps;                       // Acquisition framerate of capture device.
     int width;                        // Width x height of captured images.
     int height;
+	int reqpixeldepth;                // Requested depth of single pixel in output texture.
     double last_pts;                  // Capture timestamp of previous frame.
     double current_pts;               // Capture timestamp of current frame
     int nr_droppedframes;             // Counter for dropped frames.
@@ -221,6 +222,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	ComponentDescription desc;
 	Component mydevice;
     SeqGrabComponent seqGrab = NULL;
+
     SGChannel *sgchanptr = NULL;
 	SGChannel *sgchanaudioptr = NULL;
     ImageDescriptionHandle imageDesc;
@@ -268,7 +270,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	// Definition of a sequence grabber video input source:
 	desc.componentType = SeqGrabChannelType;
 	desc.componentSubType = 'vide';
-	desc.componentManufacturer = 'appl';
+	desc.componentManufacturer = 0; //'appl';
 	desc.componentFlags = 0;
 	desc.componentFlagsMask = 0;
 	
@@ -289,7 +291,6 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	if (mydevice == 0) PsychErrorExitMsg(PsychError_internal, "Failed to locate associated video capture device for deviceIndex!");
 	
     seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
-	// seqGrab = OpenComponent(mydevice);
     if (seqGrab == NULL) {
 		printf("PTB-ERROR: Failed to open sequence grabber video capture component for deviceIndex %i!", deviceIndex);
         PsychErrorExitMsg(PsychError_internal, "Failed to open requested sequence grabber for video capture!");
@@ -383,8 +384,32 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         SGDisposeChannel(seqGrab, *sgchanptr);
         *sgchanptr = NULL;
 
+		// Check if the requested pixel depth matches what we can give:
+		switch (reqdepth) {
+			case 2:
+				// A no-go: Instead we use 1 channel luminance8:
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture engine doesn't support requested Luminance+Alpha format. Will revert to pure Luminance instead...\n");
+			case 1:
+				reqdepth = 1;
+			break;
+			
+			case 3:
+				// A n-go: Instead we use 4 channels RGBA with a all 255 alpha channel --> More efficient.
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture engine doesn't support requested RGB format. Will use slower software conversion of RGBA->RGB...\n");
+				break;
+			case 4:
+			case 0:
+				reqdepth = 4;
+			break;
+			
+			default:
+				// Unknown format:
+				CloseComponent(seqGrab);
+				PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3 or 4). Aborted.");
+		} 
+
         // Create GWorld for this grabber object:
-        error = QTNewGWorld(&vidcapRecordBANK[slotid].gworld, 0, &movierect,  NULL, NULL, 0);
+        error = QTNewGWorld(&vidcapRecordBANK[slotid].gworld, (reqdepth < 3) ? k8IndexedGrayPixelFormat : 0, &movierect,  NULL, NULL, 0);
         if (error!=noErr) {
           CloseComponent(seqGrab);
           PsychErrorExitMsg(PsychError_internal, "Quicktime GWorld creation for capture device failed!");
@@ -644,7 +669,10 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     // Determine size of images in movie:
     vidcapRecordBANK[slotid].width = movierect.right - movierect.left;
     vidcapRecordBANK[slotid].height = movierect.bottom - movierect.top;
-    
+
+	// Store pixeldepth in layers:
+	vidcapRecordBANK[slotid].reqpixeldepth = reqdepth;
+
     // Reset framecounter:
     vidcapRecordBANK[slotid].nrframes = 0;
 
@@ -723,11 +751,14 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned int intensity = 0;
     unsigned int count, i;
     unsigned char* pixptr;
+	unsigned char* outpixptr;
+	unsigned char swapbyte;
     Boolean newframe = FALSE;
     double tstart, tend;
     unsigned int pixval, alphacount;
     int nrdropped;
-
+	int reqdepth;
+	
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
 
     // Sanity checks:
@@ -739,11 +770,15 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	// so we can return the values for raw data retrieval:
     w=vidcapRecordBANK[capturehandle].width;
     h=vidcapRecordBANK[capturehandle].height;
+	reqdepth = vidcapRecordBANK[capturehandle].reqpixeldepth;
 
     // Hack: Need to extend rect by 4 pixels, because GWorlds are 4 pixels-aligned via
     // image row padding:
 #if PSYCH_SYSTEM == PSYCH_OSX
+	// RGBA format is 4-Byte aligned...
     padding = 4 + (4 - (w % 4)) % 4;
+	// Special case for luminance pixel formats: 16-Byte aligned...
+	if (reqdepth < 3) padding = 16 + (16 - (w % 16)) % 16;
 #else
     padding= 0;
 #endif
@@ -751,9 +786,9 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	// If a outrawbuffer struct is provided, we fill it with info needed to allocate a
 	// sufficient memory buffer for returned raw image data later on:
 	if (outrawbuffer) {
-		outrawbuffer->w = w + padding;
+		outrawbuffer->w = w;
 		outrawbuffer->h = h;
-		outrawbuffer->depth = 4;
+		outrawbuffer->depth = reqdepth;
 	}
     
     // Grant some processing time to the sequence grabber engine:
@@ -809,7 +844,8 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     
     // Assign texture rectangle:
     if (out_texture) {
-        PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
+        // Oldstyle: No longer needed due to contraction code below: PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
+        PsychMakeRect(out_texture->rect, 0, 0, w, h);    
         
         // Set NULL - special texture object as part of the PTB texture record:
         out_texture->targetSpecific.QuickTimeGLTexture = NULL;
@@ -827,7 +863,61 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
         // Locking surface failed! We abort.
         PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromCapture(): Locking GWorld pixmap surface failed!!!");
     }
-    
+
+	// Preprocessing requested?
+	if (out_texture || summed_intensity || outrawbuffer) {
+		// Manual negating required?	
+		if (reqdepth < 3) {
+			// Luminance formats (1 Byte Luminance) are inverted for weird reasons. Need to "negate" all
+			// pixels before any further processing can occur. Also, we need to "contract" the image to
+			// remove the 16-Byte padding:
+			pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+			outpixptr = pixptr;
+			count = ((w+padding) * h);
+			for (i=0; i<count; i++) {
+				if ((i % (w+padding)) < w) {
+					*(outpixptr++) = 255 - *(pixptr++);
+				}
+				else {
+					pixptr++;
+				}
+			}
+		}
+		else {
+			// Need to "contract" the image to get rid of padding:
+			pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+			outpixptr = pixptr;
+			for (i=0; i<h; i++) {
+				for (count=0; count < w*4; count++) *(outpixptr++) = *(pixptr++);
+				for (count=w*4; count < (w+padding)*4; count++) pixptr++;
+			}
+			
+			// At requested depth 3 (RGB), need to contract again from RGBA -> RGB
+			if (reqdepth == 3) {
+				pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
+				outpixptr = pixptr;
+				count = w * h * 4;
+				for (i=0; i<count; i++) {
+					// Each 4th byte needs to be discarded, because it is the "dead" alpha byte:
+					if (i % 4 == 3) {
+						// Only advance read-ptr to get rid of alpha byte:
+						pixptr++;
+						// This is ugly: The byte order that QT delivers is not what OpenGL needs for RGB textures,
+						// ie., the order of QT is BGR,instead of required RGB. Need to swap R<->B. Is this ugly, or what?!?
+						// TODO: Works on Little Endian Intel systems, but is it needed o Big Endian PowerPC as well?
+						swapbyte = outpixptr[-3];
+						outpixptr[-3] = outpixptr[-1];
+						outpixptr[-1] = swapbyte;
+					}
+					else {
+						// Standard copy of a R, G or B byte:
+						*(outpixptr++) = *(pixptr++);
+					}
+				}
+			}
+		}
+	}
+	
     if (out_texture) {
         // This will retrieve an OpenGL compatible pointer to the GWorlds pixel data and assign it to our texmemptr:
         out_texture->textureMemory = (GLuint*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
@@ -839,7 +929,10 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		#if PSYCH_SYSTEM == PSYCH_OSX
 		glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
 		#endif
-		
+
+		out_texture->depth = 8 * reqdepth;
+		out_texture->nrchannels = reqdepth;
+
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content:
         PsychCreateTexture(out_texture);
@@ -853,7 +946,7 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Sum of pixel intensities requested?
     if(summed_intensity) {
         pixptr = (unsigned char*) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld));
-        count = (w*h*4);
+        count = (w * h * reqdepth);
         alphacount = 0;
         for (i=0; i<count; i++) {
             pixval=(unsigned int) pixptr[i];
@@ -861,20 +954,21 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
             if (pixval==255) alphacount++;
             intensity+=pixval;
         }
+		
         // Try to discount the w*h*255 alpha channel values, if alpha channel is fixed to 255:
         // Some video digitizers set alpha component correctly to 255, some leave it at the
         // wrong value of zero :(
-        if (alphacount >= w*h) intensity = intensity - (w * h * 255);
-        *summed_intensity = ((double) intensity) / w / h / 3;
+        if ((reqdepth > 1) && (alphacount >= w*h)) intensity = intensity - (w * h * 255);
+        *summed_intensity = ((double) intensity) / w / h / ((reqdepth > 1) ? 3 : 1);
     }
 
 	// Raw data requested?
 	if (outrawbuffer) {
 		// Copy it out:
-		outrawbuffer->w = w + padding;
+		outrawbuffer->w = w;
 		outrawbuffer->h = h;
-		outrawbuffer->depth = 4;
-		count = (w * h * outrawbuffer->depth);
+		outrawbuffer->depth = reqdepth;
+		count = (outrawbuffer->w * outrawbuffer->h * outrawbuffer->depth);
 		memcpy(outrawbuffer->data, (const void *) GetPixBaseAddr(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld)), count);
 	}
 

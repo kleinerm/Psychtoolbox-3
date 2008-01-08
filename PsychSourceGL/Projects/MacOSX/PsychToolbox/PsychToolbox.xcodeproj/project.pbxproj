@@ -1647,6 +1647,10 @@
 		833C1F010BB19D0100FB9B4F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
 		833C1F250BB1A49D00FB9B4F /* PsychPortAudio.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F210BB1A49D00FB9B4F /* PsychPortAudio.c */; };
 		833C1F260BB1A49D00FB9B4F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 833C1F230BB1A49D00FB9B4F /* RegisterProject.c */; };
+		8341EF240D2FD0E300B77B0E /* cvEyeTracker.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */; };
+		8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */; };
+		8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */; };
+		8341EF270D2FD0E300B77B0E /* svd.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF220D2FD0E300B77B0E /* svd.cc */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -1761,6 +1765,27 @@
 		83D93B2C0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c in Sources */ = {isa = PBXBuildFile; fileRef = 83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */; };
 		83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
 		83DBBD010C332374002B3C93 /* AGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83DBBCFF0C332374002B3C93 /* AGL.framework */; };
+		83E2C3F60D2FC58200FFD350 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
+		83E2C3F70D2FC58200FFD350 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
+		83E2C3F80D2FC58200FFD350 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
+		83E2C3F90D2FC58200FFD350 /* ProjectTable.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22C038E2B6B017A7028 /* ProjectTable.c */; };
+		83E2C3FA0D2FC58200FFD350 /* PsychAuthors.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FA80D3706B056A900112E7A /* PsychAuthors.c */; };
+		83E2C3FB0D2FC58200FFD350 /* PsychError.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F227038E2B6B017A7028 /* PsychError.c */; };
+		83E2C3FC0D2FC58200FFD350 /* PsychHelp.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F229038E2B6B017A7028 /* PsychHelp.c */; };
+		83E2C3FD0D2FC58200FFD350 /* PsychInit.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22D038E2B6B017A7028 /* PsychInit.c */; };
+		83E2C3FE0D2FC58200FFD350 /* PsychMemory.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22B038E2B6B017A7028 /* PsychMemory.c */; };
+		83E2C3FF0D2FC58200FFD350 /* PsychRegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F228038E2B6B017A7028 /* PsychRegisterProject.c */; };
+		83E2C4000D2FC58200FFD350 /* PsychStructGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F544E4E803C2336A01FD10C2 /* PsychStructGlue.c */; };
+		83E2C4010D2FC58200FFD350 /* PsychTimeGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277403DBE1F301D453F7 /* PsychTimeGlue.c */; };
+		83E2C4020D2FC58200FFD350 /* PsychVersioning.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524C30421889A01A80165 /* PsychVersioning.c */; };
+		83E2C4030D2FC58200FFD350 /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
+		83E2C4090D2FC58200FFD350 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
+		83E2C40A0D2FC58200FFD350 /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
+		83E2C40B0D2FC58200FFD350 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
+		83E2C40C0D2FC58200FFD350 /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
+		83E2C4250D2FCA2000FFD350 /* PsychCV.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4210D2FCA2000FFD350 /* PsychCV.c */; };
+		83E2C4260D2FCA2000FFD350 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4230D2FCA2000FFD350 /* RegisterProject.c */; };
+		83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -3628,6 +3653,13 @@
 		833C1F230BB1A49D00FB9B4F /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = RegisterProject.c; sourceTree = "<group>"; };
 		833C1F240BB1A49D00FB9B4F /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = RegisterProject.h; sourceTree = "<group>"; };
 		833C1FD80BB1B17600FB9B4F /* libportaudio.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libportaudio.a; path = ../../../Cohorts/PortAudio/libportaudio.a; sourceTree = SOURCE_ROOT; };
+		8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = cvEyeTracker.cc; sourceTree = "<group>"; };
+		8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = ransac_ellipse.cc; sourceTree = "<group>"; };
+		8341EF1F0D2FD0E300B77B0E /* ransac_ellipse.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ransac_ellipse.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/ransac_ellipse.h; sourceTree = SOURCE_ROOT; };
+		8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = remove_corneal_reflection.cc; sourceTree = "<group>"; };
+		8341EF210D2FD0E300B77B0E /* remove_corneal_reflection.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = remove_corneal_reflection.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/remove_corneal_reflection.h; sourceTree = SOURCE_ROOT; };
+		8341EF220D2FD0E300B77B0E /* svd.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = svd.cc; sourceTree = "<group>"; };
+		8341EF230D2FD0E300B77B0E /* svd.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = svd.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/svd.h; sourceTree = SOURCE_ROOT; };
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
@@ -3684,6 +3716,12 @@
 		83CBD6F80BC02F0E007CB68C /* mogl_rebinder.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = mogl_rebinder.c; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/mogl_rebinder.c; sourceTree = SOURCE_ROOT; };
 		83D93B2B0A4D03B900B82353 /* SCREENSetOpenGLTextureFromMemPointer.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetOpenGLTextureFromMemPointer.c; path = ../../../Source/Common/Screen/SCREENSetOpenGLTextureFromMemPointer.c; sourceTree = SOURCE_ROOT; };
 		83DBBCFF0C332374002B3C93 /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
+		83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychCV.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		83E2C4210D2FCA2000FFD350 /* PsychCV.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychCV.c; path = ../../../Source/Common/PsychCV/PsychCV.c; sourceTree = SOURCE_ROOT; };
+		83E2C4220D2FCA2000FFD350 /* PsychCV.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychCV.h; path = ../../../Source/Common/PsychCV/PsychCV.h; sourceTree = SOURCE_ROOT; };
+		83E2C4230D2FCA2000FFD350 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/PsychCV/RegisterProject.c; sourceTree = SOURCE_ROOT; };
+		83E2C4240D2FCA2000FFD350 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/PsychCV/RegisterProject.h; sourceTree = SOURCE_ROOT; };
+		83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = PsychCV.cc; sourceTree = "<group>"; };
 		83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLTracker2D.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLTracker2D.h; sourceTree = "<absolute>"; };
 		83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = VLTracker2D.cc; sourceTree = "<group>"; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
@@ -4500,6 +4538,17 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		83E2C4070D2FC58200FFD350 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83E2C4090D2FC58200FFD350 /* ApplicationServices.framework in Frameworks */,
+				83E2C40A0D2FC58200FFD350 /* CoreAudio.framework in Frameworks */,
+				83E2C40B0D2FC58200FFD350 /* CoreServices.framework in Frameworks */,
+				83E2C40C0D2FC58200FFD350 /* OpenGL.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		CF29B1F5080333DC00723921 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -4942,6 +4991,7 @@
 				833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */,
 				83CBD6540BC01FB0007CB68C /* PsychPortAudio.mexmaci */,
 				836DECC80C30A0F900CFE76B /* PsychPortAudio.mexmac */,
+				83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -5049,6 +5099,7 @@
 				2F95010904E4458D007A7274 /* MachPriorityMex, Set and Get */,
 				CF29B2000803342100723921 /* MachAbsoluteTimeClockFrequency */,
 				83C802C80B8CECE500097021 /* MirrorFaceCore */,
+				83E2C4200D2FCA2000FFD350 /* PsychCV */,
 				833C1F200BB1A49D00FB9B4F /* PsychPortAudio */,
 				2F9ABA17045F3596007A7274 /* PsychHID */,
 				832CE63E094CE99F00578C09 /* PsychSound */,
@@ -5516,6 +5567,7 @@
 		8302E1FD0A1928E900AE269C /* Octave */ = {
 			isa = PBXGroup;
 			children = (
+				83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */,
 				8302E1FE0A1928E900AE269C /* GetSecs.cc */,
 				8302E1FF0A1928E900AE269C /* octavemex.h */,
 				8395A9DB0BBF370800FC482E /* PsychHID.cc */,
@@ -5578,6 +5630,21 @@
 			path = ../../../Source/Common/PsychPortAudio;
 			sourceTree = "<group>";
 		};
+		8341EF1C0D2FD0E300B77B0E /* OpenEyesCVEyeTracker */ = {
+			isa = PBXGroup;
+			children = (
+				8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */,
+				8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */,
+				8341EF1F0D2FD0E300B77B0E /* ransac_ellipse.h */,
+				8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */,
+				8341EF210D2FD0E300B77B0E /* remove_corneal_reflection.h */,
+				8341EF220D2FD0E300B77B0E /* svd.cc */,
+				8341EF230D2FD0E300B77B0E /* svd.h */,
+			);
+			name = OpenEyesCVEyeTracker;
+			path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker;
+			sourceTree = SOURCE_ROOT;
+		};
 		83C802C80B8CECE500097021 /* MirrorFaceCore */ = {
 			isa = PBXGroup;
 			children = (
@@ -5612,6 +5679,19 @@
 			);
 			name = extern_moglcore;
 			sourceTree = "<group>";
+		};
+		83E2C4200D2FCA2000FFD350 /* PsychCV */ = {
+			isa = PBXGroup;
+			children = (
+				8341EF1C0D2FD0E300B77B0E /* OpenEyesCVEyeTracker */,
+				83E2C4210D2FCA2000FFD350 /* PsychCV.c */,
+				83E2C4220D2FCA2000FFD350 /* PsychCV.h */,
+				83E2C4230D2FCA2000FFD350 /* RegisterProject.c */,
+				83E2C4240D2FCA2000FFD350 /* RegisterProject.h */,
+			);
+			name = PsychCV;
+			path = ../../../Source/Common/PsychCV;
+			sourceTree = SOURCE_ROOT;
 		};
 		CF29B2000803342100723921 /* MachAbsoluteTimeClockFrequency */ = {
 			isa = PBXGroup;
@@ -7624,6 +7704,23 @@
 			productReference = 83CBD6540BC01FB0007CB68C /* PsychPortAudio.mexmaci */;
 			productType = "com.apple.product-type.objfile";
 		};
+		83E2C3F40D2FC58200FFD350 /* PsychCV Intel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 83E2C40E0D2FC58200FFD350 /* Build configuration list for PBXNativeTarget "PsychCV Intel" */;
+			buildPhases = (
+				83E2C3F50D2FC58200FFD350 /* Sources */,
+				83E2C4070D2FC58200FFD350 /* Frameworks */,
+				83E2C40D0D2FC58200FFD350 /* ShellScript */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "PsychCV Intel";
+			productName = foo;
+			productReference = 83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */;
+			productType = "com.apple.product-type.objfile";
+		};
 		CF29B1CB080333DC00723921 /* MachAbsoluteTimeClockFrequency_OLD */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2F57E2BB08CE718C00A5CF85 /* Build configuration list for PBXNativeTarget "MachAbsoluteTimeClockFrequency_OLD" */;
@@ -8171,6 +8268,7 @@
 				833C1EEB0BB19D0100FB9B4F /* PsychPortAudio Intel */,
 				83CBD6350BC01FB0007CB68C /* moglcore Intel */,
 				836DECA90C30A0F900CFE76B /* PsychPortAudio */,
+				83E2C3F40D2FC58200FFD350 /* PsychCV Intel */,
 			);
 		};
 /* End PBXProject section */
@@ -9525,6 +9623,19 @@
 			shellScript = "touch ../../../Source/Common/Base/PsychVersioning.c\n\n";
 		};
 		83CBD64E0BC01FB0007CB68C /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "touch ../../../Source/Common/Base/PsychVersioning.c\n\n";
+		};
+		83E2C40D0D2FC58200FFD350 /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -11301,6 +11412,34 @@
 				83CBD6840BC02323007CB68C /* moglcore.c in Sources */,
 				83CBD6850BC02323007CB68C /* mogloctaveglue.cc in Sources */,
 				83CBD6F90BC02F0E007CB68C /* mogl_rebinder.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		83E2C3F50D2FC58200FFD350 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				83E2C3F60D2FC58200FFD350 /* mexversion.c in Sources */,
+				83E2C3F70D2FC58200FFD350 /* MiniBox.c in Sources */,
+				83E2C3F80D2FC58200FFD350 /* MODULEVersion.c in Sources */,
+				83E2C3F90D2FC58200FFD350 /* ProjectTable.c in Sources */,
+				83E2C3FA0D2FC58200FFD350 /* PsychAuthors.c in Sources */,
+				83E2C3FB0D2FC58200FFD350 /* PsychError.c in Sources */,
+				83E2C3FC0D2FC58200FFD350 /* PsychHelp.c in Sources */,
+				83E2C3FD0D2FC58200FFD350 /* PsychInit.c in Sources */,
+				83E2C3FE0D2FC58200FFD350 /* PsychMemory.c in Sources */,
+				83E2C3FF0D2FC58200FFD350 /* PsychRegisterProject.c in Sources */,
+				83E2C4000D2FC58200FFD350 /* PsychStructGlue.c in Sources */,
+				83E2C4010D2FC58200FFD350 /* PsychTimeGlue.c in Sources */,
+				83E2C4020D2FC58200FFD350 /* PsychVersioning.c in Sources */,
+				83E2C4030D2FC58200FFD350 /* PsychScriptingGlue.cc in Sources */,
+				83E2C4250D2FCA2000FFD350 /* PsychCV.c in Sources */,
+				83E2C4260D2FCA2000FFD350 /* RegisterProject.c in Sources */,
+				83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */,
+				8341EF240D2FD0E300B77B0E /* cvEyeTracker.cc in Sources */,
+				8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */,
+				8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */,
+				8341EF270D2FD0E300B77B0E /* svd.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -20632,6 +20771,126 @@
 			};
 			name = Default;
 		};
+		83E2C40F0D2FC58200FFD350 /* Development */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_EXTENSION = mexmaci;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
+				GCC_INPUT_FILETYPE = automatic;
+				GCC_MODEL_TUNING = "";
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 3;
+				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(OPENCV_INCLUDEPATH)",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
+				);
+				INSTALL_PATH = /usr/local/lib;
+				KEEP_PRIVATE_EXTERNS = NO;
+				LIBRARY_SEARCH_PATHS = (
+					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
+					"$(OPENCV_LIBRARYPATH)",
+				);
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MACOSX_DEPLOYMENT_TARGET = "";
+				MATLAB_DIR_NAME = MATLAB73;
+				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
+				OPENCV_LIBRARYPATH = /usr/local/lib/;
+				OTHER_CFLAGS = (
+					"-fexceptions",
+					"-no-cpp-precomp",
+				);
+				OTHER_LDFLAGS = (
+					"-lhighgui",
+					"-lcv",
+					"-lcvaux",
+					"-Wl,-flat_namespace",
+					"-undefined",
+					suppress,
+					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PREBINDING = NO;
+				PRODUCT_NAME = PsychCV;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				STRIP_STYLE = all;
+				WARNING_CFLAGS = "-Wno-long-double";
+			};
+			name = Development;
+		};
+		83E2C4100D2FC58200FFD350 /* Development-Octavebuild */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_INPUT_FILETYPE = automatic;
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
+				OPENCV_LIBRARYPATH = /usr/local/lib/;
+				PRODUCT_NAME = PsychPortAudio;
+				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SKIP_INSTALL = NO;
+			};
+			name = "Development-Octavebuild";
+		};
+		83E2C4110D2FC58200FFD350 /* Deployment */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+				GCC_ENABLE_FIX_AND_CONTINUE = NO;
+				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INPUT_FILETYPE = automatic;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(LIBRARY_SEARCH_PATHS)",
+					/usr/lib/gcc/darwin/2.95.2,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
+				OPENCV_LIBRARYPATH = /usr/local/lib/;
+				PREBINDING = NO;
+				PRODUCT_NAME = foo;
+				ZERO_LINK = NO;
+			};
+			name = Deployment;
+		};
+		83E2C4120D2FC58200FFD350 /* Default */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				GCC_INPUT_FILETYPE = automatic;
+				GCC_MODEL_TUNING = G5;
+				INSTALL_PATH = /usr/local/lib;
+				LIBRARY_SEARCH_PATHS = (
+					"$(LIBRARY_SEARCH_PATHS)",
+					/usr/lib/gcc/darwin/2.95.2,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
+				OPENCV_LIBRARYPATH = /usr/local/lib/;
+				PREBINDING = NO;
+				PRODUCT_NAME = foo;
+			};
+			name = Default;
+		};
 		F07432160AD465B400602397 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -24163,6 +24422,17 @@
 				83CBD6510BC01FB0007CB68C /* Development-Octavebuild */,
 				83CBD6520BC01FB0007CB68C /* Deployment */,
 				83CBD6530BC01FB0007CB68C /* Default */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Default;
+		};
+		83E2C40E0D2FC58200FFD350 /* Build configuration list for PBXNativeTarget "PsychCV Intel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				83E2C40F0D2FC58200FFD350 /* Development */,
+				83E2C4100D2FC58200FFD350 /* Development-Octavebuild */,
+				83E2C4110D2FC58200FFD350 /* Deployment */,
+				83E2C4120D2FC58200FFD350 /* Default */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Default;

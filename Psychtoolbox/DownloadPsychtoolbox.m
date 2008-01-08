@@ -208,6 +208,9 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
 %              select initial choie of download protocol to use, in order to allow to
 %              bypass misconfigured proxies and firewalls. Problem reported
 %              by Patrick Mineault.
+% 01/08/08 mk  On OS/X, add an additional search path for 'svn': /usr/bin/
+%              as per suggestion of Donald Kalar. Presumably, Apples Leopard ships
+%              with a svn client preinstalled in that location.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -298,14 +301,21 @@ else
 
     % Currently, we only know how to check this for Mac OSX.
     if isOSX
-        svnpath='/usr/local/bin/';
-        if exist('/usr/local/bin/svn','file')~=2
-            fprintf('The Subversion client "svn" is not in its expected\n');
-            fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
-            fprintf('download and install the most recent Subversion client from:\n');
-            fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
-            fprintf('and then run %s again.\n',mfilename);
-            error('Subversion client is missing. Please install it.');
+        % Try OS/X 10.5 Leopard install location for svn first:
+        svnpath='/usr/bin/';
+        if exist('/usr/bin/svn','file')~=2
+            % This would have been the default install location of the svn
+            % client bundled with OS/X 10.5.x Leopard. Let's try the
+            % default install location from the web installer:
+            svnpath='/usr/local/bin/';
+            if exist('/usr/local/bin/svn','file')~=2
+                fprintf('The Subversion client "svn" is not in its expected\n');
+                fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
+                fprintf('download and install the most recent Subversion client from:\n');
+                fprintf('web http://metissian.com/projects/macosx/subversion/ -browser\n');
+                fprintf('and then run %s again.\n',mfilename);
+                error('Subversion client is missing. Please install it.');
+            end
         end
     end
 end

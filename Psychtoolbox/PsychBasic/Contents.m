@@ -36,6 +36,10 @@
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
 %     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
+%     PsychCV              - Miscellaneous C routines for computer vision
+%                            and related stuff. Usually called by higher
+%                            level M-File routines, not directly by user
+%                            code!
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 
@@ -45,8 +49,6 @@
 %     VideoRefreshFromMeasurement - Alternative calibration procedure to find exact video refresh interval.
 %     WaitSecs             - Wait specified time.
 %     WaitTicks            - Wait specified number of 60.15 Hz ticks.
-
- 
 
 % from OS 9
 %

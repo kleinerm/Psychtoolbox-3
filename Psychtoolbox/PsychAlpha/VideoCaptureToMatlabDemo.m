@@ -36,14 +36,20 @@ try
             oldpts = pts;
             fprintf('%.4f\n', delta);
         end;
-        
+
         % Convert rawImage matrix into a matrix suitable for display with
         % Matlabs imshow(). imshow needs a height x width x 3 colors
         % matrix, whereas rawImage is a c by width x height matrix with c=1
         % for luminance data, c=3 or 4 for RGB data, where the 4th
         % component - if present - is a useless alpha channel.
-        for ci=1:min(size(rawImage,1), 3)
-            matImage(1:size(rawImage,3), 1:size(rawImage,2), 4-ci) = transpose(squeeze(rawImage(ci,:,:)));
+        channels = min(size(rawImage,1), 3);
+        for ci=1:channels
+            if channels == 1
+                tci=1;
+            else
+                tci = 4 - ci;
+            end
+            matImage(1:size(rawImage,3), 1:size(rawImage,2), tci) = transpose(squeeze(rawImage(ci,:,:)));
         end
         
         % Show image in a figure window:

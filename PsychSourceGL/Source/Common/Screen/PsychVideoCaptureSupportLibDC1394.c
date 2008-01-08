@@ -1114,7 +1114,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 			       PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer)
 {
     GLuint texid;
-    int w, h, padding;
+    int w, h;
     double targetdelta, realdelta, frames;
     unsigned int intensity = 0;
     unsigned int count, i;
@@ -1129,11 +1129,10 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Retrieve device record for handle:
     PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);
 
-	// Compute width, height and padding for later creation of textures etc. Need to do this here,
+	// Compute width and height for later creation of textures etc. Need to do this here,
 	// so we can return the values for raw data retrieval:
 	w=capdev->width;
     h=capdev->height;
-    padding= 0;
 
 	// If a outrawbuffer struct is provided, we fill it with info needed to allocate a
 	// sufficient memory buffer for returned raw image data later on:
@@ -1266,7 +1265,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	
     // Only setup if really a texture is requested (non-benchmarking mode):
     if (out_texture) {
-		PsychMakeRect(out_texture->rect, 0, 0, w+padding, h);    
+		PsychMakeRect(out_texture->rect, 0, 0, w, h);    
 		
 		// Set NULL - special texture object as part of the PTB texture record:
 		out_texture->targetSpecific.QuickTimeGLTexture = NULL;

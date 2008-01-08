@@ -171,6 +171,17 @@ while length(tstring)>0
         dolinefeed = 0;
     end
 
+    if IsOSX
+        % On OS/X, we enforce a line-break if the unwrapped/unbroken text
+        % would exceed 250 characters. The ATSU text renderer of OS/X can't
+        % handle more than 250 characters.
+        if size(curstring, 2) > 250
+            tstring = [curstring(251:end) tstring];
+            curstring = curstring(1:250);
+            dolinefeed = 1;
+        end
+    end
+    
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 
