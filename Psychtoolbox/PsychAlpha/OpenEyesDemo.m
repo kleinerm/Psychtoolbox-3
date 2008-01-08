@@ -10,21 +10,35 @@ downArrow = KbName('DownArrow');
 rightGUI = KbName('rightGUI');
 rightShiftKey = KbName('RightShift');
 spaceKey = KbName('space');
+calibrateKey = KbName('c');
+
 oldPressSecs = 0;
 count = 0;
 ListenChar(2);
 
 try
+    winRect = [0 0 800 600];
+    winRect = [];
     
     screenid = max(Screen('Screens'));
     oldsync=Screen('Preference', 'SkipSyncTests', 2);
-    win = Screen('OpenWindow', screenid, 0, [0 0 800 600]);
+    win = Screen('OpenWindow', screenid, 0, winRect);
     ShowCursor('CrossHair', screenid);
     
     oeyes = PsychOpenEyes('OpenTracker', 1, win);
     oldgain = PsychCamSettings('Gain', oeyes)
     gain = PsychCamSettings('Gain', oeyes, 174)
     imgtype = 0;
+    
+    while ~KbCheck
+        tex =Screen('GetCapturedImage', win, oeyes, 1);
+        Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
+        Screen('Close', tex);
+
+        % Flip at next retrace, but don't do anything to buffers, we'll
+        % overwrite anyway:
+        Screen('Flip', win, 0, 2);
+    end        
     
     while 1
         % Show eye image:
@@ -65,7 +79,16 @@ try
     minArea = apprArea * 0.8
     maxArea = apprArea * 1.2
 
+    % Set constraints on minimum and maximum distance of features wrt. the
+    % pupil center, and on the rough size of the allowable pupil/limbus fit
+    % ellipse:
     PsychOpenEyes('SetDynamicConstraints', oeyes, minDist, maxDist, minArea, maxArea);
+
+    % Disable corneal reflection tracking and set a static reference point
+    % of (0,0) for visible spectrum eyetracking:
+    PsychOpenEyes('SetReferencePoint', oeyes, 0, 0);
+    
+    tstring = [];
     
     while 1
 
@@ -78,6 +101,7 @@ try
 
         if mbutton(1)
             % Wait for next gaze position sample, set new pupil center pos.
+            % as starting point for Starburst search:
             eyesample = PsychOpenEyes('GetGazePosition', oeyes, mx, my);
         else
             % Wait for next gaze position sample:
@@ -141,6 +165,10 @@ try
                 end
             end
 
+            if keyCode(calibrateKey)
+                PsychOpenEyes('CalibrateMapping', oeyes);
+            end
+            
             if oldPressSecs == 0
                 % First time invocation: Set a few defaults:
                 curpar.eccentricity = 1.1;
@@ -176,9 +204,29 @@ try
         % Show eye image:
         Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
 
+        Screen('TextSize', win, 24);
+        
+        % Draw reference point:
+        Screen('FillOval', win, [0 255 0], CenterRectOnPoint([0 0 10 10], eyesample.CorneaX, eyesample.CorneaY));
+        Screen('DrawText', win, 'CORNEA', eyesample.CorneaX + 5, eyesample.CorneaY + 5, [0 255 0]);
+        
+        % Draw pupil point:
+        Screen('FillOval', win, [0 255 255], CenterRectOnPoint([0 0 10 10], eyesample.PupilX, eyesample.PupilY));
+        Screen('DrawText', win, 'PUPIL', eyesample.PupilX + 5, eyesample.PupilY + 5, [0 255 255]);
+
+        % Valid tracking result with calibrated gaze point?
+        if eyesample.Valid > 0
+            % Draw point of gaze:
+            Screen('FillOval', win, [255 255 0], CenterRectOnPoint([0 0 10 10], eyesample.GazeX, eyesample.GazeY));
+            Screen('FrameRect', win, [255 255 0], CenterRectOnPoint([0 0 10 10], eyesample.GazeX, eyesample.GazeY));
+            Screen('DrawText', win, 'GAZE', eyesample.GazeX + 5, eyesample.GazeY + 5, [255 255 0]);
+        end
+
+        if ~isempty(tstring) DrawFormattedText(win, tstring, 0, 485, 255, 240); end
+
         % Flip at next retrace, but don't do anything to buffers, we'll
         % overwrite anyway:
-        Screen('Flip', win, 0, 2);
+        Screen('Flip', win, 0, 0);
 
         % Release old texture:
         Screen('Close', tex);

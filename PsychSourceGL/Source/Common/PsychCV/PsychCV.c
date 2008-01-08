@@ -329,18 +329,20 @@ PsychError PSYCHCVOpenEyesTrackEyePosition(void)
 	
 	mode = 0;
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &mode);
-	if (mode < 0 || mode > 5) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid modes between 0 and 4.");
+	if (mode < 0 || mode > 6) PsychErrorExitMsg(PsychError_user, "Invalid mode provided. Valid modes between 0 and 4.");
 
-	// Call tracker processing cycle:
-	if (!cvEyeTrackerExecuteTrackingCycle(&eyeResult, useGUI)) {
-		// Failed!
-		PsychErrorExitMsg(PsychError_system, "OpenEyes tracking cycle failed.");
+	if (mode == 0 || mode == 3) {
+		// Call standard tracker processing cycle:
+		if (!cvEyeTrackerExecuteTrackingCycle(&eyeResult, useGUI)) {
+			// Failed!
+			PsychErrorExitMsg(PsychError_system, "OpenEyes tracking cycle failed.");
+		}
 	}
-
+	
 	// Any calibration mode requested?
 	if (mode > 0) {
-		if (mode == 1) cvEyeTrackerRecalibrate(TRUE);					// Activate scene calibration.
-		if (mode == 2) cvEyeTrackerRecalibrate(FALSE);					// Reset scene calibration to "None".
+		if (mode == 1) cvEyeTrackerRecalibrate(FALSE);					// Activate scene calibration.
+		if (mode == 2) cvEyeTrackerRecalibrate(TRUE);					// Reset scene calibration to "None".
 		
 		if (mode > 2) {
 			// Need (px, py) location either for eyepos init or for setting of calibration points:
@@ -356,6 +358,11 @@ PsychError PSYCHCVOpenEyesTrackEyePosition(void)
 				maxArea = 1000.0 * 1000.0;
 				PsychCopyInDoubleArg(6, kPsychArgOptional, &maxArea);
 				cvEyeTrackerSetRansacConstraints(px, py, minArea, maxArea);	// Add minDist=px, maxDist=py as distance constraint for features.
+			}
+			
+			if (mode == 6) {
+				// Set manual override reference point (cornea x/y):
+				cvEyeTrackerSetOverrideReferencePoint((int) px, (int) py);
 			}
 		}
 	}

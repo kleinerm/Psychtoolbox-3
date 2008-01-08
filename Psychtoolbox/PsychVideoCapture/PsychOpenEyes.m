@@ -59,14 +59,10 @@ if strcmp(cmd, 'GetGazePosition')
     if nargin >=4 && ~isempty(varargin{1})
         pupilx = varargin{1};
         pupily = varargin{2};
-        c1 = [];
-        c2 = [];
         mode = 3;
     else
         pupilx = [];
         pupily = [];
-        c1 = [];
-        c2 = [];
         mode = 0;
     end
     
@@ -78,7 +74,7 @@ if strcmp(cmd, 'GetGazePosition')
     
     % Ok, the tracker should have the eye image in its internal buffer.
     % Process it:
-    EyeResult = PsychCV('OpenEyesTrackEyePosition', handle, mode, pupilx, pupily, c1, c2);
+    EyeResult = PsychCV('OpenEyesTrackEyePosition', handle, mode, pupilx, pupily);
     
     % EyeResult hopefully contains tracking result.
     EyeResult.Delay = EyeResult.Timestamp - cts;
@@ -105,6 +101,17 @@ if strcmp(cmd, 'SetDynamicConstraints')
     return;
 end
 
+if strcmp(cmd, 'SetReferencePoint')
+    if nargin < 4
+        error('Must provide reference point position (rx, ry).');
+    end
+    
+    mode = 6;
+    PsychCV('OpenEyesTrackEyePosition', handle, mode, varargin{1}, varargin{2});
+
+    rc = 0;
+    return;
+end
 
 if strcmp(cmd, 'GetTrackerTexture');
     % Texture handle for a feedback texture requested: These contain image
@@ -162,6 +169,86 @@ if strcmp(cmd, 'GetTrackerTexture');
 end
 
 if strcmp(cmd, 'CalibrateMapping')
+
+    % This is a 9-Point Grid calibration. Iterate through all nine points,
+    % show each point onscreen, wait for keypress, then acquire eye+scene
+    % sample and store it in internal calibration:
+    
+    % Delete old (previous) calibration:
+    PsychCV('OpenEyesTrackEyePosition', handle, 2);
+
+    % Double flip to get a neutral background:
+    Screen('Flip', win);
+    Screen('Flip', win);
+    
+    winrect = Screen('Rect', win);
+    tscale = 0.8;
+    trect = ScaleRect(winrect, tscale, tscale);
+    trect = CenterRect(trect, winrect);
+    xoff = trect(RectLeft);
+    yoff = trect(RectTop);
+    xinc = RectWidth(trect) / 2;
+    yinc = RectHeight(trect) / 2;
+    
+    for xp = 1:3
+        for yp = 1:3
+            % Draw fixation target:
+            tx = (xp - 1) * xinc + xoff;
+            ty = (yp - 1) * yinc + yoff;
+            Screen('FillOval', win, [255 255 0], CenterRectOnPoint([0 0 10 10], tx, ty));
+            Screen('DrawText', win, 'FIXATE ME AND PRESS SPACE KEY!', tx + 5, ty + 5, [0 255 0]);
+            Screen('Flip', win);
+            while KbCheck; end;
+            KbWait;
+            
+            % Wait for next captured video frame, then fill the trackers in-memory
+            % buffer with the captured data. Do not return a texture:
+            waitflag = 2;
+            specialflag = 4;
+            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
+            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
+            [eyeTex, cts] = Screen('GetCapturedImage', win, videoptr, waitflag, [], specialflag, EyeImageMemBuffer);
+
+            % Ok, the tracker should have the eye image in its internal buffer.
+            % Process it:
+            eyepos = PsychCV('OpenEyesTrackEyePosition', handle, 0);
+            
+            pupx(xp, yp) = eyepos.PupilX;
+            pupy(xp, yp) = eyepos.PupilY;
+            
+            % Submit scene point position and add as calibration point:
+            PsychCV('OpenEyesTrackEyePosition', handle, 4, tx, ty); 
+        end
+    end
+    
+    % Activate calibration:
+    PsychCV('OpenEyesTrackEyePosition', handle, 1);
+    
+    % Calibration sequence finished. Clear screen:
+    Screen('Flip', win);
+
+    for xp = 1:3
+        for yp = 1:3
+            tx = (xp - 1) * xinc + xoff;
+            ty = (yp - 1) * yinc + yoff;
+            Screen('FillOval', win, [255 255 0], CenterRectOnPoint([0 0 10 10], tx, ty));
+            Screen('DrawText', win, sprintf('Scene %i, %i', xp, yp), tx + 5, ty + 5, [0 255 0]);
+            
+            tx = pupx(xp, yp);
+            ty = pupy(xp, yp);
+            
+            Screen('FillOval', win, [255 255 0], CenterRectOnPoint([0 0 10 10], tx, ty));
+            Screen('DrawText', win, sprintf('Pupil %i, %i', xp, yp), tx + 5, ty + 5, [0 255 0]);
+            
+        end
+    end
+    
+    Screen('Flip', win);
+    while KbCheck; end
+    KbWait;
+    
+    Screen('Flip', win);
+    
     rc = 1;
     return;
 end

@@ -63,6 +63,7 @@ void cvEyeTrackerAddCalibrationPoint(int px, int py);
 void cvEyeTrackerRecalibrate(boolean resetCalib);
 void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int minFeatureCandidates, int corneaWindowSize, int edgeThreshold, int gaussWidth, double maxPupilEccentricity, double initialAngleSpread);
 void cvEyeTrackerSetRansacConstraints(double minDist, double maxDist, double minArea, double maxArea);
+void cvEyeTrackerSetOverrideReferencePoint(int rx, int ry);
 
 // Publically available functions:
 

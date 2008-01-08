@@ -27,33 +27,27 @@
  *
  */
 
+// These two includes not strictly needed, as included later on,
+// but doppelt gemoppelt haelt besser ;-)
+#include <string.h>
+#include <math.h>
+
+// Includes of subroutines for eye tracking:
+#include "remove_corneal_reflection.h"
+#include "ransac_ellipse.h"
+#include "svd.h"
+
+// Includes from OpenCV:
+#include "cv.h"
+#include "highgui.h"
+
+// Includes from PTB:
+//
+// It is important that these are included *last*, so remapping of some functions,
+// e.g., printf() -> mexFunction() works correctly!
 #include <Psych.h>
 #include <PsychCV.h>
 
-#include <stdio.h>
-#include <stdlib.h>
-//#include <signal.h>
-//#include <sys/types.h>
-//#include <sys/stat.h>
-//#include <fcntl.h>
-//#include <errno.h>
-//#include <unistd.h>
-//#include <linux/videodev.h>
-//#include <sys/ioctl.h>
-#include <string.h>
-//#include <sys/mman.h>
-//#include <time.h>
-#include <math.h>
-//#include <sys/time.h>
-//#include <libraw1394/raw1394.h>
-//#include <libdc1394/dc1394_control.h>
-#include "remove_corneal_reflection.h"
-#include "ransac_ellipse.h"
-//#include "timing.h"
-#include "svd.h"
-
-#include "cv.h"
-#include "highgui.h"
 
 // Includes from Psychtoolbox core:
 void Start_Timer(void)
@@ -209,6 +203,7 @@ double 	max_feature_dist = 1000.0;
 double 	min_ellipse_area = 0.0;
 double 	max_ellipse_area = 1000000.0;
 
+bool detectCornealReflection = TRUE; // MK: Auto-Detection of reference point (corneal reflection) enabled?
 int nrInChannels;					// MK: Number of color input channels.
 bool noise_reduction = FALSE;		// MK: Enable/Disable line noise reduction.
 
@@ -723,6 +718,7 @@ void Zero_Calibration()
     vectors[i].y = 0;
   }
   number_calibration_points_set=0;
+  do_map2scene = 0;
 }
 
 void Set_Calibration_Point(int x, int y)
@@ -798,7 +794,9 @@ void Activate_Calibration()
  
     INFO("Calibration result = %d\n", calibration_result);
  
-    do_map2scene = !do_map2scene;
+    do_map2scene = 1;
+
+    //do_map2scene = !do_map2scene;
     view_cal_points = !view_cal_points;
 
     INFO("Scene coordinates:\n");
@@ -1064,10 +1062,13 @@ void process_image()
     cvSaveImage(eye_file, eye_image);
   }
   
-  //corneal reflection
-  remove_corneal_reflection((nrInChannels != 3) ? eye_image : cornea_eye_image, threshold_image, (int)start_point.x, (int)start_point.y, cr_window_size, 
-                   (int)eye_image->height/10, corneal_reflection.x, corneal_reflection.y, corneal_reflection_r);  
-  printf("corneal reflection: (%d, %d)\n", corneal_reflection.x, corneal_reflection.y);
+  if (detectCornealReflection) {
+	  //corneal reflection
+	  remove_corneal_reflection((nrInChannels != 3) ? eye_image : cornea_eye_image, threshold_image, (int)start_point.x, (int)start_point.y, cr_window_size, 
+								(int)eye_image->height/10, corneal_reflection.x, corneal_reflection.y, corneal_reflection_r);  
+	  printf("corneal reflection: (%d, %d)\n", corneal_reflection.x, corneal_reflection.y);
+  }
+
   Draw_Cross(ellipse_image, corneal_reflection.x, corneal_reflection.y, 15, 15, Yellow);  
 
   //starburst pupil contour detection
@@ -1406,7 +1407,8 @@ boolean cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyehei
 	*sceneInputImageRGB8 = scene_image->imageData;
 	*ellipseOutputImageRGB8 = ellipse_image->imageData;
 	*thresholdOutputImageMono8 = threshold_image->imageData;
-	
+
+/*	
 	// Setup initial tracking/calibration/remapping matrices:
 	int i, j;
 	double T[3][3], T1[3][3];
@@ -1431,13 +1433,14 @@ boolean cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyehei
 		}
 //		printf("\n");
 	}
+*/
 	
 	// Reset start point for pupil location to "undefined":
 	start_point.x = -1;
 	start_point.y = -1;
 	lost_frame_num = 1000;
 	trackedframes = 0;
-	
+
 	// Done.
 	return(TRUE);
 }
@@ -1455,7 +1458,7 @@ boolean cvEyeTrackerShutdown(void)
 	intensity_factor_hori = NULL;
 	free(avg_intensity_hori);
 	avg_intensity_hori = NULL;
-	
+
 	// Done.
 	return(TRUE);	
 }
@@ -1604,5 +1607,17 @@ void cvEyeTrackerSetRansacConstraints(double minDist, double maxDist, double min
 	min_ellipse_area = minArea;
 	max_ellipse_area = maxArea;
 
+	return;
+}
+
+void cvEyeTrackerSetOverrideReferencePoint(int rx, int ry)
+{
+	corneal_reflection.x = rx;
+	corneal_reflection.y = ry;
+
+	// If values other than (-1,-1) were provided, disable auto-detection of corneal
+	// reflection, use the provided values instead. Otherwise enable auto-detection...
+	detectCornealReflection = (rx!=-1 && ry!=-1) ? FALSE : TRUE;
+	
 	return;
 }

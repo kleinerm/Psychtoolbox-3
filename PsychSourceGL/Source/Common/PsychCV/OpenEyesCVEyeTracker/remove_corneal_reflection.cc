@@ -33,6 +33,12 @@
 #include <math.h>
 #include "remove_corneal_reflection.h"
 
+// Includes from PTB:
+//
+// It is important that these are included *last*, so remapping of some functions,
+// e.g., printf() -> mexFunction() works correctly!
+#include <Psych.h>
+#include <PsychCV.h>
 
 void remove_corneal_reflection(IplImage *image, IplImage *threshold_image, int sx, int sy, int window_size, int 
 biggest_crr, int& crx, int& cry, int& crr)

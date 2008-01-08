@@ -34,6 +34,13 @@
 #include "ransac_ellipse.h"
 #include "svd.h"
 
+// Includes from PTB:
+//
+// It is important that these are included *last*, so remapping of some functions,
+// e.g., printf() -> mexFunction() works correctly!
+#include <Psych.h>
+#include <PsychCV.h>
+
 stuDPoint start_point = {-1, -1};
 int inliers_num;
 int angle_step = 20;    //20 degrees
