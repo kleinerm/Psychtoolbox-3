@@ -49,7 +49,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("OpenEyesParameters", &PSYCHCVOpenEyesParameters));
 	PsychErrorExit(PsychRegister("OpenEyesTrackEyePosition", &PSYCHCVOpenEyesTrackEyePosition));
 
-//	PsychErrorExit(PsychRegister("Stop", &PSYCHPORTAUDIOStopAudioDevice));
+	PsychErrorExit(PsychRegister("CopyMatrixToMemBuffer", &PSYCHCVCopyMatrixToMemBuffer));
 //	PsychErrorExit(PsychRegister("FillBuffer", &PSYCHPORTAUDIOFillAudioBuffer));
 //	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
 //	PsychErrorExit(PsychRegister("GetStatus", &PSYCHPORTAUDIOGetStatus));

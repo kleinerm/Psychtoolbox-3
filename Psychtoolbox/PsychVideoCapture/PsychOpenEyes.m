@@ -258,10 +258,10 @@ if strcmp(cmd, 'TrackerParameters')
     
     if nargin < 3 || isempty(varargin{1})
         % Pure query:
-        [rc.pupilEdgeThresh, rc.rays, rc.minCand, rc.corneaWinSize, rc.edgeThresh, rc.gaussWidth, rc.eccentricity, rc.initialAngleSpread] = PsychCV('OpenEyesParameters', handle);
+        [rc.pupilEdgeThresh, rc.rays, rc.minCand, rc.corneaWinSize, rc.edgeThresh, rc.gaussWidth, rc.eccentricity, rc.initialAngleSpread, rc.fanoutAngle1, rc.fanoutAngle2, rc.featuresPerRay, rc.specialFlags] = PsychCV('OpenEyesParameters', handle);
     else
         % Query old, set new:
-        [rc.pupilEdgeThresh, rc.rays, rc.minCand, rc.corneaWinSize, rc.edgeThresh, rc.gaussWidth, rc.eccentricity, rc.initialAngleSpread] = PsychCV('OpenEyesParameters', handle, varargin{:});
+        [rc.pupilEdgeThresh, rc.rays, rc.minCand, rc.corneaWinSize, rc.edgeThresh, rc.gaussWidth, rc.eccentricity, rc.initialAngleSpread, rc.fanoutAngle1, rc.fanoutAngle2, rc.featuresPerRay, rc.specialFlags] = PsychCV('OpenEyesParameters', handle, varargin{:});
     end
     
     return;

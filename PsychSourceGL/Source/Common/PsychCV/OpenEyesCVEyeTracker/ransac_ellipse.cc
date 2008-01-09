@@ -148,27 +148,30 @@ void locate_edge_points(UINT8* image, int width, int height, double cx, double c
   max_feature_dist = max_feature_dist * max_feature_dist;
   
   for (angle = angle_normal-angle_spread/2+0.0001; angle < angle_normal+angle_spread/2; angle += angle_step) {
+	//printf("Thresh = %i Beamnormal: %lf -- Scanning %lf ... ", edge_thresh, angle_normal/2.0/PI*360.0, angle/2.0/PI*360.0);
     dis_cos = dis * cos(angle);
-    dis_sin = dis * sin(angle);
+    dis_sin = dis * -1 * sin(angle); // MK Changed sign!!
     p.x = cx + dis_cos;
-    p.y = cy + dis_sin;
+    p.y = cy + dis_sin;	
 	
 	// MK: Allow adding up to features_per_ray features per ray:
 	features_added_for_this_ray = 0;
 	
     pixel_value1 = image[(int)(p.y)*width+(int)(p.x)];
-    while (1) {
+    while (1) {	
       p.x += dis_cos;
       p.y += dis_sin;
       if (p.x < 0 || p.x >= width || p.y < 0 || p.y >= height)
         break;
 
       pixel_value2 = image[(int)(p.y)*width+(int)(p.x)];
+	  if (0) image[(int)(p.y)*width+(int)(p.x)] = 255 - image[(int)(p.y)*width+(int)(p.x)];
+
 //MK      if (pixel_value2 - pixel_value1 > pupil_edge_thres) {
       if (pixel_value2 - pixel_value1 > edge_thresh) {
 		// MK: Calculate distance from start point:
 		distance = ((p.x - cx) * (p.x - cx)) + ((p.y - cy) * (p.y - cy));
-
+		//printf("....Candidate with dist %lf ...", distance);
 		// Apply additional distance filter:
 		if (distance >= min_feature_dist && distance <= max_feature_dist) {
 			edge = (stuDPoint*)malloc(sizeof(stuDPoint));
@@ -177,12 +180,14 @@ void locate_edge_points(UINT8* image, int width, int height, double cx, double c
 			edge_point.push_back(edge);
 			edge_intensity_diff.push_back(pixel_value2 - pixel_value1);
 			// MK: Allow adding up to features_per_ray features per ray:
+			//printf("...added feature, count now: %i", features_added_for_this_ray + 1);
 			features_added_for_this_ray++;
 			if (features_added_for_this_ray >= features_per_ray) break;
 		}
       }
       pixel_value1 = pixel_value2;
     }
+	//printf("\n");
   }
 }
 
@@ -380,6 +385,7 @@ int* pupil_fitting_inliers(UINT8* pupil_image, int width, int height,  int &retu
   int sample_num = 1000;	//number of sample
   int ransac_count = 0;
   double dis_threshold = sqrt(3.84)*dis_scale;
+//  double dis_threshold = 0.5 * sqrt(3.84)*dis_scale;
   double dis_error;
   
   memset(inliers_index, int(0), sizeof(int)*ep_num);

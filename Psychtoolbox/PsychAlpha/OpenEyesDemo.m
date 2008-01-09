@@ -30,7 +30,8 @@ try
     gain = PsychCamSettings('Gain', oeyes, 174)
     imgtype = 0;
     
-    while ~KbCheck
+    mbuttons = [];
+    while ~any(mbuttons)
         tex =Screen('GetCapturedImage', win, oeyes, 1);
         Screen('DrawTexture', win, tex, [], Screen('Rect', tex));
         Screen('Close', tex);
@@ -38,6 +39,7 @@ try
         % Flip at next retrace, but don't do anything to buffers, we'll
         % overwrite anyway:
         Screen('Flip', win, 0, 2);
+        [mx, my, mbuttons] = GetMouse(win);
     end        
     
     while 1
@@ -72,8 +74,8 @@ try
         end
     end
     
-    minDist = RectWidth(eyeRect) / 8
-    maxDist = RectWidth(eyeRect) / 2 * 1.5
+    minDist = RectWidth(eyeRect) / 4
+    maxDist = RectWidth(eyeRect) / 2 * 1.2
 %     apprArea = RectWidth(eyeRect)/2 * RectHeight(eyeRect)/2 * pi;
     apprArea = max(RectWidth(eyeRect), RectWidth(eyeRect))/2;
     minArea = apprArea * 0.8
@@ -89,9 +91,28 @@ try
     PsychOpenEyes('SetReferencePoint', oeyes, 0, 0);
     
     tstring = [];
+    count = 0;
     
     while 1
+        if count == 0
+            % First time setup of tracker settings:
+            curpar = PsychOpenEyes('TrackerParameters', oeyes);
 
+            % First time invocation: Set a few defaults:
+            curpar.eccentricity = 1.1;
+            curpar.initialAngleSpread = 360; % This works with visible spectrum imaging.
+%            curpar.initialAngleSpread = 45;
+            curpar.pupilEdgeThresh = 1;
+            curpar.fanoutAngle1 = 0; %-45;
+            curpar.fanoutAngle2 = 180; % 180 + 45;
+            curpar.featuresPerRay = 2;
+            curpar.specialFlags = 0;
+            curpar.rays = curpar.initialAngleSpread;
+            curpar.gaussWidth = 5;
+            % Commit (possibly changed) parameters to tracker:
+            PsychOpenEyes('TrackerParameters', oeyes, curpar.pupilEdgeThresh, curpar.rays, curpar.minCand, curpar.corneaWinSize, curpar.edgeThresh, curpar.gaussWidth, curpar.eccentricity, curpar.initialAngleSpread, curpar.fanoutAngle1, curpar.fanoutAngle2, curpar.featuresPerRay, curpar.specialFlags);
+        end
+        
         % Query mouse:
         [mx, my, mbutton] = GetMouse(win);
 
@@ -130,7 +151,7 @@ try
             end
 
             % Query current settings:
-            curpar = PsychOpenEyes('TrackerParameters', oeyes);
+            curpar = PsychOpenEyes('TrackerParameters', oeyes)
             exposure = PsychCamSettings('ExposureTime', oeyes);
             
             if keyCode(rightGUI)
@@ -168,24 +189,16 @@ try
             if keyCode(calibrateKey)
                 PsychOpenEyes('CalibrateMapping', oeyes);
             end
-            
-            if oldPressSecs == 0
-                % First time invocation: Set a few defaults:
-                curpar.eccentricity = 1.1;
-                curpar.initialAngleSpread = 360; % This works with visible spectrum imaging.
-                %            curpar.initialAngleSpread = 90;
-                curpar.pupilEdgeThresh = 1;
-            end
-            
+                        
             % Commit (possibly changed) parameters to tracker:
-            PsychOpenEyes('TrackerParameters', oeyes, curpar.pupilEdgeThresh, curpar.rays, curpar.minCand, curpar.corneaWinSize, curpar.edgeThresh, curpar.gaussWidth, curpar.eccentricity, curpar.initialAngleSpread);
+            PsychOpenEyes('TrackerParameters', oeyes, curpar.pupilEdgeThresh, curpar.rays, curpar.minCand, curpar.corneaWinSize, curpar.edgeThresh, curpar.gaussWidth, curpar.eccentricity, curpar.initialAngleSpread, curpar.fanoutAngle1, curpar.fanoutAngle2, curpar.featuresPerRay, curpar.specialFlags);
 
             % Clear the framebuffers:
             Screen('Flip', win);
 
             % Draw text with new tracker settings:
-            tstring = sprintf('Pupilthresh: %i , Edgethresh: %i , WinSize: %i , Rays: %i , Cand: %i, Exp: %f \nExcent.: %f , Spread: %f', curpar.pupilEdgeThresh, curpar.edgeThresh, ...
-                curpar.corneaWinSize, curpar.rays, curpar.minCand, exposure, curpar.eccentricity, curpar.initialAngleSpread);
+            tstring = sprintf('Pupilthresh: %i , Edgethresh: %i , WinSize: %i , Rays: %i , Cand: %i, Exp: %f \nExcent.: %f , Spread: %f, fanOut1: %f fanOut2: %f \nFeatPerRay: %i sFlags: %i', curpar.pupilEdgeThresh, curpar.edgeThresh, ...
+                curpar.corneaWinSize, curpar.rays, curpar.minCand, exposure, curpar.eccentricity, curpar.initialAngleSpread, curpar.fanoutAngle1, curpar.fanoutAngle2, curpar.featuresPerRay, curpar.specialFlags);
             fprintf('%s\n', tstring);
             DrawFormattedText(win, tstring, 0, 485, 255, 240);
             Screen('Flip', win);
@@ -195,6 +208,7 @@ try
             % Done with keyboard handling...
             % Keyboard debouncer update:
             oldPressSecs = PressSecs;
+            
         end
 
         % Fetch debug images: This must be after calling 'GetGazePosition',

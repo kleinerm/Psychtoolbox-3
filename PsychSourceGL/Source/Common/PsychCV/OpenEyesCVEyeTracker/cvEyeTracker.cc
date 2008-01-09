@@ -149,7 +149,7 @@ int lost_frame_num = 0;					// "valid" flag: Small numbers mean - Tracking was s
 unsigned int trackedframes = 0;			// Serial count of tracked eye-frames.
 
 int view_cal_points = 1;
-int do_map2scene = 0;
+int do_map2scene = 0;					// Enable gaze point calculation based on current 9-point calibration.
 
 int number_calibration_points_set = 0;
 int ok_calibrate = 0;
@@ -194,18 +194,18 @@ int gausswidth = 5;					// MK: Size of gaussian low pass blur window.
 double maxeccentricity = 2.0;		// MK: Max eccentricity of pupil best fit ellipse.
 double initial_angle_spread = 2*PI;	// MK: Spread angle of rays in initial starburst scan.
 double fanoutangle1 = 0.0;			// MK: If initial_angle_spread < 2PI, ie. we use two fans of beams,
-double fanoutangle2 = 180.0;		// MK: Then fanoutangle1 and fanoutangle2 encode the start (middle) angles of both fans.
+double fanoutangle2 = PI;			// MK: Then fanoutangle1 and fanoutangle2 encode the start (middle) angles of both fans.
 int bouncerays = 0x0;				// MK: If set to & 0x1, then Starburst will use bounced/reflected rays to add more features, otherwise not.
 int features_per_ray = 2;			// MK: Try to add up to features_per_ray features per Starburst beam.
 
-double	min_feature_dist = 0.0;
-double 	max_feature_dist = 1000.0;
-double 	min_ellipse_area = 0.0;
-double 	max_ellipse_area = 1000000.0;
+double	min_feature_dist = 0.0;			// MK: Minimum distance of a starburst feature from start point to be accepted.
+double 	max_feature_dist = 1000.0;		// MK: Maximum distance of a starburst feature from start point to be accepted.
+double 	min_ellipse_area = 0.0;			// MK: Not area - Currently min length of larger ellipse half-axis for acceptance by RANSAC.
+double 	max_ellipse_area = 1000000.0;	// MK: Not area - Currently max length of larger ellipse half-axis for acceptance by RANSAC.
 
-bool detectCornealReflection = TRUE; // MK: Auto-Detection of reference point (corneal reflection) enabled?
-int nrInChannels;					// MK: Number of color input channels.
-bool noise_reduction = FALSE;		// MK: Enable/Disable line noise reduction.
+bool detectCornealReflection = TRUE;	// MK: Auto-Detection of reference point (corneal reflection) enabled?
+int nrInChannels;						// MK: Number of color input channels.
+bool noise_reduction = FALSE;			// MK: Enable/Disable line noise reduction.
 
 double map_matrix[3][3];
 int save_image = 0;
@@ -1586,7 +1586,8 @@ void cvEyeTrackerRecalibrate(boolean resetCalib)
 }
 
 // Set runtime operating parameter of the OpenEyes algorithm: Called mostly by PSYCHCVParameters()
-void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int minFeatureCandidates, int corneaWindowSize, int edgeThreshold, int gaussWidth, double maxPupilEccentricity, double initialAngleSpread)
+void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int minFeatureCandidates, int corneaWindowSize, int edgeThreshold, int gaussWidth, double maxPupilEccentricity, double initialAngleSpread,
+								double fanoutAngle1, double fanoutAngle2, int featuresPerRay, int specialFlags)
 {
 	pupil_edge_thres = pupilEdgeThreshold;
 	rays = starburstRays;
@@ -1596,6 +1597,12 @@ void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int mi
 	gausswidth = gaussWidth;
 	maxeccentricity = maxPupilEccentricity;
 	initial_angle_spread = initialAngleSpread;
+	
+	fanoutangle1 = fanoutAngle1;
+	fanoutangle2 = fanoutAngle2;
+	bouncerays = specialFlags;					// MK: If set to & 0x1, then Starburst will use bounced/reflected rays to add more features, otherwise not.
+	features_per_ray = featuresPerRay;			// MK: Try to add up to features_per_ray features per Starburst beam.
+	
 	return;
 }
 

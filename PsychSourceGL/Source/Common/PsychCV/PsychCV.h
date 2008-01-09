@@ -61,8 +61,9 @@ boolean cvEyeTrackerExecuteTrackingCycle(PsychCVEyeResult* eyeResult, boolean us
 void cvEyeTrackerSetPupilLocation(int px, int py);
 void cvEyeTrackerAddCalibrationPoint(int px, int py);
 void cvEyeTrackerRecalibrate(boolean resetCalib);
-void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int minFeatureCandidates, int corneaWindowSize, int edgeThreshold, int gaussWidth, double maxPupilEccentricity, double initialAngleSpread);
-void cvEyeTrackerSetRansacConstraints(double minDist, double maxDist, double minArea, double maxArea);
+void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int minFeatureCandidates, int corneaWindowSize, int edgeThreshold, int gaussWidth, double maxPupilEccentricity, double initialAngleSpread,
+								double fanoutAngle1, double fanoutAngle2, int featuresPerRay, int specialFlags);
+void cvEyeTrackerSetRansacConstraints(double minDist, double maxDist, double minArea, double maxArea); 
 void cvEyeTrackerSetOverrideReferencePoint(int rx, int ry);
 
 // Publically available functions:
@@ -77,6 +78,7 @@ PsychError PSYCHCVOpenEyesInitialize(void);
 PsychError PSYCHCVOpenEyesShutdown(void);
 PsychError PSYCHCVOpenEyesTrackEyePosition(void);
 PsychError PSYCHCVOpenEyesParameters(void);
+PsychError PSYCHCVCopyMatrixToMemBuffer(void);
 
 //end include once
 #endif

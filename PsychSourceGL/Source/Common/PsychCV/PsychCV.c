@@ -70,8 +70,10 @@ void InitializeSynopsis()
 	synopsis[i++] = "\nSupport for the OpenEyes computer vision based eye tracker:\n";
 	synopsis[i++] = "[EyeImageMemBuffer, EyeColorImageMemBuffer, SceneImageMemBuffer, ThresholdImageMemBuffer, EllipseImageMemBuffer] = PsychCV('OpenEyesInitialize', handle [, eyeChannels] [, eyeWidth][, eyeHeight][, sceneWidth][, sceneHeight][, logfilename]);";
 	synopsis[i++] = "PsychCV('OpenEyesShutdown', handle);";
-	synopsis[i++] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold]);";
+ 	synopsis[i++] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold][, gaussWidth][, maxPupilEccentricity] [, initialAngleSpread] [, fanoutAngle1] [, fanoutAngle2] [, featuresPerRay] [, specialFlags]);";
 	synopsis[i++] = "EyeResult = PsychCV('OpenEyesTrackEyePosition', handle [, mode] [, px], [, py]);";
+	synopsis[i++] = "\nHelper functions for memory buffer copies:\n";
+	synopsis[i++] = "PsychCV('CopyMatrixToMemBuffer', matrix, memBufferPtr);";
 
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
@@ -162,6 +164,8 @@ PsychError PSYCHCVVerbosity(void)
 
 static int pupilEdgeThreshold, starburstRays, minFeatureCandidates, corneaWindowSize, edgeThreshold, gaussWidth;
 static double maxPupilEccentricity, initialAngleSpread;
+static double fanoutAngle1, fanoutAngle2;
+static int featuresPerRay, specialFlags;
 
 /* PsychCV('OpenEyesInitialize') - Initialize a new tracking session with OpenEyes:
  */
@@ -251,9 +255,14 @@ PsychError PSYCHCVOpenEyesInitialize(void)
 	gaussWidth = 5;
 	maxPupilEccentricity = 1.2;	// Original is 2.0 (!)
 	initialAngleSpread = 360.0;
+	fanoutAngle1 = 0.0;
+	fanoutAngle2 = 180.0;
+	featuresPerRay = 1;
+	specialFlags = 0x0;
 	
 	// Commit default parameters to tracker:
-	cvEyeTrackerSetParameters(pupilEdgeThreshold, starburstRays, minFeatureCandidates, corneaWindowSize, edgeThreshold, gaussWidth, maxPupilEccentricity, initialAngleSpread * PI/180);
+	cvEyeTrackerSetParameters(pupilEdgeThreshold, starburstRays, minFeatureCandidates, corneaWindowSize, edgeThreshold, gaussWidth, maxPupilEccentricity, initialAngleSpread * PI/180,
+							  fanoutAngle1 * PI/180, fanoutAngle2 * PI/180, featuresPerRay, specialFlags);
 	
 	return(PsychError_none);
 }
@@ -387,7 +396,7 @@ PsychError PSYCHCVOpenEyesTrackEyePosition(void)
 PsychError PSYCHCVOpenEyesParameters(void)
 {
 
- 	static char useString[] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold][, gaussWidth][, maxPupilEccentricity] [, initialAngleSpread]);";
+ 	static char useString[] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold][, gaussWidth][, maxPupilEccentricity] [, initialAngleSpread] [, fanoutAngle1] [, fanoutAngle2] [, featuresPerRay] [, specialFlags]);";
 	static char synopsisString[] = 
 		"Set level of verbosity for error/warning/status messages. 'level' optional, new level "
 		"of verbosity. 'oldlevel' is the old level of verbosity. The following levels are "
@@ -401,9 +410,9 @@ PsychError PSYCHCVOpenEyesParameters(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(9));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(13));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(8));	 // The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(12));	 // The maximum number of outputs
 
 	// Get tracker handle: This is not used yet, just here for future extensions:
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -418,6 +427,10 @@ PsychError PSYCHCVOpenEyesParameters(void)
 	PsychCopyOutDoubleArg(6, kPsychArgOptional, gaussWidth);
 	PsychCopyOutDoubleArg(7, kPsychArgOptional, maxPupilEccentricity);
 	PsychCopyOutDoubleArg(8, kPsychArgOptional, initialAngleSpread);
+	PsychCopyOutDoubleArg(9, kPsychArgOptional, fanoutAngle1);
+	PsychCopyOutDoubleArg(10, kPsychArgOptional, fanoutAngle2);
+	PsychCopyOutDoubleArg(11, kPsychArgOptional, featuresPerRay);
+	PsychCopyOutDoubleArg(12, kPsychArgOptional, specialFlags);
 	
 	// Get optional parameters. The defaults are the original settings of OpenEyes, set in the initialization call...
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &pupilEdgeThreshold);
@@ -448,8 +461,74 @@ PsychError PSYCHCVOpenEyesParameters(void)
 	PsychCopyInDoubleArg(9, kPsychArgOptional, &initialAngleSpread);
 	if (initialAngleSpread > 360 || initialAngleSpread < 0) PsychErrorExitMsg(PsychError_user, "Invalid initialAngleSpread provided. Must be between 0 and 360 deg.!");
 
-	// Commit new parameters to tracker:
-	cvEyeTrackerSetParameters(pupilEdgeThreshold, starburstRays, minFeatureCandidates, corneaWindowSize, edgeThreshold, gaussWidth, maxPupilEccentricity, initialAngleSpread * PI/180);
+	// Fanout midline angle in degrees for beam fan 1: This parameter is unlimited.
+	PsychCopyInDoubleArg(10, kPsychArgOptional, &fanoutAngle1);
 
+	// Fanout midline angle in degrees for beam fan 2: This parameter is unlimited.
+	PsychCopyInDoubleArg(11, kPsychArgOptional, &fanoutAngle2);
+
+	PsychCopyInIntegerArg(12, kPsychArgOptional, &featuresPerRay);
+	if (featuresPerRay < 1) PsychErrorExitMsg(PsychError_user, "Invalid featuresPerRay provided. Must be at least 1!");
+
+	PsychCopyInIntegerArg(13, kPsychArgOptional, &specialFlags);
+	if (specialFlags < 0) PsychErrorExitMsg(PsychError_user, "Invalid specialFlags provided. Must be at least 0!");
+
+	// Commit new parameters to tracker:
+	cvEyeTrackerSetParameters(pupilEdgeThreshold, starburstRays, minFeatureCandidates, corneaWindowSize, edgeThreshold, gaussWidth, maxPupilEccentricity, initialAngleSpread * PI/180,
+								fanoutAngle1 * PI/180, fanoutAngle2 * PI/180, featuresPerRay, specialFlags);
+
+	return(PsychError_none);
+}
+
+PsychError PSYCHCVCopyMatrixToMemBuffer(void)
+{
+ 	static char useString[] = "PsychCV('CopyMatrixToMemBuffer', matrix, memBufferPtr);";
+	static char synopsisString[] = 
+		"Copies a Matlab/Octave uint8 or double matrix 'matrix' into a C memory buffer, "
+		"whose memory (void*) pointer is encoded as a double scalar value 'memBufferPtr'. "
+		"The target buffer must be of sufficient size, no checking is performed! This is "
+		"essentially a C memcpy() operation, so use with caution, or Matlab/Octave will crash!";
+	static char seeAlsoString[] = "";	 
+	
+	int				m, n, p;
+	unsigned char*	inMatrixUint8;
+	void*			srcptr;
+	double			doubleptr;
+	void*			dstptr;
+	int				elsize;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(0));	 // The maximum number of outputs
+
+	// Get the uint8 or double matrix from Matlab/Octave:
+	m = n = p = 0;
+	if (PsychAllocInUnsignedByteMatArg(1, kPsychArgAnything, &m, &n, &p, (unsigned char**) &srcptr)) {
+		elsize = sizeof(unsigned char);
+	}
+	else {
+		if (PsychAllocInDoubleMatArg(1, kPsychArgAnything, &m, &n, &p, (double**) &srcptr)) {
+			elsize = sizeof(double);
+		}
+		else {
+			PsychErrorExitMsg(PsychError_user, "Invalid input matrix specified. Must be a uint8 or double matrix!");
+		}
+	}
+	
+	// Check dimensions:
+	if (p < 1) p = 1;
+	if (m < 1 || n < 1) PsychErrorExitMsg(PsychError_user, "Invalid input matrix specified. Must have non-zero row- and column count!");
+
+	// Get the double-encoded void* to the destination buffer:
+	PsychCopyInDoubleArg(2, kPsychArgRequired, &doubleptr);
+	dstptr = PsychDoubleToPtr(doubleptr);
+	
+	// Perform memcpy to target buffer:
+	memcpy(dstptr, (const void*) srcptr, elsize * m * n* p);
+	
 	return(PsychError_none);
 }
