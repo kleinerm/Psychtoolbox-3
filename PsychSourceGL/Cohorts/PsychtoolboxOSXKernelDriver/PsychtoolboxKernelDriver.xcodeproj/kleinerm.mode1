@@ -284,7 +284,7 @@
 							<real>301</real>
 						</array>
 						<key>RubberWindowFrame</key>
-						<string>272 139 1288 811 0 0 1680 1028 </string>
+						<string>271 139 1288 811 0 0 1680 1028 </string>
 					</dict>
 					<key>Module</key>
 					<string>PBXSmartGroupTreeModule</string>
@@ -321,7 +321,7 @@
 								<key>Frame</key>
 								<string>{{0, 0}, {965, 766}}</string>
 								<key>RubberWindowFrame</key>
-								<string>272 139 1288 811 0 0 1680 1028 </string>
+								<string>271 139 1288 811 0 0 1680 1028 </string>
 							</dict>
 							<key>Module</key>
 							<string>PBXNavigatorGroup</string>
@@ -341,7 +341,7 @@
 								<key>Frame</key>
 								<string>{{0, 771}, {965, 0}}</string>
 								<key>RubberWindowFrame</key>
-								<string>272 139 1288 811 0 0 1680 1028 </string>
+								<string>271 139 1288 811 0 0 1680 1028 </string>
 							</dict>
 							<key>Module</key>
 							<string>XCDetailModule</string>
@@ -365,9 +365,9 @@
 			</array>
 			<key>TableOfContents</key>
 			<array>
-				<string>83272BEC0D3D59C600F51444</string>
+				<string>83F92DEB0D3D5D98001E54FA</string>
 				<string>1CE0B1FE06471DED0097A5F4</string>
-				<string>83272BED0D3D59C600F51444</string>
+				<string>83F92DEC0D3D5D98001E54FA</string>
 				<string>1CE0B20306471E060097A5F4</string>
 				<string>1CE0B20506471E060097A5F4</string>
 			</array>
@@ -502,10 +502,10 @@
 	<key>WindowOrderList</key>
 	<array>
 		<string>838B99560D34A71B002B2A7B</string>
-		<string>/Users/kleinerm/test/RadeonPCI/PsychtoolboxOSXKernelDriver/PsychtoolboxKernelDriver.xcodeproj</string>
+		<string>/Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Cohorts/PsychtoolboxOSXKernelDriver/PsychtoolboxKernelDriver.xcodeproj</string>
 	</array>
 	<key>WindowString</key>
-	<string>272 139 1288 811 0 0 1680 1028 </string>
+	<string>271 139 1288 811 0 0 1680 1028 </string>
 	<key>WindowTools</key>
 	<array>
 		<dict>
@@ -582,7 +582,7 @@
 			<key>TableOfContents</key>
 			<array>
 				<string>838B99560D34A71B002B2A7B</string>
-				<string>83272BEE0D3D59C600F51444</string>
+				<string>83F92DED0D3D5D98001E54FA</string>
 				<string>1CD0528F0623707200166675</string>
 				<string>XCMainBuildResultsModuleGUID</string>
 			</array>
