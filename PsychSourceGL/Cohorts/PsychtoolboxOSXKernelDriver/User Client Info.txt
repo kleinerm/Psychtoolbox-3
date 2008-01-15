@@ -1,0 +1,134 @@
+User Client Info
+----------------
+
+IOUserClient is a helper class for implementing custom user mode-I/O Kit kernel driver communication. It provides both fixed entry points into the kernel from user applications and service-specific general data transfer.
+
+The fixed entry points provide functions for:
+
+1. Creating and destroying connections. A connection is represented by an instance of an IOUserClient, which is usually owned by one connection but may be shared amongst many. The instance is destroyed on client exit or death.
+
+2. Passing notification ports in and out of the kernel, for use with message notification. 
+
+3. Creating shared memory and hardware mappings in clients via IOMemoryDescriptor.
+
+4. Passing untyped data back and forth. Since it's currently impossible to have family specific mig-generated code, these parameters have to fit into some predefined schemes: arrays of 32-bit scalar values both in and out, blocks of memory in and out (up to 4096 bytes), and combinations of the two.
+
+The I/O Registry also provides ways to get data to and from an I/O Kit object. These methods are connectionless but might be useful for setting a simple state variable that a driver can inspect. Data is sent as CoreFoundation container types: see the IOKitLib.h documentation for IORegistryEntryCreateCFProperties and IORegistryEntrySetCFProperties.
+
+
+IOUserClient inside the Kernel
+------------------------------
+To begin implementing a user client, you'll need to add a class to your kernel extension which is a subclass of IOUserClient. The definition for IOUserClient is located in IOUserClient.h, inside Kernel.framework/IOKit.
+
+The first method that gets called in the life of a user client is initWithTask which is where you put initialization code. (On Intel-based Macs, this is also where the user client can detect if it's being initialized by an application running using Rosetta.) Then the start method is called which is where you should do some sanity checking to make sure that the provider is actually a member of your driver's family. If this check fails, your start method should return false which causes the instantiation to fail.
+
+In order for functions to be called in your kernel extension, you must create an array of IOExternalMethods, which is in essence just an array of function pointers.
+
+The layout of an IOExternalMethod struct is defined in IOUserClient.h and is shown below:
+
+struct IOExternalMethod {
+    IOService* object;
+    IOMethod func;
+    IOOptionBits flags;
+    IOByteCount count0;
+    IOByteCount count1;
+};
+
+User clients typically call member functions either of the user client class itself or of the user client's provider. The actual member function to call is obtained by IOUserClient calling getTargetAndMethodForIndex. This function returns pointers to the object and the member function of that object which should be called. Your array of IOExternalMethod structs can be used by your implementation of getTargetAndMethodForIndex. This will be discussed in more detail later.
+
+The object member of the IOExternalMethod struct can be used to indicate at run time which object's member functions should be called. 
+
+The func member of an IOExternalMethod struct is an IOMethod which is simply a pointer to a method that is called with six void* parameters as shown below:
+
+typedef IOReturn
+(IOService::*IOMethod)(void* p1, void* p2, void* p3, void* p4, void* p5, void* p6);
+
+The flags member is an IOOptionBits value which indicates the contents of the input and output parameters. The possible values for the IOOptionBits flag are:
+
+enum {
+    kIOUCTypeMask = 0x0000000f,
+    kIOUCScalarIScalarO = 0,
+    kIOUCScalarIStructO = 2,
+    kIOUCStructIStructO = 3,
+    kIOUCScalarIStructI = 4,
+};
+
+The count0 and count1 members of the IOExternalMethod struct have different meanings depending on the value of the flags member. 
+
+For kIOUCScalarIScalarO, count0 indicates the number of input parameters that the function expects, and count1 is the number of output parameters.
+
+For kIOUCScalarIStructO, count0 indicates the number of input parameters. count1 is the size of the struct that you're expecting in the output parameter. 
+
+For kIOUCStructIStructO, count0 and count1 contain the size of the structs of the input and output parameters respectively.
+
+For kIOUCScalarIStructI, count0 indicates the number of parameters that are scalar input values, count1 is the size of the input struct.
+
+For any of the struct parameters, if the size of the struct can't be determined at compile time, simply use 0xffffffff instead of the actual size.
+
+Here's an excerpt from what your IOExternalMethod array might look like:
+
+const IOExternalMethod
+com_apple_dts_driver_SimpleUserClient::fMethods[kNumberOfMethods] = {
+    {   // kMyUserClientOpen
+        (IOService *) kMethodObjectThis,
+        (IOMethod) &com_apple_dts_driver_SimpleUserClient::openUserClient,
+        kIOUCScalarIScalarO,	
+        0,	
+        0					
+    },
+    ...
+
+In this example, the object member is pointing to the user client itself. (Since this array is defined statically at compile time, there is no this pointer so the code uses a sentinel value kMethodObjectThis which the code converts to this at run time.) The func member points to openUserClient which is the function to be called. The flags member (kIOUCScalarIScalarO) indicates that openUserClient accepts some number of scalar input and output parameters. The count0 and count1 members are both zero meaning that openUserClient actually accepts no parameters.
+
+The declaration for openUserClient thus looks like this:
+
+IOReturn openUserClient(void);
+
+Once the IOExternalMethod array is set up, calling the IOConnectMethodXXX functions from user space will call through to your user client using Mach messages. The messages enter the kernel and end up calling the getTargetAndMethodForIndex method which asks you to return a pointer to the method to call at the specified index. At that point, you check to see which class the method is located in, and then pass back the corresponding IOService pointer as well as a pointer to the function in your IOExternalMethod array. Finally, the user client will go ahead and call that function.
+
+
+Additions to the Info.plist
+---------------------------
+When calling IOServiceOpen from your user space application, I/O Kit needs to know the class name of your user client class in order to make the connection. This can be accomplished by adding a string property with the key IOUserClientClass to the personality dictionary of your Info.plist file with the value being the name of your user client class.
+
+
+User Space Access
+-----------------
+In order to communicate with a user client inside the kernel, you need to use the APIs located in IOKit/IOKitLib.h.
+
+After retrieving an io_object_t that represents your driver by calling IOServiceGetMatchingServices followed by IOIteratorNext (or just IOServiceGetMatchingService if you know that only one instance of your driver exists) the next step is to instantiate your user client class in the kernel by calling IOServiceOpen. This call will return an io_connect_t which you'll use in all subsequent communications with your user client. IOServiceOpen will cause initWithTask, attach, and start to be called inside your user client in the kernel.
+
+After opening a connection, you are ready to call methods located inside your driver by using the appropriate IOConnectMethodXXX functions. The four possible choices are:
+
+kern_return_t
+IOConnectMethodScalarIScalarO( io_connect_t connect, unsigned int index,
+	IOItemCount scalarInputCount, IOItemCount scalarOutputCount, ... );
+
+kern_return_t
+IOConnectMethodScalarIStructureO(io_connect_t connect, unsigned int index,
+	IOItemCount scalarInputCount, IOByteCount * structureSize, ... );
+
+kern_return_t
+IOConnectMethodScalarIStructureI(io_connect_t connect, unsigned int index,
+	IOItemCount scalarInputCount, IOByteCount structureSize, ... );
+
+kern_return_t
+IOConnectMethodStructureIStructureO(io_connect_t connect, unsigned int index,
+	IOItemCount structureInputSize, IOByteCount * structureOutputSize,
+	void * inputStructure,void * ouputStructure );
+
+
+You'll notice that each of these function names correspond to an IOOptionBits value from your IOExternalMethod array. For each function, you pass in the io_connect_t that you were given from the IOServiceOpen function, as well as the index of the function you want to call. The rest of the parameters are for specifying the number of scalar parameters that the function takes as input, or the number of scalar parameters the function will output, and for the structure functions, the size of the structure should be passed in. Here's an example:
+
+    IOConnectMethodScalarIScalarO(connect, kMyScalarIScalarOMethod, 2, 1, scalarI_1, scalarI_2, scalarO);
+
+In the above example, we are asking to execute the function kMyScalarIScalarOMethod inside our driver, and we're passing in two input values (scalarI_1, scalarI_2), and we're expecting back one output value which will be put into scalarO. It's expected that all the input parameters be specified first, and then all the output parameters after.
+
+By calling an IOConnectMethodXXX method, you are actually causing the getTargetAndMethodForIndex method to be executed in your user client. This method takes as a parameter the index that you passed into the IOConnectMethodXXX function and then passes back a function pointer to the corresponding function in your array of IOExternMethods.
+
+When you have finished accessing your user client, you should call IOServiceClose which destroys the instance of your user client. Note that the user client is destroyed automatically when the user space application exits.
+
+
+Tips and Good Conventions
+-------------------------
+It may be a good idea to limit access to your device to one user space application at a time. This can be done by using IOService's built in exclusive access checking. It's good practice to implement an openUserClient and closeUserClient routine inside your user client class. By having your user client's openUserClient method call your driver's open method, you can determine if another application has already opened a connection to your driver, and if so, return the error kIOReturnExclusiveAccess. When you are done accessing the user client, you should call your closeUserClient routine that closes your driver so that someone else can communicate with it.

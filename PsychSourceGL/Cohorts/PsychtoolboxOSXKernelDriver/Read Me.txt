@@ -1,0 +1,57 @@
+Read Me for SimpleUserClient 1.1
+--------------------------------
+May 22, 2007
+
+Illustrates how to add a simple user client to an I/O Kit kernel driver and also shows the corresponding user space routines for calling into the user client. 
+
+
+Sample Requirements
+-------------------
+This sample requires Mac OS X and Xcode 2.2.1 or later to build. It will run on Mac OS X 10.2 or later.
+
+
+User Clients and Rosetta
+------------------------
+The user client in this sample shows how to tell if it has been opened by a process running using Rosetta. This technique is intended to be used only during the transition period until the client applications that make use of the user client are universal.
+
+An application running using Rosetta has the opposite (PowerPC) endianness from the user client and driver. I/O Kit will automatically endian-swap scalar parameters passed between an application and a user client, but I/O Kit has no knowledge of the layout of the fields within a structure parameter. This means that the user client has to perform the endian swapping itself if it's running "cross-endian": that is, the user client and the calling application have opposite endianness.
+
+While it's possible to perform the endian swapping inside the driver, it is strongly recommended that you do this inside the user client as shown in this sample. This is for two reasons: the driver itself then doesn't need to be changed, which makes testing easier. It also avoids the complexity of having to track when the driver is currently running cross-endian. The lifecycle of a user client instance is tightly coupled to the application that opens it, so a user client only has to test for cross-endianness once at initialization time.
+
+
+Using the Sample
+----------------
+The sample contains two pieces. The first is a sample I/O Kit driver KEXT called SimpleDriver. This driver includes a user client that shows how to marshal the various combinations of scalar and structure parameters supported by I/O Kit to and from a userland process. 
+
+The second piece is a command-line tool that exercises the API exported by the user client. This project has a target that produces a universal binary and another that produces a binary for PowerPC architecture only. This second target is only to simplify testing the case where the command line tool is running using Rosetta on an Intel-based Mac.
+
+The command-line tool also shows how you can provide an abstraction layer between your application and your user client access code. 
+
+In order to load the driver, you will need to change the owner of the KEXT to root:wheel, then load it with the kextload tool. The best way to do this is as follows:
+
+	sudo cp -R build/Debug/SimpleDriver.kext /tmp
+	sudo kextload /tmp/SimpleDriver.kext
+
+Once the driver is loaded, running SimpleUserClientTool will open a connection and communicate with the user client inside the KEXT.
+
+You can run SimpleUserClientTool from the command line or directly from within Xcode.
+
+You can build both the KEXT and the user space tool at the same time by selecting the 'Build All' target from the pop-up menu. If you'd like to run the tool from within Xcode, select the 'SimpleUserClientTool' item from the pop-up menu and click the 'Build and Go' icon in the toolbar.
+
+
+Other Changes from Previous Versions
+------------------------------------
+SimpleDriver specifies IOResources as its provider class in its Info.plist. IOResources is commonly used as the provider class for I/O Kit drivers which do not control any actual hardware. Recall that I/O Kit will match only one driver per match category to a provider. While most drivers do not need to define a IOMatchCategory property, those with a IOProviderClass of IOResources must specify a unique value for IOMatchCategory. The convention is to use the same value for IOMatchCategory as for the driver's class name (IOClass property).
+
+The symptom of a missing IOMatchCategory property in this case is that your driver will not start after it has been loaded.
+
+This sample also shows how to conditionally modify the driver's Info.plist file. Xcode 2.x supports preprocessing of Info.plist files via the build settings INFOPLIST_PREPROCESS = YES and INFOPLIST_PREPROCESSOR_DEFINITIONS = $(GCC_PREPROCESSOR_DEFINITIONS). This capability is used to include the IOKitDebug property only in debug builds.
+
+
+Feedback and Bug Reports
+------------------------
+Please send all feedback about this sample to 
+<http://developer.apple.com/contact/feedback.html>.
+
+Please submit any bug reports about this sample to
+<http://developer.apple.com/bugreporter>. 

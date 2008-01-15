@@ -1,0 +1,228 @@
+// !$*UTF8*$!
+{
+	089C1669FE841209C02AAC07 /* Project object */ = {
+		activeBuildConfigurationName = Release;
+		activeExecutable = 838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */;
+		activeTarget = BF9257E70C039F6200D7A82A /* Build All */;
+		addToTargets = (
+			BF9257E70C039F6200D7A82A /* Build All */,
+		);
+		breakpointsGroup = 83B62FE60D3556D800971329 /* XCBreakpointsBucket */;
+		codeSenseManager = 838B994E0D34A549002B2A7B /* Code sense */;
+		executables = (
+			838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */,
+			838B993F0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool_ppc */,
+		);
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					726,
+					20,
+					48,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFindDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFindDataSource_LocationID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					200,
+					120,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFindDataSource_MessageID,
+					PBXFindDataSource_LocationID,
+				);
+			};
+			PBXConfiguration.PBXTargetDataSource.PBXTargetDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					281,
+					294,
+					20,
+					48,
+					43,
+					43,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXTargetDataSource_PrimaryAttribute,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 222124474;
+			PBXWorkspaceStateSaveDate = 222124474;
+		};
+		sourceControlManager = 838B994D0D34A549002B2A7B /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	32D94FC30562CBF700B6AF17 /* PsychtoolboxKernelDriverUserClient */ = {
+		activeExec = 0;
+	};
+	32D94FCF0562CBF700B6AF17 /* Info.plist */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 812}}";
+			sepNavSelRange = "{1465, 0}";
+			sepNavVisRect = "{{0, 67}, {918, 734}}";
+			sepNavWindowFrame = "{{15, 51}, {1355, 972}}";
+		};
+	};
+	838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */ = {
+		isa = PBXExecutable;
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = PsychtoolboxKernelDriverUserClientTool;
+		sourceDirectories = (
+		);
+	};
+	838B993F0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {
+		isa = PBXExecutable;
+		activeArgIndex = 2147483647;
+		activeArgIndices = (
+		);
+		argumentStrings = (
+		);
+		autoAttachOnCrash = 1;
+		configStateDict = {
+		};
+		customDataFormattersEnabled = 1;
+		debuggerPlugin = GDBDebugging;
+		disassemblyDisplayState = 0;
+		enableDebugStr = 1;
+		environmentEntries = (
+		);
+		executableSystemSymbolLevel = 0;
+		executableUserSymbolLevel = 0;
+		libgmallocEnabled = 0;
+		name = PsychtoolboxKernelDriverUserClientTool_ppc;
+		sourceDirectories = (
+		);
+	};
+	838B994D0D34A549002B2A7B /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+		scmType = "";
+	};
+	838B994E0D34A549002B2A7B /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	83B62FE60D3556D800971329 /* XCBreakpointsBucket */ = {
+		isa = XCBreakpointsBucket;
+		name = "Project Breakpoints";
+		objects = (
+		);
+	};
+	BF9257DF0C039F3300D7A82A /* PsychtoolboxKernelDriverUserClientTool */ = {
+		activeExec = 0;
+		executables = (
+			838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */,
+		);
+	};
+	BF9257E40C039F4E00D7A82A /* PsychtoolboxKernelDriverUserClientTool_ppc */ = {
+		activeExec = 0;
+		executables = (
+			838B993F0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool_ppc */,
+		);
+	};
+	BF9257E70C039F6200D7A82A /* Build All */ = {
+		activeExec = 0;
+	};
+	BF9257EE0C039FA200D7A82A /* PsychUserKernelShared.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 2198}}";
+			sepNavSelRange = "{7904, 30}";
+			sepNavVisRect = "{{0, 0}, {918, 734}}";
+			sepNavWindowFrame = "{{15, 51}, {1355, 972}}";
+		};
+	};
+	BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1178, 10500}}";
+			sepNavSelRange = "{25818, 0}";
+			sepNavVisRect = "{{0, 8230}, {918, 734}}";
+		};
+	};
+	BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {998, 1232}}";
+			sepNavSelRange = "{747, 0}";
+			sepNavVisRect = "{{0, 0}, {918, 734}}";
+			sepNavWindowFrame = "{{15, 51}, {1355, 972}}";
+		};
+	};
+	BF9257FD0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.cpp */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 6650}}";
+			sepNavSelRange = "{17803, 63}";
+			sepNavVisRect = "{{0, 5916}, {918, 734}}";
+		};
+	};
+	BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {998, 854}}";
+			sepNavSelRange = "{676, 0}";
+			sepNavVisRect = "{{0, 120}, {918, 734}}";
+		};
+	};
+	BF9258030C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 1568}}";
+			sepNavSelRange = "{1160, 65}";
+			sepNavVisRect = "{{0, 135}, {918, 734}}";
+		};
+	};
+	BF9258040C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 734}}";
+			sepNavSelRange = "{410, 34}";
+			sepNavVisRect = "{{0, 0}, {918, 734}}";
+		};
+	};
+	BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1034, 4830}}";
+			sepNavSelRange = "{11447, 0}";
+			sepNavVisRect = "{{0, 4096}, {918, 734}}";
+		};
+	};
+}
