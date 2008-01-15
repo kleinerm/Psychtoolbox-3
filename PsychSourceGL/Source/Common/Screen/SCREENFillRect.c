@@ -109,6 +109,11 @@ PsychError SCREENFillRect(void)
 		PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
 		glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
 		glClear(GL_COLOR_BUFFER_BIT);
+
+		// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.
+		PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(windowRecord);
+
+		// Done with fast clear path.
 	}else{
 	  // Subregion fill or fullscreen fill into offscreen window or texture: Draw a colored rect.
 

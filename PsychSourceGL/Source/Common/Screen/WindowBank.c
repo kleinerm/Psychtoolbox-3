@@ -288,6 +288,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 
 	// Reset memory accounting info for this windowRecord:
 	(*winRec)->surfaceSizeBytes = 0;
+	
+	// NULL out flipinfo struct:
+	(*winRec)->flipInfo = NULL;
 }
 
 

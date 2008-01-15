@@ -123,6 +123,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("Close",  &SCREENClose));
 	PsychErrorExit(PsychRegister("CloseAll",  &SCREENCloseAll)); 
 	PsychErrorExit(PsychRegister("Flip", &SCREENFlip));
+	PsychErrorExit(PsychRegister("FlipAsyncBegin", &SCREENFlip));
+	PsychErrorExit(PsychRegister("FlipAsyncEnd", &SCREENFlip));
 	PsychErrorExit(PsychRegister("FillRect", &SCREENFillRect));
 	PsychErrorExit(PsychRegister("GetImage", &SCREENGetImage));
 	PsychErrorExit(PsychRegister("PutImage", &SCREENPutImage));

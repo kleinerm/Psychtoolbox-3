@@ -126,14 +126,26 @@ PsychError SCREENOpenWindow(void)
     PsychGetScreenDepths(screenNumber, &possibleDepths);
 
     #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_WINDOWS
-       // MK Experimental Hack: Add the special depth values 30, 64 and 128 to the depth struct. This allows for
-       // 10 bpc color buffers and 16 bpc, 32 bpc floating point color buffers on the latest ATI
-       // and NVidia hardware. Unfortunately at this point of the init sequence, we are not able
+       // MK Experimental Hack: Add the special depth values 64 and 128 to the depth struct. This should 
+       // allows for 16 bpc, 32 bpc floating point color buffers on the latest ATI and NVidia hardware.
+	   // "Should" means: It doesn't really work with any current driver, but we leave the testcode in
+	   // in the hope for future OS and driver releases ;-)
+       // Unfortunately at this point of the init sequence, we are not able
        // to check if these formats are supported by the hardware. Ugly ugly ugly...
-       PsychAddValueToDepthStruct(30, &possibleDepths);
        PsychAddValueToDepthStruct(64, &possibleDepths);
        PsychAddValueToDepthStruct(128, &possibleDepths);
     #endif
+
+    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+		// On MacOS/X and Linux with ATI Radeon X1000/HD2000/HD3000 hardware and the special
+		// kernel support driver installed, we should be able to configure the hardwares
+		// framebuffers into ABGR2101010 mode, ie. 2 bits alpha, 10 bpc for red, green, blue.
+		// This needs support from the imaging pipeline, or manually converted stimuli, as
+		// the GPU doesn't format pixel data properly, only the CRTC scans out in that format.
+		// Anyway, allow this setting on OS/X and Linux:
+		PsychAddValueToDepthStruct(30, &possibleDepths);
+    #endif
+
 
     PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
     isArgThere = PsychCopyInSingleDepthArg(4, FALSE, &specifiedDepth);
@@ -421,10 +433,10 @@ PsychError SCREENOpenWindow(void)
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 
 	// rect argument needs special treatment in stereo mode:
-	 		PsychMakeRect(&rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
-						  windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
-						  windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
-			
+	PsychMakeRect(&rect, windowRecord->rect[kPsychLeft], windowRecord->rect[kPsychTop],
+					windowRecord->rect[kPsychLeft] + PsychGetWidthFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfWidthWindow) ? 2 : 1),
+					windowRecord->rect[kPsychTop] + PsychGetHeightFromRect(windowRecord->rect)/((windowRecord->specialflags & kPsychHalfHeightWindow) ? 2 : 1));
+
     PsychCopyOutRectArg(2, FALSE, rect);
 
     return(PsychError_none);   

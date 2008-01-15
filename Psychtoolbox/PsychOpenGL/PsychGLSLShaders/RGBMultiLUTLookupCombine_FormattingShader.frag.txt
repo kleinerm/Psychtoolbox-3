@@ -1,0 +1,30 @@
+/* RGBMultiLUTLookupCombine_FormattingShader.frag.txt
+ * 
+ * Remaps a RGB color texel from an input image by:
+ * 1. Rescaling each color channels input value via a multiplicator.
+ * 2. Rounding the rescaled value to an integer lookup index.
+ * 3. Looking up a RGBA8 texel from a lookup table...
+ *
+ * (w)2008 by Mario Kleiner.
+*/
+
+uniform sampler2DRect   Image;
+uniform sampler2DRect   CLUT;
+uniform float           Prescale;
+
+void main()
+{
+    /* Read input RGB pixel values in range 0.0 - 1.0: */
+    vec3 incolor = texture2DRect(Image, gl_TexCoord[0].st).rgb;
+
+    /* Remap them to integer index in resolution range: */
+    incolor = floor(incolor * Prescale + 0.5) + 0.5;
+
+    /* Lookup biases to apply for channels in rows of texture: */
+    vec4 rcomp = texture2DRect(CLUT, vec2(incolor.r, 0.5));
+    vec4 gcomp = texture2DRect(CLUT, vec2(incolor.g, 1.5));
+    vec4 bcomp = texture2DRect(CLUT, vec2(incolor.b, 2.5));
+
+    /* Combine biases to a single RGBA8 output pixel color: */
+    gl_FragColor = rcomp + gcomp + bcomp;
+}

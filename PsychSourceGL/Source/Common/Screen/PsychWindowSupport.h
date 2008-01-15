@@ -53,6 +53,8 @@ boolean PsychIsUserspaceRendering(void);
 double	PsychGetWhiteValueFromWindow(PsychWindowRecordType *windowRecord);
 void	PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecord);
 int		PsychRessourceCheckAndReminder(boolean displayMessage);
+bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
+void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif

@@ -41,6 +41,15 @@
 
 #include "Screen.h"
 
+// Include IOKIT support for connecting to the kernel level support driver:
+#include <IOKit/IOKitLib.h>
+// Include shared data structures and definitions between kernel driver and us:
+#include "PsychUserKernelShared.h"
+// Include specifications of the GPU registers:
+#include "PsychGraphicsCardRegisterSpecs.h"
+
+#define kMyPathToSystemLog			"/var/log/system.log"
+
 // file local variables
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using boolean flags in a different array.   
@@ -50,14 +59,29 @@ static boolean				displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
 static boolean				displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
-static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];    
-                                                                                                
+static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
+
+// List of service connect handles for connecting to the kernel support driver (if any):
+static int					numKernelDrivers = 0;
+static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
+static int					repeatedZeroBeamcount[kPsychMaxPossibleDisplays];
+
+// Commando structure for communication of commands, input- and return-arguments between
+// kernel driver and PTB:
+PsychKDCommandStruct syncCommand;
+const IOByteCount	 structSize1 = sizeof(PsychKDCommandStruct);
+
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 boolean PsychCheckScreenSettingsLock(int screenNumber);
 boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+void InitPsychtoolboxKernelDriverInterface(void);
+kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status);
+io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
+int PsychOSKDGetBeamposition(int screenId);
+void PsychLaunchConsoleApp(void);
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -69,10 +93,16 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
+		displayConnectHandles[i]=0;
+		repeatedZeroBeamcount[i]=0;
     }
     
-    //init the list of Core Graphics display IDs.
+    // Init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
+	
+	// Attach to kernel-level Psychtoolbox graphics card interface driver if possible
+	// *and* allowed by settings, setup all relevant mappings:
+	InitPsychtoolboxKernelDriverInterface();
 }
 
 // MK-TODO: There's still a bug here: We need to call InitCGDisplayIDList() not only at
@@ -723,6 +753,391 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 // supported for NVidia cards on the Intel based Macs, starting with OS/X 10.4.10 and later, 10.5
 // and later. On IntelMacs with ATI or Intel gfx, the call returns 0 or -1 (unsupported).
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
+{	
+	// First try standard, official Apple OS/X supported method:
+	int beampos = -1;
+	
+	if (repeatedZeroBeamcount[screenNumber] == -20000) {
+		// OS/X native beamposition queries verified to work: Use 'em:
+		return((int) CGDisplayBeamPosition(cgDisplayId));
+	}
+
+	if (repeatedZeroBeamcount[screenNumber] == -10000) {
+		// OS/X native beamposition queries verified to *not* work!
+		// Try to use our own homegrown fallback solution:
+		return(PsychOSKDGetBeamposition(screenNumber));
+	}
+
+	// At this point, we don't know yet if native beampos queries work. Use some
+	// detection logic: First we start with assumption "native works"...
+	beampos = CGDisplayBeamPosition(cgDisplayId);
+	
+	// ...then we try to verify that assumption:
+	if (beampos > 0) {
+		// They seem to work! Mark them permanently as operational:
+		repeatedZeroBeamcount[screenNumber] = -20000;
+		return(beampos);
+	}
+
+	// Totally unsupported?
+	if (beampos == -1) {
+		// Mark'em as unsupported and use our fallback:
+		repeatedZeroBeamcount[screenNumber] = -10000;
+		return(PsychOSKDGetBeamposition(screenNumber));
+	}
+	
+	// We got a zero value. Could be by accident or by failure:
+	
+	// Worked? A failure is indicated by either value -1 (officially unsupported),
+	// or a constant value zero. We use a counter array to check if multiple queries
+	// returned a zero value:
+	if ((repeatedZeroBeamcount[screenNumber]++) > 0) {
+		// Second zero result in a row! Native queries don't work, mark them
+		// as unsupported and use fallback:
+		repeatedZeroBeamcount[screenNumber] = -10000;
+		beampos = PsychOSKDGetBeamposition(screenNumber);
+	}
+	
+	return(beampos);
+}
+
+// This will launch the OS/X "Console.app" so users can see the IOLogs from the KEXT.
+void PsychLaunchConsoleApp(void)
 {
-	return((int) CGDisplayBeamPosition(cgDisplayId));
+	CFURLRef pathRef;
+
+    pathRef = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, CFSTR(kMyPathToSystemLog), kCFURLPOSIXPathStyle, false);    
+    if (pathRef) {
+        LSOpenCFURLRef(pathRef, NULL);
+        CFRelease(pathRef);
+    }
+
+	return;
+}
+
+// Try to attach to kernel level ptb support driver and setup everything, if it works:
+void InitPsychtoolboxKernelDriverInterface(void)
+{
+    kern_return_t	kernResult; 
+    io_service_t	service;
+    io_connect_t	connect;
+    io_iterator_t 	iterator;
+    CFDictionaryRef	classToMatch;
+    int				i;
+	
+	// Reset to zero open drivers to start with:
+	numKernelDrivers = 0;
+	
+    // This will launch the OS/X "Console.app" so users can see the IOLogs from the KEXT.
+    if (false) PsychLaunchConsoleApp();
+
+	// Setup matching criterion to find our driver in the IORegistry device tree:
+	classToMatch = IOServiceMatching(kMyDriversIOKitClassName);
+    if (classToMatch == NULL) {
+        printf("PTB-DEBUG: IOServiceMatching() for Psychtoolbox kernel support driver returned a NULL dictionary. Kernel driver support disabled.\n");
+        return;
+    }
+    
+    // This creates an io_iterator_t of all instances of our driver that exist in the I/O Registry. Each installed graphics card
+	// will get its own instance of a driver. The iterator allows to iterate over all instances:
+    kernResult = IOServiceGetMatchingServices(kIOMasterPortDefault, classToMatch, &iterator);
+    if (kernResult != KERN_SUCCESS) {
+        printf("PTB-DEBUG: IOServiceGetMatchingServices for Psychtoolbox kernel support driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
+        return;
+    }
+        
+    // In a polished final version we would want to handle the case where more than one gfx-card is attached.
+	// The iterator would return multiple instances of our driver and we need to decide which one to connect to.
+	// For now, we do not handle this case but instead just get the first item from the iterator.
+    service = IOIteratorNext(iterator);
+    
+    // Release the io_iterator_t now that we're done with it.
+    IOObjectRelease(iterator);
+    
+    if (service == IO_OBJECT_NULL) {
+        // printf("PTB-INFO: Couldn't find an operative Psychtoolbox kernel support driver. Features based on kernel driver won't be available.\n");
+		return;
+    }
+    else {
+		// Instantiate a connection to the user client.
+
+		// This call will cause the user client to be instantiated. It returns an io_connect_t handle
+		// that is used for all subsequent calls to the user client.
+		connect = 0;
+		kernResult = IOServiceOpen(service, mach_task_self(), 0, &connect);
+		if (kernResult != KERN_SUCCESS) {
+			printf("PTB-DEBUG: IOServiceOpen for our driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
+		}
+		else {
+			// This is an example of calling our user client's openUserClient method.
+			kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientOpen, 0, 0);
+			if (kernResult == KERN_SUCCESS) {
+				if (false) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO was successful.\n\n");
+			}
+			else {
+				printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for our driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
+			}
+		}
+
+		// Release the io_service_t now that we're done with it.
+		IOObjectRelease(service);
+
+		if (connect != IO_OBJECT_NULL) {
+			// Final success!
+			printf("PTB-INFO: Connection to Psychtoolbox kernel support driver established. Will use the driver...\n\n");
+
+			// For now, as we only support one gfx-card, just init all screens handles to the
+			// single connect handle we got:
+			for(i=0; i< kPsychMaxPossibleDisplays; i++){
+				displayConnectHandles[i]=connect;
+			}
+			
+			// Increment instance count by one:
+			numKernelDrivers++;
+		}
+		else {
+			// Final failure:
+			printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for our driver returned IO_OBJECT_NULL connect handle. Kernel driver support disabled.\n");
+		}
+	}
+	
+	// Done.
+	return;
+}
+
+// Try to detach to kernel level ptb support driver and tear down everything:
+void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
+{
+	io_connect_t connect;
+	
+	if (numKernelDrivers > 0) {
+		// Currently we only support one graphics card, so just take
+		// the connect handle of first screen:
+		connect = displayConnectHandles[0];
+
+		// Call shutdown method:
+		kern_return_t kernResult = IOConnectMethodScalarIScalarO(connect, kMyUserClientClose, 0, 0);
+		if (kernResult == KERN_SUCCESS) {
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing was successfull.\n");
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO Closing failed with kernel return code 0x%08x.\n\n", kernResult);
+		}
+		
+		// Close IOService:
+		kernResult = IOServiceClose(connect);
+		if (kernResult == KERN_SUCCESS) {
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose() was successfull.\n");
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: IOServiceClose returned 0x%08x\n\n", kernResult);
+		}		
+	}
+
+	// Ok, whatever happened, we're detached (for good or bad):
+	numKernelDrivers = 0;
+
+	return;
+}
+
+boolean PsychOSIsKernelDriverAvailable(int screenId)
+{
+	return((displayConnectHandles[screenId]) ? TRUE : FALSE);
+}
+
+io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status)
+{
+	io_connect_t connect = displayConnectHandles[screenId];
+
+	if (numKernelDrivers<=0) {
+		if (status) *status = kIOReturnNotFound;
+		return(0);
+	}
+	
+	if (!connect) {
+		if (status) *status = kIOReturnNoDevice;
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
+		return(0);
+	}
+
+	if (status) *status = kIOReturnSuccess;
+	return(connect);
+}
+
+kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status)
+{
+    IOByteCount structOSize = sizeof(PsychKDCommandStruct);
+	kern_return_t kernResult =	IOConnectMethodStructureIStructureO(connect,							// an io_connect_t returned from IOServiceOpen().
+																	kPsychKDDispatchCommand,			// an index to the function to be called via the user client.
+																	sizeof(PsychKDCommandStruct),		// the size of the input struct paramter.
+																	&structOSize,						// a pointer to the size of the output struct paramter.
+																	(PsychKDCommandStruct*)inStruct,	// a pointer to the input struct parameter.
+																	outStruct							// a pointer to the output struct parameter.
+																	);
+    
+	if (status) *status = kernResult;
+	if (kernResult != kIOReturnSuccess) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver command dispatch failure for code %lx (Kernel error code: %lx).\n", inStruct->command, kernResult);
+	}
+
+    return kernResult;	
+}
+
+unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status)
+{
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+
+	// Set command code for register read:
+	syncCommand.command = kPsychKDReadRegister;
+
+	// Register offset is arg 0:
+	syncCommand.inOutArgs[0] = offset;
+	
+	// Issue request to driver:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);    
+	if (kernResult != KERN_SUCCESS) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register read failed for register %lx (Kernel error code: %lx).\n", offset, kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return readback register value:
+	return((int) syncCommand.inOutArgs[0]);
+}
+
+unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status)
+{
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+
+	// Set command code for display sync:
+	syncCommand.command = KPsychKDWriteRegister;
+	syncCommand.inOutArgs[0] = offset;
+	syncCommand.inOutArgs[1] = value;
+	
+	// Issue request to driver:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, status);    
+	if (kernResult != KERN_SUCCESS) {
+		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Kernel driver register write failed for register %lx, value %lx (Kernel error code: %lx).\n", offset, value, kernResult);
+		// A value of 0xffffffff signals failure:
+		return(0xffffffff);
+	}
+	
+	// Return success:
+	return(0);
+}
+
+// Synchronize display screens video refresh cycle. See PsychSynchronizeDisplayScreens() for help and details...
+PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
+{
+	int screenId = 0;
+	double	abortTimeOut, now;
+	int residual;
+	
+	// Check availability of connection:
+	io_connect_t connect;
+	unsigned int status;
+	kern_return_t kernResult;
+	
+	// No support for other methods than fast hard sync:
+	if (syncMethod > 1) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation with requested non hard sync method. Not supported for this setup and settings.\n"); 
+		return(PsychError_unimplemented);
+	}
+	
+	// The current implementation only supports syncing all heads of a single card
+	if (*numScreens <= 0) {
+		// Resync all displays requested: Choose screenID zero for connect handle:
+		screenId = 0;
+	}
+	else {
+		// Resync of specific display requested: We only support resync of all heads of a single multi-head card,
+		// therefore just choose the screenId of the passed master-screen for resync handle:
+		screenId = screenIds[0];
+	}
+	
+	if (!(connect = PsychOSCheckKDAvailable(screenId, &status))) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation for master screenId %i. Not supported for this setup and settings.\n", screenId); 
+		return(PsychError_unimplemented);
+	}
+	
+	// Setup deadline for abortion or repeated retries:
+	PsychGetAdjustedPrecisionTimerSeconds(&abortTimeOut);
+	abortTimeOut+=syncTimeOut;
+	residual = INT_MAX;
+	
+	// Repeat until timeout or good enough result:
+	do {
+		// If this isn't the first try, wait 0.5 secs before retry:
+		if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
+		
+		residual = INT_MAX;
+
+		// Set command code for display sync:
+		syncCommand.command = kPsychKDFastSyncAllHeads;
+		
+		// Issue request to driver:
+		kernResult = PsychOSKDDispatchCommand(connect, &syncCommand, &syncCommand, &status);
+		if (kernResult == KERN_SUCCESS) {
+			residual = (int) syncCommand.inOutArgs[0];
+			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Graphics display head synchronization failed (Kernel error code: %lx).\n", kernResult);
+			break;
+		}
+		
+		// Timestamp:
+		PsychGetAdjustedPrecisionTimerSeconds(&now);
+	} while ((now < abortTimeOut) && (abs(residual) > allowedResidual) && (kernResult == KERN_SUCCESS));
+
+	// Return residual value if wanted:
+	if (residuals) { 
+		residuals[0] = residual;
+	}
+	
+	if (abs(residual) > allowedResidual) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to synchronize heads down to the allowable residual of +/- %i scanlines. Final residual %i lines.\n", allowedResidual, residual);
+	}
+	
+	// TODO: Error handling not really worked out...
+	if (residual == INT_MAX || kernResult != KERN_SUCCESS) return(PsychError_system);
+	
+	// Done.
+	return(PsychError_none);
+}
+
+int PsychOSKDGetBeamposition(int screenId)
+{
+	// Check availability of connection:
+	io_connect_t connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
+		// Beampos queries unavailable:
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
+		return(-1);
+	}
+	
+	// Set command code for beamposition query:
+	syncCommand.command = kPsychKDGetBeamposition;
+	
+	// Assign headid for this screen: Currently we only support two display heads and
+	// statically assign headid 0 to screenid 0 and headid 1 to screenid 1.
+	// For now, we hope that PTB's high-level consistency checking will detect mismapped
+	// queries and disable beamposition queries in that case.
+	// TODO: Implement a more powerful and flexible mapping!
+	syncCommand.inOutArgs[0] = (screenId > 0) ? 1 : 0;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
+	if (kernResult != KERN_SUCCESS) {
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-ERROR: Kernel driver beamposition query failed (Kernel error code: %lx).\n", kernResult);
+		// A value of -1 signals beamposition queries unsupported or invalid:
+		return(-1);
+	}
+
+	// Return queried position:
+	return((int) syncCommand.inOutArgs[0]);
 }

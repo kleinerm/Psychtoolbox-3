@@ -1549,6 +1549,8 @@
 		8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8302E2010A1928E900AE269C /* WaitSecs.cc */; };
 		830571EB098464A100EB51EE /* SCREENCopyWindow.c in Sources */ = {isa = PBXBuildFile; fileRef = F574FA280404446501A80168 /* SCREENCopyWindow.c */; };
 		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
+		8306696C0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */; };
+		8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */; };
 		8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */; };
@@ -3608,6 +3610,10 @@
 		8302E2000A1928E900AE269C /* Screen.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = Screen.cc; path = ../../../Source/Octave/Screen.cc; sourceTree = SOURCE_ROOT; };
 		8302E2010A1928E900AE269C /* WaitSecs.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = WaitSecs.cc; path = ../../../Source/Octave/WaitSecs.cc; sourceTree = SOURCE_ROOT; };
 		830572260984860000EB51EE /* SCREENWaitBlanking.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENWaitBlanking.c; path = ../../../Source/Common/Screen/SCREENWaitBlanking.c; sourceTree = SOURCE_ROOT; };
+		8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychGraphicsHardwareHALSupport.c; path = ../../../Source/Common/Screen/PsychGraphicsHardwareHALSupport.c; sourceTree = SOURCE_ROOT; };
+		8306696E0D3923440009C12B /* PsychGraphicsHardwareHALSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsHardwareHALSupport.h; path = ../../../Source/Common/Screen/PsychGraphicsHardwareHALSupport.h; sourceTree = SOURCE_ROOT; };
+		830669BD0D3954B10009C12B /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychUserKernelShared.h; path = ../../../Source/OSX/Screen/PsychUserKernelShared.h; sourceTree = SOURCE_ROOT; };
+		83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsCardRegisterSpecs.h; path = ../../../Source/Common/Screen/PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
 		8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportQuickTime.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
 		8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibDC1394.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c; sourceTree = SOURCE_ROOT; };
 		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
@@ -5337,6 +5343,7 @@
 				F569F256038E2C77017A7028 /* ScreenSynopsis.c */,
 				F569F253038E2C77017A7028 /* ScreenExit.c */,
 				F569F24F038E2C77017A7028 /* PsychGLGlue.c */,
+				8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */,
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
@@ -5717,6 +5724,7 @@
 			isa = PBXGroup;
 			children = (
 				F5AF1EE403B3C673017A7028 /* PsychScreenGlue.h */,
+				830669BD0D3954B10009C12B /* PsychUserKernelShared.h */,
 				F5AF1EE603B3C6F5017A7028 /* PsychWindowGlue.h */,
 				F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */,
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
@@ -5831,6 +5839,8 @@
 				0F35BB060B23DF9F0083A954 /* glxew.h */,
 				0F35BB070B23DFAD0083A954 /* wglew.h */,
 				F55903740385C81D017A7028 /* RegisterProject.h */,
+				83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */,
+				8306696E0D3923440009C12B /* PsychGraphicsHardwareHALSupport.h */,
 				0F45C2A20B264AC3004ED5F0 /* PsychImagingPipelineSupport.h */,
 				F598839303F9A74F01A80168 /* PsychRects.h */,
 				8370C71C096A013600BD4C8C /* PsychTextureSupport.h */,
@@ -11146,6 +11156,7 @@
 				83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */,
 				8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */,
 				8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
+				8306696C0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11606,6 +11617,7 @@
 				83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */,
 				8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */,
 				8320C1BA0D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
+				8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

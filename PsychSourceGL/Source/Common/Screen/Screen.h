@@ -3,31 +3,54 @@
 	
 	PLATFORMS:
 			
-		Only OS X for now.
+		All.
 			
 	AUTHORS:
 	
 		Allen Ingling		awi		Allen.Ingling@nyu.edu
-
+		Mario Kleiner		mk		mario.kleiner@tuebingen.mpg.de
+		
 	HISTORY:
 	
 		12/18/01		awi		wrote it.  Derived from joystick.h
 		11/16/04		awi		Added  SCREENGlobalRect 
 		1/25/05			awi		Merged in mk version which provides ScreenCloseAllWindows() declaration. Then restored SCREENGetTimeList declaration.  
-                4/22/05                 mk              Added new commands DrawLines, SelectStereoDrawBuffer and DrawingFinished
-                5/09/05                 mk              Added new command GetFlipInterval
-                10/11/05                mk              Support for special movie playback added (include of PsychMovieSupport.h)
-
+		4/22/05          mk     Added new commands DrawLines, SelectStereoDrawBuffer and DrawingFinished
+		5/09/05          mk     Added new command GetFlipInterval
+		10/11/05         mk     Support for special movie playback added (include of PsychMovieSupport.h)
+		01/13/08		 mk		Added warning text and more fixes for the totally broken #include chain issues...
  */
 
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_Screen
 #define PSYCH_IS_INCLUDED_Screen
 
+// CAUTION FIXME TODO: The whole include chain of PTB is pretty broken, containing
+// lot's of circular dependencies. It was a well meant, but badly thought through
+// design of the original developers, with lot's of issues creeping up with the
+// evolution of PTB-3. The only clean fix would be a massive, painful redesign with
+// lot's of care and lots of testing -- Nothing to be done quickly or hastily :-(
+//
+// For now this means that the exact order of #include statements here matters.
+// A small change in order can break the whole build process in pretty nasty
+// ways --> Thousands of compiler errors which are hard to track down!
+// If you ever add a new #include here and then get severe and mysterious
+// compile breakage, first check the order of includes here for circular
+// dependency issues. Try to not change the order here unless absolutely needed
+// and then only in the most minimal way that fixes your problems!!!!
+//
+// You may need to add pretty ugly hacks to fix'em then,
+// See the comment below for PsychGraphicsHardwareHALSupport.h ...
+
 //project includes includes for screen foundation
 #include "Psych.h"
 #include "PsychRects.h"
 #include "ScreenTypes.h"
+
+// Include POSIX Threading support on Unix systems (for Async Flips):
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+#include <pthread.h>
+#endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 	#include <Quicktime/Movies.h>
@@ -44,6 +67,10 @@
 #include "PsychScreenGlue.h"
 #include "PsychWindowTextGlue.h"
 #include "WindowBank.h"
+// PsychGraphicsHardwareHALSupport *must* be behind "WindowBank" and "PsychWindowTextGlue.h"!!!
+// Read the comments marked with CAUTION in WindowRecord.h and PsychGraphicsHardwareHALSupport.h
+// for explanation.
+#include "PsychGraphicsHardwareHALSupport.h"
 #include "PsychWindowGlue.h"
 #include "PsychWindowSupport.h"
 #include "PsychMovieSupport.h"
@@ -51,7 +78,6 @@
 #include "PsychAlphaBlending.h"
 #include "PsychVideoCaptureSupport.h"
 #include "PsychImagingPipelineSupport.h"
-
 #include "ScreenArguments.h"
 #include "RegisterProject.h"
 #include "WindowHelpers.h"

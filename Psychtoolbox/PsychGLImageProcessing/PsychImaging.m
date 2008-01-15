@@ -109,6 +109,29 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
 %
 %
+% * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
+%   support for output of stimuli with 10 bit precision per color channel
+%   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
+%   Currently, ATI/AMD Radeon hardware of the X1000/HD2000/HD3000 series
+%   and later models should support a native ARGB2101010 framebuffer, ie.,
+%   a system framebuffer with 2 bits for the alpha channel, and 10 bits per
+%   color channel.
+%
+%   As this is supported by the hardware, but not by the standard ATI
+%   graphics drivers, we follow a hybrid approach: We use a special kernel
+%   level driver to reconfigure the hardware for 10bpc framebuffer support.
+%   Then we use a special imaging pipeline formatting plugin to convert
+%   16bpc or 32bpc stimuli into the special data format required by this
+%   framebuffer configuration.
+%
+%   You'll need to install and load the special Psychtoolbox kernel driver
+%   and you'll need to have a supported gfx-card for this to work! This
+%   feature is highly experimental and not guaranteed to work reliable on
+%   any system configuration. Read 'help PsychtoolboxKernelDriver' for info
+%   about the driver and installation instructions.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+%
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
 %   BrightSide Technologies High dynamic range display device for 16 bit
 %   per color channel output precision. See "help BrightSideHDR" for
@@ -307,6 +330,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 % 27.9.2007 Added support for floating point framebuffer, Bits++ and
 %           Brightside-HDR. Documentation cleanup. (MK).
+%
+% 13.1.2008 Support for 10 bpc native framebuffer of ATI Radeons. (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -428,8 +453,14 @@ if strcmp(cmd, 'OpenWindow')
         winRect = varargin{3};
     end
     
-    % Ignore pixelSize:
-    pixelSize = [];
+    if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+        % Request a pixelsize of 30 bpp to enable native 2101010
+        % framebuffer support:
+        pixelSize = 30;
+    else
+        % Ignore pixelSize:
+        pixelSize = [];
+    end
     
     % Override numbuffers -- always 2:
     numbuffers = 2;
@@ -687,6 +718,20 @@ if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
 
     % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
     % been explicitely requested:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+end
+
+% Request for native 10 bit per color component ARGB2101010 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+    % Enable output formatter chain:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+
+    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+    % been explicitely requested: In principle, a 16 bpc FBO would be
+    % sufficient for a native 10bpc framebuffer...
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
@@ -1011,9 +1056,35 @@ if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'PseudoGray output formatting shader', pgshader);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
-    
 end
 % --- End of output formatter for Pseudo-Gray processing requested? ---
+
+% --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
+if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
+    % Load output formatting shader for Pseudo-Gray:
+    pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
+
+    % Init the shader: Assign mapping of left- and right image:
+    glUseProgram(pgshader);
+    glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+    glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
+    glUniform1f(glGetUniformLocation(pgshader, 'Prescale'),  1024);
+    glUseProgram(0);
+
+    % Use helper routine to build a proper RGBA Lookup texture for
+    % conversion of HDR RGBA pixels to ARGB2101010 pixels:
+    pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+    
+    if outputcount > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+    pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    outputcount = outputcount + 1;
+end
+% --- End of output formatter for native 10 bpc ARGB2101010 framebuffer ---
 
 % --- GPU based mirroring of left half of onscreen window to right half requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))

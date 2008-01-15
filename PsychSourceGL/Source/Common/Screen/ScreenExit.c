@@ -73,6 +73,11 @@ PsychError ScreenExitFunction(void)
 	CleanupDrawTextGDI();
 	#endif
 
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		// Shutdown connection to kernel level driver, if any exists:
+		PsychOSShutdownPsychtoolboxKernelDriverInterface();
+	#endif
+	
 	return(PsychError_none);
 }
 

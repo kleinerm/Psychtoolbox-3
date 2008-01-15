@@ -119,6 +119,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
 	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire)]);"
+	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 
 static char seeAlsoString[] = "";	
@@ -159,7 +160,7 @@ PsychError SCREENPreference(void)
 	char					*preferenceName, *newFontName;
 	const char				*tableCreator, *oldDefaultFontName;
 	Boolean					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
-	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt;
+	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt, tempInt2, tempInt3;
 	double					returnDoubleValue, inputDoubleValue;
 	
 	//all sub functions should have these two lines
@@ -370,6 +371,23 @@ PsychError SCREENPreference(void)
 				if(numInputArgs==2){
 					PsychCopyInFlagArg(2, kPsychArgRequired, &booleanInput);
 					PsychPrefStateSet_SuppressAllWarnings(booleanInput);
+				}
+				preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "SynchronizeDisplays")){
+				if(numInputArgs==2){
+					// This is a special call: It currently doesn't set a preference setting,
+					// but instead triggers an instantaneous synchronization of all available
+					// display heads, if possible. We may have a more clever and "standard" interface
+					// interface for this later on, but for first tests this will do.
+					// Syncmethod is hard-coded to 0 -> Use whatever's available to sync.
+					// timeout for retries is 5.0 seconds.
+					// Acceptable residual offset is +/- 2 scanlines.
+					// Returns the real residual offset after sync.
+					PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+					tempInt2 = 0;
+					if (PsychSynchronizeDisplayScreens(&tempInt2, NULL, &tempInt, tempInt, 5.0, 2)!=PsychError_none) PsychErrorExitMsg(PsychError_user, "Sync failed for reasons mentioned above.");
+					PsychCopyOutDoubleArg(1, kPsychArgOptional, tempInt);
 				}
 				preferenceNameArgumentValid=TRUE;
 		}else 

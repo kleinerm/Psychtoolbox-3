@@ -268,6 +268,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		attribs[attribcount++]=displayMask;
 
 		// 10 bit per component framebuffer requested (10-10-10-2)?
+		/*	Disabled: We use our special kernel helper driver and PsychEnableNative10BitFramebuffer(); instead on Radeon Gfx et al.
 		if (windowRecord->depth == 30) {
 			// Request a 10 bit per color component framebuffer with 2 bit alpha channel:
 			printf("PTB-INFO: Trying to enable 10 bpc framebuffer...\n");
@@ -277,6 +278,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			attribs[attribcount++]=kCGLPFAAlphaSize;
 			attribs[attribcount++]=16;
 		}
+		*/
 		
 		// 16 bit per component, 64 bit framebuffer requested (16-16-16-16)?
 		if (windowRecord->depth == 64) {
@@ -859,6 +861,16 @@ void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfr
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord)
 {
+	if (CGLGetCurrentContext() != NULL) {
+		// We need to glFlush the old context before switching, otherwise race-conditions may occur:
+		glFlush();
+		
+		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glFlush();
+	}
+
+	// Detach totally:
     CGLSetCurrentContext(NULL);
 }
 

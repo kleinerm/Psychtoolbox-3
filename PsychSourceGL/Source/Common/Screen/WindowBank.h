@@ -4,20 +4,20 @@ PsychToolbox2/Source/Common/WindowBank.h
 AUTHORS:
 
 	Allen.Ingling@nyu.edu               awi
-        mario.kleiner at tuebingen.mpg.de   mk
+	mario.kleiner at tuebingen.mpg.de   mk
 
 PLATFORMS: 
 
-	OS X and Microsoft Windows. Only the PsychTargetSpecificWindowRecordType struct
+	All. Only the PsychTargetSpecificWindowRecordType struct
 	is different for the different operating systems.
 
 HISTORY:
 	
-	07/18/02  awi		Wrote it.
-        04/22/05  mk            Added new flags to PsychWindowRecordType for stereo mode, skipped frames, IFI estimate and timestamping
-                                - These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
-        07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
-        10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
+	07/18/02  awi			Wrote it.
+	04/22/05  mk            Added new flags to PsychWindowRecordType for stereo mode, skipped frames, IFI estimate and timestamping
+							- These functions are mostly used by Screen('Flip') and Screen('DrawingFinished').
+	07/22/05  mk            Removed constants for max number of windows. We resize dynamically now (see WindowBank.c)
+	10/11/05  mk            Support for special Quicktime movie textures in .targetSpecific part of PsychWindowRecord added.
 	12/27/05  mk            Added new targetSpecific - struct for the Win32 port of PTB.
 
 DESCRIPTION:
@@ -35,21 +35,13 @@ DESCRIPTION:
 	reference.  
 
 
-T0 DO: 
-	
-	Change abbreviaioions to "windowIndex" from "windex" and to "screenNumber" from "scrumber"
-	
-	The WindowRecord will store either a texture (and OpenGL texture) or an offscreen window (GL context in system memory).
-	Separate WindowRecord fields according to whether they retain info for i. offscree windows ii. textures iii. both and 
-	make the mutually exclusive fields variant.  This is more for clarity than to save memory.    
-  
+TO DO: 
 
 */
 
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_WindowBank
 #define PSYCH_IS_INCLUDED_WindowBank
-
 
 /*
 	includes
@@ -101,9 +93,17 @@ T0 DO:
 											// float FBO to allow for hardware accelerated framebuffer blending.
 #define kPsychUseTextureMatrixForRotation 1 // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via texture matrix, not via modelview matrix. To be set as flag in 'DrawTexture(s)'
-#define kPsychDontDoRotation 2				// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
+#define kPsychDontDoRotation			  2	// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via shader, not via matrices, ie., just pass rotation angle to shader. To be set as flag in 'DrawTexture(s)'
 #define kPsychHalfHeightWindow		   8192 // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with half-height, e.g., for interleaved stereo...
+#define kPsychNative10bpcFBActive	   1024 // Setting for 'specialflags' field of windowRecords: Means that this windowRecord is attached to a native 10bpc system framebuffer
+											// and needs some special handling it init, shutdown and during operation.
+
+// The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192. --> Flags above 16384 and higher are available...
+
+// The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
+// 1,2,1024,S-2048,S-8192. --> Flags above 16384 and higher are available, as well as 4,8,16,32,64,128,256,512,4096
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;
@@ -128,6 +128,38 @@ typedef struct PsychFBO {
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
+
+// This support structure for async flips is supported on all non-Windows platforms, aka all Unix platforms:
+// It gets attached to the asyncFlipInfo* of a windowRecord whenever async flips are used.
+typedef struct PsychFlipInfoStruct {
+	unsigned char			asyncstate;			// Current execution state of flip.
+	unsigned char			flipperState;
+	// Parameters that specify the flip request: See prototype of PsychFlipWindowBuffers() for meaning of arguments:
+	int						opmode;
+	int						multiflip;
+	int						vbl_synclevel;
+	int						dont_clear;
+	double					flipwhen;
+	// Return arguments with results of flip: See prototype of PsychFlipWindowBuffers() for meaning of arguments:
+	int						beamPosAtFlip;
+	double					miss_estimate;
+	double					time_at_flipend;
+	double					time_at_onset;
+	double					vbl_timestamp;
+
+	// OS specific variables for thread handling and thread synchronization:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+	// UNIX: POSIX threads for threading and mutex locking/sync:
+	pthread_t				flipperThread;		// Thread handle for background flipping thread.
+	pthread_mutex_t			performFlipLock;	// Primary lock.
+	pthread_cond_t			flipperGoGoGo;		// Signalling condition variable to trigger execution of a flip request by the flipper thread.
+#else
+	// Windows: Not implemented. Just dummy variables to make compiler happy:
+	void*					flipperThread;		// Thread handle for background flipping thread.
+	unsigned int			performFlipLock;	// Primary lock.
+	unsigned int			flipperGoGoGo;		// Signalling condition variable to trigger execution of a flip request by the flipper thread.
+#endif
+} PsychFlipInfoStruct;
 
 
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -214,9 +246,6 @@ typedef struct _PsychWindowRecordType_{
         GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
 		GLint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
 
-	//Used only when this structure holds a window:
-	PsychTextAttributes                     textAttributes;
-	
 	//line stipple attributes, for windows not textures.
 	GLushort				stipplePattern;
 	GLint					stippleFactor;
@@ -281,8 +310,31 @@ typedef struct _PsychWindowRecordType_{
 	//Only use abstracted accessors on this structure, otherwise you will break platform portability.
 	PsychTargetSpecificWindowRecordType	targetSpecific;  //defined within 
 	
-} PsychWindowRecordType;
+	PsychFlipInfoStruct*	flipInfo;								// This is either a NULL-Ptr, or it points to structure with all the info
+																	// needed for implementing asynchronous flip operations. Its always NULL on
+																	// MS-Windows, non-NULL on Linux/OSX as soon as async flips are used at least once.
+																	// See SCREENFlip.c and flipping routines in PsychWindowSupport.c for more details...
 
+	// Used only when this structure holds a window:
+	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of
+	// PTB, this field can not be used in files that #define PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD,
+	// e.g., PsychGraphicsHardwareHALSupport.c/h. Reason: The order of #include's in Screen.h prevents the
+	// definition of this field of being available when PsychGraphicsHardwareHALSupport.h is included,
+	// and we can't move that file down the include chain due to other nasty dependency issues!
+	// So in such files, which need definition of PsychWindowRecordType, but are not related to
+	// any text handling, we redef this to a void*. Important: This *must* be the last definition
+	// of the struct PsychWindowRecordType, otherwise memory-alignment of the datastructure would
+	// change in a corruptive way!!! So use the PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD with
+	// great caution! A proper fix would be to redesign the include dependency chain - either the whole
+	// design, or at least the parts related to PsychTextAttributes, but that's unlikely to be a pain-free
+	// procedure - it will cause severe breakage and the need for lot's of fixups and auditing, so defer
+	// this to a later point in time :-(
+	#ifndef PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD
+	PsychTextAttributes                     textAttributes;
+	#else
+	void*									textAttributes;
+	#endif
+} PsychWindowRecordType;
 
 
 //various window and screen related
@@ -303,11 +355,5 @@ boolean 		PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord);
 void			PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowRecordType ***pointerList);
 void 			PsychDestroyVolatileWindowRecordPointerList(PsychWindowRecordType **pointerList);
 
-
 //end include once
 #endif
-
-
-
-
-
