@@ -23,7 +23,32 @@ function DaqPins
 % 18  TRIG in      38  Port B6        18  TRIG in      38  Port B6
 % 19  SYNC         39  Port B7        19  SYNC         39  Port B7
 % 20  CTR          40  GND            20  CTR          40  GND
+% 
+%USB-1408FS same as USB-1208FS except that pin 16 is listed as 2.5 V 
+%
+% USB-1608FS pins 
+% Pin Signal name  Pin Signal name
+%  1  CH0 in       21  DIO0
+%  2  AGND         22  GND
+%  3  CH1 in       23  DIO1
+%  4  AGND         24  GND
+%  5  CH2 in       25  DIO2
+%  6  AGND         26  GND
+%  7  CH3 in       27  DIO3
+%  8  AGND         28  GND
+%  9  CH4 in       29  DIO4
+% 10  AGND         30  GND
+% 11  CH5 in       31  DIO5
+% 12  AGND         32  GND
+% 13  CH6 in       33  DIO6
+% 14  AGND         34  GND
+% 15  Ch7 in       35  DIO7
+% 16  AGND         36  SYNC
+% 17  CAL          37  TRIG_IN
+% 18  AGND         38  CTR
+% 19  AGND         39  PC +5V
+% 20  AGND         40  GND
 %     
-% See also Daq, DaqFunctions, TestDaq.
+% See also Daq, DaqFunctions, DaqTest.
 % DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
 help DaqPins

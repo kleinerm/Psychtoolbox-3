@@ -1,26 +1,28 @@
-function params=DaqAInScanBegin(device,options)
-% params=DaqAInScanBegin(device,options)
+function params=DaqAInScanBegin(daq,options)
+% params=DaqAInScanBegin(DeviceIndex,options)
 % Calls DaqAInScan with the options set to only begin, and not continue or
 % end. You should subsequently call DaqAInScanContinue (as many times as
 % you like) and, finally, DaqAInScanEnd to get the data. For example:
-%     options.lowChannel=lowChannel;
-%     options.highChannel=highChannel;
+%     options.FirstChannel=FirstChannel;
+%     options.LastChannel=LastChannel;
 %     options.count=count;
 %     options.f=f;
-%     params=DaqAInScanBegin(device,options);
+%     params=DaqAInScanBegin(DeviceIndex,options);
 %     for i=1:frames
 %         % add code here doing something useful
-%         params=DaqAInScanContinue(device,options);
+%         params=DaqAInScanContinue(DeviceIndex,options);
 %     end
-%     params=DaqAInScanContinue(device,options);
-%     [data,params]=DaqAInScanEnd(device,options);
-% See also DaqAInScan, DaqAInScanBegin, DaqAInScanContinue, DaqAInScanEnd,
-% Daq, DaqPins, TestDaq, TestPsychHid.
+%     params=DaqAInScanContinue(DeviceIndex,options);
+%     [data,params]=DaqAInScanEnd(DeviceIndex,options);
+% See also DaqAInScan, DaqAInScanContinue, DaqAInScanEnd,
+% Daq, DaqPins, DaqTest, PsychHIDTest.
 
 % 4/15/05 dgp Wrote it.
+% 1/10/08 mpr glanced at it; made same changes as in DaqAInScanContinue.
 
 options.begin=1;
 options.continue=0;
 options.end=0;
-[data,params]=DaqAInScan(device,options);
+[data,params]=DaqAInScan(daq,options);
 
+return;

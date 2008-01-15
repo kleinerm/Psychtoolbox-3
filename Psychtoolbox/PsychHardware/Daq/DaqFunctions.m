@@ -17,9 +17,13 @@ function DaqFunctions
 % DaqDConfigPort          Configure digital port
 % DaqDIn                  Read digital ports
 % DaqDOut                 Write digital port
+% DaqDConfigPortBit       Configure individual port bits
+% DaqDReadBit             Read single bit from digital port
+% DaqDWriteBit            Write single bit to digital port
 % 
 % * Miscellaneous commands *
 % DaqDeviceIndex          Get reference(s) to our device(s)
+% DaqFind                 Return DeviceIndex iff one device is connected
 % DaqBlinkLED             Cause LED to blink
 % DaqCInit                Initialize counter
 % DaqCIn                  Read counter
@@ -27,6 +31,7 @@ function DaqFunctions
 % DaqGetStatus            Retrieve device status
 % DaqReset                Reset the device
 % DaqSetCal               Set CAL output
+% DaqCalibrateAIn         for 1608 only; measure and store calibration data
 % DaqSetSync              Configure sync
 % DaqSetTrigger           Configure ext. trigger
 % 
@@ -38,6 +43,6 @@ function DaqFunctions
 % DaqWriteCode            Write program memory
 % DaqWriteSerialNumber    Write a new serial number to device
 % 
-% See also Daq, TestDaq, DaqPins, DaqCalls, DaqCodes,
+% See also Daq, DaqTest, DaqPins, DaqCalls, DaqCodes,
 % DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
 help DaqFunctions

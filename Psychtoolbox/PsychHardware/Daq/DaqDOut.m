@@ -1,24 +1,49 @@
-function err=DaqDOut(device,port,data)
-% err=DaqDOut(device,port,data)
+function err=DaqDOut(daq,port,data)
+% err=DaqDOut(DeviceIndex,port,data)
 % USB-1208FS: Write digital port. This command writes data to the DIO port
 % bits that are configured as outputs.
-% "device" is a small integer, the array index specifying which HID
+% "DeviceIndex" is a small integer, the array index specifying which HID
 %       device in the array returned by PsychHID('Devices') is interface 0
 %       of the desired USB-1208FS box.
 % "port" 0 = port A, 1 = port B
 % "data" 8-bit value, 0 to 255.
-% See also Daq, DaqFunctions, DaqPins, TestDaq, TestPsychHid.
+%
+% USB-1608FS: Only has one DIO port, so second argument is irrelevant and will 
+% be ignored if passed.  Function will check to determine if device is a 1608,  
+% and act accordingly.
+%
+% See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest.
 % DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
-
+%
 % 4/15/05 dgp Wrote it.
+% 12/18/07  mpr   updated for use with USB-1608FS
+% 1/11/08   mpr   swept through trying to improve consistency across daq
+%                   functions
 
+% Denis(?) commented these out.  Don't know why.  For speed, I would guess.
+% If you choose to comment them back in, then structure of code should
+% change.  Logic should remain that two arguments are expected for 1608FS
+% and three arguments for other device types.
+%
 % if ~ismember(port,0:1)
 % 	error('"port" must be 0 or 1.');
 % end
 % if ~ismember(data,0:255)
 % 	error('"data" must be in range 0:255.');
 % end
-err=PsychHID('SetReport',device,2,4,uint8([0 port data])); % DOut
+
+TheDevices = PsychHID('Devices');
+if strcmp(TheDevices(daq).product(5:6),'16')
+  if nargin == 2
+    data = port;
+  end
+  TheReport = uint8([0 data]);
+else
+  TheReport = uint8([0 port data]);
+end
+err=PsychHID('SetReport',daq,2,4,TheReport); % DOut
 if err.n
     fprintf('DaqDOut error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
+
+return;

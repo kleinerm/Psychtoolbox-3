@@ -1,37 +1,55 @@
-function err=DaqReset(device)
-% err=DaqReset(device)
+function err=DaqReset(OldDaqIndex)
+% err=DaqReset(DeviceIndex)
 % Assuming that something's wrong with the USB-1208FS or our communication
 % with it, we re-enumerate in order to re-establish communication. Then we
 % send the reset command to ask the USB-1208FS to reset itself. Then we
 % re-enumerate again to re-establish communication once more.
 % 
-% To avoid problems caused by CLEAR PsychHID, we recommend that, instead of 
-% calling DaqReset, you unplug and reinsert the USB cable of your
-% USB-1208FS and quit and restart MATLAB. In our experience that
-% combination always restores normal communication.
+% To avoid problems caused by CLEAR PsychHID, we recommend that (if you're using
+% a 1208FS), instead of calling DaqReset, you unplug and reinsert the USB cable
+% of your USB-1208FS and quit and restart MATLAB. In Denis' experience that
+% combination always restores normal communication.  If you are using a 1608FS,
+% keep reading...
 % 
-% See also Daq, DaqFunctions, DaqPins, TestDaq, TestPsychHid.
+% This function calls "clear PsychHID" twice, and yet I still frequently found
+% that I needed to run that command again in order for communication to be
+% properly established again.  With a USB-1608FS, Matlab 2007b, and Leopard, I
+% found that I didn't have the problems Denis seemed to have.  But what I did
+% have was a problem with PsychHID not finding all of the interfaces when
+% devices were enumerated.  Running this function (followed by an additional
+% "clear PsychHID" command) worked for me, so my recommendation for that case is
+% the opposite of Denis'.  I never needed to re-start Matlab or unplug the
+% device to get my problems solved.  So I recommend you just run this command,
+% then run "clear PsychHID", then try "daq=DaqFind" or "daqs=DaqDeviceIndex"
+% (the latter if you have more than one A/D converter built by Measurement
+% Computing.  -- mpr 
+% 
+% See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest, DaqFind, 
+% DaqDeviceIndex.
 
 % 4/15/05 dgp Wrote it.
+% 1/9/08  mpr tweaked it for use with 1608FS
 
-fprintf('Resetting USB-1208FS.\n');
+fprintf('Resetting USB-1x08FS.\n');
 clear PsychHID; % flush current enumeration  (list of devices)
 devices=PsychHID('devices'); % enumerate again
 daq=[];
-for i=1:length(devices)
-    if streq(devices(i).product,'USB-1208FS')
-        if isempty(daq)
-            daq=i;
-        elseif ~streq(devices(i).serialNumber,devices(daq(end)).serialNumber)
-            daq(end+1)=i;
-        end
+for k=1:length(devices)
+  if all(devices(k).product([4:5 7:10]) == '-108FS')
+    if isempty(daq)
+      daq=k;
+    elseif ~streq(devices(k).serialNumber,devices(daq(end)).serialNumber)
+      daq(end+1)=k;
     end
+  end
 end
 if isempty(daq)
-    error('Sorry, couldn''t find a USB-1208FS.');
+  error('Sorry, couldn''t find a USB-1x08FS.');
 end
-if ~any(ismember(device,daq))
-    device=daq(1);
+if ~any(ismember(OldDaqIndex,daq))
+  NewDaqIndex=daq(1);
+else
+  NewDaqIndex=OldDaqIndex;
 end
 % Reset. Ask the USB-1208FS to reset its USB interface.
 % CAUTION: Immediately after RESET, all commands fail, returning error
@@ -40,30 +58,35 @@ end
 % communication we must flush the current enumeration and re-enumerate the
 % HID-compliant devices.
 % fprintf('Reset. Ask the USB-1208FS to reset its USB interface.\n');
-err=Reset(device);
+err=Reset(NewDaqIndex);
 % fprintf('(Reestablishing communication: Flushing current enumeration. ');
 clear PsychHID; % flush current enumeration  (list of devices)
+
 % fprintf('Re-enumerating. ... ');
 devices=PsychHID('devices'); % enumerate again
+
+% Not sure what the point of this next bit is since we don't do anything with
+% the information we acquire, but it seems harmless enough so I leave it in. --
+% mpr
 daq=[];
-for i=1:length(devices)
-    if streq(devices(i).product,'USB-1208FS')
-        if isempty(daq)
-            daq=i;
-        elseif ~streq(devices(i).serialNumber,devices(daq(end)).serialNumber)
-            daq(end+1)=i;
-        end
+for k=1:length(devices)
+  if all(devices(k).product([4:5 7:10]) == '-108FS')
+    if isempty(daq)
+      daq=k;
+    elseif ~streq(devices(k).serialNumber,devices(daq(end)).serialNumber)
+      daq(end+1)=k;
     end
+  end
 end
 % fprintf('Done.)\n');
 return
 
-function err=Reset(device)
-% err=Reset(device)
+function err=Reset(DaqIndex)
+% err=Reset(DeviceIndex)
 % USB-1208FS: Ask device to reset its USB interface.
-err=PsychHID('SetReport',device,2,65,uint8(65)); % Reset
+err=PsychHID('SetReport',DaqIndex,2,65,uint8(65)); % Reset
 if err.n
-    fprintf('Reset SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
+  fprintf('Reset SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
 return
 

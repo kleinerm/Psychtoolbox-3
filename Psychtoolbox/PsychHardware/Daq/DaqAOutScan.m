@@ -1,5 +1,5 @@
-function params=DaqAOutScan(device,v,options)
-% params=DaqAOutScan(device,v,options)
+function params=DaqAOutScan(daq,v,options)
+% params=DaqAOutScan(DeviceIndex,v,options)
 % USB-1208FS: Analog output scan. Produce sampled analog output voltage
 % waveforms on one or two channels. This command sends the values in "v"
 % (one column per channel) to the specified range of (one or two) output
@@ -11,18 +11,20 @@ function params=DaqAOutScan(device,v,options)
 % "params.countActual" is the actual total sample/channel sent.
 % "params.start" is when the first report ("v" data) was sent to the device.
 % "params.end" is when the final report was sent to device.
-% "device" is a small integer, the array index specifying which HID
+% "DeviceIndex" is a small integer, the array index specifying which HID
 %       device in the array returned by PsychHID('Devices') is interface 0 
 %       of the desired USB-1208FS box. 
 % "v" is a matrix, with one column per channel. (If you're using only one  
 %       channel, then you're allowed to send the vector as either a column
 %       or a row.) Each value is a double, in the range 0 to 1, which will
 %       produce an output voltage in the range 0 to 4.095 V.
-% "options.lowChannel" is the first channel of the scan (0 - 1).
-% "options.highChannel" is the last channel of the scan (0 - 1), and must 
-%       be greater than or equal to options.lowChannel. The values
-%       options.lowChannel and options.highChannel specify the channel
-%       range for the scan.
+% "options.FirstChannel" is the first channel of the scan (0 - 1). (formerly
+%       "options.lowChannel" -- that terminology is deprecated.)
+% "options.LastChannel" is the last channel of the scan (0 - 1), and must 
+%       be greater than or equal to options.FirstChannel. The values
+%       options.FirstChannel and options.LastChannel specify the channel
+%       range for the scan. (Formerly "options.highChannel" -- that terminology
+%       is deprecated.)
 % "options.f" is the desired sampling frequency, sample/channel/s, in the
 %       range 0.596/c to 10e6/c Hz, where c is the number of channels to be
 %       scanned.
@@ -48,11 +50,39 @@ function params=DaqAOutScan(device,v,options)
 % the attained rates are enough for my immediate needs, and hopefully that
 % will be true for many other users. 
 % 
-% See also Daq, DaqFunctions, DaqPins, TestDaq, TestPsychHid,
-% DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan,DaqAOutScan.
+% See also Daq, DaqFunctions, DaqPins, DaqTest, PsychHIDTest,
+% DaqDeviceIndex, DaqDIn, DaqDOut, DaqAIn, DaqAOut, DaqAInScan.
 
 % 4/15/05 dgp Wrote it.
 % 4/15/05 dgp Merged several arguments into the "options" struct.
+% 1/10/08 mpr glanced at it; made same changes as in DaqAOut.
+% 1/14/08 mpr changed lowChannel/highChannel terminology to
+%               FirstChannel/LastChannel a la DaqAInScan
+
+AllHIDDevices = PsychHID('Devices');
+if strcmp(AllHIDDevices(daq).product(5:6),'16')
+  error('It looks like you are trying to run DaqAOutScan from a USB-1608FS, but such devices have no analog outputs.');
+end
+
+if isfield(options,'lowChannel')
+  if isfield(options,'FirstChannel')
+    if length(options.FirstChannel) ~= length(options.lowChannel) || ~all(options.FirstChannel == options.lowChannel)
+      error('"options.lowChannel" is deprecated; new name is options.FirstChannel.  Do not try to use both inconsistently!');
+    end
+  else
+    options.FirstChannel = options.lowChannel;
+  end
+end
+
+if isfield(options,'highChannel')
+  if isfield(options,'LastChannel')
+    if length(options.LastChannel) ~= length(options.highChannel) || ~all(options.LastChannel == options.highChannel)
+      error('"options.highChannel" is deprecated; new name is options.LastChannel.  Do not try to use both inconsistently!');
+    end
+  else
+    options.LastChannel = options.highChannel;
+  end
+end
 
 if ~isfield(options,'trigger')
     options.trigger=0;
@@ -60,11 +90,11 @@ end
 if ~isfield(options,'getReports')
     options.getReports=1;
 end
-if ~isfield(options,'lowChannel')
-    options.lowChannel=0;
+if ~isfield(options,'FirstChannel')
+    options.FirstChannel=0;
 end
-if ~isfield(options,'highChannel')
-    options.highChannel=0;
+if ~isfield(options,'LastChannel')
+    options.LastChannel=0;
 end
 if ~isfield(options,'f')
     options.f=200;
@@ -72,16 +102,16 @@ end
 if ~isfield(options,'print')
     options.print=0;
 end
-if ~ismember(options.highChannel,0:1) || ~ismember(options.lowChannel,0:1) 
-    error('options.lowChannel and options.highChannel must each be 0 or 1.');
+if ~ismember(options.LastChannel,0:1) || ~ismember(options.FirstChannel,0:1) 
+    error('options.FirstChannel and options.LastChannel must each be 0 or 1.');
 end
-if options.highChannel<options.lowChannel
-    error('options.highChannel must be greater than or equal to options.lowChannel.');
+if options.LastChannel<options.FirstChannel
+    error('options.LastChannel must be greater than or equal to options.FirstChannel.');
 end
 if ~ismember(options.trigger,0:1)
     error('If specified, options.trigger must be 0 or 1.');
 end
-c=1+options.highChannel-options.lowChannel;
+c=1+options.LastChannel-options.FirstChannel;
 if c==1 && size(v,1)==1 && size(v,2)>1
     v=v';
 end
@@ -116,8 +146,8 @@ v8=v8(:);
 % report
 report=uint8(zeros(1,11));
 report(1)=21;
-report(2)=options.lowChannel;  % the first channel of the scan (0 - 1)
-report(3)=options.highChannel; % the last channel of the scan (0 - 1)
+report(2)=options.FirstChannel;  % the first channel of the scan (0 - 1)
+report(3)=options.LastChannel; % the last channel of the scan (0 - 1)
 ct=count;
 report(4)=bitand(ct,255); % count (4 bytes). The number of scans to perform.
 ct=bitshift(ct,-8);
@@ -136,8 +166,8 @@ report(11)=options.counted+2*options.trigger; % options; bit field that controls
 if options.print
     report
 end
-err=DaqAOutStop(device); % It might already be scanning. Stop it.
-err=PsychHID('SetReport',device,2,21,report); % AOutScan
+err=DaqAOutStop(daq); % It might already be scanning. Stop it.
+err=PsychHID('SetReport',daq,2,21,report); % AOutScan
 if err.n
     fprintf('DaqAOutScan SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
@@ -159,8 +189,8 @@ while samplesSent<count*c && GetSecs<quittingTime
             fprintf('%.3f s. Sending %d samples %d:%d\n',...
                 GetSecs-startingTime,samplesSendEnd-samplesSent,samplesSent+1,samplesSendEnd);
         end
-        err=PsychHID('SetReport',device-1,2,0,v8(2*samplesSent+1:2*samplesSendEnd)); % send to Interface 1
-    %     err=PsychHID('SetReport',device-1,2,0,uint16(v(samplesSent+1:samplesSendEnd))); % send to Interface 1
+        err=PsychHID('SetReport',daq-1,2,0,v8(2*samplesSent+1:2*samplesSendEnd)); % send to Interface 1
+    %     err=PsychHID('SetReport',daq-1,2,0,uint16(v(samplesSent+1:samplesSendEnd))); % send to Interface 1
         if options.print
             fprintf('%.3f s. Sent.\n',GetSecs-startingTime);
         end
@@ -185,16 +215,16 @@ while samplesSent<count*c && GetSecs<quittingTime
         WaitSecs(0.001);
         if 1
             % hex2dec('15') is 21.
-            [report,err]=PsychHID('GetReport',device,1,21,2);
+            [report,err]=PsychHID('GetReport',daq,1,21,2);
             if err.n
                 fprintf('DaqAOutScan GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
             end
         else
-            err=PsychHID('ReceiveReports',device);
+            err=PsychHID('ReceiveReports',daq);
             if err.n
                 fprintf('DaqAOutScan ReceiveReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
             end
-            [rr,err]=PsychHID('GiveMeReports',device);
+            [rr,err]=PsychHID('GiveMeReports',daq);
             if err.n
                 fprintf('DaqAOutScan GiveMeReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
             end
@@ -250,16 +280,16 @@ if options.print
     % Check for extra AOutScan reports from the USB-1208FS, requesting data.
     WaitSecs(0.001);
     if 0
-        [report,err]=PsychHID('GetReport',device,1,21,2);
+        [report,err]=PsychHID('GetReport',daq,1,21,2);
         if err.n
             fprintf('DaqAOutScan GetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
         end
     else
-        err=PsychHID('ReceiveReports',device);
+        err=PsychHID('ReceiveReports',daq);
         if err.n
             fprintf('DaqAOutScan ReceiveReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
         end
-        [reports,err]=PsychHID('GiveMeReports',device);
+        [reports,err]=PsychHID('GiveMeReports',daq);
         if err.n
             fprintf('DaqAOutScan GiveMeReports error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
         end
@@ -271,6 +301,8 @@ if options.print
         end
     end
 end
-err=DaqAOutStop(device); 
-err=PsychHID('ReceiveReports',device);
-PsychHID('GiveMeReports',device); % flush any remaining input reports.
+err=DaqAOutStop(daq); 
+err=PsychHID('ReceiveReports',daq);
+PsychHID('GiveMeReports',daq); % flush any remaining input reports.
+
+return;
