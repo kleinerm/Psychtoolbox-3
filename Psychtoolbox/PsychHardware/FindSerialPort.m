@@ -4,6 +4,7 @@ function PortNumber = FindSerialPort(PortString)
 % Purpose: Find port number associated with a particular input string.
 %
 % History: 11/21/07   mpr   listed to port
+%           1/16/08   mpr   added support for keyspan adapter
 %
 % Function is slightly more general than name suggests because name reflects the
 % origin of this function for finding the usb to serial port used for driving a
@@ -27,7 +28,13 @@ function PortNumber = FindSerialPort(PortString)
 % don't have an incentive to make improvements. -- mpr 11/21/07
 
 if ~nargin | isempty(PortString)
+  % if user doesn't know or doesn't care whether we find PL-2303 or keyspan
+  % adapter:
+  AllowAlternateStrings = 1;
   PortString = 'usbserial';
+  AltPortString = 'usa19';
+else
+  AllowAlternateString = 0;
 end
 
 if ~isempty(strfind(computer,'PCWIN'))
@@ -55,7 +62,7 @@ ThePortDevices = dir('/dev/cu*');
 PortTypeFound = 0;
 FoundIndices = [];
 for k=1:length(ThePortDevices)
-  if strfind(ThePortDevices(k).name,PortString)
+  if ~isempty(regexpi(ThePortDevices(k).name,PortString)) || (AllowAlternateStrings && ~isempty(regexpi(ThePortDevices(k).name,AltPortString)))
     PortTypeFound = PortTypeFound+1;
     FoundIndices = k;
   end
