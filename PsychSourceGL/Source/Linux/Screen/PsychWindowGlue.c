@@ -556,7 +556,16 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 */
 void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 {
-  glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
+	if (glXGetCurrentContext() != NULL) {
+		// We need to glFlush the context before switching, otherwise race-conditions may occur:
+		glFlush();
+		
+		// Need to unbind any FBO's in old context before switch, otherwise bad things can happen...
+		if (glBindFramebufferEXT) glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		glFlush();
+    }
+	
+	glXMakeCurrent(windowRecord->targetSpecific.deviceContext, None, NULL);
 }
 
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,

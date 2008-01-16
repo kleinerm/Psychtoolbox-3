@@ -78,17 +78,18 @@ PsychError SCREENFlip(void)
 	double time_at_flipend;
 	double time_at_onset;
 	unsigned int opmode;
+	boolean flipstate;
 	
 	// Change our "personality" depending on the name with which we were called:
-	if (strstr(PsychGetFunctionName(), "FlipAsyncBegin")) {
+	if (strcasecmp(PsychGetFunctionName(), "AsyncFlipBegin")==0) {
 		// Async flip invocation:
 		opmode = 1;
 	}
-	else if (strstr(PsychGetFunctionName(), "FlipAsyncEnd")) {
+	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipEnd")==0) {
 		// Finalize async flip operation:
 		opmode = 2;
 	}
-	else if (strstr(PsychGetFunctionName(), "FlipAsyncCheckEnd")) {
+	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipCheckEnd")==0) {
 		// Poll for finalization of async flip operation:
 		opmode = 3;
 	}
@@ -148,6 +149,13 @@ PsychError SCREENFlip(void)
 			PsychErrorExitMsg(PsychError_user, "Only 'dontsync' values 0 and 3 are allowed when multiflip is set to 2.");
 		}
 		
+		// Current multiflip > 0 implementation is not thread-safe, so we don't support this in async flip mode:
+		if ((multiflip != 0) && (opmode != 0))  PsychErrorExitMsg(PsychError_user, "Using a non-zero 'multiflip' flag while starting an asynchronous flip! Sorry, this is currently not possible.\n");
+		// Imaging pipeline hooks are not thread-safe: This one is the only one in PsychPostFlipOperations(); so we
+		// disallow it. The many hooks in PsychPreflipOperations() are safe because we perform the preflip-ops in the
+		// setup of async flip - before we enter the async helper thread:
+		if (PsychIsHookChainOperational(windowRecord, kPsychUserspaceBufferDrawingPrepare) && (opmode != 0)) PsychErrorExitMsg(PsychError_user, "Trying to use the 'UserspaceBufferDrawingPrepare' imaging hook-chain while starting an asynchronous flip! Sorry, this is currently not possible.\n");
+
 		// Query optional flipwhen argument: -1 == Don't sync to vertical retrace --> Only useful for debugging!
 		// Use this only if you "really know what you're doing(TM)!"
 		// 0 (default value) == Flip at next vertical retrace and sync to VBL. This is the old PTB behaviour as of PTB 1.0.42.
@@ -214,22 +222,23 @@ PsychError SCREENFlip(void)
 	// will dispatch the flip to the helper thread, then return immediately. In async end
 	// or async poll mode, it will either block until async op finished, or return after
 	// polling with a FALSE result, telling that not yet finished:
-	if (!PsychFlipWindowBuffersIndirect(windowRecord)) return(PsychError_none);	// Polling mode and polling says "Not yet done" - Just return.
+	flipstate = PsychFlipWindowBuffersIndirect(windowRecord);
 	
 	// Only have return args in synchronous mode or in return path from end/successfull poll of async flip:
 	if (opmode != 1) {
 		// Async flip is either zero in synchronous mode, or its 2 if an async flip
 		// successfully finished:
-		if ((flipRequest->asyncstate!=0) && (flipRequest->asyncstate!=2)) {
+		if ((flipRequest->asyncstate!=0) && (flipRequest->asyncstate!=2) && (flipstate)) {
 			printf("PTB-ERROR: flipRequest->asyncState has impossible value %i at end of flipop! This is a PTB DESIGN BUG!", flipRequest->asyncstate);
 			PsychErrorExitMsg(PsychError_internal, "flipRequest->asyncState has impossible value at end of flipop! This is a PTB DESIGN BUG!");
 		}
 		
 		// Reset it to zero, ie. ready for new adventures ;-)
-		flipRequest->asyncstate=0;
+		if (flipstate) flipRequest->asyncstate=0;
 		
-		// Return return arguments from flip:
-		vbl_timestamp	= flipRequest->vbl_timestamp;
+		// Return return arguments from flip: We return a zero vbl_timestamp in case a poll for flip completion failed.
+		// That indicates that flip not yet finished and all other return values are invalid:
+		vbl_timestamp	= (flipstate) ? flipRequest->vbl_timestamp : 0.0;
 		time_at_onset	= flipRequest->time_at_onset;
 		time_at_flipend = flipRequest->time_at_flipend;
 		miss_estimate	= flipRequest->miss_estimate;

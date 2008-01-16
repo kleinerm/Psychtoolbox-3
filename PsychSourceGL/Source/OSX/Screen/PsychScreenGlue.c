@@ -66,11 +66,6 @@ static int					numKernelDrivers = 0;
 static io_connect_t			displayConnectHandles[kPsychMaxPossibleDisplays];
 static int					repeatedZeroBeamcount[kPsychMaxPossibleDisplays];
 
-// Commando structure for communication of commands, input- and return-arguments between
-// kernel driver and PTB:
-PsychKDCommandStruct syncCommand;
-const IOByteCount	 structSize1 = sizeof(PsychKDCommandStruct);
-
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
@@ -956,7 +951,7 @@ io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status)
 	
 	if (!connect) {
 		if (status) *status = kIOReturnNoDevice;
-		if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUGINFO: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
 		return(0);
 	}
 
@@ -985,6 +980,9 @@ kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDComman
 
 unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status)
 {
+	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+	PsychKDCommandStruct syncCommand;
+	
 	// Check availability of connection:
 	io_connect_t connect;
 	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
@@ -1009,6 +1007,9 @@ unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned i
 
 unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status)
 {
+	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+	PsychKDCommandStruct syncCommand;
+
 	// Check availability of connection:
 	io_connect_t connect;
 	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
@@ -1033,6 +1034,9 @@ unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned 
 // Synchronize display screens video refresh cycle. See PsychSynchronizeDisplayScreens() for help and details...
 PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
 {
+	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+	PsychKDCommandStruct syncCommand;
+
 	int screenId = 0;
 	double	abortTimeOut, now;
 	int residual;
@@ -1112,11 +1116,14 @@ PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int
 
 int PsychOSKDGetBeamposition(int screenId)
 {
+	// Have syncCommand locally defined, ie. on threads local stack: Important for thread-safety, e.g., for async-flip etc.:
+	PsychKDCommandStruct syncCommand;
+
 	// Check availability of connection:
 	io_connect_t connect;
 	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
 		// Beampos queries unavailable:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
 		return(-1);
 	}
 	
@@ -1133,7 +1140,7 @@ int PsychOSKDGetBeamposition(int screenId)
 	// Issue request:
 	kern_return_t kernResult = PsychOSKDDispatchCommand(connect,  &syncCommand, &syncCommand, NULL);    
 	if (kernResult != KERN_SUCCESS) {
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-ERROR: Kernel driver beamposition query failed (Kernel error code: %lx).\n", kernResult);
+		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-ERROR: Kernel driver beamposition query failed (Kernel error code: %lx).\n", kernResult);
 		// A value of -1 signals beamposition queries unsupported or invalid:
 		return(-1);
 	}
