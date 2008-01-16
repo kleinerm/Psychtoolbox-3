@@ -34,7 +34,7 @@ if ~nargin | isempty(PortString)
   PortString = 'usbserial';
   AltPortString = 'usa19';
 else
-  AllowAlternateString = 0;
+  AllowAlternateStrings = 0;
 end
 
 if ~isempty(strfind(computer,'PCWIN'))
