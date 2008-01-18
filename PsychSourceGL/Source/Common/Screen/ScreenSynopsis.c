@@ -80,7 +80,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";	
-	synopsis[i++] = "Screen('Close', windowOrTextureIndex);";
+	synopsis[i++] = "Screen('Close', [windowOrTextureIndex or list of textureIndices/offscreenWindowIndices]);";
 	synopsis[i++] = "Screen('CloseAll');";
 	
 	// Draw lines lines solids like QuickDraw and DirectX (OS 9 and Windows)

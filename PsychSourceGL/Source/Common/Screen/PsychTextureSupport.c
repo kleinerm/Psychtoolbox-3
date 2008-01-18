@@ -317,7 +317,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	// Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
 	if (win->textureOrientation==0 || win->textureOrientation==1) {
 		// Transposed case: Optimized for fast MakeTexture from Matlab image matrix.
-		// This is true for all calls from MakeTexure.
+		// This is true for all calls from MakeTexure, except ones with the textureOrientation flag set to 2:
 		sourceHeight=PsychGetWidthFromRect(win->rect);
 		sourceWidth=PsychGetHeightFromRect(win->rect);
 	}
@@ -632,7 +632,11 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
        (win->targetSpecific.contextObject)) {
         // Activate associated OpenGL context:
         PsychSetGLContext(win);
-        PsychTestForGLErrors();
+
+		// PsychTestForGLErrors() is a GPU-CPU synchronization point, so in order to keep good
+		// parallelism, we only do it at verbosity levels of 5 and greater.
+        if (PsychPrefStateGet_Verbosity() > 4) PsychTestForGLErrors();
+		
         // Call special texture release routine for Movie textures: This routine will
         // check if 'win' is a movie texture and perform the necessary cleanup work, if so:
         PsychFreeMovieTexture(win);
@@ -652,7 +656,9 @@ void PsychFreeTextureForWindowRecord(PsychWindowRecordType *win)
 			if (texmemguesstimate < 0) texmemguesstimate = 0;
 		}
 		
-        PsychTestForGLErrors();
+		// PsychTestForGLErrors() is a GPU-CPU synchronization point, so in order to keep good
+		// parallelism, we only do it at verbosity levels of 5 and greater.
+        if (PsychPrefStateGet_Verbosity() > 4) PsychTestForGLErrors();
     }
 
     // Free system RAM backing memory buffer, if any:
