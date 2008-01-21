@@ -24,6 +24,9 @@ try
     %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     %PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');
     %PsychImaging('AddTask', 'AllViews', 'GeometryCorrection', '/tmp/BezierCalibdata.mat');
+    %Testblock for Radeon native 10bpc framebuffer support:
+    %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
+    %PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
 
     [win winRect]=PsychImaging('OpenWindow', screen, 0, [], [], [], [], [], mor(kPsychNeedFastBackingStore, kPsychNeedImageProcessing));
 
