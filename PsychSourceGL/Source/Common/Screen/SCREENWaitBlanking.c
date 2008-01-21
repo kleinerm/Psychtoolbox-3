@@ -80,9 +80,6 @@ PsychError SCREENWaitBlanking(void)
 		  // We default to wait at least one interval if no argument supplied:
     waitFrames = (waitFrames < 1) ? 1 : waitFrames;
     
-		  // Switch to associated GL-Context of onscreen window:
-    PsychSetGLContext(windowRecord);
-    
     // Enable this windowRecords framebuffer as current drawingtarget:
     // This is needed to make sure that Offscreen windows work propely.
     PsychSetDrawingTarget(windowRecord);

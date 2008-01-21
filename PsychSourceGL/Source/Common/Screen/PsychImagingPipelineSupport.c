@@ -743,7 +743,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// engine, so the next drawing command will trigger binding the proper FBO of our pipeline.
 	// Before this point (==OpenWindow time), all drawing was directly directed to the system
 	// framebuffer - important for all the timing tests and calibrations to work correctly.
-	PsychSetDrawingTarget(NULL);
+	PsychSetDrawingTarget(0x1);
 
 	// Well done.
 	return;
@@ -1298,8 +1298,8 @@ void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord)
 	if (sourceRecord->textureOrientation != 2 || sourceRecord->targetSpecific.QuickTimeGLTexture != NULL) {
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: In PsychNormalizeTextureOrientation(): Performing GPU renderswap for source gl-texture %i --> ", sourceRecord->textureNumber);
 		
-		// Soft-reset drawing engine:
-		PsychSetDrawingTarget(NULL);
+		// Soft-reset drawing engine in a safe way:
+		PsychSetDrawingTarget(0x1);
 
 		// Normalization needed. Create a suitable FBO as rendertarget:
 		needzbuffer = FALSE;

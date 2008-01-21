@@ -171,19 +171,17 @@ void PsychRenderArc(unsigned int mode)
             if (penHeight) dotSize = *penHeight;
         }
         
-        // Setup OpenGL context:
-	PsychSetGLContext(windowRecord);
         // Enable this windowRecords framebuffer as current drawingtarget:
         PsychSetDrawingTarget(windowRecord);
-
-	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-	PsychSetGLColor(&color,  windowRecord);
+		
+		PsychUpdateAlphaBlendingFactorLazily(windowRecord);
+		PsychSetGLColor(&color,  windowRecord);
         
         // Backup our modelview matrix:
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
 
-	// Position disk at center of rect:
+		// Position disk at center of rect:
         glTranslated(cx, cy, 0);
         
         // Scale in order to fit to rect in case w!=h:

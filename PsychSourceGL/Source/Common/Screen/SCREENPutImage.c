@@ -223,8 +223,6 @@ PsychError SCREENPutImage(void)
 			} // for (iy = 0; iy < inputM; iy++)
 		} // for (ix = 0; ix < inputN; ix++)
 
-		// Enable GL-Context of current onscreen window:
-		PsychSetGLContext(windowRecord);
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(windowRecord);
 		

@@ -86,10 +86,9 @@ PsychError SCREENFramePoly(void)
 	penSize=1;
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &penSize);
 	
-	//draw the rect
-	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
+
 	glLineWidth((GLfloat)penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
@@ -99,8 +98,10 @@ PsychError SCREENFramePoly(void)
 			glVertex2d((GLdouble)pointList[i], (GLdouble)pointList[i+mSize]);
 	glEnd();
 
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
+	glLineWidth((GLfloat) 1);
+
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
 
 	return(PsychError_none);
 }

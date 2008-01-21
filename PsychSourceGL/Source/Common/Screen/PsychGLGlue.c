@@ -324,9 +324,6 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 		}
 	}
 	
-	// Enable rendering context for windowRecord:
-	PsychSetGLContext(windowRecord);
-	
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 	

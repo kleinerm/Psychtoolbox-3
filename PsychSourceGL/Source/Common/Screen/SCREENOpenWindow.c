@@ -400,7 +400,6 @@ PsychError SCREENOpenWindow(void)
 
 	// Activate new onscreen window for userspace drawing: If imaging pipeline is active, this
 	// will bind the correct rendertargets for the first time:
-    PsychSetGLContext(windowRecord);
 	PsychSetDrawingTarget(windowRecord);
 
     // Set the clear color and perform a backbuffer-clear:

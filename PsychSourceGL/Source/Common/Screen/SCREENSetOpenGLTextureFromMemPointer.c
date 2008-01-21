@@ -84,7 +84,11 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
         textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
-		
+
+		// Copy default drawing shaders from parent:
+		textureRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
+		textureRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
+
 		textureRecord->colorRange = windowRecord->colorRange;
 		// Copy imaging mode flags from parent:
 		textureRecord->imagingMode = windowRecord->imagingMode;
@@ -156,8 +160,8 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     }
 
     // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
-    PsychSetGLContext(windowRecord);
     PsychSetDrawingTarget(windowRecord);
+
     PsychTestForGLErrors();
 
     // Ok, setup texture record for texture:

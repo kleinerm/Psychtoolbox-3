@@ -5,16 +5,13 @@
 	AUTHORS:
 
 		Allen.Ingling@nyu.edu               awi 
-                mario.kleiner at tuebingen.mpg.de   mk
+		mario.kleiner at tuebingen.mpg.de   mk
   
 	PLATFORMS:	
 
-        Platform independent, but requires OS-X >= 10.4.3 or a M$-Windows system with support for
-        OpenGL Framebuffer objects (OpenGL 1.5 with extensions or OpenGL 2.x)
- 
+        All.
+		
 	HISTORY:
-
-
 
 		1/18/02		awi		Created.  Copied the Synopsis string from old version of psychtoolbox.
 		2/18/03		awi		Set the screen number for all offscreen windows to -1.   
@@ -31,9 +28,9 @@
 		2/15/05		awi		Commented out glEnable(GL_BLEND) 
 		1/16/06     mk      Rewritten to initialize offscreen windows as if they were textures with a constant colored background instead of content.
 		1/07/07		mk		Setup path for FBO backed Offscreen windows added: Used if imaging pipeline is active.
+
 	TO DO:
 
-		Find out if the window background color is supposed to be always white,  or the color of the parent window.
 */
 
 #include "Screen.h"
@@ -73,21 +70,21 @@ static char seeAlsoString[] = "OpenWindow";
 
 PsychError SCREENOpenOffscreenWindow(void) 
 {
-    int					screenNumber, depth, targetScreenNumber;
+    int						screenNumber, depth, targetScreenNumber;
     PsychRectType			rect;
     PsychColorType			color;
-    PsychColorModeType  		mode; 
-    boolean				didWindowOpen;
-    PsychWindowRecordType		*exampleWindowRecord, *windowRecord, *targetWindow;
-    Boolean				wasColorSupplied;
-    char*                               texturePointer;
-    int                                 xSize, ySize, nbytes;
-    Boolean                             bigendian;
-	 GLubyte *rpb;
-    int ix;
-	GLenum fboInternalFormat;
-	boolean needzbuffer;
-	boolean overridedepth = FALSE;
+    PsychColorModeType  	mode; 
+    boolean					didWindowOpen;
+    PsychWindowRecordType	*exampleWindowRecord, *windowRecord, *targetWindow;
+    Boolean					wasColorSupplied;
+    char*					texturePointer;
+    int						xSize, ySize, nbytes;
+    Boolean					bigendian;
+	GLubyte					*rpb;
+    int						ix;
+	GLenum					fboInternalFormat;
+	boolean					needzbuffer;
+	boolean					overridedepth = FALSE;
 	
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -179,8 +176,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// RGB, LA or Luminance textures.
 	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore || targetWindow->imagingMode & kPsychNeedFastOffscreenWindows) && (depth < 32)) depth = 32;
 
-    //find the color for the window background.  
-    wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color); //get from user
+    // Find the color for the window background.  
+    wasColorSupplied=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
+	
 	// If none provided, use a proper white-value for this window:
     if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(targetWindow));  
 
@@ -208,10 +206,21 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Assign the computed rect, but normalize it to start with top-left at (0,0):
     PsychNormalizeRect(rect, windowRecord->rect);
 
+	// Until here no OpenGL commands executed. Now we need a valid context: Set targetWindow
+	// as drawing target. This will perform neccessary context-switch and all backbuffer
+	// backup/restore/whatever operations to make sure we can do what we want without
+	// possibly screwing any offscreen windows and bindings:
+	PsychSetDrawingTarget(targetWindow);
+
+	// From here on we have a defined context and state. We can detach the drawing target whenever
+	// we want, as everything is backed up somewhere for later reinit.
+	
+	// Create offscreen window either new style as FBO, or old style as texture:
 	if ((targetWindow->imagingMode & kPsychNeedFastBackingStore) || (targetWindow->imagingMode & kPsychNeedFastOffscreenWindows)) {
-		// Imaging mode for this window enabled: Use new way of creating the offscreen window:		
-		PsychSetGLContext(targetWindow);
-		PsychSetDrawingTarget(NULL);
+		// Imaging mode for this window enabled: Use new way of creating the offscreen window:
+		
+		// We safely unbind any FBO bindings and drawingtargets:
+		PsychSetDrawingTarget(0x1);
 		
 		// Overriden for imagingmode: There we always have 4 channels...
 		windowRecord->nrchannels=4;
@@ -343,6 +352,10 @@ PsychError SCREENOpenOffscreenWindow(void)
 	windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
 	windowRecord->targetSpecific.glusercontextObject = targetWindow->targetSpecific.glusercontextObject;
 
+	// Copy default drawing shaders from parent:
+	windowRecord->defaultDrawShader   = targetWindow->defaultDrawShader;
+	windowRecord->unclampedDrawShader = targetWindow->unclampedDrawShader;
+	
 	// Copy color range and mode from parent window:
 	windowRecord->colorRange = targetWindow->colorRange;
 
@@ -354,7 +367,6 @@ PsychError SCREENOpenOffscreenWindow(void)
     
 	if ((windowRecord->imagingMode & kPsychNeedFastBackingStore) || (windowRecord->imagingMode & kPsychNeedFastOffscreenWindows)) {
 		// Last step for FBO backed Offscreen window: Clear it to its background color:
-		PsychSetGLContext(windowRecord);
 		PsychSetDrawingTarget(windowRecord);
 
 		// Set background fill color:
@@ -386,4 +398,3 @@ PsychError SCREENOpenOffscreenWindow(void)
     // Ready.
     return(PsychError_none);
 }
-

@@ -101,15 +101,12 @@ PsychError SCREENSelectStereoDrawBuffer(void)
 			windowRecord->targetFlipFieldType = param1;
 		}
 	}
-	
-	// Switch to associated GL-Context:
-	PsychSetGLContext(windowRecord);
 
 	// If the imaging pipeline is active, then we're done.
 	if (windowRecord->imagingMode & kPsychNeedFastBackingStore) {
 		// Enable this windowRecords framebuffer as current drawingtarget. In imagingmode this will also
 		// select the proper backing FBO:
-		PsychSetDrawingTarget(NULL);
+		if (PsychGetDrawingTarget() == windowRecord) PsychSetDrawingTarget(NULL);
 		PsychSetDrawingTarget(windowRecord);
 		
 		// Done for imaging mode:

@@ -36,8 +36,8 @@
 PsychError SCREENFlip(void) 
 {
 	// If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-	static char useString[] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('Flip', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
-	static char synopsisString[] = 
+	static char useString0[] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('Flip', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
+	static char synopsisString0[] = 
 	"Flip front and back display surfaces in sync with vertical retrace and return timestamps. "
 	"\"windowPtr\" is the id of the onscreen window whose content should be shown at flip time. "
 	"\"when\" specifies when to flip: If set to zero (default), it will flip on the next possible retrace."
@@ -64,6 +64,73 @@ PsychError SCREENFlip(void)
 	" - it can report false positives and also false negatives, although it should work fairly well with most experimental setups. "
 	"If you are picky about timing, please use the provided timestamps or additional methods to exercise your own tests.";
 
+	static char useString1[] = "Screen('AsyncFlipBegin', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
+	static char synopsisString1[] = 
+	"Schedule an asynchronous flip of front and back display surfaces for given onscreen window. "
+	"\"windowPtr\" is the id of the onscreen window whose content should be shown at flip time. "
+	"\"when\" is the requested stimulus onset time, a value of zero or no argument asks for flip "
+	"at next possible vertical retrace.\n"
+	"For the meaning and explanation of all other parameters, see the help for 'Screen Flip?'.\n\n"
+	"This command doesn't return anything, you'll need to use the finalizer commands mentioned below "
+	"to collect information about the final result and timing of the flip operation.\n\n"
+	"The difference between Screen('AsyncFlipBegin',...); and the more commonly used Screen('Flip', ...); "
+	"is that Screen('Flip') operates synchronously: Execution of your code is paused until the flip operation "
+	"has finished, ie. at least until the requested onset deadline 'when' has passed.\n\n"
+	"Screen('AsyncFlipBegin') will prepare everything for a flip at the requested time 'when' - or "
+	"at next vertical retrace if 'when' is omitted - but then immediately return control to your "
+	"code. Your code can continue to execute and do other things, e.g., schedule flips for other onscreen "
+	"windows, perform keyboard or mouse queries, etc.\n\n"
+	"You can check the progress state of asynchronous flips or wait for them to finish and collect timing "	
+	"information for the finalized flip by use of the commands Screen('AsyncFlipCheckEnd') and Screen('AsyncFlipEnd');\n\n"
+	"In general you should avoid using asynchronous flips and instead use conventional 'Flip' unless you have a "
+	"good reason to do otherwise, because async flips come with a couple of strings attached:\n\n"
+	"- They are not portable to MS-Windows: Code written with async flip will only \n"
+	"  work on Apple OS/X and GNU/Linux. There are no plans to ever support this\n"
+	"  feature on MS-Windows, we don't want to beat that shaky beast to death...\n\n"
+	"- You are restricted in what you can do with Screen() or OpenGL while async\n"
+	"  flips are in progress: You can not do anything with textures or offscreen\n"
+	"  windows while any onscreen window is in async flip state. You can only\n"
+	"  access onscreen windows which are not participating in an async flip\n"
+	"  operation. Even the restricted set of allowed Screen/OpenGL commands should\n"
+	"  be avoided if possible, because some graphics hardware and drivers may not be\n"
+	"  able to handle such concurrent graphics operations without degraded stimulus\n"
+	"  onset timing accuracy, ie. you may experience more missed stimulus deadlines\n"
+	"  and timing glitches -- or inconsistent behaviour accross different computers\n"
+	"  and graphics cards or operating system releases. In the end it allows you to\n"
+	"  do non-Screen related things like sound, I/O, keyboard checks...\n\n"
+	"- Parallel processing of flips puts additional burden and load onto your CPU,\n"
+	"  GPU and operating system, so it incurs additional overhead and may degrade\n"
+	"  absolute drawing performance and cause more timing issues and glitches if\n"
+	"  your system is not reliably able to handle the concurrent load.\n\n"
+	"- Code with async flips - as any piece of parallel code - is harder to\n"
+	"  get right and more challenging to debug for you.\n\n"
+	"- Using a non-zero \"multiflip\" argument is not allowed.\n\n"
+	"- Asynchronous updates of gamma tables may not work reliably.\n\n"
+	"- Use of the 'UserspaceBufferDrawingPrepare' hook-chain of the imaging\n"
+	"  pipeline is not allowed.\n"
+	"\n\n"
+	"Our general stance is that most code can be written efficiently without need for async flips, so this feature is here "
+	"for the few cases where this is not the case and the benefits outweight the costs.";
+
+	static char useString2[] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipEnd', windowPtr);";
+	static char synopsisString2[] = 
+	"Wait for completion of a previously scheduled asynchronous flip operation (see Screen AsyncFlipBegin? for help).\n"
+	"This command will wait for completion on onscreen window \"windowPtr\", then return the result of the operation, "
+	"ie. all the stimulus onset timestamps and other diagnostic information. See help for Screen Flip? for explanation "
+	"of the returned info.\n"
+	"Screen('AsyncFlipCheckEnd') provides a non-blocking, polling version of this command -- one that doesn't pause if "
+	"the referenced operation hasn't completed yet.";
+
+	static char useString3[] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipCheckEnd', windowPtr);";
+	static char synopsisString3[] = 
+	"Check if a previously scheduled asynchronous flip operation has completed (see Screen AsyncFlipBegin? for help).\n"
+	"This command will check for completion on onscreen window \"windowPtr\", then return the result of the operation, "
+	"ie. all the stimulus onset timestamps and other diagnostic information. See help for Screen Flip? for explanation "
+	"of the returned info. If the operation hasn't completed yet, it will return a 'VBLTimestamp' of zero to signal that "
+	"condition and you'll have to retry later.\n"
+	"Screen('AsyncFlipEnd') provides a blocking version of this command -- one that pauses until the operation completes if "
+	"the referenced operation hasn't completed yet.";
+
 	static char seeAlsoString[] = "DrawingFinished";
 
 	PsychFlipInfoStruct*  flipRequest;
@@ -84,24 +151,35 @@ PsychError SCREENFlip(void)
 	if (strcasecmp(PsychGetFunctionName(), "AsyncFlipBegin")==0) {
 		// Async flip invocation:
 		opmode = 1;
+
+		// Push usage string and/or give online help:
+		PsychPushHelp(useString1, synopsisString1, seeAlsoString);
 	}
 	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipEnd")==0) {
 		// Finalize async flip operation:
 		opmode = 2;
+
+		// Push usage string and/or give online help:
+		PsychPushHelp(useString2, synopsisString2, seeAlsoString);
 	}
 	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipCheckEnd")==0) {
 		// Poll for finalization of async flip operation:
 		opmode = 3;
+
+		// Push usage string and/or give online help:
+		PsychPushHelp(useString3, synopsisString3, seeAlsoString);
 	}
 	else {
 		// Standard synchronous flip:
 		opmode = 0;
-	};
 
-	// All subfunctions should have these two lines.
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+		// Push usage string and/or give online help:
+		PsychPushHelp(useString0, synopsisString0, seeAlsoString);
+	};
 	
+	// Give online help, if requested:
+	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
 	PsychErrorExit(PsychCapNumInputArgs((opmode != 2)  ? 5 : 1));		// The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1));						// The required number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs((opmode != 1) ? 5 : 0));		// The maximum number of outputs
@@ -187,7 +265,7 @@ PsychError SCREENFlip(void)
 		if (flipRequest->asyncstate != 0) {
 			// Started, executing or finalized async flip in progress! We're not idle, so we can't
 			// trigger a new flip request!
-			PsychErrorExitMsg(PsychError_user, "Screen('Flip'); or Screen('FlipAsyncBegin'); called while a scheduled flip operation is still in progress! Forbidden! Check your code!!");			
+			PsychErrorExitMsg(PsychError_user, "Screen('Flip'); or Screen('AsyncFlipBegin'); called while a scheduled flip operation is still in progress! Forbidden! Check your code!!");			
 		}
 
 		flipRequest->opmode			= opmode;
@@ -203,14 +281,14 @@ PsychError SCREENFlip(void)
 		// 'FlipAsyncEnd' or 'FlipAsyncPoll': Just make sure the flip info record is actually allocated:
 		if (NULL == windowRecord->flipInfo) {
 			// Flip end called without any flipInfo struct allocated?!? A flip op wasn't ever triggered!
-			PsychErrorExitMsg(PsychError_user, "Screen('FlipAsyncEnd'); called without calling Screen('FlipAsyncBegin') before to actually start an async Flip! Forbidden! Check your code!!");
+			PsychErrorExitMsg(PsychError_user, "Screen('AsyncFlipEnd'); or Screen('AsyncFlipCheckEnd'); called without calling Screen('AsyncFlipBegin') before to actually start an async Flip! Forbidden! Check your code!!");
 		}
 
 		flipRequest = windowRecord->flipInfo;
 		if (flipRequest->asyncstate == 0) {
 			// No started, executing or finalized async flip in progress! No async flip operation triggered
 			// which we could finalize!
-			PsychErrorExitMsg(PsychError_user, "Screen('FlipAsyncEnd'); called without calling Screen('FlipAsyncBegin') before to actually start an async Flip! Forbidden! Check your code!!");			
+			PsychErrorExitMsg(PsychError_user, "Screen('AsyncFlipEnd'); or Screen('AsyncFlipCheckEnd'); called without calling Screen('AsyncFlipBegin') before to actually start an async Flip! Forbidden! Check your code!!");
 		}
 
 		// Ok, there's an async flip going on and we have a handle to it...

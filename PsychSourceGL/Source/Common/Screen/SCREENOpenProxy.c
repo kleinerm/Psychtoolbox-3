@@ -89,6 +89,10 @@ PsychError SCREENOpenProxy(void)
 	proxyRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
 	proxyRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
 
+	// Copy default drawing shaders from parent:
+	proxyRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
+	proxyRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
+
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(proxyRecord);
     

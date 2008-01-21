@@ -824,13 +824,7 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 		}
 		
 		// Switch to new context:
-		CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);
-		
-		// If imaging pipe is active, we need to reset the current drawing target, so it and its
-		// FBO bindings get properly reinitialized before next use. In non-imaging mode this is
-		// not needed, because the new context already contains the proper setup for transformations,
-		// drawbuffers and such, as well as the matching content in the backbuffer:
-		if (windowRecord->imagingMode > 0) PsychSetDrawingTarget(NULL);
+		CGLSetCurrentContext(windowRecord->targetSpecific.contextObject);		
     }
 }
 

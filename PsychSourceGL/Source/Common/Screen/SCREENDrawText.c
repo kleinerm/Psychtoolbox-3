@@ -314,8 +314,8 @@ PsychError SCREENDrawText(void)
     CGColorSpaceRelease (cgColorSpace);
     CGContextRelease(cgContext);	
     
-    //Convert the CG graphics bitmap into a GL texture.  
-    PsychSetGLContext(winRec);
+    // From here on: Convert the CG graphics bitmap into a GL texture.  
+
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
@@ -713,8 +713,6 @@ PsychError SCREENDrawText(void)
 	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
 	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
 
-    PsychSetGLContext(winRec);
-
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
@@ -940,8 +938,6 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
 		PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
 
-		PsychSetGLContext(winRec);
-		
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(winRec);
 		

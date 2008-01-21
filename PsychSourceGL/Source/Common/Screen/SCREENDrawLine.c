@@ -3,12 +3,11 @@
 
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+	Allen.Ingling@nyu.edu		awi 
 
 	PLATFORMS:	
 
-		Only OS X for now.
-
+	All.
 
 	HISTORY:
 
@@ -16,11 +15,8 @@
 		10/12/04	awi		In useString: moved commas to inside [].
 		11/16/04    awi		Fixed a bug in DrawLine where dX should have been dY.
 		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
-							
-
 
 	TO DO:
-  
 
 */
 
@@ -43,7 +39,7 @@ PsychError SCREENDrawLine(void)
 	
 	PsychColorType					color;
 	PsychWindowRecordType			*windowRecord;
-	int								depthValue, whiteValue;
+	int								whiteValue;
 	boolean							isArgThere;
 	double							sX, sY, dX, dY, penSize;
     
@@ -58,16 +54,13 @@ PsychError SCREENDrawLine(void)
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
 	
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	
-
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(2, FALSE, &color);
 	if(!isArgThere){
 		whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 		PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 	}
+
  	PsychCoerceColorMode( &color);
         
 	//get source and destination X and Y values
@@ -80,10 +73,9 @@ PsychError SCREENDrawLine(void)
 	penSize=1;
 	PsychCopyInDoubleArg(7, kPsychArgOptional, &penSize);
 	
-	//draw the rect
-	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
+
 	glLineWidth((GLfloat)penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
@@ -93,13 +85,10 @@ PsychError SCREENDrawLine(void)
 		glVertex2d((GLdouble)dX, (GLdouble)dY);
 	glEnd();
 	
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
+	glLineWidth((GLfloat) 1);
+
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
 
 	return(PsychError_none);
 }
-
-
-
-
-

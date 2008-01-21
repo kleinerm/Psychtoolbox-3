@@ -75,8 +75,6 @@ PsychError SCREENPreloadTextures(void)
         PsychAllocInIntegerListArg(2, FALSE, &n, &texhandles);
         if (n < 1) isArgThere=FALSE;
         
-        // Setup texturing for no-op texturing:
-        PsychSetGLContext(windowRecord);
         // Enable this windowRecords framebuffer as current drawingtarget:
         PsychSetDrawingTarget(windowRecord);
 

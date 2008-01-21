@@ -36,7 +36,7 @@ PsychError SCREENgluDisk(void)
 	PsychColorType			color;
 	double					*xPosition, *yPosition, dotSize;
 	PsychWindowRecordType	*windowRecord;
-	int						depthValue, whiteValue;
+	int						whiteValue;
 	boolean					isArgThere;
 	GLUquadricObj			*diskQuadric;
     
@@ -51,16 +51,13 @@ PsychError SCREENgluDisk(void)
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 	
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	
-
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
 		if(!isArgThere){
 			whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 			PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 		}
+
  	PsychCoerceColorMode( &color);
         
 	//get the x and y position values. 
@@ -69,10 +66,8 @@ PsychError SCREENgluDisk(void)
 	dotSize=1;	//set the default
 	PsychCopyInDoubleArg(5, FALSE, &dotSize);
 
-	//Set the color and draw the rect.  Note that all GL drawing commands should be sandwiched between 
-	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
@@ -83,8 +78,8 @@ PsychError SCREENgluDisk(void)
 	gluDeleteQuadric(diskQuadric);
 	glPopMatrix();
 
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
 
  	//All psychfunctions require this.
 	return(PsychError_none);

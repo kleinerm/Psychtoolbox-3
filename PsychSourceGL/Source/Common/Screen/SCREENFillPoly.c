@@ -116,12 +116,11 @@ PsychError SCREENFillPoly(void)
 	if(pSize>1)
 		PsychErrorExitMsg(PsychError_user, "Polygons must consist of at leat 3 vertices; M dimension of pointList was <3");
 	
-	PsychSetGLContext(windowRecord);
-	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
-		 
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
+
+	PsychUpdateAlphaBlendingFactorLazily(windowRecord);		 
 	PsychSetGLColor(&color, windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
 
 	///////// Test for convexity ////////
 	// This algorithm checks, if the polygon is definitely convex, or not.

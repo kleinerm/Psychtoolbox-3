@@ -73,15 +73,16 @@ PsychError SCREENTransformTexture(void)
     PsychAllocInWindowRecordArg(2, TRUE, &proxyRecord);
 	if (proxyRecord->windowType!=kPsychProxyWindow) PsychErrorExitMsg(PsychError_user, "'transformProxyPtr' argument must be a handle to a proxy object.");
 
-
 	// Test if optional specialFlags are provided:
     specialFlags=0;
     PsychCopyInIntegerArg(5, FALSE, &specialFlags);
 
 	// Activate rendering context of the proxy object and soft-reset the
-	// drawing engine, so we're in a well defined state:
-	PsychSetGLContext(proxyRecord);    
-    PsychSetDrawingTarget(NULL);
+	// drawing engine, so we're in a well defined state. The value 1 means: Reset safely, ie. do any
+	// framebuffer backups that might be needed before NULL-ing the binding:
+    PsychSetDrawingTarget(0x1);
+	
+	PsychSetGLContext(proxyRecord);
 
 	// Save all state:
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
@@ -132,7 +133,11 @@ PsychError SCREENTransformTexture(void)
         targetRecord->targetSpecific.contextObject = sourceRecord->targetSpecific.contextObject;
         targetRecord->targetSpecific.deviceContext = sourceRecord->targetSpecific.deviceContext;
         targetRecord->targetSpecific.glusercontextObject = sourceRecord->targetSpecific.glusercontextObject;
-		
+
+		// Copy default drawing shaders from parent:
+		targetRecord->defaultDrawShader   = sourceRecord->defaultDrawShader;
+		targetRecord->unclampedDrawShader = sourceRecord->unclampedDrawShader;
+
 		targetRecord->colorRange = sourceRecord->colorRange;
 		
 		// Copy imaging mode flags from parent:

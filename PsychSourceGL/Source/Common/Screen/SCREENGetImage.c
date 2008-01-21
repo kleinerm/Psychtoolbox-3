@@ -85,8 +85,10 @@ PsychError SCREENGetImage(void)
 	// Get windowRecord for this window:
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 	
-	// Enable GL-Context of (associated) onscreen window:
-	PsychSetGLContext(windowRecord);
+	// Set window as drawingtarget: Even important if this binding is changed later on!
+	// We need to make sure all needed transitions are done - esp. in non-imaging mode,
+	// so backbuffer is in a useable state:
+	PsychSetDrawingTarget(windowRecord);
 	
 	glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);

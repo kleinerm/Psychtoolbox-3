@@ -277,6 +277,8 @@ typedef struct _PsychWindowRecordType_{
 	
 	// Settings for the image processing and hook callback pipeline: See PsychImagingPipelineSupport.hc for definition and implementation:
 	double					colorRange;								// Maximum allowable color component value. See SCREENColorRange.c for explanation.
+	GLuint					unclampedDrawShader;					// Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
+	GLuint					defaultDrawShader;						// Default GLSL shader object for drawing of non-texture stims. Zero by default.
 	double					currentColor[4];						// Current unclamped but colorrange remapped RGBA drawcolor for whatever drawop, as spec'd by PsychSetGLColor().
 	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
 	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.

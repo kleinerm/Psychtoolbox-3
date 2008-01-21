@@ -7,7 +7,7 @@
   
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 
 	HISTORY:
@@ -21,13 +21,15 @@
 
 */
 
-
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('glPoint', windowPtr, color, x, y [,size]);";
 static char synopsisString[] = 
-	"Draw a point at the specified location";
+	"Draw a point at the specified location 'x', 'y' with the requested optional diameter 'size' "
+	"in the requested 'color'. For drawing of many points, e.g., random dot fields, use "
+	"Screen('DrawDots') instead. ";
+
 static char seeAlsoString[] = "FrameRect";	
 
 PsychError SCREENglPoint(void)  
@@ -36,7 +38,7 @@ PsychError SCREENglPoint(void)
 	PsychColorType			color;
 	double					*xPosition, *yPosition, dotSize;
 	PsychWindowRecordType	*windowRecord;
-	int						depthValue, whiteValue;
+	int						whiteValue;
 	boolean					isArgThere;
     
 	//all sub functions should have these two lines
@@ -50,16 +52,13 @@ PsychError SCREENglPoint(void)
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
         
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	
-
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
 		if(!isArgThere){
 			whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
 			PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 		}
+
  	PsychCoerceColorMode( &color);
         
 	//get the x and y position values. 
@@ -68,10 +67,8 @@ PsychError SCREENglPoint(void)
 	dotSize=1;	//set the default
 	PsychCopyInDoubleArg(5, FALSE, &dotSize);
 
-	//Set the color and draw the rect.  Note that all GL drawing commands should be sandwiched between	 
-	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
@@ -83,14 +80,9 @@ PsychError SCREENglPoint(void)
 	glDisable(GL_POINT_SMOOTH);
 	glPointSize(1);
 
-        // Mark end of drawing op. This is needed for single buffered drawing:
-        PsychFlushGL(windowRecord);
+	// Mark end of drawing op. This is needed for single buffered drawing:
+	PsychFlushGL(windowRecord);
 
  	//All psychfunctions require this.
 	return(PsychError_none);
 }
-
-
-
-
-

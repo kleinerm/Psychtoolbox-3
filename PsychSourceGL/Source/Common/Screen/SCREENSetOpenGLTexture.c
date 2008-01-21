@@ -79,6 +79,10 @@ PsychError SCREENSetOpenGLTexture(void)
         textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
         textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
         textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
+
+		// Copy default drawing shaders from parent:
+		textureRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
+		textureRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
 		
 		textureRecord->colorRange = windowRecord->colorRange;
 		
@@ -119,7 +123,6 @@ PsychError SCREENSetOpenGLTexture(void)
 	PsychCopyInIntegerArg(8, FALSE, &textureShader);
 
     // Activate OpenGL rendering context of windowRecord and make it the active drawing target:
-    PsychSetGLContext(windowRecord);
     PsychSetDrawingTarget(windowRecord);
     
     // Bind the provided external OpenGL texture object:

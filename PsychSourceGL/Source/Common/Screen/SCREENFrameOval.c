@@ -126,10 +126,8 @@ PsychError SCREENFrameOval(void)
 	innerRadius=outerRadius- 2*penSize;
 	innerRadius= innerRadius < 0 ? 0 : innerRadius;         
 	
-	//Set the context & color
-	PsychSetGLContext(windowRecord);
-        // Enable this windowRecords framebuffer as current drawingtarget:
-        PsychSetDrawingTarget(windowRecord);
+	// Enable this windowRecords framebuffer as current drawingtarget:
+	PsychSetDrawingTarget(windowRecord);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);

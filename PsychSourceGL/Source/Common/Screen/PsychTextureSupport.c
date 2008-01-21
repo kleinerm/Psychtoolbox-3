@@ -72,8 +72,8 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
 {
     // First time invocation?
     if (texturetarget==0) {
-        // Yes. Need to auto-detect texturetarget to use...
-		PsychSetGLContext(win);
+        // Yes. Need to auto-detect texturetarget to use. This routine is called with
+		// the OpenGL context for the 'win' already attached, from PsychOpenOnscreenWindow().
 
         if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
@@ -678,19 +678,23 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		double                  transX, transY;
         GLenum                  texturetarget;
 		GLuint					shader, attrib;
-		
-        // Activate rendering context of target window:
-		PsychSetGLContext(target);
 
+        // Enable targets framebuffer as current drawingtarget, except if this is a
+		// blit operation from a window into itself and the imaging pipe is on:
+        if ((source != target) || (target->imagingMode==0)) {
+			PsychSetDrawingTarget(target);
+		}
+		else {
+			// Activate rendering context of target window without changing drawing target:
+			PsychSetGLContext(target);
+		}
+		
         // Setup texture-target if not already done:
         PsychDetectTextureTarget(target);
         
         // Query target for this specific texture:
         texturetarget = PsychGetTextureTarget(source);
-        
-        // Enable target's framebuffer as current drawingtarget, except if this is a
-		// blit operation from a window into itself and the imaging pipe is on:
-        if ((source != target) || (target->imagingMode==0)) PsychSetDrawingTarget(target);
+
 		//printf("%i\n", source->textureOrientation);
 		
         // This code allows the application of sourceRect, as it is meant to be:
