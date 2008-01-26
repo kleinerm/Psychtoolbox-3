@@ -64,6 +64,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
     IOPhysicalAddress		candidate_phys_addr;
     IOPhysicalLength		candidate_size;
     UInt32					candidate_count = 0;
+	const char*				providerName = NULL;
 	
 	// Say Hello ;-)
     IOLog("%s::start() called from IOKit. Starting up and trying to attach to ATI Radeon gfx:\n", (getName()) ? getName() : "PTB-3");
@@ -89,10 +90,11 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// cards...
 
 	// Double check if we're connected to proper provider:
-	IOLog("%s: Our provider service is: %s\n", getName(), provider->getName());
-	if (!provider->compareName(OSString::withCStringNoCopy("display"))) {
+	providerName = provider->getName();
+	IOLog("%s: Our provider service is: %s\n", getName(), providerName);
+	if (!provider->compareName(OSString::withCStringNoCopy("display")) && !(providerName && providerName[0]=='G' && providerName[1]=='F' && providerName[2]=='X')) {
 		// Not connected to "display" provider :-( Better abort...
-		IOLog("%s: Not connected to expected provider with name 'display'. Unsafe to continue, i'll better abort...\n", getName());
+		IOLog("%s: Not connected to expected provider with name 'display' or 'GFX0'. Unsafe to continue, i'll better abort...\n", getName());
 		return(false);
 	}
 	

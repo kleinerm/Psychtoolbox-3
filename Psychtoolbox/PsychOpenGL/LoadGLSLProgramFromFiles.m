@@ -44,7 +44,7 @@ AssertGLSL;
 
 % Create new program object and get handle to it:
 handle = glCreateProgram;
-if handle <= 0 || ~glIsProgram(handle)
+if handle <= 0
     fprintf('The handle created by glCreateProgram is %i -- An invalid handle!\n', handle);
     error('LoadShaderFromFile: glCreateProgram failed to create a valid program object! Something is wrong with your graphics drivers!');
 end

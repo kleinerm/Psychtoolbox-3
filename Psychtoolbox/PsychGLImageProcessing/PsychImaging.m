@@ -636,6 +636,14 @@ return;
 % Screen('OpenWindow') for pipeline preconfiguration.
 function [imagingMode, stereoMode] = FinalizeConfiguration(reqs, userstereomode)
 
+if nargin < 2
+    userstereomode = [];
+end
+
+if isempty(userstereomode)
+    userstereomode = 0;
+end
+
 % Set imagingMode to minimum: Pipeline disabled. All latter task
 % requirements will setup imagingMode to fullfill their needs. A few
 % tasks/requirements don't need the full pipeline at all. E.g, Support for

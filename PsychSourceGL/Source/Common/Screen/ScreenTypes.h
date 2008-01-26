@@ -173,6 +173,12 @@ typedef struct {
 // e.g., for testing etc.
 #define kPsychUseSoftwareRenderer 64
 
+// Request that Windows PTB calls SetForegroundWindow() and SetFocus() on new onscreen windows.
+// This makes them stay more reliably in foreground on especially f%%#$@ Windows systems, but
+// interferes with the Jave GetChar implementation, so its only enabled optionally:
+#define kPsychEnforceForegroundWindow 128
+
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

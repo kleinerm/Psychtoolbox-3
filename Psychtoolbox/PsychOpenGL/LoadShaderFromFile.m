@@ -66,7 +66,7 @@ fclose(fid);
 
 % Create shader, assign sourcecode and compile it:
 handle = glCreateShader(shadertype);
-if handle <= 0 || ~glIsShader(handle)
+if handle <= 0
     fprintf('The handle created by glCreateShader is %i -- An invalid handle!\n', handle);
     error('LoadShaderFromFile: glCreateShader failed to create a valid shader! Something is wrong with your graphics drivers!');
 end

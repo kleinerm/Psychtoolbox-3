@@ -67,6 +67,14 @@
 % hardware that doesn't support this. Not generally useful for production
 % use.
 %
+% 128 == kPsychEnforceForegroundWindow: Request application of the Windows
+% GDI calls SetForegroundWindow() and SetFocus() on each created onscreen
+% window on MS-Windows. This may improve reliabilty of onscreen windows
+% staying in front of all other windows, but is incompatible with the use
+% of GetChar, CharAvail and ListenChar, so it must be requested with this
+% flag.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly
