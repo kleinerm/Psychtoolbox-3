@@ -847,10 +847,10 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         error('Morph weight vector contains more coefficients than available keyshapes!');
     end;
     
-    if size(arg1, 1)~=1
+    if size(arg1, 2)~=1
         arg1 = transpose(arg1);
     end
-    
+ 
     % By default we morph normal vectors as well. As this is not mathematically correct,
     % the parent-code can prevent normal morphing by providing the optional morphnormals=0
     % flag.
@@ -981,7 +981,7 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             % Release weight texture:
             Screen('Close', weighttex);
         end
-        
+
         % Ok, morphbuffer(currentsrcbuffer) should contain the final morph
         % result:
 

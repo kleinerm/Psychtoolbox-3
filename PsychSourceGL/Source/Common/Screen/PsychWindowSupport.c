@@ -3276,19 +3276,88 @@ PsychWindowRecordType* PsychGetDrawingTarget(void)
 /* PsychSetDrawingTarget - Set the target window for following drawing ops.
  *
  * Set up 'windowRecord' as the target window for all drawing operations.
+ *
+ * This routine is usually called from the Screen drawing- and userspace OpenGL <-> Screen
+ * state transition routines to setup a specific PTB window as drawing target.
+ *
+ * It is also called by Screen's internal special image processing routines (e.g,
+ * 'TransformTexture' and preparation routines for OpenGL double-buffer swaps to
+ * *disable* a window as drawing target, so the low-level internal code is free
+ * to do whatever it wants with the system framebuffer or OpenGL FBO's without
+ * the danger of interfering/damaging the integrity of onscreen windows and offscreen
+ * windows/textures.
+ *
+ * Basic usage is one of three ways:
+ *
+ * * PsychSetDrawingTarget(windowRecord) to prepare drawing into the framebuffer of
+ * windowRecord, including all behind-the-scenes management, activating the associated
+ * OpenGL context for that window and setting up viewport, scissor and projection/modelview
+ * matrices etc.
+ *
+ * * PsychSetDrawingTarget(0x1) to safely reset the drawing target to "None". This will
+ * perform all relevant tear-down actions (switching off FBOs, performing backbuffer backups etc.)
+ * for the previously active drawing target, then setting the current drawing target to NULL.
+ * This command is to be used by PTB internal routines if they need to be able to do
+ * whatever they want with the system backbuffer or FBO's via low-level OpenGL calls,
+ * without needing to worry about possible side-effects or image corruption in any
+ * user defined onscreen/offscreen windows or textures. This is used in routines like
+ * 'Flip', 'OpenWindow', 'OpenOffscreenWindow', 'TransformTexture' etc.
+ * After this call, the current OpenGL context binding will be undefined! Or to be more
+ * accurate: If no window was active then maybe no context will be bound -- Any OpenGL
+ * command would cause a crash! If a window was active then that windows context will
+ * be bound -- probably not what you want, unless you carefully verified it *is* what
+ * you want! ==> Check your assumption wrt. bound context or use PsychSetGLContext()
+ * to explicitely set the context you need!
+ *
+ * * PsychSetDrawingTarget(NULL) is a hard-reset, like the (0x1) case, but without
+ * performing sensible tear-down actions. Wrong usage will leave Screen in an undefined
+ * state! All current uses of this call have been carefully audited for correctness,
+ * usually you don't need this!
+ * 
+ * The implementation contains two pathways of execution: One for use of imaging pipeline,
+ * i.e., with FBO backed framebuffers -- this is the preferred way on modern hardware,
+ * as it is more flexible, robust, simpler and faster. For old hardware and non-imaging
+ * mode there is a slow path that tries to emulate FBO's with old OpenGL 1.1 mechanisms
+ * like glCopyTexImage() et al. This one is relatively limited and inflexible, slow
+ * and convoluted!
+ *
+ * FastPath:
+ *
  * If windowRecord corresponds to an onscreen window, the standard framebuffer is
- * selected as drawing target. If 'windowRecord' corresponds to a Psychtoolbox
- * texture (aka Offscreen Window), we bind the texture as OpenGL framebuffer object,
- * so we have render-to-texture functionality.
+ * selected as drawing target when imagingMode == Use fast offscreen windows, otherwise
+ * (full imaging pipe) the FBO of the windows virtual framebuffer is bound.
+ * If 'windowRecord' corresponds to a Psychtoolbox texture (or Offscreen Window), we
+ * bind the texture as OpenGL framebuffer object, so we have render-to-texture functionality.
  *
- * This routine only performs state-transitions if necessary to save expensive
- * state switches. Calling the routine with a NULL-Ptr doesn't change the rendertarget
- * but signals render-completion.
+ * This requires support for EXT_Framebuffer_object extension, ie., OpenGL 1.5 or higher.
+ * On OS/X it requires Tiger 10.4.3 or later.
  *
- * This routine requires support for OpenGL Framebuffer objects, aka OpenGL 1.5 with
- * extension or OpenGL 2 or later. As a consequence it requires OS-X 10.4.3 or later or
- * a Windows system with proper support. It is a no-op on all other systems.
+ * SlowPath:
  *
+ * Textures and offscreen windows are implemented via standard OpenGL textures, but as
+ * OpenGL FBO's are not available (or disabled), we use the backbuffer as both, backbuffer
+ * of an onscreen window, and as a framebuffer for offscreen windows/textures when drawing
+ * to them. The routine performs switching between windows (onscreen or offscreen) by
+ * saving the backbuffer of the previously active rendertarget into an OpenGL texture via
+ * glCopyTexImage() et al., then initializing the backbuffer with the content of the texture
+ * of the new drawingtarget by blitting the texture into the framebuffer. Lots of care
+ * has to be taken to always backup/restore from/to the proper backbuffer ie. the proper
+ * OpenGL context (if multiple are used), to handle the case of transposed or inverted
+ * textures (e.g, quicktime engine, videocapture engine, Screen('MakeTexture')), and
+ * to handle the case of TEXTURE_2D textures on old hardware that doesn't support rectangle
+ * textures! This is all pretty complex and convoluted.
+ *
+ *
+ * This routine only performs state-transitions if necessary, in order to save expensive
+ * state switches. It tries to be lazy and avoid work!
+ *
+ * A special case is calls of this routine from background worker threads not equal
+ * to the Matlab/Octave/PTB main execution thread. These threads are part of the async
+ * flip implementation on OS/X and Linux. They call code that sometimes calls into this
+ * routine. The system is designed to behave properly if this routine just return()'s without
+ * doing anything when called from such a workerthread. That's why we check and early-exit
+ * in case of non-master thread invocation.
+ * 
  */
 void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
@@ -3412,8 +3481,13 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 				
                 // Whatever is bound at the moment needs to be backed-up into a texture...
                 // If currentRendertarget is NULL then we've got nothing to back up.
-                if (currentRendertarget) {
-                    // There is a bound render target: Any backups of its current backbuffer to some
+				// If currentRendertarget is using the imaging pipeline in any way, then there's also no
+				// need for any backups, as all textures/offscreen windows are backed by FBO's and the
+				// system framebuffer is just used as backingstore for onscreen windows, ie., no need
+				// to ever backup system framebuffer into any kind of texture based storage.
+				// Therefore skip this if any imaging mode is active (i.e., imagingMode is non-zero):
+                if (currentRendertarget && (currentRendertarget->imagingMode == 0)) {
+                    // There is a bound render target in non-imaging mode: Any backups of its current backbuffer to some
 					// texture backing store needed?
                     if (currentRendertarget->windowType == kPsychTexture || (windowRecord && (windowRecord->windowType == kPsychTexture))) {
                         // Ok we transition from- or to a texture. We need to backup the old content:
@@ -3542,8 +3616,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 							
 							// Ok, the framebuffer has been initialized with the content of our texture.
 						}
-					}
-				}
+					}	// End of from- to- texture/offscreen window transition...
+				}	// End of setup of a real new rendertarget windowRecord...
 
                 // At this point we should have the image of our drawing target in the framebuffer.
                 // If this transition didn't involve a switch from- or to a texture aka offscreen window,

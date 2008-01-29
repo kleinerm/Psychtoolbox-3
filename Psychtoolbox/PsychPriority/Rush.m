@@ -166,6 +166,9 @@ function Rush(rushedCode, priorityLevel)
 % 7/16/04   awi Cosmetic.  Restored HISTORY.
 % 5/22/07   mk  Reimplemented Rush() in this script. Long-term we wanna get
 %               rid of the mex files.
+% 1/26/08   mk  Small fix: Use evalin('caller', ...) instead of eval(...),
+%               so variables in the scope of calling M-Function are available
+%               to Rushed code.
 
 if nargin < 2
     error('You must specify both, the string with code to rush as well as the rush priority level!');
@@ -173,7 +176,7 @@ end
 
 try
     Priority(priorityLevel);
-    eval(rushedCode);
+    evalin('caller', rushedCode);
     Priority(0);
 catch
     Priority(0);
