@@ -37,6 +37,7 @@
 
 #include "Screen.h"
 #include <float.h>
+#include <inttypes.h>
 
 #ifdef PTBVIDEOCAPTURE_LIBDC
 
