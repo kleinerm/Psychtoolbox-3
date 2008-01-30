@@ -76,6 +76,7 @@ void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float
 void						PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
 char*                       			PsychGetDisplayDeviceName(int screenNumber);
 int                         			PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
+boolean					PsychOSIsKernelDriverAvailable(int screenId);
 
 //end include once
 #endif

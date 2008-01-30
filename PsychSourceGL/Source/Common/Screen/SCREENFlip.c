@@ -146,7 +146,9 @@ PsychError SCREENFlip(void)
 	double time_at_onset;
 	unsigned int opmode;
 	boolean flipstate;
-	
+
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+
 	// Change our "personality" depending on the name with which we were called:
 	if (strcasecmp(PsychGetFunctionName(), "AsyncFlipBegin")==0) {
 		// Async flip invocation:
@@ -176,6 +178,14 @@ PsychError SCREENFlip(void)
 		// Push usage string and/or give online help:
 		PsychPushHelp(useString0, synopsisString0, seeAlsoString);
 	};
+#else
+	// Windows: No async flip support:
+	// Standard synchronous flip:
+	opmode = 0;
+
+	// Push usage string and/or give online help:
+	PsychPushHelp(useString0, synopsisString0, seeAlsoString);
+#endif
 	
 	// Give online help, if requested:
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};

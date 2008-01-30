@@ -37,9 +37,10 @@
 
 #include "Screen.h"
 #include <float.h>
-#include <inttypes.h>
 
 #ifdef PTBVIDEOCAPTURE_LIBDC
+
+#include <inttypes.h>
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 // On Linux we use the syslog facility for logging, and libraw1394 for low-level access

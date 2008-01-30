@@ -22,7 +22,7 @@
 
 */
 
-
+#include "PsychVideoCaptureSupport.h"
 #include "Screen.h"
 #include <float.h>
 

@@ -269,6 +269,8 @@ boolean	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, b
  */
 void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowRecordType* windowRecord)
 {
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+
 	int i,si,ei, headid, screenId;
 	unsigned int lutreg, ctlreg, value, status;
 
@@ -296,6 +298,8 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	
 	// Debug output, if wanted:
 	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(): ARGB2101010 bit set on screen %i, head %i.\n", screenId, headid);
+
+#endif
 
 	// Done.
 	return;

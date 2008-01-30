@@ -8,7 +8,7 @@ end
 
 if what == 0
    % Default: Build Screen.dll
-   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output Screen -DPTBMODULE_Screen -IC:\Programme\QuickTimeSDK\CIncludes -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib qtmlClient.lib ddraw.lib winmm.lib  
+   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output Screen -DPTBMODULE_Screen -DPTBVIDEOCAPTURE_QT -IC:\Programme\QuickTimeSDK\CIncludes -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib qtmlClient.lib ddraw.lib winmm.lib  
    dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\Screen.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
 end
 

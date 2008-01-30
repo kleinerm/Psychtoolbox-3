@@ -795,3 +795,8 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
   return(-1);
 }
 
+// Do not have kernel driver support for MS-Windows:
+boolean PsychOSIsKernelDriverAvailable(int screenId)
+{
+	return(FALSE);
+}

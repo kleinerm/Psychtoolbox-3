@@ -184,7 +184,7 @@ if IsLinux
       oldPriority = Screen('GetMouseHelper', -5);
    else
       % New priority provided: Query and return old level, set new one:
-      if newPriority < 0 || newPriority > 99
+      if newPriority < 0 | newPriority > 99
          error('Invalid Priority level specified! Not one between 0 and 99.');
       end
 

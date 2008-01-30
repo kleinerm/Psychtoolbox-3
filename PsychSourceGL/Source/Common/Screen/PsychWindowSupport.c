@@ -257,6 +257,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	// Set a flag that we should switch to native 10 bpc framebuffer later on if possible:
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 		if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
 			printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
 			printf("PTB-ERROR: The driver must be loaded and functional for your graphics card for this to work.\n");
@@ -267,6 +268,11 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		
 		// Basic support seems to be there, set the request flag.
 		(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+#else
+		printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but this is not supported on MS-Windows.\n");
+		FreeWindowRecordFromPntr(*windowRecord);
+		return(FALSE);
+#endif
 	}
     
 	// Explicit OpenGL context ressource sharing requested?
