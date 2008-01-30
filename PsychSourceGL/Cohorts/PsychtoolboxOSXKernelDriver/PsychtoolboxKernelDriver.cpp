@@ -90,13 +90,17 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// cards...
 
 	// Double check if we're connected to proper provider:
+	// Actually, don't: Keeping track of all the different incompatible names that
+	// Apple gives to the provider is too much of a hazzle for small benefit :(
 	providerName = provider->getName();
 	IOLog("%s: Our provider service is: %s\n", getName(), providerName);
+	/*
 	if (!provider->compareName(OSString::withCStringNoCopy("display")) && !(providerName && providerName[0]=='G' && providerName[1]=='F' && providerName[2]=='X')) {
 		// Not connected to "display" provider :-( Better abort...
 		IOLog("%s: Not connected to expected provider with name 'display' or 'GFX0'. Unsafe to continue, i'll better abort...\n", getName());
 		return(false);
 	}
+	*/
 	
 	// ioreg -b -x -p IODeviceTree -n display 
 
