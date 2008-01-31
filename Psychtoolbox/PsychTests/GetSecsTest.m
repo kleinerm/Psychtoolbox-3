@@ -182,7 +182,7 @@ if IsWin
     fprintf('Ratio of elapsed time in high-res vs. low-res clock: %15.10f\n', ratio);
 
     if abs(ratio - 1.0) > 0.05
-        fprintf('\n\nTimers DISAGREE by more than 5%% --> This likely indicates an UNRELIABLE high-precision timer!!\n\n');
+        fprintf('\n\nTimers DISAGREE by more than 5 percent! --> This likely indicates an UNRELIABLE high-precision timer!!\n\n');
         hardfail = 1;
     end
 
@@ -202,7 +202,7 @@ if IsWin
     fprintf('Elapsed time should be 10 seconds: lowres timer says %f secs, highres timer says %f secs.\n', lowres2-lowres1, highres2-highres1);
     deltaratio = abs(((lowres2-lowres1) / (highres2-highres1)) - 1.0);
     if deltaratio > 0.05
-        fprintf('\n\nTimers DISAGREE by more than 5% --> This likely indicates an UNRELIABLE high-precision timer (delta %f %%)!\n\n', deltaratio * 100);
+        fprintf('\n\nTimers DISAGREE by more than 5 percent! --> This likely indicates an UNRELIABLE high-precision timer (delta %f %%)!\n\n', deltaratio * 100);
         hardfail = 1;
     end
 
@@ -303,7 +303,7 @@ if IsWin
     fprintf('Ratio of elapsed time in high-res vs. low-res clock: %15.10f\n', ratio);
 
     if abs(ratio - 1.0) > 0.05
-        fprintf('\n\nTimers DISAGREE by more than 5%% --> This likely indicates an UNRELIABLE high-precision timer!!\n\n');
+        fprintf('\n\nTimers DISAGREE by more than 5 percent! --> This likely indicates an UNRELIABLE high-precision timer!!\n\n');
         softfail = 1;
     end
 
@@ -322,7 +322,7 @@ if IsWin
     fprintf('Elapsed time should be 10 seconds: lowres timer says %f secs, highres timer says %f secs.\n', lowres2-lowres1, highres2-highres1);
     deltaratio = abs(((lowres2-lowres1) / (highres2-highres1)) - 1.0);
     if deltaratio > 0.05
-        fprintf('\n\nTimers DISAGREE by more than 5% --> This likely indicates an UNRELIABLE high-precision timer (delta %f %%)!\n\n', deltaratio * 100);
+        fprintf('\n\nTimers DISAGREE by more than 5 percent! --> This likely indicates an UNRELIABLE high-precision timer (delta %f %%)!\n\n', deltaratio * 100);
         softfail = 1;
     end
 
