@@ -148,7 +148,7 @@ static char synopsisString[] =
 	// for HDR rendering or procedural shading.
     PsychCopyInDoubleArg(7, kPsychArgOptional, &globalAlpha);
     
-    PsychSetGLContext(target); 
+    PsychSetDrawingTarget(target);
     PsychUpdateAlphaBlendingFactorLazily(target);
 	
 	if(PsychCopyInColorArg(8, kPsychArgOptional, &color)) {
