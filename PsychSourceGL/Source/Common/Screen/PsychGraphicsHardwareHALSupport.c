@@ -79,8 +79,8 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
 	#endif
 	
 	#if PSYCH_SYSTEM == PSYCH_LINUX
-		// TODO: Use register writes to do the same as the OS/X kernel level driver...
-		return(PsychError_unimplemented);
+		// Dispatch to routine in PsychScreenGlue.c Linux:
+		return(PsychOSSynchronizeDisplayScreens(numScreens, screenIds, residuals, syncMethod, syncTimeOut, allowedResidual));
 	#endif
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX

@@ -60,6 +60,7 @@
 #define XF86VidModeNumberErrors 0
 #endif
 
+
 // file local variables
 /* Following structures are needed by our ATI beamposition query implementation: */
 /* Location and format of the relevant hardware registers of the R500/R600 chips
@@ -115,6 +116,9 @@
 unsigned char * volatile gfx_cntl_mem = NULL;
 unsigned int  gfx_length = 0;
 
+// Count of kernel drivers:
+static int    numKernelDrivers = 0;
+
 // Helper routine: Read a single 32 bit unsigned int hardware register at
 // offset 'offset' and return its value:
 static unsigned int radeon_get(unsigned int offset)
@@ -122,6 +126,13 @@ static unsigned int radeon_get(unsigned int offset)
     unsigned int value;
     value = *(unsigned int * volatile)(gfx_cntl_mem + offset);  
     return(value);
+}
+
+// Helper routine: Write a single 32 bit unsigned int hardware register at
+// offset 'offset':
+static void radeon_set(unsigned int offset, unsigned int value)
+{
+    *(unsigned int* volatile)(gfx_cntl_mem + offset) = value;  
 }
 
 // Helper routine: mmap() the MMIO memory mapped I/O PCI register space of
@@ -132,8 +143,8 @@ static unsigned char * map_device_memory(unsigned int base, unsigned int length)
     int mem_fd;
     unsigned char *device_mem = NULL;
     
-    // Open device file /dev/mem -- Raw read access to system memory space -- Only root can do this:
-    if ((mem_fd = open("/dev/mem", O_RDONLY) ) < 0) {
+    // Open device file /dev/mem -- Raw read/write access to system memory space -- Only root can do this:
+    if ((mem_fd = open("/dev/mem", O_RDWR) ) < 0) {
         printf("PTB-WARNING: Beamposition queries unavailable because can't open /dev/mem\nYou must run Matlab/Octave with root privileges for this to work.\n\n");
 	return(NULL);
     }
@@ -142,7 +153,7 @@ static unsigned char * map_device_memory(unsigned int base, unsigned int length)
     // We only ask for a read-only shared mapping and don't request write-access. This as a child protection
     // as we only need to read registers -- this protects against accidental writes to sensitive device control
     // registers:
-    device_mem = (unsigned char *) mmap(NULL, length, PROT_READ, MAP_SHARED, mem_fd, base);
+    device_mem = (unsigned char *) mmap(NULL, length, PROT_READ | PROT_WRITE, MAP_SHARED, mem_fd, base);
     
     // Close file handle to /dev/mem. Not needed anymore, our mmap() will keep the mapping until unmapped...
     close(mem_fd);
@@ -343,6 +354,7 @@ void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 boolean PsychCheckScreenSettingsLock(int screenNumber);
 //boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+void InitPsychtoolboxKernelDriverInterface(void);
 
 // Error callback handler for X11 errors:
 static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
@@ -376,6 +388,10 @@ void InitializePsychDisplayGlue(void)
     
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
+
+    // Attach to kernel-level Psychtoolbox graphics card interface driver if possible
+    // *and* allowed by settings, setup all relevant mappings:
+    InitPsychtoolboxKernelDriverInterface();
 }
 
 void InitCGDisplayIDList(void)
@@ -1158,11 +1174,174 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
   // hardware register specs. See top of this file for the setup and
   // shutdown code for the memory mapped access mechanism.
   if (gfx_cntl_mem) {
-	  // Ok, supported chip and setup worked. Read the mmaped register,
+	  // Ok, supported chip and setup worked. Read the mmapped register,
 	  // either for CRTC-1 if pipe for this screen is zero, or CRTC-2 otherwise:
 	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
   }
 
   // Return our result or non-result:
   return(beampos);
+}
+
+// Try to attach to kernel level ptb support driver and setup everything, if it works:
+void InitPsychtoolboxKernelDriverInterface(void)
+{
+	// This is currently a no-op on Linux, as most low-level stuff is done via mmapped() MMIO access...
+	return;
+}
+
+// Try to detach to kernel level ptb support driver and tear down everything:
+void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
+{
+	if (numKernelDrivers > 0) {
+		// Nothing to do yet...
+	}
+
+	// Ok, whatever happened, we're detached (for good or bad):
+	numKernelDrivers = 0;
+
+	return;
+}
+
+boolean PsychOSIsKernelDriverAvailable(int screenId)
+{
+	// Currently our "kernel driver" is available if MMIO mem could be mapped:
+	// A real driver would indicate its presence via numKernelDrivers > 0 (see init/teardown code just above this routine):
+	return((gfx_cntl_mem) ? TRUE : FALSE);
+}
+
+int PsychOSCheckKDAvailable(int screenId, unsigned int * status)
+{
+	// This doesn't make much sense on Linux yet. 'connect' should be something like a handle
+	// to a kernel driver connection, e.g., the filedescriptor fd of the devicefile for ioctl()s
+	// but we don't have such a thing yet.  Could be also a pointer to a little struct with all
+	// relevant info...
+	// Currently we do a dummy assignment...
+	int connect = displayScreensToPipes[screenId];
+
+	if ((numKernelDrivers<=0) && (gfx_cntl_mem == NULL)) {
+		if (status) *status = ENODEV;
+		return(0);
+	}
+	
+	if (connect == 0xff) {
+		if (status) *status = ENODEV;
+		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUGINFO: Could not access kernel driver connection for screenId %i - No such connection.\n", screenId);
+		return(0);
+	}
+
+	if (status) *status = 0;
+
+	// Force this to '1', so the truth value is non-zero aka TRUE.
+	connect = 1;
+	return(connect);
+}
+
+
+unsigned int PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status)
+{
+	// Check availability of connection:
+	int connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+	if (status) *status = 0;
+
+	// Return readback register value:
+	return(radeon_get(offset));
+}
+
+unsigned int PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status)
+{
+	// Check availability of connection:
+	int connect;
+	if (!(connect = PsychOSCheckKDAvailable(screenId, status))) return(0xffffffff);
+	if (status) *status = 0;
+
+	// Write the register:
+	radeon_set(offset, value);
+	
+	// Return success:
+	return(0);
+}
+
+// Synchronize display screens video refresh cycle. See PsychSynchronizeDisplayScreens() for help and details...
+PsychError PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual)
+{
+	int screenId = 0;
+	double	abortTimeOut, now;
+	int residual;
+	
+	// Check availability of connection:
+	int connect;
+	unsigned int status;
+	
+	// No support for other methods than fast hard sync:
+	if (syncMethod > 1) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation with requested non hard sync method. Not supported for this setup and settings.\n"); 
+		return(PsychError_unimplemented);
+	}
+	
+	// The current implementation only supports syncing all heads of a single card
+	if (*numScreens <= 0) {
+		// Resync all displays requested: Choose screenID zero for connect handle:
+		screenId = 0;
+	}
+	else {
+		// Resync of specific display requested: We only support resync of all heads of a single multi-head card,
+		// therefore just choose the screenId of the passed master-screen for resync handle:
+		screenId = screenIds[0];
+	}
+	
+	if (!(connect = PsychOSCheckKDAvailable(screenId, &status))) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not execute display resync operation for master screenId %i. Not supported for this setup and settings.\n", screenId); 
+		return(PsychError_unimplemented);
+	}
+	
+	// Setup deadline for abortion or repeated retries:
+	PsychGetAdjustedPrecisionTimerSeconds(&abortTimeOut);
+	abortTimeOut+=syncTimeOut;
+	residual = INT_MAX;
+	
+	// Repeat until timeout or good enough result:
+	do {
+		// If this isn't the first try, wait 0.5 secs before retry:
+		if (residual != INT_MAX) PsychWaitIntervalSeconds(0.5);
+		
+		residual = INT_MAX;
+
+		// No op for now...		
+
+		// Make it always TRUE == Success as this is a no op for now anyway...
+		if (TRUE) {
+			residual = (int) 0;
+			if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Graphics display heads resynchronized. Residual vertical beamposition error is %ld scanlines.\n", residual);
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: Graphics display head synchronization failed.\n");
+			break;
+		}
+		
+		// Timestamp:
+		PsychGetAdjustedPrecisionTimerSeconds(&now);
+	} while ((now < abortTimeOut) && (abs(residual) > allowedResidual));
+
+	// Return residual value if wanted:
+	if (residuals) { 
+		residuals[0] = residual;
+	}
+	
+	if (abs(residual) > allowedResidual) {
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to synchronize heads down to the allowable residual of +/- %i scanlines. Final residual %i lines.\n", allowedResidual, residual);
+	}
+	
+	// TODO: Error handling not really worked out...
+	if (residual == INT_MAX) return(PsychError_system);
+	
+	// Done.
+	return(PsychError_none);
+}
+
+int PsychOSKDGetBeamposition(int screenId)
+{
+	// No-Op: This is implemented in PsychGetBeamposition() above directly...
+	return(-1);
 }

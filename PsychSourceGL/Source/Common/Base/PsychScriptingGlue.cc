@@ -1265,7 +1265,7 @@ mxArray *mxCreateNativeBooleanMatrix3D(int m, int n, int p)
 	#if mxLOGICAL_CLASS == mxUINT8_CLASS
         #if PSYCH_SYSTEM == PSYCH_LINUX
 	// Manually set the flag to logical for Matlab versions < 6.5
-	mxSetLogical(newArray);
+	// MK DISABLED for Matlab > 6.5 mxSetLogical(newArray);
 	#endif
         #endif
         
@@ -1475,9 +1475,9 @@ PsychError PsychSetSpecifiedArgDescriptor_old(	int			position,
 	Accept one constant specifying whether an argument is either required, optional, or anything will be allowed and another constant
 	specifying how the provided argument agrees with the specified argument.  Based on the relationship between those constants either:
 	
-		¥ Return TRUE indicating that the caller should read in the argument and itself return TRUE to indicate that the argument has been read.
-		¥ Return FALSE indicating that the caller should ignore the argument and itself return FALSE to indicate that the argument was not read.
-		¥ Exit to the calling environment with an error to indicate that the provided argument did not match the requested argument and that
+		ï¿½ Return TRUE indicating that the caller should read in the argument and itself return TRUE to indicate that the argument has been read.
+		ï¿½ Return FALSE indicating that the caller should ignore the argument and itself return FALSE to indicate that the argument was not read.
+		ï¿½ Exit to the calling environment with an error to indicate that the provided argument did not match the requested argument and that
 		it was required to match.
 		
 	

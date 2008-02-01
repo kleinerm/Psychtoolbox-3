@@ -67,6 +67,11 @@ void						PsychPositionCursor(int screenNumber, int x, int y);
 void						PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **redTable, float **greenTable, float **blueTable);
 void						PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable);
 int                         			PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber);
+PsychError					PsychOSSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual);
+void						PsychOSShutdownPsychtoolboxKernelDriverInterface(void);
+unsigned int					PsychOSKDReadRegister(int screenId, unsigned int offset, unsigned int* status);
+unsigned int					PsychOSKDWriteRegister(int screenId, unsigned int offset, unsigned int value, unsigned int* status);
+boolean						PsychOSIsKernelDriverAvailable(int screenId);
 
 // Internal helper routines for memory mapped gfx-hardware register low level access: Called
 // from PsychWindowGlue.c PsychOSOpenOnscreenWindow() and PsychOSCloseOnscreenWindow() routines

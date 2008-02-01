@@ -138,20 +138,22 @@ typedef unsigned char bool;
         typedef unsigned char                   psych_uint8;
         typedef unsigned short                  psych_uint16;
         typedef GLubyte                         ubyte;          
+        #if PSYCH_LANGUAGE == PSYCH_OCTAVE
         typedef boolean                         mxLogical;
+        #endif
         typedef boolean                         Boolean;
         typedef char                            Str255[255];
-        #if PSYCH_LANGUAGE == PSYCH_MATLAB
-        // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
-        #ifndef mxLOGICAL_CLASS
-        #define mxLOGICAL_CLASS mxUINT8_CLASS
-        #endif
-        #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
-        mxArray* mxCreateNativeBooleanMatrix3D(int m, int n, int p);
-
-        #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
-
-        #endif
+//        #if PSYCH_LANGUAGE == PSYCH_MATLAB
+//        // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
+//        #ifndef mxLOGICAL_CLASS
+//        #define mxLOGICAL_CLASS mxUINT8_CLASS
+//        #endif
+//        #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
+//        mxArray* mxCreateNativeBooleanMatrix3D(int m, int n, int p);
+//
+//        #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
+//
+//        #endif
 
         // We don't have Quicktime for Linux, so we provide a little hack to
         // make the compiler happy:
