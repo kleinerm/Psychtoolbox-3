@@ -3,11 +3,12 @@
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu			awi 
+		mario.kleiner@tuebingen.mpg.de	mk
   
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 	HISTORY:
 
@@ -16,7 +17,7 @@
 		1/14/05		awi		Commented out calls to enable alpha blending.
 		2/25/05		awi		Added call to PsychUpdateAlphaBlendingFactorLazily().  Drawing now obeys settings by Screen('BlendFunction').
 		2/25/07		cgb		Now lives in the GLfloat world.
- 
+		2/01/08		mk		Add missing glPixelZoom(1,1); to avoid side effects.
   
 	TO DO:
     
@@ -225,23 +226,18 @@ PsychError SCREENPutImage(void)
 
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(windowRecord);
-		
 		PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
 		// Set the raster position so that we can draw starting at this location.
 		glRasterPos2f((GLfloat)(positionRect[kPsychLeft]), (GLfloat)(positionRect[kPsychTop]));
-		PsychTestForGLErrors();
 		
 		// Tell glDrawPixels to unpack the pixel array along GLfloat boundaries.
 		glPixelStorei(GL_UNPACK_ALIGNMENT, (GLint)sizeof(GLfloat));
-		PsychTestForGLErrors();
-		
-		glPixelZoom(xZoom, yZoom);
-		PsychTestForGLErrors();
-		      
+
 		// Dump the pixels onto the screen.
+		glPixelZoom(xZoom, yZoom);
 		glDrawPixels(inputN, inputM, GL_RGBA, GL_FLOAT, pixelData);
-		PsychTestForGLErrors();
+		glPixelZoom(1,1);
 		
 		PsychFlushGL(windowRecord);  // OS X: This does nothing if we are multi buffered, otherwise it glFlushes
 		PsychTestForGLErrors();
@@ -252,4 +248,3 @@ PsychError SCREENPutImage(void)
 
 	return PsychError_none;
 }
-

@@ -277,6 +277,7 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
         glMatrixMode(GL_MODELVIEW);
         glPushMatrix();
         //glLoadIdentity();
+		glPixelZoom(1,1);
 
         // Do we have a drawbuffer active at the moment?
         if (oldbuffer!=2) {

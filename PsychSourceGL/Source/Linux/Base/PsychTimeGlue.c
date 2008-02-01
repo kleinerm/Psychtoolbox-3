@@ -240,7 +240,11 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// It may also be useful is somebody is running a very old Linux kernel without
 	// sophisticated checking and for testing/debugging PTB and its error-handling itself by
 	// fault-injection... 
-	if (ss < oldss) {
+	// MK: DISABLED FOR THIS RELEASE: Gives false alarms due to some race-condition when
+	// function is called from multiple concurrent threads. Proper fix is known, but i
+	// want to get a beta out now and not in a week...
+	// if (ss < oldss) {
+	if (FALSE) {
 		// Time warp detected! Time going backwards!!! Nothing we can do, only report
 		// it:
 		printf("\n\nPTB-CRITICAL-ERROR: Your systems clock is reporting time to run backwards!!!\n");

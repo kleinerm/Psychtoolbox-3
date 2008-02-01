@@ -1223,6 +1223,8 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 
 	// Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
+
+    glPixelZoom(1,1);
 	glDrawPixels(oldWidth, renderheight, GL_RGBA, GL_UNSIGNED_BYTE, scanptr);
 	
 	// Disable alpha test after blit:
