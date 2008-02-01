@@ -26,11 +26,16 @@ function err=DaqALoadQueue(daq,channel,range)
 %     14          6 (single-ended)
 %     15          7 (single-ended)
 % "range" is a vector of the same length, with values of 0 to 7, specifying
-%     the desired gain (and voltage range) for the corresponding channel.
-%     0 for 1x (+-20 V),    1 for 2x (+-10 V),
-%     2 for 4x (+-5 V),     3 for 5x (+-4 V),
-%     4 for 8x (+-2.5 V),   5 for 10x (+-2 V),
-%     6 for 16x (+-1.25 V), 7 for 20x (+-1 V).
+%     the desired gain (and voltage range) for the corresponding channel...
+%     unless we're talking channels greater than 7.  Single-ended inputs always
+%     have a range of +/- 10 V, so if you try to set the range to anything other
+%     than zero for a single-ended measurement, your setting will be ignored.
+%     For differential measurements (channels 0:7), the mapping between the
+%     values passed to this function and the gain (and actual range) are:
+%     0 for 1x (+/-20 V),    1 for 2x (+/-10 V),
+%     2 for 4x (+/-5 V),     3 for 5x (+/-4 V),
+%     4 for 8x (+/-2.5 V),   5 for 10x (+/-2 V),
+%     6 for 16x (+/-1.25 V), 7 for 20x (+/-1 V).
 %
 % USB-1608FS: 
 % "DeviceIndex" has the same meaning here as for the USB-1208FS.
@@ -95,25 +100,16 @@ if Is1608
   if length(channel) ~= length(unique(channel))
     error('You cannot specify the same input channel multiple times!');
   end
-  PrefsExist = exist('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs.mat','file');
+  DaqPrefsDir = DaqtoolboxConfigDir;
+  PrefsExist = exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file');
   if PrefsExist
-    DaqVars=load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
+    DaqVars=load([DaqPrefsDir filesep 'DaqPrefs']);
     if isfield(DaqVars,'OldGains')
       OldGains = DaqVars.OldGains;
     else
       PrefsExist=0;
-      DirMade=1;
     end
-  else
-    if ~exist('~/Library/Preferences/PsychToolbox','dir')
-      [DirMade, DirMessage] = mkdir('~/Library/Preferences','PsychToolbox');
-      if DirMade
-        if ~exist('~/Library/Preferences/PsychToolbox/DaqToolbox','dir')
-          [DirMade, DirMessage] = mkdir('~/Library/Preferences/PsychToolbox','DaqToolbox');
-        end
-      end % if DirMade
-    end % if ~exist('~/Library/Preferences/PsychToolbox','dir')
-  end % if PrefsExist; else
+  end % if PrefsExist
     
   LeftOut = setdiff(0:7,channel);
   range(channel+1) = range;
@@ -128,14 +124,12 @@ if Is1608
     fprintf('DaqALoadQueue error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
   else
     DaqVars.OldGains = range;
-    if PrefsExist | DirMade
-      save('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs','-Struct','DaqVars');
-    else
-      ConfirmInfo(['I could not find a preferences file or create a directory to house ' ...
-                   'one.  Unspecified gains will get overwritten on next DaqALoadQueue call.']);
-    end
+    save([DaqPrefsDir filesep 'DaqPrefs'],'-Struct','DaqVars');
   end
 else % if Is1608
+  % ignore range inputs for single-ended channels
+  range(find(channel > 7)) = zeros(size(find(channel > 7)));
+  
   report=zeros(1,2+2*length(channel));
   report(1)=19;
   report(2)=length(channel);

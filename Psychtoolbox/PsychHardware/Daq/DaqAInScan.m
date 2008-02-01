@@ -75,7 +75,10 @@ function [data,params]=DaqAInScan(daq,options)
 %     to the device by calling DaqALoadQueue before issuing the AInScan
 %     command. When options.range is not specified DaqAInScan assumes a
 %     value of 3 in computing the scale factor applied to the results to
-%     convert them into volts.
+%     convert them into volts unless you are making a single-ended measurement.
+%     For single-ended measures, the range is always +/- 10 V, so if you pass a
+%     channel higher than 7, any range values you pass for that channel will be
+%     ignored.
 %
 %     0 for Gain 1x (+-20 V),     1 for Gain 2x (+-10 V),
 %     2 for Gain 4x (+-5 V),      3 for Gain 5x (+-4 V),
@@ -502,8 +505,9 @@ if Is1608
   end
   if isempty(options.range)
     PrefsNotFound = 1;
-    if exist('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs.mat','file')
-      DaqVars=load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
+    DaqPrefsDir = DaqtoolboxConfigDir;
+    if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+      DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
       if isfield(DaqVars,'OldGains')
         options.range = DaqVars.OldGains((options.FirstChannel:options.LastChannel)+1);
       	PrefsNotFound = 0;
@@ -527,11 +531,16 @@ if Is1608
   end % if isempty(otptions.range); else
 else % if Is1608
   if options.sendChannelRange
+    % for single-ended measurements, there is only one value for range
+    options.range(find(options.channel > 7)) = zeros(size(find(options.channel > 7)));
     err=DaqALoadQueue(daq,options.channel,options.range);
   end
   % How many channels?
   if channelRangeOk
     c=length(options.channel);
+    % will need channel to be defined to check for single-ended measurements
+    % below in order to ge scale correct.
+    channel=options.channel;
   else
     if ~ismember(options.LastChannel,0:15) || ~ismember(options.FirstChannel,0:15)
       error('options.FirstChannel and options.LastChannel must each be in the range 0:15.');
@@ -717,24 +726,7 @@ if options.end
   end
   
   % Combine two bytes for each reading.
-  
-  % This was the old version:
-  % 
-  % data=(data(1:2:end)+data(2:2:end)*256)/65535;
-  %
-  % See DaqAIn for reasons why I believe the above was wrong for the 1208FS --
-  % mpr
-  
-  if Is1608
-    vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];    
-    data = (double(data(1:2:end))+double(data(2:2:end))*256)/32768-1;
-  else
-    vmax=[20,10,5,4,2.5,2,1.25,1];
-    TheSigns = -2*double(bitget(data(2:2:end),8))+1;
-    data=double(data);
-    data = TheSigns.*(data(1:2:end)+data(2:2:end)*256)/32768;
-  end
-  
+  data = double(data(1:2:end))+double(data(2:2:end))*256;  
   % Discard any extra 16-bit words at the end of the last report.
   if length(data)>c*options.count
     if 2*(length(data)-options.count*c)>60
@@ -760,15 +752,45 @@ if options.end
   else
     range=3*range;
   end
-
+  
+  if Is1608
+    vmax=[10 5 2.5 2 1.25 1 0.625 0.3125];    
+    data = data/32768-1;
+  else
+    vmax=[20 10 5 4 2.5 2 1.25 1];
+    
+    DiffChannels = find(channel < 8);
+    SE_Channels = find(channel > 7);
+    
+    data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
+    SE_Data = data(:,SE_Channels);
+    
+    OverflowInds = find(SE_Data > 32752);
+    UnderflowInds = find(SE_Data > 32736);
+    OKInds = find(SE_Data < 32737);
+    
+    SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
+    SE_Data(UnderflowInds) =  = 2047*ones(size(UnderflowInds));
+    SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
+    
+    data(:,SE_Channels) = SE_Data;
+        
+    data=data/2047;
+    
+    % for PsychHID calls, single-ended measurements must have range set to 0, but
+    % for vmax determination range must be 1 because scale is +/- 10 V
+    range(SE_Channels) = ones(length(SE_Channels),1);
+  end
+  
   range=vmax(range+1);
   data=repmat(range,size(data,1),1).*data;
   
   if Is1608
     TheChannels = options.FirstChannel:options.LastChannel;
     DataUncalibrated = ones(1,c);
-    if exist('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs.mat','file')
-      DaqVars = load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
+    DaqPrefsDir = DaqtoolboxConfigDir;
+    if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+      DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
       if isfield(DaqVars,'CalData')
         CalData = DaqVars.CalData;
         for k=1:length(TheChannels)

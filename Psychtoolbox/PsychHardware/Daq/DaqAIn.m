@@ -25,11 +25,16 @@ function v=DaqAIn(daq,channel,range,UnCal)
 %     13          5 (single-ended)
 %     14          6 (single-ended)
 %     15          7 (single-ended)
-% "range" (0 to 7) sets the gain (and voltage range):
-%     0 for Gain 1x (+-20 V),   1 for Gain 2x (+-10 V),
-%     2 for Gain 4x (+-5 V),    3 for Gain 5x (+-4 V),
-%     4 for Gain 8x (+-2.5 V),  5 for Gain 10x (+-2 V),
-%     6 for Gain 16x (+-1.25 V),  7 for Gain 20x (+-1 V).
+% "range" (0 to 7) sets the gain (hence voltage range):
+%     for single-ended measurements (channels 8-15), range is always +/- 10 V,
+%     and attempts to set ranges other than 0 usually result in saturation, so
+%     setting range in this function does not do anything.  For differential
+%     measurements (channels 0-7), the map between range as input to this
+%     function and the output generated is:
+%     0 for Gain 1x (+/-20 V),   1 for Gain 2x (+/-10 V),
+%     2 for Gain 4x (+/-5 V),    3 for Gain 5x (+/-4 V),
+%     4 for Gain 8x (+/-2.5 V),  5 for Gain 10x (+/-2 V),
+%     6 for Gain 16x (+/-1.25 V),  7 for Gain 20x (+/-1 V).
 % "DoNotCalibrate" for 1208FS has no effect
 %
 % USB-1608FS:
@@ -70,6 +75,10 @@ if strcmp(devices(daq).product(5:6),'16')
 else
   Is1608=0;
   MaxChannelID = 15;
+  % ignore range input for single-ended measurements
+  if channel > 7
+    range=0;
+  end
 end
 
 err1=PsychHID('ReceiveReports',daq);
@@ -101,52 +110,62 @@ if length(report)==3
     v = vmax(range+1)*(RawValue/32768-1);
     if UnCal
       return; 
-    elseif exist('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs.mat','file');
-      DaqVars = load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
-      if isfield(DaqVars,'CalData')
-        CalData = DaqVars.CalData;
-        GoodIndices = find(CalData(:,1) == channel & CalData(:,2) == range);
-        if ~isempty(GoodIndices)
-          TheDays = CalData(GoodIndices,end);
-          ThisDay = datenum(date);
-          [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
-          AllThatDay = find(TheDays == TheDays(BestIndex));
-          MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
-          
-          if DaysSinceLast > 30
-            warning('Calibration of this channel has not been performed since %s!!',datestr(MostRecentData(1,end)));
+    else
+      DaqPrefsDir = DaqtoolboxConfigDir;
+      if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+        DaqVars = load([DaqPrefsDir filesep 'DaqPrefs']);
+        if isfield(DaqVars,'CalData')
+          CalData = DaqVars.CalData;
+          GoodIndices = find(CalData(:,1) == channel & CalData(:,2) == range);
+          if ~isempty(GoodIndices)
+            TheDays = CalData(GoodIndices,end);
+            ThisDay = datenum(date);
+            [DaysSinceLast,BestIndex] = min(ThisDay-TheDays);
+            AllThatDay = find(TheDays == TheDays(BestIndex));
+            MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
+
+            if DaysSinceLast > 30
+              warning(sprintf('Calibration of this channel has not been performed since %s!!', ...
+                      datestr(MostRecentData(1,end))));
+            end
+
+            v = polyval(MostRecentPolyFit,v);
+            return;
           end
-          
-          v = polyval(MostRecentPolyFit,v);
-          return;
-        end
-      end
-    end
+        end % if isfield(DaqVars,'CalData')
+      end % if exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file')
+    end % if UnCal
       
-    warning('It looks like this channel has not yet been calibrated.  In my tests, uncalibrated values could be off by as much as 15%!');
+    warning(sprintf(['It looks like this channel has not yet been calibrated.  In my\n' ...
+                     'tests, uncalibrated values could be off by as much as 15%%!']));
   else
     % I'm really not sure that calibration is handled properly here because
     % the manual indicates that for single ended measurements, the range is
     % always +/- 10 V.  For differential inputs it seems correct, though. --
     % mpr
 
-    % Mapping table value -> voltage for different gains:
+    % Mapping table value -> voltage for differential gains:
     vmax=[20,10,5,4,2.5,2,1.25,1];
 
-    % Extract and strip sign bit from high-byte; near as I can tell, this code
-    % was quite broken, so I fixed it, but I don't have a 1208FS device and
-    % hence can't test it... -- mpr
-    TheSign = -2*double(bitget(report(3), 8))+1;
-
-    report(3) = bitand(report(3), 1+2+4+8+16+32+64);
-    report=double(report);
-    
-    if UnCal
-      v = TheSign*(report(2)+report(3)*256);
+    RawReturn = double(report(2:3))*[1; 256];
+    if channel < 8
+      % combined two-bytes of report make a 2's complement 12-bit value
+      DigitalValue = bitshift(RawReturn,-4);
     else
-      % Reassemble low-byte, high-byte and sign into signed voltage level:
-      v=TheSign * vmax(range+1)*(report(2)+report(3)*256)/32768;    % added/changed by asg due to advice from Mario (forum post #5713)
+      % range needs to be zero above during call to PsychHID('SetReport',... but
+      % must be 1 to get scale below.
+      range=1;
+      % combined two-bytes of report make a 2's complement 11-bit value
+      if RawReturn > 32752
+        DigitalValue = -2048;
+      elseif RawReturn > 32736
+        DigitalValue = 2047;
+      else
+        DigitalValue = bitand(4095,bitshift(RawReturn,-3))-2048;
+      end
     end
+    
+    v=vmax(range+1)*DigitalValue/2047;
   end    
 else
 %   fprintf('length(report) %d\n',length(report));
@@ -154,5 +173,3 @@ else
 end
 
 return;
-
-

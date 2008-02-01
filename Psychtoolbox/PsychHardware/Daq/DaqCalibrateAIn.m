@@ -45,33 +45,15 @@ end
 CalVs = [0 0.625 1.25 2.5 5];
 VMaxs = [10 5 2.5 2 1.25 1 0.625 0.3125];
 
-PrefsExist = exist('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs.mat','file');
+DaqPrefsDir = DaqtoolboxConfigDir;
+PrefsExist = exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file');
 if PrefsExist
-  DaqVars=load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
-  OldGains = DaqVars.OldGains;
-else
-  if ~exist('~/Library/Preferences/PsychToolbox','dir')
-    [DirMade, DirMessage] = mkdir('~/Library/Preferences','PsychToolbox');
-    if DirMade
-      if ~exist('~/Library/Preferences/PsychToolbox/DaqToolbox','dir')
-        [DirMade, DirMessage] = mkdir('~/Library/Preferences/PsychToolbox','DaqToolbox');
-      end
-    end % if DirMade
-  end % if ~exist('~/Library/Preferences/PsychToolbox','dir')
-end % if PrefsExist; else
-
-if ~PrefsExist && ~DirMade
-  error('I could not find a preferences file, and I could not create the directory for where I should put one...');
-end
-
-if PrefsExist
-  DaqVars = load('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs');
+  DaqVars=load([DaqPrefsDir filesep 'DaqPrefs']);
   if isfield(DaqVars,'CalData')
     CalData = DaqVars.CalData;
   else
     CalData = [];
     PrefsExist=0;
-    DirMade=1;
   end
 end
 
@@ -103,6 +85,6 @@ end
 
 DaqVars.CalData = CalData;
 
-save('~/Library/Preferences/PsychToolbox/DaqToolbox/DaqPrefs','-Struct','DaqVars');
+save([DaqPrefsDir filesep 'DaqPrefs'],'-Struct','DaqVars');
 
 return;

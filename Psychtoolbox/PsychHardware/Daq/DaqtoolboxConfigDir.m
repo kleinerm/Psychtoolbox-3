@@ -1,74 +1,83 @@
-function ThePath=PsychtoolboxConfigDir
-% Syntax: path=PsychtoolboxConfigDir
+function ThePath = DaqtoolboxConfigDir
+% Syntax: AbsolutePath = DaqtoolboxConfigDir
 %
-% Purpose: look for a folder for storing Psychtoolbox preferences; create if
-%          necessary.
+% Purpose: Look for (create if necessary) folder containing preferences for Daq
+%          toolbox;
 %
-% History: 1/23/08    mpr configured it was about time to write this
+% History: 1/28/08  mpr configured this was needed
+%
+% Function does not assume that user is using Psychophysics toolbox, but will
+% subordinate Daqtoolbox if that assumption is correct.  That is, function will
+% look for Daqtoolbox preferences in a folder containing Psychtoolbox
+% preferences.  It will create its own folder iff it does not find one, and that
+% folder will be in the Psychtoolbox preferences folder if that folder exists.
 
-ThePath=which('PsychPrefsFolder.m');
+ThePath = which('DaqPrefsFolder.m');
 
 if isempty(ThePath)
-  if IsOSX
-    % Did this instead of '~/' because the which command above and the addpath
-    % commands below will expand '~/' to a full path; echoing the HOME
-    % environment variable was the first way I found to get said full path so
-    % that strings will match when they should
-    [ErrMsg,HomeDir] = unix('echo $HOME');
-    % end-1 to trim trailing carriage return
-    StringStart = [HomeDir(1:(end-1)) '/Library/Preferences/'];
-  elseif IsLinux
-    [ErrMsg,HomeDir] = unix('echo $HOME');    
-    % end-1 to trim trailing carriage return
-    StringStart = [HomeDir(1:(end-1)) '/.'];
-  elseif IsWindows
-    [ErrMsg,StringStart] = dos('echo %AppData%');
-    % end-1 to trim trailing carriage return
-    StringStart = StringStart(1:(end-1));
-    if strcmp(StringStart,'%AppData%')
-      FoundHomeDir = 0;
-      [ErrMsg,HomeDir] = dos('echo %UserProfile%');
-      HomeDir = HomeDir(1:(end-1));
-      if strcmp(HomeDir,'%UserProfile%')
-        HomeDir = uigetdir('','Please find your home folder for me');
-        if ischar(HomeDir)
-          FoundHomeDir = 1;
+  % Couldn't resist the variable name, sorry...
+  Psychopath=which('PsychPrefsFolder.m');
+  if isempty(Psychopath)
+    if IsOSX
+      [ErrMsg,HomeDir] = unix('echo $HOME');
+      % end-1 to trim trailing carriage return
+      StringStart = [HomeDir(1:(end-1)) '/Library/Preferences/'];
+    elseif IsLinux
+      [ErrMsg,HomeDir] = unix('echo $HOME');    
+      % end-1 to trim trailing carriage return
+      StringStart = [HomeDir(1:(end-1)) '/.'];
+    elseif IsWindows
+      [ErrMsg,StringStart] = dos('echo %AppData%');
+      % end-1 to trim trailing carriage return
+      StringStart = StringStart(1:(end-1));
+      if strcmp(StringStart,'%AppData%')
+        FoundHomeDir = 0;
+        [ErrMsg,HomeDir] = dos('echo %UserProfile%');
+        HomeDir = HomeDir(1:(end-1));
+        if strcmp(HomeDir,'%UserProfile%')
+          HomeDir = uigetdir('','Please find your home folder for me');
+          if ischar(HomeDir)
+            FoundHomeDir = 1;
+          else
+            warning(sprintf(['I could not find your home directory or understand your input so I am storing\n' ...
+                             'preferences folder in the current working directory: %s.\n'],pwd));
+            StringStart = [pwd filesep];
+          end
         else
-          warning(sprintf(['I could not find your home directory or understand your input so I am storing\n' ...
-                           'preferences folder in the current working directory: %s.\n'],pwd));
-          StringStart = [pwd filesep];
+          FoundHomeDir = 1;        
+        end
+        if FoundHomeDir
+          [DirMade,DirMessage]=mkdir(HomeDir,'Application Data');
+          if DirMade
+            StringStart = [HomeDir filesep 'Application Data' filesep];
+          else
+            warning(sprintf('"Application Data" folder neither exists nor is createable;\nstoring preferences in home directory.'));
+            StringStart = [HomeDir filesep];
+          end
         end
       else
-        FoundHomeDir = 1;        
+        StringStart = [StringStart filesep];
       end
-      if FoundHomeDir
-        [DirMade,DirMessage]=mkdir(HomeDir,'Application Data');
-        if DirMade
-          StringStart = [HomeDir filesep 'Application Data' filesep];
-        else
-          warning(sprintf('"Application Data" folder neither exists nor is createable;\nstoring preferences in home directory.'));
-          StringStart = [HomeDir filesep];
-        end
-      end
-    else
-      StringStart = [StringStart filesep];
-    end
-  else
-    fprintf(['I do not know your operating system, so I don''t know where I should store\n' ...
-            'Preferences.  I''m putting them in the current working directory:\n      %s.\n\n'],pwd);
-    StringStart = [pwd filesep];
+    else % if IsOSX; else
+      fprintf(['I do not know your operating system, so I don''t know where I should store\n' ...
+              'Preferences.  I''m putting them in the current working directory:\n      %s.\n\n'],pwd);
+      StringStart = [pwd filesep];
+    end % if IsOSX; else
+  else % if isempty(Psychopath)
+    TheFileseps = find(Psychopath == filesep);
+    StringStart = Psychopath(1:(TheFileseps(end)));
   end
   
-  TheDir = [StringStart 'Psychtoolbox'];
-
+  TheDir = [ StringStart 'Daqtoolbox'];
+    
   TheMessage = ['%% This file exists only to let others know of its existence.  It was\n' ...
-                '%% created by PsychtoolboxConfigDir.  It identifies the directory where\n' ...
-                '%% configuration data for the Psychophysics toolbox is stored.\n' ...
+                '%% created by DaqtoolboxConfigDir.  It identifies the directory where\n' ...
+                '%% configuration data for the Daq toolbox is stored.\n' ...
                 '%% If you would like preferences to be stored some place else, move\n' ...
                 '%% the folder containing this file to the location you want, and (if\n' ...
                 '%% you have one), edit your startup file to recognize the new path.\n' ...
                 '%% Your startup file should contain these lines (uncommented):\n\n' ...
-                '\n%% %% The next few lines were automatically written by PsychtoolboxConfigDir.\n' ...
+                '\n%% %% The next few lines were automatically written by DaqtoolboxConfigDir.\n' ...
                 '%% %% Do NOT edit them unless you know what you are doing!\n\n' ...
                 '%% CurrentPath = path;\n' ...
                 '%% if isempty(strfind(CurrentPath,''[PATH_TO_THIS_FOLDER]''))\n' ...
@@ -77,13 +86,13 @@ if isempty(ThePath)
                 '%% %% Okay to edit after this.\n\n' ...
                 '%% Replace PATH_TO_THIS_FOLDER with the location where you moved this\n' ...
                 '%% folder, and your preferences should always be found when you start Matlab.\n'];
-
+              
 
   if exist(TheDir,'dir')
-    if exist([TheDir filesep 'PsychPrefsFolder.m'],'file')
+    if exist([TheDir filesep 'DaqPrefsFolder.m'],'file')
       ThePath = TheDir;
     else
-      fid=fopen([TheDir filesep 'PsychPrefsFolder.m'],'a');
+      fid=fopen([TheDir filesep 'DaqPrefsFolder.m'],'a');
       if fid < 0
         error(sprintf('I could not create a configuration file in %s.  Are your file permissions okay?',TheDir));
       end
@@ -93,13 +102,13 @@ if isempty(ThePath)
     end
   else % if exist(TheDir,'dir')
     if IsLinux
-      [DirMade, DirMessage] = mkdir(StringStart(1:(end-1)),'.Psychtoolbox');
+      [DirMade, DirMessage] = mkdir(StringStart(1:(end-1)),'.Daqtoolbox');
     else      
-      [DirMade, DirMessage] = mkdir(StringStart,'Psychtoolbox');
+      [DirMade, DirMessage] = mkdir(StringStart,'Daqtoolbox');
     end
     if DirMade
-      TheDir = [StringStart 'Psychtoolbox' filesep];
-      fid=fopen([TheDir 'PsychPrefsFolder.m'],'a');
+      TheDir = [StringStart 'Daqtoolbox' filesep];
+      fid=fopen([TheDir 'DaqPrefsFolder.m'],'a');
       if fid < 0
         error(sprintf('I could not create a configuration file in %s.  Are your file permissions okay?',TheDir));
       end
@@ -133,7 +142,7 @@ if isempty(strfind(CurrentPath,ThePath))
         if ~ischar(NextLine)
           ReachedEnd = 1;
           ReadingFile = 0;
-        elseif ~isempty(strfind(NextLine,'PsychtoolboxConfigDir'))
+        elseif ~isempty(strfind(NextLine,'DaqtoolboxConfigDir'))
           NewLines = 0;
           while NewLines < 10
             NextLine = fgetl(fid);
@@ -196,11 +205,11 @@ if isempty(strfind(CurrentPath,ThePath))
                              'You should investigate and edit your startup file accordingly.']));
           end
           ReadingFile = 0;
-        end % if ~ischar(NextLine); elseif ~isempty(strfind(NextLine,'PsychtoolboxConfigDir'))
+        end % if ~ischar(NextLine); elseif ~isempty(strfind(NextLine,'DaqtoolboxConfigDir'))
       end % if ReadingFile
       
       if ReachedEnd
-        fprintf(fid,['\n\n%% The next few lines were automatically written by PsychtoolboxConfigDir.\n' ...
+        fprintf(fid,['\n\n%% The next few lines were automatically written by DaqtoolboxConfigDir.\n' ...
                      '%% Do NOT edit them unless you know what you are doing!\n\n' ...
                      'CurrentPath = path;\n' ...
                      'if isempty(strfind(CurrentPath,''%s''))\n' ...
