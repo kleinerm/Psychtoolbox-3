@@ -139,11 +139,6 @@ if length(report)==3
     warning(sprintf(['It looks like this channel has not yet been calibrated.  In my\n' ...
                      'tests, uncalibrated values could be off by as much as 15%%!']));
   else
-    % I'm really not sure that calibration is handled properly here because
-    % the manual indicates that for single ended measurements, the range is
-    % always +/- 10 V.  For differential inputs it seems correct, though. --
-    % mpr
-
     % Mapping table value -> voltage for differential gains:
     vmax=[20,10,5,4,2.5,2,1.25,1];
 
