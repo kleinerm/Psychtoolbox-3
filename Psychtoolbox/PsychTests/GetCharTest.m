@@ -194,8 +194,11 @@ if ~IsOctave
                     % Draw instructions to the screen.  We will do all our work
                     % on Screen 0.  We have opened other onscreen windows only to
                     % demonstrate that GetChar works then.
-                    Screen('TextFont', screenWindow(1), 'Times');
-                    Screen('TextSize', screenWindow(1), 40);
+                    if ~IsLinux
+                        Screen('TextFont', screenWindow(1), 'Times');
+                        Screen('TextSize', screenWindow(1), 40);
+                    end
+                    
                     Screen('TextColor', screenWindow(1), [0 0 0]);
                     Screen('DrawText', screenWindow(1), 'Hello! Welcome to the Fullscreen Window section of GetCharTest.', 100, 100);
                     Screen('DrawText', screenWindow(1), 'Press any character key to continue.', 100, 150);
@@ -259,7 +262,9 @@ if ~IsOctave
                     % Draw the characters...
                     Screen('FillRect', screenWindow(1), WhiteIndex(screenNumbers(1)));
                     % First draw the instructions
-                    Screen('TextSize', screenWindow(1), 40);
+                    if ~IsLinux
+                        Screen('TextSize', screenWindow(1), 40);
+                    end
                     Screen('DrawText', screenWindow(1), 'End of Typing Test.', 100, 100);
                     Screen('TextSize', screenWindow(1), 20);
                     Screen('DrawText', screenWindow(1), 'Either you ended the test by typing Q, or you reached the limit of the test.', 100, startingYPosition);

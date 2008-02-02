@@ -36,10 +36,6 @@ function BasicSoundFeedbackDemo(reqlatency, duplex)
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
 
-if IsLinux
-    error('Sorry this demo is not yet supported under GNU/Linux.');
-end
-
 fprintf('\n\nTHIS IS EARLY ALPHA CODE! IT MAY OR MAY NOT WORK RELIABLY ON YOUR SETUP!\nTEST IT WITH MEASUREMENT EQUIPMENT IF YOU DEPEND ON ACCURATE FEEDBACK\nTIMING!!!\n\n');
 
 % Latency provided?
