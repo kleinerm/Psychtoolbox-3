@@ -116,9 +116,12 @@ Special Raw function
 static char useStringRaw[] = "[sample, raw] = Eyelink('NewestFloatSampleRaw')";
 
 static char synopsisStringRaw[] =
-"makes copy of most recent float sample received"
-"and will copy extra (raw) data as well"
-"returns -1 if no new sample or error";
+"CAUTION: Not supported on Linux. This makes use of undocumented Eyelink functions, with no "
+"official support from SR-Research: It may or may not work on your setup with your "
+"tracker. Currently it doesn't work on Linux at least.\n\n"
+"Makes copy of most recent float sample received "
+"and will copy extra (raw) data as well "
+"returns -1 if no new sample or error ";
 
 PsychError EyelinkNewestFloatSampleRaw(void)
 {
@@ -148,9 +151,10 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	mxOutArg[0] = PsychGetOutArgMxPtr(1);
 	mxOutArg[1] = PsychGetOutArgMxPtr(2);
 	
+#if PSYCH_SYSTEM != PSYCH_LINUX
 	// Grab the sample
 	iSampleType=eyelink_newest_float_sample(&structFloatSample);
-	
+
 	if( iSampleType==1 || iSampleType==0 )
 	{
 		//	mexPrintf("old or new sample\n");
@@ -171,6 +175,7 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	}
 	
 	return(PsychError_none);
+#else
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not supported on your system.");
+#endif
 }
-
-

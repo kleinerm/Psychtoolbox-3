@@ -33,13 +33,19 @@
 #include "core_expt.h"
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-// MK: More workarounds for MS compiler braindamage...
+// These not defined on non-OS/X:
 typedef UINT8 UInt8;
 typedef UINT16 UInt16;
 typedef UINT32 UInt32;
 typedef INT8 Int8;
 typedef INT16 Int16;
 typedef INT32 Int32;
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+typedef psych_uint8 UInt8;
+typedef psych_uint16 UInt16;
+typedef psych_uint32 UInt32;
 #endif
 
 /////////////////////////////////////////////////////////////////////////

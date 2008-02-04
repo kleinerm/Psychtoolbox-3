@@ -101,9 +101,10 @@ try
 
     if IsLinux
         ostype = 'LinuxOS';
-        osversion = 'Unknown';
+        [rc osversion] = system('uname -r');
+        osversion=deblank(osversion);
         % Query machine architecture via Unix 'arch' utility.
-        [rc arch] = system('arch');
+        [rc arch] = system('uname -m');
         arch=deblank(arch);
     end
     

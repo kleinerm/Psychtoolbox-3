@@ -219,13 +219,14 @@ clear mex
 % Check OS
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
-if ~isWin && ~isOSX
+isLinux=strcmp(computer,'GLNX86');
+if ~isWin && ~isOSX && ~isLinux
 os=computer;
 if strcmp(os,'MAC2')
 os='Mac OS9';
 end
 fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
-fprintf([mfilename ' can only install the new (OSX and Windows) \n'...
+fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
    'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
    'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
    'web http://psychtoolbox.org/download.html\n']);
@@ -239,7 +240,7 @@ if nargin<2
     else
         % We do not have a default path on Windows, so the user must provide it:
         fprintf('You did not provide the full path to the directory where Psychtoolbox should be\n');
-        fprintf('installed. This is required for Microsoft Windows installation. Please enter a full\n');
+        fprintf('installed. This is required for Microsoft Windows and Linux installation. Please enter a full\n');
         fprintf('path as the second argument to this script, e.g. DownloadPsychtoolbox(''beta'',''C:\\Toolboxes\\'').\n');
         error('For Windows, the call to %s must specify a full path for the location of installation.',mfilename);
     end     
@@ -485,7 +486,11 @@ end
 if isOSX
     fprintf('I will now download the latest Psychtoolbox for OSX.\n');
 else
-    fprintf('I will now download the latest Psychtoolbox for Windows.\n');
+    if isLinux
+        fprintf('I will now download the latest Psychtoolbox for Linux.\n');
+    else
+        fprintf('I will now download the latest Psychtoolbox for Windows.\n');
+    end
 end
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Target folder for installation: %s\n',targetdirectory);
@@ -511,7 +516,7 @@ end
 fprintf('The following CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
 fprintf('%s\n',checkoutcommand);
 fprintf('Downloading. It''s nearly 100 MB, which can take many minutes. \nAlas there is no output to this window to indicate progress until the download is complete. \nPlease be patient ...\n');
-if isOSX
+if isOSX | isLinux
     [err,result]=system(checkoutcommand);
 else
     [err,result]=dos(checkoutcommand, '-echo');
@@ -526,7 +531,7 @@ if err
     checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
-    if isOSX
+    if isOSX | isLinux
         [err,result]=system(checkoutcommand);
     else
         [err,result]=dos(checkoutcommand, '-echo');
@@ -542,7 +547,7 @@ if err
     checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
-    if isOSX
+    if isOSX | isLinux
         [err,result]=system(checkoutcommand);
     else
         [err,result]=dos(checkoutcommand, '-echo');
@@ -584,7 +589,7 @@ end
 
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-if isOSX
+if isOSX | isLinux
     [s,m,mm]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
 else
     [s,m,mm]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.

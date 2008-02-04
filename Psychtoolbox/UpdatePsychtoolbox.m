@@ -63,13 +63,14 @@ end
 % Check OS
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
-if ~isWin && ~isOSX
+isLinux=strcmp(computer,'GLNX86');
+if ~isWin && ~isOSX && ~isLinux
     os=computer;
     if strcmp(os,'MAC2')
         os='Mac OS9';
     end
     fprintf('Sorry, this updater doesn''t support your operating system: %s.\n',os);
-    fprintf([mfilename ' can only install the new (OSX and Windows) \n'...
+    fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
         'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
         'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
         'web http://psychtoolbox.org/download.html\n']);
@@ -97,7 +98,7 @@ fprintf('About to update your working copy of the OpenGL-based Psychtoolbox.\n')
 updatecommand=[svnpath 'svn update '  targetRevision targetdirectory ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
-if isOSX
+if isOSX | isLinux
     [err, result]=system(updatecommand);
 else
     [err, result]=dos(updatecommand, '-echo');

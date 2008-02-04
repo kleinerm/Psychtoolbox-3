@@ -8,7 +8,7 @@ function ThePath=PsychtoolboxConfigDir
 
 ThePath=which('PsychPrefsFolder.m');
 
-if isempty(ThePath)
+if ~exist(ThePath) || isempty(ThePath)
   if IsOSX
     % Did this instead of '~/' because the which command above and the addpath
     % commands below will expand '~/' to a full path; echoing the HOME
