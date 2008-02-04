@@ -140,12 +140,15 @@ if length(report)==3
                      'tests, uncalibrated values could be off by as much as 15%%!']));
   else
     % Mapping table value -> voltage for differential gains:
-    vmax=[20,10,5,4,2.5,2,1.25,1];
+    vmax=[20 10 5 4 2.5 2 1.25 1];
 
     RawReturn = double(report(2:3))*[1; 256];
     if channel < 8
       % combined two-bytes of report make a 2's complement 12-bit value
       DigitalValue = bitshift(RawReturn,-4);
+      if bitget(DigitalValue,12)
+        DigitalValue = -bitcmp(DigitalValue,12)-1;
+      end
     else
       % range needs to be zero above during call to PsychHID('SetReport',... but
       % must be 1 to get scale below.

@@ -763,6 +763,8 @@ if options.end
     SE_Channels = find(channel > 7);
     
     data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
+    NegativeDiffs = find(data(:,DiffChannels) > 2048);
+    data(:,DiffChannels(NegativeDiffs)) = -bitcmp(data(:,DiffChannels(NegativeDiffs)),12)-1;
     SE_Data = data(:,SE_Channels);
     
     OverflowInds = find(SE_Data > 32752);
@@ -777,7 +779,8 @@ if options.end
         
     data=data/2047;
     
-    % for PsychHID calls, single-ended measurements must have range set to 0, but
+    % for PsychHID calls, single-ended measurements must have range set to 0,
+    % but
     % for vmax determination range must be 1 because scale is +/- 10 V
     range(SE_Channels) = ones(length(SE_Channels),1);
   end
