@@ -75,8 +75,17 @@ try
     doublebuffer=1
     screens=Screen('Screens');
 	screenNumber=max(screens);
+
     % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
     [w, rect] = Screen('OpenWindow', screenNumber, 0,[], 32, doublebuffer+1);
+    
+    % If you'd uncomment these lines and had the Psychtoolbox kernel driver
+    % loaded on a OS/X or Linux box with ATI Radeon X1000 or later, you'd
+    % probably enjoy a 10 bit per color channel framebuffer...
+    %PsychImaging('PrepareConfiguration');
+    %PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
+    %PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+    %[w, rect] = PsychImaging('OpenWindow', screenNumber, 0,[], [], doublebuffer+1);
 
     % Enable alpha blending with proper blend-function. We need it
     % for drawing of smoothed points:
@@ -90,7 +99,6 @@ try
     
     black = BlackIndex(w);
     white = WhiteIndex(w);
-%    Screen('FillRect', w, black)
     HideCursor;	% Hide the mouse cursor
     Priority(MaxPriority(w));
     
