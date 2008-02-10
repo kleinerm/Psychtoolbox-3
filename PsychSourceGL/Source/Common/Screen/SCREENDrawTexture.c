@@ -462,7 +462,7 @@ PsychError SCREENDrawTextures(void)
 		if (numdstRects > 1) {
 			// Get i'th destination rectangle:
 			PsychCopyRect(targetRect, &(dstRects[i*4]));
-		} else if (numsrcRects == 1) {
+		} else if (numdstRects == 1) {
 			// Single destination rect provided - get it:
 			PsychCopyRect(targetRect, &(dstRects[0]));
 		} else {

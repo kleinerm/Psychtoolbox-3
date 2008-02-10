@@ -3146,6 +3146,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
  */
 void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 {
+	GLenum glerr;
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
     int stereo_mode=windowRecord->stereomode;
@@ -3252,16 +3253,22 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		PsychSetDrawingTarget(windowRecord);
 	}
 
-	if (glGetError() == GL_OUT_OF_MEMORY) {
-		// Special case: Out of memory after Flip + Postflip operations.
-		printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
-		printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
-		printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
-		printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
-		printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
-		printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
-	 }
-
+	glerr = glGetError();
+	if (glerr != GL_NO_ERROR) {
+		if (glerr == GL_OUT_OF_MEMORY) {
+			// Special case: Out of memory after Flip + Postflip operations.
+			printf("PTB-Error: The OpenGL graphics hardware encountered an out of memory condition!\n");
+			printf("PTB-Error: One cause of this could be that you are running your display at a too\n");
+			printf("PTB-Error: high resolution and/or use Anti-Aliasing with a multiSample value that\n");
+			printf("PTB-Error: your gfx-card can't handle at the current display resolution. If this is\n");
+			printf("PTB-Error: the case, you may have to reduce multiSample level or display resolution.\n");
+			printf("PTB-Error: It may help to quit and restart Matlab or Octave before continuing.\n");
+		}
+		else {
+			printf("PTB-Error: The OpenGL graphics hardware encountered the following OpenGL error after flip: %s.\n", gluErrorString(glerr));
+		}
+	}
+	
     PsychTestForGLErrors();
 
 	// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.

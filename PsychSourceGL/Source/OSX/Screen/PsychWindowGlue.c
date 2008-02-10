@@ -802,8 +802,13 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {	
+	CGLError cglerr;
+
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-    CGLFlushDrawable(windowRecord->targetSpecific.contextObject);
+    if ((cglerr = CGLFlushDrawable(windowRecord->targetSpecific.contextObject))) {
+		// Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:
+		printf("PTB-ERROR: Doublebuffer-Swap failed (probably during 'Flip')! Internal OpenGL subsystem/driver error: %s. System misconfigured or driver/operating system bug?!?\n", CGLErrorString(cglerr));
+	}
 }
 
 /*
