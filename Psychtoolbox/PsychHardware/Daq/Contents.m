@@ -43,19 +43,7 @@
 % computer for which we provided the PsychHID extension. We hope that users
 % of the OSX Psychtoolbox will find it easy to write new MATLAB M files
 % using PsychHID to support other HID-compliant devices, using the Daq
-% Toolbox as a model.  [I have partially broken the isolation, but it is a
-% minimal break.  For a couple of reasons -- primarily because you can set
-% gains using DaqSetGainQueue but you can't get (i.e. poll) the gain queue,
-% I found it useful to create a preferences file.  The location I chose to
-% store that file uses the fileseparators and an expectation that the file
-% structure of your machine is that of Mac OS X.  It would be pretty simple
-% to modify that for your own useage; search for the string:
-%
-% ~/Library/Preferences/
-%
-% and replace it and other subdirectories with appropriate strings.  You
-% will find the string in DaqAIn, DaqAInScan, DaqALoadQueue, and
-% DaqCalibrateAIn. -- MPR 1/11/08]
+% Toolbox as a model.
 % 
 % NOT RESPONDING? If PsychHID is not responding, e.g. after unplugging it 
 % and plugging it back in, try quitting and restarting MATLAB. We find that

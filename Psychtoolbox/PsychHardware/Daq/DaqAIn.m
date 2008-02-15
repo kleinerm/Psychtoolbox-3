@@ -126,7 +126,7 @@ if length(report)==3
 
             if DaysSinceLast > 30
               warning(sprintf('Calibration of this channel has not been performed since %s!!', ...
-                      datestr(MostRecentData(1,end))));
+                      datestr(TheDays(BestIndex))));
             end
 
             v = polyval(MostRecentPolyFit,v);

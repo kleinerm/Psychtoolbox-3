@@ -75,7 +75,7 @@ function PsychHID(varargin)
 % and all of USB, is a platform-independent standard.
 % _________________________________________________________________________
 %  
-% See also: TestPsychHID, Daq, TestDaq, KbCheck, Gamepad, PsychHardware. 
+% See also: PsychHIDTest, Daq, DaqTest, KbCheck, Gamepad, PsychHardware. 
 % web http://psychtoolbox.org/usb.html -browser;
 
 AssertMex;

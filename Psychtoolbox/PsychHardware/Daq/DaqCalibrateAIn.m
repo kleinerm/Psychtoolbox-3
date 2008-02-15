@@ -17,6 +17,11 @@ function DaqCalibrateAIn(daq,channel)
 % (values range from 0:7) if you want to calibrate multiple channels at once.
 % Default channel is 0, and if no argument is passed for DeviceID, DaqFind will
 % be run to see if you have only one device.  -- mpr
+%
+% To calibrate a channel, connect the appropriate pin(s) to pin 17.  For channel
+% 0, you want pin 1 to pin 17, for channel 1, pin 3 to pin 17, for channel 2,
+% pin 5 to... you probably see the pattern...
+
 
 if nargin < 2 || isempty(channel)
   channel = 0;

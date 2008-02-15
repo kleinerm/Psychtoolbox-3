@@ -208,7 +208,7 @@ function [data,params]=DaqAInScan(daq,options)
 %     instead.  
 % "options.queue" again, not an option.  Don't try to use it.
 %
-% These options do not exist (as such) for the 1208FS.  The all default to 0.
+% These options do not exist (as such) for the 1208FS.  They all default to 0.
 %
 % "options.burst" if 1, acquire data in burst mode.  It is not clear to me what
 %     differences are entailed by setting this to 1 compared to just setting
@@ -772,7 +772,7 @@ if options.end
     OKInds = find(SE_Data < 32737);
     
     SE_Data(OverflowInds) = -2048*ones(size(OverflowInds));
-    SE_Data(UnderflowInds) =  = 2047*ones(size(UnderflowInds));
+    SE_Data(UnderflowInds) = 2047*ones(size(UnderflowInds));
     SE_Data(OKInds) = bitand(4095,bitshift(SE_Data(OKInds),-3))-2048;
     
     data(:,SE_Channels) = SE_Data;
