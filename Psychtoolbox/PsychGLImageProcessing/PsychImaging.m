@@ -269,13 +269,19 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   procedure, then compute an inverse warp transformation to undo this
 %   distortion, then provide that transformation to this function.
 %
-%   Usage: PsychImaging('AddTask', whichChannel, 'GeometryCorrection', calibfilename);
+%   Usage: PsychImaging('AddTask', whichChannel, 'GeometryCorrection', calibfilename [, debugoutput] [, arg1], [arg2], ...);
 %
 %   'calibfilename' is the filename of a calibration file which specified
 %   the type of undistortion to apply. Calibration files can be created by
 %   interactive calibration procedures. See 'help CreateDisplayWarp' for a
 %   list of calibration methods. One of the supported procedures is, e.g.,
 %   "DisplayUndistortionBezier", read "help DisplayUndistortionBezier"
+%
+%   The optional flag 'debugoutput' if set to non-zero value will trigger
+%   some debug output about the calibration with some calibration methods.
+%
+%   The optional 'arg1', 'arg2', ..., are optional parameters whose
+%   meaning depends on the calibration method in use.
 %
 %
 % * More actions will be supported in the future. If you can think of an
@@ -769,7 +775,7 @@ end
 if imagingMode & kPsychNeedImageProcessing
     % Yes. How many commands per chain?
     nrslots = max(length(find(mystrcmp(reqs, 'LeftView'))), length(find(mystrcmp(reqs, 'RightView'))));
-    nrslots = max(nrslots, length(find(mystrcmp(reqs, 'AllViews'))));
+    nrslots = nrslots + length(find(mystrcmp(reqs, 'AllViews')));
     
     % More than one slot per chain? Otherwise we use the default
     % single-pass chain:
@@ -956,9 +962,23 @@ if ~isempty(floc)
                     error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of a calibration file!');
                 end
             
+                % Filename found. Further (optional) parameters passed?
+                % 2nd parameter, if any, would be a 'visualize' flag that
+                % asks for plotting of some calibration info and additional
+                % output to the console:
+                showCalibOutput = reqs{row, 4};
+                if isempty(showCalibOutput)
+                    % No such flag: Default to "silence":
+                    showCalibOutput = 0;
+                end
+                
+                % Additional parameters provided? Pass 'em along. Currently
+                % defined are up to additional 6 parameters 5 to 10. These
+                % default to empty if not provided by user-code.
+                
                 % Use helper function to read the calibration file and build a
                 % proper warp-function:
-                warpstruct = CreateDisplayWarp(win, calibfilename);
+                warpstruct = CreateDisplayWarp(win, calibfilename, showCalibOutput, reqs{row, 5:10});
             end
             
             % Is it a display list handle?

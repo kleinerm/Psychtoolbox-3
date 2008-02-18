@@ -1,5 +1,5 @@
-function warpstruct = CreateDisplayWarp(window, calibfilename)
-% warpstruct = CreateDisplayWarp(window, calibfilename);
+function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, varargin)
+% warpstruct = CreateDisplayWarp(window, calibfilename [, showCalibOutput=0]);
 %
 % Helper routine for Geometric display undistortion mapping, not to be
 % called inside normal PTB scripts!
@@ -7,10 +7,12 @@ function warpstruct = CreateDisplayWarp(window, calibfilename)
 % This function reads a display calibration file 'calibfilename' and builds
 % a "geometric warp function" based on the calibration information in
 % 'calibfilename' for the onscreen window with handle 'window'. It returns
-% a struct 'warpstruct' that defines the created warp function. You can
+% a struct 'warpstruct' that defines the created warp function. You could
 % pass this 'warpstruct' as a parameter to the Psychtoolbox command...
 %
-% You normally do not call this routine directly from your script. Its
+% PsychImaging('AddTask', viewchannel, 'GeometryCorrection', warpstruct);
+%
+% However, you normally do not call this routine directly from your script. Its
 % called internally by the PsychImaging() command...
 % 
 % PsychImaging('AddTask', viewchannel, 'GeometryCorrection', calibfilename);
@@ -30,16 +32,18 @@ function warpstruct = CreateDisplayWarp(window, calibfilename)
 % would do. It would configure the window for automatic undistortion based
 % on the data in 'mycalib.mat'.
 %
-% Psychtoolbox provides (or will provide) multiple different interactive
-% setup routines that allow you to create a calibration file for your
-% setup. Currently the following routines are provided:
+% Psychtoolbox provides multiple different interactive setup routines that
+% allow you to create a calibration file for your setup. Currently the
+% following routines are provided:
 %
 % DisplayUndistortionBezier.m -- Undistortion based on a NURBS surface (Non
-% uniform rational bezier surface).
+% uniform rational bezier spline surface).
+%
 %
 
 % History:
 % 19.7.2007 Written (MK).
+% 17.2.2008 Added undistortion method donated by the Banks Vision Lab (MK).
 
 global GL;
 
@@ -51,6 +55,10 @@ end
 if nargin < 2
     sca;
     error('PTB internal error: Must provide all parameters!');
+end
+
+if nargin < 3 || isempty(showCalibOutput)
+    showCalibOutput = 0;
 end
 
 % Load calibration file:
@@ -115,6 +123,63 @@ switch(calib.warptype)
         % Ready.
         Screen('EndOpenGL', window);
         
+    case {'BVLDisplayList'}
+        % Build warp display list for calibration/remapping method
+        % donated by the Banks Vision Lab:
+        
+        % Query effective onscreen window size:
+        [winWidth, winHeight] = Screen('WindowSize', window);
+        
+        % Additional optional parameters provided?
+        if nargin >= 5
+            % At least two additional parameters. Really?
+            if ~isempty(varargin{1})
+                xLoomSize = varargin{1};
+            else
+                xLoomSize = [];
+            end
+            
+            if ~isempty(varargin{2})
+                yLoomSize = varargin{2};
+            else
+                yLoomSize = [];
+            end
+        end
+        
+        % Compute vertex- and texcoord-arrays that define the mesh
+        % of quadrilaterals which should be rendered (with the stimulus
+        % texture applied) to create the undistortion warp:
+        [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(winWidth, winHeight, calib.scal, showCalibOutput, xLoomSize, yLoomSize);
+
+        % Build the unwarp mesh display list within the OpenGL context of
+        % Psychtoolbox:
+        Screen('BeginOpenGL', window, 1);
+                
+        % Build a display list that corresponds to the current calibration:
+        gld = glGenLists(1);
+        glNewList(gld, GL.COMPILE);
+        
+        % "Draw" the warp-mesh once, so it gets recorded in the display list:
+        glEnableClientState(GL.VERTEX_ARRAY);
+        glVertexPointer(2, GL.DOUBLE, 0, xyzcalibpos);
+        glEnableClientState(GL.TEXTURE_COORD_ARRAY);
+        glTexCoordPointer(2, GL.DOUBLE, 0, xytexcoords);
+
+        glDrawArrays(GL.QUADS, 0, length(xyzcalibpos)/2);
+
+        glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+        glDisableClientState(GL.VERTEX_ARRAY);
+
+        % List ready - and already updated in the imaging pipeline:
+        glEndList;
+
+        Screen('EndOpenGL', window);
+
+        % Assign display list to output warpstruct:
+        warpstruct.gld = gld;
+
+        % Ready.
+        
     otherwise
         sca;
         error('Unknown calibration method id: %s!', calib.warptype);
@@ -122,3 +187,203 @@ end
 
 % Done. Return the warpstruct:
 return;
+
+% --- Helper routines for setup of the calibration method 'BVLDisplayList' ---
+
+function [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize)
+% [xyzcalibpos, xytexcoords] = BVLComputeWarpMesh(windowWidth, windowHeight, scal, showCalibOutput, xLoomSize, yLoomSize)
+%
+% Internal helper routine: Called by CreateDisplayWarp.m, which is in turn
+% called by PsychImaging.m. Implements the geometric display calibration
+% and undistortion procedure developed by the Banks Vision Lab at UC
+% Berkeley.
+%
+% Use the calibration information stored in 'scal', together with the
+% current 'windowWidth' and 'windowHeight' of the onscreen window to
+% calibrate and compute vectors of vertex coordinates and texture
+% coordinates for a mesh that performs the proper "display undistortion".
+%
+% History:
+% 02/17/08  Derived from BFloadtimecalib.m with minimal modifications. (MK)
+%
+
+% Check resolution against the calibration file resolutions:
+if (windowWidth ~= scal.rect(3)) || (windowHeight ~= scal.rect(4))
+    fprintf('\n\nCALIBRATION WARNING!\n');
+    fprintf('Onscreen window resolution (%d, %d) does not match ', ...
+        windowWidth, windowHeight);
+    fprintf('the resolution used in the calibration file (%d, %d)!\n', ...
+        scal.rect(3), scal.rect(4));
+    fprintf('Using the window resolution to draw the stimuli.\n');
+    fprintf('\n\n');
+end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Calibration
+% Generate the calibration vertices here so we only do this once.
+% We calculate the uncalibrated vertex coordinates, in screenspace
+% (pixel coordinates), then pass them into our fitting routine to
+% interpolate the calibrated coordinates.
+
+% PreCompute vertex values
+if isempty(xLoomSize)
+    xLoomSize   = 73; %length(XVALUES)   %Can reduce loom resolution to speed up calib
+end
+
+if isempty(yLoomSize)
+    yLoomSize   = 53; %length(YVALUES)
+end
+
+xStep       = windowWidth / (xLoomSize-1);
+yStep       = windowHeight / (yLoomSize-1);
+
+numVerts    = xLoomSize * yLoomSize;
+% vertexCoords = Nx2 array, N rows of [x y] pairs.
+vertexCoords    = zeros(numVerts, 2);
+vertexCoordsFit = zeros(numVerts, 2);
+
+% Calculate the 'uncalibrated' vertex coordinates
+for y=1:yLoomSize
+    for x=1:xLoomSize
+        index = ((y-1) * xLoomSize) + x;
+        xCoord = (x-1) * xStep;
+        yCoord = (y-1) * yStep;
+        vertexCoords(index, :) = [xCoord yCoord];
+        %fprintf('(%f, %f)\n', vertexCoords(index, 1), vertexCoords(index, 2));
+    end
+end
+
+% Some debug plots, if requested:
+if showCalibOutput
+    figure(9)
+    hold off
+    plot(scal.XCALIBDOTS, scal.YCALIBDOTS, 'b.')
+    hold on
+    plot(scal.SELECTXCALIBDOTS, scal.SELECTYCALIBDOTS, 'r.')
+    size(scal.XCALIBDOTS)
+    size(scal.YCALIBDOTS)
+    size(scal.SELECTXCALIBDOTS)
+    size(vertexCoords(:,1))
+    size(vertexCoords(:,2))
+end
+
+% Fit mesh vertices to locations of calibrated points - Use Matlabs
+% griddata fitting and interpolation routine:
+if ~IsOctave
+    % Matlab: Use 'v4' method - the interpolation method used by Matlab V4
+    % for interpolation:
+    vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2), 'v4');
+    vertexCoordsFit(:,2)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTYCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2), 'v4');
+else
+    % Octave: griddata() is also supported by GNU/Octave, but the 'v4' method is
+    % only supported by Matlab, not by Octave. 'Cubic' isn't supported
+    % either, so the best we can do is to use the default 'linear' method.
+    % This is problematic as it creates different results when running on
+    % Octave vs. Matlab:
+    % Ok - Actually it doesn't work at all on Octave, because the relevant
+    % implementation of Octave's griddata() seems to be quite buggy :-(
+    vertexCoordsFit(:,1)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTXCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
+    vertexCoordsFit(:,2)= griddata(scal.XCALIBDOTS, scal.YCALIBDOTS, scal.SELECTYCALIBDOTS, vertexCoords(:,1), vertexCoords(:,2));
+end
+
+% Some debug plots, if requested:
+if showCalibOutput
+    figure(10)
+    hold off
+    plot(vertexCoords(:,1), vertexCoords(:,2), 'b.')
+    hold on
+    plot(vertexCoordsFit(:,1), vertexCoordsFit(:,2), 'r.')
+
+    figure(11)
+    hold off
+    plot(scal.SELECTXCALIBDOTS, scal.SELECTYCALIBDOTS, 'o')
+    hold on
+    plot(vertexCoordsFit(:,1), vertexCoordsFit(:,2), 'r.')
+end
+
+% Fit the coordinates to the calibrated space (values are in pixels)
+%    [vertexCoordsFit(:,1) vertexCoordsFit(:,2)] = BFbvlFitCoords(vertexCoords(:,1), ...
+%        vertexCoords(:,2), xFitCoef_R, yFitCoef_R);
+
+% Compute final vertex- and texcoords:
+[xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput);
+
+% Done. Return results:
+return;
+
+
+function [xyzcalibpos, xytexcoords]=BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput)
+% Internal helper routine: Called by BVLComputeWarpMesh.m.
+% Implements the geometric display calibration and undistortion procedure
+% developed by the Banks Vision Lab at UC Berkeley.
+%
+% History:
+% 02/17/08  Derived from BFGeneratetextcoord.m with minimal modifications. (MK)
+%
+
+numVerts = (xLoomSize-1) * (yLoomSize-1) * 4;
+
+xyzcalibpos = zeros(1, numVerts*2);
+xytexcoords = zeros(1, numVerts*2);
+
+xtemp = zeros(1, numVerts);
+ytemp = zeros(1, numVerts);
+
+xverts= zeros(1, numVerts);
+yverts= zeros(1, numVerts);
+
+vectaddress=0;
+
+if showCalibOutput
+    figure(55)
+    plot(vertexCoords(:,1), vertexCoords(:,2), 'r.')
+    hold on
+    plot(vertexCoordsFit(:,1), vertexCoordsFit(:,2), 'b.')
+end
+
+for y=1:(yLoomSize-1)
+    for x=1:(xLoomSize-1)
+        index = ((y-1) * xLoomSize) + x;
+
+        vectaddress=vectaddress+1;
+
+        xtemp(vectaddress)  = vertexCoords(index, 1);  %LowerLeftXTex
+        ytemp(vectaddress)  = vertexCoords(index, 2);  %LowerLeftYTex
+
+        xverts(vectaddress) = vertexCoordsFit(index, 1);  % Lower left fit coord  x
+        yverts(vectaddress) = vertexCoordsFit(index, 2);  % lower left fit coord  y
+
+        vectaddress=vectaddress+1;
+
+        xtemp(vectaddress)  = vertexCoords(index+1, 1);  %LowerrightXTex
+        ytemp(vectaddress)  = vertexCoords(index+1, 2); %LowerrightYTex
+
+        xverts(vectaddress) = vertexCoordsFit(index+1, 1);   %lower right fit coord  x
+        yverts(vectaddress) = vertexCoordsFit(index+1, 2);   %lower right fit coord  y
+
+        vectaddress=vectaddress+1;
+
+        xtemp(vectaddress)  = vertexCoords(index+xLoomSize+1, 1);  %UpperRightXTex
+        ytemp(vectaddress)  = vertexCoords(index+xLoomSize+1, 2);  %UpperRightYTex
+
+        xverts(vectaddress) = vertexCoordsFit(index+xLoomSize+1, 1);  %Upper right fit coord  x
+        yverts(vectaddress) = vertexCoordsFit(index+xLoomSize+1, 2);  %upper right fit coord  y
+
+        vectaddress=vectaddress+1;
+
+        xtemp(vectaddress)  = vertexCoords(index+xLoomSize, 1);  %UpperLeft X Tex
+        ytemp(vectaddress)  = vertexCoords(index+xLoomSize, 2);  %Upperleft Y tex
+
+        xverts(vectaddress) = vertexCoordsFit(index+xLoomSize, 1);   %upper left fit coord   x
+        yverts(vectaddress) = vertexCoordsFit(index+xLoomSize, 2);   %upper left fit coord   y
+    end
+end
+
+xyzcalibpos(1:2:end) = xverts;
+xyzcalibpos(2:2:end) = yverts;
+xytexcoords(1:2:end) = xtemp;
+xytexcoords(2:2:end) = ytemp;
+
+return;
+
+% --- End of Helper routines for setup of the calibration method 'BVLDisplayList' ---
