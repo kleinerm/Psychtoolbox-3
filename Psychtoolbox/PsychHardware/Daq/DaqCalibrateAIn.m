@@ -5,6 +5,7 @@ function DaqCalibrateAIn(daq,channel)
 %           input "AnalogChannel" on the device "DeviceID".
 %
 % History:  1/10/08   mpr   decided to calibrate good times come on!
+%           3/5/08    mpr   fixed bug exposed when preference file doesn't exist
 %
 % This function was written for the USB-1608FS.  It could be easily modified for
 % a 1208FS, but since there are only two levels of the output on that device it
@@ -52,12 +53,12 @@ VMaxs = [10 5 2.5 2 1.25 1 0.625 0.3125];
 
 DaqPrefsDir = DaqtoolboxConfigDir;
 PrefsExist = exist([DaqPrefsDir filesep 'DaqPrefs.mat'],'file');
+CalData = [];
 if PrefsExist
   DaqVars=load([DaqPrefsDir filesep 'DaqPrefs']);
   if isfield(DaqVars,'CalData')
     CalData = DaqVars.CalData;
   else
-    CalData = [];
     PrefsExist=0;
   end
 end

@@ -806,7 +806,7 @@ if options.end
             MostRecentPolyFit = CalData(GoodIndices(AllThatDay(end)),3:5);
 
             if DaysSinceLast > 30
-              warning('Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(MostRecentData(1,end)));
+              warning('Calibration of channel %d has not been performed since %s!!',TheChannels(k),datestr(TheDays(BestIndex)));
             end
             
             data(:,k) = polyval(MostRecentPolyFit,data(:,k));
