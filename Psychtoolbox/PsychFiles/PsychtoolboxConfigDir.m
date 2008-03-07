@@ -6,6 +6,8 @@ function ThePath=PsychtoolboxConfigDir
 %
 % History: 1/23/08    mpr configured it was about time to write this
 %          3/7/08     mpr streamlined this
+%          3/8/08     mk  A bit more of streamlining - Don't write the
+%                         PsychPrefsfolder.m file anymore.
 
 persistent PTBPrefPath %#ok<REDEF>
 
@@ -83,12 +85,6 @@ else
 
   if DirMade
     TheDir = [StringStart 'Psychtoolbox' filesep];
-    fid=fopen([TheDir 'PsychPrefsFolder.m'],'a');
-    if fid < 0
-      error(sprintf('I could not create a configuration file in %s.  Are your file permissions okay?',TheDir)); %#ok<SPERR>
-    end
-    fprintf(fid,TheMessage);
-    fclose(fid);
     ThePath=TheDir; %#ok<NASGU>
   else % if exist(TheDir,'dir')
     error(sprintf('I could not create a folder to store your preferences in\n\n%s\n\nWhat are the permissions on that folder?',StringStart)); %#ok<SPERR>
