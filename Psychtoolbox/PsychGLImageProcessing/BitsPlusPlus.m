@@ -219,6 +219,9 @@ if nargin < 1
     error('You must specify a command in argument "cmd"!');
 end
 
+win = [];
+winRect = [];
+
 if cmd == 1
     % Fast callback path for PTB imaging pipeline. We got called from the
     % finalizer blit chain of the imaging pipeline, asking us to perform
@@ -446,7 +449,10 @@ if strcmp(cmd, 'OpenWindowBits++')
     
     % Check validation:
     if ~validated
-        ValidateBitsPlusImaging(win, 0);
+        % MK: Actually, don't! Validation code doesn't check/validate
+        % anything in Bits++ mode, so this is pointless... Leave it here
+        % for documentation.
+        % ValidateBitsPlusImaging(win, 0);
     end
     
     % Reset validation flag after first run:

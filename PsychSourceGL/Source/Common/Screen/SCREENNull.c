@@ -2,144 +2,74 @@
 
   Psychtoolbox3/Source/Common/SCREENNull.c		
 
-  
-
   AUTHORS:
 
   Allen.Ingling@nyu.edu		awi 
-
-  
 
   PLATFORMS:	
 
   This file should build on any platform. 
 
-
-
   HISTORY:
 
   11/26/02  awi		Created. 
 
- 
-
   DESCRIPTION:
 
-  
+  Arbitrary code to be executed for debugging/testing/hacking PTB. This subfunction is not
+  documented or mentioned in official docs and only here for the purpose of internal testing
+  and as a container for quick & dirty hacks and tests by the core developers.
 
-  
-
-  
-
-  TO DO:
-
-  
-
-  
-
-  
-
-
+  Therefore its syntax and semantics can change in any way, anytime without warning.
 
 */
 
-
-
-
-
 #include "Screen.h"
 
-
-
-
-
 static char useString[] = "[[value1], [value2] ..]=SCREEN('Null',[value1],[value2],...);";
-
 static char synopsisString[] = 
-
 	"Null copies all double and char arguments supplied as inputs to respective outputs. ";
-
 static char seeAlsoString[] = "";
 
-	 
-
-
-
 PsychError SCREENNull(void) 
-
 {
-
 	const double defaultMatrix[] = {1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4};
-
 	const double defaultM=2, defaultN=4; 
-
 	double tempValue; 
-
 	double *array;
-
 	int i, m,n, p, numInArgs, numOutArgs, numNamedOutArgs;
-
 	char *str;
-
 	PsychArgFormatType format;
-
 	const char defaultString[] = "I am the default string\n";
 
-	
-
-
-return(PsychError_none);
-
-
 	//all sub functions should have these two lines
-
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
-
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
-
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		printf("PTB-DEBUG: Shutting down connection to PsychtoolboxKernelDriver, if any...\n");
+		PsychOSShutdownPsychtoolboxKernelDriverInterface();
+	#endif
+	
+	return(PsychError_none);
 
 	//demonstrate how we find the function and subfunction names
-
 	//printf("Psychtoolbox function: %s, subfunction %s\n", PsychGetModuleName(), PsychGetFunctionName() );
 
-
-
 	//copy all the input argument to their outputs if we have doubles, if not error.  
-
 	numInArgs = PsychGetNumInputArgs();
-
 	numOutArgs = PsychGetNumOutputArgs();
-
 	numNamedOutArgs = PsychGetNumNamedOutputArgs();
-
-	
-
 	PsychErrorExit(PsychCapNumOutputArgs(numInArgs));
 
-	
-
-	
-
 	/*
-
 	printf("number of input arguments: %d\n", numInArgs);
-
 	printf("number of output arguments: %d\n", numOutArgs);
-
 	printf("number of named output arguments: %d\n", numNamedOutArgs);
-
 	*/
 
-	
-
-		
-
-	
-
 	//iterate over each of the supplied inputs.  If the input is a two-dimensional array 
-
 	//of doubles or a character array, then copy it to the output.  
-
 	for(i=1;i<=numInArgs;i++){
 
 		format = PsychGetArgType(i);
@@ -186,18 +116,5 @@ return(PsychError_none);
 
 	}
 
-		
-
 	return(PsychError_none);
-
 }
-
-
-
-
-
-
-
-
-
-

@@ -1,7 +1,7 @@
 function moglClutBlit(win, src, newclut)
 % EXPERIMENTAL - BETA QUALITY:
 %
-% moglClutBlit(win, src [, newclut]) -- Blit an image window, apply CLUT.
+% moglClutBlit(win, src [, newclut]) -- Blit an image into window, apply CLUT.
 %
 % moglClutBlit copies a texture image 'src' (either made via
 % src = Screen('MakeTexture', ...) or an offscreen window created via
@@ -13,24 +13,26 @@ function moglClutBlit(win, src, newclut)
 %
 % The color lookup table contains 256 rows with 3 columns. The i'th row
 % contains the Red, green and blue color values to be used when an input
-% pixel with colorindex i is used. Column 1 = Red component, column 2 =
+% pixel with colorindex i-1 is used. Column 1 = Red component, column 2 =
 % Green component, column 3 = blue component.
 %
-% The clut will be initialized to a grey-level ramp, i.e. index 0 =
-% (0,0,0), index i = (i, i, i), index 255 = (255, 255, 255).
+% The clut will be initialized to a gray-level ramp, i.e. index 1 =
+% (0,0,0), index i+1 = (i, i, i), index 256 = (255, 255, 255).
 %
 % Arguments:
+%
 % 'src' texture handle or offscreen window handle of the image to copy.
-% 'win' window handle of the target onscreen window.
+% 'win' window handle of the target window.
 % 'newclut' The new 256 rows by 3 columns clut. If you don't provide any
 % clut, the clut from a previous call will be used. Initially it is a
 % graylevel ramp.
 %
 % Usage:
 % 1. Add the command "InitializeMatlabOpenGL" at the top of your script,
-% before the first call to Screen('OpenWindow', ...).
+% before the first call to Screen('OpenWindow', ...). If you don't use any
+% 3D graphics, InitializeMatlabOpenGL([], 0, 1); will be the fastest. 
 %
-% 2. Create you color index image either as a texture via
+% 2. Create your color index image either as a texture, e.g., via
 % src=Screen('MakeTexture', win, myimage), or create it as Offscreen window
 % src=Screen('OpenOffscreenWindow', win) and draw your index colored
 % stimulus into it.
@@ -57,6 +59,7 @@ function moglClutBlit(win, src, newclut)
 
 % History:
 % 6.11.2006 Written (MK).
+% 2.03.2008 Performance improvements (MK).
 
 % Our handle to OpenGL:
 global GL;
@@ -64,6 +67,7 @@ global GL;
 persistent initialized;
 persistent remapshader;
 persistent luttex;
+persistent clut;
 
 % First time invocation?
 if isempty(initialized)
@@ -87,7 +91,7 @@ if isempty(initialized)
     glUseProgram(0);
 
     % Build a gray-ramp as texture:
-    clut = uint8(ones(1, 256*3));
+    clut = uint8(zeros(1, 256*3));
     for i=0:255
         clut(1 + i*3 + 0)= i;
         clut(1 + i*3 + 1)= i;
@@ -129,6 +133,7 @@ if nargin < 1
     % Disabled for now: glDeleteProgram(remapshader);
     remapshader=-1;
     clear initialized;
+    clear clut;
     return;
 end
 
@@ -140,45 +145,49 @@ if nargin < 2 || isempty(src)
     error('moglClutBlit: Handle to input image ''src'' (either texture or offscreen window) missing!');
 end
 
+% Select the 2nd texture unit (unit 1) for setup:
+glActiveTexture(GL.TEXTURE1);
+% Bind our clut texture to it:
+glBindTexture(GL.TEXTURE_RECTANGLE_EXT, luttex);
+
 % New clut provided?
 if nargin > 2 && ~isempty(newclut)
+    % Yes. Update our clut texture with it.
+    
+    % Size check:
     if size(newclut,1)~=256 || size(newclut, 2)~=3
         % Invalid or missing clut:
         error('newclut of wrong size (must be 256 rows by 3 columns) provided!');
     end
     
+    % Range check:
     if ~isempty(find(newclut < 0)) || ~isempty(find(newclut > 255))
         % Clut values out of range:
         error('At least one value in newclut is not in required range 0 to 255!');
     end
     
-    % Cast to integer and build array with new clut:
-    clut = uint8(ones(1, 256*3));
-    for i=0:255
-        clut(1 + i*3 + 0)= uint8(newclut(i+1, 1)+0.5);
-        clut(1 + i*3 + 1)= uint8(newclut(i+1, 2)+0.5);
-        clut(1 + i*3 + 2)= uint8(newclut(i+1, 3)+0.5);
-    end
-    
-    % Select the 2nd texture unit (unit 1) for setup:
-    glActiveTexture(GL.TEXTURE1);
-    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, luttex);
+    % Cast to integer and update our 'clut' array with new clut:
+    clut(1:3:end-2)= uint8(newclut(:, 1) + 0.5);
+    clut(2:3:end-1)= uint8(newclut(:, 2) + 0.5);
+    clut(3:3:end-0)= uint8(newclut(:, 3) + 0.5);
+
+    % Upload new clut:
     glTexSubImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, 0, 0, 256, 1, GL.RGB, GL.UNSIGNED_BYTE, clut);
-    % CLUT setup done: Switch back to texture unit 0:
-    glActiveTexture(GL.TEXTURE0);    
-else
-    % No new clut provided: Bind the old one to unit 2:
-    glActiveTexture(GL.TEXTURE1);
-    glEnable(GL.TEXTURE_RECTANGLE_EXT);
-    glBindTexture(GL.TEXTURE_RECTANGLE_EXT, luttex);
-    glActiveTexture(GL.TEXTURE0);        
 end
+
+% Switch back to texunit 0 - the primary one:
+glActiveTexture(GL.TEXTURE0);
 
 % Clut and shader are initialized. Activate shader:
 glUseProgram(remapshader);
+
 % Perform blit with nearest neighbour filter:
 Screen('DrawTexture', win, src, [], [], 0, 0);
+
+% New style: Needs Screen-MEX update to fix a bug in Screen before it can be used! Screen('DrawTexture', win, src, [], [], 0, 0, [], [], remapshader);
+
 % Disable shader:
 glUseProgram(0);
+
 % We're done.
 end

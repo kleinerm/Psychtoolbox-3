@@ -677,8 +677,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
 		double                  transX, transY;
         GLenum                  texturetarget;
-		GLuint					shader, attrib;
-
+		GLuint					shader;
+		GLint					attrib;
+		
         // Enable targets framebuffer as current drawingtarget, except if this is a
 		// blit operation from a window into itself and the imaging pipe is on:
         if ((source != target) || (target->imagingMode==0)) {

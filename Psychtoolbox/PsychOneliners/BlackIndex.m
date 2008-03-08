@@ -21,28 +21,13 @@ function black=BlackIndex(windowPtrOrScreenNumber)
 %               BlackIndex behavior on OS X will have to change when we add
 %               more depth modes.
 % 1/29/05   dgp Cosmetic.
+% 3/01/08   mk  Changed to a simple return value of zero - anything else
+%               doesnt' make sense with PTB-3.
 
 if nargin~=1
 	error('Usage: color=BlackIndex(windowPtrOrScreenNumber)');
 end
 
-if IsOSX
-    black=0;
-else
-	if IsWin
-       black8=0;
-	else
-       black8=255;
-	end
-	
-	pixelSize=Screen(windowPtrOrScreenNumber,'PixelSize');
-	switch pixelSize
-	case 32;black=0;
-    case 24;black=0;
-	case 16;black=0;
-	case 8;black=black8;
-	case 4;black=15;
-	case 2;black=3;
-	case 1;black=1;
-	end
-end
+black=0;
+
+return;

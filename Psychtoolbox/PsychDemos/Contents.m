@@ -3,6 +3,10 @@
 % help Psychtoolbox     % For an overview, triple-click me & hit enter.
 % help PsychDemos       % For demos, triple-click me & hit enter.
 %
+%
+%    PsychExampleExperiments - Subfolder with real experiment scripts for
+%                              different tasks, contributed by users.
+%
 %    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemo         - A variant of AlphaImageDemoOSX, demonstrates rotated drawing.
 %    ArcDemo                 - Demonstrate the 'FrameArc', 'FillArc' functions.

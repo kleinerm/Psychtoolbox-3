@@ -898,9 +898,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if (skip_synctests < 2) {
       // Reliable estimate? These are our minimum requirements...
       if (numSamples<50 || stddev>0.001) {
-        sync_disaster = true;
-	if(PsychPrefStateGet_Verbosity()>1)
-	  printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
+		  sync_disaster = true;
+		  if(PsychPrefStateGet_Verbosity()>1)
+			  printf("\nWARNING: Couldn't compute a reliable estimate of monitor refresh interval! Trouble with VBL syncing?!?\n");
       }
       
       // Check for mismatch between measured ifi from glFinish() VBLSync method and the value reported by the OS, if any:
@@ -940,20 +940,20 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     }
     
     if (sync_disaster) {
-      // We fail! Continuing would be too dangerous without a working VBL sync. We don't
-      // want to spoil somebodys study just because s(he) is relying on a non-working sync.
-      if(PsychPrefStateGet_Verbosity()>0){		
-	printf("\n\n");
-	printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
-	printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
-	printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
-	printf("This will seriously impair proper stimulus presentation and stimulus presentation timing!\n");
-	printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
-	printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
-	printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
-      }
-      
-      // Abort right here if sync tests are enabled:
+		// We fail! Continuing would be too dangerous without a working VBL sync. We don't
+		// want to spoil somebodys study just because s(he) is relying on a non-working sync.
+		if(PsychPrefStateGet_Verbosity()>0){		
+			printf("\n\n");
+			printf("----- ! PTB - ERROR: SYNCHRONIZATION FAILURE ! ----\n\n");
+			printf("One or more internal checks (see Warnings above) indicate that synchronization\n");
+			printf("of Psychtoolbox to the vertical retrace (VBL) is not working on your setup.\n\n");
+			printf("This will seriously impair proper stimulus presentation and stimulus presentation timing!\n");
+			printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
+			printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
+			printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
+		}
+		
+		// Abort right here if sync tests are enabled:
 		if (!skip_synctests) {
 			// We abort! Close the onscreen window:
 			PsychOSCloseWindow(*windowRecord);
@@ -963,8 +963,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			return(FALSE);
 		}
 		
-      // Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
-      PsychVisualBell((*windowRecord), 1, 2);
+		// Flash our visual warning bell at alert-level for 1 second if skipping sync tests is requested:
+		PsychVisualBell((*windowRecord), 1, 2);
     }
     
     // Ok, basic syncing to VBL via CGLFlushDrawable + glFinish seems to work and we have a valid

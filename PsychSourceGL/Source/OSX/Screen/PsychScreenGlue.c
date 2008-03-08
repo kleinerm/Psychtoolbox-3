@@ -870,7 +870,11 @@ void InitPsychtoolboxKernelDriverInterface(void)
 				if (false) printf("PTB-DEBUG: IOConnectMethodScalarIScalarO was successful.\n\n");
 			}
 			else {
+				// Release connection:
+				IOServiceClose(connect);
+				connect = IO_OBJECT_NULL;
 				printf("PTB-DEBUG: IOConnectMethodScalarIScalarO for our driver returned 0x%08x. Kernel driver support disabled.\n", kernResult);
+				if (kernResult == kIOReturnExclusiveAccess) printf("PTB-DEBUG: Please check if other applications (e.g., other open Matlabs?) use the driver already.\n");
 			}
 		}
 
@@ -1123,7 +1127,7 @@ int PsychOSKDGetBeamposition(int screenId)
 	io_connect_t connect;
 	if (!(connect = PsychOSCheckKDAvailable(screenId, NULL))) {
 		// Beampos queries unavailable:
-		if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
+		if (PsychPrefStateGet_Verbosity() > 11) printf("PTB-DEBUG: Kernel driver based beamposition queries unavailable for screenId %i.\n", screenId);
 		return(-1);
 	}
 	

@@ -2,11 +2,9 @@ function LoadIdentityClut(windowPtr, loadOnNextFlip)
 % LoadIdentityClut(windowPtr, [loadOnNextFlip])
 %
 % Loads the identity clut on the windows specified by windowPtr.  If
-% loadOnNextFlip is set to , then the clut will be loaded on the next call
+% loadOnNextFlip is set to 1, then the clut will be loaded on the next call
 % to Screen('Flip').  By default, the clut will be loaded immediately or on
 % the next vertical retrace.
-
-global GL;
 
 if nargin > 2 || nargin < 1
     error('Invalid number of arguments to LoadIdentityClut.');
@@ -17,29 +15,20 @@ if nargin == 1
     loadOnNextFlip = 0;
 end
 
-% Basic GL support loaded?
-if isempty(GL)
-    % No. Initialize MOGL, but don't enable PTB's 3D mode:
-    InitializeMatlabOpenGL([], [], 1);
-end
-
-% The following hack is used to detect what kind of graphics hardware is
+% Query what kind of graphics hardware is
 % installed to drive the display corresponding to 'windowPtr':
 
-% Enable OpenGL rendering context of window 'windowPtr':
-Screen('BeginOpenGL', windowPtr, 1);
-
 % Query vendor of associated graphics hardware:
-gfxhwtype = glGetString(GL.VENDOR);
+winfo = Screen('GetWindowInfo', windowPtr);
 
-% Done. Disable rendering context:
-Screen('EndOpenGL', windowPtr);
+% We derive type of hardware and thereby our strategy from the vendor name:
+gfxhwtype = winfo.GLVendor;
 
-if isempty(strfind(gfxhwtype, 'NVIDIA')) == 0
+if ~isempty(strfind(gfxhwtype, 'NVIDIA'))
     % NVidia card:
     gfxhwtype = 0;
 else
-    if isempty(strfind(gfxhwtype, 'ATI')) == 0
+    if ~isempty(strfind(gfxhwtype, 'ATI')) | ~isempty(strfind(gfxhwtype, 'AMD'))
         % ATI card:
         gfxhwtype = 1;
     else
