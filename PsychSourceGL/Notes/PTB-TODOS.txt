@@ -1,0 +1,45 @@
+Need:
+
+- Linux: kernel update (lowlat), openALdev, otherdev, manpages...
+
+Do:
+
+* FBO multisampling?					--> 0.50 T --> MPI
+
+* HDR vertex color clamping workaround fuer OSX?	--> 0.50 T --> Soon
+
+- Basics done & tested.
+- Textureshader fuer nearest-neighbour mode, so das auch dort unclamped 'modulateColor'
+  werden kann.
+- Teste alle Demos mit unclamped color mode!
+- Evtl. extra test fuer correctness & genauigkeit von HDR modes?
+- Test precision!!
+
+* PseudoGray / VideoAttenuator Shader?			--> 0.50 T
+* Gamma/LUT mapping for imaging pipe?			--> 0.25 T
+
+* Movie playback engine for Linux?			--> 1.00 T --> Low Prio.
+
+* FFT for Imaging Pipeline ==> CUDA interface?		--> ? T    --> Lowprio.
+* Convolutionshader for IP finalizen?			--> 0.5 T  --> Lowprio.
+* Bits++ T-Lock blitter verbessern, FE-Goggle-Driver?	--> 0.5 T
+
+* Wiki documentation updates? Tutorial writing?		--> 1+x T
+* PTB Paper?						--> >> 5 T
+
+* GPGPU stuff: GVF, missin plugins, SVM, etc.		--> 2	T --> Lowprio.
+
+* OBJLoader verbessern: Multi-mesh loader und .mtl handling.
+* moglmorpher -- Multiobjekt faehig machen.
+* Std.renderer fuer rigide objekte instead of moglmorpher & ein gute Demo?
+
+* BVL display undistortion -- setup code fertigstellen, Beziercalib verbessern.
+
+* PsychMakeWindowParentOfWindow() implementieren --> Erlaube render-to-offscreen window,
+  waehrend async-flip in progress.
+
+* Proper startup-/shutdown calls in allen mex files --> Proper setup/teardown and
+  handling of mutex-lock fuer timeglue --> Prevent race-conditions durch simultane
+  time queries von multiplen threads, esp. in PsychPortAudio, aber auch Screen....
+  --> RC's koennen ein false positive im bug-detector fuer high-res timer verursachen.
+

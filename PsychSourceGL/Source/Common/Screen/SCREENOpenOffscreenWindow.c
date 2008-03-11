@@ -210,8 +210,23 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// as drawing target. This will perform neccessary context-switch and all backbuffer
 	// backup/restore/whatever operations to make sure we can do what we want without
 	// possibly screwing any offscreen windows and bindings:
-	PsychSetDrawingTarget(targetWindow);
-
+	if (PsychIsOnscreenWindow(targetWindow) || PsychIsOffscreenWindow(targetWindow)) {
+		// This is a possible on-/offscreen drawingtarget:
+		PsychSetDrawingTarget(targetWindow);
+	}
+	else {
+		// This must be a proxy-window object: Can't transition to it!
+		
+		// But we can safe-reset the current drawingtarget...
+		PsychSetDrawingTarget(0x1);
+		
+		// ...and then switch to the OpenGL context of the 'targetWindow' proxy object:
+		PsychSetGLContext(targetWindow);
+		
+		// Ok, framebuffer and bindings are safe and disabled, context is set. We
+		// should be safe to continue with the proxy...
+	}
+	
 	// From here on we have a defined context and state. We can detach the drawing target whenever
 	// we want, as everything is backed up somewhere for later reinit.
 	
@@ -369,6 +384,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// Last step for FBO backed Offscreen window: Clear it to its background color:
 		PsychSetDrawingTarget(windowRecord);
 
+		// Set default draw shader:
+		PsychSetShader(windowRecord, -1);
+	
 		// Set background fill color:
 		PsychSetGLColor(&color, windowRecord);
 
