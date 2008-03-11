@@ -466,6 +466,10 @@ try
     %***************************************************
     %                 -- Clean up --
     % __________________________________________________
+    
+    % Load identity mapping CLUT into Bits++, so it works as a normal
+    % display:
+    BitsPlusPlus('LoadIdentityClut', wptr);
 
     % Do a single flip to clear out display to background color:
     Screen('Flip', wptr);
@@ -495,9 +499,17 @@ catch
     % Switch back to normal priority:
     Priority(0);
 
+    % Load identity mapping CLUT into Bits++, so it works as a normal
+    % display:
+    if exist('wptr', 'variable')
+        BitsPlusPlus('LoadIdentityClut', wptr);
+    end
+    
     % Load pre-session gammatable into graphics card:
-    Screen('LoadNormalizedGammaTable', screenid, tmptable);
-
+    if exist('tmptable', 'variable')
+        Screen('LoadNormalizedGammaTable', screenid, tmptable);
+    end
+    
     % Disable moglClutBlit, if used in non BPP mode:
     if ~BPP
         moglClutBlit;

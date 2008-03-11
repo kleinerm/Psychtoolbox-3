@@ -32,13 +32,14 @@ function ContrastModulatedNoiseTheElegantStyleDemo(noisesize, staticnoise)
 % alpha-channel.
 %
 % Hardware requirements: ATI Radeon X-1000 or later, NVidia Geforce 6000 or
-% later. Recommended is X-2000 or Geforce-8000 hardware for maximum fun!
+% later. Recommended is Radeon HD2000/3000/... or Geforce-8000/9000/...
+% hardware for maximum fun!
 %
 % The allowable contrast values for standard 2D drawing commands are
-% limited to the range 0.0 to 1.0 on MacOS/X 10.4, they are not limited on
+% limited to the range 0.0 to 1.0 on MacOS/X, they are not limited on
 % MS-Windows or GNU/Linux. Precision is set to 16bpc float, ie. about 3
 % digits behind the decimal point or 1024 discriminable levels. On the most
-% recent ATI X-2000 and NVidia Geforce 8000 hardware one can lift this limit
+% recent ATI HD-2000 and NVidia Geforce 8000 hardware one can lift this limit
 % to 32bpc float -- 6.5 digits or about 8 million discriminable levels by a
 % one-line code change in this script ;-)
 
@@ -134,6 +135,12 @@ try
         % the alpha-channel will contain the final "contrast modulation landscape":
         Screen('DrawDots', win, [x y], 50, [0.5 0.5 0.5 fgcontrast], [], 1);
 
+        % On some graphics hardware + operating system combos, 'DrawDots'
+        % is not able to draw round dots when Screen('ColorRange', win, 1,
+        % 1); is used. In such cases, just use 'FillOval' to draw round
+        % dots:
+        % Screen('FillOval', win, [0.5 0.5 0.5 fgcontrast], OffsetRect([0 0 50 50], x-25, y-25));
+
         % Now we draw the noise texture and use alpha-blending of
         % the drawn noise color pixels with the destination alpha-channel,
         % thereby multiplying the incoming color values with the stored
@@ -209,7 +216,7 @@ try
     
     % Compute avg. computation time for redraw:
     avgredrawtime = mean(diff(tonset)) * 1000
-    plot(diff(tonset));
+    %plot(diff(tonset));
     
     % Done.
     return;

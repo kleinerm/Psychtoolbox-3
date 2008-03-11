@@ -67,6 +67,7 @@ function objobject=LoadOBJFile(modelname, debug, preparse)
 % 31/03/06, written by Mario Kleiner, derived from W.S. Harwins code.
 % 18/09/06, Speedup for common OBJ files due to memory preallocation. (MK)
 % 02/09/07, We now handle triangle faces with non-equal vertex/tex/normal indices by remapping to a common index. (MK)
+% 10/03/08, Replace deblank() by strtrim() in parser: More robust against leading blanks. (MK)
 
 if nargin<1 
   error('You did not provide any filename for the Alias-/Wavefront OBJ file!')  
@@ -139,7 +140,7 @@ while Lyn>=0
 
     switch s
         case 'f' % faces
-            Lyn=deblank(Lyn(3:l));
+            Lyn=strtrim(Lyn(3:l));
             nvrts=length(findstr(Lyn,' '))+1;
             fstr=findstr(Lyn,'/');
             nslash=length(fstr);
@@ -171,7 +172,13 @@ while Lyn>=0
                 elseif nslash ==0
                     f1=sscanf(Lyn,'%f');
                 else
-                    if (debug>1), disp(['xx' Lyn]); end;
+                    if (debug>1)
+                        fprintf('Parse error in line %i: Could not process this:\n', totalcount+1);
+                        fprintf('%s\n', Lyn);
+                        fprintf('nvrts=%i, nslash=%i, f4num=%i\n', nvrts, nslash, f4num);
+                        fprintf('Binary representaiton of line is:\n');
+                        disp(double(Lyn));
+                    end;
                     f1=[];
                 end
                 F4(:,f4num)=f1;

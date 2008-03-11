@@ -13,26 +13,42 @@ function results = MullerLyerIllusion(subID)
 %   colHeaders = {'subID', 'trial no', 'trial ID', 'length l1', 'headdir l1',...
 %   'length l2', 'headdir l2', 'length ratio', 'correct', 'rt PTB', 'rt ML'}
 %
-% In this experiment two lines are presented, where each line can have
-% inward or outward pointing arrow heads at its ends.
+% In this experiment two lines (l1 and l2) are presented, where each line can have 
+% inward or outward pointing arrow heads at its ends.  
+% subjects are asked to judge the relative length of the basic lines
+% and to respond by pressing 's' for same or 'd' for different
 %
-% Subjects are asked to judge the relative length of the basic lines
-% and to respond by pressing 's' for same or 'd' for different length.
-% Correctness and reaction times are recorded
+% correctness and reaction times are recorded, the latter by two
+% different methods in order to compare precision:
+%   rt PTB relies on PTB commands which are supposedly more precise
+%   rt ML uses the Matlab's native tic/toc stopwatch
 %
 % This experiment is a counterbalanced 2x2x2x2 design with
-% the factors line length (l1, l2) and head direction (l1, l2).
-% The 16 test trials are presented in randomized order
+% the factors line length (l1, l2) and head direction (l1, l2)
+%   The 16 test trials are presented in randomized order, following 3
+% randomly drawn training trials
+%   The exact design is defined in condtable (see below), where each line
+% stands for one trial and the columns for the four factors
 %
+% line length can be either 1 or 2, these values will be taken as
+% indices into the 1 x 2 vector hll (half line length, difference of 10%)
+% using indices allows the stimuli to be scaled by a random factor in each trial
+%
+% head direction can be -1 (outward pointing), 0 (no head) or 1
+% (inward pointing); 0 is not used in the present design
+%
+%   
 % Written by N. Ruh, 15/02/2008.
 %
 % Exemplary reference:
 %
 %   Restle F & Decker J (1977) Size of the Mueller-Lyer illusion as a
 %   function of its dimensions: Theory and data. Perception & Psychophysics 21:489–503
-
+%
 % History:
 % 3/3/2008  Included in Psychtoolbox (MK).
+
+
 
 % Make sure the script is running on Psychtoolbox-3:
 AssertOpenGL;
@@ -42,7 +58,7 @@ if ~exist('subID','var')
     subID=66;
 end
 
-%warn if duplicate
+%warn if duplicate sub ID
 fileName=['MLIexpSubj' num2str(subID) '.txt'];
 if exist(fileName,'file')
     if ~IsOctave
@@ -52,7 +68,8 @@ if exist(fileName,'file')
         resp=input(['the file ' fileName ' already exists. do you want to overwrite it? [Type ok for overwrite]'], 's');
     end
     
-    if ~strcmp(resp,'ok')
+    if ~strcmp(resp,'ok') %abort experiment if overwriting was not confirmed
+        disp('experiment aborted')
         return
     end
 end
@@ -129,8 +146,8 @@ try
     screens=Screen('Screens');
     screenNumber=max(screens);
 
-    %open an onscreen Window, if you delete the last four numbers it
-    %will make the full screen white (=default)
+    %open an (the only) onscreen Window, if you give only two input arguments
+    %this will make the full screen white (=default)
     [expWin,rect]=Screen('OpenWindow',screenNumber);
 
     %alternative: replace the above with smaller window for testing
@@ -149,7 +166,6 @@ try
     %         reply=Ask(expWin,'Enter subject initials: ',[],[],'GetChar',RectLeft,RectTop,20);
 
     %Preparing and displaying the welcome screen
-    
     % We choose a text size of 24 pixels - Well readable on most screens:
     Screen('TextSize', expWin, 24);
     
@@ -189,12 +205,12 @@ try
     %         Screen('drawline',fixcross,[0 0 0],10,0,10,20,2);%mx-10,my,mx+10,my
     %         Screen('drawline',fixcross,[0 0 0],0,10,20,10,2);%mx,my-10,mx,my+10
 
-    % Another way to create a fixation cross: Doing the same with textures,
+    % Another way to create a fixation cross: Doing the above with textures,
     % by preparing a little Matlab matrix with the image of a fixation
     % cross:  --> Choose whatever you like more.
     FixCr=ones(20,20)*255;
     FixCr(10:11,:)=0;
-    FixCr(:,10:11)=0;
+    FixCr(:,10:11)=0;  %try imagesc(FixCr) to display the result in Matlab
     fixcross = Screen('MakeTexture',expWin,FixCr);
 
     %start trials loop (over training and test trials)
@@ -224,7 +240,7 @@ try
 
         %Prepare stimulus characteristics, make all aspects of the stimuli
         %proportional to stimsize so it can be dynamically changed
-        stimsize=rand*100+50;   %between 50 and 150 pixel
+        stimsize=rand*100+50;   %between 50 and 150 pixels
         hll=[stimsize, stimsize*0.9]; %halflinelength, difference of 10%
         hos=stimsize*.8; %headoffset
         voff=stimsize*1.5; %vertical distance between lines
@@ -237,7 +253,7 @@ try
         %look up the direction of the header in the current line of condtable
         l_head = condtable(order(i),(3));
         
-        %find horizontal ofset according to heardir
+        %find horizontal offset according to this line's hearer direction
         l_hos=hos*l_head;
 
         %same again for the second stimulus/line
@@ -266,14 +282,13 @@ try
         %before the next screen 'flip'. Apparently this can improve performance
         %telapsed is the time since the last flip command; use this if
         %you want to test how long it takes to draw into the backbuffer
-        
-        % However, its not needed here...
-        % telapsed = Screen('DrawingFinished', expWin, [], 1);
+        %   telapsed = Screen('DrawingFinished', expWin, [], 1);
+        %However, its not needed here...
 
         %display stimuli and get onset time (two alternative ways). We ask
         %to show the stim 0.5 seconds after onset 'tfixation' of the
         %fixation cross:
-        [VBLTimestamp StimulusOnsetTime FlipTimestamp]=Screen('Flip', expWin, tfixation + 0.5);
+        [VBLTimestamp, StimulusOnsetTime, FlipTimestamp]=Screen('Flip', expWin, tfixation + 0.5);
         tic;
         %these different timestamps are not exactly the same, e.g.:
         %   plot([VBLTimestamp StimulusOnsetTime FlipTimestamp tic])
@@ -281,10 +296,10 @@ try
 
         %record response time, two methods again
         %this is just to compare between Matlab and PTB timing.
-        %In your experiment, you should settle for one method - the
-        %Psychtoolbox method of using 'StimulusOnsetTime', as this
-        %is the only one that provides reliable results on different
-        %setups, even under suboptimal conditions :-)
+        %In your experiment, you should settle for one method --> 
+        %the Psychtoolbox method of using 'StimulusOnsetTime' seems to be 
+        %the more reliable solution, specifically on varying hardware
+        %setups or under suboptimal conditions 
         [resptime, keyCode] = KbWait;
         MLrt=toc;
         rt=resptime-StimulusOnsetTime;
@@ -295,6 +310,7 @@ try
         %calculate performance or detect forced exit
         if isempty(cc) || strcmp(cc,'ESCAPE')
             break;   %break out of trials loop, but perform all the cleanup things
+                     %and give back results collected so far
         elseif ~any(strcmp(cc,'s') || strcmp(cc,'d'))
             anscorrect = 66;
         elseif u_hll==l_hll && strcmp(cc,'s')
@@ -320,7 +336,7 @@ try
 
     end %of trials loop
 
-    %write results to tab delimited text file
+    %write results to comma delimited text file (use '\t' for tabs)
     dlmwrite(fileName, results, 'delimiter', ',', 'precision', 6);
 
     %         %alternative: write to excel format
@@ -340,7 +356,7 @@ try
     Screen('Preference', 'VisualDebuglevel', olddebuglevel);
 
 catch
-    % This section is executed in case an error happens in the
+    % This section is executed only in case an error happens in the
     % experiment code implemented between try and catch...
     ShowCursor;
     Screen('CloseAll'); %or sca

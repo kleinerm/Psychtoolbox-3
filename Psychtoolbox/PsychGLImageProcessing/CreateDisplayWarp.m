@@ -44,6 +44,7 @@ function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, 
 % History:
 % 19.7.2007 Written (MK).
 % 17.2.2008 Added undistortion method donated by the Banks Vision Lab (MK).
+% 10.3.2008 Fixed image inversion bug in BVL calibration (MK).
 
 global GL;
 
@@ -305,7 +306,10 @@ end
 %    [vertexCoordsFit(:,1) vertexCoordsFit(:,2)] = BFbvlFitCoords(vertexCoords(:,1), ...
 %        vertexCoords(:,2), xFitCoef_R, yFitCoef_R);
 
-% Compute final vertex- and texcoords:
+% Compute final vertex- and texcoords. Need to swap y-positions upside-down
+% as our internal vertex/texcoord assignment is upside down wrt. original
+% Banks lab calibration:
+vertexCoords(:,2) = windowHeight - vertexCoords(:,2);
 [xyzcalibpos, xytexcoords] = BVLGeneratetextcoord(yLoomSize, xLoomSize, vertexCoords, vertexCoordsFit, showCalibOutput);
 
 % Done. Return results:

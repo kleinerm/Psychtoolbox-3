@@ -220,12 +220,15 @@ try
     KbWait;
     Screen('Flip', w);
     
+    Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);
+
     % Close the screen, we're done...
     Screen('CloseAll');
 
 catch
     % This "catch" section executes in case of an error in the "try" section
     % above.  Importantly, it closes the onscreen window if it's open.
+    Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);
     Screen('CloseAll');
     psychrethrow(psychlasterror);
 end
