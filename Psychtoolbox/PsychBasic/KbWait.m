@@ -1,5 +1,5 @@
-function [secs, keyCode] = KbWait(deviceNumber, forWhat)
-% [secs, keyCode] = KbWait([deviceNumber][, forWhat=0])
+function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
+% [secs, keyCode, deltaSecs] = KbWait([deviceNumber][, forWhat=0])
 %
 % Waits until any key is down and optionally returns the time in seconds
 % and the keyCode vector of keyboard states, just as KbCheck would do. Also
@@ -48,7 +48,7 @@ function [secs, keyCode] = KbWait(deviceNumber, forWhat)
 % change, the function can be reset using "clear KbWait".
 % _________________________________________________________________________
 %
-% See also: KbCheck, GetChar, CharAvail, KbDemo.
+% See also: KbCheck, KbStrokeWait, KbPressWait, KbReleaseWait, GetChar, CharAvail, KbDemo.
 
 % 3/6/97    dhb  Wrote it.
 % 8/2/97    dgp  Explain difference between key and character. See KbCheck.
@@ -69,6 +69,10 @@ function [secs, keyCode] = KbWait(deviceNumber, forWhat)
 %                to return keyCode vector, just as KbCheck does.
 
 persistent kbs
+
+% Time (in seconds) to wait between "failed" checks, in order to not
+% overload the system in realtime mode. 5 msecs seems to be an ok value...
+yieldInterval = 0.005;
 
 if nargin < 2
     forWhat = 0;
@@ -91,7 +95,7 @@ if (forWhat == 2) | (forWhat == 3)
         forWhat = 0;
     else
         % Wait for keypress:
-        [secs, keyCode] = KbWait(deviceNumber);
+        [secs, keyCode, deltaSecs] = KbWait(deviceNumber);
         
         % Wait for key release. we know we have deviceNumber valid here:
         KbWait(deviceNumber, 1);
@@ -102,12 +106,12 @@ end
 
 if isempty(deviceNumber)
     while(1)
-        [isDown, secs, keyCode] = KbCheck;
+        [isDown, secs, keyCode, deltaSecs] = KbCheck;
         if isDown == ~forWhat
             return;
         end
-        % Wait for 5 msecs to prevent system overload.
-        WaitSecs(0.005);
+        % Wait for yieldInterval to prevent system overload.
+        WaitSecs(yieldInterval);
     end
 else
     if deviceNumber == -1 & IsOSX
@@ -121,22 +125,22 @@ else
         
         while(1)
             for i = kbs
-                [isDown, secs, keyCode] = KbCheck(i);
+                [isDown, secs, keyCode, deltaSecs] = KbCheck(i);
                 if isDown == ~forWhat
                     return;
                 end
             end
-            % Wait for 5 msecs to prevent system overload.
-            WaitSecs(0.005);
+            % Wait for yieldInterval to prevent system overload.
+            WaitSecs(yieldInterval);
         end
     else
         while(1)
-            [isDown, secs, keyCode] = KbCheck(deviceNumber);
+            [isDown, secs, keyCode, deltaSecs] = KbCheck(deviceNumber);
             if isDown == ~forWhat
                 return;
             end
-            % Wait for 5 msecs to prevent system overload.
-            WaitSecs(0.005);
+            % Wait for yieldInterval to prevent system overload.
+            WaitSecs(yieldInterval);
         end
     end
 end

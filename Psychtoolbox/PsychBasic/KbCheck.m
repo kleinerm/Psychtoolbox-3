@@ -1,5 +1,5 @@
-function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
-% [keyIsDown, secs, keyCode] = KbCheck([deviceNumber])
+function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
+% [keyIsDown, secs, keyCode, deltaSecs] = KbCheck([deviceNumber])
 % 
 % Return keyboard status (keyIsDown), time (secs) of the status check, and
 % keyboard scan code (keyCode).
@@ -7,7 +7,7 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 %    keyIsDown      1 if any key, including modifiers such as <shift>,
 %                   <control> or <caps lock> is down. 0 otherwise.
 % 
-%    secs           time of keypress as returned by GetSecs.
+%    secs           Time of keypress as returned by GetSecs.
 % 
 %    keyCode        A 256-element logical array.  Each bit
 %                   within the logical array represents one keyboard key. 
@@ -16,6 +16,24 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 %                   numbers use FIND(keyCode). To find a key's keyNumber 
 %                   use KbName or KbDemo.
 % 
+%    deltaSecs      Time in seconds since this KbCheck query and the most
+%                   recent previous query (if any). This value is in some
+%                   sense a confidence interval, e.g., for reaction time
+%                   measurements. If KbCheck returns the information that a
+%                   key is pressed by the subject, then the subject could
+%                   have pressed the key down anytime between this
+%                   invocation of KbCheck at time 'secs' and the most
+%                   recent previous invocation. Therefore, 'deltaSecs'
+%                   tells you about the interval in which depression of the
+%                   key(s) might have happened: [secs - deltaSecs; secs].
+%                   for practical purpose this means that "measured" RT's
+%                   can't be more accurate than 'deltaSecs' seconds - the
+%                   interval between the two most recent keyboard checks.
+%                   Please note however, that standard computer keyboards
+%                   can incur additional delays and timing uncertainty of
+%                   up to 50 msecs, so the real uncertainty can be higher
+%                   than 'deltaSecs' -- 'deltaSecs' is just a lower bound!
+%
 % KbCheck and KbWait determine whether any key is down now, including the
 % meta keys: <caps lock>, <shift>, <command>, <control>, and <option>. The
 % only key not reported is the start key (triangle) used to power on your
@@ -95,10 +113,17 @@ function [keyIsDown,secs, keyCode] = KbCheck(deviceNumber)
 % vector.
 global ptb_kbcheck_disabledKeys;
 
+% Store timestamp of previous KbCheck:
+persistent oldSecs;
+
 % Cache operating system type to speed up the code below:
 persistent macosx;
 if isempty(macosx)
-   macosx = IsOSX;
+    % First time invocation: Query and cache type of OS:
+    macosx = IsOSX;
+    
+    % Set initial oldSecs to minus infinity: No such query before...
+    oldSecs = -inf;
 end
 
 if macosx
@@ -114,6 +139,11 @@ else
    % for KbChecks until a PsychHID implementation is ready.
     [keyIsDown,secs, keyCode]= Screen('GetMouseHelper', -1);
 end
+
+% Compute time delta since previous keyboard query, and update internal
+% cached value:
+deltaSecs = secs - oldSecs;
+oldSecs = secs;
 
 % Any dead keys defined?
 if ~isempty(ptb_kbcheck_disabledKeys)

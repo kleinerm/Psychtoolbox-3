@@ -24,15 +24,18 @@
 %     HideCursor           - Hide cursor.
 %     InitCocoaEventBridge - Prepare GetChar helper "CocoaEventBridge" 
 %     KbCheck              - Get instantaneous keyboard state.
-%     KbName               - Convert keycode to key name.
+%     KbName               - Convert keycode to key name and vice versa.
+%     KbPressWait          - Wait for key press, make sure no keys pressed before.
 %     KbQueueCreate        - Create keyboard queue (OS/X only).
 %     KbQueueRelease       - Destroy keyboard queue (OS/X only).
 %     KbQueueFlush         - Empty keyboard queue (OS/X only).
 %     KbQueueStart         - Start recording of key presses into queue.
 %     KbQueueStop          - Stop recording of key presses into queue.
 %     KbQueueCheck         - Check keyboard queue for key presses/releases.
+%     KbReleaseWait        - Wait until all keys on keyboard are released.
+%     KbStrokeWait         - Wait for single, isolated key stroke.
 %     KbTriggerWait        - Wait for trigger keys on keyboard (OS/X only).
-%     KbWait               - Wait for key press and return its time.
+%     KbWait               - Wait until at least one key is pressed and return its time.
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
 %     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
