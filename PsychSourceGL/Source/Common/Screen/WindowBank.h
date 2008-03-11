@@ -280,6 +280,7 @@ typedef struct _PsychWindowRecordType_{
 	GLuint					unclampedDrawShader;					// Handle of GLSL shader object for drawing of non-texture stims without vertex color clamping. Zero by default.
 	GLuint					defaultDrawShader;						// Default GLSL shader object for drawing of non-texture stims. Zero by default.
 	double					currentColor[4];						// Current unclamped but colorrange remapped RGBA drawcolor for whatever drawop, as spec'd by PsychSetGLColor().
+	double					clearColor[4];							// Window clear color (as GL double vector) to use in PsychGLClear();
 	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
 	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.
 	Boolean					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.

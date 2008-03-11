@@ -106,6 +106,9 @@ void ScreenCloseAllWindows();           //SCREENCloseAll.c
 int		PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray);
 // int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
 void		PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord);
+void		PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean enable, int mc, double* colors, unsigned char *bytecolors);
+void		PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors);
+void		PsychGLClear(PsychWindowRecordType *windowRecord);
 void		PsychGLRect(double *psychRect);
 char		*PsychGetGLErrorNameString(GLenum errorConstant);
 #define		PsychTestForGLErrors()		PsychTestForGLErrorsC(__LINE__, __func__, __FILE__) 

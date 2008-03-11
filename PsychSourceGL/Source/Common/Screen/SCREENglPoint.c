@@ -70,6 +70,9 @@ PsychError SCREENglPoint(void)
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 
+	// Set default draw shader:
+	PsychSetShader(windowRecord, -1);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
 	glEnable(GL_POINT_SMOOTH);

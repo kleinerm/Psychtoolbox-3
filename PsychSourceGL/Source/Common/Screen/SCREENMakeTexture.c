@@ -42,10 +42,11 @@
 // texture filter, whenever that filter is not available: All current ATI
 // hardware and all pre GF6000 NVidia hardware can't filter float textures,
 // GF6/7 series NVidia hardware can only filter 16bpc floats, not 32bpc floats.
-static char textureBilinearFilterShaderSrc[] =
+static char textureBilinearFilterFragmentShaderSrc[] =
 "\n"
 " \n"
 "uniform sampler2DRect Image; \n"
+"varying vec4 unclampedFragColor; \n"
 " \n"
 "void main() \n"
 "{ \n"
@@ -62,8 +63,29 @@ static char textureBilinearFilterShaderSrc[] =
 "    vec4 texcolor = mix(tl, bl, fract(texinpos.y)); \n"
 "    /* Multiply filtered texcolor with incoming fragment color (GL_MODULATE emulation): */ \n"
 "    /* Assign result as output fragment color: */ \n"
-"    gl_FragColor = texcolor * gl_Color; \n"
+"    gl_FragColor = texcolor * unclampedFragColor; \n"
 "} \n";
+
+char textureBilinearFilterVertexShaderSrc[] =
+"/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
+"/* modulateColor as varying unclampedFragColor to circumvent vertex color       */ \n"
+"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
+"/* PTBs color handling is expected to pass the vertex color in modulateColor    */ \n"
+"/* for unclamped drawing for this reason. */ \n"
+"\n"
+"varying vec4 unclampedFragColor;\n"
+"attribute vec4 modulateColor;\n"
+"\n"
+"void main()\n"
+"{\n"
+"    /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
+"    unclampedFragColor = modulateColor;\n"
+"\n"
+"    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+"\n"
+"    /* Output position is the same as fixed function pipeline: */\n"
+"    gl_Position    = ftransform();\n"
+"}\n\0";
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";
@@ -504,7 +526,7 @@ PsychError SCREENMakeTexture(void)
 			// Do we have a filtershader already?
 			if (windowRecord->textureFilterShader == 0 && !(usepoweroftwo & 1)) {
 				// Nope. Need to create one:
-				windowRecord->textureFilterShader = PsychCreateGLSLProgram(textureBilinearFilterShaderSrc, NULL, NULL);
+				windowRecord->textureFilterShader = PsychCreateGLSLProgram(textureBilinearFilterFragmentShaderSrc, textureBilinearFilterVertexShaderSrc, NULL);
 				if ((windowRecord->textureFilterShader == 0) && PsychPrefStateGet_Verbosity() > 1) {
 					printf("PTB-WARNING: Created a floating point texture as requested or manual filtering wanted, but was unable to create a float filter shader.\n");
 					printf("PTB-WARNING: (Custom) Filtering - and therefore anti-aliasing - of this texture won't work or at least not at the requested precision.\n");
@@ -547,6 +569,8 @@ PsychError SCREENMakeTexture(void)
 	if (assume_texorientation == 1) {
 		// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 		// that format. We require this standard orientation for simplified shader design.
+
+		PsychSetShader(windowRecord, 0);
 		PsychNormalizeTextureOrientation(textureRecord);
 	}
 	

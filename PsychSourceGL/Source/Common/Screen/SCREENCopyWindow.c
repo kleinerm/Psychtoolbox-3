@@ -122,7 +122,10 @@ PsychError SCREENCopyWindow(void)
 			
 			// Set target windows framebuffer as drawing target:
 			PsychSetDrawingTarget(targetWin);
-			
+
+			// Disable any shading during copy-op:
+			PsychSetShader(targetWin, 0);
+
 			// Start position for pixel write is:
 			glRasterPos2f(targetRect[kPsychLeft], targetRect[kPsychBottom]);
 			
@@ -142,7 +145,7 @@ PsychError SCREENCopyWindow(void)
 				// Sourcewin != Targetwin and/or imaging pipe (FBO storage) not used. We blit the
 				// backing texture into itself, aka into its representation inside the system
 				// backbuffer. The blit routine will setup proper bindings:
-				
+
 				// We use filterMode == 1 aka Bilinear filtering, so we get nice texture copies
 				// if size of sourceRect and targetRect don't match and some scaling is needed.
 				// We maybe could map the copyMode argument into some filterMode settings, but
@@ -170,6 +173,9 @@ PsychError SCREENCopyWindow(void)
 		// Looks weird but we need the framebuffer of sourceWin:
 		PsychSetDrawingTarget(sourceWin);
 		
+		// Disable any shading during copy-op:
+		PsychSetShader(sourceWin, 0);
+
 		// Texture objects are shared across contexts, so doesn't matter if targetWin's texture actually
 		// belongs to the bound context of sourceWin:
 		glBindTexture(PsychGetTextureTarget(targetWin), targetWin->textureNumber);
@@ -194,6 +200,9 @@ PsychError SCREENCopyWindow(void)
 		// Set target windows framebuffer as drawing target:
 		PsychSetDrawingTarget(targetWin);
 		
+		// Disable any shading during copy-op:
+		PsychSetShader(targetWin, 0);
+
 		// Start position for pixel write is:
 		glRasterPos2f(targetRect[kPsychLeft], targetRect[kPsychBottom]);
 		

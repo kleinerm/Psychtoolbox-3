@@ -226,6 +226,10 @@ PsychError SCREENPutImage(void)
 
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(windowRecord);
+
+		// Disable draw shader:
+		PsychSetShader(windowRecord, 0);
+	
 		PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 
 		// Set the raster position so that we can draw starting at this location.

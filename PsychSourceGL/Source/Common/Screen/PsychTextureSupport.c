@@ -677,8 +677,8 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         GLdouble                sourceX, sourceY, sourceXEnd, sourceYEnd;
 		double                  transX, transY;
         GLenum                  texturetarget;
-		GLuint					shader;
 		GLint					attrib;
+		GLuint					shader = 0;
 		
         // Enable targets framebuffer as current drawingtarget, except if this is a
 		// blit operation from a window into itself and the imaging pipe is on:
@@ -786,12 +786,27 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	// Linear filtering on non-capable hardware via shader emulation?
 	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
-		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
-		glUseProgram((GLuint) source->textureFilterShader);
-		
+		shader = source->textureFilterShader;
+		if (0 == PsychSetShader(target, source->textureFilterShader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
+
 		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
 		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		
+		// In case our texture filter shader also requests/defines a 'modulateColor'
+		// attribute in its vertex shader part, this attribute is assigned the 
+		// unclamped RGBA 'modulateColor' after normalization via the colorrange
+		// value of Screen('ColorRange'), or the unclamped globalAlpha value:
+		if ((attrib = glGetAttribLocationARB(source->textureFilterShader, "modulateColor")) >= 0) {
+			if(globalAlpha == DBL_MAX) {
+				// globalAlpha disabled: Pass the 'modulateColor' vector:
+				glVertexAttrib4dvARB(attrib, target->currentColor);
+			}
+			else {
+				// modulateColor disabled: Pass (1,1,1) as RGB color and globalAlpha as alpha:
+				glVertexAttrib4fARB(attrib, 1.0, 1.0, 1.0, (GLfloat) globalAlpha);
+			}
+		}
 	}
 	else {
         // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
@@ -874,10 +889,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 		// or for procedural texture shading/on-the-fly texture synthesis. These can be
 		// assigned in Screen('MakeTexture') for procedural texture shading or via a
 		// optional shader handle to Screen('DrawTexture');
-		if (glUseProgram == NULL) PsychErrorExitMsg(PsychError_user, "Tried to use a user defined texture shader or procedural texture, but your hardware doesn't support GLSL shaders.");
-		shader = (GLuint) (-1 * source->textureFilterShader);
-		glUseProgram(shader);
-		
+		shader = -1 * source->textureFilterShader;
+		if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a user defined texture shader or procedural texture, but your hardware doesn't support GLSL shaders.");
+
 		// Parameter transfer for advanced procedural shading:
 		// We encode all parameters about the blit operation into additional
 		// vertex attributes so a complex shader can derive useful information.
@@ -926,6 +940,9 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 			if ((target->auxShaderParamsCount >=32) && ((attrib = glGetAttribLocationARB(shader, "auxParameters7")) >= 0)) glVertexAttrib4dvARB(attrib, &(target->auxShaderParams[28]));
 		}
 	}
+	
+	// Test for standard case: No shader requested for this texture. In that case we make sure that really no shader is bound.
+	if (shader == 0) PsychSetShader(target, 0);
 
 	// matchups for inverted Y coordinate frame (which is inverted?)
 	// MK: Texture coordinate assignments have been changed.
@@ -999,10 +1016,17 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
         glDisable(texturetarget);
 	}
 	
+	/* Dead and disabled: Left here for documentation...
 	if ((filterMode > 0 && source->textureFilterShader > 0) || (source->textureFilterShader < 0)) {
 		// Filtershader was used. Unbind it:
-		glUseProgram(0);
+		// MK: Not really: We used to do this, but have a new policy starting 9th March 2008. All rendering
+		// functions have to use PsychSetShader() or glUseProgram() calls to define their wanted shader
+		// binding. Therefore no need to revert to a zero binding at end of a routine. This avoids lots
+		// of redundant shader switches in batch drawing routines, e.g., if this routine is called via
+		// Screen('DrawTextures'), especially with procedural textures bound.
+		// glUseProgram(0);
 	}
+	*/
 
 	// Finished!
 	return;

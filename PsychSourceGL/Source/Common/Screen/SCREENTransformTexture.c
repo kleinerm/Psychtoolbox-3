@@ -90,8 +90,9 @@ PsychError SCREENTransformTexture(void)
 	// Disable alpha-blending:
 	glDisable(GL_BLEND);
     
-    glUseProgram(0);
-	
+	// Disable any shaders:
+    PsychSetShader(proxyRecord, 0);
+
 	// Transform sourceRecord source texture into a normalized, upright texture if it isn't already in
 	// that format. We require this standard orientation for simplified shader design.
 	if (!(specialFlags & 1)) PsychNormalizeTextureOrientation(sourceRecord);

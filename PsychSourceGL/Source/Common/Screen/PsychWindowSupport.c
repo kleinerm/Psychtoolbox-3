@@ -589,11 +589,11 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     PsychOSFlipWindowBuffers(*windowRecord);
     // We do it twice to clear possible stereo-contexts as well...
     if ((*windowRecord)->stereomode==kPsychOpenGLStereo) {
-        glDrawBuffer(GL_BACK_RIGHT);
-        glClear(GL_COLOR_BUFFER_BIT);
+	glDrawBuffer(GL_BACK_RIGHT);
+	glClear(GL_COLOR_BUFFER_BIT);
 	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
 	PsychOSFlipWindowBuffers(*windowRecord);
-        glClear(GL_COLOR_BUFFER_BIT);
+	glClear(GL_COLOR_BUFFER_BIT);
 	if (visual_debuglevel>=4) { glRasterPos2i(logo_x, logo_y); glDrawPixels(gimp_image.width, gimp_image.height, GL_RGBA, GL_UNSIGNED_BYTE, (void*) &gimp_image.pixel_data[0]); }
 	PsychOSFlipWindowBuffers(*windowRecord);
     }    
@@ -2468,6 +2468,9 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 		// of all state transitions between onscreen/offscreen windows etc.:
         PsychSetDrawingTarget(windowRecord);
 
+		// Disable any shaders:
+		PsychSetShader(windowRecord, 0);
+		
 		// ...and immediately disable it in imagingmode, because it won't be the system backbuffer,
 		// but a FBO -- which would break sync of glFinish() with bufferswaps and vertical retrace.
 		if ((windowRecord->imagingMode > 0) && (windowRecord->imagingMode != kPsychNeedFastOffscreenWindows)) PsychSetDrawingTarget(NULL);
@@ -2827,6 +2830,9 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     // We stop processing here if window is a texture, aka offscreen window...
     if (windowRecord->windowType==kPsychTexture) return;
     
+	// Disable any shaders:
+	PsychSetShader(windowRecord, 0);
+	
     // Reset viewport to full-screen default:
     glViewport(0, 0, screenwidth, screenheight);
     glScissor(0, 0, screenwidth, screenheight);
@@ -3210,13 +3216,14 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// Clearing (both)  back buffer requested:
 				if (stereo_mode==kPsychOpenGLStereo) {
 					glDrawBuffer(GL_BACK_LEFT);
-					glClear(GL_COLOR_BUFFER_BIT);
+					PsychGLClear(windowRecord);
 					glDrawBuffer(GL_BACK_RIGHT);
-					glClear(GL_COLOR_BUFFER_BIT);
+					PsychGLClear(windowRecord);
 				}
 				else {
 					glDrawBuffer(GL_BACK);
-					glClear(GL_COLOR_BUFFER_BIT);
+					PsychGLClear(windowRecord);
+
 				}
 			}
 		}
@@ -3239,13 +3246,13 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			// Bind left view (or mono view) buffer:
 			glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->fboid);
 			// and clear it:
-			glClear(GL_COLOR_BUFFER_BIT);
+			PsychGLClear(windowRecord);
 			
 			if (windowRecord->stereomode > 0) {
 				// Bind right view buffer for stereo mode:
 				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[1]]->fboid);
 				// and clear it:
-				glClear(GL_COLOR_BUFFER_BIT);
+				PsychGLClear(windowRecord);
 			}
 		}
 		
@@ -3456,6 +3463,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 					// MakeTexture will be auto-converted as well, unless some special flags to MakeTexture are given.
 					// --> The user code needs to do something very unusual and special to trigger an error abort here, and if it triggers
 					// one, it will abort with a helpful error message, telling how to fix the problem very simply.
+					PsychSetShader(windowRecord, 0);
 					PsychNormalizeTextureOrientation(windowRecord);
 					
 					// Do we already have a framebuffer object for this texture? All textures start off without one,
@@ -3617,6 +3625,9 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 							PsychSetupView(windowRecord);
 							glPushMatrix();
 							glLoadIdentity();
+
+							// Disable any shaders:
+							PsychSetShader(windowRecord, 0);
 							
 							// Now we need to blit the new rendertargets texture into the framebuffer. We need to make
 							// sure that alpha-blending is disabled during this blit operation:
@@ -3740,4 +3751,47 @@ int PsychRessourceCheckAndReminder(boolean displayMessage) {
 	
 	// Return total sum of open ressource hogs ;-)
 	return(i + j);
+}
+
+/* PsychSetShader() -- Lazily choose a GLSL shader to use for further operations.
+ *
+ * The routine shall bind the shader 'shader' for the OpenGL context of window
+ * 'windowRecord'. It assumes that the OpenGL context for that windowRecord is
+ * already bound.
+ *
+ * This is a wrapper around glUseProgram(). It does nothing if GLSL isn't supported,
+ * ie. if gluseProgram() is not available. Otherwise it checks the currently bound
+ * shader and only rebinds the new shader if it isn't already bound - avoiding redundant
+ * calls to glUseProgram() as such calls might be expensive on some systems.
+ *
+ * A 'shader' value of zero disables shading and enables fixed-function pipe, as usual.
+ * A positive value sets the shader with that handle. Negative values have special
+ * meaning in that the select special purpose shaders stored in the 'windowRecord'.
+ *
+ * Currently the value -1 is defined to choose the windowRecord->defaultDrawShader.
+ * That shader can be anything special, zero for fixed function pipe, or e.g., a shader
+ * to disable color clamping.
+ */
+int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
+{
+	int oldShader;
+
+	// Have GLSL support?
+	if (glUseProgram) {
+		// Choose this windowRecords assigned default draw shader if shader == -1:
+		if (shader == -1) shader = (int) windowRecord->defaultDrawShader;
+		if (shader <  -1) { printf("PTB-BUG: Invalid shader id %i requested in PsychSetShader()! Switching to fixed function.\n", shader); shader = 0; }
+		
+		// Query currently bound shader:
+		glGetIntegerv(GL_CURRENT_PROGRAM, &oldShader);
+		
+		// Switch required? Switch if so:
+		if (shader != oldShader) glUseProgram((GLuint) shader);
+	}
+	else {
+		shader = 0;
+	}
+	
+	// Return new bound shader (or zero in case of fixed function only):
+	return(shader);
 }

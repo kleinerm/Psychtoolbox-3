@@ -135,26 +135,7 @@ PsychError SCREENFillOval(void)
 		// was provided then PsychPrepareRenderBatch() has already set it up.
 		if (nc>1) {
 			// Yes. Set color for this specific item:
-			if (mc==3) {
-				if (colors) {
-					// RGB double:
-					glColor3dv(&(colors[i*3]));
-				}
-				else {
-					// RGB uint8:
-					glColor3ubv(&(bytecolors[i*3]));
-				}
-			}
-			else {
-				if (colors) {
-					// RGBA double:
-					glColor4dv(&(colors[i*4]));
-				}
-				else {
-					// RGBA uint8:
-					glColor4ubv(&(bytecolors[i*4]));
-				}					
-			}
+			PsychSetArrayColor(windowRecord, i, mc, colors, bytecolors);
 		}
 
 		// Compute drawing parameters for ellipse:

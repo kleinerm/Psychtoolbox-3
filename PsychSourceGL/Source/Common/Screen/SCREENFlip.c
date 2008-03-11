@@ -253,11 +253,6 @@ PsychError SCREENFlip(void)
 		if(flipwhen < 0) {
 			PsychErrorExitMsg(PsychError_user, "Only 'when' values greater or equal to 0 are supported");
 		}
-		
-		// Old implementation - DISABLED: Issue the flip-request:
-		if (FALSE) {
-			vbl_timestamp = PsychFlipWindowBuffers(windowRecord, multiflip, vbl_synclevel, dont_clear, flipwhen, &beamposatflip, &miss_estimate, &time_at_flipend, &time_at_onset);
-		}
 
 		// Pack all parameters of the fliprequest into the flipinfo struct:
 		if (NULL == windowRecord->flipInfo) {

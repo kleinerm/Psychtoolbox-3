@@ -61,6 +61,11 @@ int PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType
     return(0); //make the compiler happy.  
 }
 
+// Define submission command for submitting single unclamped colors to drawshader.
+// For now, we use the first (primary) 4D texture coordinate, as this is a predefined
+// attribute:
+#define HDRglColor4dv(v) glTexCoord4dv((v))
+
 /*
     PsychSetGLColor()
     
@@ -71,15 +76,175 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
     int numVals;
     
     numVals=PsychConvertColorToDoubleVector(color, windowRecord, &(windowRecord->currentColor));
-    if(numVals==1)
-        PsychErrorExitMsg(PsychError_internal, "palette mode not yet implemented");
-    else if(numVals==3)
-        glColor3dv(windowRecord->currentColor);
-    else if(numVals==4)
-        glColor4dv(windowRecord->currentColor);
-    else
-        PsychErrorExitMsg(PsychError_internal, "Illegal color specifier"); 
-	// printf("PTB-DEBUG: glColor4dv(%lf, %lf, %lf, %lf)\n", dVals[0], dVals[1], dVals[2], dVals[3]);
+    if(numVals < 3 || numVals > 4) PsychErrorExitMsg(PsychError_internal, "Palette mode not yet implemented or illegal color specifier.");
+
+	// Set the color in GL:
+	if (windowRecord->defaultDrawShader) {
+		// Drawshader color submission:
+		HDRglColor4dv(windowRecord->currentColor);
+	}
+	else {
+		// Fixed function pipe:
+		glColor4dv(windowRecord->currentColor);
+	}
+}
+
+/* PsychSetupVertexColorArrays()
+
+   Helper routine, called from the different batch drawing functions of Screen():
+*/
+void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean enable, int mc, double* colors, unsigned char *bytecolors)
+{
+	if (enable) {
+		// Enable and setup whatever's used:
+		if (windowRecord->defaultDrawShader) {
+			// Shader based unclamped path:
+			if (colors)     glTexCoordPointer(mc, GL_DOUBLE, 0, colors);
+			// Can't support uint8 datatype for this vertex attribute :-(
+			if (bytecolors) PsychErrorExitMsg(PsychError_user, "Sorry, this function can't accept matrices of uint8 type for colors\nif color clamping is disabled or high precision mode active.\n Use the double() operator to convert to double matrix.");
+
+			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+		}
+		else {
+			// Standard path:
+			if (colors)     glColorPointer(mc, GL_DOUBLE, 0, colors);
+			if (bytecolors) glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
+
+			glEnableClientState(GL_COLOR_ARRAY);
+		}
+	}
+	else {
+		// Disable whatever's used:
+		if (windowRecord->defaultDrawShader) {
+			// Shader based unclamped path:
+			glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+		}
+		else {
+			// Standard path:
+			glDisableClientState(GL_COLOR_ARRAY);
+		}
+	}
+}
+
+/* PsychSetArrayColor()
+
+   Helper routine, called from the different batch drawing functions of Screen():
+*/
+void PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors)
+{
+	GLdouble currentColor[4];
+	
+	if (windowRecord->defaultDrawShader) {
+		// Draw shader assigned. Need to feed color values into high-precision
+		// alternative channel for unclamped, high-precision color handling:
+		if (mc==3) {
+			i=i * 3;
+			if (colors) {
+				// RGB double:
+				currentColor[0]=colors[i++];
+				currentColor[1]=colors[i++];
+				currentColor[2]=colors[i++];
+				currentColor[3]=1.0;
+			}
+			else {
+				// RGB uint8:
+				currentColor[0]=((double) bytecolors[i++] / 255.0);
+				currentColor[1]=((double) bytecolors[i++] / 255.0);
+				currentColor[2]=((double) bytecolors[i++] / 255.0);
+				currentColor[3]=1.0;
+			}
+		}
+		else {
+			i=i * 4;
+			if (colors) {
+				// RGBA double:
+				currentColor[0]=colors[i++];
+				currentColor[1]=colors[i++];
+				currentColor[2]=colors[i++];
+				currentColor[3]=colors[i++];
+			}
+			else {
+				// RGBA uint8:
+				currentColor[0]=((double) bytecolors[i++] / 255.0);
+				currentColor[1]=((double) bytecolors[i++] / 255.0);
+				currentColor[2]=((double) bytecolors[i++] / 255.0);
+				currentColor[3]=((double) bytecolors[i++] / 255.0);
+			}					
+		}					
+
+		HDRglColor4dv(currentColor);
+	}
+	else {
+		// Standard fixed-function pipeline assigned: Feed into standard glColorXXX() calls:
+		if (mc==3) {
+			if (colors) {
+				// RGB double:
+				glColor3dv(&(colors[i*3]));
+			}
+			else {
+				// RGB uint8:
+				glColor3ubv(&(bytecolors[i*3]));
+			}
+		}
+		else {
+			if (colors) {
+				// RGBA double:
+				glColor4dv(&(colors[i*4]));
+			}
+			else {
+				// RGBA uint8:
+				glColor4ubv(&(bytecolors[i*4]));
+			}					
+		}
+	}
+	
+	return;
+}
+
+/* PsychGLClear()
+ *
+ * Helper around glClearColor() and glClear() - takes special issues
+ * caused by HDR framebuffer support into account.
+ */
+void PsychGLClear(PsychWindowRecordType *windowRecord)
+{
+	int oldShader, nowShader;
+	
+	// Unclamped/High-precision color mode enabled via GLSL shaders?
+	if ((windowRecord->defaultDrawShader != 0) && (windowRecord->defaultDrawShader == windowRecord->unclampedDrawShader)) {
+		// Yes. Can't use standard clear, but need to clear via drawing a full-window rect with
+		// clear color:
+
+		// Query currently bound shader:
+		glGetIntegerv(GL_CURRENT_PROGRAM, &oldShader);
+
+		// Assign hdr draw shader:
+		nowShader = PsychSetShader(windowRecord, -1);
+
+		// Assign HDR clear color for window:
+		HDRglColor4dv(windowRecord->clearColor);
+
+		// Draw a fullscreen rect in the clear color, make sure
+		// no alpha blending is active:
+		if (glIsEnabled(GL_BLEND)) {
+			glDisable(GL_BLEND);
+			PsychGLRect(windowRecord->rect);
+			glEnable(GL_BLEND);
+		}
+		else {
+			PsychGLRect(windowRecord->rect);
+		}
+		
+		// Revert to old shader binding:
+		if (nowShader != oldShader) PsychSetShader(windowRecord, oldShader);
+	}
+	else {
+		// Standard clear path: Can use OpenGL's fast color buffer clear:
+		glClearColor(windowRecord->clearColor[0], windowRecord->clearColor[1], windowRecord->clearColor[2], windowRecord->clearColor[3]);
+		glClear(GL_COLOR_BUFFER_BIT);
+	}
+
+	return;
 }
 
 /*
@@ -326,6 +491,9 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
+	
+	// Setup default drawshader:
+	PsychSetShader(windowRecord, -1);
 	
 	// Setup alpha blending properly:
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);

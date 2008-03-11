@@ -77,7 +77,8 @@ PsychError SCREENWaitBlanking(void)
     // Get the number of frames to wait:
     waitFrames = 0;
     PsychCopyInIntegerArg(2, FALSE, &waitFrames);
-		  // We default to wait at least one interval if no argument supplied:
+
+	// We default to wait at least one interval if no argument supplied:
     waitFrames = (waitFrames < 1) ? 1 : waitFrames;
     
     // Enable this windowRecords framebuffer as current drawingtarget:
@@ -92,7 +93,7 @@ PsychError SCREENWaitBlanking(void)
     vbl_startline = (int) screenheight;
     
     // Query duration of a monitor refresh interval: We try to use the measured interval,
-		  // but fallback of the nominal value reported by the operating system if necessary:
+	// but fallback of the nominal value reported by the operating system if necessary:
     if ((ifi = windowRecord->VideoRefreshInterval)<=0) {
         if (PsychGetNominalFramerate(windowRecord->screenNumber) > 0) {
             // Valid nominal framerate returned by OS: Calculate nominal IFI from it.
@@ -186,7 +187,10 @@ PsychError SCREENWaitBlanking(void)
         glColorMask(TRUE, TRUE, TRUE, TRUE);
         glDisable(GL_BLEND);
         glPixelZoom(1,1);
-        
+
+		// Disable draw shader:
+		PsychSetShader(windowRecord, 0);
+
         // Swap-Waiting loop for 'waitFrames' frames:
         while(waitFrames > 0) {
             // Copy current content of front buffer into backbuffer:

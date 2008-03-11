@@ -322,6 +322,9 @@ PsychError SCREENDrawText(void)
 	// Save all state:
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
 
+	// Disable draw shader:
+	PsychSetShader(winRec, 0);
+
     if(!PsychPrefStateGet_TextAlphaBlending()){
         PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
         PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -715,6 +718,9 @@ PsychError SCREENDrawText(void)
 
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
+
+	// Set default draw shader:
+	PsychSetShader(winRec, -1);
 
 	PsychUpdateAlphaBlendingFactorLazily(winRec);
 	PsychCoerceColorMode( &(winRec->textAttributes.textColor));
@@ -1209,6 +1215,9 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		PsychCoerceColorMode( &(winRec->textAttributes.textBackgroundColor));
 		PsychSetGLColor(&(winRec->textAttributes.textBackgroundColor), winRec);
 
+		// Set default draw shader:
+		PsychSetShader(winRec, -1);
+
 		// Draw background rect:
 		PsychGLRect(boundingRect);
 	}
@@ -1223,6 +1232,9 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 
 	// Blit it to screen: The GL_BGRA swizzles RGBA <-> BGRA properly:
 	scanptr = (unsigned char*) pBits + skiplines * oldWidth * 4;
+
+	// Disable draw shader:
+	PsychSetShader(winRec, 0);
 
     glPixelZoom(1,1);
 	glDrawPixels(oldWidth, renderheight, GL_RGBA, GL_UNSIGNED_BYTE, scanptr);

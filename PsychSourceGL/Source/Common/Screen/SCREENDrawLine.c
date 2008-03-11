@@ -76,6 +76,9 @@ PsychError SCREENDrawLine(void)
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 
+	// Set default draw shader:
+	PsychSetShader(windowRecord, -1);
+
 	glLineWidth((GLfloat)penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);

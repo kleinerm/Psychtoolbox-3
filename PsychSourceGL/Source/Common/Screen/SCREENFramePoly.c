@@ -44,7 +44,7 @@ PsychError SCREENFramePoly(void)
 	
 	PsychColorType					color;
 	PsychWindowRecordType			*windowRecord;
-	int								depthValue, whiteValue;
+	int								whiteValue;
 	int								i, mSize, nSize, pSize;
 	boolean							isArgThere;
 	double							penSize, *pointList;
@@ -59,10 +59,6 @@ PsychError SCREENFramePoly(void)
 
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
-	
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	
 
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(2, FALSE, &color);
@@ -89,6 +85,9 @@ PsychError SCREENFramePoly(void)
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 
+	// Set default draw shader:
+	PsychSetShader(windowRecord, -1);
+	
 	glLineWidth((GLfloat)penSize);
 
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
@@ -105,8 +104,3 @@ PsychError SCREENFramePoly(void)
 
 	return(PsychError_none);
 }
-
-
-
-
-

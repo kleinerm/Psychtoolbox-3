@@ -23,11 +23,12 @@
 
 
 #include "Screen.h"
+
 char fragmentTunnelSrc[] =
-"/* Simple pass-thru fragment shader: Just draws fragment at requested */ \n"
+"/* Simple pass-through fragment shader: Just draws fragment at requested */ \n"
 "/* position, but with the special unclampedFragColor instead of the FragColor: */ \n"
 "\n"
-"varying vec4 unclampedFragColor;"
+"varying vec4 unclampedFragColor;\n"
 "\n"
 "void main()\n"
 "{\n"
@@ -36,22 +37,21 @@ char fragmentTunnelSrc[] =
 "}\n\0";
 
 char vertexTunnelSrc[] =
-"/* Simple pass-thru vertex shader: Emulates fixed function pipeline, but passes  */ \n"
-"/* gl_MultiTexCoord0 as varying unclampedFragColor to circumvent vertex color */ \n"
-"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:  */ \n"
-"/* PTBs color handling is expected to pass the vertex color in gl_MultiTexCoord0 */ \n"
+"/* Simple pass-through vertex shader: Emulates fixed function pipeline, but passes  */ \n"
+"/* gl_MultiTexCoord0 as varying unclampedFragColor to circumvent vertex color       */ \n"
+"/* clamping on gfx-hardware / OS combos that don't support unclamped operation:     */ \n"
+"/* PTBs color handling is expected to pass the vertex color in gl_MultiTexCoord0    */ \n"
 "/* for unclamped drawing for this reason. */ \n"
 "\n"
-"varying vec4 unclampedFragColor;"
+"varying vec4 unclampedFragColor;\n"
 "\n"
 "void main()\n"
 "{\n"
 "    /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
 "    unclampedFragColor = gl_MultiTexCoord0;\n"
 "\n"
-"    /* Set real fixed function vertex color to red, texcoord to zero -- helps debugging: */\n"
+"    /* Set real fixed function vertex color to red -- helps debugging: */\n"
 "    gl_FrontColor  = vec4(1.0, 0.0, 0.0, 1.0);\n"
-"    gl_TexCoord[0] = vec4(0.0, 0.0, 0.0, 1.0);\n"
 "\n"
 "    /* Output position is the same as fixed function pipeline: */\n"
 "    gl_Position    = ftransform();\n"
@@ -69,8 +69,8 @@ static char synopsisString[] =
 	"are automatically saturated (clamped) at zero or maximumvalue if clamping is enabled. "
 	"Initially color range clamping is enabled and the maximumvalue defaults to the biggest "
 	"integral number displayable by your video hardware, e.g., 255 for a standard 8 bit "
-	"per color component framebuffer as present on most consumer graphics hardware. "
-	"The maximumvalue 1.0 has special meaning: A maximumvalue of 1.0 will enable PTB to pass "
+	"per color component framebuffer as present on most consumer graphics hardware. \n"
+	"A maximumvalue == 1.0 has special meaning: A maximumvalue of 1.0 will enable PTB to pass "
 	"color values in OpenGL's native floating point color range of 0.0 to 1.0: This has two "
 	"advantages: First, your color values are independent of display device depth, i.e. no need "
 	"to rewrite your code when running it on higher resolution hardware. Second, PTB can skip any "
@@ -81,12 +81,20 @@ static char synopsisString[] =
 	"supports unclamped colors. This allows to pass arbitrary (even negative) floating point "
 	"numbers as color values. This is useful in conjunction with special high dynamic range display "
 	"devices and for certain image processing operations when using PTB's image processing pipeline. "
-	"CAUTION: If you change the color range of an onscreen window with this function, the changes will "
+	"If your hardware/operating system does support shaders, but not unclamped colors, Screen will "
+	"try to use a shader-based workaround to enable unclamped color processing despite missing "
+	"hardware capabilities - This comes at some performance penalty. You can also force Screen "
+	"to always use its own unclamped color implementation by setting 'clampcolors' to a value of "
+	"-1. On some graphics hardware, this may increase the precision with which the color of "
+	"drawn objects is handled, but again at some speed penalty.\n"
+	"CAUTION: If you change the color range or clamping of an onscreen window with this function, the change will "
 	"only affect textures and offscreen windows created *after* this function call, not ones created "
 	"before. It's therefore recommended to execute this function immediately after creating an onscreen "
 	"window to guarantee consistent behaviour of your code. Color values provided as uint8 arrays or as "
-	"textures, e.g., from video capture, Quicktime movies or Screen('MakeTexture') are not rescaled as"
-	"they are (expected) to be in a proper format for the given color depth already. ";
+	"textures, e.g., from video capture, Quicktime movies or Screen('MakeTexture') are not rescaled, as"
+	"they are (expected) to be in a proper format for the given color depth already. However, the "
+	"Screen('MakeTexture') command has an optional flag 'floatprecision' that allows you to pass image "
+	"matrices unclamped and with either 16 bpc or 32 bpc floating point color precision if you want. ";
 
 static char seeAlsoString[] = "OpenWindow OpenOffscreenWindow";	 
 
@@ -126,12 +134,19 @@ PsychError SCREENColorRange(void)
 
 	// Encode into one value:
 	if (maxvalue<=0) PsychErrorExitMsg(PsychError_user, "Tried to set invalid color maximumvalue (negative or zero).");
-	
-	// Try to set clamping behaviour:
-	PsychSetGLContext(windowRecord);
+		
+	// Switch of clamping mode needed?
 	if (oldclampcolors != clampcolors) {
+		// Yes. Try to set new clamping behaviour:
+		PsychSetGLContext(windowRecord);
+
+		// Does graphics hardware/OS support clamping mode change via glClampColorARB and shall
+		// we use it? A clamcolors setting of -1 would use our own shader based implementation
+		// even if the hardware could do it -- This to test the precision of our approach vs.
+		// hardware and to guarantee consistent results even if it means a performance hit.
 		if (glClampColorARB && (clampcolors>=0)) {
-			// Color clamping extension supported: Set new clamp mode.
+			// Color clamping extension supported: Set new clamp mode in hardware via extension:
+			
 			enabled = (clampcolors > 0) ? GL_TRUE : GL_FALSE;
 			glClampColorARB(GL_CLAMP_VERTEX_COLOR_ARB, enabled);
 			glClampColorARB(GL_CLAMP_FRAGMENT_COLOR_ARB, enabled);
@@ -142,15 +157,15 @@ PsychError SCREENColorRange(void)
 			glGetBooleanv(GL_CLAMP_FRAGMENT_COLOR_ARB, &enabled2);
 			glGetBooleanv(GL_CLAMP_READ_COLOR_ARB, &enabled3);
 			
-			if ((clampcolors==0 && (enabled1 || enabled2 || enabled3)) || (clampcolors==1 && (!enabled1 || !enabled2 || !enabled3))) {
-				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Could not %s color value clamping as requested. Unsupported by your graphics hardware?\n", (clampcolors==1) ? "enable" : "disable");
+			if ((clampcolors==0 && (enabled1 || enabled2 || enabled3)) || (clampcolors>0 && (!enabled1 || !enabled2 || !enabled3))) {
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Could not %s color value clamping as requested. Unsupported by your graphics hardware?\n", (clampcolors>0) ? "enable" : "disable");
 
 				// Reset to old setting if the switch didn't work:
 				clampcolors = oldclampcolors;
 			}					
 		}
 		else {
-			// Color clamping extensions unsupported:
+			// Color clamping extensions unsupported, or user wants our own implementation: We need to use quite a bit of shader and cpu magic...
 			if ((PsychPrefStateGet_Verbosity() > 3) && (clampcolors>=0)) printf("PTB-INFO: Switching and query of color clamping via glClampColorARB unsupported by your graphics hardware or operating system.\n");
 			if ((PsychPrefStateGet_Verbosity() > 3) && (clampcolors< 0)) printf("PTB-INFO: Switching of color clamping via internal shader-based solution forcefully enabled by usercode.\n");
 
@@ -166,7 +181,7 @@ PsychError SCREENColorRange(void)
 				if (tunnelShader) {
 					// Got a shader :-) -- Assign it as color clamping shader to onscreen windowRecord:
 					windowRecord->unclampedDrawShader = tunnelShader;
-					if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Color clamping disabled via internal shader-based solution.\n");
+					if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Color clamping disabled via internal shader-based solution.\n");
 				}
 				else {
 					// Failed: This is a no-go:
@@ -192,7 +207,6 @@ PsychError SCREENColorRange(void)
 			}
 			// End of workaround code for missing glClampColorARB:
 		}
-
 	}
 	
 	// Encode maxcolor as well as new clamping mode (in sign):

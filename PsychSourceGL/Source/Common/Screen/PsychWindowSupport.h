@@ -55,6 +55,7 @@ void	PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecor
 int		PsychRessourceCheckAndReminder(boolean displayMessage);
 bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
 void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
+int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
 
 //end include once
 #endif

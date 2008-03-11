@@ -90,9 +90,15 @@ PsychError SCREENFillRect(void)
 		isScreenRect= !isArgThere || isArgThere && PsychMatchRect(rect, windowRecord->rect);
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 	}
-	
-	if(isScreenRect && PsychIsOnscreenWindow(windowRecord) && 
-	   (windowRecord->stereomode < kPsychAnaglyphRGStereo || windowRecord->stereomode > kPsychAnaglyphBRStereo || windowRecord->imagingMode > 0)){
+
+	// There are tons of cases where we can't use glClear() to do a fullscreen fill. E.g., it
+	// doesn't work on anything else than onscreen windows, doesn't work in many stereo modes
+	// unless imaging pipe is fully active, and doesn't work when color clamping is disabled
+	// by use of our own GLSL shader based workaround. If in doubt, we use a fullscreen rectangle
+	// blit to do the clear -- Slower and disables tons of gfx-driver optimizations like fast clears
+	// and framebuffer compression / Hyper-z stuff, but at least safe and well-defined:
+	if(isScreenRect && PsychIsOnscreenWindow(windowRecord) && !((windowRecord->defaultDrawShader != 0) && (windowRecord->defaultDrawShader == windowRecord->unclampedDrawShader)) &&
+	   (windowRecord->stereomode < kPsychAnaglyphRGStereo || windowRecord->stereomode > kPsychAnaglyphBRStereo || (windowRecord->imagingMode > 0 && windowRecord->imagingMode != kPsychNeedFastOffscreenWindows))){
 		// Fullscreen rect fill which in GL is a special case which may be accelerated.
 		// We only use this fast-path on real onscreen windows, not on textures or
 		// offscreen windows.
@@ -105,10 +111,11 @@ PsychError SCREENFillRect(void)
 		}
 		PsychCoerceColorMode( &color);
 				
-		dVals[3]=1.0;
-		PsychConvertColorToDoubleVector(&color, windowRecord, dVals);
-		glClearColor(dVals[0], dVals[1], dVals[2], dVals[3]);
-		glClear(GL_COLOR_BUFFER_BIT);
+		// Disable any active shaders:
+		PsychSetShader(windowRecord, 0);
+
+		PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
+		PsychGLClear(windowRecord);
 
 		// Fixup possible low-level framebuffer layout changes caused by commands above this point. Needed from native 10bpc FB support to work reliably.
 		PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(windowRecord);
@@ -119,11 +126,27 @@ PsychError SCREENFillRect(void)
 
 	  // At this point if we have a single color value, it is already set by PsychPrerpareRenderBatch,
 	  // so we can skip this: PsychSetGLColor(&color, windowRecord);
+	  // that function has also set the proper shader, if any...
 	  
 	  // Fullscreen or partial fill?
 	  if (isScreenRect) {
-	    // Fullscreen fill of a non-onscreen window:
+	    // Fullscreen fill of a (non-)onscreen window:
+		
+		// Draw a rect in the clear color:
 	    PsychGLRect(windowRecord->rect);
+		
+		// If this was an onscreen window which couldn't be glClear()'ed for some other reason,
+		// we need to set the glClearColor() in the windowRecord:
+		if (PsychIsOnscreenWindow(windowRecord)) {
+			//Get the color argument or use the default, then coerce to the form determened by the window depth.  
+			isArgThere=PsychCopyInColorArg(2, FALSE, &color);
+			if(!isArgThere){
+				whiteValue=PsychGetWhiteValueFromWindow(windowRecord);
+				PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
+			}
+			PsychCoerceColorMode( &color);
+			PsychConvertColorToDoubleVector(&color, windowRecord, windowRecord->clearColor);
+		}
 	  } else {
 	    // Partial fill: Draw provided rects:
 		if (numRects>1) {
@@ -132,26 +155,7 @@ PsychError SCREENFillRect(void)
 				// Per rect color provided?
 				if (nc>1) {
 					// Yes. Set color for this specific rect:
-					if (mc==3) {
-						if (colors) {
-							// RGB double:
-							glColor3dv(&(colors[i*3]));
-						}
-						else {
-							// RGB uint8:
-							glColor3ubv(&(bytecolors[i*3]));
-						}
-					}
-					else {
-						if (colors) {
-							// RGBA double:
-							glColor4dv(&(colors[i*4]));
-						}
-						else {
-							// RGBA uint8:
-							glColor4ubv(&(bytecolors[i*4]));
-						}					
-					}
+					PsychSetArrayColor(windowRecord, i, mc, colors, bytecolors);
 				}
 				
 				// Submit rect for drawing:

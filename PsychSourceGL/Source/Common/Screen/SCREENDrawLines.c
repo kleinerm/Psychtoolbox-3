@@ -161,9 +161,7 @@ PsychError SCREENDrawLines(void)
 	glVertexPointer(2, GL_DOUBLE, 0, &xy[0]);
 	
 	if (usecolorvector) {
-		if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, colors);
-		if (isuint8colors)  glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
-		glEnableClientState(GL_COLOR_ARRAY);
+		PsychSetupVertexColorArrays(windowRecord, TRUE, mc, colors, bytecolors);
 	}
 
 	// Enable fast rendering of arrays:
@@ -185,7 +183,7 @@ PsychError SCREENDrawLines(void)
 	
 	// Disable fast rendering of arrays:
 	glDisableClientState(GL_VERTEX_ARRAY);
-	if (usecolorvector) glDisableClientState(GL_COLOR_ARRAY);
+	if (usecolorvector) PsychSetupVertexColorArrays(windowRecord, FALSE, 0, NULL, NULL);
 	
 	// Restore old matrix from backup copy, undoing the global translation:
 	glPopMatrix();

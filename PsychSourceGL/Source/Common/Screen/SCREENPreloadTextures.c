@@ -78,6 +78,10 @@ PsychError SCREENPreloadTextures(void)
         // Enable this windowRecords framebuffer as current drawingtarget:
         PsychSetDrawingTarget(windowRecord);
 
+		// Disable shader:
+		PsychSetShader(windowRecord, 0);
+	
+
         glDisable(GL_TEXTURE_2D);
 
 	// Fetch global texturing mode:

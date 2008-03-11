@@ -63,7 +63,7 @@ PsychError SCREENFrameOval(void)
 	PsychRectType 		rect;
 	double			numSlices, outerRadius, xScale, yScale, xTranslate, yTranslate, rectY, rectX, penWidth, penHeight, penSize, innerRadius;
 	PsychWindowRecordType	*windowRecord;
-	int 			depthValue, whiteValue;
+	int 			whiteValue;
 	boolean 		isArgThere;
 	GLUquadricObj		*diskQuadric;
     
@@ -78,10 +78,6 @@ PsychError SCREENFrameOval(void)
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
         
-	//Get the depth from the window, we need this to interpret the color argument.
-	depthValue=PsychGetWindowDepthValueFromWindowRecord(windowRecord);
-	
-
 	//Get the color argument or use the default, then coerce to the form determened by the window depth.  
 	isArgThere=PsychCopyInColorArg(kPsychUseDefaultArgPosition, FALSE, &color);
 		if(!isArgThere){
@@ -89,7 +85,6 @@ PsychError SCREENFrameOval(void)
 			PsychLoadColorStruct(&color, kPsychIndexColor, whiteValue ); //index mode will coerce to any other.
 		}
  	PsychCoerceColorMode( &color);
-        
 
 	//get the rect value
 	isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);
@@ -129,6 +124,9 @@ PsychError SCREENFrameOval(void)
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 
+	// Set default draw shader:
+	PsychSetShader(windowRecord, -1);
+	
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
 	//glEnable(GL_POLYGON_SMOOTH);

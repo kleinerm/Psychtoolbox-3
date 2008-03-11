@@ -69,6 +69,9 @@ PsychError SCREENgluDisk(void)
 	// Enable this windowRecords framebuffer as current drawingtarget:
 	PsychSetDrawingTarget(windowRecord);
 
+	// Set default draw shader:
+	PsychSetShader(windowRecord, -1);
+
 	PsychUpdateAlphaBlendingFactorLazily(windowRecord);
 	PsychSetGLColor(&color, windowRecord);
 	glPushMatrix();

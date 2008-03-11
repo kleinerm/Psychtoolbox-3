@@ -90,6 +90,9 @@ PsychError SCREENGetImage(void)
 	// so backbuffer is in a useable state:
 	PsychSetDrawingTarget(windowRecord);
 	
+	// Disable shaders:
+	PsychSetShader(windowRecord, 0);
+
 	glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);
 	

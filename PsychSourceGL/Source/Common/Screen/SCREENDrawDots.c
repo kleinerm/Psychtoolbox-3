@@ -185,9 +185,7 @@ PsychError SCREENDrawDots(void)
 	glEnableClientState(GL_VERTEX_ARRAY);
 	
 	if (usecolorvector) {
-		if (isdoublecolors) glColorPointer(mc, GL_DOUBLE, 0, colors);
-		if (isuint8colors)  glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
-		glEnableClientState(GL_COLOR_ARRAY);
+		PsychSetupVertexColorArrays(windowRecord, TRUE, mc, colors, bytecolors);
 	}
 	
 	// Render all n points, starting at point 0, render them as POINTS:
@@ -218,7 +216,7 @@ PsychError SCREENDrawDots(void)
 	
 	// Disable fast rendering of arrays:
 	glDisableClientState(GL_VERTEX_ARRAY);
-	if (usecolorvector) glDisableClientState(GL_COLOR_ARRAY);
+	if (usecolorvector) PsychSetupVertexColorArrays(windowRecord, FALSE, 0, NULL, NULL);
 	
 	// Restore old matrix from backup copy, undoing the global translation:
 	glPopMatrix();

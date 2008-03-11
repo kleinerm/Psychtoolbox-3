@@ -270,7 +270,10 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
     // Transition necessary?
     if (oldbuffer != newbuffer) {
         // Real transition requested...
-        
+
+		// Disable shader:
+		PsychSetShader(windowRecord, 0);
+	
         glDisable(GL_BLEND);
         
         // Set transform matrix to well-defined state:
@@ -310,7 +313,7 @@ int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, i
             else {
                 // AUX buffer is clean, aka just contains background color. We do
                 // a clear screen as its faster than an AUX->BACK copy.
-                glClear(GL_COLOR_BUFFER_BIT);
+                PsychGLClear(windowRecord);
             }
         }
         
@@ -372,7 +375,10 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
 
     // When entering this routine, the modelview matrix is already set to identity and
     // the proper OpenGL context is active.
-    
+
+	// Disable shader:
+	PsychSetShader(windowRecord, 0);
+
     // Set up zoom for vertical compression:
     glPixelZoom(1, 0.5f);
     glDrawBuffer(GL_BACK);
@@ -399,10 +405,3 @@ void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord)
     // Done.
     return;
 }
-	
-
-
-
-
-
-

@@ -109,26 +109,7 @@ PsychError SCREENFrameRect(void)
 			// Per rect color provided?
 			if (nc>1) {
 				// Yes. Set color for this specific rect:
-				if (mc==3) {
-					if (colors) {
-						// RGB double:
-						glColor3dv(&(colors[i*3]));
-					}
-					else {
-						// RGB uint8:
-						glColor3ubv(&(bytecolors[i*3]));
-					}
-				}
-				else {
-					if (colors) {
-						// RGBA double:
-						glColor4dv(&(colors[i*4]));
-					}
-					else {
-						// RGBA uint8:
-						glColor4ubv(&(bytecolors[i*4]));
-					}					
-				}
+				PsychSetArrayColor(windowRecord, i, mc, colors, bytecolors);
 			}
 		}
 		else {
