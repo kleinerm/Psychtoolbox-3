@@ -1,4 +1,5 @@
-% BitsPlusImagingTest
+function BitsPlusImagingTest(whichScreen)
+% BitsPlusImagingTest([whichScreen])
 %
 % Simple test of Bits++ interface in normal mode.  Writes CLUT
 % frame buffer, so this is how Bits++ should be configured to
@@ -7,36 +8,46 @@
 % This test routine employs the PTB imaging pipeline to do the
 % job.
 %
+% If the optional 'whichScreen' screen index of the Bits++ screen is left
+% out, the script will choose the display with the highest screen id.
+%
+% If everything works correctly, you should see the following:
+%
+% 1. First some random color "junk" on the Bits++ display for 3 seconds.
+% 2. Then a black screen.
+% 3. Then, on each keystroke, an increase in display luminance.
+% 4. After twenty keystrokes, a fully white display.
+% 5. After another keystroke, the Bits++ should revert to a normal desktop
+%    display.
+
+% History:
 % 02/24/07 Derived from BitsPlusSimpleTest (MK).
+% 3/11/08 mk   Random improvements to procedure.
 
-% Define screen
-whichScreen = max(Screen('Screens'));
+% Define screen:
+if nargin < 1
+    whichScreen = max(Screen('Screens'));
+end
 
-% Increase level of verbosity so we get all the debug-messages:
-Screen('Preference', 'Verbosity', 5);
+% Get current gfx-card lut, so we can restore it later:
+oldgfxlut = Screen('ReadNormalizedGammatable', whichScreen);
 
-% Open window fill frame buffer with zeros
-[window, screenRect] = Screen('OpenWindow', whichScreen, 0);
+% Load randomized table, just to make sure we start with an unsuitable
+% clut:
+Screen('LoadNormalizedGammatable', whichScreen, rand(256,3));
 
-% First load the graphics hardwares gamma table with an identity mapping,
-% so it doesn't interfere with Bits++
-LoadIdentityClut(window);
+% Hold it for 3 seconds:
+WaitSecs(3);
 
-% Now enable finalizer hook chains and load them with the special Bits++
-% command. 
-Screen('HookFunction', window, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', ''); 
-Screen('HookFunction', window, 'Enable', 'LeftFinalizerBlitChain');
-
-% This only on quad-buffered stereo contexts:
-%Screen('HookFunction', window, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', ''); 
-%Screen('HookFunction', window, 'Enable', 'RightFinalizerBlitChain');
+% Open window in Bits++ mode, fill frame buffer with zeros:
+window = BitsPlusPlus('OpenWindowBits++', whichScreen, 0);
 
 % Use BITS++ to set uniform lookup tables of increasing values.
 % Hit key to proceed through. Screen intensity should increase
 % monotonically.
 for colorval = linspace(0.0, 1.0, 20)
 	uniclut = colorval*ones(256,3);
-	fprintf('Setting to value %g\n',colorval);
+	fprintf('Setting to value %g   -- Press any key to continue.\n',colorval);
     % The setting 2 means: Don't load hardware gamma table, but just
     % store clut for later use by the special Bits++ blitter at
     % Screen('Flip') time.
@@ -48,22 +59,21 @@ for colorval = linspace(0.0, 1.0, 20)
     % into top left corner of display.
     Screen('Flip', window);
 
-    KbWait;
-    while KbCheck; end;
+    % Wait for keypress:
+    KbStrokeWait;
 end
 
-KbWait;
+% Wait a last time:
+KbStrokeWait;
 
 % Restore Bits++ Identity CLUT so it can be used as normal display:
-linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
-Screen('LoadNormalizedGammaTable', window, linear_lut, 2);
+BitsPlusPlus('LoadIdentityClut', window);
 Screen('Flip', window);
-
-
-% Disable Bits++ encoders: This will revert the behaviour of CLUT handling
-% to normal...
-Screen('HookFunction', window, 'Disable', 'LeftFinalizerBlitChain');
-Screen('HookFunction', window, 'Disable', 'RightFinalizerBlitChain');
 
 % Close the window.
 Screen('CloseAll');
+
+% Restore original gfx-luts:
+Screen('LoadNormalizedGammatable', whichScreen, oldgfxlut);
+
+return;

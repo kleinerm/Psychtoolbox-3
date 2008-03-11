@@ -1,4 +1,18 @@
 function BitsPlusPlusTLockBlitterTest(screenId)
+% BitsPlusPlusTLockBlitterTest([screenId])
+%
+% Test if the old style Bits++ T-Lock code generation and the new style
+% built-in T-Lock code generation yield identical results.
+%
+% 'screenId' == Display screen to test. Defaults to max(Screen('Screens')).
+%
+% This test should pass on all graphics hardware. If it fails on some
+% setup, we're interested in hearing from you.
+%
+
+% History:
+% 03/11/08 Written. (MK)
+%
 
 if nargin < 1
     screenId = max(Screen('Screens'));
@@ -14,7 +28,7 @@ try
     newclut = 0 * ones(256,3);
 
     % Load it via PTB support:
-    Screen('LoadNormalizedGammaTable',w,newclut,2);
+    Screen('LoadNormalizedGammaTable',w,newclut, 2);
     Screen('Flip',w);
     
     % Retrieve generated T-Lock framebuffer image:
@@ -49,14 +63,20 @@ try
     
     if diff > 0
         fprintf('T-Lock codes not identical! BAD.\n');
+        ptbtlock = img1(1, 1:10, :)
+        bpptlock = img2(1, 1:10, :)
     else
         fprintf('T-Lock codes are identical! GOOD.\n');
     end
 
-    % Clean up: Restore LUT's, close window:
-    Screen('LoadNormalizedGammatable', screenId, oldlut);
+    % Restore Bits++ Identity CLUT so it can be used as normal display:
+    Screen('Hookfunction', w, 'Enable', 'LeftFinalizerBlitChain');
+    BitsPlusPlus('LoadIdentityClut', w);
+    Screen('Flip', w);
     Screen('CloseAll');
-    
+
+    % Clean up: Restore LUT's, close window:
+    Screen('LoadNormalizedGammatable', screenId, oldlut);    
 catch
     % Clean up: Restore LUT's, close window:
     Screen('LoadNormalizedGammatable', screenId, oldlut);
