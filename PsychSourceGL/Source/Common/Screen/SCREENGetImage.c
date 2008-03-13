@@ -69,10 +69,10 @@ PsychError SCREENGetImage(void)
 	float 			*dredPlane, *dgreenPlane, *dbluePlane, *dalphaPlane;
 	double 			*returnArrayBaseDouble;
 	PsychWindowRecordType	*windowRecord;
-	GLenum			whichBuffer; 
 	GLboolean		isDoubleBuffer, isStereo;
 	char*           buffername = NULL;
 	boolean			floatprecision = FALSE;
+	GLenum			whichBuffer = 0; 
 	
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -93,6 +93,11 @@ PsychError SCREENGetImage(void)
 	// Disable shaders:
 	PsychSetShader(windowRecord, 0);
 
+	// Soft-Reset drawingtarget. This is important to make sure no FBO's are bound,
+	// otherwise the following glGets for GL_DOUBLEBUFFER and GL_STEREO will retrieve
+	// wrong results, leading to totally wrong read buffer assignments down the road!!
+	PsychSetDrawingTarget(0x1);
+
 	glGetBooleanv(GL_DOUBLEBUFFER, &isDoubleBuffer);
 	glGetBooleanv(GL_STEREO, &isStereo);
 	
@@ -105,7 +110,6 @@ PsychError SCREENGetImage(void)
 	if(PsychIsOnscreenWindow(windowRecord)) {
 		// Onscreen window: We read from the front- or front-left buffer by default.
 		// This works on single-buffered and double buffered contexts in a consistent fashion:
-		whichBuffer=GL_FRONT;
 		
 		// Copy in optional override buffer name:
 		PsychAllocInCharArg(3, FALSE, &buffername);
@@ -115,20 +119,24 @@ PsychError SCREENGetImage(void)
 			// Which one is it?
 			
 			// "frontBuffer" is always a valid choice:
-			if (strcmp(buffername, "frontBuffer")==0) whichBuffer = GL_FRONT;
+			if (PsychMatch(buffername, "frontBuffer")) whichBuffer = GL_FRONT;
 			// Allow selection of left- or right front stereo buffer in stereo mode:
-			if (strcmp(buffername, "frontLeftBuffer")==0 && isStereo) whichBuffer = GL_FRONT_LEFT;
-			if (strcmp(buffername, "frontRightBuffer")==0 && isStereo) whichBuffer = GL_FRONT_RIGHT;
+			if (PsychMatch(buffername, "frontLeftBuffer") && isStereo) whichBuffer = GL_FRONT_LEFT;
+			if (PsychMatch(buffername, "frontRightBuffer") && isStereo) whichBuffer = GL_FRONT_RIGHT;
 			// Allow selection of backbuffer in double-buffered mode:
-			if (strcmp(buffername, "backBuffer")==0 && isDoubleBuffer) whichBuffer = GL_BACK;
+			if (PsychMatch(buffername, "backBuffer") && isDoubleBuffer) whichBuffer = GL_BACK;
 			// Allow selection of left- or right back stereo buffer in stereo mode:
-			if (strcmp(buffername, "backLeftBuffer")==0 && isStereo && isDoubleBuffer) whichBuffer = GL_BACK_LEFT;
-			if (strcmp(buffername, "backRightBuffer")==0 && isStereo && isDoubleBuffer) whichBuffer = GL_BACK_RIGHT;
+			if (PsychMatch(buffername, "backLeftBuffer") && isStereo && isDoubleBuffer) whichBuffer = GL_BACK_LEFT;
+			if (PsychMatch(buffername, "backRightBuffer") && isStereo && isDoubleBuffer) whichBuffer = GL_BACK_RIGHT;
 			// Allow AUX buffer access for debug purposes:
-			if (strcmp(buffername, "aux0Buffer")==0) whichBuffer = GL_AUX0;
-			if (strcmp(buffername, "aux1Buffer")==0) whichBuffer = GL_AUX1;
-			if (strcmp(buffername, "aux2Buffer")==0) whichBuffer = GL_AUX2;
-			if (strcmp(buffername, "aux3Buffer")==0) whichBuffer = GL_AUX3;
+			if (PsychMatch(buffername, "aux0Buffer")) whichBuffer = GL_AUX0;
+			if (PsychMatch(buffername, "aux1Buffer")) whichBuffer = GL_AUX1;
+			if (PsychMatch(buffername, "aux2Buffer")) whichBuffer = GL_AUX2;
+			if (PsychMatch(buffername, "aux3Buffer")) whichBuffer = GL_AUX3;			
+		}
+		else {
+			// Default is frontbuffer:
+			whichBuffer=GL_FRONT;
 		}
 	}
 	else {
@@ -144,7 +152,7 @@ PsychError SCREENGetImage(void)
 		// so we really read the content of the framebuffer and not of some FBO:
 		if (PsychIsOnscreenWindow(windowRecord)) {
 			// It's an onscreen window:
-			if (buffername && (strcmp(buffername, "drawBuffer")==0) && (windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
+			if (buffername && (PsychMatch(buffername, "drawBuffer")) && (windowRecord->imagingMode & kPsychNeedFastBackingStore)) {
 				// Activate drawBufferFBO:
 				PsychSetDrawingTarget(windowRecord);
 				whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
@@ -166,9 +174,12 @@ PsychError SCREENGetImage(void)
 		PsychSetDrawingTarget(windowRecord);
 	}
 	
-	// Select requested read buffer:
+	// Select requested read buffer, after some double-check:
+	if (whichBuffer == 0) PsychErrorExitMsg(PsychError_user, "Invalid or unknown 'bufferName' argument provided.");
 	glReadBuffer(whichBuffer);
 	
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In Screen('GetImage'): GL-Readbuffer whichBuffer = %i\n", whichBuffer);
+
 	// Get optional floatprecision flag: We return data with float-precision if
 	// this flag is set. By default we return uint8 data:
 	PsychCopyInFlagArg(4, FALSE, &floatprecision);

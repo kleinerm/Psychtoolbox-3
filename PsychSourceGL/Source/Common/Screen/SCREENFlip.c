@@ -150,21 +150,21 @@ PsychError SCREENFlip(void)
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
 	// Change our "personality" depending on the name with which we were called:
-	if (strcasecmp(PsychGetFunctionName(), "AsyncFlipBegin")==0) {
+	if (PsychMatch(PsychGetFunctionName(), "AsyncFlipBegin")) {
 		// Async flip invocation:
 		opmode = 1;
 
 		// Push usage string and/or give online help:
 		PsychPushHelp(useString1, synopsisString1, seeAlsoString);
 	}
-	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipEnd")==0) {
+	else if (PsychMatch(PsychGetFunctionName(), "AsyncFlipEnd")) {
 		// Finalize async flip operation:
 		opmode = 2;
 
 		// Push usage string and/or give online help:
 		PsychPushHelp(useString2, synopsisString2, seeAlsoString);
 	}
-	else if (strcasecmp(PsychGetFunctionName(), "AsyncFlipCheckEnd")==0) {
+	else if (PsychMatch(PsychGetFunctionName(), "AsyncFlipCheckEnd")) {
 		// Poll for finalization of async flip operation:
 		opmode = 3;
 
