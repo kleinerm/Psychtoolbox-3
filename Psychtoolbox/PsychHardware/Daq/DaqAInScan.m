@@ -260,6 +260,7 @@ function [data,params]=DaqAInScan(daq,options)
 %               low and high Channels to First and Last because previous
 %               terminology seemed too easily confused with high and low bytes
 %               or high and low channels in 1208FS pin out diagrams.
+% 3/14/08 mpr added warning when data are discarded
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -691,13 +692,74 @@ if options.end
   for k=1:length(reports)
     reports(k).serial=double(reports(k).report(63))+double(reports(k).report(64))*256;
   end
+  
   % Sort by serial number.
   [r,ri]=sort([reports.serial]);
   reports=reports(ri);
+ 
+  InitReports = reports;
+  
   % Keep only the consecutively numbered reports, from 0 on. Discard
-  % everything after a gap.
+  % everything after a gap.  -- author presumably dgp...
+  %
+  % This turned out to be a real problem for me; not sure why, but for some
+  % reason a report or two can get lost even though the FIFO buffer is not full
+  % and you have not reached the limit on the number of reports.  I was losing
+  % data hand over fist with my USB-1608; not sure what conditions cause it, but
+  % here's some of what I can say: I found I cannot use DaqAInScanContinue,
+  % because it takes too long to send "ReceiveReports" for every interface, so
+  % when timing is an issue, I try to send just enough calls to
+  % "PsychHID('ReceiveReports',daq+k);" to prevent the FIFO from overflowing.
+  % For "k" I use an index of the form k=rem(k,NumberOfInterfaces)+1; so that
+  % each successive call asks for the next interface in order.  But for some
+  % reason -- I think particularly if the computer spends a bit too much time
+  % doing other things -- a report or two gets dropped.  I've added a check for
+  % that.  Previously data were discarded here without warning!
   ri=[reports.serial]==0:length(reports)-1;
   reports=reports(ri);
+  
+  if length(InitReports) ~= length(reports)
+    if length(InitReports)-length(reports) == 1
+      diffindex = diff(r);
+      % I think the index math is such that this will always be
+      % length(reports)-1, but to be safe:
+      BadOne = r(find(diffindex > 1));
+      fprintf('\n1 report discarded (%d reports received, but report(s) missed after report %d).\n', ...
+              length(InitReports),BadOne);
+    else
+      % This warns user if reports are thrown away; if you get this warning
+      % unacceptably often, I suggest you first try to modify your code to put
+      % in more frequent calls to PsychHID('ReceiveReports, ...)  If you can't
+      % do that or you can and it doesn't work, then you may be faced with the
+      % hard choice of deciding how to handle the problem...  One thing you
+      % might do is modify this code so that it doesn't just throw away the
+      % reports obtained after a miss.  In my case, I frequently found that I'd
+      % lose more than 9000 reports just because 1 report was missed after the
+      % 500th (or so) report.  I got the problem to go away by reducing the time
+      % the computer spent doing other things between ReceiveReports calls, but
+      % I can imagine wanting to make due with all the data I managed to get
+      % from the device rather than just the first sequential reports.  So you
+      % could rewrite the above code so that instead of throwing away data
+      % acquired after a missed report, the function returns all the data it
+      % gets back along with a vector specifying the indices.  Difficulties
+      % you'll face: meaning of sequence numbers differ according to value of
+      % options.immediate, fact that params.times isn't helpful (time that
+      % reports are received from device not monotonically related to time that
+      % data within said reports are acquired).
+      fprintf('\n%d reports discarded! (out of %d reports received; %d reports missed)\n', ...
+              length(InitReports)-length(reports),length(InitReports),InitReports(end).serial+1-length(reports));
+    end
+    %% For Diagnostic purposes:
+    % 
+    % [ErrMsg,HomeDir] = unix('echo $HOME');
+    %% trim trailing carriage return
+    % HomeDir(end) = [];
+    % FileNo = 0;
+    % while exist([HomeDir 'Desktop/DiscardedReports' int2str(FileNo) '.mat'],'file')
+    %   FileNo = FileNo+1;
+    % end
+    % save([HomeDir 'Desktop/DiscardedReports' int2str(FileNo)]);
+  end
   % Diagnostic print of the raw reports
   if options.immediate
     % report length
