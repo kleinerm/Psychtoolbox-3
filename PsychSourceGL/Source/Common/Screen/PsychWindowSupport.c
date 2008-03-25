@@ -289,6 +289,8 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
         return(FALSE);
     }
 
+	// At this point, the new onscreen windows master OpenGL context is active and bound...
+
 	// Set a flag that we should switch to native 10 bpc framebuffer later on if possible:
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
@@ -324,7 +326,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		}
 		else {
 			printf("PTB-ERROR: Frame-sequential stereo on Windows or Linux is usually only supported with the professional line of graphics cards\n");
-			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI FireGL series. Probably also with professional 3DLabs hardware.\n");
+			printf("PTB-ERROR: from NVidia and ATI/AMD, e.g., NVidia Quadro series or ATI FireGL series. Probably also with professional hardware from 3DLabs.\n");
 			printf("PTB-ERROR: If you happen to have such a card, check your driver settings and/or update your graphics driver. This mode may also not\n");
 			printf("PTB-ERROR: work on flat panels, due to their too low refresh rate.\n\n");
 		}
@@ -463,9 +465,34 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
 
+	// Check for properly working glGetString() -- Some drivers (Some NVidia GF8/9 drivers on WinXP)
+	// have a bug in conjunction with context ressource sharing here. Non-working glGetString is
+	// a showstopper bug, but we should tell the user about the problem and stop safely instead
+	// of taking whole runtime down:
+	if (NULL == glGetString(GL_EXTENSIONS)) {
+		// Game over:
+		printf("PTB CRITICAL ERROR: Your graphics driver seems to have a bug which causes the OpenGL command glGetString() to malfunction!\n");
+		printf("PTB CRITICAL ERROR: Can't continue safely, will therefore abort execution here.\n");
+		printf("PTB CRITICAL ERROR: In the past this bug has been observed with some NVidia Geforce 8000 drivers under WindowsXP when using\n");
+		printf("PTB CRITICAL ERROR: OpenGL 3D graphics mode. The recommended fix is to update your graphics drivers. A workaround that may\n");
+		printf("PTB CRITICAL ERROR: work (but has its own share of problems) is to disable OpenGL context isolation. Type 'help ConserveVRAMSettings'\n");
+		printf("PTB CRICICAL ERROR: and read the paragraph about setting '8' for more info.\n\n");
+
+		// We abort! Close the onscreen window:
+		PsychOSCloseWindow(*windowRecord);
+		// Free the windowRecord:
+		FreeWindowRecordFromPntr(*windowRecord);
+		// Done. Return failure:
+		return(FALSE);
+	}
+
 	if(PsychPrefStateGet_Verbosity()>2) {		
 		  printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
 	}
+
+	// Perform generic inquiry for interesting renderer capabilities and limitations/quirks
+	// and setup the proper status bits for the windowRecord:
+	PsychDetectAndAssignGfxCapabilities(*windowRecord);
 
 #if PSYCH_SYSTEM == PSYCH_OSX
     CGLRendererInfoObj				rendererInfo;
@@ -784,6 +811,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	
 	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
 
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
     if(PsychPrefStateGet_Verbosity()>1) {
 		if (strstr(glGetString(GL_RENDERER), "GDI")) {
 			printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
@@ -796,10 +824,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			printf("PTB-WARNING: Maybe you run at a too high display resolution, or the system is running out of ressources for some other reason.\n");
 			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
 			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
-			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n\n\n");
+			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
+			printf("PTB-WARNING: Actually..., its pointless to continue with the software renderer, that will cause more trouble than good.\n");
+			printf("PTB-WARNING: Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
 		}
 	}
-	
+	#endif
+
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
@@ -950,7 +982,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 			printf("This will seriously impair proper stimulus presentation and stimulus presentation timing!\n");
 			printf("Please read 'help SyncTrouble' for information about how to solve or work-around the problem.\n");
 			printf("You can force Psychtoolbox to continue, despite the severe problems, by adding the command\n");
-			printf("Screen('Preference', 'SkipSyncTests',1); at the top of your script, if you really know what you are doing.\n\n\n");
+			printf("Screen('Preference', 'SkipSyncTests', 1); at the top of your script, if you really know what you are doing.\n\n\n");
 		}
 		
 		// Abort right here if sync tests are enabled:
@@ -2367,6 +2399,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 */
 void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 {
+	PsychWindowRecordType *parentRecord;
+	
 	// Child protection: Calling this function is only allowed in non-userspace rendering mode:
     if (PsychIsUserspaceRendering()) PsychErrorExitMsg(PsychError_user, "You tried to call a Screen graphics command after Screen('BeginOpenGL'), but without calling Screen('EndOpenGL') beforehand! Read the help for 'Screen EndOpenGL?'.");
 
@@ -2374,23 +2408,41 @@ void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 	// on async-flipping onscreen windows, and none of the threads is allowed to attach to non-onscreen-window ressources.
 	// asyncFlipOpsActive is a count of currently async-flipping onscreen windows...
 	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-		// First check if it's an onscreen window: We allow the main thread to attach to onscreen windows which are not (yet) involved in an async flip operation:
-		if ((windowRecord->flipInfo) && (windowRecord->flipInfo->asyncstate == 1) && (!pthread_equal(windowRecord->flipInfo->flipperThread, pthread_self()))) {
-			// Wrong thread - This one is not allowed to attach to any OpenGL context for this windowRecord at the moment.
-			// Likely a programming error by the user:
-			PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an onscreen window while an asynchronous flip operation was in progress on that window!\nThis is not allowed for that command! Finalize the flip first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");    
-		}
-
-		// Then check if it's something else (offscreen window, texture, proxy, ...). We don't allow the main thread (or any thread)
-		// to attach to such an object while *any* window is participating in an async flip. Rationale: Such objects are technically
-		// not owned by a single GL context. Pro forma they were created in a specific context so it would be sufficient to find out
-		// if that context is participating in async flip and prevent attachment in that case -- sufficient to prevent the GPU or OS
-		// from malfunctioning or our code from crashing. However, once created they are shared between all contexts because we enable
-		// context ressource sharing on all our contexts. That means that operations performed on them may impact the performance and
-		// latency of operations in unrelated contexts, e.g., the ones involved in async flip --> Potential to impair the stimulus
-		// onset timing of async-flipping windows.
-		if (!PsychIsOnscreenWindow(windowRecord) && (asyncFlipOpsActive > 0)) {
-			PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an offscreen window, texture or proxy while some asynchronous flip operation was in progress!\nThis is not allowed for that command! Finalize the async flip(s) first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");
+		// Any async flips in progress? If not, then we can skip this whole checking...
+		if (asyncFlipOpsActive > 0) {
+			// At least one async flip in progress. Find the parent window of this windowRecord, ie.,
+			// the onscreen window which "owns" the relevant OpenGL context. This can be the windowRecord
+			// itself if it is an onscreen window:
+			parentRecord = PsychGetParentWindow(windowRecord);
+			
+			// We allow the main thread to attach to the OpenGL contexts owned by "parentRecord" windows which are not (yet) involved in an async flip operation.
+			// Only the worker thread of an async flipping "parentRecord" window is allowed to attach that window while async flip in progress:
+			if ((parentRecord->flipInfo) && (parentRecord->flipInfo->asyncstate == 1) && (!pthread_equal(parentRecord->flipInfo->flipperThread, pthread_self()))) {
+				// Wrong thread - This one is not allowed to attach to any OpenGL context for this parentRecord at the moment.
+				// Likely a programming error by the user:
+				if (!PsychIsOnscreenWindow(windowRecord)) {
+					PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an offscreen window, texture or proxy while some asynchronous flip operation was in progress for the parent window!\nThis is not allowed for that command! Finalize the async flip(s) first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");
+				}
+				else {
+					PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an onscreen window while an asynchronous flip operation was in progress on that window!\nThis is not allowed for that command! Finalize the flip first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");    
+				}
+			}
+			
+			// Note: We allow drawing to non-async-flipping onscreen windows and offscreen windows/textures/proxies which don't have
+			// the same OpenGL context as any of the async-flipping windows. This should be sufficient to prevent crash'es and/or
+			// other GL malfunctions, so formally this is safe. However, once created all textures/FBO's are shared between all contexts
+			// because we enable context ressource sharing on all our contexts. That means that operations performed on them may impact
+			// the performance and latency of operations in unrelated contexts, e.g., the ones involved in async flip --> Potential to
+			// impair the stimulus onset timing of async-flipping windows. Another reason for impaired timing is that some ressources on
+			// the GPU can't be used in parallel to async flips, so operations in parallely executing contexts get serialized due to
+			// ressource contention. Examples would be the command processor CP on ATI Radeons, which only exists once, so all command
+			// streams have to be serialized --> Bufferswap trigger command packet could get stuck/stalled behind a large bunch of drawing
+			// commands for an unrelated GL context and command stream in the worst case! This is totally dependent on the gfx-drivers
+			// implementation of register programming for swap -- e.g., done through CP or done via direct register writes?
+			//
+			// All in all, the option to render to non-flipping ressources may give a performance boost when used very carefully, but
+			// may also impair good timing if not used by advanced/experienced users. But in some sense that is true for the whole async
+			// flip stuff -- its pushing the system pretty hard so it will always be more fragile wrt. system load fluctuations etc...
 		}
 	#endif
 	
@@ -3794,4 +3846,132 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
 	
 	// Return new bound shader (or zero in case of fixed function only):
 	return(shader);
+}
+
+/* PsychDetectAndAssignGfxCapabilities()
+ *
+ * This routine must be called with the OpenGL context of the given 'windowRecord' active,
+ * usually once during onscreen window creation.
+ *
+ * It uses different methods, heuristics, white- and blacklists to determine which capabilities
+ * are supported by a given gfx-renderer, or which restrictions apply. It then sets up the
+ * gfxcaps bitfield of the windowRecord with proper status bits accordingly.
+ *
+ * The resulting statusbits can be used by different PTB routines to decide if some feature
+ * can be used or if any specific work-arounds need to be enabled for a specific renderer.
+ * Most stuff is related to floating point rendering/blending/filtering etc. as recent hw
+ * differs in that area.
+ */
+void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
+{
+	boolean verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+	
+	boolean nvidia = FALSE;
+	boolean ati = FALSE;
+	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
+	
+	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) ati = TRUE;
+	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) nvidia = TRUE;
+	
+	while (glGetError());
+	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
+	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
+	glGetIntegerv(GL_MAX_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB, &maxaluinst);
+	while (glGetError());
+	
+	if (verbose) printf("PTB-DEBUG: Interrogating Low-level renderer capabilities for onscreen window with handle %i:\n", windowRecord->windowIndex);
+	
+	// Support for basic FBO's? Needed for any operation of the imaging pipeline, e.g.,
+	// full imaging pipe, fast offscreen windows, Screen('TransformTexture')...
+	
+	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
+	if (glewIsSupported("GL_EXT_framebuffer_object") && (glewIsSupported("GL_EXT_texture_rectangle") || glewIsSupported("GL_ARB_texture_rectangle") || glewIsSupported("GL_NV_texture_rectangle"))) {
+		// Basic FBO's utilizing texture rectangle textures as rendertargets are supported.
+		// We've got at least RGBA8 rendertargets, including full alpha blending:
+		if (verbose) printf("Basic framebuffer objects with rectangle texture rendertargets supported --> RGBA8 rendertargets with blending.\n");
+		windowRecord->gfxcaps |= kPsychGfxCapFBO;
+	}
+
+	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.
+	if (glewIsSupported("GL_ATI_texture_float") || glewIsSupported("GL_ARB_texture_float")) {
+		// Floating point textures are supported, both 16bpc and 32bpc:
+		if (verbose) printf("Hardware supports floating point textures of 16bpc and 32bpc float format.\n");
+		windowRecord->gfxcaps |= kPsychGfxCapFPTex16;
+		windowRecord->gfxcaps |= kPsychGfxCapFPTex32;
+		
+		// ATI specific detection logic:
+		if (ati && (windowRecord->gfxcaps & kPsychGfxCapFBO)) {
+			// ATI hardware with float texture support is a R300 core or later: They support floating point FBO's as well:
+			if (verbose) printf("Assuming ATI R300 core or later: Hardware supports basic floating point framebuffers of 16bpc and 32bpc float format.\n");
+			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
+			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
+			
+			// ATI R500 core (X1000 series) can do blending on 16bpc float FBO's, but not R300/R400. They differ
+			// in maximum supported texture size (R500 == 4096, R400 == 2560, R300 == 2048) so we use that as detector:
+			if (maxtexsize > 4000) {
+				// R500 core or later:
+				if (verbose) printf("Assuming ATI R500 or later (maxtexsize=%i): Hardware supports floating point blending on 16bpc float format.\n", maxtexsize);
+				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;
+
+				if (verbose) printf("Hardware supports full 32 bit floating point precision shading.\n");
+				windowRecord->gfxcaps |= kPsychGfxCapFP32Shading;
+				
+				// The R600 and later can do full FP blending and texture filtering on 16bpc and 32 bpc float,
+				// whereas none of the <= R5xx can do *any* float texture filtering. However, for OS/X, there
+				// doesn't seem to be a clear differentiating gl extension or limit to allow distinguishing
+				// R600 from earlier cores. The best we can do for now is name matching, which won't work
+				// for the FireGL series however, so we also check for maxaluinst > 2000, because presumably,
+				// the R600 has a limit of 2048 whereas previous cores only had 512.
+				if (strstr(glGetString(GL_RENDERER), "Radeon") && strstr(glGetString(GL_RENDERER), "HD")) {
+					// Ok, a Radeon HD 2xxx/3xxx or later -> R600 or later:
+					if (verbose) printf("Assuming ATI R600 or later (Matching namestring): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n");
+					windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
+					windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
+					windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
+				}
+				else if (maxaluinst > 2000) {
+					// Name matching failed, but number ALU instructions is high, so maybe a FireGL with R600 core?
+					if (verbose) printf("Assuming ATI R600 or later (Max native ALU inst. = %i): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n", maxaluinst);
+					windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
+					windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
+					windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;					
+				}
+				
+			}
+		}
+		
+		// NVIDIA specific detection logic:
+		if (nvidia && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("ATI_texture_float")) {
+			// NVIDIA hardware with ATI float texture support is a NV30/40 core or later: They support floating point FBO's as well:
+			if (verbose) printf("Assuming NV30 core or later: Hardware supports basic floating point framebuffers of 16bpc and 32bpc float format.\n");
+			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
+			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
+			
+			// Use maximum number of color attachments as differentiator between GeforceFX and GF6xxx/7xxx/....
+			if (maxcolattachments > 1) {
+				// NV40 core of GF 6000 or later supports at least 16 bpc float texture filtering and framebuffer blending:
+				if (verbose) printf("Assuming NV40 core or later (maxcolattachments=%i): Hardware supports floating point blending and filtering on 16bpc float format.\n", maxcolattachments);
+				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
+				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;	
+				
+				// NV 40 supports full 32 bit float precision in shaders:
+				if (verbose) printf("Hardware supports full 32 bit floating point precision shading.\n");
+				windowRecord->gfxcaps |= kPsychGfxCapFP32Shading;
+			}
+			
+			// The Geforce 8xxx/9xxx series and later (G70 cores and later) do support full 32 bpc float filtering and blending:
+			// They also support a max texture size of > 4096 texels --> 8192 texels, so we use that as detector:
+			if (maxtexsize > 4000) {
+				if (verbose) printf("Assuming NV50/G70 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
+				windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
+				windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
+				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
+				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;				
+			}
+		}		
+	}
+	
+	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
+	
+	return;
 }

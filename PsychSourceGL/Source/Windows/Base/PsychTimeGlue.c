@@ -127,9 +127,19 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
   return((double)kernelTimebaseFrequencyHz);
 }
 
+/* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
-  PsychEstimateGetSecsValueAtTickCountZero();
+	// TODO: Add Mutex init code for the timeglue mutex!
+
+	PsychEstimateGetSecsValueAtTickCountZero();
+}
+
+/* Called at module shutdown/jettison time: */
+void PsychExitTimeGlue(void)
+{
+	// TODO: Add Mutex teardown code for the timeglue mutex!
+	return;
 }
 
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)

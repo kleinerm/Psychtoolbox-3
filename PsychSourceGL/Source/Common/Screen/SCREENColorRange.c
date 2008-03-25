@@ -141,7 +141,7 @@ PsychError SCREENColorRange(void)
 		PsychSetGLContext(windowRecord);
 
 		// Does graphics hardware/OS support clamping mode change via glClampColorARB and shall
-		// we use it? A clamcolors setting of -1 would use our own shader based implementation
+		// we use it? A clampcolors setting of -1 would use our own shader based implementation
 		// even if the hardware could do it -- This to test the precision of our approach vs.
 		// hardware and to guarantee consistent results even if it means a performance hit.
 		if (glClampColorARB && (clampcolors>=0)) {
@@ -162,7 +162,12 @@ PsychError SCREENColorRange(void)
 
 				// Reset to old setting if the switch didn't work:
 				clampcolors = oldclampcolors;
-			}					
+			}
+			else if ((PsychPrefStateGet_Verbosity()>1) && (clampcolors==0) && !(windowRecord->gfxcaps & kPsychGfxCapVCGood)) {
+				printf("PTB-INFO: Disabled color clamping as requested via hardware. However, i'm not 100% sure if your\n");
+				printf("PTB-INFO: hardware will achieve highest possible precision this way. If you want to play safe and get\n");
+				printf("PTB-INFO: high precision at the cost of lower speed, you can set the 'clampcolors' flag to -1.\n");
+			}
 		}
 		else {
 			// Color clamping extensions unsupported, or user wants our own implementation: We need to use quite a bit of shader and cpu magic...

@@ -183,18 +183,8 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord->textureMemorySizeBytes= 0;
         textureRecord->textureMemory=NULL;
         
-        // Assign proper OpenGL-Renderingcontext to texture:
-        textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
-        textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
-        textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
-
-		// Copy default drawing shaders from parent:
-		textureRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
-		textureRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
-		
-		textureRecord->colorRange = windowRecord->colorRange;
-		// Copy imaging mode flags from parent:
-		textureRecord->imagingMode = windowRecord->imagingMode;
+        // Assign parent window and copy its inheritable properties:
+		PsychAssignParentWindow(textureRecord, windowRecord);
 
         // Set textureNumber to zero, which means "Not cached, do not recycle"
         // Todo: Texture recycling like in PsychMovieSupport for higher efficiency!

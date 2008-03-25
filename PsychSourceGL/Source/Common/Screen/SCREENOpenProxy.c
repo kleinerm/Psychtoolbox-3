@@ -78,21 +78,15 @@ PsychError SCREENOpenProxy(void)
     // Set type:
     proxyRecord->windowType=kPsychProxyWindow;
 	
+	// Assign parent window and copy its inheritable properties:
+	PsychAssignParentWindow(proxyRecord, windowRecord);
+
 	// Get optional imagingmode argument and assign it:
 	imagingmode = 0;
 	PsychCopyInIntegerArg(2, FALSE, &imagingmode);
 	if (imagingmode<0) PsychErrorExitMsg(PsychError_user, "'imagingmode' argument must be a positive number (>=0).");
 	proxyRecord->imagingMode = imagingmode;
 	
-	// Setup associated OpenGL context:
-    proxyRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
-	proxyRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
-	proxyRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
-
-	// Copy default drawing shaders from parent:
-	proxyRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
-	proxyRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
-
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(proxyRecord);
     

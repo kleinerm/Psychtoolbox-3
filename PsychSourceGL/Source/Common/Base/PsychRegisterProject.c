@@ -32,6 +32,34 @@ static PsychError PsychRegisterModuleName(char *name);
 static PsychError PsychRegisterBase(PsychFunctionPtr baseFunc);
 
 
+/*  This function is called by the special subfunction 'DescribeModuleFunctionsHelper'.
+ *  It returns the full table of registered subfunction names as an array.
+ *  Useful for automatic documentation generators...
+ *
+ */
+PsychError PsychDescribeModuleFunctions(void)
+{
+	static char useString[] = "subfunctionNames = Modulename('DescribeModuleFunctionsHelper');";
+	static char synopsisString[] = "Return a cell array of strings naming all subfunctions supported by this module.";
+	static char seeAlsoString[] = "";
+
+    int							i;
+    PsychGenericScriptType		*cellVector;
+
+    //all subfunctions should have these two lines.  
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+    
+    // Check for valid number of arguments
+    PsychErrorExit(PsychCapNumInputArgs(0));   	
+    PsychErrorExit(PsychCapNumOutputArgs(1)); 
+    
+    // Generate a cell array to return
+    PsychAllocOutCellVector(1, FALSE, numFunctionsREGISTER,  &cellVector);
+    for(i=0; i < numFunctionsREGISTER; i++) PsychSetCellVectorStringElement(i, functionTableREGISTER[i].name, cellVector);
+        
+    return(PsychError_none);
+}
 
 /*
 	This function is called by the project to register project functions.
@@ -85,7 +113,6 @@ PsychError PsychRegister(char *name,  PsychFunctionPtr func)
 	return(PsychError_none);
 }
 
-
 //for use by projects
 PsychError PsychRegisterExit(PsychFunctionPtr exitFunc)
 {
@@ -95,8 +122,6 @@ PsychError PsychRegisterExit(PsychFunctionPtr exitFunc)
 	}else
 		return(PsychError_registered);
 }
-
-
 
 /* If null is passed then we return the base function, otherwise 
 	we return the named subfuction or NULL if we can't find it.
@@ -132,7 +157,6 @@ PsychFunctionPtr PsychGetProjectFunction(char *command)
 	return NULL;
 }
 
-
 //for use by projects
 char *PsychGetFunctionName(void)
 {	
@@ -145,14 +169,11 @@ char *PsychGetFunctionName(void)
 		return(currentFunctionNameREGISTER);
 }
 
-
 //for use by projects
 char *PsychGetModuleName(void)
 {
 	return(ModuleNameREGISTER);
 }
-
-
 
 PsychFunctionPtr PsychGetProjectExitFunction(void)
 {
@@ -200,13 +221,3 @@ static PsychError PsychRegisterBase(PsychFunctionPtr baseFunc)
 		
 	return(PsychError_none);
 }
-
-
-
-
-
- 
-
-
-
-

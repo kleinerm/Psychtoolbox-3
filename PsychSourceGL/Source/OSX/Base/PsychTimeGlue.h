@@ -76,6 +76,8 @@ void PsychSetPrecisionTimerAdjustmentFactor(double *factor);
 
 void PsychInitTimeGlue(void);
 
+void PsychExitTimeGlue(void);
+
 void PsychEstimateGetSecsValueAtTickCountZero(void);
 
 double PsychGetEstimatedSecsValueAtTickCountZero(void);

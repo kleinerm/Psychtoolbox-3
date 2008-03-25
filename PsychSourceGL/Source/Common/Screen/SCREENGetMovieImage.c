@@ -15,20 +15,14 @@ Psychtoolbox3/Source/Common/SCREENGetMovieImage.c
  Fetch an image from the specified movie object and create an OpenGL texture out of it.
  Return a handle to the texture.
  
- On OS-X, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
- version 7 or later. On a later Windows port we'll probably do the same, but for other OS'es,
- e.g., Linux, we would use a different multimedia engine.
- 
+ On OS-X and Windows, all movie/multimedia handling functions are implemented via the Apple Quicktime API,
+ version 6 or later. 
+
  TO DO:
- 
- 
- 
  
  */
 
-
 #include "Screen.h"
-
 
 static char useString[] = "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage=1], [fortimeindex]);";
 static char synopsisString[] = 
@@ -41,7 +35,6 @@ static char synopsisString[] =
 "On OS-X, media files are handled by use of Apples Quicktime-7 API. On other platforms, the playback engine may be different "
 "from Quicktime.";
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
-
 
 PsychError SCREENGetMovieImage(void) 
 {
@@ -132,19 +125,8 @@ PsychError SCREENGetMovieImage(void)
     textureRecord->textureMemorySizeBytes= 0;
     textureRecord->textureMemory=NULL;
 
-    // Assign proper OpenGL-Renderingcontext to texture:
-    // MK: Is this the proper way to do it???
-    textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
-    textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
-	textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
-
-	// Copy default drawing shaders from parent:
-	textureRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
-	textureRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
-	
-    textureRecord->colorRange = windowRecord->colorRange;
-	// Copy imaging mode flags from parent:
-	textureRecord->imagingMode = windowRecord->imagingMode;
+	// Assign parent window and copy its inheritable properties:
+	PsychAssignParentWindow(textureRecord, windowRecord);
 
     // Try to fetch an image from the movie object and return it as texture:
     PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp);
@@ -158,8 +140,3 @@ PsychError SCREENGetMovieImage(void)
     // Ready!
     return(PsychError_none);
 }
-
-
-
-
-

@@ -183,7 +183,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	PsychSetGLContext(windowRecord);
 
 	// Check if this system does support OpenGL framebuffer objects and rectangle textures:
-	if (!glewIsSupported("GL_EXT_framebuffer_object") || (!glewIsSupported("GL_EXT_texture_rectangle") && !glewIsSupported("GL_ARB_texture_rectangle") && !glewIsSupported("GL_NV_texture_rectangle"))) {
+	if (!(windowRecord->gfxcaps & kPsychGfxCapFBO)) {
 		// Unsupported! This is a complete no-go :(
 		printf("PTB-ERROR: Initialization of the built-in image processing pipeline failed. Your graphics hardware or graphics driver does not support\n");
 		printf("PTB-ERROR: the required OpenGL framebuffer object extension. You may want to upgrade to the latest drivers or if that doesn't help, to a\n");
@@ -235,12 +235,50 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 
 	// Want dynamic adaption of buffer precision?
 	if (imagingmode & kPsychUse32BPCFloatAsap) {
-		// Yes. Here should be detection code to check if the gfx-hardware is capable
-		// of unrestricted hardware-accelerated 32 bpc float framebuffer blending. If
-		// capable hardware -> use 32bpc float for drawBufferFBOs, if not -> use 16 bpc.
+		// Yes. If the gfx-hardware is capable of unrestricted hardware-accelerated 32 bpc
+		// float framebuffer blending, we use 32bpc float for drawBufferFBOs, if not -> use 16 bpc.
 		
-		// FIXME TODO: For now we just use 16 bpc for the stage 0 FBO's.
+		// Start off with 16 bpc for the stage 0 FBO's.
 		fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+
+		// Blending on 32 bpc float FBO's supported? Upgrade to 32 bpc float for stage 0 if possible:
+		if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+		
+	}
+
+	if (PsychPrefStateGet_Verbosity()>2) {
+		switch(fboInternalFormat) {
+			case GL_RGBA8:
+				printf("PTB-INFO: Will use 8 bits per color component framebuffer for stimulus drawing.\n");
+			break;
+
+			case GL_RGBA16:
+				printf("PTB-INFO: Will use 16 bits per color component framebuffer for stimulus drawing. Alpha blending may not work.\n");
+			break;
+
+			case GL_RGBA_FLOAT16_APPLE:
+				printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus drawing. ");
+				if (windowRecord->gfxcaps & kPsychGfxCapFPBlend16) {
+					printf("Alpha blending should work correctly.\n");
+					if (imagingmode & kPsychUse32BPCFloatAsap) {
+						printf("PTB-INFO: Can't use 32 bit precision for drawing because hardware doesn't support alpha-blending in 32 bpc.\n");
+					}
+				}
+				else {
+					printf("Alpha blending may not work on your system with this setup, but only for 8 bits per color component mode.\n");
+				}
+			break;
+
+			case GL_RGBA_FLOAT32_APPLE:
+				printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus drawing. ");
+				if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) {
+					printf("Alpha blending should work correctly.\n");
+				}
+				else {
+					printf("Alpha blending may not work on your system with this setup, but only for lower precision modes.\n");
+				}
+			break;
+		}
 	}
 
 	// Do we need additional depth buffer attachments?
@@ -362,8 +400,29 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	}
 	
 	// Upgrade to 32 bpc float FBO's needed, starting with the 2nd stage of the pipe?
+	// If so, we can now upgrade, because we won't need alpha-blending anymore in later stages:
 	if (imagingmode & kPsychUse32BPCFloatAsap) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
 	
+	if (PsychPrefStateGet_Verbosity()>2) {
+		switch(fboInternalFormat) {
+			case GL_RGBA8:
+				printf("PTB-INFO: Will use 8 bits per color component framebuffer for stimulus post-processing (if any).\n");
+			break;
+
+			case GL_RGBA16:
+				printf("PTB-INFO: Will use 16 bits per color component framebuffer for stimulus post-processing (if any).\n");
+			break;
+
+			case GL_RGBA_FLOAT16_APPLE:
+				printf("PTB-INFO: Will use 16 bits per color component floating point framebuffer for stimulus post-processing (if any).\n");
+			break;
+
+			case GL_RGBA_FLOAT32_APPLE:
+				printf("PTB-INFO: Will use 32 bits per color component floating point framebuffer for stimulus post-processing (if any).\n");
+			break;
+		}
+	}
+
 	// Do we need 2nd stage FBOs? We need them as targets for the processed data if support for misc image processing ops is requested.
 	if (needimageprocessing) {
 		// Need real FBO's as targets for image processing:
@@ -739,7 +798,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	//PsychPipelineAddBuiltinFunctionToHook(windowRecord, "StereoLeftCompositingBlit", "Builtin:IdentityBlit", INT_MAX, "");
 	//PsychPipelineEnableHook(windowRecord, "StereoLeftCompositingBlit");
 
-	// Perform a full reset of current drawing target. This is a warm-start of PTB's drawing
+	// Perform a safe reset of current drawing target. This is a warm-start of PTB's drawing
 	// engine, so the next drawing command will trigger binding the proper FBO of our pipeline.
 	// Before this point (==OpenWindow time), all drawing was directly directed to the system
 	// framebuffer - important for all the timing tests and calibrations to work correctly.
@@ -2671,10 +2730,13 @@ boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFu
  */
 boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
 {
+	char* strp;
 	const int bitshift = 16; // Bits++ expects 16 bit numbers, but ignores 2 least significant bits --> Effective 14 bit.
-	int i, j, x, y;
+	int i, x, y;
 	unsigned int r, g, b;
 	double t1, t2;
+	y=1;
+	x=0;
 	
 	if (windowRecord->loadGammaTableOnNextFlip != 0 || windowRecord->inRedTable == NULL) {
 		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: Bits++ CLUT encoding failed. No suitable CLUT set in Screen('LoadNormalizedGammaTable'). Skipped!\n");
@@ -2691,62 +2753,73 @@ boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *window
 		PsychGetAdjustedPrecisionTimerSeconds(&t1);
 	}
 
-	// Render CLUT as sequence of single points:
-	// We render it twice in two lines, the 2nd line shifted horizontally by one pixel. This way at least one of
-	// the lines will always start at an even pixel location as mandated by Bits++ - More failsafe.
-	// Actually, we don't: Only render it once. These settings are the correct ones (empirically):
-	for (j=0; j<=0 ; j++) {
-		x=j;
-		y=1;
-		
-		glPointSize(1);
-		glBegin(GL_POINTS);
-		
-		// First the T-Lock unlock key:
-		glColor3ub(36, 106, 133);
-		glVertex2i(x++, y);
-		glColor3ub(63, 136, 163);
-		glVertex2i(x++, y);
-		glColor3ub(8, 19, 138);
-		glVertex2i(x++, y);
-		glColor3ub(211, 25, 46);
-		glVertex2i(x++, y);
-		glColor3ub(3, 115, 164);
-		glVertex2i(x++, y);
-		glColor3ub(112, 68, 9);
-		glVertex2i(x++, y);
-		glColor3ub(56, 41, 49);
-		glVertex2i(x++, y);
-		glColor3ub(34, 159, 208);
-		glVertex2i(x++, y);
-		glColor3ub(0, 0, 0);
-		glVertex2i(x++, y);
-		glColor3ub(0, 0, 0);
-		glVertex2i(x++, y);
-		glColor3ub(0, 0, 0);
-		glVertex2i(x++, y);
-		glColor3ub(0, 0, 0);
-		glVertex2i(x++, y);
-		
-		// Now the encoded CLUT: We encode 16 bit values in a high and a low pixel,
-		// Bits++ throws away the two least significant bits - get 14 bit output resolution.
-		for (i=0; i<256; i++) {
-			// Convert 0.0 - 1.0 float value into 0 - 2^14 -1 integer range of Bits++
-			r = (unsigned int)(windowRecord->inRedTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
-			g = (unsigned int)(windowRecord->inGreenTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
-			b = (unsigned int)(windowRecord->inBlueTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
-			
-			// Pixel with high-byte of 16 bit value:
-			glColor3ub((GLubyte) ((r >> 8) & 0xff), (GLubyte) ((g >> 8) & 0xff), (GLubyte) ((b >> 8) & 0xff));
-			glVertex2i(x++, y);
-			
-			// Pixel with low-byte of 16 bit value:
-			glColor3ub((GLubyte) (r & 0xff), (GLubyte) (g  & 0xff), (GLubyte) (b  & 0xff));
-			glVertex2i(x++, y);
+	// Options provided?
+	if (strlen(hookfunc->pString1)>0) {
+		// Check for override vertical position for line. Default is first scanline of display.
+		if (strp=strstr(hookfunc->pString1, "yPosition=")) {
+			// Parse and assign offset:
+			if (sscanf(strp, "yPosition=%i", &y)!=1) {
+				PsychErrorExitMsg(PsychError_user, "builtin:RenderClutBitsPlusPlus: yPosition parameter for T-Lock line position is invalid! Parse error...\n");
+			}
 		}
+
+		// Check for override horizontal position for line. Default is first pixel of scanline.
+		if (strp=strstr(hookfunc->pString1, "xPosition=")) {
+			// Parse and assign offset:
+			if (sscanf(strp, "xPosition=%i", &x)!=1) {
+				PsychErrorExitMsg(PsychError_user, "builtin:RenderClutBitsPlusPlus: xPosition parameter for T-Lock line position is invalid! Parse error...\n");
+			}
+		}
+	}
+	
+	// Render CLUT as sequence of single points:	
+	glPointSize(1);
+	glBegin(GL_POINTS);
+	
+	// First the T-Lock unlock key:
+	glColor3ub(36, 106, 133);
+	glVertex2i(x++, y);
+	glColor3ub(63, 136, 163);
+	glVertex2i(x++, y);
+	glColor3ub(8, 19, 138);
+	glVertex2i(x++, y);
+	glColor3ub(211, 25, 46);
+	glVertex2i(x++, y);
+	glColor3ub(3, 115, 164);
+	glVertex2i(x++, y);
+	glColor3ub(112, 68, 9);
+	glVertex2i(x++, y);
+	glColor3ub(56, 41, 49);
+	glVertex2i(x++, y);
+	glColor3ub(34, 159, 208);
+	glVertex2i(x++, y);
+	glColor3ub(0, 0, 0);
+	glVertex2i(x++, y);
+	glColor3ub(0, 0, 0);
+	glVertex2i(x++, y);
+	glColor3ub(0, 0, 0);
+	glVertex2i(x++, y);
+	glColor3ub(0, 0, 0);
+	glVertex2i(x++, y);
+	
+	// Now the encoded CLUT: We encode 16 bit values in a high and a low pixel,
+	// Bits++ throws away the two least significant bits - get 14 bit output resolution.
+	for (i=0; i<256; i++) {
+		// Convert 0.0 - 1.0 float value into 0 - 2^14 -1 integer range of Bits++
+		r = (unsigned int)(windowRecord->inRedTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
+		g = (unsigned int)(windowRecord->inGreenTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
+		b = (unsigned int)(windowRecord->inBlueTable[i] * (float)((1 << bitshift) - 1) + 0.5f);
 		
-		glEnd();
-	}		
+		// Pixel with high-byte of 16 bit value:
+		glColor3ub((GLubyte) ((r >> 8) & 0xff), (GLubyte) ((g >> 8) & 0xff), (GLubyte) ((b >> 8) & 0xff));
+		glVertex2i(x++, y);
+		
+		// Pixel with low-byte of 16 bit value:
+		glColor3ub((GLubyte) (r & 0xff), (GLubyte) (g  & 0xff), (GLubyte) (b  & 0xff));
+		glVertex2i(x++, y);
+	}
+	
+	glEnd();
 	
 	if (PsychPrefStateGet_Verbosity() > 4) {  
 		glFinish();

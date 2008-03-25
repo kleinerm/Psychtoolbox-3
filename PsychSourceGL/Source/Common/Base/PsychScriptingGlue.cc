@@ -699,7 +699,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 		// 'clear MODULENAME', 'clear mex' or 'clear all' command) it first calls our PsychExitGlue(),
 		// then unloads the module from memory...
 		mexAtExit(&PsychExitGlue);
-                #endif
+		#endif
 
 		#if PSYCH_LANGUAGE == PSYCH_OCTAVE
 		// Octave (as of Version 2.1.73) does not seem to support a way to register such a
@@ -717,8 +717,12 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 
 		// Lock ourselves into Octaves runtime environment so we can't get clear'ed out easily:
 		mlock(std::string(mexFunctionName));
+		#endif
 
-                #endif
+		// Register hidden helper function: This one dumps all registered subfunctions of
+		// a module into a struct array of text strings. Needed by our automatic documentation
+		// generator script to find out about subfunctions of a module:
+		PsychRegister("DescribeModuleFunctionsHelper",  &PsychDescribeModuleFunctions);
 
 		firstTime = FALSE;
 	}
@@ -1084,7 +1088,7 @@ PsychError PsychExitOctaveGlue(void)
 	munlock(std::string(mexFunctionName));
 
 	// Done. Return control to Octave - It will now remove us from its process-space - RIP.
-        return(PsychError_none);
+	return(PsychError_none);
 }
 
 #endif

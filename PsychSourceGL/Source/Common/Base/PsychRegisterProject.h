@@ -30,6 +30,7 @@ typedef struct
 	PsychFunctionPtr function;
 } PsychFunctionTableEntry;
 	
+PsychError PsychDescribeModuleFunctions(void);
 PsychError PsychRegister(char *name,  PsychFunctionPtr func);
 PsychError PsychRegisterExit(PsychFunctionPtr exitFunc);
 PsychFunctionPtr PsychGetProjectFunction(char *command);
@@ -41,9 +42,5 @@ int PsychGetBuildNumber(void);
 char *PsychGetVersionString(void);
 PsychFunctionPtr PsychGetProjectExitFunction(void);
 
-
-	
-	
 //end include once
 #endif
-	

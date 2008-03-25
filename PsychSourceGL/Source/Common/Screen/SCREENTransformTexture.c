@@ -27,13 +27,14 @@
 static char useString[] = "transtexid = Screen('TransformTexture', sourceTexture, transformProxyPtr [, sourceTexture2][, targetTexture] [, specialFlags]);";
 //                                                                 1              2                 3				   4                 5
 static char synopsisString[] =
-	"CAUTION! EXPERIMENTAL FEATURE IN EARLY BETA STAGE, DON'T TRUST IT BLINDLY!\n\n"
 	"Apply an image processing operation to a texture 'sourceTexture' and store the processed result either in 'targetTexture' if "
 	"provided, or in a new texture (if 'targetTexture' is not provided). Use the data in the optional 'sourceTexture2' as well if "
 	"provided. This could be, e.g., a lookup table or a 2nd image for stereo processing. Return a handle 'transtexid' to the "
 	"processed texture.\n"
 	"The image processing operation is defined in the processing hook chain 'UserDefinedBlit' of the proxy object 'transformProxyPtr'. "
-	"'specialFlags' optional flags to alter operation of this function: kPsychAssumeTextureNormalized."
+	"'specialFlags' optional flags to alter operation of this function: kPsychAssumeTextureNormalized - Assume source texture(s) are "
+	"already in a normalized upright orientation. This can speed up processing, but it can lead to wrong results if the textures "
+	"are not normalized and the imaging operation is non-isotropic - Use with care. "
 	"Read 'help PsychGLImageProcessing' for more infos on how to use this function.";
 	
 static char seeAlsoString[] = "";
@@ -131,18 +132,9 @@ PsychError SCREENTransformTexture(void)
 
         targetRecord->windowType=kPsychTexture;
         targetRecord->screenNumber = sourceRecord->screenNumber;
-        targetRecord->targetSpecific.contextObject = sourceRecord->targetSpecific.contextObject;
-        targetRecord->targetSpecific.deviceContext = sourceRecord->targetSpecific.deviceContext;
-        targetRecord->targetSpecific.glusercontextObject = sourceRecord->targetSpecific.glusercontextObject;
 
-		// Copy default drawing shaders from parent:
-		targetRecord->defaultDrawShader   = sourceRecord->defaultDrawShader;
-		targetRecord->unclampedDrawShader = sourceRecord->unclampedDrawShader;
-
-		targetRecord->colorRange = sourceRecord->colorRange;
-		
-		// Copy imaging mode flags from parent:
-		targetRecord->imagingMode = sourceRecord->imagingMode;
+		// Assign parent window and copy its inheritable properties:
+		PsychAssignParentWindow(targetRecord, sourceRecord);
 		
 		targetRecord->depth = sourceRecord->depth;
 		

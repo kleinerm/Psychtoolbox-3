@@ -1,43 +1,37 @@
 /*
-  PsychToolbox2/Source/Common/PsychInit.cpp		
+  PsychToolbox3/Source/Common/PsychInit.c		
   
   AUTHORS:
-  Allen.Ingling@nyu.edu		awi 
+  Allen.Ingling@nyu.edu					awi
+  mario.kleiner at tuebingen.mpg.de		mk
   
   PLATFORMS: All
   
-  PROJECTS:
-  08/25/02	awi		Screen on MacOS9
-   
+  PROJECTS:  All
 
   HISTORY:
+
   08/25/02  awi		wrote it.  
-  
+  03/24/08	mk		Add call to PsychExitTimeGlue() and some cleanup.
+
   DESCRIPTION:
   
-	Holds the master initialization for the Psychtoolbox function.
+	Holds the master initialization and shutdown for the Psychtoolbox function.
 	Sub-section hold their own inits which are called by the master
 	init function contained herein.  After the Psychtoolbox library
 	has initialzed itself in then invokes the project init which 
 	must be named PsychModuleInit(). 
         
-        Each PsychToolbox module should register its subfuctions within 
-        its PsychModuleInit(). 
-   
+	Each PsychToolbox module should register its subfuctions within 
+	its PsychModuleInit(). 
 
 */
 
 #include "Psych.h"
 
-
 PsychError PsychInit(void)
 {
-	//On windows this sets our pointers to functions
-	// within Matlab.exe.  On every other platform
-	//those are set at compile time using libraries.  
-//	PsychLinkMatlab();
-
-	//first init Psychtoolbox libraries
+	// First init Psychtoolbox libraries
 	InitPsychError();
 	InitPsychAuthorList();
 	PsychInitTimeGlue();
@@ -51,9 +45,7 @@ PsychError PsychInit(void)
 	PsychModuleInit();
 	
 	return(PsychError_none);
-
 }
-
 
 /* PsychExit is the function invoked last before the module is 
    purged.  It is abstracted to be unspecific to the scripting
@@ -66,13 +58,10 @@ PsychError PsychExit(void)
 	PsychError error;
 
 	projectExit = PsychGetProjectExitFunction();
-	if(projectExit !=NULL)
-		//PsychErrorExitMsg((PsychError)(*projectExit)(),NULL);
-		error=(*projectExit)();
+	if(projectExit != NULL) error=(*projectExit)();
 
-	//put whatever cleanup of the Psychtoolbox is required here.
+	// Put whatever cleanup of the Psychtoolbox is required here.
+	PsychExitTimeGlue();
 	
 	return(PsychError_none);
 }
-
-

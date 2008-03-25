@@ -362,20 +362,8 @@ PsychError SCREENOpenOffscreenWindow(void)
 	
 	// Shared setup code for FBO vs. non-FBO Offscreen windows:
 	
-    // Setup associated OpenGL context:
-    windowRecord->targetSpecific.contextObject = targetWindow->targetSpecific.contextObject;
-	windowRecord->targetSpecific.deviceContext = targetWindow->targetSpecific.deviceContext;
-	windowRecord->targetSpecific.glusercontextObject = targetWindow->targetSpecific.glusercontextObject;
-
-	// Copy default drawing shaders from parent:
-	windowRecord->defaultDrawShader   = targetWindow->defaultDrawShader;
-	windowRecord->unclampedDrawShader = targetWindow->unclampedDrawShader;
-	
-	// Copy color range and mode from parent window:
-	windowRecord->colorRange = targetWindow->colorRange;
-
-	// Copy imaging mode flags from parent:
-	windowRecord->imagingMode = targetWindow->imagingMode;
+	// Assign parent window and copy its inheritable properties:
+	PsychAssignParentWindow(windowRecord, targetWindow);
 	
     // Texture orientation is type 2 aka upright, non-transposed aka Offscreen window:
     windowRecord->textureOrientation = 2;

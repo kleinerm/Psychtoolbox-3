@@ -74,6 +74,20 @@ TO DO:
 #define kPsychMFunc			2
 #define kPsychBuiltinFunc	3
 
+// Detected capabilities of the gfx-hardware, as interrogated by PsychDetectAndAssignGfxCapabilities()
+// at onscreen window creation time and stored in windowRecord->gfxcaps as part of a bitfield:
+#define kPsychGfxCapFBO			1			// Hw supports OpenGL FBOs as rendertargets.
+#define kPsychGfxCapFPTex16		2			// Hw supports 16bpc float textures.
+#define kPsychGfxCapFPTex32		4			// Hw supports 32bpc float textures.
+#define kPsychGfxCapFPFBO16		8			// Hw supports 16bpc float FBOs.
+#define kPsychGfxCapFPFBO32		16			// Hw supports 32bpc float FBOs.
+#define kPsychGfxCapFPFilter16	32			// Hw supports bilinear filtering of 16bpc float textures.
+#define kPsychGfxCapFPFilter32	64			// Hw supports bilinear filtering of 32bpc float textures.
+#define kPsychGfxCapFPBlend16	128			// Hw supports alpha blending on 16 bpc float FBOs.
+#define kPsychGfxCapFPBlend32	256			// Hw supports alpha blending on 32 bpc float FBOs.
+#define kPsychGfxCapFP32Shading	512			// Hw supports IEEE 32 bit float precision throughout shaders.
+#define kPsychGfxCapVCGood		1024		// Hw supports unclamped vertex colors of high (at least 16 bit effective) precision.
+
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
 #define kPsychNeedFastBackingStore 1		// Any FBO's needed at all?
@@ -245,16 +259,19 @@ typedef struct _PsychWindowRecordType_{
         GLenum                                  textureexternalformat;  // Explicit definitin of external format for texture creation.
         GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
 		GLint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
-
+		GLint				textureLookupShader;	// Optional GLSL handle for nearest neighbour texture drawing shader.
+		
 	//line stipple attributes, for windows not textures.
 	GLushort				stipplePattern;
 	GLint					stippleFactor;
 	boolean					stippleEnabled;
         
+		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
 		unsigned int							specialflags;			// Container for all kind of special flags...
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.
         int                                     stereodrawbuffer;       // MK: Which drawbuffer is active in stereo? 0=left, 1=right, 2=none
 		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.
+		PsychWindowRecordPntrType				parentWindow;			// MK: Ptr. to windowRecord of the parent window, or NULL if this window doesn't have a parent.
 		int										targetFlipFieldType;	// MK: Usually == -1 (=Don't care). Can select that bufferswap should always happen in even frames (=0) or odd frames (=1). Useful for frame sequential stereo.
         bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
@@ -357,6 +374,8 @@ PsychError 		FindScreenRecord(int screenNumber, PsychScreenRecordType **screenRe
 boolean 		PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord);
 void			PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowRecordType ***pointerList);
 void 			PsychDestroyVolatileWindowRecordPointerList(PsychWindowRecordType **pointerList);
+void			PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecordType *parentWin);
+PsychWindowRecordType* PsychGetParentWindow(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif

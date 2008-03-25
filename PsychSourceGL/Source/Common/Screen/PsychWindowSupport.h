@@ -56,6 +56,7 @@ int		PsychRessourceCheckAndReminder(boolean displayMessage);
 bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
 void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
 int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
+void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif

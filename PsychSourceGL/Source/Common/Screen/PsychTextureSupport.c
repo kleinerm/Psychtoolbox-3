@@ -135,6 +135,8 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 		// float-textures and the handle is stored in the onscreen window record and in the corresponding
 		// texture. The blitters can then optionally bind that shader if filtering is requested.
 		win->textureFilterShader=0;
+		// Same for nearest neighbour lookup -- needed for unclamped high precision drawing.
+		win->textureLookupShader=0;
 }
 
 
@@ -787,26 +789,11 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	if ((filterMode > 0) && (source->textureFilterShader > 0)) {
 		// Yes. Bind the shader:
 		shader = source->textureFilterShader;
-		if (0 == PsychSetShader(target, source->textureFilterShader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
+		if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a bilinear texture filter shader, but your hardware doesn't support GLSL shaders.");
 
 		// Switch hardware samplers into nearest neighbour mode so we don't get any interference:
 		glTexParameteri(texturetarget, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		
-		// In case our texture filter shader also requests/defines a 'modulateColor'
-		// attribute in its vertex shader part, this attribute is assigned the 
-		// unclamped RGBA 'modulateColor' after normalization via the colorrange
-		// value of Screen('ColorRange'), or the unclamped globalAlpha value:
-		if ((attrib = glGetAttribLocationARB(source->textureFilterShader, "modulateColor")) >= 0) {
-			if(globalAlpha == DBL_MAX) {
-				// globalAlpha disabled: Pass the 'modulateColor' vector:
-				glVertexAttrib4dvARB(attrib, target->currentColor);
-			}
-			else {
-				// modulateColor disabled: Pass (1,1,1) as RGB color and globalAlpha as alpha:
-				glVertexAttrib4fARB(attrib, 1.0, 1.0, 1.0, (GLfloat) globalAlpha);
-			}
-		}
+		glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_NEAREST);		
 	}
 	else {
         // Standard hardware texture sampling/filtering: Select filter-mode for texturing:
@@ -831,6 +818,30 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
                     glTexParameteri(texturetarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
                 break;
         }
+		
+		// Optional texture lookup shader set up (in Screen('MakeTexture') or due to disabled color clamping...)
+		if (source->textureLookupShader > 0) {
+			shader = source->textureLookupShader;
+			if (0 == PsychSetShader(target, shader)) PsychErrorExitMsg(PsychError_user, "Tried to use a texture lookup shader, but your hardware doesn't support GLSL shaders.");
+		}
+	}
+
+	// Any automatic shader assigned yet?
+	if (shader > 0) {
+		// In case our texture (filter)/(lookup) shader also requests/defines a 'modulateColor'
+		// attribute in its vertex shader part, this attribute is assigned the 
+		// unclamped RGBA 'modulateColor' after normalization via the colorrange
+		// value of Screen('ColorRange'), or the unclamped globalAlpha value:
+		if ((attrib = glGetAttribLocationARB(shader, "modulateColor")) >= 0) {
+			if(globalAlpha == DBL_MAX) {
+				// globalAlpha disabled: Pass the 'modulateColor' vector:
+				glVertexAttrib4dvARB(attrib, target->currentColor);
+			}
+			else {
+				// modulateColor disabled: Pass (1,1,1) as RGB color and globalAlpha as alpha:
+				glVertexAttrib4fARB(attrib, 1.0, 1.0, 1.0, (GLfloat) globalAlpha);
+			}
+		}
 	}
 
 	// Setup texture wrap-mode: We usually default to clamping - the best we can do

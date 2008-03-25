@@ -153,8 +153,17 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 // so its first invocation is at a safe time - and right before real use of the time glue.
 void PsychInitTimeGlue(void)
 {
+  // TODO: Add Mutex init code for the timeglue mutex!
+  
   // Set this, although its totally pointless on our implementation...
   PsychEstimateGetSecsValueAtTickCountZero();
+}
+
+/* Called at module shutdown/jettison time: */
+void PsychExitTimeGlue(void)
+{
+	// TODO: Add Mutex teardown code for the timeglue mutex!
+	return;
 }
 
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)

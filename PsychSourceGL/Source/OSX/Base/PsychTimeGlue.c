@@ -181,16 +181,18 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 }
 
 
-
+/* Called at Module init time: */
 void PsychInitTimeGlue(void)
-
 {
-
 	PsychEstimateGetSecsValueAtTickCountZero();
-
 }
 
-
+/* Called at module shutdown/jettison time: */
+void PsychExitTimeGlue(void)
+{
+	// Nothing to do on OS/X yet:
+	return;
+}
 
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks)
 

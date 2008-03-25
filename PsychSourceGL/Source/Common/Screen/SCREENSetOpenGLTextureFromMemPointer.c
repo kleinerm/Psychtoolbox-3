@@ -81,17 +81,9 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
         PsychCreateWindowRecord(&textureRecord);
         textureRecord->windowType=kPsychTexture;
         textureRecord->screenNumber = windowRecord->screenNumber;
-        textureRecord->targetSpecific.contextObject = windowRecord->targetSpecific.contextObject;
-        textureRecord->targetSpecific.deviceContext = windowRecord->targetSpecific.deviceContext;
-        textureRecord->targetSpecific.glusercontextObject = windowRecord->targetSpecific.glusercontextObject;
 
-		// Copy default drawing shaders from parent:
-		textureRecord->defaultDrawShader   = windowRecord->defaultDrawShader;
-		textureRecord->unclampedDrawShader = windowRecord->unclampedDrawShader;
-
-		textureRecord->colorRange = windowRecord->colorRange;
-		// Copy imaging mode flags from parent:
-		textureRecord->imagingMode = windowRecord->imagingMode;
+		// Assign parent window and copy its inheritable properties:
+		PsychAssignParentWindow(textureRecord, windowRecord);
 
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
