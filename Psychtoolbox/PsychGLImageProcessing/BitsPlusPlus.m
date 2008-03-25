@@ -423,6 +423,7 @@ if strcmp(cmd, 'OpenWindowBits++')
 
     % Now enable finalizer hook chains and load them with the special Bits++
     % command for T-Lock based Bits++ internal CLUT updates:
+    % Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', 'xPosition=1');
     Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', '');
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
