@@ -52,7 +52,7 @@ static char seeAlsoString[] = "SetOpenGLTexture MakeTexture ";
 PsychError SCREENSetOpenGLTextureFromMemPointer(void) 
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
-    int w, h, d, testarg, upsidedown, glinternalformat, glexternaltype, glexternalformat;
+    int w, h, d, testarg, upsidedown, glinternalformat, glexternaltype, glexternalformat, usefloatformat;
     double doubleMemPtr;
     GLenum target = 0;
     w=h=d=-1;
@@ -185,6 +185,19 @@ PsychError SCREENSetOpenGLTextureFromMemPointer(void)
     // Let PsychCreateTexture() do the rest of the job of creating, setting up and
     // filling an OpenGL texture with memory buffers image content:
     PsychCreateTexture(textureRecord);
+
+	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is queried.
+	// The 'userRequest' flag is set to zero for now.
+	target = PsychGetTextureTarget(textureRecord);
+	glBindTexture(target, textureRecord->textureNumber);
+	glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
+	if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
+	glBindTexture(target, 0);
+
+	usefloatformat = 0;
+	if (d == 16) usefloatformat = 1;
+	if (d >= 32) usefloatformat = 2;
+	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
 
     // Return new (or old) PTB textureHandle for this texture:
     PsychCopyOutDoubleArg(1, FALSE, textureRecord->windowIndex);

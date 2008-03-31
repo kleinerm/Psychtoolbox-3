@@ -50,7 +50,7 @@ static char seeAlsoString[] = "GetOpenGLTexture";
 PsychError SCREENSetOpenGLTexture(void) 
 {
     PsychWindowRecordType *windowRecord, *textureRecord;
-    int texid, w, h, d, testarg, textureShader;
+    int texid, w, h, d, testarg, textureShader, usefloatformat = 0;
     GLenum target = 0;
     texid=w=h=d=-1;
     
@@ -151,6 +151,17 @@ PsychError SCREENSetOpenGLTexture(void)
     // Orientation is set to 2 - like an upright Offscreen window texture:
     textureRecord->textureOrientation = 2;
     textureRecord->textureNumber = texid;
+
+	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is determined
+	// by query, whereas the 'userRequest' flag is set to zero for now.
+	glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
+	if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
+	
+	if (d<=8) usefloatformat = 0;
+	if (d == 16) usefloatformat = 1;
+	if (d >= 32) usefloatformat = 2;
+
+	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
 
 	// User specified override shader for this texture provided? This is useful for
 	// basic image processing and procedural texture shading:

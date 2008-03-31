@@ -41,6 +41,8 @@ static char synopsisString[] =
 "the captured raw image data for direct use within Matlab, e.g., via the image processing toolbox. If you set 'specialmode = 4 and "
 "provide a double-encoded memory pointer in 'targetmemptr', then PTB will copy the raw image data into that buffer. The buffer is "
 "expected to be of sufficient size, otherwise a crash will occur (Experts only!).\n"
+"A 'specialmode' == 8 will require high-precision drawing, see the specialFlag == 2 setting in Screen('MakeTexture') for a "
+"description of its meaning. \n"
 "'capturetimestamp' contains the exact system time when the returned image was captured. The (optional) return value 'droppedcount' contains the "
 "number of captured frames that had to be dropped to keep in sync with realtime or due to internal shortage of buffer memory. The (optional) return "
 "value 'summed_intensityOrRawImageMatrix' contains the sum of all pixel intensity values of all channels of the image - some measure of overall brightness. "
@@ -193,8 +195,8 @@ PsychError SCREENGetCapturedImage(void)
 
       // Power-of-two texture requested?
       if (specialmode & 0x01) {
-	// Yes. Spec it:
-	textureRecord->texturetarget = GL_TEXTURE_2D;
+		// Yes. Spec it:
+		textureRecord->texturetarget = GL_TEXTURE_2D;
       }
     }
     else {
@@ -239,7 +241,14 @@ PsychError SCREENGetCapturedImage(void)
 
     // Real texture requested?
     if (textureRecord) {
-        // Texture ready for consumption. Mark it valid and return handle to userspace:
+        // Texture ready for consumption.
+
+		// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is always == 0 as
+		// our current capture engine implementations only return 8 bpc fixed textures.
+		// The 'userRequest' flag is set if specialmode flag is set to 8.
+		PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, 0, (specialmode & 8) ? 1 : 0);
+
+		// Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(textureRecord);
         PsychCopyOutDoubleArg(1, TRUE, textureRecord->windowIndex);
     }

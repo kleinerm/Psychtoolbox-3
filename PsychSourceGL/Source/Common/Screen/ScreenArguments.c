@@ -396,7 +396,7 @@ boolean PsychCopyInRectArg(int position, boolean required, PsychRectType rect)
 	isArg = PsychIsArgPresent(PsychArgIn, position);
 	if(!isArg){
 		if(required)
-			PsychErrorExitMsg(PsychError_user, "No color argument supplied"); //1A
+			PsychErrorExitMsg(PsychError_user, "Required rect argument missing."); //1A
 		else
 			return(FALSE);	//2A
 	}

@@ -93,6 +93,9 @@ boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHo
 // Try to create GLSL shader from source strings and return handle to new shader.
 GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, const char* primitivesrc);
 
+// Assign special filter/lookup shaders to textures, e.g., in HDR mode, for float textures, etc...
+boolean PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int usefloatformat, int userRequest);
+
 // Builtin functions:
 
 // PsychPipelineBuiltinRenderClutBitsPlusPlus - Encode Bits++ CLUT into framebuffer.

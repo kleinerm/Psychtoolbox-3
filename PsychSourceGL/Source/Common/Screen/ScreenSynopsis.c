@@ -78,7 +78,7 @@ void InitializeSynopsis()
 	// Open or close a window or texture:
 	synopsis[i++] = "\n% Open or close a window or texture:";
 	synopsis[i++] = "[windowPtr,rect]=Screen('OpenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,numberOfBuffers] [,stereomode] [,multisample][,imagingmode]);";	
-	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
+	synopsis[i++] = "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags]);";
 	synopsis[i++] = "textureIndex=Screen('MakeTexture', WindowIndex, imageMatrix [, optimizeForDrawAngle=0] [, specialFlags=0] [, floatprecision=0] [, textureOrientation=0] [, textureShader=0]);";	
 	synopsis[i++] = "Screen('Close', [windowOrTextureIndex or list of textureIndices/offscreenWindowIndices]);";
 	synopsis[i++] = "Screen('CloseAll');";
@@ -94,6 +94,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('FrameRect', windowPtr [,color] [,rect] [,penWidth]);";
 	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";
 	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";
+	synopsis[i++] = "Screen('FramePoly', windowPtr [,color], pointList [,penWidth]);";
 	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList);";	
 		
 	
@@ -199,7 +200,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\n% Movie and multimedia playback functions:";
 	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0]);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
-	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex]);";
+	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";

@@ -69,9 +69,23 @@ void PsychPushHelp(char *functionUse, char *functionSynopsis, char *functionSeeA
 
 void PsychGiveHelp(void)
 {  
-		printf("\nUsage:\n\n%s\n",functionUseHELP);
-		if (functionSynopsisHELP != NULL) 
-			printf("\n%s\n", BreakLines(functionSynopsisHELP, 80));
+    PsychGenericScriptType		*cellVector;
+
+	// Special case: Asked to return help in a cell array of strings?
+	if (strlen(PsychGetFunctionName()) < 2) {
+		// Yes. Return a 3 element cell array of strings, each containing one
+		// of the three help text arguments:
+		PsychAllocOutCellVector(1, FALSE, 3,  &cellVector);
+		PsychSetCellVectorStringElement(0, functionUseHELP, cellVector);
+		PsychSetCellVectorStringElement(1, BreakLines(functionSynopsisHELP, 80), cellVector);
+		PsychSetCellVectorStringElement(2, functionSeeAlsoHELP, cellVector);
+		
+		return;
+	}
+	
+	// No, standard path: Print to console of runtime system:
+	printf("\nUsage:\n\n%s\n",functionUseHELP);
+	if (functionSynopsisHELP != NULL) printf("\n%s\n", BreakLines(functionSynopsisHELP, 80));
 }
 
 void PsychGiveUsage(void)

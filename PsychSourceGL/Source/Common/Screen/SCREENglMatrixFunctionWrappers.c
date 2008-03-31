@@ -166,6 +166,10 @@ PsychError SCREENBeginOpenGL(void)
 			PsychSwitchFixedFunctionStereoDrawbuffer(windowRecord);
 		}
 	}
+	else {
+		// Userspace shares context with PTB. Let's disable possibly bound GLSL shaders:
+		PsychSetShader(windowRecord, 0);
+	}
     
 	// Check for GL errors:
     PsychTestForGLErrors();

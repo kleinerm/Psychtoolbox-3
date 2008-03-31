@@ -414,13 +414,13 @@ boolean IsWindowIndex(PsychNumdexType numdex)
 */
 PsychError FindWindowRecord(PsychWindowIndexType windowIndex, PsychWindowRecordType **windowRecord)
 {
-	//check for valid index
-	if(windowIndex<PSYCH_FIRST_WINDOW || windowIndex>PSYCH_LAST_WINDOW)
-		return(PsychError_invalidWindex); //invalid index
-		
-	*windowRecord = windowRecordArrayWINBANK[windowIndex];
-        PsychCheckIfWindowRecordIsValid(*windowRecord);  //this would fail because of an early exit when the window was created.
+	// Check for valid index: Must be within bounds of our array of windowRecord pointers, and the referenced slot must be a non-NULL ptr to a windowRecord:
+	if(windowIndex<PSYCH_FIRST_WINDOW || windowIndex>PSYCH_LAST_WINDOW || ((*windowRecord = windowRecordArrayWINBANK[windowIndex]) == NULL)) return(PsychError_invalidWindex); // Invalid index!
 
+	// It is a windowRecord: Check if it is valid, ie., has been properly initialized by PTB:
+	PsychCheckIfWindowRecordIsValid(*windowRecord);  // This would, e.g., fail because of an early exit when the window was created. It is considered an internal error if this triggers.
+
+	// Success.
 	return(PsychError_none);
 }
 

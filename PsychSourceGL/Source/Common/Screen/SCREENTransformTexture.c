@@ -34,7 +34,8 @@ static char synopsisString[] =
 	"The image processing operation is defined in the processing hook chain 'UserDefinedBlit' of the proxy object 'transformProxyPtr'. "
 	"'specialFlags' optional flags to alter operation of this function: kPsychAssumeTextureNormalized - Assume source texture(s) are "
 	"already in a normalized upright orientation. This can speed up processing, but it can lead to wrong results if the textures "
-	"are not normalized and the imaging operation is non-isotropic - Use with care. "
+	"are not normalized and the imaging operation is non-isotropic - Use with care. A setting of specialFlags == 2 will ask to create "
+	"or set the resulting 'transtexid' texture for high-precision drawing, see same setting in Screen('MakeTexture') for explanation. "
 	"Read 'help PsychGLImageProcessing' for more infos on how to use this function.";
 	
 static char seeAlsoString[] = "";
@@ -42,7 +43,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTransformTexture(void) 
 {
 	PsychWindowRecordType	*sourceRecord, *targetRecord, *proxyRecord, *sourceRecord2;
-	int testarg, tmpimagingmode, specialFlags;
+	int testarg, tmpimagingmode, specialFlags, usefloatformat, d;
 	PsychFBO *fboptr;
 	GLint fboInternalFormat;
 	Boolean needzbuffer;
@@ -147,7 +148,7 @@ PsychError SCREENTransformTexture(void)
 
 		// Orientation is set to 2 - like an upright Offscreen window texture:
 		targetRecord->textureOrientation = 2;
-		
+						
         // Mark it valid and return handle to userspace:
         PsychSetWindowRecordValid(targetRecord);
 	}
@@ -166,6 +167,18 @@ PsychError SCREENTransformTexture(void)
 	// As our proxy object defines the image processing ops, it also defines the
 	// required imagingMode properties for the target texture:
 	PsychCreateShadowFBOForTexture(targetRecord, TRUE, proxyRecord->imagingMode);
+	
+	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is queried.
+	// The 'userRequest' flag is set depending on specialFlags setting & 2.
+	glBindTexture(targetRecord->texturetarget, targetRecord->textureNumber);
+	glGetTexLevelParameteriv(targetRecord->texturetarget, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
+	if (d <= 0) glGetTexLevelParameteriv(targetRecord->texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
+	glBindTexture(targetRecord->texturetarget, 0);
+	
+	usefloatformat = 0;
+	if (d == 16) usefloatformat = 1;
+	if (d >= 32) usefloatformat = 2;
+	PsychAssignHighPrecisionTextureShaders(targetRecord, sourceRecord, usefloatformat, (specialFlags & 2) ?  0 : 1);
 	
 	// Make sure our proxy has suitable bounce buffers if we need any:
 	if (proxyRecord->imagingMode & (kPsychNeedDualPass | kPsychNeedMultiPass)) {

@@ -36,8 +36,8 @@
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize]);";
-//                                                                        1                         2        3       4                  
+static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags]);";
+//                                                                        1                         2        3       4          5
 
 static char synopsisString[] =
     "Open an offscreen window. This is simply an OpenGL texture that is treated "
@@ -63,9 +63,13 @@ static char synopsisString[] =
 	"Screen('OpenWindow'), then all Offscreen windows always have 4 color channels RGBA and "
 	"the selectable depths are additionally 64 bits or 128 bits, corresponding to 16 bits or "
 	"32 bits floating point precision per color compponent.\n"
+	"'specialFlags' optional parameter to set special properties, defaults to zero. If you set "
+	"it to 2 then the offscreen window will be drawn with especially high precision, see "
+	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation. \n"
     "NOTE: Screen's windows are known only to Screen and must be closed by it, e.g., "
-    "Screen(w,'Close'). Matlab knows nothing about Screen's windows, so the Matlab "
+    "Screen('Close', w). Matlab knows nothing about Screen's windows, so the Matlab "
     "CLOSE command won't work on Screen's windows. ";
+
 static char seeAlsoString[] = "OpenWindow";
 
 PsychError SCREENOpenOffscreenWindow(void) 
@@ -85,6 +89,8 @@ PsychError SCREENOpenOffscreenWindow(void)
 	GLenum					fboInternalFormat;
 	boolean					needzbuffer;
 	boolean					overridedepth = FALSE;
+	int						usefloatformat = 0;
+	int						specialFlags = 0;
 	
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -182,6 +188,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 	// If none provided, use a proper white-value for this window:
     if(!wasColorSupplied) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(targetWindow));  
 
+    // Get the optional specialmode flag:
+    PsychCopyInIntegerArg(5, FALSE, &specialFlags);
+
 	// This command converts whatever color we got into RGBA format:
     PsychCoerceColorMode(&color);
 
@@ -241,36 +250,36 @@ PsychError SCREENOpenOffscreenWindow(void)
 		windowRecord->nrchannels=4;
 
 		// Start off with standard 8 bpc fixed point:
-		fboInternalFormat = GL_RGBA8; windowRecord->depth=32;
+		fboInternalFormat = GL_RGBA8; windowRecord->depth=32; usefloatformat = 0;
 		
 		// Need 16 bpc fixed point precision?
-		if (targetWindow->imagingMode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; windowRecord->depth=64; }
+		if (targetWindow->imagingMode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; windowRecord->depth=64; usefloatformat = 0; }
 		
 		// Need 16 bpc floating point precision?
-		if (targetWindow->imagingMode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; }
+		if (targetWindow->imagingMode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; usefloatformat = 1; }
 		
 		// Need 32 bpc floating point precision?
-		if (targetWindow->imagingMode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128; }
+		if (targetWindow->imagingMode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128; usefloatformat = 2; }
 		
 		// Override depth value provided?
 		if (overridedepth) {
 			// Manual depth specified: Override with that depth:
 			switch(depth) {
 				case 32:
-					fboInternalFormat = GL_RGBA8; windowRecord->depth=32;
+					fboInternalFormat = GL_RGBA8; windowRecord->depth=32; usefloatformat = 0;
 				break;
 
 				case 64:
-					fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64;
+					fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->depth=64; usefloatformat = 1;
 				break;
 
 				case 128:
-					fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128;
+					fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->depth=128; usefloatformat = 2;
 				break;
 				
 				default:
-					fboInternalFormat = GL_RGBA8; windowRecord->depth=32;				
-			}
+					fboInternalFormat = GL_RGBA8; windowRecord->depth=32; usefloatformat = 0;
+			}			
 		}
 		
 		// Do we need additional depth buffer attachments?
@@ -393,6 +402,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// Let's create and bind a new texture object and fill it with our new texture data.
 		PsychCreateTexture(windowRecord);
     }
+
+	// Assign GLSL filter-/lookup-shaders if needed:
+	PsychAssignHighPrecisionTextureShaders(windowRecord, targetWindow, usefloatformat, (specialFlags & 2) ? 1 : 0);
 	
     // Window ready. Mark it valid and return handle to userspace:
     PsychSetWindowRecordValid(windowRecord);
