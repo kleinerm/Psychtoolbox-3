@@ -57,6 +57,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   'startright' is one, then even lines are taken from the right buffer.
 %
 %
+% * 'UseVirtualFramebuffer' Ask for support of virtual framebuffer, even if
+%   it isn't strictly needed, given the remaining set of requirements. Most
+%   of the tasks require such a framebuffer - it gets enabled anyway. In a
+%   few cases, e.g., to simplify your code (no need for special cases), it
+%   may be useful to activate such a framebuffer even if it isn't strictly
+%   needed. This option activates a minimal buffer with 8 bits per color
+%   cmponent fixed point precision.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'UseVirtualFramebuffer');
+%
+%
 % * 'UseFastOffscreenWindows' Ask for support of fast Offscreen windows.
 %   These use a more efficient storage, backed by OpenGL framebuffer
 %   objects (FBO's). Drawing into them isn't faster, but *switching*
@@ -82,6 +93,20 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
 %
 %
+% * 'FixedPoint16Bit' Ask for a 16 bit integer precision framebuffer.
+%   This allows for 16 bits of precision for complex drawing. This allows
+%   to use a similar precision as the 'FloatingPoint32Bit' mode for
+%   high-precision display devices, but at a higher speed and lower memory
+%   requirements. However, alpha-blending is not supported, intermediate
+%   out-of-range values (smaller than zero or bigger than one) aren't
+%   supported either. Additionally this mode is only supported on ATI
+%   hardware. It is a special purpose intermediate solution - more accurate
+%   than 16 bit floating point, but less capable and less accurate than 32
+%   bit floating point. If you need higher precision, choose 'FloatingPoint32Bit'.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'FixedPoint16Bit');
+%
+%
 % * 'FloatingPoint32Bit' Ask for a 32 bit floating point precision
 %   framebuffer. This allows more than 8 bit precision for complex drawing,
 %   compositing and image processing operations. It also allows
@@ -91,9 +116,23 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   levels. Be aware that only the most recent hardware (NVidia Geforce
 %   8000 series, ATI Radeon HD 2000 series) is able to perform
 %   alpha-blending at full speed in this mode. Enabling alpha-blending on
-%   older hardware may cause a significant decrease in drawing performance.
+%   older hardware may cause a significant decrease in drawing performance,
+%   or alpha blending may not work at all at this precision! If you'd like
+%   to have both, the highest precision and support for alpha-blending,
+%   specify 'FloatingPoint32BitIfPossible' instead. PTB will then try to
+%   use 32 bit precision if this is possible in combination with alpha
+%   blending. Otherwise, it will choose 16 bit precision for drawing &
+%   blending, but 32 bit precision at least for the post-processing.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
+%
+%
+% * 'FloatingPoint32BitIfPossible' Ask PTB to choose the highest precision
+%   that is possible on your hardware without sacrificing functionality like,
+%   e.g., alpha-blending. PTB will choose the best compromise possible for
+%   your hardware setup.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 %
 %
 % * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
@@ -662,6 +701,17 @@ imagingMode = 0;
 % Set stereoMode to don't care:
 stereoMode = -1;
 
+% FBO backed framebuffer needed?
+if ~isempty(find(mystrcmp(reqs, 'UseVirtualFramebuffer')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+end
+
+% 16 bit integer precision framebuffer needed? This is only supported on
+% ATI hardware...
+if ~isempty(find(mystrcmp(reqs, 'FixedPoint16Bit')))
+    imagingMode = mor(imagingMode, kPsychNeed16BPCFixed);
+end
+
 % Does usercode request a stereomode?
 if userstereomode > 0
     % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
@@ -708,6 +758,11 @@ end
 if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32Bit')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+end
+
+if ~isempty(find(mystrcmp(reqs, 'FloatingPoint32BitIfPossible')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychUse32BPCFloatAsap);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))

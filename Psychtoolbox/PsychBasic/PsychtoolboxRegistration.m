@@ -51,6 +51,7 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % 18.08.2006 Written (MK)
 % 5.10.2006  Add queries for Matlabs computer string and for machine
 %            architecture.
+% 31.3.2008  Allow spaces in path to netcat command on Windows (Fix contributed by Tobias Wolf)
 
 % Address and port number of our statistics server:
 ptbserveraddress = 'platypus.psych.upenn.edu 2000';
@@ -78,7 +79,6 @@ try
         % Query machine architecture via Unix 'arch' utility.
         [rc arch] = system('arch');
         arch=deblank(arch);
-        runtimearch = computer;
     end
 
     if IsWin
@@ -96,7 +96,7 @@ try
         % Define machine architecture to be Intel.
         arch = 'Intel';
         % Define path to our own netcat executable for M$-Windows:
-        nccommand = [PsychtoolboxRoot 'PsychContributed\nc '];
+        nccommand = strcat('"',[PsychtoolboxRoot 'PsychContributed\nc '],'"');
     end
 
     if IsLinux

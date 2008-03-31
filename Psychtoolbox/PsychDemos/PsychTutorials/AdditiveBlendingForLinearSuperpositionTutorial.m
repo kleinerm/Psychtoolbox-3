@@ -37,7 +37,7 @@ try
 
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 128) background and support for 16 bpc floating point framebuffers:
-	w=Screen('OpenWindow',screenNumber, 128,[],[],[],[],[],kPsychNeed16BPCFloat);
+	w=Screen('OpenWindow',screenNumber, 128,[],[],[],[],[],kPsychUse32BPCFloatAsap);
     [width, height]=Screen('WindowSize', w);
 
     % Enable alpha blending. We switch it into additive mode which takes

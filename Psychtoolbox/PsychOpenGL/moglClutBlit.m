@@ -179,15 +179,16 @@ end
 glActiveTexture(GL.TEXTURE0);
 
 % Clut and shader are initialized. Activate shader:
-glUseProgram(remapshader);
+%glUseProgram(remapshader);
 
 % Perform blit with nearest neighbour filter:
-Screen('DrawTexture', win, src, [], [], 0, 0);
+%Screen('DrawTexture', win, src, [], [], 0, 0);
 
-% New style: Needs Screen-MEX update to fix a bug in Screen before it can be used! Screen('DrawTexture', win, src, [], [], 0, 0, [], [], remapshader);
+% New style: Needs Screen-MEX update to fix a bug in Screen before it can be used! 
+Screen('DrawTexture', win, src, [], [], 0, 0, [], [], remapshader);
 
 % Disable shader:
-glUseProgram(0);
+%glUseProgram(0);
 
 % We're done.
 end

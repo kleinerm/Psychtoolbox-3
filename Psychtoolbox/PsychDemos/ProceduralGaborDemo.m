@@ -38,6 +38,10 @@ function ProceduralGaborDemo(benchmark, nonsymmetric)
 % stimuli. This is just the error, given the settings hardcoded in this script.
 % Typical speed is 2800 frames per second.
 %
+% The error on a Radeon HD 2400 XT is 0.0000842185, i.e., about 1 part in
+% 11000, equivalent to perfect display on a 13 bit DAC resolution gfx
+% system.
+%
 % Typical result on Intel Pentium IV, running on WindowsXP with a NVidia
 % Geforce7800 and up-to-date drivers: Error is 0.0000146741 units, ie. one
 % part in 68000, therefore display would be perfect even on a display device

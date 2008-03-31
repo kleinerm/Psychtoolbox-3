@@ -36,6 +36,13 @@ if nargin < 2
     verbose = 0
 end
 
+if highprecision > 2
+    highprecision = highprecision - 2;
+    sflags = 2;
+else
+    sflags = 0;
+end
+
 AssertOpenGL;
 screenNumber=max(Screen('Screens'));
 texsize=256;            % Half-Size of the grating image.
@@ -62,7 +69,7 @@ try
     end
     
     % Store testpattern in texture:
-    tex=Screen('MakeTexture', w, grating, [], [], highprecision);
+    tex=Screen('MakeTexture', w, grating, [], sflags, highprecision);
     
     % Definition of the drawn rectangle on the screen:
     dstRect=[0 0 texsize texsize];

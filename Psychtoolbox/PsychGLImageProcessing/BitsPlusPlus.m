@@ -214,6 +214,8 @@ persistent validated;
 persistent tlockhandle;
 % Counter of pending T-Lock display list blits: Zero == Disabled.
 persistent blitTLockCode;
+% Corrective x-offset for DIO blitting:
+persistent tlockXOffset;
 
 if nargin < 1
     error('You must specify a command in argument "cmd"!');
@@ -252,13 +254,12 @@ if isempty(validated)
     validated = 0;
     tlockhandle = 0;
     blitTLockCode = 0;
+    tlockXOffset = 0;
 end
 
 if strcmp(cmd, 'DIOCommand')
 
-    % Reset to safe default:
-    blitTLockCode = 0;
-    
+    % Setup new DIO command to be converted to T-Lock code and blitted:
     if nargin < 2 || isempty(arg)
         error('window handle for Bits++ onscreen window missing!');
     end
@@ -311,7 +312,7 @@ if strcmp(cmd, 'DIOCommand')
         end
         
         % Add command sequence for this T-Lock code to display list:
-        glRasterPos2i(xDIO, yDIO);
+        glRasterPos2i(xDIO + tlockXOffset, yDIO);
         glDrawPixels(508, 1, GL.RGB, GL.UNSIGNED_BYTE, encodedDIOdata);
     end
     
@@ -415,24 +416,10 @@ if strcmp(cmd, 'OpenWindowBits++')
     % Ok, if we reach this point then we've got a proper onscreen
     % window on the Bits++. Let's reassign our arguments and continue with
     % the init sequence:
-    arg = win;
 
     % First load the graphics hardwares gamma table with an identity mapping,
     % so it doesn't interfere with Bits++ -- Functions from Bits++ toolbox.
     LoadIdentityClut(win);
-
-    % Now enable finalizer hook chains and load them with the special Bits++
-    % command for T-Lock based Bits++ internal CLUT updates:
-    % Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', 'xPosition=1');
-    Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', '');
-    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
-
-    if (~isempty(stereomode) && stereomode == 1)
-        % This is only needed on quad-buffered stereo contexts. Enable CLUT
-        % updates via T-Lock on right stereo buffer as well:
-        Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', '');
-        Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
-    end
 
     % We need the GL for DIO T-Lock setup:
     if isempty(GL)
@@ -440,6 +427,36 @@ if strcmp(cmd, 'OpenWindowBits++')
         % flag for Screen():
         InitializeMatlabOpenGL([], [], 1);
     end;
+
+    % Test accuracy/correctness of GPU's rasterizer for different output
+    % positioning methods: Return (non-zero) dx,dy offsets, if any:
+    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win);
+        
+    if rpix~=0
+        tlockXOffset = -rpix;
+        fprintf('OpenWindowBits++: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', tlockXOffset);        
+    end
+    
+    % Now enable finalizer hook chains and load them with the special Bits++
+    % command for T-Lock based Bits++ internal CLUT updates:
+    if vix~=0
+        % vix is wrong offset, therefore negate it to get corrective offset:
+        vix = -vix;
+        fprintf('OpenWindowBits++: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', vix);
+        offsetstring = sprintf('xPosition=%i', vix);
+    else
+        offsetstring = '';
+    end
+    
+    Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);    
+    Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
+
+    if (~isempty(stereomode) && stereomode == 1)
+        % This is only needed on quad-buffered stereo contexts. Enable CLUT
+        % updates via T-Lock on right stereo buffer as well:
+        Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
+    end
 
     % Setup finalizer callback for DIO T-Lock updates:
     tlockhandle = SetupDIOFinalizer(win, stereomode);
@@ -516,7 +533,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % from different vendors, but the users imagingmode setting is free to
     % override this with a 16 bpc fixed buffer. 16 bpc float works as well
     % but can't use the full Bits++ color range at full precision.
-    if bitand(imagingmode, kPsychNeed16BPCFloat) || bitand(imagingmode, kPsychNeed16BPCFixed)
+    if bitand(imagingmode, kPsychNeed16BPCFloat) || bitand(imagingmode, kPsychNeed16BPCFixed) || bitand(imagingmode, kPsychUse32BPCFloatAsap)
         % User specified override: Use it.
         ourspec = 0;
     else
@@ -524,7 +541,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
         % one:
         ourspec = kPsychNeed32BPCFloat;
     end
-    
+
     % Imagingmode must at least include the following:
     imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
 
@@ -534,7 +551,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
         % calculations:
         imagingmode = mor(imagingmode, kPsychNeedHalfWidthWindow);
     end
-    
+
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
     if nargin > 9
         [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode, varargin{7:end});
@@ -545,17 +562,59 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % Ok, if we reach this point then we've got a proper onscreen
     % window on the Bits++. Let's reassign our arguments and continue with
     % the init sequence:
-    arg = win;
 
+    % Some more diagnostics and info for user:
+    winfo = Screen('GetWindowInfo', win);
+    
+    % Unconditional support for 32 bpc float drawable requested?
+    havespoken = 0;
+    if ~bitand(imagingmode, kPsychNeed32BPCFloat)
+        % Nope. Conditional support requested?
+        if (bitand(imagingmode, kPsychUse32BPCFloatAsap) && winfo.GLSupportsBlendingUpToBpc < 32)
+            % Conditional use of 32 bpc float buffers requested, but GPU
+            % doesn't support 32 bpc float blending --> drawBuffer will only be
+            % 16 bpc -- Loss of precision!
+            fprintf('BitsPlusPlus - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
+            fprintf('BitsPlusPlus - Info: script requested support for simultaneous alpha-blending and high precision, but your hardware is not\n');
+            fprintf('BitsPlusPlus - Info: capable of supporting highest precision with alpha-blending enabled. You will therefore only\n');
+            fprintf('BitsPlusPlus - Info: be able to use about 11 bits out of the 14 bits precision that Bits++ provides for stimulus drawing.\n');
+            fprintf('BitsPlusPlus - Info: You can either live with this limitation, or do not use alpha-blending or upgrade your graphics\n');
+            fprintf('BitsPlusPlus - Info: hardware to Direct3D-10 compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
+            havespoken = 1;
+        end
+
+        if bitand(imagingmode, kPsychNeed16BPCFloat)
+            fprintf('BitsPlusPlus - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
+            fprintf('BitsPlusPlus - Info: script requested only 16 bpc float precision. You will therefore only be able to use\n');
+            fprintf('BitsPlusPlus - Info: about 11 bits out of the 14 bits precision that Bits++ provides for stimulus drawing.\n');
+            fprintf('BitsPlusPlus - Info: If you want to use the full 14 bit precision, you will need to request a 32 bpc float framebuffer.\n\n');
+            havespoken = 1;
+        end
+
+        if bitand(imagingmode, kPsychNeed16BPCFixed)
+            fprintf('BitsPlusPlus - Info: Your framebuffer is configured to provide 16 bits of precision, because your\n');
+            fprintf('BitsPlusPlus - Info: script requested 16 bits fixed precision. Bits++ will be able to finally output 14 bits precision.\n');
+            fprintf('BitsPlusPlus - Info: Alpha-blending will not work at this configuration with your hardware though. Choose a different\n');            
+            fprintf('BitsPlusPlus - Info: mode if you need alpha-blending and high precision.\n\n');
+            havespoken = 1;
+        end
+    end
+
+    if (havespoken == 0) && (bitand(imagingmode, kPsychNeed32BPCFloat) || bitand(imagingmode, kPsychUse32BPCFloatAsap))
+        fprintf('BitsPlusPlus - Info: Your framebuffer is configured for maximum precision. All internal processing will be done\n');
+        fprintf('BitsPlusPlus - Info: with about 23 bits of precision -- Bits++ will be able to finally output with 14 bits precision.\n');
+        if winfo.GLSupportsBlendingUpToBpc < 32
+            fprintf('BitsPlusPlus - Info: Alpha-blending will not work at this precision with your hardware though.\n');
+            fprintf('BitsPlusPlus - Info: You can either live with this limitation, or upgrade your graphics hardware to Direct3D-10\n');
+            fprintf('BitsPlusPlus - Info: compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
+        else
+            fprintf('BitsPlusPlus - Info: Alpha-blending should be fully supported at this precision by your hardware.\n\n');            
+        end
+    end
+    
     % First load the graphics hardwares gamma table with an identity mapping,
     % so it doesn't interfere with Bits++ -- Function from Bits++ toolbox.
     LoadIdentityClut(win);
-
-    % Set color range to 0.0 - 1.0: This makes more sense than the normal
-    % 0-255 values. Try to disable color clamping. This may fail and
-    % produce a PTB warning, but if it succeeds then we're better off for
-    % the 2D drawing commands...
-    Screen('ColorRange', win, 1, 0);
 
     % Backup current gfx-settings, so we can restore them after
     % modifications: The LoadGLSLProgramFromFiles() routine enables this
@@ -596,6 +655,15 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     glUseProgram(shader);
     glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
     glUseProgram(0);
+    
+    % Test accuracy/correctness of GPU's rasterizer for different output
+    % positioning methods: Return (non-zero) dx,dy offsets, if any:
+    [rpfx, rpfy, rpix] = RasterizerOffsets(win);
+        
+    if rpix~=0
+        tlockXOffset = -rpix;
+        fprintf('BitsPlusPlus: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', tlockXOffset);        
+    end
 
     % Enable framebuffer output formatter: From this point on, all visual
     % output will be reformatted to Bits++ framebuffer format at each
@@ -608,6 +676,12 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     
     % Restore old graphics preferences:
     Screen('Preference', 'Enable3DGraphics', ogl);
+
+    % Set color range to 0.0 - 1.0: This makes more sense than the normal
+    % 0-255 values. Try to disable color clamping. This may fail and
+    % produce a PTB warning, but if it succeeds then we're better off for
+    % the 2D drawing commands...
+    Screen('ColorRange', win, 1, 0);
 
     % Check validation:
     if ~validated
@@ -674,8 +748,7 @@ function ValidateBitsPlusImaging(win, writefile)
         [fid msg]= fopen([PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], 'a');
         if fid == -1
             sca;
-            errtxt = sprintf('Could not write validation file %s to filesystem [%s].', [PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], msg);
-            error(errtxt);
+            error('Could not write validation file %s to filesystem [%s].', [PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], msg);
         end
 
         % Append line:
@@ -687,7 +760,7 @@ end
 % Helper function for setup of finalizer blit chains in all modes. Sets up
 % callback into our file for T-Lock drawing etc...
 function displist = SetupDIOFinalizer(win, stereomode)
-
+    
     % Generate unique display list handle for later use:
     displist = glGenLists(1);
     
@@ -702,4 +775,139 @@ function displist = SetupDIOFinalizer(win, stereomode)
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
 
+end
+
+function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win)
+
+    global GL;
+
+    % Test for off-by-one bugs in graphics drivers / GPU's and compute
+    % corrective offsets for our Bits++ T-Lock blitters...
+
+    % glRasterPos2f(): Used by Screen('PutImage') for output-positioning:
+    
+    % Clear out top-left 20x20 rectangle of framebuffer:
+    Screen('FillRect', win, 0, [0 0 20 20]);
+
+    % Define drawposition via glRasterPos2f:
+    glRasterPos2f(2, 1);
+
+    % Draw RGB = [128, 0, 0] pixel to that location:
+    testpixel = uint8([128 0 0]);
+    glDrawPixels(1, 1, GL.RGB, GL.UNSIGNED_BYTE, testpixel);
+
+    % Sync the pipeline, so we know the backbuffer contains the result:
+    Screen('DrawingFinished', win, 0, 1);
+
+    % Read top-left 4x4 rectangle back, only the red channel:
+    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+
+    % Must flip here, to clear the "drawingfinished" state from above:
+    Screen('Flip', win);
+    
+    % Find location of red == 128 pixel:
+    pixposition = find(testreadback == 128);
+    if ~isempty(pixposition)
+        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
+        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
+        % y-offset is consistent due to 1 offset inside our y-origin inside
+        % Screen:
+        pixx = pixx - 1;
+    else
+        pixy = -1;
+        pixx = -1;
+    end
+
+    rpfx = pixx - 2;
+    rpfy = pixy - 1;
+
+    % At expected location?
+    if rpfx~=0
+        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glRasterPos2f() command draws at wrong position (Offset %i, %i)!\n', rpfx, rpfy);
+    end
+
+    % glRasterPos2i(): Used by our DIO T-Lock blitter for output-positioning:
+    
+    % Clear out top-left 20x20 rectangle of framebuffer:
+    Screen('FillRect', win, 0, [0 0 20 20]);
+
+    % Define drawposition via glRasterPos2i:
+    glRasterPos2i(2, 1);
+
+    % Draw RGB = [128, 0, 0] pixel to that location:
+    testpixel = uint8([128 0 0]);
+    glDrawPixels(1, 1, GL.RGB, GL.UNSIGNED_BYTE, testpixel);
+
+    % Sync the pipeline, so we know the backbuffer contains the result:
+    Screen('DrawingFinished', win, 0, 1);
+
+    % Read top-left 4x4 rectangle back, only the red channel:
+    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+
+    % Must flip here, to clear the "drawingfinished" state from above:
+    Screen('Flip', win);
+
+    % Find location of red == 128 pixel:
+    pixposition = find(testreadback == 128);
+    if ~isempty(pixposition)
+        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
+        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
+        % y-offset is consistent due to 1 offset inside our y-origin inside
+        % Screen:
+        pixx = pixx - 1;
+    else
+        pixy = -1;
+        pixx = -1;
+    end
+
+    rpix = pixx - 2;
+    rpiy = pixy - 1;
+
+    % At expected location?
+    if rpix~=0
+        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glRasterPos2i() command draws at wrong position (Offset %i, %i)!\n', rpix, rpiy);
+    end
+
+    % glVertex2i(): Used by Screen's CLUT T-Lock blitter for output-positioning:
+    
+    % Clear out top-left 20x20 rectangle of framebuffer:
+    Screen('FillRect', win, 0, [0 0 20 20]);
+
+    glPointSize(1);
+    glBegin(GL.POINTS);
+    % Draw RGB = [128, 0, 0] pixel:
+    glColor3ub(128, 0, 0);
+    % Submit glVertex2i at test location:
+    glVertex2i(2, 1);
+    glEnd;
+    
+    % Sync the pipeline, so we know the backbuffer contains the result:
+    Screen('DrawingFinished', win, 0, 1);
+
+    % Read top-left 4x4 rectangle back, only the red channel:
+    testreadback = Screen('GetImage', win, [0 0 4 4], 'backBuffer', 0, 1);
+
+    % Must flip here, to clear the "drawingfinished" state from above:
+    Screen('Flip', win);
+    
+    % Find location of red == 128 pixel:
+    pixposition = find(testreadback == 128);
+    if ~isempty(pixposition)
+        [pixy, pixx] = ind2sub(size(testreadback), pixposition);
+        % Map from Matlab indexing to OpenGL indexing: Only x is remapped,
+        % y-offset is consistent due to 1 offset inside our y-origin inside
+        % Screen:
+        pixx = pixx - 1;
+    else
+        pixy = -1;
+        pixx = -1;
+    end
+
+    vix = pixx - 2;
+    viy = pixy - 1;
+
+    % At expected location?
+    if vix~=0
+        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glVertex2i() command draws at wrong position (Offset %i, %i)!\n', vix, viy);
+    end
 end

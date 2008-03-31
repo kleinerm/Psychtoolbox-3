@@ -36,6 +36,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 9/23/06 mk  Add clear mex call to flush mex files before updating.
 % 10/5/06 mk  Add detection code for MacOS-X on Intel Macs.
 % 21/11/06 mk Add improved detection code for Subversion.
+% 31.3.08  mk Allow spaces in path to targetdirectory (Fix contributed by Tobias Wolf)
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -55,9 +56,9 @@ end
 fprintf('UpdatePsychtoolbox('' %s '') \n', targetdirectory);
 fprintf('\n');
 
-% Do not accept path names with blanks in them:
+% Do notify user about potential trouble with path names with blanks in them:
 if any(isspace(targetdirectory))
-    error('The targetdirectory spec contains white-space. This is not allowed!');
+    fprintf('The targetdirectory spec contains white-space. This should work, but has not been tested extensively.\n');
 end
 
 % Check OS
@@ -95,7 +96,7 @@ if isOSX && isempty(svnpath)
 end
 
 fprintf('About to update your working copy of the OpenGL-based Psychtoolbox.\n');
-updatecommand=[svnpath 'svn update '  targetRevision targetdirectory ];
+updatecommand=[svnpath 'svn update '  targetRevision strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
 if isOSX | isLinux

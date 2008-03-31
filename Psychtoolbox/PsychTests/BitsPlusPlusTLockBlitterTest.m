@@ -49,10 +49,12 @@ try
     % Compute differences between both T-Lock images. They should be
     % identical if the GPU is rasterizing properly:
     dimg = abs(double(img1) - double(img2));
-    diff = sum(sum(sum(dimg)))
+    diff = sum(sum(sum(dimg)));
     dimg2 = abs(double(img2(1,:,:)) - double(clutRow));
-    diff2 = sum(sum(sum(dimg2)))
+    diff2 = sum(sum(sum(dimg2)));
     
+    fprintf('\n\nTest results of T-Lock blitter test:\n\n');
+
     if chk1==0 || chk2==0
         error('Framebuffer readout error or black image!');
     end
