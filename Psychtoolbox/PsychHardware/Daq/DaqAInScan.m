@@ -825,8 +825,8 @@ if options.end
     SE_Channels = find(channel > 7);
     
     data(:,DiffChannels) = bitshift(data(:,DiffChannels),-4);
-    NegativeDiffs = find(data(:,DiffChannels) > 2048);
-    data(:,DiffChannels(NegativeDiffs)) = -bitcmp(data(:,DiffChannels(NegativeDiffs)),12)-1;
+    [NegativeDiffs,DCs] = find(data(:,DiffChannels) > 2048);
+    data(NegativeDiffs,DiffChannels(DCs)) = -bitcmp(data(NegativeDiffs,DiffChannels(DCs)),12)-1;
     SE_Data = data(:,SE_Channels);
     
     OverflowInds = find(SE_Data > 32752);
