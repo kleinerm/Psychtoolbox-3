@@ -7,6 +7,7 @@
 %
 % ActiveWire          - Win: ActiveWire minimal USB interface, $59.  
 %                            web http://www.activewireinc.com/ -browser ;
+% CedrusResponseBox   - All: Support for RB-x30 response boxes by Cedrus.
 % CMCheckInit         - OS9: Turn on color meter.
 % CMClose             - OS9: Turn off color meter.
 % FindSerialPort      - OSX: Find port number associated with a particular input string.
