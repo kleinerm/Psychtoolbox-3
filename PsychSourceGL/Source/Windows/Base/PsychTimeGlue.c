@@ -18,6 +18,9 @@
   	12/27/05	mk		Wrote it. Derived from OS-X version.
 	11/14/07 mk			Added tons of checking and error-handling code for broken Windoze timers.
 						Added special debug helper functions to be used via GetSecs().  
+	04/05/08	mk		Added locking viar time_lock to PsychGetPrecisionTimerSeconds() to protect
+						against races in time glue checking code due to multiple threads calling, e.g.,
+						inside the PsychPortAudio module (Portaudio callback thread and main thread).
 
   	DESCRIPTION:
 	
@@ -52,6 +55,10 @@ static Boolean 		schedulingtrouble = FALSE;
 static double			tickInSecsAtLastQuery = -1;
 static double			timeInSecsAtLastQuery = -1;
 
+// Our critical section variable to guarantee exclusive access to PsychGetPrecisionTimerSeconds()
+// in order to prevent race-conditions for the timer correctness checks in multi-threaded code:
+CRITICAL_SECTION	time_lock;
+
 void PsychWaitUntilSeconds(double whenSecs)
 {
   static unsigned int missed_count=0;
@@ -62,6 +69,15 @@ void PsychWaitUntilSeconds(double whenSecs)
 
   // If the deadline has already passed, we do nothing and return immediately:
   if (now > whenSecs) return;
+
+  // Note that technically there is potential for a race-condition on the
+  // sleepwait_threshold and missed_count variables if multiple threads
+  // inside the same PTB module call PsychWaitUntilSeconds concurrently
+  // and miss their deadlines simultaneously --> concurrent update of that
+  // vars. However, currently no modules do this concurrently in threads,
+  // and even if, the worst case outcome -- sleepwait_threshold incrementing
+  // slower than possible -- is perfectly tolerable. Therefore we safe us
+  // the locking overhead here.
 
   // Waiting stage 1: If we have more than sleepwait_threshold seconds left
   // until the deadline, we call the OS Sleep() function, so the
@@ -130,15 +146,24 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
-	// TODO: Add Mutex init code for the timeglue mutex!
-
+	// Initialize our timeglue mutex:
+	// Alternative would be InitializeCriticalSection().
+	// Needs define _WIN32_WINNT as 0x0403 or later. 
+	if (!InitializeCriticalSectionAndSpinCount(&time_lock, 0x80000400)) {
+		// We're screwed:
+		printf("PTBCRITICAL -ERROR: In PsychInitTimeGlue() - failed to init time_lock!!! May malfunction or crash soon....\n");
+	}
+	
+	// Setup mapping of ticks to time:
 	PsychEstimateGetSecsValueAtTickCountZero();
 }
 
 /* Called at module shutdown/jettison time: */
 void PsychExitTimeGlue(void)
 {
-	// TODO: Add Mutex teardown code for the timeglue mutex!
+	// Release our timeglue mutex:
+	DeleteCriticalSection(&time_lock);
+
 	return;
 }
 
@@ -293,6 +318,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// Query system time of low resolution counter:
 	curRawticks = timeGetTime();
 
+	// Need to acquire our timelock before we continue, as we will soon access shared data structures:
+	EnterCriticalSection(&time_lock);
+	
 	/* MK: Nice idea, but won't work that way :-( Need a more complex
 		// solution here. This has to wait for the next release cycle...
 		// Compare against old raw value to detect overflow and wraparound:
@@ -309,7 +337,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// by applying the warp offset:
 		curRawticks += tickWarpOffset;
 	*/
-		
+
 	// Convert to ticks in seconds for further processing:
 	ticks = ((double) curRawticks) * 0.001;
 	tickInSecsAtLastQuery = ticks;
@@ -434,6 +462,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// Clear the firstTime flag - this was the first time, maybe.
    firstTime = FALSE;
 
+	// Need to release our timelock - Done with access to shared data:
+	LeaveCriticalSection(&time_lock);
+
 	return;
 }
 
@@ -486,6 +517,9 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void)
 */
 double PsychGetTimeGetTimeValueAtLastTimeQuery(double* precisionRawtime)
 {
+	// Theoretically there is a potential race here, due to access to shared variables,
+	// but we don't lock here -- In practice this function is only used by GetSecs
+	// in special debug- and test scripts, where no parallel threading is active:
 	*precisionRawtime = timeInSecsAtLastQuery;
 	return(tickInSecsAtLastQuery );
 }
