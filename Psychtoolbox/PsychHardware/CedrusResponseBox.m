@@ -35,7 +35,10 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % serial 'port'. 'port'names differ accross operating systems. After the
 % connection is established and some testing and initialization is done,
 % returns a device 'handle', a unique identifier to use for all other
-% subfunctions.
+% subfunctions. A typical port name for Windows would be 'COM2', whereas a
+% typical port name on OS/X would be a simple number, starting with 1 for
+% the first serial port in the system (The FindSerialPort() function might
+% be useful for OS/X users for finding their ports).
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -43,9 +46,14 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % that command.
 %
 %
+% CedrusResponseBox('CloseAll');
+% - Close all connections to all response boxes. This is a convenience
+% function for quick shutdown.
+%
+%
 % dev = CedrusResponseBox('GetDeviceInfo', handle);
 % - Return queried information about the device in a struct 'dev'. 'dev'
-% contains the following fields:
+% contains (amongst other) the following fields:
 %
 % dev.Name = Device name string.
 % dev.VersionMajor and dev.VersionMinor = Major and minor firmware
@@ -58,7 +66,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 % [status = ] CedrusResponseBox('FlushEvents', handle);
 % - Empty/clear/flush the queue of pending events. Use this, to get rid of
-% any stale button press or relese events before start of response
+% any stale button press or release events before start of response
 % collection in a trial. E.g., Assume you wait for a subjects keypress and
 % finally receive that keypress via 'GetButtons' or 'WaitButtons'. You
 % collected your response, the trial is done, but when the subject releases
@@ -71,14 +79,17 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % status is a 6-entry array, corresponding to the 5 buttons on the box
 % as follows:[top ??? left middle right bottom] -- the 2nd entry has no
 % meaning that I can see.
+%
 % This is useful if you just want to know whether the subject is currently
 % pressing any buttons before you proceed, but are not fussed about timing.
+%
 % E.g. I often find myself doing the following:
 %   buttons = 1;
 %   while any(buttons)
 %     buttons = CedrusResponseBox('FlushEvents', mybox);
 %   end
-% to wait for the subject to release any buttons which might currently be down.
+%
+% ...to wait for the subject to release any buttons which might currently be down.
 %
 % evt = CedrusResponseBox('GetButtons', handle);
 % - Return next queued button-press or button-release event from the box.
@@ -101,9 +112,10 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 % evt.action  = Action that triggered the event: 1 = Button press, 0 = Button release.
 %
-% evt.button  = Number of the button that was pressed or released (0 to 7).
+% evt.button  = Number of the button that was pressed or released (1 to 8).
 %
-% evt.rawtime = Time of the event in msecs since last reset of the reaction time timer.
+% evt.rawtime = Time of the event in secs since last reset of the reaction
+%               time timer, measured in msecs resolution.
 %
 % evt.ptbtime = Time of the event in secs, measured in PTBs "GetSecs"
 %               timebase. This is easier to correlate with other
@@ -123,18 +135,36 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 %
 %
-% evt = CedrusResponseBox('GetBaseTimer', handle);
+% evt = CedrusResponseBox('GetBaseTimer', handle [, nSamples=1]);
 % - Query current time of base timer of the box. Returned values are in
 % seconds, resolution is milliseconds. evt.basetimer is the timers time,
 % evt.ptbtime is a timestamp taken via PTB's GetSecs() at time of receive
 % of the timestamp. Note that this automatically discards all pending
 % events in the queue before performing the query!
 %
+% The optional argument 'nSamples' allows to specify if multiple samples of
+% PTB timer vs. the response boxes timer should be measured. If 'nSamples'
+% is set to a value greater than one, a cell array with nSamples elements
+% will be returned, each corresponding to one measurement. This allows,
+% e.g., to check if PTBs timer and the boxes timer drift against each
+% other.
+%
 %
 % CedrusResponseBox('ResetRTTimer', handle);
 % - Reset reaction time timer of box to zero.
 %
 %
+% roundtrip = CedrusResponseBox('RoundTripTest', handle);
+% - Initiate 100 trials of the roundtrip test of the box. Data is echoed
+% forth and back 100 times between PTB and the box, and the latency is
+% measured (in seconds, with msecs resolution). The vector of all samples
+% is returned in 'roundtrip' for evaluation and debugging.
+%
+% Note that this automatically discards all pending
+% events in the queue before performing the query!
+%
+%
+
 
 % History:
 %
@@ -145,7 +175,6 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
 global ptb_cedrus_devices;
-persistent CedrusStatus;
 
 % Subcommand dispatch:
 if nargin < 1 || ~ischar(cmd)
@@ -206,8 +235,14 @@ if strcmpi(cmd, 'WaitButtonPress')
 
         % At least 6 bytes for one event available: Try to read them from box:
         response = ReadDev(handle, 6);
+        
+        % Timestamp receive completion in PTB's timeframe. Allows to get a
+        % feeling on how much time elapses between keypress and data receive:
+        ptbfetchtime = GetSecs;
+
         % Unpack this binary data into a more readable form:
-        [evt, CedrusStatus] = ExtractKeyPressData(handle,response);
+        evt = ExtractKeyPressData(handle,response);        
+        evt.ptbfetchtime = ptbfetchtime;
         
         keypress = evt.action;
         % This is 0 if the key was released, 1 if it was pressed down,
@@ -246,8 +281,14 @@ if strcmpi(cmd, 'WaitButtons')
 
     % At least 6 bytes for one event available: Try to read them from box:
     response = ReadDev(handle, 6);
+
+    % Timestamp receive completion in PTB's timeframe. Allows to get a
+    % feeling on how much time elapses between keypress and data receive:
+    ptbfetchtime = GetSecs;
+
     % Unpack this binary data into a more readable form:
-    [evt, CedrusStatus] = ExtractKeyPressData(handle,response);
+    evt = ExtractKeyPressData(handle,response);
+    evt.ptbfetchtime = ptbfetchtime;
 
     % Assign evt as output argument:
     varargout{1} = evt;
@@ -278,8 +319,14 @@ if strcmpi(cmd, 'GetButtons')
 
     % At least 6 bytes for one event available: Try to read them from box:
     response = ReadDev(handle, 6);
+
+    % Timestamp receive completion in PTB's timeframe. Allows to get a
+    % feeling on how much time elapses between keypress and data receive:
+    ptbfetchtime = GetSecs;
+    
     % Unpack this binary data into a more readable form:
-    [evt, CedrusStatus] = ExtractKeyPressData(handle,response);
+    evt = ExtractKeyPressData(handle,response);
+    evt.ptbfetchtime = ptbfetchtime;
 
     % Assign evt as output argument:
     varargout{1} = evt;
@@ -287,7 +334,54 @@ if strcmpi(cmd, 'GetButtons')
     return;
 end
 
+if strcmpi(cmd, 'RoundTripTest')
+    % Initiate roundtrip-test procedure: Will receive data from device,
+    % echo it back, then receive a roundtrip timestamp:
 
+    if nargin < 2
+        error('You must provide the device "handle" for the box to query!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+    
+    % Flush the queue:
+    FlushEvents(handle);
+    
+    roundtrip = zeros(2,100);
+    for i=1:100
+        % Wait a bit:
+        WaitSecs(0.100);
+
+        % Send 'e4' code to initiate procedure:
+        WriteDev(handle, 'e4');
+
+        % Wait for receive completion:
+        while BytesAvailable(handle) < 1
+        end;
+
+        % Send echo, optimistically assuming we received a 'X':
+        WriteDev(handle, 'X');
+
+        % Get the really received byte and check:
+        if char(ReadDev(handle, 1))~='X'
+            error('Roundtrip test did not receive "X" char as expected!');
+        end
+
+        % Wait for receipt of timestamp:
+        response = ReadDev(handle, 4);
+
+        if response(1)~='P' || response(2)~='T'
+            error('Roundtrip test did not receive "PT" marker as expected!');
+        end
+
+        response = double(response);
+        roundtrip(1,i) = 0.001 * (response(3) + 256 * response(4));
+    end
+    
+    varargout{1} = roundtrip;
+    return;
+end
 
 if strcmpi(cmd, 'ResetRTTimer')
     % RT timer reset request:
@@ -315,45 +409,68 @@ if strcmpi(cmd, 'GetBaseTimer')
     % Retrieve handle and check if valid:
     handle = checkHandle(varargin{1});
 
+    if nargin >=3
+        nQueries = varargin{2};
+    else
+        nQueries = 1;
+    end
+    
+    % Preallocate output cell array:
+    evts = cell(nQueries, 1);
+    
     % Flush input buffer:
     FlushEvents(handle);
 
-    % Send query code:
-    evt.roundtriptime = GetSecs;
-    WriteDev(handle, 'e3');
+    for i=1:nQueries
+        % Send query code:
+        evt.roundtriptime = GetSecs;
+        WriteDev(handle, 'e3');
 
-    % Read 6 bytes from box:
-    response = ReadDev(handle, 6);
+        % Spin-Wait for first byte:
+        while BytesAvailable(handle) < 1; end;
 
-    % Timestamp receive completion:
-    evt.ptbtime = GetSecs;
-    
-    % Store roundtrip-time of query:
-    evt.roundtriptime = evt.ptbtime - evt.roundtriptime;
-    
-    if length(response)~=6
-        % Did not receive 6 bytes - This should not happen!
-        error('In GetBaseTimer: Received too short (or no) response packet from box!');
+        % Timestamp receive completion of first byte. This is closest to the
+        % real time when the transmitted timer values was actually generated on
+        % the device:
+        evt.ptbtime = GetSecs;
+
+        % Read all 6 bytes from box:
+        response = ReadDev(handle, 6);
+
+        % Store roundtrip-time of query:
+        evt.roundtriptime = evt.ptbtime - evt.roundtriptime;
+
+        if length(response)~=6
+            % Did not receive 6 bytes - This should not happen!
+            error('In GetBaseTimer: Received too short (or no) response packet from box!');
+        end
+
+        % Check byte 1 for correct value 'e':
+        if char(response(1))~='e' || char(response(2))~='3'
+            % Failed!
+            error('In GetBaseTimer: Received invalid response packet [Not starting with "e3"] from box!');
+        end
+
+        % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
+        % base timer was last reset.
+        %
+        % For more information about the use of XID timers refer to
+        % http://www.cedrus.com/xid/timing.htm
+        % Conver to seconds:
+        response = double(response);
+        evt.basetimer = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
+        
+        % Assign i'th measurement event:
+        evts{i} = evt;
     end
-
-    % Check byte 1 for correct value 'e':
-    if char(response(1))~='e' || char(response(2))~='3'
-        % Failed!
-        error('In GetBaseTimer: Received invalid response packet [Not starting with "e3"] from box!');
+    
+    % Assign evts as output argument:
+    if nQueries > 1
+        varargout{1} = evts;
+    else
+        varargout{1} = evt;
     end
-
-    % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
-    % base timer was last reset.
-    %
-    % For more information about the use of XID timers refer to
-    % http://www.cedrus.com/xid/timing.htm
-    % Conver to seconds:
-    response = double(response);
-    evt.basetimer = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
-
-    % Assign evt as output argument:
-    varargout{1} = evt;
-
+    
     return;
 end
 
@@ -544,6 +661,23 @@ if strcmpi(cmd, 'Close')
     return;
 end
 
+if strcmpi(cmd, 'CloseAll')
+    % Close all open devices:
+
+    if exist('ptb_cedrus_devices', 'var') 
+        for handle = 1:length(ptb_cedrus_devices)
+            if ~isempty(ptb_cedrus_devices{handle})
+                CloseDev(handle);
+            end
+        end
+        
+        % All handles closed: Release the device array itself:
+        clear ptb_cedrus_devices;
+    end
+    
+    return;
+end
+
 error('Invalid subcommand given. Read the help.');
 % ---- End of main routine ----
 
@@ -563,6 +697,7 @@ global ptb_cedrus_devices;
 
 for i=1:100
     t1=GetSecs;
+
     WriteDev(handle, 'e5');
     t2=GetSecs;
     if t2 - t1 < 0.002
@@ -578,6 +713,7 @@ end
 % acquisition of t1 and t2 -- Don't know if this is the case, but the
 % best assumption we can make.
 ptb_cedrus_devices{handle}.basetime = (t1+t2)/2;
+ptb_cedrus_devices{handle}.rttresetdelay = t2 - t1;
 
 return;
 
@@ -596,14 +732,10 @@ while BytesAvailable(handle)>0
     response=ReadDev(handle, 1);
     % See if this is "k", indicating that a key press is following
     if char(response)=='k'
-        if BytesAvailable(handle)>=5
-            % then read 5 more bytes
-            last5=ReadDev(handle, 5);
-            response(1:6) = [response(1) last5];
-            [evt,CedrusStatus] = ExtractKeyPressData(handle,response);
-        else
-            fprintf('Some error in CedrusResponseBox FlushEvents -- an reported key press event did not have the expected 6 bytes')
-        end
+        % Seems to be an event packet: Read remaining 5 more bytes
+        last5=ReadDev(handle, 5);
+        response(1:6) = [response(1) last5];
+        [evt,CedrusStatus] = ExtractKeyPressData(handle,response);
     end
 end
 return;
@@ -669,7 +801,7 @@ end
 % Check byte 1 for correct value 'k':
 if char(response(1))~='k'
     % Failed!
-    error('In GetButtons: Received invalid response packet [Not starting with a k] from box!');
+    error('Received invalid event packet [Not starting with a k] from box!');
 end
 
 % Extracts byte 2 to determine which button was pushed:
@@ -704,10 +836,10 @@ evt.buttonID = findbuttonlabel(evt.button);
 % For more information about the use of XID timers refer to
 % http://www.cedrus.com/xid/timing.htm
 response = double(response);
-evt.rawtime = (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
+evt.rawtime = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
 
 % Map rawtime to ptbtime:
-evt.ptbtime = ptb_cedrus_devices{handle}.basetime + evt.rawtime * 0.001;
+evt.ptbtime = ptb_cedrus_devices{handle}.basetime + evt.rawtime;
 
 % Try and keep track of which buttons are currently down and up, based on
 % what bytes have been read in. For now we only do it for buttons assigned
@@ -738,6 +870,7 @@ function retHandle = checkHandle(handle)
 return;
 
 function dev = OpenDev(port)
+    
     if ~IsOctave
         % Matlab: Let's see:
         if ~IsOSX
@@ -842,6 +975,12 @@ function nrAvail = BytesAvailable(handle)
             nrAvail = length(ptb_cedrus_devices{handle}.recvQueue);
         end
     end
+    
+    if nrAvail > 0
+        % Store timestamp when queue was not empty:
+        ptb_cedrus_devices{handle}.lastTimeQueueNonEmpty = GetSecs;
+    end
+    
 return;
 
 function data = ReadDev(handle, nwanted)
@@ -859,12 +998,19 @@ function data = ReadDev(handle, nwanted)
             
             % Call BytesAvailable to trigger read-in of data from serial
             % port to our internal queue and to update the available stats,
-            % until at least the 'nwanted' bytes are available: 
-            while BytesAvailable(handle) < nwanted
+            % until at least the 'nwanted' bytes are available, or until
+            % the read operation times out after 2 seconds:
+            currtime = GetSecs;
+            timeout = currtime + 2;
+            while (BytesAvailable(handle) < nwanted) && (currtime < timeout)
                 % We are on OS/X, so waiting for 1 msec should suffice, no
                 % need to wait 4 msecs as on that other deficient OS:
-                WaitSecs(0.001);
+                currtime = WaitSecs(0.001);
             end;
+            
+            if currtime >= timeout
+                error('Read operation on response box timed out after 2 secs!');
+            end
             
             % Have at least the nwanted bytes, so fetch the first nwanted
             % bytes from queue:

@@ -66,14 +66,14 @@ persistent okNames mexExtensions okSupNames okSupNameMatches;
 if IsOctave
     myName = char(varargin{1});
     if isempty(findstr(myName, '.m'))
-       return;
+        return;
     end
 
     octFilename = [ myName(1:end-1) 'oct'];
     fprintf('\nIn place of the expected Octave .oct binary plugin file this placeholder file was executed:\n\n');
     fprintf(['  ' myName '\n\n']);
     fprintf('This OCT file seems to be missing or inaccessible on your Octave path or it is dysfunctional:\n\n')
-    fprintf(['  ' octFilename '\n\n']);    
+    fprintf(['  ' octFilename '\n\n']);
 
     if ~exist(octFilename, 'file')
         fprintf('Hmm. I cannot find the file on your Octave path?!?\n\n');
@@ -81,24 +81,24 @@ if IsOctave
         fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
         fprintf('fix possible path problems.\n');
         fprintf('Make sure that the path is readable by you as well...\n');
-	if IsLinux
-	  fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveLinuxFiles/']);
-	else
-	  fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveOSXFiles/']);
+        if IsLinux
+            fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveLinuxFiles/']);
+        else
+            fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveOSXFiles/']);
         end
     else
         % Check for supported Octave version:
         curversion = sscanf(version, '%i.%i.%i');
         if curversion(1)~=2 | curversion(2)~=1 | curversion(3)<73
-             fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 2.1.73 or later,\n', version);
-             fprintf('i.e., a version with 2.1.x x>=73 in its name, but *not* Octave 2.9 or later!!\n');
-             error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
+            fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 2.1.73 or later,\n', version);
+            fprintf('i.e., a version with 2.1.x x>=73 in its name, but *not* Octave 2.9 or later!!\n');
+            error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
         end
 
         fprintf('A reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
         fprintf('Our default installation also only supports 32 bit versions of operating system and Octave.\n');
         fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
-    end    
+    end
     error('Missing, inaccessible or dysfunctional Psychtoolbox Oct file for this system. Read the help text above carefully!!\n');
 end;
 
@@ -110,28 +110,33 @@ if isempty(okNames)
     okSupNameMatches = {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
 end
 
+% This code-chunk disabled: Doesn't make sense anymore for current PTB-3:
+% Code left for documentation...
+
 % Replace any non-standard platform names in the argument list with their
 % official equivalents.  Our non-standard names
 % match our shorthand platform tests: IsOS9, IsWin, and IsOSX.
 
-inputNames = upper(varargin);
+% inputNames = upper(varargin);
+% 
+% for i = 1:length(okSupNames)
+%     foundices=find(streq(okSupNames{i},upper(inputNames)));
+%     if foundices
+%         inputNames{foundices}=okSupNameMatches{i};
+%     end
+% end
+% 
+% % Check for invalid arguments.
+% badNames = setdiff(inputNames, okNames); 
+% if ~(isempty(badNames) | streq(badNames,'')) % badNames was often {''} which is not empty for isempty()
+%     nameList=[];
+%     for i = 1:length(badNames)
+%         nameList = [nameList ' ' badNames{i}];
+%     end
+%     error(['Invalid OS names: ' nameList '\n']);
+% end
 
-for i = 1:length(okSupNames)
-    foundices=find(streq(okSupNames{i},upper(inputNames)));
-    if foundices
-        inputNames{foundices}=okSupNameMatches{i};
-    end
-end
-
-% Check for invalid arguments.
-badNames = setdiff(inputNames, okNames); 
-if ~(isempty(badNames) | streq(badNames,'')) % badNames was often {''} which is not empty for isempty()
-    nameList=[];
-    for i = 1:length(badNames)
-        nameList = [nameList ' ' badNames{i}];
-    end
-    error(['Invalid OS names: ' nameList '\n']);
-end
+inputNames = [];
 
 % Check to see if there should be a mex file for our platform.
 if isempty(inputNames) | ismember(computer, inputNames)

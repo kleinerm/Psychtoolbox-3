@@ -42,6 +42,11 @@ function ImagingStereoDemo(stereoMode)
 % 8 == Red-Blue
 % 9 == Blue-Red
 %
+% 10 == Like mode 4, but for use on Mac OS/X with dualhead display setups.
+%
+% 100 == Interleaved line stereo: Left eye image is displayed in even
+% scanlines, right eye image is displayed in odd scanlines.
+%
 % If you have a different set of filter glasses, e.g., red-magenta, you can
 % simply select one of above modes, then use the
 % SetStereoAnglyphParameters() command to change color gain settings,
@@ -122,6 +127,11 @@ escape = KbName('ESCAPE');
     % 512x512 pixel area of the screen:
     PsychImaging('AddTask', 'AllViews', 'RestrictProcessing', CenterRect([0 0 512 512], Screen('Rect', scrnNum)));
 
+    % stereoMode 100 triggers interleaved display:
+    if stereoMode == 100
+        PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
+    end
+    
     % Consolidate the list of requirements (error checking etc.), open a
     % suitable onscreen window and configure the imaging pipeline for that
     % window according to our specs. The syntax is the same as for
@@ -154,8 +164,13 @@ escape = KbName('ESCAPE');
 
     xmax = RectWidth(windowRect)/2;
     ymax = RectHeight(windowRect)/2;
-    xmax = min(xmax, ymax) / 2;
-    ymax = xmax;
+    if stereoMode == 100
+        xmax = xmax/4;
+       ymax = ymax/2;
+    else
+        xmax = min(xmax, ymax) / 2;
+        ymax = xmax;
+    end
     
     f = 4*pi/xmax;
     amp = 16;

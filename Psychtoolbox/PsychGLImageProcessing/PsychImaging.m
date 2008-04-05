@@ -718,7 +718,7 @@ if userstereomode > 0
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 end
 
-% Stereomode 4 for interleaved line stereo needed?
+% Stereomode 6 for interleaved line stereo needed?
 if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     % Yes: Must use stereomode 6.
     stereoMode = 6;
