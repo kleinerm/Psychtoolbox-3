@@ -30,9 +30,9 @@ end
 % Get current gfx-card lut, so we can restore it later:
 oldgfxlut = Screen('ReadNormalizedGammatable', whichScreen);
 
-% Load randomized table, just to make sure we start with an unsuitable
-% clut:
-Screen('LoadNormalizedGammatable', whichScreen, rand(256,3));
+% Load nonlinear table, just to make sure we start with an unsuitable clut:
+junkLut = repmat(([1:256]'/256).^0.7, 1, 3);
+Screen('LoadNormalizedGammatable', whichScreen, junkLut);
 
 % Hold it for 3 seconds:
 WaitSecs(3);

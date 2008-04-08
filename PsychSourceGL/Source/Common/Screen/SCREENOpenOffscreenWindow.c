@@ -231,7 +231,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 		
 		// ...and then switch to the OpenGL context of the 'targetWindow' proxy object:
 		PsychSetGLContext(targetWindow);
-		
+
 		// Ok, framebuffer and bindings are safe and disabled, context is set. We
 		// should be safe to continue with the proxy...
 	}

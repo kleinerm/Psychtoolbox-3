@@ -213,45 +213,29 @@ void PsychStoreAlphaBlendingFactorsForWindow(PsychWindowRecordType *winRec, GLen
 
 /*
 	PsychUpdateAlphaBlendingFactorLazily()
+	
+	Sets both, the OpenGL blending function and mode, and the OpenGL colorbuffer writemask for given
+	onscreen- or offscreen window 'winRec', based on cached settings made via Screen('Blendfunction').
+	
+	Although the function is called xxxLazily() it doesn't do this lazily, but always. Deferred updates
+	were the cause of many subtile nasty bugs in the past, so better safe than sorry.
 */
 void PsychUpdateAlphaBlendingFactorLazily(PsychWindowRecordType *winRec)
 {
-	// Defer invokation of glBlendFunc() in either of two circumstances:
-	// 1.  To prevent unnecessary context switching, When calling Screen('BlendFunction') we do not invoke glBlendFunc(). Rather,   
-	//      'BlendFunction' stores the intended blending mode in the window record.  Any Screen subfunction which draws into the
-	//		window should invokes PsychUpdateAlphaBlendingFactorLazily() to lookup the stored mode in the window record and set that.
-	// 2.  Before calling glBlendFunc(), PsychUpdateAlphaBlendingFactorLazily()  compares the current blend settings to those in the window
-	//     record.  If they match, then we skip the unnecessary call to glBlendFunc().
-	
-	// glDisable(GL_BLEND) is the same thing as the combination of glEnable(GL_BLEND) and glBlendFunc(GL_ONE, GL_ZERO).  
-	// Therefore, when the user selects GL_ONE, GL_ZERO  we have an arbitrary choice to make between those alternatives.
-	// GL contexts are born with blending disabled.  We choose the alternative which results in the fewest GL calls:
-	// GL_BLEND disabled until the first change from GL_ONE, GL_ZERO, and thereafter leave GL_BLEND enabled.   
-	
-	Boolean		changeSetting, setEnable;
-	
-//	changeSetting= winRec->actualSourceAlphaBlendingFactor != winRec->nextSourceAlphaBlendingFactor || winRec->actualDestinationAlphaBlendingFactor != winRec->nextDestinationAlphaBlendingFactor;
-//	setEnable= (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO) && !winRec->actualEnableBlending;
-	changeSetting= TRUE;
-	setEnable= (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO);
-	if(setEnable){
+	// Enable alpha-blending whenever some blendfunction other than GL_ONE, GL_ZERO is selected, disable otherwise:
+	if (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO) {
 		winRec->actualEnableBlending=TRUE;
 		glEnable(GL_BLEND);
-	}
-	else {
-		winRec->actualEnableBlending=FALSE;
-		glDisable(GL_BLEND);
-	}
-	
-	if(setEnable && changeSetting){
 		winRec->actualSourceAlphaBlendingFactor=winRec->nextSourceAlphaBlendingFactor;
 		winRec->actualDestinationAlphaBlendingFactor = winRec->nextDestinationAlphaBlendingFactor;
 		glBlendFunc(winRec->actualSourceAlphaBlendingFactor, winRec->actualDestinationAlphaBlendingFactor);
 	}
 	else {
+		winRec->actualEnableBlending=FALSE;
+		glDisable(GL_BLEND);
 		glBlendFunc(GL_ONE, GL_ZERO);
 	}
+	
+	// Set GL color writemask:
+	glColorMask(winRec->colorMask[0], winRec->colorMask[1], winRec->colorMask[2], winRec->colorMask[3]);
 }
-
-
-

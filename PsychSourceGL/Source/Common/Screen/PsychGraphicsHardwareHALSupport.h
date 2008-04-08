@@ -56,6 +56,12 @@ boolean		PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, 
 // each glClear() command! Is a no-op if fixup not needed, so cheap to call.
 void		PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowRecordType* windowRecord);
 
+// Store current frontbuffer addresses (inside GPU) to windowRecord: Called from PsychFlipWindowBuffers():
+void		PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord);
+
+// Wait until a bufferswap is complete or bufferswap at next retrace is certain:
+bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
+
 // End of routines.
 
 #endif // include once.

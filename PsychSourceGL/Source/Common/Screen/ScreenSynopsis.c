@@ -104,7 +104,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
 	synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
 	synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
-	synopsis[i++] = "[sourceFactorOld, destinationFactorOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew]);";
+	synopsis[i++] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
 
 	// Draw Text in windows
 	synopsis[i++] = "\n% Draw Text in windows";
@@ -136,7 +136,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('AsyncFlipBegin', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
 	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipEnd', windowPtr);";
 	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipCheckEnd', windowPtr);";
-
+	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilFlipCertain', windowPtr);";
 	synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";
 	synopsis[i++] = "framesSinceLastWait = Screen('WaitBlanking', windowPtr [, waitFrames]);";
 

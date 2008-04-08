@@ -391,7 +391,8 @@ if ismember(3, testblocks)
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
         
-    % DrawTexture test:
+    % DrawTexture test: Need only 1 texture draw to test all values
+    % simultaneously:
     foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
     teximg = refpatch;
     if Textures <=0
@@ -401,7 +402,7 @@ if ismember(3, testblocks)
     end
     
     tex = Screen('MakeTexture', win, teximg, [], [], Textures);
-    Screen('DrawTexture', win, tex, [], fbrect, [], 1);
+    Screen('DrawTexture', win, tex, [], fbrect, [], Filters);
     Screen('Close', tex);
     testname = 'DrawTexture';
 
@@ -410,13 +411,98 @@ if ismember(3, testblocks)
 
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
-
-    KbStrokeWait
-    
     
     Screen('CloseAll');
+
 end % Test 3.
 
+if ismember(4, testblocks)
+    % Test 4: Precision of texture drawing commands.
+    PsychImaging('PrepareConfiguration')
+    PsychImaging('AddTask', 'General', fbdef);
+
+    % Open window with black background color:
+    [win rect] = PsychImaging('OpenWindow', screenid, 0, [0 0 514 514], [], [], [], []);
+
+    % Set color clamping (and precision) for standard 2D draw commands. In
+    % our case here, this affects the precision and clamping of the
+    % 'modulateColor' and 'globalAlpha' parameters of 'DrawTexture'
+    % commands:
+    Screen('ColorRange', win, 1, ColorClamping);
+
+    Screen('Flip', win);
+
+    % Convert testcolors to matrix of RGBA quadruples -- Most batch drawing
+    % commands only accept RGB or RGBA, not pure Luminance:
+    rgbacolors = [ repmat(testcolors, 3, 1) ; ones(1, length(testcolors)) ];
+
+    % Compute corresponding 'xy' matrix of output positions:
+    [outx , outy] = meshgrid(0:2^floor(maxdepth/2)-1, 0:2^floor(maxdepth/2)-1);
+    
+    % Build 2-row matrix of (x,y) pixel positions:
+    xy = [outx(:)' ; outy(:)'];
+        
+    % Compute color patch:
+    colpatch = reshape(rgbacolors(1,:), length(outy), length(outx));
+    colpatch = [colpatch , -colpatch];
+    
+    
+    % Readout region of framebuffer:
+    fbrect = [0, 0, max(xy(1,:))+1, max(xy(2,:))+1];
+
+    % DrawTexture test: Need only 1 texture draw to test all values inside
+    % the texture simultaneously:
+    foxy = [xy ; xy + repmat([2;2], 1, size(xy, 2))];
+    teximg = colpatch;
+    if Textures <=0
+        % Integer texture instead of float texture: Now expected range of
+        % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
+        teximg = uint8(colpatch * 255);
+    end
+    
+    tex = Screen('MakeTexture', win, teximg, [], [], Textures);
+    fbrect = Screen('Rect', tex)
+
+    % Now we test modulation of drawn texture pixels with the
+    % 'modulateColor' argument:
+    
+    i=0;
+    mingoodbits = inf;
+    % Step through range 1 down to zero, in 1/1000th decrements:
+    for mc = 1.0:-0.001:-1.0
+        i=i+1;
+
+        if mod(i, 100)==0
+            beep; drawnow;
+            [blah bloh buttons] = GetMouse(win);
+            if any(buttons)
+                break;
+            end
+        end
+
+        % DrawTexture, modulateColor == [mc mc mc 1] modulated:
+        Screen('DrawTexture', win, tex, [], fbrect, [], Filters, [], mc);
+        
+        % While the GPU does its thing, we compute the Matlab reference
+        % patch:
+        refpatch = colpatch * mc;
+        
+        testname = 'DrawTexture-modulateColor';
+
+        % Evaluate and log:
+        [dummy, minv, maxv(i), goodbits] = comparePatches([], testname, maxdepth, refpatch, fbrect);
+        mingoodbits = min([mingoodbits, goodbits]);
+        
+        % Visualize and clear buffer back to zero aka black:
+        Screen('Flip', win, 0, 0, 2);        
+    end
+    
+    resstring = [resstring sprintf('%s : Maxdiff.: %1.17f --> Accurate to at least %i bits.\n', testname, max(maxv), mingoodbits)];
+    
+    Screen('Close', tex);
+        
+    Screen('CloseAll');
+end % Test 4.
 
 
 

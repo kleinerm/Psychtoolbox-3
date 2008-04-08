@@ -277,10 +277,10 @@ fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',flavor,targetdirectory);
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
-if any(isspace(targetdirectory))
-    fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
-    error('Cannot be any spaces in "targetdirectory" name.');
-end
+% if any(isspace(targetdirectory))
+%     fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
+%     error('Cannot be any spaces in "targetdirectory" name.');
+% end
 
 % Check for alternative install location of Subversion:
 if isWin
@@ -495,21 +495,25 @@ end
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Target folder for installation: %s\n',targetdirectory);
 p=fullfile(targetdirectory,'Psychtoolbox');
-if any(isspace(p)) % Double check, to be sure.
-    error('No spaces are allowed in the destination folder name.');
-end
+
+% Create quoted version of 'p'ath, so blanks in path are handled properly:
+pt = strcat('"',p,'"');
+
+% if any(isspace(p)) % Double check, to be sure.
+%     error('No spaces are allowed in the destination folder name.');
+% end
 
 % Choose initial download method. Defaults to zero, ie. svn-serve protocol:
 if downloadmethod <= 1
-    checkoutcommand=[svnpath 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' p];
+    checkoutcommand=[svnpath 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' pt];
 else
     if downloadmethod == 2
         % Good to get through many firewalls and proxies:
-        checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+        checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     else
         % If firewalls and proxies block everything, one can try this *and*
         % reconfigure its proxy to allow it:
-        checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+        checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     end
 end
 
@@ -528,7 +532,7 @@ if err
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+    checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
@@ -544,7 +548,7 @@ if err
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' p];
+    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux

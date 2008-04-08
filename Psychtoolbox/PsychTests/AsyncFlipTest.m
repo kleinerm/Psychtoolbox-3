@@ -30,15 +30,20 @@ while ~KbCheck
     Screen('FillRect', w(1), [255*cm 0   0]);
  %   Screen('FillRect', w(2), [0   255*cm 0]);
     
-    tbase=GetSecs;
-    Screen('AsyncFlipBegin', w(1));%, tv1 + i1);
+    tbase=GetSecs
+    Screen('AsyncFlipBegin', w(1), tv1); % + i1);
  %   Screen('AsyncFlipBegin', w(2), tv2 + i2);
     
  %   fprintf('Initiated flip for w1.... waiting\n');
-    
+
+    [tref1 vref1 cref1] = Screen('WaitUntilFlipCertain', w(1))
+ 
     tv1 = Screen('AsyncFlipEnd', w(1));
  %   tv2 = Screen('AsyncFlipEnd', w(2));
         
+    tref1
+    tv1
+    delta = tv1 - tref1
     cm = 1-cm;
 end
 

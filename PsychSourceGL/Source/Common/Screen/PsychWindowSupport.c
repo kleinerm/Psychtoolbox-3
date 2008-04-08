@@ -1675,8 +1675,7 @@ bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		PsychSetDrawingTarget(NULL);
 		PsychOSUnsetGLContext(windowRecord);
 		
-		// Increment the counter asyncFlipOpsActive : On non-zero count, none of the threads is allowed
-		// to attach to contexts of non-onscreen windows and ressources anymore:
+		// Increment the counter asyncFlipOpsActive:
 		asyncFlipOpsActive++;
 
 		// printf("IN ASYNCSTART: MUTEXUNLOCK\n"); fflush(NULL);
@@ -1952,6 +1951,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// while still on the main thread, so this call here turns into a no-op:
     PsychPreFlipOperations(windowRecord, dont_clear);
     
+	// Reset color write mask to "all enabled"
+	glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+
 	// Special imaging mode active? in that case a FBO may be bound instead of the system framebuffer.
 	if (windowRecord->imagingMode > 0) {
 		// Reset our drawing engine: This will unbind any FBO's (i.e. reset to system framebuffer)
@@ -3469,8 +3471,10 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 	}
 	
 	// Make sure currentRendertargets context is active if currentRendertarget is non-NULL:
-	if (currentRendertarget) PsychSetGLContext(currentRendertarget);
-
+	if (currentRendertarget) {
+		PsychSetGLContext(currentRendertarget);
+	}
+	
 	// windowRecord or NULL provided? NULL would mean a warm-start. A value of 0x1 means
 	// to backup the current state of bound 'currentRendertarget', then reset to a NULL
 	// target, ie. no target. This is like warmstart, but binding any rendertarget later

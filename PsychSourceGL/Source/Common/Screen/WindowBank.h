@@ -266,6 +266,7 @@ typedef struct _PsychWindowRecordType_{
 	GLint					stippleFactor;
 	boolean					stippleEnabled;
         
+		bool									colorMask[4];			// Boolean 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
 		unsigned int							specialflags;			// Container for all kind of special flags...
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.
@@ -335,6 +336,8 @@ typedef struct _PsychWindowRecordType_{
 																	// MS-Windows, non-NULL on Linux/OSX as soon as async flips are used at least once.
 																	// See SCREENFlip.c and flipping routines in PsychWindowSupport.c for more details...
 
+	unsigned int			gpu_preflip_Surfaces[2];				// Framebuffer addresses of the primary-/secondary surfaces on GPU before flip.
+	
 	// Used only when this structure holds a window:
 	// CAUTION FIXME TODO: Due to some pretty ugly circular include dependencies in the #include chain of
 	// PTB, this field can not be used in files that #define PSYCH_DONT_INCLUDE_TEXTATTRIBUTES_IN_WINDOWRECORD,

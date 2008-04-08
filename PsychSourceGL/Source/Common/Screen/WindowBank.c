@@ -261,7 +261,13 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->stipplePattern=0xAAAA;		//alternating pixels stipple pattern
 	(*winRec)->stippleFactor=1;
 	(*winRec)->stippleEnabled=FALSE;
-
+	
+	// Set GL color buffer writemask glColorMask to "all enabled":
+	(*winRec)->colorMask[0] = TRUE;
+	(*winRec)->colorMask[1] = TRUE;
+	(*winRec)->colorMask[2] = TRUE;
+	(*winRec)->colorMask[3] = TRUE;
+	
 	// Initialize stereo settings:
 	(*winRec)->stereomode=0;
 	(*winRec)->stereodrawbuffer=2;                  // No stero drawbuffer selected at window open time.
@@ -300,6 +306,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->unclampedDrawShader = 0;
 	(*winRec)->defaultDrawShader = 0;
 
+	// Set surface addresses to zero:
+	(*winRec)->gpu_preflip_Surfaces[0] = 0;
+	(*winRec)->gpu_preflip_Surfaces[1] = 0;
+	
 	return;
 }
 

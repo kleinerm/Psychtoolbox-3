@@ -1,5 +1,5 @@
 function varargout = CedrusResponseBox(cmd, varargin)
-% CedrusResponseBox - Interface for Cedrus Response Boxes.
+% CedrusResponseBox - Interface to Cedrus Response Boxes.
 %
 % This function provides an interface to response button boxes from Cedrus,
 % specifically model RB 530,...,830 and compatible models supporting the
@@ -24,21 +24,48 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % must be enabled, and we only support 32 bit MS-Windows and GNU/Linux,
 % not 64 bit operating systems.
 %
+% Functionality is currently limited mostly to button queries (and RJ-45
+% connector state queries), including timestamps, as well as control of
+% built-in timers of the box. We don't support configuration of TTL ports
+% yet, neither other settings like e.g., button debounce time. Adding such
+% calls is straightforward and simple. If you need such functions, either
+% add them yourself and contribute your extensions to PTB, or ask us for
+% implementing the missing calls.
+%
 %
 % Subfunctions and their meaning:
 %
 % Functions for device init and shutdown: Call once at beginning/end of
 % your script. These are slow!
 %
-% handle = CedrusResponseBox('Open', port);
+% handle = CedrusResponseBox('Open', port [,doCalibrate=1]);
 % - Open a compatible response box which is connected to the given named
-% serial 'port'. 'port'names differ accross operating systems. After the
+% serial 'port'. 'port'names differ accross operating systems. A typical
+% port name for Windows would be 'COM2', whereas a typical port name on OS/X
+% would be a simple number, starting with 1 for the first serial port in the
+% system (The FindSerialPort() function might be useful for OS/X users for
+% finding their ports, or for mapping port names to numbers). After the
 % connection is established and some testing and initialization is done,
 % returns a device 'handle', a unique identifier to use for all other
-% subfunctions. A typical port name for Windows would be 'COM2', whereas a
-% typical port name on OS/X would be a simple number, starting with 1 for
-% the first serial port in the system (The FindSerialPort() function might
-% be useful for OS/X users for finding their ports).
+% subfunctions.
+%
+% If you don't specify the optional 'doCalibrate' flag, or
+% leave it at its default setting of 1, a couple of lengthy (multiple
+% seconds) timing calibrations and tests are performed. These allow to
+% assess the delays in communication between box and Matlab. They will also
+% allow to return all times of events (as detected by the box) in PTB's
+% standard GetSecs() time reference system -- Timestamps of button press
+% events and TTL input events can be directly compared with timestamps
+% delivered by other PTB functions like GetSecs, KbCheck, KbWait,
+% Screen('Flip') etc.
+%
+% If you set the 'doCalibrate' flag to zero, all timing calibrations will
+% be skipped: Startup time is drastically reduced. However there isn't any
+% simple and straightforward way of comparing timestamps or timer readings
+% delivered by the box with other timestamps of PTB functions. This only
+% makes sense if you use some external triggering mechanism to reset the
+% built-in reaction time timer via some external TTL input trigger signals
+% and want to use raw timer measurements.
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -55,17 +82,34 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % - Return queried information about the device in a struct 'dev'. 'dev'
 % contains (amongst other) the following fields:
 %
-% dev.Name = Device name string.
-% dev.VersionMajor and dev.VersionMinor = Major and minor firmware
-% revision.
-% dev.productId = Type of device.
-% dev.modelId = Submodel of the device.
+% General information:
+%  dev.Name = Device name string.
+%  dev.VersionMajor and dev.VersionMinor = Major and Minor firmware revision.
+%  dev.productId = Type of device, e.g., 'Lumina', 'VoiceKey' or 'RB response pad'.
+%  dev.modelId   = Submodel of the device if the device is a RB response pad,
+%                  e.g., 'RB-530', 'RB-730', 'RB-830' or 'RB-834'.
+%
+%  dev.port      = Portname of serial port, as passed to the open function.
+%
+% Diagnostic information for timing:
+%  dev.roundtriptime   = Median of estimated roundtrip latency for
+%                        communication with the box - in seconds.
+%
+%  dev.roundtripstddev = Standard deviation from mean of roundtrip latency
+%  measurements in seconds. Large numbers mean that your operating system
+%  has bad scheduling and that reported event timestamps may be uncertain by
+%  that amount.
+%
+%  dev.rttresetdelay   = Duration (in seconds) of a reaction time timer reset sequence
+%  Values of more than 3 msecs indicate some problems with the box itself or
+%  the communication link -- Measured event times or reaction times may not
+%  be trustworthy!
 %
 %
 % Functions for use within script. These are as fast as possible:
 %
 % [status = ] CedrusResponseBox('FlushEvents', handle);
-% - Empty/clear/flush the queue of pending events. Use this, to get rid of
+% - Empty/clear/flush the queue of pending events. Use this to get rid of
 % any stale button press or release events before start of response
 % collection in a trial. E.g., Assume you wait for a subjects keypress and
 % finally receive that keypress via 'GetButtons' or 'WaitButtons'. You
@@ -73,19 +117,28 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % the button again, that will generate another event - a release event, in
 % which you're not interested. Maybe the subject will accidentally hit the
 % button as well. --> Good to clean the queue before a new trial.
+%
 % This function has a second use as well. It has an optional output
-% argument, status, which will return the current status of all buttons
+% argument, 'status', which will return the current status of all buttons
 % (i.e. whether they are currently being pressed or not).
-% status is a 6-entry array, corresponding to the 5 buttons on the box
-% as follows:[top ??? left middle right bottom] -- the 2nd entry has no
-% meaning that I can see.
+% Status is a 3 row by 8 column matrix: Row 1 describes the status of the
+% up to eight pushbuttons of the box. Row 2 describes the status of the TTL
+% lines of the RJ-45 accessory connector. Row 3 describes the status of the
+% VoiceKey if any. Columns 1 to 8 of each row correspond to buttons 1-8,
+% TTL lines 1-8 or inputs 1-8 of the VoiceKey.
+%
+% The mapping for the CB-530 for row 1 of 'status' status(1,:) is as follows:
+%
+% [top ??? left middle right bottom] -- the 2nd entry has no associated
+% button, but it may be the scanner trigger input. The mapping on other boxes
+% may be different.
 %
 % This is useful if you just want to know whether the subject is currently
 % pressing any buttons before you proceed, but are not fussed about timing.
 %
 % E.g. I often find myself doing the following:
 %   buttons = 1;
-%   while any(buttons)
+%   while any(buttons(1,:))
 %     buttons = CedrusResponseBox('FlushEvents', mybox);
 %   end
 %
@@ -99,7 +152,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % the triggering event, as measured by the boxes reaction time timer.
 %
 % This function checks if such an event is available and returns its
-% describing 'evt' struct, if so. If no event is pending, it returns an
+% description in a 'evt' struct, if so. If no event is pending, it returns an
 % empty 'evt', ie. isempty(evt) is true.
 %
 % 'evt' for a real fetched event is a struct with the following fields:
@@ -107,21 +160,39 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % evt.raw     = "raw" byte that describes the event. Only for debugging.
 %
 % evt.port    = Number of the device port on which the event occured. Push
-%               buttons and scanner triggers are on port 0, the RJ-45
+%               buttons and scanner triggers are on port 0, the RJ-45 TTL
 %               connector is on port 1, port 2 is the voice-key (if any).
 %
-% evt.action  = Action that triggered the event: 1 = Button press, 0 = Button release.
+% evt.action  = Action that triggered the event:
+%               1 = Button press, 0 = Button release for pushbuttons.
+%               1 = TTL line high, 0 = TTL line low for RJ-45 I/O lines.
+%               1 = Voice onse, 0 = Voice offset/silence for Voicekey.
 %
-% evt.button  = Number of the button that was pressed or released (1 to 8).
+% evt.button  = Number of the button that was pressed or released (1 to 8)
+%               or the TTL line that was going high/low. Numbers vary by
+%               response box.
+%
+% evt.buttonID= Descriptive name string for pressed button, e.g., 'top' or
+%               'left'. Please note that this mapping is only meaningful
+%               for the RB-530 response box.
 %
 % evt.rawtime = Time of the event in secs since last reset of the reaction
-%               time timer, measured in msecs resolution.
+%               time timer, measured in msecs resolution. This value is
+%               always valid, but not directly comparable to any other
+%               timestamps or time measurements within Psychtoolbox.
 %
 % evt.ptbtime = Time of the event in secs, measured in PTBs "GetSecs"
 %               timebase. This is easier to correlate with other
 %               timestamps, e.g., Screen('Flip') timestamps, but its
 %               reliability hasn't been tested yet for the current
-%               software release.
+%               software release. When opening a connection to a response
+%               box, we perform timing calibrations to establish the
+%               mapping of time values as measured by the hardware timers
+%               of your response pad to time values in PTB's reference
+%               system. If you skipped that calibrations by setting the
+%               optional 'doCalibrate' flag to zero at device open time,
+%               then the evt.ptbtime field will not be available and you
+%               have to cope with evt.rawtime values only.
 %
 %
 % evt = CedrusResponseBox('WaitButtons', handle);
@@ -131,16 +202,26 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 % evt = CedrusResponseBox('WaitButtonPress', handle);
 % - Like WaitButtons, but will wait until the subject /presses/ a key -- the
-% signal that a key has been released is not acceptable.
-%
+% signal that a key has been released is not acceptable -- Button release
+% events are simply discarded.
 %
 %
 % evt = CedrusResponseBox('GetBaseTimer', handle [, nSamples=1]);
 % - Query current time of base timer of the box. Returned values are in
 % seconds, resolution is milliseconds. evt.basetimer is the timers time,
-% evt.ptbtime is a timestamp taken via PTB's GetSecs() at time of receive
-% of the timestamp. Note that this automatically discards all pending
-% events in the queue before performing the query!
+% corrected for serial link receive latency. evt.ptbreceivetime is a
+% timestamp taken via PTB's GetSecs() at time of receive of the data.
+% evt.ptbtime is the basetimers time mapped into PTB GetSecs time if such a
+% mapping is possible, otherwise this field doesn't exist:
+% evt.ptbreceivetime and evt.ptbtime shouldn't be significantly different
+% if everything is good. Large differences indicate some timing problems
+% with the connection to the box, or a timer problem - either with your
+% computers timer or the hardware timer of the tox, or significant
+% clock-drift between the computers timer and the boxes timer. In any case,
+% reaction timer measurements and such will be problematic.
+%
+% Note that this automatically discards all pending events in the queue before
+% performing the timer query!
 %
 % The optional argument 'nSamples' allows to specify if multiple samples of
 % PTB timer vs. the response boxes timer should be measured. If 'nSamples'
@@ -151,14 +232,27 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 %
 % CedrusResponseBox('ResetRTTimer', handle);
-% - Reset reaction time timer of box to zero.
+% - Reset reaction time timer of box to zero. This should not be neccessary
+% if you use the evt.ptbtime timestamps for time measurements or reaction
+% time measurements. If you however use uncalibrated mode and the
+% evt.rawtime values directly, this function may be useful to establish a
+% zero baseline for reaction time measurements. However, as the communication
+% delay for sending the reset command can't be reliably measured, using
+% such a software triggered timer reset may not be the most reliable way of
+% resetting the timer. 
+%
+% Note that this automatically discards all pending
+% events in the queue before performing the query!
 %
 %
 % roundtrip = CedrusResponseBox('RoundTripTest', handle);
 % - Initiate 100 trials of the roundtrip test of the box. Data is echoed
 % forth and back 100 times between PTB and the box, and the latency is
 % measured (in seconds, with msecs resolution). The vector of all samples
-% is returned in 'roundtrip' for evaluation and debugging.
+% is returned in 'roundtrip' for evaluation and debugging. The measured
+% latency is also used for delay correction for the 'GetBaseTimer'
+% subfunction. However, a roundtrip test is performed automatically when
+% opening the response box connection, so this is rarely needed.
 %
 % Note that this automatically discards all pending
 % events in the queue before performing the query!
@@ -171,6 +265,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 03/21/08 Written. Based on example code donated by Cambridge Research Systems. (MK)
 % 03/28/08 Altered by Jenny Read.
 % 04/03/08 Refined and added MacOS/X support via SerialComm driver. (MK)
+% 04/06/08 Improved timing code for mapping of box timers --> GetSecs time. (MK)
 
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
@@ -219,7 +314,7 @@ if strcmpi(cmd, 'WaitButtonPress')
 
         % Need at least 6 bytes. Only wait if not available:
         if BytesAvailable(handle) < 6
-            % Poll at 3 msecs intervals as long as input buffer is totally empty,
+            % Poll at 4 msecs intervals as long as input buffer is totally empty,
             % to allow the CPU to execute other tasks.
             while BytesAvailable(handle) == 0
                 % Choose 4 msecs, as PTB would not release the cpu for wait
@@ -265,7 +360,7 @@ if strcmpi(cmd, 'WaitButtons')
 
     % Need at least 6 bytes. Only wait if not available:
     if BytesAvailable(handle) < 6
-        % Poll at 3 msecs intervals as long as input buffer is totally empty,
+        % Poll at 4 msecs intervals as long as input buffer is totally empty,
         % to allow the CPU to execute other tasks.
         while BytesAvailable(handle) == 0
             % Choose 4 msecs, as PTB would not release the cpu for wait
@@ -344,42 +439,10 @@ if strcmpi(cmd, 'RoundTripTest')
 
     % Retrieve handle and check if valid:
     handle = checkHandle(varargin{1});
-    
-    % Flush the queue:
-    FlushEvents(handle);
-    
-    roundtrip = zeros(2,100);
-    for i=1:100
-        % Wait a bit:
-        WaitSecs(0.100);
-
-        % Send 'e4' code to initiate procedure:
-        WriteDev(handle, 'e4');
-
-        % Wait for receive completion:
-        while BytesAvailable(handle) < 1
-        end;
-
-        % Send echo, optimistically assuming we received a 'X':
-        WriteDev(handle, 'X');
-
-        % Get the really received byte and check:
-        if char(ReadDev(handle, 1))~='X'
-            error('Roundtrip test did not receive "X" char as expected!');
-        end
-
-        % Wait for receipt of timestamp:
-        response = ReadDev(handle, 4);
-
-        if response(1)~='P' || response(2)~='T'
-            error('Roundtrip test did not receive "PT" marker as expected!');
-        end
-
-        response = double(response);
-        roundtrip(1,i) = 0.001 * (response(3) + 256 * response(4));
-    end
-    
-    varargout{1} = roundtrip;
+        
+    % Start roundtrip test and return results: They are also stored in the
+    % device struct of 'handle':
+    varargout{1} = RoundTripTestDev(handle);
     return;
 end
 
@@ -422,7 +485,7 @@ if strcmpi(cmd, 'GetBaseTimer')
     FlushEvents(handle);
 
     for i=1:nQueries
-        % Send query code:
+        % Send basetimer query code:
         evt.roundtriptime = GetSecs;
         WriteDev(handle, 'e3');
 
@@ -432,33 +495,26 @@ if strcmpi(cmd, 'GetBaseTimer')
         % Timestamp receive completion of first byte. This is closest to the
         % real time when the transmitted timer values was actually generated on
         % the device:
-        evt.ptbtime = GetSecs;
+        evt.ptbreceivetime = GetSecs;
 
-        % Read all 6 bytes from box:
-        response = ReadDev(handle, 6);
+        % Receive packet, then parse into raw timer value (in seconds):
+        evt.basetimer = receiveAndParseTimePacket(handle);
 
         % Store roundtrip-time of query:
-        evt.roundtriptime = evt.ptbtime - evt.roundtriptime;
+        evt.roundtriptime = evt.ptbreceivetime - evt.roundtriptime;
+        
+        % Correct reported time value of basetimer by half roundtrip delay
+        % of serial link: We assume that transmission took half the total
+        % measured roundtrip time, so we need to add that delay to the
+        % basetimer value to get an estimate of the "real" basetimer time
+        % at time of response packet receive "ptbtime":
+        evt.basetimer = evt.basetimer + ptb_cedrus_devices{handle}.roundtriptime/2;
 
-        if length(response)~=6
-            % Did not receive 6 bytes - This should not happen!
-            error('In GetBaseTimer: Received too short (or no) response packet from box!');
+        % Assign mapped PTB GetSecs time if mapping possible:
+        if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
+            % Simple linear equation mapping:
+            evt.ptbtime = ptb_cedrus_devices{handle}.baseToPtbOffset + ptb_cedrus_devices{handle}.baseToPtbSlope * basetime;
         end
-
-        % Check byte 1 for correct value 'e':
-        if char(response(1))~='e' || char(response(2))~='3'
-            % Failed!
-            error('In GetBaseTimer: Received invalid response packet [Not starting with "e3"] from box!');
-        end
-
-        % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
-        % base timer was last reset.
-        %
-        % For more information about the use of XID timers refer to
-        % http://www.cedrus.com/xid/timing.htm
-        % Conver to seconds:
-        response = double(response);
-        evt.basetimer = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
         
         % Assign i'th measurement event:
         evts{i} = evt;
@@ -506,6 +562,13 @@ if strcmpi(cmd, 'Open')
     % Create serial object for provided port, configure connection
     % properly:
     port = varargin{1};
+
+    if nargin < 3
+        % Assume user wants time calibration:
+        doCalibrate = 1;
+    else
+        doCalibrate = varargin{2};
+    end
     
     % Open device link, return 'dev' struct:
     dev = OpenDev(port);
@@ -524,10 +587,14 @@ if strcmpi(cmd, 'Open')
     ptb_cedrus_devices{handle} = dev;
     clear dev;
 
+    % This is for keeping track of what buttons are currently up or
+    % down. I assume that all buttons are up when the device is opened.
+    ptb_cedrus_devices{handle}.CedrusStatus = zeros(3,8);
+    
     % Put this in a try-catch loop so that if it doesn't work for any
     % reason, I can then close the link and you can try again. Otherwise,
     % the COM port is permanently busy and I have to restart Matlab.
-    try
+%    try
         % Set the device protocol to XID mode
         WriteDev(handle, 'c10'); %JCAR removed cr
 
@@ -593,6 +660,9 @@ if strcmpi(cmd, 'Open')
                         ptb_cedrus_devices{handle}.modelID = 'RB-830';
                     case 52
                         ptb_cedrus_devices{handle}.modelID = 'RB-834';
+                    otherwise
+                        ptb_cedrus_devices{handle}.modelID = sprintf('Unknown id %i', response);
+
                 end
             else
                 ptb_cedrus_devices{handle}.modelID = 'Unknown';
@@ -627,23 +697,47 @@ if strcmpi(cmd, 'Open')
 
         % Reset base timer:
         WriteDev(handle, 'e1');
+      
+        % Calibration of PTB's timebase vs. Boxes timebase wanted?
+        if doCalibrate
+            % Yep. First perform estimation of roundtrip delay time of
+            % serial link, so we know for what transmission latency to
+            % account for:
 
-        % Reset reaction time timer of device and assign estimated time of reset
-        % as basetime for all timing calculations:
-        ResetRTT(handle);
+            RoundTripTestDev(handle);
+            % From here on, all basetimer readouts will be corrected for
+            % transmit latency.
+
+            % Now perform calibration of mapping between box time
+            % values of box timer(s) and PTB's GetSecs timebase:
+            calibrateBaseTimer(handle);
+        else
+            % Uncalibrated mode requested. Saves a few seconds of startup
+            % time, but doesn't allow mapping of boxes time measurements
+            % into GetSecs() timebase of PTB:
+            
+            % No link roundtrip time estimates available:
+            ptb_cedrus_devices{handle}.roundtriptime = 0;
+            ptb_cedrus_devices{handle}.roundtripstddev = 0;
+
+            % No mapping of box time to PTB time available:
+            ptb_cedrus_devices{handle}.baseToPtbSlope  = 0;
+            ptb_cedrus_devices{handle}.baseToPtbOffset = 0;
+        end
         
-        % This is for keeping track of what buttons are currently up or
-        % down. I assume that all buttons are up when the device is opened.
-        ptb_cedrus_devices{handle}.CedrusStatus = zeros(1,6);
+        % Reset reaction time timer of device: If calibration was
+        % requested, this will also estimate the offset between RTT values
+        % and basetimer values, which is needed for later mapping of RTT to
+        % GetSecs time. In uncalibrated mode, this will just send out the
+        % reset code.
+        ResetRTT(handle);
 
         % Return handle:
         varargout{1} = handle;
-
-    catch
+%    catch
         % Close serial control link:
-        CloseDev(handle);
-    end
-
+%        CloseDev(handle);
+%    end
     return;
 end
 
@@ -695,25 +789,73 @@ function ResetRTT(handle)
 
 global ptb_cedrus_devices;
 
-for i=1:100
-    t1=GetSecs;
+% Calibrated reset?
+if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
+    % Calibrated reset:
+    
+    % Flush input buffer:
+    WaitSecs(0.1);
+    FlushEvents(handle);
+    WaitSecs(0.1);
+    
+    % Retry timer-reset up to 100 times if needed:
+    for i=1:1
 
-    WriteDev(handle, 'e5');
-    t2=GetSecs;
-    if t2 - t1 < 0.002
-        break;
+        % Send basetimer query code:
+        dx1=GetSecs;
+        WriteDev(handle, 'e3');
+
+        % Send reaction time timer reset code:
+        WriteDev(handle, 'e5');
+
+        % Send second basetimer query code:
+        WriteDev(handle, 'e3');
+        dx2=GetSecs;
+
+        % Receive both basetimer packets:
+        t1 = receiveAndParseTimePacket(handle);
+        t2 = receiveAndParseTimePacket(handle);
+
+        % Ok, the RTT reset command was "sandwiched" inbetween two basetimer
+        % queries, so RT reset must have happened inbetween processing of those
+        % two queries. The timestamps of the basetimer values of those two
+        % queries give us some time window in which RT reset must have
+        % happened. We consider this a successfull reset if the timewindow is
+        % small (less than 3 msecs), so the point in time of reset is well
+        % bounded/defined:
+        if t2 - t1 < 0.003
+            % Good enough! Abort reset-retry loop:
+            break;
+        end
     end
-end
 
-if t2-t1 >=0.002
-    fprintf('RT timer reset took over 2 ms [%i repetitions, delay %f secs]! Reported evt.ptbtime values may be unreliable!\n', i, t2-t1);
-end
+    % Any success?
+    if t2-t1 >=0.003
+        fprintf('RT timer reset took over 3 ms [%i repetitions, box delay %f secs]! Reported evt.ptbtime values may be unreliable!\n', i, t2-t1);
+        fprintf('Send delay on computer was %f secs. btw.\n', dx2 - dx1);
+    end
 
-% Assume that RT timer reset took place in the middle between
-% acquisition of t1 and t2 -- Don't know if this is the case, but the
-% best assumption we can make.
-ptb_cedrus_devices{handle}.basetime = (t1+t2)/2;
-ptb_cedrus_devices{handle}.rttresetdelay = t2 - t1;
+    WaitSecs(0.2);
+    FlushEvents(handle);
+    WaitSecs(0.2);
+    
+    % Assume that RT timer reset took place in the middle between
+    % acquisition of t1 and t2 -- The best assumption we can make.
+    % We can now map RTT values (as reported by timestamped response box event
+    % packets) to basetimer values by simply adding the RTTimerToBasetimerOffset
+    % to each RTT time value.
+    ptb_cedrus_devices{handle}.RTTimerToBasetimerOffset = (t1+t2)/2;
+    ptb_cedrus_devices{handle}.rttresetdelay = t2 - t1;
+else
+    % Only uncalibrated fast reset requested:
+
+    % Reset offset fields to invalid values:
+    ptb_cedrus_devices{handle}.RTTimerToBasetimerOffset = 0;
+    ptb_cedrus_devices{handle}.rttresetdelay = -1;
+    
+    % Send reaction time timer reset code:
+    WriteDev(handle, 'e5');
+end
 
 return;
 
@@ -730,14 +872,18 @@ CedrusStatus = ptb_cedrus_devices{handle}.CedrusStatus;
 while BytesAvailable(handle)>0
     % Read 1 byte
     response=ReadDev(handle, 1);
+
     % See if this is "k", indicating that a key press is following
     if char(response)=='k'
         % Seems to be an event packet: Read remaining 5 more bytes
         last5=ReadDev(handle, 5);
         response(1:6) = [response(1) last5];
         [evt,CedrusStatus] = ExtractKeyPressData(handle,response);
+    else
+        fprintf('CedrusResponseBox:FlushEvents: Warning invalid value %s instead of "k" received!\n', char(response));
     end
 end
+
 return;
 
 function label = findbuttonlabel(numbr)
@@ -827,7 +973,8 @@ evt.action = bitand(bitshift(evt.raw, -4), 1);
 evt.button = bitshift(evt.raw, -5) + 1;
 % This chops off the rightmost 5 bits, i.e. bits 0-4, leaving only bits
 % 5-7
-% Write a more descriptive label: 
+
+% Map to a more descriptive label: 
 evt.buttonID = findbuttonlabel(evt.button);
 
 % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
@@ -838,23 +985,24 @@ evt.buttonID = findbuttonlabel(evt.button);
 response = double(response);
 evt.rawtime = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
 
-% Map rawtime to ptbtime:
-evt.ptbtime = ptb_cedrus_devices{handle}.basetime + evt.rawtime;
+% Map rawtime to ptbtime if possible:
+ptbTime = mapRTTimerToPTBTime(evt.rawtime, handle);
 
-% Try and keep track of which buttons are currently down and up, based on
-% what bytes have been read in. For now we only do it for buttons assigned
-% to port zero -- The actual button array, not for things like port 1 --
-% the external connector.
-if evt.port == 0
-    ptb_cedrus_devices{handle}.CedrusStatus(evt.button) = evt.action;
+% Valid mapping? Assign if so. If mapping is impossible due to skipped
+% timecalibration, we don't return the 'ptbtime' field. This way, usercode
+% that relies on it without performing the mandatory calibration will die
+% with a nice error message.
+if ~isnan(ptbTime)
+    evt.ptbtime = ptbTime;
 end
 
-CedrusStatus = ptb_cedrus_devices{handle}.CedrusStatus;
+% Try and keep track of which buttons are currently down and up, based on
+% what bytes have been read in.
+ptb_cedrus_devices{handle}.CedrusStatus(evt.port + 1, evt.button) = evt.action;
 
 % CedrusStatus will tell you what buttons are currently up or down,
-% based on the last time the device was read. If you want to know what 
-% buttons are currently being pressed, call
-% status = CedrusResponseBox('CurrentStatus', mybox);
+% based on the last time the device was read.
+CedrusStatus = ptb_cedrus_devices{handle}.CedrusStatus;
 
 return;
 
@@ -864,7 +1012,7 @@ function retHandle = checkHandle(handle)
     global ptb_cedrus_devices;
     
     if handle > length(ptb_cedrus_devices) || isempty(ptb_cedrus_devices{handle})
-        error('Invalid response box handle passed: No such response box device open!');
+        error('Invalid response box handle %i passed: No such response box device open!', handle);
     end
     retHandle = handle;
 return;
@@ -893,6 +1041,7 @@ function dev = OpenDev(port)
                 % Open 'port' with 115200 baud, no parity, 8 data bits, 1
                 % stopbit.
                 SerialComm('open', port, '115200,n,8,1');
+%                SerialComm('open', port, '9600,n,8,1');
 
                 % Disable handshaking 'n' == none:
                 SerialComm('hshake', port, 'n');
@@ -922,7 +1071,7 @@ function dev = OpenDev(port)
 
     % Assign output port:
     dev.port = port;
-    
+        
     % Ready.
 return;
 
@@ -1009,7 +1158,10 @@ function data = ReadDev(handle, nwanted)
             end;
             
             if currtime >= timeout
-                error('Read operation on response box timed out after 2 secs!');
+                fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, BytesAvailable(handle), char(ptb_cedrus_devices{handle}.recvQueue));
+                fprintf('Read operation on response box timed out after 2 secs!\n');
+                data = [];
+                return;
             end
             
             % Have at least the nwanted bytes, so fetch the first nwanted
@@ -1046,5 +1198,153 @@ function WriteDev(handle, data)
             % Write data - without terminator - via SerialComm:
             SerialComm('write', ptb_cedrus_devices{handle}.link, double(data));
         end
+    end
+return;
+
+function roundtrip = RoundTripTestDev(handle)
+    global ptb_cedrus_devices;
+
+    % Flush the queue:
+    FlushEvents(handle);
+
+    % Perform 100 measurement trials:
+    roundtrip = zeros(1,100);
+    for i=0:100
+        % Wait a bit between each trial:
+        WaitSecs(0.100);
+
+        % Send 'e4' code to initiate procedure:
+        WriteDev(handle, 'e4');
+
+        % Wait for receive completion:
+        while BytesAvailable(handle) < 1
+        end;
+
+        % Send echo, optimistically assuming we received a 'X':
+        WriteDev(handle, 'X');
+
+        % Get the really received byte and check:
+        if char(ReadDev(handle, 1))~='X'
+            error('Roundtrip test did not receive "X" char as expected!');
+        end
+
+        % Wait for receipt of timestamp:
+        response = ReadDev(handle, 4);
+
+        if response(1)~='P' || response(2)~='T'
+            error('Roundtrip test did not receive "PT" marker as expected!');
+        end
+
+        response = double(response);
+        
+        % We throw away the first trial:
+        if i > 0
+            roundtrip(i) = 0.001 * (response(3) + 256 * response(4));
+        end
+    end
+
+    % Store median and stddev of roundtrip time in device struct:
+    ptb_cedrus_devices{handle}.roundtriptime = median(roundtrip);
+    ptb_cedrus_devices{handle}.roundtripstddev = std(roundtrip);
+
+return;
+
+function calibrateBaseTimer(handle)
+    global ptb_cedrus_devices;
+
+    % Flush the queue:
+    WaitSecs(0.1);
+    FlushEvents(handle);
+    WaitSecs(0.1);
+    
+    ptbtimes  = zeros(100,1);
+    basetimes = zeros(100,1);
+    
+    % Perform 100 measurement trials and one warmup trial:
+    for i=0:100
+        % Send basetimer query code:
+        WriteDev(handle, 'e3');
+
+        % Spin-Wait for receive of first byte:
+        while BytesAvailable(handle) < 1; end;
+
+        % Timestamp receive completion of first byte. This is closest to the
+        % real time when the transmitted timer values were received:
+        ptbtime = GetSecs;
+
+        % Receive packet, then parse into raw timer value (in seconds):
+        basetimer = receiveAndParseTimePacket(handle);
+        
+        % Correct reported time value of basetimer by half roundtrip delay
+        % of serial link: We assume that transmission took half the total
+        % measured roundtrip time, so we need to add that delay to the
+        % basetimer value to get an estimate of the "real" basetimer time
+        % at time of response packet receive "ptbtime":
+        basetimer = basetimer + ptb_cedrus_devices{handle}.roundtriptime/2;
+        
+        % Store i'th measurement: Throw away first one, just to be safe:
+        if i>0
+            ptbtimes(i) = ptbtime;
+            basetimes(i) = basetimer;
+        end
+    end
+
+    % Perform linear least squares fit on values to find linear mapping:
+    coeff = polyfit(basetimes, ptbtimes, 1);
+
+    % Store regression coefficients for later mapping of basetimer times to
+    % ptb GetSecs times:
+    ptb_cedrus_devices{handle}.baseToPtbSlope  = coeff(1);
+    ptb_cedrus_devices{handle}.baseToPtbOffset = coeff(2);
+
+return;
+
+% Reads raw basetimer response packet from box, converted to seconds, but
+% not corrected for receive latency etc. Query command must have been sent
+% by calling code!
+function rawBaseTime = receiveAndParseTimePacket(handle)
+
+    % Read all 6 bytes of basetimer response packet from box:
+    response = ReadDev(handle, 6);
+
+    if length(response)~=6
+        % Did not receive 6 bytes - This should not happen!
+        error('In receiveAndParseTimePacket: Received too short (or no) response packet from box!');
+    end
+
+    % Check bytes 1:2 for correct values 'e3':
+    if char(response(1))~='e' || char(response(2))~='3'
+        % Failed!
+        error('In receiveAndParseTimePacket: Received invalid response packet [Not starting with "e3"] from box!');
+    end
+
+    % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
+    % base timer was last reset.
+    %
+    % For more information about the use of XID timers refer to
+    % http://www.cedrus.com/xid/timing.htm
+    % Conver to seconds:
+    response = double(response);
+    rawBaseTime = 0.001 * (response(3)+(response(4)*256)+(response(5)*65536) +(response(6)*(65536*256)));
+
+return;
+
+function ptbTime = mapRTTimerToPTBTime(rtt, handle)
+    global ptb_cedrus_devices;
+
+    % rtt is the parsed timevalue (already mapped from msecs to seconds),
+    % as received in a event packet from the box. First we convert it to
+    % box-basetimer time by adding the calibrated offset between both, as
+    % estimated by last calibrated RTTReset():
+    basetime = rtt + ptb_cedrus_devices{handle}.RTTimerToBasetimerOffset;
+    
+    % Now we map the 'basetime' into PTB GetSecs time by use of the linear
+    % mapping function created at init time via calibrateBaseTimer():
+    if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
+        % Simple linear equation mapping:
+        ptbTime = ptb_cedrus_devices{handle}.baseToPtbOffset + ptb_cedrus_devices{handle}.baseToPtbSlope * basetime;
+    else
+        % Not calibrated! Can't map:
+        ptbTime = NaN;
     end
 return;

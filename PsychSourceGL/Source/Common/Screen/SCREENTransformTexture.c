@@ -92,6 +92,9 @@ PsychError SCREENTransformTexture(void)
 	// Disable alpha-blending:
 	glDisable(GL_BLEND);
     
+	// Reset color write mask to "all enabled"
+	glColorMask(GL_TRUE,GL_TRUE,GL_TRUE,GL_TRUE);
+
 	// Disable any shaders:
     PsychSetShader(proxyRecord, 0);
 

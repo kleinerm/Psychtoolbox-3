@@ -280,6 +280,9 @@ PsychError SCREENFlip(void)
 		flipRequest->vbl_synclevel	= vbl_synclevel;		
 
 		// Ok, the struct is filled with spec for a synchronous or asynchronous flip...
+		
+		// Store current preflip GPU graphics surface addresses, if supported:
+		PsychStoreGPUSurfaceAddresses(windowRecord);
 	}
 	else {
 		// opmode == 2 or 3
@@ -339,5 +342,138 @@ PsychError SCREENFlip(void)
 		PsychCopyOutDoubleArg(5, FALSE, (double) beamposatflip);
 	}
 	
+	return(PsychError_none);	
+}
+
+PsychError SCREENWaitUntilFlipCertain(void) 
+{
+	// If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
+	static char useString[] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilFlipCertain', windowPtr);";
+	static char synopsisString[] =
+	"Wait until it is certain that a previously initiated Screen('Flip',..) or Screen('AsyncFlipBegin',...); "
+	"operation for onscreen window 'windowPtr' will happen or has happened already, then return timestamps "
+	"of when flip operation has happened or when the flip operation will happen.\n"
+	"This function only works on Linux and MacOS/X and only with recent AMD/ATI hardware of the "
+	"Radeon X1000/HD2000/... series or later (or the equivalent FireGL cards). On MacOS/X, the "
+	"PsychtoolboxKernelDriver needs to be loaded for this to work (see help PsychtoolboxKernelDriver).\n"
+	"The method tries to \"read the mind\" of your graphics card to find out if the card will swap the "
+	"display buffers at the next vertical retrace to find out if the swap is certain, ie., not possibly "
+	"delayed by graphics card overload, other overload conditions or system timing jitter/delays.\n"
+	"Ideally it will allow your script to know when stimulus onset will happen a few milliseconds before "
+	"stimulus onset. This allows, e.g., to initiate some other operations that need to be tightly and "
+	"reliably synchronized to stimulus onset and that have some small startup latency, so they need some "
+	"headstart. Examples would be sound output or output of some slow trigger signal which takes multiple "
+	"milliseconds to take action.\n"
+	"This feature only works in fullscreen mode and is considered experimental - It may or may not work "
+	"on your setup. Good luck!\n"
+	"Returns a high-precision estimate of the system time (in seconds) when the actual flip will- or has happened "
+	"in the return argument 'VBLTimestamp'. An estimate of Stimulus-onset time is returned in 'StimulusOnsetTime'. "
+	"'swapCertainTime' is the system time when certainty of bufferswap was detected. ";
+	static char seeAlsoString[] = "";
+	
+	PsychWindowRecordType *windowRecord;
+	double timestamp, stimulusOnset;
+	int	   beamposition;
+	double vbl_startline, vbl_endline, vbl_lines_elapsed, onset_lines_togo;
+	double vbl_time_elapsed, onset_time_togo, currentrefreshestimate;
+	bool   swappending;
+	long   scw, sch;
+	
+	// Push usage string and/or give online help:
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	
+	// Give online help, if requested:
+	if(PsychIsGiveHelp()) {PsychGiveHelp();return(PsychError_none);};
+
+	PsychErrorExit(PsychCapNumInputArgs(1));		// The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(1));	// The required number of inputs
+	PsychErrorExit(PsychCapNumOutputArgs(3));		// The maximum number of outputs
+
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+	
+	// Get the window record from the window record argument and get info from the window record
+	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+
+	// Child protection:
+	if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain called on something else than an onscreen window.");
+	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain called on window without backbuffers.");
+	
+	// Just need to check if GPU low-level access is supported:
+	if (!PsychOSIsKernelDriverAvailable(windowRecord->screenNumber)) {
+		PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain needs the PsychtoolboxKernelDriver to be loaded on supported hardware!");
+	}
+
+    // Retrieve estimate of monitor refresh interval:
+    if (windowRecord->VideoRefreshInterval > 0) {
+        currentrefreshestimate = windowRecord->VideoRefreshInterval;
+    }
+    else {
+        currentrefreshestimate=0;
+        // We abort - This is too unsafe...
+        PsychErrorExitMsg(PsychError_user,"Estimate of monitor refresh interval is INVALID -> Aborting!");
+    }
+
+    if (windowRecord->VBL_Endline == -1) {
+        PsychErrorExitMsg(PsychError_user,"Estimate of VBL endline is INVALID -> Aborting!");
+	}
+
+	// Wait for bufferswap completion or bufferswap certain:
+	swappending = PsychWaitForBufferswapPendingOrFinished(windowRecord, &timestamp, &beamposition);
+
+	// Copy out optional timestamp of bufferswap detection:
+	PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);
+
+	// Compute timestamps:
+	PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
+    vbl_startline = (int) sch;
+	vbl_endline = windowRecord->VBL_Endline;
+
+	if (swappending) {
+		// Swap is pending:
+		onset_lines_togo = vbl_endline - beamposition + 1;
+		vbl_lines_elapsed = vbl_startline - beamposition + 1; 
+		
+		// From the elapsed number we calculate the remaining time till swap et al.:
+		vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
+		onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+
+		// Add to basetime:
+		stimulusOnset = timestamp + onset_time_togo;
+		timestamp = timestamp + vbl_time_elapsed;
+		
+		// printf("PENDING\n");
+	}
+	else {
+		// Swap happened already: Do same calculations as in PsychFlipWindowBuffers():
+		
+		if (beamposition >= vbl_startline) {
+			vbl_lines_elapsed = beamposition - vbl_startline;
+			onset_lines_togo = vbl_endline - beamposition + 1;
+		}
+		else {
+			vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamposition;
+			onset_lines_togo = -1.0 * beamposition;
+		}
+		
+		// From the elapsed number we calculate the elapsed time since VBL start:
+		vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
+		onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+		
+		// Compute of stimulus-onset, aka time when retrace is finished:
+		stimulusOnset = timestamp + onset_time_togo;
+		// Now we correct our time_at_vbl by this correction value:
+		timestamp = timestamp - vbl_time_elapsed;
+	}
+	
+	// Copy out optional vbl timestamp of bufferswap:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, timestamp);
+
+	// Copy out optional timestamp of stimulus onset:
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, stimulusOnset);
+#else
+	PsychErrorExitMsg(PsychError_user, "Screen('WaitUntilFlipCertain') is not supported on Microsoft Windows.");
+#endif
+
+	// Done.
 	return(PsychError_none);	
 }

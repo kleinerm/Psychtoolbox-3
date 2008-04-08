@@ -304,3 +304,91 @@ void PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowReco
 	// Done.
 	return;
 }
+
+/* Stores content of GPU's surface address registers of the surfaces that
+ * correspond to the windowRecords frontBuffers. Only called inside
+ * PsychFlipWindowBuffers() immediately before triggering a double-buffer
+ * swap. The values are used as reference values: If another readout of
+ * these registers shows values different from the ones stored preflip,
+ * then that is a certain indicator that bufferswap has happened.
+ */
+void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
+{
+
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+
+	// If we are called, we know that 'windowRecord' is an onscreen window.
+	int screenId = windowRecord->screenNumber;
+
+	// Just need to check if GPU low-level access is supported:
+	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
+	
+	// Driver is online: Read the registers:
+	windowRecord->gpu_preflip_Surfaces[0] = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+	windowRecord->gpu_preflip_Surfaces[1] = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+
+#endif
+
+	return;
+}
+
+/*  PsychWaitForBufferswapPendingOrFinished()
+ *  Waits until a bufferswap for window windowRecord has either already happened or
+ *  bufferswap is certain.
+ *
+ *  Return values:
+ *  timestamp    = System time at polling loop exit.
+ *  beamposition = Beamposition at polling loop exit.
+ *
+ *  Return value: FALSE if swap happened already, TRUE if swap is imminent.
+ */
+bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition)
+{
+#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+    CGDirectDisplayID displayID;
+	unsigned int primarySurface, secondarySurface;
+	unsigned int updateStatus;
+	
+	// If we are called, we know that 'windowRecord' is an onscreen window.
+	int screenId = windowRecord->screenNumber;
+
+    // Retrieve display id and screen size spec that is needed later...
+    PsychGetCGDisplayIDFromScreenNumber(&displayID, screenId);
+
+#define RADEON_D1GRPH_UPDATE	0x6144
+#define RADEON_D2GRPH_UPDATE	0x6944
+#define RADEON_SURFACE_UPDATE_PENDING 4
+#define RADEON_SURFACE_UPDATE_TAKEN   8
+
+	// Just need to check if GPU low-level access is supported:
+	if (!PsychOSIsKernelDriverAvailable(screenId)) return;
+	
+	// Driver is online. Enter polling loop:
+	while (TRUE) {
+		// Read surface address registers:
+		primarySurface   = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS : RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS, NULL);
+		secondarySurface = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS : RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS, NULL);
+
+		// Read update status registers:
+		updateStatus     = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
+
+		if (primarySurface!=windowRecord->gpu_preflip_Surfaces[0] || secondarySurface!=windowRecord->gpu_preflip_Surfaces[1] || (updateStatus & (RADEON_SURFACE_UPDATE_PENDING | RADEON_SURFACE_UPDATE_TAKEN))) {
+			// Abort condition: Exit loop.
+			break;
+		}
+		
+		// Sleep 200 microseconds, then retry:
+		PsychWaitIntervalSeconds(0.0002);
+	};
+	
+	// Take timestamp and beamposition:
+	*beamposition = PsychGetDisplayBeamPosition(&displayID, screenId);
+	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+	
+	// Return FALSE if bufferswap happened already, TRUE if swap is still pending:
+	return((updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE);
+#else
+	// On Windows, we always return "swap happened":
+	return(FALSE);
+#endif
+}

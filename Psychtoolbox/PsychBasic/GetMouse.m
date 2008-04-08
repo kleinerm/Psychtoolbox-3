@@ -109,10 +109,7 @@ function [x,y,buttons] = GetMouse(windowPtrOrScreenNumber)
 % can skip the *very time-consuming* detection code on successive calls.
 % This gives a tenfold speedup - important for tight realtime-loops.
 persistent numMouseButtons;
-if isempty(numMouseButtons)
-    % Exit with an error if we don't find the a mex file on OS 9.
-    AssertMex('MAC2');
-    
+if isempty(numMouseButtons)    
     if IsOSX
         % On OS X we execute this script, otherwise either MATLAB found the mex file
         % file and exuted this, or else this file was exucuted and exited with
