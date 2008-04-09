@@ -513,7 +513,7 @@ if strcmpi(cmd, 'GetBaseTimer')
         % Assign mapped PTB GetSecs time if mapping possible:
         if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
             % Simple linear equation mapping:
-            evt.ptbtime = ptb_cedrus_devices{handle}.baseToPtbOffset + ptb_cedrus_devices{handle}.baseToPtbSlope * basetime;
+            evt.ptbtime = ptb_cedrus_devices{handle}.baseToPtbOffset + ptb_cedrus_devices{handle}.baseToPtbSlope * evt.basetimer;
         end
         
         % Assign i'th measurement event:
@@ -803,13 +803,13 @@ if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
 
         % Send basetimer query code:
         dx1=GetSecs;
-        WriteDev(handle, 'e3');
+        %WriteDev(handle, 'e3');
 
         % Send reaction time timer reset code:
-        WriteDev(handle, 'e5');
+        %WriteDev(handle, 'e5');
 
         % Send second basetimer query code:
-        WriteDev(handle, 'e3');
+        WriteDev(handle, 'e3e5e3');
         dx2=GetSecs;
 
         % Receive both basetimer packets:
@@ -1190,7 +1190,7 @@ function WriteDev(handle, data)
         % to make sure that data is passed as-is, without any terminators
         % (CR or LF or CR+LF) attached. This will block until send
         % completion:
-        fwrite(ptb_cedrus_devices{handle}.link, '%s', char(data));
+        fwrite(ptb_cedrus_devices{handle}.link, char(data));
     else
         if ptb_cedrus_devices{handle}.driver == 1
             % OS/X + Matlab + SerialComm driver:

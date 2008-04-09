@@ -3945,16 +3945,17 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		}
 		
 		// NVIDIA specific detection logic:
-		if (nvidia && (windowRecord->gfxcaps & kPsychGfxCapFBO) && glewIsSupported("ATI_texture_float")) {
-			// NVIDIA hardware with ATI float texture support is a NV30/40 core or later: They support floating point FBO's as well:
-			if (verbose) printf("Assuming NV30 core or later: Hardware supports basic floating point framebuffers of 16bpc and 32bpc float format.\n");
-			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
-			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
+		if (nvidia && (windowRecord->gfxcaps & kPsychGfxCapFBO)) {
+			// NVIDIA hardware with float texture support is a NV30 core or later: They support floating point FBO's as well:
+			if (verbose) printf("Assuming NV30 core or later...\n");
 			
 			// Use maximum number of color attachments as differentiator between GeforceFX and GF6xxx/7xxx/....
 			if (maxcolattachments > 1) {
 				// NV40 core of GF 6000 or later supports at least 16 bpc float texture filtering and framebuffer blending:
 				if (verbose) printf("Assuming NV40 core or later (maxcolattachments=%i): Hardware supports floating point blending and filtering on 16bpc float format.\n", maxcolattachments);
+                if (verbose) printf("Hardware also supports floating point framebuffers of 16bpc and 32bpc float format.\n");
+                windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
+                windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;	
 				
@@ -3965,8 +3966,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			
 			// The Geforce 8xxx/9xxx series and later (G70 cores and later) do support full 32 bpc float filtering and blending:
 			// They also support a max texture size of > 4096 texels --> 8192 texels, so we use that as detector:
-			if (maxtexsize > 4000) {
-				if (verbose) printf("Assuming NV50/G70 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
+			if (maxtexsize > 4100) {
+				if (verbose) printf("Assuming G70 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
