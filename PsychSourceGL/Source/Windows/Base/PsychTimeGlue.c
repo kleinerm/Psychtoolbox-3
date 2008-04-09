@@ -147,13 +147,19 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
 void PsychInitTimeGlue(void)
 {
 	// Initialize our timeglue mutex:
+
 	// Alternative would be InitializeCriticalSection().
 	// Needs define _WIN32_WINNT as 0x0403 or later. 
-	if (!InitializeCriticalSectionAndSpinCount(&time_lock, 0x80000400)) {
-		// We're screwed:
-		printf("PTBCRITICAL -ERROR: In PsychInitTimeGlue() - failed to init time_lock!!! May malfunction or crash soon....\n");
-	}
+	// This would be good to use, but my old Windows2000 box doesn't support it:
+	//if (!InitializeCriticalSectionAndSpinCount(&time_lock, 0x80000400)) {
+	//	// We're screwed:
+	//	printf("PTBCRITICAL -ERROR: In PsychInitTimeGlue() - failed to init time_lock!!! May malfunction or crash soon....\n");
+	//}
 	
+	// That is why we use the less capable critical section init call:
+	// Has less capable error handling etc., but what can one do...
+	InitializeCriticalSection(&time_lock);
+
 	// Setup mapping of ticks to time:
 	PsychEstimateGetSecsValueAtTickCountZero();
 }

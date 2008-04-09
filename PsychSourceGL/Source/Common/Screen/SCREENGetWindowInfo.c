@@ -16,6 +16,12 @@
   This is a catch-all for information that's not of too much interest for regular
   users, but useful for Psychtoolbox helper functions (M-Files).
   
+  NOTES:
+
+  Be careful with length of struct field names! Only names up to 31 characters are
+  supported by Matlab 5.x (and maybe 6.x -- untested). Larger names cause matching
+  failure!
+
 */
 
 #include "Screen.h"
@@ -36,7 +42,7 @@ PsychError SCREENGetWindowInfo(void)
 {
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion",
-							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsUnclampedHighPrecisionColors",
+							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading"};
 							   
 	const int  fieldCount = 22;
@@ -50,7 +56,7 @@ PsychError SCREENGetWindowInfo(void)
 	double vbl_startline;
 	long scw, sch;
 	bool onscreen;
-	
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -127,7 +133,7 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("VideoRefreshFromBeamposition", 0, windowRecord->ifi_beamestimate, s);
 		
 		// Renderer information:
-		PsychSetGLContext(windowRecord);
+		PsychSetDrawingTarget(windowRecord);
 		PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
 		PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
 		PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
@@ -167,8 +173,8 @@ PsychError SCREENGetWindowInfo(void)
 		} else PsychSetStructArrayDoubleElement("GLSupportsFilteringUpToBpc", 0, 8, s);
 
 		if (windowRecord->gfxcaps & kPsychGfxCapVCGood) {
-			PsychSetStructArrayDoubleElement("GLSupportsUnclampedHighPrecisionColors", 0, 1, s);
-		} else PsychSetStructArrayDoubleElement("GLSupportsUnclampedHighPrecisionColors", 0, 0, s);
+			PsychSetStructArrayDoubleElement("GLSupportsPrecisionColors", 0, 1, s);
+		} else PsychSetStructArrayDoubleElement("GLSupportsPrecisionColors", 0, 0, s);
 
 		if (windowRecord->gfxcaps & kPsychGfxCapFP32Shading) {
 			PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 1, s);
