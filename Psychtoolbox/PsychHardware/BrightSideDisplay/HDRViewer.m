@@ -97,7 +97,7 @@ try
     abortit=0;
 
     % Set text properties:
-    Screen('TextSize', win, 40);
+    Screen('TextSize', win, 24);
     Screen('TextStyle', win , 0);
 
     % Multiply all image values by a scaling factor: The HDR accepts

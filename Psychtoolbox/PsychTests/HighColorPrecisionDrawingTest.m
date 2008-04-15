@@ -70,7 +70,7 @@ resstring = '';
 
 % Disable sync tests for this script:
 oldsync = Screen('Preference', 'SkipSyncTests', 2);
-Screen('Preference', 'Verbosity', 1);
+Screen('Preference', 'Verbosity', 4);
 
 % Generate testvector of all color values to test. We test the full
 % intensity range from 0.0 (black) to 1.0 (white) divided into 2^maxdepth steps
@@ -185,7 +185,7 @@ if ismember(2, testblocks)
         Screen('FillOval', win, tc, [20 0 30 10]);
 
         % FrameOval test:
-        Screen('FrameOval', win, tc, [20 0 35 21], 2);
+        Screen('FrameOval', win, tc, [20 20 35 41], 2);
         
         % FillArc test: Don't need extra tests for FrameArc or DrawArc as internal codepath
         % in Screen is nearly identical...
@@ -230,7 +230,7 @@ if ismember(2, testblocks)
         drawncolors(3,i) = patch(5,25);
 
         % Store result: FrameOval
-        drawncolors(4,i) = patch(10, 35-1);
+        drawncolors(4,i) = patch(30, 35-1);
 
         % Store result: FillArc
         drawncolors(5,i) = patch(10, 50-1);

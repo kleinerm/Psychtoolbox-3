@@ -77,6 +77,7 @@ persistent hdrtexid;
 persistent online;
 persistent dummymode;
 persistent debuglevel;
+persistent oldTextRenderer;
 
 % Cold start: Setup our variables to safe defaults.
 if isempty(online)
@@ -283,6 +284,13 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
     % Eat up all OpenGL errors caused by this:
     while glGetError; end;
 
+    % Use old display list text renderer - The new one is not HDR ready: It
+    % has a restricted color value range 0.0-1.0 for text colors, which
+    % will create way too dark text, and its internal use of alpha-blending
+    % triggers software-fallback in the Geforce 7000 gfx... Thereby, use
+    % the old and trouble-free one:
+    oldTextRenderer = Screen('Preference', 'TextRenderer', 0);
+    
     % We are online:
     online = 1;
     return;
@@ -301,6 +309,9 @@ if strcmp(cmd, 'Shutdown')
     if ~dummymode
         BrightSideCore(1);
     end
+
+    % Restore selection of text renderer:
+    Screen('Preference', 'TextRenderer', oldTextRenderer);
 
     % Reset to preinit state:
     hdrtexid = 0;
