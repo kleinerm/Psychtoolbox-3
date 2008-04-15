@@ -1551,6 +1551,8 @@
 		830572270984860000EB51EE /* SCREENWaitBlanking.c in Sources */ = {isa = PBXBuildFile; fileRef = 830572260984860000EB51EE /* SCREENWaitBlanking.c */; };
 		8306696C0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */; };
 		8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = 8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */; };
+		830982E00DB2DF4100E7D371 /* IOPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C307788CC100359736 /* IOPort.c */; };
+		830982E10DB2DF4500E7D371 /* IOPort.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C307788CC100359736 /* IOPort.c */; };
 		8320C1B60D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */; };
 		8320C1B90D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */ = {isa = PBXBuildFile; fileRef = 8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */; };
@@ -1653,6 +1655,8 @@
 		8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */; };
 		8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */; };
 		8341EF270D2FD0E300B77B0E /* svd.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF220D2FD0E300B77B0E /* svd.cc */; };
+		834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
+		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -2403,7 +2407,6 @@
 		F14A2B1A0AD4ABB500BFB68F /* PsychTimeGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277403DBE1F301D453F7 /* PsychTimeGlue.c */; };
 		F14A2B1B0AD4ABB500BFB68F /* PsychVersioning.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524C30421889A01A80165 /* PsychVersioning.c */; };
 		F14A2B1C0AD4ABB500BFB68F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C207788CC100359736 /* RegisterProject.c */; };
-		F14A2B1D0AD4ABB500BFB68F /* IOWarriorLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */; };
 		F14A2B1E0AD4ABB500BFB68F /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		F14A2B200AD4ABB500BFB68F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		F14A2B210AD4ABB500BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
@@ -3614,6 +3617,7 @@
 		8306696E0D3923440009C12B /* PsychGraphicsHardwareHALSupport.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsHardwareHALSupport.h; path = ../../../Source/Common/Screen/PsychGraphicsHardwareHALSupport.h; sourceTree = SOURCE_ROOT; };
 		830669BD0D3954B10009C12B /* PsychUserKernelShared.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychUserKernelShared.h; path = ../../../Source/OSX/Screen/PsychUserKernelShared.h; sourceTree = SOURCE_ROOT; };
 		83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychGraphicsCardRegisterSpecs.h; path = ../../../Source/Common/Screen/PsychGraphicsCardRegisterSpecs.h; sourceTree = SOURCE_ROOT; };
+		83097FD70DB18BAF00E7D371 /* PsychSerialUnixGlue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychSerialUnixGlue.h; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.h; sourceTree = SOURCE_ROOT; };
 		8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportQuickTime.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportQuickTime.c; sourceTree = SOURCE_ROOT; };
 		8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibDC1394.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibDC1394.c; sourceTree = SOURCE_ROOT; };
 		8325CEC10CAF158800B498CD /* PsychHIDKbQueue.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychHIDKbQueue.h; path = ../../../Source/Common/PsychHID/PsychHIDKbQueue.h; sourceTree = SOURCE_ROOT; };
@@ -3666,6 +3670,7 @@
 		8341EF210D2FD0E300B77B0E /* remove_corneal_reflection.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = remove_corneal_reflection.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/remove_corneal_reflection.h; sourceTree = SOURCE_ROOT; };
 		8341EF220D2FD0E300B77B0E /* svd.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = svd.cc; sourceTree = "<group>"; };
 		8341EF230D2FD0E300B77B0E /* svd.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = svd.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/svd.h; sourceTree = SOURCE_ROOT; };
+		834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychSerialUnixGlue.c; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.c; sourceTree = SOURCE_ROOT; };
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
@@ -3780,7 +3785,7 @@
 		F14A2AB70AD4A26B00BFB68F /* GetSecsMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2AE00AD4AAD600BFB68F /* GetSecsTick.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetSecsTick.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2B060AD4AB5200BFB68F /* GetTicks.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = GetTicks.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
-		F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = IOPort.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = IOPort.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2B590AD4AC8000BFB68F /* MachPriority.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachPriority.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2B800AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENHideCursorHelper.c; path = ../../../Source/Common/Screen/SCREENHideCursorHelper.c; sourceTree = SOURCE_ROOT; };
@@ -4990,7 +4995,7 @@
 				F14A2AB70AD4A26B00BFB68F /* GetSecsMex.mexmaci */,
 				F14A2AE00AD4AAD600BFB68F /* GetSecsTick.mexmaci */,
 				F14A2B060AD4AB5200BFB68F /* GetTicks.mexmaci */,
-				F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmac */,
+				F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmaci */,
 				F14A2B590AD4AC8000BFB68F /* MachPriority.mexmaci */,
 				F14A2B800AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.mexmaci */,
 				83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */,
@@ -5056,6 +5061,8 @@
 		2F0B16BD07788C8400359736 /* IOPort */ = {
 			isa = PBXGroup;
 			children = (
+				83097FD70DB18BAF00E7D371 /* PsychSerialUnixGlue.h */,
+				834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */,
 				2F0B16C007788CC100359736 /* RegisterProject.h */,
 				2F0B16C207788CC100359736 /* RegisterProject.c */,
 				2F0B16C107788CC100359736 /* IOPort.h */,
@@ -8141,7 +8148,7 @@
 			);
 			name = "IOPort Intel";
 			productName = foo;
-			productReference = F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmac */;
+			productReference = F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmaci */;
 			productType = "com.apple.product-type.objfile";
 		};
 		F14A2B380AD4AC8000BFB68F /* MachPriority Intel */ = {
@@ -10861,6 +10868,8 @@
 				2FEBA8B009894D1000F4165F /* RegisterProject.c in Sources */,
 				2FEBA8B409894E7C00F4165F /* IOWarriorLib.c in Sources */,
 				835CD2640A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */,
+				830982E00DB2DF4100E7D371 /* IOPort.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -12104,8 +12113,9 @@
 				F14A2B1A0AD4ABB500BFB68F /* PsychTimeGlue.c in Sources */,
 				F14A2B1B0AD4ABB500BFB68F /* PsychVersioning.c in Sources */,
 				F14A2B1C0AD4ABB500BFB68F /* RegisterProject.c in Sources */,
-				F14A2B1D0AD4ABB500BFB68F /* IOWarriorLib.c in Sources */,
 				F14A2B1E0AD4ABB500BFB68F /* PsychScriptingGlue.cc in Sources */,
+				834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */,
+				830982E10DB2DF4500E7D371 /* IOPort.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -23432,7 +23442,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
-				EXECUTABLE_EXTENSION = mexmac;
+				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
@@ -23450,7 +23460,7 @@
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
-				MATLAB_DIR_NAME = MATLAB73;
+				MATLAB_DIR_NAME = MATLAB74;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -23459,7 +23469,7 @@
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
-					"-Wl,-exported_symbols_list,/Applications/MATLAB73/extern/lib/maci/mexFunction.map",
+					"-Wl,-exported_symbols_list,/Applications/MATLAB74/extern/lib/maci/mexFunction.map",
 					"-lmx",
 					"-lmex",
 					"-lmat",

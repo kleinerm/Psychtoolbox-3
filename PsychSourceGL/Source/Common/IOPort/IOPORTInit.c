@@ -3,31 +3,33 @@
   
 	PROJECTS: 
 	
-		IOPort only.  
+		IOPort only.
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu				awi
+		mario.kleiner at tuebingen.mpg.de	mk
   
 	PLATFORMS:	
 	
-		Only OS X for now
+		All.
     
 	HISTORY:
 
 		12/20/2004	awi		Wrote it.
+		04/10/2008	mk		Started to extend/rewrite it to become a full-fledged generic I/O driver (serial port, parallel port, etc...).
  
 	DESCRIPTION:
 	
-		Controls the Code Mercenaries IO Warrior 40 device.  
+		Originally controlled the Code Mercenaries IO Warrior 40 device.
 	
+		It will hopefully become a generic I/O driver...
 
 */
 
-
 #include "IOPort.h"
 #include <CoreFoundation/CoreFoundation.h>
-#include "IOWarriorLib.h"
+//#include "IOWarriorLib.h"
 
 
 PsychError IOPORTInit(void)
@@ -45,7 +47,7 @@ PsychError IOPORTInit(void)
 
     // Initializing IOWarrior Library
     //printf ("Calling IOWarriorInit\n");
-    error = IOWarriorInit ();
+//    error = IOWarriorInit ();
     if(error)
     {
         sprintf(errorMessage, "IOWarriorInit returned %d\n", error);
@@ -53,13 +55,8 @@ PsychError IOPORTInit(void)
     };
 
     // checking for presence
-    if (!IOWarriorIsPresent ())
-		PsychErrorExitMsg(PsychError_internal , "Can not find any I/O Warrior device.");
+//    if (!IOWarriorIsPresent ())
+//		PsychErrorExitMsg(PsychError_internal , "Can not find any I/O Warrior device.");
 	
     return(PsychError_none);	
 }
-
-
-
-
-	

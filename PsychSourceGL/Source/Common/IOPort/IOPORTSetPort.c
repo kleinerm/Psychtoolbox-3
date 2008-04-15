@@ -3,31 +3,34 @@
   
 	PROJECTS: 
 	
-		IOPort only.  
+		IOPort only.
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu				awi
+		mario.kleiner at tuebingen.mpg.de	mk
   
 	PLATFORMS:	
 	
-		Only OS X for now
+		All.
     
 	HISTORY:
 
 		12/20/2004	awi		Wrote it.
+		04/10/2008	mk		Started to extend/rewrite it to become a full-fledged generic I/O driver (serial port, parallel port, etc...).
  
 	DESCRIPTION:
 	
-		Controls the Code Mercenaries IO Warrior 40 device.  
+		Originally controlled the Code Mercenaries IO Warrior 40 device.
 	
+		It will hopefully become a generic I/O driver...
 
 */
 
 
 #include "IOPort.h"
 #include <CoreFoundation/CoreFoundation.h>
-#include "IOWarriorLib.h"
+//#include "IOWarriorLib.h"
 
 //IOPort('SetPort', logicalBits);
 //                  1
@@ -55,12 +58,9 @@ PsychError IOPORTSetPort(void)
 	}
 
     // writing 32 bits
-    result = IOWarriorWriteInterface0 (&buffer);
+//    result = IOWarriorWriteInterface0 (&buffer);
     if (result)
         printf ("IOWarriorWriteInterface0 returned %d\n", result);
 	
     return(PsychError_none);	
 }
-
-
-	

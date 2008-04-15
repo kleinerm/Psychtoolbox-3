@@ -7,23 +7,23 @@
   
 	AUTHORS:
 	
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu				awi
+		mario.kleiner at tuebingen.mpg.de	mk
   
 	PLATFORMS:	
 	
-		Only OS X for now
+		All.
     
 	HISTORY:
 
 		12/20/2004	awi		Wrote it.
+		04/10/2008	mk		Started to extend/rewrite it to become a full-fledged generic I/O driver (serial port, parallel port, etc...).
  
 	DESCRIPTION:
 	
-		Controls the Code Mercenaries IO Warrior 40 device.  
+		Originally controlled the Code Mercenaries IO Warrior 40 device.
 	
-  
-  
-
+		It will hopefully become a generic I/O driver...
 */
 
 //begin include once 
@@ -33,15 +33,66 @@
 //project includes
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+#include "PsychSerialUnixGlue.h"
+#else
+#include "PsychSerialWindowsGlue.h"
+#endif
 
+// Types of Input/Output port we support:
+#define KPsychIOPortNone		0				// No port: This indicates a free slot.
+#define kPsychIOPortSerial		1				// Serial port.
 
+typedef struct PsychPortIORecord {
+	unsigned int	portType;					// Type of I/O port, see defines above.
+	void*			device;						// Opaque pointer to struct with device specific data - Different types need different structs...
+} PsychPortIORecord;
 
-//function prototypes
+// Operating system specific glue functions:
+PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString);
+void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device);
+PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const char* configString);
+int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int PsychIOOSBytesAvailableSerialPort(PsychSerialDeviceRecord* device);
+void PsychIOOSFlushSerialPort(PsychSerialDeviceRecord* device);
+void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device);
+
+// Public subfunction prototypes
 PsychError MODULEVersion(void); 
 PsychError IOPORTSetPort(void);
 PsychError IOPORTInit(void);
+PsychError IOPORTDisplaySynopsis(void);
+PsychError IOPORTVerbosity(void);
+
+// Generic functions for port access -- The ones supposed to be useful for all types of ports:
+PsychError IOPORTClose(void);
+PsychError IOPORTCloseAll(void);
+PsychError IOPORTRead(void);
+PsychError IOPORTWrite(void);
+PsychError IOPORTBytesAvailable(void);
+PsychError IOPORTPurge(void);
+PsychError IOPORTFlush(void);
+
+// Serial port specific functions:
+PsychError IOPORTOpenSerialPort(void);
+PsychError IOPORTConfigureSerialPort(void);
+
+// Initialize usage info -- function overview:
+void InitializeSynopsis(void);
+
+// Exit function: Called at shutdown time:
+PsychError PsychExitIOPort(void);
+// Init function: Called at startup time:
+PsychError PsychInitIOPort(void);
+// Close function: Closes port referenced by 'handle':
+PsychError PsychCloseIOPort(int handle);
+// Write function:
+int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int PsychBytesAvailableIOPort(int handle);
+void PsychPurgeIOPort(int handle);
+void PsychFlushIOPort(int handle);
 
 //end include once
 #endif
-
-	
