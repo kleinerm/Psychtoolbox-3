@@ -1,0 +1,20 @@
+/* Shader for gamma correction of RGB textures.
+ * Uses standard formula for gamma correction.
+ * 'Gamma' is the factor to apply, ie. the inverse gamma 1/G
+ * if applying correction for a display with gamma G.
+ *
+ * (w)2008 by Mario Kleiner.
+*/
+
+uniform sampler2DRect Image;
+uniform vec3          Gamma;
+
+void main()
+{
+    /* Retrieve RGBA input texel: */
+    vec4 incolor = texture2DRect(Image, gl_TexCoord[0].st);
+    /* Pass alpha component unmodified: */
+    gl_FragColor.a = incolor.a;
+    /* Map RGB components through power function with Gamma coeff.: */
+    gl_FragColor.rgb = pow(incolor.rgb, Gamma);
+}
