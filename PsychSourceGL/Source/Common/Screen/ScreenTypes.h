@@ -178,6 +178,9 @@ typedef struct {
 // interferes with the Jave GetChar implementation, so its only enabled optionally:
 #define kPsychEnforceForegroundWindow 128
 
+// Possible workaround for NVidia driver bug: Skip a few commands inside creation code for
+// usermode OpenGL contexts -- The skipped commands are non-essential... 
+#define kPsychUseWindowsContextSharingWorkaround1 256
 
 //function protoptypes
 

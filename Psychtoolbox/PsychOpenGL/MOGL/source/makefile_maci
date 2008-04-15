@@ -1,5 +1,5 @@
 # Path to Matlab installation folder:
-MATLABHOME=/Applications/MATLAB73
+MATLABHOME=/Applications/MATLAB74
 
 # Definition of target operating system:
 TARGETOS=-DMACOSX

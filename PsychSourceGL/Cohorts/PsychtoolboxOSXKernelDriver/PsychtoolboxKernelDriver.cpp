@@ -271,12 +271,27 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			IOLog("%s: Graphics card IRQ Snoop - interrupt handler installed. Cool :-)\n", getName());
 		}
 	}
+	else {
+		// Dump current IRQ status of GPU:
+		IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+		IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+//		WriteRegister(RADEON_R500_GEN_INT_CNTL, 0);
+		IOSleep(5);
+		IOLog("%s: In IRQ handler setup: Now: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+//		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0);
+		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
+//		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0xffffffff);
+		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
+	}
 
 	// We should be ready...
 	IOLog("%s: Psychtoolbox-3 kernel-level support driver for ATI Radeon gfx ready for use!\n", getName());
 	IOLog("%s: This driver is copyright 2008 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
 	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
+	
+	DumpGfxState();
+
 	
 	// If everything worked, we publish ourselves and our services:
     if (success) {
@@ -301,21 +316,8 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
     
 	// Perform cleanup:
 	if (fPCIDevice) {
-		// Detach our device handle:
-		fPCIDevice = NULL;
-		
-		// Release memory mapping, if any:
-		if (fRadeonMap) {
-			IOLog("%s::stop(): Releasing MMIO memory mapped Radeon register block...\n", getName());
-			fRadeonMap->release();
-		}
-		
-		// NULL-Out our now stale references:
-		fRadeonMap = NULL;
-		fRadeonRegs = NULL;
-		fRadeonSize = 0;
-		
-		// Disable, detach and delete our interrupt handler:
+
+		// Disable, detach and delete our interrupt handler, if any:
 		if (fInterruptSrc) {
 			fInterruptSrc->disable();
 			// TODO: Some kind of release() function or detach from Workloop needed here?
@@ -329,6 +331,20 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
 			fInterruptCookie = 0xdeadbeef;
 			fInterruptCounter = 0;
 		}
+
+		// Detach our device handle:
+		fPCIDevice = NULL;
+		
+		// Release memory mapping, if any:
+		if (fRadeonMap) {
+			IOLog("%s::stop(): Releasing MMIO memory mapped Radeon register block...\n", getName());
+			fRadeonMap->release();
+		}
+		
+		// NULL-Out our now stale references:
+		fRadeonMap = NULL;
+		fRadeonRegs = NULL;
+		fRadeonSize = 0;		
 	}
 	
 	IOLog("%s::stop(): Driver is stopped and ready for jettisoning or restart...\n", getName());
@@ -456,12 +472,20 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 		return(false);
 	}
 
+	// Dump current IRQ status of GPU:
+	IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+
 	// Disable currently attached ATI interrupt handler on IRQ1 and detach it:
 	if (kIOReturnSuccess != fPCIDevice->disableInterrupt(1)) {
 		IOLog("%s: In IRQ handler setup: Failed to disable IRQ1 on Display provider!\n", getName());
 		return(false);
 	}
-	
+
+	// Dump current IRQ status of GPU:
+	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After disable IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+
 	if (kIOReturnSuccess != fPCIDevice->unregisterInterrupt(1)) {
 		fPCIDevice->enableInterrupt(1);
 		IOLog("%s: In IRQ handler setup: Failed to detach IRQ1 handler on Display provider! Old handler reenabled...\n", getName());
@@ -469,6 +493,10 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	}
 
 	IOLog("%s: In IRQ handler setup: ATI IRQ1 handler on Display provider permanently detached...\n", getName());
+
+	// Dump current IRQ status of GPU:
+	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After detach IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
 	// Option A: Attach a filter handler in the primary interrupt path, and a deferred workloop handler
 	// in the workloop --> More flexible than option B, but both don't yield useable results at the end
@@ -512,6 +540,18 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	fInterruptSrc->enable();
 	myWorkLoop->enableAllInterrupts();
 	
+	// Dump current IRQ status of GPU:
+	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+
+	// Acknowledge all pending IRQ's:
+	WriteRegister(RADEON_R500_GEN_INT_STATUS, ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	IOLog("%s: In IRQ handler setup: After acknowledge IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	
+	WriteRegister(RADEON_R500_GEN_INT_CNTL, ReadRegister(RADEON_R500_GEN_INT_CNTL) | 0xffffffff);
+	IOLog("%s: In IRQ handler setup: After enable2 IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+	IOLog("%s: In IRQ handler setup: After enable2 IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	
 	// Return success status:
 	return(true);
 }
@@ -521,7 +561,21 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilterInterruptEventSource* mySource)
 {
 	static UInt32 myCounter = 0;
+	static UInt32 irqStatus = 0xdeadbeef;
 	
+	// Special readout request from outside interrupt path?
+	if (myself == NULL && mySource == NULL) {
+		// Yes: Log current internal counters value to log:
+		IOLog("Internal fastPath invocation count [total number of hardware interrupts on this line] is %ld.\n", myCounter);
+		IOLog("Internal fastPath irqStatus is %lx.\n", irqStatus);
+		IOLog("Current hw irqControl is %lx.\n",	ReadRegister(RADEON_R500_GEN_INT_CNTL));
+		IOLog("Current hw irqStatus is  %lx.\n",	ReadRegister(RADEON_R500_GEN_INT_STATUS));
+
+		return(false);
+	}
+
+	// Regular call from interrupt subsystem. Do your thing...
+
 	// Increment internal counter for debug purpose: This one can be read out at
 	// shutdown time by a fastPathInterruptHandler(NULL, NULL) call, *after* the
 	// handler has been detached from actual interrupt dispatch system!
@@ -529,15 +583,19 @@ bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilt
 	
 	// Check if we have an address space reference to our member variables. If the
 	// cookie 0xdeadbeef is found, we can (hopefully) safely access our member
-	// variables - In this case increment the gloabl fInterruptCounter.
-	if(fInterruptCookie == 0xdeadbeef) fInterruptCounter++;
-
-	// Special readout request from outside interrupt path?
-	if (myself == NULL && mySource == NULL) {
-		// Yes: Log current internal counters value to log:
-		IOLog("Internal IRQ count is %ld.\n", myCounter);
+	// variables. If that isn't the case, we're unable to access our members and
+	// therefore to do a single useful thing.
+	if(fInterruptCookie == 0xdeadbeef) {
+		// Ok, member access seems to be safe. Do our actual job:
+		
+		// Retrieve the current interrupt status of the Radeon card:
+		irqStatus = 0;
+		irqStatus = ReadRegister(RADEON_R500_GEN_INT_STATUS);
+		
+		// Increment the gloabl fInterruptCounter which counts the graphics cards interrupts we're interested in:
+		fInterruptCounter++;
 	}
-
+	
 	// We return false, so no secondary workloop handler is triggered and hardware
 	// interrupts don't get disabled:
 	return(false);
@@ -660,7 +718,15 @@ void PsychtoolboxKernelDriver::GetStateSnapshot(PsychKDCommandStruct* outStruct)
 // Dump interesting register state to system log:
 void PsychtoolboxKernelDriver::DumpGfxState(void)
 {
-	// TODO...
+	UInt32 regidx;
+	UInt32 col;
+	
+	// Output some range of registers to IOLog:
+	for (regidx = 0; regidx <= 0x200; regidx+=4) {
+		IOLog("Reg[%lx] = %lx :: ", regidx, ReadRegister(regidx));
+		if ((col++) % 5 == 0) IOLog("\n");
+	}
+	
 	return;
 }
 

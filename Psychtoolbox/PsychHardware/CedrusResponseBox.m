@@ -270,6 +270,9 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
 global ptb_cedrus_devices;
+global newdriver;
+
+newdriver = 1;
 
 % Subcommand dispatch:
 if nargin < 1 || ~ischar(cmd)
@@ -462,6 +465,21 @@ if strcmpi(cmd, 'ResetRTTimer')
     return;
 end
 
+if strcmpi(cmd, 'Test')
+    % Flush all pending events/data:
+
+    if nargin < 2
+        error('You must provide the device "handle" for the box!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    TestThis(handle);
+    
+    return
+end
+
 if strcmpi(cmd, 'GetBaseTimer')
     % Base Timer query:
 
@@ -562,7 +580,7 @@ if strcmpi(cmd, 'Open')
     % Create serial object for provided port, configure connection
     % properly:
     port = varargin{1};
-
+port = '/dev/cu.usbserial-FT3Z95V5'
     if nargin < 3
         % Assume user wants time calibration:
         doCalibrate = 1;
@@ -623,7 +641,9 @@ if strcmpi(cmd, 'Open')
         end
 
         response=ReadDev(handle, bytes);
-        switch response
+        response=response(1);
+
+        switch response(1)
             case 48
                 ptb_cedrus_devices{handle}.productID = 'Lumina';
             case 49
@@ -635,42 +655,50 @@ if strcmpi(cmd, 'Open')
         end
 
         % Get model ID: 0 = Unknown, 1 = RB-530, 2 = RB-730, 3 = RB-830, 4 = RB-834
-        bytes = BytesAvailable(handle);
         % I have to put this in a while loop, because sometimes '_d3' fails to
         % evoke a response:
+        bytes = 0;
         while bytes==0
             WriteDev(handle, '_d3');
-            WaitSecs(0.1); % I also have to wait, because even when it does evoke a response,
+            WaitSecs(0.25); % I also have to wait, because even when it does evoke a response,
             % there can be a long delay - tens of milliseconds. Jon Peirce confirms
             % same behaviour on his system.
             bytes = BytesAvailable(handle);
         end
         
         response=ReadDev(handle, bytes);
-        
+        response=response(1);
+
         if response==48
             ptb_cedrus_devices{handle}.modelID = 'Unknown';
+            ptb_cedrus_devices{handle}.modelNo = 0;
+
         else if strcmp(ptb_cedrus_devices{handle}.productID,'RB response pad')
                 switch response
                     case 49
                         ptb_cedrus_devices{handle}.modelID = 'RB-530';
+                        ptb_cedrus_devices{handle}.modelNo = 530;
                     case 50
                         ptb_cedrus_devices{handle}.modelID = 'RB-730';
+                        ptb_cedrus_devices{handle}.modelNo = 730;
                     case 51
                         ptb_cedrus_devices{handle}.modelID = 'RB-830';
+                        ptb_cedrus_devices{handle}.modelNo = 830;
                     case 52
                         ptb_cedrus_devices{handle}.modelID = 'RB-834';
+                        ptb_cedrus_devices{handle}.modelNo = 834;
                     otherwise
                         ptb_cedrus_devices{handle}.modelID = sprintf('Unknown id %i', response);
-
+                        ptb_cedrus_devices{handle}.modelNo = 0;
                 end
             else
                 ptb_cedrus_devices{handle}.modelID = 'Unknown';
+                ptb_cedrus_devices{handle}.modelNo = 0;
             end
         end
 
         % Firmware revision:
-        bytes = BytesAvailable(handle);
+        bytes = 0;
         while bytes==0
             WriteDev(handle, '_d4');
             WaitSecs(0.1);
@@ -678,7 +706,7 @@ if strcmpi(cmd, 'Open')
         end
         ptb_cedrus_devices{handle}.VersionMajor = ReadDev(handle, bytes) - 48;
 
-        bytes = BytesAvailable(handle);
+        bytes = 0;
         while bytes==0
             WriteDev(handle, '_d5');
             WaitSecs(0.1);
@@ -687,7 +715,7 @@ if strcmpi(cmd, 'Open')
         ptb_cedrus_devices{handle}.VersionMinor = ReadDev(handle, bytes) - 48;
 
         % Product name string:
-        bytes = BytesAvailable(handle);
+        bytes = 0;
         while bytes==0
             WriteDev(handle, '_d1');
             WaitSecs(0.1);
@@ -695,6 +723,17 @@ if strcmpi(cmd, 'Open')
         end
         ptb_cedrus_devices{handle}.Name = char(ReadDev(handle, bytes));
 
+        % Try our best to totally drain the receive queue:
+        WaitSecs(0.25);
+        while 1
+            bytes = BytesAvailable(handle);
+            if bytes == 0
+                break;
+            end
+            ReadDev(handle, bytes)
+            WaitSecs(0.1);
+        end
+        
         % Reset base timer:
         WriteDev(handle, 'e1');
       
@@ -778,6 +817,59 @@ error('Invalid subcommand given. Read the help.');
 
 % ---- Start of internal helper functions ----
 
+function TestThis(handle)
+% Generic test blurb...
+global ptb_cedrus_devices;
+
+persistent testbyte;
+if isempty(testbyte)
+    testbyte = 0;
+end
+
+% Flush input buffer:
+WaitSecs(0.2);
+FlushEvents(handle);
+WaitSecs(0.2);
+
+% Set general mode for lines: "General purpose"
+WriteDev(handle, 'a10');
+WaitSecs(0.4);
+
+% Set direction for lines: All output.
+WriteDev(handle, ['a4' 0]);
+WaitSecs(0.4);
+
+
+% Query current state of outputs and inputs:
+WriteDev(handle, 'ar');
+
+% Wait for response:
+inputLines = dec2bin(ReadDev(handle, 1))
+
+basetime = WaitSecs(0.5);
+
+% Set all output lines low:
+testbyte = mod(testbyte + 1, 256);
+WriteDev(handle, ['ah' testbyte]);
+%WriteDev(handle, ['ah' 255]);
+WaitSecs(0.4);
+WriteDev(handle, ['_ah']);
+
+% Any activity, e.g., events???
+%while BytesAvailable(handle) == 0
+%    fprintf('Nothing yet at %f secs...\n', GetSecs - basetime);
+%end
+
+WaitSecs(0.1);
+response = ReadDev(handle, 4)
+%response2 = ReadDev(handle, 6)
+
+% if length(response) == 6
+%     [evt,CedrusStatus] = ExtractKeyPressData(handle,response)
+% end
+
+return;
+
 function ResetRTT(handle)
 % Try to reset the reaction time timer to zero within a small time
 % window, so we can associate "time zero" of the RT timer with the
@@ -794,30 +886,31 @@ if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
     % Calibrated reset:
     
     % Flush input buffer:
-    WaitSecs(0.1);
+    WaitSecs(0.2);
     FlushEvents(handle);
-    WaitSecs(0.1);
+    WaitSecs(0.2);
     
     % Retry timer-reset up to 100 times if needed:
     for i=1:1
 
         % Send basetimer query code:
         dx1=GetSecs;
-        %WriteDev(handle, 'e3');
+        WriteDev(handle, 'e3');
 
         % Send reaction time timer reset code:
-        %WriteDev(handle, 'e5');
+        WriteDev(handle, 'e5');
 
         % Send second basetimer query code:
-        WriteDev(handle, 'e3e5e3');
+        WriteDev(handle, 'e3');
         dx2=GetSecs;
 
         % Receive both basetimer packets:
         t1 = receiveAndParseTimePacket(handle);
         t2 = receiveAndParseTimePacket(handle);
-
+%t2 = t1;
         % Ok, the RTT reset command was "sandwiched" inbetween two basetimer
-        % queries, so RT reset must have happened inbetween processing of those
+        % queries, so RT reset must have happened inbetween processing of
+        % those
         % two queries. The timestamps of the basetimer values of those two
         % queries give us some time window in which RT reset must have
         % happened. We consider this a successfull reset if the timewindow is
@@ -886,25 +979,52 @@ end
 
 return;
 
-function label = findbuttonlabel(numbr)
+function label = findbuttonlabel(numbr, handle)
 % The response box labels buttons by rather arbitrary numbers.
 % I thought it might be helpful to have something more descriptive.
 % THese descriptions assume the box is postioned with its cables/ports
 % on the back edge furthest from the user.
-switch (numbr - 1)
-    case 1
-        label = 'top';
-    case 6
-        label = 'bottom';
-    case 3
-        label = 'left';
-    case 5
-        label = 'right';
-    case 4
-        label = 'middle';
+global ptb_cedrus_devices;
+
+switch (ptb_cedrus_devices{handle}.modelNo)
+    case 530
+        switch (numbr - 1)
+            case 1
+                label = 'top';
+            case 6
+                label = 'bottom';
+            case 3
+                label = 'left';
+            case 5
+                label = 'right';
+            case 4
+                label = 'middle';
+            otherwise
+                label = 'unknown';
+        end
+    case 730
+        switch (numbr)
+            case 2
+                label = '1.Left';
+            case 3
+                label = '2.Left';
+            case 4
+                label = '3.Left';
+            case 5
+                label = '4.Left';
+            case 6
+                label = '5.Left';
+            case 7
+                label = '6.Left';
+            case 8
+                label = '7.Left';
+            otherwise
+                label = 'unknown';
+        end
     otherwise
         label = 'unknown';
 end
+
 return;
 
 function [evt,CedrusStatus] = ExtractKeyPressData(handle,response)
@@ -975,7 +1095,7 @@ evt.button = bitshift(evt.raw, -5) + 1;
 % 5-7
 
 % Map to a more descriptive label: 
-evt.buttonID = findbuttonlabel(evt.button);
+evt.buttonID = findbuttonlabel(evt.button, handle);
 
 % Extracts bytes 3-6 and is the time elapsed in milliseconds since the
 % Reaction Time timer was last reset.
@@ -1018,7 +1138,8 @@ function retHandle = checkHandle(handle)
 return;
 
 function dev = OpenDev(port)
-    
+global newdriver;
+
     if ~IsOctave
         % Matlab: Let's see:
         if ~IsOSX
@@ -1038,28 +1159,35 @@ function dev = OpenDev(port)
             % OS/X and Matlab: Use the SerialComm driver for driving the
             % serial link:
             try
-                % Open 'port' with 115200 baud, no parity, 8 data bits, 1
-                % stopbit.
-                SerialComm('open', port, '115200,n,8,1');
-%                SerialComm('open', port, '9600,n,8,1');
+                if newdriver
+                    IOPort('Verbosity', 10);
+                    dev.link = IOPort('OpenSerialPort', port, 'BaudRate=115200 Parity=None DataBits=8 StopBits=1 FlowControl=None');
+                    IOPort('Purge', dev.link);
+                    dev.driver = 2;
+                    dev.recvQueue = [];
+                else
+                    % Open 'port' with 115200 baud, no parity, 8 data bits, 1
+                    % stopbit.
+                    SerialComm('open', port, '115200,n,8,1');
 
-                % Disable handshaking 'n' == none:
-                SerialComm('hshake', port, 'n');
-                
-                % Wait a bit...
-                WaitSecs(0.5);
-                
-                % And flush all send- and receivebuffers:
-                purgedata = SerialComm('read', port);
-                
-                if ~isempty(purgedata)
-                    fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
+                    % Disable handshaking 'n' == none:
+                    SerialComm('hshake', port, 'n');
+
+                    % Wait a bit...
+                    WaitSecs(0.5);
+
+                    % And flush all send- and receivebuffers:
+                    purgedata = SerialComm('read', port);
+
+                    if ~isempty(purgedata)
+                        fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
+                    end
+
+                    % Assign and init stuff:
+                    dev.link = port;
+                    dev.driver = 1;
+                    dev.recvQueue = [];
                 end
-                
-                % Assign and init stuff:
-                dev.link = port;
-                dev.driver = 1;
-                dev.recvQueue = [];
             catch
                 error('Failed to open port %s on OS/X for Cedrus response box.', port);
             end
@@ -1096,6 +1224,12 @@ function CloseDev(handle)
             SerialComm('purge', ptb_cedrus_devices{handle}.link);
             SerialComm('close', ptb_cedrus_devices{handle}.link);
         end
+
+        if ptb_cedrus_devices{handle}.driver == 2
+            % IOPort driver:
+            IOPort('Purge', ptb_cedrus_devices{handle}.link);
+            IOPort('Close', ptb_cedrus_devices{handle}.link);
+        end
     end
     
     % Clear out device struct:
@@ -1122,6 +1256,16 @@ function nrAvail = BytesAvailable(handle)
             data = transpose(SerialComm('read', ptb_cedrus_devices{handle}.link));
             ptb_cedrus_devices{handle}.recvQueue = [ptb_cedrus_devices{handle}.recvQueue data];
             nrAvail = length(ptb_cedrus_devices{handle}.recvQueue);
+        end
+
+        if ptb_cedrus_devices{handle}.driver == 2
+            % IOPort driver:
+            
+            % All reads are non-blocking and there isn't any BytesAvailable
+            % command. We fetch all data that's currently available via
+            % non-blocking read and attach it to our own queue, then return
+            % the total number of bytes in the queue:
+            nrAvail = IOPort('BytesAvailable', ptb_cedrus_devices{handle}.link);
         end
     end
     
@@ -1177,6 +1321,18 @@ function data = ReadDev(handle, nwanted)
                 ptb_cedrus_devices{handle}.recvQueue = [];
             end            
         end
+
+        if ptb_cedrus_devices{handle}.driver == 2
+            % IOPort driver:
+            [data, when, errmsg] = IOPort('Read', ptb_cedrus_devices{handle}.link, 0, nwanted);
+            if length(data) < nwanted
+                fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, length(data), char(data));
+                fprintf('Read operation on response box timed out after 1 secs! errmsg = %s\n', errmsg);
+                data = [];
+                return;
+            end
+        end
+
     end
 return;
 
@@ -1197,6 +1353,13 @@ function WriteDev(handle, data)
             
             % Write data - without terminator - via SerialComm:
             SerialComm('write', ptb_cedrus_devices{handle}.link, double(data));
+        end
+
+        if ptb_cedrus_devices{handle}.driver == 2
+            % IOPort driver:
+            
+            % Write data - without terminator:
+            IOPort('Write', ptb_cedrus_devices{handle}.link, char(data));
         end
     end
 return;

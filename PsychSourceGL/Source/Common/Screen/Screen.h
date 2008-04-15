@@ -222,7 +222,7 @@ PsychError		SCREENGetWindowInfo(void);
 PsychError		SCREENGetMouseHelper(void);
 PsychError		SCREENResolution(void);
 PsychError		SCREENResolutions(void);
-PsychError		SCREENWaitUntilFlipCertain(void);
+PsychError		SCREENWaitUntilAsyncFlipCertain(void);
 
 //PsychError SCREENSetGLSynchronous(void);		//SCREENSetGLSynchronous.c
 

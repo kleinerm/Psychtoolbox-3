@@ -177,7 +177,8 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % drawings, ie. the precision is way higher than needed for any high
 % dynamic range/resolution display device in existence. The downside of this
 % super-precision is that alpha-blending is not supported in this mode, unless
-% you employ an NVidia Geforce 8000 series graphics card. If you need
+% you employ an NVidia Geforce 8000 series (and later) graphics card, or a
+% ATI Radeon HD2000/3000 series graphics card (and later). If you need
 % alpha-blending on older/other hardware then specify the optional flag
 % 'kPsychNeed16BPCFloat' for the 'imagingmode' argument. This will reduce
 % effective accuracy of the framebuffer to 10 bit precision, but allow for
@@ -190,9 +191,9 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % Psychtoolbox imaging pipeline and floating point framebuffers. The
 % minimum requirements are ATI Radeon X1000 series or NVidia Geforce-6800
 % series and later graphics hardware. We currently recommend NVidia
-% Geforce-8000 series hardware for best results. However, this functions
-% have been successfully tested on ATI Radeon X1600 and NVidia Geforce-7800
-% hardware as well.
+% Geforce-8000 series or ATI Radeon HD-2000/3000 hardware for best results.
+% However, this functions have been successfully tested on ATI Radeon X1600
+% and NVidia Geforce-7800 hardware as well.
 %
 % All Bits++ modes supported by this function should work Plug & Play,
 % requiring no changes to your stimulus code other than mentioned here to
@@ -257,7 +258,7 @@ if isempty(validated)
     tlockXOffset = 0;
 end
 
-if strcmp(cmd, 'DIOCommand')
+if strcmpi(cmd, 'DIOCommand')
 
     % Setup new DIO command to be converted to T-Lock code and blitted:
     if nargin < 2 || isempty(arg)
@@ -327,7 +328,7 @@ if strcmp(cmd, 'DIOCommand')
 
 end
 
-if strcmp(cmd, 'DIOCommandReset')
+if strcmpi(cmd, 'DIOCommandReset')
     % Dummy error check: arg will be used in later revisions...
     if nargin < 2 || isempty(arg)
         error('window handle for Bits++ onscreen window missing!');
@@ -338,7 +339,7 @@ if strcmp(cmd, 'DIOCommandReset')
     return;
 end
 
-if strcmp(cmd, 'ForceUnvalidatedRun')
+if strcmpi(cmd, 'ForceUnvalidatedRun')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
     % in order to be able to run the validation.
@@ -346,7 +347,7 @@ if strcmp(cmd, 'ForceUnvalidatedRun')
     return;
 end
 
-if strcmp(cmd, 'StoreValidation')
+if strcmpi(cmd, 'StoreValidation')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
     % in order to be able to run the validation.
@@ -354,7 +355,7 @@ if strcmp(cmd, 'StoreValidation')
     return;
 end
 
-if strcmp(cmd, 'LoadIdentityClut')
+if strcmpi(cmd, 'LoadIdentityClut')
     % Load an identity CLUT into Bits++ at next Screen('Flip'). This is
     % just a little convenience wrapper around 'LoadNormalizedGammaTable':
     % Restore Bits++ Identity CLUT so it can be used as normal display:
@@ -366,7 +367,7 @@ if strcmp(cmd, 'LoadIdentityClut')
     return;
 end
 
-if strcmp(cmd, 'OpenWindowBits++')
+if strcmpi(cmd, 'OpenWindowBits++')
     % Execute the Screen('OpenWindow') command with proper flags, followed
     % by our own Initialization. Return values of 'OpenWindow'.
     %
@@ -480,7 +481,7 @@ if strcmp(cmd, 'OpenWindowBits++')
     return;
 end
 
-if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
+if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowColor++')
     % Execute the Screen('OpenWindow') command with proper flags, followed
     % by our own Initialization. Return values of 'OpenWindow'.
     %
@@ -518,6 +519,8 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
 
     % multiSample gets overriden for now... Would probably interfere
     % with Bits++ display controller:
+    % TODO: Once we have EXT_framebuffer_multisample support, we can
+    % reenable this in a safe way on our virtual FBO backed framebuffer...
     multiSample = 0;
 
     % Imaging mode we take - and combine it with our own requirements:
@@ -545,7 +548,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % Imagingmode must at least include the following:
     imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion, ourspec);
 
-    if strcmp(cmd, 'OpenWindowColor++')
+    if strcmpi(cmd, 'OpenWindowColor++')
         % In Color++ mode we only have half the effective horizontal
         % resolution. Tell PTB to take this into account for all relevant
         % calculations:
@@ -553,10 +556,13 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     end
 
     % Open the window, pass all parameters (partially modified or overriden), return Screen's return values:
+    % Note that we clear to black (==0), because we set the real background
+    % clear color "further down the road" after we've established our
+    % default color range of 0.0 - 1.0, ie. in the normalized 0 - 1 range.
     if nargin > 9
-        [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode, varargin{7:end});
+        [win, winRect] = Screen('OpenWindow', screenid, 0, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode, varargin{7:end});
     else
-        [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode);
+        [win, winRect] = Screen('OpenWindow', screenid, 0, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingmode);
     end
 
     % Ok, if we reach this point then we've got a proper onscreen
@@ -623,7 +629,7 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     ogl = Screen('Preference', 'Enable3DGraphics');
     
     % Operate in Mono++ mode or Color++ mode?
-    if strcmp(cmd, 'OpenWindowMono++')
+    if strcmpi(cmd, 'OpenWindowMono++')
         % Setup for Mono++ mode:
 
         % Load Bits++ Mono++ formatting shader:
@@ -683,6 +689,19 @@ if strcmp(cmd, 'OpenWindowMono++') || strcmp(cmd, 'OpenWindowColor++')
     % the 2D drawing commands...
     Screen('ColorRange', win, 1, 0);
 
+    % Set Screen background clear color, in normalized 0.0 - 1.0 range:
+    if (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+        % Looks like someone's feeding old style 0-255 integer values as
+        % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
+        % range of values:
+        warning('BitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks\nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.');
+    end
+    
+    % Set the background clear color via old fullscreen 'FillRect' trick,
+    % followed by a flip:
+    Screen('FillRect', win, clearcolor);
+    Screen('Flip', win);
+    
     % Check validation:
     if ~validated
         ValidateBitsPlusImaging(win, 0);
@@ -716,7 +735,7 @@ function ValidateBitsPlusImaging(win, writefile)
     if ~writefile
         % Check if a validation file exists and if it contains this
         % configuration:
-        fid = fopen([PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], 'r');
+        fid = fopen([PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], 'r');
         if fid~=-1
             while ~feof(fid)
                 vconf = fgetl(fid);
@@ -745,10 +764,10 @@ function ValidateBitsPlusImaging(win, writefile)
     
     if writefile
         % Append current configuration to file to mark it as verified:
-        [fid msg]= fopen([PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], 'a');
+        [fid msg]= fopen([PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], 'a');
         if fid == -1
             sca;
-            error('Could not write validation file %s to filesystem [%s].', [PsychtoolboxRoot 'ptbbitsplusplusvalidationfile.txt'], msg);
+            error('Could not write validation file %s to filesystem [%s].', [PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], msg);
         end
 
         % Append line:

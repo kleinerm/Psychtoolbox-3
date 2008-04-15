@@ -36,7 +36,7 @@ while ~KbCheck
     
  %   fprintf('Initiated flip for w1.... waiting\n');
 
-    [tref1 vref1 cref1] = Screen('WaitUntilFlipCertain', w(1))
+    [tref1 vref1 cref1] = Screen('WaitUntilAsyncFlipCertain', w(1))
  
     tv1 = Screen('AsyncFlipEnd', w(1));
  %   tv2 = Screen('AsyncFlipEnd', w(2));

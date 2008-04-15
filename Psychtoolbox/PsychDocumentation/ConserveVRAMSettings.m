@@ -74,6 +74,13 @@
 % of GetChar, CharAvail and ListenChar, so it must be requested with this
 % flag.
 %
+% 256 == kPsychUseWindowsContextSharingWorkaround1
+% On MS-Windows, skip a few not too essential setup steps when creating a
+% userspace OpenGL rendering context for 3D mode. This is a "soft" version
+% of kPsychDisableContextIsolation -- Less intrusive as it doesn't disable
+% context isolation completely, but only a subset. May be able to
+% work-around an NVidia driver bug reported in March 2008 on GF8xxx series.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

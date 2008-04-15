@@ -412,6 +412,32 @@ if ismember(3, testblocks)
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
     
+    % Test of gamma correction shader:
+    gamma = 1/2.374238462047320
+    gammaShader = LoadGLSLProgramFromFiles('GammaCorrectionShader');
+    glUseProgram(gammaShader);
+    glUniform3f(glGetUniformLocation(gammaShader, 'Gamma'), gamma, gamma, gamma);
+    glUseProgram(0);
+    
+    teximg = refpatch;
+    if Textures <=0
+        % Integer texture instead of float texture: Now expected range of
+        % values is 0-255 instead of 0.0 - 1.0. Need to rescale:
+        teximg = uint8(refpatch * 255);
+    end
+    
+    tex = Screen('MakeTexture', win, teximg, [], [], Textures);
+    Screen('DrawTexture', win, tex, [], fbrect, [], Filters, [], [], gammaShader);
+    Screen('Close', tex);
+    testname = 'GammaCorrection';
+
+    % Evaluate and log:
+    gammapatch = refpatch .^ gamma;
+    [resstring, minv, maxv, goodbits] = comparePatches(resstring, testname, maxdepth, gammapatch, fbrect);
+
+    % Visualize and clear buffer back to zero aka black:
+    Screen('Flip', win, 0, 0, 2);
+    
     Screen('CloseAll');
 
 end % Test 3.

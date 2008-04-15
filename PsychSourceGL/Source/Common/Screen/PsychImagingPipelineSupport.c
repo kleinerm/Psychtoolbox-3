@@ -3054,7 +3054,7 @@ boolean PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRec
 		}
 		else if ((usepoweroftwo & 1) && PsychPrefStateGet_Verbosity() > 1) {
 			printf("PTB-WARNING: Created a power of two texture as requested, and you wanted high-precision texturing, but don't have a GLSL filter shader.\n");
-			printf("PTB-WARNING: Filtering - and therefore anti-aliasing - and high-precision drawing of power of two textures won't work.\n");
+			printf("PTB-WARNING: Filtering - and therefore anti-aliasing - and high-precision drawing of power of two textures may not work.\n");
 		}
 		
 		// Do we need a simple texture lookup & modulate with vertex color shader for non-filtered texture
@@ -3072,7 +3072,7 @@ boolean PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRec
 			}
 			else if ((usepoweroftwo & 1) && PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: Created a power of two texture as requested, and you wanted high-precision texturing, but don't have a GLSL shader for that.\n");
-				printf("PTB-WARNING: High-precision drawing of power of two textures therefore won't work.\n");
+				printf("PTB-WARNING: High-precision drawing of power of two textures therefore may not work.\n");
 			}
 			
 		}

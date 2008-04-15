@@ -131,7 +131,7 @@ PsychError SCREENFlip(void)
 	"Screen('AsyncFlipEnd') provides a blocking version of this command -- one that pauses until the operation completes if "
 	"the referenced operation hasn't completed yet.";
 
-	static char seeAlsoString[] = "DrawingFinished";
+	static char seeAlsoString[] = "DrawingFinished WaitUntilAsyncFlipCertain AsyncFlipBegin AsyncFlipCheckEnd AsyncFlipEnd Flip";
 
 	PsychFlipInfoStruct*  flipRequest;
 	PsychWindowRecordType *windowRecord;
@@ -273,12 +273,22 @@ PsychError SCREENFlip(void)
 			PsychErrorExitMsg(PsychError_user, "Screen('Flip'); or Screen('AsyncFlipBegin'); called while a scheduled flip operation is still in progress! Forbidden! Check your code!!");			
 		}
 
+		// This info needs to be provided for flip mechanism:
 		flipRequest->opmode			= opmode;
 		flipRequest->dont_clear		= dont_clear;
 		flipRequest->flipwhen		= flipwhen;
 		flipRequest->multiflip		= multiflip;
 		flipRequest->vbl_synclevel	= vbl_synclevel;		
 
+		// This field is set to -1. It will be set by the flipperThread at flip
+		// completion. We do this, so the 'WaitUntilAsyncFlipCertain' subroutine
+		// knows if a swap is still pending, or really finished. If this value is
+		// not -1, then the routine can simply skip its wait op and take values from
+		// the initialized timestamps of the flipperThread, as we know that that
+		// thread already has detected swap-completion and done all the timestamping
+		// work:
+		flipRequest->vbl_timestamp = -1;
+		
 		// Ok, the struct is filled with spec for a synchronous or asynchronous flip...
 		
 		// Store current preflip GPU graphics surface addresses, if supported:
@@ -345,19 +355,19 @@ PsychError SCREENFlip(void)
 	return(PsychError_none);	
 }
 
-PsychError SCREENWaitUntilFlipCertain(void) 
+PsychError SCREENWaitUntilAsyncFlipCertain(void) 
 {
 	// If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-	static char useString[] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilFlipCertain', windowPtr);";
+	static char useString[] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilAsyncFlipCertain', windowPtr);";
 	static char synopsisString[] =
-	"Wait until it is certain that a previously initiated Screen('Flip',..) or Screen('AsyncFlipBegin',...); "
-	"operation for onscreen window 'windowPtr' will happen or has happened already, then return timestamps "
-	"of when flip operation has happened or when the flip operation will happen.\n"
+	"Wait until it is certain that a previously initiated Screen('AsyncFlipBegin',...); "
+	"operation for onscreen window 'windowPtr' will happen at next vertical retrace or has happened "
+	"already, then return timestamps of when flip operation has happened or when the flip operation will happen.\n"
 	"This function only works on Linux and MacOS/X and only with recent AMD/ATI hardware of the "
 	"Radeon X1000/HD2000/... series or later (or the equivalent FireGL cards). On MacOS/X, the "
 	"PsychtoolboxKernelDriver needs to be loaded for this to work (see help PsychtoolboxKernelDriver).\n"
 	"The method tries to \"read the mind\" of your graphics card to find out if the card will swap the "
-	"display buffers at the next vertical retrace to find out if the swap is certain, ie., not possibly "
+	"display buffers at the next vertical retrace to interrogate if the swap is certain, ie., not possibly "
 	"delayed by graphics card overload, other overload conditions or system timing jitter/delays.\n"
 	"Ideally it will allow your script to know when stimulus onset will happen a few milliseconds before "
 	"stimulus onset. This allows, e.g., to initiate some other operations that need to be tightly and "
@@ -365,11 +375,11 @@ PsychError SCREENWaitUntilFlipCertain(void)
 	"headstart. Examples would be sound output or output of some slow trigger signal which takes multiple "
 	"milliseconds to take action.\n"
 	"This feature only works in fullscreen mode and is considered experimental - It may or may not work "
-	"on your setup. Good luck!\n"
+	"reliably on your setup. Good luck!\n"
 	"Returns a high-precision estimate of the system time (in seconds) when the actual flip will- or has happened "
 	"in the return argument 'VBLTimestamp'. An estimate of Stimulus-onset time is returned in 'StimulusOnsetTime'. "
 	"'swapCertainTime' is the system time when certainty of bufferswap was detected. ";
-	static char seeAlsoString[] = "";
+	static char seeAlsoString[] = "'AsyncFlipBegin' 'AsyncFlipCheckEnd' 'AsyncFlipEnd'";
 	
 	PsychWindowRecordType *windowRecord;
 	double timestamp, stimulusOnset;
@@ -395,83 +405,110 @@ PsychError SCREENWaitUntilFlipCertain(void)
 	PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 
 	// Child protection:
-	if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain called on something else than an onscreen window.");
-	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain called on window without backbuffers.");
+	if (!PsychIsOnscreenWindow(windowRecord)) PsychErrorExitMsg(PsychError_user, "WaitUntilAsyncFlipCertain called on something else than an onscreen window.");
+	if(windowRecord->windowType!=kPsychDoubleBufferOnscreen) PsychErrorExitMsg(PsychError_user, "WaitUntilAsyncFlipCertain called on window without backbuffers.");
+	
+	// Just if we are called on a window for which an async flip operation is active.
+	// The routine can only be used for active async flips, so bail out on anything else.
+	if ((windowRecord->flipInfo == NULL) || (windowRecord->flipInfo->asyncstate == 0)) {
+		// No async flip operation active: Either no flip triggered at all, or at least not an async one:
+		PsychErrorExitMsg(PsychError_user, "WaitUntilAsyncFlipCertain only works for async flips: May only be called between Screen('AsyncFlipBegin') and Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd')!");		
+	}
 	
 	// Just need to check if GPU low-level access is supported:
 	if (!PsychOSIsKernelDriverAvailable(windowRecord->screenNumber)) {
-		PsychErrorExitMsg(PsychError_user, "WaitUntilFlipCertain needs the PsychtoolboxKernelDriver to be loaded on supported hardware!");
+		PsychErrorExitMsg(PsychError_user, "WaitUntilAsyncFlipCertain needs the PsychtoolboxKernelDriver to be loaded on supported hardware!");
 	}
 
-    // Retrieve estimate of monitor refresh interval:
-    if (windowRecord->VideoRefreshInterval > 0) {
-        currentrefreshestimate = windowRecord->VideoRefreshInterval;
-    }
-    else {
-        currentrefreshestimate=0;
-        // We abort - This is too unsafe...
-        PsychErrorExitMsg(PsychError_user,"Estimate of monitor refresh interval is INVALID -> Aborting!");
-    }
-
-    if (windowRecord->VBL_Endline == -1) {
-        PsychErrorExitMsg(PsychError_user,"Estimate of VBL endline is INVALID -> Aborting!");
-	}
-
-	// Wait for bufferswap completion or bufferswap certain:
-	swappending = PsychWaitForBufferswapPendingOrFinished(windowRecord, &timestamp, &beamposition);
-
-	// Copy out optional timestamp of bufferswap detection:
-	PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);
-
-	// Compute timestamps:
-	PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
-    vbl_startline = (int) sch;
-	vbl_endline = windowRecord->VBL_Endline;
-
-	if (swappending) {
-		// Swap is pending:
-		onset_lines_togo = vbl_endline - beamposition + 1;
-		vbl_lines_elapsed = vbl_startline - beamposition + 1; 
+	// Swap still pending? A non -1 vbl_timestamp would mean that the async flip helper
+	// thread has already detected swap completion and calculated all relevant timestamps,
+	// so we can skip all this and just take the timestamps provided by the flipper thread:
+	if (windowRecord->flipInfo->vbl_timestamp == -1)  {
+		// Swap still pending - Do your work:
 		
-		// From the elapsed number we calculate the remaining time till swap et al.:
-		vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
-		onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
-
-		// Add to basetime:
-		stimulusOnset = timestamp + onset_time_togo;
-		timestamp = timestamp + vbl_time_elapsed;
-		
-		// printf("PENDING\n");
-	}
-	else {
-		// Swap happened already: Do same calculations as in PsychFlipWindowBuffers():
-		
-		if (beamposition >= vbl_startline) {
-			vbl_lines_elapsed = beamposition - vbl_startline;
-			onset_lines_togo = vbl_endline - beamposition + 1;
+		// Retrieve estimate of monitor refresh interval:
+		if (windowRecord->VideoRefreshInterval > 0) {
+			currentrefreshestimate = windowRecord->VideoRefreshInterval;
 		}
 		else {
-			vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamposition;
-			onset_lines_togo = -1.0 * beamposition;
+			currentrefreshestimate=0;
+			// We abort - This is too unsafe...
+			PsychErrorExitMsg(PsychError_user,"Estimate of monitor refresh interval is INVALID -> Aborting!");
 		}
 		
-		// From the elapsed number we calculate the elapsed time since VBL start:
-		vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
-		onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+		if (windowRecord->VBL_Endline == -1) {
+			PsychErrorExitMsg(PsychError_user,"Estimate of VBL endline is INVALID -> Aborting!");
+		}
 		
-		// Compute of stimulus-onset, aka time when retrace is finished:
-		stimulusOnset = timestamp + onset_time_togo;
-		// Now we correct our time_at_vbl by this correction value:
-		timestamp = timestamp - vbl_time_elapsed;
+		// Wait for bufferswap completion or bufferswap certain:
+		swappending = PsychWaitForBufferswapPendingOrFinished(windowRecord, &timestamp, &beamposition);
+		
+		// Copy out optional timestamp of bufferswap detection:
+		PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);
+		
+		// Compute timestamps:
+		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);
+		vbl_startline = (int) sch;
+		vbl_endline = windowRecord->VBL_Endline;
+		
+		if (swappending) {
+			// Swap is pending:
+			onset_lines_togo = vbl_endline - beamposition + 1;
+			vbl_lines_elapsed = vbl_startline - beamposition + 1; 
+			
+			// From the elapsed number we calculate the remaining time till swap et al.:
+			vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
+			onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+			
+			// Add to basetime:
+			stimulusOnset = timestamp + onset_time_togo;
+			timestamp = timestamp + vbl_time_elapsed;
+			
+			// printf("PENDING\n");
+		}
+		else {
+			// Swap happened already: Do same calculations as in PsychFlipWindowBuffers():
+			
+			if (beamposition >= vbl_startline) {
+				vbl_lines_elapsed = beamposition - vbl_startline;
+				onset_lines_togo = vbl_endline - beamposition + 1;
+			}
+			else {
+				vbl_lines_elapsed = vbl_endline - vbl_startline + 1 + beamposition;
+				onset_lines_togo = -1.0 * beamposition;
+			}
+			
+			// From the elapsed number we calculate the elapsed time since VBL start:
+			vbl_time_elapsed = vbl_lines_elapsed / vbl_endline * currentrefreshestimate; 
+			onset_time_togo = onset_lines_togo / vbl_endline * currentrefreshestimate;
+			
+			// Compute of stimulus-onset, aka time when retrace is finished:
+			stimulusOnset = timestamp + onset_time_togo;
+			// Now we correct our time_at_vbl by this correction value:
+			timestamp = timestamp - vbl_time_elapsed;
+		}
+		
+		// Copy out optional vbl timestamp of bufferswap:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, timestamp);
+		
+		// Copy out optional timestamp of stimulus onset:
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, stimulusOnset);
 	}
-	
-	// Copy out optional vbl timestamp of bufferswap:
-	PsychCopyOutDoubleArg(1, kPsychArgOptional, timestamp);
-
-	// Copy out optional timestamp of stimulus onset:
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, stimulusOnset);
+	else {
+		// Swap already finished and timestamped by flipper thread.
+		// Just retrieve and return its values:
+		// Copy out optional vbl timestamp of bufferswap:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, windowRecord->flipInfo->vbl_timestamp);
+		
+		// Copy out optional timestamp of stimulus onset:
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, windowRecord->flipInfo->time_at_onset);
+		
+		// Copy out optional timestamp of bufferswap detection:
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
+		PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);
+	}
 #else
-	PsychErrorExitMsg(PsychError_user, "Screen('WaitUntilFlipCertain') is not supported on Microsoft Windows.");
+	PsychErrorExitMsg(PsychError_user, "Screen('WaitUntilAsyncFlipCertain') is not supported on Microsoft Windows.");
 #endif
 
 	// Done.

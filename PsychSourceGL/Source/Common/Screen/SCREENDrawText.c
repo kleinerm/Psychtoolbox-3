@@ -87,6 +87,7 @@ static char synopsisString[] =
 
 PsychError SCREENDrawText(void) 
 {
+	char			errmsg[1000];
     PsychWindowRecordType 	*winRec;
     CGContextRef		cgContext;
     unsigned int		memoryTotalSizeBytes, memoryRowSizeBytes;
@@ -131,7 +132,7 @@ PsychError SCREENDrawText(void)
     rpb=(GLubyte*) &ix;
     bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
     ix = 0; rpb = NULL;
-
+	textCString = NULL;
     
     //for layout attributes.  (not the same as run style attributes set by PsychSetATSUTStyleAttributes or line attributes which we do not set.) 	
     ATSUAttributeTag		saTags[] =  {kATSUCGContextTag };
@@ -277,7 +278,8 @@ PsychError SCREENDrawText(void)
     cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, kCGImageAlphaPremultipliedFirst);
     if(!cgContext){
         free((void *)textureMemory);
-        PsychErrorExitMsg(PsychError_internal, "Failed to allocate CG Bimap Context\n");
+		sprintf(errmsg, "Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i, textCString=%s\n", textureWidth, textureHeight, memoryRowSizeBytes, textCString);
+        PsychErrorExitMsg(PsychError_system, errmsg);
     }
     CGContextSetFillColorSpace (cgContext,cgColorSpace);
     

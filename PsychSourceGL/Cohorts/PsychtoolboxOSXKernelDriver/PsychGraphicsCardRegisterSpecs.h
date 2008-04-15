@@ -30,6 +30,14 @@
 // specs, downloadable from http://www.x.org/docs/AMD/ the website of the X-ORG
 // foundation, home of the open source Linux X11 server. These specs are official
 // specs from AMD/ATI, released in autumn 2007 to the open-source community.
+#define RADEON_D1CRTC_INTERRUPT_CONTROL	0x60DC
+
+#define RADEON_R500_GEN_INT_CNTL   0x100
+#define RADEON_R500_GEN_INT_STATUS 0x104
+//#define RADEON_R500_GEN_INT_CNTL   0x040
+//#define RADEON_R500_GEN_INT_STATUS 0x044
+//#define RADEON_R500_GEN_INT_CNTL   0x200
+//#define RADEON_R500_GEN_INT_STATUS 0x204
 
 // The D1CRTC_STATUS_POSITION register (32 bits) encodes vertical beam position in
 // bits 0:12 (the least significant 13 bits), and horizontal beam position in

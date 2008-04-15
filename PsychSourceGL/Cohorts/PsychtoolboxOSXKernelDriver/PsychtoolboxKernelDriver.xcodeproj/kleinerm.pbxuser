@@ -70,8 +70,12 @@
 					PBXFileDataSource_Warnings_ColumnID,
 				);
 			};
-			PBXPerProjectTemplateStateSaveDate = 222125456;
-			PBXWorkspaceStateSaveDate = 222125456;
+			PBXPerProjectTemplateStateSaveDate = 229993978;
+			PBXWorkspaceStateSaveDate = 229993978;
+		};
+		perUserProjectItems = {
+			83903A030DB56E2400F25EDA /* PBXTextBookmark */ = 83903A030DB56E2400F25EDA /* PBXTextBookmark */;
+			83903A040DB56E2400F25EDA /* PBXTextBookmark */ = 83903A040DB56E2400F25EDA /* PBXTextBookmark */;
 		};
 		sourceControlManager = 838B994D0D34A549002B2A7B /* Source Control */;
 		userBuildSettings = {
@@ -86,6 +90,13 @@
 			sepNavSelRange = "{1465, 0}";
 			sepNavVisRect = "{{0, 67}, {918, 734}}";
 			sepNavWindowFrame = "{{15, 51}, {1355, 972}}";
+		};
+	};
+	83066A9C0D39B19D0009C12B /* PsychGraphicsCardRegisterSpecs.h */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {918, 1960}}";
+			sepNavSelRange = "{1113, 0}";
+			sepNavVisRect = "{{0, 140}, {918, 734}}";
 		};
 	};
 	838B993E0D34A4E2002B2A7B /* PsychtoolboxKernelDriverUserClientTool */ = {
@@ -146,6 +157,26 @@
 		isa = PBXCodeSenseManager;
 		indexTemplatePath = "";
 	};
+	83903A030DB56E2400F25EDA /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */;
+		name = IOPCIDevice;
+		rLen = 11;
+		rLoc = 871;
+		rType = 0;
+		vrLen = 1805;
+		vrLoc = 0;
+	};
+	83903A040DB56E2400F25EDA /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */;
+		name = IOPCIDevice;
+		rLen = 11;
+		rLoc = 871;
+		rType = 0;
+		vrLen = 1805;
+		vrLoc = 0;
+	};
 	83B62FE60D3556D800971329 /* XCBreakpointsBucket */ = {
 		isa = XCBreakpointsBucket;
 		name = "Project Breakpoints";
@@ -177,15 +208,15 @@
 	};
 	BF9257FB0C039FC200D7A82A /* PsychtoolboxKernelDriver.cpp */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1178, 10500}}";
-			sepNavSelRange = "{25818, 0}";
-			sepNavVisRect = "{{0, 8230}, {918, 734}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1178, 11508}}";
+			sepNavSelRange = "{12526, 0}";
+			sepNavVisRect = "{{0, 3494}, {918, 734}}";
 		};
 	};
 	BF9257FC0C039FC200D7A82A /* PsychtoolboxKernelDriver.h */ = {
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {998, 1232}}";
-			sepNavSelRange = "{747, 0}";
+			sepNavSelRange = "{871, 11}";
 			sepNavVisRect = "{{0, 0}, {918, 734}}";
 			sepNavWindowFrame = "{{15, 51}, {1355, 972}}";
 		};
@@ -194,7 +225,7 @@
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {918, 6650}}";
 			sepNavSelRange = "{17803, 63}";
-			sepNavVisRect = "{{0, 5916}, {918, 734}}";
+			sepNavVisRect = "{{0, 3852}, {918, 734}}";
 		};
 	};
 	BF9257FE0C039FC200D7A82A /* PsychtoolboxKernelDriverUserClient.h */ = {
@@ -208,7 +239,7 @@
 		uiCtxt = {
 			sepNavIntBoundsRect = "{{0, 0}, {918, 1568}}";
 			sepNavSelRange = "{1160, 65}";
-			sepNavVisRect = "{{0, 135}, {918, 734}}";
+			sepNavVisRect = "{{0, 166}, {918, 734}}";
 		};
 	};
 	BF9258040C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientInterface.h */ = {
@@ -220,9 +251,9 @@
 	};
 	BF9258050C039FE200D7A82A /* PsychtoolboxKernelDriverUserClientTool.c */ = {
 		uiCtxt = {
-			sepNavIntBoundsRect = "{{0, 0}, {1034, 4830}}";
-			sepNavSelRange = "{11447, 0}";
-			sepNavVisRect = "{{0, 4096}, {918, 734}}";
+			sepNavIntBoundsRect = "{{0, 0}, {1034, 4858}}";
+			sepNavSelRange = "{7151, 0}";
+			sepNavVisRect = "{{0, 2640}, {918, 734}}";
 		};
 	};
 }

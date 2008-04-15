@@ -329,6 +329,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // the new Java-GetChar can do its job.
   DWORD windowExtendedStyle = WS_EX_APPWINDOW | 0x08000000; // const int WS_EX_NOACTIVATE = 0x08000000;
 
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
+		 fflush(NULL);
+	 }
+
 	 // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
     
@@ -375,6 +380,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     // Assemble windows caption name from window index:
     sprintf(winname, "PTB Onscreen window [%i]:", (int) windowRecord->windowIndex);
 
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window parameters computed, display switch to fullscreen done (if needed). Registering window class...\n");
+		 fflush(NULL);
+	 }
+
     // Register our own window class for Psychtoolbox onscreen windows:
     // Only register the window class once - use hInstance as a flag.
     if (!hInstance) {
@@ -406,6 +416,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       x=winRec.left; y=winRec.top; width=winRec.right - winRec.left; height=winRec.bottom - winRec.top;
     }
 
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window class registered - Creating GDI window...\n");
+		 fflush(NULL);
+	 }
+
     // Window class registered: Create a window of this class with some specific properties:
     hWnd = CreateWindowEx(windowExtendedStyle,
 			  "PTB-OpenGL",
@@ -420,6 +435,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
     // Retrieve device context for the window:
     hDC = GetDC(hWnd);
+
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Window created - Pixelformat selection...\n");
+		 fflush(NULL);
+	 }
 
     // Setup optional flags for pixelformat:
     flags = 0;
@@ -552,6 +572,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       return(FALSE);
     }
     
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: ChoosePixelFormat(), SetPixelFormat() done... Creating OpenGL context...\n");
+		 fflush(NULL);
+	 }
+
     // Ok, create and attach the rendering context.
     windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
     if (windowRecord->targetSpecific.contextObject == NULL) {
@@ -566,9 +591,19 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     windowRecord->targetSpecific.windowHandle = hWnd;
     windowRecord->targetSpecific.deviceContext = hDC;
     
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context created - Activating and binding context...\n");
+		 fflush(NULL);
+	 }
+
     // Activate the rendering context:
     PsychOSSetGLContext(windowRecord);
     
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Online - glewInit()...\n");
+		 fflush(NULL);
+	 }
+
     // Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
     // available OpenGL extensions via GLEW:
     glerr = glewInit();
@@ -615,6 +650,12 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	else {
 	  // Supported. We destroy the rendering context and window, then recreate it with
 	  // the wglChoosePixelFormat - method...
+
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Need to use wglChoosePixelFormat() path due to multisampling enabled. Destroy and reinit sequence...\n");
+		 fflush(NULL);
+	 }
+
 	  wglMakeCurrent(NULL, NULL);
 
 	  // Delete rendering context:
@@ -640,6 +681,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	   // Retrieve device context for the window:
     	hDC = GetDC(hWnd);
 
+		if (PsychPrefStateGet_Verbosity()>6) {
+			printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context, pixelformat, window destroyed, window recreated - Now wglChoosePixelformat()...\n");
+			fflush(NULL);
+		}
+		
 		pf = 0;
 		nNumFormats=0;
 		wglChoosePixelFormatARB(hDC, &attribs[0], NULL, 1, &pf, &nNumFormats);
@@ -705,6 +751,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
          return(FALSE);
       }
 
+		if (PsychPrefStateGet_Verbosity()>6) {
+			printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: New pixelformat chosen and set - About to recreate master opengl context...\n");
+			fflush(NULL);
+		}
+
       // Ok, create and attach the rendering context.
       windowRecord->targetSpecific.contextObject = wglCreateContext(hDC);
       if (windowRecord->targetSpecific.contextObject == NULL) {
@@ -718,6 +769,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
       // Store the handles...
       windowRecord->targetSpecific.windowHandle = hWnd;
       windowRecord->targetSpecific.deviceContext = hDC;
+
+		if (PsychPrefStateGet_Verbosity()>6) {
+			printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Context recreated - Activating...\n");
+			fflush(NULL);
+		}
 
       // Activate the rendering context:
       PsychOSSetGLContext(windowRecord);
@@ -740,10 +796,21 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		// Done with final window and OpenGL context setup. We've got our final context enabled.
 	 }
 
+	if (PsychPrefStateGet_Verbosity()>6) {
+		printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Mastercontext created, activated and bound - Enabling multisampling if needed...\n");
+		fflush(NULL);
+	}
+	
 	 // Enable multisampling if this was requested:
     if (windowRecord->multiSample > 0) glEnable(0x809D); // 0x809D == GL_MULTISAMPLE_ARB
 	 // Throw away any error-state this could have created on old hardware...
-	 glGetError();
+
+	 while((glerr = glGetError())!=GL_NO_ERROR) {
+		 if (PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: After multisample enable - if any - glGetError reports error: %s..\n", gluErrorString(glerr));
+			 fflush(NULL);
+		 }		 
+	 }
 
 	 if (PsychPrefStateGet_Verbosity()>4) {
 		 printf("PTB-DEBUG: Window and master OpenGL context creation finished.\n");
@@ -780,20 +847,75 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			fflush(NULL);
 		}
 
-		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
-		wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
-
-		// Copy full state from our main context:
-		if(!wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS)) {
-			// This is ugly, but not fatal...
-			if (PsychPrefStateGet_Verbosity()>1) {
-				printf("\nPTB-WARNING[wglCopyContext for user context failed]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
-			}
+		if (PsychPrefStateGet_Verbosity()>6) {
+			printf("PTB-DEBUG: Userspace context wglCreateContext() done: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+			fflush(NULL);
+		}
+		
+		glFinish();
+		while((glerr = glGetError())!=GL_NO_ERROR) {
+			if (PsychPrefStateGet_Verbosity()>6) {
+				printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Pre-Switch to usercontext glGetError reports error: %s..\n", gluErrorString(glerr));
+				fflush(NULL);
+			}		 
 		}
 
-		if (PsychPrefStateGet_Verbosity()>4) {
-			printf("PTB-DEBUG: wglCopyContext() done. Now enabling ressource sharing..\n");
-			fflush(NULL);
+		// Special debug override for faulty drivers with context sharing setup bugs (NVidia GF8xxx with drivers from Dec. 2007):
+		if (!(conserveVRAM & kPsychUseWindowsContextSharingWorkaround1)) {
+		
+			wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
+			
+			while((glerr = glGetError())!=GL_NO_ERROR) {
+				if (PsychPrefStateGet_Verbosity()>6) {
+					printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to usercontext glGetError reports error: %s..\n", gluErrorString(glerr));
+					fflush(NULL);
+				}		 
+			}
+			
+			if (PsychPrefStateGet_Verbosity()>6) {
+				printf("PTB-DEBUG: In Userspace context: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+				fflush(NULL);
+			}
+			
+			glFinish();
+			wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.contextObject);
+			
+			glFinish();
+			while((glerr = glGetError())!=GL_NO_ERROR) {
+				if (PsychPrefStateGet_Verbosity()>6) {
+					printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Post-Switch to mastercontext glGetError reports error: %s..\n", gluErrorString(glerr));
+					fflush(NULL);
+				}		 
+			}
+			
+			if (PsychPrefStateGet_Verbosity()>6) {
+				printf("PTB-DEBUG: Back in mastercontext: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+				fflush(NULL);
+			}
+			
+			// Copy full state from our main context:
+			if(!wglCopyContext(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject, GL_ALL_ATTRIB_BITS)) {
+				// This is ugly, but not fatal...
+				if (PsychPrefStateGet_Verbosity()>1) {
+					printf("\nPTB-WARNING[wglCopyContext for user context failed]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n");
+				}
+			}
+			
+			if (PsychPrefStateGet_Verbosity()>6) {
+				printf("PTB-DEBUG: After wglCopyContext(): glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+				fflush(NULL);
+			}
+			
+			if (PsychPrefStateGet_Verbosity()>4) {
+				printf("PTB-DEBUG: wglCopyContext() done. Now enabling ressource sharing..\n");
+				fflush(NULL);
+			}
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity()>4) {
+				printf("PTB-DEBUG: wglMakeCurrent(usercontext); wglMakeCurrent(mastercontext); wglCopyContext() skipped due to kPsychUseWindowsContextSharingWorkaround1 flag. Now enabling ressource sharing..\n");
+				fflush(NULL);
+			}
 		}
 
 	   // Enable ressource sharing with master context for this window:
@@ -804,17 +926,30 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			}		
 		}
 
+		if (PsychPrefStateGet_Verbosity()>6) {
+			printf("PTB-DEBUG: After wglShareLists(): glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+			fflush(NULL);
+		}
+
 		if (PsychPrefStateGet_Verbosity()>4) {
 			printf("PTB-DEBUG: Userspace context setup done..\n");
 			fflush(NULL);
 		}
 	 }
 
-	 if (PsychPrefStateGet_Verbosity()>4) {
-		printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
-		fflush(NULL);
+	 glFinish();
+	 while((glerr = glGetError())!=GL_NO_ERROR) {
+		 if (PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: Before slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+			 fflush(NULL);
+		 }		 
 	 }
-
+	 
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: Before slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+		 fflush(NULL);
+	 }
+	 
 	 // Do we have a slaveWindow with which to share all object ressources like display lists, textures, FBO's and shaders?
 	 if (windowRecord->slaveWindow) {
 		 // Enable ressource sharing with slaveWindow context for this window:
@@ -826,6 +961,30 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		 }
 	 }
 	 
+	 glFinish();
+	 while((glerr = glGetError())!=GL_NO_ERROR) {
+		 if (PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: After slaveWindow context sharing: glGetError reports error: %s..\n", gluErrorString(glerr));
+			 fflush(NULL);
+		 }		 
+	 }
+	 
+	 if (PsychPrefStateGet_Verbosity()>6) {
+		 printf("PTB-DEBUG: After slaveWindow context sharing: glGetString reports %p pointer...\n", glGetString(GL_EXTENSIONS));
+		 fflush(NULL);
+	 }
+
+	 if (PsychPrefStateGet_Verbosity()>4) {
+		printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
+		fflush(NULL);
+	 }
+
+	 if (PsychPrefStateGet_Verbosity()>4) {
+		printf("PTB-DEBUG: OpenGL initialization of all master-/slave-/shared-/userspace contexts finished...\n");
+		printf("PTB-DEBUG: Final low-level window setup: ShowWindow(), SetCapture(), diagnostics...\n");
+		fflush(NULL);
+	 }
+
     // Finally, show our new window:
     ShowWindow(hWnd, SW_SHOW);
 
@@ -1004,11 +1163,35 @@ void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
 void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval)
 {
+  static unsigned int failcount = 0;
+  
   // Enable rendering context of window:
   PsychSetGLContext(windowRecord);
   // Try to set requested swapInterval if swap-control extension is supported on
   // this windows machine. Otherwise this will be a no-op...
-  if (wglSwapIntervalEXT) wglSwapIntervalEXT(swapInterval);
+  if (wglSwapIntervalEXT) {
+	if(!wglSwapIntervalEXT(swapInterval)) {
+		failcount++;
+		if (failcount <= 10) printf("PTB-ERROR: Setting wglSwapInterval(%i) failed! Expect severe display timing and display tearing problems!!! See 'help SyncTrouble' for more info.\n", swapInterval);
+		if (failcount == 10) printf("PTB-ERROR: This error message won't repeat on subsequent failure...\n");
+	}
+	
+	// Double check new setting:
+	if ((NULL == wglGetSwapIntervalEXT) || (wglGetSwapIntervalEXT() != swapInterval)) {
+		failcount++;
+		if (failcount <= 10) {
+			if (NULL == wglGetSwapIntervalEXT) {
+				printf("PTB-ERROR: wglGetSwapIntervalEXT() unsupported. This is a bug in your graphics driver or system setup!! See 'help SyncTrouble' for more info.\n");
+			}
+			else {
+				printf("PTB-ERROR: Mismatch between requested display swap interval %i and actual swap interval %i! Synchronization of Screen('Flip') to display refresh will likely malfunction!\n", swapInterval, wglGetSwapIntervalEXT());
+				printf("PTB-ERROR: This is either a bug in your graphics driver or system setup, or some misconfiguration in the display setting control panel of your system. See 'help SyncTrouble' for more info.\n");
+			}
+		}
+		if (failcount == 10) printf("PTB-ERROR: These error messages won't repeat on subsequent failure...\n");
+	}
+  }
+  
   return;
 }
 

@@ -136,7 +136,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('AsyncFlipBegin', windowPtr [, when] [, dontclear] [, dontsync] [, multiflip]);";
 	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipEnd', windowPtr);";
 	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime FlipTimestamp Missed Beampos] = Screen('AsyncFlipCheckEnd', windowPtr);";
-	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilFlipCertain', windowPtr);";
+	synopsis[i++] = "[VBLTimestamp StimulusOnsetTime swapCertainTime] = Screen('WaitUntilAsyncFlipCertain', windowPtr);";
 	synopsis[i++] = "[telapsed] = Screen('DrawingFinished', windowPtr [, dontclear] [, sync]);";
 	synopsis[i++] = "framesSinceLastWait = Screen('WaitBlanking', windowPtr [, waitFrames]);";
 

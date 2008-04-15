@@ -68,6 +68,7 @@ void mogl_rebindARBExtensionsToCore(void)
     if (NULL == glGetShaderInfoLog) glGetShaderInfoLog = glGetInfoLogARB;
     if (NULL == glGetProgramInfoLog) glGetProgramInfoLog = glGetInfoLogARB;
     if (NULL == glValidateProgram) glValidateProgram = glValidateProgramARB;
+    if (NULL == glIsProgram) glIsProgram = glIsProgramARB;
     
     // Misc other stuff to remap...
     if (NULL == glDrawRangeElements) glDrawRangeElements = glDrawRangeElementsEXT;

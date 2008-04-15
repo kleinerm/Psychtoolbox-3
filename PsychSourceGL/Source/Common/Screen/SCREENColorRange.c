@@ -164,10 +164,12 @@ PsychError SCREENColorRange(void)
 				clampcolors = oldclampcolors;
 			}
 			else if ((PsychPrefStateGet_Verbosity()>1) && (clampcolors==0) && !(windowRecord->gfxcaps & kPsychGfxCapVCGood)) {
-				printf("PTB-WARNING: Disabled color clamping as requested via hardware. However, i'm not 100% sure if your\n");
+				printf("PTB-WARNING: Disabled color clamping as requested via hardware. However, i'm not 100%% certain that your\n");
 				printf("PTB-WARNING: hardware will achieve highest possible precision this way. If you want to play safe and get\n");
-				printf("PTB-WARNING: high precision at the cost of lower speed, you can set the 'clampcolors' flag to -1. in\n");
+				printf("PTB-WARNING: high precision at the cost of lower speed, you can also try a setting of the 'clampcolors' of -1 in\n");
 				printf("PTB-WARNING: the Screen('ColorRange', ..., clampcolors); command.\n");
+				printf("PTB-WARNING: The test script 'HighColorPrecisionDrawingTest' allows you to exercise your gfx-hardware and\n");
+				printf("PTB-WARNING: assess the accuracy of your hardware - and which setting provides highest accurcay.\n");
 			}
 		}
 		else {

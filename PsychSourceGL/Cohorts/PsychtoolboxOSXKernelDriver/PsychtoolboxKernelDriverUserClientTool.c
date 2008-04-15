@@ -314,27 +314,29 @@ int main(int argc, char* argv[])
 			printf("D2: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
 			printf("D2: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_PITCH));
 
-			while(0) {
-				if (PsychOSKDReadRegister(connect, RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS)!=i) {
-					i=PsychOSKDReadRegister(connect, RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS);
-					printf("D1: New Primary surface is %lx\n\n", i);
-					printf("D1: New Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS));
+			while(1) {
+				if (PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS)!=i) {
+					i=PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS);
+					printf("D2: New Primary surface is %lx\n\n", i);
+					printf("D2: New Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
 				}
 			}
 			
-			printf("D1: RADEON_D1GRPH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL));
-			PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0x1 << 8);
-			printf("D1: RADEON_D1GRPH_LUT_SEL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_LUT_SEL));
-			
-			printf("Switching to ARGB2101010...\n");
-			ov = PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL);
-			PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ((0x1 << 8) | ov));
-			for(j=1; j<10; j++) for(i=1; i< 1000*1000*1000; i++);
-			printf("Switching back to ARGB8888...\n");
-			PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ov);
-			PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0);
-			
-			printf("D1: RADEON_LVTMA_BIT_DEPTH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_LVTMA_BIT_DEPTH_CONTROL));
+			if (0) {
+				printf("D1: RADEON_D1GRPH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL));
+				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0x1 << 8);
+				printf("D1: RADEON_D1GRPH_LUT_SEL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_LUT_SEL));
+				
+				printf("Switching to ARGB2101010...\n");
+				ov = PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL);
+				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ((0x1 << 8) | ov));
+				for(j=1; j<10; j++) for(i=1; i< 1000*1000*1000; i++);
+				printf("Switching back to ARGB8888...\n");
+				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ov);
+				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0);
+				
+				printf("D1: RADEON_LVTMA_BIT_DEPTH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_LVTMA_BIT_DEPTH_CONTROL));
+			}
 			
 			// Close the user client and tear down the connection.
 			MyUserClientCloseExample(connect);

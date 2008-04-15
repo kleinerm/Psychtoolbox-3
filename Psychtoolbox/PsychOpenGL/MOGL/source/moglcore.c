@@ -608,7 +608,7 @@ void mogl_checkerrors(const char* cmd, mxArray *prhs[])
     // No OpenGL core system errors. Check if a special GLSL command was executed:
     if (strcmp(cmd, "glCompileShader")==0) {
         // A GLSL shader got just compiled. Check its compile status...
-        handle = (int) mxGetScalar(prhs[1]);
+        handle = (GLuint) mxGetScalar(prhs[1]);
         glGetShaderiv(handle, GL_COMPILE_STATUS, &status);
         if (status!=GL_TRUE) printf("MOGL-ERROR: Compilation of the GLSL shader object %i via glCompileShader(%i) failed!\n", handle, handle);
         if (debuglevel>1 || status!=GL_TRUE) {
@@ -624,7 +624,7 @@ void mogl_checkerrors(const char* cmd, mxArray *prhs[])
         
     if (strcmp(cmd, "glLinkProgram")==0) {
         // A GLSL shader got just compiled. Check its compile status...
-        handle = (int) mxGetScalar(prhs[1]);
+        handle = (GLuint) mxGetScalar(prhs[1]);
         glGetProgramiv(handle, GL_LINK_STATUS, &status);
         if (status!=GL_TRUE) printf("MOGL-ERROR: Linking of the GLSL shader program %i via glLinkProgram(%i) failed!\n", handle, handle);
         if (debuglevel>1 || status!=GL_TRUE) {

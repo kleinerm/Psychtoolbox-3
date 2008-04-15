@@ -1708,7 +1708,7 @@ bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 	// Request to wait or poll for finalization of an async flip operation:
 	if ((flipRequest->opmode == 2) || (flipRequest->opmode == 3)) {
 		// Child protection:
-		if (flipRequest->asyncstate != 1) PsychErrorExitMsg(PsychError_internal, "Tried to invoke end of an asynchronous flip while although none is in progress!");
+		if (flipRequest->asyncstate != 1) PsychErrorExitMsg(PsychError_internal, "Tried to invoke end of an asynchronous flip although none is in progress!");
 
 		// We try to get the lock, then check if flip is finished. If not, we need to wait
 		// a bit and retry:
