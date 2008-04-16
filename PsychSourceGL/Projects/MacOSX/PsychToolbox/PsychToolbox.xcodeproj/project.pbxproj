@@ -1165,7 +1165,6 @@
 		2FEBA8AE09894D0E00F4165F /* PsychTimeGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = F5CF277403DBE1F301D453F7 /* PsychTimeGlue.c */; };
 		2FEBA8AF09894D0F00F4165F /* PsychVersioning.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524C30421889A01A80165 /* PsychVersioning.c */; };
 		2FEBA8B009894D1000F4165F /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F0B16C207788CC100359736 /* RegisterProject.c */; };
-		2FEBA8B409894E7C00F4165F /* IOWarriorLib.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FEBA8B209894E7C00F4165F /* IOWarriorLib.c */; };
 		2FEBA8B609894F0E00F4165F /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC4D9038338E1017A7028 /* ApplicationServices.framework */; };
 		2FEBA8B709894F1100F4165F /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC43C038338B4017A7028 /* Carbon.framework */; };
 		2FEBA8B809894F1200F4165F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
@@ -3313,6 +3312,23 @@
 		};
 /* End PBXBuildRule section */
 
+/* Begin PBXBuildStyle section */
+		833B31A10DB5A3B600E51FE7 /* Development */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+			};
+			name = Development;
+		};
+		833B31A20DB5A3B600E51FE7 /* Deployment */ = {
+			isa = PBXBuildStyle;
+			buildSettings = {
+				COPY_PHASE_STRIP = YES;
+			};
+			name = Deployment;
+		};
+/* End PBXBuildStyle section */
+
 /* Begin PBXContainerItemProxy section */
 		2F57E38608CEB65700A5CF85 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -3530,7 +3546,7 @@
 		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
 		2FD6171507306668008DA6B4 /* Rush.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rush.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
-		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
 		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
 		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
@@ -8191,6 +8207,12 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
+			buildSettings = {
+			};
+			buildStyles = (
+				833B31A10DB5A3B600E51FE7 /* Development */,
+				833B31A20DB5A3B600E51FE7 /* Deployment */,
+			);
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -10866,7 +10888,6 @@
 				2FEBA8AE09894D0E00F4165F /* PsychTimeGlue.c in Sources */,
 				2FEBA8AF09894D0F00F4165F /* PsychVersioning.c in Sources */,
 				2FEBA8B009894D1000F4165F /* RegisterProject.c in Sources */,
-				2FEBA8B409894E7C00F4165F /* IOWarriorLib.c in Sources */,
 				835CD2640A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
 				834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */,
 				830982E00DB2DF4100E7D371 /* IOPort.c in Sources */,
