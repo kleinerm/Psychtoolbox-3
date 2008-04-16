@@ -84,12 +84,13 @@ else
   end
 
   if DirMade
-    TheDir = [StringStart 'Psychtoolbox' filesep];
+    TheDir = [StringStart 'Psychtoolbox'];
     ThePath=TheDir; %#ok<NASGU>
   else % if exist(TheDir,'dir')
     error(sprintf('I could not create a folder to store your preferences in\n\n%s\n\nWhat are the permissions on that folder?',StringStart)); %#ok<SPERR>
   end % if exist(TheDir,'dir'); else
 end
 
+ThePath = [ThePath filesep];
 PTBPrefPath = ThePath;
 return;

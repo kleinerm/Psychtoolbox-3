@@ -694,7 +694,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowColor++')
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
-        warning('BitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks\nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.');
+        warning(sprintf('\n\nBitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.'));
     end
     
     % Set the background clear color via old fullscreen 'FillRect' trick,
