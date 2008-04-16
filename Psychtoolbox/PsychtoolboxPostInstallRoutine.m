@@ -29,6 +29,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 14/10/2006 Update web page pointers at end, just to point at new wiki (DHB).
 % 28/10/2006 Accept 'current' as synonym for 'beta'. (DHB)
 % 23/05/2007 Add Matlab R2007 vs. earlier detection to Windows version (MK).
+% 16/04/2008 Write/Read PTB flavor to/from users PsychtoolboxConfigDir as well for higher robustness (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -52,6 +53,19 @@ if nargin < 2
                     fclose(fd);
                 end
             end
+            
+            % Still unknown?
+            if strcmp(flavor, 'unknown')
+                % Yep: Retry in users PsychtoolboxConfigDir:
+                flavorfile = [PsychtoolboxConfigDir 'ptbflavorinfo.txt'];
+                if exist(flavorfile, 'file')
+                    fd=fopen(flavorfile);
+                    if fd > -1
+                        flavor = fscanf(fd, '%s');
+                        fclose(fd);
+                    end
+                end
+            end
         end
     catch
         fprintf('Info: Failed to determine flavor of this Psychtoolbox. Not a big deal...\n');
@@ -73,6 +87,17 @@ else
         end
     catch
         fprintf('Info: Failed to store flavor of this Psychtoolbox to file. Not a big deal...\n');
+        % Retry with users PsychtoolboxConfigDir:
+        try
+            flavorfile = [PsychtoolboxConfigDir 'ptbflavorinfo.txt'];
+            fd=fopen(flavorfile, 'wt');
+            if fd > -1
+                fprintf(fd, '%s\n', flavor);
+                fclose(fd);
+            end
+        catch
+            fprintf('Info: Failed to store flavor of this Psychtoolbox to file a 2nd time. Not a big deal...\n');
+        end
     end
 end
 
