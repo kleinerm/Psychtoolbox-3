@@ -44,6 +44,9 @@
 % graphics commands with OpenGL for Matlab. This prevents crashes on broken
 % setups, but debugging of your own 3D code may become much harder. Its
 % better to upgrade to the latest fixed drivers.
+% Before you try this setting 8, first try if the setting 256 (see below)
+% fixes the problem for you. That is a softer approach - If it works for
+% you then you won't lose any important functionality!
 %
 %
 % 16 == kPsychDontAttachStencilToFBO: Do not attach stencil buffer
