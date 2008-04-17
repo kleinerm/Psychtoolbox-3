@@ -412,11 +412,14 @@ if ismember(3, testblocks)
     % Visualize and clear buffer back to zero aka black:
     Screen('Flip', win, 0, 0, 2);
     
-    % Test of gamma correction shader:
+    % Test of gamma correction shader: This is the
+    % 'SimpleGammaMono'/'SimpleGammaColor' shader used by the imaging
+    % pipeline, setup by PsychColorCorrection():
     gamma = 1/2.374238462047320
-    gammaShader = LoadGLSLProgramFromFiles('GammaCorrectionShader');
+    gammaShader = LoadGLSLProgramFromFiles({'GammaCorrectionShader.frag.txt' , 'ICMSimpleGammaCorrectionShader.frag.txt'});
     glUseProgram(gammaShader);
-    glUniform3f(glGetUniformLocation(gammaShader, 'Gamma'), gamma, gamma, gamma);
+    glUniform3f(glGetUniformLocation(gammaShader, 'ICMEncodingGamma'), gamma, gamma, gamma);
+    glUniform2f(glGetUniformLocation(gammaShader, 'ICMClampToColorRange'), 0.0, 1.0);
     glUseProgram(0);
     
     teximg = refpatch;

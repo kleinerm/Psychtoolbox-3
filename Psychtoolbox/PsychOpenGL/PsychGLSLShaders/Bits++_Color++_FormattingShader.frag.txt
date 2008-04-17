@@ -17,18 +17,21 @@
  * The alpha channel is set to a fixed maximum value of 1.0, because alpha
  * blending on such an image would be an undefined operation.
  *
- * This approach reduces the effectively useable horizontl display resolution to
+ * This approach reduces the effectively useable horizontal display resolution to
  * half the "real" display resolution.
  *
  * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
  * chain of the Psychtoolbox-3 imaging pipeline.
  *
- * (c)2007 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * (c)2007, 2008 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
  * See file License.txt in the Psychtoolbox root folder for the license.
  *
  */
 
 uniform sampler2DRect Image;
+
+/* Declare external function for color conversion: */
+vec4 icmTransformColor(vec4 incolor);
 
 void main()
 {
@@ -38,12 +41,15 @@ void main()
     /* Update the s (==column) component to only read even or odd lines, replicating them. */
     readpos.s = (readpos.s - mod(readpos.s, 2.0)) * 0.5;
 
-    /* Retrieve RGB HDR input color value for a virtual Bits++ pixel. */
-    vec3 incolor = texture2DRect(Image, readpos).rgb;
+    /* Retrieve RGBA HDR input color value for a virtual Bits++ pixel. */
+    vec4 incolor = texture2DRect(Image, readpos);
+
+    /* Apply some color transformation (clamping, gamma correction etc.): */
+    incolor = icmTransformColor(incolor);
 
     /* Remap all color channels from 0.0 - 1.0 to 0 to 65535: */
     /* Perform rounding for non-integral numbers and add a small epsilon to take numeric roundoff into account: */
-    vec3 index = floor(incolor * 65535.0 + 0.5) + 0.01;
+    vec3 index = floor(incolor.rgb * 65535.0 + 0.5) + 0.01;
 
     /* Compute high bytes (8 MSBs) for all color components. */
     vec3 hibytes = floor(index / 256.0) / 255.0;

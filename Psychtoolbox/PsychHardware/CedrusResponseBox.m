@@ -32,13 +32,16 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % add them yourself and contribute your extensions to PTB, or ask us for
 % implementing the missing calls.
 %
+% THIS IS A BETA RELEASE! EXPECT BUGS OR OTHER PROBLEMS - DOUBLE-CHECK YOUR
+% RESULTS - DON'T TRUST IT BLINDLY!!!
+%
 %
 % Subfunctions and their meaning:
 %
 % Functions for device init and shutdown: Call once at beginning/end of
 % your script. These are slow!
 %
-% handle = CedrusResponseBox('Open', port [,doCalibrate=1]);
+% handle = CedrusResponseBox('Open', port);
 % - Open a compatible response box which is connected to the given named
 % serial 'port'. 'port'names differ accross operating systems. A typical
 % port name for Windows would be 'COM2', whereas a typical port name on OS/X
@@ -48,24 +51,6 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % connection is established and some testing and initialization is done,
 % returns a device 'handle', a unique identifier to use for all other
 % subfunctions.
-%
-% If you don't specify the optional 'doCalibrate' flag, or
-% leave it at its default setting of 1, a couple of lengthy (multiple
-% seconds) timing calibrations and tests are performed. These allow to
-% assess the delays in communication between box and Matlab. They will also
-% allow to return all times of events (as detected by the box) in PTB's
-% standard GetSecs() time reference system -- Timestamps of button press
-% events and TTL input events can be directly compared with timestamps
-% delivered by other PTB functions like GetSecs, KbCheck, KbWait,
-% Screen('Flip') etc.
-%
-% If you set the 'doCalibrate' flag to zero, all timing calibrations will
-% be skipped: Startup time is drastically reduced. However there isn't any
-% simple and straightforward way of comparing timestamps or timer readings
-% delivered by the box with other timestamps of PTB functions. This only
-% makes sense if you use some external triggering mechanism to reset the
-% built-in reaction time timer via some external TTL input trigger signals
-% and want to use raw timer measurements.
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -91,7 +76,9 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 %  dev.port      = Portname of serial port, as passed to the open function.
 %
-% Diagnostic information for timing:
+% Diagnostic information for timing: Values of -1 or 0 usually mean "info
+% not available".
+%
 %  dev.roundtriptime   = Median of estimated roundtrip latency for
 %                        communication with the box - in seconds.
 %
@@ -181,19 +168,6 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %               always valid, but not directly comparable to any other
 %               timestamps or time measurements within Psychtoolbox.
 %
-% evt.ptbtime = Time of the event in secs, measured in PTBs "GetSecs"
-%               timebase. This is easier to correlate with other
-%               timestamps, e.g., Screen('Flip') timestamps, but its
-%               reliability hasn't been tested yet for the current
-%               software release. When opening a connection to a response
-%               box, we perform timing calibrations to establish the
-%               mapping of time values as measured by the hardware timers
-%               of your response pad to time values in PTB's reference
-%               system. If you skipped that calibrations by setting the
-%               optional 'doCalibrate' flag to zero at device open time,
-%               then the evt.ptbtime field will not be available and you
-%               have to cope with evt.rawtime values only.
-%
 %
 % evt = CedrusResponseBox('WaitButtons', handle);
 % - Queries and returns the same info as 'GetButtons', but waits for
@@ -209,7 +183,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % evt = CedrusResponseBox('GetBaseTimer', handle [, nSamples=1]);
 % - Query current time of base timer of the box. Returned values are in
 % seconds, resolution is milliseconds. evt.basetimer is the timers time,
-% corrected for serial link receive latency. evt.ptbreceivetime is a
+% maybe corrected for serial link receive latency. evt.ptbreceivetime is a
 % timestamp taken via PTB's GetSecs() at time of receive of the data.
 % evt.ptbtime is the basetimers time mapped into PTB GetSecs time if such a
 % mapping is possible, otherwise this field doesn't exist:
@@ -259,6 +233,40 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 %
 
+% Disabled help text snippets:
+% [,doCalibrate=0]
+% If you don't specify the optional 'doCalibrate' flag, or
+% leave it at its default setting of 1, a couple of lengthy (multiple
+% seconds) timing calibrations and tests are performed. These allow to
+% assess the delays in communication between box and Matlab. They will also
+% allow to return all times of events (as detected by the box) in PTB's
+% standard GetSecs() time reference system -- Timestamps of button press
+% events and TTL input events can be directly compared with timestamps
+% delivered by other PTB functions like GetSecs, KbCheck, KbWait,
+% Screen('Flip') etc.
+%
+% If you set the 'doCalibrate' flag to zero, all timing calibrations will
+% be skipped: Startup time is drastically reduced. However there isn't any
+% simple and straightforward way of comparing timestamps or timer readings
+% delivered by the box with other timestamps of PTB functions. This only
+% makes sense if you use some external triggering mechanism to reset the
+% built-in reaction time timer via some external TTL input trigger signals
+% and want to use raw timer measurements.
+
+% evt.ptbtime = Time of the event in secs, measured in PTBs "GetSecs"
+%               timebase. This is easier to correlate with other
+%               timestamps, e.g., Screen('Flip') timestamps, but its
+%               reliability hasn't been tested yet for the current
+%               software release. When opening a connection to a response
+%               box, we perform timing calibrations to establish the
+%               mapping of time values as measured by the hardware timers
+%               of your response pad to time values in PTB's reference
+%               system. If you skipped that calibrations by setting the
+%               optional 'doCalibrate' flag to zero at device open time,
+%               then the evt.ptbtime field will not be available and you
+%               have to cope with evt.rawtime values only.
+%
+
 
 % History:
 %
@@ -266,13 +274,15 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 03/28/08 Altered by Jenny Read.
 % 04/03/08 Refined and added MacOS/X support via SerialComm driver. (MK)
 % 04/06/08 Improved timing code for mapping of box timers --> GetSecs time. (MK)
+% 04/17/08 Disable Boxtime->Ptbtime mapping for now, use old drivers. (MK)
 
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
 global ptb_cedrus_devices;
 global newdriver;
 
-newdriver = 1;
+% Disable use of IOPort on OS/X by default:
+newdriver = 0;
 
 % Subcommand dispatch:
 if nargin < 1 || ~ischar(cmd)
@@ -580,10 +590,10 @@ if strcmpi(cmd, 'Open')
     % Create serial object for provided port, configure connection
     % properly:
     port = varargin{1};
-port = '/dev/cu.usbserial-FT3Z95V5'
+    % port = '/dev/cu.usbserial-FT3Z95V5'
     if nargin < 3
-        % Assume user wants time calibration:
-        doCalibrate = 1;
+        % Assume user doesn't want time calibration:
+        doCalibrate = 0;
     else
         doCalibrate = varargin{2};
     end

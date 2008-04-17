@@ -13,17 +13,26 @@
  * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
  * chain of the Psychtoolbox-3 imaging pipeline.
  *
- * (c)2007 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * (c)2007, 2008 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
  * See file License.txt in the Psychtoolbox root folder for the license.
  *
  */
 
 uniform sampler2DRect Image;
 
+/* Declare external function for luminance color conversion: */
+float icmTransformColor1(float incolor);
+
+/* Dynamically generated overlay color index lookup function: */
+float getMonoOverlayIndex(vec2 pos);
+
 void main()
 {
     /* Retrieve RGBA HDR input color value. */
     float incolor = texture2DRect(Image, gl_TexCoord[0].st).r;
+
+    /* Apply some color transformation (clamping, gamma correction etc.): */
+    incolor = icmTransformColor1(incolor);
 
     /* Remap red channel from 0.0 - 1.0 to 0 to 65535: */
     float index = incolor * 65535.0 + 0.01;
@@ -34,6 +43,9 @@ void main()
     /* Compute low byte (8 LSBs) and store in green output color. */
     gl_FragColor.g = mod(index, 256.0) / 255.0;
 
-    /* Fix blue channel to 0.0, fix alpha channel to 1.0. */
-    gl_FragColor.ba = vec2(0.0, 1.0);
+    /* Get blue channel value from overlay subfunction. */
+    gl_FragColor.b = getMonoOverlayIndex(gl_TexCoord[0].st);
+
+    /* Fix alpha channel to 1.0. */
+    gl_FragColor.a = 1.0;
 }

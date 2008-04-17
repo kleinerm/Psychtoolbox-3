@@ -1,0 +1,31 @@
+/* Shader for color checking of RGB and luminance textures.
+ *
+ * Clamps all color or intensity values to lie in the range given
+ * by [ ICMClampToColorRange[0]; ICMClampToColorRange[1] ]. If values were
+ * outside that range, they will be inverted and mapped to values 0.0 or 1.0.
+ *
+ * (w)2008 by Mario Kleiner.
+*/
+
+/* Allowable range: To be initialized by PsychColorCorrection() typically: */
+uniform vec2    ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    if (incolor.r < ICMClampToColorRange[0]) incolor.r = 1.0;
+    if (incolor.r > ICMClampToColorRange[1]) incolor.r = 0.0;
+    if (incolor.g < ICMClampToColorRange[0]) incolor.g = 1.0;
+    if (incolor.g > ICMClampToColorRange[1]) incolor.g = 0.0;
+    if (incolor.b < ICMClampToColorRange[0]) incolor.b = 1.0;
+    if (incolor.b > ICMClampToColorRange[1]) incolor.b = 0.0;
+
+    return(incolor);
+}
+
+float icmTransformColor1(float incolor)
+{
+    if (incolor < ICMClampToColorRange[0]) incolor = 1.0;
+    if (incolor > ICMClampToColorRange[1]) incolor = 0.0;
+
+    return(incolor);
+}

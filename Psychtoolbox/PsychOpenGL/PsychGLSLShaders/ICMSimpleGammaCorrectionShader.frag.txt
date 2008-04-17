@@ -1,0 +1,47 @@
+/* Shader for gamma correction of RGB and Luminance textures.
+ * Uses standard formula for gamma correction: out = in ^ Gamma.
+ * 'Gamma' is the factor to apply, ie. the inverse gamma 1/G,
+ * if applying correction for a display with gamma G.
+ *
+ * This shader is used by PsychColorCorrection() in 'SimpleGammaXXX' mode,
+ * as part of PTB's built-in stimulus gamma correction.
+ *
+ * (w)2008 by Mario Kleiner.
+*/
+
+/* (RedGamma, GreenGamma, BlueGamma) vector of encoding gammas: */
+/* To be initialized by PsychColorCorrection() typically: */
+uniform vec3    ICMEncodingGamma;
+
+/* Allowable range for output values: To be initialized by PsychColorCorrection() typically: */
+uniform vec2    ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+
+    /* Return alpha component unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Map RGB components through power function with Gamma coeff.: */
+    outcolor.rgb = pow(incolor.rgb, ICMEncodingGamma);
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor.rgb = clamp(outcolor.rgb, vec3(ICMClampToColorRange[0]), vec3(ICMClampToColorRange[1]));
+
+    return(outcolor);
+}
+
+
+float icmTransformColor1(float incolor)
+{
+    float outcolor;
+
+    /* Map luminance component through power function with Gamma coeff.: */
+    outcolor = pow(incolor, ICMEncodingGamma.r);
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor = clamp(outcolor, ICMClampToColorRange[0], ICMClampToColorRange[1]);
+
+    return(outcolor);
+}

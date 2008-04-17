@@ -23,6 +23,7 @@
 %     GetTicksTick         - Duration of one tick of the GetTicks clock.
 %     HideCursor           - Hide cursor.
 %     InitCocoaEventBridge - Prepare GetChar helper "CocoaEventBridge" 
+%     IOPort               - A I/O driver for access to serial ports.
 %     KbCheck              - Get instantaneous keyboard state.
 %     KbName               - Convert keycode to key name and vice versa.
 %     KbPressWait          - Wait for key press, make sure no keys pressed before.

@@ -1,0 +1,19 @@
+/* Shader for doing nothing.
+ *
+ * Passes through all values -- Only useful for benchmarking - as baseline.
+ *
+ * (w)2008 by Mario Kleiner.
+*/
+
+/* Allowable range: To be initialized by PsychColorCorrection() typically: */
+uniform vec2    ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    return(incolor);
+}
+
+float icmTransformColor1(float incolor)
+{
+    return(incolor);
+}

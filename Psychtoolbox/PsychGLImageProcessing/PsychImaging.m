@@ -135,19 +135,6 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 %
 %
-% * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
-%   rendering of up to 1768 different levels of gray on a standard - but
-%   well calibrated - color monitor and 8 bit graphics card. This is done
-%   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
-%   Selecting this mode implies use of 32 bit floating point
-%   framebuffers, unless you specify use of a 16 bit floating point
-%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
-%   will not quite be able to use the full 10.8 bit output precision, but
-%   only approximately 10 bits.
-%
-%   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
-%
-%
 % * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
 %   support for output of stimuli with 10 bit precision per color channel
 %   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
@@ -212,6 +199,35 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');
 %
+%   If you want to make use of the color overlay plane in Mono++ mode, then
+%   call the function like this:
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+%
+%   Then you can query the window handle of the overlay window via:
+%
+%   overlayWin = BitsPlusPlus('GetOverlayWindow', window);
+%
+%   'overlayWin' is the handle to the overlay window associated with the
+%   overlay of onscreen window 'window'. The overlay window is a standard
+%   offscreen window, so you can do anything with it that you would want to
+%   do with offscreen windows. The only difference is that the window is a
+%   pure index window: It only has one "color channel", which can be written
+%   with color values between 0 and 255. Values 1 to 255 get mapped to the
+%   corresponding color indices of the Bits++ overlay plane: A zero value is
+%   transparent -- Content of the onscreen window is visible. Positive
+%   non-zero color values map to the 255 indices available in overlay mode,
+%   these get mapped by the Bits++ CLUT to colors. You can define the
+%   mapping of indices to CLUT colors via the
+%   Screen('LoadNormalizedGammaTable', window, clut, 2); command.
+%
+%   Updates of the overlay image are synchronized to Screen('Flip')
+%   updates. If you draw into the overlay window, the changed overlay image
+%   will become visible at Screen('Flip') time -- in sync with the changed
+%   onscreen window content. The overlay plane is not automatically cleared
+%   to background (or transparent) color after a flip, but its content
+%   persists across flips. You need to clear it out manually via a
+%   Screen('FillRect') command.
 %
 % * 'EnableBits++Color++Output' Enable the high-performance driver for the
 %   Color++ mode of Cambridge Research Systems Bits++ box. This is the
@@ -362,6 +378,21 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %
 
+% HELP TEXT FOR NOT YET IMPLEMENTED FUNCTION:
+% * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
+%   rendering of up to 1768 different levels of gray on a standard - but
+%   well calibrated - color monitor and 8 bit graphics card. This is done
+%   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
+%   Selecting this mode implies use of 32 bit floating point
+%   framebuffers, unless you specify use of a 16 bit floating point
+%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
+%   will not quite be able to use the full 10.8 bit output precision, but
+%   only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
+%
+%
+
 
 % History:
 % 3.6.2007 Written. (MK)
@@ -377,6 +408,8 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %           Brightside-HDR. Documentation cleanup. (MK).
 %
 % 13.1.2008 Support for 10 bpc native framebuffer of ATI Radeons. (MK).
+% 17.4.2008 Support for a few new subcommands, and description of overlay
+%           planes setup with Bits++ in Mono++ mode. (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -590,17 +623,23 @@ if strcmp(cmd, 'OpenWindow')
         end        
     end
 
-    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output')))
+    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
         % Special case: Need to open Bits++ Mono++ driver. We delegate the
         % openwindow procedure to the BitsPlusPlus.m file:
         if ~isempty(win)
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin > 10
-            [win, winRect] = BitsPlusPlus('OpenWindowMono++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
+            bpcom = 'OpenWindowMono++WithOverlay';
         else
-            [win, winRect] = BitsPlusPlus('OpenWindowMono++', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            bpcom = 'OpenWindowMono++';
+        end
+        
+        if nargin > 10
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BitsPlusPlus(bpcom, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
         end        
     end
 
@@ -770,7 +809,7 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end
 
-if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output')))
+if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
 end

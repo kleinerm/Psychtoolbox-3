@@ -76,22 +76,11 @@ BitsPlusPlus('ForceUnvalidatedRun');
 % Find out how big the window is:
 [screenWidth, screenHeight]=Screen('WindowSize', window);
 
-% Disable Bits++ Color++ output formatter:
-Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
-
 % Build HDR texture: 
 hdrtexIndex= Screen('MakeTexture', window, theImage, [], [], 2);
 dstRect = Screen('Rect', hdrtexIndex);
 
-% Build and draw texture from packed image:
-texpacked= Screen('MakeTexture', window, packedImage);
-dstRect = Screen('Rect', texpacked);
-Screen('DrawTexture', window, texpacked, [], dstRect, [], 0);
-
-% Show it:
-vbl = Screen('Flip', window);
-
-% Draw same HDR image via imaging pipeline:
+% Draw HDR image via imaging pipeline:
 
 % Enable Bits++ Color++ output formatter:
 Screen('HookFunction', window, 'Enable', 'FinalOutputFormattingBlit');
@@ -108,7 +97,18 @@ convImage=Screen('GetImage', window, ScaleRect(dstRect, 2, 1),'backBuffer');
 
 % Show GPU converted image. Should obviously not make any visual difference if
 % it is the same as the Matlab converted image.
-vbl = Screen('Flip', window, vbl + 2);
+vbl = Screen('Flip', window);
+
+% Disable Bits++ Color++ output formatter:
+Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
+
+% Build and draw texture from packed image:
+texpacked= Screen('MakeTexture', window, packedImage);
+dstRect = Screen('Rect', texpacked);
+Screen('DrawTexture', window, texpacked, [], dstRect, [], 0);
+
+% Show it:
+vbl = Screen('Flip', window, vbl + 1);
 
 % Keep it onscreen for 2 seconds, then blank screen:
 Screen('Flip', window, vbl + 2);
@@ -223,21 +223,10 @@ BitsPlusPlus('ForceUnvalidatedRun');
 % Find out how big the window is:
 [screenWidth, screenHeight]=Screen('WindowSize', window);
 
-% Disable Bits++ Mono++ output formatter:
-Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
-
 % Build HDR texture: 
 hdrtexIndex= Screen('MakeTexture', window, theImage, [], [], 2);
 
-% Build and draw texture from packed image:
-texpacked= Screen('MakeTexture', window, packedImage);
-dstRect = Screen('Rect', texpacked);
-Screen('DrawTexture', window, texpacked, [], dstRect, [], 0);
-
-% Show it:
-vbl = Screen('Flip', window);
-
-% Draw same HDR image via imaging pipeline:
+% Draw HDR image via imaging pipeline:
 
 % Enable Bits++ Mono++ output formatter:
 Screen('HookFunction', window, 'Enable', 'FinalOutputFormattingBlit');
@@ -254,6 +243,17 @@ convImage=Screen('GetImage', window, dstRect,'backBuffer');
 
 % Show GPU converted image. Should obviously not make any visual difference if
 % it is the same as the Matlab converted image.
+vbl = Screen('Flip', window);
+
+% Disable Bits++ Mono++ output formatter:
+Screen('HookFunction', window, 'Disable', 'FinalOutputFormattingBlit');
+
+% Build and draw texture from packed image:
+texpacked= Screen('MakeTexture', window, packedImage);
+dstRect = Screen('Rect', texpacked);
+Screen('DrawTexture', window, texpacked, [], dstRect, [], 0);
+
+% Keep it onscreen for 2 seconds, then blank screen:
 vbl = Screen('Flip', window, vbl + 2);
 
 % Keep it onscreen for 2 seconds, then blank screen:
