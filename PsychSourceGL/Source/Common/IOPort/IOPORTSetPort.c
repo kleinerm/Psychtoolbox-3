@@ -29,6 +29,8 @@
 
 
 #include "IOPort.h"
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 #include <CoreFoundation/CoreFoundation.h>
 //#include "IOWarriorLib.h"
 
@@ -64,3 +66,4 @@ PsychError IOPORTSetPort(void)
 	
     return(PsychError_none);	
 }
+#endif

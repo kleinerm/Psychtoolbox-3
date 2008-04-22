@@ -233,6 +233,16 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 %
 
+% Technical notes:
+% USB VendorID of Cedrus:   0x0403
+% USB ProductID:            0xf228
+%
+% Command for manual insertion of serial-over-USB module on Linux, if
+% module doesn't recognize Cedrus device id's. Also edit rules files of
+% usbdev, so ftdi_sio module gets auto-loaded on Cedrus insertion.
+%
+% sudo modprobe ftdi_sio product=0xf228
+
 % Disabled help text snippets:
 % [,doCalibrate=0]
 % If you don't specify the optional 'doCalibrate' flag, or
@@ -279,10 +289,6 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
 global ptb_cedrus_devices;
-global newdriver;
-
-% Disable use of IOPort on OS/X by default:
-newdriver = 0;
 
 % Subcommand dispatch:
 if nargin < 1 || ~ischar(cmd)
@@ -583,10 +589,6 @@ if strcmpi(cmd, 'Open')
         error('You must provide the "port" parameter for the serial port to which the box is connected!')
     end
 
-    if IsOctave
-        error('Sorry, GNU Octave are not yet supported by this driver.');
-    end
-
     % Create serial object for provided port, configure connection
     % properly:
     port = varargin{1};
@@ -668,6 +670,7 @@ if strcmpi(cmd, 'Open')
         % I have to put this in a while loop, because sometimes '_d3' fails to
         % evoke a response:
         bytes = 0;
+	WaitSecs(0.5);
         while bytes==0
             WriteDev(handle, '_d3');
             WaitSecs(0.25); % I also have to wait, because even when it does evoke a response,
@@ -731,8 +734,12 @@ if strcmpi(cmd, 'Open')
             WaitSecs(0.1);
             bytes = BytesAvailable(handle);
         end
-        ptb_cedrus_devices{handle}.Name = char(ReadDev(handle, bytes));
-
+        % Weird casting procedure with replacement of char(13) by char(10),
+        % so Octave can handle it:
+        ptb_cedrus_devices{handle}.Name = double(ReadDev(handle, bytes));
+        ptb_cedrus_devices{handle}.Name(find(ptb_cedrus_devices{handle}.Name == 13)) = 10; %#ok<FNDSB>
+        ptb_cedrus_devices{handle}.Name = char(ptb_cedrus_devices{handle}.Name);
+        
         % Try our best to totally drain the receive queue:
         WaitSecs(0.25);
         while 1
@@ -983,7 +990,7 @@ while BytesAvailable(handle)>0
         response(1:6) = [response(1) last5];
         [evt,CedrusStatus] = ExtractKeyPressData(handle,response);
     else
-        fprintf('CedrusResponseBox:FlushEvents: Warning invalid value %s instead of "k" received!\n', char(response));
+        fprintf('CedrusResponseBox:FlushEvents: Warning invalid value %s [%i] instead of "k" received!\n', char(response), response);
     end
 end
 
@@ -1039,7 +1046,7 @@ return;
 
 function [evt,CedrusStatus] = ExtractKeyPressData(handle,response)
 %The XID device sends six bytes of information in the following format:
-%<“k”><key info><RT>:
+%<ï¿½kï¿½><key info><RT>:
 %
 % The first parameter is simply the letter "k", lower case.
 %
@@ -1071,8 +1078,8 @@ end
 
 % According to cedrus, http://www.cedrus.com/xid/protocols.htm,
 % The XID device sends six bytes of information in the following
-% format: <“k”><key info><RT>:
-% So the first byte is 107, ie the letter “k”, lower case
+% format: <ï¿½kï¿½><key info><RT>:
+% So the first byte is 107, ie the letter ï¿½kï¿½, lower case
 
 % Check byte 1 for correct value 'k':
 if char(response(1))~='k'
@@ -1088,7 +1095,7 @@ evt.raw = (response(2));
 % Bits 0-3 store the port number.
 % For Lumina LP-400, the push buttons and scanner trigger are on port 0;
 % the RJ45 I/O lines are on port 1. For SV?1, voice key is on port 2 and
-% the RJ45 is on port 1 – there is no port 0.
+% the RJ45 is on port 1 ï¿½ there is no port 0.
 % For the RB-x30 response pads, the push buttons are on port 0 and the
 % RJ45 port is on port 1.
 
@@ -1148,63 +1155,60 @@ function retHandle = checkHandle(handle)
 return;
 
 function dev = OpenDev(port)
-global newdriver;
 
-    if ~IsOctave
-        % Matlab: Let's see:
-        if ~IsOSX
-            % Not OS/X, so Matlab supports serial() object in JVM mode:
-            if ~psychusejava('desktop')
-                error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
-            end
-
-            % Ok, Matlab with JVM on Windows or Linux: Let's do it!
-            dev.link = serial(port, 'BaudRate', 115200, 'DataBits', 8, 'StopBits', 1,...
-                'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
-                'InputBufferSize', 16000);
-
-            fopen(dev.link);
-            dev.driver = 0;
-        else
-            % OS/X and Matlab: Use the SerialComm driver for driving the
-            % serial link:
-            try
-                if newdriver
-                    IOPort('Verbosity', 10);
-                    dev.link = IOPort('OpenSerialPort', port, 'BaudRate=115200 Parity=None DataBits=8 StopBits=1 FlowControl=None');
-                    IOPort('Purge', dev.link);
-                    dev.driver = 2;
-                    dev.recvQueue = [];
-                else
-                    % Open 'port' with 115200 baud, no parity, 8 data bits, 1
-                    % stopbit.
-                    SerialComm('open', port, '115200,n,8,1');
-
-                    % Disable handshaking 'n' == none:
-                    SerialComm('hshake', port, 'n');
-
-                    % Wait a bit...
-                    WaitSecs(0.5);
-
-                    % And flush all send- and receivebuffers:
-                    purgedata = SerialComm('read', port);
-
-                    if ~isempty(purgedata)
-                        fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
-                    end
-
-                    % Assign and init stuff:
-                    dev.link = port;
-                    dev.driver = 1;
-                    dev.recvQueue = [];
-                end
-            catch
-                error('Failed to open port %s on OS/X for Cedrus response box.', port);
-            end
+    % Which OS?
+    if IsWin
+        % Windows, no IOPort driver yet, but Matlab supports serial() object in JVM mode:
+        if ~psychusejava('desktop')
+            error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
         end
+
+        % Ok, Matlab with JVM on Windows: Let's do it!
+        dev.link = serial(port, 'BaudRate', 115200, 'DataBits', 8, 'StopBits', 1,...
+            'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
+            'InputBufferSize', 16000);
+
+        fopen(dev.link);
+        dev.driver = 0;
     else
-        % Octave: No go for now due to lack for serial port driver:
-        error('Sorry, GNU/Octave support for Cedrus response box not yet implemented!');
+        % OS/X or Linux and Matlab or Octave: Use the SerialComm driver for driving the
+        % serial link, or our own IOPort driver, depending if 'port' is
+        % given as number or device file spec. For now we support
+        % SerialComm as a reference for debugging and tuning, but this will
+        % go away soon...
+        try
+            if ischar(port) || IsLinux
+                IOPort('Verbosity', 10);
+                dev.link = IOPort('OpenSerialPort', port, 'BaudRate=115200 Parity=None DataBits=8 StopBits=1 FlowControl=Hardware');
+                IOPort('Purge', dev.link);
+                dev.driver = 2;
+                dev.recvQueue = [];
+            else
+                % Open 'port' with 115200 baud, no parity, 8 data bits, 1
+                % stopbit.
+                SerialComm('open', port, '115200,n,8,1');
+
+                % Disable handshaking 'n' == none:
+                SerialComm('hshake', port, 'n');
+
+                % Wait a bit...
+                WaitSecs(0.5);
+
+                % And flush all send- and receivebuffers:
+                purgedata = SerialComm('read', port);
+
+                if ~isempty(purgedata)
+                    fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
+                end
+
+                % Assign and init stuff:
+                dev.link = port;
+                dev.driver = 1;
+                dev.recvQueue = [];
+            end
+        catch
+            error('Failed to open port %s on OS/X for Cedrus response box.', port);
+        end
     end
 
     % Assign output port:
@@ -1333,7 +1337,7 @@ function data = ReadDev(handle, nwanted)
         end
 
         if ptb_cedrus_devices{handle}.driver == 2
-            % IOPort driver:
+            % IOPort driver: Returns all data as data type double:
             [data, when, errmsg] = IOPort('Read', ptb_cedrus_devices{handle}.link, 0, nwanted);
             if length(data) < nwanted
                 fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, length(data), char(data));
@@ -1402,6 +1406,9 @@ function roundtrip = RoundTripTestDev(handle)
         end
 
         % Wait for receipt of timestamp:
+        while BytesAvailable(handle) < 4
+        end;
+
         response = ReadDev(handle, 4);
 
         if response(1)~='P' || response(2)~='T'

@@ -147,7 +147,8 @@ PsychError PsychInitIOPort(void)
 // Receive pointer to PsychPortIORecord for given userspace port handle:
 PsychPortIORecord* PsychGetPortIORecord(int handle)
 {
-	char errmsg[200];
+	char errmsg[1000];
+	errmsg[0] = 0;
 	
 	if (handle < 0 || handle >= PSYCH_MAX_IOPORTS || portRecordBank[handle].portType == KPsychIOPortNone) {
 		sprintf(errmsg, "Invalid port handle %i provided. No such port open. Maybe you closed it beforehand?", handle);
@@ -161,8 +162,9 @@ PsychPortIORecord* PsychGetPortIORecord(int handle)
 // Close port referenced by 'handle':
 PsychError PsychCloseIOPort(int handle)
 {
-	char errmsg[200];
-	
+	char errmsg[1000];
+	errmsg[0] = 0;
+
 	// Retrieve and assign open port for handle: Will check for invalid handles and closed ports...
 	PsychPortIORecord*	portRecord = PsychGetPortIORecord(handle);
 	
@@ -343,8 +345,10 @@ PsychError IOPORTOpenSerialPort(void)
 		"StopBits=1    -- Number of stop bits per packet: 1 or 2.\n\n"
 		"FlowControl=None  -- Type of flow control: None, Hardware, Softwore.\n\n"
 		"Terminator=os default  -- Type of terminator, given as ASCII character value, e.g., 13 for char(13) aka CR.\n\n"
-		"DTR=os default	-- Setting for 'Data Terminal Ready' pin: 0 or 1.\n\n";
-		"RTS=os default	-- Setting for 'Request To Send' pin: 0 or 1.\n\n";
+		"DTR=os default	-- Setting for 'Data Terminal Ready' pin: 0 or 1.\n\n"
+		"DSR=os default	-- Setting for 'Data Set Ready' pin: 0 or 1.\n\n"
+		"RTS=os default	-- Setting for 'Request To Send' pin: 0 or 1.\n\n"
+		"CTS=os default	-- Setting for 'Clear To Send' pin: 0 or 1.\n\n"
 		"BreakBehaviour=Ignore -- Behaviour if a 'Break Condition' is detected on the line: Ignore, Flush, Zero.\n\n"
 		"OutputBufferSize=4096 -- Size of output buffer in bytes.\n\n"
 		"InputBufferSize=4096 -- Size of input buffer in bytes.\n\n"
@@ -467,10 +471,11 @@ PsychError IOPORTRead(void)
 	static char seeAlsoString[] = "'Write', 'OpenSerialPort', 'ConfigureSerialPort'";
 	
 	char			errmsg[1024];
-	int				handle, nonblocking, m, n, p, nread, amount;
+	int				handle, nonblocking, m, n, p, nread, amount, i;
 	psych_uint8*	readbuffer;
-	psych_uint8*	outbuffer;
-	double			timestamp;
+	double*			outbuffer;
+	double			timestamp;	
+	errmsg[0] = 0;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -500,10 +505,13 @@ PsychError IOPORTRead(void)
 	nread = PsychReadIOPort(handle, (void**) &readbuffer, amount, nonblocking, errmsg, &timestamp);
 	
 	// Allocate outbuffer of proper size:
-	PsychAllocOutUnsignedByteMatArg(1, kPsychArgOptional, 1, ((nread >=0) ? nread : 0), 1, &outbuffer);
+	PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, ((nread >=0) ? nread : 0), 1, &outbuffer);
 
-	// Copy to outbuffer:
-	if (nread > 0) memcpy(outbuffer, readbuffer, nread);
+	// Copy to outbuffer: We copy our uint8 values to a double matrix. This is arguably a bit of a waste of
+	// memory and bandwidth, but it simplifies interfacing with Octave, old Matlab versions and possible
+	// future runtime environments a lot:
+	if (nread > 0) for (i=0; i<nread; i++) outbuffer[i] = readbuffer[i];
+	
 	if (nread < 0 && verbosity > 0) printf("IOPort: Error: %s\n", errmsg); 
 
 	// Return timestamp and errmsg, if any:
@@ -540,7 +548,8 @@ PsychError IOPORTWrite(void)
 	char*			inChars = NULL;
 	void*			writedata = NULL;
 	double			timestamp;
-	
+	errmsg[0] = 0;
+
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };

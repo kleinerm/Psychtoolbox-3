@@ -18,3 +18,6 @@
 
 # Build Eyelink.oct
 #./mex2oct_ubuntugutsy -r Octave/Eyelink.cc -IOctave -ICommon/Base -ILinux/Base -ICommon/Eyelink Common/Base/*.cc -ICommon/Screen Linux/Base/*.c Common/Base/*.c Common/Eyelink/*.c -leyelink_core -g -lc -lrt -v
+
+# Build IOPort.oct
+./mex2oct_ubuntugutsy -r Octave/IOPort.cc -IOctave -ICommon/Base -ILinux/Base -ICommon/IOPort Common/Base/*.cc -ICommon/Screen Linux/Base/*.c Common/Base/*.c Common/IOPort/*.c -g -lc -lrt -v

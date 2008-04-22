@@ -24,7 +24,11 @@
 // and it saves us from parsing tons of additional redundant function definitions anc code
 // generation...
 // In this function, we try to detect such OS dependent quirks and try to work around them...
+#ifdef PTBOCTAVE
+extern "C" void mogl_rebindARBExtensionsToCore(void)
+#else
 void mogl_rebindARBExtensionsToCore(void)
+#endif
 {   
 #ifndef NULL
 #define NULL 0

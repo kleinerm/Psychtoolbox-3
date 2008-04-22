@@ -31,6 +31,87 @@
 // Externally defined level of verbosity:
 extern int verbosity;
 
+// Map numeric baud rate to Posix constant:
+static int BaudToConstant(int inint)
+{
+	// Need to map from numeric values to predefined constants. On OS/X the
+	// constants are identical to the input values, but on Linux they aren't, so better safe
+	// than sorry, although it looks as if Linux accepts the "raw" numbers properly as well...
+	switch(inint) {
+		case 50: inint = B50; break;
+		case 75: inint = B75; break;
+		case 110: inint = B110; break;
+		case 134: inint = B134; break;
+		case 150: inint = B150; break;
+		case 200: inint = B200; break;
+		case 300: inint = B300; break;
+		case 600: inint = B600; break;
+		case 1200: inint = B1200; break;
+		case 1800: inint = B1800; break;
+		case 2400: inint = B2400; break;
+		case 4800: inint = B4800; break;
+		case 9600: inint = B9600; break;
+		case 19200: inint = B19200; break;
+		case 38400: inint = B38400; break;
+		case 57600: inint = B57600; break;
+		case 115200: inint = B115200; break;
+		case 230400: inint = B230400; break;
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		// Only defined on OS/X:
+		case 7200: inint = B7200; break;
+		case 14400: inint = B14400; break;
+		case 28800: inint = B28800; break;
+		case 76800: inint = B76800; break;
+		#endif
+
+		default:
+			// Pass inint unchanged in the hope that the OS will accept it:
+			if (verbosity > 1) printf("IOPort: Non-standard BaudRate %i specified. We'll see if the OS likes this. Double-check the settings!\n", inint);
+	}
+	
+	return(inint);
+}
+
+// Map Posix constant to numeric baud rate:
+static int ConstantToBaud(int inint)
+{
+	// Need to map predefined constants to numeric values On OS/X the
+	// constants are identical to the input values, but on Linux they aren't, so better safe
+	// than sorry, although it looks as if Linux accepts the "raw" numbers properly as well...
+	switch(inint) {
+		case B50: inint = 50; break;
+		case B75: inint = 75; break;
+		case B110: inint = 110; break;
+		case B134: inint = 134; break;
+		case B150: inint = 150; break;
+		case B200: inint = 200; break;
+		case B300: inint = 300; break;
+		case B600: inint = 600; break;
+		case B1200: inint = 1200; break;
+		case B1800: inint = 1800; break;
+		case B2400: inint = 2400; break;
+		case B4800: inint = 4800; break;
+		case B9600: inint = 9600; break;
+		case B19200: inint = 19200; break;
+		case B38400: inint = 38400; break;
+		case B57600: inint = 57600; break;
+		case B115200: inint = 115200; break;
+		case B230400: inint = 230400; break;
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		// Only defined on OS/X:
+		case B7200: inint = 7200; break;
+		case B14400: inint = 14400; break;
+		case B28800: inint = 28800; break;
+		case B76800: inint = 76800; break;
+		#endif
+		default:
+			// Pass inint unchanged in the hope that the OS will accept it:
+			if (verbosity > 1) printf("IOPort: Non-standard BaudRate %i detected. Let's see if this makes sense...\n", inint);
+	}
+	
+	return(inint);
+}
+
 /* PsychIOOSOpenSerialPort()
  *
  * Open a serial port device and configure it.
@@ -73,18 +154,10 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     // See tty(4) ("man 4 tty") and ioctl(2) ("man 2 ioctl") for details.
     if (ioctl(fileDescriptor, TIOCEXCL) == -1)
     {
-        sprintf(errmsg, "Error setting exclusive access (TIOCEXCL) on device %s - %s(%d).\n", portSpec, strerror(errno), errno);
-        goto error;
+        printf("IOPort-Warning: Error setting exclusive access (TIOCEXCL) on device %s - %s(%d).\n", portSpec, strerror(errno), errno);
+        // goto error;
     }
     
-    // Now that the device is open, clear the O_NONBLOCK flag so subsequent I/O will block.
-    // See fcntl(2) ("man 2 fcntl") for details.
-/*    if (fcntl(fileDescriptor, F_SETFL, 0) == -1)
-    {
-        sprintf(errmsg, "Error clearing O_NONBLOCK on device %s - %s(%d).\n", portSpec, strerror(errno), errno);
-        goto error;
-    }
-*/
     // Create the device struct and init it:
 	device = calloc(1, sizeof(PsychSerialDeviceRecord));
 	device->fileDescriptor = -1;
@@ -204,6 +277,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	float			infloat;
 	int				inint;
 	unsigned long	mics = 0UL;
+	bool			updatetermios = FALSE;
 
     // The serial port attributes such as timeouts and baud rate are set by modifying the termios
     // structure and then calling tcsetattr() to cause the changes to take effect. Note that the
@@ -220,15 +294,15 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Print the current input and output baud rates.
     // See tcsetattr(4) ("man 4 tcsetattr") for details.
     if (verbosity > 3) {
-		printf("Configuration for device %s:\n", device->portSpec);
-		printf("Current input baud rate is %d\n", (int) cfgetispeed(&options));
-		printf("Current output baud rate is %d\n", (int) cfgetospeed(&options));
+		printf("IOPort-Info: Configuration for device %s:\n", device->portSpec);
+		printf("IOPort-Info: Current input baud rate is %d\n", (int) cfgetispeed(&options));
+		printf("IOPort-Info: Current output baud rate is %d\n", (int) cfgetospeed(&options));
     }
 	
     // Set raw input (non-canonical) mode: No line-based processing or editing of
 	// received data via special control characters, unless a processing mode of
 	// cooked was explicitely requested:
-    if (strstr(configString, "ProcessingMode=Cooked") == NULL) cfmakeraw(&options);
+    if (strstr(configString, "ProcessingMode=Cooked") == NULL) { cfmakeraw(&options); updatetermios = TRUE; }
 	
 	// No minimum number of bytes to receive:
 	options.c_cc[VMIN] = 0;
@@ -245,6 +319,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		else {
 			// Set timeout: It is in granularity of 1/10th seconds, so we need to quantize to 10th of seconds:
 			options.c_cc[VTIME] = (int) (infloat * 10 + 0.5);
+			updatetermios = TRUE;
 		}
 	}
 	
@@ -255,11 +330,13 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			return(PsychError_invalidIntegerArg);
 		}
 		else {
-			// Set Baudrate:
+			// Set common speed for input- and output queues:
+			inint = BaudToConstant(inint);
 			if (-1==cfsetspeed(&options, inint)) {
 				printf("Invalid BaudRate %i not accepted! (%s)", inint, strerror(errno));
 				return(PsychError_invalidIntegerArg);
 			}
+			updatetermios = TRUE;
 		}
 	}
 
@@ -286,7 +363,8 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Invalid parity spec:
 			printf("Invalid parity setting %s not accepted! (Valid are None, Even and Odd", p);
 			return(PsychError_user);
-		}		
+		}
+		updatetermios = TRUE;		
 	}
 	
 	// Handling of Break conditions:
@@ -312,7 +390,8 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Invalid spec:
 			printf("Invalid break behaviour %s not accepted (Valid: Ignore, Flush, or Zero)!", p);
 			return(PsychError_user);
-		}		
+		}
+		updatetermios = TRUE;
 	}
 
 	// Handling of data bits:
@@ -339,13 +418,14 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Invalid spec:
 			printf("Invalid setting for data bits %s not accepted! (Valid: 5, 6, 7 or 8 databits)", p);
 			return(PsychError_user);
-		}		
+		}
+		updatetermios = TRUE;	
 	}
 	
 	// Handling of flow control:
 	if ((p = strstr(configString, "FlowControl="))) {
 		// Clear all flow control settings:
-		options.c_cflag &= ~(CCTS_OFLOW | CRTS_IFLOW);
+		options.c_cflag &= ~CRTSCTS;
 		options.c_iflag &= ~(IXON | IXOFF);
 		
 		if (strstr(configString, "FlowControl=None")) {
@@ -357,64 +437,72 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else
 		if (strstr(configString, "FlowControl=Hardware")) {
-			options.c_cflag |= (CCTS_OFLOW | CRTS_IFLOW);
+			options.c_cflag |= CRTSCTS;
 		}
 		else {
 			// Invalid spec:
 			printf("Invalid setting for flow control %s not accepted! (Valid: None, Software, Hardware)", p);
 			return(PsychError_user);
-		}		
+		}
+		updatetermios = TRUE;		
 	}
 			
-//#if defined(MAC_OS_X_VERSION_10_4) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_4)
-//	// Starting with Tiger, the IOSSIOSPEED ioctl can be used to set arbitrary baud rates
-//	// other than those specified by POSIX. The driver for the underlying serial hardware
-//	// ultimately determines which baud rates can be used. This ioctl sets both the input
-//	// and output speed. 
-//	
-//	speed_t speed = 14400; // Set 14400 baud
-//    if (ioctl(fileDescriptor, IOSSIOSPEED, &speed) == -1)
-//    {
-//        printf("Error calling ioctl(..., IOSSIOSPEED, ...) %s - %s(%d).\n",
-//            bsdPath, strerror(errno), errno);
-//    }
-//#endif
+	//#if defined(MAC_OS_X_VERSION_10_4) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_4)
+	//	// Starting with Tiger, the IOSSIOSPEED ioctl can be used to set arbitrary baud rates
+	//	// other than those specified by POSIX. The driver for the underlying serial hardware
+	//	// ultimately determines which baud rates can be used. This ioctl sets both the input
+	//	// and output speed. 
+	//	
+	//	speed_t speed = 14400; // Set 14400 baud
+	//    if (ioctl(fileDescriptor, IOSSIOSPEED, &speed) == -1)
+	//    {
+	//        printf("Error calling ioctl(..., IOSSIOSPEED, ...) %s - %s(%d).\n",
+	//            bsdPath, strerror(errno), errno);
+	//    }
+	//#endif
     
     // Print the new input and output baud rates. Note that the IOSSIOSPEED ioctl interacts with the serial driver 
 	// directly bypassing the termios struct. This means that the following two calls will not be able to read
 	// the current baud rate if the IOSSIOSPEED ioctl was used but will instead return the speed set by the last call
 	// to cfsetspeed.
     if (verbosity > 3) {
-		printf("Input baud rate changed to %d\n", (int) cfgetispeed(&options));
-		printf("Output baud rate changed to %d\n", (int) cfgetospeed(&options));
+			// Retrieve baudrate and check for equal rate on input- and output queue:
+			inint = cfgetispeed(&options);
+			if ((inint != cfgetospeed(&options)) && (verbosity > 1)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", inint, (int) cfgetospeed(&options)); 
+
+			// Output new baud rate:
+			printf("IOPort-Info: Baud rate changed to %d\n", (int) ConstantToBaud(inint));
     }
     
     // Cause the new options to take effect immediately.
-    if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+    if (updatetermios && (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1))
     {
         printf("Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
         return(PsychError_system);
     }
-//TIOCTIMESTAMP
+
     // To set the modem handshake lines, use the following ioctls.
     // See tty(4) ("man 4 tty") and ioctl(2) ("man 2 ioctl") for details.
+
+	// Retrieve current handshake state aka DTR, RTS, CTS, DSR et al.:
+    if (ioctl(device->fileDescriptor, TIOCMGET, &handshake) == -1) {
+		printf("Error getting lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+		return(PsychError_system);
+    }
     
+    	if (verbosity > 3) {
+		printf("IOPort-Info: Handshake lines currently set to %d : ", handshake);
+		printf("DTR=%i : DSR=%i : RTS=%i : CTS=%i\n", (handshake & TIOCM_DTR) ? 1:0, (handshake & TIOCM_DSR) ? 1:0, (handshake & TIOCM_RTS) ? 1:0, (handshake & TIOCM_CTS) ? 1:0);
+	}
+
 	// Handling of DTR :
 	if ((p = strstr(configString, "DTR="))) {
 		if (strstr(configString, "DTR=0")) {
-			if (ioctl(device->fileDescriptor, TIOCCDTR) == -1) // Clear Data Terminal Ready (DTR)
-			{
-				printf("Error clearing DTR for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-				return(PsychError_system);
-			}
+			handshake&= ~TIOCM_DTR;
 		}
 		else
 		if (strstr(configString, "DTR=1")) {
-			if (ioctl(device->fileDescriptor, TIOCSDTR) == -1) // Assert Data Terminal Ready (DTR)
-			{
-				printf("Error setting DTR for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-				return(PsychError_system);
-			}
+			handshake|= TIOCM_DTR;
 		}
 		else {
 			// Invalid spec:
@@ -423,50 +511,61 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}		
 	}
 
-	// Handling of RTS :
-	if ((p = strstr(configString, "RTS="))) {
-		if (strstr(configString, "RTSX=0")) {
-			if (ioctl(device->fileDescriptor, TIOCCDTR) == -1) // Clear Data Terminal Ready (DTR)
-			{
-				printf("Error clearing DTR for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-				return(PsychError_system);
-			}
+	// Handling of DSR :
+	if ((p = strstr(configString, "DSR="))) {
+		if (strstr(configString, "DSR=0")) {
+			handshake&= ~TIOCM_DSR;
 		}
 		else
-		if (strstr(configString, "RTSX=1")) {
-			if (ioctl(device->fileDescriptor, TIOCSDTR) == -1) // Assert Data Terminal Ready (DTR)
-			{
-				printf("Error setting DTR for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-				return(PsychError_system);
-			}
+		if (strstr(configString, "DSR=1")) {
+			handshake|= TIOCM_DSR;
 		}
 		else {
 			// Invalid spec:
-			printf("Setting RTS not yet implemented!", p);
-			// return(PsychError_user);
+			printf("Invalid setting for DSR %s not accepted! (Valid: 1 or 0)", p);
+			return(PsychError_user);
+		}		
+	}
+	
+	// Handling of RTS :
+	if ((p = strstr(configString, "RTS="))) {
+		if (strstr(configString, "RTS=0")) {
+			handshake&= ~TIOCM_RTS;
+		}
+		else
+		if (strstr(configString, "RTS=1")) {
+			handshake|= TIOCM_RTS;
+		}
+		else {
+			// Invalid spec:
+			printf("Invalid setting for RTS %s not accepted! (Valid: 1 or 0)", p);
+			return(PsychError_user);
 		}		
 	}
 
-//    handshake = TIOCM_DTR | TIOCM_RTS | TIOCM_CTS | TIOCM_DSR;
-//    if (ioctl(fileDescriptor, TIOCMSET, &handshake) == -1)
-//    // Set the modem lines depending on the bits set in handshake
-//    {
-//        printf("Error setting handshake lines %s - %s(%d).\n",
-//            bsdPath, strerror(errno), errno);
-//    }
-//    
-//    // To read the state of the modem lines, use the following ioctl.
-//    // See tty(4) ("man 4 tty") and ioctl(2) ("man 2 ioctl") for details.
-//    
-//    if (ioctl(fileDescriptor, TIOCMGET, &handshake) == -1)
-//    // Store the state of the modem lines in handshake
-//    {
-//        printf("Error getting handshake lines %s - %s(%d).\n",
-//            bsdPath, strerror(errno), errno);
-//    }
-//    
-//    printf("Handshake lines currently set to %d\n", handshake);
+	// Handling of CTS :
+	if ((p = strstr(configString, "CTS="))) {
+		if (strstr(configString, "CTS=0")) {
+			handshake&= ~TIOCM_CTS;
+		}
+		else
+		if (strstr(configString, "CTS=1")) {
+			handshake|= TIOCM_CTS;
+		}
+		else {
+			// Invalid spec:
+			printf("Invalid setting for CTS %s not accepted! (Valid: 1 or 0)", p);
+			return(PsychError_user);
+		}		
+	}
+
+    if (ioctl(device->fileDescriptor, TIOCMSET, &handshake) == -1) {
+		printf("Error setting handshake lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+		return(PsychError_system);
+    }
 	
+	// This function is OS/X specific, silently ignored on Linux...
+#if PSYCH_SYSTEM == PSYCH_OSX	
 	if ((p = strstr(configString, "ReceiveLatency="))) {
 		// Set receive latency for low-level driver: Minimum latency between dequeue and notify
 		// operation on reception of new input data. The granularity is microseconds...
@@ -493,8 +592,9 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			}
 		}
 	}
-// TIOCTIMESTAMP
+#endif
 
+	// TODO: Try if TIOCTIMESTAMP is useful to get extra accurate receive timestamps on OS/X...
 
 	// Set input buffer size for receive ops:
 	if ((p = strstr(configString, "InputBufferSize="))) {
@@ -506,7 +606,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Set InputBufferSize:
 			if (device->readBuffer) {
 				// Buffer already exists. Try to realloc:
-				p = realloc(device->readBuffer, inint);
+				p = (char*) realloc(device->readBuffer, inint);
 				if (p == NULL) {
 					// Realloc failed:
 					printf("Reallocation of Inputbuffer of device %s for new size %i failed! (%s)", device->portSpec, inint, strerror(errno));
@@ -602,6 +702,8 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 
 int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
 {
+    	struct termios	options;
+
 	int nread = 0;	
 	*readdata = NULL;
 
@@ -655,13 +757,43 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 			sprintf(errmsg, "Error clearing O_NONBLOCK on device %s for blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
 		}
+
+		// Retrieve current termios settings:
+    		if (tcgetattr(device->fileDescriptor, &options) == -1)
+    		{
+        		sprintf(errmsg, "Error getting current serial port device settings for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+			return(-1);
+    		}
+
+		// Change the number of bytes that must be received for blocking read()'s before read() returns.
+		// read() will return if it can fetch at least that many bytes (we want 'amount' bytes at least),
+		// or if the user specified timeout occurs (as set in Open or Configure routine):
+		options.c_cc[VMIN] = amount;
+
+		// Cause the new options to take effect immediately.
+		if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+		{
+			sprintf(errmsg, "Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+			return(-1);
+		}
 		
-		// Read the data, at most 'amount' bytes, blocking:
+		// Read the data, at most (and at least, unless timeout occurs) 'amount' bytes, blocking:
 		if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
 		{
 			sprintf(errmsg, "Error during blocking read from device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
 		}		
+
+		// Reset minbytes to zero:
+		options.c_cc[VMIN] = 0;
+
+		// Cause the new options to take effect immediately.
+		if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+		{
+			sprintf(errmsg, "Error resetting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+			return(-1);
+		}
+
 	}
 	
 	// Read successfully completed if we reach this point. Take timestamp, clear error message, return:

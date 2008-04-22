@@ -15,3 +15,4 @@ clearGetSecs;
 clearWaitSecs;
 clearmoglcore;
 clearPsychPortAudio;
+clearIOPort;

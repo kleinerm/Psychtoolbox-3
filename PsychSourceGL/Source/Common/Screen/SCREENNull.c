@@ -28,11 +28,20 @@
 
 static char useString[] = "[[value1], [value2] ..]=SCREEN('Null',[value1],[value2],...);";
 static char synopsisString[] = 
-	"Null copies all double and char arguments supplied as inputs to respective outputs. ";
+	"Special test function for Psychtoolbox testing and developments. Normal users: DO NOT USE!";
 static char seeAlsoString[] = "";
 
 PsychError SCREENNull(void) 
 {
+#define RADEON_D1CRTC_INTERRUPT_CONTROL 0x60DC
+
+#define RADEON_R500_GEN_INT_CNTL   0x100
+#define RADEON_R500_GEN_INT_STATUS 0x104
+//#define RADEON_R500_GEN_INT_CNTL   0x040
+//#define RADEON_R500_GEN_INT_STATUS 0x044
+//#define RADEON_R500_GEN_INT_CNTL   0x200
+//#define RADEON_R500_GEN_INT_STATUS 0x204
+
 	const double defaultMatrix[] = {1.1, 1.2, 1.3, 1.4, 2.1, 2.2, 2.3, 2.4};
 	const double defaultM=2, defaultN=4; 
 	double tempValue; 
@@ -51,6 +60,18 @@ PsychError SCREENNull(void)
 		PsychOSShutdownPsychtoolboxKernelDriverInterface();
 	#endif
 	
+	#if PSYCH_SYSTEM == PSYCH_LINUX
+		printf("PTB-DEBUG: PreRADEON_R500_GEN_INT_CNTL: %x\n", PsychOSKDReadRegister(0, 0x040, NULL));
+		PsychOSKDWriteRegister(0, 0x040, PsychOSKDReadRegister(0, 0x040, NULL) | 0x1, NULL);
+		PsychWaitIntervalSeconds(0.1);
+		printf("PTB-DEBUG: PostRADEON_R500_GEN_INT_CNTL: %x\n", PsychOSKDReadRegister(0, 0x040, NULL));
+
+		printf("PTB-DEBUG: RADEON_R500_GEN_INT_STATUS: %x\n", PsychOSKDReadRegister(0, 0x044, NULL));
+		printf("PTB-DEBUG: RADEON_R500_GEN_INT_CNTL: %x\n", PsychOSKDReadRegister(0, RADEON_R500_GEN_INT_CNTL, NULL));
+		printf("PTB-DEBUG: RADEON_R500_GEN_INT_STATUS: %x\n", PsychOSKDReadRegister(0, RADEON_R500_GEN_INT_STATUS, NULL));
+		printf("PTB-DEBUG: RADEON_D1CRTC_INTERRUPT_CONTROL: %x\n", PsychOSKDReadRegister(0, RADEON_D1CRTC_INTERRUPT_CONTROL, NULL));
+	#endif
+
 	return(PsychError_none);
 
 	//demonstrate how we find the function and subfunction names

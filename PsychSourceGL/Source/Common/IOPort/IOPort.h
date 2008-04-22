@@ -60,8 +60,10 @@ void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device);
 
 // Public subfunction prototypes
 PsychError MODULEVersion(void); 
+#if PSYCH_SYSTEM == PSYCH_OSX
 PsychError IOPORTSetPort(void);
 PsychError IOPORTInit(void);
+#endif
 PsychError IOPORTDisplaySynopsis(void);
 PsychError IOPORTVerbosity(void);
 

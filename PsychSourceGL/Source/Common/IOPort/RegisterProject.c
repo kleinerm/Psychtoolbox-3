@@ -51,7 +51,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister(NULL,  &IOPORTDisplaySynopsis));
         
 	// Report the version:
+	#if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
+	#endif
 
 	// Register the module name
 	PsychErrorExit(PsychRegister("IOPort", NULL));

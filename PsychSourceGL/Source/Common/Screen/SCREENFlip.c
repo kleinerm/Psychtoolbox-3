@@ -440,8 +440,18 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 			PsychErrorExitMsg(PsychError_user,"Estimate of VBL endline is INVALID -> Aborting!");
 		}
 		
-		// Wait for bufferswap completion or bufferswap certain:
+		// Retrieve scheduled swap time: We use it as baseline for a timeout for the mechanism:
+		timestamp = windowRecord->flipInfo->flipwhen;
+		// If scheduled time is "on next retrace", we set baseline to "now":
+		if (timestamp == 0) PsychGetAdjustedPrecisionTimerSeconds(&timestamp);
+
+		// Should flip within 1 refresh of timestamp, ie., in reality at least within 2 or a few
+		// refreshes. Certainly within 1 second. We generously set a deadline of 5 seconds for swap detection:
+		timestamp+=5.0;
+
+		// Wait for bufferswap completion or bufferswap certain (or until timeout time 'timestamp' elapsed):
 		swappending = PsychWaitForBufferswapPendingOrFinished(windowRecord, &timestamp, &beamposition);
+		if (timestamp == -1) PsychErrorExitMsg(PsychError_user, "Malfunctioned: Aborted due to timeout exceeded. Seems your graphics card doesn't support 'WaitUntilAsyncFlipCertain' properly. Sorry.");
 		
 		// Copy out optional timestamp of bufferswap detection:
 		PsychCopyOutDoubleArg(3, kPsychArgOptional, timestamp);

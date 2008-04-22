@@ -335,6 +335,9 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
 /*  PsychWaitForBufferswapPendingOrFinished()
  *  Waits until a bufferswap for window windowRecord has either already happened or
  *  bufferswap is certain.
+ *  Input values:
+ *  windowRecord struct of onscreen window to monitor.
+ *  timestamp    = Deadline for abortion of flip detection at input.
  *
  *  Return values:
  *  timestamp    = System time at polling loop exit.
@@ -348,7 +351,8 @@ bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord
     CGDirectDisplayID displayID;
 	unsigned int primarySurface, secondarySurface;
 	unsigned int updateStatus;
-	
+	double deadline = *timestamp;
+
 	// If we are called, we know that 'windowRecord' is an onscreen window.
 	int screenId = windowRecord->screenNumber;
 
@@ -372,11 +376,17 @@ bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord
 		// Read update status registers:
 		updateStatus     = PsychOSKDReadRegister(screenId, (screenId <=0 ) ? RADEON_D1GRPH_UPDATE : RADEON_D2GRPH_UPDATE, NULL);
 
-		if (primarySurface!=windowRecord->gpu_preflip_Surfaces[0] || secondarySurface!=windowRecord->gpu_preflip_Surfaces[1] || (updateStatus & (RADEON_SURFACE_UPDATE_PENDING | RADEON_SURFACE_UPDATE_TAKEN))) {
+		PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+
+		if (primarySurface!=windowRecord->gpu_preflip_Surfaces[0] || secondarySurface!=windowRecord->gpu_preflip_Surfaces[1] || (updateStatus & (RADEON_SURFACE_UPDATE_PENDING | RADEON_SURFACE_UPDATE_TAKEN)) || (*timestamp > deadline)) {
 			// Abort condition: Exit loop.
 			break;
 		}
 		
+		if (PsychPrefStateGet_Verbosity() > 9) {
+			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", ((screenId <=0) ? 0:1), primarySurface, secondarySurface, updateStatus);
+		}
+
 		// Sleep 200 microseconds, then retry:
 		PsychWaitIntervalSeconds(0.0002);
 	};
@@ -384,6 +394,12 @@ bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord
 	// Take timestamp and beamposition:
 	*beamposition = PsychGetDisplayBeamPosition(&displayID, screenId);
 	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+
+	// Exit due to timeout?
+	if (*timestamp > deadline) {
+		// Mark timestamp as invalid due to timeout:
+		*timestamp = -1;
+	}
 	
 	// Return FALSE if bufferswap happened already, TRUE if swap is still pending:
 	return((updateStatus & RADEON_SURFACE_UPDATE_PENDING) ? TRUE : FALSE);
