@@ -68,6 +68,11 @@ rect = [0 0 m n];
 
 % Show the image
 
+% Make sure we run with our default color correction mode for this test:
+% 'ClampOnly' is the default, but we set it here explicitely, so no state
+% from previously running scripts can bleed through:
+PsychColorCorrection('ChooseColorCorrection', 'ClampOnly');
+
 % Open a double buffered fullscreen window with black background, configured for the Bits++
 % Color++ Mode, i.e., with proper setup of imaging pipeline and conversion shaders:
 BitsPlusPlus('ForceUnvalidatedRun');

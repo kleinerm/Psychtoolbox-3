@@ -242,6 +242,17 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 %
 %
+% * 'AddOffsetToImage' Add a constant color- or intensity offset to the
+%   drawn image, prior to all following image processing and post
+%   processing operations:
+%   Outimage(x,y) = Inimage(x,y) + Offset. If the framebuffer is in a color
+%   display mode, the same offset will be added to all three color
+%   channels.
+%
+%   Usage: PsychImaging('AddTask', whichView, 'AddOffsetToImage', Offset);
+%   Example: PsychImaging('AddTask', 'AllViews', 'AddOffsetToImage', 0.5);
+%
+%
 % * 'MirrorDisplayTo2ndOutputHead' Mirror the content of the onscreen
 %   window to given 2nd screen, ie., to a 2nd output connector (head)
 %   of a dualhead graphics card. This should give the same result as if one
@@ -1029,6 +1040,101 @@ if winfo.StereoMode > 0
 end
 
 % --- End of the flipping stuff ---
+
+% --- Addition of offsets / scales etc. to input image ---
+floc = find(mystrcmp(reqs, 'AddOffsetToImage'));
+if ~isempty(floc)
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Extract first parameter - This should be the offset:
+            PixelOffset = reqs{row, 3};
+            
+            if isempty(PixelOffset) | ~isnumeric(PixelOffset)
+                Screen('CloseAll');
+                error('PsychImaging: Parameter for ''AddOffsetToImage'' missing or not of numeric type!');
+            end
+            
+            % Further (optional) parameters passed?
+            % 2nd parameter, if any, would be a gain value to apply before
+            % applying the PixelOffset:
+            PixelGain = reqs{row, 4};
+            if isempty(PixelGain)
+                % No such flag: Default to 1:
+                PixelGain = 1;
+            else
+                if ~isnumeric(PixelGain)
+                    Screen('CloseAll');
+                    error('PsychImaging: Optional Gain-Parameter for ''AddOffsetToImage'' not of numeric type!');
+                end
+            end
+
+            % 3rd parameter, if any, would be an Offset value to apply before
+            % applying the gain:
+            PixelPreOffset = reqs{row, 5};
+            if isempty(PixelPreOffset)
+                % No such flag: Default to 0:
+                PixelPreOffset = 0;
+            else
+                if ~isnumeric(PixelPreOffset)
+                    Screen('CloseAll');
+                    error('PsychImaging: Optional "Offset before Gain"- PrescaleParameter for ''AddOffsetToImage'' not of numeric type!');
+                end
+            end
+
+            % Load and build shader:
+            shader = LoadGLSLProgramFromFiles('ScaleAndBiasShader', 1);
+
+            % Init the shader: Assign mapping of input image and offsets, gains:
+            glUseProgram(shader);
+            
+            glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
+            glUniform1f(glGetUniformLocation(shader, 'postscaleoffset'), PixelOffset);
+            glUniform1f(glGetUniformLocation(shader, 'prescaleoffset'), PixelPreOffset);
+            glUniform1f(glGetUniformLocation(shader, 'scalefactor'), PixelGain);
+            
+            glUseProgram(0);
+            
+            % Ok, 'gld' should contain a valid OpenGL display list for
+            % geometry correction. Attach proper shader to proper chain:
+            if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to left view:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'ScaleAndOffsetShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            if mystrcmp(reqs{row, 1}, 'RightView') || (mystrcmp(reqs{row, 1}, 'AllViews') && winfo.StereoMode > 0)
+                % Need to attach to right view:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'ScaleAndOffsetShader', shader);
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+
+            if mystrcmp(reqs{row, 1}, 'FinalFormatting')
+                % Need to attach to final formatting:
+                if outputcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'ScaleAndOffsetShader', shader);
+                Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+                outputcount = outputcount + 1;
+            end
+        end
+    end
+end
+% --- End of addition of offsets / scales etc. to input image ---
+
 
 % --- Geometry correction via warped blit ---
 floc = find(mystrcmp(reqs, 'GeometryCorrection'));

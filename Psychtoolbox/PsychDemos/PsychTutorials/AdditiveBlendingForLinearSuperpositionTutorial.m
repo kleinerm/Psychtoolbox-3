@@ -37,7 +37,9 @@ try
 
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 128) background and support for 16 bpc floating point framebuffers:
-	w=Screen('OpenWindow',screenNumber, 128,[],[],[],[],[],kPsychUse32BPCFloatAsap);
+    PsychImaging('PrepareConfiguration');
+    PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
+    w=PsychImaging('OpenWindow',screenNumber, 128);
     [width, height]=Screen('WindowSize', w);
 
     % Enable alpha blending. We switch it into additive mode which takes

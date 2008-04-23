@@ -41,7 +41,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % Functions for device init and shutdown: Call once at beginning/end of
 % your script. These are slow!
 %
-% handle = CedrusResponseBox('Open', port);
+% handle = CedrusResponseBox('Open', port [, lowbaudrate]);
 % - Open a compatible response box which is connected to the given named
 % serial 'port'. 'port'names differ accross operating systems. A typical
 % port name for Windows would be 'COM2', whereas a typical port name on OS/X
@@ -51,6 +51,12 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % connection is established and some testing and initialization is done,
 % returns a device 'handle', a unique identifier to use for all other
 % subfunctions.
+%
+% By default the commlink is opened at a baud transmission rate of 115200
+% Baud (All DIP switches on the box need to be in 'down' position!). If you
+% specify the optional flag 'lowbaudrate' as 1, then the speed will be
+% lowered to 56 kBaud at device open time -- in case your system works
+% unreliably at the higher rate.
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -205,7 +211,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % other.
 %
 %
-% CedrusResponseBox('ResetRTTimer', handle);
+% resetTime = CedrusResponseBox('ResetRTTimer', handle);
 % - Reset reaction time timer of box to zero. This should not be neccessary
 % if you use the evt.ptbtime timestamps for time measurements or reaction
 % time measurements. If you however use uncalibrated mode and the
@@ -213,7 +219,9 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % zero baseline for reaction time measurements. However, as the communication
 % delay for sending the reset command can't be reliably measured, using
 % such a software triggered timer reset may not be the most reliable way of
-% resetting the timer. 
+% resetting the timer. The function returns 'resetTime' PTB's best guess of
+% when the reset was carried out -- essentially a GetSecs() timestamp of
+% when the reset command was sent.
 %
 % Note that this automatically discards all pending
 % events in the queue before performing the query!
@@ -230,6 +238,62 @@ function varargout = CedrusResponseBox(cmd, varargin)
 %
 % Note that this automatically discards all pending
 % events in the queue before performing the query!
+%
+%
+% CedrusResponseBox('SetConnectorMode', handle, mode);
+% - Set mode of operation of external accessory connector: 'mode' can be
+% any of the following text strings:
+%
+% 'GeneralPurpose': Input/Output assignment of pins can be freely
+% programmed via the 'DefineInputLinesAndLevels' subcommand (see below),
+% and the output lines only change if the 'SetOutputLineLevels' command
+% (see below) is used. The connector doesn't change state by itself.
+%
+% 'ReflectiveContinuous': Line levels reflect button state: Line is active
+% if button is pressed and goes inactive when the button is released again.
+%
+% 'ReflectiveSinglePulse': A single pulse is sent to an output line if a
+% button is pressed on the box. Nothing is sent on release.
+%
+% 'ReflectiveDoublePulse': A single pulse is sent to an output line if a
+% button is pressed on the box. Another pulse is sent on button release.
+%
+%
+% CedrusResponseBox('SetOutputLineLevels', handle, outlevels);
+% - Set accessory connector output lines to state specified in 'outlevels'.
+% outlevels is an 8 element vector of zeros and ones. Each element
+% corresponds to an output pin, and its values sets the output level of
+% that pin. Example: outlevel = [1,1,1,1,0,0,0,0] would set the 4 lines
+% with the lowest numbers (lines 0,1,2,3) to '1' aka active and the 4 lines
+% with the highest numbers (lines 4,5,6,7) to '0' aka inactive.
+% This corresponds to XiD command 'ah'.
+%
+% The command is only effective if connector is set to 'GeneralPurpose'.
+%
+%
+% CedrusResponseBox('DefineInputLinesAndLevels', handle, inputlines, logiclevel);
+% - Define which lines on the connector are inputs: 'inputlines' is a
+% vector with the line numbers of the input lines. All other lines are
+% designated as output lines, e.g., inputlines = [0, 2, 4] would set lines
+% 0, 2 and 4 as inputs, remaining lines 1,3,5,6,7 as outputs. 'logiclevel'
+% tells if the default TTL level of the input lines is low (logiclevel=1)
+% or high (logiclevel=0). Example: logiclevel = 1 means that the lines are
+% pulled low by default, so they will detect an active high state -- if
+% their level is raised to TTL high state.
+% This corresponds to XiD commands 'a4', 'a50' and 'a51'.
+%
+% The command is only effective if connector is set to 'GeneralPurpose'.
+%
+%
+% inputLines = CedrusResponseBox('ReadInputLines', handle);
+% - Read current state of the connectors input lines: Returns an 8 element
+% vector where each element corresponds to one input line and a 1 means
+% active, 0 means inactive. This corresponds to XiD command 'ar'.
+%
+% Note that this automatically discards all pending
+% events in the queue before performing the query!
+%
+% The command is only effective if connector is set to 'GeneralPurpose'.
 %
 %
 
@@ -285,6 +349,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 04/03/08 Refined and added MacOS/X support via SerialComm driver. (MK)
 % 04/06/08 Improved timing code for mapping of box timers --> GetSecs time. (MK)
 % 04/17/08 Disable Boxtime->Ptbtime mapping for now, use old drivers. (MK)
+% 04/23/08 Add additional setup and query commands for external port. (MK)
 
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
@@ -476,7 +541,7 @@ if strcmpi(cmd, 'ResetRTTimer')
 
     % Reset reaction time timer of device and assign estimated time of reset
     % as basetime for all timing calculations:
-    ResetRTT(handle);
+    varargout{1} = ResetRTT(handle);
 
     return;
 end
@@ -564,6 +629,154 @@ if strcmpi(cmd, 'GetBaseTimer')
     return;
 end
 
+if strcmpi(cmd, 'SetConnectorMode')
+    % Change mode of external accessory connector:
+    if nargin < 2
+        error('You must provide the device "handle" for the box!');
+    end
+
+    if nargin < 3
+        error('You must provide the new connector mode for the box!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    switch lower(char(varargin{2}))
+        case {'generalpurpose'}
+            cc = 'a10';
+        case {'reflectivecontinuous'}
+            cc = 'a11';
+        case {'reflectivesinglepulse'}
+            cc = 'a12';
+        case {'reflectivedoublepulse'}
+            cc = 'a13';
+        otherwise
+            error('Unknown connector mode specified to SetConnectorMode.');
+    end
+
+    % Send command code:
+    WriteDev(handle, cc);
+    
+    return;
+end
+
+if strcmpi(cmd, 'DefineInputLinesAndLevels')
+    % Change I/O assignment and default logic level of pins:
+    if nargin < 2
+        error('You must provide the device "handle" for the box!');
+    end
+
+    if nargin < 3
+        error('You must provide the new list of integer input pin numbers!');
+    end
+
+    if nargin < 4
+        error('You must provide the new logic detection level for the inputs: 1 for "Detect Low->High transition", 0 for "Detect High->Low" !');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    inpins = varargin{2};
+    if ~isnumeric(inpins)
+        error('You must provide the new list of integer input pin numbers!');
+    end
+
+    if ~isempty(inpins)
+        if min(inpins) < 0 || max(inpins) > 5
+            error('Only input pin numbers between 0 and 5 are valid!');
+        end
+    end
+    
+    ipin = 0;
+    for i=1:length(inpins)
+        ipin = ipin + 2^(inpins(i));
+    end
+    
+    % Send command code and mask:
+    WriteDev(handle, ['a4' char(ipin)]);
+    
+    % Wait a bit:
+    WaitSecs(0.1);
+    
+    % Send new TTL pull-level:
+    if varargin{3} > 0
+        % Pull lines low --> Detect lines high:
+        WriteDev(handle, 'a50');
+    else
+        % Pull lines high --> Detect lines low:
+        WriteDev(handle, 'a51');
+    end
+    return;
+end
+
+if strcmpi(cmd, 'ReadInputLines')
+    % Retrieve state of all input lines:
+    if nargin < 2
+        error('You must provide the device "handle" for the box!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    % Flush event queue:
+    FlushEvents(handle);
+    
+    % Send command code:
+    WriteDev(handle, 'ar');
+    
+    % Read one byte back:
+    inplines = ReadDev(handle, 1);
+    outv=zeros(1,8);
+     
+    for i=0:7
+        if bitand(inplines, 2^i)
+            outv(i+1)=1;
+        end
+    end
+    
+    varargout{1} = outv;
+    
+    return;
+end
+
+if strcmpi(cmd, 'SetOutputLineLevels')
+    % Change signal level of output pins:
+    if nargin < 2
+        error('You must provide the device "handle" for the box!');
+    end
+
+    if nargin < 3
+        error('You must provide the 8 element vector of output line levels!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    opins = varargin{2};
+    if length(opins)~=8 | ~isnumeric(opins)
+        error('You must provide an 8 element vector of output line levels!');
+    end
+
+    outval = 0;
+    for i=1:8
+        if opins(i)>0
+            outval = outval + 2^(i-1);
+        end
+    end
+    
+    % Send command code and mask:
+    WriteDev(handle, ['ah' char(outval)]);
+    
+    % Wait a bit:
+    WaitSecs(0.1);
+    
+    return;
+end
+
+
+
 if strcmpi(cmd, 'GetDeviceInfo')
     % Query info about device:
 
@@ -593,15 +806,23 @@ if strcmpi(cmd, 'Open')
     % properly:
     port = varargin{1};
     % port = '/dev/cu.usbserial-FT3Z95V5'
+
     if nargin < 3
+        % Assume user doesn't want time calibration:
+        lowbaudrate = 0;
+    else
+        lowbaudrate = varargin{2};
+    end
+  
+    if nargin < 4
         % Assume user doesn't want time calibration:
         doCalibrate = 0;
     else
-        doCalibrate = varargin{2};
+        doCalibrate = varargin{3};
     end
     
-    % Open device link, return 'dev' struct:
-    dev = OpenDev(port);
+    % Open device link at default baudrate of 115 kBaud, return 'dev' struct:
+    dev = OpenDev(port, 115200);
     
     % Create new entry in our struct array:
     if isempty(ptb_cedrus_devices)
@@ -617,6 +838,52 @@ if strcmpi(cmd, 'Open')
     ptb_cedrus_devices{handle} = dev;
     clear dev;
 
+    if lowbaudrate
+        % Set the device protocol to XID mode
+        WriteDev(handle, 'c10'); %JCAR removed cr
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+
+        % Initiate a device reset:
+        WriteDev(handle, 'f7');
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+
+        % Change baudrate of device to 57600 Baud:
+        WriteDev(handle, ['f1' char(3)])
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+
+        % Close connection:
+        CloseDev(handle);
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+
+        % Reinit connection at new baud rate:
+        % Open device link at new baudrate of 57600 Baud, return 'dev' struct:
+        dev = OpenDev(port, 57600);
+
+        % Reassign device struct to array:
+        ptb_cedrus_devices{handle} = dev;
+        clear dev;
+    else
+        % Set the device protocol to XID mode
+        WriteDev(handle, 'c10'); %JCAR removed cr
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+        
+        % Initiate a device reset:
+        WriteDev(handle, 'f7');
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+    end
+    
     % This is for keeping track of what buttons are currently up or
     % down. I assume that all buttons are up when the device is opened.
     ptb_cedrus_devices{handle}.CedrusStatus = zeros(3,8);
@@ -625,11 +892,7 @@ if strcmpi(cmd, 'Open')
     % reason, I can then close the link and you can try again. Otherwise,
     % the COM port is permanently busy and I have to restart Matlab.
 %    try
-        % Set the device protocol to XID mode
-        WriteDev(handle, 'c10'); %JCAR removed cr
-
-        % Give device time to settle:
-        WaitSecs(0.5);
+        
         
         % % Debug information from http://www.cedrus.com/xid/properties.htm
         % %
@@ -898,7 +1161,7 @@ response = ReadDev(handle, 4)
 
 return;
 
-function ResetRTT(handle)
+function tReset = ResetRTT(handle)
 % Try to reset the reaction time timer to zero within a small time
 % window, so we can associate "time zero" of the RT timer with the
 % current GetSecs() time. This way, the RT timer will encode elapsed
@@ -975,8 +1238,13 @@ else
     ptb_cedrus_devices{handle}.rttresetdelay = -1;
     
     % Send reaction time timer reset code:
+    dx1 = GetSecs;
     WriteDev(handle, 'e5');
+    dx2 = GetSecs;
 end
+
+    % Return estimated time of when reset probably roughly happened:
+    tReset = (dx1+dx2)/2;
 
 return;
 
@@ -1165,7 +1433,7 @@ function retHandle = checkHandle(handle)
     retHandle = handle;
 return;
 
-function dev = OpenDev(port)
+function dev = OpenDev(port, baudrate)
 
     % Which OS?
     if IsWin
@@ -1175,7 +1443,7 @@ function dev = OpenDev(port)
         end
 
         % Ok, Matlab with JVM on Windows: Let's do it!
-        dev.link = serial(port, 'BaudRate', 115200, 'DataBits', 8, 'StopBits', 1,...
+        dev.link = serial(port, 'BaudRate', baudrate, 'DataBits', 8, 'StopBits', 1,...
             'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
             'InputBufferSize', 16000);
 
@@ -1190,14 +1458,14 @@ function dev = OpenDev(port)
         try
             if ischar(port) || IsLinux
                 IOPort('Verbosity', 10);
-                dev.link = IOPort('OpenSerialPort', port, 'BaudRate=115200 Parity=None DataBits=8 StopBits=1 FlowControl=Hardware');
+                dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware', baudrate));
                 IOPort('Purge', dev.link);
                 dev.driver = 2;
                 dev.recvQueue = [];
             else
                 % Open 'port' with 115200 baud, no parity, 8 data bits, 1
                 % stopbit.
-                SerialComm('open', port, '115200,n,8,1');
+                SerialComm('open', port, sprintf('%i,n,8,1', baudrate));
 
                 % Disable handshaking 'n' == none:
                 SerialComm('hshake', port, 'n');
