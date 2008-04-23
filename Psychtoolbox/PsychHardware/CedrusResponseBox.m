@@ -628,6 +628,9 @@ if strcmpi(cmd, 'Open')
         % Set the device protocol to XID mode
         WriteDev(handle, 'c10'); %JCAR removed cr
 
+        % Give device time to settle:
+        WaitSecs(0.5);
+        
         % % Debug information from http://www.cedrus.com/xid/properties.htm
         % %
         % % Note: 0 is ASCII value 48, 1 is ASCII value 49, and so forth.
@@ -669,8 +672,16 @@ if strcmpi(cmd, 'Open')
         % Get model ID: 0 = Unknown, 1 = RB-530, 2 = RB-730, 3 = RB-830, 4 = RB-834
         % I have to put this in a while loop, because sometimes '_d3' fails to
         % evoke a response:
+
+        % Give device time to settle:
+        WaitSecs(0.5);
+
+        % Remove junk - if any:
+        while BytesAvailable(handle)
+            ReadDev(handle, 1);
+        end
+        
         bytes = 0;
-	WaitSecs(0.5);
         while bytes==0
             WriteDev(handle, '_d3');
             WaitSecs(0.25); % I also have to wait, because even when it does evoke a response,
