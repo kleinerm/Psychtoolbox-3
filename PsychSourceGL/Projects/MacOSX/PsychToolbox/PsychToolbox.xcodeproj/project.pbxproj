@@ -3692,7 +3692,7 @@
 		8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychTextureSupport.c; path = ../../../Source/Common/Screen/PsychTextureSupport.c; sourceTree = SOURCE_ROOT; };
 		837A6DC10BBB106E003AB0BE /* SCREENNull.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENNull.c; path = ../../../Source/Common/Screen/SCREENNull.c; sourceTree = SOURCE_ROOT; };
 		83836B020943858F007E4DF5 /* SCREENPreloadTextures.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENPreloadTextures.c; path = ../../../Source/Common/Screen/SCREENPreloadTextures.c; sourceTree = SOURCE_ROOT; };
-		838A9BAB0DBBF4A600610117 /* IOPort.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = IOPort.cc; path = ../../../Source/Octave/IOPort.cc; sourceTree = SOURCE_ROOT; };
+		838A9BAB0DBBF4A600610117 /* IOPort.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = IOPort.cc; sourceTree = "<group>"; };
 		8395A9B60BBF290900FC482E /* FontInfo.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = FontInfo.cc; path = ../../../Source/Octave/FontInfo.cc; sourceTree = SOURCE_ROOT; };
 		8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychPortAudio.cc; path = ../../../Source/Octave/PsychPortAudio.cc; sourceTree = SOURCE_ROOT; };
 		8395A9DB0BBF370800FC482E /* PsychHID.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychHID.cc; path = ../../../Source/Octave/PsychHID.cc; sourceTree = SOURCE_ROOT; };
@@ -5012,7 +5012,6 @@
 		29B97314FDCFA39411CA2CEA /* TestPBMex */ = {
 			isa = PBXGroup;
 			children = (
-				838A9BAB0DBBF4A600610117 /* IOPort.cc */,
 				83DBBCFF0C332374002B3C93 /* AGL.framework */,
 				83CBD6640BC02124007CB68C /* GLUT.framework */,
 				83CBD6600BC02109007CB68C /* AGL.framework */,
@@ -5584,6 +5583,7 @@
 		8302E1FD0A1928E900AE269C /* Octave */ = {
 			isa = PBXGroup;
 			children = (
+				838A9BAB0DBBF4A600610117 /* IOPort.cc */,
 				83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */,
 				8302E1FE0A1928E900AE269C /* GetSecs.cc */,
 				8302E1FF0A1928E900AE269C /* octavemex.h */,
