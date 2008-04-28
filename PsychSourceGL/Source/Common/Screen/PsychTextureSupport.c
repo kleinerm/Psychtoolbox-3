@@ -415,6 +415,9 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
 			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
 			
+			// Store override per-component bit-depths:
+			win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
+			
 			// Sanity check: A sum of zero over all texture channels would indicate that texture
 			// creation failed, most likely due to an out of memory condition in the graphics
 			// hardwares VRAM:

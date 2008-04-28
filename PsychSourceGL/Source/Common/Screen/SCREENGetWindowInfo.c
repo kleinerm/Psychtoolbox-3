@@ -43,9 +43,9 @@ PsychError SCREENGetWindowInfo(void)
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion",
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
-							   "GLSupportsFP32Shading"};
+							   "GLSupportsFP32Shading", "BitsPerColorComponent" };
 							   
-	const int  fieldCount = 22;
+	const int  fieldCount = 23;
 	PsychGenericScriptType	*s;
 	
     PsychWindowRecordType *windowRecord;
@@ -120,6 +120,7 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);
 		PsychSetStructArrayDoubleElement("GuesstimatedMemoryUsageMB", 0, (double) windowRecord->surfaceSizeBytes / 1024 / 1024, s);
+		PsychSetStructArrayDoubleElement("BitsPerColorComponent", 0, (double) windowRecord->bpc, s);
 		
 		// Query real size of the underlying display in order to define the vbl_startline:
 		PsychGetScreenSize(windowRecord->screenNumber, &scw, &sch);

@@ -100,7 +100,7 @@ char textureBilinearFilterVertexShaderSrc[] =
 "    /* Simply copy input unclamped RGBA pixel color into output varying color: */\n"
 "    unclampedFragColor = modulateColor;\n"
 "\n"
-"    gl_TexCoord[0] = gl_MultiTexCoord0;\n"
+"    gl_TexCoord[0] = gl_TextureMatrix[0] * gl_MultiTexCoord0;\n"
 "\n"
 "    /* Output position is the same as fixed function pipeline: */\n"
 "    gl_Position    = ftransform();\n"
@@ -294,16 +294,16 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	// Determine required precision for our framebuffer objects:
 
 	// Start off with standard 8 bpc fixed point:
-	fboInternalFormat = GL_RGBA8;
+	fboInternalFormat = GL_RGBA8; windowRecord->bpc = 8;
 	
 	// Need 16 bpc fixed point precision?
-	if (imagingmode & kPsychNeed16BPCFixed) fboInternalFormat = GL_RGBA16;
+	if (imagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; windowRecord->bpc = 16; }
 	 
 	// Need 16 bpc floating point precision?
-	if (imagingmode & kPsychNeed16BPCFloat) fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+	if (imagingmode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->bpc = 16; }
 	
 	// Need 32 bpc floating point precision?
-	if (imagingmode & kPsychNeed32BPCFloat) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+	if (imagingmode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->bpc = 32; }
 
 	// Want dynamic adaption of buffer precision?
 	if (imagingmode & kPsychUse32BPCFloatAsap) {
@@ -311,11 +311,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// float framebuffer blending, we use 32bpc float for drawBufferFBOs, if not -> use 16 bpc.
 		
 		// Start off with 16 bpc for the stage 0 FBO's.
-		fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+		fboInternalFormat = GL_RGBA_FLOAT16_APPLE; windowRecord->bpc = 16;
 
 		// Blending on 32 bpc float FBO's supported? Upgrade to 32 bpc float for stage 0 if possible:
-		if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
-		
+		if (windowRecord->gfxcaps & kPsychGfxCapFPBlend32) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; windowRecord->bpc = 32; }
 	}
 
 	if (PsychPrefStateGet_Verbosity()>2) {
@@ -1358,16 +1357,16 @@ void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolea
 			// No texture yet. Create suitable one for given imagingmode:
 
 			// Start off with standard 8 bpc fixed point:
-			fboInternalFormat = GL_RGBA8;
+			fboInternalFormat = GL_RGBA8; textureRecord->bpc = 8;
 			
 			// Need 16 bpc fixed point precision?
-			if (forImagingmode & kPsychNeed16BPCFixed) fboInternalFormat = GL_RGBA16;
+			if (forImagingmode & kPsychNeed16BPCFixed) { fboInternalFormat = GL_RGBA16; textureRecord->bpc = 16; }
 			
 			// Need 16 bpc floating point precision?
-			if (forImagingmode & kPsychNeed16BPCFloat) fboInternalFormat = GL_RGBA_FLOAT16_APPLE;
+			if (forImagingmode & kPsychNeed16BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT16_APPLE; textureRecord->bpc = 16; }
 			
 			// Need 32 bpc floating point precision?
-			if (forImagingmode & kPsychNeed32BPCFloat) fboInternalFormat = GL_RGBA_FLOAT32_APPLE;
+			if (forImagingmode & kPsychNeed32BPCFloat) { fboInternalFormat = GL_RGBA_FLOAT32_APPLE; textureRecord->bpc = 32; }
 			
 			PsychCreateFBO(&(textureRecord->fboTable[0]), fboInternalFormat, (PsychPrefStateGet_3DGfx() > 0) ? TRUE : FALSE, PsychGetWidthFromRect(textureRecord->rect), PsychGetHeightFromRect(textureRecord->rect));
 			

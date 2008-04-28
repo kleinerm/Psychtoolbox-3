@@ -1725,6 +1725,18 @@
 		8395A9DD0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
 		83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
 		83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
+		83AD4CEE0DC51717002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CEF0DC5171D002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF00DC5172A002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF10DC51730002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF20DC51739002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF30DC5173D002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF40DC51743002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF50DC5174A002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF60DC5174F002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF70DC51755002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF80DC51759002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83AD4CF90DC5176F002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
 		83C802620B8CB29300097021 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		83C802630B8CB29300097021 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		83C802640B8CB29300097021 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3511,7 +3523,7 @@
 		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
-		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
@@ -10626,6 +10638,7 @@
 				2FEBA44D09885D0600F4165F /* PsychVersioning.c in Sources */,
 				2FEBA44E09885D0700F4165F /* RegisterProject.c in Sources */,
 				835CD25C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
+				83AD4CEE0DC51717002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10873,6 +10886,7 @@
 				834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */,
 				830982E00DB2DF4100E7D371 /* IOPort.c in Sources */,
 				838A9BAC0DBBF4A600610117 /* IOPort.cc in Sources */,
+				83AD4CEF0DC5171D002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10987,6 +11001,7 @@
 				8325CECF0CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */,
 				8325CED20CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
 				8325CED50CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
+				83AD4CF00DC5172A002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11249,6 +11264,7 @@
 				2FEBAA310989B80700F4165F /* WaitSecs.c in Sources */,
 				835CD26C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
 				8302E23A0A1928E900AE269C /* WaitSecs.cc in Sources */,
+				83AD4CF10DC51730002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11324,6 +11340,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				83AD4CF90DC5176F002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11370,6 +11387,7 @@
 				833C1F250BB1A49D00FB9B4F /* PsychPortAudio.c in Sources */,
 				833C1F260BB1A49D00FB9B4F /* RegisterProject.c in Sources */,
 				8395A9D60BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */,
+				83AD4CF60DC5174F002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11394,6 +11412,7 @@
 				836DECB90C30A0F900CFE76B /* PsychPortAudio.c in Sources */,
 				836DECBA0C30A0F900CFE76B /* RegisterProject.c in Sources */,
 				836DECBB0C30A0F900CFE76B /* PsychPortAudio.cc in Sources */,
+				83AD4CF70DC51755002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11463,6 +11482,7 @@
 				8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */,
 				8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */,
 				8341EF270D2FD0E300B77B0E /* svd.cc in Sources */,
+				83AD4CF80DC51759002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11688,6 +11708,7 @@
 				8325CED00CAF15D400B498CD /* PsychHIDKbQueueStart.c in Sources */,
 				8325CED30CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
 				8325CED60CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
+				83AD4CF20DC51739002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11804,6 +11825,7 @@
 				F14A28A40AD4943E00BFB68F /* WaitSecs.c in Sources */,
 				F14A28A50AD4943E00BFB68F /* PsychScriptingGlue.cc in Sources */,
 				F14A28A60AD4943E00BFB68F /* WaitSecs.cc in Sources */,
+				83AD4CF30DC5173D002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11906,6 +11928,7 @@
 				F14A29880AD49D4F00BFB68F /* PsychVersioning.c in Sources */,
 				F14A29890AD49D4F00BFB68F /* RegisterProject.c in Sources */,
 				F14A298A0AD49D4F00BFB68F /* PsychScriptingGlue.cc in Sources */,
+				83AD4CF40DC51743002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -12120,6 +12143,7 @@
 				834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */,
 				830982E10DB2DF4500E7D371 /* IOPort.c in Sources */,
 				838A9BAD0DBBF4A600610117 /* IOPort.cc in Sources */,
+				83AD4CF50DC5174A002E1DF7 /* PsychCellGlue.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

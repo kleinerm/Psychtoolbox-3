@@ -1,5 +1,5 @@
 function choice = ChooseKFromN(n,k,unique)
-% choice = ChooseKFromN(k,n,[unique])
+% choice = ChooseKFromN(n,k,[unique])
 %
 % Choose k distinct integers out of n.   The indices come back in
 % randomized order if unique is absent or 0.  They come back

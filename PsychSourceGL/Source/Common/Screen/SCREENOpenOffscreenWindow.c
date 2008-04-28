@@ -302,6 +302,9 @@ PsychError SCREENOpenOffscreenWindow(void)
 		windowRecord->texturetarget = GL_TEXTURE_RECTANGLE_EXT;
 		windowRecord->surfaceSizeBytes = PsychGetWidthFromRect(rect) * PsychGetHeightFromRect(rect) * (windowRecord->depth / 8);
 
+		// Set bpc for FBO backed offscreen window:
+		windowRecord->bpc = (int) (windowRecord->depth / 4);
+
 		// Initial setup done, continues below after some shared code...
 	}
 	else {

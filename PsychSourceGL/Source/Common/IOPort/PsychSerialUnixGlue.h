@@ -65,6 +65,7 @@ typedef struct PsychSerialDeviceRecord {
 	struct termios		OriginalTTYAttrs;		// Stores original settings of device to allow restore on close.
 	unsigned char*		readBuffer;				// Pointer to memory buffer for reading data.
 	unsigned int		readBufferSize;			// Size of readbuffer.
+	double				readTimeout;			// Backup copy of current read timeout value.
 } PsychSerialDeviceRecord;
 
 #endif

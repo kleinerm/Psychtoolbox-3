@@ -319,6 +319,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		else {
 			// Set timeout: It is in granularity of 1/10th seconds, so we need to quantize to 10th of seconds:
 			options.c_cc[VTIME] = (int) (infloat * 10 + 0.5);
+			device->readTimeout = infloat;
 			updatetermios = TRUE;
 		}
 	}
@@ -702,8 +703,8 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 
 int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
 {
-    	struct termios	options;
-
+	struct termios	options;
+	double timeout;
 	int nread = 0;	
 	*readdata = NULL;
 
@@ -777,6 +778,22 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 			return(-1);
 		}
 		
+		// Need to poll for arrival of first byte, as the timeout timer [VMIN] is only armed after
+		// reception of first byte:
+		PsychGetAdjustedPrecisionTimerSeconds(&timeout);
+		*timestamp = timeout;
+		timeout+=device->readTimeout;
+
+		while((*timestamp < timeout) && (PsychIOOSBytesAvailableSerialPort(device) < 1)) {
+			PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+			PsychWaitIntervalSeconds(0.0005);
+		}
+
+		if (PsychIOOSBytesAvailableSerialPort(device) < 1) {
+			// Ok, first byte didn't arrive within one timeout period:
+			return(0);
+		}
+
 		// Read the data, at most (and at least, unless timeout occurs) 'amount' bytes, blocking:
 		if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
 		{

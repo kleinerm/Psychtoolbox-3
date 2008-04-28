@@ -240,8 +240,8 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % events in the queue before performing the query!
 %
 %
-% CedrusResponseBox('SetConnectorMode', handle, mode);
-% - Set mode of operation of external accessory connector: 'mode' can be
+% [currentMode] = CedrusResponseBox('SetConnectorMode', handle [, mode]);
+% - Set or get mode of operation of external accessory connector: 'mode' can be
 % any of the following text strings:
 %
 % 'GeneralPurpose': Input/Output assignment of pins can be freely
@@ -258,6 +258,9 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 'ReflectiveDoublePulse': A single pulse is sent to an output line if a
 % button is pressed on the box. Another pulse is sent on button release.
 %
+% If 'mode' is left out, the function queries and returns the current mode
+% as return argument 'currentMode'. If mode is given, nothing is returned.
+%
 %
 % CedrusResponseBox('SetOutputLineLevels', handle, outlevels);
 % - Set accessory connector output lines to state specified in 'outlevels'.
@@ -271,7 +274,7 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % The command is only effective if connector is set to 'GeneralPurpose'.
 %
 %
-% CedrusResponseBox('DefineInputLinesAndLevels', handle, inputlines, logiclevel);
+% CedrusResponseBox('DefineInputLinesAndLevels', handle, inputlines, logiclevel, debouncetime);
 % - Define which lines on the connector are inputs: 'inputlines' is a
 % vector with the line numbers of the input lines. All other lines are
 % designated as output lines, e.g., inputlines = [0, 2, 4] would set lines
@@ -279,8 +282,12 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % tells if the default TTL level of the input lines is low (logiclevel=1)
 % or high (logiclevel=0). Example: logiclevel = 1 means that the lines are
 % pulled low by default, so they will detect an active high state -- if
-% their level is raised to TTL high state.
-% This corresponds to XiD commands 'a4', 'a50' and 'a51'.
+% their level is raised to TTL high state. The argument 'debouncetime' must
+% be the debounce time for the input lines in milliseconds. After an event
+% on a input line, the box will ignore all further events on than input
+% line for 'debouncetime' milliseconds.
+%
+% This corresponds to XiD commands 'a4', 'a50' and 'a51', as well as 'a6'.
 %
 % The command is only effective if connector is set to 'GeneralPurpose'.
 %
@@ -635,12 +642,36 @@ if strcmpi(cmd, 'SetConnectorMode')
         error('You must provide the device "handle" for the box!');
     end
 
-    if nargin < 3
-        error('You must provide the new connector mode for the box!');
-    end
-
     % Retrieve handle and check if valid:
     handle = checkHandle(varargin{1});
+
+    if nargin < 3
+        % Query instead of set:
+
+        % Send query code:
+        WriteDev(handle, '_a1');
+        
+        % Retrieve response:
+        cc = ReadDev(handle, 4);
+        WaitSecs(0.25);
+
+        switch char(cc)
+            case {'_a10'}
+                rc = 'generalpurpose';
+            case {'_a11'}
+                rc = 'reflectivecontinuous';
+            case {'_a12'}
+                rc = 'reflectivesinglepulse';
+            case {'_a13'}
+                rc = 'reflectivedoublepulse';
+            otherwise
+                rc = cc;
+                warning('SetConnectorMode received unknown old mode response!');
+        end
+        
+        varargout{1} = rc;
+        return;
+    end
 
     switch lower(char(varargin{2}))
         case {'generalpurpose'}
@@ -657,6 +688,7 @@ if strcmpi(cmd, 'SetConnectorMode')
 
     % Send command code:
     WriteDev(handle, cc);
+    WaitSecs(0.25);
     
     return;
 end
@@ -664,28 +696,34 @@ end
 if strcmpi(cmd, 'DefineInputLinesAndLevels')
     % Change I/O assignment and default logic level of pins:
     if nargin < 2
-        error('You must provide the device "handle" for the box!');
+        error('DefineInputLinesAndLevels: You must provide the device "handle" for the box!');
     end
 
     if nargin < 3
-        error('You must provide the new list of integer input pin numbers!');
+        error('DefineInputLinesAndLevels: You must provide the new list of integer input pin numbers!');
     end
 
     if nargin < 4
-        error('You must provide the new logic detection level for the inputs: 1 for "Detect Low->High transition", 0 for "Detect High->Low" !');
+        error('DefineInputLinesAndLevels: You must provide the new logic detection level for the inputs: 1 for "Detect Low->High transition", 0 for "Detect High->Low" !');
+    end
+
+    if nargin < 5
+        error('DefineInputLinesAndLevels: You must provide the new debounce time for TTL inputs in milliseconds !');
     end
 
     % Retrieve handle and check if valid:
     handle = checkHandle(varargin{1});
 
+    FlushEvents(handle);
+    
     inpins = varargin{2};
     if ~isnumeric(inpins)
-        error('You must provide the new list of integer input pin numbers!');
+        error('DefineInputLinesAndLevels: You must provide the new list of integer input pin numbers!');
     end
 
     if ~isempty(inpins)
         if min(inpins) < 0 || max(inpins) > 5
-            error('Only input pin numbers between 0 and 5 are valid!');
+            error('DefineInputLinesAndLevels: Only input pin numbers between 0 and 5 are valid!');
         end
     end
     
@@ -698,16 +736,78 @@ if strcmpi(cmd, 'DefineInputLinesAndLevels')
     WriteDev(handle, ['a4' char(ipin)]);
     
     % Wait a bit:
-    WaitSecs(0.1);
+    WaitSecs(0.25);
+    FlushEvents(handle);
+    
+    % Retrieve new mask:
+    WriteDev(handle, '_a4');
+    WaitSecs(0.25);
+    resp = ReadDev(handle, 4);
+    if ~strcmp(char(resp(1:3)), '_a4')
+        warning('DefineInputLinesAndLevels: Invalid response received from device!');
+        char(resp) %#ok<NOPRT>
+    else
+        if resp(4)~=ipin
+            warning('DefineInputLinesAndLevels: Real I/O bitmask not equal to requested one!');
+            resp(4) %#ok<NOPRT>
+        end
+    end
+    WaitSecs(0.25);
     
     % Send new TTL pull-level:
     if varargin{3} > 0
         % Pull lines low --> Detect lines high:
-        WriteDev(handle, 'a50');
+        cc = 'a50';
     else
         % Pull lines high --> Detect lines low:
-        WriteDev(handle, 'a51');
+        cc = 'a51';
     end
+    WriteDev(handle, cc);
+    WaitSecs(0.5);
+    FlushEvents(handle);
+    WriteDev(handle, '_a5');
+    WaitSecs(0.5);
+    
+    % Query pull level:
+    resp = ReadDev(handle, 4);
+    if length(resp) < 4
+        warning('DefineInputLinesAndLevels: No response received from device!');
+    end
+    
+    if ~strcmp(char(resp(1:3)), '_a5')
+        warning('DefineInputLinesAndLevels: Invalid response received from device!');
+        char(resp) %#ok<NOPRT>
+    else
+        if ~strcmp(char(resp(2:4)), cc)
+            warning('DefineInputLinesAndLevels: Real TTL default not equal to requested one!');
+            resp(2:4) %#ok<NOPRT>
+        end
+    end
+    WaitSecs(0.25);
+    
+    % Send new debounce time:
+    WriteDev(handle, ['a6' char(double(varargin{4}))]);
+    WaitSecs(0.25);
+    % Read it back:
+    WriteDev(handle, '_a6');
+
+    % Query debounce time:
+    resp = ReadDev(handle, 4);
+    if length(resp) < 4
+        warning('DefineInputLinesAndLevels: No response received from device!');
+    end
+    
+    if ~strcmp(char(resp(1:3)), '_a6')
+        warning('DefineInputLinesAndLevels: Invalid response received from device!');
+        char(resp) %#ok<NOPRT>
+    else
+        if resp(4) ~= double(varargin{4})
+            warning('DefineInputLinesAndLevels: Real TTL debounce time not equal to requested one!');
+            double(resp(4)) %#ok<NOPRT>
+        end
+    end
+    WaitSecs(0.25);
+    
     return;
 end
 
@@ -1198,7 +1298,7 @@ if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
         % Receive both basetimer packets:
         t1 = receiveAndParseTimePacket(handle);
         t2 = receiveAndParseTimePacket(handle);
-%t2 = t1;
+
         % Ok, the RTT reset command was "sandwiched" inbetween two basetimer
         % queries, so RT reset must have happened inbetween processing of
         % those
@@ -1458,7 +1558,7 @@ function dev = OpenDev(port, baudrate)
         try
             if ischar(port) || IsLinux
                 IOPort('Verbosity', 10);
-                dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware', baudrate));
+                dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
                 IOPort('Purge', dev.link);
                 dev.driver = 2;
                 dev.recvQueue = [];
@@ -1498,6 +1598,15 @@ return;
 
 function CloseDev(handle)
     global ptb_cedrus_devices;
+
+    % Give device time to settle:
+    WaitSecs(0.5);
+
+    % Initiate a device reset:
+    WriteDev(handle, 'f7');
+
+    % Give device time to settle after reset:
+    WaitSecs(0.5);
 
     if ptb_cedrus_devices{handle}.driver == 0
         % Matlabs serial() driver:
@@ -1617,6 +1726,7 @@ function data = ReadDev(handle, nwanted)
 
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver: Returns all data as data type double:
+            % fprintf('In read....\n');
             [data, when, errmsg] = IOPort('Read', ptb_cedrus_devices{handle}.link, 0, nwanted);
             if length(data) < nwanted
                 fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, length(data), char(data));
@@ -1652,7 +1762,8 @@ function WriteDev(handle, data)
             % IOPort driver:
             
             % Write data - without terminator:
-            IOPort('Write', ptb_cedrus_devices{handle}.link, char(data));
+            % fprintf('In write....\n');
+            IOPort('Write', ptb_cedrus_devices{handle}.link, char(data), 0);
         end
     end
 return;

@@ -230,13 +230,10 @@ typedef struct _PsychWindowRecordType_{
 	int					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
 	PsychRectType                           rect;
 	boolean					isValid;		//between when we allocate the record and when we fill in values.
-	int					depth;
+	int					depth;				//Number of bits per pixel -- Attention: This is often misleading and not really reliable!
 	int					nrchannels;
-	int					redSize;		
-	int					greenSize;
-	int					blueSize;
-	int					alphaSize;
-        int                                     multiSample;            // Number of samples to use for anti-aliasing of each drawn pixel:
+	int					bpc;				// Number of bits per color component: Typically 8 for LDR, but can be 16 or 32 for float drawables.
+	int                                     multiSample;            // Number of samples to use for anti-aliasing of each drawn pixel:
                                                                         // 0=Standard GL, n>0 : Use Multisampling, try to get at least n samples/pixel.
 	//used only when this structure holds a window
 	Boolean					actualEnableBlending;

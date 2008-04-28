@@ -224,11 +224,21 @@ void PsychUpdateAlphaBlendingFactorLazily(PsychWindowRecordType *winRec)
 {
 	// Enable alpha-blending whenever some blendfunction other than GL_ONE, GL_ZERO is selected, disable otherwise:
 	if (winRec->nextSourceAlphaBlendingFactor != GL_ONE || winRec->nextDestinationAlphaBlendingFactor != GL_ZERO) {
-		winRec->actualEnableBlending=TRUE;
-		glEnable(GL_BLEND);
-		winRec->actualSourceAlphaBlendingFactor=winRec->nextSourceAlphaBlendingFactor;
-		winRec->actualDestinationAlphaBlendingFactor = winRec->nextDestinationAlphaBlendingFactor;
-		glBlendFunc(winRec->actualSourceAlphaBlendingFactor, winRec->actualDestinationAlphaBlendingFactor);
+		// Alpha blending requested. Possible on this hardware for current drawable?
+		if ( (winRec->bpc == 8) || (winRec->bpc == 16 && (winRec->gfxcaps & kPsychGfxCapFPBlend16)) || (winRec->bpc == 32 && (winRec->gfxcaps & kPsychGfxCapFPBlend32)) ) {
+			// Alpha blending should work - Set it up:
+			winRec->actualEnableBlending=TRUE;
+			glEnable(GL_BLEND);
+			winRec->actualSourceAlphaBlendingFactor=winRec->nextSourceAlphaBlendingFactor;
+			winRec->actualDestinationAlphaBlendingFactor = winRec->nextDestinationAlphaBlendingFactor;
+			glBlendFunc(winRec->actualSourceAlphaBlendingFactor, winRec->actualDestinationAlphaBlendingFactor);
+		}
+		else {
+			// Alpha blending unsupported for this drawable. Disable it:
+			winRec->actualEnableBlending=FALSE;
+			glDisable(GL_BLEND);
+			glBlendFunc(GL_ONE, GL_ZERO);
+		}
 	}
 	else {
 		winRec->actualEnableBlending=FALSE;

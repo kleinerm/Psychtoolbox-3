@@ -125,6 +125,17 @@ PsychError SCREENBlendFunction(void)
 
 	PsychStoreAlphaBlendingFactorsForWindow(windowRecord, newSource, newDestination);
 
+	// Check if alpha blending is possible for this windowRecord:
+	if ((newSource != GL_ONE || newDestination != GL_ZERO) && !((windowRecord->bpc == 8) || (windowRecord->bpc == 16 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend16)) || (windowRecord->bpc == 32 && (windowRecord->gfxcaps & kPsychGfxCapFPBlend32)))) {
+		// Nope. Alpha blending requested but not possible for this windowRecord with this gfx-hardware.
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: Screen('Blendfunction') called to enable alpha-blending on a window (handle=%i) which doesn't support\n", windowRecord->windowIndex);
+			printf("PTB-WARNING: alpha-blending at its current color resolution of %i bits per color component on your hardware.\n", windowRecord->bpc);
+			printf("PTB-WARNING: Won't enable blending. Either lower the color resolution of the window (see help PsychImaging) or\n");
+			printf("PTB-WARNING: upgrade your graphics hardware.\n\n");
+		}
+	}
+	
 	// Create return array with encoded old colormask:
 	PsychAllocOutDoubleMatArg(3, kPsychArgOptional, 1, 4, 1, &oldColorMask);
 	oldColorMask[0] = (windowRecord->colorMask[0]) ? 1 : 0;

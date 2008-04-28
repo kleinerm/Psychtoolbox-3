@@ -161,6 +161,9 @@ PsychError SCREENSetOpenGLTexture(void)
 	if (d == 16) usefloatformat = 1;
 	if (d >= 32) usefloatformat = 2;
 
+	// Assign bpc value:
+	textureRecord->bpc = (int) d;
+
 	PsychAssignHighPrecisionTextureShaders(textureRecord, windowRecord, usefloatformat, 0);
 
 	// User specified override shader for this texture provided? This is useful for

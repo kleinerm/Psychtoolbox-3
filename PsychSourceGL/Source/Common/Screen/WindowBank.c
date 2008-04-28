@@ -309,7 +309,12 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// Set surface addresses to zero:
 	(*winRec)->gpu_preflip_Surfaces[0] = 0;
 	(*winRec)->gpu_preflip_Surfaces[1] = 0;
-	
+
+	// Bits per color component value: Initialize to 8 bits per channel. This is true for all
+	// standard textures, offscreen- and onscreen windows. Only FBO backed drawables can start
+	// off with 16 bpc (float/fixed) or 32 bpc float, or get upgraded to such resolutions. Such
+	// upgrades always happen in a maketexture function or FBO creation function...
+	(*winRec)->bpc = 8;
 	return;
 }
 
