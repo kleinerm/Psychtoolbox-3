@@ -448,7 +448,7 @@ PsychError SCREENMakeTexture(void)
 	PsychAssignParentWindow(textureRecord, windowRecord);
 
     // Texture orientation is zero aka transposed aka non-renderswapped.
-    textureRecord->textureOrientation = (assume_texorientation != 2) ? 0 : 2;
+    textureRecord->textureOrientation = ((assume_texorientation != 2) && (assume_texorientation != 3)) ? 0 : 2;
     
 	// This is our best guess about the number of image channels:
 	textureRecord->nrchannels = numMatrixPlanes;
