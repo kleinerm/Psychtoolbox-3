@@ -88,13 +88,14 @@ if ischar(filenames)
     
     shaderobjs=dir([filenames '*']);
     shaderobjpath = [fileparts([filenames '*']) '/'];
-    filenames=[];
     numshaders=size(shaderobjs,1)*size(shaderobjs,2);
     
     if numshaders == 0
-        fprintf('In LoadGLSLProgramFromFiles: When trying to load shaders matching %s ...\n', filenames);
+        fprintf('\n\n\nIn LoadGLSLProgramFromFiles: When trying to load shaders matching %s ...\n', filenames);
         error('Could not find any shader definition files matching that name. Check spelling.');
     end
+
+    filenames=[];
     
     for i=1:numshaders
         [dummy1 curname curext curver] = fileparts(shaderobjs(i).name);

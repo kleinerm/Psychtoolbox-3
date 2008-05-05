@@ -36,8 +36,12 @@ function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, 
 % allow you to create a calibration file for your setup. Currently the
 % following routines are provided:
 %
+% DisplayUndistortionBVL.m    -- Undistortion based on 3rd order polynomial
+% surface. This is the recommended calibration procedure for most cases -
+% Proven in real-world use on many different display types.
+%
 % DisplayUndistortionBezier.m -- Undistortion based on a NURBS surface (Non
-% uniform rational bezier spline surface).
+% uniform rational bezier spline surface). A simple procedure.
 %
 %
 
@@ -45,6 +49,8 @@ function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, 
 % 19.7.2007 Written (MK).
 % 17.2.2008 Added undistortion method donated by the Banks Vision Lab (MK).
 % 10.3.2008 Fixed image inversion bug in BVL calibration (MK).
+%  2.5.2008 Add support for bilinear texture filter shader to handle float
+%           framebuffers on hw that doesn't filter float textures (MK).
 
 global GL;
 
@@ -86,6 +92,8 @@ switch(calib.warptype)
         
         % Build a display list that corresponds to the current calibration:
         glNewList(gld, GL.COMPILE);
+
+        glColor4f(1,1,1,1);
 
         subdivision = calib.subdivision;
         
@@ -161,6 +169,7 @@ switch(calib.warptype)
         glNewList(gld, GL.COMPILE);
         
         % "Draw" the warp-mesh once, so it gets recorded in the display list:
+        glColor4f(1,1,1,1);
         glEnableClientState(GL.VERTEX_ARRAY);
         glVertexPointer(2, GL.DOUBLE, 0, xyzcalibpos);
         glEnableClientState(GL.TEXTURE_COORD_ARRAY);
@@ -185,6 +194,45 @@ switch(calib.warptype)
         sca;
         error('Unknown calibration method id: %s!', calib.warptype);
 end
+
+% Do we need a GLSL texture filter shader? We'd need one if the given
+% gfx-hardware is not capable of filtering the input image buffer:
+winfo = Screen('GetWindowInfo', window);
+effectivebpc = 8;
+if winfo.BitsPerColorComponent >= 16
+    % Window is a floating point window with at least 16bpc.
+    effectivebpc = 16;
+    
+    if winfo.BitsPerColorComponent >= 32
+        % All buffers are 32 bpc for certain:
+        effectivebpc = 32;
+    end
+    
+    if (winfo.BitsPerColorComponent == 16)
+        % First buffer is 16 bpc, following ones could be 32 bpc:
+        if bitand(winfo.ImagingMode, kPsychUse32BPCFloatAsap)
+            % All following buffers are 32bpc float. In the tradition of
+            % "better safe than sorry", we assume that the warp op will use
+            % one of the 32 bpc float buffers as input.
+            effectivebpc = 32;            
+        end
+    end    
+end
+
+% Highres input buffer?
+if effectivebpc > 8
+    % Yes. Our input is a float texture. Check if the hardware can filter
+    % textures of effectivebpc bpc in hardware:
+    if effectivebpc > winfo.GLSupportsFilteringUpToBpc
+        % Hardware not capable of handling such deep textures. We need to
+        % create and attach our own bilinear texture filter shader:
+        warpstruct.glsl = LoadGLSLProgramFromFiles('BilinearTextureFilterShader');
+        glUseProgram(warpstruct.glsl);
+        glUniform1i(glGetUniformLocation(warpstruct.glsl, 'Image'), 0);
+        glUseProgram(0);
+    end
+end
+
 
 % Done. Return the warpstruct:
 return;

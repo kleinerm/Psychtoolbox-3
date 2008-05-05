@@ -77,6 +77,7 @@ try
     % Open display on maximum screen with black background color:
     oldverbosity = Screen('Preference', 'Verbosity', 2);
     screenid = max(Screen('Screens'));
+%    screenid = 0
     w=Screen('OpenWindow', screenid, 0); %, [0 0 300 300]);
 
     % Try to open and init the box, return handle 'h' to it:
@@ -131,9 +132,10 @@ try
 
         % Wait for the box to return an event:
         while 1
-            evt = CedrusResponseBox('WaitButtonPress', h);
+%            evt = CedrusResponseBox('WaitButtonPress', h);
+            evt = CedrusResponseBox('GetButtons', h);
             evt %#ok<NOPRT>
-            if evt.button == 6
+            if ~isempty(evt) && evt.button == 6 && evt.action == 1
                 break;
             end
         end

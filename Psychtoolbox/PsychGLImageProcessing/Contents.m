@@ -40,6 +40,8 @@
 % CreateGLOperator.m              -- Create a new GLOperator as container for imaging operations.
 % CreateProceduralGabor.m         -- Create a procedural texture for fast drawing of Gabor patches.
 % CreateProceduralSineGrating.m   -- Create a procedural texture for fast drawing of sine grating patches.
+% DisplayUndistortionBezier.m     -- Interactive geometric display calibration for simple needs.
+% DisplayUndistortionBVL.m        -- Interactive geometric display calibration. Recommended!
 % HookProcessingChains.m          -- Documentation about hook chains and their options.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.

@@ -5,6 +5,7 @@
 %   help Psychtoolbox % For an overview, triple-click me & hit enter.
 %   help PsychDemos   % For demos, triple-click me & hit enter.
 %
+%     Beeper               - Play a nice beep tone of selectable duration, frequency and volume.
 %     CharAvail            - Is a keypress available for GetChar?       
 %     DisableKeysForKbCheck- Tell KbCheck and KbWait to ignore specific keys.
 %     DoNothing            - Does nothing. Used to time Matlab's overhead.

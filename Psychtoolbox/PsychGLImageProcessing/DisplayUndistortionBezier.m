@@ -1,11 +1,16 @@
 function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, imagename, screenid, stereomode, winrect, calibinfilename)
 % DisplayUndistortionBezier([caliboutfilename] [, xnum=2][, ynum=2][, subdivision=100][, imagename=default][, screenid=max][, stereomode=0][, winrect=[]][, calibinfilename])
 %
-% UNFINISHED ALPHA CODE -- NOT READY FOR USE BY PURE MORTALS!
-%
 % Geometric display calibration procedure for geometric undistortion of
 % distorted displays. Needs graphics hardware with support for PTB imaging
 % pipeline.
+%
+% IMPORTANT: While this routine is easy to use, it is also limited! The
+% Banks Vision Lab (University of California, Berkeley) has contributed a
+% much more powerful and flexible calibration procedure.
+%
+% Read "help DisplayUndistortionBVL" for help and info on that one.
+%
 %
 % Many display devices, e.g., video beamers and most CRT displays, cause
 % some amount of spatial distortion to your visual stimuli during display.

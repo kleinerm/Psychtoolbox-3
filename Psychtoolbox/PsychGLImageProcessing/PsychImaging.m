@@ -341,7 +341,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   the type of undistortion to apply. Calibration files can be created by
 %   interactive calibration procedures. See 'help CreateDisplayWarp' for a
 %   list of calibration methods. One of the supported procedures is, e.g.,
-%   "DisplayUndistortionBezier", read "help DisplayUndistortionBezier"
+%   "DisplayUndistortionBezier", read "help DisplayUndistortionBezier". The
+%   recommended method for most cases is 'DisplayUndistortionBVL', read
+%   "help DisplayUndistortionBVL" for help.
 %
 %   The optional flag 'debugoutput' if set to non-zero value will trigger
 %   some debug output about the calibration with some calibration methods.
@@ -1182,7 +1184,7 @@ if ~isempty(floc)
             end
             
             % Is it a display list handle?
-            if ~isempty(warpstruct.gld) && isempty(warpstruct.glsl)
+            if ~isempty(warpstruct.gld)
                 % This must be a display list handle for pure display list
                 % blitting:
                 gld = warpstruct.gld;
@@ -1192,6 +1194,12 @@ if ~isempty(floc)
                     error('PsychImaging: Passed a handle to ''GeometryCorrection'' which is not a valid OpenGL display list!');
                 end
 
+                if ~isempty(warpstruct.glsl)
+                    glsl = warpstruct.glsl;
+                else
+                    glsl = 0;
+                end
+                
                 % Ok, 'gld' should contain a valid OpenGL display list for
                 % geometry correction. Attach proper blitter to proper chain:
                 if mystrcmp(reqs{row, 1}, 'LeftView') || mystrcmp(reqs{row, 1}, 'AllViews')
@@ -1200,7 +1208,12 @@ if ~isempty(floc)
                         % Need a bufferflip command:
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
                     end
-                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    
+                    if glsl
+                        Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));                        
+                    else
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    end
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
                     leftcount = leftcount + 1;
                 end
@@ -1211,7 +1224,12 @@ if ~isempty(floc)
                         % Need a bufferflip command:
                         Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
                     end
-                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+
+                    if glsl
+                        Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));
+                    else
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    end
                     Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
                     rightcount = rightcount + 1;
                 end
@@ -1222,7 +1240,12 @@ if ~isempty(floc)
                         % Need a bufferflip command:
                         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                     end
-                    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+
+                    if glsl
+                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));
+                    else
+                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                    end
                     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
                     outputcount = outputcount + 1;
                 end
