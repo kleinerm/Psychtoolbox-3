@@ -65,6 +65,7 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % All following subfunctions must be only called when at least one onscreen
 % window is open!
 %
+%
 % meshid = moglmorpher('addMesh', obj);
 % -- Add a new shape to the collection of shapes to be morphed. 'obj'
 % is a single struct that defines the object: Subfields are obj.faces,
@@ -75,6 +76,7 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % the geometry in 'myfile.obj' into obj, which can then be passed to
 % moglmorpher via moglmorpher('addMesh', obj{1}); to add the first mesh
 % from 'myfile.obj' into the morpher.
+%
 %
 % meshid = moglmorpher('addMesh', faces, vertices [, texcoords] [, normals]);
 % -- Add a new shape to the collection of shapes to be morphed. faces == Index
@@ -102,11 +104,13 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % moglmorpher('renderMesh', meshid);
 % -- Render the mesh corresponding to the handle 'meshid'.
 %
+%
 % moglmorpher('renderMorph', weights [,morphnormals=1]);
 % -- Compute a linear combination (a weighted average) of all stored meshes, as defined
 % by the vector 'weights'. Render the final shape.
 % For 'count' shapes, weight is a vector of length 'count'. The i'th scalar entry of weight
 % is the coefficient used to integrate the i'th shape into the morph.
+%
 %
 % moglmorpher('computeMorph', weights [,morphnormals=1]);
 % -- Same as 'renderMorph', just that rendering of the morphed shape is
@@ -117,9 +121,11 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % not altered by the morph. If you set the optional argument morphnormals to zero, then
 % normals are not touched by morphing either.
 %
+%
 % moglmorpher('render');
 % -- Renders the last shape again. This is either the last rendered mesh or the last linear
 % combination.
+%
 %
 % glListHandle = moglmorpher('renderToDisplaylist');
 % -- Same as subcommand 'render', but the shape is not rendered as an image to the
@@ -128,10 +134,12 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % later on via the command glCallList(glListHandle); and delete it via
 % glDeleteLists(glListHandle, 1);
 %
+%
 % moglmorpher('renderNormals' [,normalLength=1]);
 % -- Renders the surface normal vectors of the last shape in green, either at unit-length,
 % or at 'normalLength' if this argument is provided. This is a helper function for
 % checking the correctness of computed normals. It is very slow!
+%
 %
 % vpos = moglmorpher('getVertexPositions', windowPtr [, startidx=1] [, endidx]);
 % -- Compute and return a matrix which contains the projected screen space coordinates of all
@@ -141,14 +149,20 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % vcount-by-3 matrix, where vcount is the number of returned vertices, and row i contains the
 % projected 3D position of the i'th vertex vcount(i,:) = (screen_x, screen_y, depth_z);
 %
+%
 % count = moglmorpher('getMeshCount');
-% Returns number of stored shapes.
+% -- Returns number of stored shapes.
+%
+%
+% textureCoordinates = moglmorpher('getTexCoords');
+% -- Returns current vector of textureCoordinates as used for rendering
+% meshes.
+%
 %
 % moglmorpher('reset');
-% Resets the moglmorpher - deletes all internal data structures.
-
+% -- Resets the moglmorpher - deletes all internal data structures.
 %
-% rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
+%
 
 % (c) 2006 Mario Kleiner - licensed to you under GPL.
 %
@@ -478,6 +492,13 @@ if strcmp(cmd, 'getMeshCount')
     rc = objcount;
     return;
 end;
+
+if strcmpi(cmd, 'getTexCoords')
+    % Return current internal texcoords array:
+    rc = texcoords;
+    return;
+end
+
 
 if strcmp(cmd, 'addMesh')
     % A new mesh should be added as keyshape to the collection of key-meshes.

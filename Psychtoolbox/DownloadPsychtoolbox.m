@@ -1,5 +1,5 @@
-function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
-% DownloadPsychtoolbox([flavor] [,targetdirectory] [,downloadmethod=0])
+function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod,targetRevision)
+% DownloadPsychtoolbox([flavor] [,targetdirectory] [,downloadmethod=0] [,targetRevision])
 %
 % This script downloads the latest Mac OSX or Windows Psychtoolbox from the
 % Subversion master server to your disk, creating your working copy, ready
@@ -26,7 +26,9 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
 % 'Psychtoolbox-x.y.z'. If you don't specify it, 'beta' will be chosen by
 % default.
 %
-% Flavors and their meaning: If in doubt, use the 'beta'!
+% Flavors and their meaning: Use the 'beta' unless you really know what you
+% are doing!!! The 'stable' option is deprecated and will nearly always
+% result in a less optimal software setup!
 %
 % 'beta', 'current' - Download the most recent beta release. This code has
 % been tested by a few developers and is ready for testing by end users.
@@ -35,11 +37,9 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
 % to bug fixes, enhancements, and new features.  The argument 'current' is
 % a synonym for 'beta'.
 %
-% 'stable' - Download the most recent fully tested release. This will
-% become the next official Psychtoolbox release. It has been tested by
-% developers and users in real world applications. Choose the 'stable'
-% flavor if you don't like surprises. Stable releases are usually multiple
-% months behind the Beta releases, so this is for the really anxious.
+% 'stable' - Download the most outdated release. Stable releases are usually multiple
+% months or even years behind the Beta releases, so this is for people which
+% are really anxious of change!
 %
 % 'Psychtoolbox-x.y.z' - Download the code that corresponds to official
 % release "Psychtoolbox-x.y.z", where "x.y.z" is the version number. This
@@ -55,6 +55,20 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
 % additional 'downloadmethod' parameter with a setting of either 1, 2 or 3,
 % to change the order of tried download methods in case the downloader
 % would get stuck with a specific method.
+%
+%
+% The "targetRevision" argument is optional and should be normally omitted.
+% Normal behaviour is to upgrade your working copy to the latest revision.
+% If you provide a specific targetRevision, then this script will
+% *downgrade* your copy of Psychtoolbox to the specified revision.
+% This is only useful if you experience problems after an update and want
+% to revert to an earlier known-to-be-good release.
+% Revisions can be specified by a revision number, a specific date, or by
+% the special flag 'PREV' which will downgrade to the revision before the
+% most current one. By executing this script multiple times with the 'PREV'
+% specifier, you can incrementally downgrade until stuff works for you.
+%
+%
 %
 % INSTALLATION INSTRUCTIONS:
 %
@@ -211,6 +225,10 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod)
 % 01/08/08 mk  On OS/X, add an additional search path for 'svn': /usr/bin/
 %              as per suggestion of Donald Kalar. Presumably, Apples Leopard ships
 %              with a svn client preinstalled in that location.
+%
+% 05/07/08 mk  Add better handling of default values. Add 'targetRevision'
+%              parameter as option, just as in UpdatePsychtoolbox.m
+%
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -233,7 +251,11 @@ fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
 error(['Your operating system is not supported by ' mfilename '.']);
 end
 
-if nargin<2
+if nargin < 2
+    targetdirectory = [];
+end
+
+if isempty(targetdirectory)
     if isOSX
         % Set default path for OSX install:
         targetdirectory=fullfile(filesep,'Applications');
@@ -247,7 +269,11 @@ if nargin<2
 end
 
 % Override for download method provided?
-if nargin <3
+if nargin < 3
+    downloadmethod = [];
+end
+
+if isempty(downloadmethod)
     downloadmethod = 0;
 else
     if downloadmethod<0 | downloadmethod>3
@@ -255,8 +281,19 @@ else
     end
 end
 
+if nargin<4
+    targetRevision = '';
+else
+    fprintf('Target revision: %s \n', targetRevision);
+    targetRevision = [' -r ' targetRevision ' '];
+end
+
 % Set flavor defaults and synonyms
-if (nargin<1 | isempty(flavor))
+if nargin < 1
+    flavor = [];
+end
+
+if isempty(flavor)
     flavor='beta';
 end
 
@@ -505,15 +542,15 @@ pt = strcat('"',p,'"');
 
 % Choose initial download method. Defaults to zero, ie. svn-serve protocol:
 if downloadmethod <= 1
-    checkoutcommand=[svnpath 'svn checkout svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' svn://svn.berlios.de/osxptb/' flavor '/Psychtoolbox/ ' pt];
 else
     if downloadmethod == 2
         % Good to get through many firewalls and proxies:
-        checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+        checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     else
         % If firewalls and proxies block everything, one can try this *and*
         % reconfigure its proxy to allow it:
-        checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+        checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     end
 end
 
@@ -532,7 +569,7 @@ if err
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
@@ -548,7 +585,7 @@ if err
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
     fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux

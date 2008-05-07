@@ -36,13 +36,18 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 9/23/06 mk  Add clear mex call to flush mex files before updating.
 % 10/5/06 mk  Add detection code for MacOS-X on Intel Macs.
 % 21/11/06 mk Add improved detection code for Subversion.
-% 31.3.08  mk Allow spaces in path to targetdirectory (Fix contributed by Tobias Wolf)
+% 31.3.08 mk  Allow spaces in path to targetdirectory (Fix contributed by Tobias Wolf)
+%  7.5.08 mk  Allow to spec 'targetdirectory' as [], so it gets default.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
 clear mex
 
-if nargin<1
+if nargin < 1
+    targetdirectory=[];
+end
+
+if isempty(targetdirectory)
     targetdirectory=fileparts(which(fullfile('Psychtoolbox','Contents.m')));
 end
 
@@ -96,7 +101,7 @@ if isOSX && isempty(svnpath)
 end
 
 fprintf('About to update your working copy of the OpenGL-based Psychtoolbox.\n');
-updatecommand=[svnpath 'svn update '  targetRevision strcat('"',targetdirectory,'"') ];
+updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirectory,'"') ];
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
 if isOSX | isLinux

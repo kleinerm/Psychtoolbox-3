@@ -1755,10 +1755,6 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	const char *FieldNames[]={	"Active", "StartTime", "CaptureStartTime", "PositionSecs", "RecordedSecs", "ReadSecs", "XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency",
 								"LatencyBias", "SampleRate"};
 	int pahandle = -1;
-	int count = 0;
-	int i;
-	PaDeviceInfo* padev = NULL;
-	PaHostApiInfo* hainfo = NULL;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
