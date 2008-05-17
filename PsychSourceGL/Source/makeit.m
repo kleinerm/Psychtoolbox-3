@@ -31,9 +31,9 @@ if what == 3
 end
 
 if what == 4
-   % Default: Build Screen.dll with FTGL and freetype-2
-   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output Screen -DPTBMODULE_Screen -IC:\Programme\QuickTimeSDK\CIncludes -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\Screen -IWindows\Base -IWindows\Screen Common\Screen\SCREENDrawText.c Windows\Screen\*.c Windows\Base\*.c Common\Base\*.c Common\Screen\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib qtmlClient.lib ddraw.lib winmm.lib
-   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\Screen.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
+   % Build IOPort.dll
+   mex -v -outdir C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output IOPort -DPTBMODULE_IOPort -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\IOPort -IWindows\Base -IWindows\IOPort Windows\Base\*.c Common\Base\*.c Common\IOPort\*.c Windows\IOPort\*.c kernel32.lib user32.lib winmm.lib
+   dos('copy C:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\IOPort.dll C:\kleinerm\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR11\');
 end
 
 delete('C:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');

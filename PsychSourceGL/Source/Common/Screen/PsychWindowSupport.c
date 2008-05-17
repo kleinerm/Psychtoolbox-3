@@ -3964,10 +3964,10 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				windowRecord->gfxcaps |= kPsychGfxCapFP32Shading;
 			}
 			
-			// The Geforce 8xxx/9xxx series and later (G70 cores and later) do support full 32 bpc float filtering and blending:
+			// The Geforce 8xxx/9xxx series and later (G80 cores and later) do support full 32 bpc float filtering and blending:
 			// They also support a max texture size of > 4096 texels --> 8192 texels, so we use that as detector:
 			if (maxtexsize > 4100) {
-				if (verbose) printf("Assuming G70 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
+				if (verbose) printf("Assuming G80 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;

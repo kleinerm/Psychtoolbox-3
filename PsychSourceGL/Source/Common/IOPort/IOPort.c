@@ -327,7 +327,7 @@ PsychError IOPORTOpenSerialPort(void)
 		"Open a serial port device, return a 'handle' to it.\n"
 		"'port' is usually a name string that defines the serial port device "
 		"to open. On MS-Windows this could be, e.g., 'COM1' or 'COM2' etc. On "
-		"Apple OS/X, it is the path to a BSD device file, e.g., '/dec/cu.usbserial-FT3Z95V5' "
+		"Apple OS/X, it is the path to a BSD device file, e.g., '/dev/cu.usbserial-FT3Z95V5' "
 		"for a serial-over-USB device with unique id FT3Z95V5. On GNU/Linux it could be "
 		"'/dev/ttyS0' for the first real serial port, or '/dev/ttyUSB0' for the first "
 		"serial-over-USB device.\n\n"
@@ -339,27 +339,37 @@ PsychError IOPORTOpenSerialPort(void)
 		"The following is a list of (possibly) supported parameters with their defaults:\n\n"
 		"BaudRate=9600 -- The baud transmission rate of the connection. Standard baud rates include "
 		"110, 300, 600, 1200, 2400, 4800, 9600, 14400, 19200, 38400, 57600, 115200, 128000 and "
-		"256000 bits per second.\n\n"
+		"256000 bits per second. Not all values may be supported by all operating systems and drivers.\n\n"
 		"Parity=None   -- Type of parity checking: None, Even, Odd.\n\n"
-		"DataBits=8    -- Number of data bits per packet: 5,6,7 or 8.\n\n"
+		"DataBits=8    -- Number of data bits per packet: 5,6,7 or 8, on Windows also 16.\n\n"
 		"StopBits=1    -- Number of stop bits per packet: 1 or 2.\n\n"
-		"FlowControl=None  -- Type of flow control: None, Hardware, Softwore.\n\n"
-		"Terminator=os default  -- Type of terminator, given as ASCII character value, e.g., 13 for char(13) aka CR.\n\n"
+		"FlowControl=None  -- Type of flow control: None, Hardware (RTS/CTS lines), Software (XON/XOFF characters).\n\n"
+		"Terminator=os default  -- Type of terminator, given as ASCII character value, e.g., 13 for char(13) aka CR. Currently unused\n\n"
 		"DTR=os default	-- Setting for 'Data Terminal Ready' pin: 0 or 1.\n\n"
-		"DSR=os default	-- Setting for 'Data Set Ready' pin: 0 or 1.\n\n"
 		"RTS=os default	-- Setting for 'Request To Send' pin: 0 or 1.\n\n"
-		"CTS=os default	-- Setting for 'Clear To Send' pin: 0 or 1.\n\n"
-		"BreakBehaviour=Ignore -- Behaviour if a 'Break Condition' is detected on the line: Ignore, Flush, Zero.\n\n"
+		"BreakBehaviour=Ignore -- Behaviour if a 'Break Condition' is detected on the line: Ignore, Flush, Zero. On Windows, this setting is ignored.\n\n"
 		"OutputBufferSize=4096 -- Size of output buffer in bytes.\n\n"
-		"InputBufferSize=4096 -- Size of input buffer in bytes.\n\n"
-		"SendTimeout=1.0 -- Send timeout in seconds.\n\n"
-		"ReceiveTimeout=1.0 -- Receive timeout in seconds.\n\n"
-		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes.\n\n"
-		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked.\n\n";
+		"InputBufferSize=4096 -- Size of input buffer in bytes. You can't read more than that amount per read command.\n\n"
+		"The following timeout values are inter-byte timeouts. You specify how much time reception or "
+		"transmission of a single byte is allowed to take. Timeout occurs if more than that time elapses "
+		"between send/reception of two consecutive bytes or if the total amount of time exceeds the "
+		"number of bytes, times the interbyte timeout value. A value of zero means not to use any timeout, "
+		"in which case a blocking read or write may take forever. If a timeout occurs, the read or write "
+		"operation will be aborted. \n"
+		"Granularity of timeout settings is 100 msecs on OS/X and Linux, 1 msec on Windows, all values "
+		"are rounded to the closest value matching that granularity. The minimal timeout is 100 msecs "
+		"on OS/X and Linux, about 6 msecs on Windows.\n\n"
+		"SendTimeout=1.0 -- Interbyte send timeout in seconds. Only used on Windows.\n\n"
+		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
+		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
+		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n";
 		
+//	Input, probably not settable:	"DSR=os default	-- Setting for 'Data Set Ready' pin: 0 or 1.\n\n"
+//	Input, probably not settable:	"CTS=os default	-- Setting for 'Clear To Send' pin: 0 or 1.\n\n"
+
 	static char seeAlsoString[] = "'CloseAll'";	 
   	
-	static char defaultConfig[] = "BaudRate=115200 Parity=None DataBits=8 StopBits=1 FlowControl=None ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
 	char		finalConfig[2000];
 	char*		portSpec = NULL;
 	char*		configString = NULL;

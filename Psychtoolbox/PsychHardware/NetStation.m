@@ -90,7 +90,7 @@ else
                 end
                 port=55513;
                 if nargin > 2
-                    port =  = varargin{3};
+                    port = varargin{3};
                 end
                 c = pnet( 'tcpconnect', netStationHostName, port );
                 if(c < 0)
