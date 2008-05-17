@@ -286,7 +286,6 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
 PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const char* configString)
 {
     DCB				options;
-    int				handshake;
 	char*			p;
 	float			infloat;
 	int				inint;
@@ -321,7 +320,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Clamp to a minimum of 1 millisecond if a non-zero timeout is requested:
 			if ((infloat < 0.001) && (infloat > 0)) {
 				if (verbosity > 1) printf("IOPort: Warning: Requested per-byte 'ReceiveTimeout' value %f secs is positive but smaller than supported minimum of 1 millisecond on Windows. Changed value to 0.001 secs.\n", infloat);
-				infloat = 0.001;
+				infloat = 0.001f;
 			}
 			device->readTimeout = infloat;
 		}
@@ -338,7 +337,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// Clamp to a minimum of 1 millisecond if a non-zero timeout is requested:
 			if ((infloat < 0.001) && (infloat > 0)) {
 				if (verbosity > 1) printf("IOPort: Warning: Requested per-byte 'SendTimeout' value %f secs is positive but smaller than supported minimum of 1 millisecond on Windows. Changed value to 0.001 secs.\n", infloat);
-				infloat = 0.001;
+				infloat = 0.001f;
 			}
 
 			device->timeouts.WriteTotalTimeoutMultiplier = (int) (infloat * 1000 + 0.5);
@@ -441,6 +440,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		if (strstr(configString, "DataBits=8")) {
 			options.ByteSize = 8;
 		}
+		else
 		if (strstr(configString, "DataBits=16")) {
 			options.ByteSize = 16;
 		}

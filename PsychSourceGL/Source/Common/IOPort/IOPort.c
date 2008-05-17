@@ -162,11 +162,12 @@ PsychPortIORecord* PsychGetPortIORecord(int handle)
 // Close port referenced by 'handle':
 PsychError PsychCloseIOPort(int handle)
 {
+	PsychPortIORecord*	portRecord;
 	char errmsg[1000];
 	errmsg[0] = 0;
 
 	// Retrieve and assign open port for handle: Will check for invalid handles and closed ports...
-	PsychPortIORecord*	portRecord = PsychGetPortIORecord(handle);
+	portRecord = PsychGetPortIORecord(handle);
 	
 	switch(portRecord->portType) {
 		case kPsychIOPortSerial:
@@ -202,6 +203,9 @@ int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int nonbl
 		default:
 			PsychErrorExitMsg(PsychError_internal, "Unknown portType - Unsupported.");
 	}	
+
+	// Not reached, just to make compiler happy:
+	return(0);
 }
 
 int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
@@ -217,6 +221,9 @@ int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int nonb
 		default:
 			PsychErrorExitMsg(PsychError_internal, "Unknown portType - Unsupported.");
 	}	
+
+	// Not reached, just to make compiler happy:
+	return(0);
 }
 
 int PsychBytesAvailableIOPort(int handle)
@@ -232,6 +239,9 @@ int PsychBytesAvailableIOPort(int handle)
 		default:
 			PsychErrorExitMsg(PsychError_internal, "Unknown portType - Unsupported.");
 	}	
+
+	// Not reached, just to make compiler happy:
+	return(0);
 }
 
 void PsychPurgeIOPort(int handle)
@@ -481,7 +491,7 @@ PsychError IOPORTRead(void)
 	static char seeAlsoString[] = "'Write', 'OpenSerialPort', 'ConfigureSerialPort'";
 	
 	char			errmsg[1024];
-	int				handle, nonblocking, m, n, p, nread, amount, i;
+	int				handle, nonblocking, nread, amount, i;
 	psych_uint8*	readbuffer;
 	double*			outbuffer;
 	double			timestamp;	
