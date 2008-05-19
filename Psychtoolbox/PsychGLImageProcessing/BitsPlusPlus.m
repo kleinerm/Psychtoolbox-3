@@ -124,7 +124,8 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % created for drawing the image for that overlay plane.
 %
 % [overlaywin, overlaywinRect] = BitsPlusPlus('GetOverlayWindow', win);
-% - Will return the handle to the 'overlaywin'dow associated with onscreen
+% - Will return the handle to the 'overlaywin'dow associated with the
+% onscreen luminance window:
 %
 %   'overlayWin' is the handle to the overlay window associated with the
 %   overlay of onscreen window 'win'. The overlay window is a standard
@@ -214,6 +215,14 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % that Bits++ can provide, but it will be possible to use the extra 14-10 =
 % 4 bits for gamma correction of the display by employing a gamma
 % correction shader.
+%
+% Gamma- and color correction:
+%
+% In Mono++ and Color++ mode, the hardware gamma tables of your graphics
+% card and the Bits+ box can't be used for gamma- or color correction.
+% However, PTB provides a much more powerful and flexible color correction
+% system for this purpose. See "help PsychColorCorrection" for further
+% explanation and usage examples for standard gamma correction.
 %
 % Graphics hardware requirements: Mono++ and Color++ mode require use of the
 % Psychtoolbox imaging pipeline and floating point framebuffers. The
@@ -762,7 +771,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     % Perform any setup steps that may be needed by the color correction
     % routines. Must be called after 'shader' creation and attachment to
     % the imaging pipe:
-    PsychColorCorrection('ApplyPostGLSLLinkSetup', win);
+    PsychColorCorrection('ApplyPostGLSLLinkSetup', win, 'FinalFormatting');
     
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:

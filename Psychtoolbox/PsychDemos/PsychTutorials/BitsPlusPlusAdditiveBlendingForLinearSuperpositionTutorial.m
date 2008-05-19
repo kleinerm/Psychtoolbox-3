@@ -38,10 +38,6 @@ try
 	% the stimulus display.  Chosing the display with the highest dislay number is 
 	% a best guess about where you want the stimulus displayed.  
 	screenNumber=max(Screen('Screens'));
-
-    % Choose method of color correction: 'SimpleGammaMono' is simple gamma
-    % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
-    PsychColorCorrection('ChooseColorCorrection', 'SimpleGamma');
     
     % Open a double-buffered fullscreen window with a gray (intensity =
     % 128) background and support for 16- or 32 bpc floating point framebuffers.
@@ -54,7 +50,11 @@ try
     else
         PsychImaging('AddTask', 'General', 'EnableBits++Mono++');
     end
-    
+
+    % Choose method of color correction: 'SimpleGamma' is simple gamma
+    % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
+    PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
+
     %PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);

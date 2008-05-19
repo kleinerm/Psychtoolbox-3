@@ -58,6 +58,7 @@
 %    OldNewRecogDemo         - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
+%    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
 %    RenderDemo              - Render CIE xyY as a color patch.
 %    SpriteDemo              - Animates an image that follows the mouse.

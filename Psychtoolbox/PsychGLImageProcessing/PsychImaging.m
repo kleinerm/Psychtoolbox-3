@@ -135,6 +135,31 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 %
 %
+% * 'DisplayColorCorrection' Select a method for color correction to apply to
+%   stimuli before output conversion and display. You have to specify a
+%   color correction method 'methodname' to apply as parameter, see "help
+%   PsychColorCorrection" for an overview of supported color correction
+%   methods and their adjustable parameters. The imaging pipeline will be
+%   set up to support the chosen color correction method. After you've
+%   opened the onscreen window, you can use the different subcommands of
+%   PsychColorCorrection() to change parameters of the color correction
+%   algorithm at runtime.
+%
+%   Usage: PsychImaging('AddTask', whichView, 'DisplayColorCorrection', methodname);
+%
+%   Example: PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
+%   This would apply a simple power-law gamma correction to all view
+%   channels of a stereo setup, or the single view of a monoscopic setup.
+%   Later on you could use the methods of PsychColorCorrection() to
+%   actually set the wanted gamma correction factors.
+%
+%   Please note that we use the channel 'FinalFormatting' instead of
+%   'AllViews' as we'd usually do. Both specs will work, but a selection
+%   of 'FinalFormatting' will lead to faster processing in many cases, so
+%   this is preferred here if you want to apply the same setting to all
+%   view channels - or a single monoscopic display.
+%
+%
 % * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
 %   support for output of stimuli with 10 bit precision per color channel
 %   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
@@ -423,6 +448,9 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 13.1.2008 Support for 10 bpc native framebuffer of ATI Radeons. (MK).
 % 17.4.2008 Support for a few new subcommands, and description of overlay
 %           planes setup with Bits++ in Mono++ mode. (MK).
+% 18.5.2008 A few bug fixes and support for 'DisplayColorCorrection' setup
+%           code: Now a central solution that will work for all current and
+%           future output devices (hopefully). (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -602,6 +630,51 @@ if strcmp(cmd, 'OpenWindow')
     end
     
     imagingMode = mor(imagingMode, imagingovm);
+    
+    % Custom color correction for display wanted on a Bits+ display in
+    % Mono++ or Color++ mode?
+    if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
+        if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+            % Yes. The BitsPlusPlus() setup routine implements its own
+            % setup code for display color correction, which is very
+            % efficient on a monoscopic setup, but potentially problematic
+            % on a multi-display / stereoscopic setup. Need to handle both
+            % cases specially:
+            if stereomode == 0
+                % Purely monoscopic. Use BitsPlusPlus internal setup code,
+                % just provide proper method setting for it now:
+                floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
+                if length(floc)>1
+                    error('In monoscopic display mode there must be only one single spec of "DisplayColorCorrection" not multiple!');
+                end
+                
+                % Which channel?
+                x=floc;
+                [rows cols]= ind2sub(size(reqs), x);
+                for row=rows'
+                    % Extract first parameter - This should be the method of correction:
+                    colorcorrectionmethod = reqs{row, 3};
+
+                    if isempty(colorcorrectionmethod) | ~ischar(colorcorrectionmethod)
+                        Screen('CloseAll');
+                        error('PsychImaging: Name of color correction method for ''DisplayColorCorrection'' missing or not of string type!');
+                    end
+
+                    % Select method:
+                    PsychColorCorrection('ChooseColorCorrection', colorcorrectionmethod);
+                end
+            else
+                % Stereoscopic: Select special method which won't be
+                % harmful, a simple clamping to valid range, labeled with a
+                % special name that can't clash with our own definition of
+                % ICM shaders:
+                PsychColorCorrection('ChooseColorCorrection', 'ClampedNoName');
+            end
+        end        
+    end
+
+    
+    
     
     % Open onscreen window with proper imagingMode and stereomode set up.
     % We have a couple of special cases here for BrightSide HDR display and
@@ -785,6 +858,12 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
     % automatically set by Screen('OpenWindow') itself, so no need t do it
     % here:
     stereoMode = 10;    
+end
+
+% Custom color correction for display wanted?
+if ~isempty(find(mystrcmp(reqs, 'DisplayColorCorrection')))
+    % Yes. Need full pipeline in any case, ie fast backing store:
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
 end
 
 % Replication of left half of window into right half needed?
@@ -1115,9 +1194,9 @@ if ~isempty(floc)
                 % Need to attach to right view:
                 if rightcount > 0
                     % Need a bufferflip command:
-                    Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
                 end
-                Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'ScaleAndOffsetShader', shader);
+                Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'ScaleAndOffsetShader', shader);
                 Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
                 rightcount = rightcount + 1;
             end
@@ -1126,9 +1205,9 @@ if ~isempty(floc)
                 % Need to attach to final formatting:
                 if outputcount > 0
                     % Need a bufferflip command:
-                    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                    Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                 end
-                Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'ScaleAndOffsetShader', shader);
+                Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'ScaleAndOffsetShader', shader);
                 Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
                 outputcount = outputcount + 1;
             end
@@ -1294,6 +1373,178 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     Screen('HookFunction', win, 'Enable', 'StereoCompositingBlit');
 end
 % --- End of interleaved line stereo setup code ---
+
+
+% --- Custom color correction for display wanted? ---
+%
+% This *MUST* be immediately before the final output formatters for
+% special display devices. If this is done in the output conversion chain
+% it must be the last corrective operation before data is fed into the
+% formatter plugins. If it is applied to the image processing chains for
+% stereo display setups, it must be the absolutely last operation in that
+% processing chains before data is fed into output conversion or into the
+% stereo compositor.
+%
+% If we need per view correction for any stereo output mode except
+% anaglyph stereo, it needs to happen at end of per view pipeline, so
+% things like gamma-correction are applied to final stims, not
+% intermediate results. In any other case, there will be only one physical
+% output device, so correction is handled best at the end of output
+% conversion.
+floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
+if ~isempty(floc)
+    handlebrightside  = 0;
+    handlebitspluplus = 0;
+    
+    % Bits+ Mono++ or Color++ mode active?
+    if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
+        if winfo.StereoMode == 0
+            % Nothing to do. Full setup has been done inside OpenWindow
+            % routine.
+            floc = [];
+            handlebitspluplus=0;
+        else
+            % Need to do our setup work -- The Bitsplus output formatter
+            % just contains a simple neutral clamping shader. However, we
+            % need to be careful where to insert our shader if the target
+            % is the output conversion chain.
+            handlebitspluplus=1;
+        end
+    end
+    
+    if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
+        handlebrightside = 1;
+    end
+    
+    % Which channel?
+    for x=floc
+        [rows cols]= ind2sub(size(reqs), x);
+        for row=rows'
+            % Extract first parameter - This should be the method of correction:
+            colorcorrectionmethod = reqs{row, 3};
+            
+            if isempty(colorcorrectionmethod) | ~ischar(colorcorrectionmethod)
+                Screen('CloseAll');
+                error('PsychImaging: Name of color correction method for ''DisplayColorCorrection'' missing or not of string type!');
+            end
+
+            % Select method:
+            PsychColorCorrection('ChooseColorCorrection', colorcorrectionmethod);
+            
+            % Load and build shader objects: icmshader is the compiled
+            % color correction shader:
+            [icmshader icmstring] = PsychColorCorrection('GetCompiledShaders', win, 1);
+
+            % shMain is the main() routine which needs to get compiled into
+            % a valid shader object:
+            shMain = 'uniform sampler2DRect Image; vec4 icmTransformColor(vec4 incolor); void main(void){gl_FragColor = icmTransformColor(texture2DRect(Image, gl_FragCoord.xy));}';
+            mainShader = glCreateShader(GL.FRAGMENT_SHADER);
+            glShaderSource(mainShader, shMain);
+            glCompileShader(mainShader);
+
+            % Link together mainShader and icmshader into a GLSL program
+            % object:
+            shader = glCreateProgram;
+            glAttachShader(shader, mainShader);
+            glAttachShader(shader, icmshader);
+
+            % Link the program:
+            glLinkProgram(shader);
+            
+            % Init the shader: Assign mapping of input image and offsets, gains:
+            glUseProgram(shader);            
+            glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
+            glUseProgram(0);
+                        
+            % Ok, shader is our final color correction shader, properly
+            % setup. Attach it to proper chain:            
+            if mystrcmp(reqs{row, 1}, 'LeftView')
+                % Need to attach to left view:
+                if leftcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', icmstring, shader);
+                Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
+                leftcount = leftcount + 1;
+            end
+
+            if mystrcmp(reqs{row, 1}, 'RightView')
+                % Need to attach to right view:
+                if rightcount > 0
+                    % Need a bufferflip command:
+                    Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
+                end
+                Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', icmstring, shader);
+                Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
+                rightcount = rightcount + 1;
+            end
+
+            if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')
+                % Need to attach to final formatting:
+                if ~handlebitspluplus & ~handlebrightside
+                    % Standard case:
+                    if outputcount > 0
+                        % Need a bufferflip command:
+                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                    end
+                    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader);
+                else
+                    % Special case: A BitsPlusPlus or BrightSideHDR output formatter has
+                    % been attached at the end of queue already. We need
+                    % to insert our new slot + some FlipFBO commands just
+                    % before the last occupied slot - which is the output formatter slot.
+                    % Let's simply count the number of occupied slots and
+                    % then insert at that location:
+                    insertPos = 0;
+                    while(1)
+                        if Screen('Hookfunction', win, 'Query', 'FinalOutputFormattingBlit', insertPos)~=-1
+                            insertPos = insertPos + 1;
+                        else
+                            break;
+                        end
+                    end
+                    % insertPos points to first slot after the end of the
+                    % chain, ie., where one could append new slots. We want
+                    % to insert just at the location of the last slot, so
+                    % the last slot gets pushed back one element:
+                    insertPos = insertPos - 1;
+                    
+                    % Need to prepend a bufferflip command in front of
+                    % bitsplusplus:
+                    insertSlot = sprintf('InsertAt%iBuiltin', insertPos);                        
+                    Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                    
+                    % Then need to prepend our shader in front of that
+                    % FlipFBO's:
+                    insertSlot = sprintf('InsertAt%iShader', insertPos);                        
+                    Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', icmstring, shader);
+                    
+                    % If we're not the first, we need to prepend a
+                    % FlipFBO's for ourselves:
+                    if outputcount > 0
+                        % Need a bufferflip command:
+                        insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
+                        Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                    end
+                end
+
+                % One more slot occupied by us, so increment outputcount:
+                outputcount = outputcount + 1;
+                
+                % And enable the chain if it ain't enabled already:
+                Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+            end
+            
+            % Perform post-link setup of color correction method after
+            % shader attached to pipe:
+            PsychColorCorrection('ApplyPostGLSLLinkSetup', win, reqs{row, 1});
+        end
+    end
+end
+% --- End of Custom color correction for display wanted ---
+
+% --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
 % --- Final output formatter for Pseudo-Gray processing requested? ---
 if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))

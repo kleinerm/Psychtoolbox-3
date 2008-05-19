@@ -72,8 +72,10 @@ PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
 % overlay in Mono++ mode, so we can display colorful text:
 PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
 
-% Want to have simple power-law gamma correction of stims:
-PsychColorCorrection('ChooseColorCorrection', 'SimpleGamma');
+% Want to have simple power-law gamma correction of stims: We choose the
+% method here. After opening the onscreen window, we can set and change
+% encoding gamma via PsychColorCorrection() function...
+PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
 
 % Open the onscreen window, get its handle and bounding rectangle. We open
 % with a black background ( == 0 ) on display screen 'screenid':

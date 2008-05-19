@@ -6,14 +6,17 @@
 %     AlignRect           - Align one rect over another.
 %     ArrangeRects        - Arrange array of rects in a pleasing way.
 %     CenterRect          - Center the first rect in the second.
-%     CenterRectOnPoint   - Center rect around an x,y coordinate.
+%     CenterRectOnPoint   - Center rect around an x,y coordinate, round to
+%                           integral positions. Vectorized.
+%     CenterRectOnPointd  - Center rect around an x,y coordinate. Vectorized.
 %     ClipRect            - Return intersection of two rects.
 %     InsetRect           - Shrink/expand rect by additive insets.
 %     IsEmptyRect         - Returns 1 if empty, returns 0 otherwise.
 %     IsInRect            - Is the point inside the rect?
-%     OffsetRect          - Shift rect vertically and horizontally.
+%     OffsetRect          - Shift rect vertically and horizontally. Vectorized.
 %     RectBottom          - Return index of yBottom entry of a rect.
-%     RectCenter          - Returns the integer x,y coordinates of center. 
+%     RectCenter          - Returns the integer x,y coordinates of center. Vectorized.
+%     RectCenterd         - Returns the exact x,y coordinates of center. Vectorized.
 %     RectOfMatrix        - Accept a matrix and return its bounding rect.
 %     RectHeight          - Return height of a rect.
 %     RectLeft            - Return index of xLeft entry of a rect.

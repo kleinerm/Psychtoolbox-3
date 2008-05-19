@@ -1,5 +1,5 @@
-function GarboriumDemo(ngabors, internalRotation)
-% GarboriumDemo([ngabors=200] [, internalRotation=0]) -- An aquarium full of cute little gabors!
+function ProceduralGarboriumDemo(ngabors)
+% ProceduralGarboriumDemo([ngabors=200]) -- An aquarium full of cute little procedural gabors!
 %
 % This demo shows how to use the Screen('DrawTextures') command to draw a
 % large number of similar images quickly - in this case, Gabor patches of
@@ -11,18 +11,48 @@ function GarboriumDemo(ngabors, internalRotation)
 % to offload the computations to your graphics hardware - this allows
 % speedups by factors of more than 100x in some cases!
 %
+% Furthermore the demo demonstrates how to use procedural shading to
+% compute gabor patches on-the-fly instead of precomputing a prototypical
+% gabor patch image within Matlab. The command CreateProceduralGabor()
+% allows to generate such a procedural gabor and then draw it with the
+% normal 'DrawTexture' or 'DrawTextures' texture drawing commands. However,
+% this gabor patch is not a image like a normal texture. Instead it is
+% computed during each draw operation by a so called GLSL shader program --
+% the gabor formula is evaluated on the fly inside your fast graphics card.
+%
+% This method has a few advantages over the standard texture based method
+% (as demonstrated in GarboriumDemo):
+%
+% - GPU's are extremely fast at this kind of jobs, so the method is
+% significantly faster on modern GPU's, especially for large patches,
+% allowing for even higher redraw rates.
+%
+% - As the formula is evaluated on the fly for each output pixel, there are
+% no resampling artifacts, regardless of size of your gabor.
+%
+% - You can change all interesting stimulus parameters on the fly -- change
+% contrast, aspect ratio, spatial constant, frequency, phase, orientation
+% etc. for each patch during each redraw cycle without the need to
+% recompute any matrices and without any speed penalty.
+%
+% The downsides of this method are the need for recent graphics hardware
+% (GPU's) and the fact that the stimulus definition formula needs to be
+% implemented as a shader program in the GLSL language, which is less easy
+% to use - and less forgiving of programming errors - than the simple and
+% easy Matlab language. This means that you're either restricted to our
+% predifined set of primitives, or you'll have some steep learning curve.
+% Currently PTB provides gabors and (via CreateProceduralSineGrating())
+% sine gratings.
+%
 % The demo shows "an aquarium" of many cute little gabor patches, each moving
 % into a random direction. Sometimes the gabors intersect, in that case
-% you'll see a linear superposition of them.
+% you'll see a linear superposition of them. The gabors also shift phase
+% and pulse (aspect ratio modulation) to make them more life-like -- and to
+% demonstrate runtime change of interesting stimulus parameters, of course.
 %
 % Each frame of the animation contains 'ngabors' patches, ngabors defaults
 % to 200. Change the number as first optional parameter 'ngabors' if you want
 % to exercise your graphics hardware and cpu.
-%
-% Normally the gabor paches rotate as a whole, a different method of
-% rotation is so called internal texture rotation (see comments in code),
-% which can be selected by setting the optional 2nd argument
-% 'internalRotation' to a value of 1.
 %
 % You can exit the demo by pressing any key on the keyboard.
 %
@@ -42,10 +72,6 @@ if nargin < 1 || isempty(ngabors)
 end
 
 fprintf('Will draw %i gabor patches per frame.\n', ngabors);
-
-if nargin < 2 || isempty(internalRotation)
-    internalRotation = 0;
-end
 
 % Select screen with maximum id for output window:
 screenid = max(Screen('Screens'));
@@ -75,72 +101,52 @@ ifi = Screen('GetFlipInterval', win);
 % the 'DrawTextures' can be used to modulate the intensity of each pixel of
 % the drawn patch before it is superimposed to the framebuffer image, ie.,
 % it allows to specify a global per-patch contrast value:
-Screen('BlendFunction', win, GL_SRC_ALPHA, GL_ONE);
+Screen('BlendFunction', win, GL_ONE, GL_ONE);
 
 % Define prototypical gabor patch of 65 x 65 pixels default size: si is
 % half the wanted size. Later on, the 'DrawTextures' command will simply
 % scale this patch up and down to draw individual patches of the different
-% wanted sizes. To avoid resampling artifacts, you should choose the size of
-% the prototypical patch roughly the mean size of the wanted patch sizes, or
-% alternatively the biggest size -- Downscaling with bilinear filtering is
-% a graceful operation, it only needs to discard information in a
-% artifact-free manner, but upscaling a too low resolution patch will
-% create artifacts, as it can't create information about structure from
-% nothing, just try to hide the most ugly artifacts:
+% wanted sizes:
 si = 32;
 
-% 'internalRotation' allows to rotate the gabor patches within the
-% rectangular area of each drawn patch -- the texture is rotated
-% "internally" to each destination patch rectangle. The default setting is
-% to rotate the whole destination patch rectangle itself around its center.
-% Whatever suits you best...
-if internalRotation
-    % Need to make patches by squareroot of 2 bigger to avoid border
-    % artifacts during internal rotation of the sampled texture:
-    s = ceil(si * sqrt(2));
-else
-    s = si;
-end
+% Size of support in pixels, derived from si:
+tw = 2*si+1;
+th = 2*si+1;
 
-if 1
-    % Definition of a Gabor patch as Matlab grayscale matrix 'm' with
-    % proper sign -- a value of zero in m denotes zero contrast at that
-    % pixel location: This is ugly cut & copy & paste code which could be
-    % written much nicer by a person with good taste ;-)
-    res = 2*[s s];
-    phase = 0;
-    sc = 5;
-    freq = 0.05;
-    tilt = 0;
-    contrast = 5;
-    x=res(1)/2;
-    y=res(2)/2;
-    sf = freq;
-    [gab_x gab_y] = meshgrid(0:(res(1)-1), 0:(res(2)-1));
-    a=cos(deg2rad(tilt))*sf*360;
-    b=sin(deg2rad(tilt))*sf*360;
-    multConst=1/(sqrt(2*pi)*sc);
-    x_factor=-1*(gab_x-x).^2;
-    y_factor=-1*(gab_y-y).^2;
-    sinWave=sin(deg2rad(a*(gab_x - x) + b*(gab_y - y)+phase));
-    varScale=2*sc^2;
-    m=contrast*(multConst*exp(x_factor/varScale+y_factor/varScale).*sinWave)';
-else
-    % Old style: Sine gratings with pretty hard contrast:
-    [x,y]=meshgrid(-s:s, -s:s);
-    angle=0*pi/180; % 30 deg orientation.
-    f=0.1*2*pi; % cycles/pixel
-    a=cos(angle)*f;
-    b=sin(angle)*f;
-    m=sin(a*x+b*y);
-end
+% Initial parameters of gabors:
 
-% Build drawable texture from gabor matrix: We set the 'floatprecision' flag to 2,
-% so it is internally stored with 32 bits of floating point precision and
-% sign. This allows for effectively 8 million (23 bits) of contrast levels
-% for both the positive- and the negative "half-lobe" of the patch -- More
-% than enough precision for any conceivable display system:
-gabortex=Screen('MakeTexture', win, m, [], [], 2);
+% Phase of underlying sine grating in degrees:
+phase = 0;
+% Spatial constant of the exponential "hull"
+sc = 10.0;
+% Frequency of sine grating:
+freq = .05;
+% Contrast of grating:
+contrast = 10.0;
+% Aspect ratio width vs. height:
+aspectratio = 1.0;
+
+% Initialize matrix with spec for all 'ngabors' patches to start off
+% identically:
+mypars = repmat([phase+180, freq, sc, contrast, aspectratio, 0, 0, 0]', 1, ngabors);
+
+% Build a procedural gabor texture for a gabor with a support of tw x th
+% pixels and the 'nonsymetric' flag set to 1 == Gabor shall allow runtime
+% change of aspect-ratio:
+gabortex = CreateProceduralGabor(win, tw, th, 1);
+
+% Draw the gabor once, just to make sure the gfx-hardware is ready for the
+% benchmark run below and doesn't do one time setup work inside the
+% benchmark loop. The flag 'kPsychDontDoRotation' tells 'DrawTexture' not
+% to apply its built-in texture rotation code for rotation, but just pass
+% the rotation angle to the 'gabortex' shader -- it will implement its own
+% rotation code, optimized for its purpose. Additional stimulus parameters
+% like phase, sc, etc. are passed as 'auxParameters' vector to
+% 'DrawTexture', this vector is just passed along to the shader. For
+% technical reasons this vector must always contain a multiple of 4
+% elements, so we pad with three zero elements at the end to get 8
+% elements.
+Screen('DrawTexture', win, gabortex, [], [], [], [], [], [], [], kPsychDontDoRotation, [phase, freq, sc, contrast, aspectratio, 0, 0, 0]);
 
 % Preallocate array with destination rectangles:
 % This also defines initial gabor patch orientations, scales and location
@@ -150,25 +156,12 @@ inrect = repmat(texrect', 1, ngabors);
 
 dstRects = zeros(4, ngabors);
 for i=1:ngabors
-    scale(i) = 2*(0.1 + 0.9 * randn);
+    scale(i) = 1*(0.1 + 0.9 * randn);
     dstRects(:, i) = CenterRectOnPoint(texrect * scale(i), rand * w, rand * h)';
 end
 
 % Preallocate array with rotation angles:
 rotAngles = rand(1, ngabors) * 360;
-
-% If internalRotation, we need to explicitely specify the size of a texture
-% source rectangle 'srcRect', as it slightly deviates from the default
-% size, which would be exactly the size of the texture itself. We also need
-% to specify the optional 'sflags' parameter for 'DrawTextures' to tell the
-% command it should use internal rotation:
-if internalRotation
-    sflags = kPsychUseTextureMatrixForRotation;
-    srcRect = CenterRect([0 0 (2*si+1) (2*si+1)], Screen('Rect', gabortex));
-else
-    sflags = 0;
-    srcRect = [];
-end
 
 % Initially sync us to VBL at start of animation loop.
 vbl = Screen('Flip', win);
@@ -178,11 +171,9 @@ count = 0;
 % Animation loop: Run until any keypress:
 while ~KbCheck
     % Step one: Batch-Draw all gabor patches at the positions and
-    % orientations computed during last loop iteration: Here we fix
-    % 'globalAlpha' - and therefore contrast - to 0.5, ie., 50% of
-    % displayable range. Actually its less than 0.5, depending on the
-    % inherent contrast of the gabor defined above in matrix 'm'.
-    Screen('DrawTextures', win, gabortex, srcRect, dstRects, rotAngles, [], 0.5, [], [], sflags);
+    % orientations and with the stimulus parameters 'mypars',
+    % computed during last loop iteration:
+    Screen('DrawTextures', win, gabortex, [], dstRects, rotAngles, [], [], [], [], kPsychDontDoRotation, mypars);
     
     % Mark drawing ops as finished, so the GPU can do its drawing job while
     % we can compute updated parameters for next animation frame. This
@@ -204,6 +195,12 @@ while ~KbCheck
     % Compute new random orientation for each patch in next frame:
     rotAngles = rotAngles + 1 * randn(1, ngabors);
     
+    % Increment phase-shift of each gabor by 10 deg. per redraw:
+    mypars(1,:) = mypars(1,:) + 10;
+    
+    % "Pulse" the aspect-ratio of each gabor with a sine-wave timecourse:
+    mypars(5,:) = 1.0 + 0.25 * sin(count*0.1);
+    
     % Compute centers of all patches, then shift them in new direction of
     % motion 'rotAngles', use the mod() operator to make sure they don't
     % leave the window display area. Its important to use RectCenterd and
@@ -213,13 +210,13 @@ while ~KbCheck
     % also important to feed all matrices and vectors in proper format, as
     % these routines are internally vectorized for higher speed.
     [x y] = RectCenterd(dstRects);
-    x = mod(x + cos(rotAngles/360*2*pi), w);
-    y = mod(y + sin(rotAngles/360*2*pi), h);
+    x = mod(x + 0.33 * cos(rotAngles/360*2*pi), w);
+    y = mod(y - 0.33 * sin(rotAngles/360*2*pi), h);
 
     % Recompute dstRects destination rectangles for each patch, given the
     % 'per gabor' scale and new center location (x,y):
     dstRects = CenterRectOnPointd(inrect .* repmat(scale,4,1), x, y);
-    
+
     % Done. Flip one video refresh after the last 'Flip', ie. try to
     % update the display every video refresh cycle if you can.
     % This is the same as Screen('Flip', win);
@@ -229,7 +226,7 @@ while ~KbCheck
     % important for this demo, but here just in case you didn't know ;-)
     vbl = Screen('Flip', win, vbl + 0.5 * ifi);
 
- % Next loop iteration...
+    % Next loop iteration...
     count = count + 1;
 end
 
