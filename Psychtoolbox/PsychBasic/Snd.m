@@ -1,18 +1,38 @@
 function err = Snd(command,signal,rate,sampleSize)
 % err = Snd(command,[signal],[rate],[sampleSize])
 % 
+% Old Sound driver for Psychtoolbox. USE OF THIS DRIVER IS DEPRECATED FOR
+% ALL BUT THE MOST TRIVIAL PURPOSES!
+%
+% Have a look at the help for PsychPortAudio ("help PsychPortAudio" and
+% "help InitializePsychSound") for an introduction into the new sound
+% driver, which is recommended for most purposes.
+%
+% While Snd used to use a special purpose low level driver on MacOS-9 which
+% was well suited for cognitive science, Snd for all other operating
+% systems (Windows, MacOS-X, Linux) just calls into Matlab's Sound()
+% function which is of varying - but usually pretty poor - quality in most
+% implementations of Matlab. There are many bugs, latency- and timing
+% problems associated with the use of Snd.
+%
+% Supported functions:
+% --------------------
+%
 % Snd('Play',signal,[rate]) plays a sound.
 % OS9: Unlike Matlab's SOUND command, Snd returns immediately, while the 
 % sound is still playing. The queue can have up to 128 sounds, so
 % calling Snd('Play',signal) while a sound is already playing adds the new
 % sound to the queue. 
+%
 % WIN & OSX: Snd calls the built-in MATLAB SOUND. Also see AUDIOPLAYER 
-% and PLAY.
+% and PLAY. High latency, unreliable timing, prone to crashing, doesn't
+% return until sound is fully played, no support for queuing.
 % 
 % rate=Snd('DefaultRate') returns the default sampling rate in Hz, which
 % currently is 22254.5454545454 Hz on all platforms. This default may
 % change in the future, so please either specify a rate, or use this
-% function to get the default rate.
+% function to get the default rate. (This default is suboptimal on any
+% system except MacOS-9!)
 %
 % Before playing, Snd internally converts the matrix of double-precision 
 % floating-point values passed in the signal argument to either an array 
@@ -156,6 +176,7 @@ function err = Snd(command,signal,rate,sampleSize)
 %               the Snd.m and SndTest.m files.  I've been unable to reproduce the error. 
 % 3/10/05   dgp Make it clear that the Snd mex is only available for OS9. 
 %               Mention AUDIOPLAYER, as suggested by Pascal Mamassian.
+% 5/20/08    mk Explain that Snd() is deprecated --> Point to PsychPortAudio!
 
 global endTime;
 if isempty(endTime)
