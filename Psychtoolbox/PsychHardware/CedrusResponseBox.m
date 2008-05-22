@@ -16,27 +16,34 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % It supports multiple subcommands, which accept and return different
 % arguments, as listed below.
 %
-% Limitations: As PTB-3 currently lacks a unified portable serial port
-% driver and Matlab lacks such a driver as well, we use Matlab's
-% "serial" command for communication on Windows and Linux, and
-% "SerialComm" on OS/X -- therefore this function currently only works
-% on Matlab, not with GNU/Octave as runtime system. Also, the Java JVM
-% must be enabled, and we only support 32 bit MS-Windows and GNU/Linux,
-% not 64 bit operating systems.
+% Limitations:
+% ------------
 %
 % Functionality is currently limited mostly to button queries (and RJ-45
 % connector state queries), including timestamps, as well as control of
-% built-in timers of the box. We don't support configuration of TTL ports
-% yet, neither other settings like e.g., button debounce time. Adding such
-% calls is straightforward and simple. If you need such functions, either
-% add them yourself and contribute your extensions to PTB, or ask us for
-% implementing the missing calls.
+% built-in timers of the box. We also support basic configuration of TTL
+% ports, but not yet all settings of the box like e.g., button debounce
+% time. Adding such calls is straightforward and simple. If you need such
+% functions, either add them yourself and contribute your extensions to
+% PTB, or ask us for implementing the missing calls.
 %
-% THIS IS A BETA RELEASE! EXPECT BUGS OR OTHER PROBLEMS - DOUBLE-CHECK YOUR
-% RESULTS - DON'T TRUST IT BLINDLY!!!
+% We found communication with the Cedrus boxes to be unreliable quite
+% often. It is an open question if this is a flaw in the design of the
+% Cedrus devices and their firmware or protocols, or if the programming
+% documentation for them is incomplete and therefore our implementation of
+% the driver. However, the problems were reproduced under different
+% operating systems, serial port drivers, toolboxes by different
+% implementations written by different people, so it doesn't seem to be a
+% simple glitch in one implementation. In general, the boxes work, but
+% don't be surprised if you need to restart your script multiple times
+% before you can establish communication, or if the more advanced
+% fucntions, e.g., for configuration of the TTL RJ-45 connector, work
+% unreliably for no apparent reason. Cedrus has been contacted, but so far
+% no resolution or response from them.
 %
 %
 % Subfunctions and their meaning:
+% -------------------------------
 %
 % Functions for device init and shutdown: Call once at beginning/end of
 % your script. These are slow!
@@ -45,18 +52,35 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % - Open a compatible response box which is connected to the given named
 % serial 'port'. 'port'names differ accross operating systems. A typical
 % port name for Windows would be 'COM2', whereas a typical port name on OS/X
-% would be a simple number, starting with 1 for the first serial port in the
-% system (The FindSerialPort() function might be useful for OS/X users for
-% finding their ports, or for mapping port names to numbers). After the
-% connection is established and some testing and initialization is done,
-% returns a device 'handle', a unique identifier to use for all other
-% subfunctions.
+% or Linux would be the name of a serial port device file, e.g.,
+% '/dev/cu.usbserial-FTDI125ZX9' on OS/X, or '/dev/ttyS0' on Linux.
+%
+% All names on OS/X are like '/dev/cu.XXXXX', where the XXXXX part depends
+% on your serial port device, typically '/dev/cu.usbserial-XXXXX' for
+% serial over USB devices with product name XXXXX.
+%
+% On Linux, all names are of pattern '/dev/ttySxx' for standard serial
+% ports, e.g., '/dev/ttyS0' for the first serial port in the system, and of
+% type '/dev/ttyUSBxx' for serial over USB devices, e.g., '/dev/ttyUSB0'
+% for the first serial line emulated over the USB protocol.
+%
+%
+% After the connection is established and some testing and initialization is,
+% done, the function returns a device 'handle', a unique identifier to use
+% for all other subfunctions.
 %
 % By default the commlink is opened at a baud transmission rate of 115200
 % Baud (All DIP switches on the box need to be in 'down' position!). If you
 % specify the optional flag 'lowbaudrate' as 1, then the speed will be
 % lowered to 56 kBaud at device open time -- in case your system works
 % unreliably at the higher rate.
+%
+% By default, the script uses Psychtoolbox's own IOPort() serial link
+% driver for communication (ptb_cedrus_drivertype = 2). If you want to use
+% a different driver for testing, change the 'ptb_cedrus_drivertype'
+% parameter inside the code with the id of a supported driver (Matlab
+% serial() on Windows and Linux, SerialComm on OS/X). This option may go
+% away in the future and is for debugging only!
 %
 %
 % CedrusResponseBox('Close', handle);
@@ -357,6 +381,11 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % 04/06/08 Improved timing code for mapping of box timers --> GetSecs time. (MK)
 % 04/17/08 Disable Boxtime->Ptbtime mapping for now, use old drivers. (MK)
 % 04/23/08 Add additional setup and query commands for external port. (MK)
+
+% Hard-Coded drivertype to use: Defaults to our IOPort driver.
+global ptb_cedrus_drivertype;
+
+ptb_cedrus_drivertype = 2;
 
 % Cell array of device structs. Globally available for main function and
 % all subfunctions in this file, persistent across invocation:
@@ -1533,67 +1562,88 @@ function retHandle = checkHandle(handle)
     retHandle = handle;
 return;
 
+% Helper function: Open serial connection:
 function dev = OpenDev(port, baudrate)
+global ptb_cedrus_drivertype;
 
-    % Which OS?
-    if IsWin
-        % Windows, no IOPort driver yet, but Matlab supports serial() object in JVM mode:
-        if ~psychusejava('desktop')
-            error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
+% Test our default of type 2 -- Our own IOPort() driver:
+if ptb_cedrus_drivertype == 2
+    % Use IOPort:
+    try
+        IOPort('Verbosity', 10);
+
+        % Open link:
+        dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
+
+        % Clear all send and receive buffers and queues:
+        IOPort('Purge', dev.link);
+
+        % Assign output port, driverid and empty recvQueue:
+        dev.driver = 2;
+        dev.recvQueue = [];
+        dev.port = port;
+
+    catch
+        error('Failed to open port %s for Cedrus response box via IOPort() driver.', port);
+    end
+    
+    % Ready.
+    return;
+end
+
+% Some non-standard driver: We support serial() on Windows and Linux,
+% SerialComm on OS/X:
+% Which OS?
+if IsOSX
+    % SerialComm:
+    try
+        % Open 'port' with 'baudrate' baud, no parity, 8 data bits, 1
+        % stopbit.
+        SerialComm('open', port, sprintf('%i,n,8,1', baudrate));
+
+        % Disable handshaking 'n' == none:
+        SerialComm('hshake', port, 'n');
+
+        % Wait a bit...
+        WaitSecs(0.5);
+
+        % And flush all send- and receivebuffers:
+        purgedata = SerialComm('read', port);
+
+        if ~isempty(purgedata)
+            fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
         end
 
-        % Ok, Matlab with JVM on Windows: Let's do it!
+        % Assign and init stuff:
+        dev.port = port;
+        dev.link = port;
+        dev.driver = 1;
+        dev.recvQueue = [];
+    catch
+        error('Failed to open port %i on OS/X for Cedrus response box via SerialComm() driver.', port);
+    end
+else
+    % Windows or Linux: Matlab supports serial() object in JVM mode:
+    if ~psychusejava('desktop')
+        error('You must run Matlab in JVM mode (JAVA enabled) for Cedrus response box to work!');
+    end
+
+    try
+        % Ok, Matlab with JVM on Windows or Linux: Let's do it!
         dev.link = serial(port, 'BaudRate', baudrate, 'DataBits', 8, 'StopBits', 1,...
             'FlowControl', 'none', 'Parity', 'none', 'Terminator', 'CR', 'Timeout', 400,...
             'InputBufferSize', 16000);
 
         fopen(dev.link);
         dev.driver = 0;
-    else
-        % OS/X or Linux and Matlab or Octave: Use the SerialComm driver for driving the
-        % serial link, or our own IOPort driver, depending if 'port' is
-        % given as number or device file spec. For now we support
-        % SerialComm as a reference for debugging and tuning, but this will
-        % go away soon...
-        try
-            if ischar(port) || IsLinux
-                IOPort('Verbosity', 10);
-                dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
-                IOPort('Purge', dev.link);
-                dev.driver = 2;
-                dev.recvQueue = [];
-            else
-                % Open 'port' with 115200 baud, no parity, 8 data bits, 1
-                % stopbit.
-                SerialComm('open', port, sprintf('%i,n,8,1', baudrate));
-
-                % Disable handshaking 'n' == none:
-                SerialComm('hshake', port, 'n');
-
-                % Wait a bit...
-                WaitSecs(0.5);
-
-                % And flush all send- and receivebuffers:
-                purgedata = SerialComm('read', port);
-
-                if ~isempty(purgedata)
-                    fprintf('CedrusResponseBox: Open: Purged some trash data...\n');
-                end
-
-                % Assign and init stuff:
-                dev.link = port;
-                dev.driver = 1;
-                dev.recvQueue = [];
-            end
-        catch
-            error('Failed to open port %s on OS/X for Cedrus response box.', port);
-        end
+        dev.port = port;
+        dev.recvQueue = [];
+    catch
+        error('Failed to open port %s on Windows or Linux for Cedrus response box via Matlab serial() driver.', port);
     end
+end
 
-    % Assign output port:
-    dev.port = port;
-        
-    % Ready.
+% Ready.
 return;
 
 function CloseDev(handle)
