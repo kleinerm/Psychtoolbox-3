@@ -103,12 +103,7 @@ else
                 else
                     NSIDENTIFIER = c;
                     NSRECORDING=0;
-                    ECCType='QMAC-';
-                    ThisComputer=computer;
-                    if strcmp(ThisComputer,'PCWIN') 
-                        ECCType='QNTEL';
-                    end;
-                    send(NSIDENTIFIER,ECCType);
+                    send(NSIDENTIFIER,'QMAC-');
                     rep=receive(NSIDENTIFIER,1);
                     switch char(rep)
                         case 'F'
@@ -248,7 +243,7 @@ return
 function send(con,varargin)
 i=1;
 while i <= nargin-1
-    pnet(con,'write',varargin{i},'native');
+    pnet(con,'write',varargin{i},'network');
     i = i+1;
 end
 return
