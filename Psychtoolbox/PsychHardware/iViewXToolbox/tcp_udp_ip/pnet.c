@@ -79,6 +79,7 @@
 #define EWOULDBLOCK WSAEWOULDBLOCK
 #define usleep(a) Sleep((a)/1000)
 #define MSG_NOSIGNAL 0
+#define DEFAULT_USLEEP        1000		/* MK: Changed from 10 msecs to 1 msec == 1000 microsecs. for lower latency. Can't go lower than 1 msec on Windoze.  :-( */
 
 /******* NON WINDOWS DEFINES *********/
 #else
@@ -95,6 +96,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #define nonblockingsocket(s)  fcntl(s,F_SETFL,O_NONBLOCK)
+#define DEFAULT_USLEEP        500		/* MK: Changed from 10 msecs to 0.5 msec == 500 microsecs. for lower latency. Should not be a problem on good OS/X and Linux :-) */
 #endif
 
 #ifndef INADDR_NONE
@@ -126,7 +128,6 @@
 #define DEFAULT_WRITETIMEOUT  double_inf
 #define DEFAULT_READTIMEOUT   double_inf
 #define DEFAULT_INPUT_SIZE    50000
-#define DEFAULT_USLEEP        10000
 
 /* Different status of a con_info struct handles a file descriptor    */
 #define STATUS_FREE       -1
