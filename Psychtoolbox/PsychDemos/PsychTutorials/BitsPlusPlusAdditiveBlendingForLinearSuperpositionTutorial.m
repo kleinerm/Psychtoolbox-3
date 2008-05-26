@@ -1,5 +1,5 @@
-function BitsPlusPlusAdditiveBlendingForLinearSuperpositionTutorial
-% BitsPlusPlusAdditiveBlendingForLinearSuperpositionTutorial
+function BitsPlusPlusAdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay)
+% BitsPlusPlusAdditiveBlendingForLinearSuperpositionTutorial([outputdevice='Mono++'] [, overlay=1]);
 %
 % Illustrates use of floating point textures in combination with
 % source-weighted additive alpha blending to create linear superpositions
@@ -22,7 +22,13 @@ space = KbName('space');
 GammaIncrease = KbName('i');
 GammaDecrease = KbName('d');
 
-overlay = 1;
+if nargin < 1 || isempty(outputdevice)
+    outputdevice = 'Mono++';
+end
+
+if nargin < 2 || isempty(overlay)
+    overlay = 1;
+end
 
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -45,17 +51,36 @@ try
     PsychImaging('PrepareConfiguration');
     % Won't need this on NVidia Geforce 8000 or Radeon HD2000 and later: PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
-    if overlay
-        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
-    else
-        PsychImaging('AddTask', 'General', 'EnableBits++Mono++');
-    end
+    switch outputdevice
+        case {'Mono++'}
+            if overlay
+                PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+            else
+                PsychImaging('AddTask', 'General', 'EnableBits++Mono++Output');
+            end
 
+        case {'Color++'}
+            PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
+            overlay = 0;
+
+        case {'Attenuator'}
+            PsychImaging('AddTask', 'General', 'EnableGenericHighPrecisionLuminanceOutput', uint8(rand(3, 2048) * 255));
+            overlay = 0;
+
+        case {'VideoSwitcher'}
+            PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput', 128);
+
+            % Switch the device to high precision luminance mode:
+            PsychVideoSwitcher('SwitchMode', screenNumber, 1);
+            overlay = 0;
+
+        otherwise
+            error('Unknown "outputdevice" provided.');
+    end
+    
     % Choose method of color correction: 'SimpleGamma' is simple gamma
     % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
     PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
-
-    %PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
     [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5);
@@ -67,6 +92,9 @@ try
         wo = 0;
     end
     
+    % FIXME: Integrate this into PsychImaging!! Need identity gamma table in gfx card:
+    LoadIdentityClut(w);
+
     %PsychColorCorrection('SetColorClampingRange', w, 0, 1);
     
     % We set initial encoding gamma to correct for a display with a
@@ -218,3 +246,7 @@ catch
     ShowCursor;
     psychrethrow(psychlasterror);
 end %try..catch..
+
+if ~isempty(findstr(outputdevice, 'VideoSwitcher'))
+    PsychVideoSwitcher('SwitchMode', screenNumber, 0);
+end
