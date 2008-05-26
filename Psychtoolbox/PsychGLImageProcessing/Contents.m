@@ -48,6 +48,7 @@
 %
 % PsychImaging.m                  -- Generic setup routine for the imaging pipeline. Allows to setup
 %                                    and initialize the pipeline for many common tasks.
+% PsychVideoSwitcher              -- Setup routine for the Xiangru Li et al. "VideoSwitcher" video attenuator device.
 %
 % SetAnaglyphStereoParameters.m   -- Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.

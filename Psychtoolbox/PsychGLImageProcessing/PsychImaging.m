@@ -160,6 +160,75 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   view channels - or a single monoscopic display.
 %
 %
+% * 'EnableGenericHighPrecisionLuminanceOutput'
+%   Setup Psychtoolbox for conversion of high precision luminance images
+%   into a format suitable for special high precision luminance display
+%   devices. This is a generic support routine that uses LUT based
+%   conversion.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableGenericHighPrecisionLuminanceOutput', lut);
+%
+%
+% * 'EnableVideoSwitcherSimpleLuminanceOutput'
+%   Setup Psychtoolbox for conversion of high precision luminance images
+%   into a format suitable for driving the "VideoSwitcher" high precision
+%   luminance display device which was developed by Xiangrui Li et al.
+%
+%   This implements the simple converter, which only needs the
+%   Blue-To-Red-Ratio of the device as input parameter and performs
+%   conversion via a closed-form formula without any need for lookup
+%   tables. This is supposed to be fast.
+%
+%   See "help VideoSwitcher" for more info about the device and its
+%   options.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput' [, btrr] [, trigger]);
+%   - The optional 'btrr' parameter is the Blue-To-Red-Ratio to use. If the
+%   parameter is left out, the btrr value will be read from a global
+%   configuration file.
+%
+%   - The optional 'trigger' parameter can be zero for "No trigger", or 1
+%   for "Use trigger as configured". By default, trigger is off (==0).
+%   enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
+%   configure when and how a trigger signal should be emitted. Trigger
+%   signals are simply specific pixel patterns in the green output channel.
+%   That channel is recognized by the VideoSwitcher as a trigger signal
+%   control channel.
+%
+%
+% * 'EnableVideoSwitcherCalibratedLuminanceOutput'
+%   Setup Psychtoolbox for conversion of high precision luminance images
+%   into a format suitable for driving the "VideoSwitcher" high precision
+%   luminance display device which was developed by Xiangrui Li et al.
+%
+%   This implements the simple converter, which only needs the
+%   Blue-To-Red-Ratio of the device as input parameter and performs
+%   conversion via a closed-form formula without any need for lookup
+%   tables. This is supposed to be fast.
+%
+%   See "help VideoSwitcher" for more info about the device and its
+%   options.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableVideoSwitcherCalibratedLuminanceOutput' [, btrr] [, lut] [, trigger]);
+%   - The optional 'btrr' parameter is the Blue-To-Red-Ratio to use. If the
+%   parameter is left out, the btrr value will be read from a global
+%   configuration file.
+%
+%   - The optional 'lut' paramter is a 257 elements vector of luminance
+%   values, which maps blue channel drive indices to luminance values. This
+%   lut needs to be acquired via a calibration procedure by use of a
+%   photometer. If 'lut' is left out, the table will be read from a global
+%   configuration file.
+%
+%   - The optional 'trigger' parameter can be zero for "No trigger", or 1
+%   for "Use trigger as configured". By default, trigger is off (==0).
+%   enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
+%   configure when and how a trigger signal should be emitted. Trigger
+%   signals are simply specific pixel patterns in the green output channel.
+%   That channel is recognized by the VideoSwitcher as a trigger signal
+%   control channel.
+%
+%
 % * 'EnableNative10BitFramebuffer' Enable the high-performance driver and
 %   support for output of stimuli with 10 bit precision per color channel
 %   (10 bpc) on graphics hardware that supports native 10 bpc framebuffers.
@@ -455,8 +524,12 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 persistent configphase_active;
 persistent reqs;
 
+% This flag is global - needed in subfunctions as well (ugly ugly coding):
+global ptb_outputformatter_icmAware;
+
 if isempty(configphase_active)
     configphase_active = 0;
+    ptb_outputformatter_icmAware = 0;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -475,6 +548,7 @@ if strcmp(cmd, 'PrepareConfiguration')
     configphase_active = 1;
     clear reqs;
     reqs = [];
+    ptb_outputformatter_icmAware = 0;
     
     rc = 0;
     return;
@@ -805,6 +879,7 @@ return;
 % derives the needed stereoMode settings and imagingMode setting to pass to
 % Screen('OpenWindow') for pipeline preconfiguration.
 function [imagingMode, stereoMode] = FinalizeConfiguration(reqs, userstereomode)
+global ptb_outputformatter_icmAware;
 
 if nargin < 2
     userstereomode = [];
@@ -899,16 +974,52 @@ end
 if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    % The BrightSide formatter is not icm aware - Incapable of internal color correction!
+    ptb_outputformatter_icmAware = 0;
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    % The Mono++ formatter is icm aware - Capable of internal color
+    % correction, but not setup here -- special case: Set flag to zero:
+    ptb_outputformatter_icmAware = 0;
+end
+
+if ~isempty(find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    % The Luminance LUT based formatter is icm aware - Capable of internal color correction:
+    ptb_outputformatter_icmAware = 1;
+
+    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+    % been explicitely requested:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+end
+
+if ~isempty(find(mystrcmp(reqs, 'EnableVideoSwitcherSimpleLuminanceOutput'))) || ~isempty(find(mystrcmp(reqs, 'EnableVideoSwitcherCalibratedLuminanceOutput')))
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+
+    % The VideoSwitcher formatter is icm aware - Capable of internal color correction:
+    ptb_outputformatter_icmAware = 1;
+
+    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+    % been explicitely requested:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion, kPsychNeedHalfWidthWindow);
+
+    % The Color++ formatter is icm aware - Capable of internal color
+    % correction, but not setup here -- special case: Set flag to zero:
+    ptb_outputformatter_icmAware = 0;
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
@@ -921,6 +1032,9 @@ if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
+    
+    % The PseudoGray formatter is not yet icm aware - Incapable of internal color correction!
+    ptb_outputformatter_icmAware = 0;    
 end
 
 % Request for native 10 bit per color component ARGB2101010 framebuffer?
@@ -935,6 +1049,9 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
         imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
     end
+
+    % The ATI 10bpc formatter is not yet icm aware - Incapable of internal color correction!
+    ptb_outputformatter_icmAware = 0;    
 end
 
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
@@ -1000,7 +1117,7 @@ return;
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
 function rc = PostConfiguration(reqs, win)
-
+global ptb_outputformatter_icmAware;
 global GL;
 
 if isempty(GL)
@@ -1391,6 +1508,10 @@ end
 % intermediate results. In any other case, there will be only one physical
 % output device, so correction is handled best at the end of output
 % conversion.
+icmshader = [];
+icmstring = [];
+icmformatting_downstream = [];
+
 floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
 if ~isempty(floc)
     handlebrightside  = 0;
@@ -1415,7 +1536,7 @@ if ~isempty(floc)
     if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
         handlebrightside = 1;
     end
-    
+        
     % Which channel?
     for x=floc
         [rows cols]= ind2sub(size(reqs), x);
@@ -1435,27 +1556,54 @@ if ~isempty(floc)
             % color correction shader:
             [icmshader icmstring] = PsychColorCorrection('GetCompiledShaders', win, 1);
 
-            % shMain is the main() routine which needs to get compiled into
-            % a valid shader object:
-            shMain = 'uniform sampler2DRect Image; vec4 icmTransformColor(vec4 incolor); void main(void){gl_FragColor = icmTransformColor(texture2DRect(Image, gl_FragCoord.xy));}';
-            mainShader = glCreateShader(GL.FRAGMENT_SHADER);
-            glShaderSource(mainShader, shMain);
-            glCompileShader(mainShader);
+            % Output formatter with built-in ICM capabilities selected? And
+            % color correction for final formatting chain insted of
+            % per-viewchannel chains?
+            if (ptb_outputformatter_icmAware > 0) & (mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews'))
+                % Yes. These formatters can use the icm shader internally for
+                % higher efficiency if wanted. We can only do that if color
+                % correction shall happen in 'AllViews' or 'FinalFormatting', ie.,
+                % if this is a monoscopic window or a stereo window where all views
+                % display to the same physical output device and therefore the same
+                % color correction can be applied to both views.
+                
+                % Good. We create the icmshader here according to specs,
+                % but then pass it along downstream to the output formatter
+                % setup code which will attach it.
+                icmformatting_downstream = 1;
+                
+            else
+                % Downstream color correction not possible due to use of
+                % either a per viewchannel correction, or due to use of
+                % either no output formatter at all, or not of an icm aware
+                % one:
+                icmformatting_downstream = 0;
+                
+                % Need to build full standalone shader, including main()
+                % stub routine and full link and post-link:
 
-            % Link together mainShader and icmshader into a GLSL program
-            % object:
-            shader = glCreateProgram;
-            glAttachShader(shader, mainShader);
-            glAttachShader(shader, icmshader);
+                % shMain is the main() routine which needs to get compiled into
+                % a valid shader object:
+                shMain = 'uniform sampler2DRect Image; vec4 icmTransformColor(vec4 incolor); void main(void){gl_FragColor = icmTransformColor(texture2DRect(Image, gl_FragCoord.xy));}';
+                mainShader = glCreateShader(GL.FRAGMENT_SHADER);
+                glShaderSource(mainShader, shMain);
+                glCompileShader(mainShader);
+                
+                % Link together mainShader and icmshader into a GLSL program
+                % object:
+                shader = glCreateProgram;
+                glAttachShader(shader, mainShader);
+                glAttachShader(shader, icmshader);
 
-            % Link the program:
-            glLinkProgram(shader);
-            
-            % Init the shader: Assign mapping of input image and offsets, gains:
-            glUseProgram(shader);            
-            glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
-            glUseProgram(0);
-                        
+                % Link the program:
+                glLinkProgram(shader);
+
+                % Init the shader: Assign mapping of input image and offsets, gains:
+                glUseProgram(shader);
+                glUniform1i(glGetUniformLocation(shader, 'Image'), 0);
+                glUseProgram(0);
+            end
+
             % Ok, shader is our final color correction shader, properly
             % setup. Attach it to proper chain:            
             if mystrcmp(reqs{row, 1}, 'LeftView')
@@ -1480,69 +1628,97 @@ if ~isempty(floc)
                 rightcount = rightcount + 1;
             end
 
-            if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')
-                % Need to attach to final formatting:
-                if ~handlebitspluplus & ~handlebrightside
-                    % Standard case:
-                    if outputcount > 0
-                        % Need a bufferflip command:
-                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
-                    end
-                    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader);
-                else
-                    % Special case: A BitsPlusPlus or BrightSideHDR output formatter has
-                    % been attached at the end of queue already. We need
-                    % to insert our new slot + some FlipFBO commands just
-                    % before the last occupied slot - which is the output formatter slot.
-                    % Let's simply count the number of occupied slots and
-                    % then insert at that location:
-                    insertPos = 0;
-                    while(1)
-                        if Screen('Hookfunction', win, 'Query', 'FinalOutputFormattingBlit', insertPos)~=-1
-                            insertPos = insertPos + 1;
-                        else
-                            break;
+            if ~icmformatting_downstream
+                if mystrcmp(reqs{row, 1}, 'FinalFormatting') || mystrcmp(reqs{row, 1}, 'AllViews')
+                    % Need to attach to final formatting:
+                    if ~handlebitspluplus & ~handlebrightside
+                        % Standard case:
+                        if outputcount > 0
+                            % Need a bufferflip command:
+                            Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                         end
-                    end
-                    % insertPos points to first slot after the end of the
-                    % chain, ie., where one could append new slots. We want
-                    % to insert just at the location of the last slot, so
-                    % the last slot gets pushed back one element:
-                    insertPos = insertPos - 1;
-                    
-                    % Need to prepend a bufferflip command in front of
-                    % bitsplusplus:
-                    insertSlot = sprintf('InsertAt%iBuiltin', insertPos);                        
-                    Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
-                    
-                    % Then need to prepend our shader in front of that
-                    % FlipFBO's:
-                    insertSlot = sprintf('InsertAt%iShader', insertPos);                        
-                    Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', icmstring, shader);
-                    
-                    % If we're not the first, we need to prepend a
-                    % FlipFBO's for ourselves:
-                    if outputcount > 0
-                        % Need a bufferflip command:
+                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader);
+                    else
+                        % Special case: A BitsPlusPlus or BrightSideHDR output formatter has
+                        % been attached at the end of queue already. We need
+                        % to insert our new slot + some FlipFBO commands just
+                        % before the last occupied slot - which is the output formatter slot.
+                        % Let's simply count the number of occupied slots and
+                        % then insert at that location:
+                        insertPos = 0;
+                        while(1)
+                            if Screen('Hookfunction', win, 'Query', 'FinalOutputFormattingBlit', insertPos)~=-1
+                                insertPos = insertPos + 1;
+                            else
+                                break;
+                            end
+                        end
+                        % insertPos points to first slot after the end of the
+                        % chain, ie., where one could append new slots. We want
+                        % to insert just at the location of the last slot, so
+                        % the last slot gets pushed back one element:
+                        insertPos = insertPos - 1;
+
+                        % Need to prepend a bufferflip command in front of
+                        % bitsplusplus:
                         insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
                         Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+
+                        % Then need to prepend our shader in front of that
+                        % FlipFBO's:
+                        insertSlot = sprintf('InsertAt%iShader', insertPos);
+                        Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', icmstring, shader);
+
+                        % If we're not the first, we need to prepend a
+                        % FlipFBO's for ourselves:
+                        if outputcount > 0
+                            % Need a bufferflip command:
+                            insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
+                            Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                        end
                     end
+
+                    % One more slot occupied by us, so increment outputcount:
+                    outputcount = outputcount + 1;
+
+                    % And enable the chain if it ain't enabled already:
+                    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
                 end
 
-                % One more slot occupied by us, so increment outputcount:
-                outputcount = outputcount + 1;
-                
-                % And enable the chain if it ain't enabled already:
-                Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+                % Perform post-link setup of color correction method after
+                % shader attached to pipe:
+                PsychColorCorrection('ApplyPostGLSLLinkSetup', win, reqs{row, 1});
             end
-            
-            % Perform post-link setup of color correction method after
-            % shader attached to pipe:
-            PsychColorCorrection('ApplyPostGLSLLinkSetup', win, reqs{row, 1});
         end
     end
 end
+
+% Any output formatter to follow which is icmAware, ie., needs to have an
+% icmshader as input, either a real one, or a dummy pass-through one?
+if ptb_outputformatter_icmAware
+    % Yes. To be created output formatter needs an icmshader.
+    % Downstream attachment of (already created) icmshader?
+    % If so, nothing to do, icmshader and icmstring already setup:
+    if ~icmformatting_downstream
+        % No. The output formatter is icm aware and needs an icmshader, but
+        % none yet created because downstream correction not possible. We
+        % need to create a dummy icmshader which just passes through all
+        % values uncorrected - This way we make sure that the link
+        % operation of the output formatter doesn't fail:
+        icmshader = LoadShaderFromFile('ICMPassThroughShader.frag.txt', [], 1);
+        icmstring = '';
+    else
+        % Nothing to do. Just perform some sanity check here to catch
+        % possible future implementation bugs:
+        if isempty(icmshader) || isempty(icmstring)
+            error('In DisplayColorCorrection setup: Downstream formatting for icmAware output formatter requested, but icmshader and/or icmstring undefined! This is an implementation bug!!!');
+        end
+    end
+
+end
+
 % --- End of Custom color correction for display wanted ---
+
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
@@ -1561,6 +1737,174 @@ if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
 end
 % --- End of output formatter for Pseudo-Gray processing requested? ---
 
+
+% --- Final output formatter for generic LUT based luminance framebuffer requested? ---
+floc = find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput'));
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+    % Extract first parameter - This should be the lookup table 'lut' to use:
+    lut = reqs{row, 3};
+    
+    if isempty(lut) | ~isnumeric(lut)
+        Screen('CloseAll');
+        error('PsychImaging: Mandatory lookup table parameter lut for ''EnableGenericHighPrecisionLuminanceOutput'' missing or not of numeric type!');
+    end
+
+    % Load output formatting shader for GenericHighPrecisionLuminanceOutput:
+    % 'icmshader' is a handle to a compiled fragment shader, provided by
+    % upstream, that implements the display color correction function:
+    pgshader = LoadGLSLProgramFromFiles('GenericLuminanceToRGBA8_FormattingShader', 1, icmshader);
+
+    % Init the shader: Assign mapping texture units etc.:
+    glUseProgram(pgshader);
+    glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+    glUniform1i(glGetUniformLocation(pgshader, 'LUT'),  1);
+    glUniform1f(glGetUniformLocation(pgshader, 'MaxIndex'),  size(lut, 2)-1);
+    glUseProgram(0);
+
+    % Use helper routine to build a proper RGBA Lookup texture for
+    % conversion of HDR luminance pixels to RGBA8 pixels:
+    pglutid = PsychHelperCreateGenericLuminanceToRGBA8LUT(lut);
+    
+    if outputcount > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+    pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+    pgidstring = sprintf('Generic high precision luminance output formatting shader: %s', icmstring);
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    outputcount = outputcount + 1;
+end
+% --- End of output formatter for generic LUT based luminance framebuffer ---
+
+% --- Final output formatter for VideoSwitcher attenuator device requested? ---
+VideoSwitcherTriggerflag = 0;
+
+floc = find(mystrcmp(reqs, 'EnableVideoSwitcherSimpleLuminanceOutput'));
+floc = [floc , find(mystrcmp(reqs, 'EnableVideoSwitcherCalibratedLuminanceOutput'))];
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+
+    if mystrcmp(reqs{row, 2}, 'EnableVideoSwitcherSimpleLuminanceOutput')
+        simpleVideoSwitcher = 1;
+    else
+        simpleVideoSwitcher = 0;
+    end
+    
+    % Extract optional first parameter - This should be the 'btrr' ratio to use:
+    btrr = reqs{row, 3};
+    
+    if isempty(btrr)
+        % btrr empty: Get it from config file:
+        btrr = PsychVideoSwitcher('GetDefaultConfig', win);
+    else
+        if ~isnumeric(btrr) | ~isscalar(btrr)
+            Screen('CloseAll');
+            error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output not of numeric scalar type!');
+        end
+        
+        if btrr < 0
+            Screen('CloseAll');
+            error('PsychImaging: Optional "btrr" parameter for VideoSwitcher output is negative -- Impossible!');
+        end
+    end
+    
+    if simpleVideoSwitcher
+        % Extract optional 2nd parameter - This should be the 'trigger' flag:
+        VideoSwitcherTriggerflag = reqs{row, 4};
+    else
+        % Extract optional 3rd parameter - This should be the 'trigger' flag:
+        VideoSwitcherTriggerflag = reqs{row, 5};
+    end
+    
+    if isempty(VideoSwitcherTriggerflag)
+        % triggerflag empty: Default to off:
+        VideoSwitcherTriggerflag = 0;
+    else
+        if ~isnumeric(VideoSwitcherTriggerflag) | ~isscalar(VideoSwitcherTriggerflag)
+            Screen('CloseAll');
+            error('PsychImaging: Optional "trigger" parameter for VideoSwitcher output not of numeric scalar type!');
+        end
+        
+        if VideoSwitcherTriggerflag > 0
+            VideoSwitcherTriggerflag = 1;
+        else
+            VideoSwitcherTriggerflag = 0;
+        end
+    end
+    
+    if simpleVideoSwitcher
+        % Load output formatting shader for simple VideoSwitcher output:
+        % 'icmshader' is a handle to a compiled fragment shader, provided by
+        % upstream, that implements the display color correction function:
+        pgshader = LoadGLSLProgramFromFiles('VideoSwitcherSimpleLuminanceToRB8_FormattingShader', 1, icmshader);
+
+        % Init the shader: Assign mapping texture units etc.:
+        glUseProgram(pgshader);
+        glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+        glUniform1f(glGetUniformLocation(pgshader, 'btrr'),  btrr);
+        glUniform1f(glGetUniformLocation(pgshader, 'btrrPlusOne'),  btrr + 1);
+        glUniform1f(glGetUniformLocation(pgshader, 'btrrFractionTerm'), ((btrr + 1) / btrr));
+        glUseProgram(0);
+
+        pgidstring = sprintf('VideoSwitcher simple high precision luminance output formatting shader: %s', icmstring);
+        pgconfig = '';
+    else
+        % LUT calibrated VideoSwitcher setup:
+
+        % Extract optional 2nd parameter - This should be the 'lut':
+        lut = reqs{row, 4};
+
+        if isempty(lut)
+            % lut empty: Get it from config file:
+            [dummy, lut] = PsychVideoSwitcher('GetDefaultConfig', win);
+        else
+            if ~isa(lut, 'double') | ~isvector(lut) | length(lut)~=257
+                Screen('CloseAll');
+                error('PsychImaging: Lookup table parameter lut for VideoSwitcher output invalid: Must be a vector of double values with 257 elements!');
+            end
+        end
+        
+        % Convert 'lut' into lookup table texture:
+        pglutid = PsychVideoSwitcher('GetLUTTexture', lut);
+        
+        % Load output formatting shader for lut calibrated VideoSwitcher output:
+        % 'icmshader' is a handle to a compiled fragment shader, provided by
+        % upstream, that implements the display color correction function:
+        pgshader = LoadGLSLProgramFromFiles('VideoSwitcherCalibratedLuminanceToRB8_FormattingShader', 1, icmshader);
+
+        % Init the shader: Assign mapping texture units etc.:
+        glUseProgram(pgshader);
+        glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+        glUniform1i(glGetUniformLocation(pgshader, 'LUT'), 1);
+        glUniform1f(glGetUniformLocation(pgshader, 'btrr'),  btrr);
+        glUseProgram(0);    
+
+        pgidstring = sprintf('VideoSwitcher calibrated high precision luminance output formatting shader: %s', icmstring);
+        pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+    end
+        
+    if outputcount > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+    end
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+    outputcount = outputcount + 1;
+end
+
+% Setup of trigger for VideoSwitcher device needed?
+if VideoSwitcherTriggerflag > 0
+    % Yes. Attach a proper slot to the chain: The slot calls back into the
+    % VideoSwitcher.m M-File, with the window handle as argument.
+    pgconfig = sprintf('PsychVideoSwitcher(%i);', win);
+    Screen('HookFunction', win, 'AppendMFunction', 'FinalOutputFormattingBlit', 'VideoSwitcher trigger control callback.', pgconfig);    
+end
+
+% --- End of output formatters for VideoSwitcher attenuator device ---
+
+    
 % --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     % Load output formatting shader for Pseudo-Gray:
@@ -1587,6 +1931,20 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     outputcount = outputcount + 1;
 end
 % --- End of output formatter for native 10 bpc ARGB2101010 framebuffer ---
+
+
+% --- END OF ALL OUTPUT FORMATTERS ---
+
+% --- This must be after setup of all output formatter shaders! ---
+% Downstream icm color correction shader linked into an icmAware output
+% formatter. We must perform post-link setup for it:
+if ptb_outputformatter_icmAware & icmformatting_downstream
+    % Perform post-link setup of color correction method after
+    % shader attached to pipe. We know it is the
+    % 'FinalOutputFormattingBlit' chain, as only in that case, downstream
+    % formatting is performed at all.
+    PsychColorCorrection('ApplyPostGLSLLinkSetup', win, 'FinalFormatting');
+end
 
 % --- GPU based mirroring of left half of onscreen window to right half requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayToSingleSplitWindow')))

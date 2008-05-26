@@ -1,0 +1,71 @@
+/* VideoSwitcherSimpleLuminanceToRB8_FormattingShader.frag.txt -- Luminance output formatter
+ *
+ * This shader converts a HDR luminance texture into a RGBA8 8bpc framebuffer
+ * image, suitable for display with the Xiangru Li et al. "VideoSwitcher" video
+ * attenuator device. The "Simple" converter uses a closed-form solution to
+ * map luminance to (Red,Blue) channel output values.
+ *
+ * It expects the luminance image data in the red channel of the texture,
+ * with values ranging from 0.0 - 1.0, remaps it into the bpc bit data range
+ * of the device of 16 bpc, then converts the 16 bit integral luminance index
+ * value into proper red, blue drive pixel output.
+ *
+ * The green and alpha channels are unused and simply set to a constant zero value.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c)2007, 2008 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+/* The input Image - Usually from texture unit 0: */
+uniform sampler2DRect Image;
+
+/* The btrr calibration value: Blue-To-Red-Ratio from calibration: */
+uniform float btrr;
+
+/* btrr + 1, passed from host to save a floating point addition.: */
+uniform float btrrPlusOne;
+
+/* (btrr + 1) / btrr, passed from host to save addition and division.: */
+uniform float btrrFractionTerm;
+
+/* Declare external function for luminance color conversion: */
+float icmTransformColor1(float incolor);
+
+void main()
+{
+    vec4 outcolor = vec4(0.0);
+
+    /* Retrieve HDR/High precision input luminance value from RED channel:      */
+    /* The same value is stored (replicated) in the GREEN and BLUE channels     */
+    /* if this is a drawn luminance image, so choice of channel doesn't matter. */
+    /* We expect these values to be in 0.0 - 1.0 range.                         */
+    /* We add a small numerical 'epsilon' offset of 1e-7 to the fetched value.  */
+    /* This is to account for small numerical differences between GPU's float   */
+    /* storage format and CPU's double format. This is not strictly neccessary, */
+    /* but we do it to achieve identical results between GPU and CPU conversion */
+    /* to simplify validation/testing and intermix of CPU and GPU methods.      */
+    float lum = texture2DRect(Image, gl_TexCoord[0].st).r + 1e-7;
+
+    /* Apply some color transformation (clamping, gamma correction etc.): */
+    lum = icmTransformColor1(lum);
+
+    /* Remap 'lum' from 0.0 - 1.0 range to range 0.0 - 255.0. */
+    lum = lum * 255.0;
+
+    /* First compute blue output channel: Value will be integral, clamped to [0; 255]: */
+    outcolor.b = min( 255.0, floor( (btrr + 1.0) / btrr * lum ) );
+
+    /* Compute remainder and compensate for that residual via red channel: */
+    outcolor.r = ((btrr + 1.0) * lum) - (outcolor.b * btrr);
+
+    /* Need to remap out.br values from range 0 - 255 to framebuffers uint8 */
+    /* output range of 0.0 - 1.0:                                           */
+    outcolor.rb = outcolor.rb / 255.0;
+
+    /* Copy output pixel to RGBA8 fixed point framebuffer: */
+    gl_FragColor = outcolor;
+}

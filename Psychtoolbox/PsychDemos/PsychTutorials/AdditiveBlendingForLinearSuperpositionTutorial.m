@@ -42,6 +42,11 @@ try
     w=PsychImaging('OpenWindow',screenNumber, 128);
     [width, height]=Screen('WindowSize', w);
 
+    % Switch color range to normalized 0.0-1.0 range (maxcolor == 1) and
+    % disable clamping of out-of-range intermediate values / request
+    % highest precision for colors (clamp flag == 0):
+    Screen('ColorRange', w, 1, 0);
+    
     % Enable alpha blending. We switch it into additive mode which takes
     % source alpha into account:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE);
@@ -71,7 +76,8 @@ try
     
     Screen('TextSize', w, 18);
     HideCursor;
-    
+    [x, y]=RectCenter(Screen('Rect', w));
+    SetMouse(x, y, w);
     % Animation loop:
     while 1
         Screen('DrawTexture', w, tex, [], [], [], [], 0.5);
@@ -88,7 +94,7 @@ try
 
         if show2nd
             dstRect=CenterRectOnPoint(Screen('Rect', tex), x, y+yd);
-            Screen('DrawTexture', w, tex, [], dstRect, i, [], inc);
+            Screen('DrawTexture', w, tex, [], dstRect, i, [], [], [1 1 1 inc]);
         end
         
         [d1 d2 keycode]=KbCheck;

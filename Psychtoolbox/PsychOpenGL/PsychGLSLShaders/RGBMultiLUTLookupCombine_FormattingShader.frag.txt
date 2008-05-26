@@ -3,7 +3,22 @@
  * Remaps a RGB color texel from an input image by:
  * 1. Rescaling each color channels input value via a multiplicator.
  * 2. Rounding the rescaled value to an integer lookup index.
- * 3. Looking up a RGBA8 texel from a lookup table...
+ * 3. Looking up a RGBA8 bias value texel from a lookup table. For
+ *    each color channel, an individual RGBA bias is looked up
+ *    from an individual row of the CLUT texture.
+ * 4. Add the per channel biases up (== binary OR of biases) to
+ *    form the final merged RGBA8 output pixel.
+ *
+ * This shader is useful for RGB high precision output devices with
+ * a per color channel bit-depth of up to 2^bpc <= maxtexturesize,
+ * i.e., constrained by maximum width of a texture:
+ * Up to 12 bpc on pre Direct3D-10 style hardware (max = 4096).
+ * Up to 13 bpc on Radeon HD2xxx/3xxxx/4xxx and Geforce 8xxx/9xxx hw.
+ *
+ * The shader is currently used by:
+ *
+ * - Native 10 bpc framebuffer of ATI Radeon X1000/HD2xxx/.... hardware.
+ *   See "PsychHelperCreateARGB2101010RemapCLUT.m" for setup code etc.
  *
  * (w)2008 by Mario Kleiner.
 */

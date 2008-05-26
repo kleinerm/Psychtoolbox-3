@@ -786,6 +786,7 @@ if ismember(5, testblocks)
         
         for odc=1:nroverdraws
             refpatch = max(0, min(1, (refpatch + colpatch * mc * alpha)));
+%            refpatch = (refpatch + colpatch * mc * alpha);
         end
         
         testname = 'DrawTexture-modulateColor&Blend1+1';
