@@ -1,6 +1,11 @@
 function daq=DaqDeviceIndex(DeviceName,IShouldWarn)
 % daq=DaqDeviceIndex(DeviceName,[ShowInterfaceNumberWarning])
 % Returns a list of all your USB -1208FS, -1408FS, or -1608FS daqs. 
+%
+% Also implements experimental code for detection of the USB-1024LS.
+% However that code has not been tested yet and may need some small amount
+% of tweaking to make it really work. Search the Psychtoolbox forum for
+% corresponding messages...
 % 
 % TECHNICAL NOTE: When we call PsychHID('Devices'), each USB-1208FS box
 % presents itself as four HID "devices" sharing the same serial number. They
@@ -45,6 +50,7 @@ function daq=DaqDeviceIndex(DeviceName,IShouldWarn)
 %                 with problems I encountered with 1608 and PsychHID's device
 %                 enumeration.
 % 1/14/08 mpr added second argument
+% 5/22/08 mk  Add (untested!) support for detection of USB-1024LS box. 
 
 % Flag to try to ensure that user sees warning exactly once and only if we
 % have reason to believe they need to see it.
@@ -55,6 +61,7 @@ if nargin < 2 || isempty(IShouldWarn)
 end
 
 if ~nargin || isempty(DeviceName)
+  % MK note: DeviceName as set here could be anything -- doesn't matter for further processing.  
   DeviceName = 'USB-1208FS';
   AcceptAlternateNames = 1;
 else
@@ -81,6 +88,10 @@ else
       NumOutputs = 69;
     case {'PMD-1608FS','USB-1608FS'}
       NumOutputs = 65;
+    case {'PMD-1024LS','USB-1024LS'}
+      % MK: This NumOutputs threshold needs to be tinkered with to find the
+      % correct number for the actual output interface of 1024LS:
+      NumOutputs = 0;
     otherwise
       error('I did not recognize your specified device name.');
   end % switch DeviceName
@@ -99,6 +110,10 @@ for k=1:length(devices)
         NumOutputs = 69;
       case {'PMD-1608FS','USB-1608FS'}
         NumOutputs = 65;
+      case {'PMD-1024LS','USB-1024LS'}
+        % MK: This NumOutputs threshold needs to be tinkered with to find the
+        % correct number for the actual output interface of 1024LS:
+        NumOutputs = 0;
       otherwise
         % Use as flag to prevent processing of non-MeasurementComputing devices
         NumOutputs = [];

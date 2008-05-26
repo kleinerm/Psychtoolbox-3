@@ -26,7 +26,9 @@ function DaqCodes
 % 0x51    81  DaqWriteCode            Write program memory                    
 % 0x53    83  DaqWriteSerialNumber    Write a new serial number to device                         
 % See also Daq, DaqFunctions, DaqPins.
-
+%
+%
+%
 % Command codes for USB-1608FS.  Since all overlapped codes are the same,
 % assume that all codes are the same...  well... except that there are no
 % analog output ports apparently, so DaqAOut, DaqAOutScan, and DaqAOutStop
@@ -63,5 +65,32 @@ function DaqCodes
 % 0x53	 83   DaqWriteSerialNumber  Write a new serial number to device
 % 0x54	 84   (unwritten)           Update program memory
 % 0x55	 85   DaqReadCode           Read program memory
+%
+%
+%
+% Command codes for USB-1024LS and similar: Quite different from the 1x08
+% series: A speciality is that reportId must be always zero (0) for these
+% devices - they use interrupt endpoint 0 transfers. For the same reason,
+% output reports must always by 8 bytes in length -- pad them if they're
+% shorter! Handling of port C of the device may be a bit quirky, as it is
+% treated as two ports, a low port and a high port.
+%
+% This is based on code and command codes found in usb-1024LS.h and .c,
+% subroutine files of the free libhid, a GPL'ed cross platform HID device
+% library written by Warren Jasper (<wjasper@tx.ncsu.edu>). It has not been
+% tested by me on any actual device! (MK).
+%
+% 0x0d   13   DaqDConfigPort        Configure digital port (portid == portA = 0x1, portB = 0x4, portClow = 0x8 portCHi = 0x2)
+% 0x03    3   DaqDIn                Read digital port
+% 0x01    1   DaqDOut               Write digital port
+% 0x02    2   DaqDReadBit           Read digital port bit    (unwritten)
+% 0x03    3   DaqDWriteBit          Write digital port bit   (unwritten)
+% 0x0b	 11   DaqBlinkLED           Causes LED to blink
+% 0x11	 17   DaqReset              Reset USB interface      (unwritten)
+% 0x05	  5   DaqCInit              Initialize counter
+% 0x04	  4   DaqCIn                Read Counter
+% 0x0a	 10   DaqWriteCode          Write program memory     (unwritten)
+% 0x09	  9   DaqReadCode           Read program memory      (unwritten)
+% 0x0c	 12   DaqWriteSerialNumber  Write a new serial number to device (unwritten)
 
 help DaqCodes

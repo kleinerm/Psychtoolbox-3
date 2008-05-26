@@ -10,12 +10,32 @@ function err=DaqCInit(daq)
 % 12/20/07  mpr   tested it on 1608FS and then made input argument optional
 % 1/10/08   mpr   swept through trying to improve consistency across Daq
 %                     functions
+% 5/22/08   mk  Add (untested!) support for USB-1024LS box. 
+% 5/23/08   mk  Add caching for HID device list. 
+
+% Perform internal caching of list of HID devices in 'TheDevices'
+% to speedup call:
+persistent TheDevices;
+if isempty(TheDevices)
+    TheDevices = PsychHID('Devices');
+end
 
 if ~nargin | isempty(daq)
   daq=DaqFind;
 end
 
-err=PsychHID('SetReport',daq,2,32,uint8(32)); % CInit
+% Default reportId for 1x08FS devices is 32:
+reportId = 32;
+TheReport = uint8(32);
+
+% Is this a USB-1024LS or similar?
+if ismember(TheDevices(daq).productID, [ 118, 127 ])
+    % Yes. Need different reportId and report:
+    reportId = 0;
+    TheReport=uint8([5 0 0 0 0 0 0 0]);    
+end
+
+err=PsychHID('SetReport',daq,2,reportId,TheReport); % CInit
 if err.n
     fprintf('CInit SetReport error 0x%s. %s: %s\n',hexstr(err.n),err.name,err.description);
 end
