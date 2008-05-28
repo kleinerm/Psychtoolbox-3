@@ -48,7 +48,7 @@ void main()
     /* storage format and CPU's double format. This is not strictly neccessary, */
     /* but we do it to achieve identical results between GPU and CPU conversion */
     /* to simplify validation/testing and intermix of CPU and GPU methods.      */
-    float lum = texture2DRect(Image, gl_TexCoord[0].st).r + 1e-7;
+    float lum = texture2DRect(Image, gl_TexCoord[0].st).r + 0e-7;
 
     /* Apply some color transformation (clamping, gamma correction etc.): */
     lum = icmTransformColor1(lum);
@@ -57,10 +57,10 @@ void main()
     lum = lum * 255.0;
 
     /* First compute blue output channel: Value will be integral, clamped to [0; 255]: */
-    outcolor.b = min( 255.0, floor( (btrr + 1.0) / btrr * lum ) );
+    outcolor.b = min( 255.0, floor(btrrFractionTerm * lum) );
 
     /* Compute remainder and compensate for that residual via red channel: */
-    outcolor.r = ((btrr + 1.0) * lum) - (outcolor.b * btrr);
+    outcolor.r = floor((btrrPlusOne * lum) - (outcolor.b * btrr) + 0.5);
 
     /* Need to remap out.br values from range 0 - 255 to framebuffers uint8 */
     /* output range of 0.0 - 1.0:                                           */

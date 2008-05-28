@@ -73,6 +73,8 @@ try
             % Switch the device to high precision luminance mode:
             PsychVideoSwitcher('SwitchMode', screenNumber, 1);
             overlay = 0;
+        case {'None'}
+            overlay = 0;
 
         otherwise
             error('Unknown "outputdevice" provided.');
@@ -85,6 +87,9 @@ try
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
     [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5);
 
+    Screen('ColorRange', w, 1, 0);
+    Screen('FillRect', w, 0.5);
+    
     if overlay
         % Get overlay window handle:
         wo = BitsPlusPlus('GetOverlayWindow', w);
@@ -149,7 +154,7 @@ try
     HideCursor;
     framecount = 0;
     
-    tic;
+    tstart = GetSecs;
     
     % Animation loop:
     while 1
@@ -235,7 +240,7 @@ try
         Screen('Flip', w);
     end
     
-    avgfps = framecount / toc
+    avgfps = framecount / (GetSecs - tstart)
     
     % We're done: Close all windows and textures:
     Screen('CloseAll');    
