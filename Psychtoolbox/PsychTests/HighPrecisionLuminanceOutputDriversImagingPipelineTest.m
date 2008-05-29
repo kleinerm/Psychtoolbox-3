@@ -399,7 +399,7 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) || (plotdiffs > 1)
                         candidatesd = find(lut(4, :) == convImage(row,col,4));
                         candidates1 = intersect(candidatesa, candidatesb);
                         candidates2 = intersect(candidatesc, candidatesd);
-                        deconvImage(row,col) = intersect(candidates1, candidates2) - 1;
+                        deconvImage(row,col) = min(intersect(candidates1, candidates2) - 1);
                     end
                 end
 
@@ -412,7 +412,7 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) || (plotdiffs > 1)
                         candidatesd = find(lut(4, :) == packedImage(row,col,4));
                         candidates1 = intersect(candidatesa, candidatesb);
                         candidates2 = intersect(candidatesc, candidatesd);
-                        depackImage(row,col) = intersect(candidates1, candidates2) - 1;
+                        depackImage(row,col) = min(intersect(candidates1, candidates2) - 1);
                     end
                 end
             end
