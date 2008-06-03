@@ -1,0 +1,136 @@
+/* VideoSwitcherCalibratedLuminanceToRB8_FormattingShader.frag.txt -- Luminance output formatter
+ *
+ * This shader converts a HDR luminance texture into a RGBA8 8bpc framebuffer
+ * image, suitable for display with the Xiangru Li et al. "VideoSwitcher" video
+ * attenuator device. The "Calibrated" converter uses a lookup table to find the
+ * proper value for the Blue channel, and a closed-form solution (formula) to
+ * find the Red channel value. It maps luminance to (Red,Blue) channel output values.
+ *
+ * It expects the luminance image data in the red channel of the texture,
+ * with values ranging from 0.0 - 1.0, remaps it into the bpc bit data range
+ * of the device of 16 bpc, then converts the 16 bit integral luminance index
+ * value into proper red, blue drive pixel output.
+ *
+ * The green (trigger-)channel is unused and simply set to a constant zero value.
+ * The alpha channel stores the search iteration count of the algorithm for diagnostics.
+ *
+ * Searching the Blue -> Measured luminance LUT is done via divide & conquer,
+ * also known as "QuickSearch". We take advantage of the fact that the LUT is
+ * monotonically increasing (Sorted in ascending order if you want). This algorithm
+ * should find any target slot within 8 iterations worst-case, 7 iterations expected,
+ * 9 iterations (one special extra iteration) if the LUT contains slightly degenerate
+ * values. This way we do not need more than 9 texture lookups in the LUT, compared
+ * to the 256 lookups in the original Matlab algorithm for VideoSwitcher.
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c)2007, 2008 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+/* The input Image - Usually from texture unit 0: */
+uniform sampler2DRect Image;
+
+/* The blue channel LUT - A floating point luminance texture: */
+uniform sampler2DRect LUT;
+
+/* The btrr calibration value: Blue-To-Red-Ratio from calibration: */
+uniform float btrr;
+
+/* The special background pixel: This is a cached/precomputed             */
+/* Luminance -> RB mapping that allows to replace the computation         */
+/* procedure for one specific key luminance value by this simple cache    */
+/* lookup. PsychVideoSwitcher('BackgroundLuminanceHint'); is usually used */
+/* to set this cached pixel to background luminance -- the most common    */
+/* pixel luminance value in any stimulus. This allows some speedup.       */
+uniform vec3 BackgroundPixel;
+
+/* Declare external function for luminance color conversion: */
+float icmTransformColor1(float incolor);
+
+void main()
+{
+    vec4 outval = vec4(0.0);
+    vec4 lutval;
+    int ub = 256;
+    int lb = 0;
+    int  i = 128;
+    int  b = 0;
+    int iterations = 0;
+
+    /* Retrieve HDR/High precision input luminance value from RED channel:      */
+    /* The same value is stored (replicated) in the GREEN and BLUE channels     */
+    /* if this is a drawn luminance image, so choice of channel doesn't matter. */
+    /* We expect these values to be in 0.0 - 1.0 range.                         */
+    float lum = texture2DRect(Image, gl_TexCoord[0].st).r;
+
+    /* Check if this is a special, cached luminance background pixel: */
+    if (lum == BackgroundPixel.g) {
+        /* Hit! Just output the cached BackgroundPixel and skip all further */
+        /* expensive processing: */
+        gl_FragColor.ga = vec2(0.0, 0.0);
+        gl_FragColor.rb = BackgroundPixel.rb;
+    }
+    else {
+        /* Apply some color transformation (clamping, gamma correction etc.): */
+        lum = icmTransformColor1(lum);
+
+        /* First find value for blue output channel: Value will be integral, clamped to [0; 255]:   */
+        /* This is basically a divide & conquer search on the sorted, monotonically increasing LUT: */
+        do {
+            /* Fetch LUT values for search index i: */
+            lutval = texture2DRect(LUT, vec2(float( i ), 0.0));
+
+            /* Increment iteration counter: */
+            iterations++;
+
+            /* Is interval i the one in which lum is fully contained? - If so --> Done! */
+            if (lutval.r <= lum && lum < lutval.g) { b = i; break; }
+
+            /* Not the wanted interval. Which of both conditions is still true? (One has to be) */
+            if (lum < lutval.g) {
+                /* Ok, lum is smaller than both limits. Set upper bound of search range to i: */
+                ub = i;
+            }
+            else {
+                /* Update lower bound to i: */
+                lb = i;
+            }
+
+            /* Compute sample position for next iteration: */
+            i = (lb + ub)/2;
+
+            /* Reiterate unless continuation condition is not satisfied: */
+            /* The algorithm should find the target slot within 8 iterations worst-case. */
+        } while (iterations < 9);
+
+        /* Timeout abortion? Then we did not quite reach the upper bound: Do one extra iteration, */
+        /* pushing into the right direction for the corner case luminance == 1.0: */
+        if (iterations >= 9 && (lum >= lutval.g || lum >= 1.0)) {
+            b=i+1;
+            lutval = texture2DRect(LUT, vec2(float( b ), 0.0));
+        }
+
+        /* Blue channel is value of b, between 0 and 255: */
+        outval.b = float(b);
+
+        /* Compute remainder and compensate for that residual via red channel: */
+        /* We do rounding here, so the closest matching value is chosen: */
+        outval.r = floor(( lum - lutval.r ) * btrr / ( lutval.g - lutval.r ) + 0.5);
+
+        /* Need to remap outval.br values from range 0 - 255 to framebuffers uint8 */
+        /* output range of 0.0 - 1.0:                                           */
+        outval.rb = outval.rb / 255.0;
+
+        /* Store iteration count in alpha channel for debug & benchmarking purposes: */
+        /* Alpha channel is meaningless for visual display here, just useful for diagnostics... */
+        outval.a = float(iterations) / 255.0;
+
+        /* Copy output pixel to RGBA8 fixed point framebuffer: */
+        gl_FragColor = outval;
+    }
+}

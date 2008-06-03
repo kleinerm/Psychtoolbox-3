@@ -11,6 +11,8 @@
 // (w)2007 by Mario Kleiner.
 */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform sampler2DRect Image;
 uniform sampler2DRect ColorKeyImage;
 const float epsilon = 0.001;

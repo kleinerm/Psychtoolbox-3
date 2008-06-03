@@ -143,12 +143,12 @@ void InitializeSynopsis()
 	// Load color lookup table of the window's screen (on-screen only)
 	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
 	synopsis[i++] = "[gammatable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";
-	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip]);";
+	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
 	synopsis[i++] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber [, clut] [, startEntry=0] [, bits=8]);";
 
 	// Get and set information about a window or screen.
 	synopsis[i++] = "\n% Get (and set) information about a window or screen:";
-	synopsis[i++] = "screenNumbers=Screen('Screens);";	
+	synopsis[i++] = "screenNumbers=Screen('Screens' [, physicalDisplays]);";	
 	synopsis[i++] = "windowPtrs=Screen('Windows');";
 	synopsis[i++] = "kind=Screen(windowPtr, 'WindowKind');";
 	synopsis[i++] = "isOffscreen=Screen(windowPtr,'IsOffscreen');";
@@ -198,9 +198,9 @@ void InitializeSynopsis()
 	
 	// Movie and multimedia handling functions:
 	synopsis[i++] = "\n% Movie and multimedia playback functions:";
-	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0]);";
+	synopsis[i++] =  "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
 	synopsis[i++] =  "Screen('CloseMovie', moviePtr);";
-	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0]);";
+	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
  	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";

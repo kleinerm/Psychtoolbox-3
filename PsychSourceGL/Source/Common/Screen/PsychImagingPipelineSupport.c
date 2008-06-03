@@ -45,6 +45,8 @@
 static char textureLookupFragmentShaderSrc[] =
 "\n"
 " \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
 "uniform sampler2DRect Image; \n"
 "varying vec4 unclampedFragColor; \n"
 " \n"
@@ -63,6 +65,9 @@ static char textureLookupFragmentShaderSrc[] =
 // GF6/7 series NVidia hardware can only filter 16bpc floats, not 32bpc floats.
 static char textureBilinearFilterFragmentShaderSrc[] =
 "\n"
+" \n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
 " \n"
 "uniform sampler2DRect Image; \n"
 "varying vec4 unclampedFragColor; \n"
@@ -111,6 +116,9 @@ char textureBilinearFilterVertexShaderSrc[] =
 // Source code for our GLSL anaglyph stereo shader:
 char anaglyphshadersrc[] = 
 "/* Weight vector for conversion from RGB to Luminance, according to NTSC spec. */ \n"
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
 "uniform vec3 ColorToGrayWeights; \n"
 "/* Bias to add to final product - The background color (normally (0,0,0)). */ \n"
 "uniform vec3 ChannelBias; \n"
@@ -140,6 +148,9 @@ char anaglyphshadersrc[] =
 "}\n\0";
 
 char passthroughshadersrc[] =
+" \n"
+"#extension GL_ARB_texture_rectangle : enable \n"
+" \n"
 "uniform sampler2DRect Image1; \n"
 "\n"
 "void main()\n"

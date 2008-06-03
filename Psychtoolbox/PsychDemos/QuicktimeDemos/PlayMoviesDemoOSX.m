@@ -92,7 +92,7 @@ try
                 % time and sound.
                 % tex either the texture handle or zero if no new frame is
                 % ready yet. pts = Presentation timestamp in seconds.
-                [tex pts] = Screen('GetMovieImage', win, movie, 1);
+                [tex pts] = Screen('GetMovieImage', win, movie, 1, [], [], 1);
 
                 % Valid texture returned?
                 if tex<=0

@@ -18,6 +18,8 @@
  *
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform sampler2DRect Image;
 
 /* Declare external function for luminance color conversion: */

@@ -15,6 +15,8 @@
 // (w)2006 by Mario Kleiner.
 */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform float KernelHalfWidthX;
 uniform float KernelHalfWidthY;
 uniform sampler2DRect Image;

@@ -34,7 +34,7 @@
 void* PsychAsyncCreateMovie(void* mi);
 #endif
 
-static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0]);";
+static char useString[] = "[ moviePtr [duration] [fps] [width] [height] [count]]=Screen('OpenMovie', windowPtr, moviefile [, async=0] [, preloadSecs=1]);";
 static char synopsisString[] = 
 	"Try to open the multimediafile 'moviefile' for playback in onscreen window 'windowPtr' and "
         "return a handle 'moviePtr' on success. On OS-X and Windows, media files are handled by use of "
@@ -52,7 +52,13 @@ static char synopsisString[] =
         "After some sufficient time has passed, you can call the 'OpenMovie' function again, this time with "
         "the 'async' flag set to zero. Now the function will return a valid movie handle for playback. Background "
         "loading of movies is currently only supported on MacOS-X, and it does only work well with movies that "
-        "don't have sound. "
+        "don't have sound.\n"
+		"'preloadSecs' This optional parameter allows to ask Screen() to load at least the first 'preloadSecs' "
+		"seconds of the movie into system RAM before the function returns. By default, the first second of the "
+		"movie file is loaded into RAM. This potentially allows for more stutter free playback, but your mileage "
+		"may vary, depending on movie format, storage medium and lots of other factors. In most cases, the default "
+		"setting is perfectly sufficient. The special setting -1 means: Load whole movie into RAM. Caution: Long "
+		"movies may cause your system to run low on memory and have disastrous effects on playback performance!\n"
         "CAUTION: Some movie files, e.g., MPEG-1 movies sometimes cause Matlab to hang. This seems to be "
         "a bad interaction between parts of Apples Quicktime toolkit and Matlabs Java Virtual Machine (JVM). "
         "If you experience stability problems, please start Matlab with JVM and desktop disabled, e.g., "
@@ -66,6 +72,7 @@ static struct asyncopenmovieinfo {
     char* moviename;
     PsychWindowRecordType windowRecord;
     int moviehandle;
+	double preloadSecs;
 #if PSYCH_SYSTEM == PSYCH_OSX
     pthread_t pid;
 #endif
@@ -73,7 +80,7 @@ static struct asyncopenmovieinfo {
 
 PsychError SCREENOpenMovie(void) 
 {
-        PsychWindowRecordType			*windowRecord;
+        PsychWindowRecordType					*windowRecord;
         char                                    *moviefile;
         int                                     moviehandle = -1;
         int                                     framecount;
@@ -83,6 +90,7 @@ PsychError SCREENOpenMovie(void)
         int                                     height;
         int                                     asyncFlag = 0;
         static Boolean                          firstTime = TRUE;
+		double									preloadSecs = 1;
 #if PSYCH_SYSTEM == PSYCH_OSX
         struct sched_param sp;
         int rc;
@@ -97,7 +105,7 @@ PsychError SCREENOpenMovie(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
 
-        PsychErrorExit(PsychCapNumInputArgs(3));            // Max. 3 input args.
+        PsychErrorExit(PsychCapNumInputArgs(4));            // Max. 4 input args.
         PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
         PsychErrorExit(PsychCapNumOutputArgs(6));           // Max. 6 output args.
         
@@ -114,14 +122,17 @@ PsychError SCREENOpenMovie(void)
 
         // Get the (optional) asyncFlag:
         PsychCopyInIntegerArg(3, FALSE, &asyncFlag);
-        
+
+		PsychCopyInDoubleArg(4, FALSE, &preloadSecs);
+		if (preloadSecs < 0 && preloadSecs!= -1) PsychErrorExitMsg(PsychError_user, "OpenMovie called with invalid (negative, but not equal -1) 'preloadSecs' argument!");
+
         // Asynchronous Open operation in progress or requested?
         if ((asyncmovieinfo.asyncstate == 0) && (asyncFlag == 0)) {
             // No. We should just synchronously open the movie:
 
             // Try to open the named 'moviefile' and create & initialize a corresponding movie object.
             // A MATLAB handle to the movie object is returned upon successfull operation.
-            PsychCreateMovie(windowRecord, moviefile, &moviehandle);
+            PsychCreateMovie(windowRecord, moviefile, preloadSecs, &moviehandle);
         }
         else {
             # if PSYCH_SYSTEM == PSYCH_OSX
@@ -131,6 +142,7 @@ PsychError SCREENOpenMovie(void)
                     // Fill all information needed for opening the movie into the info struct:
                     asyncmovieinfo.asyncstate = 1; // Mark state as "Operation in progress"
                     asyncmovieinfo.moviename = strdup(moviefile);
+					asyncmovieinfo.preloadSecs = preloadSecs;
                     memcpy(&asyncmovieinfo.windowRecord, windowRecord, sizeof(PsychWindowRecordType));
                     asyncmovieinfo.moviehandle = -1;
 
@@ -256,8 +268,3 @@ PsychError SCREENOpenMovie(void)
 	// Ready!
         return(PsychError_none);
 }
-
-
-
-
-

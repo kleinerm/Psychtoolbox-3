@@ -24,17 +24,22 @@ Psychtoolbox3/Source/Common/SCREENGetMovieImage.c
 
 #include "Screen.h"
 
-static char useString[] = "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage=1], [fortimeindex], [specialFlags = 0]);";
+static char useString[] = "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage=1], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
 static char synopsisString[] = 
 "Try to fetch a new texture image from movie object 'moviePtr' for visual playback/display in onscreen window 'windowPtr' and "
 "return a texture-handle 'texturePtr' on successfull completion. 'waitForImage' If set to 1 (default), the function will wait "
 "until the image becomes available. If set to zero, the function will just poll for a new image. If none is ready, it will return "
-"a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode. \n"
+"a texturePtr of zero, or -1 if none will become ready because movie has reached its end and is not in loop mode. "
+"On MS-Windows, polling mode is not possible, the function always waits for a new image.\n"
 "'fortimeindex' Don't request the next image, but the image closest to time 'fortimeindex' in seconds. The (optional) return "
 "value 'timeindex' contains the exact time when the returned image should be displayed wrt. to the start of the movie - a presentation timestamp. \n"
 "'specialFlags' (optional) encodes special requirements for the returned texture. A setting of 2 will request that the texture "
 "is prepared for drawing it with highest possible precision. See explanation of 'specialFlags' == 2 in Screen('MakeTexture') "
 "for details. \n"
+"'specialFlags2' (optional) More special flags: A setting of 1 tells the function to not return presentation timestamps in 'timeindex'. "
+"This means that 'timeindex' will be always returned as zero and that the built-in detector for skipped frames is disabled as well. This "
+"may (or may not) save a little bit of computation time during playback of very demanding movies on lower end systems, your mileage will "
+"vary, depending on many factors.\n"
 "On OS-X and Windows, media files are handled by use of Apples Quicktime-7 API. On other platforms, the playback engine may be different "
 "from Quicktime.";
 static char seeAlsoString[] = "CloseMovie PlayMovie GetMovieImage GetMovieTimeIndex SetMovieTimeIndex";
@@ -50,12 +55,13 @@ PsychError SCREENGetMovieImage(void)
     double                      presentation_timestamp = 0;
     int							rc=0;
     int							specialFlags = 0;
+	int							specialFlags2 = 0;
 	
     // All sub functions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(5));            // Max. 4 input args.
+    PsychErrorExit(PsychCapNumInputArgs(6));            // Max. 6 input args.
     PsychErrorExit(PsychRequireNumInputArgs(2));        // Min. 2 input args required.
     PsychErrorExit(PsychCapNumOutputArgs(2));           // Max. 2 output args.
     
@@ -83,6 +89,9 @@ PsychError SCREENGetMovieImage(void)
     
     // Get the optional specialFlags flag:
     PsychCopyInIntegerArg(5, FALSE, &specialFlags);
+
+    // Get the optional specialFlags2 flag:
+    PsychCopyInIntegerArg(6, FALSE, &specialFlags2);
 
     while (rc==0) {
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
@@ -136,7 +145,7 @@ PsychError SCREENGetMovieImage(void)
 	PsychAssignParentWindow(textureRecord, windowRecord);
 
     // Try to fetch an image from the movie object and return it as texture:
-    PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, &presentation_timestamp);
+    PsychGetTextureFromMovie(windowRecord, moviehandle, FALSE, requestedTimeIndex, textureRecord, ((specialFlags2 & 1) ? NULL : &presentation_timestamp));
 
 	// Assign GLSL filter-/lookup-shaders if needed: usefloatformat is always == 0 as
 	// our current movie engine implementations only return 8 bpc fixed textures.

@@ -27,7 +27,7 @@
 
 void PsychMovieInit(void);
 int  PsychGetMovieCount(void);
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle);
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle);
 void PsychGetMovieInfos(int moviehandle, int* width, int* height, int* framecount, double* durationsecs, double* framerate, int* nrdroppedframes);
 void PsychDeleteMovie(int moviehandle);
 void PsychDeleteAllMovies(void);

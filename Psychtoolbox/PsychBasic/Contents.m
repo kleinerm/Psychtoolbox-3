@@ -18,6 +18,7 @@
 %     GetChar              - Wait for keyboard character and return it.
 %     GetPID               - Get the process ID of the MATLAB process.
 %     GetMouse             - Get mouse position. 
+%     GetMouseWheel        - Get mouse wheel position delta on a wheel mouse. OS X only for now.
 %     GetSecs              - Time since startup with high precision. 
 %     GetSecsTick          - Duration of one tick of the GetSecs clock.
 %     GetTicks             - Number of 60.15 Hz ticks since startup. 

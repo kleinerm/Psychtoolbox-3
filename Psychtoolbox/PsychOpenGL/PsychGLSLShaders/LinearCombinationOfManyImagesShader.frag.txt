@@ -9,6 +9,8 @@
  * (c) 2007 by Mario Kleiner, licensed to you under GPLv2 or any later version.
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform sampler2DRect Image[gl_MaxTextureImageUnits];
 uniform float ImageWeight[gl_MaxTextureImageUnits];
 

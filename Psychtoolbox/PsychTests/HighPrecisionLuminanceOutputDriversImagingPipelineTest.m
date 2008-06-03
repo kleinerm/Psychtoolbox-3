@@ -56,19 +56,22 @@ function HighPrecisionLuminanceOutputDriversImagingPipelineTest(whichDriver, whi
 % is the fast driver, as it doesn't need any lookup tables.
 % 
 % You should provide the whichDriver.btrr BTRR ratio when testing this
-% driver.
+% driver. If you omit it, it will be loaded from the configuration file in
+% the Psychtoolbox configuration directory.
 %
-% * 'VideoSwitcherLut': Test the LUT based driver for the VideoSwitcher
-% video attenuator. This simple driver computes the Blue channel value by
+% * 'VideoSwitcherCalibrated': Test the LUT based driver for the VideoSwitcher
+% video attenuator. This driver computes the Blue channel value by
 % searching for the given luminance value in a 256 entry lookup table, then
 % uses a closed-form formula to compute the Red channel drive value from
-% the luminance and the looked-up blue channel. This is slower due to table
+% the luminance and the looked-up blue channel value. This is slower due to table
 % lookups and requires more involved calibration procedures to build a
 % lookup table, but it is also potentially more accurate.
 %
-%
-%
-% 
+% You should provide the whichDriver.btrr BTRR ratio when testing this
+% driver, as well as the 257 slot whichDriver.lut lookup table for blue
+% channel to measured luminance mapping. See help PsychVideoSwitcher for
+% more info. If you omit these parameters, a default BTRR and LUT will be
+% loaded from the Psychtoolbox configuration subdirectory.
 %
 % Optional parameters:
 %
@@ -273,6 +276,11 @@ switch (whichDriver)
         % Select simple VideoSwitcher output formatter:
         PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput', driverBTRR);
         
+        if isempty(driverBTRR)
+            % Fetch default from file:
+            driverBTRR = PsychVideoSwitcher('GetDefaultConfig', whichScreen);
+        end
+        
         % Build test image:
         theInImage = reshape(linspace(0, 1, 2^16), 256, 256);
         
@@ -280,6 +288,30 @@ switch (whichDriver)
         theRefImage = uint8(zeros(256, 256, 4));
         theRefImage(:,:,1:3) = PsychVideoSwitcher('MapLuminanceToRGB', theInImage, driverBTRR, 0);
         plotchannel = [1,0,1,0];
+
+    case {'VideoSwitcherCalibrated'}
+
+        if isempty(driverBTRR) || isempty(driverLUT)
+            [mydriverBTRR, mydriverLUT] = PsychVideoSwitcher('GetDefaultConfig', whichScreen);
+            if isempty(driverBTRR)
+                driverBTRR = mydriverBTRR;
+            end
+            
+            if isempty(driverLUT)
+                driverLUT = mydriverLUT;
+            end
+        end
+        
+        % Select calibrated VideoSwitcher output formatter:
+        PsychImaging('AddTask', 'General', 'EnableVideoSwitcherCalibratedLuminanceOutput', driverBTRR, driverLUT);
+        
+        % Build test image:
+        theInImage = reshape(linspace(0, 1, 2^16), 256, 256);
+        
+        % Build reference image:
+        theRefImage = uint8(zeros(256, 256, 4));
+        theRefImage(:,:,1:3) = PsychVideoSwitcher('MapLuminanceToRGBCalibrated', theInImage, driverBTRR, driverLUT, 0);
+        plotchannel = [1,0,1,1];
 
     otherwise
         error('Unknown drivername provided. Not supported! Typo?!?');
@@ -298,6 +330,7 @@ window = PsychImaging('OpenWindow', whichScreen, 0);
 winfo = Screen('GetWindowInfo', window);
 if ~bitand(winfo.ImagingMode, kPsychNeed32BPCFloat)
     Screen('CloseAll');
+    RestoreCluts;
     error('Onscreen window not configured for 32 bpc float drawing! This should not happen and is a bug in PsychImaging.m setup code for this formatter!!');
 end
 
@@ -340,6 +373,7 @@ Screen('Flip', window, vbl + 2);
 
 % Done. Close everything down:
 Screen('CloseAll');
+RestoreCluts;
 
 % Comparisons...
 
@@ -437,6 +471,32 @@ if (mdr>0 || mdg>0 || mdb>0 || mda>0) || (plotdiffs > 1)
             legend('High-Byte', 'Low-Byte');
             title('GPU results in raw bytes: (x=Normalized Luminance (Req.) No., y = Byte value)');
 
+        case {'VideoSwitcherCalibrated'}
+            % Test of LUT calibrated VideoSwitcher driver:
+            % This is the (kind of) real value range of the device:
+            driverNSlots = 256 * driverBTRR;
+            
+            % Remap:
+            deconvImage = ((convImage(:, :, 1) + convImage(:, :, 3) * driverBTRR) / (driverBTRR + 1)) / 255 * (driverNSlots - 1);
+            depackImage = ((packedImage(:, :, 1) + packedImage(:, :, 3) * driverBTRR) / (driverBTRR + 1)) / 255 * (driverNSlots - 1);
+            
+            figure;
+            hiconvImage = convImage(:,:,3);
+            loconvImage = convImage(:,:,1);
+            higpu = hiconvImage(:);
+            lowgpu = loconvImage(:);
+            lumi = theInImage(:);
+            j = 1:length(higpu);
+            plot(lumi, higpu, '-', lumi, lowgpu, '--');
+            legend('High-Byte', 'Low-Byte');
+            title('GPU results in raw bytes: (x=Normalized Luminance (Req.) No., y = Byte value)');
+            
+            % Compute average iteration count in shader etc.:
+            meaniterations = mean(mean(convImage(:,:,4)));
+            miniterations = min(min(convImage(:,:,4)));
+            maxiterations = max(max(convImage(:,:,4)));
+            fprintf('Per-Pixel search iterations in conversion shader: Min = %i, Max = %i, Mean = %f.\n', miniterations, maxiterations, meaniterations);
+            
         otherwise
             error('Switch statement in deconversion part does not recognize driver name! Implementation bug!?!');
     end

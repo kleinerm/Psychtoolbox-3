@@ -2,6 +2,8 @@
  *
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform float minintensity;
 uniform float maxintensity;
 uniform float minratio;

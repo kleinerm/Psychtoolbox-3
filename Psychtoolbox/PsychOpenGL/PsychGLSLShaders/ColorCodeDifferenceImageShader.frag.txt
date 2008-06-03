@@ -2,6 +2,8 @@
  * rendering of the difference image in a color coded fashion.
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform sampler2DRect Image1;
 uniform sampler2DRect Image2;
 uniform float Delta;

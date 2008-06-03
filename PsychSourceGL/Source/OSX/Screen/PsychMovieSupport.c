@@ -56,6 +56,7 @@ typedef struct {
     char* moviename;
     PsychWindowRecordType windowRecord;
     int moviehandle;
+	double preloadSecs;	
 #if PSYCH_SYSTEM == PSYCH_OSX
     pthread_t pid;
 #endif
@@ -180,7 +181,7 @@ void* PsychAsyncCreateMovie(void* mi)
     // MK: Do we need this? Defaults seem to be ok... EnterMoviesOnThread(<#UInt32 inFlags#>);
 
     // Execute our normal OpenMovie function: This does the hard work:
-    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, &mymoviehandle);
+    PsychCreateMovie(&(movieinfo->windowRecord), movieinfo->moviename, movieinfo->preloadSecs, &mymoviehandle);
     
 	// Disable QT subsystem for this thread:
 	// ExitMoviesOnThread();
@@ -206,9 +207,10 @@ int PsychGetMovieCount(void) {
  *
  *      win = Pointer to window record of associated onscreen window.
  *      moviename = char* with the name of the moviefile.
+ *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
 {
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
@@ -392,8 +394,10 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
 		}
     }
     
-    // Preload first second of movie into system RAM for faster playback:
-    LoadMovieIntoRam(theMovie, 0, 1*GetMovieTimeScale(theMovie),  keepInRam);
+    // Preload preloadSecs seconds of movie into system RAM for faster playback:
+	if (preloadSecs > 0) LoadMovieIntoRam(theMovie, 0, ((long) preloadSecs + 0.5) * GetMovieTimeScale(theMovie),  keepInRam);
+	// Special setting - 1 means: Load whole movie into RAM:
+	if (preloadSecs == -1) LoadMovieIntoRam(theMovie, 0, GetMovieDuration(theMovie),  keepInRam);
 
     // We don't preroll: Didn't help for async playback, but leads to failure in
     // manual playback mode: PrerollMovie(theMovie, 0, FloatToFixed(1));
@@ -800,7 +804,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     rate = FixedToFloat(GetMovieRate(theMovie));
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
-    if (rate) {
+    if (rate && presentation_timestamp) {
         // Try to check for dropped frames in playback mode:
 
         // Expected delta between successive presentation timestamps:

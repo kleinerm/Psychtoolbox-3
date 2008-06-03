@@ -20,6 +20,8 @@
  *
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
 /* The input Image - Usually from texture unit 0: */
 uniform sampler2DRect Image;
 

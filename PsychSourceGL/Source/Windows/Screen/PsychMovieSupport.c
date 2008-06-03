@@ -150,9 +150,10 @@ int PsychGetMovieCount(void) {
  *
  *      win = Pointer to window record of associated onscreen window.
  *      moviename = char* with the name of the moviefile.
+ *      preloadSecs = How many seconds of the movie should be preloaded/prefetched into RAM at movie open time?
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
 {
     Movie theMovie = NULL;
     QTVisualContextRef QTMovieContext = NULL;
@@ -357,8 +358,10 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* mo
     
     // printf("GWorld created and assigned...\n"); fflush(NULL);
 
-    // Preload first second of movie into system RAM for faster playback:
-    LoadMovieIntoRam(theMovie, 0, 1*GetMovieTimeScale(theMovie),  keepInRam);
+    // Preload preloadSecs seconds of movie into system RAM for faster playback:
+	if (preloadSecs > 0) LoadMovieIntoRam(theMovie, 0, ((long) preloadSecs + 0.5) * GetMovieTimeScale(theMovie),  keepInRam);
+	// Special setting - 1 means: Load whole movie into RAM:
+	if (preloadSecs == -1) LoadMovieIntoRam(theMovie, 0, GetMovieDuration(theMovie),  keepInRam);
 
     // printf("LoadMovieIntoRAM done..\n"); fflush(NULL);
 
@@ -544,7 +547,11 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     float rate;
     double targetdelta, realdelta, frames;
     int padding;
-   
+    double tbaseline, tnow;
+    int verbose = PsychPrefStateGet_Verbosity();
+    
+    if (verbose > 9) PsychGetAdjustedPrecisionTimerSeconds(&tbaseline);
+    
     if (!PsychIsOnscreenWindow(win)) {
         PsychErrorExitMsg(PsychError_user, "Need onscreen window ptr!!!");
     }
@@ -586,6 +593,11 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         }
     }
     
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After context switch and param check: %lf secs.\n", tnow - tbaseline);
+    }
+
     // Is movie actively playing (automatic async playback, possibly with synced sound)?
     // If so, then we ignore the 'timeindex' parameter, because the automatic playback
     // process determines which frames should be delivered to PTB when. This function will
@@ -641,11 +653,21 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         *presentation_timestamp = (double) myNextTime / (double) GetMovieTimeScale(theMovie);
     }
 
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After presentation_timestamp: %lf secs.\n", tnow - tbaseline);
+    }
+    
     // Allow quicktime visual context task to do its internal bookkeeping and cleanup work:
     if (theMoviecontext) QTVisualContextTask(theMoviecontext);
 
     // Perform decompress-operation:
     if (checkForImage) MoviesTask(theMovie, 0);
+
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After MoviesTask(): %lf secs.\n", tnow - tbaseline);
+    }
     
     // Should we just check for new image? If so, just return availability status:
     if (checkForImage) {
@@ -677,6 +699,11 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
             // No new frame available yet:
             return(false);
         }
+    }
+
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After check for new image: %lf secs.\n", tnow - tbaseline);
     }
     
     if (!PSYCH_USE_QT_GWORLDS) {
@@ -762,8 +789,18 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 	// our texture cache, if any, so it gets possibly reused.
 	out_texture->textureNumber = movieRecordBANK[moviehandle].cached_texture;
 
-        PsychCreateTexture(out_texture);
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After GWorld() lock: %lf secs.\n", tnow - tbaseline);
+    }
+        
+    PsychCreateTexture(out_texture);
 
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): After PsychCreateTexture(): %lf secs.\n", tnow - tbaseline);
+    }
+        
 	// After PsychCreateTexture() the cached texture object from our cache is used
 	// and no longer available for recycling. We mark the cache as empty:
 	// It will be filled with a new textureid for recycling if a texture gets
@@ -784,7 +821,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     rate = FixedToFloat(GetMovieRate(theMovie));
     
     // Detection of dropped frames: This is a heuristic. We'll see how well it works out...
-    if (rate) {
+    if (rate && presentation_timestamp) {
         // Try to check for dropped frames in playback mode:
 
         // Expected delta between successive presentation timestamps:
@@ -825,6 +862,11 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         }
     }
 
+    if (verbose > 9) {
+        PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        printf("PTB-DEBUG:PsychGetTextureFromMovie(): At end of routine: %lf secs.\n\n", tnow - tbaseline);
+    }
+    
     return(TRUE);
 }
 

@@ -44,6 +44,7 @@
 %    PackColorImage          - Pack three color planes into one m by n by three matrix.
 %    PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
 %    RemoveSVNPaths          - Removes .svn folders from the path.
+%    RestoreCluts            - Restore original CLUT's for all monitors from backups made during LoadIdentityClut()
 %    sca                     - Shorthand for Screen('CloseAll').  Using this is a good way to make your code obscure.
 %    ScreenDacBits           - What is precision of the graphics boardDACs. Currently returns 8 always.
 %    SetResolution           - Change display resolution, refresh rate and color depths to requested values.

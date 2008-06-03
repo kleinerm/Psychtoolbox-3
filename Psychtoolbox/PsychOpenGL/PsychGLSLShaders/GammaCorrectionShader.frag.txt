@@ -8,6 +8,8 @@
  * (w)2008 by Mario Kleiner.
 */
 
+#extension GL_ARB_texture_rectangle : enable
+
 uniform sampler2DRect Image;
 
 vec4 icmTransformColor(vec4 incolor);

@@ -54,6 +54,7 @@ void						PsychCaptureScreen(int screenNumber);
 void						PsychReleaseScreen(int screenNumber);
 boolean						PsychIsScreenCaptured(int screenNumber);
 int							PsychGetNumDisplays(void);
+int							PsychGetNumPhysicalDisplays(void);	// OS/X only!
 int							PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** heights, long** hz, long** bpp);
 void						PsychGetScreenDepths(int screenNumber, PsychDepthType *depths);
 boolean						PsychCheckVideoSettings(PsychScreenSettingsType *setting);

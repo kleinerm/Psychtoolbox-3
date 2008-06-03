@@ -49,8 +49,8 @@ try
     % 128) background and support for 16- or 32 bpc floating point framebuffers.
     % This window shall drive a Bits++ system in Mono++ or Color++ mode.
     PsychImaging('PrepareConfiguration');
-    % Won't need this on NVidia Geforce 8000 or Radeon HD2000 and later: PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
     PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
+
     switch outputdevice
         case {'Mono++'}
             if overlay
@@ -68,28 +68,48 @@ try
             overlay = 0;
 
         case {'VideoSwitcher'}
-            PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput', 128);
-
+            PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput', [], 1);
+            
             % Switch the device to high precision luminance mode:
             PsychVideoSwitcher('SwitchMode', screenNumber, 1);
             overlay = 0;
+
+        case {'VideoSwitcherCalibrated'}
+            PsychImaging('AddTask', 'General', 'EnableVideoSwitcherCalibratedLuminanceOutput', [], [], 1);
+            
+            % Switch the device to high precision luminance mode:
+            PsychVideoSwitcher('SwitchMode', screenNumber, 1);
+            overlay = 0;
+            
+        case {'PseudoGray'}
+            PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
+            overlay = 0;
+            
         case {'None'}
+            PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
+            overlay = 0;
+
+        case {'NoneNoGamma'}
+            PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
             overlay = 0;
 
         otherwise
             error('Unknown "outputdevice" provided.');
     end
     
-    % Choose method of color correction: 'SimpleGamma' is simple gamma
-    % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
-    PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
-
+    if ~strcmp(outputdevice, 'VideoSwitcherCalibrated') && ~strcmp(outputdevice, 'NoneNoGamma')
+        % Choose method of color correction: 'SimpleGamma' is simple gamma
+        % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
+        PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
+        doTheGamma =1;
+    else
+        doTheGamma = 0;
+        gamma = 1;
+    end
+    
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
     [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5);
-
-    Screen('ColorRange', w, 1, 0);
-    Screen('FillRect', w, 0.5);
-    
+        
     if overlay
         % Get overlay window handle:
         wo = BitsPlusPlus('GetOverlayWindow', w);
@@ -97,16 +117,22 @@ try
         wo = 0;
     end
     
-    % FIXME: Integrate this into PsychImaging!! Need identity gamma table in gfx card:
-    LoadIdentityClut(w);
-
+    % Calibrated conversion driver for VideoSwitcher in use?
+    if strcmp(outputdevice, 'VideoSwitcherCalibrated')
+        % Tell the driver what luminance the background has. This allows
+        % for some quite significant speedups in stimulus conversion:
+        PsychVideoSwitcher('SetBackgroundLuminanceHint', w, 0.5);
+    end
+    
     %PsychColorCorrection('SetColorClampingRange', w, 0, 1);
     
-    % We set initial encoding gamma to correct for a display with a
-    % decoding gamma of 2.0 -- A good tradeoff, given most displays are
-    % somewhere between 1.8 and 2.2:
-    gamma = 1 / 2.0;
-    PsychColorCorrection('SetEncodingGamma', w, gamma);
+    if doTheGamma
+        % We set initial encoding gamma to correct for a display with a
+        % decoding gamma of 2.0 -- A good tradeoff, given most displays are
+        % somewhere between 1.8 and 2.2:
+        gamma = 1 / 2.0;
+        PsychColorCorrection('SetEncodingGamma', w, gamma);
+    end
     
     % From here on, all color values should be specified in the range 0.0
     % to 1.0 for displayable luminance values. Values outside that range
@@ -194,12 +220,12 @@ try
             end
 
             % Change of encoding gamma?
-            if keycode(GammaIncrease)
+            if keycode(GammaIncrease) & doTheGamma
                 gamma = min(gamma+0.001, 1.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
             
-            if keycode(GammaDecrease)
+            if keycode(GammaDecrease) & doTheGamma
                 gamma = max(gamma-0.001, 0.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
@@ -220,7 +246,7 @@ try
         end
 
         txt0= 'At startup:\ngrating = sin(f*cos(angle)*x + f*sin(angle)*y);         % Compute luminance grating matrix in Matlab.\n';
-        txt1= 'tex = Screen(''MakeTexture'', win, grating, [], [], 2); % Convert it into a floating point texture.\n';
+        txt1= 'tex = Screen(''MakeTexture'', win, grating, [], [], 2); % Convert it into a 32bpc floating point texture.\n';
         txt2= 'Screen(''BlendFunction'', win, GL_SRC_ALPHA, GL_ONE);   % Enable additive alpha-blending.\n\nIn Display loop:\n\n';
         txt3= 'Screen(''DrawTexture'', win, tex, [], [], [], [], 0.5); % Draw static grating at center of screen.\n';
         txt4 = sprintf('Screen(''DrawTexture'', win, tex, [], [%i %i %i %i], %f, [], %f);\n', dstRect(1), dstRect(2), dstRect(3), dstRect(4), i, inc);
@@ -237,10 +263,27 @@ try
         end
         
         framecount = framecount + 1;
+        
+        % For the fun of it: Set a specific scanline to send a trigger
+        % signal for the VideoSwitcher. This does nothing if the driver for
+        % VideoSwitcher is not selected:
+        PsychVideoSwitcher('SetTrigger', w, mod(framecount, height));
+
         Screen('Flip', w);
     end
     
-    avgfps = framecount / (GetSecs - tstart)
+    avgfps = framecount / (GetSecs - tstart);
+    fprintf('Average redraw rate in demo was %f Hz.\n', avgfps);
+    
+    % Again, just to test conversion speed:
+    nmaxbench = 300;
+    tstart = Screen('Flip', w);
+    for i=1:nmaxbench
+        Screen('Flip', w, 0, 2, 2);
+    end
+    tend = Screen('Flip', w);
+    fprintf('Average update rate in pipeline was %f Hz.\n', nmaxbench / (tend - tstart));
+    
     
     % We're done: Close all windows and textures:
     Screen('CloseAll');    
@@ -255,3 +298,8 @@ end %try..catch..
 if ~isempty(findstr(outputdevice, 'VideoSwitcher'))
     PsychVideoSwitcher('SwitchMode', screenNumber, 0);
 end
+
+% Restore gfx gammatables if needed:
+RestoreCluts;
+
+return;

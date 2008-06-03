@@ -291,6 +291,11 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
     % the old and trouble-free one:
     oldTextRenderer = Screen('Preference', 'TextRenderer', 0);
     
+    % Set the background clear color via old fullscreen 'FillRect' trick,
+    % followed by a flip:
+    Screen('FillRect', windowPtr, clearcolor);
+    Screen('Flip', win);
+    
     % We are online:
     online = 1;
     return;

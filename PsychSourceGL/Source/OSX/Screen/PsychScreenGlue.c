@@ -58,8 +58,9 @@ static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];   
 static boolean				displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
 static boolean				displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
-static CGDisplayCount 		numDisplays;
+static CGDisplayCount 		numDisplays, numPhysicalDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
+static CGDirectDisplayID 	displayOnlineCGIDs[kPsychMaxPossibleDisplays];
 
 // List of service connect handles for connecting to the kernel support driver (if any):
 static int					numKernelDrivers = 0;
@@ -120,9 +121,12 @@ void InitCGDisplayIDList(void)
     // Currently we accept system failure in case of user switching on/off displays during a session...
     // error = CGGetOnlineDisplayList(kPsychMaxPossibleDisplays, displayCGIDs, &numDisplays);
     error = CGGetActiveDisplayList(kPsychMaxPossibleDisplays, displayCGIDs, &numDisplays);
-    if(error)
-        PsychErrorExitMsg(PsychError_internal, "CGGetActiveDisplayList failed to enumerate displays");
+    if(error) PsychErrorExitMsg(PsychError_internal, "CGGetActiveDisplayList failed to enumerate displays");
     
+	// Also enumerate physical displays:
+    error = CGGetOnlineDisplayList(kPsychMaxPossibleDisplays, displayOnlineCGIDs, &numPhysicalDisplays);
+    if(error) PsychErrorExitMsg(PsychError_internal, "CGGetOnlineDisplayList failed to enumerate displays");
+
     // TESTCODE:
     if (false) {
         unsigned int testvals[kPsychMaxPossibleDisplays*100];    
@@ -143,9 +147,22 @@ void InitCGDisplayIDList(void)
 
 void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int screenNumber)
 {
-    if(screenNumber>=numDisplays)
-        PsychErrorExit(PsychError_invalidScumber);
-    // MK: We return the id of the primary display of the hardware-mirror set to which
+    if(screenNumber>= (int) numDisplays) PsychErrorExit(PsychError_invalidScumber);
+	
+	if (screenNumber < 0) {
+		// Special case: Physical displays handle: Put back into positive range and
+		// correct for 1-based external indexing:
+		screenNumber = (-1 * screenNumber) - 1;
+		if (screenNumber > (int) numPhysicalDisplays) PsychErrorExitMsg(PsychError_user, "Invalid physical screenNumber provided! Higher than number of connected physical displays!");
+		
+		// Valid range: Map it:
+		*displayID=displayOnlineCGIDs[screenNumber];
+		
+	}
+	
+    // Standard case: Logical displays:
+	
+	// MK: We return the id of the primary display of the hardware-mirror set to which
     // the display for 'screenNumber' belongs to. This will be the same display on
     // single display setups. On dual-display setups, it will return the ID of the
     // display we are really syncing in Screen('Flip'). This is important for querying
@@ -234,10 +251,15 @@ boolean PsychIsScreenCaptured(screenNumber)
     PsychGetNumDisplays()
     Get the number of video displays connected to the system.
 */
-
 int PsychGetNumDisplays(void)
 {
     return((int)numDisplays);
+}
+
+/* This is only defined on OS/X for now: */
+int PsychGetNumPhysicalDisplays(void)
+{
+    return((int) numPhysicalDisplays);
 }
 
 void PsychGetScreenDepths(int screenNumber, PsychDepthType *depths)

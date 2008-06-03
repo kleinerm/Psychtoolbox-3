@@ -7,6 +7,14 @@ function oldClut = LoadIdentityClut(windowPtr, loadOnNextFlip)
 % the next vertical retrace.
 %
 % The routine returns the old clut in 'oldClut'.
+%
+
+% History:
+% ??/??/??   mk  Written.
+% 05/31/08   mk  Add code to save backup copy of LUT's for later restore.
+
+global ptb_original_gfx_cluts;
+
 
 if nargin > 2 || nargin < 1
     error('Invalid number of arguments to LoadIdentityClut.');
@@ -53,6 +61,23 @@ if gfxhwtype == 1
     % This works on OS/X 10.4.9 on Intel MacBookPro with ATI Mobility
     % Radeon X1600: We assume this is the correct setup for ATI hardware:
     oldClut = Screen('LoadNormalizedGammaTable', windowPtr, ((1/256:1/256:1)' * ones(1, 3)), loadOnNextFlip);
+end
+
+% Store backup copies of clut's for later restoration by RestoreCluts()
+screenid = Screen('WindowScreenNumber', windowPtr);
+
+% Create global clut backup cell array if it does not exist yet:
+if isempty(ptb_original_gfx_cluts)
+    % Create 10 slots for out up to 10 screens:
+    ptb_original_gfx_cluts = cell(10,1);
+end
+
+% Do we have already a backed up original clut for 'screenid'?
+% If so, we don't store this clut, as an earlier invocation of a clut
+% manipulation command will have stored the really real original lut:
+if isempty(ptb_original_gfx_cluts{screenid + 1})
+    % Nope. Store backup:
+    ptb_original_gfx_cluts{screenid + 1} = oldClut;
 end
 
 return;

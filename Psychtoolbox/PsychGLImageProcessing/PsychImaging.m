@@ -135,6 +135,24 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
 %
 %
+% * 'NormalizedHighresColorRange' Ask PTB to use a normalized range of
+%   color and luminance intensity levels in the interval [0; 1], ie. values
+%   between zero and one for minimum and maximum intensity. Also ask for
+%   unclamped colors -- intermediate results are allowed to take on
+%   arbitrary values, e.g., also negative values. All Screen() 2D drawing
+%   commands should operate at maximum color/luminance precision.
+%
+%   This is just a convenience shortcut for Screen('ColorRange', win, 1, 0);
+%   with the added benefit of allowing to specify the background clear
+%   color in normalized 0-1 range as well. This command is implied by use
+%   of any of the high precision display device drivers (for attenuators,
+%   Bits+ box etc.). It is only needed if you want to create the same
+%   visual results on a 8 bit standard framebuffer without needing to
+%   change your code.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
+%
+%
 % * 'DisplayColorCorrection' Select a method for color correction to apply to
 %   stimuli before output conversion and display. You have to specify a
 %   color correction method 'methodname' to apply as parameter, see "help
@@ -160,6 +178,21 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   view channels - or a single monoscopic display.
 %
 %
+% * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
+%   rendering of up to 1786 different levels of gray on a standard - but
+%   well calibrated - color monitor and 8 bit graphics card. This is done
+%   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
+%   Selecting this mode implies use of 32 bit floating point
+%   framebuffers, unless you specify use of a 16 bit floating point
+%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
+%   will not quite be able to use the full 10.8 bit output precision, but
+%   only approximately 10 bits. The expected range of luminance values is
+%   between 0 and 1. See "help CreatePseudoGrayLUT" for further
+%   explanation.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
+%
+%
 % * 'EnableGenericHighPrecisionLuminanceOutput'
 %   Setup Psychtoolbox for conversion of high precision luminance images
 %   into a format suitable for special high precision luminance display
@@ -183,13 +216,14 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   options.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput' [, btrr] [, trigger]);
+%
 %   - The optional 'btrr' parameter is the Blue-To-Red-Ratio to use. If the
 %   parameter is left out, the btrr value will be read from a global
 %   configuration file.
 %
 %   - The optional 'trigger' parameter can be zero for "No trigger", or 1
 %   for "Use trigger as configured". By default, trigger is off (==0).
-%   enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
+%   Enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
 %   configure when and how a trigger signal should be emitted. Trigger
 %   signals are simply specific pixel patterns in the green output channel.
 %   That channel is recognized by the VideoSwitcher as a trigger signal
@@ -210,6 +244,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   options.
 %
 %   Usage: PsychImaging('AddTask', 'General', 'EnableVideoSwitcherCalibratedLuminanceOutput' [, btrr] [, lut] [, trigger]);
+%
 %   - The optional 'btrr' parameter is the Blue-To-Red-Ratio to use. If the
 %   parameter is left out, the btrr value will be read from a global
 %   configuration file.
@@ -222,7 +257,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   - The optional 'trigger' parameter can be zero for "No trigger", or 1
 %   for "Use trigger as configured". By default, trigger is off (==0).
-%   enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
+%   Enabled, one can use the VideoSwitcher('SetTrigger', ...); function to
 %   configure when and how a trigger signal should be emitted. Trigger
 %   signals are simply specific pixel patterns in the green output channel.
 %   That channel is recognized by the VideoSwitcher as a trigger signal
@@ -463,6 +498,23 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % to your stimulus before stimulus onset.
 %
 %
+% After the window has been opened you can call the following commands any
+% time at runtime:
+%
+% PsychImaging('RestrictProcessingToROI', window, whichChannel, ROI);
+% - Restrict the processing area of viewChannel 'whichChannel' of onscreen
+% window 'window' to the rectangular subarea defined by 'ROI'. See the
+% explanation above for subtask 'RestrictProcessing'. This does exactly the
+% same but allows a dynamic change of the restricted area at any point
+% during your experiment script.
+%
+%
+% PsychImaging('UnrestrictProcessing', window, whichChannel);
+% - Remove a restriction of the processing area of viewChannel
+% 'whichChannel' of onscreen window 'window' to a previously defined
+% subarea. Can be called anytime during your scripts execution.
+%
+%
 % The following commands are only for specialists:
 %
 % imagingMode = PsychImaging('FinalizeConfiguration');
@@ -479,27 +531,11 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % your window properly configured.
 %
 %
-% PsychImaging('PostConfiguration', windowPtr);
+% PsychImaging('PostConfiguration', windowPtr [, clearcolor]);
 % - To be called after opening the onscreen window 'windowPtr'.
 % Performs all the setup work to be done after the window was created.
 %
 %
-
-% HELP TEXT FOR NOT YET IMPLEMENTED FUNCTION:
-% * 'EnablePseudoGrayOutput' Enable the high-performance driver for the
-%   rendering of up to 1768 different levels of gray on a standard - but
-%   well calibrated - color monitor and 8 bit graphics card. This is done
-%   by applying an algorithn known as "Pseudo-Gray" or "Bit stealing".
-%   Selecting this mode implies use of 32 bit floating point
-%   framebuffers, unless you specify use of a 16 bit floating point
-%   framebuffer via 'FloatingPoint16Bit' explicitely. If you do that, you
-%   will not quite be able to use the full 10.8 bit output precision, but
-%   only approximately 10 bits.
-%
-%   Usage: PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
-%
-%
-
 
 % History:
 % 3.6.2007 Written. (MK)
@@ -614,7 +650,13 @@ if strcmp(cmd, 'PostConfiguration')
         error('No "windowPtr" or invalid "windowPtr" or non-onscreen window handle provided!');
     end
 
-    rc = PostConfiguration(reqs, varargin{1});
+    if nargin < 3
+        clearcolor = 0;
+    else
+        clearcolor = varargin{2};
+    end
+    
+    rc = PostConfiguration(reqs, varargin{1}, clearcolor);
 
     configphase_active = 0;
     return;
@@ -747,9 +789,6 @@ if strcmp(cmd, 'OpenWindow')
         end        
     end
 
-    
-    
-    
     % Open onscreen window with proper imagingMode and stereomode set up.
     % We have a couple of special cases here for BrightSide HDR display and
     % the CRS Bits++...
@@ -859,12 +898,134 @@ if strcmp(cmd, 'OpenWindow')
     Screen('Flip', win);
     
     % Window open. Perform imaging pipe postconfiguration:
-    rc = PostConfiguration(reqs, win);
+    PostConfiguration(reqs, win, clearcolor);
 
     rc = win;
     
     % Done.
     configphase_active = 0;
+
+    return;
+end
+
+if strcmp(cmd, 'RestrictProcessingToROI')
+    % Define a ROI in a processing chain/channel to which processing should
+    % be restricted by internal use of glScissor() command. This is a
+    % runtime function. Each invocation will search the given channel if
+    % such a command already exists, then delete it if so. It will prepend
+    % the new command with the new spec in any case, so that at any point
+    % in time exactly one such ROI can be active for a chain:
+
+    if nargin < 4
+        Screen('CloseAll');
+        error('You must provide all parameters for subfunction "RestrictProcessingToROI!"');
+    end
+    
+    % Extract window handle:
+    win = varargin{1};
+    
+    if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
+        Screen('CloseAll');
+        error('Provided window parameter for subfunction "RestrictProcessingToROI!" is not the handle of a valid onscreen window!');
+    end
+    
+    % Extract window information:
+    winfo = Screen('GetWindowInfo', win);
+    
+    % Extract view channel:
+    whichView = varargin{2};
+    
+    % Extract scissor rectangle:
+    scissorrect = varargin{3};
+    
+    if size(scissorrect,1)~=1 || size(scissorrect,2)~=4
+        Screen('CloseAll');
+        error('Command "RestrictProcessingToROI" in channel %s expects a 1-by-4 ROI rectangle to define the ROI, e.g, [left top right bottom]!', whichView);
+    end
+
+    ox = scissorrect(RectLeft);
+    oy = scissorrect(RectTop);
+    w  = RectWidth(scissorrect);
+    h  = RectHeight(scissorrect);
+
+    if mystrcmp(whichView, 'LeftView') || mystrcmp(whichView, 'AllViews')
+        % Need to restrict left view processing:
+        DoRemoveScissorRestriction(win, 'StereoLeftCompositingBlit');
+        Screen('HookFunction', win, 'PrependBuiltin', 'StereoLeftCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+    end
+
+    if mystrcmp(whichView, 'RightView') || mystrcmp(whichView, 'AllViews')
+        % Need to restrict right view processing:
+        DoRemoveScissorRestriction(win, 'StereoRightCompositingBlit');
+        Screen('HookFunction', win, 'PrependBuiltin', 'StereoRightCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+    end
+
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+        % Needed to restrict both views processing and a
+        % compositing mode is active. If both views are restricted
+        % in their output area then it makes sense to restrict the
+        % compositor to the same area. We also restrict the
+        % compositor if that was requested.
+        DoRemoveScissorRestriction(win, 'StereoCompositingBlit');
+        Screen('HookFunction', win, 'PrependBuiltin', 'StereoCompositingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+    end
+
+    if mystrcmp(whichView, 'FinalFormatting')
+        % Need to restrict final formatting blit processing:
+        DoRemoveScissorRestriction(win, 'FinalOutputFormattingBlit');
+        Screen('HookFunction', win, 'PrependBuiltin', 'FinalOutputFormattingBlit', 'Builtin:RestrictToScissorROI', sprintf('%i:%i:%i:%i', ox, oy, w, h));
+    end
+
+    return;
+end
+
+if strcmp(cmd, 'UnrestrictProcessing')
+    % Remove a ROI in a processing chain/channel to which processing should
+    % be restricted by internal use of glScissor() command. This is a
+    % runtime function. Each invocation will search the given channel if
+    % such a command exists, then delete it if so.
+    if nargin < 3
+        Screen('CloseAll');
+        error('You must provide all parameters for subfunction "UnrestrictProcessing!"');
+    end
+    
+    % Extract window handle:
+    win = varargin{1};
+    
+    if ~isscalar(win) || ~isnumeric(win) || Screen('WindowKind', win) ~= 1
+        Screen('CloseAll');
+        error('Provided window parameter for subfunction "UnrestrictProcessing!" is not the handle of a valid onscreen window!');
+    end
+    
+    % Extract window information:
+    winfo = Screen('GetWindowInfo', win);
+    
+    % Extract view channel:
+    whichView = varargin{2};
+    
+    if mystrcmp(whichView, 'LeftView') || mystrcmp(whichView, 'AllViews')
+        % Need to restrict left view processing:
+        DoRemoveScissorRestriction(win, 'StereoLeftCompositingBlit');
+    end
+
+    if mystrcmp(whichView, 'RightView') || mystrcmp(whichView, 'AllViews')
+        % Need to restrict right view processing:
+        DoRemoveScissorRestriction(win, 'StereoRightCompositingBlit');
+    end
+
+    if (mystrcmp(whichView, 'AllViews') || mystrcmp(whichView, 'Compositor')) && winfo.StereoMode > 5
+        % Needed to restrict both views processing and a
+        % compositing mode is active. If both views are restricted
+        % in their output area then it makes sense to restrict the
+        % compositor to the same area. We also restrict the
+        % compositor if that was requested.
+        DoRemoveScissorRestriction(win, 'StereoCompositingBlit');
+    end
+
+    if mystrcmp(whichView, 'FinalFormatting')
+        % Need to restrict final formatting blit processing:
+        DoRemoveScissorRestriction(win, 'FinalOutputFormattingBlit');
+    end
 
     return;
 end
@@ -986,9 +1147,10 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(m
     ptb_outputformatter_icmAware = 0;
 end
 
-if ~isempty(find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput')))
+if ~isempty(find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput'))) || ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+
     % The Luminance LUT based formatter is icm aware - Capable of internal color correction:
     ptb_outputformatter_icmAware = 1;
 
@@ -1020,21 +1182,6 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBits++Color++Output')))
     % The Color++ formatter is icm aware - Capable of internal color
     % correction, but not setup here -- special case: Set flag to zero:
     ptb_outputformatter_icmAware = 0;
-end
-
-if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
-    % Enable output formatter chain:
-    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
-    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
-
-    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
-    % been explicitely requested:
-    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
-        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
-    end
-    
-    % The PseudoGray formatter is not yet icm aware - Incapable of internal color correction!
-    ptb_outputformatter_icmAware = 0;    
 end
 
 % Request for native 10 bit per color component ARGB2101010 framebuffer?
@@ -1116,7 +1263,7 @@ return;
 
 % PostConfiguration is called after the onscreen window is open: Performs
 % actual pipeline setup of the hook chains:
-function rc = PostConfiguration(reqs, win)
+function rc = PostConfiguration(reqs, win, clearcolor)
 global ptb_outputformatter_icmAware;
 global GL;
 
@@ -1125,6 +1272,12 @@ if isempty(GL)
     % GL constants. We do not activate a full 3D rendering context:
     InitializeMatlabOpenGL([], [], 1);
 end
+
+% Identity CLUT in graphics hardware required?
+needsIdentityCLUT = 0;
+
+% 0.0 - 1.0 colorrange without color clamping required?
+needsUnitUnclampedColorRange = 0;
 
 % Number of used slots in left- and right processing chain:
 leftcount = 0;
@@ -1510,7 +1663,7 @@ end
 % conversion.
 icmshader = [];
 icmstring = [];
-icmformatting_downstream = [];
+icmformatting_downstream = 0;
 
 floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
 if ~isempty(floc)
@@ -1584,11 +1737,12 @@ if ~isempty(floc)
 
                 % shMain is the main() routine which needs to get compiled into
                 % a valid shader object:
-                shMain = 'uniform sampler2DRect Image; vec4 icmTransformColor(vec4 incolor); void main(void){gl_FragColor = icmTransformColor(texture2DRect(Image, gl_FragCoord.xy));}';
+                shBody = ['uniform sampler2DRect Image; vec4 icmTransformColor(vec4 incolor); void main(void){gl_FragColor = icmTransformColor(texture2DRect(Image, gl_FragCoord.xy));}'];
+                shMain = sprintf('\n#extension GL_ARB_texture_rectangle : enable \n\n%s', shBody);
                 mainShader = glCreateShader(GL.FRAGMENT_SHADER);
                 glShaderSource(mainShader, shMain);
                 glCompileShader(mainShader);
-                
+
                 % Link together mainShader and icmshader into a GLSL program
                 % object:
                 shader = glCreateProgram;
@@ -1719,31 +1873,41 @@ end
 
 % --- End of Custom color correction for display wanted ---
 
+% --- User code wants to use unclamped, high precision 0-1 range colors? ---
+if ~isempty(find(mystrcmp(reqs, 'NormalizedHighresColorRange')))
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;
+end
+% --- End of setup for unclamped, high precision 0-1 range colors ---
+
+
 
 % --- FROM HERE ON ONLY OUTPUT FORMATTERS, NOTHING ELSE!!! --- %
 
-% --- Final output formatter for Pseudo-Gray processing requested? ---
-if ~isempty(find(mystrcmp(reqs, 'EnablePseudoGrayOutput')))
-    % Load output formatting shader for Pseudo-Gray:
-    pgshader = LoadGLSLProgramFromFiles('PseudoGray_FormattingShader', 1);
-
-    if outputcount > 0
-        % Need a bufferflip command:
-        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
-    end
-    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'PseudoGray output formatting shader', pgshader);
-    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
-    outputcount = outputcount + 1;
-end
-% --- End of output formatter for Pseudo-Gray processing requested? ---
-
 
 % --- Final output formatter for generic LUT based luminance framebuffer requested? ---
+% --- OR Final output formatter for Pseudo-Gray processing requested? ---
 floc = find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput'));
+floc = [floc , find(mystrcmp(reqs, 'EnablePseudoGrayOutput'))];
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
-    % Extract first parameter - This should be the lookup table 'lut' to use:
-    lut = reqs{row, 3};
+    
+    if mystrcmp(reqs{row, 2}, 'EnablePseudoGrayOutput')
+        % PseudoGray mode: We create the lut ourselves via helper function:
+        lut = CreatePseudoGrayLUT;
+
+        % For proper pseudo-gray output the gfx gamma-tables must not be
+        % touched by us!
+        needsIdentityCLUT = 0;
+    else
+        % Generic "attenuator" driver mode:
+
+        % Attenuator-style devices need an identity clut:
+        needsIdentityCLUT = 1;
+
+        % Extract first parameter - This should be the lookup table 'lut' to use:
+        lut = reqs{row, 3};
+    end
     
     if isempty(lut) | ~isnumeric(lut)
         Screen('CloseAll');
@@ -1775,6 +1939,9 @@ if ~isempty(floc)
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
+        
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;
 end
 % --- End of output formatter for generic LUT based luminance framebuffer ---
 
@@ -1865,10 +2032,7 @@ if ~isempty(floc)
                 error('PsychImaging: Lookup table parameter lut for VideoSwitcher output invalid: Must be a vector of double values with 257 elements!');
             end
         end
-        
-        % Convert 'lut' into lookup table texture:
-        pglutid = PsychVideoSwitcher('GetLUTTexture', lut);
-        
+                
         % Load output formatting shader for lut calibrated VideoSwitcher output:
         % 'icmshader' is a handle to a compiled fragment shader, provided by
         % upstream, that implements the display color correction function:
@@ -1879,8 +2043,16 @@ if ~isempty(floc)
         glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
         glUniform1i(glGetUniformLocation(pgshader, 'LUT'), 1);
         glUniform1f(glGetUniformLocation(pgshader, 'btrr'),  btrr);
+
+        % Disable luminance hint color by default by setting it to the
+        % luminance key -1, which shouldn't ever match in a regular
+        % stimulus:
+        glUniform3f(glGetUniformLocation(pgshader, 'BackgroundPixel'), 0, -1, 0);
         glUseProgram(0);    
 
+        % Convert 'lut' into lookup table texture:
+        pglutid = PsychVideoSwitcher('GetLUTTexture', win, lut, btrr, pgshader);
+                
         pgidstring = sprintf('VideoSwitcher calibrated high precision luminance output formatting shader: %s', icmstring);
         pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
     end
@@ -1892,6 +2064,12 @@ if ~isempty(floc)
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
+
+    % VideoSwitcher devices need an identity clut:
+    needsIdentityCLUT = 1;
+    
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;    
 end
 
 % Setup of trigger for VideoSwitcher device needed?
@@ -1907,7 +2085,7 @@ end
     
 % --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
-    % Load output formatting shader for Pseudo-Gray:
+    % Load output formatting shader:
     pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
 
     % Init the shader: Assign mapping of left- and right image:
@@ -1929,6 +2107,12 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
+
+    % ATI framebuffer devices - Does not matter, as internal clut is bypassed anyway:
+    needsIdentityCLUT = 0;
+    
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;
 end
 % --- End of output formatter for native 10 bpc ARGB2101010 framebuffer ---
 
@@ -2038,6 +2222,39 @@ end
 % --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
 
 
+% Do we need identity gamma tables / CLUT's loaded into the graphics card?
+if needsIdentityCLUT
+    % Yes. Use our generic routine which is adaptive to the quirks of
+    % specific gfx-cards:
+    LoadIdentityClut(win);
+end
+
+% Do we need a normalized [0.0 ; 1.0] color range mapping with unclamped
+% high precision colors?
+if needsUnitUnclampedColorRange
+    % Set color range to 0.0 - 1.0: This makes more sense than the normal
+    % 0-255 values. Try to disable color clamping. This may fail and
+    % produce a PTB warning, but if it succeeds then we're better off for
+    % the 2D drawing commands...
+    Screen('ColorRange', win, 1, 0);
+
+    % Set Screen background clear color, in normalized 0.0 - 1.0 range:
+    if (max(clearcolor) > 1) && (all(round(clearcolor) == clearcolor))
+        % Looks like someone's feeding old style 0-255 integer values as
+        % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
+        % range of values:
+        fprintf('\n\nPsychImaging-Warning: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.');
+    end
+
+    % Set the background clear color via old fullscreen 'FillRect' trick,
+    % followed by a flip:
+    Screen('FillRect', win, clearcolor);
+
+    % Double-flip to be on the safe side:
+    Screen('Flip', win);
+    Screen('Flip', win);
+end
+
 % Return reqs array, for whatever reason...
 rc = reqs;
 return;
@@ -2074,4 +2291,17 @@ else
     rcmatch=logical(strcmpi(myhaystack, myneedle));
 end
 
+return;
+
+% Helper: Search chain 'hookname' in window 'win' for scissor restriction
+% slots and remove all of them:
+function DoRemoveScissorRestriction(win, hookname)
+    while 1
+        slot = Screen('HookFunction', win, 'Query', hookname, 'Builtin:RestrictToScissorROI');
+        if slot~=-1
+            Screen('Hookfunction', win, 'Remove', hookname, slot);
+        else
+            break;
+        end
+    end
 return;
