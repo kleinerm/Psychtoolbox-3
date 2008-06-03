@@ -86,7 +86,7 @@ else
             if(nargin<2)
                 status = 2;
             else
-                NetStationPCHostName = varargin{2};
+                NetStationHostName = varargin{2};
                 if (~isempty(NSIDENTIFIER)) && (NSIDENTIFIER > 0)
                     send(NSIDENTIFIER,'X');
                     rep=receive(NSIDENTIFIER,1); %#ok<NASGU>
@@ -97,13 +97,14 @@ else
                 if nargin > 2
                     port = varargin{3};
                 end
-                c = pnet( 'tcpconnect', NetStationPCHostName, port );
+                c = pnet( 'tcpconnect', NetStationHostName, port )
                 if(c < 0)
                     status = 3;
                 else
                     NSIDENTIFIER = c;
                     NSRECORDING=0;
-                    send(NSIDENTIFIER,'QMAC-');
+                    ECCType='QMAC-';
+                    send(NSIDENTIFIER,ECCType);
                     rep=receive(NSIDENTIFIER,1);
                     switch char(rep)
                         case 'F'
@@ -164,9 +165,7 @@ else
                     status=0;
                     n=n+1;
                 end
-                if n>=100
-                    warning('\nNetStationPC synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df);
-                end
+                if n>=100 warning('\nNetStation synchronization did not succeed within %.1f ms\nSynchronizatoin accuracy is %.1f ms\n',NSSynchLimit,df); end
                 %fprintf('synch: %.1f ms at the %ith attempt\n',df,n-1);
             end
         case 'startrecording'
@@ -215,11 +214,17 @@ else
                 if isnumeric(duration)
                     if duration > 120
                         duration=.001;
+                    else
+                        duration= duration;
                     end
                 end
 
                 karg=nargin-4;
-                keyn=floor(karg/2);
+                if karg >0
+                    keyn=floor(karg/2);
+                else
+                    keyn=0;
+                end
                 send(NSIDENTIFIER,'D',uint16(15+keyn*12),int32(start*1000),uint32(duration*1000),event(1:4),int16(0),uint8(keyn));
                 for k=1:keyn
                     id=[char(varargin{(k-1)*2+5}) '    '];
@@ -276,9 +281,9 @@ switch status
     case 5
         errstr='NS connect: Unknown ECI version';
     case 6
-        errstr='NS event: Unsuccesful';
+        errstr='NS event: Unsuccessful';
     case 7
-        errstr='Unknown NetStation command';
+        errstr='Unknown NetStation command'
     otherwise
         errstr='NS unknown error';
 end
