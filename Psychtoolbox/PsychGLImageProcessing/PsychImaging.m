@@ -1746,8 +1746,8 @@ if ~isempty(floc)
                 % Link together mainShader and icmshader into a GLSL program
                 % object:
                 shader = glCreateProgram;
-                glAttachShader(shader, mainShader);
                 glAttachShader(shader, icmshader);
+                glAttachShader(shader, mainShader);
 
                 % Link the program:
                 glLinkProgram(shader);
@@ -1888,7 +1888,9 @@ end
 % --- Final output formatter for generic LUT based luminance framebuffer requested? ---
 % --- OR Final output formatter for Pseudo-Gray processing requested? ---
 floc = find(mystrcmp(reqs, 'EnableGenericHighPrecisionLuminanceOutput'));
-floc = [floc , find(mystrcmp(reqs, 'EnablePseudoGrayOutput'))];
+if isempty(floc)
+    floc = find(mystrcmp(reqs, 'EnablePseudoGrayOutput'));
+end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
     
@@ -1949,7 +1951,9 @@ end
 VideoSwitcherTriggerflag = 0;
 
 floc = find(mystrcmp(reqs, 'EnableVideoSwitcherSimpleLuminanceOutput'));
-floc = [floc , find(mystrcmp(reqs, 'EnableVideoSwitcherCalibratedLuminanceOutput'))];
+if isempty(floc)
+    floc = find(mystrcmp(reqs, 'EnableVideoSwitcherCalibratedLuminanceOutput'));
+end
 if ~isempty(floc)
     [row col]= ind2sub(size(reqs), floc);
 

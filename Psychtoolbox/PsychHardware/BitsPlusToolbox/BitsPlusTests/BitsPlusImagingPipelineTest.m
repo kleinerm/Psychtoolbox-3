@@ -120,6 +120,7 @@ Screen('Flip', window, vbl + 2);
 
 % Done. Close everything down:
 Screen('CloseAll');
+RestoreCluts;
 
 % Compute difference images between Matlab converted packedImage and GPU converted
 % HDR image:
@@ -350,6 +351,7 @@ BitsPlusPlus('StoreValidation', window);
 
 % Done. Close everything down:
 Screen('CloseAll');
+RestoreCluts;
 
 fprintf('BitsPlusPlus imaging pipeline verified to work correctly. Validation info stored.\n');
 

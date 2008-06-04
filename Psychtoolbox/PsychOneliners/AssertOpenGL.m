@@ -53,9 +53,10 @@ function AssertOpenGL
 % HISTORY
 % 7/10/04   awi     wrote it.
 % 7/13/04   awi     Fixed documentation.
-% 10/6/05   awi	  Note here cosmetic changes by dgp between 7/13/04 and 10/6/05
+% 10/6/05   awi	    Note here cosmetic changes by dgp between 7/13/04 and 10/6/05
 % 12/31/05  mk      Detection code modified to really query type of Screen command (OpenGL?)
 %                   instead of OS type, as PTB-OpenGL is now available for Windows as well.
+% 06/05/08  mk      Hopefully more diagnostic output message added.
 
 % We put the detection code into a try-catch-end statement: The old Screen command on windows
 % doesn't have a 'Version' subfunction, so it would exit to Matlab with an error.
@@ -67,5 +68,11 @@ try
    return;
 catch
    % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
-   error('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.')   
+   fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
+   fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
+   fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
+   fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
+   fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
+   ple;
+   error('Problems detected in call to AssertOpenGL;');
 end;
