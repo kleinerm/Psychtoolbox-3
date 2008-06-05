@@ -26,6 +26,8 @@
 		The code is shared and #ifdef'ed if needed, because most of it is identical for Linux and OS/X.
 */
 
+#include "Psych.h" 
+
 // Need to exclude this files source-code from compile on Win32:
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 

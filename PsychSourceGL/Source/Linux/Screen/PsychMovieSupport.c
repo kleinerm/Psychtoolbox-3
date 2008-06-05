@@ -55,7 +55,7 @@ void PsychMovieInit(void)
  *      moviename = char* with the name of the moviefile.
  *      moviehandle = handle to the new movie.
  */
-void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, int* moviehandle)
+void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double preloadSecs, int* moviehandle)
 {
   PsychErrorExitMsg(PsychError_unimplemented, "Sorry, Movie playback support not yet available on GNU/Linux");
   return;
