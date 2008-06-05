@@ -197,6 +197,13 @@ if isscalar(cmd) & isnumeric(cmd)
     % Extract triggerLine for this window:
     triggerLine = triggerForWindow{cmd};
     
+    % Due to a bug (or misfeature?) in imaging pipeline, we have unit 1
+    % active here. Need to disable it:
+    % FIXME: Fix the pipeline in next beta release cycle!
+    glActiveTexture(GL.TEXTURE1);
+    glDisable(GL.TEXTURE_RECTANGLE_ARB);
+    glActiveTexture(GL.TEXTURE0);
+    
     % Draw horizontal line 'triggerLine' into green channel of bound
     % framebuffer:
     % Disable all channels for writing except green channel:

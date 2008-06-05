@@ -62,7 +62,7 @@ function callStack = AssertMex(varargin)
 
 persistent okNames mexExtensions okSupNames okSupNameMatches;
 
-% Do not do anything on Octave build.
+% Different processing on Octave build.
 if IsOctave
     myName = char(varargin{1});
     if isempty(findstr(myName, '.m'))
@@ -172,14 +172,26 @@ if isempty(inputNames) | ismember(computer, inputNames)
         fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
         fprintf('fix possible path problems.\n\n');
     else
-        fprintf('A reason could be insufficient access permissions or \n');
+        if IsWin & ~IsOctave
+            fprintf('It is important that the folder which contains the Screen.dll file is located *before*\n');
+            fprintf('the PsychBasic folder on your Matlab path. On Matlab prior to V7.4, the folder\n');
+            fprintf('%sPsychBasic\\MatlabWindowsFilesR11\\ must be before the folder\n%sPsychBasic\\ \n\n', PsychtoolboxRoot, PsychtoolboxRoot);
+            fprintf('On Matlab V7.4 (R2007a) or later versions, the folder\n');
+            fprintf('%sPsychBasic\\MatlabWindowsFilesR2007a\\ must be before the folder\n%sPsychBasic\\ \n\n', PsychtoolboxRoot, PsychtoolboxRoot);
+            fprintf('type path to display the current path and check for this condition.\nIf the order is wrong, ');
+            fprintf('simply cd into your Psychtoolbox root folder\n%s and then run SetupPsychtoolbox again.\n', PsychtoolboxRoot);
+            fprintf('That is the simplest way of fixing such path problems - Or to get more diagnostic output.\n\n');
+        end
+
+        fprintf('Another reason could be insufficient access permissions or \n');
         fprintf('some missing 3rd party libraries on your system.\n\n');
 
         if IsWin & ~IsOctave
             fprintf('On Microsoft Windows with recent Matlab versions (>= V7.4) it could also be that\n');
             fprintf('the required Visual C++ 2005 runtime libraries are missing on your system.\n');
             fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-            fprintf('fix this problem. After fixing the problem, retry.\n\n');
+            fprintf('fix this problem. Make sure you follow the download link to Visual Studio SERVICE PACK 1,\n');
+            fprintf('(the latter links), *not* Visual Studio without the SP1.\n\nAfter fixing the problem, retry.\n\n');
 
             if strcmp(computer,'PCWIN64')
                 % 64 bit Matlab running on 64 bit Windows?!? That won't work.

@@ -72,6 +72,7 @@ catch
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
    fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
+   fprintf('A first more diagnostic test would be to simply type Screen in your Matlab/Octave console and check what its output is.\n\n');
    fprintf('\n\nThe returned error message by Matlab/Octave was:\n');
    ple;
    error('Problems detected in call to AssertOpenGL;');

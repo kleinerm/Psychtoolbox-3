@@ -785,8 +785,8 @@ if ismember(5, testblocks)
         refpatch = zeros(size(colpatch));
         
         for odc=1:nroverdraws
-            refpatch = max(0, min(1, (refpatch + colpatch * mc * alpha)));
-%            refpatch = (refpatch + colpatch * mc * alpha);
+            % MK: This is needed for ATI X1600 under Tiger to emulate the known color clamping bug: refpatch = max(0, min(1, (refpatch + colpatch * mc * alpha)));
+            refpatch = (refpatch + colpatch * mc * alpha);
         end
         
         testname = 'DrawTexture-modulateColor&Blend1+1';
