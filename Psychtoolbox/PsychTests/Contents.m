@@ -32,6 +32,7 @@
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
+%   MakeTextureTimingTest2          - Time texture creation -> upload -> destruction for given texture by MakeTexture et al.
 %   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
 %   MexTimingLoopTest               - Test for MATLAB timing glitch without return to MATLAB.
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
