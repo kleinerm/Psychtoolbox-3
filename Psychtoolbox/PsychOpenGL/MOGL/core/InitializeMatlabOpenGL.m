@@ -1,4 +1,4 @@
-function InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
+function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
 % InitializeMatlabOpenGL([opengl_c_style] [, debuglevel] [, noswitchto3D])
 %
 % InitializeMatlabOpenGL -- Initialize the OpenGL for Matlab wrapper 'mogl'.
@@ -11,6 +11,12 @@ function InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
 % This will check if mogl is properly installed and upload all required
 % OpenGL constants into your Matlab workspace. It will also set up
 % Psychtoolbox for interfacing with external OpenGL code.
+%
+% There is also a special query mode: If you set the first argument
+% 'opengl_c_style' to the special value -1, then this call will do nothing
+% than return the old 'debuglevel', cached from a previous call to this
+% routine.
+%
 %
 % Options:
 % opengl_c_style = 0 / 1:
@@ -43,13 +49,18 @@ function InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
 
 global GL;
 
-% Is Psychtoolbox properly installed?
-AssertOpenGL
+% Stor debuglevel internally, so it can be retrieved:
+persistent cachedDebuglevel;
 
-% Is Mogl properly installed?
-if ~exist('glmGetConst.m','file'),
-    error('Failed to initialize OpenGL for Matlab: Add the ''core'' and ''wrap'' directories of mogl to the MATLAB search path!');
-end;
+if isempty(GL)
+    % Is Psychtoolbox properly installed?
+    AssertOpenGL;
+
+    % Is Mogl properly installed?
+    if ~exist('glmGetConst.m','file'),
+        error('Failed to initialize OpenGL for Matlab: Add the ''core'' and ''wrap'' directories of mogl to the MATLAB search path!');
+    end;
+end
 
 % We default to non-C-Style constants if not requested otherwise.
 if nargin < 1
@@ -59,6 +70,13 @@ end;
 if isempty(opengl_c_style)
    opengl_c_style = 0;
 end;
+
+% Special flag provided?
+if opengl_c_style == -1
+    % Yep. Calling code wants to query our cached debuglevel:
+    varargout{1} = cachedDebuglevel;
+    return;
+end
 
 if nargin < 2
     debuglevel = 1;
@@ -115,6 +133,8 @@ end;
 
 % Set moglcores debuglevel:
 moglcore('DEBUGLEVEL', debuglevel);
+% Cache debuglevel internally so it can be queried later on:
+cachedDebuglevel = debuglevel;
 
 % Enable support for OpenGL 3D graphics rendering in Psychtoolbox.
 if noswitchto3D > 0

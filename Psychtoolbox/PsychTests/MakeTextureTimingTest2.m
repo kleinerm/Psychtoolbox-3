@@ -1,5 +1,5 @@
-function MakeTextureTimingTest2(screenid, width, height, channels)
-% MakeTextureTimingTest2([screenid][,width][,height][,channels]);
+function MakeTextureTimingTest2(screenid, width, height, channels, nSamples, preload)
+% MakeTextureTimingTest2([screenid][,width][,height][,channels][,nSamples][,preload]);
 %
 % Test creation timing of a texture of specific 'width' x 'height' size with
 % 'channels' color channels (1=Luminance, 2=Luminance+Alpha, 3=RGB,
@@ -57,10 +57,25 @@ if isempty(channels)
     channels = 4;
 end
 
-nSamples = 1000;
+if nargin < 5
+    nSamples = [];
+end
+
+if isempty(nSamples)
+    nSamples = 100;
+end
+
+if nargin < 6
+    preload = [];
+end
+
+if isempty(preload)
+    preload = 1;
+end
 
 try
     % Open standard window:
+    InitializeMatlabOpenGL(0,0,1);
     w=Screen('OpenWindow', screenid);
 
     % Create random test pixel matrix:
@@ -71,19 +86,45 @@ try
     % Perform nSamples sampling passes:
     for i=1:nSamples
         tex = Screen('MakeTexture', w, img);
-        Screen('PreloadTextures', w, tex);
+        if preload
+            Screen('PreloadTextures', w, tex);
+        end
         Screen('Close', tex);
     end
     
     % Enforce completion of all GPU operations, take timestamp:
     elapsed = Screen('DrawingFinished', w, 2, 1);
-
-    Screen('CloseAll');
     
     avgmsecs = (elapsed / nSamples) * 1000;
     
     fprintf('\n\n\nAverage Make -> Upload -> Destroy time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
+
+    if channels == 4
+        % Ok, same thing again with low-level calls:
+        tex = Screen('MakeTexture', w, img);
+        [texid textarget] = Screen('GetOpenGLTexture', w, tex);
+
+        Screen('Flip', w);
+
+        % Perform nSamples sampling passes:
+        for i=1:nSamples
+            glBindTexture(textarget, texid);
+            glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            if preload
+                Screen('PreloadTextures', w, tex);
+            end
+        end
+
+        % Enforce completion of all GPU operations, take timestamp:
+        elapsed = Screen('DrawingFinished', w, 2, 1);
+        Screen('Close', tex);
+
+        avgmsecs = (elapsed / nSamples) * 1000;
+
+        fprintf('\n\n\nAverage glTexSubImage2D() -> Upload time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
+    end
     
+    Screen('CloseAll');
 catch 
     Screen('CloseAll');
     psychrethrow(psychlasterror);

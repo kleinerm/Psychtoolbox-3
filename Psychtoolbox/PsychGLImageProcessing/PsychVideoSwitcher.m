@@ -200,6 +200,7 @@ if isscalar(cmd) & isnumeric(cmd)
     % Due to a bug (or misfeature?) in imaging pipeline, we have unit 1
     % active here. Need to disable it:
     % FIXME: Fix the pipeline in next beta release cycle!
+    % MK: Fixed in source code, but all Screen mex files need recompile!
     glActiveTexture(GL.TEXTURE1);
     glDisable(GL.TEXTURE_RECTANGLE_ARB);
     glActiveTexture(GL.TEXTURE0);

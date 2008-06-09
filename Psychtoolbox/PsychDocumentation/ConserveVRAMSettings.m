@@ -84,6 +84,17 @@
 % context isolation completely, but only a subset. May be able to
 % work-around an NVidia driver bug reported in March 2008 on GF8xxx series.
 %
+% 512 == kPsychAvoidCPUGPUSync: Avoid any internal calls (if possible) that
+% could cause a synchronization of the CPU and GPU. Synchronization is a
+% potentially expensive operation that can degrade performance in certain
+% circumstances. Its often needed for error checking. Setting this flag may
+% give you a speedup on certain operations, but at the cost of reduced
+% error checking and error handling: Error conditions detected otherwise
+% may silently slip through and cause mysterious malfunctions or stimulus
+% corruption without PTB noticing this or providing any troubleshooting
+% tips. The usefulness of this flag highly depends on your graphics
+% hardware, driver and operating system. It may give a large speedup, or no
+% speedup at all, but it will always reduce robustness!
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

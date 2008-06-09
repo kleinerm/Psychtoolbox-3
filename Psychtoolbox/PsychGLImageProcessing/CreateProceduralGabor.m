@@ -54,6 +54,8 @@ function [gaborid, gaborrect] = CreateProceduralGabor(windowPtr, width, height, 
 % 11/25/2007 Written. (MK)
 % 01/03/2008 Enable support for asymmetric gabor shading. (MK)
 
+debuglevel = 1;
+
 % Global GL struct: Will be initialized in the LoadGLSLProgramFromFiles
 % below:
 global GL;
@@ -79,10 +81,10 @@ end
 
 if ~nonSymmetric
     % Load standard symmetric support shader - Faster!
-    gaborShader = LoadGLSLProgramFromFiles('BasicGaborShader', 1);
+    gaborShader = LoadGLSLProgramFromFiles('BasicGaborShader', debuglevel);
 else
     % Load extended asymmetric support shader - Slower!
-    gaborShader = LoadGLSLProgramFromFiles('NonSymetricGaborShader', 1);
+    gaborShader = LoadGLSLProgramFromFiles('NonSymetricGaborShader', debuglevel);
 end
 
 % Setup shader:

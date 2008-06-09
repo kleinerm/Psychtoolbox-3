@@ -38,7 +38,8 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 % videoclips, e.g., for selection of interesting parts...
 %
 %
-% This demo needs MacOS-X 10.3.9 or 10.4.x with Quicktime-7 installed!
+% This demo needs MacOS-X 10.3.9 or later, or MS-Windows with Quicktime 7
+% installed.
 
 % History:
 % 12/25/05  mk  Wrote it.
@@ -58,6 +59,10 @@ right=KbName('RightArrow');
 left=KbName('LeftArrow');
 
 if nargin < 1
+    moviename = [];
+end
+
+if isempty(moviename)
     % Default movie is our own disc collision movie:
     moviename = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
 end;
@@ -67,12 +72,25 @@ if nargin < 2
     fromTime=0;
 end;
 
+if isempty(fromTime)
+    fromTime=0;
+end
+
 if nargin < 3
     % Default to end of movie:
     toTime=100000;
 end;
 
+if isempty(toTime)
+    % Default to end of movie:
+    toTime=100000;
+end;
+
 if nargin < 4
+    benchmark=0;
+end;
+
+if isempty(benchmark)
     benchmark=0;
 end;
 
@@ -249,7 +267,10 @@ try
         fprintf('Movietexture playback rate is %f frames per second == %f Megapixels/second.\n', playbackrate, playbackvolume);
     end;
     
-    % Close movie file. This will also release all textures...
+    % This will release all textures...
+    Screen('Close', texids);
+    
+    % Close movie file.
     Screen('CloseMovie', movie);
    
     ShowCursor;

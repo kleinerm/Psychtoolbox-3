@@ -4,7 +4,9 @@ function handle = LoadGLSLProgramFromFiles(filenames, debug, extraShaders)
 % 'filenames' are read, shaders are built for each definition and all
 % shaders are linked together into a new GLSL program. Returns a handle to
 % the new program, if successfull. The optional 'debug' flag allows to enable
-% debugging output.
+% debugging output: Zero = no output, 1 = a bit of outpt, 2 = detailed
+% output, 3 = Don't compile and link anymore, but print out the shaders
+% source code as OpenGL would see it.
 %
 % The program can then be used at any time by calling glUseProgram(handle). One
 % can switch back to the standard OpenGL fixed-function pipeline by calling
@@ -129,13 +131,31 @@ for i=1:length(filenames)
     % because that would mean it is a Matlab- or emacs backup file...
     if (shadername(end)~='~') & (isempty(strfind(shadername, '.asv'))) %#ok<AND2>
        % Load, compile and link the shader:
-       shader = LoadShaderFromFile(shadername, [], debug);
+       if debug < 3
+           shdebug = 1;
+       else
+           shdebug = debug;
+       end
+       shader = LoadShaderFromFile(shadername, [], shdebug);
        glAttachShader(handle, shader);
     end;
 end;
 
-% Link the program:
-glLinkProgram(handle);
+if debug > 1
+    % We need to temporarily raise moglcores debuglevel to 2 to get extended
+    % error/validation information:
+    oldDebug = InitializeMatlabOpenGL(-1);
+    moglcore('DEBUGLEVEL', 2);
+
+    % Link the program:
+    glLinkProgram(handle);
+
+    % Restore old debuglevel for moglcore:
+    moglcore('DEBUGLEVEL', oldDebug);
+else
+    % Link the program without raised debug level for moglcore:
+    glLinkProgram(handle);
+end
 
 % Ready to use it? Hopefully.
 return;
