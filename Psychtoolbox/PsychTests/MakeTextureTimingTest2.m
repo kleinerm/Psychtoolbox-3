@@ -106,10 +106,16 @@ try
 
         Screen('Flip', w);
 
+        texid = glGenTextures(1);
+        glBindTexture(textarget, texid);
+        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+        glBindTexture(textarget, 0);
+
         % Perform nSamples sampling passes:
         for i=1:nSamples
             glBindTexture(textarget, texid);
             glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            glBindTexture(textarget, 0);
             if preload
                 Screen('PreloadTextures', w, tex);
             end

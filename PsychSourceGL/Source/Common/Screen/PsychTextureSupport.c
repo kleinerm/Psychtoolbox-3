@@ -137,6 +137,10 @@ void PsychInitWindowRecordTextureFields(PsychWindowRecordType *win)
 		win->textureFilterShader=0;
 		// Same for nearest neighbour lookup -- needed for unclamped high precision drawing.
 		win->textureLookupShader=0;
+		// Input pixel data for textures is not aligned to some x-byte boundary by default. A non-zero
+		// setting will be used for the GL_UNPACK_ALIGNMENT setting in PsychCreateTexture() and friends
+		// to optimize texture upload:
+		win->textureByteAligned=0;
 }
 
 
@@ -227,9 +231,19 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
-	bool							recycle = FALSE;
+	bool							recycle = FALSE, avoidCPUGPUSync;
 	GLenum							glerr;
+	int								verbosity;
+
+	verbosity = PsychPrefStateGet_Verbosity();
 	
+	// Check if any calls that can cause a CPU<->GPU sync should be avoided at (nearly all) costs.
+	// Avoiding CPU<->GPU sync is a robustness vs. performance tradeoff: Performance is potentially
+	// significantly increased, but the amount of error checking and error handling is drastically
+	// reduced --> Fast, but potential errors or malfunctions don't get catched and diagnosed in a
+	// useful way, instead silent failure occurs.
+	avoidCPUGPUSync = (PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync) ? TRUE : FALSE;
+
 	// Setup for renderswap, if requested:
 	if (win->textureOrientation==0 && renderswap) win->textureOrientation=1;
 
@@ -238,7 +252,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	PsychSetGLContext(win);
 
 	// Make sure we don't have any dangling GL errors from other operations...
-	PsychTestForGLErrors();
+	if (!avoidCPUGPUSync || (verbosity > 10)) PsychTestForGLErrors();
 	
 	// Setup texture-target if not already done:
 	PsychDetectTextureTarget(win);
@@ -309,11 +323,15 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	
 	// Setting GL_UNPACK_ALIGNMENT == 1 fixes a bug, where textures are drawn incorrectly, if their
 	// width or height is not divisible by 4.
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	
-	// Override for 4-Byte aligned Quicktime textures created via GWorlds:
-	if (win->textureOrientation==3) glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-	
+	if (win->textureByteAligned > 1) {
+		// Aligned to some byte boundary: Set alignment to allow driver to optimize texture upload:
+		glPixelStorei(GL_UNPACK_ALIGNMENT, win->textureByteAligned);
+	}
+	else {
+		// No alignment (1) or alignment unknown (0): Set to safe default of 1 byte:
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+	}
+
 	// The texture object is ready for use: Assign it our texture data:
 	
 	// Definition of width and height is swapped due to texture rotation trick, see comments in PsychBlit.....
@@ -364,7 +382,13 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 		// creation will succeed without trouble, then we either fail in case of error,
 		// or we do the real thing and create the texture:
 		for (pass=0; pass < 2; pass++) {
-		
+			if (avoidCPUGPUSync && !(verbosity > 10) && (pass == 0)) {
+				// Usercode wants us to skip dual-path texture creation in order to save
+				// some time: Skip pass 0...
+				oldtexturetarget = texturetarget;
+				continue;
+			}
+
 			if (pass == 0) {
 				// Prepare proxy-pass:
 				oldtexturetarget = texturetarget;
@@ -408,20 +432,32 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 				glinternalFormat = win->textureinternalformat;
 			}
 
-			// Request sizes of created (proxy-)texture:
-			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
-			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
-			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
-			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
-			glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
-			
-			// Store override per-component bit-depths:
-			win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
+			// Only query real color depths per channel if either a special internal format was requested, ie., we
+			// need to query the real depths because we don't know it, or if verbosity is very high or avoidance
+			// of synchronizing calls is not disabled.
+			if ((!avoidCPUGPUSync || (verbosity > 10)) || ((glinternalFormat!=GL_RGBA8) && (glinternalFormat!=GL_LUMINANCE8))) {
+				// Request sizes of created (proxy-)texture:
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_RED_SIZE, &gl_rbits);                
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_GREEN_SIZE, &gl_gbits);                
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_BLUE_SIZE, &gl_bbits);                
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_ALPHA_SIZE, &gl_abits);                
+				glGetTexLevelParameteriv(texturetarget, 0, GL_TEXTURE_LUMINANCE_SIZE, &gl_lbits);                
+				
+				// Store override per-component bit-depths:
+				win->bpc = (int) ((gl_rbits > gl_lbits) ? gl_rbits : gl_lbits); 
+			}
+			else {
+				// Null out to catch implementation error in our own code, if any:
+				gl_rbits = gl_gbits = gl_bbits = gl_abits = gl_lbits = 0;
+
+				// Assume 8 bpc. This is the default anyway, just here to make it explicit:
+				win->bpc = 8;
+			}
 			
 			// Sanity check: A sum of zero over all texture channels would indicate that texture
 			// creation failed, most likely due to an out of memory condition in the graphics
 			// hardwares VRAM:
-			if ((gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0) || (glerr = glGetError())!=0) {
+			if ((!avoidCPUGPUSync || (verbosity > 10)) && ((gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0) || (glerr = glGetError())!=0)) {
 				// Texture creation failed or malfunctioned!
 				if (PsychPrefStateGet_Verbosity() > 0) {
 					// Abort with error:
@@ -539,7 +575,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	}
 
 	// New internal format requested?
-	if (gl_lastrequestedinternalFormat != glinternalFormat && !recycle) {
+	if ((!avoidCPUGPUSync || (verbosity > 10)) && (gl_lastrequestedinternalFormat != glinternalFormat && !recycle)) {
 		// Seems so...
 		gl_lastrequestedinternalFormat = glinternalFormat;
 		
@@ -956,7 +992,21 @@ void PsychBlitTextureToDisplay(PsychWindowRecordType *source, PsychWindowRecordT
 	}
 	
 	// Test for standard case: No shader requested for this texture. In that case we make sure that really no shader is bound.
-	if (shader == 0) PsychSetShader(target, 0);
+	if (shader == 0) {
+		PsychSetShader(target, 0);
+	}
+	else {
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		// On OS-X we can query the OS if the bound shader is running on the GPU or if it is running in emulation mode on the CPU.
+		// This is an expensive operation - it triggers OpenGL internal state revalidation. Only use for debugging and testing!
+		if (PsychPrefStateGet_Verbosity() > 10) {
+			long vsgpu=0, fsgpu=0;
+			CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUVertexProcessing, &vsgpu);
+			CGLGetParameter(CGLGetCurrentContext(), kCGLCPGPUFragmentProcessing, &fsgpu);
+			printf("PTB-DEBUG: In Screen('DrawTexture') aka PsychBlitTextureToDisplay():  GPU shading state: Vertex processing on %s : Fragment processing on %s.\n", (vsgpu) ? "GPU" : "CPU!!", (fsgpu) ? "GPU" : "CPU!!");
+		}
+		#endif
+	}
 
 	// matchups for inverted Y coordinate frame (which is inverted?)
 	// MK: Texture coordinate assignments have been changed.

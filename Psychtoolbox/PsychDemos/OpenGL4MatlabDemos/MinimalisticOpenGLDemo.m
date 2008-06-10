@@ -101,7 +101,7 @@ screenid=max(Screen('Screens'));
 InitializeMatlabOpenGL;
 
 % Open a double-buffered full-screen window on the main displays screen.
-[win , winRect] = Screen('OpenWindow', screenid, [],[],[],[],[],multiSample);
+[win , winRect] = Screen('OpenWindow', screenid, [],[],[],[],[],multiSample, kPsychNeedFastBackingStore);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will

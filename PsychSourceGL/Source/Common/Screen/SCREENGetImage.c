@@ -65,6 +65,7 @@ PsychError SCREENGetImage(void)
 {
 	PsychRectType   windowRect,sampleRect;
 	int 			nrchannels, ix, iy, sampleRectWidth, sampleRectHeight, invertedY, redReturnIndex, greenReturnIndex, blueReturnIndex, alphaReturnIndex, planeSize;
+	int				viewid;
 	ubyte 			*returnArrayBase, *redPlane, *greenPlane, *bluePlane, *alphaPlane;
 	float 			*dredPlane, *dgreenPlane, *dbluePlane, *dalphaPlane;
 	double 			*returnArrayBaseDouble;
@@ -156,6 +157,41 @@ PsychError SCREENGetImage(void)
 				// Activate drawBufferFBO:
 				PsychSetDrawingTarget(windowRecord);
 				whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
+				
+				// Is the drawBufferFBO multisampled?
+				viewid = (((windowRecord->stereomode > 0) && (windowRecord->stereodrawbuffer == 1)) ? 1 : 0);
+				if (windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->multisample > 0) {
+					// It is! We can't read from a multisampled FBO. Need to perform a multisample resolve operation and read
+					// from the resolved unisample buffer instead. This is only safe if the unisample buffer is either a dedicated
+					// FBO, or - in case its the final system backbuffer etc. - if preflip operations haven't been performed yet.
+					// If non dedicated buffer (aka finalizedFBO) and preflip ops have already happened, then the backbuffer contains
+					// final content for an upcoming Screen('Flip') and we can't use (and therefore taint) that buffer.
+					if ((windowRecord->inputBufferFBO[viewid] == windowRecord->finalizedFBO[viewid]) && (windowRecord->backBufferBackupDone)) {
+						// Target for resolve is finalized FBO (probably system backbuffer) and preflip ops have run already. We
+						// can't do the resolve op, as this would screw up the backbuffer with the final stimulus:
+						printf("PTB-ERROR: Tried to 'GetImage' from a multisampled 'drawBuffer', but can't perform anti-aliasing pass due to\n");
+						printf("PTB-ERROR: lack of a dedicated resolve buffer.\n");
+						printf("PTB-ERROR: You can get what you wanted by either one of two options:\n");
+						printf("PTB-ERROR: Either enable a processing stage in the imaging pipeline, even if you don't need it, e.g., by setting\n");
+						printf("PTB-ERROR: the imagingmode argument in the 'OpenWindow' call to kPsychNeedImageProcessing, this will create a\n");
+						printf("PTB-ERROR: suitable resolve buffer. Or place the 'GetImage' call before any Screen('DrawingFinished') call, then\n");
+						printf("PTB-ERROR: i can (ab-)use the system backbuffer as a temporary resolve buffer.\n\n");
+						PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled 'drawBuffer'. Unsupported operation under given conditions.");						
+					}
+					else {
+						// Ok, the inputBufferFBO is a suitable temporary resolve buffer. Perform a multisample resolve blit to it:
+						// A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+						glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
+						glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
+						glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+											 0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+											 GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+						// Bind inputBuffer as framebuffer:
+						glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
+						viewid = -1;
+					}
+				}
 			}
 			else {
 				// Activate system framebuffer:
@@ -167,6 +203,16 @@ PsychError SCREENGetImage(void)
 			// but set color attachment as read buffer:
 			PsychSetDrawingTarget(windowRecord);
 			whichBuffer = GL_COLOR_ATTACHMENT0_EXT;
+
+			// We do not support multisampled readout:
+			if (windowRecord->fboTable[windowRecord->drawBufferFBO[0]]->multisample > 0) {
+				printf("PTB-ERROR: You tried to Screen('GetImage', ...); from an offscreen window or texture which has multisample anti-aliasing enabled.\n");
+				printf("PTB-ERROR: This operation is not supported. You must first use Screen('CopyWindow') to create a non-multisampled copy of the\n");
+				printf("PTB-ERROR: texture or offscreen window, then use 'GetImage' on that copy. The copy will be anti-aliased, so you'll get what you\n");
+				printf("PTB-ERROR: wanted with a bit more effort. Sorry for the inconvenience, but this is mostly a hardware limitation.\n\n");
+				
+				PsychErrorExitMsg(PsychError_user, "Tried to 'GetImage' from a multi-sampled texture or offscreen window. Unsupported operation.");
+			}
 		}
 	}
 	else {
@@ -264,5 +310,11 @@ PsychError SCREENGetImage(void)
 		}		
 	}
 	
+	if (viewid == -1) {
+		// Need to reset framebuffer binding to get rid of the inputBufferFBO which is bound due to
+		// multisample resolve ops --> Activate system framebuffer:
+		PsychSetDrawingTarget(NULL);		
+	}
+
 	return(PsychError_none);
 }

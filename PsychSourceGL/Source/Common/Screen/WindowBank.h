@@ -66,7 +66,7 @@ TO DO:
 #define MAX_SCREEN_HOOKS 13
 
 // Maximum number of slots in windowRecords fboTable:
-#define MAX_FBOTABLE_SLOTS 2+3+3+2
+#define MAX_FBOTABLE_SLOTS 2+2+3+3+2
 
 // Type of hook function attached to a specific hook chain slot:
 #define kPsychShaderFunc	0
@@ -87,6 +87,8 @@ TO DO:
 #define kPsychGfxCapFPBlend32	256			// Hw supports alpha blending on 32 bpc float FBOs.
 #define kPsychGfxCapFP32Shading	512			// Hw supports IEEE 32 bit float precision throughout shaders.
 #define kPsychGfxCapVCGood		1024		// Hw supports unclamped vertex colors of high (at least 16 bit effective) precision.
+#define kPsychGfxCapFBOMultisample 2048		// Hw supports multisampled rendering into FBO's, aka EXT_framebuffer_multisample.
+#define kPsychGfxCapFBOBlit		4096		// Hw supports blitting between FBO's, aka EXT_framebuffer_blit.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.
@@ -134,11 +136,12 @@ typedef struct PsychHookFunction {
 // Definition of an OpenGL Framebuffer object (FBO) for internal use.
 typedef struct PsychFBO {
 	GLuint					fboid;		// Handle to FBO.
-	GLuint					coltexid;	// Texture handle for color buffer texture (color attachment zero).
+	GLuint					coltexid;	// Texture handle for color buffer texture (color attachment zero). A multisampled Renderbuffer handle, if multisample > 0.
 	GLuint					ztexid;		// Texture handle for z-Buffer texture, if any. Zero otherwise.
 	GLuint					stexid;		// Texture handle for stencil-Buffer texture, if any. Zero otherwise.
 	int						width;		// Width of FBO.
 	int						height;		// Height of FBO.
+	int						multisample; // Multisampling level of FBO: 0 == No multisampling. > 0 means Multisampled.
 } PsychFBO;
 
 // Typedefs for WindowRecord in WindowBank.h
@@ -257,7 +260,7 @@ typedef struct _PsychWindowRecordType_{
         GLenum                                  textureexternaltype;    // Explicit definition of data type for texture creation.
 		GLint				textureFilterShader;	// Optional GLSL program handle for a shader to apply during PsychBlitTextureToDisplay().
 		GLint				textureLookupShader;	// Optional GLSL handle for nearest neighbour texture drawing shader.
-		
+		GLint				textureByteAligned;		// 0 = No knowledge about byte alignment of texture data. > 1, texture rows are x byte aligned.
 	//line stipple attributes, for windows not textures.
 	GLushort				stipplePattern;
 	GLint					stippleFactor;
@@ -304,6 +307,13 @@ typedef struct _PsychWindowRecordType_{
 	int						drawBufferFBO[2];						// Storage for drawing FBOs: These are the targets of all drawing operations before
 																	// Screen('DrawingFinished') or Screen('Flip') is called. They are read-only wrt.
 																	// to all following processing stages: 0=Left eye (or mono) channel, 1=Right eye channel.
+	int						inputBufferFBO[2];						// Storage for input FBOs: These are the input to all further pipeline stages. They are
+																	// initialized with the content of the drawBufferFBO's, either directly, by setting both
+																	// equal, so that drawBufferFBO->inputBufferFBO is a no-op, or - if some special purpose
+																	// preprocessing is needed - the drawBufferFBO's are copied to these. The main application
+																	// is multisample anti-aliasing: drawBufferFBO's must be multisampled, but rest of pipeline
+																	// must not be multisampled, so we perform the multisample-resolve operation during copy
+																	// from drawBuffers to inputBuffers.
 	int						processedDrawBufferFBO[3];				// These contain the final output of all per-view channel postprocessing operations:
 																	// 0=Left eye (or mono) channel, 1=Right eye channel, 2=Temporary bounce buffer for iterative
 																	// multi-pass processing. These provide the input for the stereo merger in stereo modes that

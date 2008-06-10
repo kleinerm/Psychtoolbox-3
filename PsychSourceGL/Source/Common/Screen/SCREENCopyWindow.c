@@ -41,12 +41,14 @@ static char seeAlsoString[] = "PutImage, GetImage, OpenOffscreenWindow, MakeText
 
 PsychError SCREENCopyWindow(void) 
 {
-	PsychRectType		sourceRect, targetRect, targetRectInverted;
+	PsychRectType			sourceRect, targetRect, targetRectInverted;
 	PsychWindowRecordType	*sourceWin, *targetWin;
-	GLdouble		sourceVertex[2], targetVertex[2]; 
-	double  t1;
-	double			sourceRectWidth, sourceRectHeight;
-        
+	GLdouble				sourceVertex[2], targetVertex[2]; 
+	double					t1;
+	double					sourceRectWidth, sourceRectHeight;
+	GLuint					srcFBO, dstFBO;
+	GLenum					glerr;
+	
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -100,7 +102,98 @@ PsychError SCREENCopyWindow(void)
 		PsychErrorExitMsg(PsychError_user, "Invalid target rectangle specified - (Partially) outside of target window.");
 	}
 	
-	PsychTestForGLErrors();
+	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) PsychTestForGLErrors();
+
+	// Does this GL implementation support the EXT_framebuffer_blit extension for fast blitting between
+	// framebuffers? And is the imaging pipeline active?
+	if ((sourceWin->gfxcaps & kPsychGfxCapFBOBlit) && (targetWin->gfxcaps & kPsychGfxCapFBOBlit) &&
+		(sourceWin->imagingMode > 0) && (targetWin->imagingMode > 0)) {
+		// Yes :-) -- This simplifies the CopyWindow implementation to a simple framebuffer blit op,
+		// regardless what the source- or destination is:
+		
+		// Set each windows framebuffer as a drawingtarget once: This is just to make sure all of them
+		// have proper FBO's attached:
+		PsychSetDrawingTarget(sourceWin);
+		PsychSetDrawingTarget(targetWin);
+		
+		// Soft-Reset drawing target - Detach anything bound or setup:
+		PsychSetDrawingTarget(0x1);
+		
+		// Find source framebuffer:
+		if (sourceWin->fboCount == 0) {
+			// No FBO's attached to sourceWin: Must be a system framebuffer, e.g., if imagingMode == kPsychNeedFastOffscreenWindows and
+			// this is the onscreen window system framebuffer. Assign system framebuffer handle:
+			srcFBO = 0;
+		}
+		else {
+			// FBO's attached: Want drawBufferFBO 0 or 1 - 1 for right eye view in stereomode, 0 for
+			// everything else: left eye view, monoscopic buffer, offscreen windows / textures:
+			if ((sourceWin->stereomode > 0) && (sourceWin->stereodrawbuffer == 1)) {
+				// We are in stereo mode and want to access the right-eye channel. Bind FBO-1
+				srcFBO = sourceWin->fboTable[sourceWin->drawBufferFBO[1]]->fboid;
+			}
+			else {
+				srcFBO = sourceWin->fboTable[sourceWin->drawBufferFBO[0]]->fboid;
+			}
+		}
+
+		// Find target framebuffer:
+		if (targetWin->fboCount == 0) {
+			// No FBO's attached to targetWin: Must be a system framebuffer, e.g., if imagingMode == kPsychNeedFastOffscreenWindows and
+			// this is the onscreen window system framebuffer. Assign system framebuffer handle:
+			dstFBO = 0;
+		}
+		else {
+			// FBO's attached: Want drawBufferFBO 0 or 1 - 1 for right eye view in stereomode, 0 for
+			// everything else: left eye view, monoscopic buffer, offscreen windows / textures:
+			if ((targetWin->stereomode > 0) && (targetWin->stereodrawbuffer == 1)) {
+				// We are in stereo mode and want to access the right-eye channel. Bind FBO-1
+				dstFBO = targetWin->fboTable[targetWin->drawBufferFBO[1]]->fboid;
+			}
+			else {
+				dstFBO = targetWin->fboTable[targetWin->drawBufferFBO[0]]->fboid;
+			}
+		}
+
+		// Bind read- / write- framebuffers:
+		glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, srcFBO);
+		glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, dstFBO);
+
+		// Perform blit-operation: If blitting from a multisampled FBO into a non-multisampled one, this will also perform the
+		// multisample resolve operation:
+		glBlitFramebufferEXT(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom],
+							 targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom],
+							 GL_COLOR_BUFFER_BIT, GL_NEAREST);
+		
+		if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
+			glerr = glGetError();
+
+			if((glerr == GL_INVALID_OPERATION) && (PsychGetWidthFromRect(sourceRect) != PsychGetWidthFromRect(targetRect) ||
+			   PsychGetHeightFromRect(sourceRect) != PsychGetHeightFromRect(targetRect))) {
+				// Non-matching sizes. Make sure we do not operate on multisampled stuff
+				PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy a multi-sampled window into a non-multisampled window, but there is a size mismatch of sourceRect and targetRect. Matching size is required for such copies.");
+			}
+			else {
+				if (glerr == GL_INVALID_OPERATION) {
+					PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy from a multi-sampled window into another multisampled window, but there is a mismatch between the multiSample levels of both. Identical multiSample values are required for such copies.");
+				}
+				else {
+					printf("CopyWindow failed for unresolved reason: OpenGL says after call to glBlitFramebufferEXT(): %s\n", gluErrorString(glerr));
+					PsychErrorExitMsg(PsychError_user, "CopyWindow failed for unresolved reason.");
+				}
+			}
+			
+		}
+		
+		// Reset framebuffer binding to something safe - The system framebuffer:
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		
+		// Just to make sure we catch invalid values:
+		if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) PsychTestForGLErrors();
+		
+		// Done.
+		return(PsychError_none);
+	}
 
 	// We have four possible combinations for copy ops:
 	// Onscreen -> Onscreen
@@ -220,7 +313,7 @@ PsychError SCREENCopyWindow(void)
 	}
 
 	// Just to make sure we catch invalid values:
-	PsychTestForGLErrors();
+	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) PsychTestForGLErrors();
 
 	// Done.
 	return(PsychError_none);

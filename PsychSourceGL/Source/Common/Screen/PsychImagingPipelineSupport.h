@@ -52,7 +52,7 @@ typedef enum {
 
 // API for PTB core:
 void	PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *windowRecord);
-void	PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode);
+void	PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode, int multiSample);
 void	PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean openglpart);
 void	PsychPipelineListAllHooks(PsychWindowRecordType *windowRecord);
 void	PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord);
@@ -79,7 +79,7 @@ int		PsychGetHookByName(const char* hookName);
 void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, boolean scissor_ignore);
 
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
-Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height);
+Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height, int multisample);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
 void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolean asRendertarget, int forImagingmode);

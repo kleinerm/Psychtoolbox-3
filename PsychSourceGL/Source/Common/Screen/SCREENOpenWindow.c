@@ -288,8 +288,11 @@ PsychError SCREENOpenWindow(void)
 	// Create the onscreen window and perform initialization of everything except
 	// imaging pipeline and a few other special quirks. If sharedContextWindow is non-NULL,
 	// the new window will share its OpenGL context ressources with sharedContextWindow.
-	// This is typically used for dual-window stereo mode.
-    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, multiSample, sharedContextWindow);
+	// This is typically used for dual-window stereo mode. Btw. If imaging pipeline is really
+	// active, we force multiSample to zero: This way the system backbuffer / pixelformat
+	// is enabled without multisampling support, as we do all the multisampling stuff ourselves
+	// within the imaging pipeline with multisampled drawbuffer FBO's...
+    didWindowOpen=PsychOpenOnscreenWindow(&screenSettings, &windowRecord, numWindowBuffers, stereomode, rect, ((imagingmode==0 || imagingmode==kPsychNeedFastOffscreenWindows) ? multiSample : 0), sharedContextWindow);
     if (!didWindowOpen) {
         if (!useAGL) {
 			PsychRestoreScreenSettings(screenNumber);
@@ -384,7 +387,7 @@ PsychError SCREENOpenWindow(void)
 	}
 
 	// Initialize internal image processing pipeline if requested:
-	PsychInitializeImagingPipeline(windowRecord, imagingmode);
+	PsychInitializeImagingPipeline(windowRecord, imagingmode, multiSample);
 	
 	// On OS-X, if we are in quad-buffered frame sequential stereo mode, we automatically generate
 	// blue-line-sync style sync lines for use with stereo shutter glasses. We don't do this

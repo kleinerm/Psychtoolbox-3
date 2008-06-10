@@ -182,6 +182,10 @@ typedef struct {
 // usermode OpenGL contexts -- The skipped commands are non-essential... 
 #define kPsychUseWindowsContextSharingWorkaround1 256
 
+// Hint to PTB that any calls should be avoided that can cause a CPU-GPU synchronization, e.g.,
+// error checking and handling calls. This is a hint: May be overriden at high debug levels etc.
+#define kPsychAvoidCPUGPUSync 512
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

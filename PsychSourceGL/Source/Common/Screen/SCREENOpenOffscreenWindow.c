@@ -36,8 +36,8 @@
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags]);";
-//                                                                        1                         2        3       4          5
+static char useString[] =  "[windowPtr,rect]=Screen('OpenOffscreenWindow',windowPtrOrScreenNumber [,color] [,rect] [,pixelSize] [,specialFlags] [,multiSample]);";
+//                                                                        1                         2        3       4          5				6
 
 static char synopsisString[] =
     "Open an offscreen window. This is simply an OpenGL texture that is treated "
@@ -66,6 +66,21 @@ static char synopsisString[] =
 	"'specialFlags' optional parameter to set special properties, defaults to zero. If you set "
 	"it to 2 then the offscreen window will be drawn with especially high precision, see "
 	"specialFlags setting of 2 in help for Screen('DrawTexture') for more explanation. \n"
+	"'multiSample' optional number of samples to use for anti-aliased drawing: This defaults "
+	"to zero if omitted, ie., no anti-aliasing is performed when drawing into this offscreen "
+	"window. If you set a positive non-zero number of samples and your system supports "
+	"anti-aliased drawing to offscreen windows and the imaging pipeline is active, then "
+	"Screen will try to allocate the offscreen window with at least the requested number "
+	"of samples per pixel for anti-aliasing, but gracefully fall back to lower numbers if "
+	"the hardware isn't capable of handling the requested number. Please note that anti-aliased "
+	"offscreen windows can't be directly used for transformations in Screen('TransformTexture') "
+	"or for drawing via Screen('DrawTexture') -- this is a hardware limitation. To display or "
+	"use the content of an anti-aliased offscreen window you must first create a normal offscreen "
+	"window of the same size and color format (same 'rect' and 'pixelSize' parameter), then use "
+	"Screen('CopyWindow', antialiasedWindowhandle, normalWindowhandle); to copy the content to the "
+	"normal offscreen window. This will perform the actual conversion into anti-aliased and "
+	"displayable content.\n"
+	"If the imaging pipeline is disabled, the 'multiSample' parameter will be silently ignored.\n\n"
     "NOTE: Screen's windows are known only to Screen and must be closed by it, e.g., "
     "Screen('Close', w). Matlab knows nothing about Screen's windows, so the Matlab "
     "CLOSE command won't work on Screen's windows. ";
@@ -91,6 +106,7 @@ PsychError SCREENOpenOffscreenWindow(void)
 	boolean					overridedepth = FALSE;
 	int						usefloatformat = 0;
 	int						specialFlags = 0;
+	int						multiSample = 0;
 	
     // Detect endianity (byte-order) of machine:
     ix=255;
@@ -103,7 +119,7 @@ PsychError SCREENOpenOffscreenWindow(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     //cap the number of inputs
-    PsychErrorExit(PsychCapNumInputArgs(5));   //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(6));   //The maximum number of inputs
     PsychErrorExit(PsychCapNumOutputArgs(2));  //The maximum number of outputs
 
     //1-User supplies a window ptr 2-User supplies a screen number 3-User supplies rect and pixel size
@@ -285,8 +301,30 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// Do we need additional depth buffer attachments?
 		needzbuffer = (PsychPrefStateGet_3DGfx()>0) ? TRUE : FALSE;
 		
+		// Copy in optional multiSample argument: It defaults to zero, aka multisampling disabled.
+		PsychCopyInIntegerArg(6, FALSE, &multiSample);
+		if (multiSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid negative multiSample level provided!");
+
+		// Multisampled anti-aliasing requested?
+		if (multiSample > 0) {
+			// Yep. Supported by GPU?
+			if (!(targetWindow->gfxcaps & kPsychGfxCapFBOMultisample)) {
+				// No. We fall back to non-multisampled mode:
+				multiSample = 0;
+				
+				// Tell user if warnings enabled:
+				if (PsychPrefStateGet_Verbosity() > 1) {
+					printf("PTB-WARNING: You requested stimulus anti-aliasing via multisampling by setting the multiSample parameter of Screen('OpenOffscreenWindow', ...) to a non-zero value.\n");
+					printf("PTB-WARNING: You also requested use of the imaging pipeline. Unfortunately, your combination of operating system, graphics hardware and driver does not\n");
+					printf("PTB-WARNING: support simultaneous use of the imaging pipeline and multisampled anti-aliasing.\n");
+					printf("PTB-WARNING: Will therefore continue without anti-aliasing...\n\n");
+					printf("PTB-WARNING: A driver upgrade may resolve this issue. Users of MacOS-X need at least OS/X 10.5.2 Leopard for support on recent ATI hardware.\n\n");
+				}
+			}
+		}
+
 		// Allocate framebuffer object for this Offscreen window:
-		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, PsychGetWidthFromRect(rect), PsychGetHeightFromRect(rect))) {
+		if (!PsychCreateFBO(&(windowRecord->fboTable[0]), fboInternalFormat, needzbuffer, PsychGetWidthFromRect(rect), PsychGetHeightFromRect(rect), multiSample)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_user, "Creation of Offscreen window in imagingmode failed for some reason :(");
 		}
@@ -396,6 +434,12 @@ PsychError SCREENOpenOffscreenWindow(void)
 		// Fullscreen fill of a non-onscreen window:
 		PsychGLRect(windowRecord->rect);
 
+		// Multisampling requested? If so, we need to enable it:
+		if (multiSample > 0) {
+			glEnable(GL_MULTISAMPLE);
+			while (glGetError() != GL_NO_ERROR);
+		}
+		
 		// Ready. Unbind it.
 		PsychSetDrawingTarget(NULL);		
 	}

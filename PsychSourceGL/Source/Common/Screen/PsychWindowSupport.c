@@ -3025,6 +3025,25 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		
 		// Execute post processing sequence for this onscreen window:
 		
+		// Is there a need for special processing on the drawBufferFBO during copy to inputBufferFBO?
+		// Or are both identical?
+		for (viewid = 0; viewid < ((stereo_mode > 0) ? 2 : 1); viewid++) {
+			if (windowRecord->inputBufferFBO[viewid] != windowRecord->drawBufferFBO[viewid]) {
+				// Separate draw- and inputbuffers: We need to copy the drawBufferFBO to its
+				// corresponding inputBufferFBO, applying a special conversion operation.
+				// We use this for multisample-resolve of multisampled drawBufferFBO's.
+				// A simple glBlitFramebufferEXT() call will do the copy & downsample operation:
+				glBindFramebufferEXT(GL_READ_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]->fboid);
+				glBindFramebufferEXT(GL_DRAW_FRAMEBUFFER_EXT, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->fboid);
+				glBlitFramebufferEXT(0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+									 0, 0, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->width, windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]->height,
+									 GL_COLOR_BUFFER_BIT, GL_NEAREST);
+			}
+		}
+		
+		// Reset framebuffer binding to something safe - The system framebuffer:
+		glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+		
 		// Generic image processing on viewchannels enabled?
 		if (imagingMode & kPsychNeedImageProcessing) {
 			// Yes. Process each of the (up to two) streams:
@@ -3037,13 +3056,13 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					// srcfbos are read-only, swizzling forbidden, 2nd srcfbo doesn't exist (only needed for stereo merge op),
 					// We provide a bounce-buffer... We could bind the 2nd channel in steromode if we wanted. Should we?
 					// TODO: Define special userdata struct, e.g., for C-Callbacks or scripting callbacks?
-					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),  (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
+					PsychPipelineExecuteHook(windowRecord, hookchainid, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]),  (windowRecord->processedDrawBufferFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[2]]) : NULL);
 				}
 				else {
 					// Hook chain disabled by userspace or doesn't contain any instructions.
 					// Execute our special identity blit chain to transfer the data from source buffer
 					// to destination buffer:
-					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->drawBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]), NULL);
+					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->inputBufferFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->processedDrawBufferFBO[viewid]]), NULL);
 				}
 			}
 		}
@@ -3109,7 +3128,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			else {
 				// No conversion needed or chain disabled: Do our identity blit, but only if really needed!
 				// This gets skipped in mono-mode if no conversion needed and only single-pass image processing
-				// applied. In that case, the image processing state did the final blit already.
+				// applied. In that case, the image processing stage did the final blit already.
 				if (windowRecord->preConversionFBO[viewid] != windowRecord->finalizedFBO[viewid]) {
 					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>3)) printf("PTB-INFO: Processing chain for output conversion disabled -- Using identity copy as workaround.\n");
 					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
@@ -3899,6 +3918,18 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		// We've got at least RGBA8 rendertargets, including full alpha blending:
 		if (verbose) printf("Basic framebuffer objects with rectangle texture rendertargets supported --> RGBA8 rendertargets with blending.\n");
 		windowRecord->gfxcaps |= kPsychGfxCapFBO;
+		
+		// Support for fast inter-framebuffer blits?
+		if (glewIsSupported("GL_EXT_framebuffer_blit")) {
+			if (verbose) printf("Framebuffer objects support fast blitting between each other.\n");
+			windowRecord->gfxcaps |= kPsychGfxCapFBOBlit;			
+		}
+		
+		// Support for multisampled FBO's?
+		if (glewIsSupported("GL_EXT_framebuffer_multisample") && (windowRecord->gfxcaps & kPsychGfxCapFBOBlit)) {
+			if (verbose) printf("Framebuffer objects support anti-aliasing via multisampling.\n");
+			windowRecord->gfxcaps |= kPsychGfxCapFBOMultisample;			
+		}
 	}
 
 	// ATI_texture_float is supported by R300 ATI cores and later, as well as NV30/40 NVidia cores and later.

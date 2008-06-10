@@ -760,6 +760,9 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // Setup a pointer to our GWorld as texture data pointer:
         out_texture->textureMemorySizeBytes = 0;
 
+		// Quicktime textures are aligned on 4 Byte boundaries:
+		out_texture->textureByteAligned = 4;
+
         // Lock GWorld:
         if(!LockPixels(GetGWorldPixMap(movieRecordBANK[moviehandle].QTMovieGWorld))) {
             // Locking surface failed! We abort.
