@@ -72,9 +72,17 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % KbCheck uses the PsychHID function, a general purpose function for
 % reading from the Human Interface Device (HID) class of USB devices.
 %
-% KbCheck queries the first USB-HID keyboard device by default. Optionally
-% you can pass in a 'deviceNumber' to query a different keyboard if multiple
-% keyboards are connected to your machine.
+% KbCheck queries the first USB-HID keyboard device by default. Optionally,
+% when multiple keyboards are attached to your machine, you can pass in a
+% 'deviceNumber':  When 'deviceNumber' is -1, KbCheck will query all
+% keyboard devices and return their "merged state" - The 'keyCode' vector
+% will represent the state of all keys of all keyboards, and the
+% 'keyIsDown' flag will be equal to one if at least one key on any of the
+% keyboards is pressed. When 'deviceNumber' is greater than 0, it will
+% query only the specified HID keyboard device corresponding to that
+% 'deviceNumber'. The function GetKeyboardIndices() allows to query the
+% device numbers of all attached keyboards, or keyboards matching specific
+% criteria.
 % 
 % Windows/Linux: __________________________________________________________
 %
@@ -104,6 +112,8 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % 10/4/05 awi Note here cosmetic changes by dbp on unknown date between 7/12/04 and 10/4/05.  
 % 10/24/06 mk Windows and Linux implementation: Use built-in helper code in Screen.
 % 10/24/06 mk Add code for disabling "stuck keys".
+% 6/13/08 abl Option for OS X to poll all keyboard devices by passing deviceNumber == -1, \
+%             based on kas's modification of KbWait
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -118,19 +128,37 @@ persistent oldSecs;
 
 % Cache operating system type to speed up the code below:
 persistent macosx;
+% ...and all keyboard indices as well:
+persistent kbs;
+
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
     macosx = IsOSX;
     
     % Set initial oldSecs to minus infinity: No such query before...
     oldSecs = -inf;
+    
+    % Query indices of all attached keyboards, in case we need'em:
+    kbs=GetKeyboardIndices;
 end
 
 if macosx
     if nargin==1
-        [keyIsDown,secs, keyCode]= PsychHID('KbCheck', deviceNumber);
+        if deviceNumber==-1
+            % Query all attached keyboards
+            keyIsDown=0; keyCode=zeros(1,256);  % preallocate these variables
+            for i=kbs
+                [DeviceKeyIsDown, secs, DeviceKeyCode]= PsychHID('KbCheck', i);
+                keyIsDown = keyIsDown | DeviceKeyIsDown;
+                keyCode = keyCode | DeviceKeyCode;
+            end
+        else
+            % Query a specific keyboard device #
+            [keyIsDown, secs, keyCode]= PsychHID('KbCheck', deviceNumber);
+        end
     elseif nargin == 0
-        [keyIsDown,secs, keyCode]= PsychHID('KbCheck');
+        % Query primary keyboard:
+        [keyIsDown, secs, keyCode]= PsychHID('KbCheck');
     elseif nargin > 1
         error('Too many arguments supplied to KbCheck'); 
     end
