@@ -19,9 +19,18 @@ function PlayMoviesDemoOSX(moviename)
 % History:
 % 10/30/05  mk  Wrote it.
 
+theanswer = [];
+
 if nargin < 1
-    moviename = '*.mov'
+    moviename = [];
+    if IsOSX
+        theanswer = input('Serious or cool? Type s or c [s/c]? ', 's');
+    end        
 end;
+
+if isempty(moviename)
+    moviename = '*.mov';
+end
 
 % Switch KbName into unified mode: It will use the names of the OS-X
 % platform on all platforms in order to make this script portable:
@@ -53,10 +62,32 @@ try
     % Initial display and sync to timestamp:
     vbl=Screen('Flip',win);
     iteration=0;    
-    abortit=0
-    
-    % Return full list of movie files from directory+pattern:
-    moviefiles=dir(moviename);
+    abortit=0;
+
+    if isempty(strfind(moviename, 'http'))
+        % Return full list of movie files from directory+pattern:
+        moviefiles=dir(moviename);
+        
+        if isempty(moviefiles)
+            moviefiles(1).name = [ PsychtoolboxRoot 'PsychDemos/QuicktimeDemos/DualDiscs.mov' ];
+        end
+        
+        moviecount = size(moviefiles,1);
+    else
+        moviefiles(1).name = moviename;
+        moviecount = 1;
+    end
+
+    if strcmpi(theanswer, 'c')
+        % Cool stuff,downloaded from the web ;-)
+        moviefiles(1).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_group_20080512_480x272.mov';
+        moviefiles(2).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_sadsong_extended_20080519_480x272.mov';
+        moviefiles(3).name = 'http://movies.apple.com/movies/us/apple/getamac/apple_getamac_breakthrough_20080401_480x272.mov';
+        moviefiles(4).name = 'http://movies.apple.com/movies/us/apple/getamac/apple-getamac-fat_480x376.mov';
+        moviefiles(5).name = 'http://movies.apple.com/movies/us/apple/getamac_ads4/prlady_480x272.mov';
+        moviecount = size(moviefiles,2);
+    end
+
     
     % Playbackrate defaults to 1:
     rate=1;
@@ -65,7 +96,7 @@ try
     while (abortit<2)
         iteration=iteration + 1;
         fprintf('ITER=%i::', iteration);
-        moviename=moviefiles(mod(iteration, size(moviefiles,1))+1).name;
+        moviename=moviefiles(mod(iteration, moviecount)+1).name;
         
         % Open movie file and retrieve basic info about movie:
         [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);

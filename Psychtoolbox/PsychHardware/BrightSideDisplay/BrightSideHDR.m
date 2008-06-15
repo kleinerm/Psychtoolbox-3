@@ -242,7 +242,24 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
             % Windows system: Change working dir to location to BrightSide
             % DLL's:
             olddir = pwd;
-            cd([PsychtoolboxRoot 'PsychHardware/BrightSideDisplay/BSRuntimeLibs/outputlib/lib']);
+            
+            try
+                % This fails if libraries are not installed, so we
+                % try-catch it...
+                cd([PsychtoolboxRoot 'PsychHardware/BrightSideDisplay/BSRuntimeLibs/outputlib/lib']);
+            catch
+                fprintf('Could not cd() into the directory %s !\n', [PsychtoolboxRoot 'PsychHardware/BrightSideDisplay/BSRuntimeLibs/outputlib/lib']);
+                fprintf('This could be a problem with access permissions, but more likely, this directory simply does not exist.\n');
+                fprintf('After a new installation of Psychtoolbox, you must manually copy the BrightSide runtime libraries into that\n');
+                fprintf('folder, ie., replace the empty directory .../BSRuntimeLibs/ by the one contained in the zip file with the\n');
+                fprintf('proprietary Brightside runtime libraries.\n');
+                fprintf('As of June 2008, in MPI Tuebingen, this zip file can be found in \\uni.kyb.local\home\kleinerm\projects\OpenGLPsychtoolbox\BrightSideHDRRuntime.zip\n');
+                fprintf('Check this, then retry...\n');
+                
+                Screen('CloseAll');
+                error('BrightSideHDR: The directory with the Brightside runtime drivers is inaccessible or non-existent.');
+            end
+            
             % Preload (and thereby link) BrightSideCore into Matlab. The
             % special command code -1 forces loading and sets the initial
             % debuglevel:
@@ -316,6 +333,10 @@ if strcmp(cmd, 'Shutdown')
     end
 
     % Restore selection of text renderer:
+    % TODO FIXME: Technically it is not allowed to call into Screen() from
+    % within this function as it is called by Screen()'s shutdown path and
+    % Screen is not reentrant! For some reason it still works. Are we lucky
+    % or what?!? Leave it for now...
     Screen('Preference', 'TextRenderer', oldTextRenderer);
 
     % Reset to preinit state:

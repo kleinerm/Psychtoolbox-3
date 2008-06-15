@@ -161,28 +161,34 @@ PsychError SCREENCopyWindow(void)
 
 		// Perform blit-operation: If blitting from a multisampled FBO into a non-multisampled one, this will also perform the
 		// multisample resolve operation:
-		glBlitFramebufferEXT(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom],
-							 targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom],
+		glBlitFramebufferEXT(sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop],
+							 targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop],
 							 GL_COLOR_BUFFER_BIT, GL_NEAREST);
+
+		printf("X0 = %f Y0 = %f X1 = %f Y1 = %f \n", sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]);
+		printf("X0 = %f Y0 = %f X1 = %f Y1 = %f \n", targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]);
 		
 		if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
-			glerr = glGetError();
+			if ((glerr = glGetError())!=GL_NO_ERROR) {			
 
-			if((glerr == GL_INVALID_OPERATION) && (PsychGetWidthFromRect(sourceRect) != PsychGetWidthFromRect(targetRect) ||
-			   PsychGetHeightFromRect(sourceRect) != PsychGetHeightFromRect(targetRect))) {
-				// Non-matching sizes. Make sure we do not operate on multisampled stuff
-				PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy a multi-sampled window into a non-multisampled window, but there is a size mismatch of sourceRect and targetRect. Matching size is required for such copies.");
-			}
-			else {
-				if (glerr == GL_INVALID_OPERATION) {
-					PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy from a multi-sampled window into another multisampled window, but there is a mismatch between the multiSample levels of both. Identical multiSample values are required for such copies.");
+				// Reset framebuffer binding to something safe - The system framebuffer:
+				glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, 0);
+			
+				if((glerr == GL_INVALID_OPERATION) && (PsychGetWidthFromRect(sourceRect) != PsychGetWidthFromRect(targetRect) ||
+													   PsychGetHeightFromRect(sourceRect) != PsychGetHeightFromRect(targetRect))) {
+					// Non-matching sizes. Make sure we do not operate on multisampled stuff
+					PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy a multi-sampled window into a non-multisampled window, but there is a size mismatch of sourceRect and targetRect. Matching size is required for such copies.");
 				}
 				else {
-					printf("CopyWindow failed for unresolved reason: OpenGL says after call to glBlitFramebufferEXT(): %s\n", gluErrorString(glerr));
-					PsychErrorExitMsg(PsychError_user, "CopyWindow failed for unresolved reason.");
+					if (glerr == GL_INVALID_OPERATION) {
+						PsychErrorExitMsg(PsychError_user, "CopyWindow failed: Most likely cause: You tried to copy from a multi-sampled window into another multisampled window, but there is a mismatch between the multiSample levels of both. Identical multiSample values are required for such copies.");
+					}
+					else {
+						printf("CopyWindow failed for unresolved reason: OpenGL says after call to glBlitFramebufferEXT(): %s\n", gluErrorString(glerr));
+						PsychErrorExitMsg(PsychError_user, "CopyWindow failed for unresolved reason.");
+					}
 				}
 			}
-			
 		}
 		
 		// Reset framebuffer binding to something safe - The system framebuffer:

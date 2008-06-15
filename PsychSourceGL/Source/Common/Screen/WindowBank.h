@@ -89,6 +89,7 @@ TO DO:
 #define kPsychGfxCapVCGood		1024		// Hw supports unclamped vertex colors of high (at least 16 bit effective) precision.
 #define kPsychGfxCapFBOMultisample 2048		// Hw supports multisampled rendering into FBO's, aka EXT_framebuffer_multisample.
 #define kPsychGfxCapFBOBlit		4096		// Hw supports blitting between FBO's, aka EXT_framebuffer_blit.
+#define kPsychGfxCapNeedsUnsignedByteRGBATextureUpload 8192		// Hw requires use of GL_UNSIGNED_BYTE instead of GL_UNSIGNED_INT_8_8_8_8_REV for optimal RGBA8 texture upload.
 
 // Definition of flags for imagingMode of Image processing pipeline.
 // These are used internally, but need to be exposed to Matlab as well.

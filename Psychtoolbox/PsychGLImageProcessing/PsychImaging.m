@@ -578,6 +578,13 @@ winRect = [];
 if strcmp(cmd, 'PrepareConfiguration')
     % Prepare new configuration:
     if configphase_active
+        fprintf('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!\n');
+        fprintf('You must call the PsychImaging(''OpenWindow'', ...); command at least once to open an onscreen\n');
+        fprintf('window with the provided settings, before you can specify settings for additional onscreen windows.\n\n');
+        fprintf('\n\n');
+        fprintf('However, the most likely reason you see this error message is because your script aborted with some\n');
+        fprintf('error. In that case you will need to execute a ''clear all'' command at the Matlab/Octave prompt before\n');
+        fprintf('you can restart your script.\n\n');
         error('Tried to prepare a new configuration phase, but you did not finalize the previous phase yet!');
     end
     

@@ -99,7 +99,7 @@ try
     
     fprintf('\n\n\nAverage Make -> Upload -> Destroy time for a %i x %i pixels, %i channels texture over %i samples is: %f msecs.\n\n\n', width, height, channels, nSamples, avgmsecs);
 
-    if channels == 4
+    if channels >= 3
         % Ok, same thing again with low-level calls:
         tex = Screen('MakeTexture', w, img);
         [texid textarget] = Screen('GetOpenGLTexture', w, tex);
@@ -108,13 +108,23 @@ try
 
         texid = glGenTextures(1);
         glBindTexture(textarget, texid);
-        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+        switch channels
+            case 4,
+                        glTexImage2D(textarget, 0, GL.RGBA8, width, height, 0, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            case 3,
+                        glTexImage2D(textarget, 0, GL.RGB8, width, height, 0, GL.RGB, GL.UNSIGNED_BYTE, img);
+        end
+        
         glBindTexture(textarget, 0);
 
         % Perform nSamples sampling passes:
         for i=1:nSamples
             glBindTexture(textarget, texid);
-            glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            if channels == 4
+                glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.BGRA, GL.UNSIGNED_INT_8_8_8_8_REV, img);
+            else
+                glTexSubImage2D(textarget, 0, 0, 0, width, height, GL.RGB, GL.UNSIGNED_BYTE, img);
+            end
             glBindTexture(textarget, 0);
             if preload
                 Screen('PreloadTextures', w, tex);

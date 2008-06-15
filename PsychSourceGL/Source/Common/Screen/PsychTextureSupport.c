@@ -421,7 +421,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 						
 					case 32:
 						glinternalFormat=GL_RGBA8;
-						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, texmemptr);
+						glTexImage2D(texturetarget, 0, glinternalFormat, (GLsizei) twidth, (GLsizei) theight, 0, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), texmemptr);
 						break;
 				}
 			}
@@ -563,7 +563,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	      break;
 	    
 	    case 32:
-	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, win->textureMemory);
+	      glTexSubImage2D(texturetarget, 0, 0, 0, (GLsizei)sourceWidth, (GLsizei)sourceHeight, GL_BGRA, ((win->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) ? GL_UNSIGNED_BYTE : GL_UNSIGNED_INT_8_8_8_8_REV), win->textureMemory);
 	      break;
 	    }
 	  }

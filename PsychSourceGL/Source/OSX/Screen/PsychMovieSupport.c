@@ -218,6 +218,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
     int i, slotid;
     OSErr error;
     CFStringRef movieLocation;
+	CFURLRef movieURLLocation;
     CFStringRef coreAudioDeviceUID;
     boolean trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
@@ -282,7 +283,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
     
     // Create name-string for moviename:
     movieLocation = CFStringCreateWithCString (kCFAllocatorDefault, moviename, kCFStringEncodingASCII);
-    
+
     // Zero-out new record in moviebank:
     movieRecordBANK[slotid].theMovie=NULL;    
     movieRecordBANK[slotid].QTMovieContext=NULL;    
@@ -305,10 +306,20 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
 
     // The Movie location 
     newMovieProperties[propcount].propClass = kQTPropertyClass_DataLocation;
-    newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
-    newMovieProperties[propcount].propValueSize = sizeof(CFStringRef);
-    newMovieProperties[propcount++].propValueAddress = &movieLocation;
-    
+	if (strstr(moviename, "http:") || strstr(moviename, "ftp:")) {
+		// Open movie from URL, e.g., http- or ftp- server:
+		movieURLLocation = CFURLCreateWithString(kCFAllocatorDefault, movieLocation, NULL);
+		newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFURL;
+		newMovieProperties[propcount].propValueSize = sizeof(movieURLLocation);
+		newMovieProperties[propcount++].propValueAddress = (void*) &movieURLLocation;
+	}
+	else {
+		// Open movie file from filesystem:
+		newMovieProperties[propcount].propID = kQTDataLocationPropertyID_CFStringPosixPath;
+		newMovieProperties[propcount].propValueSize = sizeof(CFStringRef);
+		newMovieProperties[propcount++].propValueAddress = &movieLocation;
+    }
+	
     if (!PSYCH_USE_QT_GWORLDS) {
         // The Movie visual context
         newMovieProperties[propcount].propClass = kQTPropertyClass_Context;

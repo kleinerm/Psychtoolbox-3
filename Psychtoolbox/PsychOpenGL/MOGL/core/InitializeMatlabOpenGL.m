@@ -103,12 +103,12 @@ oglconstpath = [PsychtoolboxRoot 'PsychOpenGL/MOGL/core/oglconst.mat'];
 % C-Style compatible load requested?
 if opengl_c_style > 0
    % Load all constants, also the C-Style ones, e.g., GL_LIGHTING
-   evalin('caller',['load ' oglconstpath]);    
+   evalin('caller',['load (''' oglconstpath ''');']);
 else
    % Load only the GL. GLU. and AGL. versions, e.g., GL.LIGHTING
    % This is less convenient as one needs to replace GL_ by GL. in
    % all scripts, but it doesn't clutter the Matlab workspace...
-   evalin('caller',['load ' oglconstpath ' AGL GL GLU']);      
+   evalin('caller',['load (''' oglconstpath ''', ''AGL'', ''GL'', ''GLU'');']);
 end;
 
 % Assign GL_3D manually - Little hack...

@@ -186,6 +186,9 @@ typedef struct {
 // error checking and handling calls. This is a hint: May be overriden at high debug levels etc.
 #define kPsychAvoidCPUGPUSync 512
 
+// Tell PTB to use the opposite texture format of what its auto-detection thinks is optimal:
+#define kPsychTextureUploadFormatOverride 1024
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

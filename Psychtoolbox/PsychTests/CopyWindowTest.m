@@ -36,7 +36,8 @@ if nargin < 2
 end;
 sd
 
-w=Screen('OpenWindow', 0, 0, [], 32, 2);
+w=Screen('OpenWindow', 0, 0, [], 32, 2, [], 1, kPsychNeedFastBackingStore);
+%w=Screen('OpenWindow', 0, 0, []);
 % Clear to black background:
 Screen('FillRect', w, 0);
 x=200;
@@ -56,7 +57,7 @@ WaitKey;
 Screen('Flip', w);
 
 % Draw same rect into an offscreen window:
-[woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 101 101]);
+[woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 100 100]);
 srcRect=srcRect*sf
 
 DrawRect(woff1, 0, 1);

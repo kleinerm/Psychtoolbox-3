@@ -3909,6 +3909,29 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		printf("Indicator variables: maxcolorattachments = %i, maxrectangletexturesize = %i, maxnativealuinstructions = %i.\n", maxcolattachments, maxtexsize, maxaluinst);
 	}
 	
+	// Is this a GPU with known broken drivers that yield miserable texture creation performance
+	// for RGBA8 textures when using the standard optimized settings?
+	// As far as we know (June 2008), ATI hardware under MS-Windows and Linux has this driver bugs,
+	// at least on X1600 mobile and X1300 desktop:
+	if ((PSYCH_SYSTEM == PSYCH_WINDOWS || PSYCH_SYSTEM == PSYCH_LINUX) && ati) {
+		// Supposedly: Set the special flag that will trigger alternative parameter selection
+		// in PsychCreateTexture():
+		windowRecord->gfxcaps |= kPsychGfxCapNeedsUnsignedByteRGBATextureUpload;
+	}
+	
+	// Does usercode want us to override the autmatic choice of optimal texture upload format for RGBA8 textures?
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychTextureUploadFormatOverride) {
+		// Override! Invert current setting:
+		if (windowRecord->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) {
+			// Clear this caps bit:
+			windowRecord->gfxcaps &= (~kPsychGfxCapNeedsUnsignedByteRGBATextureUpload);
+		}
+		else {
+			// Set this caps bit:
+			windowRecord->gfxcaps |= kPsychGfxCapNeedsUnsignedByteRGBATextureUpload;
+		}
+	}
+	
 	// Support for basic FBO's? Needed for any operation of the imaging pipeline, e.g.,
 	// full imaging pipe, fast offscreen windows, Screen('TransformTexture')...
 	

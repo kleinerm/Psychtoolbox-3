@@ -15,10 +15,10 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 % Public functions:
 %
 %
-% PsychVideoSwitcher('SwitchMode', win, enableLuminanceMode [, VideoSwitcherIsABox])
+% PsychVideoSwitcher('SwitchMode', screenIdx, enableLuminanceMode [, VideoSwitcherIsABox])
 % - Switch programmatically between high precision luminance mode and
-% standard RGB true color display mode. 'win' is the window handle of the
-% associated onscreen window, or a screen handle for the screen to switch.
+% standard RGB true color display mode. 'screenIdx' is the screen index of the
+% for the display screen to switch.
 %
 % 'enableLuminanceMode' must be set to 0 to switch to RGB mode, and to 1 to
 % switch to high precision luminance mode.
@@ -30,7 +30,7 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 % in the path mypath = PsychtoolboxConfigDir('VideoSwitcher');
 %
 % If you create a file named 'VideoSwitcherIsABox' in that directory
-% mypath, the switcher is assumed to be an external box. If your create a
+% mypath, the switcher is assumed to be an external box. If you create a
 % file named 'VideoSwitcherIsACard', the code assumes a PCI card based
 % device. If no such files exist, the switcher is assumed to be a box.
 %
@@ -671,7 +671,7 @@ return;
 % Note: this runs slow when lum matrix is large. 200x200 can take 1 second.
 % XL, 01/08/2008
 function img = lum2calrgb (lum, ratio, callum, trigger)
-if nargin<4 | isempty(trigger), trigger=0; end
+if nargin<4 || isempty(trigger), trigger=0; end
 if nargin<3, disp('Usage: RGBimage = lum2calrgb (lum, ratio, lut [, trigger])'); return; end
 
 if length(callum)~=257
