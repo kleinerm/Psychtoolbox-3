@@ -139,7 +139,9 @@ if isempty(macosx)
     oldSecs = -inf;
     
     % Query indices of all attached keyboards, in case we need'em:
-    kbs=GetKeyboardIndices;
+    if macosx
+        kbs=GetKeyboardIndices;
+    end
 end
 
 if macosx
