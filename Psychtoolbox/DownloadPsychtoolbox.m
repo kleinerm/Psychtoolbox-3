@@ -229,6 +229,8 @@ function DownloadPsychtoolbox(flavor,targetdirectory,downloadmethod,targetRevisi
 % 05/07/08 mk  Add better handling of default values. Add 'targetRevision'
 %              parameter as option, just as in UpdatePsychtoolbox.m
 %
+% 06/16/08 mk  Change default initial download protcol from svn: to https:,
+%              as Berlios seems to have disabled svnserve protocol :-(
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -274,7 +276,9 @@ if nargin < 3
 end
 
 if isempty(downloadmethod)
-    downloadmethod = 0;
+    % Try 2 by default (https://) as good ol' svnserve protocol seems to be
+    % disabled as of 13.06.2008:
+    downloadmethod = 2;
 else
     if downloadmethod<0 | downloadmethod>3
         error('Invalid downloadmethod provided. Valid are values between 0 and 3.');
