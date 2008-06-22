@@ -933,11 +933,11 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	}
 	#endif
 	
-	// Our stream shall be primed initially with our callbacks data, not just with zeros.
+	// Our stream shall be primed initially with our callbacks data, not just with zeroes.
 	// In high latency-mode 0, we request sample clipping and dithering, so sound is more
 	// high quality on Windows. In low-latency mode, we safe the computation time for that.
 	sflags = paPrimeOutputBuffersUsingStreamCallback;
-	sflags = (latencyclass > 0) ? sflags : (sflags | paClipOff | paDitherOff);
+	sflags = (latencyclass <= 0) ? sflags : (sflags | paClipOff | paDitherOff);
 
 	// Try to create & open stream:
 	err = Pa_OpenStream(
