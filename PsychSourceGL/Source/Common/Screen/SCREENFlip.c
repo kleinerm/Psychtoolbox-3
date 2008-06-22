@@ -258,6 +258,8 @@ PsychError SCREENFlip(void)
 		if (NULL == windowRecord->flipInfo) {
 			// First time invocation: Alloc and clear-init the struct...
 			windowRecord->flipInfo = (PsychFlipInfoStruct*) malloc(sizeof(PsychFlipInfoStruct));
+			if (NULL == windowRecord->flipInfo) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to malloc() flipInfo struct!");
+			
 			memset(windowRecord->flipInfo, 0, sizeof(PsychFlipInfoStruct));
 			// printf("FT\n");
 		}

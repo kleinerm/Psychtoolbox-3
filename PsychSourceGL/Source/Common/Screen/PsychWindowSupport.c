@@ -1849,21 +1849,23 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     double vbl_time_elapsed; 
     double onset_time_togo;
     long scw, sch;
-    psych_uint64 preflip_vblcount;          // VBL counters and timestamps acquired from low-level OS specific routines.
-    psych_uint64 postflip_vblcount;         // Currently only supported on OS-X, but Linux/X11 implementation will follow.
+    psych_uint64 preflip_vblcount = 0;          // VBL counters and timestamps acquired from low-level OS specific routines.
+    psych_uint64 postflip_vblcount = 0;         // Currently only supported on OS-X, but Linux/X11 implementation will follow.
     double preflip_vbltimestamp = -1;
     double postflip_vbltimestamp = -1;
 	unsigned int vbltimestampquery_retrycount = 0;
 	double time_at_swaprequest=0;			// Timestamp taken immediately before requesting buffer swap. Used for consistency checks.
-	int line_at_swaprequest = -1;			// Scanline of display at time of swaprequest.
-	boolean flipcondition_satisfied;
-	
+	double time_post_swaprequest=0;			// Timestamp taken immediately after requesting buffer swap. Used for consistency checks.
+	double time_at_swapcompletion=0;		// Timestamp taken after swap completion -- initially identical to time_at_vbl.
+	int line_pre_swaprequest = -1;			// Scanline of display immediately before swaprequest.
+	int line_post_swaprequest = -1;			// Scanline of display immediately after swaprequest.
+	boolean flipcondition_satisfied;	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
-    
     PsychWindowRecordType **windowRecordArray=NULL;
     int	i;
     int numWindows=0; 
-    
+	int verbosity = PsychPrefStateGet_Verbosity();
+
     // Child protection:
     if(windowRecord->windowType!=kPsychDoubleBufferOnscreen)
         PsychErrorExitMsg(PsychError_internal,"Attempt to swap a single window buffer");
@@ -2068,6 +2070,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		} while (!flipcondition_satisfied);
     #endif
     
+	// Take a measurement of the beamposition at time of swap request:
+	line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+
 	// Take preswap timestamp:
 	PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
 
@@ -2087,15 +2092,18 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// bufferswap:
 		PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
 
+		// Take a measurement of the beamposition at time of swap request:
+		line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+
 		// Take updated preswap timestamp:
 		PsychGetAdjustedPrecisionTimerSeconds(&time_at_swaprequest);
 	}
 	
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
-	// take a measurement of the beamposition at time of swap request:
-	line_at_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
     PsychOSFlipWindowBuffers(windowRecord);
-	line_at_swaprequest = (line_at_swaprequest + (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber)) * 0.5;
+
+	// Take post-swap request line:
+	line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
 	
 	// Also swap the slave window, if any:
 	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
@@ -2111,6 +2119,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
     }
     
+	// Take postswap request timestamp:
+	PsychGetAdjustedPrecisionTimerSeconds(&time_post_swaprequest);
+
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
         if ((vbl_synclevel==3) && (windowRecord->VBL_Endline != -1)) {
@@ -2156,6 +2167,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
          // We take a timestamp here and return it to "userspace"
         PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
+		time_at_swapcompletion = time_at_vbl;
 
         #if PSYCH_SYSTEM == PSYCH_OSX
         // Run kernel-level timestamping always in mode > 1 or on demand in mode 1 if beampos.
@@ -2178,26 +2190,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
                 PsychWaitIntervalSeconds(0.00025);
                 postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
 				vbltimestampquery_retrycount++;
-			}
-			
-			// Some diagnostics at high debug-levels:
-			if (vbltimestampquery_retrycount > 0 && PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychFlipWindowBuffers(), VBLTimestamping: RETRYCOUNT %i : Delta Swaprequest - preflip_vbl timestamp: %lf secs.\n", vbltimestampquery_retrycount, time_at_swaprequest - preflip_vbltimestamp);
-			
-			if ((vbltimestampquery_retrycount>=8) && (PsychPrefStateGet_Verbosity() > 0)) {
-				// VBL irq queries broken! Disable them.
-				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup  [Query failed multiple times]! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
-				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
-			}
-			
-			// We try to detect wrong order of events, but again allow for a bit of slack,
-			// as some drivers (this time on PowerPC) have their own share of trouble.
-			if ((postflip_vbltimestamp - time_at_vbl > 0.002) && (PsychPrefStateGet_Verbosity() > 0)) {
-				// VBL irq queries broken! Disable them.
-				printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]! Please disable them via Screen('Preference', 'VBLTimestampingMode', 0);\n");
-				printf("PTB-ERROR: until the problem is resolved. You may want to restart Matlab and retry.\n");
-				printf("PTB-ERROR: postflip - time at vbl == %lf secs.\n", postflip_vbltimestamp - time_at_vbl);
-				printf("PTB-ERROR: Btw. if you are running in windowed mode, this is not unusual -- timestamping doesn't work well in windowed mode...\n");
-			}
+			}			
         }
         #endif
         
@@ -2218,11 +2211,18 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// we've already verified correct working of the queries during startup.
 			if ((*beamPosAtFlip < 0) || (*beamPosAtFlip > vbl_endline)) {
 				// Ok, this is completely foo-bared.
-				printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
-				printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
-				printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
-				printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
-				printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+				if (verbosity > 0) {
+					printf("PTB-ERROR: Beamposition query after flip returned the *impossible* value %i (Valid would be between zero and %i)!!!\n", *beamPosAtFlip, (int) vbl_endline);
+					printf("PTB-ERROR: This is a severe malfunction, indicating a bug in your graphics driver. Will disable beamposition queries from now on.\n");
+					if ((PSYCH_SYSTEM == PSYCH_OSX) && (vbltimestampmode == 1)) { 
+						printf("PTB-ERROR: As this is MacOS/X, i'll switch to a (potentially slightly less accurate) mechanism based on vertical blank interrupts...\n");
+					}
+					else {
+						printf("PTB-ERROR: Timestamps returned by Flip will be correct, but less robust and accurate than they would be with working beamposition queries.\n");
+					}
+					printf("PTB-ERROR: It's strongly recommended to update your graphics driver and optionally file a bug report to your vendor if that doesn't help.\n");
+					printf("PTB-ERROR: Read 'help Beampositionqueries' for further information.\n");
+				}
 				
 				// Mark vbl endline as invalid, so beampos is not used anymore for future flips.
 				windowRecord->VBL_Endline = -1;
@@ -2252,7 +2252,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // Beamposition queries unavailable!
             
             // Shall we fall-back to kernel-level query?
-            if (vbltimestampmode==1 && preflip_vbltimestamp > 0) {
+            if ((vbltimestampmode==1 || vbltimestampmode==2) && preflip_vbltimestamp > 0) {
                 // Yes: Use fallback result:
                 time_at_vbl = postflip_vbltimestamp;
             }
@@ -2266,10 +2266,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // OS level queries of timestamps supported and consistency check wanted?
         if (preflip_vbltimestamp > 0 && vbltimestampmode==2) {
             // Yes. Check both methods for consistency: We accept max. 1 ms deviation.
-            if (fabs(postflip_vbltimestamp - time_at_vbl)>0.001) {
+            if ((fabs(postflip_vbltimestamp - time_at_vbl) > 0.001) || (verbosity > 20)) {
                 printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %lf  -  beampos_vbltimestamp = %lf  == Delta is = %lf \n",
                    (int) preflip_vblcount, (int) postflip_vblcount, (int) (postflip_vblcount - preflip_vblcount), postflip_vbltimestamp, time_at_vbl, postflip_vbltimestamp - time_at_vbl);
-
             }
         }
         
@@ -2284,14 +2283,182 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// actually starting it! We test for this, but allow for a slack of 50 microseconds,
 		// because a small "too early" offset could be just due to small errors in refresh rate
 		// calibration or other sources of harmless timing errors.
-		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_at_swaprequest > 0) && (line_at_swaprequest < vbl_startline))) {
-			// Ohoh! Broken timing. Disable advanced timestamping for future operations, warn user.
-			PsychPrefStateSet_VBLTimestampingMode(-1);
-			printf("\n\nPTB-ERROR: Screen('Flip'); timestamping computed an *impossible value* %lf secs, which would indicate that\n", time_at_vbl);
-			printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest possible %lf secs).\n", time_at_swaprequest - 0.00005);
-			printf("PTB-ERROR: Something is broken in your systems timestamping. High-precision timestamping disabled,\n");
-			printf("PTB-ERROR: reported timestamps will be less robust and accurate, but hopefully at least not completely wrong.\n");
-			printf("PTB-ERROR: Please try to find and fix the problem if you rely on exact stimulus timing. Read 'help SyncTrouble' !\n\n");
+		//
+		// This is a test specific for beamposition based timestamping. We can't execute the
+		// test (would not be diagnostic) if the swaprequest happened within the VBL interval,
+		// because in that case, it is possible to get a VBL swap timestamp that is before the
+		// swaprequest: The timestamp always denotes the onset of a VBL, but a swaprequest issued
+		// at the very end of VBL would still get executed, therefore the VBL timestamp would be
+		// valid although it technically precedes the time of the "late" swap request: This is
+		// why we check the beampositions around time of swaprequest to make sure that the request
+		// was issued while outside the VBL:
+		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > 0) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
+			((line_post_swaprequest > 0) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
+			(vbltimestampmode >= 0) && (vbltimestampmode < 3)) {
+
+			// Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.			
+			if (verbosity > 0) {
+				printf("\n\nPTB-ERROR: Screen('Flip'); beamposition timestamping computed an *impossible stimulus onset value* of %lf secs, which would indicate that\n", time_at_vbl);
+				printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest theoretically possible %lf secs).\n\n", time_at_swaprequest);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): line_pre_swaprequest = %i, line_post_swaprequest = %i, time_post_swaprequest = %lf\n", line_pre_swaprequest, line_post_swaprequest, time_post_swaprequest);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): preflip_vblcount = %i, preflip_vbltimestamp = %lf\n", (int) preflip_vblcount, preflip_vbltimestamp);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): postflip_vblcount = %i, postflip_vbltimestamp = %lf, vbltimestampquery_retrycount = %i\n", (int) postflip_vblcount, postflip_vbltimestamp, (int) vbltimestampquery_retrycount);
+				printf("\n");
+			}
+			
+			// Is VBL IRQ timestamping allowed as a fallback and delivered a valid result?
+			if (vbltimestampmode >= 1 && postflip_vbltimestamp > 0) {
+				// Available. Meaningful result?
+				if (verbosity > 0) {
+					printf("PTB-ERROR: The most likely cause of this error (based on cross-check with kernel-level timestamping) is:\n");
+					if (((postflip_vbltimestamp < time_at_swaprequest - 0.00005) && (postflip_vbltimestamp == preflip_vbltimestamp)) ||
+						((preflip_vblcount + 1 == postflip_vblcount) && (vbltimestampquery_retrycount > 1))) {
+						// Hmm. These results back up the hypothesis that sync of bufferswaps to VBL is broken, ie.
+						// the buffers swap as soon as swappable and requested, instead of only within VBL:
+						printf("PTB-ERROR: Synchronization of stimulus onset (buffer swap) to the vertical blank interval VBL is not working properly.\n");
+						printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
+						printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+						printf("PTB-ERROR: For the remainder of this session, i've switched to kernel based timestamping as a backup method for the\n");
+						printf("PTB-ERROR: less likely case that beamposition timestamping in your system is broken. However, this method seems to\n");
+						printf("PTB-ERROR: confirm the hypothesis of broken sync of stimulus onset to VBL.\n\n");
+					}
+					else {
+						// VBL IRQ timestamping doesn't support VBL sync failure, so it might be a problem with beamposition timestamping...
+						printf("PTB-ERROR: Something may be broken in your systems beamposition timestamping. Read 'help SyncTrouble' !\n\n");
+						printf("PTB-ERROR: For the remainder of this session, i've switched to kernel based timestamping as a backup method.\n");
+						printf("PTB-ERROR: This method is slightly less accurate and higher overhead but should be similarly robust.\n");
+						printf("PTB-ERROR: A less likely cause could be that Synchronization of stimulus onset (buffer swap) to the\n");
+						printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+						printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
+						printf("PTB-ERROR: becomes quite futile.\n");
+					}
+				}
+				
+				// Disable beamposition timestamping for further session:
+				windowRecord->VBL_Endline = -1;
+				
+				// Set vbltimestampmode = 0 for rest of this subfunction, so the checking code for
+				// stand-alone kernel level timestamping below this routine gets suppressed for this
+				// iteration:
+				vbltimestampmode = 0;
+				
+				// In any case: Override with VBL IRQ method results:
+				time_at_vbl = postflip_vbltimestamp;
+				*time_at_onset=time_at_vbl;
+			}
+			else {
+				// VBL timestamping didn't deliver results? Because its not enabled in parallel with beampos queries?
+				if ((vbltimestampmode == 1) && (PSYCH_SYSTEM == PSYCH_OSX)) {
+					// Auto fallback enabled, but not if beampos queries appear to be functional. They are
+					// dysfunctional by now, but weren't at swap time, so we can't get any useful data from
+					// kernel level timestamping. However in the next round we should get something. Therefore,
+					// enable both methods in consistency cross check mode:
+					PsychPrefStateSet_VBLTimestampingMode(2);
+
+					// Set vbltimestampmode = 0 for rest of this subfunction, so the checking code for
+					// stand-alone kernel level timestamping below this routine gets suppressed for this
+					// iteration:
+					vbltimestampmode = 0;
+
+					if (verbosity > 0) {
+						printf("PTB-ERROR: I have enabled additional cross checking between beamposition based and kernel-level based timestamping.\n");
+						printf("PTB-ERROR: This should allow to get a better idea of what's going wrong if successive invocations of Screen('Flip');\n");
+						printf("PTB-ERROR: fail to deliver proper timestamps as well. It may even fix the problem if the culprit would be a bug in \n");
+						printf("PTB-ERROR: beamposition based high precision timestamping. We will see...\n\n");
+						printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
+						printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+						printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
+						printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+					}
+				}
+				else {
+					// Ok, we lost:
+					// VBL kernel level timestamping not operational or intentionally disabled: No backup solutions left, and no way to
+					// cross-check stuff: We disable high precision timestamping completely:
+
+					// Disable beamposition timestamping for further session:
+					PsychPrefStateSet_VBLTimestampingMode(-1);
+					vbltimestampmode = -1;
+					
+					if (verbosity > 0) {
+						printf("PTB-ERROR: This error can be due to either of the following causes (No way to discriminate):\n");
+						printf("PTB-ERROR: Either something is broken in your systems beamposition timestamping. I've disabled high precision\n");
+						printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but if that was the culprit it should be fixed.\n\n");
+						printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
+						printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+						printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
+						printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n");
+					}
+				}
+			}
+		}
+		
+		// VBL IRQ based timestamping in charge?
+		if ((PSYCH_SYSTEM == PSYCH_OSX) && ((vbltimestampmode == 3) || (vbltimestampmode > 0 && windowRecord->VBL_Endline == -1))) {
+			// Yes. Try some consistency checks for that:
+
+			// Some diagnostics at high debug-levels:
+			if (vbltimestampquery_retrycount > 0 && verbosity > 10) printf("PTB-DEBUG: In PsychFlipWindowBuffers(), VBLTimestamping: RETRYCOUNT %i : Delta Swaprequest - preflip_vbl timestamp: %lf secs.\n", (int) vbltimestampquery_retrycount, time_at_swaprequest - preflip_vbltimestamp);
+
+			if ((vbltimestampquery_retrycount>=8) && (preflip_vbltimestamp == postflip_vbltimestamp) && (preflip_vbltimestamp > 0)) {
+				// Postflip timestamp equals valid preflip timestamp after many retries:
+				// This can be due to a swaprequest emitted and satisfied/completed within a single VBL
+				// interval - then it would be perfectly fine. Or it happens despite a swaprequest in
+				// the middle of a video refersh cycle. Then it would indicate trouble, either with the
+				// timestamping mechanism or with sync of bufferswaps to VBL:
+				// If we happened to do everything within a VBL, then the different timestamps should
+				// be close together -- probably within 2 msecs - the max duration of a VBL and/or retry sequence:
+				if (fabs(preflip_vbltimestamp - time_at_swaprequest) < 0.002) {
+					// Swaprequest, Completion and whole timestamping happened likely within one VBL,
+					// so no reason to worry...
+					if (verbosity > 10) {
+						printf("PTB-DEBUG: With kernel-level timestamping: ");
+						printf("vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %lf, time_at_swaprequest= %lf\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
+					}
+				}
+				else {
+					// Stupid values, but swaprequest not close to VBL, but likely within refresh cycle.
+					// This could be either broken queries, or broken sync to VBL:
+					if (verbosity > 0) {
+						printf("\n\nPTB-ERROR: Screen('Flip'); kernel-level timestamping computed bogus values!!!\n");
+						printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %lf, time_at_swaprequest= %lf\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
+						printf("PTB-ERROR: This error can be due to either of the following causes (No simple way to discriminate):\n");
+						printf("PTB-ERROR: Either something is broken in your systems VBL-IRQ timestamping. I've disabled high precision\n");
+						printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but at least ok, if that was the culprit.\n\n");
+						printf("PTB-ERROR: An equally likely cause would be that Synchronization of stimulus onset (buffer swap) to the\n");
+						printf("PTB-ERROR: vertical blank interval VBL is not working properly.\n");
+						printf("PTB-ERROR: Please run the script PerceptualVBLSyncTest to check this. With non-working sync to VBL, all stimulus timing\n");
+						printf("PTB-ERROR: becomes quite futile. Also read 'help SyncTrouble' !\n\n\n");
+					}
+					
+					PsychPrefStateSet_VBLTimestampingMode(-1);
+					time_at_vbl = time_at_swapcompletion;
+					*time_at_onset=time_at_vbl;
+				}
+			}
+									
+			// We try to detect wrong order of events, but again allow for a bit of slack,
+			// as some drivers (this time on PowerPC) have their own share of trouble. Specifically,
+			// this might happen if a driver performs VBL timestamping at the end of a VBL interval,
+			// instead of at the beginning. In that case, the bufferswap may happen at rising-edge
+			// of VBL, get acknowledged and timestamped by us somewhere in the middle of VBL, but
+			// the postflip timestamping via IRQ may carry a timestamp at end of VBL.
+			// ==> Swap would have happened correctly within VBL and postflip timestamp would
+			// be valid, just the order would be unexpected. We set a slack of 2 msecs, because
+			// the duration of a VBL interval is usually no longer than that.
+			if (postflip_vbltimestamp - time_at_swapcompletion > 0.002) {
+				// VBL irq queries broken! Disable them.
+				if (verbosity > 0) {
+					printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]!\n");
+					printf("PTB-ERROR: Will disable them for now until the problem is resolved. You may want to restart Matlab and retry.\n");
+					printf("PTB-ERROR: postflip - time_at_swapcompletion == %lf secs.\n", postflip_vbltimestamp - time_at_swapcompletion);
+					printf("PTB-ERROR: Btw. if you are running in windowed mode, this is not unusual -- timestamping doesn't work well in windowed mode...\n");
+				}
+				
+				PsychPrefStateSet_VBLTimestampingMode(-1);
+				time_at_vbl = time_at_swapcompletion;
+				*time_at_onset=time_at_vbl;
+			}			
 		}
 		
         // Check for missed / skipped frames: We exclude the very first "Flip" after
