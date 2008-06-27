@@ -54,12 +54,18 @@ function [avail, numChars] = CharAvail
 %               Windows DLL ...
 
 global OSX_JAVA_GETCHAR;
+persistent isjavadesktop;
 
 if IsOS9
     avail = EventAvail('keyDown');
 else
     if ~IsOctave
-        if psychusejava('desktop')
+        % Only check this once because psychusejava is a slow command.
+        if isempty(isjavadesktop)
+            isjavadesktop = psychusejava('desktop');
+        end
+        
+        if isjavadesktop
             % Make sure that the GetCharJava class is loaded and registered with
             % the java focus manager.
             if isempty(OSX_JAVA_GETCHAR)
