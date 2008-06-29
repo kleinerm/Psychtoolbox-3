@@ -18,6 +18,9 @@
 const float twopi     = 2.0 * 3.141592654;
 const float sqrtof2pi = 2.5066282746;
 
+/* Conversion factor from degrees to radians: */
+const float deg2rad = 3.141592654 / 180.0;
+
 /* Texel position of center of gabor patch: Constant, set from Matlab */
 /* once when the shader is created: */
 uniform vec2  Center;
@@ -46,8 +49,8 @@ void main()
     /* Contrast value is stored in auxParameters0[3]: */
     float Contrast = auxParameters0[3];
     /* Convert Angle and Phase from degrees to radians: */
-    Angle = radians(sizeAngleFilterMode.z);
-    Phase = radians(auxParameters0[0]);
+    Angle = deg2rad * sizeAngleFilterMode.z;
+    Phase = deg2rad * auxParameters0[0];
     /* Precalc a couple of per-patch constant parameters: */
     FreqTwoPi = auxParameters0[1] * twopi;
     float SpaceConstant = auxParameters0[2];

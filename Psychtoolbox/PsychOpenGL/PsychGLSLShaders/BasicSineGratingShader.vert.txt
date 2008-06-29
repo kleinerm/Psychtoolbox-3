@@ -17,6 +17,9 @@
 /* Constants that we need 2*pi: */
 const float twopi = 2.0 * 3.141592654;
 
+/* Conversion factor from degrees to radians: */
+const float deg2rad = 3.141592654 / 180.0;
+
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
 attribute vec4 modulateColor;
 attribute vec4 auxParameters0;
@@ -38,7 +41,7 @@ void main()
     float Contrast = auxParameters0[2];
 
     /* Convert Phase from degrees to radians: */
-    Phase = radians(auxParameters0[0]);
+    Phase = deg2rad * auxParameters0[0];
 
     /* Precalc a couple of per-patch constant parameters: */
     FreqTwoPi = auxParameters0[1] * twopi;
