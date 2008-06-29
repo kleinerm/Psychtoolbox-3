@@ -808,6 +808,9 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		PsychErrorExitMsg(PsychError_user, "Capturedevice was opened in ''disk recording only'' mode: You must specify a 'waitForImage' flag of 4 in your Screen('GetCapturedImage') call!");
 	}
 	
+	// TODO CHECK FIXME: Race condition here? Not if callback thread is called single-threaded in SGIdle(),
+	// but is this always the case for all digitizers???
+	
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
     // ...and clear out the ready flag immediately:
@@ -1037,6 +1040,7 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
 	// Low latency capture disabled?
+	// TODO FIXME: What if lowlat gets disabled here, but user wants to capture lowlat again later??? 
 	if (dropframes == 0) {
 		// Yes. Need to clear the lowlat flag from our channel config:
 		SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
@@ -1053,7 +1057,27 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		
 		SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
 	}
-	
+	else {
+		// dropframes non-null. lowlat flag set?
+		SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		if (!(usage & seqGrabLowLatencyCapture)) {
+			// Lowlatency requested, but flag not set. Need to set it:			
+			SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+			
+			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+			usage|= seqGrabLowLatencyCapture;
+			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+			
+			if (vidcapRecordBANK[capturehandle].sgchanAudio) {
+				SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+				usage|= seqGrabLowLatencyCapture;
+				SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+			}
+			
+			SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+		}
+	}
+
 	framerate = FloatToFixed((float) capturerate);
 	SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
 

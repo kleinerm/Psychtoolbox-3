@@ -37,7 +37,6 @@ static char synopsisString[] = "Start video capture device specified by 'capture
                                "want to have the default of zero. If you want to do interactive realtime processing "
                                "of video data (e.g, video feedback for action-perception studies or build your own "
                                "low-cost eyetracker), then you want to use dropframes=1 for lowest possible latency. "
-                               "'dropframes' is currently silently ignored on Windows and OS-X, only Linux supports this. "
                                "'startAt' This optional argument provides a requested start time in seconds system time, "
                                "e.g., values returned by GetSecs() or Screen('Flip'), when capture should really start. "
                                "Psychtoolbox will wait until that point in time has elapsed before really triggering start "
