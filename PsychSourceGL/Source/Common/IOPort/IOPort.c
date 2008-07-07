@@ -335,6 +335,10 @@ PsychError IOPORTOpenSerialPort(void)
  	static char useString[] = "handle = IOPort('OpenSerialPort', port [, configString]);";
 	static char synopsisString[] = 
 		"Open a serial port device, return a 'handle' to it.\n"
+		"If a port can't be opened, the function will abort with error, unless the "
+		"level of verbosity is set to zero, in which case the function will silently "
+		"fail, but return an invalid (negative) handle to signal the failure to the "
+		"calling script.\n"
 		"'port' is usually a name string that defines the serial port device "
 		"to open. On MS-Windows this could be, e.g., 'COM1' or 'COM2' etc. On "
 		"Apple OS/X, it is the path to a BSD device file, e.g., '/dev/cu.usbserial-FT3Z95V5' "
@@ -373,9 +377,6 @@ PsychError IOPORTOpenSerialPort(void)
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
 		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n";
-		
-//	Input, probably not settable:	"DSR=os default	-- Setting for 'Data Set Ready' pin: 0 or 1.\n\n"
-//	Input, probably not settable:	"CTS=os default	-- Setting for 'Clear To Send' pin: 0 or 1.\n\n"
 
 	static char seeAlsoString[] = "'CloseAll'";	 
   	
@@ -419,6 +420,14 @@ PsychError IOPORTOpenSerialPort(void)
 
 	// Call OS specific open routine for serial port:
 	device = PsychIOOSOpenSerialPort(portSpec, finalConfig);
+	
+	if (device == NULL) {
+		// Special case: Could not open port, but verbosity level is zero, no conventional
+		// error return possible as this would clutter the console with output. Simply cancel
+		// open op and return a negative handle to signal failure to user code:
+		PsychCopyOutDoubleArg(1, kPsychArgRequired, -1);
+		return(PsychError_none);
+	}
 	
 	// If we reach this point, then device is the pointer to the class specific device struct and the
 	// open operation was successfull. Build port struct:
@@ -554,7 +563,10 @@ PsychError IOPORTWrite(void)
 		"data is sent/written in the background while your code continues to execute - There "
 		"may be an arbitrary delay until data transmission is really finished. The default "
 		"setting is blocking writes - The function waits until data transmission is really "
-		"finished.\n\n"
+		"finished. On Linux you can also use nonBlocking == -1 to request a different mode "
+		"for blocking writes, where IOPort is polling for write-completion instead of "
+		"a more cpu friendly wait. This may decrease latency for certain applications. "
+		"On Windows and OS/X the -1 setting is treated as a standard blocking write.\n\n"
 		"Optionally, the function returns the following return arguments:\n"
 		"'nwritten' Number of bytes written -- Should match amount of data provided on success.\n"
 		"'when' A timestamp of write completion: This is only meaningful in blocking mode!\n"
@@ -644,7 +656,7 @@ PsychError IOPORTBytesAvailable(void)
 PsychError IOPORTPurge(void)
 {
  	static char useString[] = "IOPort('Purge', handle);";
-	static char synopsisString[] = "Purge all data queued for readin from device specified by 'handle'. All unread data is discarded.";
+	static char synopsisString[] = "Purge all data queued for reading or writing from/to device specified by 'handle'. All unread or unwritten data is discarded.";
 	static char seeAlsoString[] = "'Flush'";
 	
 	int				handle;

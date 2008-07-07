@@ -159,7 +159,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     // See tty(4) ("man 4 tty") and ioctl(2) ("man 2 ioctl") for details.
     if (ioctl(fileDescriptor, TIOCEXCL) == -1)
     {
-        printf("IOPort-Warning: Error setting exclusive access (TIOCEXCL) on device %s - %s(%d).\n", portSpec, strerror(errno), errno);
+        if (verbosity > 1) printf("IOPort-Warning: Error setting exclusive access (TIOCEXCL) on device %s - %s(%d).\n", portSpec, strerror(errno), errno);
         // goto error;
     }
     
@@ -208,7 +208,7 @@ error:
 			if (device->fileDescriptor != -1) {
 				// Have original settings available: Try to restore them:
 				if (tcsetattr(fileDescriptor, TCSANOW, &options) == -1) {
-					printf("WARNING: In error handling: Error restoring tty attributes %s - %s(%d).\n", portSpec, strerror(errno), errno);
+					if (verbosity > 1) printf("WARNING: In error handling: Error restoring tty attributes %s - %s(%d).\n", portSpec, strerror(errno), errno);
 				}
 			}
 
@@ -224,7 +224,10 @@ error:
     }
     
 	// Return with error message:
-	PsychErrorExitMsg(((usererr) ? PsychError_user : PsychError_system), errmsg);
+	if (verbosity > 0) {
+		PsychErrorExitMsg(((usererr) ? PsychError_user : PsychError_system), errmsg);
+	}
+		
 	return(NULL);
 }
 
@@ -243,7 +246,7 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
 	// See tcsendbreak(3) ("man 3 tcsendbreak") for details.
     if (tcdrain(device->fileDescriptor) == -1)
     {
-        printf("IOPort: WARNING: While trying to close serial port: Error waiting for drain - %s(%d).\n", strerror(errno), errno);
+        if (verbosity > 1) printf("IOPort: WARNING: While trying to close serial port: Error waiting for drain - %s(%d).\n", strerror(errno), errno);
     }
     
     // Traditionally it is good practice to reset a serial port back to
@@ -251,7 +254,7 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
     // was saved.
     if (tcsetattr(device->fileDescriptor, TCSANOW, &(device->OriginalTTYAttrs)) == -1)
     {
-        printf("IOPort: WARNING: While trying to close serial port: Could not restore original port settings - %s(%d).\n", strerror(errno), errno);
+        if (verbosity > 1) printf("IOPort: WARNING: While trying to close serial port: Could not restore original port settings - %s(%d).\n", strerror(errno), errno);
     }
 
 	// Close device:
@@ -292,7 +295,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	// Retrieve current settings:
     if (tcgetattr(device->fileDescriptor, &options) == -1)
     {
-        printf("Error getting current serial port device settings for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+        if (verbosity > 0) printf("Error getting current serial port device settings for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 		return(PsychError_system);
     }
 	
@@ -316,7 +319,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		// Set timeouts for read operations:
 		// See tcsetattr(4) ("man 4 tcsetattr") and termios(4) ("man 4 termios") for details.		
 		if ((1!=sscanf(p, "ReceiveTimeout=%f", &infloat)) || (infloat < 0)) {
-			printf("Invalid parameter for ReceiveTimeout set! Typo, or negative value provided.\n");
+			if (verbosity > 0) printf("Invalid parameter for ReceiveTimeout set! Typo, or negative value provided.\n");
 			return(PsychError_user);
 		}
 		else {
@@ -336,14 +339,14 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	// Set common baud rate for send and receive:
 	if ((p = strstr(configString, "BaudRate="))) {
 		if (1!=sscanf(p, "BaudRate=%i", &inint)) {
-			printf("Invalid parameter for BaudRate set!\n");
+			if (verbosity > 0) printf("Invalid parameter for BaudRate set!\n");
 			return(PsychError_invalidIntegerArg);
 		}
 		else {
 			// Set common speed for input- and output queues:
 			inint = BaudToConstant(inint);
 			if (-1==cfsetspeed(&options, inint)) {
-				printf("Invalid BaudRate %i not accepted! (%s)", inint, strerror(errno));
+				if (verbosity > 0) printf("Invalid BaudRate %i not accepted! (%s)", inint, strerror(errno));
 				return(PsychError_invalidIntegerArg);
 			}
 			updatetermios = TRUE;
@@ -371,7 +374,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid parity spec:
-			printf("Invalid parity setting %s not accepted! (Valid are None, Even and Odd", p);
+			if (verbosity > 0) printf("Invalid parity setting %s not accepted! (Valid are None, Even and Odd", p);
 			return(PsychError_user);
 		}
 		updatetermios = TRUE;		
@@ -398,7 +401,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid break behaviour %s not accepted (Valid: Ignore, Flush, or Zero)!", p);
+			if (verbosity > 0) printf("Invalid break behaviour %s not accepted (Valid: Ignore, Flush, or Zero)!", p);
 			return(PsychError_user);
 		}
 		updatetermios = TRUE;
@@ -426,7 +429,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for data bits %s not accepted! (Valid: 5, 6, 7 or 8 databits)", p);
+			if (verbosity > 0) printf("Invalid setting for data bits %s not accepted! (Valid: 5, 6, 7 or 8 databits)", p);
 			return(PsychError_user);
 		}
 		updatetermios = TRUE;	
@@ -446,7 +449,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for stop bits %s not accepted! (Valid: 1 or 2 stopbits)", p);
+			if (verbosity > 0) printf("Invalid setting for stop bits %s not accepted! (Valid: 1 or 2 stopbits)", p);
 			return(PsychError_user);
 		}
 		updatetermios = TRUE;	
@@ -471,7 +474,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for flow control %s not accepted! (Valid: None, Software, Hardware)", p);
+			if (verbosity > 0) printf("Invalid setting for flow control %s not accepted! (Valid: None, Software, Hardware)", p);
 			return(PsychError_user);
 		}
 		updatetermios = TRUE;		
@@ -507,7 +510,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Cause the new options to take effect immediately.
     if (updatetermios && (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1))
     {
-        printf("Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+        if (verbosity > 0) printf("Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
         return(PsychError_system);
     }
 
@@ -516,7 +519,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 
 	// Retrieve current handshake state aka DTR, RTS, CTS, DSR et al.:
     if (ioctl(device->fileDescriptor, TIOCMGET, &handshake) == -1) {
-		printf("Error getting lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+		if (verbosity > 0) printf("Error getting lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 		return(PsychError_system);
     }
     
@@ -536,7 +539,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for DTR %s not accepted! (Valid: 1 or 0)", p);
+			if (verbosity > 0) printf("Invalid setting for DTR %s not accepted! (Valid: 1 or 0)", p);
 			return(PsychError_user);
 		}		
 	}
@@ -552,7 +555,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for DSR %s not accepted! (Valid: 1 or 0)", p);
+			if (verbosity > 0) printf("Invalid setting for DSR %s not accepted! (Valid: 1 or 0)", p);
 			return(PsychError_user);
 		}		
 	}
@@ -568,7 +571,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for RTS %s not accepted! (Valid: 1 or 0)", p);
+			if (verbosity > 0) printf("Invalid setting for RTS %s not accepted! (Valid: 1 or 0)", p);
 			return(PsychError_user);
 		}		
 	}
@@ -584,13 +587,13 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 		else {
 			// Invalid spec:
-			printf("Invalid setting for CTS %s not accepted! (Valid: 1 or 0)", p);
+			if (verbosity > 0) printf("Invalid setting for CTS %s not accepted! (Valid: 1 or 0)", p);
 			return(PsychError_user);
 		}		
 	}
 
     if (ioctl(device->fileDescriptor, TIOCMSET, &handshake) == -1) {
-		printf("Error setting handshake lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+		if (verbosity > 0) printf("Error setting handshake lines status for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 		return(PsychError_system);
     }
 	
@@ -600,7 +603,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		// Set receive latency for low-level driver: Minimum latency between dequeue and notify
 		// operation on reception of new input data. The granularity is microseconds...
 		if ((1!=sscanf(p, "ReceiveLatency=%f", &infloat)) || (infloat < 0)) {
-			printf("Invalid parameter for ReceiveLatency set! Typo, or negative value provided.\n");
+			if (verbosity > 0) printf("Invalid parameter for ReceiveLatency set! Typo, or negative value provided.\n");
 			return(PsychError_user);
 		}
 		else {
@@ -617,7 +620,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// received anyway. The most common applications which are sensitive to read latency are MIDI and IrDA
 			// applications.			
 			if (ioctl(device->fileDescriptor, IOSSDATALAT, &mics) == -1) {
-				printf("Error setting receive latency for device %s to %d microseconds - %s(%d).\n", device->portSpec, mics, strerror(errno), errno);
+				if (verbosity > 0) printf("Error setting receive latency for device %s to %d microseconds - %s(%d).\n", device->portSpec, mics, strerror(errno), errno);
 				return(PsychError_system);
 			}
 		}
@@ -629,7 +632,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	// Set input buffer size for receive ops:
 	if ((p = strstr(configString, "InputBufferSize="))) {
 		if ((1!=sscanf(p, "InputBufferSize=%i", &inint)) || (inint < 1)) {
-			printf("Invalid parameter for InputBufferSize set! Typo or requested buffer size smaller than 1 byte.\n");
+			if (verbosity > 0) printf("Invalid parameter for InputBufferSize set! Typo or requested buffer size smaller than 1 byte.\n");
 			return(PsychError_invalidIntegerArg);
 		}
 		else {
@@ -639,7 +642,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 				p = (char*) realloc(device->readBuffer, inint);
 				if (p == NULL) {
 					// Realloc failed:
-					printf("Reallocation of Inputbuffer of device %s for new size %i failed! (%s)", device->portSpec, inint, strerror(errno));
+					if (verbosity > 0) printf("Reallocation of Inputbuffer of device %s for new size %i failed! (%s)", device->portSpec, inint, strerror(errno));
 					return(PsychError_outofMemory);
 				}
 				// Worked. Assign new values:
@@ -651,7 +654,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 				p = malloc(inint);
 				if (p == NULL) {
 					// Realloc failed:
-					printf("Allocation of Inputbuffer of device %s of size %i failed! (%s)", device->portSpec, inint, strerror(errno));
+					if (verbosity > 0) printf("Allocation of Inputbuffer of device %s of size %i failed! (%s)", device->portSpec, inint, strerror(errno));
 					return(PsychError_outofMemory);
 				}
 				
@@ -680,6 +683,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
 {
 	int nwritten;
+	unsigned long lsr = 0;  // Serial transmitter line status register.
 	
 	// Nonblocking mode?
 	if (nonblocking > 0) {
@@ -701,7 +705,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	}
 	else {
 		// Nope. Set filedescriptor to blocking mode:
-		// Clear the O_NONBLOCK flag so subsequent I/O will not block.
+		// Clear the O_NONBLOCK flag so subsequent I/O will block.
 		// See fcntl(2) ("man 2 fcntl") for details.
 		if (fcntl(device->fileDescriptor, F_SETFL, 0) == -1)
 		{
@@ -716,10 +720,19 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			return(-1);
 		}
 		
-		// Flush the write buffer and wait for write completion on physical hardware:
-		if (tcdrain(device->fileDescriptor) == -1) {
-			sprintf(errmsg, "Error during write to device %s while draining the write buffers - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
+		// Special polling mode to wait for transmit completion instead of tcdrain() + wait?
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (nonblocking == -1)) {
+			// Yes. Use a tight polling loop which spin-waits on the transmitter idle flag:
+			#if PSYCH_SYSTEM == PSYCH_LINUX
+				while (!(lsr & TIOCSER_TEMT)) ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr);
+			#endif
+		}
+		else {
+			// Flush the write buffer and wait for write completion on physical hardware:
+			if (tcdrain(device->fileDescriptor) == -1) {
+				sprintf(errmsg, "Error during write to device %s while draining the write buffers - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
 		}
 	}
 	
@@ -780,7 +793,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 	}
 	else {
 		// Nope. Set filedescriptor to blocking mode:
-		// Clear the O_NONBLOCK flag so subsequent I/O will not block.
+		// Clear the O_NONBLOCK flag so subsequent I/O will block.
 		// See fcntl(2) ("man 2 fcntl") for details.
 		if (fcntl(device->fileDescriptor, F_SETFL, 0) == -1)
 		{
@@ -873,7 +886,7 @@ void PsychIOOSFlushSerialPort(PsychSerialDeviceRecord* device)
 
 void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device)
 {
-	if (tcflush(device->fileDescriptor, TCIFLUSH)!=0) {
+	if (tcflush(device->fileDescriptor, TCIOFLUSH)!=0) {
 		if (verbosity > 0) printf("Error during 'Purge': tcflush(TCIFLUSH) on device %s returned %s(%d)\n", device->portSpec, strerror(errno), errno);
 	}
 	
