@@ -207,7 +207,7 @@ fprintf('\n\n');
 PsychtoolboxRegistration(isUpdate, flavor);
 fprintf('\n\n\n');
 
-% If we're using Matlab on OSX, then add the PsychJava stuff to the static
+% If we're using Matlab then add the PsychJava stuff to the static
 % Java classpath.
 if ~IsOctave
     try
@@ -300,7 +300,7 @@ if ~IsOctave
             [s, w] = copyfile(bakclasspathFile, classpathFile, 'f');
         end
     end
-end % if IsOSX && ~IsOctave
+end % if ~IsOctave
 
 % Some goodbye, copyright and getting started blurb...
 fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n');

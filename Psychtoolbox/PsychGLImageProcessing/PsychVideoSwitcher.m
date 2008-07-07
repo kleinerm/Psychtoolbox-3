@@ -1,7 +1,7 @@
 function varargout = PsychVideoSwitcher(cmd, varargin)
 % PsychVideoSwitcher(command [,arg1, arg2, .....]);
 %
-% Psychtoolbox support for the Xiangru Li et al. "VideoSwitcher" video
+% Psychtoolbox support for the Xiangrui Li et al. "VideoSwitcher" video
 % attenuator device for high precision luminance output with up to 16 bits
 % luminance resolution.
 %
