@@ -189,6 +189,9 @@ typedef struct {
 // Tell PTB to use the opposite texture format of what its auto-detection thinks is optimal:
 #define kPsychTextureUploadFormatOverride 1024
 
+// Tell PTB to avoid EXT_framebuffer_blit if possible, e.g., in SCREENCopyWindow():
+#define kPsychAvoidFramebufferBlitIfPossible 2048
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

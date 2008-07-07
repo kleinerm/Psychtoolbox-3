@@ -728,6 +728,20 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	// Switch to previous scheduling mode after timing tests:
 	PsychRealtimePriority(false);
 	
+	// Override setting for VBL endline provided by usercode?
+	if (PsychPrefStateGet_VBLEndlineOverride() >= 0) {
+		// Yes. Assign it:
+		if(PsychPrefStateGet_Verbosity()>1) {
+			printf("PTB-WARNING: Usercode provided an override setting for the total height of the display in scanlines (aka VTOTAL)\n");
+			printf("PTB-WARNING: via explicit use of the Screen('Preference', 'VBLEndlineOverride', ...); command.\n");
+			printf("PTB-WARNING: Auto-detected old value was %i. New value from override which will be used for all timing: %i.\n", VBL_Endline, PsychPrefStateGet_VBLEndlineOverride());
+			printf("PTB-WARNING: This is ok for working around graphics driver bugs, but make sure you don't apply this accidentally\n");
+			printf("PTB-WARNING: without knowing what you're doing or why!\n\n");
+		}
+		
+		VBL_Endline = PsychPrefStateGet_VBLEndlineOverride();
+	}
+	
 	// Is the VBL endline >= VBL startline - 1, aka screen height?
 	if ((VBL_Endline < (int) vbl_startline - 1) || (VBL_Endline > vbl_startline * 1.25)) {
 	  // Completely bogus VBL_Endline detected! Warn the user and mark VBL_Endline
@@ -1859,6 +1873,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	double time_at_swapcompletion=0;		// Timestamp taken after swap completion -- initially identical to time_at_vbl.
 	int line_pre_swaprequest = -1;			// Scanline of display immediately before swaprequest.
 	int line_post_swaprequest = -1;			// Scanline of display immediately after swaprequest.
+	int min_line_allowed = 20;				// The scanline up to which "out of VBL" swaps are accepted: A fudge factor for broken drivers...
 	boolean flipcondition_satisfied;	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
@@ -2292,8 +2307,8 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// valid although it technically precedes the time of the "late" swap request: This is
 		// why we check the beampositions around time of swaprequest to make sure that the request
 		// was issued while outside the VBL:
-		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > 0) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
-			((line_post_swaprequest > 0) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
+		if ((time_at_vbl < time_at_swaprequest - 0.00005) && ((line_pre_swaprequest > min_line_allowed) && (line_pre_swaprequest < vbl_startline)) && (windowRecord->VBL_Endline != -1) &&
+			((line_post_swaprequest > min_line_allowed) && (line_post_swaprequest < vbl_startline)) && (line_pre_swaprequest <= line_post_swaprequest) &&
 			(vbltimestampmode >= 0) && (vbltimestampmode < 3)) {
 
 			// Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.			

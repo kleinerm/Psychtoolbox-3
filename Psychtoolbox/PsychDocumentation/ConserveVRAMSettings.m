@@ -107,6 +107,13 @@
 % MS-Windows which cause miserable texture creation performance with the
 % standard optimized settings.
 %
+% 2048 == kPsychAvoidFramebufferBlitIfPossible
+% Tell PTB to not use the EXT_framebuffer_blit extension if a lower-speed
+% workaround solution exists. This will mostly affect the operation of
+% Screen('CopyWindow') when the imaging pipeline is active. Normally a more
+% flexible, capable, faster method would be used, unless you set this flag
+% to fall back to the old solution.
+%
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

@@ -1,19 +1,17 @@
 /*
-	PsychToolbox3/Source/OSX/Screen/PsychScreenGlue.h
+	PsychToolbox3/Source/Windows/Screen/PsychScreenGlue.h
 	
 	PLATFORMS:	
 	
-		This is the OS X Core Graphics version only.  
+		This is the Windows version only.  
 				
 	AUTHORS:
 	
-		Allen Ingling		awi		Allen.Ingling@nyu.edu
+	Mario Kleiner		mk		mario.kleiner at tuebingen.mpg.de
 
 	HISTORY:
 	
-		10/20/02		awi			Wrote it mostly by adding in SDL-specific refugeess (from an experimental SDL Psychtoolbox) from header and source files.
-		11/16/04		awi			added  PsychGetGlobalScreenRect.  Enhanced DESCRIPTION text.  
-
+	12/27/05                mk              Wrote it. Derived from Allens OSX version.
         							
 	DESCRIPTION:
 	
@@ -21,7 +19,7 @@
 		
 		Each C function which implements a particular Screen subcommand should be platform neutral.  For example, the source to SCREENPixelSizes() 
 		should be platform-neutral, despite that the calls in OS X and Windows to detect available pixel sizes are
-		different.  Platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, 
+		different.  The platform specificity is abstracted out in C files which end it "Glue", for example PsychScreenGlue, PsychWindowGlue, 
 		PsychWindowTextClue.
 	
 		In addition to glue functions for windows and screen there are functions which implement shared functionality between between Screen commands,
@@ -31,13 +29,8 @@
 	
 	TO DO: 
 	
-		� The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
-		
-		� All of the functions which accept a screen number should be suffixed with "...FromScreenNumber". 
- 
-		
-     							
+	* DirectDraw objects are not yet destroyed at Screen flush time. This will leak a bit of memory...
+
 */
 
 //include once

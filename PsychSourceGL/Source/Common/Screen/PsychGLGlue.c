@@ -100,10 +100,12 @@ void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean en
 		if (windowRecord->defaultDrawShader) {
 			// Shader based unclamped path:
 			if (colors)     glTexCoordPointer(mc, GL_DOUBLE, 0, colors);
+
 			// Can't support uint8 datatype for this vertex attribute :-(
 			if (bytecolors) PsychErrorExitMsg(PsychError_user, "Sorry, this function can't accept matrices of uint8 type for colors\nif color clamping is disabled or high precision mode active.\n Use the double() operator to convert to double matrix.");
 
 			glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+			glColorPointer(4, GL_DOUBLE, 0, NULL);
 		}
 		else {
 			// Standard path:
@@ -111,6 +113,7 @@ void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean en
 			if (bytecolors) glColorPointer(mc, GL_UNSIGNED_BYTE, 0, bytecolors);
 
 			glEnableClientState(GL_COLOR_ARRAY);
+			glTexCoordPointer(4, GL_DOUBLE, 0, NULL);
 		}
 	}
 	else {
@@ -123,6 +126,9 @@ void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean en
 			// Standard path:
 			glDisableClientState(GL_COLOR_ARRAY);
 		}
+		
+		glColorPointer(4, GL_DOUBLE, 0, NULL);
+		glTexCoordPointer(4, GL_DOUBLE, 0, NULL);
 	}
 }
 

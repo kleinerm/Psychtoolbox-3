@@ -42,17 +42,28 @@
 % and multi-display setups which are configured to appear to Psychtoolbox as
 % single-display setups, i.e., one "virtual" primary monitor which consists
 % of multiple real displays in horizontal spanning mode. We use this mechanism
-% to get high precision time stamps as described below for MacOS-X.
+% to get high precision time stamps as the ones described below for MacOS-X.
 %
 % On GNU/Linux, timing precision even in non-realtime scheduling mode is far
 % superior to all other operating systems, yielding a timing jitter of less
 % than 100 microseconds under normal operating conditions. For special needs,
 % there exist multiple methods of improving timing down to microsecond level,
-% although some of time require some advanced programming skills.
+% although some of time require some advanced programming skills. If
+% Psychtoolbox runs on an ATI graphics card of the X1000 series or HD xxxx
+% series and Matlab/Octave is run with superuser privileges, Psychtoolbox
+% will also utilize beamposition queries for even better timing precision.
+% On other graphics cards, this is not yet supported.
 %
 % On MacOS-X, whose timing accuracy is somewhere between Linux and Windows,
 % and luckily closer to Linux timing than to Windows timing, we use beamposition
-% queries to improve accuracy of our timestamps:
+% queries to improve accuracy of our timestamps, either with the native support
+% on PowerPC computers and IntelMacs with NVidia or Intel graphics, or with the
+% help of the PsychtoolboxKernelDriver (see help PsychtoolboxKernelDriver) on
+% cards from ATI. An alternative mechanism, based on vertical blank
+% interrupts, is implemented on OS/X, should the beamposition mechanism
+% malfunction or become unavailable.
+%
+% This is how beamposition queries are used:
 %
 % When taking the system timestamp, we also query the current rasterbeam position.
 % From the known height of the display (in scanlines, including height of VBL),
@@ -63,8 +74,11 @@
 % swap == start of VBL == aka stimulus onset. This allows for very accurate timestamps,
 % despite possible non-deterministic multi-millisecond timing jitter. Psychtoolbox
 % goes through great pains during startup to double-check that all required
-% calibration values and mechanisms are accurate and work properly. You can assess
-% the accuracy of all returned timestamps by use of the script VBLSyncTest.
+% calibration values and mechanisms are accurate and working properly.
+% You can assess the accuracy of all returned timestamps by use of the script
+% VBLSyncTest. A visual correctness test is provided by PerceptualVBLSyncTest.
+% PTB also performs continuous runtime checking to detect possible problems
+% caused by defective graphics card drivers.
 %
 % In case that beamposition queries should not work properly or are not supported,
 % PTB will use different fallback strategies:
@@ -81,29 +95,68 @@
 % Screen('Preference', 'VBLTimestampingMode', mode); where mode can be one of the
 % following:
 %
-% -1 = Disable all cleverness, take noisy timestamps.
-%  0 = Disable kernel-level fallback method (on OS-X), use beamposition or noisy stamps.
-%  1 = Use beamposition, if it fails, use kernel-level, if it fails use noisy stamps.
-%  2 = Use beamposition, but cross-check with kernel-level. Use noisy stamps if beamposition
-%      mode fails. This is for the paranoid to check proper functioning.
+% -1 = Disable all cleverness, take noisy timestamps. This is the behaviour
+%      you'd get from any other psychophysics toolkit, as far as we know.
+%  0 = Disable kernel-level fallback method (on OS-X), use either beamposition
+%      or noisy stamps if beamposition is unavailable.
+%  1 = Use beamposition. Should it fail, switch to use of kernel-level interrupt
+%      timestamps. If that fails as well or is unavailable, use noisy stamps.
+%  2 = Use beamposition, but cross-check with kernel-level timestamps.
+%      Use noisy stamps if beamposition mode fails. This is for the paranoid
+%      to check proper functioning.
 %  3 = Always use kernel-level timestamping, fall back to noisy stamps if it fails.
 %
-% The default on OS-X and Windows with single display setups is "1". On Windows in
-% explicit multi-display mode, we default to "-1" ie noisy timestamps, as the current
+% The default on OS-X, Linux and Windows with single display setups is "1". On Windows in
+% explicit multi-display mode, we default to "-1" ie. noisy timestamps, as the current
 % beamposition mechanism is not yet mature and tested enough for multi-display mode on
-% Windows.
+% Windows, or better said: The operating system is not mature enough ;-)
 %
 % If the beampos query test fails, you will see some warning message about
-% "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window.
+% "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or other
+% error messages, as diagnostics is performed at various stages of setup
+% and operation.
 %
 % There are two possible causes for failure:
 %
 % 1. System overload: Too many other applications are running in parallel to
 % Psychtoolbox, introducing severe timing noise into the calibration and test loop.
-% See 'help SyncTrouble' on what to do.
+% See 'help SyncTrouble' on what to do. This happens rather seldomly.
 %
 % 2. Driver bug: Not much you can do, except submit a bug report to Apple or Microsoft
-% for your specific hardware + software setup.
+% for your specific hardware + software setup. This is by far the most
+% common cause of failure. Psychtoolbox tries to enable work-arounds for
+% some common problems if possible. Usually you should update your graphics
+% card driver to see if that resolves the problems.
+%
+% Note: As of Spring/Summer 2008, many graphics cards + driver combos from
+% ATI and NVidia on WindowsXP have bugs which cause beamposition queries to
+% fail in a peculiar way. If PTB detects that failure case, it will enable
+% some workaround to keep the mechanism going at slightly reduced accuracy:
+% Timestamps will still be mostly jitter-free and consistent, so they are
+% fully useable for timestamping, timing checks and as a basis for timed
+% stimulus presentation and animation. However, all returned timestamps
+% will contain a constant bias wrt. the real stimulus onset time of
+% somewhere between 20 microseconds and 1.5 milliseconds, depending on your
+% display settings, because Psychtoolbox can't determine the total height
+% of your display in scanlines (including the invisible VBL interval)
+% anymore. Exact height is important for spot-on timestamps. Psychtoolbox
+% uses some safe, conservative value for its internal computations, so
+% results will be consistent and useable, but contain a small constant offset.
+% 
+% If you want to get rid of that small offset, e.g., because you need to
+% synchronize with other modalities or stimulation/recording equipment at
+% sub-millisecond precisison, then you can try to figure out the real
+% height of the display yourself and tell Psychtoolbox about the true value
+% before calling Screen('OpenWindow').
+%
+% Once you know the real height, e.g., VTOTAL, you'd call this function:
+% Screen('Preference', 'VBLEndlineOverride', VTOTAL);
+%
+% How to find out about VTOTAL? One way is to search the display control
+% panel on Windows for some area with "Advanced Timing" or "Custom Timing"
+% settings. The shareware utility "PowerStrip" (http://www.entechtaiwan.com/util/ps.shtm)
+% also allows to change and display these parameters in the Advanced Timing
+% -> Vertical Geometry -> "Total" field.
 %
 % Accuracy of beamposition method:
 %
@@ -112,9 +165,12 @@
 % accuracy of beamposition timestamping of better than 100 microseconds, with a maximum
 % deviation between the different methods of less than 200 microseconds.
 %
-% Initial checking on two Window PC's (Dell Inspiron 8000 Laptio, Geforce 2Go, Windows 2000,
+% Initial checking on two Window PC's (Dell Inspiron 8000 Laptop, Geforce 2Go, Windows 2000,
 % and some 3.2 Ghz Pentium-4 with NVidia Geforce 7800 GTX) shows a precision of about
-% 30 microseconds. No further testing on Windows has been performed yet.
+% 30 microseconds. No further testing on Windows has been performed yet by
+% us, but multiple users performed similar testing procedures on their
+% setups and confirmed the high accuracy and reliability for various MacOSX
+% and Windows setups.
 %
 % Also check the FAQ section of http://www.psychtoolbox.org for latest infos.
 %
@@ -122,4 +178,4 @@
 % History:
 % 17.06.2006 Written (MK).
 % 16.11.2006 Updated for Windows exp. beampos support. (MK)
-
+%  7.07.2008 More infos and troubleshooting tips. (MK)

@@ -78,7 +78,7 @@ static Boolean                          Enable_3d_gfx=FALSE;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode=1;
-
+static int								screenVBLEndlineOverride=-1;	// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
 static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire.
 
 //All state checking goes through accessors located in this file.  
@@ -272,6 +272,17 @@ int PsychPrefStateGet_VBLTimestampingMode(void)
 void PsychPrefStateSet_VBLTimestampingMode(int level)
 {
     screenVBLTimestampingMode = level;
+}
+
+// Override for display endline aka VTOTAL:
+int PsychPrefStateGet_VBLEndlineOverride(void)
+{
+    return(screenVBLEndlineOverride);
+}
+
+void PsychPrefStateSet_VBLEndlineOverride(int level)
+{
+    screenVBLEndlineOverride = level;
 }
 
 // Settings for conserving VRAM usage by disabling certain features.

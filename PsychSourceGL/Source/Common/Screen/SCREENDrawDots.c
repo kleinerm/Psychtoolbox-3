@@ -216,6 +216,8 @@ PsychError SCREENDrawDots(void)
 	
 	// Disable fast rendering of arrays:
 	glDisableClientState(GL_VERTEX_ARRAY);
+	glVertexPointer(2, GL_DOUBLE, 0, NULL);
+	
 	if (usecolorvector) PsychSetupVertexColorArrays(windowRecord, FALSE, 0, NULL, NULL);
 	
 	// Restore old matrix from backup copy, undoing the global translation:

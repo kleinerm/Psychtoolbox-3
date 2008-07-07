@@ -861,6 +861,10 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		}
 
 		// Special debug override for faulty drivers with context sharing setup bugs (NVidia GF8xxx with drivers from Dec. 2007):
+		// Ok, we unconditionally disable this code-path, regardless what kPsychUseWindowsContextSharingWorkaround1 is.
+		// The wglCopyContext() call isn't needed for proper operation, but causes crashes on recent drivers. By avoiding
+		// it completely we don't lose functionality, but avoid noise on the forum about non-working stuff...
+/*
 		if (!(conserveVRAM & kPsychUseWindowsContextSharingWorkaround1)) {
 		
 			wglMakeCurrent(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.glusercontextObject);
@@ -917,7 +921,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 				fflush(NULL);
 			}
 		}
-
+*/
+		
 	   // Enable ressource sharing with master context for this window:
 		if (!wglShareLists(windowRecord->targetSpecific.contextObject, windowRecord->targetSpecific.glusercontextObject)) {
 			// This is ugly, but not fatal...

@@ -56,6 +56,7 @@ static char*                    displayDeviceName[kPsychMaxPossibleDisplays];   
 static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays]; // Top-Left corner of display on virtual screen. Default display has (0,0).
 static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
 static LPDIRECTDRAW             displayDeviceDDrawObject[kPsychMaxPossibleDisplays]; // Pointer to associated DirectDraw object, if any. NULL otherwise.
+static boolean enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
 
 //file local functions
 void InitCGDisplayIDList(void);
@@ -77,9 +78,12 @@ void InitializePsychDisplayGlue(void)
         displayLockSettingsFlags[i]=FALSE;
         displayOriginalCGSettingsValid[i]=FALSE;
         displayOverlayedCGSettingsValid[i]=FALSE;
-	displayDeviceDDrawObject[i]=NULL;
+		displayDeviceDDrawObject[i]=NULL;
     }
-    
+ 
+	// Disable beampos workaround by default:
+	enableVBLBeamposWorkaround = FALSE;
+	
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
 }
@@ -125,12 +129,10 @@ Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcM
 
 void InitCGDisplayIDList(void)
 {
-  int i, w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
-  psych_uint32 maxvpos;
+  int i, w1, w2, h1, h2;
   psych_uint32 beampos = 100000;
   HRESULT rc;
-  double tdeadline, now;
-  
+
   // We always provide the full (virtual) desktop as screen number zero. This way,
   // queries to screen 0 will always provide the global settings and dimensions of
   // the full desktop (either single display, or extended desktop on multi-display systems).
@@ -217,88 +219,6 @@ void InitCGDisplayIDList(void)
 	printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n\n");
   }
 
-  // Check how beamposition query behaves inside the vertical blanking interval:
-  if(displayDeviceDDrawObject[0]) {
-    // We have a Direct draw object: Try to test GetScanLine():
-	
-	// First find reference height values for display, aka start of vertical blank.
-	// Valid values inside the vertical blank area should be between h1 and 1.25*h1
-	// or between h2 and 1.25*h2, i.e., we assume the VBL doesn't extend more than
-	// 25% beyond the active areas height, so we should not see any values outside
-	// that area if DDERR_VERTICALBLANKINPROGRESS is reported. If we see higher values,
-	// or lower values, then that likely means that the gfx-driver doesn't report meaningful
-	// beampos values during VBL, but does overwrite our default 0xdeadbeef canary with some
-	// random trash.
-	if (numDisplays == 1) {
-		PsychGetScreenSize(0, &w1, &h1);
-		maxvpos = (psych_uint32) h1;
-	}
-	else {
-		PsychGetScreenSize(1, &w1, &h1);
-		PsychGetScreenSize(2, &w2, &h2);
-		maxvpos = (psych_uint32) ((h1 > h2) ? h1 : h2);
-	}
-	
-	// maxvpos is maximum valid scanline:
-	maxvpos = (psych_uint32) (1.25 * ((float) maxvpos));
-	
-	// We measure for 50 msecs -- That is at least 3 video refresh cycles:
-	vbldetectcount = 0; 
-	bogusvaluecount = 0;
-	bogusvalueinvblcount = 0;
-	totalcount = 0;
-	
-	PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
-	now = tdeadline;
-	tdeadline+=0.050;
-	
-	while (now < tdeadline) {
-		// Update timestamp:
-		PsychGetAdjustedPrecisionTimerSeconds(&now);
-	
-		// Query beam position:
-		beampos = 0xdeadbeef;
-		rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
-		if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) {
-			// Some sample returned...
-			totalcount++;
-			
-			// Bogus value, ie., beampos not updated at all or out of range?
-			if ((beampos != 0xdeadbeef) && ((beampos < 0) || (beampos > maxvpos))) beampos = 0xdead;
-			
-			// Update total count of bogus values:
-			if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvaluecount++;
-			
-			if (rc == DDERR_VERTICALBLANKINPROGRESS) {
-				// Update count of VBLs:
-				vbldetectcount++;
-				
-				// Update total count of bogus values while VBL active:
-				if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvalueinvblcount++;
-			}
-		}
-	}
-	
-	// Ok, run the numbers:
-	if (bogusvaluecount > 0) {
-		// Some failed queries:
-		printf("PTB-WARNING: During initial test of a total of %i queries, a total of %i beamposition queries reported bogus values!\n", totalcount, bogusvaluecount);
-		printf("PTB-WARNING: During a total of %i queries within blanking interval, %i reported wrong values.\n", vbldetectcount, bogusvalueinvblcount);
-		if (bogusvalueinvblcount == bogusvaluecount) {
-			printf("PTB-WARNING: All bogus results were reported during VBL, ie., during a DDERR_VERTICALBLANKINPROGRESS condition.\n");
-			printf("PTB-WARNING: Seems beamposition queries malfunction whenever the display is in a retrace state!\n");
-		}
-
-		printf("PTB-WARNING: This renders beamposition queries pretty useless -- Disabling high precision timestamping for now.\n");
-		printf("PTB-WARNING: Please report this message with a description of your graphics card and video driver to\n");
-		printf("PTB-WARNING: the Psychtoolbox forum. Maybe the gathered information allows for some work-around in\n");
-		printf("PTB-WARNING: future PTB releases to get high precision timestamping back on your setup.\n\n");
-
-		// Disable beampos queries:
-		PsychPrefStateSet_VBLTimestampingMode(-1);
-	}
-  }
-
   // Ready.
   return;
 }
@@ -346,16 +266,16 @@ boolean PsychCheckScreenSettingsLock(int screenNumber)
 
 /* Because capture and lock will always be used in conjuction, capture calls lock, and SCREENOpenWindow must only call Capture and Release */
 void PsychCaptureScreen(int screenNumber)
-{
-    CGDisplayErr  error=0;
-    
+{    
     if(screenNumber>=numDisplays) PsychErrorExit(PsychError_invalidScumber);
     // For now, this is a "No operation" on Windows. Don't know if facilities for
     // capturing the screen exist or are necessary at all. There's a SetCapture() call
     // for HWND window handles, but that applies to windows, not screens and i don't
     // know, what it actually does...
-    if(error) PsychErrorExitMsg(PsychError_internal, "Unable to capture display");
     PsychLockScreenSettings(screenNumber);
+
+	// However we do call the testing/workaround routine for working beamposition queries here:
+	PsychTestDDrawBeampositionQueries();
 }
 
 /*
@@ -861,26 +781,164 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 //
 int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 {
-  HRESULT rc;
-  psych_uint32 beampos = 0;
-
-  // EXPERIMENTAL: For now this only queries the primary display device and
-  // probably only works properly on single-display setups and some multi-setups.
-  if(displayDeviceDDrawObject[0]) {
-    // We have a Direct draw object: Try to use GetScanLine():
-	 rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
-	 if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return((int) beampos);
-  }
-
-  // Direct Draw unavailable or function unsupported, or hardware
-  // doesn't support query under given configuration:
-  // We return -1 as an indicator to high-level routines that we don't
-  // know the rasterbeam position.
-  return(-1);
+	HRESULT rc;
+	psych_uint32 beampos = 0;
+	
+	// EXPERIMENTAL: For now this only queries the primary display device and
+	// probably only works properly on single-display setups and some multi-setups.
+	if(displayDeviceDDrawObject[0]) {
+		// We have a Direct draw object: Try to use GetScanLine():
+		if (enableVBLBeamposWorkaround) {
+			// Beamposition queries don't work within vertical blank interval. We need to
+			// spin-wait in a busy waiting loop as long as the query status reports
+			// DDERR_VERTICALBLANKINPROGRESS aka "display in retrace state":
+			while((rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos)) == DDERR_VERTICALBLANKINPROGRESS);
+		}
+		else {
+			// No known problems with query in VBL. Do a one-time query:
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+		}
+		
+		// Valid result? If so, return it. Otherwise fall-through to error return...
+		if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return((int) beampos);
+	}
+	
+	// Direct Draw unavailable or function unsupported, or hardware
+	// doesn't support query under given configuration or error condition:
+	// We return -1 as an indicator to high-level routines that we don't
+	// know the rasterbeam position.
+	return(-1);
 }
 
 // Do not have kernel driver support for MS-Windows:
 boolean PsychOSIsKernelDriverAvailable(int screenId)
 {
 	return(FALSE);
+}
+
+// Internal helper routine, called from PsychCaptureScreen(), which in turn is called from
+// SCREENOpenWindow(). Give the DDRAW beamposition query routines a serious workout to find
+// some possible bugs. Enable proper workarounds if bugs should be encountered:
+void PsychTestDDrawBeampositionQueries(void)
+{
+	int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
+	psych_uint32 maxvpos;
+	psych_uint32 beampos = 100000;
+	HRESULT rc;
+	double tdeadline, now;
+	int verbosity = PsychPrefStateGet_Verbosity();
+	
+	// Check how beamposition query behaves inside the vertical blanking interval:
+	if((displayDeviceDDrawObject[0]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
+		// We have a Direct draw object and beampos queries are enabled: Try to test GetScanLine():
+		
+		// First find reference height values for display, aka start of vertical blank.
+		// Valid values inside the vertical blank area should be between h1 and 1.25*h1
+		// or between h2 and 1.25*h2, i.e., we assume the VBL doesn't extend more than
+		// 25% beyond the active areas height, so we should not see any values outside
+		// that area if DDERR_VERTICALBLANKINPROGRESS is reported. If we see higher values,
+		// or lower values, then that likely means that the gfx-driver doesn't report meaningful
+		// beampos values during VBL, but does overwrite our default 0xdeadbeef canary with some
+		// random trash.
+		if (numDisplays == 1) {
+			PsychGetScreenSize(0, &w1, &h1);
+			maxvpos = (psych_uint32) h1;
+		}
+		else {
+			PsychGetScreenSize(1, &w1, &h1);
+			PsychGetScreenSize(2, &w2, &h2);
+			maxvpos = (psych_uint32) ((h1 > h2) ? h1 : h2);
+		}
+		
+		// maxvpos is maximum valid scanline:
+		maxvpos = (psych_uint32) (1.25 * ((float) maxvpos));
+		
+		// We measure for 50 msecs -- That is at least 3 video refresh cycles:
+		vbldetectcount = 0; 
+		bogusvaluecount = 0;
+		bogusvalueinvblcount = 0;
+		totalcount = 0;
+		
+		PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
+		now = tdeadline;
+		tdeadline+=0.050;
+		
+		while (now < tdeadline) {
+			// Update timestamp:
+			PsychGetAdjustedPrecisionTimerSeconds(&now);
+			
+			// Query beam position:
+			beampos = 0xdeadbeef;
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+			if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) {
+				// Some sample returned...
+				totalcount++;
+				
+				// Bogus value, ie., beampos not updated at all or out of range?
+				if ((beampos != 0xdeadbeef) && ((beampos < 0) || (beampos > maxvpos))) beampos = 0xdead;
+				
+				// Update total count of bogus values:
+				if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvaluecount++;
+				
+				if (rc == DDERR_VERTICALBLANKINPROGRESS) {
+					// Update count of VBLs:
+					vbldetectcount++;
+					
+					// Update total count of bogus values while VBL active:
+					if (beampos == 0xdeadbeef || beampos == 0xdead) bogusvalueinvblcount++;
+				}
+			}
+		}
+		
+		// Ok, run the numbers:
+		if (bogusvaluecount > 0) {
+			// Some failed queries:
+			if (verbosity > 1) {
+				printf("PTB-WARNING: Startup test of beamposition queries for high precision timestamping detected problems on your graphics card + driver combo.\n");
+				if (verbosity > 3) {
+					printf("PTB-WARNING: During initial test of a total of %i queries, a total of %i beamposition queries reported bogus values!\n", totalcount, bogusvaluecount);
+					printf("PTB-WARNING: During a total of %i queries within blanking interval, %i reported wrong values.\n", vbldetectcount, bogusvalueinvblcount);
+				}
+			}
+			
+			// All queries failed in VBL?
+			if (bogusvalueinvblcount == bogusvaluecount) {
+				// Yes. This allows for an ugly but workable workaround:
+				if (verbosity > 1) {
+					printf("PTB-WARNING: Seems beamposition queries malfunction whenever the display is in a vertical retrace state!\n");
+					printf("PTB-WARNING: I will enable a work-around which should satisfy the timing needs of most applications, ie.\n");
+					printf("PTB-WARNING: robust and jitter-free deterministic timestamps. However, all reported timestamps may have a\n");
+					printf("PTB-WARNING: constant offset of up to the duration of the vertical blanking interval (max 1 msec worst case)\n");
+					printf("PTB-WARNING: of your display. Read 'help BeampositionQueries' on how you can remove that bias by some manual\n");
+					printf("PTB-WARNING: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
+					printf("PTB-WARNING: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
+					printf("PTB-WARNING: Check your vendors website for driver updates regularly, so you can get rid of this workaround asap.\n\n");
+				}
+				
+				// Enable beampos workaround by default:
+				enableVBLBeamposWorkaround = TRUE;
+			}
+			else {
+				// No. Some bogus values also happen outside VBL. In this case, our workaround won't work
+				// and this problem is unfixable for now. The only safe and sane solution is to totally
+				// disable beamposition based timestamping:
+				
+				// Disable beampos workaround:
+				enableVBLBeamposWorkaround = FALSE;
+
+				// Disable beampos queries:
+				PsychPrefStateSet_VBLTimestampingMode(-1);
+				
+				if (verbosity > 1) {
+					printf("PTB-WARNING: Some of the queries fail even outside the vertical blank interval, so no effective workaround for this driver bug exists.\n");
+					printf("PTB-WARNING: This renders beamposition queries pretty useless -- Disabling high precision timestamping for now.\n");
+					printf("PTB-WARNING: Please report this message with a description of your graphics card, operating system and video driver to\n");
+					printf("PTB-WARNING: the Psychtoolbox forum. Maybe the gathered information allows for some work-around in\n");
+					printf("PTB-WARNING: future PTB releases to get high precision timestamping back on your setup.\n\n");
+				}
+			}
+		}
+	}
+	
+	return;
 }

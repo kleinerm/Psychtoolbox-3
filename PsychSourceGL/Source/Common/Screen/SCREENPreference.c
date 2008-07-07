@@ -118,6 +118,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
+	"\noldVTOTAL = Screen('Preference', 'VBLEndlineOverride' [, newVTOTAL]);"
 	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
@@ -310,9 +311,17 @@ PsychError SCREENPreference(void)
 		}else 
 			if(PsychMatch(preferenceName, "VBLTimestampingMode")){
 			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_VBLTimestampingMode());
-			if(numInputArgs==2){
+			if(numInputArgs>=2){
                             PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
                             PsychPrefStateSet_VBLTimestampingMode(tempInt);
+			}
+			preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "VBLEndlineOverride")){
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_VBLEndlineOverride());
+			if(numInputArgs>=2){
+                            PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+                            PsychPrefStateSet_VBLEndlineOverride(tempInt);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else
@@ -324,7 +333,7 @@ PsychError SCREENPreference(void)
 				}
 			preferenceNameArgumentValid=TRUE;
 		}else 
-			if(PsychMatch(preferenceName, "ConserveVRAM")){
+			if(PsychMatch(preferenceName, "ConserveVRAM") || PsychMatch(preferenceName, "Workarounds1")){
 					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_ConserveVRAM());
 					if(numInputArgs==2){
 						PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);

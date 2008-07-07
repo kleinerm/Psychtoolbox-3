@@ -95,6 +95,10 @@ void PsychPrefStateSet_Verbosity(int level);
 int PsychPrefStateGet_VBLTimestampingMode(void);
 void PsychPrefStateSet_VBLTimestampingMode(int level);
 
+// Override for display endline aka VTOTAL:
+int PsychPrefStateGet_VBLEndlineOverride(void);
+void PsychPrefStateSet_VBLEndlineOverride(int level);
+
 // Default for selection of video capture engine:
 int PsychPrefStateGet_VideoCaptureEngine(void);
 void PsychPrefStateSet_VideoCaptureEngine(int mode);

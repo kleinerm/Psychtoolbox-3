@@ -298,6 +298,17 @@ PsychError SCREENMakeTexture(void)
 			textureRecord->textureexternalformat = GL_RGBA;
 		}
 
+		// This is a special workaround for bugs in FLOAT16 texture creation on Mac OS/X 10.4.x and 10.5.x.
+		// The OpenGL fails to properly flush very small values (< 1e-9) to zero when creating a FLOAT16
+		// type texture. Instead it seems to initialize with trash data, corrupting the texture.
+		// Therefore, if FLOAT16 texture creation is requested, we loop over the whole input buffer and
+		// set all values with magnitude smaller than 1e-9 to zero. Better safe than sorry...
+		if(usefloatformat==1) {
+			texturePointer_f=(GLfloat*) texturePointer;
+			iters = iters * numMatrixPlanes;
+			for(ix=0; ix<iters; ix++, texturePointer_f++) if(fabs((double) *texturePointer_f) < 1e-9) { *texturePointer_f = 0.0; }
+		}
+		
 		// End of HDR conversion code...
 	}
     else {

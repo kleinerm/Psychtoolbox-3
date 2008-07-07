@@ -105,9 +105,9 @@ PsychError SCREENCopyWindow(void)
 	if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) PsychTestForGLErrors();
 
 	// Does this GL implementation support the EXT_framebuffer_blit extension for fast blitting between
-	// framebuffers? And is the imaging pipeline active?
+	// framebuffers? And is the imaging pipeline active? And is the kPsychAvoidFramebufferBlitIfPossible not set?
 	if ((sourceWin->gfxcaps & kPsychGfxCapFBOBlit) && (targetWin->gfxcaps & kPsychGfxCapFBOBlit) &&
-		(sourceWin->imagingMode > 0) && (targetWin->imagingMode > 0)) {
+		(sourceWin->imagingMode > 0) && (targetWin->imagingMode > 0) && !(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidFramebufferBlitIfPossible)) {
 		// Yes :-) -- This simplifies the CopyWindow implementation to a simple framebuffer blit op,
 		// regardless what the source- or destination is:
 		
