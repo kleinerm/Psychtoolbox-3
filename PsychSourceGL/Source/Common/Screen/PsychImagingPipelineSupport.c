@@ -479,6 +479,10 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 1 of imaging pipeline.");
 		}
 		
+		if ((PsychPrefStateGet_Verbosity() > 2) && (windowRecord->fboTable[fbocount]->multisample > 0)) {
+			printf("PTB-INFO: Created framebuffer for anti-aliasing with %i samples per pixel for use with imaging pipeline.\n", windowRecord->fboTable[fbocount]->multisample);
+		}
+		
 		// Assign this FBO as drawBuffer for left-eye or mono channel:
 		windowRecord->drawBufferFBO[0] = fbocount;
 		fbocount++;
@@ -1203,8 +1207,8 @@ Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbu
 		// Unbind, we're done with setup:
 		glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
 		
-		if (PsychPrefStateGet_Verbosity() > 2) {
-			printf("PTB-INFO: Created framebuffer for anti-aliasing with %i samples per pixel for use with imaging pipeline.\n", (*fbo)->multisample);
+		if (PsychPrefStateGet_Verbosity() > 5) {
+			printf("PTB-DEBUG: Created framebuffer object for anti-aliasing with %i samples per pixel for use with imaging pipeline.\n", (*fbo)->multisample);
 		}
 	}
 	

@@ -64,6 +64,7 @@ void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 boolean PsychCheckScreenSettingsLock(int screenNumber);
 boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+void PsychTestDDrawBeampositionQueries(void);
 
 // This is actually a function in PsychWindowGlue.c, we redefine the prototype here to make compiler happy:
 extern boolean ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);

@@ -141,7 +141,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	if (dev == NULL) return(paAbort);
 	
 	// Check if all required buffers are there. In monitoring mode, we don't need them.
-    if ((dev->opmode & kPortAudioMonitoring == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
+    if (((dev->opmode & kPortAudioMonitoring) == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
 		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)))) return(paAbort);
 
 	// Count total number of calls:
@@ -1093,7 +1093,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
-	if (audiodevices[pahandle].opmode & kPortAudioPlayBack == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	PsychAllocInDoubleMatArg(2, kPsychArgRequired, &inchannels, &insamples, &p, &indata);
 	if (inchannels != audiodevices[pahandle].outchannels) {
@@ -1264,7 +1264,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
-	if (audiodevices[pahandle].opmode & kPortAudioCapture == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio capture, so this call doesn't make sense.");
+	if ((audiodevices[pahandle].opmode & kPortAudioCapture) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio capture, so this call doesn't make sense.");
 
 	buffersize = audiodevices[pahandle].inputbuffersize;
 	

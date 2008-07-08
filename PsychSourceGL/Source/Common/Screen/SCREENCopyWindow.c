@@ -165,8 +165,10 @@ PsychError SCREENCopyWindow(void)
 							 targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop],
 							 GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
-		printf("X0 = %f Y0 = %f X1 = %f Y1 = %f \n", sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]);
-		printf("X0 = %f Y0 = %f X1 = %f Y1 = %f \n", targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]);
+		if (PsychPrefStateGet_Verbosity() > 5) {
+			printf("FBB-SRC: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", sourceRect[kPsychLeft], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychBottom], sourceRect[kPsychRight], PsychGetHeightFromRect(sourceWin->rect) - sourceRect[kPsychTop]);
+			printf("FBB-DST: X0 = %f Y0 = %f X1 = %f Y1 = %f \n", targetRect[kPsychLeft], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychBottom], targetRect[kPsychRight], PsychGetHeightFromRect(targetWin->rect) - targetRect[kPsychTop]);
+		}
 		
 		if (!(PsychPrefStateGet_ConserveVRAM() & kPsychAvoidCPUGPUSync)) {
 			if ((glerr = glGetError())!=GL_NO_ERROR) {			
