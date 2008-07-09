@@ -36,7 +36,7 @@ if nargin < 2
 end;
 sd
 
-w=Screen('OpenWindow', 0, 0, [], 32, 2, [], 1, kPsychNeedFastBackingStore);
+w=Screen('OpenWindow', 0, 0, [], 32, 2, [], 1, kPsychNeedImageProcessing);
 %w=Screen('OpenWindow', 0, 0, []);
 % Clear to black background:
 Screen('FillRect', w, 0);
@@ -57,7 +57,7 @@ WaitKey;
 Screen('Flip', w);
 
 % Draw same rect into an offscreen window:
-[woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 100 100]);
+[woff1, srcRect] = Screen('OpenOffscreenWindow', w, [0 255 0], [0 0 100 100], [], [], 1);
 srcRect=srcRect*sf
 
 DrawRect(woff1, 0, 1);
@@ -79,7 +79,7 @@ WaitKey;
 Screen('Flip',w);
 
 % Test offscreen -> offscreen copy:
-woff2 = Screen('OpenOffscreenWindow', w);
+woff2 = Screen('OpenOffscreenWindow', w, [], [], [], [], 1);
 Screen('FillRect', woff2, 0);
 %Screen('Textfont', woff2, 'Courier New');
 %Screen('TextSize', woff2, 18);
@@ -114,7 +114,7 @@ Screen('Flip',w);
 % Test onscreen -> offscreen copy:
 % Replicate image across the full screen:
 DrawRect(w, 100, 100);
-woff3 = Screen('OpenOffscreenWindow', w, [], []);
+woff3 = Screen('OpenOffscreenWindow', w, [], [], [], [], 1);
 
 for yi=1:5
    for xi=1:5
@@ -127,7 +127,6 @@ Screen('CopyWindow', woff3, w);
 Screen('DrawText', w, 'Rect copied from onscreen to offscreen window from top-left to bottom-right', 0, 0, 0);
 Screen('Flip',w);
 WaitKey;
-
 
 Screen('CloseAll');
 return;
