@@ -2116,9 +2116,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	
     // Trigger the "Front <-> Back buffer swap (flip) on next vertical retrace" and
     PsychOSFlipWindowBuffers(windowRecord);
-
-	// Take post-swap request line:
-	line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
 	
 	// Also swap the slave window, if any:
 	if (windowRecord->slaveWindow) PsychOSFlipWindowBuffers(windowRecord->slaveWindow);
@@ -2134,6 +2131,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         }
     }
     
+	// Take post-swap request line:
+	line_post_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+
 	// Take postswap request timestamp:
 	PsychGetAdjustedPrecisionTimerSeconds(&time_post_swaprequest);
 
