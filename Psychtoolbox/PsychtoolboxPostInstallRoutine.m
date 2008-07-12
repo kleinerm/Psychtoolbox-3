@@ -122,7 +122,7 @@ if IsWin & ~IsOctave
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         
         % Is this a Release2007a or later Matlab?
-        if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008'))
+        if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008')) | ~isempty(strfind(version, '2009')) | ~isempty(strfind(version, '2010'))
             % This is a R2007a or post R2007a Matlab:
             % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
             % path:
@@ -178,9 +178,13 @@ if IsWin & ~IsOctave
         % Failed! Either screwed setup of path or missing VC++ 2005 runtime
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
-        fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n');
+        fprintf('ERROR: Most likely cause: The Visual C++ 2005 runtime libraries are missing on your system.\n\n');
         fprintf('ERROR: Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');
-        fprintf('ERROR: fix this problem. After fixing the problem, restart this installation/update routine.\n');
+        fprintf('ERROR: fix this problem. That document tells you how to download and install the required runtime\n');
+        fprintf('ERROR: libraries. It is important that you download the libraries for Visual C++ 2005 SP1\n');
+        fprintf('ERROR: - The Service Pack 1! Follow the link under the text "For VS 2005 SP1 vcredist_x86.exe:"\n');
+        fprintf('ERROR: If you install the wrong runtime, it will still not work.\n\n');
+        fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
 
         if strcmp(computer,'PCWIN64')
             % 64 bit Matlab running on 64 bit Windows?!? That won't work.
