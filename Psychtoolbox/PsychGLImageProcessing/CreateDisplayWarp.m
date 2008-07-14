@@ -140,18 +140,17 @@ switch(calib.warptype)
         [winWidth, winHeight] = Screen('WindowSize', window);
         
         % Additional optional parameters provided?
+        xLoomSize = [];
+        yLoomSize = [];
+
         if nargin >= 5
             % At least two additional parameters. Really?
             if ~isempty(varargin{1})
                 xLoomSize = varargin{1};
-            else
-                xLoomSize = [];
             end
             
             if ~isempty(varargin{2})
                 yLoomSize = varargin{2};
-            else
-                yLoomSize = [];
             end
         end
         

@@ -2981,7 +2981,7 @@ boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunct
  */
 boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
-	int w, h, x, y;
+	int x, y;
 	GLuint gllist;
 	float sx, sy;
 	char* strp;
@@ -3006,10 +3006,6 @@ boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFu
 	// Handle valid?
 	if (!glIsList(gllist)) PsychErrorExitMsg(PsychError_internal, "In PsychBlitterDisplayList(): Invalid display list handle provided!\n");
 	
-	// Query dimensions of viewport:
-	w = (*srcfbo1)->width;
-	h = (*srcfbo1)->height;
-
 	// Bilinear filtering of srcfbo1 texture requested?
 	if (strstr(hookfunc->pString1, "Bilinear")) {
 		// Yes. Enable it.
