@@ -33,6 +33,7 @@
 %
 % Add2DConvolutionToGLOperator.m  -- Create and add a shader for 2D image convolution to a GLOperator.
 % Add2DSeparableConvolutionToGLOperator.m  -- Create and add a shader for 2D separable image convolution to a GLOperator.
+% AddImageUndistortionToGLOperator -- Add geometric image correction to a GLOperator.
 % AddToGLOperator.m               -- Add a shader with options to a GLOperator.
 % BitsPlusPlus.m                  -- Setup function for imaging pipelines built-in Bits++ support.
 % CountSlotsInGLOperator.m        -- Count number of processing slots in a given GLOperator.
