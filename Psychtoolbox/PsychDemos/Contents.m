@@ -54,6 +54,7 @@
 %    MouseTraceDemo          - Track mouse around screen and draw contour.
 %    MouseTraceDemo2         - More Tracking mouse around screen drawing contour.
 %    MovieDemo               - Animation without offscreen windows.
+%    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
 %    NomogramDemo            - Compute photoreceptor nomograms.
 %    OldNewRecogDemo         - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
