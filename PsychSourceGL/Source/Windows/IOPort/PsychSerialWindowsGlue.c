@@ -116,32 +116,35 @@ extern int verbosity;
  *
  * portSpec - String with the port name / device name of the serial port device.
  * configString - String with port configuration parameters.
+ * errmsg - Pointer to char[] buffer in which error messages should be returned, if any.
  *
  * On success, allocate a PsychSerialDeviceRecord with all relevant settings,
  * return a pointer to it.
  *
  * Otherwise abort with error message.
  */
-PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString)
+PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString, char* errmsg)
 {
     HANDLE			fileDescriptor = INVALID_HANDLE_VALUE;
     DCB				options;
-    char			errmsg[1000];
 	PsychSerialDeviceRecord* device = NULL;
 	bool			usererr = FALSE;
 	unsigned int	errno;
 	
+	// Init errmsg error message to empty == no error:
+	errmsg[0] = 0;
+
     // Open the serial port read/write, for exclusive access with normal attributes and default other settings:
     fileDescriptor = CreateFile(portSpec, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fileDescriptor == INVALID_HANDLE_VALUE)
     {
 		errno = GetLastError();
 		if (errno == ERROR_FILE_NOT_FOUND) {
-			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d).\n", portSpec, errno);
+			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, errno);
 			usererr = TRUE;
 		}
-		else if (errno == ERROR_SHARING_VIOLATION) {
-			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! (%d).\n", portSpec, errno);
+		else if (errno == ERROR_SHARING_VIOLATION || errno == ERROR_ACCESS_DENIED) {
+			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! (%d) [EBUSY EPERM]. Could be a permission problem as well.\n", portSpec, errno);
 			usererr = TRUE;
 		}
 		else {
@@ -598,19 +601,19 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
  * Write data to serial port:
  * writedata = Ptr. to data buffer of uint8 values to write.
  * amount = Buffersize aka amount of bytes to write.
- * nonblocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
+ * blocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
  * errmsg = Pointer to char array where error messages should be put to.
  * timestamp = Pointer to a double value where write-completion timestamps should be put to.
  *
  * Returns number of bytes written, or -1 on error.
  */
-int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	int nwritten;
 	DWORD EvtMask;
 	
 	// Nonblocking mode?
-	if (nonblocking > 0) {
+	if (blocking <= 0) {
 		// Non-blocking write:
 
 		// Ok, this is problematic: There isn't a simple way to make the WriteFile non-blocking, so for now, our
@@ -663,7 +666,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	return(nwritten);
 }
 
-int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	double timeout;
 	int nread = 0;	
@@ -688,7 +691,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 	}
 	
 	// Nonblocking mode?
-	if (nonblocking > 0) {
+	if (blocking <= 0) {
 		// Yep. Set COMMTIMEOUT for non-blocking read mode:		
 		device->timeouts.ReadIntervalTimeout = MAXDWORD;
 		device->timeouts.ReadTotalTimeoutConstant = 0;

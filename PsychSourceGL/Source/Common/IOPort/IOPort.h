@@ -49,11 +49,11 @@ typedef struct PsychPortIORecord {
 } PsychPortIORecord;
 
 // Operating system specific glue functions:
-PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString);
+PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString, char* errmsg);
 void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device);
 PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const char* configString);
-int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
-int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp);
+int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp);
 int PsychIOOSBytesAvailableSerialPort(PsychSerialDeviceRecord* device);
 void PsychIOOSFlushSerialPort(PsychSerialDeviceRecord* device);
 void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device);
@@ -90,8 +90,8 @@ PsychError PsychInitIOPort(void);
 // Close function: Closes port referenced by 'handle':
 PsychError PsychCloseIOPort(int handle);
 // Write function:
-int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
-int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int nonblocking, char* errmsg, double* timestamp);
+int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp);
+int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int blocking, char* errmsg, double* timestamp);
 int PsychBytesAvailableIOPort(int handle);
 void PsychPurgeIOPort(int handle);
 void PsychFlushIOPort(int handle);

@@ -57,14 +57,14 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "\nGeneral commands for all types of input/output ports:\n";
 	synopsis[i++] = "IOPort('Close', handle);";
 	synopsis[i++] = "IOPort('CloseAll');";
-	synopsis[i++] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, nonBlocking=0]);";
+	synopsis[i++] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, blocking=1]);";
 	synopsis[i++] = "IOPort('Flush', handle);"; 
-	synopsis[i++] = "[data, when, errmsg] = IOPort('Read', handle [, nonBlocking=1] [, amount]);";
+	synopsis[i++] = "[data, when, errmsg] = IOPort('Read', handle [, blocking=0] [, amount]);";
 	synopsis[i++] = "navailable = IOPort('BytesAvailable', handle);";
 	synopsis[i++] = "IOPort('Purge', handle);";
 
 	synopsis[i++] = "\nCommands specific to serial ports:\n";
-	synopsis[i++] = "handle = IOPort('OpenSerialPort', port [, configString]);";
+	synopsis[i++] = "[handle, errmsg] = IOPort('OpenSerialPort', port [, configString]);";
 	synopsis[i++] = "IOPort('ConfigureSerialPort', handle, configString);";
 
 	synopsis[i++] = NULL;  //this tells IOPORTDisplaySynopsis where to stop
@@ -190,14 +190,14 @@ PsychError PsychCloseIOPort(int handle)
 }
 
 // Write data to port:
-int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	PsychPortIORecord*	portRecord = PsychGetPortIORecord(handle);
 	
 	switch(portRecord->portType) {
 		case kPsychIOPortSerial:
 			// Write to serial port:
-			return(PsychIOOSWriteSerialPort(portRecord->device, writedata, amount, nonblocking, errmsg, timestamp));
+			return(PsychIOOSWriteSerialPort(portRecord->device, writedata, amount, blocking, errmsg, timestamp));
 		break;
 		
 		default:
@@ -208,14 +208,14 @@ int PsychWriteIOPort(int handle, void* writedata, unsigned int amount, int nonbl
 	return(0);
 }
 
-int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int	PsychReadIOPort(int handle, void** readbuffer, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	PsychPortIORecord*	portRecord = PsychGetPortIORecord(handle);
 	
 	switch(portRecord->portType) {
 		case kPsychIOPortSerial:
 			// Read from serial port:
-			return(PsychIOOSReadSerialPort(portRecord->device, readbuffer, amount, nonblocking, errmsg, timestamp));
+			return(PsychIOOSReadSerialPort(portRecord->device, readbuffer, amount, blocking, errmsg, timestamp));
 		break;
 		
 		default:
@@ -332,13 +332,14 @@ PsychError IOPORTCloseAll(void)
 // Open a serial port on a serial port device:
 PsychError IOPORTOpenSerialPort(void)
 {
- 	static char useString[] = "handle = IOPort('OpenSerialPort', port [, configString]);";
+ 	static char useString[] = "[handle, errmsg] = IOPort('OpenSerialPort', port [, configString]);";
 	static char synopsisString[] = 
 		"Open a serial port device, return a 'handle' to it.\n"
 		"If a port can't be opened, the function will abort with error, unless the "
 		"level of verbosity is set to zero, in which case the function will silently "
 		"fail, but return an invalid (negative) handle to signal the failure to the "
-		"calling script.\n"
+		"calling script. The optional return argument 'errmsg' contains a text string "
+		"which is either empty on success, or contains a descriptive error message. \n"
 		"'port' is usually a name string that defines the serial port device "
 		"to open. On MS-Windows this could be, e.g., 'COM1' or 'COM2' etc. On "
 		"Apple OS/X, it is the path to a BSD device file, e.g., '/dev/cu.usbserial-FT3Z95V5' "
@@ -382,6 +383,7 @@ PsychError IOPORTOpenSerialPort(void)
   	
 	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
 	char		finalConfig[2000];
+	char		errmsg[1024];
 	char*		portSpec = NULL;
 	char*		configString = NULL;
 	PsychSerialDeviceRecord* device = NULL;
@@ -393,7 +395,7 @@ PsychError IOPORTOpenSerialPort(void)
 	
 	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(2));	 // The maximum number of outputs
 
 	// Get required portSpec:
 	PsychAllocInCharArg(1, kPsychArgRequired, &portSpec);
@@ -419,7 +421,10 @@ PsychError IOPORTOpenSerialPort(void)
 	// handle is index into our port record...
 
 	// Call OS specific open routine for serial port:
-	device = PsychIOOSOpenSerialPort(portSpec, finalConfig);
+	device = PsychIOOSOpenSerialPort(portSpec, finalConfig, errmsg);
+
+	// Copy out optional errmsg string:
+	PsychCopyOutCharArg(2, kPsychArgOptional, errmsg);
 	
 	if (device == NULL) {
 		// Special case: Could not open port, but verbosity level is zero, no conventional
@@ -479,17 +484,17 @@ PsychError IOPORTConfigureSerialPort(void)
 
 PsychError IOPORTRead(void)
 {
- 	static char useString[] = "[data, when, errmsg] = IOPort('Read', handle [, nonBlocking=1] [, amount]);";
+ 	static char useString[] = "[data, when, errmsg] = IOPort('Read', handle [, blocking=0] [, amount]);";
 	static char synopsisString[] = 
 		"Read data from device, specified by 'handle'.\n"
 		"Returned 'data' will be a row vector of read data bytes. 'when' will be a receive "
 		"timestamp of when the data read was complete. 'errmsg' will be a human readable "
 		"char string with an error message if any error occured, otherwise an empty string. "
-		"The optional flag 'nonBlocking' if set to 1 will ask the read function to not block, "
+		"The optional flag 'blocking' if set to 0 will ask the read function to not block, "
 		"but return immediately: The read function will return whatever amount of data is "
 		"currently available in the internal input queue, but at most 'amount' bytes if 'amount' "
 		"is specified. If no data is available, it will return an empty matrix. This is the default.\n"
-		"If nonBlocking is set to 0, you must specify the 'amount' of bytes to receive and the "
+		"If 'blocking' is set to 1, you must specify the 'amount' of bytes to receive and the "
 		"function will wait until that exact amount of data is available, then return it."
 		"Even in blocking mode, the function will return if no data becomes available within "
 		"the time period specified by the configuration setting 'ReadTimeout' (see help for "
@@ -500,7 +505,7 @@ PsychError IOPORTRead(void)
 	static char seeAlsoString[] = "'Write', 'OpenSerialPort', 'ConfigureSerialPort'";
 	
 	char			errmsg[1024];
-	int				handle, nonblocking, nread, amount, i;
+	int				handle, blocking, nread, amount, i;
 	psych_uint8*	readbuffer;
 	double*			outbuffer;
 	double			timestamp;	
@@ -517,21 +522,21 @@ PsychError IOPORTRead(void)
 	// Get required port handle:
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
 	
-	// Get optional nonblocking flag: Defaults to 1 -- non-blocking.
-	nonblocking = 1;
-	PsychCopyInIntegerArg(2, kPsychArgOptional, &nonblocking);
+	// Get optional blocking flag: Defaults to 0 -- non-blocking.
+	blocking = 0;
+	PsychCopyInIntegerArg(2, kPsychArgOptional, &blocking);
 
 	// Get optional maximum or exact amount to read:
 	amount = INT_MAX;
 	if (!PsychCopyInIntegerArg(3, kPsychArgOptional, &amount)) {
 		// Not spec'd:
-		if (nonblocking <= 0) PsychErrorExitMsg(PsychError_user, "When issuing a 'Read' in blocking mode, you must specify the exact 'amount' to read, but 'amount' was omitted!");
+		if (blocking > 0) PsychErrorExitMsg(PsychError_user, "When issuing a 'Read' in blocking mode, you must specify the exact 'amount' to read, but 'amount' was omitted!");
 	}
 	
 	if (amount < 0) PsychErrorExitMsg(PsychError_user, "Invalid (negative) 'amount' of data to read!");
 	
 	// Read data:
-	nread = PsychReadIOPort(handle, (void**) &readbuffer, amount, nonblocking, errmsg, &timestamp);
+	nread = PsychReadIOPort(handle, (void**) &readbuffer, amount, blocking, errmsg, &timestamp);
 	
 	// Allocate outbuffer of proper size:
 	PsychAllocOutDoubleMatArg(1, kPsychArgOptional, 1, ((nread >=0) ? nread : 0), 1, &outbuffer);
@@ -552,21 +557,21 @@ PsychError IOPORTRead(void)
 
 PsychError IOPORTWrite(void)
 {
- 	static char useString[] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, nonBlocking=0]);";
+ 	static char useString[] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, blocking=1]);";
 	static char synopsisString[] = 
 		"Write data to device, specified by 'handle'.\n"
 		"'data' must be a vector of data items to write, or a matrix (in which case data "
 		"in the matrix will be transmitted in column-major order, ie., first the first "
 		"column, then the 2nd column etc...), either with data elements of uint8 class "
-		"or a (1 Byte per char) character string. The optional flag 'nonBlocking' if "
-		"set to 1 will ask the write function to not block, but return immediately, ie. "
+		"or a (1 Byte per char) character string. The optional flag 'blocking' if "
+		"set to 0 will ask the write function to not block, but return immediately, ie. "
 		"data is sent/written in the background while your code continues to execute - There "
 		"may be an arbitrary delay until data transmission is really finished. The default "
-		"setting is blocking writes - The function waits until data transmission is really "
-		"finished. On Linux you can also use nonBlocking == -1 to request a different mode "
+		"setting is 1, ie. blocking writes - The function waits until data transmission is really "
+		"finished. On Linux you can also use blocking == 2 to request a different mode "
 		"for blocking writes, where IOPort is polling for write-completion instead of "
 		"a more cpu friendly wait. This may decrease latency for certain applications. "
-		"On Windows and OS/X the -1 setting is treated as a standard blocking write.\n\n"
+		"On Windows and OS/X the 2 setting is treated as a standard blocking write.\n\n"
 		"Optionally, the function returns the following return arguments:\n"
 		"'nwritten' Number of bytes written -- Should match amount of data provided on success.\n"
 		"'when' A timestamp of write completion: This is only meaningful in blocking mode!\n"
@@ -575,7 +580,7 @@ PsychError IOPORTWrite(void)
 	static char seeAlsoString[] = "";
 	
 	char			errmsg[1024];
-	int				handle, nonblocking, m, n, p, nwritten;
+	int				handle, blocking, m, n, p, nwritten;
 	psych_uint8*	inData = NULL;
 	char*			inChars = NULL;
 	void*			writedata = NULL;
@@ -613,12 +618,12 @@ PsychError IOPORTWrite(void)
 	}
 	
 	
-	// Get optional nonblocking flag: Defaults to zero -- blocking.
-	nonblocking = 0;
-	PsychCopyInIntegerArg(3, kPsychArgOptional, &nonblocking);
+	// Get optional blocking flag: Defaults to one -- blocking.
+	blocking = 1;
+	PsychCopyInIntegerArg(3, kPsychArgOptional, &blocking);
 
 	// Write data:
-	nwritten = PsychWriteIOPort(handle, writedata, n, nonblocking, errmsg, &timestamp);
+	nwritten = PsychWriteIOPort(handle, writedata, n, blocking, errmsg, &timestamp);
 	if (nwritten < 0 && verbosity > 0) printf("IOPort: Error: %s\n", errmsg); 
 	
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, nwritten);

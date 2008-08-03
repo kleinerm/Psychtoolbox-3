@@ -123,19 +123,21 @@ static int ConstantToBaud(int inint)
  *
  * portSpec - String with the port name / device name of the serial port device.
  * configString - String with port configuration parameters.
- *
+ * errmsg - Pointer to char[] buffer in which error messages should be returned, if any.
  * On success, allocate a PsychSerialDeviceRecord with all relevant settings,
  * return a pointer to it.
  *
  * Otherwise abort with error message.
  */
-PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString)
+PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const char* configString, char* errmsg)
 {
     int				fileDescriptor = -1;
     struct termios	options;
-    char			errmsg[1000];
 	PsychSerialDeviceRecord* device = NULL;
 	bool			usererr = FALSE;
+	
+	// Init errmsg error message to empty == no error:
+	errmsg[0] = 0;
 	
     // Open the serial port read/write, with no controlling terminal, and don't wait for a connection.
     // The O_NONBLOCK flag also causes subsequent I/O on the device to be non-blocking.
@@ -143,8 +145,12 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     fileDescriptor = open(portSpec, O_RDWR | O_NOCTTY | O_NONBLOCK);
     if (fileDescriptor == -1)
     {
-		if (errno == EBUSY) {
-			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! %s(%d).\n", portSpec, strerror(errno), errno);
+		if (errno == ENOENT) {
+			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, errno);
+			usererr = TRUE;
+		}		
+		else if (errno == EBUSY || errno == EPERM) {
+			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! %s(%d) [EBUSY EPERM]. Could be a permission problem as well.\n", portSpec, strerror(errno), errno);
 			usererr = TRUE;
 		}
 		else {
@@ -674,19 +680,19 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
  * Write data to serial port:
  * writedata = Ptr. to data buffer of uint8 values to write.
  * amount = Buffersize aka amount of bytes to write.
- * nonblocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
+ * blocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
  * errmsg = Pointer to char array where error messages should be put to.
  * timestamp = Pointer to a double value where write-completion timestamps should be put to.
  *
  * Returns number of bytes written, or -1 on error.
  */
-int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	int nwritten;
 	unsigned long lsr = 0;  // Serial transmitter line status register.
 	
 	// Nonblocking mode?
-	if (nonblocking > 0) {
+	if (blocking <= 0) {
 		// Yep. Set filedescriptor to non-blocking mode:
 		// Set the O_NONBLOCK flag so subsequent I/O will not block.
 		// See fcntl(2) ("man 2 fcntl") for details.
@@ -721,7 +727,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 		}
 		
 		// Special polling mode to wait for transmit completion instead of tcdrain() + wait?
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (nonblocking == -1)) {
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (blocking == 2)) {
 			// Yes. Use a tight polling loop which spin-waits on the transmitter idle flag:
 			#if PSYCH_SYSTEM == PSYCH_LINUX
 				while (!(lsr & TIOCSER_TEMT)) ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr);
@@ -743,7 +749,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	return(nwritten);
 }
 
-int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int nonblocking, char* errmsg, double* timestamp)
+int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, unsigned int amount, int blocking, char* errmsg, double* timestamp)
 {
 	struct termios	options;
 	double timeout;
@@ -770,7 +776,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 	}
 	
 	// Nonblocking mode?
-	if (nonblocking > 0) {
+	if (blocking <= 0) {
 		// Yep. Set filedescriptor to non-blocking mode:
 		// Set the O_NONBLOCK flag so subsequent I/O will not block.
 		// See fcntl(2) ("man 2 fcntl") for details.
