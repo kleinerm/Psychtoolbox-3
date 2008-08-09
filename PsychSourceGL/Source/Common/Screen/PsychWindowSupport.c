@@ -307,10 +307,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 		// Basic support seems to be there, set the request flag.
 		(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
 #else
-		printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but this is not supported on MS-Windows.\n");
-		PsychOSCloseWindow(*windowRecord);
-		FreeWindowRecordFromPntr(*windowRecord);
-		return(FALSE);
+		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
+		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
+		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
+		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL cards may support this with some drivers,");
+		printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
+		//PsychOSCloseWindow(*windowRecord);
+		//FreeWindowRecordFromPntr(*windowRecord);
+		//return(FALSE);
 #endif
 	}
 
@@ -359,6 +363,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if ((((*windowRecord)->depth == 30) && !((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) || (*windowRecord)->depth == 64 || (*windowRecord)->depth == 128) {
 
         // Floating point framebuffer active? GL_RGBA_FLOAT_MODE_ARB would be a viable alternative?
+		isFloatBuffer = FALSE;
         glGetBooleanv(GL_COLOR_FLOAT_APPLE, &isFloatBuffer);
         if (isFloatBuffer) {
             printf("PTB-INFO: Floating point precision framebuffer enabled.\n");
@@ -807,21 +812,24 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	// running on an Intel onboard gfx-chip. Some of them have problems (hardware or driver bugs), so
 	// until i've implemented a proper detection & workaround code for detecting and fixing this, its
 	// safer to disable this method:
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	if (strstr(glGetString(GL_VENDOR), "Intel") || strstr(glGetString(GL_VENDOR), "INTEL")) {
-		// Shutdown advanced timestamping facilities for Intel onboard chips under Windows:
-		PsychPrefStateSet_VBLTimestampingMode(-1);
-		
-		// And tell the user about the c%!@%p stuff he is trying to use for his work... 
-		if(PsychPrefStateGet_Verbosity()>1) {
-			printf("PTB-WARNING: Intel onboard graphics chip detected. Some of these are known to have severe bugs in their drivers or hardware\n");
-			printf("PTB-WARNING: which could seriously screw up PTBs timestamping code. We disable high-precision timestamping until this issue\n");
-			printf("PTB-WARNING: is properly resolved by a proper work-around (if possible) in a future PTB release. Screen('Flip') timestamps\n");
-			printf("PTB-WARNING: will be less robust and accurate and more noisy due to this, but still at least as good as the ones provided by\n");
-			printf("PTB-WARNING: the old Psychtoolboxes or other toolkits ;-)  -- Stay tuned...\n");
-		}
-	}
-	#endif
+	// MK 8.8.2008 Update: Our bug detection logic for beamposition related bugs has improved so much
+	// during the last year that we probably can leave it to that logic to spot and handle broken
+	// Intel GPU's. So we unconditionally disable this unconditional lockout of Intel GPU's ;-)
+//	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+//	if (strstr(glGetString(GL_VENDOR), "Intel") || strstr(glGetString(GL_VENDOR), "INTEL")) {
+//		// Shutdown advanced timestamping facilities for Intel onboard chips under Windows:
+//		PsychPrefStateSet_VBLTimestampingMode(-1);
+//		
+//		// And tell the user about the c%!@%p stuff he is trying to use for his work... 
+//		if(PsychPrefStateGet_Verbosity()>1) {
+//			printf("PTB-WARNING: Intel onboard graphics chip detected. Some of these are known to have severe bugs in their drivers or hardware\n");
+//			printf("PTB-WARNING: which could seriously screw up PTBs timestamping code. We disable high-precision timestamping until this issue\n");
+//			printf("PTB-WARNING: is properly resolved by a proper work-around (if possible) in a future PTB release. Screen('Flip') timestamps\n");
+//			printf("PTB-WARNING: will be less robust and accurate and more noisy due to this, but still at least as good as the ones provided by\n");
+//			printf("PTB-WARNING: the old Psychtoolboxes or other toolkits ;-)  -- Stay tuned...\n");
+//		}
+//	}
+//	#endif
 	
 	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
 
@@ -4081,7 +4089,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
-	glGetIntegerv(GL_MAX_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB, &maxaluinst);
+	if ((glewIsSupported("GL_ARB_fragment_program") || glewIsSupported("GL_ARB_vertex_program")) && glGetProgramivARB!=NULL) glGetProgramivARB(GL_FRAGMENT_PROGRAM_ARB, GL_MAX_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB, &maxaluinst);
 	while (glGetError());
 	
 	if (verbose) {

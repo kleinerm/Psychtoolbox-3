@@ -85,6 +85,10 @@ try
             PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
             overlay = 0;
             
+        case {'Native10Bit'}
+            PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+            overlay = 0;
+
         case {'None'}
             PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
             overlay = 0;

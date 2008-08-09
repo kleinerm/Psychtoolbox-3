@@ -136,15 +136,18 @@ PsychError SCREENOpenWindow(void)
        PsychAddValueToDepthStruct(128, &possibleDepths);
     #endif
 
-    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
+//    #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 		// On MacOS/X and Linux with ATI Radeon X1000/HD2000/HD3000 hardware and the special
 		// kernel support driver installed, we should be able to configure the hardwares
 		// framebuffers into ABGR2101010 mode, ie. 2 bits alpha, 10 bpc for red, green, blue.
 		// This needs support from the imaging pipeline, or manually converted stimuli, as
 		// the GPU doesn't format pixel data properly, only the CRTC scans out in that format.
 		// Anyway, allow this setting on OS/X and Linux:
+		
+		// Update: Some FireGL cards (2008 and later) claim to support this on MS-Windows. Enable
+		// this option on Windows as well, so it is at least testable:
 		PsychAddValueToDepthStruct(30, &possibleDepths);
-    #endif
+//    #endif
 
 
     PsychInitDepthStruct(&specifiedDepth); //get the requested depth and validate it.  
