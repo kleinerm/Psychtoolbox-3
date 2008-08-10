@@ -1,23 +1,29 @@
 function destination = Magnify2DMatrix(source, scalingFactor) 
-% Magnifies a two-dimensional sourceMatrix by a factor specified by scalingFactor.
-% 
+% destination = Magnify2DMatrix(sourceMatrix, scalingFactor)
+%
+% Magnifies a 2-D or 3-D 'sourceMatrix' by a factor specified by
+% 'scalingFactor'. size of 3rd dimension will not be scaled.
+%
+
 % 10/15/06 rhh Wrote it using lots of loops.
 % 11/12/06 rhh Revised it.  Denis Pelli suggested revising the code to take
 %               advantage of Matlab's matrix processing abilities and David Brainard
 %               showed explicitly how this could be done.
+% 05/09/08 DN  generated copy instruction indices with a different method,
+%               speeding up this function. Added support for 3D matrices
 
-[heightOfSource widthOfSource] = size(source);
+heightOfSource  = size(source,1);
+widthOfSource   = size(source,2);
 % Generate row copying instructions index.
-rowCopyingInstructionsIndex = [];
-for i = 1 : heightOfSource
-    rowCopyingInstructionsIndex = horzcat(rowCopyingInstructionsIndex, ones(1, scalingFactor) * i);
-end   
+inds                            = 1:heightOfSource;
+rowCopyingInstructionsIndex     = inds(ones(scalingFactor,1),:);
+rowCopyingInstructionsIndex     = rowCopyingInstructionsIndex(:);
+
 
 % Generate column copying instructions index.
-columnCopyingInstructionsIndex = [];
-for i = 1 : widthOfSource
-    columnCopyingInstructionsIndex = horzcat(columnCopyingInstructionsIndex, ones(1, scalingFactor) * i);
-end
+inds                            = 1:widthOfSource;
+columnCopyingInstructionsIndex  = inds(ones(scalingFactor,1),:);
+columnCopyingInstructionsIndex  = columnCopyingInstructionsIndex(:)';
 
 % The following code uses Matlab's matrix indexing quirks to magnify the
 % matrix.  It is easier to understand how it works by looking at a specific
@@ -55,4 +61,4 @@ end
 %      3     4
 %
 
-destination = source(rowCopyingInstructionsIndex, columnCopyingInstructionsIndex);
+destination = source(rowCopyingInstructionsIndex, columnCopyingInstructionsIndex,:);

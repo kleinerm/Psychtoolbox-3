@@ -48,6 +48,7 @@
 %    sca                     - Shorthand for Screen('CloseAll').  Using this is a good way to make your code obscure.
 %    ScreenDacBits           - What is precision of the graphics boardDACs. Currently returns 8 always.
 %    SetResolution           - Change display resolution, refresh rate and color depths to requested values.
+%    ShrinkMatrix            - Shrinks a 2-D or 3-D matrix (an image) by a factor.
 %    Stopwatch               - Time intervals.
 %    streq                   - strcmp.
 %    TextBounds              - Draw string, return enclosing rect.
