@@ -33,6 +33,7 @@ function BasicSoundInputDemo(wavfilename, voicetrigger, maxsecs)
 
 % History:
 % 06/30/2007 Written (MK)
+% 08/10/2008 Add some sound onset time calculation for the fun of it. (MK)
 
 % Running on PTB-3? Abort otherwise.
 AssertOpenGL;
@@ -69,14 +70,14 @@ InitializePsychSound;
 % and a required latencyclass of zero 0 == no low-latency mode, as well as
 % a frequency of 44100 Hz and 2 sound channels for stereo capture.
 % This returns a handle to the audio device:
-pahandle = PsychPortAudio('Open', [], 2, 0, 44100, 2);
+freq = 44100;
+pahandle = PsychPortAudio('Open', [], 2, 0, freq, 2);
 
 % Preallocate an internal audio recording  buffer with a capacity of 10 seconds:
 PsychPortAudio('GetAudioData', pahandle, 10);
 
 % Start audio capture immediately and wait for the capture to start.
-% Return estimated timestamp of when the first sample hit the
-% microphone/sound input jack. We set the number of 'repetitions' to zero,
+% We set the number of 'repetitions' to zero,
 % i.e. record until recording is manually stopped.
 PsychPortAudio('Start', pahandle, 0, 0, 1);
 
@@ -90,7 +91,7 @@ if voicetrigger > 0
     % Repeat as long as below trigger-threshold:
     while level < voicetrigger
         % Fetch current audiodata:
-        [audiodata offset]= PsychPortAudio('GetAudioData', pahandle);
+        [audiodata offset overflow tCaptureStart] = PsychPortAudio('GetAudioData', pahandle);
 
         % Compute maximum signal amplitude in this chunk of data:
         if ~isempty(audiodata)
@@ -108,11 +109,23 @@ if voicetrigger > 0
 
     % Ok, last fetched chunk was above threshold!
     % Find exact location of first above threshold sample.
-    idx = min(find(abs(audiodata(1,:)) >= voicetrigger));
+    idx = min(find(abs(audiodata(1,:)) >= voicetrigger)); %#ok<MXFND>
         
     % Initialize our recordedaudio vector with captured data starting from
     % triggersample:
     recordedaudio = audiodata(:, idx:end);
+    
+    % For the fun of it, calculate signal onset time in the GetSecs time:
+    % Caution: For accurate and reliable results, you should
+    % PsychPortAudio('Open',...); the device in low-latency mode, as
+    % opposed to the "normal" mode used in this demo! If you fail to do so,
+    % the tCaptureStart timestamp may be inaccurate on some systems, and
+    % therefore this tOnset timestamp may be off! See for example
+    % PsychPortAudioTimingTest and AudioFeedbackLatencyTest for how to
+    % setup low-latency high precision mode.
+    tOnset = tCaptureStart + ((offset + idx - 1) / freq);
+
+    fprintf('Estimated signal onset time is %f secs, this is %f msecs after start of capture.\n', tOnset, (tOnset - tCaptureStart)*1000);
 else
     % Start with empty sound vector:
     recordedaudio = [];
@@ -140,12 +153,10 @@ while ~KbCheck & ((length(recordedaudio) / s.SampleRate) < maxsecs)
     
     % Plot it, just for the fun of it:
     plot(1:nrsamples, audiodata(1,:), 'r', 1:nrsamples, audiodata(2,:), 'b');
-    minsig = min(min(audiodata));
-    maxsig = max(max(audiodata));
     drawnow;
     
     % And attach it to our full sound vector:
-    recordedaudio = [recordedaudio audiodata];
+    recordedaudio = [recordedaudio audiodata]; %#ok<AGROW>
 end
 
 % Stop capture:

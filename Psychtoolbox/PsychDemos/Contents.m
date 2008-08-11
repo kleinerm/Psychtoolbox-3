@@ -62,10 +62,10 @@
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.
 %    QuicktimeDemos          - Subfolder: Demos on how to use Quicktime movie playback.
 %    RenderDemo              - Render CIE xyY as a color patch.
+%    SimpleVoiceTriggerDemo  - Demo of a simple voice trigger with PsychPortAudio.
 %    SpriteDemo              - Animates an image that follows the mouse.
 %    StereoDemo              - Drive stereo-displays e.g., CrystalEyes.
 %    StereoViewer            - A simple viewer for stereo image pairs.
-%    SoundTrigger            - Demo of a very simple sound based trigger.
 %    StoreBit                - Not at all clear why this is here
 %    ValetonVanNorrenDemo    - Exercise our code that implements the V-VN (1983) cone adaptation model.
 
