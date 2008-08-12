@@ -1570,11 +1570,23 @@ global ptb_cedrus_drivertype;
 if ptb_cedrus_drivertype == 2
     % Use IOPort:
     try
-        IOPort('Verbosity', 10);
+        % Temporarily shut up the driver, so errors can be reasonably
+        % handled:
+        oldverb = IOPort('Verbosity', 0);
 
         % Open link:
-        dev.link = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
+        [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
 
+        IOPort('Verbosity', oldverb);
+        
+        % Success?
+        if dev.link < 0
+            % Nope. Do we know the cause?
+            error(sprintf('Failed to open port %s for Cedrus response box via IOPort() driver: %s', port, errmsg));
+        end
+        
+        % Link is online.
+        
         % Clear all send and receive buffers and queues:
         IOPort('Purge', dev.link);
 
@@ -1777,7 +1789,7 @@ function data = ReadDev(handle, nwanted)
         if ptb_cedrus_devices{handle}.driver == 2
             % IOPort driver: Returns all data as data type double:
             % fprintf('In read....\n');
-            [data, when, errmsg] = IOPort('Read', ptb_cedrus_devices{handle}.link, 0, nwanted);
+            [data, when, errmsg] = IOPort('Read', ptb_cedrus_devices{handle}.link, 1, nwanted);
             if length(data) < nwanted
                 fprintf('Timed out: nwanted = %i, got %i bytes: %s\n', nwanted, length(data), char(data));
                 fprintf('Read operation on response box timed out after 1 secs! errmsg = %s\n', errmsg);
@@ -1813,7 +1825,7 @@ function WriteDev(handle, data)
             
             % Write data - without terminator:
             % fprintf('In write....\n');
-            IOPort('Write', ptb_cedrus_devices{handle}.link, char(data), 0);
+            IOPort('Write', ptb_cedrus_devices{handle}.link, char(data), 1);
         end
     end
 return;

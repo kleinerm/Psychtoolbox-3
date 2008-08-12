@@ -65,6 +65,8 @@ assert mechanize.__version__ >= (0, 0, 6, "a")
 
 import textwrap
 
+from  BeautifulSoup import BeautifulSoup, Tag, NavigableString
+
 baseurl = "http://docs.psychtoolbox.org/wikka.php?wakka="
 username = "DocBot"
 password = ""
@@ -290,21 +292,72 @@ def mexhelpextract(mexnames):
             docstring = '' \
                     + '%%(matlab;Usage)' \
                     + usage \
-                    + '%%\n\n' \
+                    + '%%\n' \
                     + body \
                     + '\n\n'
             if seealso:
                 docstring = docstring + '<<=====See also:=====\n' + seealso + '<<'
 
-            text = headline \
+            text =  '""' + headline \
                     + breadcrumb \
-                    + docstring \
-                    #+ '\n\n\n%%(php;Path)' \
-                    #+ os.path.join(path,basename) \
-                    #+ '%%\n' \
-                    #+ cattext
+                    + docstring + '""'
+            
+            # retrieve old body text, to update or concatenate with synonymous subfunctions
+            #
+            # browse the page
+            title = re.sub("[^\w]|_","",subfunction)
+            try:
+                resp = mech.open(baseurl+title+"/edit")
+            except HTTPError, e:
+                sys.exit("retrieving old text during posting of this mex function failed: %d: %s" % (e.code, e.msg))
+            # get text from the edit form
+            mech.select_form(nr=1)
+            try:
+                oldbody = mech["body"]
+            except:
+                print 'No id="body" form. Figure this out first. cf. page text above.'
+                for form in mech.forms():
+                        print form
+                sys.exit("retrieving old body text failed while processing page: " + baseurl + title +'/edit')
 
-            post(subfunction,text)
+            # parse embedded structuring HTML tags in the wiki text
+            soup = BeautifulSoup(oldbody)
+
+            # check if the subfunction is already present, by CSS 'class' and 'id'
+            subfct = soup.find('div', {'class' : "subfct", 'id' : mexname})
+            if subfct:
+                # replace the text of the container DIV
+                subfct.contents[0].replaceWith(text)
+            else:
+                # contruct new DIV to hold the text
+                subfctDIV = Tag(soup, "div")
+                subfctDIV['class'] = 'subfct'
+                subfctDIV['id'] = mexname
+                subfctDIV['style'] = 'background-color:#eee; padding:1em; border-width:1px; ' \
+                        + 'border-style:solid; border-color:#ddd; margin-bottom: 2em;' \
+                        + 'border-top: 5px solid #999999;'
+                subfctDIV.insert(0,NavigableString(text))
+
+                # insert the new div
+                soup.insert(len(soup),subfctDIV)
+
+            # Now scoop the good well-formed divs out of the soup
+            divs = soup('div', {'class' : "subfct"})
+
+            # and drop them into fresh yummy cheese soup
+            cheesesoup = BeautifulSoup()
+
+            # drop good divs into the soup, one by one
+            for div in divs:
+                # escape the HTML tags for wiki parser
+                cheesesoup.append(NavigableString('\n""'))
+                cheesesoup.append(div)
+                div['style'] = 'background-color:#eee; padding:1em; border-width:1px; ' \
+                        + 'border-style:solid; border-color:#ddd; margin-bottom: 2em;' \
+                        + 'border-top: 5px solid #999999;'
+                cheesesoup.append(NavigableString('""\n'))
+
+            post(subfunction,cheesesoup.renderContents())
 
 def recursivewalk(rootfolder):
     '''traverse the root directory and post all .m-files'''
