@@ -178,7 +178,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			candidate_phys_addr = mem->getPhysicalAddress();
 			candidate_size = mem->getLength();
 			candidate_count++;
-			IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld th candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
+			IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
 		}
     }
 
@@ -273,15 +273,15 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	}
 	else {
 		// Dump current IRQ status of GPU:
-		IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-		IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+//		IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+//		IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 //		WriteRegister(RADEON_R500_GEN_INT_CNTL, 0);
-		IOSleep(5);
-		IOLog("%s: In IRQ handler setup: Now: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
+//		IOSleep(5);
+//		IOLog("%s: In IRQ handler setup: Now: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
 //		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0);
-		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
+//		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
 //		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0xffffffff);
-		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
+//		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
 	}
 
 	// We should be ready...
@@ -290,7 +290,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
 	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
 	
-	DumpGfxState();
+//	DumpGfxState();
 
 	
 	// If everything worked, we publish ourselves and our services:
@@ -652,6 +652,7 @@ UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 // Instantaneously resynchronize display heads of a Radeon dual-head gfx-card:
 SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 {
+	SInt32					deltabeampos;
 	UInt32					beampos0, beampos1;
 	UInt32					old_crtc_master_enable = 0;
 	UInt32					new_crtc_master_enable = 0;
@@ -659,6 +660,7 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	IOLog("%s: FastSynchronizeAllDisplayHeads(): About to resynchronize all display heads by use of a 1 second CRTC stop->start cycle:\n", getName());
 	
 	// A little pretest...
+	IOLog("%s: Pretest...\n", getName());
 	for (UInt32 i = 0; i<10; i++) { 
 		beampos0 = GetBeamPosition(0);
 		beampos1 = GetBeamPosition(1);
@@ -669,20 +671,52 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	// whereas Bit 1(value 0x2) controls Pipeline 2:
 	old_crtc_master_enable = ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE);
 	IOLog("%s: Current CRTC Master enable state is %ld . Trying to stop and reset all display heads.\n", getName(), old_crtc_master_enable);
+	IOLog("%s: Will wait individually for each head to get close to scanline 0, then disable it.\n", getName());
+
+	// Shut down heads, one after each other, each one at the start of a new refresh cycle:
+	for (UInt32 i = 0; i <= 1; i++) { 
+		// Wait for head i to start a new display cycle (scanline 0), then shut it down - well if it is active at all:
+		IOLog("%s: Head %ld ...  ", getName(), i);
+		if (old_crtc_master_enable & (0x1 << i)) {		
+			IOLog("active -> Shutdown. ");
+			// Wait for beam going above scanline 240: We choose 240, because even at the lowest conceivable
+			// useful display resolution of 640 x 480, 240 will be in the middle of the frame, aka far away
+			// from both, the start and the end of a frame:
+			while (GetBeamPosition(i) <= 240);
+			
+			// Beam is heading for the end of the frame + VBL area. Wait for wrap-around, ie. until
+			// reaching a scanline value smaller than 100 --> Until it wraps back to zero or at least
+			// a value close to zero:
+			while (GetBeamPosition(i) > 240);
+			
+			// Start of new refresh interval! Shut down this heads CRTC!
+			// We do so by clearing enable bit for this head:
+			WriteRegister(RADEON_DC_CRTC_MASTER_ENABLE, ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE) & ~(0x1 << i));
+			IOLog("New state is %ld.\n", ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE));
+
+			// Head should be down, close to scanline 0.
+			IOSleep(50);
+		}
+		else {
+			IOLog("already offline.\n");
+		}
+	}
 
 	// Disable all display heads:
-	WriteRegister(RADEON_DC_CRTC_MASTER_ENABLE, 0);
+	// WriteRegister(RADEON_DC_CRTC_MASTER_ENABLE, 0);
 	IOSleep(20);
 	
 	// Query current beamposition and check state:
 	beampos0 = GetBeamPosition(0);
 	beampos1 = GetBeamPosition(1);
+	
 	new_crtc_master_enable = ReadRegister(RADEON_DC_CRTC_MASTER_ENABLE);
+
 	if (new_crtc_master_enable == 0) {
-		IOLog("%s: CRTCs down (state %ld): Beampositions are [0]=%ld and [1]=%ld. Synchronized restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's down (state %ld): Beampositions are [0]=%ld and [1]=%ld. Synchronized restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 	else {
-		IOLog("%s: CRTCs shutdown failed!! (state %ld): Beamposition are [0]=%ld and [1]=%ld. Will try to restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
+		IOLog("%s: CRTC's shutdown failed!! (state %ld): Beamposition are [0]=%ld and [1]=%ld. Will try to restart in 1 second...\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
 	
 	// Sleep for 1 secs == 1000 milliseconds: This is a blocking call, ie. the thread goes to sleep and may wakeup a bit later:
@@ -701,11 +735,22 @@ SInt32	PsychtoolboxKernelDriver::FastSynchronizeAllDisplayHeads(void)
 	else {
 		IOLog("%s: CRTC's restart FAILED!!: Master enable state is %ld. Beampositions: [0]=%ld and [1]=%ld.\n", getName(), new_crtc_master_enable, beampos0, beampos1);
 	}
+
+	deltabeampos = (SInt32) beampos1 - (SInt32) beampos0;
+	IOLog("%s: Residual beam offset after display sync: %ld.\n\n", getName(), deltabeampos);
+
+	// A little posttest...
+	IOLog("%s: Posttest...\n", getName());
+	for (UInt32 i = 0; i<10; i++) { 
+		beampos0 = GetBeamPosition(0);
+		beampos1 = GetBeamPosition(1);
+		IOLog("%s: Sample %ld: Beampositions are %ld vs. %ld . Offset %ld\n", getName(), i, beampos0, beampos1, (SInt32) beampos1 - (SInt32) beampos0);
+	}
 	
-	IOLog("%s: Residual beam offset after display sync: %ld.\n", getName(), (SInt32) beampos1 - (SInt32) beampos0);
+	IOLog("\n%s: Display head resync operation finished.\n\n", getName());
 	
 	// Return offset after (re-)sync:
-	return((SInt32) beampos1 - (SInt32) beampos0);
+	return(deltabeampos);
 }
 
 // Perform instant state snapshot of interesting registers and return'em:
