@@ -1569,23 +1569,24 @@ global ptb_cedrus_drivertype;
 % Test our default of type 2 -- Our own IOPort() driver:
 if ptb_cedrus_drivertype == 2
     % Use IOPort:
+
+    % Temporarily shut up the driver, so errors can be reasonably
+    % handled:
+    oldverb = IOPort('Verbosity', 0);
+
+    % Open link:
+    [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
+
+    IOPort('Verbosity', oldverb);
+
+    % Success?
+    if dev.link < 0
+        % Nope. Do we know the cause?
+        error(sprintf('Failed to open port %s for Cedrus response box via IOPort()! Reason: %s', port, errmsg)); %#ok<SPERR>
+    end
+
+    % Link is online.
     try
-        % Temporarily shut up the driver, so errors can be reasonably
-        % handled:
-        oldverb = IOPort('Verbosity', 0);
-
-        % Open link:
-        [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
-
-        IOPort('Verbosity', oldverb);
-        
-        % Success?
-        if dev.link < 0
-            % Nope. Do we know the cause?
-            error(sprintf('Failed to open port %s for Cedrus response box via IOPort() driver: %s', port, errmsg));
-        end
-        
-        % Link is online.
         
         % Clear all send and receive buffers and queues:
         IOPort('Purge', dev.link);
