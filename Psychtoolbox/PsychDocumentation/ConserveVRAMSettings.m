@@ -114,6 +114,11 @@
 % flexible, capable, faster method would be used, unless you set this flag
 % to fall back to the old solution.
 %
+% 4096 == kPsychUseBeampositionQueryWorkaround
+% Tell PTB to always use the workaround for broken beamposition queries in
+% VBL on MS-Windows, even if the automatic startup test does not detect any
+% problems. This for rare cases where the test fails to detect broken
+% setups.
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are

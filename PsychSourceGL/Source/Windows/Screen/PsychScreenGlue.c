@@ -854,7 +854,7 @@ void PsychTestDDrawBeampositionQueries(void)
 		// maxvpos is maximum valid scanline:
 		maxvpos = (psych_uint32) (1.25 * ((float) maxvpos));
 		
-		// We measure for 50 msecs -- That is at least 3 video refresh cycles:
+		// We measure for 500 msecs -- That is at least 30 video refresh cycles:
 		vbldetectcount = 0; 
 		bogusvaluecount = 0;
 		bogusvalueinvblcount = 0;
@@ -862,7 +862,7 @@ void PsychTestDDrawBeampositionQueries(void)
 		
 		PsychGetAdjustedPrecisionTimerSeconds(&tdeadline);
 		now = tdeadline;
-		tdeadline+=0.050;
+		tdeadline+=0.500;
 		
 		while (now < tdeadline) {
 			// Update timestamp:
@@ -939,7 +939,28 @@ void PsychTestDDrawBeampositionQueries(void)
 				}
 			}
 		}
-	}
+		else {
+			// No apparent problems detected. Should the workaround be forced on?
+			if (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) {
+				// Force it on:
+				if (verbosity > 2) {
+					printf("PTB-INFO: Automatic startup test of beamposition queries couldn't detect any beamposition problems on your system,\n");
+					printf("PTB-INFO: but  by setting the special flag Screen('Preference', 'ConserveVRAM', 4096); somewhere in your script,\n");
+					printf("PTB-INFO: you requested that the workaround for beamposition problems is always unconditionally enabled.\n");
+					printf("PTB-INFO: Therefore i will enable the work-around: This should satisfy the timing needs of most applications, ie.\n");
+					printf("PTB-INFO: robust and jitter-free deterministic timestamps. However, all reported timestamps may have a\n");
+					printf("PTB-INFO: constant offset of up to the duration of the vertical blanking interval (max 1 msec worst case)\n");
+					printf("PTB-INFO: of your display. Read 'help BeampositionQueries' on how you can remove that bias by some manual\n");
+					printf("PTB-INFO: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
+					printf("PTB-INFO: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
+					printf("PTB-INFO: Check your vendors website for driver updates regularly, so you can get rid of this workaround asap.\n\n");
+				}
+				
+				// Enable beampos workaround by default:
+				enableVBLBeamposWorkaround = TRUE;				
+			}
+		}
+	} // Beamposition queries supported and requested.
 	
 	return;
 }

@@ -192,6 +192,10 @@ typedef struct {
 // Tell PTB to avoid EXT_framebuffer_blit if possible, e.g., in SCREENCopyWindow():
 #define kPsychAvoidFramebufferBlitIfPossible 2048
 
+// On MS-Windows, always unconditionally enable the work-around for broken beamposition
+// queries, regardless if the automatic test detects problems or not:
+#define kPsychUseBeampositionQueryWorkaround 4096
+
 //function protoptypes
 
 //Accessors for PsychDepthType 
