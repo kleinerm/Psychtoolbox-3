@@ -24,6 +24,7 @@ function [values] = SearchGammaTable(targets,input,table)
 %               dhb     Start work on converting to [0-1] universe.  Change
 %                       name and interface.
 % 11/20/06      dhb     Finish update by calling through MATLAB's interpolation function.
+% 9/15/08       dhb     Handle case where there are a bunch of zeros at the beginning of gamma table.
 
 % Check dimensions
 [m,n] = size(targets);
@@ -40,6 +41,18 @@ if (nt ~= 1)
 end
 if (mi ~= mt || ni ~= nt)
     error('Input and table must be the same size');
+end
+
+% Handle problem that for some monitors, the output is 0 for
+% input values up to some threshold.  This causes interp1
+% to crash.  We handle this by getting rid of the intermediate
+% zeros from the input, if they are there.  This choice means 
+% that when we ask for 0 out, we get 0 as the answer.
+index = find(table == 0);
+index1 = find(table ~= 0);
+if (length(index >= 1))
+    table = table([index(1) ; index1]);
+    input = input([index(1) ; index1]);
 end
 
 % Invert via linearly interpolation of the passed table
