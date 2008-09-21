@@ -57,7 +57,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "\nGeneral commands for all types of input/output ports:\n";
 	synopsis[i++] = "IOPort('Close', handle);";
 	synopsis[i++] = "IOPort('CloseAll');";
-	synopsis[i++] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, blocking=1]);";
+	synopsis[i++] = "[nwritten, when, errmsg, prewritetime, postwritetime, lastchecktime] = IOPort('Write', handle, data [, blocking=1]);";
 	synopsis[i++] = "IOPort('Flush', handle);"; 
 	synopsis[i++] = "[data, when, errmsg] = IOPort('Read', handle [, blocking=0] [, amount]);";
 	synopsis[i++] = "navailable = IOPort('BytesAvailable', handle);";
@@ -377,11 +377,18 @@ PsychError IOPORTOpenSerialPort(void)
 		"SendTimeout=1.0 -- Interbyte send timeout in seconds. Only used on Windows.\n\n"
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
 		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
+		"PollLatency=0.0005 (0.005 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n";
 
 	static char seeAlsoString[] = "'CloseAll'";	 
   	
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	// Difference to Unices: PollLatency defaults to 5 msecs instead of 0.5 msecs due to shoddy windows scheduler:
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	#else
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	#endif
+	
 	char		finalConfig[2000];
 	char		errmsg[1024];
 	char*		portSpec = NULL;
@@ -557,7 +564,7 @@ PsychError IOPORTRead(void)
 
 PsychError IOPORTWrite(void)
 {
- 	static char useString[] = "[nwritten, when, errmsg] = IOPort('Write', handle, data [, blocking=1]);";
+ 	static char useString[] = "[nwritten, when, errmsg, prewritetime, postwritetime, lastchecktime] = IOPort('Write', handle, data [, blocking=1]);";
 	static char synopsisString[] = 
 		"Write data to device, specified by 'handle'.\n"
 		"'data' must be a vector of data items to write, or a matrix (in which case data "
@@ -568,15 +575,22 @@ PsychError IOPORTWrite(void)
 		"data is sent/written in the background while your code continues to execute - There "
 		"may be an arbitrary delay until data transmission is really finished. The default "
 		"setting is 1, ie. blocking writes - The function waits until data transmission is really "
-		"finished. On Linux you can also use blocking == 2 to request a different mode "
+		"finished. You can also use blocking == 2 to request a different mode "
 		"for blocking writes, where IOPort is polling for write-completion instead of "
 		"a more cpu friendly wait. This may decrease latency for certain applications. "
-		"On Windows and OS/X the 2 setting is treated as a standard blocking write.\n\n"
+		"Another even more agressive polling method is implemented via blocking == 3 on "
+		"Linux systems with some limited set of hardware, e.g., real native serial ports.\n"
+		"On systems without any support for specific polling modes, the 2 or 3 settings are treated "
+		"as a standard blocking write.\n\n"
 		"Optionally, the function returns the following return arguments:\n"
 		"'nwritten' Number of bytes written -- Should match amount of data provided on success.\n"
 		"'when' A timestamp of write completion: This is only meaningful in blocking mode!\n"
-		"'errmsg' A system defined error message if something wen't wrong. ";
-
+		"'errmsg' A system defined error message if something wen't wrong.\n"
+		"The following three timestamps are for low-level debugging and special purpose:\n"
+		"'prewritetime' A timestamp taken immediately before submitting the write request. "
+		"'postwritetime' A timestamp taken immediately after submitting the write request. "
+		"'lastchecktime' A timestamp taken at the time of last check for write completion if applicable. ";
+		
 	static char seeAlsoString[] = "";
 	
 	char			errmsg[1024];
@@ -584,7 +598,7 @@ PsychError IOPORTWrite(void)
 	psych_uint8*	inData = NULL;
 	char*			inChars = NULL;
 	void*			writedata = NULL;
-	double			timestamp;
+	double			timestamp[4] = {0, 0, 0, 0};
 	errmsg[0] = 0;
 
 	// Setup online help: 
@@ -593,7 +607,7 @@ PsychError IOPORTWrite(void)
 	
 	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(3));	 // The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(6));	 // The maximum number of outputs
 
 	// Get required port handle:
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &handle);
@@ -623,12 +637,15 @@ PsychError IOPORTWrite(void)
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &blocking);
 
 	// Write data:
-	nwritten = PsychWriteIOPort(handle, writedata, n, blocking, errmsg, &timestamp);
+	nwritten = PsychWriteIOPort(handle, writedata, n, blocking, errmsg, &timestamp[0]);
 	if (nwritten < 0 && verbosity > 0) printf("IOPort: Error: %s\n", errmsg); 
 	
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, nwritten);
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp);
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, timestamp[0]);
 	PsychCopyOutCharArg(3, kPsychArgOptional, errmsg);
+	PsychCopyOutDoubleArg(4, kPsychArgOptional, timestamp[1]);
+	PsychCopyOutDoubleArg(5, kPsychArgOptional, timestamp[2]);
+	PsychCopyOutDoubleArg(6, kPsychArgOptional, timestamp[3]);
 	
     return(PsychError_none);
 }

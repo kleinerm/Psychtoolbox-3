@@ -592,6 +592,17 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 	}
 
+	if ((p = strstr(configString, "PollLatency="))) {
+		// Set polling latency for busy-waiting read operations:
+		if ((1!=sscanf(p, "PollLatency=%f", &infloat)) || (infloat < 0)) {
+			if (verbosity > 0) printf("Invalid parameter for PollLatency set! Typo, or negative value provided.\n");
+			return(PsychError_user);
+		}
+		else {
+			device->pollLatency = infloat;
+		}
+	}
+
 	// Done.
 	return(PsychError_none);
 }
@@ -603,7 +614,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
  * amount = Buffersize aka amount of bytes to write.
  * blocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
  * errmsg = Pointer to char array where error messages should be put to.
- * timestamp = Pointer to a double value where write-completion timestamps should be put to.
+ * timestamp = Pointer to a 4 element vectorof double values where write-completion timestamps should be put to.
+ * [0] = Final write completion timestamp.
+ * [1] = Timestamp immediately before write() submission.
+ * [2] = Timestamp immediately after write() submission.
+ * [3] = Timestamp of last check for write completion.
  *
  * Returns number of bytes written, or -1 on error.
  */
@@ -620,12 +635,14 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 		// "non-blocking write" is a (probably blocking under certain conditions) WriteFile() op, just with the
 		// FlushFileBuffer call missing.
 
-		// Write the data:
+		// Write the data: Take pre- and postwrite timestamps.
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
 		if (WriteFile(device->fileDescriptor, writedata, amount, &nwritten, NULL) == 0)
 		{
 			sprintf(errmsg, "Error during non-blocking write to device %s - (%d).\n", device->portSpec, GetLastError());
 			return(-1);
 		}
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[2]);
 	}
 	else {
 		// Blocking write:
@@ -636,12 +653,14 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			return(-1);
 		}
 		
-		// Write the data:
+		// Write the data: Take pre- and postwrite timestamps.
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
 		if (WriteFile(device->fileDescriptor, writedata, amount, &nwritten, NULL) == 0)
 		{
 			sprintf(errmsg, "Error during blocking write to device %s - (%d).\n", device->portSpec, GetLastError());
 			return(-1);
 		}
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[2]);
 		
 		// Flush the write buffer and wait for write completion on physical hardware:
 		if (FlushFileBuffers(device->fileDescriptor)==0) {
@@ -649,10 +668,27 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			return(-1);
 		}
 		
-		// Really wait for write completion, ie., until the last byte has left the transmitter:
-		if (WaitCommEvent(device->fileDescriptor, (LPDWORD) &EvtMask, NULL)==0) {
-			sprintf(errmsg, "Error during blocking write to device %s while call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
-			return(-1);
+		// Special polling mode to wait for transmit completion instead of WaitCommEvent()?
+		if (blocking == 2) {
+			// Yes. Use a tight polling loop which spin-waits until the driver output queue is empty (contains zero pending bytes):
+			device->num_output_pending = nwritten;
+			while (device->num_output_pending > 0) {
+				// Take timestamp for this iteration:
+				PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
+
+				// Poll: This updates num_output_pending as side effect:
+				PsychIOOSCheckError(device, errmsg);
+			}
+		}
+		else {
+			// Take timestamp for completeness although it doesn't make much sense in the blocking case:
+			PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
+
+			// Really wait for write completion, ie., until the last byte has left the transmitter:
+			if (WaitCommEvent(device->fileDescriptor, (LPDWORD) &EvtMask, NULL)==0) {
+				sprintf(errmsg, "Error during blocking write to device %s while call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
+				return(-1);
+			}
 		}
 	}
 	
@@ -746,7 +782,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 				// Due to the shoddy Windows scheduler, we can't use a nice sleep duration of 500 microseconds like
 				// on Unices, but need to use a rather large 5 msecs so the system actually puts us to sleep
 				// and we don't overload the machine in realtime scheduling:
-				PsychWaitIntervalSeconds(0.005);
+				PsychWaitIntervalSeconds(device->pollLatency);
 			}
 			
 			if (PsychIOOSBytesAvailableSerialPort(device) < 1) {
@@ -795,6 +831,9 @@ int PsychIOOSCheckError(PsychSerialDeviceRecord* device, char* inerrmsg)
 		if (estatus & CE_RXOVER) { sprintf(errmsg, "IOPort: Receive buffer overflow detected.\n"); strcat(inerrmsg, errmsg); }
 		if (estatus & CE_RXPARITY) { sprintf(errmsg, "IOPort: Parity error detected.\n"); strcat(inerrmsg, errmsg); }
 	}
+	
+	// Store number of pending characters to write out:
+	device->num_output_pending = (unsigned int) dstatus.cbOutQue;
 	
 	return((int) estatus);
 }

@@ -671,6 +671,17 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 	}
 
+	if ((p = strstr(configString, "PollLatency="))) {
+		// Set polling latency for busy-waiting read operations:
+		if ((1!=sscanf(p, "PollLatency=%f", &infloat)) || (infloat < 0)) {
+			if (verbosity > 0) printf("Invalid parameter for PollLatency set! Typo, or negative value provided.\n");
+			return(PsychError_user);
+		}
+		else {
+			device->pollLatency = infloat;
+		}
+	}
+	
 	// Done.
 	return(PsychError_none);
 }
@@ -682,7 +693,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
  * amount = Buffersize aka amount of bytes to write.
  * blocking = 0 --> Async, 1 --> Flush buffer and wait for write completion.
  * errmsg = Pointer to char array where error messages should be put to.
- * timestamp = Pointer to a double value where write-completion timestamps should be put to.
+ * timestamp = Pointer to a 4 element vectorof double values where write-completion timestamps should be put to.
+ * [0] = Final write completion timestamp.
+ * [1] = Timestamp immediately before write() submission.
+ * [2] = Timestamp immediately after write() submission.
+ * [3] = Timestamp of last check for write completion.
  *
  * Returns number of bytes written, or -1 on error.
  */
@@ -690,6 +705,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 {
 	int nwritten;
 	unsigned long lsr = 0;  // Serial transmitter line status register.
+	int outqueue_pending;	// Pending bytes in output queue.
 	
 	// Nonblocking mode?
 	if (blocking <= 0) {
@@ -702,12 +718,15 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			return(-1);
 		}
 		
-		// Write the data:
+		// Write the data: Take pre- and postwrite timestamps.
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
 		if ((nwritten = write(device->fileDescriptor, writedata, amount)) == -1)
 		{
 			sprintf(errmsg, "Error during write to device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
 		}
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[2]);
+
 	}
 	else {
 		// Nope. Set filedescriptor to blocking mode:
@@ -719,21 +738,55 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			return(-1);
 		}
 		
-		// Write the data:
+		// Write the data: Take pre- and postwrite timestamps.
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
 		if ((nwritten = write(device->fileDescriptor, writedata, amount)) == -1)
 		{
 			sprintf(errmsg, "Error during write to device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
 		}
+		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[2]);
 		
 		// Special polling mode to wait for transmit completion instead of tcdrain() + wait?
-		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (blocking == 2)) {
+		if (blocking == 2) {
+			// Yes. Use a tight polling loop which spin-waits until the driver output queue is empty (contains zero pending bytes):
+			outqueue_pending = 1;
+			while (outqueue_pending > 0) {
+				// Take timestamp for this iteration:
+				PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
+
+				// Poll:
+				ioctl(device->fileDescriptor, TIOCOUTQ, &outqueue_pending);
+			}
+		}
+		else if ((PSYCH_SYSTEM == PSYCH_LINUX) && (blocking == 3)) {
 			// Yes. Use a tight polling loop which spin-waits on the transmitter idle flag:
+			// TODO: This may be not what we want, because the transmitter might be temporarily
+			// idle although there is data pending in the higher-level write buffers. A more
+			// proper combo might be to have blocking==2 polling for empty queue followed by
+			// this call, so both conditions must be met.
 			#if PSYCH_SYSTEM == PSYCH_LINUX
-				while (!(lsr & TIOCSER_TEMT)) ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr);
+				// ioctl supported by device?
+				if (ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr)==-1) {
+					// Error! Can't use this method!
+					sprintf(errmsg, "Error during write to device %s while trying to use blocking mode 3 to wait for write completion - %s(%d).\nMaybe function unsupported by device??\n", device->portSpec, strerror(errno), errno);
+					return(-1);
+				}
+				
+				// Seems to work. Go into the spin-waiting loop:
+				while (!(lsr & TIOCSER_TEMT)) {
+					// Take timestamp for this iteration:
+					PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
+
+					// Poll:
+					ioctl(device->fileDescriptor, TIOCSERGETLSR, &lsr);
+				}
 			#endif
 		}
 		else {
+			// Take timestamp for completeness although it doesn't make much sense in the blocking case:
+			PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
+			
 			// Flush the write buffer and wait for write completion on physical hardware:
 			if (tcdrain(device->fileDescriptor) == -1) {
 				sprintf(errmsg, "Error during write to device %s while draining the write buffers - %s(%d).\n", device->portSpec, strerror(errno), errno);
@@ -743,7 +796,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	}
 	
 	// Write successfully completed if we reach this point. Take timestamp, clear error message, return:
-	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+	PsychGetAdjustedPrecisionTimerSeconds(&timestamp[0]);
 	errmsg[0] = 0;
 	
 	return(nwritten);
@@ -834,7 +887,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 
 		while((*timestamp < timeout) && (PsychIOOSBytesAvailableSerialPort(device) < 1)) {
 			PsychGetAdjustedPrecisionTimerSeconds(timestamp);
-			PsychWaitIntervalSeconds(0.0005);
+			PsychWaitIntervalSeconds(device->pollLatency);
 		}
 
 		if (PsychIOOSBytesAvailableSerialPort(device) < 1) {

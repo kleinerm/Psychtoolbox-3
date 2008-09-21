@@ -66,6 +66,7 @@ typedef struct PsychSerialDeviceRecord {
 	unsigned char*		readBuffer;				// Pointer to memory buffer for reading data.
 	unsigned int		readBufferSize;			// Size of readbuffer.
 	double				readTimeout;			// Backup copy of current read timeout value.
+	double				pollLatency;			// Seconds to sleep between spin-wait polls in 'Read'.
 } PsychSerialDeviceRecord;
 
 #endif
