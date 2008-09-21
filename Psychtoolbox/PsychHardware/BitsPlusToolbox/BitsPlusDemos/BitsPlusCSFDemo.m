@@ -1,5 +1,5 @@
-function BitsPlusCSFDemo(screenid, gamma)
-% BitsPlusCSFDemo([screenid=max] [, gamma = 2.2])
+function BitsPlusCSFDemo(screenid, gamma, method, charttype)
+% BitsPlusCSFDemo([screenid=max] [, gamma = 2.2][, method=3][, charttype=0])
 %
 % This demo utilizes the Psychtoolbox imaging pipeline. Therefore it won't
 % work on gfx-hardware older than ATI Radeon X1000 or NVidia Geforce 6000.
@@ -38,13 +38,37 @@ AssertOpenGL;
 
 % Select screen with highest id for display by default:
 if nargin < 1
+    screenid =[];
+end
+
+if isempty(screenid)
     screenid = max(Screen('Screens'));
 end
 
 if nargin < 2
+    gamma = [];
+end
+
+if isempty(gamma)
     % Start with a encoding gamma for a gamma 2.2 display. Most displays are
     % somewhere around that point:
     gamma = 2.2;
+end
+
+if nargin < 3
+    method = [];
+end
+
+if isempty(method)
+    method = 3;
+end
+
+if nargin < 4
+    charttype = [];
+end
+
+if isempty(charttype)
+    charttype = 0;
 end
 
 % Key mappings, unified across operating systems:
@@ -53,7 +77,7 @@ GammaDecrease = KbName('LeftArrow');
 GammaIncrease = KbName('RightArrow');
 ToggleModes = KbName('space');
 Escape = KbName('ESCAPE');
-
+Screen('Preference', 'VisualDebugLevel', 0);
 % Store backup of old GPU gamma table, so we can restore it at end of demo:
 oldGammaTable = Screen('ReadNormalizedGammaTable', screenid);
 
@@ -68,9 +92,23 @@ PsychImaging('PrepareConfiguration');
 % don't need alpha-blending...
 PsychImaging('AddTask', 'General', 'FloatingPoint32Bit');
 
-% Want to use Mono++ mode: The appendix "WithOverlay" enables the color
-% overlay in Mono++ mode, so we can display colorful text:
-PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+if method == 1
+    PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
+end
+
+if method == 2
+    PsychImaging('AddTask', 'General', 'EnablePseudoGrayOutput');
+end
+
+if method == 3
+    % Want to use Mono++ mode: The appendix "WithOverlay" enables the color
+    % overlay in Mono++ mode, so we can display colorful text:
+    PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+end
+
+if method == 4
+    PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput');
+end
 
 % Want to have simple power-law gamma correction of stims: We choose the
 % method here. After opening the onscreen window, we can set and change
@@ -82,7 +120,12 @@ PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamm
 [win, winRect] = PsychImaging('OpenWindow', screenid, 0);
 
 % Get a window handle for the overlay window:
-overlay = BitsPlusPlus('GetOverlayWindow', win);
+if method == 3 
+    overlay = BitsPlusPlus('GetOverlayWindow', win);
+else
+    overlay = win;
+    LoadIdentityClut(win);
+end
 
 % Upload a CLUT palette into the Bits++ box for definition of overlay
 % colors. We define a nice "blue intensity ramp", this way our text, which
@@ -104,7 +147,11 @@ Screen('Flip', win);
 
 % Build a Matlab matrix with the Campbell-Robson CSF chart. All returned
 % values are encoded linearly with a intensity range of 0.0 to 1.0:
-[CSFImage limitLine] = CreateCSFChart(RectWidth(winRect), RectHeight(winRect));
+if charttype == 1
+    [CSFImage limitLine] = CreateGradient(RectWidth(winRect), RectHeight(winRect));
+else
+    [CSFImage limitLine] = CreateCSFChart(RectWidth(winRect), RectHeight(winRect));
+end
 
 % Make a high precision 32 bit floating point luminance texture out of it:
 % The '2' requests high precision float representation. Values in the range
@@ -155,8 +202,10 @@ while 1
     % Text for the overlay:
     txt1 = sprintf('Campbell-Robson CSF Chart\nDemo for Bits++ Mono++ mode - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
     
-    % Clear the overlay to transparent "background color":
-    Screen('FillRect', overlay, 0);
+    if method == 3 
+        % Clear the overlay to transparent "background color":
+        Screen('FillRect', overlay, 0);
+    end
     
     % Draw horizontal line denoting the 8 bits vs. 14 bits contrast
     % resolution boundary into the overlay at color index 2:
@@ -310,7 +359,7 @@ for i=0:Ysize-1
 
     % 'limitLine' is the pixel row where Contrast drops below the level that
     % can be diplayed on a 'LimitForBpc' bpc display:
-    if (Contrast < 1.0/(2^(LimitForBpc-1)))
+    if (Contrast < 1.0/(2^(LimitForBpc-0)))
         limitLine = i;
     end
 
@@ -324,6 +373,47 @@ for i=0:Ysize-1
         CSFImage(i+1, j+1) =  centre + Contrast * sin(j*currentSF*2.0*pi) * scale;
     end
 end
+
+% Done.
+return;
+
+function [GradientImage limitLine] = CreateGradient(Xsize, Ysize)
+% [GradientImage limitLine] = CreateGradient(Xsize, Ysize)
+%
+% Creates a image matrix with a linear vertical intensity gradient.
+% The matrix contains values between 0.0 for minimum output intensity and
+% 1.0 for maximum output intensity, linearly increasing from the top of the
+% image to the bottom.
+%
+% Input parameters (Most are optional and have reasonable defaults):
+%
+% Xsize == Width of chart in pixels.
+% Ysize == Height of chart in pixels.
+%
+% Optional:
+%
+% LimitForBpc == Assumed bit depths of display -> Used to calculate the
+% 'limitLine' return argument -- The pixel row above which there is no
+% useful content anymore, due to limited bit resolution of output device.
+%
+% CSFImage itself is the Ysize x Xsize double matrix with luminance values.
+
+if nargin < 2
+    error('Must provide at least XSize and YSize of chart in pixels!');
+end
+
+% Preallocate matrix:
+GradientImage = zeros(Ysize, Xsize);
+
+% Fill matrix with content:
+for i=0:Ysize-1
+    GradientImage(i+1, 1:Xsize/4) = i/(Ysize-1) * 0.25;
+    GradientImage(Ysize - i, Xsize/4+1:Xsize/2) = i/(Ysize-1) * 0.25 + 0.25;
+    GradientImage(i+1, Xsize/2+1:Xsize*3/4) = i/(Ysize-1) * 0.25 + 0.5;
+    GradientImage(Ysize - i, Xsize*3/4+1:Xsize) = i/(Ysize-1) * 0.25 + 0.75;
+end
+
+limitLine = -50;
 
 % Done.
 return;
