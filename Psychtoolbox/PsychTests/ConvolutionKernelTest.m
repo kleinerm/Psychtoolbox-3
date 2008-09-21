@@ -184,6 +184,8 @@ try
             % to shader which would overload hardware ressources. Mark this
             % mode as invalid:
             gloperator(i)=-1;
+            le = psychlasterror;
+            fprintf('Failed to create shader: %s\n', le.message);
         end
     end
     
@@ -389,16 +391,19 @@ try
         Screen('Close');
     end
 
-    for i=1:length(maxdiff2)
-        if maxdiff2(i)>1
-            speedup(i)=0;
+    if exist('maxdiff2', 'var')
+        for i=1:length(maxdiff2)
+            if maxdiff2(i)>1
+                speedup(i)=0;
+            end
         end
+
+        [maxspeedup bestid] = max(speedup);
+        bestid = gloperatorid(bestid);
+
+        fprintf('Finished: Optimum configuration is mode %i with a speedup of %f x.\n', bestid, maxspeedup);
     end
     
-    [maxspeedup bestid] = max(speedup);
-    bestid = gloperatorid(bestid);
-
-    fprintf('Finished: Optimum configuration is mode %i with a speedup of %f x.\n', bestid, maxspeedup);
     return;
 catch
     Screen('CloseAll');

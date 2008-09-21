@@ -187,6 +187,10 @@ if isempty(kkOSX)
     kkLinux = cell(1,256);
    end;
    
+   % Need to manually encode sequence '\|' so Octave doesn't complain about
+   % unrecognized escaped character sequence :-I
+   escapedLine = char([92, 124]);
+   
    % MK: Until we have a PsychHID for windows, we use this table for the
    % Windows keycode mappings. I stole it from the old WinPTB ;)
    kkWin{65} = 'a';
@@ -374,9 +378,7 @@ if isempty(kkOSX)
 	kkOSX{46} = '=+';                               kkOS9{25}='=+'; 
 	kkOSX{47} = '[{';                               kkOS9{34}='[{'; 
 	kkOSX{48} = ']}';                               kkOS9{31}=']}'; 
-	kkOSX{49} = '\|';                               kkOS9{43}='\|';
-
-        % Typical language mappings: US: '\\|' Belg: µ`£ FrCa: <}> Dan:?* Dutch: <> Fren:*µ Ger: #? Ital: ?? LatAm: }`] Nor:,* Span: }? Swed: ,* Swiss: $£ UK: #~.
+    kkOSX{49} = escapedLine;                        kkOS9{43}=escapedLine;
 	kkOSX{50} = '#-';                               
 	
 	kkOSX{51} = ';:';                               kkOS9{42}=';:';   
@@ -430,9 +432,8 @@ if isempty(kkOSX)
 	kkOSX{99} = '.';                                kkOS9{66}='.';
 	
 	% Non-US.  
-	% Typical language mappings: Belg:<\> FrCa:??? Dan:<\> Dutch:]|[ Fren:<> Ger:<|> Ital:<> LatAm:<> Nor:<> Span:<> Swed:<|> Swiss:<\> UK:\\| Brazil: \\|.
 	% Typically near the Left-Shift key in AT-102 implementations.
-	kkOSX{100} = 'NonUS\|';                              
+	kkOSX{100} = ['NonUS' escapedLine];                              
 	
 	% Windows key for Windows 95, and ?Compose.?
 	kkOSX{101} = 'Application';                     

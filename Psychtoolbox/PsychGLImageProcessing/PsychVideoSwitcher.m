@@ -38,13 +38,24 @@ function varargout = PsychVideoSwitcher(cmd, varargin)
 % as the switching strategy is different.
 %
 %
-% PsychVideoSwitcher('SetTrigger', win, triggerLine [, options]);
+% PsychVideoSwitcher('SetTrigger', win, triggerLine [, count=infinite]);
 % - Set trigger line and options for VideoSwitcher connected to the display
 % of onscreen window 'win'.
 %
 % 'triggerLine' defines the vertical (y) position of a trigger line to be
 % drawn to the green channel of the final image, in order to trigger the
-% trigger-circuit of the VideoSwitcher.
+% trigger-circuit of the VideoSwitcher. If you set it to a negative value
+% or to empty [], triggering will be disabled (This is the default).
+%
+% 'count' Optional: Number of redraw cycles (invocations of
+% Screen('Flip')), that the triggerline should be drawn. If left out, the
+% line will be drawn on each redraw until disabled. If set to some value,
+% it will be drawn for 'count' number of redraws, then disabled.
+%
+% The trigger mechanism only works if the VideoSwitcher is set to high
+% precision luminance display. It will emit a TTL pulse of 100 microseconds
+% duration when the triggerline is drawn by your display. Only one TTL
+% trigger pulse per video refresh is possible.
 %
 %
 % PsychVideoSwitcher('SetBackgroundLuminanceHint', win, luminance);
@@ -190,33 +201,56 @@ end
 if isscalar(cmd) & isnumeric(cmd)
     % Special callback from within PTB imaging pipeline:
     if isempty(triggerForWindow) || isempty(triggerForWindow{cmd})
-        % Hmm. Invalid window handle?!? Should not happen. Just skip.
+        % Invalid window handle or trigger disabled: Just skip.
         return;
     end
 
     % Extract triggerLine for this window:
-    triggerLine = triggerForWindow{cmd};
+    triggerSpec = triggerForWindow{cmd};
+    triggerLine = triggerSpec.triggerline;
+
+    % Trigger disabled or trigger drawn for wanted 'count' number of
+    % redraws?
+    if triggerLine < 0 || triggerSpec.count == 0
+        % Yes. Just return.
+        return;
+    end
+    
+    % Decrement count:
+    triggerSpec.count = triggerSpec.count - 1;
+    triggerForWindow{cmd} = triggerSpec;
     
     % Due to a bug (or misfeature?) in imaging pipeline, we have unit 1
     % active here. Need to disable it:
     % FIXME: Fix the pipeline in next beta release cycle!
     % MK: Fixed in source code, but all Screen mex files need recompile!
+    glPushAttrib(GL.ENABLE_BIT);
+
     glActiveTexture(GL.TEXTURE1);
     glDisable(GL.TEXTURE_RECTANGLE_ARB);
-    glActiveTexture(GL.TEXTURE0);
     
-    % Draw horizontal line 'triggerLine' into green channel of bound
-    % framebuffer:
+    % This one for unit 0 is always needed, because unit 0 is enabled by
+    % design of the pipeline, not due to a bug:
+    glActiveTexture(GL.TEXTURE0);
+    glDisable(GL.TEXTURE_RECTANGLE_ARB);
+    
     % Disable all channels for writing except green channel:
     glColorMask(GL.FALSE, GL.TRUE, GL.FALSE, GL.FALSE);
     glColor4f(0, 1, 0, 0);
-    glBegin(GL.LINES);
+
+    % Draw horizontal line 'triggerLine' into green channel of bound
+    % framebuffer: We actually draw a stripe of 10 lines width, just to make
+    % sure the VideoSwitcher picks it up, regardless of resolution.
+    glBegin(GL.QUADS);
     glVertex2i(0, triggerLine);
     glVertex2i(10000, triggerLine);
+    glVertex2i(10000, triggerLine+10);
+    glVertex2i(0, triggerLine+10);    
     glEnd();
     
     % Reenable all channels for writing:
     glColorMask(GL.TRUE, GL.TRUE, GL.TRUE, GL.TRUE);
+    glPopAttrib;
     
     % Done. Return to calling routine:
     return;
@@ -360,12 +394,29 @@ if strcmpi(cmd, 'SetTrigger')
     end
 
     triggerline = varargin{2};
-    if ~isscalar(triggerline) || ~isnumeric(triggerline)
-        error('The "triggerLine" argument must be a scalar numeric value for the "SetTrigger" subfunction.');
-    end
     
-    % Store this setting in our cell array:
-    triggerForWindow{win} = triggerline;
+    % Empty triggerline == Disable trigger:
+    if isempty(triggerline)
+        triggerForWindow{win} = [];
+    else
+        if ~isscalar(triggerline) || ~isnumeric(triggerline)
+            error('The "triggerLine" argument must be a scalar numeric value for the "SetTrigger" subfunction.');
+        end
+
+        % Store this setting in our cell array:
+        triggerSpec.triggerline = triggerline;
+        
+        % Optional count provided?
+        if nargin < 4 || isempty(varargin{3})
+            % Nope: Set to infinite count:
+            triggerSpec.count = -1;
+        else
+            % Yes: Set it.
+            triggerSpec.count = varargin{3};
+        end
+                
+        triggerForWindow{win} = triggerSpec;
+    end
     
     return;
 end

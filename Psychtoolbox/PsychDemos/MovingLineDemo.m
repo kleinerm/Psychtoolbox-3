@@ -1,17 +1,21 @@
-function MovingLineDemo(xv, screenid)
-% MovingLineDemo([xv=1][, screenid=max])
+function MovingLineDemo(xv, twolines, screenid)
+% MovingLineDemo([xv=10][, twolines=0][, screenid=max])
 %
-% Shows a pair of vertical lines which travel horizontally across the
-% display from the left to the right, repeating infinitely.
+% Shows a pair of vertical lines, or a single line, which travel
+% horizontally across the display from the left to the right, repeating
+% infinitely.
 %
 % The optional parameter 'xv' defines the speed in pixels per redraw cycle.
-% It defaults to 1 pixel per redraw cycle.
+% It defaults to 10 pixels per redraw cycle.
+%
+% The optional parameter 'twolines' selects if one line or a pair of lines
+% should be drawn. By default, twolines==0, ie., a single line is drawn.
 %
 % The optional parameter 'screenid' selects the display screen to use for
 % display, it defaults to the secondary display on multi-display setups.
 %
-% Hold down the right mouse button to pause the animation.
-% Press the left mouse button to exit the demo.
+% Hold down the right mouse button to pause the animation. Press the left
+% mouse button to exit the demo.
 %
 % The lines show a greyscale gradient, starting with black at the top of
 % the screen, ending in white at the bottom. They are seperated by 'xv'
@@ -43,15 +47,23 @@ AssertOpenGL;
 
 % Use a movement speed of 1 horizontal pixel per redraw cycle by default:
 if nargin < 1 
-    xv = 1;
+    xv = [];
 end
 
 if isempty(xv)
-    xv = 1;
+    xv = 10;
+end
+
+if nargin < 2
+    twolines = [];
+end
+
+if isempty(twolines)
+    twolines = 0;
 end
 
 % Choose secondary display by default on multi-display setups:
-if nargin < 2
+if nargin < 3
     screenid = max(Screen('Screens'));
 end
 
@@ -80,7 +92,9 @@ while ~button(1)
     % We use 'DrawLines' so we can easily define a vertical intensity
     % gradient:
     Screen('DrawLines', win, [x, x ; 0, h], lw, [0, 255; 0, 255; 0, 255]);
-    Screen('DrawLines', win, [x+xv, x+xv ; 0, h], lw, [0, 255; 0, 255; 0, 255]);
+    if twolines
+        Screen('DrawLines', win, [x+xv, x+xv ; 0, h], lw, [0, 255; 0, 255; 0, 255]);
+    end
     
     % We use 'vbl' based timing, just that the frame-skip detector works
     % accurately and we get notified of possibly skipped frames -- Allows

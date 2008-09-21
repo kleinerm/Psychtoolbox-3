@@ -6,6 +6,13 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
 % allows to wait for release of all keys or for single keystrokes, see
 % below.
 %
+% CAUTION: KbWait periodically checks the keyboard. After each failed check
+% (ie. no change in keyboard state) it will wait for 5 msecs before the
+% next check. This is done to reduce the load on your system, and it is
+% important to do so. However if you want to measure reaction times this is
+% clearly not what you want, as it adds up to 5 msecs extra uncertainty to
+% all measurements!
+%
 % If you have trouble with KbWait always returning immediately, this could
 % be due to "stuck keys". See "help DisableKeysForKbCheck" on how to work
 % around this problem.

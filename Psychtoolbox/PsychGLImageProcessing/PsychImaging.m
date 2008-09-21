@@ -285,6 +285,14 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   any system configuration. Read 'help PsychtoolboxKernelDriver' for info
 %   about the driver and installation instructions.
 %
+%   Some models of the ATI Fire series (2008 models and later) and some
+%   models of the NVidia Quadro series (2008 models and later) as well as
+%   some of the very latest NVidia Geforce GPU's may support this as well
+%   with some drivers on some operating systems under some circumstances.
+%   If such a combination is present in your system, then Psychtoolbox will
+%   request native support frm the standard drivers, ie., it won't need to
+%   use our own homegrown box of tricks to enable this.
+%
 %   Usage: PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
 %
 % * 'EnableBrightSideHDROutput' Enable the high-performance driver for
@@ -2096,31 +2104,45 @@ end
     
 % --- Final output formatter for native 10 bpc ARGB2101010 framebuffer requested? ---
 if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
-    % Load output formatting shader:
-    pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
+    % Our special shader-based output formatter is only needed and effective on OS/X or
+    % Linux with ATI Radeon hardware:
+    if (~isempty(strfind(winfo.GLRenderer, 'Radeon'))) & (IsOSX | IsLinux) 
+        % ATI Radeon on OS/X or Linux: Use our reformatter
+        % Load output formatting shader:
+        pgshader = LoadGLSLProgramFromFiles('RGBMultiLUTLookupCombine_FormattingShader', 1);
 
-    % Init the shader: Assign mapping of left- and right image:
-    glUseProgram(pgshader);
-    glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
-    glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
-    glUniform1f(glGetUniformLocation(pgshader, 'Prescale'),  1024);
-    glUseProgram(0);
+        % Init the shader: Assign mapping of left- and right image:
+        glUseProgram(pgshader);
+        glUniform1i(glGetUniformLocation(pgshader, 'Image'), 0);
+        glUniform1i(glGetUniformLocation(pgshader, 'CLUT'),  1);
+        glUniform1f(glGetUniformLocation(pgshader, 'Prescale'),  1024);
+        glUseProgram(0);
 
-    % Use helper routine to build a proper RGBA Lookup texture for
-    % conversion of HDR RGBA pixels to ARGB2101010 pixels:
-    pglutid = PsychHelperCreateARGB2101010RemapCLUT;
-    
-    if outputcount > 0
-        % Need a bufferflip command:
-        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+        % Use helper routine to build a proper RGBA Lookup texture for
+        % conversion of HDR RGBA pixels to ARGB2101010 pixels:
+        pglutid = PsychHelperCreateARGB2101010RemapCLUT;
+
+        if outputcount > 0
+            % Need a bufferflip command:
+            Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+        end
+        pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
+        Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
+        outputcount = outputcount + 1;
+
+        % ATI framebuffer devices - Does not matter, as internal clut is bypassed anyway:
+        needsIdentityCLUT = 0;
+    else
+        % Everything else: Windows OS, or ATI FireGL/FirePro, or NVidia GPU:
+
+        % We request an identity gamma table to be loaded into the GPU. The
+        % RAMDAC's and DisplayPort devices et al. are 10 bit anyway to our
+        % knowledge, so it doesn't matter if we do gamma correction
+        % internally, or if the GPU does it. We do it for consistency
+        % reasons:
+        needsIdentityCLUT = 1;
     end
-    pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
-    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'Native ARGB2101010 framebuffer output formatting shader', pgshader, pgconfig);
-    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
-    outputcount = outputcount + 1;
-
-    % ATI framebuffer devices - Does not matter, as internal clut is bypassed anyway:
-    needsIdentityCLUT = 0;
     
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;

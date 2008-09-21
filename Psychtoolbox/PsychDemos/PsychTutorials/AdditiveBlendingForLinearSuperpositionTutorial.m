@@ -391,13 +391,17 @@ try
         
         % For the fun of it: Set a specific scanline to send a trigger
         % signal for the VideoSwitcher. This does nothing if the driver for
-        % VideoSwitcher is not selected:
-        PsychVideoSwitcher('SetTrigger', w, mod(framecount, height));
-
+        % VideoSwitcher is not selected. We send out a trigger for 1 redraw
+        % cycle every 30 redraw cycles. The triggerline is placed at
+        % scanline 10 (for no special reason):
+        if mod(framecount, 30) == 0
+            PsychVideoSwitcher('SetTrigger', w, 10, 1);
+        end
+        
         % Show stimulus at next display retrace:
         Screen('Flip', w);
     end
-    
+        
     % Done.
     avgfps = framecount / (GetSecs - tstart);
     fprintf('Average redraw rate in demo was %f Hz.\n', avgfps);

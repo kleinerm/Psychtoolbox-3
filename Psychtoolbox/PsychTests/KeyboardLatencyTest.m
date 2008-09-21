@@ -17,6 +17,9 @@ function KeyboardLatencyTest(triggerlevel, modality)
 % The 'modality' flag chooses between keyboard (==0 - the default), and
 % mouse (==1). A setting of 2 queries the keyboard with a (theoretically
 % more accurate) method that is only supported on OS/X.
+% A 'modality' of 3 will test the new (highly experimental) driver for the
+% USTCRTBOX reaction time button box, if available, setting 4 will do
+% something similar.
 %
 % Obviously this method of measuring carries quite a bit of uncertainty
 % in exact timing, but with a high quality microphone, proper tuning and
@@ -28,14 +31,21 @@ function KeyboardLatencyTest(triggerlevel, modality)
 % 08/10/2008 Written (MK)
 
 tdelay = [];
+tdelay2= [];
 
-if nargin < 1
+if nargin < 1 || isempty(triggerlevel)
     triggerlevel = 0.01;
     fprintf('No "triggerlevel" argument in range 0.0 to 1.0 provided: Will use default of 0.01 ...\n\n');
 end
 
 if nargin < 2
     modality = 0;
+end
+
+if modality == 3
+    PsychRTBox('Open');
+    PsychRTBox('SyncClocks');
+    PsychRTBox('ClockRatio', [], 30);
 end
 
 fprintf('Auditory keyboard / mouse latency test:\n');
@@ -117,6 +127,22 @@ for trial = 1:10
             tKeypress = GetSecs;
         case 2
             tKeypress = KbTriggerWait(KbName('space'));
+        case {3, 4}
+            % Test RTbox:
+            
+            % Clear all buffers:
+            PsychRTBox('Purge');
+            
+            fprintf('From now on... ');
+            tKeypress = [];
+            
+            % Wait for some event on box, return its 'GetSecs' time:
+            while isempty(tKeypress)
+                tBox = PsychRTBox('BoxSecs');
+                tKeypress = PsychRTBox('Box2GetSecs', [], tBox);
+%                tKeypress2= PsychRTBox('Box2Secs', [], tBox);
+            end
+
         otherwise
             error('Unknown "modality" specified.');
     end
@@ -166,8 +192,14 @@ for trial = 1:10
     dt = (tKeypress - tOnset)*1000;
     fprintf('---> Input delay time is %f milliseconds.\n', dt);
     
+%     if modality == 3 || modality == 4
+%         dt2 = (tKeypress2 - tOnset)*1000;
+%         tdelay2 = [tdelay2 dt2];
+%         fprintf('---> 2nd Box Input delay time is %f milliseconds.\n', dt2);
+%     end
+    
     % Valid measurement? Must be between 0 and 100 msecs to be considered:
-    if (dt > 0) & (dt < 100)
+    if (dt > -100) & (dt < 100)
         tdelay = [tdelay dt]; %#ok<AGROW>
     end
     
@@ -180,5 +212,8 @@ PsychPortAudio('Close', pahandle);
 
 % Done.
 fprintf('\nTest finished. Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay), std(tdelay));
+if ~isempty(tdelay2)
+    fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay2), std(tdelay2));
+end
 
 return;
