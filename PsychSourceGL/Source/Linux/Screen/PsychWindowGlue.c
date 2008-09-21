@@ -128,7 +128,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   boolean fullscreen = FALSE;
   int attrib[30];
   int attribcount=0;
-  int depth;
+  int depth, bpc;
 
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
@@ -166,17 +166,35 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     fullscreen = FALSE;
   }
 
+  // Select requested depth per color component 'bpc' for each channel:
+  bpc = 8; // We default to 8 bpc == RGBA8
+  if (windowRecord->depth == 30)  { bpc = 10; printf("PTB-INFO: Trying to enable at least 10 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 64)  { bpc = 16; printf("PTB-INFO: Trying to enable 16 bpc fixed point framebuffer.\n"); }
+  if (windowRecord->depth == 128) { bpc = 32; printf("PTB-INFO: Trying to enable 32 bpc fixed point framebuffer.\n"); }
+  
   // Setup pixelformat descriptor for selection of GLX visual:
   attrib[attribcount++]= GLX_RGBA;       // Use RGBA true-color visual.
   attrib[attribcount++]= GLX_RED_SIZE;   // Setup requested minimum depth of each color channel:
-  attrib[attribcount++]= (depth > 16) ? 8 : 1;
+  attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_GREEN_SIZE;
-  attrib[attribcount++]= (depth > 16) ? 8 : 1;
+  attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_BLUE_SIZE;
-  attrib[attribcount++]= (depth > 16) ? 8 : 1;
+  attrib[attribcount++]= (depth > 16) ? bpc : 1;
   attrib[attribcount++]= GLX_ALPHA_SIZE;
-  attrib[attribcount++]= (depth > 16) ? 8 : 0; // In 16 bit mode, we don't request an alpha-channel.
-
+  // Alpha channel needs special treatment:
+  if (bpc != 10) {
+	// Non 10 bpc drawable: Request a 'bpc' alpha channel if the underlying framebuffer
+	// is in true-color mode ( >= 24 cpp format). If framebuffer is in 16 bpp mode, we
+	// don't have/request an alpha channel at all:
+	attrib[attribcount++]= (depth > 16) ? bpc : 0; // In 16 bit mode, we don't request an alpha-channel.
+  }
+  else {
+	// 10 bpc drawable: We have a 32 bpp pixel format with R10G10B10 10 bpc per color channel.
+	// There are at most 2 bits left for the alpha channel, so we request an alpha channel with
+	// minimum size 1 bit --> Will likely translate into a 2 bit alpha channel:
+	attrib[attribcount++]= 1;
+  }
+  
   // Stereo display support: If stereo display output is requested with OpenGL native stereo,
   // we request a stereo-enabled rendering context.
   if(stereomode==kPsychOpenGLStereo) {
@@ -227,28 +245,47 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
   // Select matching visual for our pixelformat:
   visinfo = glXChooseVisual( dpy, scrnum, attrib );
+  
   if (!visinfo) {
-    // Failed to find matching visual: Could it be related to multisampling?
-    if (windowRecord->multiSample > 0) {
-      // Multisampling requested: Let's see if we can get a visual by
-      // lowering our demand:
-      for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLES_ARB; i++);
-      while(!visinfo && windowRecord->multiSample > 0) {
-	attrib[i+1]--;
-	windowRecord->multiSample--;
-	visinfo = glXChooseVisual( dpy, scrnum, attrib );
-      }
-
-      // Either we have a valid visual at this point or we still fail despite
-      // requesting zero samples.
-      if (!visinfo) {
-	// We still fail. Disable multisampling by requesting zero multisample buffers:
-	for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLE_BUFFERS_ARB; i++);
-	windowRecord->multiSample = 0;
-	attrib[i+1]=0;
-	visinfo = glXChooseVisual( dpy, scrnum, attrib );
-      }
-    }
+	  // Failed to find matching visual: Could it be related to request for unsupported native 10 bpc framebuffer?
+	  if ((windowRecord->depth == 30) && (bpc == 10)) {
+		  // 10 bpc framebuffer requested: Let's see if we can get a visual by lowering our demand to 8 bpc:
+		  for (i=0; i<attribcount && attrib[i]!=GLX_RED_SIZE; i++);
+		  attrib[i+1] = 8;
+		  for (i=0; i<attribcount && attrib[i]!=GLX_GREEN_SIZE; i++);
+		  attrib[i+1] = 8;
+		  for (i=0; i<attribcount && attrib[i]!=GLX_BLUE_SIZE; i++);
+		  attrib[i+1] = 8;
+		  for (i=0; i<attribcount && attrib[i]!=GLX_ALPHA_SIZE; i++);
+		  attrib[i+1] = 1;
+		  
+		  // Retry:
+		  visinfo = glXChooseVisual( dpy, scrnum, attrib );
+	  }
+  }
+  
+  if (!visinfo) {
+	  // Failed to find matching visual: Could it be related to multisampling?
+	  if (windowRecord->multiSample > 0) {
+		  // Multisampling requested: Let's see if we can get a visual by
+		  // lowering our demand:
+		  for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLES_ARB; i++);
+		  while(!visinfo && windowRecord->multiSample > 0) {
+			  attrib[i+1]--;
+			  windowRecord->multiSample--;
+			  visinfo = glXChooseVisual( dpy, scrnum, attrib );
+		  }
+		  
+		  // Either we have a valid visual at this point or we still fail despite
+		  // requesting zero samples.
+		  if (!visinfo) {
+			  // We still fail. Disable multisampling by requesting zero multisample buffers:
+			  for (i=0; i<attribcount && attrib[i]!=GLX_SAMPLE_BUFFERS_ARB; i++);
+			  windowRecord->multiSample = 0;
+			  attrib[i+1]=0;
+			  visinfo = glXChooseVisual( dpy, scrnum, attrib );
+		  }
+		}
 
     // Break out of this if we finally got one...
     if (!visinfo) {

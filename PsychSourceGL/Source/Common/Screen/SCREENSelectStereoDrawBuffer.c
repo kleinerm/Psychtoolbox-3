@@ -216,18 +216,35 @@ void PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecor
 	switch (windowRecord->stereomode) {
 		case kPsychAnaglyphRGStereo:
 			glColorMask(bufferid==0, bufferid==1, FALSE, TRUE);
+			windowRecord->colorMask[0] = (bufferid==0) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[1] = (bufferid==1) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[2] = GL_FALSE;
+			windowRecord->colorMask[3] = GL_TRUE;					
             break;
 			
 		case kPsychAnaglyphGRStereo:
 			glColorMask(bufferid==1, bufferid==0, FALSE, TRUE);
+			windowRecord->colorMask[0] = (bufferid==1) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[1] = (bufferid==0) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[2] = GL_FALSE;
+			windowRecord->colorMask[3] = GL_TRUE;
+			
             break;
 			
 		case kPsychAnaglyphRBStereo:
 			glColorMask(bufferid==0, FALSE, bufferid==1, TRUE);
+			windowRecord->colorMask[0] = (bufferid==0) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[2] = (bufferid==1) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[1] = GL_FALSE;			
+			windowRecord->colorMask[3] = GL_TRUE;
             break;
 			
 		case kPsychAnaglyphBRStereo:
 			glColorMask(bufferid==1, FALSE, bufferid==0, TRUE);
+			windowRecord->colorMask[0] = (bufferid==1) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[2] = (bufferid==0) ? GL_TRUE : GL_FALSE;
+			windowRecord->colorMask[1] = GL_FALSE;			
+			windowRecord->colorMask[3] = GL_TRUE;
             break;
 	}
 	return;

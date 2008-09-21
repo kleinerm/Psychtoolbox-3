@@ -652,7 +652,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	  // the wglChoosePixelFormat - method...
 
 	 if (PsychPrefStateGet_Verbosity()>6) {
-		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Need to use wglChoosePixelFormat() path due to multisampling enabled. Destroy and reinit sequence...\n");
+		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Need to use wglChoosePixelFormat() path due to multisampling or bpc > 8 enabled. Destroy and reinit sequence...\n");
 		 fflush(NULL);
 	 }
 

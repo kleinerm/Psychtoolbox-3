@@ -278,8 +278,13 @@ PsychError SCREENDrawText(void)
     cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, kCGImageAlphaPremultipliedFirst);
     if(!cgContext){
         free((void *)textureMemory);
-		sprintf(errmsg, "Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i, textCString=%s\n", textureWidth, textureHeight, memoryRowSizeBytes, textCString);
-        PsychErrorExitMsg(PsychError_system, errmsg);
+		printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i, textCString=%s\n", textureWidth, textureHeight, memoryRowSizeBytes, textCString);
+		printf("PTB-ERROR: In Screen('DrawText'): xPos=%lf yPos=%lf StringLength=%i\nDecoded Unicode-String:\n", winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY, stringLengthChars);
+		for (ix=0; ix < stringLengthChars; ix++) printf("%i, ", (int) textUniString[ix]);
+		printf("\nPTB-ERROR: In Screen('DrawText'): Text corrupt?!?\n");
+		
+		free((void*)textUniString);
+        goto drawtext_skipped;
     }
     CGContextSetFillColorSpace (cgContext,cgColorSpace);
     

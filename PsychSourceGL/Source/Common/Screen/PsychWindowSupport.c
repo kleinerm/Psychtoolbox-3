@@ -295,26 +295,33 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-		if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
-			printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
-			printf("PTB-ERROR: The driver must be loaded and functional for your graphics card for this to work.\n");
-			printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for more information.\n\n");
-			PsychOSCloseWindow(*windowRecord);
-			FreeWindowRecordFromPntr(*windowRecord);
-			return(FALSE);			
+		if ((PSYCH_SYSTEM == PSYCH_LINUX) && (strstr(glGetString(GL_VENDOR), "NVIDIA") || (strstr(glGetString(GL_VENDOR), "ATI") && strstr(glGetString(GL_RENDERER), "Fire")))) {
+			// NVidia GPU or ATI Fire-Series GPU: Only native support by driver, if at all...
+			printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
+			printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
+			printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
 		}
-		
-		// Basic support seems to be there, set the request flag.
-		(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+		else {
+			if (!PsychOSIsKernelDriverAvailable(screenSettings->screenNumber)) {
+				printf("\nPTB-ERROR: Your script requested a 30bpp, 10bpc framebuffer, but the Psychtoolbox kernel driver is not loaded and ready.\n");
+				printf("PTB-ERROR: The driver currently only supports selected ATI Radeon GPU's (e.g., X1000/HD2000/HD3000/HD4000 series and later).\n");
+				printf("PTB-ERROR: On MacOS/X the driver must be loaded and functional for your graphics card for this to work.\n");
+				printf("PTB-ERROR: On Linux you must start Octave or Matlab as root, ie. system administrator or via sudo command for this to work.\n");
+				printf("PTB-ERROR: Read 'help PsychtoolboxKernelDriver' for more information.\n\n");
+				PsychOSCloseWindow(*windowRecord);
+				FreeWindowRecordFromPntr(*windowRecord);
+				return(FALSE);			
+			}
+			
+			// Basic support seems to be there, set the request flag.
+			(*windowRecord)->specialflags|= kPsychNative10bpcFBActive;
+		}
 #else
 		// Not supported by our own code and kernel driver (we don't have such a driver for Windows), but some recent 2008
 		// series FireGL cards at least provide the option to enable this natively - although it didn't work properly in our tests.
 		printf("\nPTB-INFO: Your script requested a 30bpp, 10bpc framebuffer, but this is only supported on few special graphics cards and drivers on MS-Windows.");
-		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL cards may support this with some drivers,");
+		printf("\nPTB-INFO: This may or may not work for you - Double check your results! Theoretically, the 2008 series ATI FireGL/FirePro and NVidia Quadro cards may support this with some drivers,");
 		printf("\nPTB-INFO: but you must enable it manually in the Catalyst Control center (somewhere under ''Workstation settings'')\n");
-		//PsychOSCloseWindow(*windowRecord);
-		//FreeWindowRecordFromPntr(*windowRecord);
-		//return(FALSE);
 #endif
 	}
 
@@ -394,9 +401,16 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	(*windowRecord)->nrchannels = (bpc > 0) ? 4 : 3;
 
 	// We need the real color depth (bits per color component) of the framebuffer attached
-	// to this onscreen window. We need it to setup color range correctly. Let's assume the
-	// red bits value is representative for the green and blue channel as well:
-	glGetIntegerv(GL_RED_BITS, &bpc);
+	// to this onscreen window. We need it to setup color range correctly:
+	if (!((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) {
+		// Let's assume the red bits value is representative for the green and blue channel as well:
+		glGetIntegerv(GL_RED_BITS, &bpc);
+	}
+	else {
+		// Special 10 bpc framebuffer activated by our own method:
+		bpc = 10;
+	}
+	
 	(*windowRecord)->colorRange = (double) ((1 << bpc) - 1);
 
     // Now we start to fill in the remaining windowRecord with settings:
@@ -3837,6 +3851,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 										// Reassign real size:
 										twidth  = (int) PsychGetWidthFromRect(currentRendertarget->rect);
 										theight = (int) PsychGetHeightFromRect(currentRendertarget->rect);
+
+										currentRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
 									}
 									
 									// After this backup-op, the texture orientation will be a nice upright one:
@@ -3850,7 +3866,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 								}
 								else {
 									// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, twidth, theight, 0); 
+									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, twidth, theight, 0);
+									currentRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
 								}
                             }
                         } // Backbuffer -> Texture backup code.
