@@ -3,43 +3,20 @@
 % Refit the calibration linear model.
 %
 % 3/27/02  dhb  Wrote it.
+% 9/26/08  dhb, ijk, tyl  Simplify naming possibilities. 
+% 9/27/08  dhb            Clearer defaults for prompts.  Pass number of levels to dacsize routine.
 
 % Enter load code
-fprintf(1,'\nLoad codes:\n\t0 - screenX.mat\n\t1 - string.mat\n\t2 - default.mat\n');
-loadCode = input('	Enter load code [0]: ');
-if (isempty(loadCode))
-	loadCode = 0;
+defaultFileName = 'monitor';
+thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
+newFileName = input(thePrompt,'s');
+if (isempty(newFileName))
+    newFileName = defaultFileName;
 end
-if (loadCode == 1)
-	defaultFileName = 'monitor';
-	thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
-	newFileName = input(thePrompt,'s');
-	if (isempty(newFileName))
-  	newFileName = defaultFileName;
-	end
-end
+fprintf(1,'\nLoading from %s.mat\n',newFileName);
+cal = LoadCalFile(newFileName);
+fprintf('Calibration file %s read\n\n',newFileName);
 
-% Load the structure
-if (loadCode == 0)
-	defaultScreen = 1;
-	whichScreen = input(sprintf('Which screen to calibrate [%g]: ',defaultScreen));
-	if (isempty(whichScreen))
-		whichScreen = defaultScreen;
-	end
-	fprintf(1,'\nLoading for screen%g.mat\n',whichScreen);
-	cal = LoadCalFile(whichScreen);
-	fprintf('Calibration file read for screen %g\n\n',whichScreen);
-elseif (loadCode == 1)
-	fprintf(1,'\nLoading from %s.mat\n',newFileName);
-	cal = LoadCalFile(newFileName);
-	fprintf('Calibration file %s read\n\n',newFileName);
-elseif (loadCode == 2)
-	fprintf(1,'\nLoading from default.mat\n');
-	cal = LoadCalFile;
-	fprintf('Read default calibration file %s read\n\n',newFileName);
-else
-	error('Illegal value for save code entered');
-end
 
 % Print out some information from the calibration.
 DescribeMonCal(cal);
@@ -54,12 +31,12 @@ fprintf('Gamma table available at %g levels\n',...
 % Get new fit type
 fprintf('Old linear model fit was with %g components\n',cal.nPrimaryBases);
 oldN = cal.nPrimaryBases;
-cal.nPrimaryBases = input('Enter new number of components: ');
+cal.nPrimaryBases = input(sprintf('Enter new number of components: [%d]: ',oldN));
 if (isempty(cal.nPrimaryBases))
 	cal.nPrimaryBases = oldN;
 end
 cal = CalibrateFitLinMod(cal);
-cal = CalibrateFitGamma(cal);
+cal = CalibrateFitGamma(cal,2^cal.describe.dacsize);
 
 % Put up a plot of the essential data
 figure(1); clf;
@@ -81,26 +58,23 @@ figure(gcf);
 drawnow;
 
 % Option to save the refit file
-saveIt = input('Save new fit data? [0]: ');
+saveIt = input('Save new fit data (0->no, 1 -> yes)? [0]: ');
 if (isempty(saveIt))
 	saveIt = 0;
 end
 if (saveIt)
-	saveCode = loadCode;
-	if (saveCode == 0)
-		screenNumber = cal.describe.whichScreen;
-		fprintf(1,'\nSaving to screen%g.mat\n',screenNumber);
-		SaveCalFile(cal,screenNumber);
-	elseif (saveCode == 1)
-		fprintf(1,'\nSaving to %s.mat\n',newFileName);
-		SaveCalFile(cal,newFileName);
-	elseif (saveCode == 2)
-		fprintf(1,'\nSaving to default.mat\n');
-		SaveCalFile(cal);
-	else
-		error('Illegal value for save code entered');
-	end
+    % Prompt for new file name if we're saving to a name.
+    defaultFileName = newFileName;
+    thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
+    saveFileName = input(thePrompt,'s');
+    if (isempty(saveFileName))
+        saveFileName = defaultFileName;
+    end
+    fprintf(1,'\nSaving to %s.mat\n',saveFileName);
+    SaveCalFile(cal,saveFileName);
 end
+
+
 
 
 

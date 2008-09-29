@@ -18,6 +18,7 @@
 % 2/27/02 dhb  Various small fixes, including Radeon support.
 %         dhb  Change noMeterAvail to whichMeterType.
 % 11/08/06 cgb, dhb  OS/X.
+% 9/27/08 dhb  Default primary bases is 1 now.  Use RefitCalLinMod to change later if desired.
 
 % Create calibration structure;
 cal = [];
@@ -33,7 +34,7 @@ cal.describe.nAverage = 2;
 cal.describe.nMeas = 30;
 cal.describe.boxSize = 400;
 cal.nDevices = 3;
-cal.nPrimaryBases = 2;
+cal.nPrimaryBases = 1;
 switch whichMeterType
 	case {0,1}
 		cal.describe.S = [380 4 101];
