@@ -2,17 +2,27 @@
 %
 % Demonstrates basic use of the PsychCal calibraiton structure and routines.
 %
-% See also PsychCal, DKLDemo, RenderDemo.
+% See also PsychCal, DKLDemo, RenderDemo, DumpMonCalSpd
 %
 % 1/15/07	dhb		Wrote it.
+% 9/27/08   dhb     Prompt for filename.  Clean up plot labels
+%           dhb     Prompt for gamma method.
 
 % Clear
 clear; close all
 
 %% Load
-% Load basic calibration file. You can make this with CalibrateMonSpd if
+% Load a calibration file. You can make this with CalibrateMonSpd if
 % you have a supported radiometer.
-cal = LoadCalFile('PTB3TestCal');
+defaultFileName = 'PTB3TestCal';
+thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
+newFileName = input(thePrompt,'s');
+if (isempty(newFileName))
+    newFileName = defaultFileName;
+end
+fprintf(1,'\nLoading from %s.mat\n',newFileName);
+cal = LoadCalFile(newFileName);
+fprintf('Calibration file %s read\n\n',newFileName);
 
 %% Plot what is in the calibration file
 % Print a description of the calibration to the command window.
@@ -37,21 +47,21 @@ plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable(:,1),'ro','MarkerFaceCo
 axis([0 1 0 1]); axis('square');
 xlabel('Input value');
 ylabel('Linear output');
-title('Device Gamma Functions');
+title('Device Gamma');
 subplot(1,3,2); hold on
 plot(cal.gammaInput,cal.gammaTable(:,2),'g');
 plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable(:,2),'go','MarkerFaceColor','g','MarkerSize',3);
 axis([0 1 0 1]); axis('square');
 xlabel('Input value');
 ylabel('Linear output');
-title('Device Gamma Functions');
+title('Device Gamma');
 subplot(1,3,3); hold on
 plot(cal.gammaInput,cal.gammaTable(:,3),'b');
 plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable(:,3),'bo','MarkerFaceColor','b','MarkerSize',3);
 axis([0 1 0 1]); axis('square');
 xlabel('Input value');
 ylabel('Linear output');
-title('Device Gamma Functions');
+title('Device Gamma');
 
 %% Gamma correction without worrying about color
 % Show how to linearize a gamma table, assuming 8-bits channel in the frame
@@ -61,7 +71,12 @@ title('Device Gamma Functions');
 
 % Set inversion method.  Method 0 does an exahaustive search of the values
 % from the smooth fit to the data that are in the table.
-cal = SetGammaMethod(cal,0);
+defaultGammaMethod = 0;
+gammaMethod = input(sprintf('Enter gamma method [%d]:',defaultGammaMethod));
+if (isempty(gammaMethod))
+    gammaMethod = defaultGammaMethod;
+end
+cal = SetGammaMethod(cal,gammaMethod);
 
 % Make the desired linear output, then convert.
 linearValues = ones(3,1)*linspace(0,1,256);
@@ -72,21 +87,21 @@ figure; clf;
 subplot(1,3,1); hold on
 plot(linearValues,clutValues(1,:)','r');
 axis([0 1 0 1]); axis('square');
-xlabel('Input value');
-ylabel('Linear output');
-title('Device Gamma Functions');
+xlabel('Linear output');
+ylabel('Input value');
+title('Inverse Gamma');
 subplot(1,3,2); hold on
 plot(linearValues,clutValues(2,:)','g');
 axis([0 1 0 1]); axis('square');
-xlabel('Input value');
-ylabel('Linear output');
-title('Device Gamma Functions');
+xlabel('Linear output');
+ylabel('Input value');
+title('Inverse Gamma');
 subplot(1,3,3); hold on
 plot(linearValues,clutValues(3,:)','b');
 axis([0 1 0 1]); axis('square');
-xlabel('Linear value');
-ylabel('Device value');
-title('Device Gamma Correction');
+xlabel('Linear output');
+ylabel('Input value');
+title('Inverse Gamma');
 
 %% Color space conversions  - CIE 1931
 % Let's see how to do some standard color conversions
