@@ -568,12 +568,12 @@ else
 end
 
 if err
-    % Failed! Let's retry it via https protocol. This may work-around overly
+    % Failed! Let's retry it via http protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative https protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    fprintf('Will retry now by use of alternative http protocol...\n');
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
@@ -584,12 +584,12 @@ if err
 end
 
 if err
-    % Failed! Let's retry it via http protocol. This may work-around overly
+    % Failed! Let's retry it via https protocol. This may work-around overly
     % restrictive firewalls or otherwise screwed network proxies:
     fprintf('Command "CHECKOUT" failed with error code %d: \n',err);
     fprintf('%s\n\n',result);
-    fprintf('Will retry now by use of alternative http protocol...\n');
-    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' http://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
+    fprintf('Will retry now by use of alternative https protocol...\n');
+    checkoutcommand=[svnpath 'svn checkout ' targetRevision ' https://svn.berlios.de/svnroot/repos/osxptb/' flavor '/Psychtoolbox/ ' pt];
     fprintf('The following alternative CHECKOUT command asks the Subversion client to \ndownload the Psychtoolbox:\n');
     fprintf('%s\n\n',checkoutcommand);
     if isOSX | isLinux
