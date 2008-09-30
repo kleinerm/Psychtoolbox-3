@@ -28,7 +28,7 @@ Options:
  -U ..., --URL            root URL of the Wiki in the form
                             http://doc.psychtoolbox.org/ (w/ terminal slash)
  -r,  --recursive         recursive mode: use only with a single directory
- -m,  --mexmode           mex mode: also look for .mexglx files and post their
+ -m,  --mexmode           mex mode: also look for .mexmaci files and post their
                             help strings by calling MATLAB and running them
                             In recursive mode both M and Mex files are posted.
                             (edit the source to change _mexext into one of 
@@ -362,12 +362,12 @@ def mexhelpextract(mexnames):
 
             # drop good divs into the soup, one by one
             for div in divs:
+                # remove the unneeded style attribute, we finally
+                # have this stuff defined in the ptbdocs.css now.
+                del(div['style'])
                 # escape the HTML tags for wiki parser
                 cheesesoup.append(NavigableString('\n""'))
                 cheesesoup.append(div)
-                div['style'] = 'background-color:#eee; padding:1em; border-width:1px; ' \
-                        + 'border-style:solid; border-color:#ddd; margin-bottom: 2em;' \
-                        + 'border-top: 5px solid #999999;'
                 cheesesoup.append(NavigableString('""\n'))
 
             post(subfunction,cheesesoup.renderContents())
