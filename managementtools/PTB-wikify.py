@@ -28,8 +28,8 @@ Options:
  -U ..., --URL            root URL of the Wiki in the form
                             http://doc.psychtoolbox.org/ (w/ terminal slash)
  -r,  --recursive         recursive mode: use only with a single directory
- -m,  --mexmode           mex mode: also look for .mexglx files and post their help-
-                            strings by calling MATLAB and running them
+ -m,  --mexmode           mex mode: also look for .mexglx files and post their
+                            help strings by calling MATLAB and running them
                             In recursive mode both M and Mex files are posted.
                             (edit the source to change _mexext into one of 
                              .mexglx, .mexmaci, or .dll)
@@ -37,10 +37,10 @@ Options:
                             this prints out:
                               - which files were skipped
                               - a diff of the text before submission
- -f   --full-diff         output full ndiff (defaults to terse unified)
-                          ndiff contains all text but is easier 
-                          to parse visually for differences.
-                          (only in combination with -v)
+ -f   --full-diff         output full ndiff (default is a terse unified diff).
+                            The ndiff contains all text but is easier 
+                            to parse visually for differences.
+                            (only in combination with -v)
 
 Examples:
   PTB-wikify.py -u DocBot -p dokkbot -U http://wiki/ PsychBasic/*.m 
@@ -117,6 +117,9 @@ def beackern(mkstring):
             + r'\bGestalt\b|' \
             + r'\bClose\b|' \
             + r'\bSnd\b|' \
+            + r'\bBeeper\b|' \
+            + r'\bAsk\b|' \
+            + r'\bsca\b|' \
             + r'\bPsychometric\b|' \
             + r'\bPreference\b)'
     mkstring = re.sub(match,r'[[\1]]',mkstring)
@@ -199,7 +202,7 @@ def post(title,text):
         sys.exit("post failed: %d: %s" % (e.code, e.msg))
 
 def postsinglefiles(files):
-    ''' create pages for all files in there and link to the category '''
+    ''' create pages for all files in there and link to the category'''
     for name in files:
         # single out some names
         head, basename = os.path.split(name)
@@ -214,7 +217,7 @@ def postsinglefiles(files):
                 mexhelpextract([funcname])
             elif _debug: print 'skipping ' + name
             continue
-        if basename=='Contents.m':
+        if basename=='Contents.m' or basename=='contents.m':
             funcname = category
             path = os.path.dirname(path)
             if len(path) < 3:
@@ -234,18 +237,31 @@ def postsinglefiles(files):
         else: 
             body = 'Adrian, this function is not yet documented.\n\n\n MissingDocs'
 
+        pathlinks = """
+                    ""
+                    <div class="code_header" style="text-align:right;">
+                      <span style="float:left;">Path&nbsp;&nbsp;</span> <span class="counter">Retrieve current version of %s from berliOS: <a href=
+                      "http://svn.berlios.de/svnroot/repos/osxptb/beta/%s">beta</a> | view in <a href=
+                      "http://svn.berlios.de/viewcvs/osxptb/beta/%s?view=markup">WebSVN with changelog</a></span>
+                    </div>
+                    <div class="code">
+                      <code>%s</code>
+                    </div>
+                    ""
+                    """ % tuple([basename]+3*[os.path.join(path,basename)])
+
         text = headline \
                 + breadcrumb \
                 + body \
-                + '\n\n\n%%(php;Path)' \
-                + os.path.join(path,basename) \
-                + '%%\n' \
+                + '\n\n\n' \
+                + textwrap.dedent(pathlinks) \
+                + '\n' \
                 + cattext
 
         post(funcname,text)
 
 def mexhelpextract(mexnames):
-    print 'processing mex files: ' + mexnames.__repr__()
+    #print 'processing mex files: ' + mexnames.__repr__()
     from ConfigParser import RawConfigParser as ConfigParser, Error as error
     for mexname in mexnames:
         # ConfigParser for the three elements per subfunctions written to tmpdir
@@ -260,7 +276,7 @@ def mexhelpextract(mexnames):
              os.path.splitext(os.path.basename(_mexscript))[0], \
              mexname, \
              _tmpdir)
-        cmd = 'matlab -nodisplay -r "%s" > /dev/null' % matlabcmd
+        cmd = 'matlab -nojvm -nodisplay -r "%s" > /dev/null' % matlabcmd
         # and execute matlab w/ the temporary script we wrote earlier
         try:
             print 'running MATLAB for %s in %s' % (mexname,_tmpdir)
@@ -333,9 +349,6 @@ def mexhelpextract(mexnames):
                 subfctDIV = Tag(soup, "div")
                 subfctDIV['class'] = 'subfct'
                 subfctDIV['id'] = mexname
-                subfctDIV['style'] = 'background-color:#eee; padding:1em; border-width:1px; ' \
-                        + 'border-style:solid; border-color:#ddd; margin-bottom: 2em;' \
-                        + 'border-top: 5px solid #999999;'
                 subfctDIV.insert(0,NavigableString(text))
 
                 # insert the new div
