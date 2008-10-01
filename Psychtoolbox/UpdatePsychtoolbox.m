@@ -38,6 +38,10 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 21/11/06 mk Add improved detection code for Subversion.
 % 31.3.08 mk  Allow spaces in path to targetdirectory (Fix contributed by Tobias Wolf)
 %  7.5.08 mk  Allow to spec 'targetdirectory' as [], so it gets default.
+%
+% 10/01/08 mk  Add interactive output/query for svn client on the Unices.
+%              This to work-around questions of the client about accepting
+%              security certificates...
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -105,10 +109,12 @@ updatecommand=[svnpath 'svn update '  targetRevision ' ' strcat('"',targetdirect
 fprintf('Will execute the following update command:\n');
 fprintf('%s\n', updatecommand);
 if isOSX | isLinux
-    [err, result]=system(updatecommand);
+    err=system(updatecommand);
+    result = 'For reason, see output above.';
 else
     [err, result]=dos(updatecommand, '-echo');
 end
+
 if err
     fprintf('Sorry. The update command failed:\n');
     fprintf('%s\n', result);
