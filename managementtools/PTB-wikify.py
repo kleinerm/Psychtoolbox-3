@@ -31,24 +31,24 @@ Options:
  -m,  --mexmode           mex mode: also look for .mexmaci files and post their
                             help strings by calling MATLAB and running them
                             In recursive mode both M and Mex files are posted.
-                            (edit the source to change _mexext into one of 
+                            (edit the source to change _mexext into one of
                              .mexglx, .mexmaci, or .dll)
  -v                       be verbose (massive text output)
                             this prints out:
                               - which files were skipped
                               - a diff of the text before submission
  -f   --full-diff         output full ndiff (default is a terse unified diff).
-                            The ndiff contains all text but is easier 
+                            The ndiff contains all text but is easier
                             to parse visually for differences.
                             (only in combination with -v)
 
 Examples:
-  PTB-wikify.py -u DocBot -p dokkbot -U http://wiki/ PsychBasic/*.m 
+  PTB-wikify.py -u DocBot -p dokkbot -U http://wiki/ PsychBasic/*.m
   PTB-wikify.py -r -m -U http://wiki/ PsychBasic/
 
 IMPORTANT!!:
-  Always change your working directory to the root of the 
-  tree before running the script, e.g., 
+  Always change your working directory to the root of the
+  tree before running the script, e.g.,
     cd Psychtoolbox
     ~/PTB-wikify.py -r PsychDemos/PsychExampleExperiments
 
@@ -135,7 +135,7 @@ def login(baseurl,username,password):
         mech.open(baseurl + "UserSettings")
     except HTTPError, e:
         sys.exit("%d: %s" % (e.code, e.msg))
-    
+
     # important: use correct form number in the HTML page
     mech.select_form(nr=1)
     mech["name"] = username
@@ -149,7 +149,7 @@ def makediff(old,new):
     import difflib, time
     if not _fulldiff:
         dm = difflib.unified_diff
-    else: 
+    else:
         dm = difflib.ndiff
     old = re.sub('\015\012',r'\n',old).expandtabs(4)
     diff = dm(old.splitlines(1), new.splitlines(1))
@@ -164,7 +164,7 @@ def post(title,text):
         resp = mech.open(baseurl+title+"/edit")
     except HTTPError, e:
         sys.exit("post failed: %d: %s" % (e.code, e.msg))
-    
+
     mech.select_form(nr=1)
     try:
         oldbody = mech["body"]
@@ -234,7 +234,7 @@ def postsinglefiles(files):
         # scrub the text real good, to get us some nice wiki formatting
         if docstring:
             body = beackern(docstring)
-        else: 
+        else:
             body = 'Adrian, this function is not yet documented.\n\n\n MissingDocs'
 
         pathlinks = """
@@ -317,7 +317,7 @@ def mexhelpextract(mexnames):
             text =  '""' + headline \
                     + breadcrumb \
                     + docstring + '""'
-            
+
             # retrieve old body text, to update or concatenate with synonymous subfunctions
             #
             # browse the page
@@ -450,7 +450,7 @@ def main(argv):
             catch
                 return;
             end
-            
+
             fid = fopen(fullfile(tmpdir,mexname),'wt');
             if fid == -1
                 return;
@@ -462,23 +462,28 @@ def main(argv):
                     docs = eval([mexname '(''DescribeModulefunctionshelper'',1,subfunctions{i})']);
                     fprintf(fid,'usage: %s\\n\\n',docs{1});
                     fprintf(fid,'help: %s\\n\\n',regexprep(docs{2},'\\n','\\n  '));
-                    fprintf(fid,'seealso: %s\\n\\n',docs{3});    
+                    fprintf(fid,'seealso: %s\\n\\n',docs{3});
                 end
             catch
                 % Nothing to do.
             end
-            
+
             fclose(fid);
             return
             '''
             fid.write(textwrap.dedent(script))
             fid.close()
-            
+
         elif opt == '-v':
             global _debug
             _debug = 1
 
-    login(baseurl,username,password)
+    if len(password) == 0:
+        usage()
+        print 'Error: No default password set. Please specify one with -p MyPassword.\n\n'
+        sys.exit(1)
+    else:
+        login(baseurl,username,password)
 
     if args:
         if _recursive:
