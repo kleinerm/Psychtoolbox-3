@@ -1658,6 +1658,7 @@
 		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
+		83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83587B300E982EBF004BB7BD /* QuadProg++.cc */; };
 		835CD25A0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD25B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD25C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
@@ -3523,7 +3524,7 @@
 		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
-		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
@@ -3687,6 +3688,8 @@
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
+		83587B300E982EBF004BB7BD /* QuadProg++.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = "QuadProg++.cc"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.cc"; sourceTree = SOURCE_ROOT; };
+		83587B310E982EBF004BB7BD /* QuadProg++.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = "QuadProg++.h"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.h"; sourceTree = SOURCE_ROOT; };
 		835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychScriptingGlue.cc; path = ../../../Source/Common/Base/PsychScriptingGlue.cc; sourceTree = SOURCE_ROOT; };
 		8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenVideoCapture.c; path = ../../../Source/Common/Screen/SCREENOpenVideoCapture.c; sourceTree = SOURCE_ROOT; };
 		8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseVideoCapture.c; path = ../../../Source/Common/Screen/SCREENCloseVideoCapture.c; sourceTree = SOURCE_ROOT; };
@@ -5680,6 +5683,8 @@
 				83C802C90B8CECE500097021 /* MirrorFaceCore.cc */,
 				83C802CA0B8CECE500097021 /* MirrorFaceCore.h */,
 				8330E9420B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c */,
+				83587B300E982EBF004BB7BD /* QuadProg++.cc */,
+				83587B310E982EBF004BB7BD /* QuadProg++.h */,
 				83C802CB0B8CECE500097021 /* RegisterProject.c */,
 				83C802CC0B8CECE500097021 /* RegisterProject.h */,
 				83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */,
@@ -11438,6 +11443,7 @@
 				83C802CE0B8CECE500097021 /* RegisterProject.c in Sources */,
 				8330E9430B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c in Sources */,
 				83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */,
+				83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -20632,17 +20638,20 @@
 				DSTROOT = /Users/kleinerm/projects/MirrorFace/MirrorFace/;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
+				GCC_AUTO_VECTORIZATION = YES;
 				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_SSE3_EXTENSIONS = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
 				GCC_INPUT_FILETYPE = automatic;
 				GCC_MODEL_TUNING = "";
 				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					NONLINUX,
 					USE_MWSIZE,
 					MATLAB_MEX_FILE,
 				);
+				GCC_UNROLL_LOOPS = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
