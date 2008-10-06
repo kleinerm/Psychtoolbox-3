@@ -1015,7 +1015,7 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
                 % it and set new weights in it:
                 glBindTexture(GL.TEXTURE_RECTANGLE_EXT, weighttexgl);
                 glTexSubImage2D(GL.TEXTURE_RECTANGLE_EXT, 0, 0, 0, oldWeightLength, 1, GL.LUMINANCE, GL.FLOAT, moglsingle(arg1));
-%                glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
+                glBindTexture(GL.TEXTURE_RECTANGLE_EXT, 0);
             end
             
             % xform pass: Blit all subsections of masterkeyshapetex into
