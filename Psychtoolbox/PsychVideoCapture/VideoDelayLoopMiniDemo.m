@@ -43,7 +43,7 @@ w=Screen('OpenWindow', screenid);
 
 % Open video capture engine for delayed visual feedback. This is customized
 % for the Apple builtin iSight, may need tweaking for other cams:
-handle = PsychVideoDelayLoop('Open', w , [], [], 1);
+handle = PsychVideoDelayLoop('Open', w , [], [0 0 640 480], 1);
 
 % Set a timeout of 10 secs. Feedback loop runs for at most 10 seconds:
 PsychVideoDelayLoop('SetAbortTimeout', duration);
