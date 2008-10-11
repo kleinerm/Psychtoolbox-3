@@ -42,7 +42,8 @@ if nargin < 1 || isempty(win)
 end
 
 if nargin < 2 || isempty(tstring)
-    error('DrawFormattedText: Text string missing!');
+    % Empty text string -> Nothing to do.
+    return;
 end
 
 % Default x start position is left border of window:

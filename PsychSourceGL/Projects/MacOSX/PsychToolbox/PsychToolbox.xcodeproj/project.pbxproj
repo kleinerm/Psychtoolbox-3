@@ -1724,6 +1724,7 @@
 		8395A9D60BBF2C9C00FC482E /* PsychPortAudio.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */; };
 		8395A9DC0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
 		8395A9DD0BBF370800FC482E /* PsychHID.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8395A9DB0BBF370800FC482E /* PsychHID.cc */; };
+		83A01F1D0EA10B63009C1DAA /* VLVideofile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83A01F1B0EA10B63009C1DAA /* VLVideofile.cpp */; };
 		83A9A32F0CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
 		83A9A3300CA5CB0800929494 /* SCREENResolutions.c in Sources */ = {isa = PBXBuildFile; fileRef = 83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */; };
 		83AD4CEE0DC51717002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
@@ -3711,6 +3712,9 @@
 		8395A9B60BBF290900FC482E /* FontInfo.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = FontInfo.cc; path = ../../../Source/Octave/FontInfo.cc; sourceTree = SOURCE_ROOT; };
 		8395A9D40BBF2C9C00FC482E /* PsychPortAudio.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychPortAudio.cc; path = ../../../Source/Octave/PsychPortAudio.cc; sourceTree = SOURCE_ROOT; };
 		8395A9DB0BBF370800FC482E /* PsychHID.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychHID.cc; path = ../../../Source/Octave/PsychHID.cc; sourceTree = SOURCE_ROOT; };
+		83A01F1A0EA10B4F009C1DAA /* VLE.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLE.h; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLE.h; sourceTree = SOURCE_ROOT; };
+		83A01F1B0EA10B63009C1DAA /* VLVideofile.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = VLVideofile.cpp; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLVideofile.cpp; sourceTree = SOURCE_ROOT; };
+		83A01F1C0EA10B63009C1DAA /* VLVideofile.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLVideofile.h; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLVideofile.h; sourceTree = SOURCE_ROOT; };
 		83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENResolutions.c; path = ../../../Source/Common/Screen/SCREENResolutions.c; sourceTree = SOURCE_ROOT; };
 		83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MirrorFaceCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83C802C90B8CECE500097021 /* MirrorFaceCore.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = MirrorFaceCore.cc; sourceTree = "<group>"; };
@@ -5687,8 +5691,11 @@
 				83587B310E982EBF004BB7BD /* QuadProg++.h */,
 				83C802CB0B8CECE500097021 /* RegisterProject.c */,
 				83C802CC0B8CECE500097021 /* RegisterProject.h */,
+				83A01F1A0EA10B4F009C1DAA /* VLE.h */,
 				83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */,
 				83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */,
+				83A01F1B0EA10B63009C1DAA /* VLVideofile.cpp */,
+				83A01F1C0EA10B63009C1DAA /* VLVideofile.h */,
 			);
 			comments = "Source code group for MirrorFaceCore. Not included in official PTB distribution.";
 			name = MirrorFaceCore;
@@ -11444,6 +11451,7 @@
 				8330E9430B8DFB92003F0A67 /* MirrorFaceCoreSynopsis.c in Sources */,
 				83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */,
 				83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */,
+				83A01F1D0EA10B63009C1DAA /* VLVideofile.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -20647,6 +20655,7 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 3;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					MACOSX,
 					NONLINUX,
 					USE_MWSIZE,
 					MATLAB_MEX_FILE,
