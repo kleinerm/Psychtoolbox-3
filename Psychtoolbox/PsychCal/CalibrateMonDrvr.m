@@ -87,7 +87,6 @@ if USERPROMPT
 end
 
 % Blank other screen
-
 if blankOtherScreen
 	[window1, screenRect1] = Screen('OpenWindow', cal.describe.whichBlankScreen, 0);
     if g_usebitspp
@@ -132,6 +131,7 @@ end
 % Wait for user
 if USERPROMPT == 1
     FlushEvents;
+    fprintf('Set up radiometer and hit any key when ready\n');
     GetChar;
     fprintf('Pausing for %d seconds ...', cal.describe.leaveRoomTime);
     %WaitSecs(cal.describe.leaveRoomTime);

@@ -27,6 +27,8 @@ function [spd,S] = MeasMonSpd(window, settings, S, syncMode, whichMeterType, bit
 %	        dhb   Change calling conventions to remove unused args.
 % 9/14/00   dhb   Sync mode is not actually used.  Arg still passed for backwards compat.
 % 2/27/02   dhb   Change noMeterAvail to whichMeterType.
+
+% Declare Bits++ box global
 global g_usebitspp;
 
 % If the global flag for using Bits++ is empty, then it hasn't been

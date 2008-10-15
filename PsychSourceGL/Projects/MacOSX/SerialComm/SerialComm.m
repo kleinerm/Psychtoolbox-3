@@ -15,10 +15,6 @@ function y = SerialComm(op, port, data)
 %  DATA = SerialComm( 'read', PORT, N ) reads upto N bytes from PORT and returns 
 %    the uint8 array in DATA. If no data is available, DATA is empty. If N is
 %    not specified, all available bytes are returned. Non-blocking.
-%
-%  PORT = SerialComm( 'name2number', PORTNAME) converts a port in string
-%    form, eg. /dev/cu.KeySerial1, to an actual port number for use in the
-%    other functinos.
 %   
 %  SerialComm( 'write', PORT, DATA ) writes contents of the matrix DATA to PORT. 
 %    The matrix DATA can be of class "double" or "char".
@@ -32,11 +28,7 @@ function y = SerialComm(op, port, data)
 %	
 %  SerialComm( 'close', PORT ) closes the PORT. 
 %
-%  SerialComm( 'status', PORT ) prints some status info.
-%
-% Author: Tom Davis (tomldavis@comcast.net)
-% Date: October, 2006
-% 
-% SerialComm was generously donated to the Psychtoolbox by Tom Davis.  You
-% can find more of his Matlab creations at
-% http://www.mathworks.com/matlabcentral/fileexchange/loadAuthor.do?objectType=author&objectId=1093697
+%  SerialComm( 'status', PORT ) prints some status info. 
+
+
+

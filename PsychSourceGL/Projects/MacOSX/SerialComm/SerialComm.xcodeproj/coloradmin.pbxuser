@@ -1,0 +1,145 @@
+// !$*UTF8*$!
+{
+	F089BC240AD42A7400663D86 /* SerialComm Intel */ = {
+		activeExec = 0;
+	};
+	F089BC320AD42B1600663D86 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		comments = "error: mex.h: No such file or directory";
+		fRef = F18EBB2B0AD19BC5003E347C /* comm.c */;
+		rLen = 1;
+		rLoc = 21;
+		rType = 1;
+	};
+	F089BC330AD42B1600663D86 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = F18EBB2B0AD19BC5003E347C /* comm.c */;
+		name = "#include \"mex.h\"";
+		rLen = 17;
+		rLoc = 779;
+		rType = 0;
+		vrLen = 277;
+		vrLoc = 647;
+	};
+	F089BC390AD42B2600663D86 /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+		scmType = "";
+	};
+	F089BC3A0AD42B2600663D86 /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	F089BC400AD42BF600663D86 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = F18EBB2B0AD19BC5003E347C /* comm.c */;
+		name = "#include \"mex.h\"";
+		rLen = 17;
+		rLoc = 779;
+		rType = 0;
+		vrLen = 277;
+		vrLoc = 647;
+	};
+	F089BC420AD42C3F00663D86 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		comments = "warning: passing argument 2 of 'mxCreateNumericArray_730' from incompatible pointer type";
+		fRef = F18EBB2B0AD19BC5003E347C /* comm.c */;
+		rLen = 1;
+		rLoc = 343;
+		rType = 1;
+	};
+	F089BC430AD42C3F00663D86 /* PBXTextBookmark */ = {
+		isa = PBXTextBookmark;
+		fRef = F18EBB2B0AD19BC5003E347C /* comm.c */;
+		name = "plhs[0] = mxCreateNumericArray( 2, dims, mxUINT8_CLASS, mxREAL );";
+		rLen = 71;
+		rLoc = 7716;
+		rType = 0;
+		vrLen = 260;
+		vrLoc = 7638;
+	};
+	F089BC450AD42C6A00663D86 /* XCBreakpointsBucket */ = {
+		isa = XCBreakpointsBucket;
+		name = "Project Breakpoints";
+		objects = (
+		);
+	};
+	F18EBB180AD19B7F003E347C /* Project object */ = {
+		activeBuildConfigurationName = Debug;
+		activeTarget = F089BC240AD42A7400663D86 /* SerialComm Intel */;
+		breakpointsGroup = F089BC450AD42C6A00663D86 /* XCBreakpointsBucket */;
+		codeSenseManager = F089BC3A0AD42B2600663D86 /* Code sense */;
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					243,
+					20,
+					48,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXConfiguration.PBXTargetDataSource.PBXTargetDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					200,
+					198,
+					20,
+					48,
+					43,
+					43,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXTargetDataSource_PrimaryAttribute,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 181676592;
+			PBXWorkspaceStateSaveDate = 181676592;
+		};
+		perUserProjectItems = {
+			F089BC320AD42B1600663D86 /* PBXTextBookmark */ = F089BC320AD42B1600663D86 /* PBXTextBookmark */;
+			F089BC330AD42B1600663D86 /* PBXTextBookmark */ = F089BC330AD42B1600663D86 /* PBXTextBookmark */;
+			F089BC400AD42BF600663D86 /* PBXTextBookmark */ = F089BC400AD42BF600663D86 /* PBXTextBookmark */;
+			F089BC420AD42C3F00663D86 /* PBXTextBookmark */ = F089BC420AD42C3F00663D86 /* PBXTextBookmark */;
+			F089BC430AD42C3F00663D86 /* PBXTextBookmark */ = F089BC430AD42C3F00663D86 /* PBXTextBookmark */;
+		};
+		sourceControlManager = F089BC390AD42B2600663D86 /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	F18EBB230AD19B92003E347C /* SerialComm PPC */ = {
+		activeExec = 0;
+	};
+	F18EBB2B0AD19BC5003E347C /* comm.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {786, 7140}}";
+			sepNavSelRange = "{7716, 71}";
+			sepNavVisRect = "{{0, 4742}, {786, 134}}";
+			sepNavWindowFrame = "{{15, 315}, {750, 558}}";
+		};
+	};
+}

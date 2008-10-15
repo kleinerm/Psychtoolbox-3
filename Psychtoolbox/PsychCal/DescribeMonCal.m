@@ -20,6 +20,8 @@ function same = DescribeMonCal(cal,file,whichScreen)
 % 8/1800   dhb       Add whichScreen arg, same return.
 % 6/29/02  dgp       Use new version of Screen VideoCard.
 % 9/23/02  dhb, jms  Fix small bug in way driver is compared, presumably introduced 6/29/02.
+% 9/29/08  dhb, tyl, ijk Update for OS/X, current computer stuff.
+%                    Comparison of computer name skipped, because it seems to vary with login. 
 
 % Default args
 if (nargin < 2 | isempty(file))
@@ -51,32 +53,32 @@ fprintf(file,'\n');
 
 % Current configuration
 if (~isempty(whichScreen))
-	[computerName,owner,system,processor,cache,fpu,Hz,busHz,vm,pci]=Screen('Computer');
-	computer = sprintf('%s''s %s, %s',owner,computerName,system);
-	card=Screen(whichScreen,'VideoCard');
-	driver = sprintf('%s %s',card.driverName,card.driverVersion);
-	dacsize = Screen(whichScreen,'Preference','ClutDacSize');
-	hz = FrameRate(whichScreen);
-	same = 1;
-	fprintf('Current configuration:\n');
-	fprintf(file,'\tComputer: %s\n',computer);
-	if (~streq(computer,cal.describe.computer))
-		same = 0;
-	end
-	fprintf(file,'\tScreen: %d\n',whichScreen);
-	if (whichScreen ~= cal.describe.whichScreen)
-		save = 0;
-	end
-	fprintf(file,'\tVideo driver: %s\n',driver);
-	if (~streq(driver,cal.describe.driver))
-		same = 0;
-	end
-	fprintf(file,'\tDac size: %g\n',dacsize);
-	if (dacsize ~= cal.describe.dacsize)
-		same = 0;
-	end
-	fprintf(file,'\tFrame rate: %g hz\n',hz);
-	if (abs(hz-cal.describe.hz) > 0.5)
-		same = 0;
-	end
+    cal.describe.driver = sprintf('%s %s','unknown_driver','unknown_driver_version');
+    computerInfo = Screen('Computer');
+    computer = sprintf('%s''s %s, %s', computerInfo.consoleUserName, computerInfo.machineName, computerInfo.system);
+    driver = sprintf('%s %s','unknown_driver','unknown_driver_version');
+    dacsize = ScreenDacBits(whichScreen);
+    hz = Screen('NominalFrameRate',whichScreen);
+    same = 1;
+    fprintf('Current configuration:\n');
+    fprintf(file,'\tComputer: %s\n',computer);
+    if (~streq(computer,cal.describe.computer))
+        %same = 0;
+    end
+    fprintf(file,'\tScreen: %d\n',whichScreen);
+    if (whichScreen ~= cal.describe.whichScreen)
+        save = 0;
+    end
+    fprintf(file,'\tVideo driver: %s\n',driver);
+    if (~streq(driver,cal.describe.driver))
+        same = 0;
+    end
+    fprintf(file,'\tDac size: %g\n',dacsize);
+    if (dacsize ~= cal.describe.dacsize)
+        same = 0;
+    end
+    fprintf(file,'\tFrame rate: %g hz\n',hz);
+    if (abs(hz-cal.describe.hz) > 0.5)
+        same = 0;
+    end
 end

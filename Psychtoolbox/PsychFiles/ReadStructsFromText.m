@@ -23,7 +23,7 @@ function theStructs = ReadStructsFromText(filename)
 
 % Open the file
 fid = fopen(filename);
-if (fid == -1)
+if fid == -1
 	error('Cannot open file %s', filename);
 end
 
@@ -73,30 +73,74 @@ for i = 1:nFields
 	theFields{i} = newField;
 end
 
-% Now read lines and pull out structure elements
-f = 1;
-while (1)
-	theLine = fgetl(fid);
-	if (isempty(theLine) | theLine == -1)
-		break;
-	end
-	theIndex = 1;
-	theData = cell(nFields,1);
-	for i = 1:nFields
-		readString = theLine(theIndex:end);
-		[field,count,nil,nextIndex] = sscanf(readString,'%g',1);
-		if (count == 0)
-			[field,count,nil,nextIndex] = sscanf(readString,'%s',1);
-			if (count == 0)
-				error('Cannot parse input');
+% Octave doesn't support the textscan function, so we use the old method
+% of extracting data for Octave users.  The new method allows spaces in
+% strings.
+if ~IsOctave
+	% Read out all the data from the text file delimited by newline
+	% characters.
+	data = textscan(fid, '%s', 'delimiter', '\n');
+	data = data{1};
+	
+	% Read the values from each line of the text and convert them to
+	% doubles if possible.
+	f = 1;
+	for i = 1:size(data, 1)
+		values = textscan(data{i}, '%s', 'delimiter', '\t');
+		values = values{1};
+
+		for j = 1:size(values, 1)
+			convertedValue = [];
+			
+			% Convert the entry from a string to a number if possible.  We
+			% first check to see if the value is on the path as a function
+			% because the str2num function calls eval on its input which
+			% will cause it to execute.
+			if isempty(which(values{j})) && isempty(which(strtok(values{j})))
+				convertedValue = str2num(values{j}); %#ok<ST2NM>
+			end
+
+			% If the value successfully converted, overwrite what was
+			% already in the cell array.
+			if ~isempty(convertedValue)
+				values{j} = convertedValue;
 			end
 		end
-		theIndex = theIndex+nextIndex-1;
-		theData{i} = field;
+		
+		theStructs(f) = cell2struct(values, theFields, 1); %#ok<AGROW>
+		f = f + 1;
 	end
-	theStruct = cell2struct(theData,theFields,1);
-	theStructs(f) = theStruct;
-	f = f+1;
+else
+	% Now read lines and pull out structure elements
+	f = 1;
+	while (1)
+		theLine = fgetl(fid);
+		if (isempty(theLine) | theLine == -1)
+			break;
+		end
+		theIndex = 1;
+		theData = cell(nFields,1);
+		for i = 1:nFields
+			readString = theLine(theIndex:end);
+			[field,count,nil,nextIndex] = sscanf(readString,'%g',1);
+			if (count == 0)
+				[field,count,nil,nextIndex] = sscanf(readString,'%s',1);
+				if (count == 0)
+					error('Cannot parse input');
+				end
+			end
+			theIndex = theIndex+nextIndex-1;
+			theData{i} = field;
+		end
+		theStruct = cell2struct(theData,theFields,1);
+		theStructs(f) = theStruct;
+		f = f+1;
+	end
+end
+
+% If there was no data in the file, return an empty matrix.
+if ~exist('theStructs', 'var')
+	theStructs = [];
 end
 
 % Close the file.

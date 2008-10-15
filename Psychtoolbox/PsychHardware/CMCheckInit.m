@@ -29,22 +29,30 @@ function CMCheckInit(meterType, PortString)
 
 DefaultNumberOfTries = 5;
 
+% Read the local preferred serial port file if it exists.
+if exist(which('CMPreferredPort.txt'), 'file')
+	t = textread(which('CMPreferredPort.txt'), '%s');
+	defPortString = t{1};
+else
+	defPortString = 'usbserial';
+end
+
 % Set default the defaults.
 switch nargin
     case 0
         meterType = 1;
-        PortString = 'usbserial';
+        PortString = defPortString;
     case 1
         if isempty(meterType)
             meterType = 1;
         end
-        PortString = 'usbserial';
+        PortString = defPortString;
     case 2
         if isempty(meterType)
             meterType = 1;
         end
         if isempty(PortString)
-            PortString = 'usbserial';
+            PortString = defPortString;
         end
 end
 

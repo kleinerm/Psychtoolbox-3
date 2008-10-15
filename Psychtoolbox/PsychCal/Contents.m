@@ -9,9 +9,9 @@
 %   CalibrateFitGamma   - Fit the gamma function to the calibration measurements.
 %   CalibrateFitLinMod  - Fit the linear model to spectral calibration data.
 %   CalibrateMonDrvr    - Common code called by monitor calibration programs.  Script.
-%   CalibrateMonitorPhotometer - Manual calibration procedure for use with
-%                         manually controlled photometers.
+%   CalibrateMonitorPhotometer - Manual calibration procedure for use with manually controlled photometers.
 %   CalibrateMonSpd     - Run standard monitor spectral calibration.  Script.
+%   CalToggleBitsPlusPlus - Determine whether to calibrate with or without ßBits++.
 %   CompareMonCal       - Compare two calibration structures to see if they match.
 %   CompareMonCalOverTime - Compare two calibrations of same monitor and see differences.  Script.
 %   ContrastMatch       - Match contrast of two gratings.

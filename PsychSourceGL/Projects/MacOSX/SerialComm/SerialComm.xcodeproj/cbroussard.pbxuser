@@ -1,0 +1,121 @@
+// !$*UTF8*$!
+{
+	F089BC240AD42A7400663D86 /* SerialComm Intel */ = {
+		activeExec = 0;
+	};
+	F18EBB180AD19B7F003E347C /* Project object */ = {
+		activeBuildConfigurationName = Debug;
+		activeTarget = F18EBB230AD19B92003E347C /* SerialComm PPC */;
+		addToTargets = (
+			F18EBB230AD19B92003E347C /* SerialComm PPC */,
+		);
+		breakpoints = (
+		);
+		breakpointsGroup = F18EBB770AD19E1F003E347C /* XCBreakpointsBucket */;
+		codeSenseManager = F18EBB1D0AD19B7F003E347C /* Code sense */;
+		ignoreBreakpointsInProjectsDict = {
+		};
+		perUserDictionary = {
+			PBXConfiguration.PBXFileTableDataSource3.PBXExecutablesDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXExecutablesDataSource_NameID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					22,
+					300,
+					131,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXExecutablesDataSource_ActiveFlagID,
+					PBXExecutablesDataSource_NameID,
+					PBXExecutablesDataSource_CommentsID,
+				);
+			};
+			PBXConfiguration.PBXFileTableDataSource3.PBXFileTableDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					243,
+					20,
+					48,
+					43,
+					43,
+					20,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+					PBXFileDataSource_Target_ColumnID,
+				);
+			};
+			PBXConfiguration.PBXTargetDataSource.PBXTargetDataSource = {
+				PBXFileTableDataSourceColumnSortingDirectionKey = "-1";
+				PBXFileTableDataSourceColumnSortingKey = PBXFileDataSource_Filename_ColumnID;
+				PBXFileTableDataSourceColumnWidthsKey = (
+					20,
+					200,
+					63,
+					20,
+					48,
+					43,
+					43,
+				);
+				PBXFileTableDataSourceColumnsKey = (
+					PBXFileDataSource_FiletypeID,
+					PBXFileDataSource_Filename_ColumnID,
+					PBXTargetDataSource_PrimaryAttribute,
+					PBXFileDataSource_Built_ColumnID,
+					PBXFileDataSource_ObjectSize_ColumnID,
+					PBXFileDataSource_Errors_ColumnID,
+					PBXFileDataSource_Warnings_ColumnID,
+				);
+			};
+			PBXPerProjectTemplateStateSaveDate = 245779045;
+			PBXWorkspaceStateSaveDate = 245779045;
+		};
+		sourceControlManager = F18EBB1C0AD19B7F003E347C /* Source Control */;
+		userBuildSettings = {
+		};
+	};
+	F18EBB1C0AD19B7F003E347C /* Source Control */ = {
+		isa = PBXSourceControlManager;
+		fallbackIsa = XCSourceControlManager;
+		isSCMEnabled = 0;
+		scmConfiguration = {
+		};
+		scmType = "";
+	};
+	F18EBB1D0AD19B7F003E347C /* Code sense */ = {
+		isa = PBXCodeSenseManager;
+		indexTemplatePath = "";
+	};
+	F18EBB230AD19B92003E347C /* SerialComm PPC */ = {
+		activeExec = 0;
+	};
+	F18EBB2B0AD19BC5003E347C /* comm.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1115, 7588}}";
+			sepNavSelRange = "{12769, 0}";
+			sepNavVisRect = "{{0, 2260}, {1115, 680}}";
+			sepNavWindowFrame = "{{209, 165}, {1160, 809}}";
+		};
+	};
+	F18EBB2D0AD19BC5003E347C /* serialPort.c */ = {
+		uiCtxt = {
+			sepNavIntBoundsRect = "{{0, 0}, {1994, 8778}}";
+			sepNavSelRange = "{13902, 0}";
+			sepNavVisRect = "{{0, 0}, {1115, 680}}";
+			sepNavWindowFrame = "{{135, 63}, {1160, 809}}";
+		};
+	};
+	F18EBB770AD19E1F003E347C /* XCBreakpointsBucket */ = {
+		isa = XCBreakpointsBucket;
+		name = "Project Breakpoints";
+		objects = (
+		);
+	};
+}

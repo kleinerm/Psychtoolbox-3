@@ -27,24 +27,25 @@ function PortNumber = FindSerialPort(PortString)
 % this could be improved even without making it work for other OSs, but I
 % don't have an incentive to make improvements. -- mpr 11/21/07
 
-if ~nargin | isempty(PortString)
-	% if user doesn't know or doesn't care whether we find PL-2303 or keyspan
-	% adapter:
-	AllowAlternateStrings = 1;
-	PortString = 'usbserial';
-	AltPortString = 'usa19';
-else
-	AllowAlternateStrings = 0;
+if ~nargin || isempty(PortString)	
+	% List of serial port devices to look for.  These should all be lower
+	% case.
+	PortDB = lower({'usa19', 'keyserial1'});
+	selectionType = 'default';
+else	
+	% Make the port string lowercase for easier string comparison later.
+	PortDB = {lower(PortString)};
+	selectionType = 'requested';
 end
 
-if ~isempty(strfind(computer,'PCWIN'))
+if IsWin
 	fprintf('It appears that you are using a Windows operating system.\n');
 	fprintf('Among many other problems that will cause you is that you cannot\n');
 	fprintf('use ''FindSerialPort'' because that function was written for Mac OS X.\n\n');
 	error('You are using the wrong operating system.');
 end
 
-if ~isempty(strfind(computer,'MAC2'))
+if IsOS9
 	fprintf('I think that you are using Mac OS 9.  If so, you should not be trying\n');
 	fprintf('to use FindSerialPort.  In fact, you shouldn''t need to.  I think that\n');
 	fprintf('PsychSerial is your friend.\n\n');
@@ -57,105 +58,60 @@ if isempty(strfind(computer,'MAC'))
 	fprintf('may work for you.  I have not tested it.  You are about to...\n');
 end
 
+% Get a list of any serial devices attached to the computer.
 ThePortDevices = dir('/dev/cu*');
 
-PortTypeFound = 0;
+% Check to see if any serial devices were found.
+if isempty(ThePortDevices)
+	error('\n%s\n%s\n', ...
+		'No serial devices were found.  Make sure the serial device is plugged', ...
+		'in and the drivers installed.');
+end
+
+% For each serial type in the PortDB cell array, see if any attached serial
+% devices match.
 FoundIndices = [];
-for k=1:length(ThePortDevices)
-	if ~isempty(regexpi(ThePortDevices(k).name,PortString)) || (AllowAlternateStrings && ~isempty(regexpi(ThePortDevices(k).name,AltPortString)))
-		PortTypeFound = PortTypeFound+1;
-		FoundIndices = k;
-	end
-end
-
-if ~PortTypeFound
-	fprintf('I could not find any ports with names that match %s.  Sorry!\n',PortString);
-	if isempty(ThePortDevices)
-		fprintf('I''m afraid I didn''t find any serial ports.  Apparently my assumption about\n');
-		fprintf('how ports will be named is not correct.  It is up to you to fix that.\n\n');
-	else
-		fprintf('This is a list of the port (or ports) I found:\n\n');
-		for k=1:length(ThePortDevices)
-			ThisDevice = sscanf(ThePortDevices(k).name,'cu.%s');
-			fprintf('\t\t%s\n',ThisDevice);
-		end
-		fprintf('\n\n');
-		fprintf('Is your USB to RS-232 adapter connected to your computer?\n');
-	end
-	error('No matching port found');
-elseif PortTypeFound > 1
-	fprintf('I found more than one port name that matched your input string.  I fear\n');
-	fprintf('you will have to edit code or command line to be more specific.  These\n');
-	fprintf('are the names of the devices that matched:\n\n');
-	for k=1:PortTypeFound
-		ThisDevice = sscanf(ThePortDevices(FoundIndices(k)),'cu.%s');
-		fprintf('\t\t%s\n',ThisDevice);
-	end
-	fprintf('\n');
-	error('Too many port name matches.');
-end
-
-% Some of the logic below could probably be thought out better... Within the
-% while loop, I want software to bump up PortNumber if it appears that the
-% PortNumber being evaluated is not the one we're looking for.  But if the
-% port is already open when I try to get that information, then I (may) want to
-% close it and go back through the loop again with the same PortNumber.  This
-% code does that, but it could probably do it better.  I'm also a bit afraid
-% about configuring ports (9600,n,8,1) when I don't know what they are.  I
-% suspect most ports can and will be run at higher baud rates here in the
-% 21st century.  But so far I have not had any problems opening ports this
-% way even when I suspect it is inappropriate. -- MPR  11/21/07
-
-NotAllPortsTested = 1;
-PortNumber = 1;
-while NotAllPortsTested
-	StdOutString  =[];
-	try
-		StdOutString = lower(evalc(['SerialComm(''open'',' int2str(PortNumber) ',''9600,n,8,1'');']));
-	catch
-		if strfind(lasterr,'port number out of range')
-			NotAllPortsTested = 0;
+for i = 1:length(PortDB)
+	for j = 1:length(ThePortDevices)
+		if ~isempty(strfind(lower(ThePortDevices(j).name), PortDB{i}))
+			FoundIndices(end+1) = j; %#ok<AGROW>
 		end
 	end
-	if ~isempty(StdOutString)
-		if ~isempty(strfind(StdOutString,'already open'))
-			% found that automatically closing port broke established communication,
-			% so this is an effort to test if we are talking to the device we want
-			% to talk to...
-			try
-				evalc(['SerialComm(''write'', ' int2str(PortNumber) ', [''b3'' char(10)]);']);
-				StartTime = GetSecs;
-				retval = [];
-				while isempty(retval) & GetSecs-StartTime < 10
-					retval = PR650serialread;
-				end
+end
+numPortsFound = length(FoundIndices);
 
-				if isempty(retval)
-					evalc(['SerialComm(''close'',' int2str(PortNumber) ');']);
-				else
-					return;
-				end
-			catch
-				evalc(['SerialComm(''close'',' int2str(PortNumber) ');']);
-			end
-
-		elseif ~isempty(strfind(StdOutString, PortString)) || ...
-				~isempty(strfind(StdOutString, AltPortString))
-			return;
-		else
-			if strfind(StdOutString, 'opened device')
-				evalc(['SerialComm(''close'',' int2str(PortNumber) ');']);
-			end
-			PortNumber = PortNumber+1;
-		end
-	else
-		PortNumber = PortNumber+1;
-	end
+if numPortsFound == 0 % No port matches.
+	error('\n%s%s%s\n%s\n%s\n%s\n%s\n', ...
+		'No ports found that match following ', selectionType, ' types(s)', ...
+		makeDesiredPortTypesString(PortDB), ...
+		'This is a list of the port(s) found:', ...
+		makeFoundDevicesString(ThePortDevices), ...
+		'Is your RS-232 adapter connected to your computer?');
+elseif numPortsFound > 1 % Too many port matches.
+	error('\n%s%s%s\n%s\n\n%s\n%s\n', ...
+		'More than one port name matched the ', selectionType, ' type(s)', ...
+		'A more specific port type is required.', ...
+		'This is a list of the port(s) found:', ...
+		makeFoundDevicesString(ThePortDevices)); %#ok<SPERR>
 end
 
-% return upon finding of PortString means function should not get here unless it
-% looked through all possible ports and failed to find one that matched.
-fprintf('I''m afraid that I could not find a port number associated with the \n');
-fprintf('port string.  I did not think this was possible, so there must be\n');
-fprintf('something that I don''t know about SerialComm or your operating system.\n');
-error('Could not match port number to port string.  Sorry!');
+% Convert the port name into a port number.
+portString = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
+PortNumber = SerialComm('name2number', portString);
+
+
+
+function s = makeDesiredPortTypesString(PortDB)
+s = [];
+for i = 1:length(PortDB)
+	s = [s sprintf('\t\t%s\n', PortDB{i})]; %#ok<AGROW>
+end
+
+
+function s = makeFoundDevicesString(ThePortDevices)
+s = [];
+
+for k = 1:length(ThePortDevices)
+	ThisDevice = sscanf(ThePortDevices(k).name,'cu.%s');
+	s = [s sprintf('\t\t%s\n',ThisDevice)]; %#ok<AGROW>
+end

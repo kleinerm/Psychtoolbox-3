@@ -114,19 +114,12 @@ cal.describe.program = sprintf('CalibrateMonSpd, background set to [%g,%g,%g]',.
                                cal.bgColor(1), cal.bgColor(2), cal.bgColor(3));
 cal.describe.comment = input('Describe the calibration: ','s');
 
-% Enter save code
-fprintf(1, '\nSave codes:\n\t0 - screenX.mat\n\t1 - string.mat\n\t2 - default.mat\n');
-saveCode = input('	Enter save code [0]: ');
-if isempty(saveCode)
-	saveCode = 0;
-end
-if saveCode == 1
-	defaultFileName = 'monitor';
-	thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
-	newFileName = input(thePrompt,'s');
-	if isempty(newFileName)
-        newFileName = defaultFileName;
-	end
+% Get name
+defaultFileName = 'monitor';
+thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
+newFileName = input(thePrompt,'s');
+if isempty(newFileName)
+    newFileName = defaultFileName;
 end
 
 % Fitting parameters
@@ -159,19 +152,8 @@ cal = CalibrateAmbDrvr(cal, USERPROMPT, whichMeterType, blankOtherScreen);
 Snd('Play', sin(0:10000)); WaitSecs(.75); Snd('Play', sin(0:10000)); WaitSecs(.75); Snd('Play', sin(0:20000));
 
 % Save the structure
-if saveCode == 0
-	screenNumber = cal.describe.whichScreen;
-	fprintf(1, '\nSaving to screen%g.mat\n', screenNumber);
-	SaveCalFile(cal, screenNumber);
-elseif saveCode == 1
-	fprintf(1, '\nSaving to %s.mat\n', newFileName);
-	SaveCalFile(cal, newFileName);
-elseif saveCode == 2
-	fprintf(1, '\nSaving to default.mat\n');
-	SaveCalFile(cal);
-else
-	error('Illegal value for save code entered');
-end
+fprintf(1, '\nSaving to %s.mat\n', newFileName);
+SaveCalFile(cal, newFileName);
 
 % Put up a plot of the essential data
 figure(1); clf;
