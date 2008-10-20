@@ -57,6 +57,7 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 int PsychIOOSBytesAvailableSerialPort(PsychSerialDeviceRecord* device);
 void PsychIOOSFlushSerialPort(PsychSerialDeviceRecord* device);
 void PsychIOOSPurgeSerialPort(PsychSerialDeviceRecord* device);
+void PsychIOOSShutdownSerialReaderThread(PsychSerialDeviceRecord* device);
 
 // Public subfunction prototypes
 PsychError MODULEVersion(void); 

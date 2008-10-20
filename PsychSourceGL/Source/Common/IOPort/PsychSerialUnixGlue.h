@@ -40,6 +40,7 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <time.h>
+#include <pthread.h>
 
 // OS/X specific includes and structures:
 #if PSYCH_SYSTEM == PSYCH_OSX
@@ -67,6 +68,11 @@ typedef struct PsychSerialDeviceRecord {
 	unsigned int		readBufferSize;			// Size of readbuffer.
 	double				readTimeout;			// Backup copy of current read timeout value.
 	double				pollLatency;			// Seconds to sleep between spin-wait polls in 'Read'.
+	pthread_t			readerThread;			// Thread handle for background reading thread.
+	pthread_mutex_t		readerLock;				// Primary lock.
+	int					readerThreadWritePos;	// Position of next data write for readerThread.
+	int					clientThreadReadPos;	// Position of next data read from main thread.
+	int					readGranularity;		// Amount of bytes to request per blocking read call in readerThread.
 } PsychSerialDeviceRecord;
 
 #endif

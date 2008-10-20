@@ -378,7 +378,16 @@ PsychError IOPORTOpenSerialPort(void)
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
 		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
 		"PollLatency=0.0005 (0.005 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
-		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n";
+		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n"
+		"StartBackgroundRead=readGranularity -- Enable asynchronous background read operations on the port. This is only supported "
+		"on Linux and OS/X for now. A parallel background thread is started which tries to fetch 'readGranularity' bytes of data, "
+		"polling the port every 'PollLatency' seconds for at least 'readGranularity' bytes of data. 'InputBufferSize' must be an "
+		"integral multiple of 'readGranularity' for this to work. Later IOPort('Read') commands will pull collected data from "
+		"the InputBuffer in quanta of at most 'readGranularity' bytes per invocation. This function is useful for background "
+		"data collection from devices that stream some data at a constant rate. You set up background read, let the parallel "
+		"thread do all data collection in the background and collect the data at the end of a session with a sequence of "
+		"IOPort('Read') calls. This way, data collection doesn't clutter your main experiment script.\n\n"
+		"StopBackgroundRead -- Stop running background read operation, discard all pending data.\n\n";
 
 	static char seeAlsoString[] = "'CloseAll'";	 
   	

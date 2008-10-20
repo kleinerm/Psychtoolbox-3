@@ -117,6 +117,113 @@ static int ConstantToBaud(int inint)
 	return(inint);
 }
 
+int PsychSerialUnixGlueAsyncReadbufferBytesAvailable(PsychSerialDeviceRecord* device)
+{	
+	int navail = 0;
+	
+	// Lock data structure:
+	pthread_mutex_lock(&(device->readerLock));
+	
+	// Compute amount of pending data for readout:
+	navail = (device->readerThreadWritePos - device->clientThreadReadPos);
+
+	// Unlock data structure:
+	pthread_mutex_unlock(&(device->readerLock));
+		
+	// Return it.
+	return(navail);
+}
+
+void* PsychSerialUnixGlueReaderThreadMain(void* deviceToCast)
+{
+	int rc, nread, oldstate;
+	int navail;
+	
+
+	// Get a handle to our device struct: These pointers must not be NULL!!!
+	PsychSerialDeviceRecord* device = (PsychSerialDeviceRecord*) deviceToCast;
+	
+	// Main loop: Runs until external thread cancellation:
+	while (1) {
+		// Enough data available for read of requested granularity?
+		// If not, we sleep for some time, then retry:
+		ioctl(device->fileDescriptor, FIONREAD, &navail);
+
+		while(navail < device->readGranularity) {
+			pthread_testcancel();
+			PsychWaitIntervalSeconds(device->pollLatency);
+			ioctl(device->fileDescriptor, FIONREAD, &navail);
+		}
+		
+		// Enough data available. Read it!
+		if ((nread = read(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), device->readGranularity)) != device->readGranularity) {
+			// Should not happen...
+			fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", device->readGranularity, nread);
+		}
+
+		// Prevent our cancellation:
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &oldstate);
+		
+		// Try to lock, block until available if not available:
+		if ((rc=pthread_mutex_lock(&(device->readerLock)))) {
+			// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
+			// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
+			// wreak havoc -- maybe it goes to the system log, which should be safer...
+			fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): mutex_lock failed  [%s].\n", strerror(rc));
+			
+			// Commit suicide:
+			return;
+		}
+		
+		// Update linear write pointer:
+		device->readerThreadWritePos += device->readGranularity;
+		
+		// Need to unlock the mutex:
+		if ((rc=pthread_mutex_unlock(&(device->readerLock)))) {
+			// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
+			// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
+			// wreak havoc -- maybe it goes to the system log, which should be safer...
+			fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Last mutex_unlock in termination failed  [%s].\n", strerror(rc));
+			
+			// Commit suicide:
+			return;
+		}
+		
+		// Reenable cancellation:
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, &oldstate);
+		
+		// Test for explicit cancellation by mother-thread:
+		pthread_testcancel();
+
+		// Next iteration...
+	}
+	
+	// Go and die peacefully...
+	return;
+}
+
+void PsychIOOSShutdownSerialReaderThread(PsychSerialDeviceRecord* device)
+{
+	if (device->readerThread) {
+		// Make sure we don't hold the mutex:
+		pthread_mutex_unlock(&(device->readerLock));
+
+		// Cancel the thread:
+		pthread_cancel(device->readerThread);
+		
+		// Wait for it to die:
+		pthread_join(device->readerThread, NULL);
+		
+		// Mark it as dead:
+		device->readerThread = NULL;
+		
+		// Release the mutex:
+		pthread_mutex_destroy(&(device->readerLock));
+	}
+	
+	return;
+}
+
 /* PsychIOOSOpenSerialPort()
  *
  * Open a serial port device and configure it.
@@ -174,6 +281,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
 	device->fileDescriptor = -1;
 	device->readBuffer = NULL;
 	device->readBufferSize = 0;
+	device->readerThread = NULL;
 	
     // Get the current options and save them so we can restore the default settings later.
     if (tcgetattr(fileDescriptor, &(device->OriginalTTYAttrs)) == -1) {
@@ -199,6 +307,8 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
 		usererr = TRUE;
         goto error;
 	}
+
+	// printf("MAX_INPUT = %i / %i \n", (int) fpathconf(device->fileDescriptor, _PC_MAX_INPUT), (int) fpathconf(device->fileDescriptor, _PC_MAX_CANON));
 
     // Success! Return Pointer to new device structure:
     return(device);
@@ -246,6 +356,8 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
 {
 	if (device == NULL) PsychErrorExitMsg(PsychError_internal, "NULL-Ptr instead of valid device pointer!");
 	
+	PsychIOOSShutdownSerialReaderThread(device);
+	
 	// Drain all send-buffers:
     // Block until all written output has been sent from the device.
     // Note that this call is simply passed on to the serial device driver. 
@@ -285,6 +397,7 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
  */
 PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const char* configString)
 {
+	int				rc;
     struct termios	options;
     int				handshake;
 	char*			p;
@@ -316,7 +429,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Set raw input (non-canonical) mode: No line-based processing or editing of
 	// received data via special control characters, unless a processing mode of
 	// cooked was explicitely requested:
-    if (strstr(configString, "ProcessingMode=Cooked") == NULL) { cfmakeraw(&options); updatetermios = TRUE; }
+    if ((strstr(configString, "ProcessingMode=")!=NULL) && (strstr(configString, "ProcessingMode=Cooked") == NULL)) { cfmakeraw(&options); updatetermios = TRUE; }
 	
 	// No minimum number of bytes to receive:
 	options.c_cc[VMIN] = 0;
@@ -529,7 +642,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		return(PsychError_system);
     }
     
-    	if (verbosity > 3) {
+	if (verbosity > 3) {
 		printf("IOPort-Info: Handshake lines currently set to %d : ", handshake);
 		printf("DTR=%i : DSR=%i : RTS=%i : CTS=%i\n", (handshake & TIOCM_DTR) ? 1:0, (handshake & TIOCM_DSR) ? 1:0, (handshake & TIOCM_RTS) ? 1:0, (handshake & TIOCM_CTS) ? 1:0);
 	}
@@ -682,6 +795,58 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		}
 	}
 	
+	// Async background read via parallel thread requested?
+	if ((p = strstr(configString, "StartBackgroundRead="))) {
+		if (1!=sscanf(p, "StartBackgroundRead=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for StartBackgroundRead set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		else {
+			// Set data-fetch granularity for single background read requests:
+			if (inint < 1) {
+				if (verbosity > 0) printf("Invalid StartBackgroundRead fetch granularity of %i bytes provided. Must be at least 1 byte!\n", inint);
+				return(PsychError_invalidIntegerArg);
+			}
+			
+			if (device->readBufferSize < inint) {
+				if (verbosity > 0) printf("Invalid StartBackgroundRead fetch granularity of %i bytes provided. Bigger than current Inputbuffer size of %i bytes!\n", inint, device->readBufferSize);
+				return(PsychError_invalidIntegerArg);
+			}
+
+			if ((device->readBufferSize % inint) != 0) {
+				if (verbosity > 0) printf("Invalid StartBackgroundRead fetch granularity of %i bytes provided. Inputbuffer size of %i bytes is not an integral multiple of fetch granularity as required!\n", inint, device->readBufferSize);
+				return(PsychError_invalidIntegerArg);
+			}
+
+			if (device->readerThread) {
+				if (verbosity > 0) printf("Called StartBackgroundRead, but background read operations are already enabled! Disable first via 'StopBackgroundRead'!\n");
+				return(PsychError_user);			
+			}
+			
+			// Setup data structures:
+			device->readerThreadWritePos = 0;
+			device->clientThreadReadPos  = 0;
+			device->readGranularity = inint;
+			
+			// Create & Init the mutex:
+			if ((rc=pthread_mutex_init(&(device->readerLock), NULL))) {
+				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create readerLock mutex lock [%s].\n", strerror(rc));
+				return(PsychError_system);
+			}
+			
+			// Create and startup thread:
+			if ((rc=pthread_create(&(device->readerThread), NULL, PsychSerialUnixGlueReaderThreadMain, (void*) device))) {
+				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create background reader thread [%s].\n", strerror(rc));
+				return(PsychError_system);
+			}
+		}
+	}
+	
+	// Stop a background reader?
+	if ((p = strstr(configString, "StopBackgroundRead"))) {
+		PsychIOOSShutdownSerialReaderThread(device);
+	}
+	
 	// Done.
 	return(PsychError_none);
 }
@@ -828,97 +993,156 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 		
 	}
 	
+	// Async read active and amount > read granularity? If so, we clamp it to read granularity
+	// to avoid ringbuffer wraparound problems.
+	// TODO: FIXME -- Implement this ringbuffer wraparound properly to lift
+	// this limitation!
+	if ((device->readerThread) && (amount > device->readGranularity)) amount = device->readGranularity;
+	
 	// Nonblocking mode?
 	if (blocking <= 0) {
-		// Yep. Set filedescriptor to non-blocking mode:
-		// Set the O_NONBLOCK flag so subsequent I/O will not block.
-		// See fcntl(2) ("man 2 fcntl") for details.
-		if (fcntl(device->fileDescriptor, F_SETFL, O_NONBLOCK) == -1)
-		{
-			sprintf(errmsg, "Error setting O_NONBLOCK on device %s for non-blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
-		}
+		// Yep.
 		
-		// Read the data, at most 'amount' bytes, nonblocking:
-		if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
-		{
-			// Nothing to read? In nonblocking mode we simply return zero bytes read:
-			if (errno == EAGAIN) return(0);
+		// Background read active?
+		if (device->readerThread) {
+			// Just return what is available in the internal buffer:
+			nread = PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device);
+		}
+		else {
+			// Set filedescriptor to non-blocking mode:
+			// Set the O_NONBLOCK flag so subsequent I/O will not block.
+			// See fcntl(2) ("man 2 fcntl") for details.
+			if (fcntl(device->fileDescriptor, F_SETFL, O_NONBLOCK) == -1)
+			{
+				sprintf(errmsg, "Error setting O_NONBLOCK on device %s for non-blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
 			
-			// Some other error:
-			sprintf(errmsg, "Error during non-blocking read from device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
+			// Read the data, at most 'amount' bytes, nonblocking:
+			if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
+			{
+				// Nothing to read? In nonblocking mode we simply return zero bytes read:
+				if (errno == EAGAIN) return(0);
+				
+				// Some other error:
+				sprintf(errmsg, "Error during non-blocking read from device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
 		}
 	}
 	else {
-		// Nope. Set filedescriptor to blocking mode:
-		// Clear the O_NONBLOCK flag so subsequent I/O will block.
-		// See fcntl(2) ("man 2 fcntl") for details.
-		if (fcntl(device->fileDescriptor, F_SETFL, 0) == -1)
-		{
-			sprintf(errmsg, "Error clearing O_NONBLOCK on device %s for blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
-		}
-
-		// Retrieve current termios settings:
-		if (tcgetattr(device->fileDescriptor, &options) == -1)
-		{
-			sprintf(errmsg, "Error getting current serial port device settings for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
-		}
+		// Nope. This is a blocking read request:
 		
-		// Change the number of bytes that must be received for blocking read()'s before read() returns.
-		// read() will return if it can fetch at least that many bytes (we want 'amount' bytes at least),
-		// or if the user specified timeout occurs (as set in Open or Configure routine):
-		options.c_cc[VMIN] = amount;
-
-		// Cause the new options to take effect immediately.
-		if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
-		{
-			sprintf(errmsg, "Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
+		// Background read active?
+		if (device->readerThread) {
+			// Poll until requested amount of data is available:
+			// TODO FIXME: Could do this in a more friendly way by using condition
+			// variables, so we sleep until async reader thread signals availability
+			// of sufficient data...
+			PsychGetAdjustedPrecisionTimerSeconds(&timeout);
+			*timestamp = timeout;
+			timeout+=device->readTimeout;
+			
+			while((*timestamp < timeout) && (PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device) < amount)) {
+				PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+				PsychWaitIntervalSeconds(device->pollLatency);
+			}
+			
+			// Return amount of available data:
+			nread = PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device);			
 		}
-		
-		// Need to poll for arrival of first byte, as the timeout timer [VTIME] is only armed after
-		// reception of first byte:
-		PsychGetAdjustedPrecisionTimerSeconds(&timeout);
-		*timestamp = timeout;
-		timeout+=device->readTimeout;
-
-		while((*timestamp < timeout) && (PsychIOOSBytesAvailableSerialPort(device) < 1)) {
-			PsychGetAdjustedPrecisionTimerSeconds(timestamp);
-			PsychWaitIntervalSeconds(device->pollLatency);
+		else {
+			// Set filedescriptor to blocking mode:
+			// Clear the O_NONBLOCK flag so subsequent I/O will block.
+			// See fcntl(2) ("man 2 fcntl") for details.
+			if (fcntl(device->fileDescriptor, F_SETFL, 0) == -1)
+			{
+				sprintf(errmsg, "Error clearing O_NONBLOCK on device %s for blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
+			
+			// Retrieve current termios settings:
+			if (tcgetattr(device->fileDescriptor, &options) == -1)
+			{
+				sprintf(errmsg, "Error getting current serial port device settings for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
+			
+			// Change the number of bytes that must be received for blocking read()'s before read() returns.
+			// read() will return if it can fetch at least that many bytes (we want 'amount' bytes at least),
+			// or if the user specified timeout occurs (as set in Open or Configure routine):
+			options.c_cc[VMIN] = amount;
+			
+			// Cause the new options to take effect immediately.
+			if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+			{
+				sprintf(errmsg, "Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
+			
+			// Need to poll for arrival of first byte, as the timeout timer [VTIME] is only armed after
+			// reception of first byte:
+			PsychGetAdjustedPrecisionTimerSeconds(&timeout);
+			*timestamp = timeout;
+			timeout+=device->readTimeout;
+			
+			while((*timestamp < timeout) && (PsychIOOSBytesAvailableSerialPort(device) < 1)) {
+				PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+				PsychWaitIntervalSeconds(device->pollLatency);
+			}
+			
+			if (PsychIOOSBytesAvailableSerialPort(device) < 1) {
+				// Ok, first byte didn't arrive within one timeout period:
+				return(0);
+			}
+			
+			// Read the data, at most (and at least, unless timeout occurs) 'amount' bytes, blocking:
+			if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
+			{
+				sprintf(errmsg, "Error during blocking read from device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}		
+			
+			// Reset minbytes to zero:
+			options.c_cc[VMIN] = 0;
+			
+			// Cause the new options to take effect immediately.
+			if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+			{
+				sprintf(errmsg, "Error resetting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+				return(-1);
+			}
 		}
-
-		if (PsychIOOSBytesAvailableSerialPort(device) < 1) {
-			// Ok, first byte didn't arrive within one timeout period:
-			return(0);
-		}
-
-		// Read the data, at most (and at least, unless timeout occurs) 'amount' bytes, blocking:
-		if ((nread = read(device->fileDescriptor, device->readBuffer, amount)) == -1)
-		{
-			sprintf(errmsg, "Error during blocking read from device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
-		}		
-
-		// Reset minbytes to zero:
-		options.c_cc[VMIN] = 0;
-
-		// Cause the new options to take effect immediately.
-		if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
-		{
-			sprintf(errmsg, "Error resetting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-			return(-1);
-		}
-
 	}
 	
-	// Read successfully completed if we reach this point. Take timestamp, clear error message, return:
+	// Read successfully completed if we reach this point. Take timestamp, clear error message:
 	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 	errmsg[0] = 0;
 
-	*readdata = device->readBuffer;	
+	// Was this a fetch-op from an active background read?
+	if (device->readerThread) {
+		// Yes.
+
+		// Check for buffer overflow:
+		if (nread > device->readBufferSize) {
+			sprintf(errmsg, "Error: Readbuffer overflow for background read operation on device %s for read. At least %i bytes have been lost!\n", device->portSpec, nread - device->readBufferSize);
+			return(-1);
+		}
+		
+		// Clamp available amount to requested (or maximum allowable) amount:
+		nread = (nread > amount) ? amount : nread;
+		
+		// Copy current readpos to readdata:
+		*readdata = (void*) &(device->readBuffer[(device->clientThreadReadPos) % (device->readBufferSize)]);
+
+		// Update of read-pointer:
+		device->clientThreadReadPos += nread;
+	}
+	else {
+		// No. Standard read:
+		*readdata = (void*) device->readBuffer;
+	}
+	
 	return(nread);
 }
 
@@ -926,9 +1150,16 @@ int PsychIOOSBytesAvailableSerialPort(PsychSerialDeviceRecord* device)
 {
 	int navail = 0;
 	
-	if (ioctl(device->fileDescriptor, FIONREAD, &navail)!=0) {
-		if (verbosity > 0) printf("Error during 'BytesAvailable': ioctl - FIONREAD byte available query on device %s returned %s(%d)\n", device->portSpec, strerror(errno), errno);
-		return(-1);
+	if (device->readerThread) {
+		// Async reader poll: Calculate what is available in the internal buffer:
+		navail = PsychSerialUnixGlueAsyncReadbufferBytesAvailable(device);
+	}
+	else {
+		// Regular poll: Perform query to system:
+		if (ioctl(device->fileDescriptor, FIONREAD, &navail)!=0) {
+			if (verbosity > 0) printf("Error during 'BytesAvailable': ioctl - FIONREAD byte available query on device %s returned %s(%d)\n", device->portSpec, strerror(errno), errno);
+			return(-1);
+		}
 	}
 	
 	return(navail);
