@@ -48,6 +48,22 @@ if modality == 3
     PsychRTBox('ClockRatio', [], 30);
 end
 
+if modality == 5
+    p = dir('/dev/cu.usbserial*');
+    cedrusport = ['/dev/' char(p.name)];
+
+    % Open box, at high baud-rate (aka lowBaudrate == 0), perform calibration /
+    % clock sync (doCalibrate == 1):
+    hcedrus=CedrusResponseBox('Open', cedrusport, 0, 1);
+
+    bi = CedrusResponseBox('GetDeviceInfo', hcedrus);
+    disp(bi);
+
+    fprintf('Clearing all queues...');
+    CedrusResponseBox('ClearQueues', hcedrus);
+    fprintf('... done.\n');
+end
+
 fprintf('Auditory keyboard / mouse latency test:\n');
 fprintf('After you see the instruction "Hit me baby one more time!", hit ');
 if modality == 1
@@ -143,6 +159,24 @@ for trial = 1:10
 %                tKeypress2= PsychRTBox('Box2Secs', [], tBox);
             end
 
+        case 5
+            % Test Cedrus response box:
+            CedrusResponseBox('FlushEvents', hcedrus);
+
+            fprintf('From now on... ');
+            evt = [];
+
+            % Wait for some event on box, return its 'GetSecs' time:
+            while isempty(evt) || evt.port~=0 || evt.action~=1 || evt.button~=2
+                evt = CedrusResponseBox('GetButtons', hcedrus);
+            end
+            disp(evt)
+            tKeypress = evt.ptbtime;
+            
+            while ~isempty(evt)
+                evt = CedrusResponseBox('GetButtons', hcedrus);
+            end
+            
         otherwise
             error('Unknown "modality" specified.');
     end
@@ -214,6 +248,10 @@ PsychPortAudio('Close', pahandle);
 fprintf('\nTest finished. Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay), std(tdelay));
 if ~isempty(tdelay2)
     fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay2), std(tdelay2));
+end
+
+if modality == 5
+    CedrusResponseBox('Close', hcedrus);
 end
 
 return;
