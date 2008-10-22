@@ -117,7 +117,7 @@ PsychError SCREENGetMouseHelper(void)
 	}
 			
 	//cursor position
-	GetMouse(&mouseXY);
+	GetGlobalMouse(&mouseXY);
 	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)mouseXY.h);
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double)mouseXY.v);
 #endif
