@@ -1,5 +1,5 @@
-function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode)
-% ImagingStereoMoviePlayer(moviefile [,stereoMode=8] [,imaging=1] [,anaglyphmode=0])
+function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode, screenid)
+% ImagingStereoMoviePlayer(moviefile [,stereoMode=8] [,imaging=1] [,anaglyphmode=0] [,screenid=max])
 %
 % Minimalistic movie player for stereo movies. Reads movie from file
 % 'moviefile'. Left half of each movie video frame must contain left-eye
@@ -20,6 +20,9 @@ function ImagingStereoMoviePlayer(moviefile, stereoMode, imaging, anaglyphmode)
 % 4 = Full color anaglyphs.
 %
 % See "help SetAnaglyphParameters" for further description and references.
+%
+% 'screenid' Screen id of target display screen (on multi-display setups).
+% By default, the screen with maximum id is used.
 %
 % The left image is centered on the screen, the right images position can
 % be moved by moving the mouse cursor to align for inter-eye distance.
@@ -65,7 +68,14 @@ if isempty(anaglyphmode)
     anaglyphmode = 0;
 end
 
-screenid = max(Screen('Screens'));
+if nargin < 5
+    screenid = [];
+end
+
+if isempty(screenid)
+    screenid = max(Screen('Screens'));
+end
+
 [win, winRect] = Screen('OpenWindow', screenid, 0, [], [], [], stereoMode, [], imaging);
 modestr = [];
 
@@ -88,7 +98,7 @@ if imaging
             %error('Unknown stereoMode specified.');
     end
 
-    if stereoMode > 5 & stereoMode < 10
+    if stereoMode > 5 && stereoMode < 10
         switch anaglyphmode
             case 0,
                 % Default anaglyphs, nothing to do...
@@ -125,7 +135,7 @@ if benchmark
         Screen('Flip', win,[],0,2);
     end
     t2=Screen('Flip', win);
-    avg = (t2 - t1) / count * 1000
+    avg = (t2 - t1) / count * 1000 %#ok<NOPRT,NASGU>
     sca;
     return;
 end
@@ -155,7 +165,7 @@ end
 
 try
     % Playback loop: Run until keypress or error:
-    while ~KbCheck & tex~=-1
+    while ~KbCheck && tex~=-1
 
         % Fetch next image from movie:
         tex = Screen('GetMovieImage', win, movie, 1);
@@ -163,23 +173,25 @@ try
         % Valid image to draw?
         if tex>0
             % Query mouse position:
-            [x,yd] = GetMouse(win);
+            x = GetMouse(win);
 
             % Setup drawing regions based on size of first frame:
             if isempty(imgrect)
-                imgrect = Screen('Rect', tex);
+                imgrect = Screen('Rect', tex) ;
                 imglrect = [0, 0, RectWidth(imgrect)/2, RectHeight(imgrect)];
                 imgrrect = [RectWidth(imgrect)/2, 0, RectWidth(imgrect), RectHeight(imgrect)];
+                sf = min([RectWidth(winRect)/RectWidth(imglrect) , RectHeight(winRect)/RectHeight(imglrect)]);
+                dstrect = ScaleRect(imglrect,sf,sf);
             end
 
             % Left eye image == left half of movie texture:
             Screen('SelectStereoDrawBuffer', win, 0);
-            Screen('DrawTexture', win, tex, imglrect);
+            Screen('DrawTexture', win, tex, imglrect, CenterRect(dstrect, winRect));
 
             Screen('SelectStereoDrawBuffer', win, 1);
             % Draw right image centered on mouse position -- mouse controls image
             % offsets:
-            Screen('DrawTexture', win, tex, imgrrect, CenterRectOnPoint(imgrrect, x, y));
+            Screen('DrawTexture', win, tex, imgrrect, CenterRectOnPoint(dstrect, x, y));
 
             % Show at next retrace:
             Screen('Flip', win);

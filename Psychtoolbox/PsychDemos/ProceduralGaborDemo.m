@@ -47,6 +47,9 @@ function ProceduralGaborDemo(benchmark, nonsymmetric)
 % part in 68000, therefore display would be perfect even on a display device
 % with 15 bit DAC's. The framerate is about 2344 frames per second.
 %
+% A Geforce 8800 on OS/X achieves about max error 0.0000207 units and
+% a max fps of 3029 frames per second.
+%
 % Please note that results in performance and accuracy *will* vary,
 % depending on the model of your graphics card, gfx-driver version and
 % possibly operating system. For consistent results, always check before you
