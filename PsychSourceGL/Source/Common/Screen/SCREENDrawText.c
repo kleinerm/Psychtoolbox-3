@@ -851,6 +851,7 @@ static BYTE*				pBits = NULL;	// Pointer to dc's DIB bitmap memory.
 static HBITMAP				hbmBuffer;		// DIB.
 static int					oldWidth=-1;	// Size of last target window for drawtext.
 static int					oldHeight=-1;	// dto.
+static PsychWindowRecordType* oldWin = NULL; // Last window to which text was drawn to.
 
 void CleanupDrawTextGDI(void)
 {
@@ -867,6 +868,8 @@ void CleanupDrawTextGDI(void)
 	
 	oldWidth = -1;
 	oldHeight = -1;
+	
+	oldWin = NULL;
 	
 	return;
 }
@@ -1004,9 +1007,13 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	}
 	
     // Does the font (better, its display list) need to be build or rebuild, because
-    // font name, size or settings have changed?
+    // font name, size or settings have changed? Or is the current window
+	// winRec not identical to the last target window oldWin? In that case,
+	// we'll need to reassign the font as well, as fonts are not cached
+	// on a per windowRecord basis.
+	//
     // This routine will check it and perform all necessary ops if so...
-	if (winRec->textAttributes.needsRebuild) {
+	if ((winRec->textAttributes.needsRebuild) || (oldWin != winRec)) {
 		// Delete the old font object, if any:
 		if (font) DeleteObject(font);
 		font = NULL; 
@@ -1050,6 +1057,9 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		// Clear rebuild flag:
 		winRec->textAttributes.needsRebuild = FALSE;
 	}
+	
+	// Update last target window:
+	oldWin = winRec;
 	
 	// Select the font we created:
 	SelectObject(dc, font);
