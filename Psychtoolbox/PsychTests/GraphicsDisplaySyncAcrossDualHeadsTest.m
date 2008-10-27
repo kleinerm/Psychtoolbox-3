@@ -63,8 +63,8 @@ else
 end
 
 % Open windows:
-w(1) = Screen('OpenWindow', screenids(1), 0);
-w(2) = Screen('OpenWindow', screenids(2), 0);
+w(1) = Screen('OpenWindow', screenids(1), 0, [0 0 10 10]);
+w(2) = Screen('OpenWindow', screenids(2), 0, [0 0 10 10]);
 
 % Some beauty...
 Screen('Flip', w(1), 0, 2);

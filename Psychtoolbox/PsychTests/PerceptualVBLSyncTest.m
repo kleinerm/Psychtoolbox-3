@@ -92,11 +92,15 @@ if nargin < 5
 end
 
 try
-   if fullscreen
-      rect=[];
-   else
-      rect=[0,0,800,600];
-   end;
+    if fullscreen
+        rect1=[];
+        rect2=[];
+    else
+        rect1=InsetRect(Screen('GlobalRect', screen(1)), 1, 0);
+        if length(screen)>1
+            rect2=InsetRect(Screen('GlobalRect', screen(2)), 1, 0);
+        end
+    end;
    
    help PerceptualVBLSyncTest;
    fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
@@ -106,17 +110,17 @@ try
    
    if stereomode~=10
        % Standard case:
-       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect, 32, doublebuffer, stereomode);
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, 32, doublebuffer, stereomode);
        if length(screen)>1
-           win2 = Screen('OpenWindow', screen(2), 0, rect, 32, doublebuffer, stereomode);
+           win2 = Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);
        end
    else
        % Special case for dual-window stereo:
 
        % Setup master window:
-       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect, 32, doublebuffer, stereomode);
+       [win , winRect]=Screen('OpenWindow', screen(1), 0, rect1, 32, doublebuffer, stereomode);
        % Setup slave window:
-       Screen('OpenWindow', screen(2), 0, rect, 32, doublebuffer, stereomode);       
+       Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);       
    end
    
    flickerRect = InsetRect(winRect, 100, 0);
