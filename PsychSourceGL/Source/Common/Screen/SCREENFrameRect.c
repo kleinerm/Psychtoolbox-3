@@ -90,8 +90,8 @@ PsychError SCREENFrameRect(void)
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
 	}
 
-	// Pen size starts as 1:
-	penSize = 1;
+	// Pen size starts as "undefined", just to make sure it gets initially set:
+	penSize = -DBL_MAX;
 	
 	// Framed rect drawing loop:
 	for (i=0; i<numRects; i++) {
