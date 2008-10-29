@@ -919,6 +919,16 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
             Screen('EndOpenGL', targetwindow);
         end
 
+        % Targetwindow active?
+        if targetwindow == 0
+            % Nope! We are without targetwindow, e.g., due to return from
+            % an async flip operation. That means that no OpenGL context is
+            % active for this thread and all OpenGL ops would be no-ops or
+            % crashes. We perform a dummy call for the sole purpose to get
+            % our window bound and an OpenGL context activated:
+            dummyWinfo = Screen('GetWindowInfo', win); %#ok<NASGU>
+        end
+        
         % Switch to OpenGL mode and copy morphbuffer into our VBO:
         [w, h] = Screen('WindowSize', morphbuffer(1));
 
