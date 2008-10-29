@@ -254,6 +254,16 @@ function varargout = CedrusResponseBox(cmd, varargin)
 % events in the queue before performing the query!
 %
 %
+% slope = CedrusResponseBox('GetBoxTimerSlope', handle);
+% - Compute slope (drift) between computer clock and device clock. 'slope'
+% tells how many seconds of time "elapse" on the computer in GetSecs time
+% for each "elapsed" second of box time. At device open time, the driver
+% takes a timestamp from the device basetimer. This function also takes a
+% timestamp and then computes the ratio of differences. The longer you'll
+% wait after CedrusResponseBox('Open') before calling this function, the
+% more accurate the clock-drift estimate will be.
+%
+%
 % roundtrip = CedrusResponseBox('RoundTripTest', handle);
 % - Initiate 100 trials of the roundtrip test of the box. Data is echoed
 % forth and back 100 times between PTB and the box, and the latency is
@@ -799,7 +809,7 @@ if strcmpi(cmd, 'DefineInputLinesAndLevels')
     WriteDev(handle, '_a4');
     WaitSecs(1);
     resp = ReadDev(handle, 4);
-    if ~strcmp(char(resp(1:3)), '_a4')
+    if length(resp)<4 || ~strcmp(char(resp(1:3)), '_a4')
         warning('DefineInputLinesAndLevels: Invalid response received from device!');
         char(resp) %#ok<NOPRT>
         varargout{1} = 0;
@@ -869,13 +879,13 @@ if strcmpi(cmd, 'DefineInputLinesAndLevels')
     
     if ~strcmp(char(resp(1:3)), '_a6')
         warning('DefineInputLinesAndLevels: Invalid response received from device!');
-        char(resp) %#ok<NOPRT>
+        char(resp);
         varargout{1} = 0;
         return;        
     else
         if resp(4) ~= double(varargin{4})
             warning('DefineInputLinesAndLevels: Real TTL debounce time not equal to requested one!');
-            double(resp(4)) %#ok<NOPRT>
+            double(resp(4));
             varargout{1} = 0;
             return;
         end
@@ -1206,19 +1216,16 @@ if strcmpi(cmd, 'Open')
       
         % Calibration of PTB's timebase vs. Boxes timebase wanted?
         if doCalibrate
-            % Yep. First perform estimation of roundtrip delay time of
-            % serial link, so we know for what transmission latency to
-            % account for:
 
-            %             RoundTripTestDev(handle);
-            %             % From here on, all basetimer readouts will be corrected for
-            %             % transmit latency.
-            %
-            %             % Now perform calibration of mapping between box time
-            %             % values of box timer(s) and PTB's GetSecs timebase:
-            %             calibrateBaseTimer(handle);
-            
+            % Set slope of 1 as a flag that ResetRTT should do a
+            % calibrated, timestamped reset:
             ptb_cedrus_devices{handle}.baseToPtbSlope = 1;
+            
+            % Perform calibrated basetimer query:
+            [hosttime, devicetime, minwin] = queryBaseTimer(handle);
+
+            % And store its results:
+            ptb_cedrus_devices{handle}.lastBaseTimeQuery = [hosttime, devicetime, minwin];
             
         else
             % Uncalibrated mode requested. Saves a few seconds of startup
@@ -1232,6 +1239,8 @@ if strcmpi(cmd, 'Open')
             % No mapping of box time to PTB time available:
             ptb_cedrus_devices{handle}.baseToPtbSlope  = 0;
             ptb_cedrus_devices{handle}.baseToPtbOffset = 0;
+            
+            ptb_cedrus_devices{handle}.lastBaseTimeQuery = [];
         end
         
         % Reset reaction time timer of device: If calibration was
@@ -1249,6 +1258,32 @@ if strcmpi(cmd, 'Open')
 %    end
     return;
 end
+
+if strcmpi(cmd, 'GetBoxTimerSlope')
+    % Close device:
+    if nargin < 2
+        error('You must provide the device "handle" for the box to compute slope for!');
+    end
+
+    % Retrieve handle and check if valid:
+    handle = checkHandle(varargin{1});
+
+    % Perform calibrated basetimer query:
+    [hosttime, devicetime] = queryBaseTimer(handle);
+    
+    lastBaseTimeQuery = ptb_cedrus_devices{handle}.lastBaseTimeQuery;
+    
+    baseToPtbSlope = (hosttime - lastBaseTimeQuery(1)) / (devicetime - lastBaseTimeQuery(2));
+    
+    % Store measured slope internally:
+    ptb_cedrus_devices{handle}.baseToPtbSlope = baseToPtbSlope;
+
+    % Return measured slope:
+    varargout{1} = baseToPtbSlope;
+    
+    return;
+end
+
 
 if strcmpi(cmd, 'Close')
     % Close device:
@@ -1289,7 +1324,7 @@ error('Invalid subcommand given. Read the help.');
 
 function TestThis(handle)
 % Generic test blurb...
-global ptb_cedrus_devices;
+global ptb_cedrus_devices; %#ok<NUSED>
 
 persistent testbyte;
 if isempty(testbyte)
@@ -1314,16 +1349,16 @@ WaitSecs(0.4);
 WriteDev(handle, 'ar');
 
 % Wait for response:
-inputLines = dec2bin(ReadDev(handle, 1))
+inputLines = dec2bin(ReadDev(handle, 1)); %#ok<NASGU>
 
-basetime = WaitSecs(0.5);
+basetime = WaitSecs(0.5); %#ok<NASGU>
 
 % Set all output lines low:
 testbyte = mod(testbyte + 1, 256);
 WriteDev(handle, ['ah' testbyte]);
 %WriteDev(handle, ['ah' 255]);
 WaitSecs(0.4);
-WriteDev(handle, ['_ah']);
+WriteDev(handle, '_ah');
 
 % Any activity, e.g., events???
 %while BytesAvailable(handle) == 0
@@ -1331,7 +1366,7 @@ WriteDev(handle, ['_ah']);
 %end
 
 WaitSecs(0.1);
-response = ReadDev(handle, 4);
+response = ReadDev(handle, 4); %#ok<NASGU>
 %response2 = ReadDev(handle, 6)
 
 % if length(response) == 6
@@ -1383,7 +1418,7 @@ if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
         % Take pre-Write timestamp: Sync command not emitted before that time:
         % Write sync command, wait 'blocking' for write completion, store
         % completion time in t(2,ic). Send RTT reset command code 'e5':
-        [nw t(2,ic), errmsg, t(1,ic)] = IOPort('Write', s, 'e5', blocking); %#ok
+        [nw t(2,ic), errmsg, t(1,ic)] = IOPort('Write', s, 'e5', blocking);
 
         % We know that sync command emission has happened at some time
         % after t(1,ic) and before t(2,ic). This by design of the USB
@@ -1469,7 +1504,7 @@ return;
 function ClearQueues(handle)
     while BytesAvailable(handle)>0
         % Read and discard all bytes:
-        ReadDev(handle, BytesAvailable(handle))
+        ReadDev(handle, BytesAvailable(handle));
         WaitSecs(0.5);
     end
 return;
@@ -1673,7 +1708,6 @@ if ptb_cedrus_drivertype == 2
 
     % Open link:
      [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=Hardware ReceiveTimeout=1 ', baudrate));
-%    [dev.link, errmsg] = IOPort('OpenSerialPort', port, sprintf('BaudRate=%i Parity=None DataBits=8 StopBits=1 FlowControl=None ReceiveTimeout=1 PollLatency=0.0001', baudrate));
 
     IOPort('Verbosity', oldverb);
 
@@ -1764,7 +1798,7 @@ function CloseDev(handle)
     WaitSecs(0.5);
 
     % Initiate a device reset:
-    WriteDev(handle, 'f7');
+    % WriteDev(handle, 'f7');
 
     % Give device time to settle after reset:
     WaitSecs(0.5);
@@ -1974,54 +2008,102 @@ function roundtrip = RoundTripTestDev(handle)
 
 return;
 
-function calibrateBaseTimer(handle)
+function [hosttime, devicetime, minwin] = queryBaseTimer(handle)
     global ptb_cedrus_devices;
 
-    % Flush the queue:
-    WaitSecs(0.1);
-    FlushEvents(handle);
-    WaitSecs(0.1);
+    % Flush input buffer:
+    WaitSecs(1);
+    ClearQueues(handle);
+    WaitSecs(1);
+
+    % Switch to realtime priority if not already there:
+    oldPriority=Priority;
+    if oldPriority < MaxPriority('GetSecs')
+        Priority(MaxPriority('GetSecs'));
+    end
     
-    ptbtimes  = zeros(100,1);
-    basetimes = zeros(100,1);
+    % Get porthandle:
+    blocking = 1;
+    ntrials = 5;
+    s = ptb_cedrus_devices{handle}.link;
+    t = zeros(2,ntrials);
     
-    % Perform 100 measurement trials and one warmup trial:
-    for i=0:100
-        % Send basetimer query code:
-        WriteDev(handle, 'e3');
-
-        % Spin-Wait for receive of first byte:
-        while BytesAvailable(handle) < 1; end;
-
-        % Timestamp receive completion of first byte. This is closest to the
-        % real time when the transmitted timer values were received:
-        ptbtime = GetSecs;
-
-        % Receive packet, then parse into raw timer value (in seconds):
-        basetimer = receiveAndParseTimePacket(handle);
+    % Perform up to ntrials trials:
+    for ic=1:ntrials
         
-        % Correct reported time value of basetimer by half roundtrip delay
-        % of serial link: We assume that transmission took half the total
-        % measured roundtrip time, so we need to add that delay to the
-        % basetimer value to get an estimate of the "real" basetimer time
-        % at time of response packet receive "ptbtime":
-        basetimer = basetimer + ptb_cedrus_devices{handle}.roundtriptime/2;
+        % Wait some random fraction of a millisecond. This will desync us
+        % from the USB duty cycle and increase the chance of getting a very
+        % small time window between scheduling, execution and acknowledge
+        % of the send operation:
+        WaitSecs(rand / 1000 + 1);
         
-        % Store i'th measurement: Throw away first one, just to be safe:
-        if i>0
-            ptbtimes(i) = ptbtime;
-            basetimes(i) = basetimer;
+        % Take pre-Write timestamp: Sync command not emitted before that time:
+        % Write sync command, wait 'blocking' for write completion, store
+        % completion time in t(2,ic). Send basetimer query command code 'e3':
+        [nw t(2,ic), errmsg, t(1,ic)] = IOPort('Write', s, 'e3', blocking);
+
+        % Wait for response from box, receive packet, 
+        % then parse into raw timer value (in seconds):
+        devicetime = receiveAndParseTimePacket(handle);
+        
+        % We know that query command emission has happened at some time
+        % after t(1,ic) and before t(2,ic). This by design of the USB
+        % standard, host controllers and operating system USB stack. This
+        % is the only thing we can take for granted wrt. timing, so the
+        % "time window" between those two timestamps is our window of
+        % uncertainty about the real host time when sync started. However,
+        % on a well working system without massive system overload one can
+        % be reasonably confident that the real emission of the sync
+        % command happened no more than 1 msec before t(2,ic). That is a
+        % soft constraint however - useful for computing the final estimate
+        % for hosttime, but nothing to be taken 100% for granted.
+        if nw~=2
+            % Send op failed!
+            fprintf('CedrusResponseBox: queryBaseTimer: Warning! Query token send operation to box failed!\n');
+            t(1,ic) = 0;
+            t(2,ic) = inf;
+            continue;
         end
+
+        confidencewindow = t(2,ic) - t(1,ic);
+        if confidencewindow < 0.001
+            break;
+        end
+
+        % Next trial...
     end
 
-    % Perform linear least squares fit on values to find linear mapping:
-    coeff = polyfit(basetimes, ptbtimes, 1);
-
-    % Store regression coefficients for later mapping of basetimer times to
-    % ptb GetSecs times:
-    ptb_cedrus_devices{handle}.baseToPtbSlope  = coeff(1);
-    ptb_cedrus_devices{handle}.baseToPtbOffset = coeff(2);
-
+    % Restore priority
+    if Priority ~= oldPriority
+        Priority(oldPriority);
+    end
+    
+    % For each measurement, the time window t(2,ic)-t(1,ic) defines kind of
+    % a confidence interval for the "real" host system time when the sync
+    % command was emitted. The measurement with the smallest time window is
+    % the most accurate one. Find it and use it:
+    minwin = t(2,ic) - t(1,ic);
+    
+    % On OS/X or Linux we could easily do with 2 msecs, as a 1.2 msecs
+    % minwin is basically never exceeded. On MS-Windows however, 2.x
+    % durations are not uncommon, so we need to slack this to 3.
+    if minwin > 0.002
+        fprintf('CedrusResponseBox: queryBaseTimer: Warning! Confidence interval for clock sync is %f msecs - More than 2 msecs!\n', minwin);
+    end
+    
+    % If the 'minwin' window is smaller than 1 msec, we subtract 0.5 the
+    % length of it from the t(2,idx) timestamp as best estimate for
+    % hosttime -- reasonable assuming a uniform distribution in the
+    % 'minwin' interval. If 'minwin' is more than 1 msecs, we assume it
+    % happened 0.5 msecs before t(2,idx) -- taking advantage of the
+    % soft-constraint that the real write usually happens within 1 msec of
+    % t(2,idx) on a normally loaded and well working system:
+    hosttime = t(2,ic) - (min(minwin, 0.001)/2);
+    
+    WaitSecs(0.2);
+    FlushEvents(handle);
+    WaitSecs(0.2);
+    
 return;
 
 % Reads raw basetimer response packet from box, converted to seconds, but
@@ -2058,22 +2140,9 @@ function ptbTime = mapRTTimerToPTBTime(rtt, handle)
     global ptb_cedrus_devices;
 
     % rtt is the parsed timevalue (already mapped from msecs to seconds),
-    % as received in a event packet from the box. First we convert it to
-    % box-basetimer time by adding the calibrated offset between both, as
+    % as received in a event packet from the box. We map it to ptbTime by
+    % adding the offset between GetSecs time and device RTT time, as
     % estimated by last calibrated RTTReset():
-
-    %     basetime = rtt + ptb_cedrus_devices{handle}.RTTimerToBasetimerOffset;
-    %
-    %     % Now we map the 'basetime' into PTB GetSecs time by use of the linear
-    %     % mapping function created at init time via calibrateBaseTimer():
-    %     if ptb_cedrus_devices{handle}.baseToPtbSlope ~= 0
-    %         % Simple linear equation mapping:
-    %         ptbTime = ptb_cedrus_devices{handle}.baseToPtbOffset + ptb_cedrus_devices{handle}.baseToPtbSlope * basetime;
-    %     else
-    %         % Not calibrated! Can't map:
-    %         ptbTime = NaN;
-    %     end
-
     ptbTime = ptb_cedrus_devices{handle}.baseToPtbOffset + rtt;
 
 return;
