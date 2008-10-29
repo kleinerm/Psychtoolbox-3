@@ -1739,6 +1739,7 @@
 		83AD4CF70DC51755002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
 		83AD4CF80DC51759002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
 		83AD4CF90DC5176F002E1DF7 /* PsychCellGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 2FE3CC170569E4C6007A711C /* PsychCellGlue.c */; };
+		83C15D330EB8D72B003A7D96 /* VLProject.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 83C15D310EB8D72B003A7D96 /* VLProject.cpp */; };
 		83C802620B8CB29300097021 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
 		83C802630B8CB29300097021 /* MiniBox.c in Sources */ = {isa = PBXBuildFile; fileRef = F569F22A038E2B6B017A7028 /* MiniBox.c */; };
 		83C802640B8CB29300097021 /* MODULEVersion.c in Sources */ = {isa = PBXBuildFile; fileRef = F58524CB0421B88601A80165 /* MODULEVersion.c */; };
@@ -3716,6 +3717,8 @@
 		83A01F1B0EA10B63009C1DAA /* VLVideofile.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = VLVideofile.cpp; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLVideofile.cpp; sourceTree = SOURCE_ROOT; };
 		83A01F1C0EA10B63009C1DAA /* VLVideofile.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLVideofile.h; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLVideofile.h; sourceTree = SOURCE_ROOT; };
 		83A9A32E0CA5CB0800929494 /* SCREENResolutions.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENResolutions.c; path = ../../../Source/Common/Screen/SCREENResolutions.c; sourceTree = SOURCE_ROOT; };
+		83C15D310EB8D72B003A7D96 /* VLProject.cpp */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = VLProject.cpp; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLProject.cpp; sourceTree = SOURCE_ROOT; };
+		83C15D320EB8D72B003A7D96 /* VLProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLProject.h; path = ../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLProject.h; sourceTree = SOURCE_ROOT; };
 		83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MirrorFaceCore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83C802C90B8CECE500097021 /* MirrorFaceCore.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = MirrorFaceCore.cc; sourceTree = "<group>"; };
 		83C802CA0B8CECE500097021 /* MirrorFaceCore.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = MirrorFaceCore.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/MirrorFaceCore.h; sourceTree = "<absolute>"; };
@@ -5692,6 +5695,8 @@
 				83C802CB0B8CECE500097021 /* RegisterProject.c */,
 				83C802CC0B8CECE500097021 /* RegisterProject.h */,
 				83A01F1A0EA10B4F009C1DAA /* VLE.h */,
+				83C15D310EB8D72B003A7D96 /* VLProject.cpp */,
+				83C15D320EB8D72B003A7D96 /* VLProject.h */,
 				83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */,
 				83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */,
 				83A01F1B0EA10B63009C1DAA /* VLVideofile.cpp */,
@@ -11452,6 +11457,7 @@
 				83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */,
 				83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */,
 				83A01F1D0EA10B63009C1DAA /* VLVideofile.cpp in Sources */,
+				83C15D330EB8D72B003A7D96 /* VLProject.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
