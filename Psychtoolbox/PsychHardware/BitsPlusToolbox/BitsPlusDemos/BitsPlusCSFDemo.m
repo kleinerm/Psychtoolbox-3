@@ -4,16 +4,47 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % This demo utilizes the Psychtoolbox imaging pipeline. Therefore it won't
 % work on gfx-hardware older than ATI Radeon X1000 or NVidia Geforce 6000.
 %
-% Demonstrates advantage of the 14 bpc Mono++ display mode over the
-% standard 8 bpc display mode of standard graphics hardware. The demo
-% displays the Campbell-Robson CSF chart in Mono++ display mode. At each
-% press of space key, it alternates between a 14 bpc version and a 8 bpc
-% version to hopefully show a perceptible difference in contrast
-% resolution. The ESCape key exits the demo.
+% Demonstrates advantage of the 14 bpc Mono++ display mode, and similar high
+% bit depths display modes over the standard 8 bpc display mode of standard
+% graphics hardware. The demo displays either the Campbell-Robson CSF chart
+% if you set 'charttype' == 0, or a linear intensity gradient, if you set
+% 'charttype' == 1. By default, the CSF chart is shown.
+%
+% The optional 'method' argument selects among different display output
+% modes:
+%
+% A 'method' of 1 tries to utilize the native 10 bpc framebuffers of recent
+% ATI hardware on OS/X and Linux, if the PsychtoolboxKernelDriver is
+% loaded.
+%
+% A 'method' of 2 uses a method known as "PseudoGray" or "Bitstealing" for
+% output.
+%
+% In 'method' == 3, the Mono++ display mode of the Bits++ box is used. This
+% is the default, if no method argument is provided.
+%
+% A 'method' == 4 uses the Xiangrui Li et al. "VideoSwitcher", video
+% attenuator device.
+%
+% The optional 'gamma' parameter allows to select the initial gamma value
+% of your display to correct for. This can be changed interactively later
+% on.
+%
+% The optional 'screenid' parameter allows to select the id of the output
+% display on multi-display setups. By default, the secondary display is
+% chosen.
+%
+% Keyboard control keys:
+% ----------------------
+%
+% At each press of space key, the display alternates between a 14 bpc
+% version and a 8 bpc version to hopefully show a perceptible difference in
+% contrast resolution. The ESCape key exits the demo.
 %
 % The left- and right cursor keys allow you to change the gamma-correction
 % setting. The demo starts with standard power-function gamma correction
-% for a display with gamma 2.2, i.e., out = in ^ (1/gamma) with gamma = 2.2.
+% for a display with gamma 2.2, i.e., out = in ^ (1/gamma) with gamma =
+% 2.2.
 %
 % This demo is derived from a similar demo (written in C) which is part of
 % the sample code collection for Bits++ from Cambridge Research Systems
@@ -24,11 +55,16 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % Campbell, F. W. and Robson, J. G. (1968) Application of Fourier analysis
 % to the visibility of gratings. Journal of Physiology (London) 197:
 % 551-566.
+%
+%
 
 % History:
-% 16.4.2008 Written - Derived/Converted from CRS sample code (MK).
+% 16.4.2008  Written - Derived/Converted from CRS sample code (MK).
+% 01.11.2008 Extended for pseudogray, videoswitcher and ati output, as well
+%            as for display of alternate luminance gradient (MK).
 
 global screenShot;
+
 % Set this to 1 to store a "Screenshot" image of the final converted image
 % to the global variable screenShot: For debugging only!
 doScreenshot = 0;
@@ -78,8 +114,9 @@ GammaIncrease = KbName('RightArrow');
 ToggleModes = KbName('space');
 Escape = KbName('ESCAPE');
 Screen('Preference', 'VisualDebugLevel', 0);
+
 % Store backup of old GPU gamma table, so we can restore it at end of demo:
-oldGammaTable = Screen('ReadNormalizedGammaTable', screenid);
+% oldGammaTable = Screen('ReadNormalizedGammaTable', screenid);
 
 % Define requirements for onscreen window - Setup imaging pipeline:
 PsychImaging('PrepareConfiguration');
@@ -119,20 +156,24 @@ PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamm
 % with a black background ( == 0 ) on display screen 'screenid':
 [win, winRect] = PsychImaging('OpenWindow', screenid, 0);
 
-% Get a window handle for the overlay window:
+% Get a window handle for the overlay window - This only makes sense for
+% Bits++ Mono++ mode though:
 if method == 3 
     overlay = BitsPlusPlus('GetOverlayWindow', win);
 else
+    % In any other mode, our main 'win'dow and overlay window are the same:
     overlay = win;
     LoadIdentityClut(win);
 end
 
-% Upload a CLUT palette into the Bits++ box for definition of overlay
-% colors. We define a nice "blue intensity ramp", this way our text, which
-% is anti-aliased, will look beautiful.
-clut = zeros(256,3);
-clut(1:256, 3) = linspace(0,1,256)';
-Screen('LoadNormalizedGammaTable', win, clut, 2);
+if method == 3
+    % Upload a CLUT palette into the Bits++ box for definition of overlay
+    % colors. We define a nice "blue intensity ramp", this way our text, which
+    % is anti-aliased, will look beautiful.
+    clut = zeros(256,3);
+    clut(1:256, 3) = linspace(0,1,256)';
+    Screen('LoadNormalizedGammaTable', win, clut, 2);
+end
 
 % Set encoding gamma: It is 1/gamma to compensate for decoding gamma...
 PsychColorCorrection('SetEncodingGamma', win, 1/gamma);
@@ -140,16 +181,21 @@ PsychColorCorrection('SetEncodingGamma', win, 1/gamma);
 % Set larger text size for text in overlay window:
 Screen('TextSize', overlay, 24);
 
-% Some info for user, drawn into the overlay plane with color index 255,
-% centered in the center of the display:
-DrawFormattedText(overlay, 'Computing CSF chart - Please standby...', 'center', 'center', 255);
+if charttype == 0
+    % Some info for user, drawn into the overlay plane with color index 255,
+    % centered in the center of the display:
+    DrawFormattedText(overlay, 'Computing CSF chart - Please standby...', 'center', 'center', 255);
+end
+
 Screen('Flip', win);
 
-% Build a Matlab matrix with the Campbell-Robson CSF chart. All returned
-% values are encoded linearly with a intensity range of 0.0 to 1.0:
 if charttype == 1
+    % Build a chart with a linear gradient. All returned
+    % values are encoded linearly with a intensity range of 0.0 to 1.0:
     [CSFImage limitLine] = CreateGradient(RectWidth(winRect), RectHeight(winRect));
 else
+    % Build a Matlab matrix with the Campbell-Robson CSF chart. All returned
+    % values are encoded linearly with a intensity range of 0.0 to 1.0:
     [CSFImage limitLine] = CreateCSFChart(RectWidth(winRect), RectHeight(winRect));
 end
 
@@ -172,7 +218,12 @@ CSF8Tex = Screen('MakeTexture', win, floor(CSFImage * 256)/256 + 1/65536, [], []
 Screen('FillRect', overlay, 0);
 
 % Draw new one:
-mytxt = 'Campbell-Robson CSF chart\n\nPress ESCape key to exit demo.\n\nPress left- and right- cursor keys to change gamma correction.\n\nPress space key to toggle resolution.';
+if charttype == 0
+    mytxt = 'Campbell-Robson CSF chart\n\nPress ESCape key to exit demo.\n\nPress left- and right- cursor keys to change gamma correction.\n\nPress space key to toggle resolution.';
+else
+    mytxt = 'Luminance gradient chart\n\nPress ESCape key to exit demo.\n\nPress left- and right- cursor keys to change gamma correction.\n\nPress space key to toggle resolution.';
+end
+
 DrawFormattedText(overlay, mytxt, 'center', 'center', 255);
 Screen('Flip', win);
 
@@ -200,7 +251,11 @@ while 1
     end
     
     % Text for the overlay:
-    txt1 = sprintf('Campbell-Robson CSF Chart\nDemo for Bits++ Mono++ mode - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
+    if charttype == 0
+        txt1 = sprintf('Campbell-Robson CSF Chart\nDemo for Bits++ Mono++ mode and others - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
+    else
+        txt1 = sprintf('Luminance gradient Chart\nDemo for Bits++ Mono++ mode and others  - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
+    end
     
     if method == 3 
         % Clear the overlay to transparent "background color":
@@ -259,11 +314,13 @@ end
 
 % Load identity CLUT into Bits++ to restore proper display:
 BitsPlusPlus('LoadIdentityClut', win);
+
 % This flip is needed for the 'LoadIdentityClut' to take effect:
 Screen('Flip', win);
 
 % Load old gamma tables into gfx-card:
-Screen('LoadNormalizedGammaTable', screenid, oldGammaTable);
+%Screen('LoadNormalizedGammaTable', screenid, oldGammaTable);
+RestoreCluts;
 
 % Demo done. Close Screen...
 Screen('CloseAll');
