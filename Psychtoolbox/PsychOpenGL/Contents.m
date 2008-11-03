@@ -104,6 +104,10 @@
 % the art graphics hardware, so if you don't have a recent graphics adapter
 % installed in your machine, these demos and functions may fail.
 %
+% * moglFDF() -- A high-speed renderer for "formless dot fields", random
+% dot field motion stimuli for the creation of "structure from motion"
+% stimuli from 3D objects.
+%
 % More high-level functions will follow...
 %
 % For demos on how to code OpenGL in Matlab, have a look at the demos in

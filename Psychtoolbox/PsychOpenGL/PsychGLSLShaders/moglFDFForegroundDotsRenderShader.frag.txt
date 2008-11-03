@@ -1,0 +1,60 @@
+/* FDF shader for sampling of tracked object surface at provided sampling
+ * positions from sample distribution in order to update foreground dot
+ * position distribution.
+ *
+ * (c) 2008 by Mario Kleiner, licensed under GPL.
+ */
+
+uniform sampler2DRect SampleBuffer;
+uniform sampler2DRect GeometryBuffer;
+uniform sampler2DRect Silhouette;
+
+uniform float zThreshold;
+uniform float ViewportHeight;
+
+void main(void)
+{
+    /* Read sample definition from SampleBuffer: */
+    vec3 sample = texture2DRect(SampleBuffer, gl_TexCoord[0].st).rgb;
+
+    /* Valid sample, ie. blue channel greater zero? */
+    if (sample.b > 0.0) {
+        /* Valid sample: Readout (x,y) position from trackbuffer: */
+        /* Use bilinear filtering to reduce aliasing artifacts: */
+        vec2 texinpos = sample.rg;
+
+        vec4 tl=texture2DRect(GeometryBuffer, floor(texinpos));
+        vec4 tr=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(1.0, 0.0));
+        vec4 bl=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(0.0, 1.0));
+        vec4 br=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(1.0, 1.0));
+
+        /* Perform weighted linear interpolation -- bilinear interpolation of the 4: */
+        tl=mix(tl,tr,fract(texinpos.x));
+        bl=mix(bl,br,fract(texinpos.x));
+        vec4 position = mix(tl, bl, fract(texinpos.y));
+
+        /* Potential zpos from GeometryBuffer: */
+        float zpos = position.b;
+
+        /* Reference zdepth from Silhouette: */
+        float refz = texture2DRect(Silhouette, position.xy).a;
+
+        /* Check for occlusion - Discard this vertex if z-values do not match aka occluded: */
+        if (abs(zpos - refz) > zThreshold) {
+            /* Discard this hidden vertex: Set it to a position that will get clipped away: */
+            gl_FragColor = vec4(0.0, 0.0, -10.0, 1.0);
+        }
+        else {
+            /* Return dot (x,y) image plane position in R and G channels: */
+            gl_FragColor.rg = vec2(position.x, ViewportHeight - position.y);
+
+            /* Set z-component to neutral 0.5, w-component to 1 in BA channels: */
+            gl_FragColor.ba = vec2(0.5, 1.0);
+        }
+    }
+    else {
+        /* Dead/Invalid sample: Writeout a null vertex which will */
+        /* get clipped away during rendering: */
+        gl_FragColor = vec4(0.0, 0.0, -10.0, 1.0); 
+    }
+}

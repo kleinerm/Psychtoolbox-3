@@ -1,0 +1,17 @@
+/* FDF shader for 1st object render pass: Encodes figure-background
+ * flag into B channel and surface coordinate into RG channels.
+ *
+ * (c) 2008 by Mario Kleiner, licensed under GPL.
+ */
+
+void main(void)
+{
+    /* Encode object surface texture coordinates in RG: */
+    gl_FragColor.rg = gl_TexCoord[0].st;
+
+    /* Encode a 1 in B channel -- Mark it as foreground pixel: */
+    gl_FragColor.b  = 1.0;
+
+    /* Encode interpolated depths in A channel, for no special reason: */
+    gl_FragColor.a  = gl_FragCoord.z;
+}

@@ -1,0 +1,40 @@
+/* FDF vertex shader for 2nd object render pass: Encodes texture coordinates
+ * into vertex position and transformed vertex position into texture coordinates.
+ *
+ * Normal vectors and color vectors are not assigned, as they are meaningless
+ * for this pure "geometry encoded in texture coords." render pass.
+ *
+ * (c) 2008 by Mario Kleiner, licensed under GPL.
+ */
+
+uniform vec4 TextureOffsetBias;
+uniform vec4 Viewport;
+
+void main(void)
+{
+    /* Position encodes 2D surface texture coordinate -> Position in our pseudo-texture: */
+    gl_Position.xy = gl_MultiTexCoord0.st;
+
+    /* Need to remap to normalized range -1 to +1 so vertex clipping doesn't spoil our day: */
+    gl_Position.xy = ((gl_Position.xy - TextureOffsetBias.xy) * TextureOffsetBias.zw) - vec2(1.0, 1.0);
+
+    /* Set z to zero and w to 1, so automatic perspective division and clipping don't make trouble: */
+    gl_Position.zw = vec2(0.0, 1.0);
+
+    /* Actual vertex position is transformed via usual Modelview+Projection matrix etc. */
+    /* but then written to texture coordinate interpolators: */
+
+    /* Apply modelview+projection transform to input vertex, just as fixed pipeline would do: */
+    gl_TexCoord[0] = ftransform();
+
+    /* Perform perspective division by w-component manually to get normalized device coordinates: */
+    gl_TexCoord[0] = gl_TexCoord[0] / gl_TexCoord[0].w;
+
+    /* We do not clip against frustum -- assume our objects are within frustum and let scissor test */
+    /* handle corner cases, if any. */
+    /* We have to apply the viewport and depth range transform though... */
+    gl_TexCoord[0].xy = ((gl_TexCoord[0].xy + vec2(1.0, 1.0)) * Viewport.zw) + Viewport.xy;
+
+    /* Keep depth range fixed to a mapping into range 0 - 1: */
+    gl_TexCoord[0].z  = (gl_TexCoord[0].z + 1.0) * 0.5;
+}

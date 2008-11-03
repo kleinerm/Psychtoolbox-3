@@ -1,0 +1,11 @@
+/* FDF fragment shader for 2nd object render pass: Interpolated texture coordinates
+ * are actually interpolated image space (x',y',z') coordinates. They are written
+ * to the RG channels for x'y' image space positions.
+ *
+ * (c) 2008 by Mario Kleiner, licensed under GPL.
+ */
+
+void main(void)
+{
+    gl_FragColor = gl_TexCoord[0];
+}

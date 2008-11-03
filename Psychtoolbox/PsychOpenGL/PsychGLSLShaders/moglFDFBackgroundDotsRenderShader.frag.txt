@@ -1,0 +1,26 @@
+/* FDF shader for sampling of rendered silhouette at provided random
+ * sampling positions in order to update background dot distribution.
+ *
+ * (c) 2008 by Mario Kleiner, licensed under GPL.
+ */
+
+uniform sampler2DRect SilSamplePositions;
+uniform sampler2DRect Silhouette;
+
+uniform float ViewportHeight;
+
+void main(void)
+{
+    /* Read sample position from random textures RA channels */
+    vec2 pos = texture2DRect(SilSamplePositions, gl_TexCoord[0].st).ra;
+
+    /* Sample location from background? Check Silhouette buffer: */
+    if (texture2DRect(Silhouette, pos).b < 1.0) {
+        /* Background pixel hit: Emit background vertex. */
+        gl_FragColor = vec4(pos.x, ViewportHeight - pos.y, 0.5, 1.0);
+    }
+    else {
+        /* Shape pixel hit: Discard vertex: */
+        gl_FragColor = vec4(0.0, 0.0, -10, 1.0);
+    }
+}
