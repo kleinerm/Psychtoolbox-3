@@ -59,6 +59,8 @@ void APIENTRY PsychtcbEnd(void)
 
 void APIENTRY PsychtcbCombine(GLdouble c[3], void *d[4], GLfloat w[4], void **out)
 {
+    GLdouble *nv;
+
 	// Free slots available?
 	if (combinerCacheSlot >= combinerCacheSize) {
 		// Nope. Need to alloc another cache for up to another 1000 elements:
@@ -68,7 +70,7 @@ void APIENTRY PsychtcbCombine(GLdouble c[3], void *d[4], GLfloat w[4], void **ou
 		if (NULL == combinerCache) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory condition in Screen('FillPoly')! Not enough space.");
 	}
 
-    GLdouble *nv = &(combinerCache[combinerCacheSlot * 3]);
+    nv = (GLdouble *) &(combinerCache[combinerCacheSlot * 3]);
     nv[0] = c[0];
     nv[1] = c[1];
     nv[2] = c[2];
