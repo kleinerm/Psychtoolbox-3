@@ -8,8 +8,9 @@ function InitializePsychSound(reallyneedlowlatency)
 % the 'reallyneedlowlatency' flag set to one to push really hard for low
 % latency.
 %
-% On MacOS/X, the PsychPortAudio driver will just work with the lowest
-% possible latency and highest timing precision after this initialization.
+% On MacOS/X and GNU/Linux, the PsychPortAudio driver will just work with
+% the lowest possible latency and highest timing precision after this
+% initialization.
 %
 % On Microsoft Windows, things are more complicated and painful as always:
 %
@@ -41,19 +42,27 @@ function InitializePsychSound(reallyneedlowlatency)
 % special ASIO enabled version of the "portaudio_x86.dll" driver plugin for
 % Psychtoolbox:
 %
-% 1. Contact Mario Kleiner and ask him for a copy of the driver.
+% 1. Go to the PsychPortAudio section of the Psychtoolbox Wiki to download
+%    a zip file with a copy of the ASIO enabled driver:
+%
+%    http://psychtoolbox.org/wikka.php?wakka=PsychPortAudio
+%
 %
 % 2. When you have the driver, copy it into your Psychtoolbox root folder -
-% the top level folder named "Psychtoolbox".
+%    the top level folder named "Psychtoolbox". Also make sure to read the
+%    README.txt file very carefully that comes bundled with the driver.
+%
 %
 % 3. Restart Matlab.
 %
+%
 % 4. Run this function, it'll tell you if ASIO is supported.
 %
-% If everything suceeds and your ASIO enabled driver and sound card are of
+% If everything succeeds and your ASIO enabled driver and sound card are of
 % sufficiently high quality, you can enjoy latencies as low as 5 msecs and
 % a sound onset accuracy with a standard deviation from the mean of less
-% than 0.1 milliseconds - We measured around 20 microseconds on some setup.
+% than 0.1 milliseconds - We measured around 20 microseconds on some
+% setups, e.g., the M-Audio Delta 1010-LT soundcard under Windows-XP SP2.
 %
 
 % History:
@@ -64,13 +73,13 @@ if nargin < 1
 end
 
 if isempty(reallyneedlowlatency)
-    reallyneedlowlatency = 0; % Default: Don't push too hard for low latency.
+    reallyneedlowlatency = 0; %#ok<NASGU> % Default: Don't push too hard for low latency.
 end
 
 % The usual tricks for MS-Windows:
 if IsWin
     % Special ASIO enabled low-latency driver installed?
-    if exist([PsychtoolboxRoot 'portaudio_x86.dll']) >= 2
+    if exist([PsychtoolboxRoot 'portaudio_x86.dll']) >= 2 %#ok<EXIST>
         % Yes! Use it:
         fprintf('Detected an ASIO enhanced PortAudio driver. Good!\n');
         driverloadpath = PsychtoolboxRoot;
@@ -128,7 +137,7 @@ if IsOSX
         % We force loading+linking+init of the driver here, so in case
         % something goes wrong we can catch this and output useful
         % troubleshooting tips to the user:
-        d = PsychPortAudio('GetDevices');
+        d = PsychPortAudio('GetDevices'); %#ok<NASGU>
         fprintf('PsychPortAudio initialized. Will use CoreAudio for output.\n');
     catch
         fprintf('Failed to load PsychPortAudio driver!\n\n');

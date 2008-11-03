@@ -3,14 +3,12 @@ function varargout = PsychPortAudio(varargin)
 %
 % PsychPortAudio is a new sounddriver for PTB-3. It is meant to become a
 % replacement for all other Matlab based sound drivers and PTB's old SND()
-% function. It is pretty new and therefore got limited real world testing,
-% so use it with care, may still have some problems on some combos of sound
-% hardware!
+% function.
 %
 % PsychPortAudio provides the following features:
 %
 % - Allows instant start of sound playback with a very low onset latency
-%   compared to other sound drivers.
+%   compared to other sound drivers (on well working hardware).
 %
 % - Allows start of playback at a scheduled future system time: E.g.,
 %   schedule sound onset for a specific time in the future (e.g., visual
@@ -53,13 +51,18 @@ function varargout = PsychPortAudio(varargin)
 % Type "PsychPortAudio" for an overview of supported subfunctions and
 % "PsychPortAudio Subfunctionname?" for help on a specific subfunction.
 %
-% WARNING: BETA STAGE - USE WITH CAUTION!
+% CAUTION: You *must* call InitializePsychSound before first invocation of
+% PsychPortAudio(), at least on MS-Windows, but possibly also on OS/X! If
+% you omit that call, initialization of the driver may fail with some
+% "Invalid MEX file" error from Matlab!
+%
 %
 % PsychPortAudio is built around a modified version of the free, open-source
 % PortAudio sound library for portable realtime sound: http://www.portaudio.com
 
 % History:
 % 06/07/2007 Written (MK).
+% 11/01/2008 Remove warning messages about "early beta release" (MK).
 
 % Some check for not yet supported operating systems:
 AssertMex('PsychPortAudio.m');

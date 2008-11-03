@@ -95,8 +95,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";
 	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";
 	synopsis[i++] = "Screen('FramePoly', windowPtr [,color], pointList [,penWidth]);";
-	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList);";	
-		
+	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList [, isConvex]);";	
 	
 	// New OpenGL-based functions for OS X
 	synopsis[i++] = "\n% New OpenGL functions for OS X:";

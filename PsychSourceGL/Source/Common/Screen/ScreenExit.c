@@ -33,6 +33,8 @@
 void CleanupDrawTextGDI(void);
 #endif
 
+void PsychCleanupSCREENFillPoly(void);
+
 PsychError ScreenExitFunction(void)
 {
   CGDirectDisplayID dpy, last_dpy;
@@ -77,6 +79,10 @@ PsychError ScreenExitFunction(void)
 		// Shutdown connection to kernel level driver, if any exists:
 		PsychOSShutdownPsychtoolboxKernelDriverInterface();
 	#endif
+	
+	// Cleanup internal data structures of SCREEN('FillPoly');
+	// This is defined in Common/Screen/SCREENFillPoly.c
+	PsychCleanupSCREENFillPoly();
 	
 	return(PsychError_none);
 }
