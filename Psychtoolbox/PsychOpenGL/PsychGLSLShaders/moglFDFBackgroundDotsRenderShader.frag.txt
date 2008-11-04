@@ -4,6 +4,9 @@
  * (c) 2008 by Mario Kleiner, licensed under GPL.
  */
 
+#extension GL_ARB_texture_rectangle : enable
+
+
 uniform sampler2DRect SilSamplePositions;
 uniform sampler2DRect Silhouette;
 
