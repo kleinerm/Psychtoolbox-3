@@ -14,6 +14,7 @@ uniform sampler2DRect Silhouette;
 
 uniform float zThreshold;
 uniform float ViewportHeight;
+uniform vec2  texWrapAround;
 
 void main(void)
 {
@@ -26,10 +27,10 @@ void main(void)
         /* Use bilinear filtering to reduce aliasing artifacts: */
         vec2 texinpos = sample.rg;
 
-        vec4 tl=texture2DRect(GeometryBuffer, floor(texinpos));
-        vec4 tr=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(1.0, 0.0));
-        vec4 bl=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(0.0, 1.0));
-        vec4 br=texture2DRect(GeometryBuffer, floor(texinpos) + vec2(1.0, 1.0));
+        vec4 tl=texture2DRect(GeometryBuffer, mod(floor(texinpos), texWrapAround));
+        vec4 tr=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(1.0, 0.0), texWrapAround));
+        vec4 bl=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(0.0, 1.0), texWrapAround));
+        vec4 br=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(1.0, 1.0), texWrapAround));
 
         /* Perform weighted linear interpolation -- bilinear interpolation of the 4: */
         tl=mix(tl,tr,fract(texinpos.x));

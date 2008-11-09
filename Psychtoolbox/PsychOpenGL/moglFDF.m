@@ -512,7 +512,10 @@ if strcmpi(cmd, 'CreateContext')
     % frame:
     glUniform1f(glGetUniformLocation(ctx.createFGDotsShader, 'ViewportHeight'), ctx.silhouetteHeight + 1);
     
-    
+    % Define size of GeometryBuffer -- wrapAround values for interpolated
+    % texture lookup coordinates:
+    glUniform2f(glGetUniformLocation(ctx.createFGDotsShader, 'texWrapAround'), ctx.texResolution(1), ctx.texResolution(2));
+
     glUseProgram(0);
     
     % Create gloperator from shader for later use by Screen('TransformTexture'):

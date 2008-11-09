@@ -60,7 +60,7 @@ screenid=max(Screen('Screens'));
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
 % mogl OpenGL for Matlab wrapper:
-InitializeMatlabOpenGL;
+InitializeMatlabOpenGL([], 0);
 
 % Open a double-buffered full-screen window on the main displays screen,
 % with fast Offscreen window support enabled and black background clear
