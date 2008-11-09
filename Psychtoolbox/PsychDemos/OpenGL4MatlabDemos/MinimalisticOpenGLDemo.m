@@ -1,5 +1,5 @@
-function MinimalisticOpenGLDemo(multiSample, imagingPipeline)
-% MinimalisticOpenGLDemo([multiSample][, imagingPipeline])
+function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTexture)
+% MinimalisticOpenGLDemo([multiSample][, imagingPipeline][, checkerBoardTexture])
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script to
 % perform some very boring 3D rendering in Psychtoolbox.
@@ -29,6 +29,12 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline)
 % The optional parameter 'imagingPipeline' allows (if set to non-zero
 % value) to enable the PTB image processing pipeline, just to test that as
 % well.
+%
+% The optional parameter 'checkerBoardTexture' allows (if set to non-zero
+% value) to apply a checkerboard texture to the spinning sphere, instead of
+% a "earth surface texture image". This demonstrates algorithmic texture
+% generation and the use of trilinear mipmap filtering to improve image
+% quality for high frequency edges and such...
 %
 %
 % Notable implementation details regarding use of OpenGL:
@@ -104,6 +110,10 @@ if isempty(multiSample)
 end
 
 if nargin < 2
+    imagingPipeline = [];
+end
+
+if isempty(imagingPipeline)
     imagingPipeline = 0;
 end
 
@@ -111,6 +121,14 @@ if imagingPipeline > 0
     imagingPipeline = kPsychNeedFastBackingStore;
 else
     imagingPipeline = 0;
+end
+
+if nargin < 3
+    checkerBoardTexture = [];
+end
+
+if isempty(checkerBoardTexture)
+    checkerBoardTexture = 0;
 end
 
 % Is the script running in OpenGL Psychtoolbox? Abort, if not.
@@ -267,8 +285,13 @@ while KbCheck; end;
 
 % Now we draw a solid, spinning textured sphere of radius 1.0.
 
-% Prepare texture to by applied to the sphere: Load & create it from an image file:
-myimg = imread([PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']);
+if ~checkerBoardTexture
+    % Prepare texture to by applied to the sphere: Load & create it from an image file:
+    myimg = imread([PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']);
+else
+    % Apply regular checkerboard pattern as texture:
+    myimg = double(checkerboard(16, 32, 32)>0.5) * 255;
+end
 
 % Make a special power-of-two texture from the image by setting the enforcepot - flag to 1
 % when calling 'MakeTexture'. GL_TEXTURE_2D textures (==power of two textures) are
@@ -303,7 +326,30 @@ glTexParameteri(gltextarget, GL.TEXTURE_WRAP_S, GL.REPEAT);
 glTexParameteri(gltextarget, GL.TEXTURE_WRAP_T, GL.REPEAT);
 
 % Set up minification and magnification filters. This is crucial for the thing to work!
-glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+if checkerBoardTexture
+    % Checkerboard pattern: This has high frequency edges, so we'll
+    % need trilinear filtering for a good look:
+    glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR_MIPMAP_LINEAR);
+
+    % Need mipmapping for trilinear filtering --> Create mipmaps:
+    if ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_EXT_framebuffer_object'))
+        % Ask the hardware to generate all depth levels automatically:
+        glGenerateMipmapEXT(GL.TEXTURE_2D);
+    else
+        % No hardware support for auto-mipmap-generation. Do it "manually":
+
+        % Use GLU to compute the image resolution mipmap pyramid and create
+        % OpenGL textures ouf of it: This is slow, compared to glGenerateMipmapEXT:
+        r = gluBuild2DMipmaps(gltextarget, GL.LUMINANCE, size(myimg,1), size(myimg,2), GL.LUMINANCE, GL.UNSIGNED_BYTE, uint8(myimg));
+        if r>0
+            error('gluBuild2DMipmaps failed for some reason.');
+        end
+    end
+else
+    % Regular image: Bilinear filtering will do for this demo...
+    glTexParameteri(gltextarget, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
+end
+
 glTexParameteri(gltextarget, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
 
 % Set basic "color" of object to white to get a nice interaction between the texture
