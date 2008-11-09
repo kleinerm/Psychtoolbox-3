@@ -75,6 +75,6 @@ try
     plot(thePoints(:,1),theRect(RectBottom)-thePoints(:,2));
 catch
     Screen('CloseAll')
-    Screen('ShowCursor');
+    ShowCursor;
     psychrethrow(psychlasterror);
 end %try..catch..
