@@ -1,10 +1,31 @@
-function VideoCaptureDemo(fullscreen)
+function VideoCaptureDemo(fullscreen, fullsize, roi)
+% VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]])
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
 if nargin < 1
+    fullscreen=[];
+end
+
+if isempty(fullscreen)
     fullscreen=0;
 end;
+
+if nargin < 2
+    fullsize=[];
+end
+
+if isempty(fullsize)
+    fullsize=0;
+end
+
+if nargin < 3
+    roi = [];
+end
+
+if isempty(roi)
+    roi = [0 0 640 480];
+end
 
 screenid=max(Screen('Screens'));
 
@@ -21,7 +42,7 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
     
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480]);
+    grabber = Screen('OpenVideoCapture', win, 0, roi);
 %     brightness = Screen('SetVideoCaptureParameter', grabber, 'Brightness',383)
 %     exposure = Screen('SetVideoCaptureParameter', grabber, 'Exposure',130)
 %     gain = Screen('SetVideoCaptureParameter', grabber, 'Gain')
@@ -33,6 +54,7 @@ try
 
     Screen('StartVideoCapture', grabber, 30, 1);
 
+    dstRect = [];
     oldpts = 0;
     count = 0;
     t=GetSecs;
@@ -41,10 +63,18 @@ try
             break;
         end;
         
-        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1);
+        [tex pts nrdropped]=Screen('GetCapturedImage', win, grabber, 1); %#ok<NASGU>
         % fprintf('tex = %i  pts = %f nrdropped = %i\n', tex, pts, nrdropped);
-%        texrect = Screen('Rect', tex)
+        
         if (tex>0)
+            % Perform first-time setup of transformations, if needed:
+            if fullsize & (count == 0) %#ok<AND2>
+                texrect = Screen('Rect', tex);
+                winrect = Screen('Rect', win);
+                sf = min([RectWidth(winrect) / RectWidth(texrect) , RectHeight(winrect) / RectHeight(texrect)]);
+                dstRect = CenterRect(ScaleRect(texrect, sf, sf) , winrect);
+            end
+
             % Setup mirror transformation for horizontal flipping:
             
             % xc, yc is the geometric center of the text.
@@ -63,7 +93,7 @@ try
             % The transformation is ready for mirrored drawing:
 
             % Draw new texture from framegrabber.
-            Screen('DrawTexture', win, tex); %, [], Screen('Rect', win));
+            Screen('DrawTexture', win, tex, [], dstRect);
 
             %Screen('glPopMatrix', win);
 
