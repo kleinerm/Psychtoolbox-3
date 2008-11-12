@@ -77,7 +77,7 @@ else
 
     if nargin==2
         while(1)
-            [isDown,secs,code] = KbCheck(inputDevice);
+            [isDown,secs,code] = KbCheck(deviceNumber);
             if isDown
                 if code(keyCode)
                     return;

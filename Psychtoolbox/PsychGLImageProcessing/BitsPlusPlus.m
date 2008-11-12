@@ -918,7 +918,8 @@ function ValidateBitsPlusImaging(win, writefile)
             fprintf('After that test script suceeded, re-run your experiment script.\nThanks.\n');
             fprintf('\n');
             fprintf('Configuration to verify: %s\n', gfxconfig);
-            
+
+            RestoreCluts;
             Screen('CloseAll'); ShowCursor; Priority(0);
             
             error('Configuration not yet verified. Please do it now.');
@@ -929,6 +930,7 @@ function ValidateBitsPlusImaging(win, writefile)
         % Append current configuration to file to mark it as verified:
         [fid msg]= fopen([PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], 'a');
         if fid == -1
+            RestoreCluts;
             sca;
             error('Could not write validation file %s to filesystem [%s].', [PsychtoolboxConfigDir 'ptbbitsplusplusvalidationfile.txt'], msg);
         end

@@ -7,7 +7,7 @@
 %
 %     Beeper               - Play a nice beep tone of selectable duration, frequency and volume.
 %     CharAvail            - Is a keypress available for GetChar?       
-%     DisableKeysForKbCheck- Tell KbCheck and KbWait to ignore specific keys.
+%     DisableKeysForKbCheck - Tell KbCheck and KbWait to ignore specific keys.
 %     DoNothing            - Does nothing. Used to time Matlab's overhead.
 %     DrawFormattedText    - Drawing of formatted text into windows.
 %     FlushEvents          - Flush any unprocessed events. 
@@ -42,10 +42,7 @@
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
 %     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
-%     PsychCV              - Miscellaneous C routines for computer vision
-%                            and related stuff. Usually called by higher
-%                            level M-File routines, not directly by user
-%                            code!
+%     PsychCV              - Miscellaneous C routines for computer vision and related stuff.
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 

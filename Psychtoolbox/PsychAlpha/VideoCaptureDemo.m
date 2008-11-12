@@ -1,5 +1,38 @@
 function VideoCaptureDemo(fullscreen, fullsize, roi)
+% Demonstrate simple use of built-in video capture engine.
+%
 % VideoCaptureDemo([fullscreen=0][, fullsize=0][, roi=[0 0 640 480]])
+%
+% VideoCaptureDemo initializes the first attached and supported camera on
+% your computer (e.g, the built-in iSight of Apple Macintosh computers),
+% then shows its video image in a Psychtoolbox window.
+%
+% By default, a capture rate of 30 frames per second is requested, and the
+% timecode and interframe interval of each captured image is displayed in
+% the top-left corner of the display. A press of the ESCape key ends the
+% demo.
+%
+% See also ImagingVideoCaptureDemo, VideoDelayloopMiniDemo and a few other
+% nice demos.
+%
+% Optional parameters:
+%
+% 'fullscreen' If set to non-zero value, the image is displayed in a
+% fullscreen window, as usual, otherwise a normal GUI window is used.
+%
+% 'fullsize' If set to 1, the cameras image is scaled up to full screen
+% resolution, ie. so it fills the maximum amount of display area, but
+% preserving the original aspect ratio.
+%
+% 'roi' Selects a rectangular subregion of the camera for display. By
+% default, it selects a [0 0 640 480] rectangle, ie. the full are of a
+% camera with 640 x 480 pixels resolution. This parameter may need tweaking
+% for some cameras, as some drivers have bugs and don't work well with all
+% settings.
+%
+
+% History:
+% Written sometimes 2006 by MK.
 
 AssertOpenGL;
 screen=max(Screen('Screens'));
