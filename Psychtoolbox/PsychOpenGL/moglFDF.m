@@ -59,7 +59,7 @@ function varargout = moglFDF(cmd, varargin)
 % outside the standard displayable range between zero and one.
 %
 %
-% context = moglFDF('CreateContext', window, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime [,zThreshold=Off]); 
+% context = moglFDF('CreateContext', window, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime [,zThreshold=Off] [,BGSilhouetteAcceptancePropability=0.0]); 
 % - Create a "rendercontext" for a single 3D object. Returns a 'context'
 % handle to it which needs to be passed in to all other functions as
 % reference. All following parameters are required and don't have any
@@ -106,6 +106,12 @@ function varargout = moglFDF(cmd, varargin)
 % The default setting (bigger than 1.0) will disable occlusion test --
 % "Hidden dots" are not hidden, but drawn.
 %
+% 'BGSilhouetteAcceptancePropability' Optional BGSilhouetteAcceptancePropability
+% This is the propability with which a dot from the "background distribution" 
+% will be drawn if it is actually located in the area of the objects
+% silhouette. A value of 0.0 (which is the default) will not draw any
+% background dots within the objects silhouette. Values between 0 and 1
+% correspond to acceptance propabilities between 0% and 100%.
 %
 % context = moglFDF('SetRenderCallback', context, callbackEvalString);
 % - Define the 'eval' string for this context to be used as rendercallback.
@@ -309,6 +315,16 @@ if strcmpi(cmd, 'CreateContext')
         ctx.zThreshold = 10.0;
     end
     
+    if nargin >= 11
+        ctx.BGSilhouetteAcceptancePropability = varargin{10};
+        if ~isscalar(ctx.BGSilhouetteAcceptancePropability)
+            disp(ctx.BGSilhouetteAcceptancePropability);
+            error('Invalid "BGSilhouetteAcceptancePropability" argument provided to "CreateContext" - Must be a positive number in range 0.0 - 1.0!');
+        end        
+    else
+        ctx.BGSilhouetteAcceptancePropability = 0.0;
+    end
+    
     % Backup current GL context binding:
     BackupGL;
     
@@ -445,7 +461,7 @@ if strcmpi(cmd, 'CreateContext')
     ctx.BGsampleLinesTotal = ctx.BGsampleLinesPerBatch * ctx.dotLifetime;
     ctx.BGDotsBuffer = Screen('OpenOffscreenWindow', ctx.parentWin, [0 0 0 0], double([0 0 ctx.BGsamplesPerLine ctx.BGsampleLinesTotal]), 128);
     ctx.maxBGDots = ctx.BGsampleLinesTotal * ctx.BGsamplesPerLine;
-    ctx.BGSampleSet = zeros(ctx.BGsampleLinesTotal, ctx.BGsamplesPerLine, 2);
+    ctx.BGSampleSet = zeros(ctx.BGsampleLinesTotal, ctx.BGsamplesPerLine, 3);
 
     % Load and setup all our shaders:
     
@@ -535,6 +551,10 @@ if strcmpi(cmd, 'CreateContext')
     % y-axis direction of Screen()'s reference frame vs. OpenGL default
     % frame:
     glUniform1f(glGetUniformLocation(ctx.createBGDotsShader, 'ViewportHeight'), ctx.silhouetteHeight + 1);
+    
+    % Assign [0;1] acceptance threshold value for accepting a background
+    % distribution dot which lies within the objects silhouette:
+    glUniform1f(glGetUniformLocation(ctx.createBGDotsShader, 'SilAcceptThreshold'), ctx.BGSilhouetteAcceptancePropability);
     
     glUseProgram(0);
 
@@ -828,7 +848,7 @@ if strcmpi(cmd, 'Update')
     % Perform update of background sample buffer with random samples:
     % Compute random sample locations in image via Matlabs/Octaves uniform
     % random number generator:
-    randomSamples = rand(ctx.BGsampleLinesPerBatch, ctx.BGsamplesPerLine, 2);
+    randomSamples = rand(ctx.BGsampleLinesPerBatch, ctx.BGsamplesPerLine, 3);
     randomSamples(:,:,1) = randomSamples(:,:,1) * ctx.silhouetteWidth;
     randomSamples(:,:,2) = randomSamples(:,:,2) * ctx.silhouetteHeight;
     sline = ctx.currentBatch * ctx.BGsampleLinesPerBatch + 1;

@@ -11,14 +11,16 @@ uniform sampler2DRect SilSamplePositions;
 uniform sampler2DRect Silhouette;
 
 uniform float ViewportHeight;
+uniform float SilAcceptThreshold;
 
 void main(void)
 {
-    /* Read sample position from random textures RA channels */
-    vec2 pos = texture2DRect(SilSamplePositions, gl_TexCoord[0].st).ra;
+    /* Read sample position from random textures RG channels */
+    /* Read accept random value from B channel: */
+    vec3 pos = texture2DRect(SilSamplePositions, gl_TexCoord[0].st).rgb;
 
     /* Sample location from background? Check Silhouette buffer: */
-    if (texture2DRect(Silhouette, pos).b < 1.0) {
+    if (pos.z * texture2DRect(Silhouette, pos.xy).b <= SilAcceptThreshold) {
         /* Background pixel hit: Emit background vertex. */
         gl_FragColor = vec4(pos.x, ViewportHeight - pos.y, 0.5, 1.0);
     }
