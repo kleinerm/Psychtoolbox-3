@@ -59,7 +59,7 @@ function varargout = moglFDF(cmd, varargin)
 % outside the standard displayable range between zero and one.
 %
 %
-% context = moglFDF('CreateContext', window, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime [,zThreshold=Off] [,BGSilhouetteAcceptancePropability=0.0]); 
+% context = moglFDF('CreateContext', window, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime [,zThreshold=Off] [,BGSilhouetteAcceptanceProbability=0.0]); 
 % - Create a "rendercontext" for a single 3D object. Returns a 'context'
 % handle to it which needs to be passed in to all other functions as
 % reference. All following parameters are required and don't have any
@@ -106,12 +106,12 @@ function varargout = moglFDF(cmd, varargin)
 % The default setting (bigger than 1.0) will disable occlusion test --
 % "Hidden dots" are not hidden, but drawn.
 %
-% 'BGSilhouetteAcceptancePropability' Optional BGSilhouetteAcceptancePropability
-% This is the propability with which a dot from the "background distribution" 
+% 'BGSilhouetteAcceptanceProbability' Optional BGSilhouetteAcceptanceProbability
+% This is the probability with which a dot from the "background distribution" 
 % will be drawn if it is actually located in the area of the objects
 % silhouette. A value of 0.0 (which is the default) will not draw any
 % background dots within the objects silhouette. Values between 0 and 1
-% correspond to acceptance propabilities between 0% and 100%.
+% correspond to acceptance probabilities between 0% and 100%.
 %
 % context = moglFDF('SetRenderCallback', context, callbackEvalString);
 % - Define the 'eval' string for this context to be used as rendercallback.
@@ -316,13 +316,13 @@ if strcmpi(cmd, 'CreateContext')
     end
     
     if nargin >= 11
-        ctx.BGSilhouetteAcceptancePropability = varargin{10};
-        if ~isscalar(ctx.BGSilhouetteAcceptancePropability)
-            disp(ctx.BGSilhouetteAcceptancePropability);
-            error('Invalid "BGSilhouetteAcceptancePropability" argument provided to "CreateContext" - Must be a positive number in range 0.0 - 1.0!');
+        ctx.BGSilhouetteAcceptanceProbability = varargin{10};
+        if ~isscalar(ctx.BGSilhouetteAcceptanceProbability)
+            disp(ctx.BGSilhouetteAcceptanceProbability);
+            error('Invalid "BGSilhouetteAcceptanceProbability" argument provided to "CreateContext" - Must be a positive number in range 0.0 - 1.0!');
         end        
     else
-        ctx.BGSilhouetteAcceptancePropability = 0.0;
+        ctx.BGSilhouetteAcceptanceProbability = 0.0;
     end
     
     % Backup current GL context binding:
@@ -554,7 +554,7 @@ if strcmpi(cmd, 'CreateContext')
     
     % Assign [0;1] acceptance threshold value for accepting a background
     % distribution dot which lies within the objects silhouette:
-    glUniform1f(glGetUniformLocation(ctx.createBGDotsShader, 'SilAcceptThreshold'), ctx.BGSilhouetteAcceptancePropability);
+    glUniform1f(glGetUniformLocation(ctx.createBGDotsShader, 'SilAcceptThreshold'), ctx.BGSilhouetteAcceptanceProbability);
     
     glUseProgram(0);
 

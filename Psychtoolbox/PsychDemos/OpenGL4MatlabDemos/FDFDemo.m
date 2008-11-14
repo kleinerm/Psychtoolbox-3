@@ -108,7 +108,7 @@ try
     % silhouette, if the "object-induced dot motion" is considered the
     % signal and the noise is considered the noise.
     % Values between 0 - 1 are meaningful:
-    BGSilhouetteAcceptancePropability = 0.0;
+    BGSilhouetteAcceptanceProbability = 0.5;
     
     % Increase dotDensity if needed, to make sure it is an integral multiple
     % of dotLifetime as requested by moglFDFs current implementation:
@@ -117,7 +117,7 @@ try
     % Use max 'dotDensity' foreground dots for sampling the objects
     % surface: In the current moglFDF implementation, maxFGDots must be an
     % integral multiple of the dotLifetime!
-    maxFGDots = max(ceil(((1 - BGSilhouetteAcceptancePropability) * dotDensity) / dotLifetime) * dotLifetime, dotLifetime);
+    maxFGDots = max(ceil(((1 - BGSilhouetteAcceptanceProbability) * dotDensity) / dotLifetime) * dotLifetime, dotLifetime);
 
     % Use max 'dotDensity' dots for background distribution:
     maxBGDots = dotDensity;
@@ -128,7 +128,7 @@ try
     zThreshold = 0.0001;
     
     % Setup 'fdf' context with all stimulus parameters as defined above:
-    fdf = moglFDF('CreateContext', win, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime, zThreshold, BGSilhouetteAcceptancePropability);
+    fdf = moglFDF('CreateContext', win, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime, zThreshold, BGSilhouetteAcceptanceProbability);
 
     % Define actual string of commands that renders the 3D object or scene:
     % This command sequence will first glRotate the object by 0.1 degrees
