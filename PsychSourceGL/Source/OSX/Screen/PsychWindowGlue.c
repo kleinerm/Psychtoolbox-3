@@ -241,7 +241,6 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		winRect.left = (short) windowRecord->rect[kPsychLeft];
 		winRect.bottom = (short) windowRecord->rect[kPsychBottom];
 		winRect.right = (short) windowRecord->rect[kPsychRight];
-//		if (noErr !=CreateNewWindow(kOverlayWindowClass, kWindowNoAttributes, &winRect, &carbonWindow)) {
 		if (noErr !=CreateNewWindow(kOverlayWindowClass, kWindowNoUpdatesAttribute, &winRect, &carbonWindow)) {
 			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
 			return(FALSE);
@@ -252,12 +251,22 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 
 		// Store window handle in windowRecord:
 		windowRecord->targetSpecific.windowHandle = carbonWindow;
+		
+		// Copy absolute screen location and area of window to 'globalrect',
+		// so functions like Screen('GlobalRect') can still query the real
+		// bounding gox of a window onscreen:
+		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
 	}
 	else {
 		// No. Standard CGL setup for fullscreen single display windows:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using CGL for onscreen window creation...\n");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using CGL for onscreen window creation...\n");		
+		
+		// Copy absolute screen location and area of window to 'globalrect',
+		// so functions like Screen('GlobalRect') can still query the real
+		// bounding gox of a window onscreen:
+		PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);		
 	}
-	
+
     // Map screen number to physical display handle cgDisplayID:
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);

@@ -365,10 +365,20 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     if (fullscreen) {
       windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window without borders)
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
+	  
+	  // Copy absolute screen location and area of window to 'globalrect',
+	  // so functions like Screen('GlobalRect') can still query the real
+	  // bounding gox of a window onscreen:
+	  PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);	  
     }
     else {
       windowStyle |= WS_OVERLAPPEDWINDOW;
       windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
+
+	  // Copy absolute screen location and area of window to 'globalrect',
+	  // so functions like Screen('GlobalRect') can still query the real
+	  // bounding gox of a window onscreen:
+	  PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
     }
 
     // Define final position and size of window:

@@ -154,6 +154,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     
     // Switch system to fullscreen-mode without changing any settings:
     fullscreen = TRUE;
+	
+	// Copy absolute screen location and area of window to 'globalrect',
+	// so functions like Screen('GlobalRect') can still query the real
+	// bounding gox of a window onscreen:
+	PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
   }
   else {
     // Window size different from current screen size:
@@ -164,6 +169,11 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     width=PsychGetWidthFromRect(windowRecord->rect);
     height=PsychGetHeightFromRect(windowRecord->rect);
     fullscreen = FALSE;
+	
+	// Copy absolute screen location and area of window to 'globalrect',
+	// so functions like Screen('GlobalRect') can still query the real
+	// bounding gox of a window onscreen:
+    PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
   }
 
   // Select requested depth per color component 'bpc' for each channel:
