@@ -215,6 +215,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	WindowRef						carbonWindow;
 	AGLPixelFormat pf = NULL;
  	AGLContext glcontext = NULL;
+	int aglbufferid;
 
 	// NULL-out Carbon window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
@@ -491,6 +492,23 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			return(FALSE);
 		}
 		
+		aglbufferid = (int) windowRecord->windowIndex;
+		if (!aglSetInteger(glcontext, AGL_BUFFER_NAME, &aglbufferid)) {
+			printf("\nPTB-ERROR[aglSetInteger failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+			aglSetCurrentContext(NULL);
+			aglDestroyContext(glcontext);
+			aglDestroyPixelFormat(pf);
+			DisposeWindow(carbonWindow);
+			return(FALSE);
+		}
+
+		if (FALSE) {
+			// This bit of code would make the window background transparent, so standard GUI
+			// would be visible, wherever nothing is drawn -- Cool but currently not useful for us?
+			i = 0;
+			aglSetInteger(glcontext, AGL_SURFACE_OPACITY, &i);
+		}
+		
 		// Attach context to our Carbon windows drawable area:
 		if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
 			printf("\nPTB-ERROR[aglSetDrawable failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
@@ -605,8 +623,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 				return(FALSE);
 			}
 
+			if (!aglSetInteger(usercontext, AGL_BUFFER_NAME, &aglbufferid)) {
+				printf("\nPTB-ERROR[aglSetInteger for user context failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
+			
 			// Attach it to our onscreen drawable:
-			if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
+			if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
 				printf("\nPTB-ERROR[aglSetDrawable for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
 				// Ok, this is dirty, but better than nothing...
 				DisposeWindow(carbonWindow);
