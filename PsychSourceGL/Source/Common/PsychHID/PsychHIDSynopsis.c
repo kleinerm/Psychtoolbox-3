@@ -36,7 +36,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "collections=PsychHID('Collections',deviceNumber)";
 	synopsis[i++] = "elementState=PsychHID('RawState',deviceNumber,elementNumber)";
 	synopsis[i++] = "elementState=PsychHID('CalibratedState',deviceNumber,elementNumber)";
-	synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck',[deviceNumber])";
+	synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 	synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 	synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
 	synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";

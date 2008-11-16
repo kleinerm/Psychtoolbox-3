@@ -113,7 +113,14 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % 10/24/06 mk Windows and Linux implementation: Use built-in helper code in Screen.
 % 10/24/06 mk Add code for disabling "stuck keys".
 % 6/13/08 abl Option for OS X to poll all keyboard devices by passing deviceNumber == -1, \
-%             based on kas's modification of KbWait
+%             based on kas's modification of KbWait.
+% 11/16/8  mk Allow to use "white-list" of enabled keys in
+%             ptb_kbcheck_enabledKeys. This is set via
+%             RestrictKeysForKbCheck, and passed to PsychHID in order to
+%             restrict keyboard scans to a subset of enabled keys. This
+%             provides a significant speedup for KbChecks if used properly.
+%             On non-OS/X, this is emulated in software and does not
+%             provide any speedup.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -122,6 +129,10 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % can work around this 'stuck keys' by defining them in the ptb_kbcheck_disabledKeys
 % vector.
 global ptb_kbcheck_disabledKeys;
+
+% ptb_kbcheck_enabledKeys is a white-list of keys to query. If set to
+% non-empty 
+global ptb_kbcheck_enabledKeys;
 
 % Store timestamp of previous KbCheck:
 persistent oldSecs;
@@ -141,6 +152,12 @@ if isempty(macosx)
     % Query indices of all attached keyboards, in case we need'em:
     if macosx
         kbs=GetKeyboardIndices;
+        
+        % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
+        % externally already:
+        if ~exist(ptb_kbcheck_enabledKeys, 'var')
+            ptb_kbcheck_enabledKeys = [];
+        end
     end
 end
 
@@ -150,17 +167,17 @@ if macosx
             % Query all attached keyboards
             keyIsDown=0; keyCode=zeros(1,256);  % preallocate these variables
             for i=kbs
-                [DeviceKeyIsDown, secs, DeviceKeyCode]= PsychHID('KbCheck', i);
+                [DeviceKeyIsDown, secs, DeviceKeyCode]= PsychHID('KbCheck', i, ptb_kbcheck_enabledKeys);
                 keyIsDown = keyIsDown | DeviceKeyIsDown;
                 keyCode = keyCode | DeviceKeyCode;
             end
         else
             % Query a specific keyboard device #
-            [keyIsDown, secs, keyCode]= PsychHID('KbCheck', deviceNumber);
+            [keyIsDown, secs, keyCode]= PsychHID('KbCheck', deviceNumber, ptb_kbcheck_enabledKeys);
         end
     elseif nargin == 0
         % Query primary keyboard:
-        [keyIsDown, secs, keyCode]= PsychHID('KbCheck');
+        [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
     elseif nargin > 1
         error('Too many arguments supplied to KbCheck'); 
     end
@@ -174,6 +191,16 @@ end
 % cached value:
 deltaSecs = secs - oldSecs;
 oldSecs = secs;
+
+% Only need to apply ptb_kbcheck_enabledKeys manually on non-OS/X systems,
+% as this is done internally in PsychHID('KbCheck') on OS/X:
+if ~macosx & ~isempty(ptb_kbcheck_enabledKeys) %#ok<AND2>
+    % Mask all keys with the enabled keys:
+    keyCode = keyCode .* ptb_kbcheck_enabledKeys;
+
+    % Reevaluate global key down state:
+    keyIsDown = any(keyCode);
+end
 
 % Any dead keys defined?
 if ~isempty(ptb_kbcheck_disabledKeys)

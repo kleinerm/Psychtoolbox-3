@@ -45,6 +45,7 @@
 %     PsychCV              - Miscellaneous C routines for computer vision and related stuff.
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
+%     RestrictKeysForKbCheck - Restrict operation of KbCheck et al. to a subset of keys on the keyboard.
 %     Screen               - Control the video display. ** Type "Screen" for a list. ** 
 %     SetMouse             - Set mouse position.
 %     ShowCursor           - Show the cursor, and set cursor type.
