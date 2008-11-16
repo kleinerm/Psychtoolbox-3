@@ -120,6 +120,12 @@
 % problems. This for rare cases where the test fails to detect broken
 % setups.
 %
+% 8192 == kPsychUseAGLForFullscreenWindows
+% Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
+% even if the requested onscreen window is a fullscreen window. Normally
+% PTB would use the CGL API for fullscreen windows, but this is broken for
+% dual-display operations on some systems running 10.5.3 - 10.5.5 at least.
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

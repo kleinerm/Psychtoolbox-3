@@ -202,6 +202,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
     CGLError						error;
+	OSStatus						err;
     CGDirectDisplayID				cgDisplayID;
     CGLPixelFormatAttribute			attribs[32];
     long							numVirtualScreens;
@@ -211,14 +212,20 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	PsychRectType					screenrect;
     int attribcount=0;
     int i;
-	boolean							useAGL;
-	WindowRef						carbonWindow;
-	AGLPixelFormat pf = NULL;
- 	AGLContext glcontext = NULL;
-	int aglbufferid;
-
+	boolean							useAGL, AGLForFullscreen;
+	WindowRef						carbonWindow = NULL;
+	int								aglbufferid;
+	AGLPixelFormat					pf = NULL;
+ 	AGLContext						glcontext = NULL;
+	GDHandle						gdhDisplay;
+	GDHandle						*gdhDisplayPtr = NULL; 
+	int								gdhcount = 0;
+	
 	// NULL-out Carbon window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
+
+	// Use AGL for fullscreen windows?
+	AGLForFullscreen = (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) ? TRUE : FALSE;
 
 	// Window rect provided which has a different size than screen?
 	useAGL = TRUE;
@@ -230,7 +237,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
 	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
-	
+
 	// Do we need to use windowed mode with AGL?
 	if (useAGL) {
 		// Yes. Need to create Carbon window and attach OpenGL to it via AGL:		
@@ -256,11 +263,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		// Copy absolute screen location and area of window to 'globalrect',
 		// so functions like Screen('GlobalRect') can still query the real
 		// bounding gox of a window onscreen:
-		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);		
+		PsychCopyRect(windowRecord->globalrect, windowRecord->rect);
+		
+		// Disable the fullscreen flag, in case it was set:
+		AGLForFullscreen = FALSE;
 	}
 	else {
 		// No. Standard CGL setup for fullscreen single display windows:
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using CGL for onscreen window creation...\n");		
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Using %s for fullscreen onscreen window creation...\n", (AGLForFullscreen) ? "AGL" : "CGL");
 		
 		// Copy absolute screen location and area of window to 'globalrect',
 		// so functions like Screen('GlobalRect') can still query the real
@@ -272,7 +282,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
     displayMask=CGDisplayIDToOpenGLDisplayMask(cgDisplayID);
 
-	if (!useAGL) {
+	if (!useAGL && !AGLForFullscreen) {
 		attribs[attribcount++]=kCGLPFAFullScreen;
 		attribs[attribcount++]=kCGLPFADisplayMask;
 		attribs[attribcount++]=displayMask;
@@ -314,6 +324,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	}
 	else {
 		// AGL specific pixelformat setup:
+
+		if (AGLForFullscreen) attribs[attribcount++] = AGL_FULLSCREEN;
 
 		// Possible to request use of the Apple floating point software renderer:
 		if (conserveVRAM & kPsychUseSoftwareRenderer) {
@@ -389,7 +401,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     windowRecord->targetSpecific.pixelFormatObject = NULL;
 	windowRecord->targetSpecific.glusercontextObject = NULL;
 		
-	if (!useAGL) {
+	if (!useAGL && !AGLForFullscreen) {
 		// Context setup for CGL (non-windowed, non-multiscreen mode):
 		
 		// First try in choosing a matching format for multisample mode:
@@ -445,18 +457,32 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		windowRecord->targetSpecific.deviceContext = NULL;
 	}
 	else {
-		// Context setup for AGL (windowed or multiscreen mode):
+		// Context setup for AGL (windowed or multiscreen mode or fullscreen mode):
+
+		// Fullscreen mode?
+		if (AGLForFullscreen) {
+			// Need to map to target display device:
+			err = DMGetGDeviceByDisplayID((DisplayIDType) cgDisplayID, &gdhDisplay, FALSE);
+			if (noErr != err) {
+				printf("\nPTB-ERROR[DMGetGDeviceByDisplayID failed: %s]: Can't map screenId to valid AGL display device id.\n\n", aglErrorString(aglGetError()));
+				return(FALSE);
+			}
+			
+			// And set mapping:
+			gdhDisplayPtr = &gdhDisplay;
+			gdhcount = 1;
+		}
 
 		// First try in choosing a matching format for multisample mode:
 		if (windowRecord->multiSample > 0) {
-			pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+			pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
 			if (pf==NULL && windowRecord->multiSample > 0) {
 				// Failed. Probably due to too demanding multisample requirements: Lets lower them...
 				for (i=0; i<attribcount && attribs[i]!=kCGLPFASamples; i++);
 				while (pf==NULL && windowRecord->multiSample > 0) {
 					attribs[i+1]--;
 					windowRecord->multiSample--;
-					pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+					pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
 				}
 				
 				if (windowRecord->multiSample == 0 && pf==NULL) {
@@ -467,7 +493,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		}
 
 		// Choose matching pixelformat:
-		pf = aglChoosePixelFormat(NULL, 0, (GLint*) attribs);
+		pf = aglChoosePixelFormat(gdhDisplayPtr, gdhcount, (GLint*) attribs);
 		if (pf == NULL) {
 			printf("\nPTB-ERROR[aglChoosePixelFormat failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
 			DisposeWindow(carbonWindow); 
@@ -509,14 +535,26 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			aglSetInteger(glcontext, AGL_SURFACE_OPACITY, &i);
 		}
 		
-		// Attach context to our Carbon windows drawable area:
-		if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
-			printf("\nPTB-ERROR[aglSetDrawable failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
-			aglSetCurrentContext(NULL);
-			aglDestroyContext(glcontext);
-			aglDestroyPixelFormat(pf);
-			DisposeWindow(carbonWindow);
-			return(FALSE);
+		if (AGLForFullscreen) {
+			// Attach context to our fullscreen device:
+			if (!aglSetFullScreen(glcontext, 0, 0, 0, 0)) {
+				printf("\nPTB-ERROR[aglSetFullScreen failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+				aglSetCurrentContext(NULL);
+				aglDestroyContext(glcontext);
+				aglDestroyPixelFormat(pf);
+				return(FALSE);
+			}
+		}
+		else {
+			// Attach context to our Carbon windows drawable area:
+			if (!aglSetDrawable(glcontext, GetWindowPort(carbonWindow))) {
+				printf("\nPTB-ERROR[aglSetDrawable failed: %s]:The specified display may not support double buffering and/or stereo output. There could be insufficient video memory\n\n", aglErrorString(aglGetError()));
+				aglSetCurrentContext(NULL);
+				aglDestroyContext(glcontext);
+				aglDestroyPixelFormat(pf);
+				DisposeWindow(carbonWindow);
+				return(FALSE);
+			}
 		}
 		
 		// Ok, theoretically we should have a fully functional OpenGL rendering context, attached to a fully
@@ -544,7 +582,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		// Store AGLContext for reference...
 		windowRecord->targetSpecific.deviceContext = (void*) glcontext;
 		
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Carbon window + AGL context setup finished..\n");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: AGL context setup finished..\n");
 	}
 			
 	// Ok, the OpenGL rendering context is up and running. Auto-detect and bind all
@@ -629,14 +667,24 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 				return(FALSE);
 			}
 			
-			// Attach it to our onscreen drawable:
-			if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
-				printf("\nPTB-ERROR[aglSetDrawable for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
-				// Ok, this is dirty, but better than nothing...
-				DisposeWindow(carbonWindow);
-				return(FALSE);
+			if (AGLForFullscreen) {
+				// Attach context to our fullscreen device:
+				if (!aglSetFullScreen(usercontext, 0, 0, 0, 0)) {
+					printf("\nPTB-ERROR[aglSetFullScreen for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+					// Ok, this is dirty, but better than nothing...
+					return(FALSE);
+				}
 			}
-
+			else {
+				// Attach it to our onscreen drawable:
+				if (!aglSetDrawable(usercontext, GetWindowPort(carbonWindow))) {
+					printf("\nPTB-ERROR[aglSetDrawable for user context failed: %s]: Attaching private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
+					// Ok, this is dirty, but better than nothing...
+					DisposeWindow(carbonWindow);
+					return(FALSE);
+				}
+			}
+			
 			// Copy full state from our main context:
 			if (!aglCopyContext(glcontext, usercontext, GL_ALL_ATTRIB_BITS)) {
 				printf("\nPTB-ERROR[aglCopyContext for user context failed: %s]: Copying state to private OpenGL context for Matlab OpenGL failed for unknown reasons.\n\n",  aglErrorString(aglGetError()));
@@ -655,7 +703,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	}
 
 	// Ok, if we reached this point and AGL is used, we should store its onscreen Carbon window handle:
-	if (useAGL) {
+	if (useAGL && !AGLForFullscreen) {
 		windowRecord->targetSpecific.windowHandle = carbonWindow;
 	}
 	else {

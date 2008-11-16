@@ -196,6 +196,10 @@ typedef struct {
 // queries, regardless if the automatic test detects problems or not:
 #define kPsychUseBeampositionQueryWorkaround 4096
 
+// On OS/X, enforce use of AGL API for GL context setup insted of CGL API, even
+// if the requested window is a fullscreen window:
+#define kPsychUseAGLForFullscreenWindows 8192
+
 //function protoptypes
 
 //Accessors for PsychDepthType 
