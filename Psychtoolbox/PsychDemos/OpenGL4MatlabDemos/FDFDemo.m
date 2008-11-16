@@ -27,11 +27,21 @@ function FDFDemo(dotDensity, dotLifetime)
 % 'd' toggles the display between the formless dot field stimulus and some
 % debug visualization.
 %
+% 'r' resets the distribution to empty, then incrementally recreates it.
+%
+% 'h' resets the distribution to a completely new random one.
+%
+% Arrow left/right control the density of dots, the 'dotDensity' paramter
+% in decrements/increments of 5%.
+%
+% Arrow up-/down controls the 'dotLifetime' in steps of +/- 1.
 %
 
 % History:
 % 05/02/08  Written (MK).
 % 11/03/08  Documentation update, preparation for public release (MK).
+% 11/15/08  Demonstrate new features of moglFDF, allow runtime change of
+%           some params (MK).
 
 % Setup default settings:
 if nargin < 1 || isempty(dotDensity)
@@ -54,6 +64,12 @@ KbName('UnifyKeyNames');
 escape = KbName('ESCAPE');
 space = KbName('space');
 dKey = KbName('d');
+rkey = KbName('r');
+hkey = KbName('h');
+upArrow = KbName('UpArrow');
+downArrow = KbName('DownArrow');
+leftArrow = KbName('LeftArrow');
+rightArrow = KbName('RightArrow');
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
@@ -108,16 +124,12 @@ try
     % silhouette, if the "object-induced dot motion" is considered the
     % signal and the noise is considered the noise.
     % Values between 0 - 1 are meaningful:
-    BGSilhouetteAcceptanceProbability = 0.5;
-    
-    % Increase dotDensity if needed, to make sure it is an integral multiple
-    % of dotLifetime as requested by moglFDFs current implementation:
-    dotDensity = ceil(dotDensity / dotLifetime) * dotLifetime;
+    BGSilhouetteAcceptanceProbability = 0.0;
     
     % Use max 'dotDensity' foreground dots for sampling the objects
     % surface: In the current moglFDF implementation, maxFGDots must be an
     % integral multiple of the dotLifetime!
-    maxFGDots = max(ceil(((1 - BGSilhouetteAcceptanceProbability) * dotDensity) / dotLifetime) * dotLifetime, dotLifetime);
+    maxFGDots = (1 - BGSilhouetteAcceptanceProbability) * dotDensity;
 
     % Use max 'dotDensity' dots for background distribution:
     maxBGDots = dotDensity;
@@ -127,15 +139,12 @@ try
     % is omitted or set > 1 - all dots are drawn, even "occluded" ones.
     zThreshold = 0.0001;
     
-    % Setup 'fdf' context with all stimulus parameters as defined above:
     fdf = moglFDF('CreateContext', win, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime, zThreshold, BGSilhouetteAcceptanceProbability);
-
+    
     % Define actual string of commands that renders the 3D object or scene:
-    % This command sequence will first glRotate the object by 0.1 degrees
-    % (if toggle is set to 1), then draw our sphere 'mysphere' at that
-    % orientation. See setup code below for the definition of 'toggle' and
-    % 'mysphere'.
-    callbackEvalString = 'glRotatef(toggle * 0.1, 0, 0, 1); gluSphere(mysphere, 0.7, 100, 100);';
+    % This command sequence will draw our sphere 'mysphere' at its current
+    % orientation. See setup code below for the definition of 'mysphere'.
+    callbackEvalString = 'gluSphere(mysphere, 0.7, 100, 100);';
     fdf = moglFDF('SetRenderCallback', fdf, callbackEvalString);
 
     % Setup the OpenGL rendering context of the onscreen window for use by
@@ -230,6 +239,9 @@ try
     % Our framecounter, we love stats ;-)
     fcount = 0;
     
+    % Toggle reset of dot distribution at first loop iteration:
+    resetDistribution = 1;
+    
     % Initial Flip to have a nice black display, and to record the 'tstart'
     % timestamp of this demo animation:
     tstart = Screen('Flip', win);
@@ -239,6 +251,30 @@ try
     % to all objects to be drawn) and then redraws it at its new
     % orientation:
     while 1
+        
+        % Want to reinit the dot distribution?
+        if resetDistribution
+            if resetDistribution == 2
+                % Perform a single initial object-render, update & recompute cycle for
+                % set of dots. moglFDF will compute the new dot distribution, based on
+                % the current 3D scene appearance, but it won't draw the new dot
+                % distribution for the next frame yet. The special flag '1' asks
+                % 'Update' to generate a full initial distribution:
+                fdf = moglFDF('Update', fdf, 1);
+            else
+                % Reset state to empty distribution, so it can recreate from scratch:
+                fdf = moglFDF('ResetState', fdf);
+            end
+            
+            resetDistribution = 0;
+        end
+        
+        % Update rotation angle of rotating sphere for this redraw cycle:
+        % glRotate the object by 0.1 degrees around its z-axis if toggle is set to 1. 
+        Screen('BeginOpenGL', win);
+        glRotatef(toggle * 0.1, 0, 0, 1); 
+        Screen('EndOpenGL', win);
+        
         % Perform object-render, update & recompute cycle for set of dots.
         % moglFDF will compute the new dot distribution, based on the
         % current 3D scene appearance, but it won't draw the new dot
@@ -300,6 +336,53 @@ try
             if keyCode(space)
                 KbReleaseWait;
                 toggle = 1 - toggle;
+            end
+
+            % 'r' key resets the distribution:
+            if keyCode(rkey)
+                resetDistribution = 1;
+            end
+            
+            % 'h' key resets the distribution and reinits it immediately:
+            if keyCode(hkey)
+                resetDistribution = 2;
+            end
+
+            % Arroy keys control dot density and lifetime:
+            if any(keyCode([leftArrow, rightArrow, upArrow, downArrow]))
+                % Change of distribution parameters requested:
+                
+                if keyCode(leftArrow)
+                    dotDensity = max(dotLifetime, round(dotDensity * 0.95));
+                end
+                
+                if keyCode(rightArrow)
+                    dotDensity = min(1000000, round(dotDensity * 1.05));
+                end
+
+                if keyCode(upArrow)
+                    dotLifetime = min(500, dotLifetime + 1);
+                end
+                
+                if keyCode(downArrow)
+                    dotLifetime = max(1, dotLifetime - 1);
+                end
+
+                % Recompute number of dots in distribution:
+                maxFGDots = (1 - BGSilhouetteAcceptanceProbability) * dotDensity;
+
+                % Use max 'dotDensity' dots for background distribution:
+                maxBGDots = dotDensity;
+
+                % Reinit context with new settings, but disable debug
+                % output while doing so, so we don't clutter the Matlab
+                % window:
+                olddebug = moglFDF('DebugFlag', -2);
+                fdf = moglFDF('ReinitContext', fdf, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime, zThreshold, BGSilhouetteAcceptanceProbability);
+                moglFDF('DebugFlag', olddebug);
+
+                % Hotstart the context, as if 'h' key is pressed:
+                resetDistribution = 2;
             end
             
             if keyCode(dKey)

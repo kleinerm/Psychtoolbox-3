@@ -47,11 +47,13 @@ function varargout = moglFDF(cmd, varargin)
 % Subcommands, their syntax & meaning:
 % ====================================
 %
-% moglFDF('DebugFlag', flag [, debugGain]);
+% [oldflag, oldgain] = moglFDF('DebugFlag', flag [, debugGain]);
 % - Set debug flag to value 'flag'. Default is zero. Non-zero values enable
 % different visualizations that may aid debugging non-working setups.
 % 1 = Show silhouette buffer, 2 = Show trackbuffer, 3 = Show random noise
-% sampling texture, 4 = Show sampleBuffer, 5 = Show FGDots buffer.
+% sampling texture, 4 = Show sampleBuffer, 5 = Show FGDots buffer. A
+% setting of -1 shows the real rendered image, instead of the random dot
+% visualization. A value of -2 disables any kind of textual warnings.
 %
 % The optional 'debugGain' parameter must be a 4 component [R G B A] color
 % vector with modulation gains for the drawn "debug images" - simply to
@@ -86,10 +88,15 @@ function varargout = moglFDF(cmd, varargin)
 % longer processing times.
 %
 % 'maxFGDots' Maximum number of foreground (object shape) dots to use for
-% random shape sampling.
+% random shape sampling. This must be an integral multiple of
+% 'dotLifetime'. If it isn't, it will get adjusted to become an integral
+% multiple.
 %
 % 'maxBGDots' Maximum number of background dots to use for random background
-% sampling.
+% sampling. This must be an integral multiple of 'dotLifetime'. If it
+% isn't, it will get adjusted to become an integral multiple. If you don't
+% want to have structure cues in your stimulus, you should set 'maxBGDots'
+% equal to 'maxFGDots' to keep overall dot density on the display constant.
 %
 % 'dotLifetime' Lifetime of each foreground- or background dot in 'Update'
 % cycles. Each dot is replace by a new random sample after that many
@@ -111,7 +118,13 @@ function varargout = moglFDF(cmd, varargin)
 % will be drawn if it is actually located in the area of the objects
 % silhouette. A value of 0.0 (which is the default) will not draw any
 % background dots within the objects silhouette. Values between 0 and 1
-% correspond to acceptance probabilities between 0% and 100%.
+% correspond to acceptance probabilities between 0% and 100%. If you want
+% to keep the overall dot density of foreground dots and background dots
+% constant (in order to not provide segmentation cues based on structure),
+% you should set the 'maxFGDots' parameter like this:
+%
+% maxFGDots = (1 - BGSilhouetteAcceptanceProbability) * maxBGDots;
+%
 %
 % context = moglFDF('SetRenderCallback', context, callbackEvalString);
 % - Define the 'eval' string for this context to be used as rendercallback.
@@ -127,20 +140,40 @@ function varargout = moglFDF(cmd, varargin)
 % it would be a waste of computation time.
 %
 %
+% context = moglFDF('ReinitContext', context, rect, texCoordMin, texCoordMax, texResolution, maxFGDots, maxBGDots, dotLifetime [,zThreshold=Off] [,BGSilhouetteAcceptanceProbability=0.0]); 
+% - Reinitialize an already existing context with new stimulus parameters.
+% The parameters are identical to the ones in 'CreateContext', except for
+% the first one: You don't pass a windowhandle of a parent window, as this
+% stays the same for the reinitialized context. Instead you pass the handle
+% of the 'context' to reinitialize.
+%
+% 'ReinitContext' is the same as a sequence of 'DestroyContext', followed
+% by a new 'CreateContext', except that it is optimized for speed --
+% Reinitialization with new parameters is typically at least 3 times faster
+% than a full destroy & recreate operation.
+%
+%
 % context = moglFDF('DestroyContext', context);
 % - Destroy a processing context, release all of its ressources.
 %
 %
 % context = moglFDF('ResetState', context);
 % - Reset processing contexts state to initial state, just as if it was
-% just created. Useful at start of a new trial.
+% just created. Useful at start of a new trial. Another way to start a new
+% trial, but with a full distribution already initialized, is to use the
+% moglFDF('Update') call with the 'instantOn' flag set to 1 for the first
+% iteration of your stimulus loop, instead of the default of zero.
 %
 %
-% context = moglFDF('Update', context);
+% context = moglFDF('Update', context [, instantOn=0]);
 % - Perform an 'update' cycle for given context. A new "3D frame" is rendered
 % via the rendercallback function, then analysed, resampled etc. to create
 % a new complete distribution of 2D random dots, ready for drawing or
-% readback.
+% readback. If the optional 'instantOn' flag is provided and non-zero, then
+% the whole distribution is generated at once for a quick start at the
+% beginning of a new trial, otherwise only one batch of samples is updated.
+% By default, only one batch is updated, as required for the algorithm to
+% work.
 %
 %
 % context = moglFDF('Render', context [, targetWindow] [, drawSpec=[1,1]]);
@@ -175,13 +208,15 @@ function varargout = moglFDF(cmd, varargin)
 %  05/02/08  Initial "proof of concept" implementation (MK).
 % -05/10/08  Various improvements (MK).
 %  11/03/08  Documentation update, preparation for public release (MK).
+%  11/15/08  Improvements: New 'instantOn' mode for 'Update' method, new
+%            'ReinitContext' function (MK).
 
 % Need OpenGL constants:
 global GL;
-global moglFDF_OriginalContext;
 
 % Internal state:
-persistent initialized;
+global moglFDF_OriginalContext;
+persistent contextcount;
 persistent debug;
 persistent debugGain;
 
@@ -189,43 +224,84 @@ if nargin < 1
     error('You must provide a "cmd" subcommand to execute!');
 end
 
-if isempty(initialized)
-    initialized = 0;
+if isempty(contextcount)
+    contextcount = 0;
     moglFDF_OriginalContext = [];
     debug = 0;
     
     if isempty(GL)
         % If OpenGL not initialized, do a full init for 3D mode:
-        error('OpenGL mode not initialized! You *must* call InitializeMatlabOpenGL before the first call to this routine!')
+        error('OpenGL mode not initialized! You *must* call InitializeMatlabOpenGL before the first call to this routine or any Screen() function!')
     end
 end
 
 % Subcommand dispatch:
 
 % Initialization of a new context: Allocate and setup all ressources:
-if strcmpi(cmd, 'CreateContext')
+if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     % Fetch all arguments - They are all required.
     if nargin < 9
-        error('Some input arguments to "CreateContext" are missing. They are all required!');
+        error(sprintf('Some mandatory input arguments to "%s" are missing. Please provide them!', cmd)); %#ok<SPERR>
     end
     
-    if initialized
-        error('Called "CreateContext" although already initialized! Call "Shutdown" first.');
+    if strcmpi(cmd, 'CreateContext')
+        createContext = 1;
+    else
+        createContext = 0;
     end
     
-    % Parent window: Provides OpenGL master-/slave- contexts for our
-    % operations, shaders and buffers, as well as reference for
-    % rendertarget size:
-    ctx.parentWin = varargin{1};
-    
-    if ~isscalar(ctx.parentWin) | ~ismember(ctx.parentWin, Screen('Windows'))
-        disp(ctx.parentWin);
-        error('Invalid "window" argument provided to "CreateContext" - No such window (see above)!');
+    % First time init? I.e. is this the first context to be created?
+    if contextcount == 0
+        % Yes. Perform all one-time initialization work and create a
+        % template context from which all other contexts can be derived:
+        
     end
+
+    % Type of expected first argument depends if this is a 'CreateContext'
+    % call or a 'ReinitContext' call:
+    if createContext
+        % Parent window: Provides OpenGL master-/slave- contexts for our
+        % operations, shaders and buffers, as well as reference for
+        % rendertarget size:
+        ctx.parentWin = varargin{1};
+
+        if ~isscalar(ctx.parentWin) | ~ismember(ctx.parentWin, Screen('Windows')) %#ok<OR2>
+            disp(ctx.parentWin);
+            error('Invalid "window" argument provided to "CreateContext" - No such window (see above)!');
+        end
+    else
+        % Old 'ctx' handle of context to reparameterize / reinit:
+        ctx = varargin{1};
+        
+        % Make sure we've got a valid handle:
+        if ~isstruct(ctx)
+            disp(ctx);
+            error('Invalid "context" argument provided to "ReinitContext" - This is not a valid moglFDF context handle!');
+        end
+        
+        if ~isfield(ctx, 'moglFDFMagic')
+            disp(ctx);
+            error('Invalid "context" argument provided to "ReinitContext" - This is not a valid moglFDF context handle!');
+        end
+
+        % Release all buffers, but not the shaders!
+        % Delete all offscreen windows, gloperators and buffers like IBO's
+        % VBO's, PBO's, FBO's etc, so they can get recreated, based on the
+        % new context parameters:
+        deleteContextBuffers(ctx);
+        RestoreGL;
+        
+        % Decrement contextcount, so it can be reincremented at end of this
+        % function:
+        contextcount = max(contextcount - 1, 0);
+    end
+    
+    % Assign our magic cookie...
+    ctx.moglFDFMagic = 'Funky magic-cookie';
     
     % Get all other arguments and perform parameter type and range checks:
     ctx.rect = varargin{2};
-    if ~isnumeric(ctx.rect) | length(ctx.rect)~=4
+    if ~isnumeric(ctx.rect) | length(ctx.rect)~=4 %#ok<OR2>
         disp(ctx.rect);
         error('Invalid "rect" argument provided to "CreateContext" - Must be a 4 component vector that describes the size and shape of the target rectangle [left top right bottom]');        
     end
@@ -237,19 +313,19 @@ if strcmpi(cmd, 'CreateContext')
     end
     
     ctx.texCoordMin = varargin{3};
-    if ~isnumeric(ctx.texCoordMin) | length(ctx.texCoordMin)~=2
+    if ~isnumeric(ctx.texCoordMin) | length(ctx.texCoordMin)~=2 %#ok<OR2>
         disp(ctx.texCoordMin);
         error('Invalid "texCoordMin" argument provided to "CreateContext" - Must be a 2 component vector of minimal texture coordinates in x- and y- direction!');
     end
     
     ctx.texCoordMax = varargin{4};
-    if ~isnumeric(ctx.texCoordMax) | length(ctx.texCoordMax)~=2
+    if ~isnumeric(ctx.texCoordMax) | length(ctx.texCoordMax)~=2 %#ok<OR2>
         disp(ctx.texCoordMax);
         error('Invalid "texCoordMax" argument provided to "CreateContext" - Must be a 2 component vector of maximal texture coordinates in x- and y- direction!');
     end
     
     ctx.texResolution = varargin{5};
-    if ~isnumeric(ctx.texResolution) | length(ctx.texResolution)~=2
+    if ~isnumeric(ctx.texResolution) | length(ctx.texResolution)~=2 %#ok<OR2>
         disp(ctx.texResolution);
         error('Invalid "texResolution" argument provided to "CreateContext" - Must be a 2 component vector of integral numbers with processing resolution in x- and y- direction!');
     end
@@ -272,7 +348,8 @@ if strcmpi(cmd, 'CreateContext')
     
     if ctx.maxFGDots < 1
         disp(ctx.maxFGDots);
-        error('Invalid "maxFGDots" argument provided to "CreateContext" - Must be at least 1!');
+        fprintf('Invalid "maxFGDots" argument provided to "CreateContext" - Must be at least 1! Changed to 1.\n');
+        ctx.maxFGDots = 1;
     end
     
     ctx.maxBGDots = round(varargin{7});
@@ -281,9 +358,10 @@ if strcmpi(cmd, 'CreateContext')
         error('Invalid "maxBGDots" argument provided to "CreateContext" - Must be a positive integral number of maximum background dots!');
     end
     
-    if ctx.maxBGDots < 0
+    if ctx.maxBGDots < 1
         disp(ctx.maxBGDots);
-        error('Invalid "maxBGDots" argument provided to "CreateContext" - Must be at least zero!');
+        fprintf('Invalid "maxBGDots" argument provided to "CreateContext" - Must be at least 1! Changed to 1.\n');
+        ctx.maxBGDots = 1;
     end
 
     ctx.dotLifetime = round(varargin{8});
@@ -300,8 +378,32 @@ if strcmpi(cmd, 'CreateContext')
     % Basic checks passed: Now check for inter-parameter consistency:
     if rem(ctx.maxFGDots, ctx.dotLifetime)
         % Doesn't divide without remainder.
-        fprintf('maxFGDots=%i , dotLifetime=%i --> remainder of maxFGDots / dotLifetime is not zero!\n', ctx.maxFGDots, ctx.dotLifetime);
-        error('In "CreateContext": "maxFGDots" is not an integral multiple of "dotLifetime". That condition must hold!');
+        if debug ~= -2
+            fprintf('In moglFDF:%s:\n', cmd);
+            fprintf('maxFGDots=%i , dotLifetime=%i --> remainder of maxFGDots / dotLifetime is not zero, as required!\n', ctx.maxFGDots, ctx.dotLifetime);
+        end
+
+        % Modify it to satisfy condition:
+        ctx.maxFGDots = max(ceil(ctx.maxFGDots / ctx.dotLifetime) * ctx.dotLifetime, ctx.dotLifetime);
+
+        if debug ~= -2
+            fprintf('"maxFGDots" must be an integral multiple of "dotLifetime". Changed "maxFGDots" to a value of %i to satisfy this condition.\n', ctx.maxFGDots);
+        end
+    end
+
+    if rem(ctx.maxBGDots, ctx.dotLifetime)
+        % Doesn't divide without remainder.
+        if debug ~= -2
+            fprintf('In moglFDF:%s:\n', cmd);
+            fprintf('maxBGDots=%i , dotLifetime=%i --> remainder of maxBGDots / dotLifetime is not zero, as required!\n', ctx.maxBGDots, ctx.dotLifetime);
+        end
+
+        % Modify it to satisfy condition:
+        ctx.maxBGDots = max(ceil(ctx.maxBGDots / ctx.dotLifetime) * ctx.dotLifetime, ctx.dotLifetime);
+
+        if debug ~= -2
+            fprintf('"maxBGDots" must be an integral multiple of "dotLifetime". Changed "maxBGDots" to a value of %i to satisfy this condition.\n', ctx.maxBGDots);
+        end
     end
     
     if nargin >= 10
@@ -346,35 +448,37 @@ if strcmpi(cmd, 'CreateContext')
     % Check requested internal resolution against hw-limit:
     if max(ctx.texResolution) > maxtexsize
         disp(ctx.texResolution)
-        error(sprintf('Requested "texResolution" parameter too big in at least one dimension - Your graphics card can not handle that! Maximum is %i\n', maxtexsize));
-    end
-    
-    % Imaging pipeline active in at least minimum configuration?
-    if ~bitand(winfo.ImagingMode, mor(kPsychNeedFastBackingStore, kPsychNeedFastOffscreenWindows))
-        % Neither basic pipeline, nor fast offscreen window support
-        % activated in parent window. This is a no-go!
-        error('In "CreateContext": The PTB imaging pipeline is not active for provided parent window - this will not work! Need at least support for fast offscreen windows.');
-    end
-    
-    if winfo.GLSupportsFBOUpToBpc < 32 | winfo.GLSupportsTexturesUpToBpc < 32
-        error('In "CreateContext": Your gfx-hardware is not capable of handling textures and buffers with the required precision - this function will not work on your hardware!');
-    end
-    
-    % Check for all required extensions:
-    if ~(~isempty(findstr(glGetString(GL.EXTENSIONS), '_vertex_buffer_object')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), '_pixel_buffer_object')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), '_framebuffer_object')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_shading_language')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_shader_objects')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_fragment_shader')) && ...
-            ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_vertex_shader')) && ...
-            (~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_APPLE_float_pixels')) || ...
-             ~isempty(findstr(glGetString(GL.EXTENSIONS), '_color_buffer_float'))))
-         % At least one of the required extensions is missing!
-        error('In "CreateContext": Your gfx-hardware does not support all required OpenGL extensions - this function will not work on your hardware!');
-         
+        error(sprintf('Requested "texResolution" parameter too big in at least one dimension - Your graphics card can not handle that! Maximum is %i\n', maxtexsize)); %#ok<SPERR>
     end
 
+    % Need these checks only on original context creation:
+    if createContext
+        % Imaging pipeline active in at least minimum configuration?
+        if ~bitand(winfo.ImagingMode, mor(kPsychNeedFastBackingStore, kPsychNeedFastOffscreenWindows))
+            % Neither basic pipeline, nor fast offscreen window support
+            % activated in parent window. This is a no-go!
+            error('In "CreateContext": The PTB imaging pipeline is not active for provided parent window - this will not work! Need at least support for fast offscreen windows.');
+        end
+
+        if winfo.GLSupportsFBOUpToBpc < 32 | winfo.GLSupportsTexturesUpToBpc < 32 %#ok<OR2>
+            error('In "CreateContext": Your gfx-hardware is not capable of handling textures and buffers with the required precision - this function will not work on your hardware!');
+        end
+
+        % Check for all required extensions:
+        if ~(~isempty(findstr(glGetString(GL.EXTENSIONS), '_vertex_buffer_object')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), '_pixel_buffer_object')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), '_framebuffer_object')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_shading_language')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_shader_objects')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_fragment_shader')) && ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_ARB_vertex_shader')) && ...
+                (~isempty(findstr(glGetString(GL.EXTENSIONS), 'GL_APPLE_float_pixels')) || ...
+                ~isempty(findstr(glGetString(GL.EXTENSIONS), '_color_buffer_float'))))
+            % At least one of the required extensions is missing!
+            error('In "CreateContext": Your gfx-hardware does not support all required OpenGL extensions - this function will not work on your hardware!');
+        end
+    end
+    
     % Ok, all checks passed.
     
     % Create all relevant FBO buffers, aka Offscreen windows:
@@ -425,8 +529,7 @@ if strcmpi(cmd, 'CreateContext')
 
     % Retrieve OpenGL texture handle for the sihouetteBuffer:
     ctx.silhouetteTexture = Screen('GetOpenGLTexture', ctx.parentWin, ctx.silhouetteBuffer);
-    
-    
+        
     % Tracking buffer: Contains the unwarped/flattened image of the 3D
     % objects surface, created by a 2nd rendering pass of the 3D object,
     % but with special vertex-/fragment shaders attached.
@@ -463,18 +566,36 @@ if strcmpi(cmd, 'CreateContext')
     ctx.maxBGDots = ctx.BGsampleLinesTotal * ctx.BGsamplesPerLine;
     ctx.BGSampleSet = zeros(ctx.BGsampleLinesTotal, ctx.BGsamplesPerLine, 3);
 
-    % Load and setup all our shaders:
-    
-    % Basepath to shaders:
-    % shaderpath = [fileparts(mfilename('fullpath')) filesep ];
-    shaderpath = '';
+    % Load all our shaders - Need to do this only on original context
+    % creation, as shaders are recycled across context reinits. However, we
+    % can only recycle shaders from one existing context, not across
+    % different contexts, because each shader object also encapsulates
+    % per-context state like the settings of all Uniforms etc. and we can't
+    % share these!
+    if createContext
+        % Basepath to shaders:
+        % shaderpath = [fileparts(mfilename('fullpath')) filesep ];
+        shaderpath = '';
 
-    % Shader for 1st object renderpass: Encode texcoords and depths into
-    % color channel -- to fill silhouetteBuffer:
-    ctx.silhouetteRenderShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFSilhouetteRenderShader'], 1);
+        % Shader for 1st object renderpass: Encode texcoords and depths into
+        % color channel -- to fill silhouetteBuffer:
+        ctx.silhouetteRenderShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFSilhouetteRenderShader'], 1);
+
+        % Shader for 2nd object renderpass: Fill trackingBuffer
+        ctx.trackingRenderShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFTrackingRenderShader'], 1);
+
+        % Shader for update of distribution in sampleBuffer:
+        ctx.samplingShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFSamplingShader'], 1);
+
+        % Shader for final creation of foreground dots VBO spec from
+        % distribution in sampleBuffer and trackingBuffer:
+        ctx.createFGDotsShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFForegroundDotsRenderShader'], 1);
     
-    % Shader for 2nd object renderpass: Fill trackingBuffer
-    ctx.trackingRenderShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFTrackingRenderShader'], 1);
+        % Shader for creation of background dots VBO spec:
+        ctx.createBGDotsShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFBackgroundDotsRenderShader'], 1);
+    end
+    
+    % Setup trackingRenderShader:
     glUseProgram(ctx.trackingRenderShader)
 
     % Compute texture coordinate offset and multiplier to apply in order to
@@ -484,12 +605,8 @@ if strcmpi(cmd, 'CreateContext')
 
     % Bind texunit 1 to object coordinates texture:
     glUniform4f(glGetUniformLocation(ctx.trackingRenderShader, 'Viewport'), 0, 0, ctx.silhouetteWidth/2, ctx.silhouetteHeight/2);
-    glUseProgram(0);
     
-    
-    % Shader for update of distribution in sampleBuffer:
-    ctx.samplingShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFSamplingShader'], 1);
-
+    % Setup shader for update of distribution in sampleBuffer:
     glUseProgram(ctx.samplingShader);
 
     % Bind texunit 0 to random sample position texture:
@@ -501,12 +618,9 @@ if strcmpi(cmd, 'CreateContext')
     % Define remapping of texture coordinates into range 0-texResolution --
     % The size of the trackingBuffer:
     glUniform4f(glGetUniformLocation(ctx.samplingShader, 'TextureOffsetBias'), ctx.texCoordMin(1), ctx.texCoordMin(2), ctx.texResolution(1)/(ctx.texCoordMax(1) - ctx.texCoordMin(1)), ctx.texResolution(2)/(ctx.texCoordMax(2) - ctx.texCoordMin(2)));
-    glUseProgram(0);
     
-    
-    % Shader for final creation of foreground dots VBO spec from
+    % Setup shader for final creation of foreground dots VBO spec from
     % distribution in sampleBuffer and trackingBuffer:
-    ctx.createFGDotsShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFForegroundDotsRenderShader'], 1);
     glUseProgram(ctx.createFGDotsShader)
 
     % Bind texunit 0 to Samplebuffer texture:
@@ -537,9 +651,9 @@ if strcmpi(cmd, 'CreateContext')
     % Create gloperator from shader for later use by Screen('TransformTexture'):
     ctx.createFGDotsoperator = CreateGLOperator(ctx.parentWin, [], ctx.createFGDotsShader, 'Create foreground dots.');
     
-    % Shader for creation of background dots VBO spec:
-    ctx.createBGDotsShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFBackgroundDotsRenderShader'], 1);
+    % Setup shader for creation of background dots VBO spec:
     glUseProgram(ctx.createBGDotsShader)
+
     % Bind texunit 0 to random sample position texture:
     glUniform1i(glGetUniformLocation(ctx.createBGDotsShader, 'SilSamplePositions'), 0);
 
@@ -557,7 +671,6 @@ if strcmpi(cmd, 'CreateContext')
     glUniform1f(glGetUniformLocation(ctx.createBGDotsShader, 'SilAcceptThreshold'), ctx.BGSilhouetteAcceptanceProbability);
     
     glUseProgram(0);
-
     
     % Ok, all PTB managed buffers and shaders loaded and set up.
     % Lets create the VBO that we need to actually render anything in the
@@ -591,7 +704,6 @@ if strcmpi(cmd, 'CreateContext')
     fgdotindices = uint32(0:ctx.maxFGDots-1);
     glBufferData(GL.ELEMENT_ARRAY_BUFFER_ARB, ctx.maxFGDots * 4, fgdotindices, GL.STATIC_DRAW);
     glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, 0);
-
 
     ctx.BGvbo = glGenBuffers(1);
     glBindBuffer(GL.ARRAY_BUFFER, ctx.BGvbo);
@@ -632,7 +744,7 @@ if strcmpi(cmd, 'CreateContext')
     ctx.vbosready = 0;
     
     % We're ready for the show!
-    initialized = initialized + 1;
+    contextcount = contextcount + 1;
 
     % Init for this 'ctx' context done: Return it to usercode:
     varargout{1} = ctx;
@@ -649,24 +761,10 @@ if strcmpi(cmd, 'DestroyContext')
     % Get context object:
     ctx = varargin{1};
     
-    BackupGL;
-    
-    SwitchToGL(ctx.parentWin);
-    
-    % Delete VBO's:
-    glDeleteBuffers(1, ctx.FGibo);
-    glDeleteBuffers(1, ctx.FGvbo);
-    glDeleteBuffers(1, ctx.BGibo);
-    glDeleteBuffers(1, ctx.BGvbo);
-    
-    SwitchToPTB;
-    
-    % Close all offscreen windows and their associated textures:
-    Screen('Close', [ctx.BGDotsBuffer, ctx.FGDotsBuffer, ctx.trackingBuffer, ctx.silhouetteBuffer, ctx.sampleBuffer]);
-    
-    % Close our operators:
-    Screen('Close', ctx.createFGDotsoperator);
-    
+    % Delete all offscreen windows, gloperators and buffers like IBO's
+    % VBO's, PBO's, FBO's etc...
+    deleteContextBuffers(ctx);
+        
     % Delete all shaders:
     glDeleteProgram(ctx.createBGDotsShader);
     glDeleteProgram(ctx.createFGDotsShader);
@@ -677,7 +775,7 @@ if strcmpi(cmd, 'DestroyContext')
     RestoreGL;
     
     % Shutdown done.
-    initialized = max(initialized - 1, 0);
+    contextcount = max(contextcount - 1, 0);
     
     % Return destroyed context:
     ctx = [];
@@ -723,7 +821,10 @@ if strcmpi(cmd, 'ResetState')
         
     % Reset to starting batch zero:
     ctx.currentBatch = 0;
-
+    
+    % Zero-out background sample matrix:
+    ctx.BGSampleSet(:, :, :) = 0;
+    
     % Clear out all buffers:
     SwitchToPTB;
     Screen('FillRect', ctx.BGDotsBuffer, [0 0 0 0])
@@ -744,11 +845,17 @@ end
 % Update cycle, possibly followed by a render operation:
 if strcmpi(cmd, 'Update')
     if nargin < 2
-        error(sprintf('In "%s": You must provide the "context"!', cmd));
+        error(sprintf('In "%s": You must provide the "context"!', cmd)); %#ok<SPERR>
     end
 
     % Get context object:
     ctx = varargin{1};
+    
+    if nargin >= 3 && ~isempty(varargin{2})
+        instantOn = varargin{2};
+    else
+        instantOn = 0;
+    end
     
     BackupGL;
         
@@ -848,12 +955,31 @@ if strcmpi(cmd, 'Update')
     % Perform update of background sample buffer with random samples:
     % Compute random sample locations in image via Matlabs/Octaves uniform
     % random number generator:
-    randomSamples = rand(ctx.BGsampleLinesPerBatch, ctx.BGsamplesPerLine, 3);
+    if instantOn
+        % Create new samples for full set:
+        randomSamples = rand(size(ctx.BGSampleSet, 1), ctx.BGsamplesPerLine, 3);
+    else
+        % Create new samples for current batch:
+        randomSamples = rand(ctx.BGsampleLinesPerBatch, ctx.BGsamplesPerLine, 3);
+    end
+    
+    % Layers 1 and 2 contain properly scaled (x,y) screen coordinates of
+    % our random "darts":
     randomSamples(:,:,1) = randomSamples(:,:,1) * ctx.silhouetteWidth;
     randomSamples(:,:,2) = randomSamples(:,:,2) * ctx.silhouetteHeight;
-    sline = ctx.currentBatch * ctx.BGsampleLinesPerBatch + 1;
-    eline = sline + ctx.BGsampleLinesPerBatch - 1;
-    ctx.BGSampleSet(sline:eline, :, :) = randomSamples;
+    
+    % Layer 3 contains a uniformly distributed number between 0 and 1 for
+    % use as random per-sample variable by internal random sampling...
+    
+    if instantOn
+        % Assign new samples for full set:
+        ctx.BGSampleSet(:, :, :) = randomSamples;
+    else
+        % Assign new samples for current batch:
+        sline = ctx.currentBatch * ctx.BGsampleLinesPerBatch + 1;
+        eline = sline + ctx.BGsampleLinesPerBatch - 1;
+        ctx.BGSampleSet(sline:eline, :, :) = randomSamples;
+    end
 
     % Background batch in background sample buffer updated. Convert whole
     % buffer to texture, with background sampling shader bound:
@@ -871,7 +997,12 @@ if strcmpi(cmd, 'Update')
     
     % Compute random sample locations in image via Matlabs/Octaves uniform
     % random number generator:
-    randomSamples = rand(ctx.sampleLinesPerBatch, ctx.samplesPerLine, 2);
+    if instantOn
+        randomSamples = rand(ctx.sampleLinesPerBatch * ctx.dotLifetime, ctx.samplesPerLine, 2);
+    else
+        randomSamples = rand(ctx.sampleLinesPerBatch, ctx.samplesPerLine, 2);
+    end
+    
     randomSamples(:,:,1) = randomSamples(:,:,1) * ctx.silhouetteWidth;
     randomSamples(:,:,2) = randomSamples(:,:,2) * ctx.silhouetteHeight;
 
@@ -891,12 +1022,19 @@ if strcmpi(cmd, 'Update')
     % Blit sampleTex into the target batch rectangle of our sampleBuffer,
     % with the sampling shader bound.
     
-    % Blit texture at target location into sampleBuffer, offset vertically
-    % so the proper batch gets updated. The secondary texture unit provides
-    % access to the silhouette image, the shader does bilinear filtering
-    % and conversion:
-    Screen('DrawTexture', ctx.sampleBuffer, sampleTex, [], OffsetRect(Screen('Rect', sampleTex), 0, double(ctx.currentBatch * ctx.sampleLinesPerBatch)), 0, 0);
-
+    if instantOn
+        % Blit texture into sampleBuffer. The secondary texture unit provides
+        % access to the silhouette image, the shader does bilinear filtering
+        % and conversion:
+        Screen('DrawTexture', ctx.sampleBuffer, sampleTex, [], [], 0, 0);        
+    else
+        % Blit texture at target location into sampleBuffer, offset vertically
+        % so the proper batch gets updated. The secondary texture unit provides
+        % access to the silhouette image, the shader does bilinear filtering
+        % and conversion:
+        Screen('DrawTexture', ctx.sampleBuffer, sampleTex, [], OffsetRect(Screen('Rect', sampleTex), 0, double(ctx.currentBatch * ctx.sampleLinesPerBatch)), 0, 0);
+    end
+    
     % Release sampleTex for next cycle:
     Screen('Close', sampleTex);
 
@@ -930,9 +1068,14 @@ if strcmpi(cmd, 'Update')
     
     RestoreGL;
     
-    % Increment batch counter for next update cycle:
-    ctx.currentBatch = mod(ctx.currentBatch+1, ctx.dotLifetime);
-
+    if instantOn
+        % Reset batch counter to zero after this initial "instant on" update cycle:
+        ctx.currentBatch = 0;
+    else
+        % Increment batch counter for next update cycle:
+        ctx.currentBatch = mod(ctx.currentBatch+1, ctx.dotLifetime);
+    end
+    
     % Ready for render: Return updated context:
     varargout{1} = ctx;
     
@@ -942,7 +1085,7 @@ end
 % Render current result in ctx.FGDotsBuffer into parent window:
 if strcmpi(cmd, 'Render')
     if nargin < 2
-        error(sprintf('In "%s": You must provide the "context"!', cmd));
+        error(sprintf('In "%s": You must provide the "context"!', cmd)); %#ok<SPERR>
     end
 
     % Get context object:
@@ -1063,7 +1206,7 @@ end
 
 if strcmpi(cmd, 'GetResults')
     if nargin < 2
-        error(sprintf('In "%s": You must provide the "context"!', cmd));
+        error(sprintf('In "%s": You must provide the "context"!', cmd)); %#ok<SPERR>
     end
 
     % Get context object:
@@ -1120,6 +1263,9 @@ if strcmpi(cmd, 'DebugFlag')
         error('Must provide new setting for debug flag!');
     end
     
+    varargout{1} = debug;
+    varargout{2} = debugGain;
+    
     debug = varargin{1};
     
     if nargin < 3
@@ -1134,7 +1280,7 @@ if strcmpi(cmd, 'DebugFlag')
     return;
 end
 
-error(sprintf('Invalid subcommand ''%s'' specified!', cmd));
+error(sprintf('Invalid subcommand ''%s'' specified!', cmd)); %#ok<SPERR>
 return;
 
 % Internal helper functions:
@@ -1218,4 +1364,25 @@ end
 % Restore to default:
 moglFDF_OriginalContext = [];
 
+return;
+
+function deleteContextBuffers(ctx)
+    BackupGL;
+    
+    SwitchToGL(ctx.parentWin);
+    
+    % Delete VBO's:
+    glDeleteBuffers(1, ctx.FGibo);
+    glDeleteBuffers(1, ctx.FGvbo);
+    glDeleteBuffers(1, ctx.BGibo);
+    glDeleteBuffers(1, ctx.BGvbo);
+    
+    SwitchToPTB;
+    
+    % Close all offscreen windows and their associated textures:
+    Screen('Close', [ctx.BGDotsBuffer, ctx.FGDotsBuffer, ctx.trackingBuffer, ctx.silhouetteBuffer, ctx.sampleBuffer]);
+    
+    % Close our operators:
+    Screen('Close', ctx.createFGDotsoperator);
+    
 return;
