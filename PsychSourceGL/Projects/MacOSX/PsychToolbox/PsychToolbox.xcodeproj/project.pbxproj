@@ -21325,7 +21325,6 @@
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
-				MATLAB_DIR_NAME = MATLAB73;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
