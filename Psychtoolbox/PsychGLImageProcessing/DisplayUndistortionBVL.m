@@ -1,5 +1,5 @@
-function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum)
-% [scal] = DisplayUndistortionBVL([caliboutfilename] [, screenid] [, xnum=37] [, ynum=27])
+function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum, referenceImage)
+% [scal] = DisplayUndistortionBVL([caliboutfilename] [, screenid] [, xnum=37] [, ynum=27] [, referenceImage])
 % [scal] = DisplayUndistortionBVL([caliboutfilename] [, calibinfilename])
 %
 % Geometric display calibration procedure for undistortion of distorted
@@ -77,6 +77,12 @@ function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum)
 % ynum = 27. 'xnum' and 'ynum' should be odd numbers. If you provide an
 % even number it will be rounded up to the next odd number.
 %
+% 'referenceImage' Optional name of an image file in a format supported by
+% Matlab/Octaves imread() command: If provided, the image will be loaded
+% from filesystem and drawn as a backdrop to the calibration grid. You can
+% use this if you want to use this routine not to undistort a physical
+% display, but want to undistort an existing image, e.g., create a proper
+% calibration file for the ImageUndistortionDemo routine.
 %
 % 2. After startup, the script will display a grid of mostly evenly spaced
 % points onscreen. The points will not be perfectly aligned to a grid due
@@ -320,6 +326,22 @@ ShowCursor('CrossHair');
 % 'scal' has at least fields screenNumber, windowPtr and screen rect...
 
 success = 0;
+
+if ~exist('referenceImage', 'var')
+    referenceImage = [];
+end
+
+if ~isempty(referenceImage)
+    try
+        refImg = imread(referenceImage);
+    catch
+        Screen('CloseAll');
+        error(sprintf('Reference image file %s failed to load - No such file or permission problems?! Aborted.', referenceImage));
+    end
+    
+    % Build reference texture and assign it to scal:
+    scal.refTex = Screen('MakeTexture', scal.windowPtr, refImg);
+end
 
 % Define type of mapping for this calibration method:
 % This is used in the CreateDisplayWarp() routine when parsing the

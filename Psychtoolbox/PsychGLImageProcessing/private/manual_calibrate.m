@@ -196,6 +196,14 @@ while (adjustMode ~= 0)
         % Fill to black
         Screen('FillRect', scal.windowPtr, colorBlack);
 
+        % Reference texture assigned to draw as backdrop?
+        if isfield(scal, 'refTex')
+            % Seems so. Double-check and draw it, if ok:
+            if scal.refTex
+                Screen('DrawTexture', scal.windowPtr, scal.refTex, [], Screen('Rect', scal.refTex));
+            end
+        end
+        
         % Update dot diameters
         % Set all dots to default diameter
         dotDiamArray = [];
@@ -433,6 +441,14 @@ while (adjustMode ~= 0)
         % Fill to black
         Screen('FillRect', scal.windowPtr, colorBlack);
 
+        % Reference texture assigned to draw as backdrop?
+        if isfield(scal, 'refTex')
+            % Seems so. Double-check and draw it, if ok:
+            if scal.refTex
+                Screen('DrawTexture', scal.windowPtr, scal.refTex, [], Screen('Rect', scal.refTex));
+            end
+        end
+        
         % Draw dots
         %Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);
         Screen('DrawDots', scal.windowPtr, transpose(dots), dotDiamArray, dotColor, [0 0], dotStyle);

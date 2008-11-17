@@ -1,5 +1,5 @@
-function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, imagename, screenid, stereomode, winrect, calibinfilename)
-% DisplayUndistortionBezier([caliboutfilename] [, xnum=2][, ynum=2][, subdivision=100][, imagename=default][, screenid=max][, stereomode=0][, winrect=[]][, calibinfilename])
+function DisplayUndistortionBezier(caliboutfilename, xnum, ynum, subdivision, imagename, screenid, stereomode, winrect, calibinfilename, refimagename)
+% DisplayUndistortionBezier([caliboutfilename] [, xnum=2][, ynum=2][, subdivision=100][, imagename=default][, screenid=max][, stereomode=0][, winrect=[]][, calibinfilename][, refimagename])
 %
 % Geometric display calibration procedure for geometric undistortion of
 % distorted displays. Needs graphics hardware with support for PTB imaging
@@ -207,8 +207,28 @@ if nargin < 9
     calibinfilename = [];
 end
 
+if nargin < 10
+    refimagename = [];
+end
+
+if ~isempty(refimagename)
+    refimg = imread(refimagename);    
+end
+
+if nargin >= 8 && ~isempty(winrect) && strcmpi(winrect, 'REFIMAGE')
+    if ~isempty(refimagename)
+        winrect = [0, 0, size(refimg, 2), size(refimg, 1)];
+    else
+        winrect = [];
+    end
+end
+
 InitializeMatlabOpenGL([], [], 1);
 win = Screen('OpenWindow', screenid, 0, winrect, [], [], stereomode, [], mor(kPsychNeedFastBackingStore, kPsychNeedOutputConversion));
+
+if ~isempty(refimagename)
+    reftex = Screen('MakeTexture', win, refimg);
+end
 
 % Allocate display list handle and build initial warpstruct:
 gld = glGenLists(1);
@@ -222,7 +242,6 @@ PsychImaging('PostConfiguration', win);
 
 img = imread(imagename);
 tex = Screen('MakeTexture', win, img);
-
 
 Screen('Flip', win);
 Screen('SelectStereoDrawBuffer', win, viewid);
@@ -321,9 +340,19 @@ while 1
         % The next Screen('Flip') will show the testimage with calibration
         % applied...
     else
-        % Visualization of the calibration grid requested. Draw it:
-        glEvalMesh2(GL.LINE, 0, subdivision, 0, subdivision);
+        % Visualization of the calibration grid requested.
 
+        % Draw backdrop image, if there is one:
+        if reftex
+            Screen('DrawTexture', win, reftex, [], Screen('Rect', reftex));
+
+            % Reset drawing color for calibration grid to red:
+            glColor3f(1, 0, 0);
+        end
+
+        % Draw calibration grid:
+        glEvalMesh2(GL.LINE, 0, subdivision, 0, subdivision);
+        
         % Disable pipeline so the mesh gets shown one-to-one onscreen:
         Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
     end

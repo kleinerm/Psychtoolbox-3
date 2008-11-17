@@ -1,5 +1,5 @@
-function ImageUndistortionDemo(calibfilename)
-% ImageUndistortionDemo(calibfilename)
+function ImageUndistortionDemo(calibfilename, imagefilename)
+% ImageUndistortionDemo(calibfilename [, imagefilename])
 %
 % Very sketchy demo.
 
@@ -17,8 +17,20 @@ PsychImaging('PrepareConfiguration');
 PsychImaging('AddTask', 'General', 'UseFastOffscreenWindows');
 w=PsychImaging('OpenWindow', screenid, 0);
 
+if nargin < 2
+    imagefilename = [];
+end
+
+if isempty(imagefilename)
+    imagefilename = [PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg'];
+end
+
+% Use our standard bunny picture as some test case:
+img = imread(imagefilename);
+mytex=Screen('MakeTexture', w, img);
+
 % Size of input image to apply correction to -- The size of the offscreen window:
-srcSize = [0 0 1032 776];
+srcSize = Screen('Rect', mytex);
 
 % Setup oversized offscreen window: This as an example of an oversized
 % input image buffer. Could also use a normal texture from
@@ -40,10 +52,6 @@ gloperator = CreateGLOperator(w);
 % size, color depth and format as the input images you're gonna use later
 % on, otherwise weird things will happen.
 AddImageUndistortionToGLOperator(gloperator, exampleImage, calibfilename, 0, 73, 73);
-
-% Use our standard bunny picture as some test case:
-img = imread([PsychtoolboxRoot 'PsychDemos/konijntjes1024x768.jpg']);
-mytex=Screen('MakeTexture', w, img);
 
 % Draw bunnies into exampleImage, scale 'em up to offscreen window size:
 Screen('DrawTexture', exampleImage, mytex, [], woffrect);
