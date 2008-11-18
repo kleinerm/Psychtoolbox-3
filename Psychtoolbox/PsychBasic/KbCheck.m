@@ -155,7 +155,7 @@ if isempty(macosx)
         
         % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
         % externally already:
-        if ~exist(ptb_kbcheck_enabledKeys, 'var')
+        if ~exist('ptb_kbcheck_enabledKeys', 'var')
             ptb_kbcheck_enabledKeys = [];
         end
     end
