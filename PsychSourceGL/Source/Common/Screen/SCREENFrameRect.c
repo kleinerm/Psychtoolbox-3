@@ -88,6 +88,7 @@ PsychError SCREENFrameRect(void)
 		// Get the rect and draw it
 		isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect);	
 		if (isArgThere && IsPsychRectEmpty(rect)) return(PsychError_none);
+		numRects = 1;
 	}
 
 	// Pen size starts as "undefined", just to make sure it gets initially set:
