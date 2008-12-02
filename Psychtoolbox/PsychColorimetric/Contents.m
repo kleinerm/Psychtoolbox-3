@@ -49,6 +49,7 @@
 %   M_TToT              - Conversion matrix from source/dest. cmfs.
 %   PhotonAbsorptionRate - Compute photon absoroption rate.
 %   PupilDiameterFromLum - Estimate pupil diameter from luminance.
+%   PsychMunsell        - Munsell renotation to xyY conversion.
 %   QuantaToEnergy      - Convert monochromatic quanta to energy.
 %   RadianceToRetIrradiance - Convert spectral radiance to spectral retinal irradiance (power units).
 %   RetIrradianceToTrolands - Convert retinal irradiance (power units) to trolands.
@@ -89,6 +90,6 @@
   
 %       
 %
-% Copyright (c) 1996-2003 by Denis Pelli & David Brainard
+% Copyright (c) 1996-2008 by Denis Pelli & David Brainard
 
 
