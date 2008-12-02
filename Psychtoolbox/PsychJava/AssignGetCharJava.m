@@ -21,27 +21,32 @@ function gcobject = AssignGetCharJava
 
 % Try to instantiate different versions of GetCharJava.class, starting with
 % the one built against the most recent Java version, descending on failure:
-
+psychlasterror('reset');
 try
     % Java version 1.5 -- MacOS-X 10.4.x and M$-Windows Matlab 7.1 and later.
     gcobject = GetCharJava_1_5_0;
+    psychlasterror('reset');
     return;
 catch
     % No op. Just fall through to next case.
 end
 
+psychlasterror('reset');
 try
     % Java version 1.4.2 -- MacOS-X 10.3.9 and M$-Windows Matlab 7.0.x
     gcobject = GetCharJava_1_4_2_09;
+    psychlasterror('reset');
     return;
 catch
     % No op. Just fall through to next case.
 end
 
+psychlasterror('reset');
 % Using the bundled classes failed. Try to bind a previously built one:
 try
     % GetCharJava built from source on this machine via javac compiler.
     gcobject = GetCharJava;
+    psychlasterror('reset');
     return;
 catch
     % No op. Just fall through to next case.
@@ -66,11 +71,13 @@ else
 end
 
 % Clear out java cache.
+psychlasterror('reset');
 try
     clear java;
 catch
     fprintf('Warning: clear java failed.\n');
 end
+psychlasterror('reset');
 
 % Retry binding:
 try
@@ -83,6 +90,7 @@ catch
     fprintf('for more info.\n\n');
     error('Failed to built and initialize GetCharJava.');
 end
+psychlasterror('reset');
 
 % Success!
 fprintf('Building a GetCharJava file from source on your machine worked!\n');

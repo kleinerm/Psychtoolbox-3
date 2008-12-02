@@ -132,6 +132,12 @@ if (~isempty(GL)) && (Screen('Preference', 'Enable3DGraphics')>0)
     % 3D mode active:
     gl3dmode = 1;
     
+    % At this point in control flow, we may be set to a different GL
+    % context than the one of our wanted target 'win'dow. Make sure, our
+    % target'win'dow is bound before doing any funky stuff. The
+    % 'GetWindowInfo' call is guaranteed to do this for us:
+    Screen('GetWindowInfo', win);
+    
     % First we backup all relevant transformation matrices and set up
     % identity orthonormal transforms for our purpose:
     glMatrixMode(GL.PROJECTION);

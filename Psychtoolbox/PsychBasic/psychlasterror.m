@@ -1,4 +1,4 @@
-function rc = psychlasterror
+function rc = psychlasterror(varargin)
 % psychlasterror - Replacement for Matlab-7 'lasterror'.
 % This is hopefully useful for older Matlab installations and
 % for the Octave port:
@@ -13,12 +13,16 @@ function rc = psychlasterror
 % exist must check for all cases, as lasterror is implemented differently
 % on different Matlab versions (variable, M-File or builtin-function):
 if exist('lasterror') > 0
-  % Call Matlab implementation:
-  rc = lasterror;
+    % Call Matlab implementation:
+    if nargin > 0
+        rc = lasterror(varargin{1});
+    else
+        rc = lasterror;
+    end
 else
-  % Use our simple fallback-implementation:
-  rc.message = lasterr;
-  rc.identifier = '';
+    % Use our simple fallback-implementation:
+    rc.message = lasterr;
+    rc.identifier = '';
 end
 
 return;
