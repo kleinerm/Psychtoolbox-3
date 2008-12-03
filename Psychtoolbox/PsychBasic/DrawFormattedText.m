@@ -1,5 +1,5 @@
-function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat)
-% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat])
+function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical)
+% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
 % some basic formatting. The text string 'tstring' may contain newline
@@ -18,6 +18,10 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % break text strings longer than 'wrapat' characters into newline separated
 % strings of roughly 'wrapat' characters. This is done by calling the
 % WrapString function (See 'help WrapString').
+%
+% The optional flag 'flipHorizontal' if set to 1 will mirror the text
+% horizontally, whereas the optional flag 'flipVertical' if set to 1 will
+% mirror the text vertically (upside down).
 %
 % The function returns the new (nx, ny) position of the text drawing cursor
 % and the bounding rectangle 'textbounds' of the drawn string. (nx,ny) can
@@ -61,6 +65,16 @@ end
 % No text wrapping by default:
 if nargin < 6 || isempty(wrapat)
     wrapat = 0;
+end
+
+% No horizontal mirroring by default:
+if nargin < 7 || isempty(flipHorizontal)
+    flipHorizontal = 0;
+end
+
+% No vertical mirroring by default:
+if nargin < 8 || isempty(flipVertical)
+    flipVertical = 0;
 end
 
 % Convert all conventional linefeeds into C-style newlines:
@@ -194,17 +208,48 @@ while length(tstring)>0
 
     % Any string to draw?
     if ~isempty(curstring)
+        % Need bounding box?
+        if xcenter || flipHorizontal || flipVertical
+            % Compute text bounding box for this substring:
+            bbox=Screen('TextBounds', win, curstring);
+        end
+        
         % Horizontally centered output required?
         if xcenter
-            % Yes. Compute text bounding box for this substring and compute
-            % dh, dv position offsets to center it in the center of window.
-            bbox=Screen('TextBounds', win, curstring);
+            % Yes. Compute dh, dv position offsets to center it in the center of window.
             [rect,dh,dv] = CenterRect(bbox, Screen('Rect', win));
             % Set drawing cursor to horizontal x offset:
             xp = dh;
         end
             
-        [nx ny] = Screen('DrawText', win, curstring, xp, yp, color);
+        if flipHorizontal || flipVertical
+            textbox = OffsetRect(bbox, xp, yp);
+            [xc, yc] = RectCenter(textbox);
+
+            % Make a backup copy of the current transformation matrix for later
+            % use/restoration of default state:
+            Screen('glPushMatrix', win);
+
+            % Translate origin into the geometric center of text:
+            Screen('glTranslate', win, xc, yc, 0);
+
+            % Apple a scaling transform which flips the direction of x-Axis,
+            % thereby mirroring the drawn text horizontally:
+            if flipVertical
+                Screen('glScale', win, 1, -1, 1);
+            end
+            
+            if flipHorizontal
+                Screen('glScale', win, -1, 1, 1);
+            end
+
+            % We need to undo the translations...
+            Screen('glTranslate', win, -xc, -yc, 0);
+            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color);
+            Screen('glPopMatrix', win);
+        else
+            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color);
+        end
     else
         % This is an empty substring (pure linefeed). Just update cursor
         % position:
