@@ -107,8 +107,8 @@ PsychError SCREENResolution(void)
 		specialMode = 0;
 		PsychCopyInIntegerArg(6, FALSE, &specialMode);
 
-		// Make sure we're not called while windows are open. Only allow calling with open windows if Bit zero of specialMode is set:
-		if ((PsychCountOpenWindows(kPsychAnyWindow) > 0) && !(specialMode & 1)) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
+		// Make sure we're not called while onscreen windows are open. Only allow calling with open onscreen windows if Bit zero of specialMode is set:
+		if (((PsychCountOpenWindows(kPsychSingleBufferOnscreen) + PsychCountOpenWindows(kPsychDoubleBufferOnscreen)) > 0) && !(specialMode & 1)) PsychErrorExitMsg(PsychError_user, "Tried to change video display settings via Screen('Resolutions'); while onscreen windows were open! Not allowed.");
 
 		// Copy in optional new settings:
 		PsychCopyInIntegerArg(2, FALSE, &newWidth);

@@ -437,6 +437,12 @@ if strcmp(cmd, 'reset')
            masterkeyshapetex = [];
        end
 
+       if ~isempty(weighttex)
+           % Release weight texture:
+           Screen('Close', weighttex);
+           weighttex = [];
+       end
+
        % Release Offscreen windows:
        Screen('Close', morphbuffer(1));
        Screen('Close', morphbuffer(2));
@@ -473,7 +479,6 @@ if strcmp(cmd, 'reset')
        glDeleteBuffers(1, ibo);
        ibo = [];
        
-       weighttex = [];
        weighttexgl = [];
        oldWeightLength = -1;
        
