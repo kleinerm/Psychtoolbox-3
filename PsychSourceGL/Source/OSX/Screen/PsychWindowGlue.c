@@ -238,6 +238,28 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
 	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
 
+	// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.6 with NVidia GF 8800 GPU's:
+	// If requested, always use AGL API and regular (non-fullscreen) windows via the
+	// Quartz compositor. These are just borderless fullscreen windows.
+	// This works with the NVidia GF 8800 driver bug on dual-display setups,
+	// but as Quartz is in full control of buffer swaps, the stimulus onset timing
+	// is horrible, animations are jerky and all our high precision timestamping is
+	// completely broken and pointless: This mode is only useful for slowly updating
+	// mostly static stimuli with no timing requirements.
+	if (!useAGL && (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows)) {
+		// Force use of AGL in windowed mode, ie., via Quartz compositor:
+		useAGL = TRUE;
+		
+		// Force a window rectangle that matches the global screen rectangle for that windows screen:
+		PsychCopyRect(windowRecord->rect, screenrect);
+		
+		// Disable all timestamping:
+		PsychPrefStateSet_VBLTimestampingMode(-1);
+		
+		// Warn user about what's going on:
+		if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Using Carbon + AGL for composited onscreen window creation: High precision timestamping disabled,\nany kind of visual stimulus onset timing wil be very unreliable!!\n");		
+	}
+
 	// Do we need to use windowed mode with AGL?
 	if (useAGL) {
 		// Yes. Need to create Carbon window and attach OpenGL to it via AGL:		

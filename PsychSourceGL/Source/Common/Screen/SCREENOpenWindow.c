@@ -185,6 +185,9 @@ PsychError SCREENOpenWindow(void)
 		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
 		PsychGetGlobalScreenRect(screenNumber, screenrect);
 		if (PsychMatchRect(screenrect, rect)) useAGL=FALSE;
+
+		// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.6 with NVidia GF 8800 GPU's:
+		if (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLCompositorForFullscreenWindows) useAGL = TRUE;
 	}
 	else {
 		// Non OS/X system: Do not use AGL ;-)

@@ -200,6 +200,10 @@ typedef struct {
 // if the requested window is a fullscreen window:
 #define kPsychUseAGLForFullscreenWindows 8192
 
+// On OS/X enforce use of regular composited Quartz windows for fullscreen
+// displays via AGL, instead of AGL or CGL fullscreen contexts:
+#define kPsychUseAGLCompositorForFullscreenWindows 16384
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

@@ -124,7 +124,17 @@
 % Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
 % even if the requested onscreen window is a fullscreen window. Normally
 % PTB would use the CGL API for fullscreen windows, but this is broken for
-% dual-display operations on some systems running 10.5.3 - 10.5.5 at least.
+% dual-display operations on some systems running 10.5.3 - 10.5.6 at least.
+%
+% 16384 == kPsychUseAGLCompositorForFullscreenWindows
+% Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
+% and to always use Quartz composited regular windows instead of fullscreen
+% contexts, even if the requested onscreen window is a fullscreen window.
+% Normally PTB would use the CGL API for fullscreen windows, but this is
+% broken for dual-display operations on some systems running 10.5.3 -
+% 10.5.6 at least. Stimulus onset timing, animations and timestamping
+% precision will be horrible in this mode. Only suitable for presentation
+% of mostly static stimuli with no requirements for frame-accurate timing.
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
