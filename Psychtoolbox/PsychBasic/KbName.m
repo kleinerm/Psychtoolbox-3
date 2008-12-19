@@ -641,7 +641,7 @@ if nargin==0
     WaitSecs(1);
     keyPressed = 0;
     while (~keyPressed)
-        [keyPressed, secs, keyCodes] = KbCheck;
+        [keyPressed, secs, keyCodes] = KbCheck(-1);
     end
     kbNameResult= KbName(logical(keyCodes));  %note that keyCodes should be of type logical here.
 
