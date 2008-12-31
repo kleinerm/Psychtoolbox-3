@@ -429,7 +429,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Set raw input (non-canonical) mode: No line-based processing or editing of
 	// received data via special control characters, unless a processing mode of
 	// cooked was explicitely requested:
-    if ((strstr(configString, "ProcessingMode=")!=NULL) && (strstr(configString, "ProcessingMode=Cooked") == NULL)) { cfmakeraw(&options); updatetermios = TRUE; }
+    if (((p=strstr(configString, "ProcessingMode="))!=NULL) && (strstr(p, "ProcessingMode=Cooked") == NULL)) { cfmakeraw(&options); updatetermios = TRUE; }
 	
 	// No minimum number of bytes to receive:
 	options.c_cc[VMIN] = 0;
@@ -478,17 +478,17 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		options.c_cflag &= ~(PARENB | PARODD);
 		options.c_iflag &= ~INPCK;
 		
-		if (strstr(configString, "Parity=Even")) {
+		if (strstr(p, "Parity=Even")) {
 			options.c_cflag |= PARENB;
 			options.c_iflag |= INPCK;
 		}
 		else 
-		if (strstr(configString, "Parity=Odd")) {
+		if (strstr(p, "Parity=Odd")) {
 			options.c_cflag |= (PARENB | PARODD);
 			options.c_iflag |= INPCK;
 		}
 		else
-		if (strstr(configString, "Parity=None")) {
+		if (strstr(p, "Parity=None")) {
 			// Nothing to do.
 		}
 		else {
@@ -504,17 +504,17 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		// Clear all break settings:
 		options.c_iflag &= ~(IGNBRK | BRKINT);
 		
-		if (strstr(configString, "BreakBehaviour=Ignore")) {
+		if (strstr(p, "BreakBehaviour=Ignore")) {
 			// Break signals will be ignored:
 			options.c_iflag |= IGNBRK;
 		}
 		else 
-		if (strstr(configString, "BreakBehaviour=Flush")) {
+		if (strstr(p, "BreakBehaviour=Flush")) {
 			// A break signal will flush the input- and output-queues:
 			options.c_iflag |= BRKINT;
 		}
 		else
-		if (strstr(configString, "BreakBehaviour=Zero")) {
+		if (strstr(p, "BreakBehaviour=Zero")) {
 			// Don't change anything, ie. IGNBRK and BRKINT not set:
 			// A break signal will be output as single zero byte.
 		}
@@ -531,19 +531,19 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		// Clear all databit settings:
 		options.c_cflag &= ~(CS5 | CS6 | CS7 | CS8);
 		
-		if (strstr(configString, "DataBits=5")) {
+		if (strstr(p, "DataBits=5")) {
 			options.c_cflag |= CS5;
 		}
 		else 
-		if (strstr(configString, "DataBits=6")) {
+		if (strstr(p, "DataBits=6")) {
 			options.c_cflag |= CS6;
 		}
 		else
-		if (strstr(configString, "DataBits=7")) {
+		if (strstr(p, "DataBits=7")) {
 			options.c_cflag |= CS7;
 		}
 		else
-		if (strstr(configString, "DataBits=8")) {
+		if (strstr(p, "DataBits=8")) {
 			options.c_cflag |= CS8;
 		}
 		else {
@@ -559,11 +559,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		// Clear all stopbit settings:
 		options.c_cflag &= ~CSTOPB;
 		
-		if (strstr(configString, "StopBits=1")) {
+		if (strstr(p, "StopBits=1")) {
 			// Nothing to do, this is already set above.
 		}
 		else 
-		if (strstr(configString, "StopBits=2")) {
+		if (strstr(p, "StopBits=2")) {
 			options.c_cflag |= CSTOPB;
 		}
 		else {
@@ -580,15 +580,15 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 		options.c_cflag &= ~CRTSCTS;
 		options.c_iflag &= ~(IXON | IXOFF);
 		
-		if (strstr(configString, "FlowControl=None")) {
+		if (strstr(p, "FlowControl=None")) {
 			// Set above already...
 		}
 		else 
-		if (strstr(configString, "FlowControl=Software")) {
+		if (strstr(p, "FlowControl=Software")) {
 			options.c_iflag |= (IXON | IXOFF);
 		}
 		else
-		if (strstr(configString, "FlowControl=Hardware")) {
+		if (strstr(p, "FlowControl=Hardware")) {
 			options.c_cflag |= CRTSCTS;
 		}
 		else {
@@ -649,11 +649,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 
 	// Handling of DTR :
 	if ((p = strstr(configString, "DTR="))) {
-		if (strstr(configString, "DTR=0")) {
+		if (strstr(p, "DTR=0")) {
 			handshake&= ~TIOCM_DTR;
 		}
 		else
-		if (strstr(configString, "DTR=1")) {
+		if (strstr(p, "DTR=1")) {
 			handshake|= TIOCM_DTR;
 		}
 		else {
@@ -665,11 +665,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 
 	// Handling of DSR :
 	if ((p = strstr(configString, "DSR="))) {
-		if (strstr(configString, "DSR=0")) {
+		if (strstr(p, "DSR=0")) {
 			handshake&= ~TIOCM_DSR;
 		}
 		else
-		if (strstr(configString, "DSR=1")) {
+		if (strstr(p, "DSR=1")) {
 			handshake|= TIOCM_DSR;
 		}
 		else {
@@ -681,11 +681,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	
 	// Handling of RTS :
 	if ((p = strstr(configString, "RTS="))) {
-		if (strstr(configString, "RTS=0")) {
+		if (strstr(p, "RTS=0")) {
 			handshake&= ~TIOCM_RTS;
 		}
 		else
-		if (strstr(configString, "RTS=1")) {
+		if (strstr(p, "RTS=1")) {
 			handshake|= TIOCM_RTS;
 		}
 		else {
@@ -697,11 +697,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 
 	// Handling of CTS :
 	if ((p = strstr(configString, "CTS="))) {
-		if (strstr(configString, "CTS=0")) {
+		if (strstr(p, "CTS=0")) {
 			handshake&= ~TIOCM_CTS;
 		}
 		else
-		if (strstr(configString, "CTS=1")) {
+		if (strstr(p, "CTS=1")) {
 			handshake|= TIOCM_CTS;
 		}
 		else {
