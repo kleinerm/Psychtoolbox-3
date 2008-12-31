@@ -297,6 +297,11 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	int				inint;
 	bool			updatetermios = FALSE;
 
+	// Init DCBlength field to size of structure! Fixed as of 31.12.2008 -- May have caused
+	// trouble in some setups with earlier releases!
+	memset(&options, 0, sizeof(DCB));
+	options.DCBlength = sizeof(DCB);
+	
 	// Retrieve current settings:
     if (GetCommState(device->fileDescriptor, &options) == 0)
     {
