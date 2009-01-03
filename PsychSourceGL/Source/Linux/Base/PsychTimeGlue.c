@@ -14,6 +14,7 @@
   	HISTORY:
 
   	2/20/06       mk		Wrote it. Derived from Windows version.  
+	1/03/09		  mk		Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
 
   	DESCRIPTION:
 	
@@ -30,6 +31,7 @@
 #include "Psych.h"
 #include <time.h>
 #include <errno.h>
+#include <sched.h>
 
 /*
  *		file local state variables
@@ -125,6 +127,9 @@ void PsychWaitUntilSeconds(double whenSecs)
 void PsychWaitIntervalSeconds(double delaySecs)
 {
   double deadline;
+
+  if (delaySecs <= 0) return;
+  
   // Get current time:
   PsychGetPrecisionTimerSeconds(&deadline);
 
@@ -137,6 +142,41 @@ void PsychWaitIntervalSeconds(double delaySecs)
   return;
 }
 
+/* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
+ *
+ * PsychYieldIntervalSeconds() differs from PsychWaitIntervalSeconds() in that
+ * it is supposed to release the cpu to other threads or processes for *at least*
+ * the given amount of time 'delaySecs', instead of *exactly* 'delaySecs'.
+ *
+ * If one wants to wait an exact amount of time, one uses PsychWaitIntervalSeconds().
+ * If one just "has nothing to do" for some minimum amount of time, and wants to
+ * play nice to other threads/processes and exact timing is not crucial, then
+ * this is the routine of choice. Typical use is within polling loops, where one
+ * wants to pause between polling cycles and it doesn't matter if the pause takes
+ * a bit longer.
+ *
+ * A 'delaySecs' of <= zero will just release the cpu for the remainder of
+ * the current scheduling timeslice. If you don't know what to do, choose a
+ * zero setting.
+ *
+ */
+void PsychYieldIntervalSeconds(double delaySecs)
+{
+	if (delaySecs <= 0) {
+		// Yield cpu for remainder of this timeslice:
+		sched_yield();
+	}
+	else {
+		// On Linux we use standard wait ops - they're good enough for us.
+		// However, we make sure that the wait lasts at least 2x the sleepwait_threshold,
+		// so the cpu gets certainly released to other threads, instead of getting hogged
+		// by busy-waiting for too short delaySecs intervals - which would be detrimental
+		// to the goals of PsychYieldIntervalSeconds():
+		delaySecs = (delaySecs > 2.0 * sleepwait_threshold) ? delaySecs : (2.0 * sleepwait_threshold);
+		PsychWaitIntervalSeconds(delaySecs);
+	}
+}
+
 double	PsychGetKernelTimebaseFrequencyHz(void)
 {
   if(!isKernelTimebaseFrequencyHzInitialized){
@@ -146,11 +186,6 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
   return((double)kernelTimebaseFrequencyHz);
 }
 
-// CAUTION: This init routine doesn't get called by all modules that use timing,
-// only be GetSecs(), so better don't initialize really crucial stuff here!!!
-// We init crucial stuff at first invocation of PsychGetPrecisionTimerSeconds(),
-// as that routine is called by both, time queries *and* sleeping/waiting functions,
-// so its first invocation is at a safe time - and right before real use of the time glue.
 void PsychInitTimeGlue(void)
 {
   // TODO: Add Mutex init code for the timeglue mutex!
@@ -213,7 +248,9 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	sleepwait_threshold = 0.00025;
 	if (sleepwait_threshold < 100 * clockinc) sleepwait_threshold = 100 * clockinc;
 	if (sleepwait_threshold > 0.010) sleepwait_threshold = 0.010;
-	printf("PTB-INFO: Real resolution of system clock is %1.4f microseconds, dynamic sleepwait_threshold starts with %lf msecs...\n", clockinc * 1e6, sleepwait_threshold * 1e3);
+	// Only output info about sleepwait threshold and clock resolution if we consider the
+	// clock rather low res, ie. increments bigger 20 microseconds:
+	if (clockinc > 0.00002) printf("PTB-INFO: Real resolution of (rather low resolution!) system clock is %1.4f microseconds, dynamic sleepwait_threshold starts with %lf msecs...\n", clockinc * 1e6, sleepwait_threshold * 1e3);
 
 	firstTime = FALSE;
   }
@@ -310,4 +347,28 @@ void PsychEstimateGetSecsValueAtTickCountZero(void)
 double PsychGetEstimatedSecsValueAtTickCountZero(void)
 {
   return(estimatedGetSecsValueAtTickCountZero);
+}
+
+/* Init a Mutex: */
+int	PsychInitMutex(psych_mutex* mutex)
+{
+	return(pthread_mutex_init(mutex, NULL));
+}
+
+/* Deinit and destroy a Mutex: */
+int	PsychDestroyMutex(psych_mutex* mutex)
+{
+	return(pthread_mutex_destroy(mutex));
+}
+
+/* Lock a Mutex, blocking until mutex is available if it isn't available: */
+int PsychLockMutex(psych_mutex* mutex)
+{
+	return(pthread_mutex_lock(mutex));
+}
+
+/* Unlock a Mutex: */
+int PsychUnlockMutex(psych_mutex* mutex)
+{
+	return(pthread_mutex_unlock(mutex));
 }

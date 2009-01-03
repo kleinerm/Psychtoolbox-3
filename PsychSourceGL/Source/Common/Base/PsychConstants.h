@@ -163,6 +163,8 @@ typedef unsigned char bool;
         typedef Display* CGDirectDisplayID;
         typedef int CGDisplayErr;
         typedef unsigned int CFDictionaryRef;
+		// Datatype for Mutex Locks:
+		typedef pthread_mutex_t		psych_mutex;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -193,6 +195,8 @@ typedef unsigned char bool;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
         //typedef unsigned int CFDictionaryRef;
+		// Datatype for Mutex Locks:
+		typedef CRITICAL_SECTION		psych_mutex;
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	typedef Boolean				boolean;
@@ -211,9 +215,11 @@ typedef unsigned char bool;
         typedef GLubyte				psych_uint8;
         typedef GLubyte				ubyte;
         typedef UInt32				psych_uint32;
-        typedef unsigned long long		psych_uint64;
+        typedef unsigned long long	psych_uint64;
+		// Datatype for Mutex Locks:	
+		typedef pthread_mutex_t		psych_mutex;
 #endif
- 
+
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB | PSYCH_LANGUAGE == PSYCH_OCTAVE
 	typedef const mxArray CONSTmxArray;

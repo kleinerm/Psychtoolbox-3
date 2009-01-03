@@ -15,6 +15,7 @@
   	HISTORY:
 
   	1/20/03	awi		Wrote it for OS/X.  
+	1/03/09	mk		Add generic Mutex locking support as service to ptb modules.
 
   	DESCRIPTION:
 
@@ -29,7 +30,8 @@
 #include "Psych.h"
 
 void PsychWaitUntilSeconds(double whenSecs);
-void	PsychWaitIntervalSeconds(double seconds);
+void PsychWaitIntervalSeconds(double seconds);
+void PsychYieldIntervalSeconds(double seconds);
 double	PsychGetKernelTimebaseFrequencyHz(void);
 void PsychGetPrecisionTimerTicks(psych_uint64 *ticks);
 void PsychGetPrecisionTimerTicksPerSecond(double *frequency);
@@ -44,6 +46,10 @@ void PsychEstimateGetSecsValueAtTickCountZero(void);
 double PsychGetEstimatedSecsValueAtTickCountZero(void);
 double PsychGetTimeGetTimeValueAtLastTimeQuery(double* precisionRawtime);
 unsigned int PsychGetTimeBaseHealthiness(void);
+int	PsychInitMutex(psych_mutex* mutex);
+int	PsychDestroyMutex(psych_mutex* mutex);
+int PsychLockMutex(psych_mutex* mutex);
+int PsychUnlockMutex(psych_mutex* mutex);
 
 //end include once
 #endif

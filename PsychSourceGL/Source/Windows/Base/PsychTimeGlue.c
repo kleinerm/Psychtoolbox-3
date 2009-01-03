@@ -21,6 +21,7 @@
 	04/05/08	mk		Added locking viar time_lock to PsychGetPrecisionTimerSeconds() to protect
 						against races in time glue checking code due to multiple threads calling, e.g.,
 						inside the PsychPortAudio module (Portaudio callback thread and main thread).
+	1/03/09		mk		Add generic Mutex locking support as service to ptb modules. Add PsychYieldIntervalSeconds().
 
   	DESCRIPTION:
 	
@@ -125,6 +126,9 @@ void PsychWaitUntilSeconds(double whenSecs)
 void PsychWaitIntervalSeconds(double delaySecs)
 {
   double deadline;
+  
+  if (delaySecs <= 0) return;
+  
   // Get current time:
   PsychGetPrecisionTimerSeconds(&deadline);
   // Compute deadline in absolute system time:
@@ -132,6 +136,46 @@ void PsychWaitIntervalSeconds(double delaySecs)
   // Wait until deadline reached:
   PsychWaitUntilSeconds(deadline);
   return;
+}
+
+/* PsychYieldIntervalSeconds() - Yield the cpu for given 'delaySecs'
+ *
+ * PsychYieldIntervalSeconds() differs from PsychWaitIntervalSeconds() in that
+ * it is supposed to release the cpu to other threads or processes for *at least*
+ * the given amount of time 'delaySecs', instead of *exactly* 'delaySecs'.
+ *
+ * If one wants to wait an exact amount of time, one uses PsychWaitIntervalSeconds().
+ * If one just "has nothing to do" for some minimum amount of time, and wants to
+ * play nice to other threads/processes and exact timing is not crucial, then
+ * this is the routine of choice. Typical use is within polling loops, where one
+ * wants to pause between polling cycles and it doesn't matter if the pause takes
+ * a bit longer.
+ *
+ * A 'delaySecs' of <= zero will just release the cpu for the remainder of
+ * the current scheduling timeslice. If you don't know what to do, choose a
+ * zero setting.
+ *
+ */
+void PsychYieldIntervalSeconds(double delaySecs)
+{
+	if (delaySecs <= 0) {
+		// Yield cpu for remainder of this timeslice via special Sleep(0) call:
+		Sleep(0);
+	}
+	else {
+		// On MS-Windows we can't use PsychWaitIntervalSeconds(), as all
+		// its clever compensation mechanisms for the shoddy Windows schedulers
+		// flaws would likely turn the yield() into a cpu hogging busy-wait
+		// spinloop, which is not what we want!
+		//
+		// Therefore we use the Win32 function Sleep() directly, with a minimum
+		// sleep duration of 1 msec (or more). The requested sleep duration will
+		// turn into anything from 1 msec to multiple milliseconds for minimum
+		// sleep. For a multi-msecs sleep we can assume that it will sleep longer
+		// than requested by up to multiple msecs. Anyway, it will release the cpu...
+		delaySecs = (delaySecs > 0.001) ? delaySecs : 0.001;
+		Sleep((int) (delaySecs * 1000.0f));
+	}
 }
 
 double	PsychGetKernelTimebaseFrequencyHz(void)
@@ -537,4 +581,32 @@ unsigned int PsychGetTimeBaseHealthiness(void)
 	v=(Timertrouble) ? 1 : 0;
 	v+=(schedulingtrouble) ? 2 : 0;
 	return(v);
+}
+
+/* Init a Mutex: */
+int	PsychInitMutex(psych_mutex* mutex)
+{
+	InitializeCriticalSection(mutex);
+	return(0);
+}
+
+/* Deinit and destroy a Mutex: */
+int	PsychDestroyMutex(psych_mutex* mutex)
+{
+	DeleteCriticalSection(mutex);
+	return(0);
+}
+
+/* Lock a Mutex, blocking until mutex is available if it isn't available: */
+int PsychLockMutex(psych_mutex* mutex)
+{
+	EnterCriticalSection(mutex);
+	return(0);
+}
+
+/* Unlock a Mutex: */
+int PsychUnlockMutex(psych_mutex* mutex)
+{
+	LeaveCriticalSection(mutex);
+	return(0);
 }

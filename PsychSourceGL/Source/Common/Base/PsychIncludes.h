@@ -55,6 +55,7 @@
         #include <sys/time.h>
         #include <unistd.h>
         #include <stdarg.h>
+		#include <pthread.h>
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -75,6 +76,7 @@
 #elif PSYCH_SYSTEM == PSYCH_OSX
 	//includes for Apple OpenGL
 	#include <sys/time.h>
+	#include <pthread.h>
 
         // If we are included from PsychScriptingGlue.cc, which
         // is indicated by PTBINSCRIPTINGGLUE, then we must only
