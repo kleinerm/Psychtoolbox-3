@@ -64,5 +64,10 @@ PsychError PSYCHPORTAUDIOGetStatus(void);
 PsychError PSYCHPORTAUDIOLatencyBias(void);
 // Retrieve buffer with captured audio data:
 PsychError PSYCHPORTAUDIOGetAudioData(void);
+// Select general run mode for audio device:
+PsychError PSYCHPORTAUDIORunMode(void);
+// Select sample loop for audio device:
+PsychError PSYCHPORTAUDIOSetLoop(void); 
+
 //end include once
 #endif
