@@ -68,6 +68,8 @@ PsychError PSYCHPORTAUDIOGetAudioData(void);
 PsychError PSYCHPORTAUDIORunMode(void);
 // Select sample loop for audio device:
 PsychError PSYCHPORTAUDIOSetLoop(void); 
+// Set tuneable low-level engine parameters:
+PsychError PSYCHPORTAUDIOEngineTunables(void);
 
 //end include once
 #endif

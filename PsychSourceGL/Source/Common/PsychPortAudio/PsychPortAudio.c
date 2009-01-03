@@ -48,13 +48,24 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 #define kPortAudioMonitoring 4
 
 // Maximum number of audio devices we handle:
-#define MAX_PSYCH_AUDIO_DEVS 10
+// This consumes around 150-200 Bytes static memory per potential device, so
+// we waste about 15 kb or RAM here, which is acceptable nowadays. However: If a device
+// is actually opened, it will consume additional memory ressources in PortAudio,
+// the operating systems sound subsystem and kernel, and in the audio hardware device
+// driver. It will also consume (potentially limited) audio hardware ressources,
+// and most importantly, it will consume cpu time, bus cycles and hw/interrupts for the running
+// audio processing threads inside PortAudio, the OS sound system and device drivers!
+// --> Too many simultaneously open devices may hurt performance and general timing, even
+// if the devices are mostly idle!!
+// --> Anybody that manages to even come close to this limit does something horribly wrong and certainly non-portable!
+#define MAX_PSYCH_AUDIO_DEVS 100
 
 // Maximum number of audio channels we support per open device:
 #define MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE 256
 
 // Our device record:
 typedef struct PsychPADevice {
+	psych_mutex	mutex;			// Mutex lock for the PsychPADevice struct.
 	int		 opmode;			// Mode of operation: Playback, capture or full duplex?
 	int		 runMode;			// Runmode: 0 = Stop engine at end of playback, 1 = Keep engine running in hot-standby, ...
 	PaStream *stream;			// Pointer to associated portaudio stream.
@@ -95,8 +106,10 @@ typedef struct PsychPADevice {
 } PsychPADevice;
 
 volatile PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
-unsigned int  audiodevicecount;
+unsigned int  audiodevicecount = 0;
 unsigned int  verbosity = 4;
+double		  yieldInterval = 0.001;	// How long to wait in calls to PsychYieldIntervalSeconds().
+boolean		  uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
 
 boolean pa_initialized = FALSE;
 
@@ -511,6 +524,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\nGeneral information:\n";
 	synopsis[i++] = "version = PsychPortAudio('Version');";
 	synopsis[i++] = "oldlevel = PsychPortAudio('Verbosity' [,level]);";
+	synopsis[i++] = "[oldyieldInterval, oldMutexEnable] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable]);";
 	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype]);";
 	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
@@ -1201,7 +1215,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		// Wait for playback on this stream to finish, before refilling it:
 		while (audiodevices[pahandle].state > 0) {
 			// Sleep a millisecond:
-			PsychWaitIntervalSeconds(0.001);
+			PsychYieldIntervalSeconds(yieldInterval);
 		}
 		
 		// Ok, everything sane, fill the buffer:
@@ -1255,7 +1269,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		// position to progress far enough?
 		while (((audiodevices[pahandle].outputbuffersize / sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - inchannels) <= (inchannels * insamples)) {
 			// Sleep a millisecond:
-			PsychWaitIntervalSeconds(0.001);
+			PsychYieldIntervalSeconds(yieldInterval);
 		} 
 		
 		// Ok enough headroom for batch streaming refill:
@@ -1625,7 +1639,7 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 	if (waitForStart>0) {
 		// Wait for real start of device:
 		while(audiodevices[pahandle].state == 1) {
-			PsychWaitIntervalSeconds(0.001);
+			PsychYieldIntervalSeconds(yieldInterval);
 		}
 		
 		// Ok, relevant audio buffer with real sound onset submitted to engine.
@@ -1793,7 +1807,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	if (waitForStart>0) {
 		// Wait for real start of device:
 		while(audiodevices[pahandle].state != 2) {
-			PsychWaitIntervalSeconds(0.001);
+			PsychYieldIntervalSeconds(yieldInterval);
 		}
 		
 		// Ok, relevant audio buffer with real sound onset submit to engine.
@@ -1881,12 +1895,12 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 		// Wait until stream finishes by itself:
 		if (audiodevices[pahandle].runMode == 0) {
 			// Wait until engine auto-stops:
-			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychWaitIntervalSeconds(0.001);
+			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychYieldIntervalSeconds(yieldInterval);
 		}
 		
 		if (audiodevices[pahandle].runMode == 1) {
 			// Wait until engine "idles":
-			while (audiodevices[pahandle].state > 0) PsychWaitIntervalSeconds(0.001);
+			while (audiodevices[pahandle].state > 0) PsychYieldIntervalSeconds(yieldInterval);
 		}
 	}
 	
@@ -1926,12 +1940,12 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 		// Wait until engine is really stopped:
 		if (audiodevices[pahandle].runMode == 0) {
 			// Wait until engine auto-stops:
-			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychWaitIntervalSeconds(0.001);
+			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychYieldIntervalSeconds(yieldInterval);
 		}
 		
 		if (audiodevices[pahandle].runMode == 1) {
 			// Wait until engine  "idles":
-			while (audiodevices[pahandle].state > 0) PsychWaitIntervalSeconds(0.001);
+			while (audiodevices[pahandle].state > 0) PsychYieldIntervalSeconds(yieldInterval);
 		}
 
 		// Need to update stream state and reqstate manually here, as the Pa_Stop/AbortStream()
@@ -2327,6 +2341,69 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
 	// Ok, range is valid. Assign it:
 	audiodevices[pahandle].loopStartFrame = (unsigned int) startSample;
 	audiodevices[pahandle].loopEndFrame = (unsigned int) endSample;
+
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('EngineTunables') - Set tunable low-level engine parameters
+ */
+PsychError PSYCHPORTAUDIOEngineTunables(void) 
+{
+ 	static char useString[] = "[oldyieldInterval, oldMutexEnable] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable]);";
+	static char synopsisString[] = 
+		"Return, and optionally set low-level tuneable driver parameters.\n"
+		"The driver must be idle, ie., no audio device must be open, if you want to change tuneables! "
+		"These tuneable parameters usually have reasonably chosen defaults and you should only "
+		"need to change them to work around bugs or flaws in your operating system, sound hardware or drivers, "
+		"or if you have very unusual needs or setups. Only touch these if you know what you're doing, probably "
+		"after consultation with the Psychtoolbox forum or Wiki. Some of these have potential to cause serious "
+		"system malfunctions if not selected properly!\n\n"
+		"'yieldInterval' - If the driver has to perform polling operations, it will release the cpu for "
+		"yieldInterval seconds inbetween unsuccessful polling iterations. Valid range is 0.0 to 0.1 secs, with "
+		"a reasonable default of 0.001 secs ie. 1 msec.\n"
+		"'MutexEnable' - Enable (1) or Disable (0) internal mutex locking of driver data structures to prevent "
+		"potential race-conditions between internal processing threads. Locking is enabled by default. Only "
+		"disable locking to work around seriously broken audio device drivers or system setups and be aware "
+		"that this may have unpleasant side effects and can cause all kinds of malfunctions by itself!\n";
+
+	static char seeAlsoString[] = "Open ";	 
+	
+	int mutexenable;
+	double myyieldInterval;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(2));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	// Make sure no settings are changed while an audio device is open:
+	if ((PsychGetNumInputArgs() > 0) && (audiodevicecount > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change low-level engine parameter while at least one audio device is open! Forbidden!");
+
+	// Return old yieldInterval:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, yieldInterval);
+
+	// Get optional new yieldInterval:
+	if (PsychCopyInDoubleArg(1, kPsychArgOptional, &myyieldInterval)) {
+		if (myyieldInterval < 0 || myyieldInterval > 0.1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'yieldInterval' provided. Valid are between 0.0 and 0.1 seconds.");
+		yieldInterval = myyieldInterval;
+		if (verbosity > 3) printf("PsychPortAudio: INFO: Engine yieldInterval changed to %lf seconds.\n", yieldInterval);
+	}
+
+	// Return current/old mutexenable:
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) ((uselocking) ? 1 : 0));
+
+	// Get optional new mutexenable:
+	if (PsychCopyInIntegerArg(2, kPsychArgOptional, &mutexenable)) {
+		if (mutexenable < 0 || mutexenable > 1) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'MutexEnable' provided. Valid are 0 and 1.");
+		uselocking = (mutexenable > 0) ? TRUE : FALSE;
+		if (verbosity > 3) printf("PsychPortAudio: INFO: Engine Mutex locking %s.\n", (uselocking) ? "enabled" : "disabled");
+	}
 
 	return(PsychError_none);
 }
