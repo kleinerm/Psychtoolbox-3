@@ -63,25 +63,38 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Maximum number of audio channels we support per open device:
 #define MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE 256
 
+// Uncomment this define MUTEX_LOCK_TIME_STATS to enable tracing of
+// mutex lock hold times for low-level debugging and tuning:
+//#define MUTEX_LOCK_TIME_STATS 1
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	// HANDLE to Win32 event object:
+	typedef HANDLE psychpa_conditionvar;
+#else
+	// Posix condition variable:
+	typedef pthread_cond_t psychpa_conditionvar;
+#endif
+
 // Our device record:
 typedef struct PsychPADevice {
 	psych_mutex	mutex;			// Mutex lock for the PsychPADevice struct.
+	psychpa_conditionvar changeSignal;	// Condition variable or event object for change signalling (see above).
 	int		 opmode;			// Mode of operation: Playback, capture or full duplex?
 	int		 runMode;			// Runmode: 0 = Stop engine at end of playback, 1 = Keep engine running in hot-standby, ...
 	PaStream *stream;			// Pointer to associated portaudio stream.
 	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
 	PaHostApiTypeId hostAPI;	// Type of host API.
-	double	 reqStartTime;		// Requested start time in system time (secs).
-	double	 startTime;			// Real start time in system time (secs). Returns real start time after start.
+	volatile double	 reqStartTime;		// Requested start time in system time (secs).
+	volatile double	 startTime;			// Real start time in system time (secs). Returns real start time after start.
 								// The real start time is the time when the first sample hit the speaker in playback or full-duplex mode.
 								// Its the time when the first sample was captured in pure capture mode - or when the first sample should
 								// be captured in pure capture mode with scheduled start. Whenever playback is active, startTime only
 								// refers to the output stage.
-	double	 captureStartTime;	// Time when first captured sample entered the sound hardware in system time (secs). This information is
+	volatile double	 captureStartTime;	// Time when first captured sample entered the sound hardware in system time (secs). This information is
 								// redundant in pure capture mode - its identical to startTime. In full duplex mode, this is an estimate of
 								// when the first sample was captured, whereas startTime is an estimate of when the first sample was output.
-	unsigned int state;			// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing, 3=Aborting playback. Mostly written/updated by paCallback.
-	unsigned int reqstate;		// Requested state of the stream, as opposed to current 'state'. Written by main-thread, read & processed by paCallback.
+	volatile unsigned int state;			// Current state of the stream: 0=Stopped, 1=Hot Standby, 2=Playing, 3=Aborting playback. Mostly written/updated by paCallback.
+	volatile unsigned int reqstate;		// Requested state of the stream, as opposed to current 'state'. Written by main-thread, read & processed by paCallback.
 	double	 repeatCount;		// Number of repetitions: -1 = Loop forever, 1 = Once, n = n repetitions.
 	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
 	int		 outputbuffersize;	// Size of output buffer in bytes.
@@ -105,13 +118,140 @@ typedef struct PsychPADevice {
 								// for slight mistakes in PA's estimate.
 } PsychPADevice;
 
-volatile PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
+PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
 unsigned int  verbosity = 4;
 double		  yieldInterval = 0.001;	// How long to wait in calls to PsychYieldIntervalSeconds().
 boolean		  uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
 
+double debugdummy1, debugdummy2;
+
 boolean pa_initialized = FALSE;
+
+static void PsychPALockDeviceMutex(PsychPADevice* dev)
+{
+	#ifdef MUTEX_LOCK_TIME_STATS
+	// Compute effective mutex lock hold time. Typical duration on a 2nd Rev. MacBookPro DualCore
+	// under typical playback load in the paCallback() is less than 100 microseconds, usually around 50 usecs, so
+	// nothing to worry about yet.
+	PsychGetAdjustedPrecisionTimerSeconds(&debugdummy1);
+	#endif
+	
+	if (uselocking) {
+		PsychLockMutex(&(dev->mutex));
+	}
+}
+
+static void PsychPAUnlockDeviceMutex(PsychPADevice* dev)
+{
+	if (uselocking) {
+		PsychUnlockMutex(&(dev->mutex));
+	}
+
+	#ifdef MUTEX_LOCK_TIME_STATS
+	PsychGetAdjustedPrecisionTimerSeconds(&debugdummy2);
+	dev->predictedLatency = debugdummy2 - debugdummy1;
+	#endif
+}
+
+static void PsychPACreateSignal(PsychPADevice* dev)
+{
+	if (uselocking) {
+		// Locking and signalling: We have to wait for a signal, and we
+		// enter here with the device mutex held. Waiting is operating system dependent:
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// MS-Windows: Create auto-reset event-object:
+			dev->changeSignal = CreateEvent(NULL,               // default security attributes
+											FALSE,              // auto-reset event
+											FALSE,              // initial state is nonsignaled
+											NULL				// no object name
+											); 
+		#else
+			// Unices aka Posix: Create condition variable:
+			pthread_cond_init(&(dev->changeSignal), NULL);
+		#endif
+	}
+}
+
+
+static void PsychPADestroySignal(PsychPADevice* dev)
+{
+	if (uselocking) {
+		// Locking and signalling: We have to wait for a signal, and we
+		// enter here with the device mutex held. Waiting is operating system dependent:
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// MS-Windows: Destroy event-object:
+			CloseHandle(dev->changeSignal); 
+		#else
+			// Unices aka Posix: Destroy condition variable:
+			pthread_cond_destroy(&(dev->changeSignal));
+		#endif
+	}
+}
+
+static void PsychPASignalChange(PsychPADevice* dev)
+{
+	if (uselocking) {
+		// Locking and signalling: We have to wait for a signal, and we
+		// enter here with the device mutex held. Waiting is operating system dependent:
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// MS-Windows: Set our event-object to signalled state to wake up waiting master thread, if any:
+			SetEvent(dev->changeSignal);
+		#else
+			// Unices aka Posix: Signal our condition variable to wake up waiting master thread, if any:
+			pthread_cond_signal(&(dev->changeSignal));
+		#endif
+	}
+}
+
+static void PsychPAWaitForChange(PsychPADevice* dev)
+{
+	if (uselocking) {
+		// Locking and signalling: We have to wait for a signal, and we
+		// enter here with the device mutex held. Waiting is operating system dependent:
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
+			// state, then reacquire the mutex:
+			PsychPAUnlockDeviceMutex(dev);
+			WaitForSingleObject(dev->changeSignal, INFINITE);
+			PsychPALockDeviceMutex(dev);
+		#else
+			// Unices aka Posix: Wait on a condition variable to signal. Dropping and reaquiring
+			// the lock happens automatically in an atomic manner:
+			pthread_cond_wait(&(dev->changeSignal), &(dev->mutex));
+		#endif
+	}
+	else {
+		// No locking and signalling: Just yield for a bit, then retry...
+		PsychYieldIntervalSeconds(yieldInterval);
+	}
+}
+
+// Callback function which gets called when a portaudio stream (aka our engine) goes idle for any reason:
+// This will reset the device state to "idle/stopped" aka 0, reset pending stop requests and signal
+// the master thread if it is waiting for this to happen:
+void PAStreamFinishedCallback(void *userData)
+{
+    PsychPADevice* dev = (PsychPADevice*) userData;
+
+	// Lock device struct:
+	PsychPALockDeviceMutex(dev);
+
+	// Reset state to zero aka idle / stopped and reset pending requests:
+	dev->reqstate = 255;
+	
+	// Update "true" state to inactive:
+	dev->state = 0;
+
+	// Unlock device struct:
+	PsychPAUnlockDeviceMutex(dev);
+	
+	// Signal state change:
+	PsychPASignalChange(dev);
+	
+	// Ready.
+	return;
+}
 
 /* Logger callback function to output PortAudio debug messages at 'verbosity' > 5. */
 void PALogger(const char* msg)
@@ -143,7 +283,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 {
 	// Assign all variables, especially our dev device structure
 	// with info about this stream:
-    volatile PsychPADevice* dev = (PsychPADevice*) userData;
+    PsychPADevice* dev = (PsychPADevice*) userData;
     float *out = (float*) outputBuffer;
     float *in = (float*) inputBuffer;
     unsigned long i, silenceframes;
@@ -161,12 +301,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// processing of this stream:
 	if (dev == NULL) return(paAbort);
 	
+	// Acquire device lock: We'll likely hold it until exit from paCallback:
+	PsychPALockDeviceMutex(dev);
+	
 	// Cache requested state:
 	reqstate = dev->reqstate;
-	
-	// Check if all required buffers are there. In monitoring mode, we don't need them.
-    if (((dev->opmode & kPortAudioMonitoring) == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
-		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)))) return(paAbort);
 
 	// Count total number of calls:
 	dev->paCalls++;
@@ -223,6 +362,13 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Update "true" state to inactive:
 		dev->state = 0;
 
+		// Release mutex here, because dev->runMode never changes below us, and
+		// all other ops are on local variables:
+		PsychPAUnlockDeviceMutex(dev);
+
+		// Signal state change:
+		PsychPASignalChange(dev);
+		
 		if (dev->runMode == 0) {
 			// Runmode 0: We shall really stop the engine:
 			
@@ -243,7 +389,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// We are effectively idle, but the engine shall keep running. This is usually
 		// the case in runMode > 0. Here we "simulate" idle state by simply outputting
 		// silence and then returning control to PortAudio:
-		 
+		
+		// Release mutex here, as memset() only operates on "local" data:
+		PsychPAUnlockDeviceMutex(dev);
+		
 		// Prime the outputbuffer with silence to simulate a stopped audio device:
 		if (outputBuffer) memset(outputBuffer, 0, framesPerBuffer * outchannels * sizeof(float));
 
@@ -252,6 +401,24 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	}
 
 	// This point is only reached in hot-standby or active playback/capture/feedback modes:
+
+	// Check if all required buffers are there. In monitoring mode, we don't need them.
+    if (((dev->opmode & kPortAudioMonitoring) == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
+		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)))) {
+
+		// Acknowledge request by resetting it:
+		dev->reqstate = 255;
+		
+		// Update "true" state to inactive:
+		dev->state = 0;
+
+		PsychPAUnlockDeviceMutex(dev);
+
+		// Signal state change:
+		PsychPASignalChange(dev);
+
+		return(paAbort);
+	}
 
 	// Are we already playing back and/or capturing real audio data,
 	// or are we still on hot-standby? PsychPortAudio tries to start
@@ -368,6 +535,11 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		if ((onsetDelta > 0) && (dev->opmode & kPortAudioPlayBack)) {
 			// Some time left: A full buffer duration?
 			if (onsetDelta >= ((double) framesPerBuffer / (double) dev->streaminfo->sampleRate)) {
+				// At least one buffer away...
+				
+				// Release mutex, as remainder only operates on locals:
+				PsychPAUnlockDeviceMutex(dev);
+				
 				// At least one buffer away. Fill our buffer with zeros, aka silence:
 				memset(outputBuffer, 0, framesPerBuffer * outchannels * sizeof(float));
 				
@@ -392,6 +564,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 				
 				// Mark us as running:
 				dev->state = 2;
+				
+				// Signal state change:
+				PsychPASignalChange(dev);				
 			}
 		}
 		else {
@@ -402,6 +577,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 			// Mark us as running:
 			dev->state = 2;
+			
+			// Signal state change:
+			PsychPASignalChange(dev);			
 		}
 	}
     
@@ -417,6 +595,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		dev->recposition = dev->playposition;
 		
 		// Return from callback:
+		PsychPAUnlockDeviceMutex(dev);
 		return(paContinue);
 	}
 	
@@ -468,6 +647,12 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			dev->state = 0;
 			dev->reqstate = 255;
 			
+			// Safe to unlock, as dev->runMode never changes below us:
+			PsychPAUnlockDeviceMutex(dev);
+			
+			// Signal state change:
+			PsychPASignalChange(dev);
+			
 			if (dev->runMode == 0) {
 				// Either paComplete gracefully, playing out pending buffers, or
 				// request a hard paAbort if abortion is requested:
@@ -482,6 +667,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	}
 		
 	// Tell engine to continue stream processing, i.e., call us again...
+	PsychPAUnlockDeviceMutex(dev);
     return(paContinue);
 }
 
@@ -492,6 +678,11 @@ void PsychPACloseStream(int id)
 	if (stream) {
 		// Stop, shutdown and release audio stream:
 		Pa_StopStream(stream);
+
+		// Unregister the stream finished callback:
+		Pa_SetStreamFinishedCallback(stream, NULL);
+
+		// Close and destroy the stream:
 		Pa_CloseStream(stream);
 		audiodevices[id].stream = NULL;
 		
@@ -508,6 +699,12 @@ void PsychPACloseStream(int id)
 			audiodevices[id].inputbuffer = NULL;
 			audiodevices[id].inputbuffersize = 0;
 		}				
+
+		// If we use locking, we need to destroy the per-device mutex:
+		if (uselocking && PsychDestroyMutex(&(audiodevices[id].mutex))) printf("PsychPortAudio: CRITICAL! Failed to release Mutex object for pahandle %i! Prepare for trouble!\n", id);
+
+		// If we use locking, this will destroy the associated event variable:
+		PsychPADestroySignal(&(audiodevices[id]));
 
 		audiodevicecount--;
 	}
@@ -1071,6 +1268,18 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].inchannels = mynrchannels[1];
 	audiodevices[audiodevicecount].latencyBias = 0.0;
 	
+	// If we use locking, we need to initialize the per-device mutex:
+	if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
+		printf("PsychPortAudio: CRITICAL! Failed to initialize Mutex object for pahandle %i! Prepare for trouble!\n", audiodevicecount);
+		PsychErrorExitMsg(PsychError_system, "Audio device mutex creation failed!");
+	}
+	
+	// If we use locking, this will create & init the associated event variable:
+	PsychPACreateSignal(&(audiodevices[audiodevicecount]));
+	
+	// Register the stream finished callback:
+	Pa_SetStreamFinishedCallback(audiodevices[audiodevicecount].stream, PAStreamFinishedCallback);
+
 	#if PSYCH_SYSTEM == PSYCH_OSX
 		// Query low-level audio driver of the CoreAudio HAL for hardware latency:
 		// Hmm, maybe not. Don't know if it is worth the hazzle... This is a constant that
@@ -1212,11 +1421,17 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	if (streamingrefill <= 0) {
 		// Standard refill with possible buffer reallocation. Engine needs to be
 		// stopped, full reset of engine at refill:
+
 		// Wait for playback on this stream to finish, before refilling it:
+		PsychPALockDeviceMutex(&audiodevices[pahandle]);
 		while (audiodevices[pahandle].state > 0) {
-			// Sleep a millisecond:
-			PsychYieldIntervalSeconds(yieldInterval);
+			// Wait for a state-change before reevaluating the .state:
+			PsychPAWaitForChange(&audiodevices[pahandle]);
 		}
+		
+		// Device is idle, we hold the lock. We can safely drop the lock here and still modify
+		// device data, as none of this will get touched by the engine in idle state:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 		
 		// Ok, everything sane, fill the buffer:
 		buffersize = sizeof(float) * inchannels * insamples;
@@ -1252,27 +1467,44 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	else {
 		// Streaming refill while playback is running:
 
-		// Engine stopped?
+		// Engine stopped? [No need to mutex-lock, as engine can't change from state 0 to other state without our intervention]
 		if (audiodevices[pahandle].state == 0) PsychErrorExitMsg(PsychError_user, "Audiodevice not in playback mode! Can't do a streaming buffer refill while stopped.");
 
-		// No buffer allocated?
+		// No buffer allocated? [No need to mutex-lock, see above]
 		if (audiodevices[pahandle].outputbuffer == NULL) PsychErrorExitMsg(PsychError_user, "No audio buffer allocated! You must call this method once before start of playback to initially allocate a buffer of sufficient size.");
 
 		// Buffer of sufficient size for a streaming refill of this amount?
 		buffersize = sizeof(float) * inchannels * insamples;
 		if (audiodevices[pahandle].outputbuffersize < buffersize) PsychErrorExitMsg(PsychError_user, "Total capacity of audio buffer is too small for a refill of this size! Allocate an initial buffer of at least the size of the biggest refill.");
 
+		// Need to lock b'cause of 'playposition':
+		PsychPALockDeviceMutex(&audiodevices[pahandle]);
+
 		// Check for buffer underrun:
 		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
 
 		// Boundary conditions met. Can we refill immediately or do we need to wait for playback
 		// position to progress far enough?
-		while (((audiodevices[pahandle].outputbuffersize / sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - inchannels) <= (inchannels * insamples)) {
-			// Sleep a millisecond:
+		while ((audiodevices[pahandle].state > 0) && ((audiodevices[pahandle].outputbuffersize / sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - inchannels) <= (inchannels * insamples)) {
+			// Sleep a bit, drop the lock throughout sleep:
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+			// TODO: We could do better here by predicting how long it will take at least until we're ready to refill,
+			// but a perfect solution would require quite a bit of effort... ...Something for a really boring afternoon.
 			PsychYieldIntervalSeconds(yieldInterval);
+			PsychPALockDeviceMutex(&audiodevices[pahandle]);
 		} 
+
+		// Exit with lock held...
 		
-		// Ok enough headroom for batch streaming refill:
+		// Have we left the while-loop because the engine stopped? In that case we won't
+		// be able to ever get the needed headroom and need to error-out:
+		if (audiodevices[pahandle].state == 0) {
+			// Ohoh...
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);			
+			PsychErrorExitMsg(PsychError_user, "Audiodevice no longer in playback mode (Auto stopped?!?)! Can't continue a streaming buffer refill while stopped. Check your code!");
+		}
+		
+		// Ok, device locked and enough headroom for batch streaming refill:
 		
 		// Copy the data, convert it from double to float, take ringbuffer wraparound into account:
 		while(buffersize > 0) {
@@ -1288,6 +1520,9 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		
 		// Check for buffer underrun:
 		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
+
+		// Drop lock here, no longer needed:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);			
 
 		if ((underrun > 0) && (verbosity > 1)) printf("PsychPortAudio-WARNING: Underrun of audio playback buffer detected during streaming refill. Some sound data will be skipped!\n");
 	}
@@ -1379,7 +1614,8 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 
 	// Internal capture ringbuffer already allocated?
 	if (buffersize == 0) {
-		// Nope. This call needs to allocate it.
+		// Nope. This call needs to allocate it. We know the engine is idle in this case, because it
+		// can't be started or brought out of idle if buffersize == 0 due to checks in 'Start' and 'RescheduleStart'.
 		if (allocsize <= 0) PsychErrorExitMsg(PsychError_user, "You must first call this function with a positive 'amountToAllocateSecs' argument to allocate internal bufferspace first!");
 		
 		// Ready to allocate ringbuffer memory outside this if-clause...
@@ -1389,13 +1625,13 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		if (allocsize > 0) {
 			// Calling script wants to reallocate the buffer. Check if this is possible here:
 			
-			// Test 1: Pending samples to read from current ringbuffer?
+			// Test 1: Engine running? [No need to mutex lock: If running, we fail safely. If state = 0 it can't transition to > 0 behind our back]
+			if (audiodevices[pahandle].state > 0) PsychErrorExitMsg(PsychError_user, "Tried to resize internal buffer while recording engine is running! You must stop recording before resizing the buffer!");
+
+			// Test 2: Pending samples to read from current ringbuffer? Engine is idle, so we can safely access device data lock-free...
 			if (audiodevices[pahandle].readposition < audiodevices[pahandle].recposition) PsychErrorExitMsg(PsychError_user, "Tried to resize internal buffer without emptying it beforehand. You must drain the buffer before resizing it!");
 
-			// Test 2: Engine running?
-			if (audiodevices[pahandle].state > 0) PsychErrorExitMsg(PsychError_user, "Tried to resize internal buffer while recording engine is running! You must stop recording before resizing the buffer!");
-			
-			// Ok, reallocation allowed. Delete old buffer:
+			// Ok, reallocation allowed, as engine is idle. Delete old buffer:
 			audiodevices[pahandle].inputbuffersize = 0;
 			free(audiodevices[pahandle].inputbuffer);
 			audiodevices[pahandle].inputbuffer = NULL;
@@ -1406,6 +1642,8 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	
 	// Still (re-)allocation wanted?
 	if (allocsize > 0) {
+		// We know the engine is idle if we reach this point, so no need to acquire locks or check state...
+		
 		// Calculate needed buffersize in samples: Convert allocsize in seconds to size in bytes:
 		audiodevices[pahandle].inputbuffersize = sizeof(float) * ((int) (allocsize * audiodevices[pahandle].streaminfo->sampleRate)) * audiodevices[pahandle].inchannels;
 		audiodevices[pahandle].inputbuffer = (float*) calloc(1, audiodevices[pahandle].inputbuffersize);
@@ -1430,6 +1668,9 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 	maxSecs = 0;
 	PsychCopyInDoubleArg(4, kPsychArgOptional, &maxSecs);
 
+	// The engine is potentially running, so we need to mutex-lock our accesses...
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
+
 	// How much samples are available in ringbuffer to fetch?
 	insamples = audiodevices[pahandle].recposition - audiodevices[pahandle].readposition;
 	
@@ -1441,6 +1682,7 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 
 		// Bigger than buffersize? That would be a no no...
 		if ((minSamples * sizeof(float)) > audiodevices[pahandle].inputbuffersize) {
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			PsychErrorExitMsg(PsychError_user, "Invalid 'minimumAmountToReturnSecs' parameter: The requested minimum is bigger than the whole capture buffer size!'");			
 		}
 		
@@ -1449,13 +1691,18 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		while (((double) insamples < minSamples) && (audiodevices[pahandle].state > 0)) {
 			// Compute amount of time to elapse before request could be fullfilled:
 			minSecs = (minSamples - (double) insamples) / ((double) audiodevices[pahandle].inchannels) / ((double) audiodevices[pahandle].streaminfo->sampleRate);
-			// Ok, required data will be available earliest in 'minSecs' seconds. Sleep until then:
+			// Ok, required data will be available earliest in 'minSecs' seconds. Sleep until then with lock dropped:
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			PsychWaitIntervalSeconds(minSecs);
+			PsychPALockDeviceMutex(&audiodevices[pahandle]);
+			
 			// We've slept at least the estimated amount of required time. Recalculate amount
 			// of available sound data and check again...
 			insamples = audiodevices[pahandle].recposition - audiodevices[pahandle].readposition;
 		}
 	}
+	
+	// Lock held here...
 	
 	// Never ever fetch the samples for the last sampleframe. We do not want to fetch
 	// a possibly not yet updated or incomplete sample frame. Leave this to next call
@@ -1466,6 +1713,13 @@ PsychError PSYCHPORTAUDIOGetAudioData(void)
 		insamples = insamples - (insamples % audiodevices[pahandle].inchannels);
 		insamples-= audiodevices[pahandle].inchannels;
 	}
+
+	// Can unlock here: The remainder of the routine doesn't touch any critical device variables anymore,
+	// only variables that aren't modified by the engine, or not used/touched by engine.
+	// Well, theoretically the engine could overwrite the portion of the buffer we're going to
+	// read out if we stall massively and the capturebuffer is way too "undersized", but in that
+	// case the user code is screwed anyway and it (or the system) needs to be fixed...
+	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 	
 	insamples = (insamples < 0) ? 0 : insamples;
 	buffersize = insamples * sizeof(float);
@@ -1575,10 +1829,34 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioMonitoring) == 0) {
+		// Not in monitoring mode: We must have in/outbuffers allocated:
+		if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].outputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound outputbuffer doesn't contain any sound to play?!?");
+		if ((audiodevices[pahandle].opmode & kPortAudioCapture) && (audiodevices[pahandle].inputbuffer == NULL)) PsychErrorExitMsg(PsychError_user, "Sound inputbuffer not prepared/allocated for capture?!?");
+	}
+
+	// Get new optional 'when' start time:
+	PsychCopyInDoubleArg(2, kPsychArgRequired, &when);
+	if (when < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'when'. Valid values are zero or greater.");
+
+	PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForStart);
+	if (waitForStart < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'waitForStart'. Valid values are zero or greater.");
+
+	// Get new optional 'repetitions' count:
+	if (PsychCopyInDoubleArg(4, kPsychArgOptional, &repetitions)) {
+		// Argument provided: Range-Check and assign it:
+		if (repetitions < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'repetitions'. Valid values are zero or greater.");
+	}
+	else {
+		repetitions = -1;
+	}
 
 	// Audio engine running? That is the minimum requirement for this function to work:
 	if (!Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychErrorExitMsg(PsychError_user, "Audio device not started. You need to call the 'Start' function first!");
 
+	// Lock the device:
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
+	
 	// Whatever the current scheduled starttime is, override it to be infinity:
 	audiodevices[pahandle].reqStartTime = DBL_MAX;
 	
@@ -1588,24 +1866,21 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 	// Engine is running. Is it in a state ready for rescheduling a start?
 	
 	// In runMode zero it must be in hot-standby as immediately after a 'Start' in order to be reschedulable:
-	if ((audiodevices[pahandle].runMode == 0) && (audiodevices[pahandle].state != 1)) PsychErrorExitMsg(PsychError_user, "Audio device not started and waiting. You need to call the 'Start' function first with an infinite 'when' time or a 'when' time in the far future!");
-
+	if ((audiodevices[pahandle].runMode == 0) && (audiodevices[pahandle].state != 1)) {
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+		PsychErrorExitMsg(PsychError_user, "Audio device not started and waiting. You need to call the 'Start' function first with an infinite 'when' time or a 'when' time in the far future!");
+	}
+	
 	// In runMode 1 the device itself is always running and has to be in a logically stopped/idle (=0) state for rescheduling.
 	if ((audiodevices[pahandle].runMode == 1) && (audiodevices[pahandle].state > 0)) {
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 		PsychErrorExitMsg(PsychError_user, "Audio device not idle. Make sure it is idle first, e.g., by proper use of the 'Stop' function or by checking its 'Active' state via the 'GetStatus' function!");
 	}
 
 	// Audio engine is in a proper state for rescheduling now: 
 
-	// Get new optional 'when' start time:
-	PsychCopyInDoubleArg(2, kPsychArgRequired, &when);
-	if (when < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'when'. Valid values are zero or greater.");
-
-	// Get new optional 'repetitions' count:
-	if (PsychCopyInDoubleArg(4, kPsychArgOptional, &repetitions)) {
-		// Argument provided: Range-Check and assign it:
-		if (repetitions < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'repetitions'. Valid values are zero or greater.");
-		
+	// New repetitions provided?
+	if (repetitions >=0) {
 		// Set number of requested repetitions: 0 means loop forever, default is 1 time.
 		audiodevices[pahandle].repeatCount = (repetitions == 0) ? -1 : repetitions;
 	}
@@ -1633,15 +1908,21 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 		audiodevices[pahandle].state = 1;
 	}
 
-	PsychCopyInIntegerArg(3, kPsychArgOptional, &waitForStart);
-	if (waitForStart < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'waitForStart'. Valid values are zero or greater.");
-
 	if (waitForStart>0) {
-		// Wait for real start of device:
+		// Wait for real start of device: We enter the first while() loop iteration with
+		// the device lock still held from above, so the while() loop will iterate at
+		// least once...
 		while(audiodevices[pahandle].state == 1) {
-			PsychYieldIntervalSeconds(yieldInterval);
+			// Wait for a state-change before reevaluating the .state:
+			PsychPAWaitForChange(&audiodevices[pahandle]);
 		}
 		
+		// Device has started (potentially even already finished for very short sounds!)
+		// In any case we have a valid .startTime to wait for in the device struct,
+		// which won't change by itself anymore, so it is safe to access unlocked.
+		// Unlock device:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
 		// Ok, relevant audio buffer with real sound onset submitted to engine.
 		// We now have an estimate of real sound onset in startTime, wait until
 		// then:
@@ -1651,6 +1932,9 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, audiodevices[pahandle].startTime);
 	}
 	else {
+		// Unlock device: This will trigger actual start at next paCallback() invocation by engine:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
 		// Return empty zero timestamp to signal that this info is not available:
 		PsychCopyOutDoubleArg(1, kPsychArgOptional, 0.0);
 	}
@@ -1713,7 +1997,8 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	}
 
 	// Make sure current state is zero, aka fully stopped and engine is really stopped: Output a warning if this looks like an
-	// unintended "too early" restart:
+	// unintended "too early" restart: [No need to mutex-lock here, as iff these .state or .reqstate settings are not met, then
+	// then we are good and they can't change by themselves behind our back -- paCallback() can't change .state to > 0 or .reqstate away from 255]
 	if (((audiodevices[pahandle].state > 0) || Pa_IsStreamActive(audiodevices[pahandle].stream)) && (audiodevices[pahandle].reqstate == 255)) {
 		if (verbosity > 1) {
 			switch(audiodevices[pahandle].runMode) {
@@ -1730,6 +2015,8 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	
 	// Safeguard: If the stream is not logically stopped, do it now:
 	if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
+	
+	// No need to mutex-lock here, because we know the engine is stopped here, so no potential for races...
 	
 	PsychCopyInDoubleArg(2, kPsychArgOptional, &repetitions);
 	if (repetitions < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'repetitions'. Valid values are zero or greater.");
@@ -1803,12 +2090,26 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 		printf("PTB-ERROR: Failed to start audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
 		PsychErrorExitMsg(PsychError_system, "Failed to start PortAudio audio device.");
 	}
-		
+	
+	// From here on, the engine is potentially running, so we need to mutex-lock access
+	// to device struct...
 	if (waitForStart>0) {
-		// Wait for real start of device:
-		while(audiodevices[pahandle].state != 2) {
-			PsychYieldIntervalSeconds(yieldInterval);
+		// Can only reach this point in runMode 1, in which case the
+		// device will be in state == 1 until playback really starts:
+		// We need to enter the first while() loop iteration with
+		// the device lock held from above, so the while() loop will iterate at
+		// least once...
+		PsychPALockDeviceMutex(&audiodevices[pahandle]);
+		while(audiodevices[pahandle].state == 1) {
+			// Wait for a state-change before reevaluating the .state:
+			PsychPAWaitForChange(&audiodevices[pahandle]);
 		}
+		
+		// Device has started (potentially even already finished for very short sounds!)
+		// In any case we have a valid .startTime to wait for in the device struct,
+		// which won't change by itself anymore, so it is safe to access unlocked.
+		// Unlock device:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 		
 		// Ok, relevant audio buffer with real sound onset submit to engine.
 		// We now have an estimate of real sound onset in startTime, wait until
@@ -1887,22 +2188,23 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 
 	// Get optional blockUntilStopped-flag:
 	PsychCopyInIntegerArg(3, kPsychArgOptional, &blockUntilStopped);
+
+	// Lock device:
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
 	
 	// Wait for automatic stop of playback if requested: This only makes sense if we
 	// are in playback mode and not in infinite playback mode! Would not make sense in
 	// looping mode (infinite repetitions of playback) or pure recording mode:
-	if ((waitforend == 1) && (audiodevices[pahandle].state > 0) && (audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].repeatCount != -1)) {
-		// Wait until stream finishes by itself:
-		if (audiodevices[pahandle].runMode == 0) {
-			// Wait until engine auto-stops:
-			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychYieldIntervalSeconds(yieldInterval);
-		}
-		
-		if (audiodevices[pahandle].runMode == 1) {
-			// Wait until engine "idles":
-			while (audiodevices[pahandle].state > 0) PsychYieldIntervalSeconds(yieldInterval);
+	if ((waitforend == 1) && Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0) && (audiodevices[pahandle].opmode & kPortAudioPlayBack) && (audiodevices[pahandle].repeatCount != -1)) {
+		while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream)) ||
+				((audiodevices[pahandle].runMode == 1) && (audiodevices[pahandle].state > 0))) {
+
+			// Wait for a state-change before reevaluating:
+			PsychPAWaitForChange(&audiodevices[pahandle]);
 		}
 	}
+	
+	// Lock held here in any case...
 	
 	// Soft stop requested (as opposed to fast stop)?
 	if (waitforend!=2) {
@@ -1911,11 +2213,17 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 			// Stream running. Request a stop of stream, to be honored by playback thread:
 			audiodevices[pahandle].reqstate = 0;
 			
+			// Drop lock, so request can get through...
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
 			// If blockUntilStopped is non-zero, then explicitely stop as well:
 			if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && (err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError) {
 				printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
 				PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
 			}
+		}
+		else {
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 		}
 	}
 	else {
@@ -1927,27 +2235,39 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 			// data anymore, but only zeros for silence and to paAbort asap:
 			audiodevices[pahandle].reqstate = 3;
 			
+			// Drop lock, so request can get through...
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
 			// If blockUntilStopped is non-zero, then send abort request to hardware:
 			if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && ((err=Pa_AbortStream(audiodevices[pahandle].stream))!=paNoError)) {
 				printf("PTB-ERROR: Failed to abort audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
 				PsychErrorExitMsg(PsychError_system, "Failed to fast stop (abort) PortAudio audio device.");
 			}
 		}
+		else {
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+		}
 	}
+
+	// No lock held here...
 
 	// Wait for real stop:
 	if (blockUntilStopped > 0) {
-		// Wait until engine is really stopped:
-		if (audiodevices[pahandle].runMode == 0) {
-			// Wait until engine auto-stops:
-			while (Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychYieldIntervalSeconds(yieldInterval);
+		// Lock device:
+		PsychPALockDeviceMutex(&audiodevices[pahandle]);
+
+		// Wait for stop / idle:
+		if (Pa_IsStreamActive(audiodevices[pahandle].stream)) {
+			while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream)) ||
+					((audiodevices[pahandle].runMode == 1) && (audiodevices[pahandle].state > 0))) {
+				
+				// Wait for a state-change before reevaluating:
+				PsychPAWaitForChange(&audiodevices[pahandle]);
+			}
 		}
 		
-		if (audiodevices[pahandle].runMode == 1) {
-			// Wait until engine  "idles":
-			while (audiodevices[pahandle].state > 0) PsychYieldIntervalSeconds(yieldInterval);
-		}
-
+		// We are stopped/idle, with lock held:
+		
 		// Need to update stream state and reqstate manually here, as the Pa_Stop/AbortStream()
 		// requests may have stopped the paCallback() thread before it could update/honor state/reqstate by himself.
 
@@ -1956,16 +2276,30 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 		
 		// Reset request to none:
 		audiodevices[pahandle].reqstate = 255;
+
+		// Can unlock here, as the fields we're interested in will remain static with an idle/stopped engine:
+		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
+		// Copy out our estimate of when playback really started for the just stopped stream:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, audiodevices[pahandle].startTime);
+		
+		// Copy out final playback position (secs) since start:
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate);
+		
+		// Copy out number of buffer over-/underflows since start:
+		PsychCopyOutDoubleArg(3, kPsychArgOptional, audiodevices[pahandle].xruns);
 	}
-	
-	// Copy out our estimate of when playback really started for the just stopped stream:
-	PsychCopyOutDoubleArg(1, kPsychArgOptional, audiodevices[pahandle].startTime);
-
-	// Copy out final playback position (secs) since start:
-	PsychCopyOutDoubleArg(2, kPsychArgOptional, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate);
-
-	// Copy out number of buffer over-/underflows since start:
-	PsychCopyOutDoubleArg(3, kPsychArgOptional, audiodevices[pahandle].xruns);
+	else {
+		// No block until stopped. That means we won't have meaningful return arguments available.
+		// Just return dummy args to signal this:
+		PsychCopyOutDoubleArg(1, kPsychArgOptional, -1);
+		
+		// Copy out final playback position (secs) since start:
+		PsychCopyOutDoubleArg(2, kPsychArgOptional, -1);
+		
+		// Copy out number of buffer over-/underflows since start:
+		PsychCopyOutDoubleArg(3, kPsychArgOptional, -1);
+	}
 
 	return(PsychError_none);
 }
@@ -2028,6 +2362,10 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 
 	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 15, FieldNames, &status);
 	
+	// Ok, in a perfect world we should hold the device mutex while querying all the device state.
+	// However, we don't: This reduces lock contention at the price of a small chance that the
+	// fetched information is not 100% up to date / that this is not an atomic snapshot of state.
+	// Atomic snapshot would only be needed for low-level debugging, so who cares?
 	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state >= 2) ? 1 : 0, status);
 	PsychSetStructArrayDoubleElement("RequestedStartTime", 0, audiodevices[pahandle].reqStartTime, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
@@ -2110,6 +2448,7 @@ PsychError PSYCHPORTAUDIOLatencyBias(void)
 
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if (Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0)) PsychErrorExitMsg(PsychError_user, "Tried to change 'biasSecs' while device is active! Forbidden!");
 
 	// Copy in optional new bias value:
 	PsychCopyInDoubleArg(2, kPsychArgOptional, &bias);
@@ -2339,8 +2678,10 @@ PsychError PSYCHPORTAUDIOSetLoop(void)
 	if (endSample < startSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be greater or equal than 'startSample'!");
 	
 	// Ok, range is valid. Assign it:
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
 	audiodevices[pahandle].loopStartFrame = (unsigned int) startSample;
 	audiodevices[pahandle].loopEndFrame = (unsigned int) endSample;
+	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 
 	return(PsychError_none);
 }
