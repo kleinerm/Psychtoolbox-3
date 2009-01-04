@@ -42,7 +42,13 @@ static char synopsisString[] =
 		"oval, e.g., rect(1,5)=left border of 5th oval, rect(2,5)=top border of 5th oval, "
 		"rect(3,5)=right border of 5th oval, rect(4,5)=bottom border of 5th oval. If the "
 		"ovals should have different colors, then provide \"color\" as a 3 or 4 row by n column "
-		"matrix, the i'th column specifiying the color of the i'th oval. ";
+		"matrix, the i'th column specifiying the color of the i'th oval.\n"
+		"The optional parameter 'perfectUpToMaxDiameter' allows to specify the maximum diameter "
+		"in pixels for which a filled oval should look perfect. By default, the maximum diameter "
+		"is chosen to be the full display size, so all ovals will look perfect, at a possible "
+		"speed penalty. If you know your ovals will never be bigger than a certain diameter, "
+		"you can provide that diameter as a hint via 'perfectUpToMaxDiameter' to allow for "
+		"some potential speedup when drawing filled ovals. ";
 
 static char seeAlsoString[] = "FrameOval";	
 
