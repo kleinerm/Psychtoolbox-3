@@ -42,6 +42,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 % 10/01/08 mk  Add interactive output/query for svn client on the Unices.
 %              This to work-around questions of the client about accepting
 %              security certificates...
+% 01/05/09 mk  Remove && or || to make old Matlab versions happier.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -74,7 +75,7 @@ end
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
 isLinux=strcmp(computer,'GLNX86');
-if ~isWin && ~isOSX && ~isLinux
+if ~isWin & ~isOSX & ~isLinux
     os=computer;
     if strcmp(os,'MAC2')
         os='Mac OS9';
@@ -95,7 +96,7 @@ svnpath = GetSubversionPath;
 
 % Check that subversion client is installed.
 % Currently, we only know how to check this for Mac OSX.
-if isOSX && isempty(svnpath)
+if isOSX & isempty(svnpath)
     fprintf('The Subversion client "svn" is not in its expected\n');
     fprintf('location "/usr/local/bin/svn" on your disk. Please \n');
     fprintf('download and install the most recent Subversion client from:\n');
