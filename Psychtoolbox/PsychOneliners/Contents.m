@@ -15,8 +15,10 @@
 %    DescribeComputer        - Print a description of the environment.
 %    EnforcePos              - Truncate negative values of a vector to 0.
 %    FunctionFolder          - Get full path to folder containing passed function.
+%    GetEchoNumber           - Get a number typed on-screen.
 %    GetEchoString           - Get a string typed on-screen.
 %    GetMyCaller             - Returns the name of the calling function.
+%    GetNumber               - Get a number typed at the keyboard.
 %    GetString               - Get a string typed at the keyboard.
 %    GetSubversionPath       - Return path required to invoke snv.
 %    GrayIndex               - Any graylevel from black (0) to white (1).
@@ -68,8 +70,6 @@
 %   DescribeScreen        - Print a description of the screen's video driver.
 %   DescribeScreenPrefs   - Print more about the screen's video driver.
 %   GammaIdentity         - Returns an identity gamma table appropriate to the screen's dacSize.
-%   GetEchoNumber         - Get a number typed on-screen.
-%   GetNumber             - Get a number typed at the keyboard.
 %   IsDownArrow           - Is char the down arrow?
 %   IsLeftArrow           - Is char the left arrow?
 %   IsRightArrow          - Is char the right arrow?
@@ -77,13 +77,7 @@
 %   IsInOrder             - Are the two strings in alphabetical order?
 %   IsPopCharProInstalled - Is the Control Panel "PopChar Pro" installed?
 %   MaxPriorityGetSecs    - Figure out the maximum priority compatible with GetSecs. Slow.
-%   NearestResolution     - Returns the screen resolution most similar to your wish.
 %   ScreenClutSize        - How many entries in the graphic card Color Lookup Table?
 %   ScreenUsesHighGammaBits - Does this card use the high 10 bits of the gamma values?
 %   SCREENWinToFront      - Bring Screen window back in front of Command window.
-%   SetResolution         - Sets the screen resolution: width, height, hz, and pixelSize.
 %   ShowTiff              - Show a TIFF file, calibrated.
-
-
-
-
