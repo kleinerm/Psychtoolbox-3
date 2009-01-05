@@ -15,6 +15,7 @@
 %    DescribeComputer        - Print a description of the environment.
 %    EnforcePos              - Truncate negative values of a vector to 0.
 %    FunctionFolder          - Get full path to folder containing passed function.
+%    GetEchoString           - Get a string typed on-screen.
 %    GetMyCaller             - Returns the name of the calling function.
 %    GetString               - Get a string typed at the keyboard.
 %    GetSubversionPath       - Return path required to invoke snv.
@@ -68,7 +69,6 @@
 %   DescribeScreenPrefs   - Print more about the screen's video driver.
 %   GammaIdentity         - Returns an identity gamma table appropriate to the screen's dacSize.
 %   GetEchoNumber         - Get a number typed on-screen.
-%   GetEchoString         - Get a string typed on-screen.
 %   GetNumber             - Get a number typed at the keyboard.
 %   IsDownArrow           - Is char the down arrow?
 %   IsLeftArrow           - Is char the left arrow?
