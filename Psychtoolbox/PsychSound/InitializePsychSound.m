@@ -138,7 +138,7 @@ if IsOSX
         % something goes wrong we can catch this and output useful
         % troubleshooting tips to the user:
         d = PsychPortAudio('GetDevices'); %#ok<NASGU>
-        fprintf('PsychPortAudio initialized. Will use CoreAudio for output.\n');
+        fprintf('PsychPortAudio initialized. Will use CoreAudio for audio.\n');
     catch
         fprintf('Failed to load PsychPortAudio driver!\n\n');
         fprintf('The most likely cause is that the helper library libportaudio.0.0.19.dylib is not\n');

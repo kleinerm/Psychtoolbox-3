@@ -75,6 +75,7 @@ if (reqlatency == 0) & duplex
     % itself will feed back all captured sound to the outputs with lowest
     % possible latency. However we don't have any control over latency or
     % sound and this only works on full-duplex hardware...
+    fprintf('Full-duplex monitoring mode active.\n');
     pa = PsychPortAudio('Open', [], 4+2+1, 2, freq, 2, [], 0.010);
     PsychPortAudio('Start', pa, 0, 0, 1);
     while ~KbCheck
