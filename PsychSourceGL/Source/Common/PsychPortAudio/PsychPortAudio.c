@@ -809,20 +809,23 @@ void InitializeSynopsis()
 	synopsis[i++] = "\nGeneral information:\n";
 	synopsis[i++] = "version = PsychPortAudio('Version');";
 	synopsis[i++] = "oldlevel = PsychPortAudio('Verbosity' [,level]);";
-	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
+	synopsis[i++] = "count = PsychPortAudio('GetOpenDeviceCount');";
 	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype]);";
-	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
+	synopsis[i++] = "\nGeneral settings:\n";
+	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
+	synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
 	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+	synopsis[i++] =	"PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
 	synopsis[i++] = "PsychPortAudio('SetLoop', pahandle[, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
 	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf]);";
 	synopsis[i++] = "startTime = PsychPortAudio('RescheduleStart', pahandle, when [, waitForStart=0] [, repetitions] [, stopTime]);";
-	synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
+	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
 	synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs]);";
-	synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
+	synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
 	
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
@@ -1625,6 +1628,116 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	PsychCopyOutDoubleArg(1, FALSE, (double) underrun);
 
 	// Buffer ready.
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('RefillBuffer') - Refill existing audio outputbuffer of a device with data.
+ */
+PsychError PSYCHPORTAUDIORefillBuffer(void) 
+{
+ 	static char useString[] = "PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
+	static char synopsisString[] = 
+		"Refill part of an audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
+		"whose buffer is to be filled. 'bufferhandle' is the handle of the buffer: Use a handle of zero for the standard "
+		"buffer created and accessed via 'FillBuffer'. 'bufferdata' is a Matlab double matrix with audio data in double "
+		"format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
+		"values in double precision are supported. Samples need to be in range -1.0 to +1.0, 0.0 for silence. This is "
+		"intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
+		"data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+		"expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n"
+		"'startIndex' optional: Defines the first sample frame within the buffer where refill should start. "
+		"By default, refilling starts at the beginning of the buffer - at sample frame 0. 'startIndex' allows to "
+		"start refilling at some offset.\n"
+		"Please note that 'RefillBuffer' can't resize an existing buffer - you can't fill in more data than the "
+		"current buffer capacity permits. If you want to add more sound, you'll need to use 'FillBuffer' or "
+		"create a new buffer of proper capacity.\n"
+		"'RefillBuffer' can be used any time on a buffer, even if the buffer is currently playing, allowing for "
+		"on-the-fly replacement of content. However be careful to avoid the currently played section, or you'll "
+		"hear audio artifacts. For streaming out audio content in a glitch-free way, you may want to use the "
+		"'streamingrefill' option of the 'FillBuffer' subfunction instead.\n";
+
+	static char seeAlsoString[] = "Open FillBuffer GetStatus ";	 
+  	
+	int inchannels, insamples, p, buffersize, outbuffersize;
+	double*	indata = NULL;
+	float*  outdata = NULL;
+	int pahandle   = -1;
+	int bufferhandle = 0;
+	int startIndex = 0;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(0));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
+
+	PsychCopyInIntegerArg(2, kPsychArgOptional, &bufferhandle);
+	// Check for valid bufferhandle: Currently we only accept the handle zero, as the buffermanagement is not yet implemented.
+	if (bufferhandle < 0 || bufferhandle > 0) PsychErrorExitMsg(PsychError_user, "Invalid audio 'bufferhandle' provided.");
+
+	PsychAllocInDoubleMatArg(3, kPsychArgRequired, &inchannels, &insamples, &p, &indata);
+	if (inchannels != audiodevices[pahandle].outchannels) {
+		printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, audiodevices[pahandle].outchannels, inchannels);
+		PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+	}
+	
+	if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for refill of your audio buffer!");
+	if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+	
+	// Get optional startIndex:
+	PsychCopyInIntegerArg(4, kPsychArgOptional, &startIndex);
+	if (startIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'startIndex' provided. Must be greater or equal to zero.");
+
+	// Assign bufferpointer based on bufferhandle:
+	if (bufferhandle > 0) {
+		// Generic buffer: TODO: Implement.
+	}
+	else {
+		// Standard playout buffer:
+		outdata = audiodevices[pahandle].outputbuffer;
+		outbuffersize = audiodevices[pahandle].outputbuffersize;
+	}
+
+	// Buffer exists?
+	if (outdata == NULL) PsychErrorExitMsg(PsychError_user, "No such buffer with given 'bufferhandle', or buffer not yet created!");
+	
+	// Compute required buffersize for copying all data from given startIndex:
+	buffersize = sizeof(float) * inchannels * (insamples + startIndex);
+	
+	// Buffer of sufficient size?
+	if (buffersize > outbuffersize) {
+		// Nope, too small: Adapt 'buffersize' to allowable maximum amount:
+		if (verbosity > 1) printf("PsychPortAudio: WARNING: In 'RefillBuffer' for bufferhandle %i at startindex %i: Insufficient\nbuffersize %i for %i new audioframes starting at given startindex.\nWill truncate to maximum possible.\n", bufferhandle, startIndex, outbuffersize / (sizeof(float) * inchannels), insamples);
+		buffersize = outbuffersize;
+		buffersize -= sizeof(float) * inchannels * startIndex;
+	}
+	else {
+		// Big enough:
+		buffersize = sizeof(float) * inchannels * insamples;
+	}
+	
+	// Map startIndex to offset in buffer:
+	outdata += inchannels * startIndex;
+	
+	// Ok, everything sane, fill the buffer: 'buffersize' iterations into 'outdata':
+	//fprintf(stderr, "buffersize = %i\n", buffersize);
+
+	// Copy the data, convert it from double to float:
+	while(buffersize > 0) {
+		*(outdata++) = (float) *(indata++);
+		buffersize-=sizeof(float);
+	}
+	
+	// Done.
 	return(PsychError_none);
 }
 
@@ -2588,6 +2701,31 @@ PsychError PSYCHPORTAUDIOVerbosity(void)
 
 	// Set new level, if one was provided:
 	if (level > -1) verbosity = level;
+
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('GetOpenDeviceCount') - Get number of open audio devices.
+ */
+PsychError PSYCHPORTAUDIOGetOpenDeviceCount(void) 
+{
+ 	static char useString[] = "count = PsychPortAudio('GetOpenDeviceCount');";
+	static char synopsisString[] = "Return the number of currently open audio devices.\n";
+	static char seeAlsoString[] = "Open ";	 
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(0));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	// Return count:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) audiodevicecount);
 
 	return(PsychError_none);
 }

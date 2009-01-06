@@ -50,6 +50,7 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("RescheduleStart", &PSYCHPORTAUDIORescheduleStart));
 	PsychErrorExit(PsychRegister("Stop", &PSYCHPORTAUDIOStopAudioDevice));
 	PsychErrorExit(PsychRegister("FillBuffer", &PSYCHPORTAUDIOFillAudioBuffer));
+	PsychErrorExit(PsychRegister("RefillBuffer", &PSYCHPORTAUDIORefillBuffer));
 	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
 	PsychErrorExit(PsychRegister("GetStatus", &PSYCHPORTAUDIOGetStatus));
 	PsychErrorExit(PsychRegister("LatencyBias", &PSYCHPORTAUDIOLatencyBias));
@@ -57,7 +58,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("RunMode", &PSYCHPORTAUDIORunMode));
 	PsychErrorExit(PsychRegister("SetLoop", &PSYCHPORTAUDIOSetLoop));
 	PsychErrorExit(PsychRegister("EngineTunables", &PSYCHPORTAUDIOEngineTunables));
-	
+	PsychErrorExit(PsychRegister("GetOpenDeviceCount", &PSYCHPORTAUDIOGetOpenDeviceCount)); 
+
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 
