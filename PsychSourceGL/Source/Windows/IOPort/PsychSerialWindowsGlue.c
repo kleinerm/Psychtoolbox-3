@@ -294,7 +294,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     DCB				options;
 	char*			p;
 	float			infloat;
-	int				inint;
+	int				inint, inint2;
 	bool			updatetermios = FALSE;
 
 	// Init DCBlength field to size of structure! Fixed as of 31.12.2008 -- May have caused
@@ -593,6 +593,24 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 				// Worked. Assign new values:
 				device->readBuffer = (unsigned char*) p;
 				device->readBufferSize = (unsigned int) inint;
+			}
+		}
+	}
+
+	// Set buffer sizes of the hardware itself, ie., the driver-internal buffers:
+	if ((p = strstr(configString, "HardwareBufferSizes="))) {
+		if ((2!=sscanf(p, "HardwareBufferSizes=%i,%i", &inint, &inint2)) || (inint < 1) || (inint2 < 1)) {
+			if (verbosity > 0) printf("Invalid parameter for HardwareBufferSizes set! Typo or at least one of the requested buffer sizes smaller than 1 byte.\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		else {
+			// Set HardwareBufferSizes: This functionality is only available on the Windows platform.
+			// It is only a hint or polite request to the underlying driver. The driver is free to
+			// ignore the request and choose whatever size or buffering strategy it finds appropriate:
+			if (!SetupComm(device->fileDescriptor, inint, inint2)) {
+				// Failed:
+				if (verbosity > 0) printf("Setup of explicit HardwareBufferSizes for device %s of inputsize %i and outputsize %i failed with error code %d!", device->portSpec, inint, inint2, GetLastError());
+				return(PsychError_system);
 			}
 		}
 	}
