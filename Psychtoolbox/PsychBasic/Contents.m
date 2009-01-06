@@ -42,6 +42,9 @@
 %     ListenChar           - Start GetChar queue.
 %     MachAbsoluteTimeClockFrequency - Mach Kernel time measurement.  
 %     PredictVisualOnsetForTime - Predict stimulus onset for given Screen('Flip') 'when' timespec.
+%     psychassert          - Drop in replacement for Matlabs assert().
+%     psychlasterror       - Drop in replacement for Matlabs lasterror().
+%     psychrethrow         - Drop in replacement for Matlabs rethrow().
 %     PsychCV              - Miscellaneous C routines for computer vision and related stuff.
 %     PsychtoolboxDate     - Current version date, e.g. '1 August 1998'
 %     PsychtoolboxVersion  - Current version number, e.g. 2.32
