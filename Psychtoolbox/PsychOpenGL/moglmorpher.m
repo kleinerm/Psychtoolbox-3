@@ -105,6 +105,20 @@ function rc = moglmorpher(cmd, arg1, arg2, arg3, arg4)
 % -- Render the mesh corresponding to the handle 'meshid'.
 %
 %
+% oldEnable = moglmorpher('assumeSparseMorphWeights', enable);
+% -- Enable speed optimizations under the assumption that morph weight
+% vector contains mostly zero weights, if 'enable' is set to 1. Otherwise
+% optimize speed under the assumption of dense weight vectors. The default
+% is to assume dense vectors, ie., 'enable' == 0.
+%
+% Two different algorithms are used, depending on the setting of this
+% switch, which have different tradeoffs. However, switching settings here
+% is cheap, so you could do it on a per-morph basis. The optimal choice may
+% depend on complexity of your keyshape models and speed of your GPU, so
+% your mileage will vary and you'll need to benchmark both options for
+% optimal speed.
+%
+%
 % moglmorpher('renderMorph', weights [,morphnormals=1]);
 % -- Compute a linear combination (a weighted average) of all stored meshes, as defined
 % by the vector 'weights'. Render the final shape.
@@ -242,7 +256,7 @@ persistent weighttexgl;
 persistent oldWeightLength;
 
 persistent isbuggyatidriver;
-
+persistent useSparseMorph;
 
 % Sanity check:
 if nargin < 1
@@ -377,7 +391,8 @@ if isempty(objcount)
     usetextures = 0;
     usenormals = 0;
     updatecount = 0;
-
+    useSparseMorph = 0;
+    
     % Check if addition is supported for floating-point single precision
     % numbers. If so, we cast all data arrays to single precision (float)
     % and use GL_FLOAT instead of GL_DOUBLE for data-transfer to OpenGL.
@@ -504,6 +519,8 @@ if strcmp(cmd, 'reset')
    keyvertices = [];
    keynormals = [];
    win = [];
+   useSparseMorph = [];
+
    rc = 0;
    
    return;
@@ -521,6 +538,20 @@ if strcmpi(cmd, 'getTexCoords')
     return;
 end
 
+if strcmpi(cmd, 'assumeSparseMorphWeights')
+    if nargin < 2
+        error('Need to supply "enable" flag with value 0 or 1!');
+    end;
+
+    % Return old setting:
+    rc = useSparseMorph;
+
+    % Assign new setting:
+    useSparseMorph = arg1;
+    
+    % Done.
+    return;
+end
 
 if strcmp(cmd, 'addMesh')
     % A new mesh should be added as keyshape to the collection of key-meshes.
@@ -909,16 +940,20 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         % Perform morphing of shape and normal vectors:
         vertices(:,:) = keyvertices(:,:,1) * arg1(1);
         for i=2:length(arg1)
-            % Add next keyshape:
-            vertices(:,:) = vertices(:,:) + (keyvertices(:,:,i) * arg1(i));
+            if abs(arg1(i)) > 0
+                % Add next keyshape:
+                vertices(:,:) = vertices(:,:) + (keyvertices(:,:,i) * arg1(i));
+            end
         end;
 
         % Perform morphing of normals as well. This is not strictly correct.
         if usenormals & morphnormals
             normals(:,:) = keynormals(:,:,1) * arg1(1);
             for i=2:length(arg1)
-                % Add next keyshape:
-                normals(:,:) = normals(:,:) + (keynormals(:,:,i) * arg1(i));
+                if abs(arg1(i)) > 0
+                    % Add next keyshape:
+                    normals(:,:) = normals(:,:) + (keynormals(:,:,i) * arg1(i));
+                end
             end;
         end;
     else
@@ -972,7 +1007,7 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
         end
 
         % Which path to use?
-        if isempty(masterkeyshapetex)
+        if isempty(masterkeyshapetex) | (useSparseMorph > 0)
             % Iterative path. Used when number and size of keyshapes
             % doesn't fit into hardware constraints for a single shape
             % texture.
@@ -990,26 +1025,29 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
 
             % Morph-Loop for multiply-accumulate morph operation:
             for i=1:length(arg1)
-                % Store morph weight for i'th shape in uniform for shader:
-                glUseProgram(morphshader);
-                glUniform1f(shadermorphweight, arg1(i));
-                glUseProgram(0);
+                % Only process keyshapes with non-zero activation weight:
+                if abs(arg1(i)) > 0
+                    % Store morph weight for i'th shape in uniform for shader:
+                    glUseProgram(morphshader);
+                    glUniform1f(shadermorphweight, arg1(i));
+                    glUseProgram(0);
 
-                % xform pass: Blit sum of new keyshape texture and currentsrcbuffer
-                % morphbuffer into currentdstbuffer morphbuffer, applying proper
-                % morph weight:
-                if morphnormals
-                    % Normal morphing requested: Run full operator...
-                    morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperator, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
-                else
-                    % No normal morphing: Run restricted operator...
-                    morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperatorNoNormals, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
+                    % xform pass: Blit sum of new keyshape texture and currentsrcbuffer
+                    % morphbuffer into currentdstbuffer morphbuffer, applying proper
+                    % morph weight:
+                    if morphnormals
+                        % Normal morphing requested: Run full operator...
+                        morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperator, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
+                    else
+                        % No normal morphing: Run restricted operator...
+                        morphbuffer(currentdstbuffer) = Screen('TransformTexture', keyshapes(i), morphOperatorNoNormals, morphbuffer(currentsrcbuffer), morphbuffer(currentdstbuffer));
+                    end
+
+                    % Switch source and destination buffers for next morph-pass:
+                    j = currentsrcbuffer;
+                    currentsrcbuffer = currentdstbuffer;
+                    currentdstbuffer = j;
                 end
-                
-                % Switch source and destination buffers for next morph-pass:
-                j = currentsrcbuffer;
-                currentsrcbuffer = currentdstbuffer;
-                currentdstbuffer = j;
                 % Next morph-iteration...
             end
         else
