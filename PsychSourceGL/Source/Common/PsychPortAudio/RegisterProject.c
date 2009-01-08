@@ -23,6 +23,7 @@
 */
 
 #include "Psych.h"
+#include "RegisterProject.h"
 #include "PsychPortAudio.h"
 
 PsychError PsychModuleInit(void)

@@ -951,7 +951,7 @@ void PsychPACloseStream(int id)
 	return;
 }
 
-void InitializeSynopsis()
+void InitializeSynopsis(void)
 {
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
@@ -2590,7 +2590,7 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 	}
 
 	// Get optional stopTime:
-	if (PsychCopyInIntegerArg(5, kPsychArgOptional, &stopTime)) {
+	if (PsychCopyInDoubleArg(5, kPsychArgOptional, &stopTime)) {
 		if ((stopTime <= audiodevices[pahandle].reqStartTime) && (stopTime < DBL_MAX)) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than previously set 'when' starttime.");
 	}
 	else {

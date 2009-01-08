@@ -609,7 +609,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 			// ignore the request and choose whatever size or buffering strategy it finds appropriate:
 			if (!SetupComm(device->fileDescriptor, inint, inint2)) {
 				// Failed:
-				if (verbosity > 0) printf("Setup of explicit HardwareBufferSizes for device %s of inputsize %i and outputsize %i failed with error code %d!", device->portSpec, inint, inint2, GetLastError());
+				if (verbosity > 0) printf("Setup of explicit HardwareBufferSizes for device %s of inputsize %i and outputsize %i failed with error code %d!\n", device->portSpec, inint, inint2, GetLastError());
 				return(PsychError_system);
 			}
 		}
