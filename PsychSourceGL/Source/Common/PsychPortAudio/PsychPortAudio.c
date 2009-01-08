@@ -63,9 +63,6 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Maximum number of audio channels we support per open device:
 #define MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE 256
 
-// Uncomment for experimental scheduling support:
-#define PA_EXPERIMENTAL_SCHEDULE 1
-
 // Uncomment this define MUTEX_LOCK_TIME_STATS to enable tracing of
 // mutex lock hold times for low-level debugging and tuning:
 //#define MUTEX_LOCK_TIME_STATS 1
@@ -86,14 +83,6 @@ typedef struct PsychPASchedule {
 	int bufferhandle;					// Handle of the playout buffer to use. Zero is the standard playbuffer as set by 'FillBuffer'. Negative handles
 										// may have special meaning in future implementations.
 } PsychPASchedule;
-
-// Test schedule with 4 slots...
-struct PsychPASchedule testschedule[4] = {
-	{1, 10.0, 10*44100, 11*44100, 0},
-	{1, 10.0, 11*44100, 12*44100, 0},
-	{1, 10.0, 12*44100, 13*44100, 0},
-	{1, 10.0, 13*44100, 14*44100, 0}
-};
 
 // Our device record:
 typedef struct PsychPADevice {
@@ -142,6 +131,7 @@ typedef struct PsychPADevice {
 	PsychPASchedule* schedule;	// Pointer to start of array with playback schedule, or a NULL pointer if none defined.
 	volatile unsigned int schedule_size;	// Size of schedule array in slots.
 	volatile unsigned int schedule_pos;		// Current position in schedule (in slots).
+	unsigned int schedule_writepos;			// Current position in schedule (in slots).
 } PsychPADevice;
 
 PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
@@ -415,6 +405,10 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 	*ret_repeatCount = repeatCount;
 	*ret_playpositionlimit = playpositionlimit;
 
+	// Safety check: If playoutbuffer is NULL at this point, then somethings screwed
+	// and we request abort of playback:
+	if (NULL == *ret_playoutbuffer) return(0);
+
 	// Return 1 exit to signal a valid update:
 	return(1);
 }
@@ -661,9 +655,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	// This point is only reached in hot-standby or active playback/capture/feedback modes:
 
 	// Check if all required buffers are there. In monitoring mode, we don't need them.
-    if (((dev->opmode & kPortAudioMonitoring) == 0) && (((dev->opmode & kPortAudioPlayBack) && (dev->outputbuffer == NULL)) ||
-		((dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)))) {
-
+    if (((dev->opmode & kPortAudioMonitoring) == 0) && (dev->opmode & kPortAudioCapture) && (dev->inputbuffer == NULL)) {
 		// Acknowledge request by resetting it:
 		dev->reqstate = 255;
 		
@@ -819,8 +811,9 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		reqstate = dev->reqstate;
 
 		// Compute time delta between requested sound stop time (sound offset time) and
-		// time of first sample in to-be-filled buffer:
-		offsetDelta = dev->reqStopTime - firstsampleonset;
+		// time of next sample in to-be-filled buffer, taking potential committedFrames for
+		// zero padding at head of buffer into account:
+		offsetDelta = dev->reqStopTime - (firstsampleonset + ((double) committedFrames / (double) dev->streaminfo->sampleRate));
 
 		// Clamp to at most 10 seconds ahead, because that is more than enough even
 		// for the largest conceivable hostbuffersizes, and it prevents numeric overflow
@@ -830,18 +823,17 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		// Convert remaining time until requested stop time into sample frames until stop:
 		offsetDelta = offsetDelta * (double)(dev->streaminfo->sampleRate);
 
-		// Count of outputted frames in this part of the code:
-		i=0;
-
 		// Convert into samples: max_i is the maximum allowable value for 'i'
 		// in order to satisfy the dev->reqStopTime:
 		max_i  = (unsigned long) (offsetDelta * (double) outchannels);
 		max_i -= max_i % outchannels;
 		
+		// Count of outputted frames in this part of the code:
+		i=0;
+
 		// Stoptime already reached or abort request from master thread received? If so, stop the engine:
 		if (reqstate == 0 || reqstate == 3 || (offsetDelta <= 0) ) stopEngine = TRUE;
 
-#ifdef PA_EXPERIMENTAL_SCHEDULE
 		// Repeat until stopEngine condition, or this callbacks host output buffer is full,
 		// or max_i timeout reached for end of processing, or no more valid slots available
 		// in current schedule. Assign all relevant parameters from schedule:
@@ -862,46 +854,6 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 			// Abort condition?
 			if ((i >= max_i) || !PsychPAProcessSchedule(dev, &playposition, &playoutbuffer, &outsbsize, &outsboffset, &repeatCount, &playpositionlimit)) stopEngine = TRUE;
 		}
-		
-#else
-		// Fetch boundaries of playback loop:
-		loopStartFrame = dev->loopStartFrame;
-		loopEndFrame = dev->loopEndFrame;
-
-		// Revalidate boundaries of playback loop:
-		if (loopStartFrame * outchannels >= outsbsize) loopStartFrame = (int) (outsbsize / outchannels) - 1;
-		if (loopStartFrame < 0) loopStartFrame = 0;
-		if (loopEndFrame * outchannels >= outsbsize) loopEndFrame = (int) (outsbsize / outchannels) - 1;
-		if (loopEndFrame < 0) loopEndFrame = 0;
-		if (loopEndFrame < loopStartFrame) loopEndFrame = loopStartFrame;
-		
-		// Remap defined playback loop to "corrected" outsbsize and offset for later copy-op:
-		outsbsize = (unsigned int) ((loopEndFrame - loopStartFrame + 1) * outchannels);
-		outsboffset = (unsigned int) (loopStartFrame * outchannels);
-		
-		// Compute playpositionlimit, the upper limit of played out samples from loop duration and repeatCount...
-		playpositionlimit = ((psych_uint64) (repeatCount * outsbsize));
-		// ...and make sure it ends on integral sample frame boundaries:
-		playpositionlimit -= playpositionlimit % outchannels; 
-
-		// Only fill buffer if no abort 'reqstate' - requested and offsetDelta is > 0, ie.,
-		// at least part of the current buffer (or maybe the whole buffer) should be played
-		// out before the offset deadline:
-		if (!stopEngine) {
-			// Copy requested number of samples for each channel into the output buffer: Take the case of
-			// "loop forever" and "loop repeatCount" times into account, as well as stop times:
-			for (; (i < framesPerBuffer * outchannels) && (i < max_i) && ((repeatCount == -1) || (playposition < playpositionlimit)); i++) {
-				*out++ = playoutbuffer[outsboffset + ( playposition % outsbsize )];
-				playposition++;
-			}
-		}
-		
-		// Store updated playposition in device structure:
-		dev->playposition = playposition;
-
-		// Abort condition?
-		if (i >= max_i) stopEngine = TRUE;
-#endif
 
 		// Update total count of emitted valid non-silence sample frames:
 		committedFrames += i / outchannels;
@@ -1025,7 +977,9 @@ void InitializeSynopsis()
 	synopsis[i++] = "status = PsychPortAudio('GetStatus' pahandle);";
 	synopsis[i++] = "[audiodata absrecposition overflow cstarttime] = PsychPortAudio('GetAudioData', pahandle [, amountToAllocateSecs][, minimumAmountToReturnSecs][, maximumAmountToReturnSecs]);";
 	synopsis[i++] = "[startTime endPositionSecs xruns estStopTime] = PsychPortAudio('Stop', pahandle [,waitForEndOfPlayback=0] [, blockUntilStopped=1] [, repetitions] [, stopTime]);";
-	
+	synopsis[i++] =	"PsychPortAudio('UseSchedule', pahandle, enableSchedule [, maxSize = 128]);";
+	synopsis[i++] =	"[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0]);";	
+
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
@@ -1566,12 +1520,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].schedule = NULL;
 	audiodevices[audiodevicecount].schedule_size = 0;
 	audiodevices[audiodevicecount].schedule_pos = 0;
-	
-#ifdef PA_EXPERIMENTAL_SCHEDULE
-	// Enable experimental test schedule:
-//	audiodevices[audiodevicecount].schedule = &testschedule;
-//	audiodevices[audiodevicecount].schedule_size = 4;
-#endif
+	audiodevices[audiodevicecount].schedule_writepos = 0;
 
 	// If we use locking, we need to initialize the per-device mutex:
 	if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
@@ -2272,7 +2221,7 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 	// Get new optional 'stopTime':
 	if (PsychCopyInDoubleArg(5, kPsychArgOptional, &stopTime)) {
 		// Argument provided: Range-Check and assign it:
-		if (stopTime <= when) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than 'when' starttime.");
+		if (stopTime <= when && (stopTime < DBL_MAX)) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than 'when' starttime.");
 	}
 	else {
 		stopTime = -1;
@@ -2439,7 +2388,7 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 	if (waitForStart < 0) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'waitForStart'. Valid values are zero or greater.");
 
 	PsychCopyInDoubleArg(5, kPsychArgOptional, &stopTime);
-	if (stopTime <= when) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than 'when' starttime.");
+	if (stopTime <= when && (stopTime < DBL_MAX)) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than 'when' starttime.");
 
 	if ((audiodevices[pahandle].opmode & kPortAudioMonitoring) == 0) {
 		// Not in monitoring mode: We must have in/outbuffers allocated:
@@ -2641,7 +2590,12 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 	}
 
 	// Get optional stopTime:
-	PsychCopyInIntegerArg(5, kPsychArgOptional, &stopTime);
+	if (PsychCopyInIntegerArg(5, kPsychArgOptional, &stopTime)) {
+		if ((stopTime <= audiodevices[pahandle].reqStartTime) && (stopTime < DBL_MAX)) PsychErrorExitMsg(PsychError_user, "Invalid setting for 'stopTime'. Valid values are greater than previously set 'when' starttime.");
+	}
+	else {
+		stopTime = -1;
+	}
 
 	// Lock device:
 	PsychPALockDeviceMutex(&audiodevices[pahandle]);
@@ -3288,5 +3242,256 @@ PsychError PSYCHPORTAUDIOEngineTunables(void)
 	}
 
 
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('UseSchedule') - Enable & Create, or disable and destroy a playback schedule.
+ */
+PsychError PSYCHPORTAUDIOUseSchedule(void) 
+{
+ 	static char useString[] = "PsychPortAudio('UseSchedule', pahandle, enableSchedule [, maxSize = 128]);";
+	static char synopsisString[] = 
+		"Enable or disable use of a preprogrammed schedule for audio playback on audio device 'pahandle'.\n"
+		"Schedules are similar to playlists on your favorite audio player. A schedule allows to define a sequence "
+		"of distinct sounds to play in succession. When PsychPortAudio('Start') is called, processing of "
+		"the schedule begins and the first programmed sound snippet is played, followed by the 2nd, 3rd, ... "
+		"until the whole schedule has been played once and playback stops. You can add new sound snippets to the "
+		"schedule while playback is running for uninterrupted playback of long sequences of sound.\n"
+		"Each sound snippet or slot in the schedule defines a soundbuffer to play back via a 'bufferhandle', "
+		"within the buffer a subsegment (a so called playloop) defined by start- and endpoint, and a number "
+		"of repetitions for that playloop.\n"
+		"This subfunction allows to either enable use of schedules by setting the 'enableSchedule' flag to 1, "
+		"in which case a schedule with a maximum of 'maxSize' distinct slots is created ('maxSize' defaults to 128 slots), "
+		"or to disable use of schedules by setting 'enableSchedule' to 0, in which case PsychPortAudio reverts "
+		"back to its normal playback behaviour and an existing schedule is deleted.\n"
+		"A 'enableSchedule' setting of 2 will reset an existing schedule, ie. clear it of all its entries, "
+		"so it is ready to be rewritten with new entries. You should reset and rewrite a schedule each "
+		"time after playback/processing of a schedule has finished or has been stopped.\n"
+		"See the subfunction 'AddToSchedule' on how to populate the schedule with actual entries.\n";
+		
+	static char seeAlsoString[] = "FillBuffer Start Stop RescheduleStart AddToSchedule";
+	
+	int pahandle = -1;
+	int enableSchedule;
+	int maxSize = 128;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(0));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+
+	// Make sure the device is fully idle: We can check without mutex held, as a device which is
+	// already idle (state == 0) can't switch by itself out of idle state (state > 0), neither
+	// can an inactive stream start itself.
+	if ((audiodevices[pahandle].state > 0) && Pa_IsStreamActive(audiodevices[pahandle].stream)) PsychErrorExitMsg(PsychError_user, "Tried to enable/disable audio schedule while audio device is active. Forbidden! Call 'Stop' first.");
+
+	// At this point the deivce is idle and will remain so during this routines execution,
+	// so it won't touch any of the schedule related variables and we can manipulate them
+	// without a need to lock the device:
+
+	// Get required enable flag:
+	PsychCopyInIntegerArg(2, kPsychArgRequired, &enableSchedule);
+	if (enableSchedule < 0 || enableSchedule > 2)  PsychErrorExitMsg(PsychError_user, "Invalid 'enableSchedule' provided. Must be 0, 1 or 2!");
+
+	// Get the optional maxSize parameter:
+	PsychCopyInIntegerArg(3, kPsychArgOptional, &maxSize);
+	if (maxSize < 1) PsychErrorExitMsg(PsychError_user, "Invalid 'maxSize' provided. Must be greater than zero!");
+
+	// Reset of existing schedule requested?
+	if ((enableSchedule == 2) && (audiodevices[pahandle].schedule)) {
+		// Yes: Simply set requested size to current size, this will trigger
+		// a memset() to zero below, instead of a realloc or alloc, which is
+		// exactly what we want:
+		maxSize = audiodevices[pahandle].schedule_size;
+	}
+
+	// Release an already existing schedule: This will take care of both,
+	// disabling use of schedules if this is a disable call, and resetting
+	// of an existing schedule if this is an enable call following another
+	// enable call:
+	if (audiodevices[pahandle].schedule) {
+		// Schedule already exists: Is this by any chance an enable call and
+		// the requested size of the new schedule matches the size of the current
+		// one?
+		if (enableSchedule && (audiodevices[pahandle].schedule_size == maxSize)) {
+			// Yes! Have a schedule of exactly wanted size, no need to free and
+			// realloc - We simply clear it out by zero filling:
+			memset((void*) audiodevices[pahandle].schedule, 0, (size_t) (maxSize * sizeof(PsychPASchedule)));
+		}
+		else {
+			// No. Release old schedule...
+			free(audiodevices[pahandle].schedule);
+			audiodevices[pahandle].schedule = NULL;
+			audiodevices[pahandle].schedule_size = 0;
+		}
+	}
+
+	// Reset current position in schedule to start and size to zero in any case:
+	audiodevices[pahandle].schedule_pos = 0;
+	audiodevices[pahandle].schedule_writepos = 0;
+	
+	// Enable/Reset request?
+	if (enableSchedule && (NULL == audiodevices[pahandle].schedule)) {
+		// Enable request - Allocate proper schedule:
+		audiodevices[pahandle].schedule_size = 0;
+		audiodevices[pahandle].schedule = (PsychPASchedule*) calloc(maxSize, sizeof(PsychPASchedule));
+		if (audiodevices[pahandle].schedule == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free system memory when trying to create a schedule!");
+
+		// Assign new size:
+		audiodevices[pahandle].schedule_size = maxSize;
+	}
+
+	// Done.
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('AddToSchedule') - Add command slots to a playback schedule.
+ */
+PsychError PSYCHPORTAUDIOAddToSchedule(void) 
+{
+ 	static char useString[] = "[success, freeslots] = PsychPortAudio('AddToSchedule', pahandle [, bufferHandle=0][, repetitions=1][, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
+	//																				  1           2                 3                4                5                6
+	static char synopsisString[] = 
+		"Add a new item to an existing schedule for audio playback on audio device 'pahandle'.\n"
+		"The schedule must have been created and enabled already via a previous call to 'UseSchedule'. "
+		"The function returns if the addition of a new item was successfull via the return argument "
+		"'success' (1=Success, 0=Failed), and the number of remaining free slots in 'freeslots'. "
+		"Failure to add an item can happen if the schedule is full. If playback is running, you can "
+		"simply retry after some time, because eventually the playback will consume and thereby free "
+		"at least one slot in the schedule. If playback is stopped and you get this failure, you should "
+		"reallocate the schedule with a bigger size via a proper call to 'UseSchedule'.\n"
+		"Please note that after playback/processing of a schedule has finished by itself, or due to "
+		"'Stop'ping the playback via the stop function, you should clear out the schedule and rewrite "
+		"it, otherwise results at next call to 'Start' may be undefined. You can clear/reset a schedule "
+		"efficiently without resizing it by calling 'UseSchedule' with an enableFlag of 2.\n\n"
+		"The following optional paramters can be used to define the new slot in the schedule:\n"
+		"'bufferHandle' Handle of the audio buffer which should be used for playback of this slot. "
+		"The default value zero will play back the standard audio buffer created by a call to 'FillBuffer'.\n"
+		"'repetitions' How often should playback of this slot be repeated. Fractional positive values are "
+		"allowed, the value zero (ie. infinite repetition) is not allowed in this driver release.\n"
+		"'startSample' and 'endSample' define a playback loop - a subsegment of the audio buffer to which "
+		"playback should be restricted, and 'UnitIsSeconds' tells if the given loop boundaries are expressed "
+		"in audio sample frames, or in seconds realtime. See the help for the 'SetLoop' function for more "
+		"explanation.\n";
+
+	static char seeAlsoString[] = "FillBuffer Start Stop RescheduleStart UseSchedule";
+	
+	PsychPASchedule* slot;
+	int	slotid;
+	double startSample, endSample, sMultiplier;
+	int maxSample, unitIsSecs;
+	int pahandle = -1;
+	int bufferHandle = 0;
+	double repetitions = 1;
+	int success = 0;
+	int freeslots = 0;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(6));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(2));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+
+	// Make sure there is a schedule available:
+	if (audiodevices[pahandle].schedule == NULL) PsychErrorExitMsg(PsychError_user, "You tried to AddToSchedule, but use of schedules is disabled! Call 'UseSchedule' first to enable them.");
+
+	// Get optional bufferhandle:
+	PsychCopyInIntegerArg(2, kPsychArgOptional, &bufferHandle);
+	// TODO: Dynamic buffer handling... Currently limited to handle 0:
+	if (bufferHandle < 0 || bufferHandle > 0) PsychErrorExitMsg(PsychError_user, "Invalid 'bufferHandle' provided. Must be greater or equal to zero, and a handle to an existing buffer!");
+
+	// Get optional repetitions
+	PsychCopyInDoubleArg(3, kPsychArgOptional, &repetitions);
+	if (repetitions <= 0) PsychErrorExitMsg(PsychError_user, "Invalid 'repetitions' provided. Must be greater than zero!");
+
+	// Get loop parameters, if any:
+	unitIsSecs = 0;
+	PsychCopyInIntegerArg(6, kPsychArgOptional, &unitIsSecs);
+	sMultiplier = (unitIsSecs > 0) ? (double) audiodevices[pahandle].streaminfo->sampleRate : 1.0;
+
+	// Set maxSample to maximum integer: The scheduler (aka PsychPAProcessSchedule()) will test at runtime if the playloop extends
+	// beyond valid playbuffer boundaries and clamp to end-of-buffer if needed, so this is safe:
+	maxSample = INT_MAX;
+
+	// Copy in optional startSample:
+	startSample = 0;
+	PsychCopyInDoubleArg(4, kPsychArgOptional, &startSample);
+	if (startSample < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'startSample' provided. Must be greater or equal to zero!");
+	startSample *= sMultiplier;
+	
+	// Copy in optional endSample:
+	if (PsychCopyInDoubleArg(5, kPsychArgOptional, &endSample)) {
+		endSample *= sMultiplier;
+		if (endSample > maxSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be no greater than total buffersize!");
+	}
+	else {
+		endSample = maxSample;
+	}
+
+	if (endSample < startSample) PsychErrorExitMsg(PsychError_user, "Invalid 'endSample' provided. Must be greater or equal than 'startSample'!");
+	
+	// All settings validated and ready to initialize a slot in the schedule:
+
+	// Lock device:
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
+
+	// Map writepos to slotindex:
+	slotid = audiodevices[pahandle].schedule_writepos % audiodevices[pahandle].schedule_size;
+	
+	// Enough unoccupied space in schedule? Ie., is this slot free (either never used, or already consumed and ready for recycling)?
+	if (audiodevices[pahandle].schedule[slotid].mode == 0) {
+		// Fill slot:
+		slot = (PsychPASchedule*) &(audiodevices[pahandle].schedule[slotid]);
+		slot->mode = 1;
+		slot->bufferhandle   = bufferHandle;
+		slot->repetitions    = repetitions;
+		slot->loopStartFrame = startSample;
+		slot->loopEndFrame   = endSample;
+		
+		// Advance write position for next update iteration:
+		audiodevices[pahandle].schedule_writepos++;
+		
+		// Recompute number of free slots:
+		if (audiodevices[pahandle].schedule_size >= (audiodevices[pahandle].schedule_writepos - audiodevices[pahandle].schedule_pos)) {
+			freeslots = audiodevices[pahandle].schedule_size - (audiodevices[pahandle].schedule_writepos - audiodevices[pahandle].schedule_pos);
+		}
+		else {
+			freeslots = 0;
+		}
+		
+		success = 1;
+	}
+	else {
+		// Nope. No free slot:
+		success = 0;
+		freeslots = 0;
+	}
+	
+	// Unlock device:
+	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+
+	// Return optional result code:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) success);
+
+	// Return optional remaining number of free slots:
+	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) freeslots);
+	
 	return(PsychError_none);
 }

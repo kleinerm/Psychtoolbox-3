@@ -173,7 +173,7 @@ for i=1:10
 
     % Start the playback engine with an infinite start deadline, ie.,
     % start hardware, but don't play sound:
-    PsychPortAudio('Start', pahandle, 1, GetSecs + 1000, 0);
+    PsychPortAudio('Start', pahandle, 1, inf, 0);
 
     % Wait a bit, say 100msecs, so hardware is certainly running and settled:
     WaitSecs(0.1);

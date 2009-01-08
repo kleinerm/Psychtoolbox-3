@@ -74,6 +74,10 @@ PsychError PSYCHPORTAUDIOSetLoop(void);
 PsychError PSYCHPORTAUDIOEngineTunables(void);
 // Get count of open audio devices:
 PsychError PSYCHPORTAUDIOGetOpenDeviceCount(void);
+// Alloc/Dealloc Enable/Disable playback schedules:
+PsychError PSYCHPORTAUDIOUseSchedule(void);
+// Add sot to playback schedule:
+PsychError PSYCHPORTAUDIOAddToSchedule(void);
 
 //end include once
 #endif

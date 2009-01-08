@@ -59,7 +59,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("SetLoop", &PSYCHPORTAUDIOSetLoop));
 	PsychErrorExit(PsychRegister("EngineTunables", &PSYCHPORTAUDIOEngineTunables));
 	PsychErrorExit(PsychRegister("GetOpenDeviceCount", &PSYCHPORTAUDIOGetOpenDeviceCount)); 
-
+	PsychErrorExit(PsychRegister("UseSchedule", &PSYCHPORTAUDIOUseSchedule));
+	PsychErrorExit(PsychRegister("AddToSchedule", &PSYCHPORTAUDIOAddToSchedule));
+	
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 
