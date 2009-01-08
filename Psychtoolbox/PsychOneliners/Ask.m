@@ -160,7 +160,7 @@ if strcmp(replyFun,'GetChar')
     Screen('FillRect', window, bgColor);
     Screen('Flip', window);
 
-    for d=min(find(reply==8))
+    for d=min(find(reply==8 | reply==10))-1
         reply = reply(1:d);
     end;
     

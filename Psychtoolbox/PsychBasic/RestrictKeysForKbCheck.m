@@ -11,6 +11,9 @@ function ret = RestrictKeysForKbCheck(enablekeys)
 % Example: To enable the keys with keycodes 4, 6 and 7, do
 % RestrictKeysForKbCheck([4, 6, 7]);
 %
+% Calling RestrictKeysForKbCheck([]); ie., with an empty vector, will
+% reenable all keys.
+%
 % Caution: This setting is reset to "empty" during a "clear all" command,
 % ie., all keys will be enabled again after a "clear all"!
 %
