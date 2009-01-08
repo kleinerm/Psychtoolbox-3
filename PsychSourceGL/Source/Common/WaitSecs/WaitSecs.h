@@ -27,6 +27,7 @@
 PsychError MODULEVersion(void);			//MODULEVersion.c
 PsychError WAITSECSWaitSecs(void);
 PsychError WAITSECSWaitUntilSecs(void);
+PsychError WAITSECSYieldSecs(void);
 
 //end include once
 #endif

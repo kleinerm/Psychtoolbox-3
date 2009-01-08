@@ -33,7 +33,8 @@ PsychError PsychModuleInit(void)
         
 	// Wait until specific deadline:
 	PsychErrorExit(PsychRegister("UntilTime", &WAITSECSWaitUntilSecs));
-
+	PsychErrorExit(PsychRegister("YieldSecs", &WAITSECSYieldSecs));
+	
 	//report the version
         #if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("Version", &MODULEVersion));

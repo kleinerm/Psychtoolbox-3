@@ -43,9 +43,10 @@ void WAITSECSSynopsis(void)
 	printf("WaitSecs - Timed waits:\n");
 	printf("-----------------------\n");
 	printf("\n");
-	printf("[realWakeupTimeSecs] = WaitSecs(waitPeriodSecs);        -- Wait for at least 'waitPeriodSecs' seconds.\n");
-	printf("[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs); -- Wait until at least time 'whenSecs'.\n");
-	printf("The optional 'realWakeupTimeSecs' is the real system time when WaitSecs finished waiting,\n");
+	printf("[realWakeupTimeSecs] = WaitSecs(waitPeriodSecs);              -- Wait for at least 'waitPeriodSecs' seconds. Try to be precise.\n");
+	printf("[realWakeupTimeSecs] = WaitSecs('UntilTime', whenSecs);       -- Wait until at least time 'whenSecs'.\n");
+	printf("[realWakeupTimeSecs] = WaitSecs('YieldSecs', waitPeriodSecs); -- Wait for at least 'waitPeriodSecs' seconds. Be more sloppy.\n");
+	printf("\nThe optional 'realWakeupTimeSecs' is the real system time when WaitSecs finished waiting,\n");
 	printf("just as if you'd call realWakeupTimeSecs = GetSecs; after calling WaitSecs. This for your\n");
 	printf("convenience and to reduce call overhead and drift a bit for this common combo of commands.\n\n");
 }
@@ -110,6 +111,42 @@ PsychError WAITSECSWaitUntilSecs(void)
     
     PsychCopyInDoubleArg(1,TRUE,&waitUntilSecs);
     PsychWaitUntilSeconds(waitUntilSecs);
+
+    // Return current system time at end of sleep:
+    PsychGetAdjustedPrecisionTimerSeconds(&now);
+    PsychCopyOutDoubleArg(1, FALSE, now);
+
+    return(PsychError_none);	
+}
+
+PsychError WAITSECSYieldSecs(void)
+{
+    static char useString[] = "[realWakeupTimeSecs] = WaitSecs('YieldSecs', waitPeriodSecs);";
+    //                                                                      1 
+    static char synopsisString[] = 
+    "Wait for at least \"waitPeriodSecs\", don't care if it takes a few milliseconds longer. "
+    "Optionally, return the real wakeup time \"realWakeupTimeSecs\".\n"
+	"This call is useful if you want your code to release the cpu for a few milliseconds, "
+	"e.g., to avoid overloading the cpu in a spinning loop, and you don't care if the "
+	"wait takes a few msecs longer than specified. If you do care, use one of the other "
+	"WaitSecs() variants! The other variants emphasize accuracy of timed waits, even if "
+	"this causes a high load on the processor.\n";
+	
+    static char seeAlsoString[] = "";	
+
+    double	waitPeriodSecs;
+    double	now;
+
+    //all sub functions should have these two lines
+    PsychPushHelp(useString, synopsisString,seeAlsoString);
+    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
+
+    //check to see if the user supplied superfluous arguments
+    PsychErrorExit(PsychCapNumOutputArgs(1));
+    PsychErrorExit(PsychCapNumInputArgs(1));
+    
+    PsychCopyInDoubleArg(1,TRUE,&waitPeriodSecs);
+    PsychYieldIntervalSeconds(waitPeriodSecs);
 
     // Return current system time at end of sleep:
     PsychGetAdjustedPrecisionTimerSeconds(&now);
