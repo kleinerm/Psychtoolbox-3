@@ -317,7 +317,10 @@ fprintf('the Psychtoolbox root folder for exact licensing conditions.\n\n');
 fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
 fprintf('Psychtoolbox website:\n');
 fprintf('web http://www.psychtoolbox.org -browser\n');
-
+fprintf('\n');
+fprintf('Please make sure that you have a look at the PDF file Psychtoolbox3-Slides.pdf\n');
+fprintf('in the Psychtoolbox/PsychDocumentation subfolder for an overview of differences\n');
+fprintf('between Psychtoolbox-2 and Psychtoolbox-3.\n\n');
 
 fprintf('\nEnjoy!\n\n');
 
