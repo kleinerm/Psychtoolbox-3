@@ -2620,7 +2620,7 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 	// will run empty if not regularly updated:
 	if ((waitforend == 1) && Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0) &&
 		(audiodevices[pahandle].opmode & kPortAudioPlayBack) && ((audiodevices[pahandle].repeatCount != -1) || (audiodevices[pahandle].schedule) || (audiodevices[pahandle].reqStopTime < DBL_MAX))) {
-		while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream)) ||
+		while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0)) ||
 				((audiodevices[pahandle].runMode == 1) && (audiodevices[pahandle].state > 0))) {
 
 			// Wait for a state-change before reevaluating:
@@ -2640,22 +2640,19 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 		// Some real immediate stop request wanted:
 		// Soft stop requested (as opposed to fast stop)?
 		if (waitforend!=2) {
-			// Softstop: Try to stop stream. Skip if already stopped/not yet started:
+			// Softstop: Try to stop stream:
 			if (audiodevices[pahandle].state > 0) {
 				// Stream running. Request a stop of stream, to be honored by playback thread:
 				audiodevices[pahandle].reqstate = 0;
-				
-				// Drop lock, so request can get through...
-				PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
-				
-				// If blockUntilStopped is non-zero, then explicitely stop as well:
-				if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && (err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError) {
-					printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
-					PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
-				}
 			}
-			else {
-				PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+				
+			// Drop lock, so request can get through...
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+				
+			// If blockUntilStopped is non-zero, then explicitely stop as well:
+			if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) && (err=Pa_StopStream(audiodevices[pahandle].stream))!=paNoError) {
+				printf("PTB-ERROR: Failed to stop audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
+				PsychErrorExitMsg(PsychError_system, "Failed to stop PortAudio audio device.");
 			}
 		}
 		else {
@@ -2666,18 +2663,15 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 				// Yes. Set the 'state' flag to signal our IO-Thread not to push any audio
 				// data anymore, but only zeros for silence and to paAbort asap:
 				audiodevices[pahandle].reqstate = 3;
-				
-				// Drop lock, so request can get through...
-				PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
-				
-				// If blockUntilStopped is non-zero, then send abort request to hardware:
-				if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && ((err=Pa_AbortStream(audiodevices[pahandle].stream))!=paNoError)) {
-					printf("PTB-ERROR: Failed to abort audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
-					PsychErrorExitMsg(PsychError_system, "Failed to fast stop (abort) PortAudio audio device.");
-				}
 			}
-			else {
-				PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+			
+			// Drop lock, so request can get through...
+			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+			
+			// If blockUntilStopped is non-zero, then send abort request to hardware:
+			if ((blockUntilStopped > 0) && (audiodevices[pahandle].runMode == 0) && (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) && ((err=Pa_AbortStream(audiodevices[pahandle].stream))!=paNoError)) {
+				printf("PTB-ERROR: Failed to abort audio device %i. PortAudio reports this error: %s \n", pahandle, Pa_GetErrorText(err));
+				PsychErrorExitMsg(PsychError_system, "Failed to fast stop (abort) PortAudio audio device.");
 			}
 		}
 	}
@@ -2691,7 +2685,7 @@ PsychError PSYCHPORTAUDIOStopAudioDevice(void)
 
 		// Wait for stop / idle:
 		if (Pa_IsStreamActive(audiodevices[pahandle].stream)) {
-			while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream)) ||
+			while ( ((audiodevices[pahandle].runMode == 0) && Pa_IsStreamActive(audiodevices[pahandle].stream) && (audiodevices[pahandle].state > 0)) ||
 					((audiodevices[pahandle].runMode == 1) && (audiodevices[pahandle].state > 0))) {
 				
 				// Wait for a state-change before reevaluating:

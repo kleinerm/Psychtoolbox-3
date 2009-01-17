@@ -177,6 +177,8 @@ function err = Snd(command,signal,rate,sampleSize)
 % 3/10/05   dgp Make it clear that the Snd mex is only available for OS9. 
 %               Mention AUDIOPLAYER, as suggested by Pascal Mamassian.
 % 5/20/08    mk Explain that Snd() is deprecated --> Point to PsychPortAudio!
+% 1/12/09    mk Make sure that 'signal' is a 2-row matrix in stereo, not 2
+%               column.
 
 global endTime;
 if isempty(endTime)
@@ -212,6 +214,9 @@ if IsWin | IsOSX
 		end 
         if nargin < 2
             error('Wrong number of arguments: see Snd.');
+        end
+        if size(signal,1) > size(signal,2)
+            error('signal must be a 2 rows by n column matrix for stereo sounds.');
         end
        	WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
         sound(signal',rate,sampleSize);
