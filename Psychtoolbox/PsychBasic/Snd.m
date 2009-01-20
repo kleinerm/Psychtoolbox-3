@@ -186,6 +186,7 @@ if isempty(endTime)
 end 
 
 sSize = 16;
+err=0;
 
 if IsWin | IsOSX 
     if nargin == 0

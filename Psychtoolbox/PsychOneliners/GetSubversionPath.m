@@ -17,6 +17,7 @@ function svnpath = GetSubversionPath
 %
 % History:
 % 11/21/06 Written (MK).
+% 01/19/09 Update to search in /bin and /usr/bin as well on OS/X.
 
 % Check for alternative install location of Subversion:
 if IsWin
@@ -38,10 +39,18 @@ else
 
     % Currently, we only know how to check this for Mac OSX.
     if IsOSX
-        svnpath='/usr/local/bin/';
-        if exist('/usr/local/bin/svn','file')~=2
-            % Doesn't exist at expected location - We give up.
-            svnpath = '';
+        svnpath = '';
+        
+        if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
+            svnpath='/usr/local/bin/';
+        end
+
+        if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
+            svnpath='/usr/bin/';
+        end
+
+        if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
+            svnpath='/bin/';
         end
     end
 end
