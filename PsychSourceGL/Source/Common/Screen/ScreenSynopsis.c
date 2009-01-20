@@ -92,7 +92,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('FillArc',windowPtr,[color],[rect],startAngle,arcAngle)";
 	synopsis[i++] = "Screen('FillRect', windowPtr [,color] [,rect] );";
 	synopsis[i++] = "Screen('FrameRect', windowPtr [,color] [,rect] [,penWidth]);";
-	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect]);";
+	synopsis[i++] = "Screen('FillOval', windowPtr [,color] [,rect] [,perfectUpToMaxDiameter]);";
 	synopsis[i++] = "Screen('FrameOval', windowPtr [,color] [,rect] [,penWidth] [,penHeight] [,penMode]);";
 	synopsis[i++] = "Screen('FramePoly', windowPtr [,color], pointList [,penWidth]);";
 	synopsis[i++] = "Screen('FillPoly', windowPtr [,color], pointList [, isConvex]);";	

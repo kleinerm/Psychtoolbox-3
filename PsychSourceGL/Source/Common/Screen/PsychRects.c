@@ -11,7 +11,11 @@
 
 	HISTORY:
 	
-		02/11/03			awi		wrote it.  
+		02/11/03			awi		wrote it.
+		01/20/09			mk		Modify behaviour of PsychGetCenterFromRectAbs(): No longer floor() the size of the rectangle
+									before calculation of center: This removes information about rects with fractional locations
+									for no reason. Function is currently used by FillOval, FrameOval, Frame/Fill/xxxArc(), where
+									it has harmful effect on accuracy and consistency.
         
 	DESCRIPTION:	
 
@@ -115,8 +119,8 @@ void PsychGetCenterFromRectAbsolute(const double *rect, double *rectCenterX, dou
         double rectWidth, rectHeight;
         rectWidth=PsychGetWidthFromRect(rect);
         rectHeight=PsychGetHeightFromRect(rect);
-        *rectCenterX=rect[kPsychLeft] + floor(rectWidth/2);
-        *rectCenterY=rect[kPsychTop] + floor(rectHeight/2);
+        *rectCenterX=rect[kPsychLeft] + (rectWidth/2);
+        *rectCenterY=rect[kPsychTop] + (rectHeight/2);
 }
 
 
