@@ -26,6 +26,7 @@
 % GetMouseIndices     - OSX: Get indices of mice in the PsychHID device list.
 % PsychHID            - OSX: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
+% PsychRTBox          - All: Driver for RTBox reaction time button box.
 % PsychSerial         - Win, OS9: Send and receive through serial ports.
 % SERIAL              - Win: Send and receive through serial ports. 
 %                            Standard Matlab function. Requires Java, so it's 

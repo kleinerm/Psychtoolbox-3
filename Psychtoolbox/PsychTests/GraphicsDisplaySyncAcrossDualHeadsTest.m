@@ -1,8 +1,6 @@
 function GraphicsDisplaySyncAcrossDualHeadsTest(screenids, nrtrials)
 % GraphicsDisplaySyncAcrossDualHeadsTest([screenids] [, nrtrials=6000])
 %
-% Apple MacOS/X only for now!
-%
 % Test synchronizity between the scanout/refresh cycles of two different
 % display heads 'screenids(1)' and 'screenids(2)'. If 'screenids' is
 % omitted, we test the two heads with maximal id. 'nrtrial' sample passes
@@ -19,10 +17,6 @@ function GraphicsDisplaySyncAcrossDualHeadsTest(screenids, nrtrials)
 % 12/11/07 Written (MK).
 
 AssertOpenGL;
-
-if ~IsOSX
-    error('Sorry, this test is only supported on MacOS/X.');
-end
 
 if nargin < 1
     screenids = [];
@@ -83,7 +77,7 @@ for i=1:nrtrials
     
     % Sample in close sync:
     for j=1:2
-        winfo(j) = Screen('GetWindowInfo', w(j));
+        winfo(j) = Screen('GetWindowInfo', w(j)); %#ok<AGROW>
     end
     
     for j=1:2
@@ -112,10 +106,14 @@ if winfo(1).VBLEndline~=-1
     title('Beamposition drift between displays:');
 end
 
-figure;
-plot(1:nrtrials, squeeze(timinginfo(2,1,:)), 'r', 1:nrtrials, squeeze(timinginfo(2,2,:)), 'b');
-title('VBL Interrupt timestamps for both displays: Red = Head 1, Blue=Head 2');
+if testvblirqs
+    figure;
+    plot(1:nrtrials, squeeze(timinginfo(2,1,:)), 'r', 1:nrtrials, squeeze(timinginfo(2,2,:)), 'b');
+    title('VBL Interrupt timestamps for both displays: Red = Head 1, Blue=Head 2');
 
-figure;
-plot(1:nrtrials, squeeze(timinginfo(2,1,:)) - squeeze(timinginfo(2,2,:)));
-title('VBL Interrupt timestamp drift between displays:');
+    figure;
+    plot(1:nrtrials, squeeze(timinginfo(2,1,:)) - squeeze(timinginfo(2,2,:)));
+    title('VBL Interrupt timestamp drift between displays:');
+end
+
+return;
