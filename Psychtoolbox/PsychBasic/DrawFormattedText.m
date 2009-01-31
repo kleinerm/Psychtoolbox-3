@@ -1,5 +1,5 @@
-function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical)
-% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical])
+function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing)
+% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
 % some basic formatting. The text string 'tstring' may contain newline
@@ -23,6 +23,9 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % horizontally, whereas the optional flag 'flipVertical' if set to 1 will
 % mirror the text vertically (upside down).
 %
+% The optional argument 'vSpacing' sets the spacing between the lines. Default
+% value is 1.
+%
 % The function returns the new (nx, ny) position of the text drawing cursor
 % and the bounding rectangle 'textbounds' of the drawn string. (nx,ny) can
 % be used as new start position for connecting further text strings to the
@@ -37,6 +40,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 11/01/06  Add support for correct handling of 3D rendering mode (MK).
 % 11/22/06  More 3D handling: Save/restore backface cull state (MK).
 % 05/14/07  Return a more meaningful end cursor position (printf - semantics) (MK)
+% 01/31/09  Add optional vSpacing parameter (Alex Leykin).
 
 % We need GL for drawing in 3D rendering mode:
 global GL;
@@ -77,6 +81,11 @@ if nargin < 8 || isempty(flipVertical)
     flipVertical = 0;
 end
 
+% No vertical mirroring by default:
+if nargin < 9 || isempty(vSpacing)
+    vSpacing = 1;
+end
+
 % Convert all conventional linefeeds into C-style newlines:
 newlinepos = strfind(tstring, '\n');
 
@@ -101,7 +110,8 @@ if wrapat > 0
 end
 
 % Query textsize for implementation of linefeeds:
-theight = Screen('TextSize', win);
+theight = Screen('TextSize', win) * vSpacing;
+
 % Query window size as well:
 [winwidth winheight] = Screen('WindowSize', win);
 
