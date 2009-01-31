@@ -6,7 +6,9 @@ function varargout = PsychRTBox(varargin)
 
 % History:
 % 08/01/2008 Initial implementation based on RTBox.m from Xiangrui Li (MK).
-% 01/30/2009 "Close to beta" release. First checkin to SVN (MK).
+% 01/29/2009 "Close to beta" release. First checkin to SVN (MK).
+% 01/30/2009 Improved syncClocks algorithm, option to spec a specific box
+%            by port in the open call (MK).
 
     global rtbox_info;
     global nrOpen;
@@ -16,14 +18,15 @@ function varargout = PsychRTBox(varargin)
     global enableCode;
     global cmds;
     global esc;
+    global rtbox_oldstylesync;
 
     % First time invocation?
     if isempty(rtbox_info)
         rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-            'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1);
+            'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3);
         eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         cmds={'close' 'closeall' 'clear' 'purge' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime' };
+              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity' };
         events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
         enableCode='DUPOFA'; % char to enable above events, lower case to disable
         %    rtbox_info(1).events = ;
@@ -44,6 +47,8 @@ function varargout = PsychRTBox(varargin)
 
         KbName('UnifyKeyNames');
         esc = KbName('ESCAPE');
+        
+        rtbox_oldstylesync = 0;
     end
 
     if nargin < 1
@@ -55,7 +60,7 @@ function varargout = PsychRTBox(varargin)
     if isempty(cmd)
         error('You must provide a non-empty command string to PsychRTBox!');
     end
-
+    
     % Open the connection to device, do initial setup and sync:
     if strcmp(cmd, 'open')
         % Assign deviceID identifier of device to open, or the default
@@ -129,6 +134,17 @@ function varargout = PsychRTBox(varargin)
     end
 
     switch cmd
+        case 'verbosity'
+            if nIn<2
+                error('You must provide the new level of "verbosity" to assign!');
+            end
+            
+            % Return old level of verbosity:
+            varargout{1} = rtbox_info(id).verbosity;
+
+            % Assign new level of verbosity to device:
+            rtbox_info(id).verbosity = in2;
+            
         case 'start' % send serial trigger to device
             [nw tWritten]=IOPort('write',s,'Y'); % blocking write
             if nargout, varargout{1}=tWritten; end
@@ -452,8 +468,270 @@ function timing = box2GetSecsTime(id, timing)
     timing = timing + thostbase;
 end
 
-
 function syncClocks(id, enableInd)
+    global rtbox_info;
+    global blocking;
+    global enableCode;
+    global rtbox_oldstylesync;
+    
+    if rtbox_oldstylesync
+        syncClocksOld(id, enableInd);
+        return;
+    end
+    
+    % Query level of verbosity to use:
+    verbosity = rtbox_info(id).verbosity;
+    
+    % Perform multiple measurement trials per syncClocks run, take the best
+    % one for final result. We use the "best" one because we have a good
+    % criterion to find the best one.
+    
+    % We preallocate the sampling arrays for 250 samples at most. The
+    % arrays will grow if 250 samples are not sufficient, at a small
+    % performance penalty:
+    ntrials = 250;
+    
+    % Maximum duration of a syncClocks calibration run:
+    rtbox_maxDuration = 0.5;
+    
+    % Desired 'minwin' calibration accuracy:
+    rtbox_optMinwinThreshold = 0.0002;
+    
+    % Maximum allowable (ie. worst) minwin for a sample:
+    % On OS/X or Linux we could easily do with 2 msecs, as a 1.2 msecs
+    % minwin is basically never exceeded. On MS-Windows however, 2.x
+    % durations are not uncommon, so we need to slack this to 3 msecs.
+    rtbox_maxMinwinThreshold = 0.003;
+    
+    % Any event reporting active?
+    if any(rtbox_info(id).enabled)
+        % Disable all events on box. This will also clear all buffers:
+        enableEvent(id, 'a');
+    else
+        % Clear buffers "manually":
+        purgeRTbox(id);
+    end
+
+    % Switch to realtime priority if not already there:
+    oldPriority=Priority;
+    if oldPriority < MaxPriority('GetSecs')
+        Priority(MaxPriority('GetSecs'));
+    end
+    
+    % Get porthandle:
+    s = rtbox_info(id).handle;
+    t = zeros(3,ntrials);
+
+    minwin = inf;
+    tdeadline = GetSecs + rtbox_maxDuration;
+    ic = 0;
+    
+    % Perform measurement trials until success criterion satisfied:
+    % Either a sample with a maximum error 'minwin' less than desired
+    % threshold, or maximum allowable calibration time reached:
+    while (minwin > rtbox_optMinwinThreshold) && (GetSecs < tdeadline)
+        % Wait some random fraction of a millisecond. This will desync us
+        % from the USB duty cycle and increase the chance of getting a very
+        % small time window between scheduling, execution and acknowledge
+        % of the send operation:
+        WaitSecs(rand / 1000);
+        
+        % Take pre-Write timestamp in tpre - Sync command not emitted
+        % before that time. Write sync command, wait 'blocking' for write
+        % completion, store completion time in post-write timestamp tpost:
+        [nw tpost, errmsg, tpre] = IOPort('Write', s, 'Y', blocking);
+
+        % We know that sync command emission has happened at some time
+        % after tpre and before tpost. This by design of the USB
+        % standard, host controllers and operating system USB stack. This
+        % is the only thing we can take for granted wrt. timing, so the
+        % "time window" between those two timestamps is our window of
+        % uncertainty about the real host time when sync started. However,
+        % on a well working system without massive system overload one can
+        % be reasonably confident that the real emission of the sync
+        % command happened no more than 1 msec before tpost. That is a
+        % soft constraint however - useful for computing the final estimate
+        % for hosttime, but nothing to be taken 100% for granted.
+        
+        % Write op successfull?
+        if nw==1
+            % Retrieve 7-Byte packet with timestamp from box:
+            [b7 dummy errmsg] = IOPort('Read', s, 1, 7);
+        else
+            % Send op failed!
+            fprintf('RTbox: Warning! Sync token send operation to box failed! [%s]\n', errmsg);
+            continue;
+        end
+        
+        if length(b7)~=7 || b7(1)~=89
+            % Receive op failed!
+            fprintf('RTbox: Warning! Corrupt data received from box! [%s]\n', errmsg);
+            continue;
+        end
+        
+        % Decode boxtime into seconds (uncorrected for clock-drift etc.):
+        tbox = bytes2secs(b7(2:7));
+        
+        % Compute confidence interval for this sample:
+        % For each measurement, the time window tpost - tpre defines a
+        % worst case confidence interval for the "real" host system time
+        % when the sync command was emitted.
+        confidencewindow = tpost - tpre;
+        
+        % If the confidencewindow is greater than the maximum acceptable
+        % window, then we reject this sample, else we accept it:
+        if confidencewindow <= rtbox_maxMinwinThreshold
+            % Within acceptable range. Accept this sample and check if it
+            % is the best wrt. to window size so far:
+            if confidencewindow < minwin
+               % Best confidencewindow so far. Update minwin, as this is one
+               % of the abortion critera:
+               minwin = confidencewindow;
+            end
+            
+            % Increase sample index to permanently accept this sample for
+            % final set of competitors:
+            ic = ic + 1;
+            
+            % Assign values:
+            t(1,ic) = tpre;
+            t(2,ic) = tpost;
+            t(3,ic) = tbox;
+        else
+            % Inacceptably large error confidencewindow. Reject this sample:
+            continue;
+        end
+
+        % Next sample pass:
+    end
+
+    % Done with sampling: We have up to 'ic' valid samples, unless minwin
+    % is still == inf.
+    
+    % Restore priority to state pre syncClocks:
+    if Priority ~= oldPriority
+        Priority(oldPriority);
+    end
+    
+    % Restore event reporting:
+    enableEvent(id, enableCode(find(rtbox_info(id).enabled(enableInd)>0))); %#ok<FNDSB>
+    
+    % At least one sample with acceptable precision acquired?
+    if (minwin > rtbox_maxMinwinThreshold) | (ic < 1) %#ok<OR2>
+        % No, not even a single one! Set all results to "invalid"
+        rtbox_info(id).sync=[inf, inf, inf];
+        
+        if verbosity > 1
+            fprintf('PsychRTBox: Warning: On Box %s, Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_maxMinwinThreshold);
+            fprintf('PsychRTBox: Warning: Likely your system is massively overloaded or misconfigured!\n');
+        end
+        
+        % Warn user:
+        RTboxWarn('poorSync', minwin);
+        
+        % That's it:
+        return;
+    end
+
+    % Ok, we have 'ic' > 0 samples with acceptable precision, according to
+    % user specified constraints. Prune result array to valid samples 1 to ic:
+    t = t(:, 1:ic);
+
+    % Choose the most accurate sample from the set of candidates. This is
+    % the sample with the smallest difference between the postwrite
+    % timestamp and the associated box timestamp, ie., with the smallest
+    % offset between postwrite host clock time and box clock time at
+    % receive of sync command. The reasoning behind this goes like this:
+    %
+    % 1) The time offset between host clock and box clock is a constant -
+    % at least within a significant multi-second time interval between
+    % successive syncClocks calls (due to only small clock drift), but
+    % certainly within a syncClocks run of a few hundred milliseconds
+    % (error due to clock drift in this interval is negligible).
+    %
+    % 2) Computed box clock time t(3,:) is "close to perfect", as this
+    % timestamp is taken by box microprocessor and firmware with a very
+    % small and basically constant delay after sync token receive, ie.,
+    % write completion. (Maximum theoretical error is smaller than 0.1 msecs).
+    %
+    % 3) The correct and optimal clock offset between host and box would be
+    % tdiff = tsend - t(3,:) iff tsend would be host time at true write
+    % completion.
+    %
+    % 4) The measured host time at write completion t(2,:) is always later
+    % (and therefore numerically greater) than the true host time tsend at
+    % write completion due to an unknown, random, greater than zero delay
+    % tdelta, i.e., t(2,:) = tsend + tdelta, tdelta > 0. tdelta is the sum
+    % of:
+    %
+    % a) The unknown delay of up to 1 msec between USB write-URB completion
+    % by the USB host controller (which would be the real completion time
+    % tsend) and detection of completion due to USB IOC (Interrupt-On-
+    % Completion) due to invocation of the host controllers hardware
+    % interrupt handler and host controller schedule scan and URB
+    % retirement inside the interrupt handler.
+    %
+    % b) Random (and theoretically unbounded) scheduling delay / execution
+    % delay between status update of the serial port data structures by the
+    % interrupt handler and detection of write completion + timestamping by
+    % the IOPort driver in polling mode, or scheduling delay between
+    % wakeup-operation caused by the interrupt handler and start of
+    % execution of the timestamping in the IOPort driver in blocking mode.
+    %
+    % The syncClocks error is therefore directly proportional to the size
+    % of tdelta. Therefore:
+    %
+    % tdiff(:) = t(2,:) - t(3,:) by definition of clock offset host vs. box.
+    % t(2,:) = tsend(:) + tdelta(:) by unknown scheduling/execution noise tdelta.
+    %
+    % It follows that by above definitions:
+    %
+    % tdiff(:) = tsend(:) - t(3,:) + tdelta(:);
+    %
+    % --> As we defined tsend(:) to be the unknown, but perfect and
+    % noise-free, true send timestamp, and t(3,:) to be the perfect receive
+    % timestamp by the box, it follows that by selecting the sample 'idx'
+    % with the minimal tdiff(idx) from the set tdiff(:), we will select the
+    % sample with the unknown, but minimal tdelta(idx). As tdelta accounts
+    % for all the remaining calibration error, minimizing tdelta will
+    % maximize the accuracy of the clock sync.
+    %
+    % ==> Select sample with minimum t(2,:) - t(3,:) as final best result:
+    [mintdiff, idx] = min(t(2,:) - t(3,:));
+    
+    % mintdiff is our best estimate of clock offset host vs. box, and
+    % t(:,idx) is the associated best sample. Unfortunately there isn't any
+    % way to compute the exact residual calibration error tdelta(idx). The
+    % only thing we know is that the error is bounded by the length of the
+    % associated 'minwin' confidence interval of this sample, so we will
+    % return 'minwin' as an upper bound on the calibration error. As
+    % 'minwin' was used as a threshold in the sample loop for outlier
+    % rejection, we can be certain that our estimate carries no greater
+    % error than 'rtbox_maxMinwinThreshold'.
+
+    % Extract all relevant values for the final sample:
+     
+    % Host time corresponds to tpost write timestamp, which should be as
+    % close as possible to real host send timestamp:
+    hosttime = t(2,idx);
+    
+    % Box timers time taken "as is":
+    boxtime  = t(3,idx);
+    
+    % Recalculate upper bound on worst case error 'minwin' from this best
+    % samples tpost - tpre:
+    minwin = t(2,idx) - t(1,idx);
+
+    if verbosity > 3
+        fprintf('PsychRTBox: ClockSync: Box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', rtbox_info(id).ID, ic, 1000 * rtbox_maxMinwinThreshold, 1000 * minwin);
+        fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
+    end
+    
+    % Assign (host,box,confidence) sample to sync struct:
+    rtbox_info(id).sync=[hosttime, boxtime, minwin];
+end
+
+function syncClocksOld(id, enableInd)
     global rtbox_info;
     global blocking;
     global enableCode;
@@ -671,29 +949,44 @@ function openRTBox(deviceID, handle)
 
     % Setup possible port list for different operating systems:
     if IsWin
-        % Suppose user did not assign RTbox to COM1 or 2:
-        ports=cellstr(num2str((3:256)','\\\\.\\COM%i'));
+        if ~isempty(strfind(deviceID, 'COM'))
+            % COM port name provided: Use specified COM port:
+            ports{1} = deviceID;
+        else
+            % Enumerate all possible ports as candidates for box:
+            % Suppose user did not assign RTbox to COM1 or 2:
+            ports=cellstr(num2str((3:256)','\\\\.\\COM%i'));
+        end
+        
         nPorts=length(ports);
     end
 
     if IsOSX || IsLinux
-        if IsOSX
-            candidateports=dir('/dev/cu.usbserial*');
+        if ~isempty(strfind(deviceID, '/dev/'))
+            % Explicit port name provided: Use it.
+            ports{1} = deviceID;
+            nPorts = 1;
         else
-            candidateports=dir('/dev/ttyUSB*');
-        end
-
-        if ~IsOctave
-            for i=1:length(candidateports)
-                ports{i} = ['/dev/', candidateports(i).name];
+            % Enumerate all available USB-Serial ports as candidates for box:
+            if IsOSX
+                candidateports=dir('/dev/cu.usbserial*');
+            else
+                candidateports=dir('/dev/ttyUSB*');
             end
-        else
-            for i=1:length(candidateports)
-                ports{i} = candidateports(i).name;
-            end
-        end
 
-        nPorts = length(candidateports);
+            if ~IsOctave
+                for i=1:length(candidateports)
+                    ports{i} = ['/dev/', candidateports(i).name];
+                end
+            else
+                for i=1:length(candidateports)
+                    ports{i} = candidateports(i).name;
+                end
+            end
+
+            nPorts = length(candidateports);
+        end
+        
     end
 
     % Any found?
@@ -706,76 +999,86 @@ function openRTBox(deviceID, handle)
     rec=struct('avail','','busy',''); % for error record only
     verbo=IOPort('Verbosity', 0);
 
-    % Scan each possible port if it is the response box:
-    for ic=1:nPorts
-        % Device file name of port to probe:
-        port = ports{ic};
+    trycount = 0;
+    
+    % Retry procedure up to a total of 2 times:
+    while (trycount < 2) & (~deviceFound)     %#ok<AND2>
+        % Scan each possible port if it is the response box:
+        for ic=1:nPorts
+            % Device file name of port to probe:
+            port = ports{ic};
 
-        % Already opened?
-        if strmatch(port, {rtbox_info(1:handle-1).portname},'exact')
-            % Yes. Skip this candidate:
-            continue;
-        end
-
-        % Try to open port: We open at maximum supported baud rate of 115200
-        % bits, use a timeout for blocking reads of 1 second, and request
-        % low-latency polling for write completion if the IOPort('Write')
-        % command uses a polling method for waiting for write completion. Set
-        % the "sleep time" between consecutive polls to 0.0001 seconds = 0.1
-        % msecs. That is good enough for our purpose and still prevents system
-        % overload on OS/X and Linux:
-        [s errmsg]=IOPort('OpenSerialPort', port, 'BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001');
-
-        % Worked?
-        if s>=0
-            % Device open succeeded. Test if it is really our box and not some
-            % other serial-USB device:
-
-            % Flush all transmit/receive queues:
-            % N.B. This flushes receive and send buffers on Windows and OS/X,
-            % but doesn't flush the send buffers on Linux -- not implemented at
-            % the FTDI driver level:
-            IOPort('Purge', s);
-
-            % Read out whatever junk maybe in the input buffer:
-            IOPort('Read', s, 0);
-
-            % Write the 'X' command code to ask box for its identity:
-            IOPort('Write', s, 'X');
-
-            % Wait blocking with 1 sec timeout (see above) for id string response from box:
-            idn=char(IOPort('Read', s, 1, 21));
-            % Expected response is a 21-Bytes string of format 'USTCRTBOX,115200,v?.?'
-            % with ?.? being the major and minor firmware/box revision.
-            if strfind(idn,'USTCRTBOX')
-                % Found device:
-                deviceFound=1;
-                break;
+            % Already opened?
+            if strmatch(port, {rtbox_info(1:handle-1).portname},'exact')
+                % Yes. Skip this candidate:
+                continue;
             end
 
-            % Not our box :-(
-            IOPort('Close', s);
+            % Try to open port: We open at maximum supported baud rate of 115200
+            % bits, use a timeout for blocking reads of 1 second, and request
+            % low-latency polling for write completion if the IOPort('Write')
+            % command uses a polling method for waiting for write completion. Set
+            % the "sleep time" between consecutive polls to 0.0001 seconds = 0.1
+            % msecs. That is good enough for our purpose and still prevents system
+            % overload on OS/X and Linux:
+            [s errmsg]=IOPort('OpenSerialPort', port, 'BaudRate=115200 ReceiveTimeout=1.0 PollLatency=0.0001');
 
-            % Store port as existent but not used by us:
-            rec.avail{end+1}=port; %#ok
+            % Worked?
+            if s>=0
+                % Device open succeeded. Test if it is really our box and not some
+                % other serial-USB device:
 
-        elseif isempty(strfind(errmsg,'ENOENT'))
-            % Failed to open port, but not with error code ENOENT.
-            % Open failed, but port exists. That means it is busy - used by
-            % ourselves or some other process:
-            rec.busy{end+1}=port; %#ok
+                % Flush all transmit/receive queues:
+                % N.B. This flushes receive and send buffers on Windows and OS/X,
+                % but doesn't flush the send buffers on Linux -- not implemented at
+                % the FTDI driver level:
+                IOPort('Purge', s);
 
-            % MK: TODO - What about other than EPERM EBUSY errors? They show
-            % some other problem which should be told to the user.
+                % Read out whatever junk maybe in the input buffer:
+                IOPort('Read', s, 0);
+
+                % Write the 'X' command code to ask box for its identity:
+                IOPort('Write', s, 'X');
+
+                % Wait blocking with 1 sec timeout (see above) for id string response from box:
+                idn=char(IOPort('Read', s, 1, 21));
+                % Expected response is a 21-Bytes string of format 'USTCRTBOX,115200,v?.?'
+                % with ?.? being the major and minor firmware/box revision.
+                if strfind(idn,'USTCRTBOX')
+                    % Found device:
+                    deviceFound=1;
+                    break;
+                end
+
+                % Not our box :-(
+                IOPort('Close', s);
+
+                % Store port as existent but not used by us:
+                rec.avail{end+1}=port; %#ok
+
+            elseif isempty(strfind(errmsg,'ENOENT'))
+                % Failed to open port, but not with error code ENOENT.
+                % Open failed, but port exists. That means it is busy - used by
+                % ourselves or some other process:
+                rec.busy{end+1}=port; %#ok
+
+                % MK: TODO - What about other than EPERM EBUSY errors? They show
+                % some other problem which should be told to the user.
+            end
+            % Scan next candidate port:
         end
-        % Scan next candidate port:
+       
+        % Tried trycount times to perform open operation:
+        trycount = trycount + 1;
+        
+        % Retry, if neccessary:
     end
-
+    
     % Done with scan. Restore normal level of debug output of IOPort, as
     % selected by external usercode or defaults:
     IOPort('Verbosity',verbo);
 
-    % Found a suitable RTBox?
+    % Found a suitable RTBox within number of retries?
     if ~deviceFound
         % Nope. Bail out:
         RTboxError('noDevice', rec, rtbox_info);
