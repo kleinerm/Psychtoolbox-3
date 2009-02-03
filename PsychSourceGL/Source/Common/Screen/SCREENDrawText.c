@@ -539,7 +539,7 @@ boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
 
 boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
 {
-  char fontname[256];
+  char fontname[512];
   char** fontnames=NULL;
   Font font;
   XFontStruct* fontstruct=NULL;
@@ -574,7 +574,7 @@ boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
 
   fontname[sizeof(fontname)-1]=0;
   // Convert fontname to lower-case characters:
-  for(i=0; i<strlen(winRec->textAttributes.textFontName); i++) fontname[i]=tolower(fontname[i]);
+  for(i=0; i<strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
 
   // Try to load font:
   font = XLoadFont(winRec->targetSpecific.deviceContext, fontname);
@@ -726,8 +726,8 @@ PsychError SCREENDrawText(void)
     // Enable this windowRecords framebuffer as current drawingtarget:
     PsychSetDrawingTarget(winRec);
 
-	// Set default draw shader:
-	PsychSetShader(winRec, -1);
+	// Set default draw shader on Windows, but disable on Linux, as glBitmapped rendering doesn't work with it:
+	PsychSetShader(winRec, (PSYCH_SYSTEM == PSYCH_LINUX) ? 0 : -1);
 
 	PsychUpdateAlphaBlendingFactorLazily(winRec);
 	PsychCoerceColorMode( &(winRec->textAttributes.textColor));
@@ -780,7 +780,9 @@ PsychError SCREENDrawText(void)
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
     // Position our "cursor": The X11 implementation uses glBitmap()'ed fonts, so we need to position
-    // the rasterposition cursor...
+    // the rasterposition cursor. We need the glColor4dv() here to handle a special case when using
+    // HDR framebuffers and HDR draw shaders -- this is not compatible with Linux glBitmapped() rendering...
+    glColor4dv(winRec->currentColor);
     glRasterPos2f(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY  - textHeightToBaseline + winRec->textAttributes.textSize);
     glPixelZoom(1,1);
     #endif
