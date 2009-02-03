@@ -288,7 +288,6 @@ global rtbox_maxMinwinThreshold;
             blocking = 1;
         else
             % On Linux, a polling wait is of advantage, so we use that:
-            % TODO: Double-check if this is really true.
             blocking = 2;
         end
 
