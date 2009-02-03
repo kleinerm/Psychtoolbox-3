@@ -14,8 +14,10 @@ function coords = cropblackedges(plaat)
 % DN 2007       Wrote it
 % DN 2008-07-30 Now returns correct indices if one or more or all sides of
 %               the image do not have a black edge
+% DN 2009-02-02 Now returns error msg if all is black
 
 plaat       = sum(plaat,3);
+psychassert(any(plaat(:)),'No image in input matrix');
 
 plaatx      = sum(plaat,2);
 plaaty      = sum(plaat,1);

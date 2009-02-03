@@ -1,8 +1,10 @@
 function bool = ellipse(a,b,horpow,verpow)
+% ellipse(a) creates a circle with
+% diameter == ceil(2*a)
+%
 % ellipse(a,b) creates an ellipse with
 % horizontal axis == ceil(2*a) and vertical axis == ceil(2*b)
 %   
-%
 % ellipse(a,b,power) generates a superellipse according to the
 % geometric formula (x./a).^power + (y./b).^power < 1
 %
@@ -15,15 +17,19 @@ function bool = ellipse(a,b,horpow,verpow)
 % ellipse returns a (tighly-fitting) boolean matrix which is true for all
 % points on the surface of the ellipse and false elsewhere
 
-% DN    2008
+% DN 2008
+% DN 2009-02-02 Updated to do circles and input argument handling more
+%               efficiently
 
-if nargin == 3
-    verpow = horpow;
-elseif nargin == 2
+error(nargchk(1, 4, nargin, 'struct'));
+if nargin < 2
+    b = a;
+end
+if nargin < 3
     horpow = 2;
-    verpow = 2;
-elseif nargin < 2 || nargin > 4
-    error('ellipse: Expecting between two and four input arguments');
+end
+if nargin < 4
+    verpow = horpow;
 end
     
 
@@ -32,8 +38,8 @@ b       = b + .5;                     % to produce a ellipse with vertical axis 
 
 [x,y]   = meshgrid(-a:a,-b:b);
 
-bool    = (x./a).^horpow + (y./b).^verpow  < 1;
+bool    = abs(x./a).^horpow + abs(y./b).^verpow  < 1;
 
 % return in a tight-fitting matrix
-cropcoords  = CropBlackEdges(bool);
+cropcoords  = cropblackedges(bool);
 bool        = bool(cropcoords(3):cropcoords(4),cropcoords(1):cropcoords(2));
