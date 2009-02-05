@@ -6,6 +6,7 @@
 % M$-Windows. Read the help for the corresponding Screen subfunctions
 % for infos.
 %
+% SimpleMovieDemo              -- Most simplistic demo on how to play a movie.
 % PlayMoviesDemoOSX            -- Show simple playback of one movie with soudn at a time.
 % PlayDualMoviesDemoOSX        -- Same as PlayMoviesDemoOSX, but play two movies in parallel.
 % PlayInterlacedMovieDemo      -- Simple demo on how to use the GLSL realtime video deinterlacer.
@@ -15,4 +16,3 @@
 %                                 event in a presented movie file. Takes care to get timing right.
 % LoadMovieIntoTexturesDemoOSX -- Quickly load a movie into a stack of textures for quick playback
 %                                 with arbitrary speed and order.
-
