@@ -501,12 +501,12 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 								printf("PTB-ERROR: consumed for textures, offscreen windows and similar objects.\n");
 								if (texcount > 100) {
 									printf("PTB-ERROR: The count is above one hundred objects. Could it be that you forgot to dispose no longer\n");
-									printf("PTB-ERROR: needed objects from previous experiment trials (missing Screen('Close' [, texturePtr]) or Screen('CloseMovie', moviePtr))??");
+									printf("PTB-ERROR: needed objects from previous experiment trials (missing Screen('Close' [, texturePtr]) or Screen('CloseMovie', moviePtr))??\n");
 								}
 
 								if (texmemguesstimate > 100 * 1024 * 1024) {
 									printf("PTB-ERROR: At least 100 MB memory consumed for textures, probably much more. Could it be that you forgot to dispose no longer\n");
-									printf("PTB-ERROR: needed textures from previous experiment trials (missing Screen('Close' [, texturePtr]))??");
+									printf("PTB-ERROR: needed textures from previous experiment trials (missing Screen('Close' [, texturePtr]))??\n");
 								}
 								
 								printf("PTB-ERROR: Another cause of failure could be that your graphics hardware doesn't have sufficient amounts of\n");

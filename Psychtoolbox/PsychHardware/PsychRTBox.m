@@ -192,7 +192,7 @@ function varargout = PsychRTBox(varargin)
 % events to detect and report, you will want to actually retrieve
 % information about events. For this you use this command:
 %
-% [time, event] = PsychRTBox('GetSecs' [, handle]);
+% [time, event, boxtime] = PsychRTBox('GetSecs' [, handle]);
 % -- Retrieve all recorded events from the box. If there aren't any pending
 % events from the box, wait for up to 0.1 seconds for events to arrive.
 %
@@ -225,6 +225,36 @@ function varargout = PsychRTBox(varargin)
 %
 % See the help for PsychRTBox('SyncClocks') and PsychRTBox('ClockRatio')
 % for the accuracy of these timestamps.
+%
+% Additionally the event times are also returned in 'boxtime', but this
+% time expressed in box time -- the time of the box internal clock.
+% 
+%
+% You can also only retrieve time in box time without remapping to GetSecs
+% time by calling:
+%
+% [boxtime, event] = PsychRTBox('BoxSecs' [, handle]);
+% -- Timestamps are in raw box clock time, everything else is the same as
+% in PsychRTBox('GetSecs' [, handle]).
+%
+% If you have the 'boxtime' timestamps from one of the previous functions
+% around, you can map them later to GetSecs time with very high precision
+% at the end of your experiment session via:
+%
+% [GetSecs, Stddev] = PsychRTBox('MapBoxSecsToGetSecsPostHoc' [, handle], boxTimes);
+% -- Perform a post-hoc mapping of a vector of raw box timestamps
+% 'boxTimes' into a vector of host clock 'GetSecs' timestamps. Return some
+% error measure in 'Stddev' as well, if available.
+%
+% This method can be used to convert event timestamps expressed in the box
+% clocks timebase into timestamps in Psychtoolbox GetSecs host clock
+% timebase. It has the advantage of providing the highest possible accuracy
+% in mapping, because it computes an optimal mapping function for this
+% purpose, which is based on all the timing information collected
+% throughout a whole experiment session. The disadvantage is that it will
+% only provide meaningful results if you call it at the end of your
+% experiment session, so you'll need to manage all your collected
+% timestamps in a format that is suitable as input to this function.
 %
 %
 % ... TODO ... FINISH THIS ...
@@ -260,14 +290,14 @@ global rtbox_maxMinwinThreshold;
         % subfunction each time PsychRTBox('Open') is called! The settings
         % made there override the settings made here!!!
         rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-            'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3);
+            'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, 'syncSamples', []);
 
         % Setup event codes:
         eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % List of supported subcommands:
         cmds={'close' 'closeall' 'clear' 'purge' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints' };
+              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'mapboxsecstogetsecsposthoc'};
           
         % Names of events that can be enabled/disabled for reporting:
         events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
@@ -349,12 +379,18 @@ global rtbox_maxMinwinThreshold;
         % Return as handle:
         varargout{1} = nrOpen;
 
-        syncClocks(nrOpen, 1:5); % clear buffer, sync clocks
+        % Perform initial mandatory clock sync:
+        syncClocks(nrOpen, 1:5);
 
         return;
     end
 
     if strcmp(cmd, 'syncconstraints')
+        % Return current constraint settings:
+        varargout{1} = rtbox_maxDuration;
+        varargout{2} = rtbox_optMinwinThreshold;
+        varargout{3} = rtbox_maxMinwinThreshold;
+        
         % Set constraints for syncClocks:
         if nargin > 1 && ~isempty(varargin{2})
             rtbox_maxDuration = varargin{2};
@@ -449,7 +485,7 @@ global rtbox_maxMinwinThreshold;
                 if ~rtbox_info(id).enabled(ind), RTboxError('triggerDisabled',events4enable{ind}); end
                 minbytes=14; % at least 2 events
             end
-            varargout={[] ''}; % return empty if no event detected
+            varargout={[] '' []}; % return empty if no event detected
             isreading=false;
             byte=IOPort('bytesAvailable',s);
             tnow = GetSecs; % return tnow
@@ -479,10 +515,22 @@ global rtbox_maxMinwinThreshold;
 
             if cmdInd==15
                 % Convert into computer time: MK-Style
+
+                % First return optional "raw" array with boxtimes:
+                varargout{3} = timing;
+                
+                % Then remap to GetSecs host timebase:
                 timing = box2GetSecsTime(id, timing);
+                
             elseif cmdInd==13 % secs: convert into computer time
                 % Convert into computer time: Xiangrui-Style
+
+                % First return optional "raw" array with boxtimes:
+                varargout{3} = timing;
+
+                % Then remap to GetSecs host timebase via Xiangrui's method:
                 timing = box2SecsTime(id, timing);
+                
             elseif cmdInd<13 % trigger: relative to trigger
                 ind=strmatch(cmd,lower(event),'exact'); % trigger index
                 if isempty(ind), RTboxWarn('noTrigger',cmd); return; end
@@ -493,7 +541,8 @@ global rtbox_maxMinwinThreshold;
                 timing=timing-trigT;   % relative to trigger time
             end
             if length(event)==1, event=event{1}; end % if only 1 event, use string
-            varargout={timing event};
+            varargout{1} = timing;
+            varargout{2} = event;
 
         case 'boxinfo'
             % Return complete device info struct:
@@ -512,6 +561,23 @@ global rtbox_maxMinwinThreshold;
             
             varargout{1} = box2GetSecsTime(id, varargin{3});
             
+        case 'mapboxsecstogetsecsposthoc'
+            % Map boxtime to GetSecs time post-hoc style:
+            % We compute an optimal least-squares fit linear mapping
+            % function of boxtime to hosttime, using all collected
+            % syncClocks samples from the whole experiment session. Then we
+            % remap all given input boxsecs samples to getsecs time via
+            % lookup in that linear best-fit. This automatically corrects
+            % for clock-drift and should provide the least possible error
+            % on the mapping procedure, because it makes use of all
+            % available sync information of a whole session:
+            if nIn<2
+                error('You must provide the boxtimes to map!');
+            end
+            
+            [remapped, sd, clockratio] = box2GetSecsTimePostHoc(id, varargin{3}); 
+            varargout = { remapped, sd , clockratio};
+                        
         case 'box2secs'
             % Map boxtime to GetSecs time according to Xiangruis method:
             % (Obsolete, just left for debugging):
@@ -790,6 +856,45 @@ function timing = box2GetSecsTime(id, timing)
     timing = timing + thostbase;
 end
 
+% Map box timestamps to host clock (aka GetSecs) timestamps, based on clock
+% sync results from all syncClocks samples from a session:
+function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
+    global rtbox_info;
+    global rtbox_maxMinwinThreshold;
+
+    % Check if the latest syncClocks sample is older than 30 seconds. If
+    % so, then we acquire a new final sample. We also resample if the last
+    % sample is of too low accuracy, or if there are less than 3 samples in
+    % total, as the fitting procedure needs at least 3 samples to work:
+    while (size(rtbox_info(id).syncSamples, 1) < 3) || ...
+          ((GetSecs - rtbox_info(id).syncSamples(end, 1)) > 30) || ...
+          (rtbox_info(id).syncSamples(end, 3) > rtbox_maxMinwinThreshold)
+
+      % Perform a syncClocks to get a fresh sample to finalize the sampleset:
+      syncClocks(id, 1:5);
+    end
+
+    % Extract samples for line fit:
+    tbox  = rtbox_info(id).syncSamples(:, 2);
+    thost = rtbox_info(id).syncSamples(:, 1);
+    
+    % Octave and older versions of Matlab don't have 'robustfit',
+    % so we fall back to 'regress' if this function is lacking:
+    if exist('robustfit') %#ok<EXIST>
+        [coef st]=robustfit(tbox,thost);  % fit a line
+        sd=st.robust_s; % stddev. in seconds.
+    else
+        coef =regress(thost, [ones(size(thost,1), 1), tbox ]);  % fit a line
+        sd=0; % stddev. undefined with regress().
+    end
+    
+    % Ok, got mapping equation getsecst = timing * coef(2) + coef(1);
+    % Apply it to our input timestamps:
+    clockratio = coef(2);
+    timing = timing * clockratio + coef(1);
+
+    % Ready.
+end
 
 % Clock sync routine: Synchronizes host clock (aka GetSecs time) to box
 % internal clock via a sampling and calibration procedure:
@@ -845,13 +950,15 @@ function syncClocks(id, enableInd)
         % from the USB duty cycle and increase the chance of getting a very
         % small time window between scheduling, execution and acknowledge
         % of the send operation:
-        WaitSecs(rand / 1000);
+        t0=WaitSecs(rand / 1000);
         
         % Take pre-Write timestamp in tpre - Sync command not emitted
         % before that time. Write sync command, wait 'blocking' for write
         % completion, store completion time in post-write timestamp tpost:
         [nw tpost, errmsg, tpre] = IOPort('Write', s, 'Y', blocking);
 
+        % tel = 1000 * (tpre - t0)
+        
         % We know that sync command emission has happened at some time
         % after tpre and before tpost. This by design of the USB
         % standard, host controllers and operating system USB stack. This
@@ -870,13 +977,13 @@ function syncClocks(id, enableInd)
             [b7 dummy errmsg] = IOPort('Read', s, 1, 7);
         else
             % Send op failed!
-            fprintf('RTbox: Warning! Sync token send operation to box failed! [%s]\n', errmsg);
+            fprintf('PsychRTBox: Warning! Sync token send operation to box failed! [%s]\n', errmsg);
             continue;
         end
         
         if length(b7)~=7 || b7(1)~=89
             % Receive op failed!
-            fprintf('RTbox: Warning! Corrupt data received from box! [%s]\n', errmsg);
+            fprintf('PsychRTBox: Warning! Corrupt data received from box! [%s]\n', errmsg);
             continue;
         end
         
@@ -933,7 +1040,7 @@ function syncClocks(id, enableInd)
         rtbox_info(id).sync=[inf, inf, inf];
         
         if verbosity > 1
-            fprintf('PsychRTBox: Warning: On Box %s, Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_maxMinwinThreshold);
+            fprintf('PsychRTBox: Warning: On Box "%s", Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_maxMinwinThreshold);
             fprintf('PsychRTBox: Warning: Likely your system is massively overloaded or misconfigured!\n');
         end
         
@@ -1063,6 +1170,9 @@ function syncClocks(id, enableInd)
     
     % Assign (host,box,confidence) sample to sync struct:
     rtbox_info(id).sync=[hosttime, boxtime, minwin];
+    
+    % Also store the sample in the syncSamples history:
+    rtbox_info(id).syncSamples(end+1, :) = [hosttime, boxtime, minwin];
 end
 
 % Send enable/disable string to tell box to enable or disable detection and
@@ -1298,7 +1408,7 @@ function openRTBox(deviceID, handle)
     
     % First the default settings...
     rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-        'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3);
+        'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, 'syncSamples', []);
 
     % Enabled events at start:
     rtbox_info(handle).enabled=logical([1 0 0 0 0]);
@@ -1376,7 +1486,7 @@ function RTboxWarn(err,varargin)
     switch err
         case 'invalidEvent'
             str=sprintf('%4i',varargin{1});
-            str=sprintf('Events not recognized: %s.\nPlease do RTbox(''clear'') before showing stimulus.\nGetSecs = %.1f',str,GetSecs);
+            str=sprintf('Events not recognized: %s.\nPlease do PsychRTBox(''clear'') before showing stimulus.\nGetSecs = %.1f',str,GetSecs);
         case 'noTrigger'
             str=sprintf('Trigger ''%s'' not detected. GetSecs = %.1f', varargin{1}, GetSecs);
         case 'poorSync'

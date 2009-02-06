@@ -196,6 +196,22 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
         goto error;
 	}
 
+	// Setup for blocking serial port write operations: Tell that a transmit-buffer-empty event shall be signalled:
+	// This will set the EV_TXEMPTY whenever a write operation completes (and resets it at start of each new write
+	// operation!). The WaitCommEvent() routine in PsychIOOSWriteSerialPort() will wait for such events when a
+	// blocking write is requested by usercode.
+	//
+	// N.B.: This used to be part of the blocking write routine in PsychIOOSWriteSerialPort(), but we
+	// learned that this call is awfully slow for unknown reasons, and it seems to sync us to the USB
+	// duty-cycle on Serial-over-USB ports, which is not what we want! As switching this on and off on
+	// demand would be also awfully slow, and as it doesn't do any harm for non-blocking writes AFAIK,
+	// we now always unconditionally enable it already here during device setup, where extra delays of
+	// 1-2 msecs don't matter.
+	if (SetCommMask(device->fileDescriptor, EV_TXEMPTY)==0) {
+		sprintf(errmsg, "Error during setup for blocking write operations to device %s during call to SetCommMask(EV_TXEMPTY) - (%d).\n", portSpec, GetLastError());
+		goto error;
+	}
+
     // Success! Return Pointer to new device structure:
     return(device);
     
@@ -669,13 +685,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	}
 	else {
 		// Blocking write:
-		
-		// Tell that a transmit-buffer-empty event shall be waited for:
-		if (SetCommMask(device->fileDescriptor, EV_TXEMPTY)==0) {
-			sprintf(errmsg, "Error during blocking write to device %s while call to SetCommMask(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
-			return(-1);
-		}
-		
+
 		// Write the data: Take pre- and postwrite timestamps.
 		PsychGetAdjustedPrecisionTimerSeconds(&timestamp[1]);
 		if (WriteFile(device->fileDescriptor, writedata, amount, &nwritten, NULL) == 0)
@@ -708,18 +718,21 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
 
 			// Really wait for write completion, ie., until the last byte has left the transmitter:
+			// (N.B.: No need to clear or init EvtMask, it is a pure return parameter)
 			if (WaitCommEvent(device->fileDescriptor, (LPDWORD) &EvtMask, NULL)==0) {
-				sprintf(errmsg, "Error during blocking write to device %s while call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
+				sprintf(errmsg, "Error during blocking write to device %s during call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
 				return(-1);
 			}
 		}
 	}
 	
-	// Check for communication errors, acknowledge them, clear the error state and return error message:
+	// Take write completion timestamp:
+	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+
+	// Check for communication errors, acknowledge them, clear the error state and return error message, if any:
 	PsychIOOSCheckError(device, errmsg);
 	
-	// Write successfully completed if we reach this point. Take timestamp, clear error message, return:
-	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+	// Write successfully completed if we reach this point. Clear error message, return:
 	errmsg[0] = 0;
 	
 	return(nwritten);
@@ -823,11 +836,13 @@ int PsychIOOSReadSerialPort(PsychSerialDeviceRecord* device, void** readdata, un
 		}
 	}
 	
+	// Take read-completion timestamp:
+	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+
 	// Check for communication errors, acknowledge them, clear the error state and return error message:
 	PsychIOOSCheckError(device, errmsg);
 
-	// Read successfully completed if we reach this point. Take timestamp, clear error message, return:
-	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
+	// Read successfully completed if we reach this point. Clear error message, assign read return data, return:
 	errmsg[0] = 0;
 
 	*readdata = device->readBuffer;	
