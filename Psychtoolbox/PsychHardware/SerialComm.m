@@ -1,5 +1,4 @@
 function y = SerialComm(op, port, data)
-
 % SerialComm -- Serial port interface for OSX
 %  SerialComm( 'open', PORT, CONFIG ) opens comm port number PORT for reading and
 %    writing. The CONFIG string specifies the basic serial port (baud rate, 
@@ -40,3 +39,5 @@ function y = SerialComm(op, port, data)
 % SerialComm was generously donated to the Psychtoolbox by Tom Davis.  You
 % can find more of his Matlab creations at
 % http://www.mathworks.com/matlabcentral/fileexchange/loadAuthor.do?objectType=author&objectId=1093697
+
+AssertMex('SerialComm.m');

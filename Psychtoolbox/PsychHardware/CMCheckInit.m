@@ -2,13 +2,33 @@ function CMCheckInit(meterType, PortString)
 % CMCheckInit([meterType], [PortString])
 %
 % Initialize the color meter.  The routine calls the
-% lower level CMETER.  If the low level routine
-% fails, the one prompts the user to take appropriate
+% lower level routines for given 'meterType'. If the low level routine
+% fails, this routine retries, then prompts the user to take appropriate
 % action.  If the low level routine succeeds, this
 % routine  is silent.
 %
+% The following colormeters are supported:
+%
 % meterType 1 is the PR650 (default)
+% meterType 2 is the CVI (need CVIToolbox) - Not yet implemented!
 % meterType 3 is the CRS Colorimeter
+% meterType 4 is the PR655
+%
+% For the PR-series colorimeters, 'PortString' is the optional name of a
+% device string for the serial port or Serial-over-USB port to which the
+% device is connected. If none is given, the routine uses different files
+% and built-in defaults to try to find the proper port: If there is a file
+% 'CMPreferredPort.txt' in the search path of Matlab/Octave, it will parse
+% that file for a PortString to use. Else it will use a hard-coded default
+% inside this routine. If a calibration file with name 'PR650Ports' for the
+% PR-650 colorimeter or 'PR655Ports' for the PR-655 colorimeter exists
+% inside the PsychCalData folder, it will use the portname from that file.
+%
+% Other Colorimeters, e.g., CRS ColorCal, have their own specific setup
+% methods and this routine just calls their setup code with default
+% settings.
+%
+
 %
 % 9/15/93 dhb		Modified to use new CMInit properly.
 % 1/18/94 jms		Added gHardware switch
@@ -20,13 +40,21 @@ function CMCheckInit(meterType, PortString)
 % 1/10/02 dhb, ly   Change calling convention.  Remove passing of port, but read
 %                   port from a "calibration" file in PsychCalLocalData if it's there.
 % 4/13/02 dgp		Cosmetic.
-% 2/26/03 dhb   Add CRS Colorimeter, change meter type of PR-650 to 1.
+% 2/26/03 dhb       Add CRS Colorimeter, change meter type of PR-650 to 1.
 % 10/05/06 dhb, cgb OSX version.
-% 11/27/07  mpr replaced hard coded portNameIn with FindSerialPort for OS X, and
-%                 attempted to make this more robust and user-friendly.
-%                 modifications tested only on Mac OS 10.5.1, Matlab 2007b, on
-%                 a Mac Pro.  Other systems may require more tinkering...
+% 11/27/07 mpr      replaced hard coded portNameIn with FindSerialPort for OS X, and
+%                   attempted to make this more robust and user-friendly.
+%                   modifications tested only on Mac OS 10.5.1, Matlab 2007b, on
+%                   a Mac Pro.  Other systems may require more tinkering...
+% 2/07/09  mk, tbc  Add PR-655 support.
+% 2/07/09  mk       Add experimental setup code for use of IOPort instead of SerialComm.
 
+global g_serialPort;
+
+% If useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
+useIOPort = 0;
+
+% Number of retries before giving up:
 DefaultNumberOfTries = 5;
 
 % Read the local preferred serial port file if it exists.
@@ -34,7 +62,17 @@ if exist(which('CMPreferredPort.txt'), 'file')
 	t = textread(which('CMPreferredPort.txt'), '%s');
 	defPortString = t{1};
 else
-	defPortString = 'usbserial';
+    if IsOSX
+        defPortString = 'usbserial';
+    end
+    
+    if IsLinux
+        defPortString = 'USB0';
+    end
+    
+    if IsWin
+        defPortString = 'COM5';
+    end
 end
 
 % Set default the defaults.
@@ -73,20 +111,16 @@ switch meterType
         % no special information present, then use defaults.
         meterports = LoadCalFile('PR650Ports');
         if isempty(meterports)
-            if IsWin
-                portNameIn = 'COM5';
-            elseif IsOSX
-                portNameIn = FindSerialPort(PortString);
+            if IsWin || IsOSX || IsLinux
+                portNameIn = FindSerialPort(PortString, useIOPort);
             else
                 error(['Unsupported OS ' computer]);
             end
-
         else
             portNameIn = meterports.in;
         end
 
-        if IsWin || IsOSX
-            % Interface through PsychSerial for both OS X and Windows.
+        if IsWin || IsOSX || IsLinux
             stat = PR650init(portNameIn);
             status = sscanf(stat,'%f');
             if (isempty(status) || status == -1)
@@ -95,16 +129,22 @@ switch meterType
             end
             NumTries = 0;
 
-            while (isempty(status) || status == -1) & NumTries < DefaultNumberOfTries
+            while (isempty(status) || status == -1) & NumTries < DefaultNumberOfTries %#ok<AND2>
                 stat = PR650init(portNameIn);
                 status = sscanf(stat,'%f');
                 NumTries = NumTries+1;
-                if (isempty(status) || status == -1) & NumTries >= 3
-                    clear global g_serialPort;
+                if (isempty(status) || status == -1) & NumTries >= 3 %#ok<AND2>
                     if IsOSX
-                        evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);
-                        evalc('clear SerialComm');
+                        if ~useIOPort
+                            evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);
+                            evalc('clear SerialComm');
+                        else
+                            IOPort('Close', g_serialPort);
+                        end
                     end
+                    % Release global port handle:
+                    clear global g_serialPort;
+                    
                     fprintf('\n');
                     if ~rem(NumTries,4)
                         fprintf('\nHave tried making contact %d times.  Will try %d more...',NumTries,DefaultNumberOfTries-NumTries);
@@ -120,9 +160,42 @@ switch meterType
         else
             error(['Unsupported OS ' computer]);
         end
+    case 2,
+        error('Support for CVI colormeter not yet implemented in PTB-3, sorry!');        
     case 3,
-        CRSColorInit;
+        % CRS-Colorimeter:
+        if exist('CRSColorInit') %#ok<EXIST>
+            CRSColorInit;
+        else
+            error('CRSColorInit command is missing on your path. Is the CRS color calibration toolbox set up properly?');
+        end
+    case 4,
+        % PR-655:
+        % Look for port information in "calibration" file.  If
+        % no special information present, then use defaults.
+        meterports = LoadCalFile('PR655Ports');
+        if isempty(meterports)
+            if IsWin || IsOSX || IsLinux
+                portNameIn = FindSerialPort(PortString, useIOPort);
+            else
+                error(['Unsupported OS ' computer]);
+            end
+        else
+            portNameIn = meterports.in;
+        end
+        
+        if IsWin || IsOSX || IsLinux
+            stat = PR655init(portNameIn);
+            status = sscanf(stat,'%f');
+            if (isempty(status) || status == -1)
+                disp('Failed to make contact.  If device is connected, try turning it off and re-trying CMCheckInit.');
+            else
+                disp('Successfully connected to PR-655!');
+            end
+        else
+            error(['Unsupported OS ' computer]);
+        end
+        
     otherwise,
         error('Unknown meter type');
 end
-

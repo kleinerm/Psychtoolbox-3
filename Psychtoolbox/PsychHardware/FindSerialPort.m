@@ -1,10 +1,23 @@
-function PortNumber = FindSerialPort(PortString)
-% Syntax: PortNumber = FindSerialPort([NameOfIDString])
+function PortNumber = FindSerialPort(PortString, forIOPort)
+% Syntax: PortNumber = FindSerialPort([NameOfIDString] [, forIOPort=0])
 %
 % Purpose: Find port number associated with a particular input string.
 %
+% If optional parameter 'PortString' is omitted, the routine will use a
+% built-in list of default serial port names to search for. Otherwise it
+% will try to find a serial port with a name matching 'PortString'.
+%
+% If optional flag 'forIOPort' is zero or left out, the routine will return
+% a 'PortNumber' compatible with use of the SerialComm() serial port driver
+% for MacOS/X with Matlab. If 'forIOPort' is non-zero, it will return a
+% serial port device string in 'PortNumber' suitable for use with the new
+% IOPort serial port driver which works on all operating systems and
+% runtime environments.
+%
 % History: 11/21/07   mpr   listed to port
 %           1/16/08   mpr   added support for keyspan adapter
+%           2/07/09   mk    Add code for use with IOPort instead of SerialComm.
+
 %
 % Function is slightly more general than name suggests because name reflects the
 % origin of this function for finding the usb to serial port used for driving a
@@ -30,19 +43,20 @@ function PortNumber = FindSerialPort(PortString)
 if ~nargin || isempty(PortString)	
 	% List of serial port devices to look for.  These should all be lower
 	% case.
-	PortDB = lower({'usa19', 'keyserial1'});
-	selectionType = 'default';
+    if ~IsWin
+        PortDB = { lower('usa19'), lower('keyserial1')};
+    else
+        PortDB = { 'COM5' };
+    end
+    selectionType = 'default';
 else	
 	% Make the port string lowercase for easier string comparison later.
 	PortDB = {lower(PortString)};
 	selectionType = 'requested';
 end
 
-if IsWin
-	fprintf('It appears that you are using a Windows operating system.\n');
-	fprintf('Among many other problems that will cause you is that you cannot\n');
-	fprintf('use ''FindSerialPort'' because that function was written for Mac OS X.\n\n');
-	error('You are using the wrong operating system.');
+if nargin < 2 || isempty(forIOPort)
+    forIOPort = 0;
 end
 
 if IsOS9
@@ -52,14 +66,27 @@ if IsOS9
 	error('Please upgrade to OS X or use some other method to establish serial communication.');
 end
 
-if isempty(strfind(computer,'MAC'))
-	fprintf('It appears that you are using an operating system other than Mac OS\n');
-	fprintf('or Windows.  I hope that you are using Linux.  If so, FindSerialPort\n');
-	fprintf('may work for you.  I have not tested it.  You are about to...\n');
+if ~(IsOSX || IsWin || IsLinux)
+	fprintf('It appears that you are using an operating system other than Mac OS/X,\n');
+	fprintf('Linux or Windows. I hope that you are using some other Unix variant.\n');
+	fprintf('If so, FindSerialPort may work for you.  I have not tested it.  You are about to...\n');
 end
 
+if IsWin
+    % Don't have enumeration code yet. Just pass through what we got:
+    PortNumber = upper(char(PortDB));
+    return;
+end
+
+% Either Linux, OS/X or (hopefully) some other compatible Posix OS:
+
 % Get a list of any serial devices attached to the computer.
-ThePortDevices = dir('/dev/cu*');
+if IsOSX
+    ThePortDevices = dir('/dev/cu*');
+else
+    % Linux or some other Posix OS. Use search pattern for Linux:
+    ThePortDevices = dir('/dev/tty*');
+end
 
 % Check to see if any serial devices were found.
 if isempty(ThePortDevices)
@@ -81,37 +108,61 @@ end
 numPortsFound = length(FoundIndices);
 
 if numPortsFound == 0 % No port matches.
-	error('\n%s%s%s\n%s\n%s\n%s\n%s\n', ...
+	error('\n%s%s%s\n%s\n%s\n%s\n%s', ...
 		'No ports found that match following ', selectionType, ' types(s)', ...
 		makeDesiredPortTypesString(PortDB), ...
 		'This is a list of the port(s) found:', ...
 		makeFoundDevicesString(ThePortDevices), ...
 		'Is your RS-232 adapter connected to your computer?');
 elseif numPortsFound > 1 % Too many port matches.
-	error('\n%s%s%s\n%s\n\n%s\n%s\n', ...
+	error('\n%s%s%s\n%s\n\n%s\n%s', ...
 		'More than one port name matched the ', selectionType, ' type(s)', ...
 		'A more specific port type is required.', ...
 		'This is a list of the port(s) found:', ...
 		makeFoundDevicesString(ThePortDevices)); %#ok<SPERR>
 end
 
-% Convert the port name into a port number.
-portString = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
-PortNumber = SerialComm('name2number', portString);
+if ~forIOPort
+    % Old-Style, using SerialComm:
+    % Convert the port name into a port number.
+    if IsOctave
+        error('This routine is not supported for use with SerialComm under Octave. Use forIOPort=1 flag instead!');
+    end
+    portString = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
+    PortNumber = SerialComm('name2number', portString);
+else
+    % New-Style: Path name of port itself for use with IOPort:
+    if IsOctave
+        PortNumber = sprintf('%s', ThePortDevices(FoundIndices).name);
+    else
+        PortNumber = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
+    end
+end
 
-
+return;
 
 function s = makeDesiredPortTypesString(PortDB)
 s = [];
 for i = 1:length(PortDB)
-	s = [s sprintf('\t\t%s\n', PortDB{i})]; %#ok<AGROW>
+	s = [char(s) sprintf('\t\t%s\n', PortDB{i})]; %#ok<AGROW>
 end
-
 
 function s = makeFoundDevicesString(ThePortDevices)
 s = [];
 
+if IsOSX
+    prefix = 'cu.';
+else
+    prefix = 'tty';
+end
+
+if IsOctave
+    prefix = ['/dev/' prefix '%s'];
+else
+    prefix = [prefix '%s'];
+end
+
 for k = 1:length(ThePortDevices)
-	ThisDevice = sscanf(ThePortDevices(k).name,'cu.%s');
-	s = [s sprintf('\t\t%s\n',ThisDevice)]; %#ok<AGROW>
+	ThisDevice = sscanf(ThePortDevices(k).name,prefix);
+	s = [char(s) sprintf('\t\t%s\n',ThisDevice)]; %#ok<AGROW>
 end
