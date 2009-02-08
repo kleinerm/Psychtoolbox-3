@@ -1,9 +1,10 @@
-function [clicks,x,y] = GetClicks(w)
-% [clicks,x,y] = GetClicks([windowPtrOrScreenNumber])
+function [clicks,x,y,whichButton] = GetClicks(w, interClickSecs)
+% [clicks,x,y,whichButton] = GetClicks([windowPtrOrScreenNumber][, interclickSecs])
 %
 % Wait for the user to click the mouse, count the number of clicks
 % that occur within a inter-click interval of each other, and
-% then return the number of clicks and the mouse location.
+% then return the number of clicks and the mouse location, as well as the
+% numbers of the pressed buttons "whichButton".
 % 
 % The x,y location is the location at the downstroke of the first mouse
 % click. The mouse position (x,y) is "local", i.e. relative to the origin of
@@ -14,6 +15,11 @@ function [clicks,x,y] = GetClicks(w)
 % global variable "ptb_mouseclick_timeout" to a value in seconds. E.g.,
 % global ptb_mouseclick_timeout; ptb_mouseclick_timeout = 1; would set the
 % inter-click interval to 1 second. By default, the interval is 500 msecs.
+%
+% You can also specify an override interval in the optional argument
+% 'interClickSecs' for a given call to GetClicks. A setting of zero would
+% disable multi-click detection, ie., only wait for first mouse-click or
+% press, then return immediatly.
 %
 %
 % See Also: GetMouse, SetMouse
@@ -29,6 +35,10 @@ function [clicks,x,y] = GetClicks(w)
 %          mk   the semantic and description of OS-9 GetClicks().
 % 6/17/06  mk   We also pass the windowPtr - argument on Windows now, because
 %          mk   now GetMouse.m is able to accept this argument.
+% 02/08/09 mk   Report id of pressed button, allow for varible interclick,
+%               as suggested by Diederick Niehorster. Reduce rtwait to 2
+%               msecs but use WaitSecs('YieldSecs') waits to prevent
+%               overload.
 
 % Inter-click interval (in secs.) for multiple mouse-clicks.
 global ptb_mouseclick_timeout;
@@ -38,22 +48,29 @@ if isempty(ptb_mouseclick_timeout)
     ptb_mouseclick_timeout = 0.5; % Default timeout for multi-clicks is 500 msecs.
 end;
 
+if nargin < 2
+    interClickSecs = [];
+end
+
+if isempty(interClickSecs)
+    interClickSecs = ptb_mouseclick_timeout;
+end
+
 % Are we in nice mode?
 nice = 1;
 
 % Amount of secs to wait in nice-mode between each poll to avoid overloading
-% the system.
-if IsLinux | IsWin
-    rtwait = 0.020; % Win and Linux: For now, conservative 20 msecs.
-else
-    rtwait = 0.005; % OS-X: 5 msecs are reasonable.
-end;
+% the system. Now that WaitSecs('YieldSecs') is able to do a non-precise
+% wait where it yields the cpu for at least the given amount of time, we
+% can use rather strict/short wait intervals without the danger of
+% overloading the system, so no need to differentiate between OS:
+rtwait = 0.002; % 2 msecs yielding, ie., could take a bit longer.
 
 % Wait for release of buttons if some already pressed:
 buttons=1;
 while any(buttons)
  	[x,y,buttons] = GetMouse;
-    if (nice>0) WaitSecs(rtwait); end;
+    if (nice>0), WaitSecs('YieldSecs', rtwait); end;
 end;
 
 % Wait for first mouse button press:
@@ -65,33 +82,36 @@ while ~any(buttons)
         % Pass windowPtr argument to GetMouse for proper remapping.
         [x,y,buttons] = GetMouse(w);
     end;
-    if (nice>0) WaitSecs(rtwait); end;
+    if (nice>0), WaitSecs('YieldSecs', rtwait); end;
 end;
 
-% First mouse click done. (x,y) is our returned mouse position.
+% First mouse click done. (x,y) is our returned mouse position. Assign
+% button number(s) of clicked button(s) as well:
+whichButton = find(buttons);
+
 % Wait for further click in the timeout interval.
 clicks = 1;
-tend=GetSecs + ptb_mouseclick_timeout;
+tend=GetSecs + interClickSecs;
 
 while GetSecs < tend
     % If already down, wait for release...
-    while any(buttons) & GetSecs < tend
+    while any(buttons) & GetSecs < tend %#ok<AND2>
         [xd,yd,buttons] = GetMouse;
-        if (nice>0) WaitSecs(rtwait); end;
+        if (nice>0), WaitSecs('YieldSecs', rtwait); end;
     end;
 
     % Wait for a press or timeout:
-    while ~any(buttons) & GetSecs < tend
+    while ~any(buttons) & GetSecs < tend %#ok<AND2>
         [xd,yd,buttons] = GetMouse;
-        if (nice>0) WaitSecs(rtwait); end;    
+        if (nice>0), WaitSecs('YieldSecs', rtwait); end;    
     end;
 
     % Mouse click or timeout?
-    if any(buttons) & GetSecs < tend
+    if any(buttons) & GetSecs < tend %#ok<AND2>
         % Mouse click. Count it.
         clicks=clicks+1;
         % Extend timeout for the next mouse click:
-        tend=GetSecs + ptb_mouseclick_timeout;
+        tend=GetSecs + interClickSecs;
     end;
 end;
 

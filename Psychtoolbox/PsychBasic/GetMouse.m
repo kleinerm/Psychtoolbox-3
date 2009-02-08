@@ -138,8 +138,12 @@ end;
 [globalX, globalY, rawButtons]=Screen('GetMouseHelper', numMouseButtons);
 buttons=logical(rawButtons);
 
-%renormalize to screen coordinates from display space 
-if(nargin==1)
+%renormalize to screen coordinates from display space
+if nargin < 1
+    windowPtrOrScreenNumber = [];
+end
+
+if ~isempty(windowPtrOrScreenNumber)
     screenRect=Screen('GlobalRect',windowPtrOrScreenNumber);
     x=globalX-screenRect(RectLeft);
     y=globalY-screenRect(RectTop);

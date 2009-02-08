@@ -59,6 +59,8 @@
 %   OSName                  - Convential English-language name of your operating system.
 %   PackColorImage          - Pack three color planes into one m by n by three matrix.
 %   progressbar             - Displays a progress bar in MATLAB's command window.
+%   PsychAltSize            - Query the size of multiple dimensions of a variable in one call.
+%   PsychFindRepeatAlongDim - Find repeated rows or columns in a matrix.
 %   PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
 %   RemoveSVNPaths          - Removes .svn folders from the path.
 %   replace                 - Perform exact replace on strings or numeric arrays.
