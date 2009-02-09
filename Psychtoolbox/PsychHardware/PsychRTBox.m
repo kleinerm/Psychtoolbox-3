@@ -908,7 +908,7 @@ global rtbox_maxMinwinThreshold;
             for i=1:length(in2)
                 ind=strmatch(lower(in2{i}),read(1:4),'exact');
                 if isempty(ind), RTboxError('invalidButtonName',in2{i}); end
-                bState(i)=b2(5-ind); %#ok
+                bState(i)=b2(ind); %#ok
             end
 
             varargout{1} = bState;
