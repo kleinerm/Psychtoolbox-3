@@ -56,6 +56,8 @@ void PsychWaitUntilSeconds(double whenSecs)
     // Compute deadline for wakeup in mach absolute time units:
     deadlineAbsTics= (uint64_t) (kernelTimebaseFrequencyHz * ((long double) whenSecs));
 
+	if (!(deadlineAbsTics > 0 && whenSecs > 0)) return;
+	
     // Call mach_wait_unit in an endless loop, because it can fail with retcode>0.
     // In that case we just restart...
     while(mach_wait_until(deadlineAbsTics));   	
