@@ -147,16 +147,14 @@ for trial = 1:10
             % Test RTbox:
             
             % Clear all buffers:
-            PsychRTBox('Purge');
+            PsychRTBox('Clear');
             
             fprintf('From now on... ');
             tKeypress = [];
             
             % Wait for some event on box, return its 'GetSecs' time:
             while isempty(tKeypress)
-                tBox = PsychRTBox('BoxSecs');
-                tKeypress = PsychRTBox('Box2GetSecs', [], tBox);
-%                tKeypress2= PsychRTBox('Box2Secs', [], tBox);
+                [tKeypress, evid, tBox] = PsychRTBox('GetSecs');
             end
 
         case 5
@@ -225,15 +223,9 @@ for trial = 1:10
     % Print RT:
     dt = (tKeypress - tOnset)*1000;
     fprintf('---> Input delay time is %f milliseconds.\n', dt);
-    
-%     if modality == 3 || modality == 4
-%         dt2 = (tKeypress2 - tOnset)*1000;
-%         tdelay2 = [tdelay2 dt2];
-%         fprintf('---> 2nd Box Input delay time is %f milliseconds.\n', dt2);
-%     end
-    
+        
     % Valid measurement? Must be between 0 and 100 msecs to be considered:
-    if (dt > -100) & (dt < 100)
+    if (dt > -100) & (dt < 100) %#ok<AND2>
         tdelay = [tdelay dt]; %#ok<AGROW>
     end
     
