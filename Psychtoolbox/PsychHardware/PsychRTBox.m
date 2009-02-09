@@ -2,8 +2,6 @@ function varargout = PsychRTBox(varargin)
 % Driver for the USTC reaction time button box (RTBox) by Xiangrui Li et al.
 % varargout = PsychRTBox(cmd, varargin);
 %
-% WORK IN PROGRESS, NOT FULLY READY FOR PRODUCTION USE!
-%
 % This driver allows to control all functions of the USTC RTBox response
 % button box. The box is a device, connectable to the USB port. It provides
 % 4 response buttons (pushbuttons) for subject responses and can report any
@@ -25,7 +23,10 @@ function varargout = PsychRTBox(varargin)
 %
 % See http://lobes.usc.edu/RTbox for up to date product information.
 %
+%
+%
 % The following subcommands are currently suppported:
+%
 %
 % handle = PsychRTBox('Open' [, deviceID]);
 % -- Try to open a connected RTBox, return a device handle 'handle' to it
@@ -73,7 +74,7 @@ function varargout = PsychRTBox(varargin)
 % 'ClockRatio' calibration, timestamps reported during your experiment will
 % accumulate some error during the course of long experiment sessions.
 %
-% There are two ways to handle this:
+% There are multiple ways to handle this:
 %
 % a) Use a long calibration time in this function for accurate results, and
 % a reasonably short experiment duration.
@@ -84,6 +85,15 @@ function varargout = PsychRTBox(varargin)
 %
 % c) Use the PsychRTBox('SyncClocks') function after each short block of
 % trials, or even after each trial, for the highest accuracy.
+%
+% d) Don't care for clock drift throughout the experiment session, just
+% collect the event timestamps in box clock format (see the 3rd return
+% argument of PsychRTBox('GetSecs') or the returned timing array of
+% PsychRTBox('BoxSecs'); and store them in some array. Remap all timestamps
+% into computers GetSecs time at the end of your session via
+% PsychRTBox('MapBoxSecsToGetSecsPostHoc'). This requires a bit more
+% discipline from you in programming and organizing your data, but it
+% provides the most accurate timestamps.
 %
 %
 % [syncResult, clockRatio] = PsychRTBox('SyncClocks' [, handle]);
@@ -190,30 +200,82 @@ function varargout = PsychRTBox(varargin)
 %
 % Once you have setup and calibrated the box and selected the type of
 % events to detect and report, you will want to actually retrieve
-% information about events. For this you use this command:
+% information about events. For this you use these commands:
 %
-% [time, event, boxtime] = PsychRTBox('GetSecs' [, handle]);
-% -- Retrieve all recorded events from the box. If there aren't any pending
-% events from the box, wait for up to 0.1 seconds for events to arrive.
+%
+% PsychRTBox('Start' [, handle]);
+% -- Start event detection and reporting by the box. The box will start
+% detecting button and trigger events from here on and record them in the
+% event buffer.
+% 
+% You will usually call this at the beginning of a response period. By
+% default, the box has reporting already enabled after 'Open'ing it.
+%
+%
+% PsychRTBox('Stop' [, handle]);
+% -- Stop event detection and reporting by the box. The box will ignore
+% detecting button and trigger events from here on and no longerrecord them
+% in the event buffer.
+% 
+% You will usually call this at the end of a response period.
+%
+%
+% PsychRTBox('Clear' [, handle] [, syncClocks=0] [, dontRestart=0]);
+% -- Stop event detection and reporting by the box, clear all recorded
+% events so far, then restart reporting if it was active before calling
+% this function.
+% 
+% Instead of calling 'Start' and 'Stop' to mark the start and end of a
+% response period in a trial you can also simply use this function at the
+% beginning of a trial (or its response period) to discard any stale data
+% from a previous trial (or non-response interval).
+%
+% You can prevent an automatic restart of event reporting by setting the
+% optional flag 'dontRestart' to a value of 1.
+%
+% You can ask the box to resynchronize its clock to the host computer clock
+% by setting the optional flag 'syncClocks' to a value of 1. This is the
+% same as calling PsychRTBox('SyncClocks').
+%
+%
+% [time, event, boxtime] = PsychRTBox('GetSecs' [, handle] [, interTimeout=0.1] [, maxTimeout=interTimeout] [, maxItems=inf]);
+% -- Retrieve recorded events from the box 'handle'.
+%
+% By default, as many events are returned as are available within the
+% test interval, but you can select a specific number of wanted events
+% by setting the optional parameter 'maxItems'. If there aren't any pending
+% events from the box, by default the driver waits for up to 0.1 seconds
+% for events to arrive. You can change this 'interTimeout' interval via the
+% positive (non-zero) 'interTimeout' parameter. The function will return if
+% no new events show up within 'interTimeout' seconds. If something shows
+% up, the deadline for return is extended by 'interTimeout' seconds. You
+% can set an absolute upper limit to the response interval via the
+% 'maxTimeout' parameter. That defaults to 'interTimeout' if omitted.
+% Please note that after an event is detected by the box, up to 16-32 msecs
+% can elapse until the event is received by the computer, so you may not
+% want to set these timeout values too small!
 %
 % The function will return an array of timestamps in 'time', and an array
 % of corresponding names of the events in 'event'. E.g., event(1) will
 % report the identity of the first detected event, e.g., '1' if button 1
 % was pressed, whereas time(1) will tell you when the event happened, ie.,
-% when button 1 was pressed. Each call will return all currently available
-% events. If no events are pending since last invocation of this function,
-% empty vectors will be returned.
+% when button 1 was pressed. 'time' is expressed in host clock time, aka
+% GetSecs() time. If no events are pending since last invocation of this
+% function, empty vectors will be returned.
+%
+% Additionally, the vector 'boxtime' contains the same timestamp, but
+% expressed in box clock time. See below for a use of that.
 %
 % By default, the following names are possible for 'event's:
 %
-% '1' = First button pressed. '1up' = First button released.
+% '1' = 1st button pressed, '1up' = 1st button released.
 % '2' = 2nd button pressed, '2up' = 2nd button released.
 % '3' = 3rd button pressed, '3up' = 3rd button released.
 % '4' = 4th button pressed, '4up' = 4th button released.
 % 'pulse' = TTL pulse received on TTL pulse input port.
 % 'light' = Light pulse received by photo-diode connected to light input port.
 % 'lightoff' = Light pulse offset on photo-diode connected to light input port.
-% 'serial' = Trigger command received on USB-Serial port.
+% 'serial' = PsychRTBox('Trigger') Softwaretrigger signal received on USB-Serial port.
 %
 % However, you can assign arbitrary names to the buttons and events if you
 % don't like this nomenclature via the PsychRTBox('ButtonNames') command.
@@ -224,18 +286,20 @@ function varargout = PsychRTBox(varargin)
 % reaction times to auditory stimuli, visual stimuli and other events.
 %
 % See the help for PsychRTBox('SyncClocks') and PsychRTBox('ClockRatio')
-% for the accuracy of these timestamps.
+% for the accuracy of these timestamps and tips for obtaining optimal
+% accuracy.
 %
 % Additionally the event times are also returned in 'boxtime', but this
 % time expressed in box time -- the time of the box internal clock.
 % 
 %
-% You can also only retrieve time in box time without remapping to GetSecs
-% time by calling:
+% There are multiple variants of this query command with the same optional
+% input arguments, but different return arguments. All of these return
+% timestamps in box time without remapping to GetSecs time by calling:
 %
-% [boxtime, event] = PsychRTBox('BoxSecs' [, handle]);
+% [boxtime, event] = PsychRTBox('BoxSecs' ...);
 % -- Timestamps are in raw box clock time, everything else is the same as
-% in PsychRTBox('GetSecs' [, handle]).
+% in PsychRTBox('GetSecs' ...).
 %
 % If you have the 'boxtime' timestamps from one of the previous functions
 % around, you can map them later to GetSecs time with very high precision
@@ -257,17 +321,121 @@ function varargout = PsychRTBox(varargin)
 % timestamps in a format that is suitable as input to this function.
 %
 %
-% ... TODO ... FINISH THIS ...
+% Timestamps can also returned relative to a specific trigger event: You
+% specify which event acts as a trigger. Then all timestamps of all events
+% are expressed relative to the time of that trigger event, i.e., as
+% deltas. Any event can be the trigger. Format of all arguments is
+% as in PsychRTBox('BoxSecs' ...);
+%
+% E.g., PsychRTBox('serial', ...); Returns timestamps relative to the first
+% occurence of a TTL input port trigger signal since the last query.
+% PsychRTBox('light', ...); Returns timestamps relative to photo-diode
+% light pulse. PsychRTBox('1'); returns relative to press of 1st button,
+% etc. etc.
+%
+%
+% PsychRTBox('Trigger' [, handle]);
+% -- Send a software generated trigger to the box via the serial port
+% connection. This will register as a event of type 'serial' and you can
+% retrieve timestamps relative to the first trigger within a response
+% period via the PsychRTBox('serial', ...); command.
+%
+%
+% oldNames = PsychRTBox('ButtonNames' [, handle] [, newNames]);
+% -- Query or assign labels for the four response box buttons other than
+% the default names.
+%
+% This function allows to assign arbitrary names to the four buttons on the
+% box. These names are reported when querying for button presses and
+% releases. By default, oldNames = PychRTBox('ButtonNames') would return
+% the cell array with the four following names: '1', '2', '3', '4'. These
+% are the names reported for button presses. Button releases would report
+% the names with an 'up' appended, ie., '1up', '2up', '3up', '4up'. You can
+% assign arbitrary new names by passing a cell array with four namestrings,
+% e.g., PsychRTBox('ButtonNames', [], {'7', 'whats', 'hick', 'screw'})
+% would assign the names '7', 'whats', 'hick' and 'screw' for button press
+% events, and '7up', 'whatsup', 'hickup' and 'screwup' for release events
+% of the corresponding buttons.
+%
+%
+% oldIntervals = PsychRTBox('DebounceInterval' [, handle] [, debounceSecs]);
+% -- Query current button debounce intervals (in 4-element vector
+% 'oldIntervals', one value for each button), and optionally set new
+% debounce interval in seonds via the optional argument 'debounceSecs'.
+% 'debounceSecs' can be a scalar, in which case the same setting is applied
+% to all buttons, or a 4-element row vector, e.g., [0.1, 0.1, 0.1, 0.1] to
+% set an individual interval for each of the four buttons.
+%
+% The built-in debouncer prevents multiple button responses (button press
+% or release actions) from getting recorded/reported within some
+% 'debounceSecs' debounce interval. After a button has changed state, only
+% the type (press or release), identity (which button) and timestamp (when)
+% of the first state change is reported. Any other state change within
+% 'debounceSecs' seconds of time after that first change will be ignored.
+% After that time has elapsed, further state changes are reported again. By
+% default, this dead "debounce" interval is set to 0.050 seconds, ie., 50
+% msecs. Button bouncing happens if a subject presses or releases a button
+% very rapidly or vigorously. If such quick multiple events or bounces are
+% not ignored, they will create multiple apparent button responses which
+% are a hazzle to deal with in experiment scripts and data analysis.
+%
+% If you find multiple responses generated for only one apparent button
+% press during piloting, you may want to set a bigger debounce interval
+% with this function.
+%
+% Please note that debouncing doesn't apply to the PsychRTBox('ButtonDown')
+% function.
+%
+% Please also note that there is another hardware debouncer with a duration
+% of 0.3 msecs which can't be disabled, so even if you'd set a zero
+% interval here, you'd still get a minimum 0.3 msecs debounce period.
+%
+%
+% buttonState = PsychRTBox('ButtonDown' [, handle] [, whichButtons]);
+% -- This reports the current button state of all response buttons of box
+% 'handle', or a subset of response buttons if specified by the optional
+% 'whichButtons' argument, e.g., whichButton = {'1', '4'} to only test
+% buttons 1 and 4. 'buttonState' is a vector which contains a 1 for each
+% pressed button, and a zero for each released button.
+%
+% This query is as instantaneous and "live" as possible. The reported state
+% is not subject to button debouncing, but the measured "raw state".
+% Usually you will want to use the PsychRTBox('GetSecs' ...) functions ans
+% similar functions to query timestamped button state. They are typically
+% as fast as this method and they provide timestamps of when the state was
+% queried, whereas this function doesn't give you information about how
+% "fresh" or recent the query is. However for simple button queries outside
+% the response interval, e.g., while the box is PsychRTBox('Stop')'ped with
+% no need for timestamps, this may be an option.
+%
+% Due to the design of the USB bus, the query may be outdated wrt. to the
+% real state by up to 16 - 21 msecs, depending on operating system and
+% driver configuration.
+
+% TODO:
+%
+% - If we know the typical delay between trigger receive by FTDI chip, and
+% timestamp generation by box firmware, should we add that small offset in
+% box -> host timestamp remapping to get rid of that offset?
+%
+% - Function call to rearm the light-trigger after auto-disable. How?
+%
+% - Debouncing for PsychRTBox('Buttondown') as well, or leave it "raw"?
+%
 
 % History:
 % 08/01/2008 Initial implementation based on RTBox.m from Xiangrui Li (MK).
 % 01/29/2009 "Close to beta" release. First checkin to SVN (MK).
 % 01/30/2009 Improved syncClocks algorithm, option to spec a specific box
 %            by port in the open call (MK).
+% 02/08/2009 Huge redesign of API and internal routines. Now we use an
+%            internal queue (MK).
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
 global rtbox_info;
+global rtbox_global;
+
 global nrOpen;
 global blocking;
 global eventcodes;
@@ -290,14 +458,16 @@ global rtbox_maxMinwinThreshold;
         % subfunction each time PsychRTBox('Open') is called! The settings
         % made there override the settings made here!!!
         rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-            'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, 'syncSamples', []);
+                              'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
+                              'busyUntil', 0, 'boxScanning', 0, 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
 
         % Setup event codes:
         eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % List of supported subcommands:
-        cmds={'close' 'closeall' 'clear' 'purge' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'mapboxsecstogetsecsposthoc'};
+        cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
+              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'mapboxsecstogetsecsposthoc', 'trigger' ...
+              'debounceinterval' };
           
         % Names of events that can be enabled/disabled for reporting:
         events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
@@ -343,6 +513,12 @@ global rtbox_maxMinwinThreshold;
         % minwin is basically never exceeded. On MS-Windows however, 2.x
         % durations happen occassionally...
         rtbox_maxMinwinThreshold = 0.002;
+        
+        % Worst case delay after a command has been received by the box,
+        % before it gets actually dequeued from the microprocessors serial
+        % receive buffer and executed: 5 msecs is a very generous value to
+        % be on the safe side:
+        rtbox_global.maxbusy = 0.005;
     end
 
     if nargin < 1
@@ -380,8 +556,15 @@ global rtbox_maxMinwinThreshold;
         varargout{1} = nrOpen;
 
         % Perform initial mandatory clock sync:
-        syncClocks(nrOpen, 1:5);
+        syncClocks(nrOpen);
 
+        % Perform initial button state query:
+        buttonQuery(nrOpen);
+        
+        % Start event scanning on box, with the above default enabled setting,
+        % i.e., only button press 'D' reporting active:
+        startBox(nrOpen);
+        
         return;
     end
 
@@ -470,49 +653,102 @@ global rtbox_maxMinwinThreshold;
             % Assign new level of verbosity to device:
             rtbox_info(id).verbosity = in2;
             
-        case 'start' % send serial trigger to device
-            [nw tWritten]=IOPort('Write',s, 'Y'); % blocking write
+        case 'trigger' % send serial trigger to device
+            tWritten = sendTrigger(id);
             if nargout, varargout{1}=tWritten; end
+            
+        case 'debounceinterval'            
+            % Return old debouncer settings for each button:
+            varargout{1} = rtbox_info(id).buttons(3, :);
+
+            if nIn<2
+                return;
+            end
+            
+            % Assign new settings:
+            if isscalar(in2)
+                % Single value: Apply to all buttons.
+                rtbox_info(id).buttons(3, :) = [in2, in2, in2, in2];
+            else
+                % Multi value: Apply individually to each button:
+                if size(in2,1)~=1 || size(in2, 2)~=4
+                    error('Either set a single common debounce value for all buttons or pass a 4-element row vector with 4 settings for all 4 buttons!');
+                end
+                rtbox_info(id).buttons(3, :) = in2;                
+            end
             
         % Retrieve all pending events from the box, aka the serial port
         % receive buffers, parse them, filter/postprocess them, optionally
         % return mapped event timestamps in GetSecs timebase:
         case read % 12 triggers, plus 'secs' 'boxsecs' 'getsecs'
             cmdInd=strmatch(cmd,read,'exact'); % which command
-            minbytes=7; % 1 event
-            if cmdInd<13 % relative to trigger
+
+            % Timestamp relative to trigger wanted?
+            if cmdInd<13
                 ind=[cmdInd<5 (cmdInd<9 && cmdInd>4) cmdInd==9:11];
                 if ~rtbox_info(id).enabled(ind), RTboxError('triggerDisabled',events4enable{ind}); end
-                minbytes=14; % at least 2 events
+                % minbytes=14; % at least 2 events
             end
-            varargout={[] '' []}; % return empty if no event detected
-            isreading=false;
-            byte=IOPort('bytesAvailable',s);
-            tnow = GetSecs; % return tnow
-            if ~exist('in2','var'), in2=0.1; end % default timeout
-            tout=tnow+in2; % stop time
-            while (tnow<tout && byte<minbytes || isreading)
-                tnow = WaitSecs(0.01); % don't hang processor
-                byte1=IOPort('bytesAvailable',s);
-                isreading= byte1>byte; % wait if is reading
-                byte=byte1;
-            end
-            nevent=floor(byte/7);
-            if nevent==0, return; end  % return if nothing
-            b7=IOPort('read',s,1,nevent*7);
-            b7=reshape(b7,[7 nevent]); % each event contains 7 bytes
-            timing=[];
-            for i=1:nevent % extract each event and time
-                ind=min(find(b7(1,i)==eventcodes)); %#ok<MXFND> % which event
-                if isempty(ind)
-                    RTboxWarn('invalidEvent',b7(:,i));
-                    break; % not continue, rest must be messed up
+            
+            % Preinit return args to empty in case no event is detected:
+            varargout={[] '' []};
+            
+            % 2nd argument is inter-response timeout: Return if there isn't
+            % any data received for that amount of time. Each received new
+            % item will extend that timeout by given amount:
+            if nIn > 1 && ~isempty(varargin{3})
+                intertimeout = varargin{3};
+                if intertimeout <=0
+                    error('Invalid interTimeout value specified. Must be significantly > 0 secs!');
                 end
-                event{i}=rtbox_info(id).events{ind}; %#ok event name
-                timing(i)=bytes2secs(b7(2:7,i)); %#ok
+            else
+                % Default is 0.1 secs aka 100 msecs:
+                intertimeout = 0.1;
             end
+
+            % 3rd argument is absolute timeout for all responses, the
+            % absolute upper bound:
+            if nIn > 2 && ~isempty(varargin{4})
+                abstimeout = varargin{4};
+                if abstimeout <=0
+                    error('Invalid maxTimeout value specified. Must be significantly > 0 secs!');
+                end
+            else
+                % Default is to set it to intertimeout:
+                abstimeout = intertimeout;
+            end
+            
+            % 4th argument is maximum number of responses to fetch at most:
+            if nIn > 3 && ~isempty(varargin{5})
+                maxItems = varargin{5};
+            else
+                % Default is to infinite, i.e., no limits: We get all we
+                % can get within the setup timeout intervals:
+                maxItems = inf;
+            end
+            
+            % Retrieve events:
+            [evid, timing] = getEvents(id, maxItems, maxItems, abstimeout, intertimeout);
+            nevent = length(evid);
+            
+            % Anything retrieved?
+            if nevent == 0
+                return;
+            end
+
+            % Map event id to human readable label string:
+            for i=1:nevent % extract each event and time
+                ind=min(find(evid(i)==eventcodes)); %#ok<MXFND> % which event
+                if isempty(ind)
+                    RTboxWarn('invalidEvent',evid(i));
+                    break; % not continue, rest must be messed up
+                end                
+                event{i} = rtbox_info(id).events{ind}; %#ok event name
+            end
+
             if isempty(timing), return; end
 
+            % Convert boxtiming and/or map it to host clock time:
             if cmdInd==15
                 % Convert into computer time: MK-Style
 
@@ -587,12 +823,6 @@ global rtbox_maxMinwinThreshold;
             
             varargout{1} = box2SecsTime(id, varargin{3});
             
-        case 'purge'
-            % Clear send/receive buffers of box:
-            str=enableCode(4:5);
-            enableEvent(id, str(rtbox_info(id).enabled(4:5))); % enable light if applicable
-            purgeRTbox(id); % clear buffer
-
         case 'getcurrentboxtime'
             % Retrieve current time of box clock.
             
@@ -600,40 +830,89 @@ global rtbox_maxMinwinThreshold;
             % current .sync results, so we just (mis-)use the function for
             % our purpose:
             tmpsync = rtbox_info(id).sync;
-            syncClocks(id, 1:5); % clear buffer, sync clocks
+            syncClocks(id); % clear buffer, sync clocks
             varargout{1} = rtbox_info(id).sync;
             rtbox_info(id).sync = tmpsync;
 
+        case 'stop'
+            % Stop event processing and reporting on box:
+            % This will store all pending events in internal queue:
+            stopBox(id);
+            
+        case 'start'
+            % (Re-)Start event processing and reporting on box:
+            startBox(id);
+            
         case 'clear'
+            % Clear all pending events on box, optionally perform clocksync:
+            % By default, box is restarted after clear and no clocksync is
+            % performed, but box is not restarted if usercode doesn't want
+            % this or if it wasn't running before. Optionally clocksync is
+            % executed:
+            
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+            
+            % Clear all buffers (serial buffers and event queue):
+            purgeRTbox(id);
+            
+            % Optional syncClocks requested?
+            if nIn >= 2 && ~isempty(varargin{3}) && varargin{3}
+                % Perform clockSync:
+                syncClocks(id);
+                
+                if nargout
+                    varargout{1}=rtbox_info(id).sync;
+                    varargout{2}=rtbox_info(id).clkRatio;
+                end
+            end
+            
+            % Restart box? We restart if it was running before and usercode
+            % doesn't forbid a restart:
+            if boxActive && (nIn < 3 || isempty(varargin{4}) || varargin{4} == 0)
+                startBox(id);
+            end
+            
         case 'syncclocks'
             % Synchronize host clock and box clock, i.e., establish mapping
             % between both:
-            syncClocks(id, 1:5); % clear buffer, sync clocks
+
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+            
+            syncClocks(id); % clear buffer, sync clocks
             if nargout
                 varargout{1}=rtbox_info(id).sync;
                 varargout{2}=rtbox_info(id).clkRatio;
             end
 
-        case 'buttondown'
-            for i=1:5 % try several times, since button event may mess up '?'
-                purgeRTbox(id); % clear buffer
-                IOPort('write',s,'?'); % ask button state: '4321'*16 63
-                b2=IOPort('read',s,1,2); % ? returns 2 bytes
-                if length(b2)==2 && b2(2)==63 && mod(b2(1),16)==0, break; end
-                if i==5, RTboxError('notRespond'); end
+            if boxActive
+                % Restart box if it was running:
+                startBox(id);
             end
-
-            b2=dec2bin(b2(1)/16,4); % first 4 bits are button states
+            
+        case 'buttondown'
+            % Perform query:
+            b2 = buttonQuery(id);
+            
             if nIn<2, in2=read(1:4); end % not specified which button
-
             in2=cellstr(in2); % convert it to cellstr if it isn't
             for i=1:length(in2)
                 ind=strmatch(lower(in2{i}),read(1:4),'exact');
                 if isempty(ind), RTboxError('invalidButtonName',in2{i}); end
-                bState(i)=str2num(b2(5-ind)); %#ok
+                bState(i)=b2(5-ind); %#ok
             end
-            varargout{1}=bState;
 
+            varargout{1} = bState;
+            
         case 'buttonnames' % set or query button names
             oldNames=rtbox_info(id).events(1:4);
             if nIn<2, varargout{1}=oldNames; return; end
@@ -643,7 +922,7 @@ global rtbox_maxMinwinThreshold;
             end
             rtbox_info(id).events(1:4)=in2;
             for i=5:8
-                rtbox_info(id).events(i)=[char(rtbox_info(id).events(i-4)) 'up'];
+                rtbox_info(id).events(i)=cellstr([char(rtbox_info(id).events(i-4)) 'up']);
             end
             if nargout, varargout{1}=oldNames; end
 
@@ -652,21 +931,30 @@ global rtbox_maxMinwinThreshold;
                 varargout{1}=events4enable(rtbox_info(id).enabled);
                 return;
             end
+
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
             
             isEnable=strcmp(cmd,'enable');
-            str=enableCode; % upper case to enable
-            if ~isEnable, str=lower(str); end % lower case to disable
             in2=lower(cellstr(in2));
             for i=1:length(in2)
                 ind=strmatch(in2{i},events4enable,'exact');
                 if isempty(ind), RTboxError('invalidEnable',events4enable); end
-                enableEvent(id, str(ind));
                 if ind==6, ind=1:5; end % all
                 rtbox_info(id).enabled(ind)=isEnable; % update state
             end
             if nargout, varargout{1}=events4enable(rtbox_info(id).enabled); end
             if ~any(rtbox_info(id).enabled), RTboxWarn('allDisabled',rtbox_info(id).ID); end
-
+            
+            if boxActive
+                % Restart box if it was running:
+                startBox(id);
+            end
+            
         case 'clockratio' % measure clock ratio computer/box
             % Default to 60 seconds for clock ratio calibration, unless
             % specified otherwise:
@@ -682,18 +970,24 @@ global rtbox_maxMinwinThreshold;
                 fprintf('PsychRTBox: Measuring clock ratio on box %s. Trials remaining:%4.f', rtbox_info(id).ID, ntrial);
             end
             
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+            
             % Switch to realtime priority if not already there:
             oldPriority=Priority;
             if oldPriority < MaxPriority('GetSecs')
                 Priority(MaxPriority('GetSecs'));
             end
             
-
             % Perform ntrial calibration trials:
             tnow = GetSecs;
             for i=1:ntrial
                 % Update rtbox_info.sync via a syncClocks() operation:
-                syncClocks(id, 1:3);
+                syncClocks(id);
                 
                 % Store new syncClocks sample in array:
                 t(i,:)=rtbox_info(id).sync; %#ok<AGROW>
@@ -710,6 +1004,11 @@ global rtbox_maxMinwinThreshold;
             % Restore priority to old value:
             if Priority ~= oldPriority
                 Priority(oldPriority);
+            end
+            
+            % Restart scanning on box if it was active before:
+            if boxActive
+                startBox(id);
             end
             
             % Octave and older versions of Matlab don't have 'robustfit',
@@ -755,7 +1054,7 @@ global rtbox_maxMinwinThreshold;
             b2=sprintf('%s ',b2(4:-1:1));
             fprintf(' Button down: %s\n',b2);
             fprintf(' Events enabled: %s\n',cell2str(events4enable(find(rtbox_info(id).enabled)>0)));
-            syncClocks(id, 1:3); % sync clocks, restore detection
+            syncClocks(id); % sync clocks, restore detection
             fprintf(' ComputerClock/BoxClock: %.7f\n',rtbox_info(id).clkRatio);
             fprintf(' GetSecs-BoxSecs: %.4f\n',rtbox_info(id).sync(1));
             fprintf(' Number of events: %g\n',nevent);
@@ -779,6 +1078,10 @@ global rtbox_maxMinwinThreshold;
             % Close port
             if ~isempty(rtbox_info(id))
                 if s>=0
+                    % Disable all scanning on box before close:
+                    stopBox(id);
+
+                    % Close connection:
                     IOPort('Close', s);
                 end
 
@@ -795,6 +1098,10 @@ global rtbox_maxMinwinThreshold;
             for i=1:length(rtbox_info)
                 s=rtbox_info(i).handle;
                 if s>=0
+                    % Disable all scanning on box before close:
+                    stopBox(i);
+
+                    % Close connection:
                     IOPort('Close', s);
                 end
             end
@@ -824,10 +1131,10 @@ function timing = box2SecsTime(id, timing)
 
     tdiff=rtbox_info(id).sync(1);
     if isempty(tdiff) % sync never done?
-        syncClocks(id, 1:3); tdiff=rtbox_info(id).sync(1);
+        syncClocks(id); tdiff=rtbox_info(id).sync(1);
     elseif any(timing-rtbox_info(id).sync(2)>5) % sync done too long before?
         sync=rtbox_info(id).sync; % remember last sync for interpolation
-%        syncClocks(id, 1:3); % update sync
+%        syncClocks(id); % update sync
         sync(2,:)=rtbox_info(id).sync; % append current sync
         % get tdiff by linear interpolation for all timing
         tdiff=interp1(sync(:,2),sync(:,1),timing * rtbox_info(id).clkRatio);
@@ -862,46 +1169,61 @@ function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
     global rtbox_info;
     global rtbox_maxMinwinThreshold;
 
+    % Stop box, if active, drain all queues. Please note that we don't
+    % auto-restart the box, because this method is meant to be only called
+    % at the end of an experiment session, so usercode must manually
+    % restart if it wants to:
+    stopBox(id);
+    
     % Check if the latest syncClocks sample is older than 30 seconds. If
     % so, then we acquire a new final sample. We also resample if the last
-    % sample is of too low accuracy, or if there are less than 3 samples in
-    % total, as the fitting procedure needs at least 3 samples to work:
-    while (size(rtbox_info(id).syncSamples, 1) < 3) || ...
+    % sample is of too low accuracy, or if there are less than 2 samples in
+    % total, as the fitting procedure needs at least 2 samples to work:
+    while (size(rtbox_info(id).syncSamples, 1) < 2) || ...
           ((GetSecs - rtbox_info(id).syncSamples(end, 1)) > 30) || ...
           (rtbox_info(id).syncSamples(end, 3) > rtbox_maxMinwinThreshold)
 
       % Perform a syncClocks to get a fresh sample to finalize the sampleset:
-      syncClocks(id, 1:5);
+      syncClocks(id);
     end
 
     % Extract samples for line fit:
     tbox  = rtbox_info(id).syncSamples(:, 2);
     thost = rtbox_info(id).syncSamples(:, 1);
     
-    % Octave and older versions of Matlab don't have 'robustfit',
-    % so we fall back to 'regress' if this function is lacking:
-    if exist('robustfit') %#ok<EXIST>
-        [coef st]=robustfit(tbox,thost);  % fit a line
-        sd=st.robust_s; % stddev. in seconds.
+    % More than 2 samples available?
+    if length(tbox) > 2
+        % Octave and older versions of Matlab don't have 'robustfit',
+        % so we fall back to 'regress' if this function is lacking:
+        if exist('robustfit') %#ok<EXIST>
+            [coef st]=robustfit(tbox,thost);  % fit a line
+            sd=st.robust_s; % stddev. in seconds.
+        else
+            coef =regress(thost, [ones(size(thost,1), 1), tbox ]);  % fit a line
+            sd=0; % stddev. undefined with regress().
+        end
+        clockratio = coef(2);
+        clockbias  = coef(1);
     else
-        coef =regress(thost, [ones(size(thost,1), 1), tbox ]);  % fit a line
-        sd=0; % stddev. undefined with regress().
+        % Only 2 samples available. Use polyfit...
+        [coef st]=polyfit(tbox, thost, 1);
+        clockratio = coef(1);
+        clockbias  = coef(2);
+        sd = st.normr;
     end
     
-    % Ok, got mapping equation getsecst = timing * coef(2) + coef(1);
+    % Ok, got mapping equation getsecst = timing * clockratio + clockbias;
     % Apply it to our input timestamps:
-    clockratio = coef(2);
-    timing = timing * clockratio + coef(1);
+    timing = timing * clockratio + clockbias;
 
     % Ready.
 end
 
 % Clock sync routine: Synchronizes host clock (aka GetSecs time) to box
 % internal clock via a sampling and calibration procedure:
-function syncClocks(id, enableInd)
+function syncClocks(id)
     global rtbox_info;
     global blocking;
-    global enableCode;
     global rtbox_oldstylesync;
     global rtbox_maxDuration;
     global rtbox_optMinwinThreshold;
@@ -920,12 +1242,11 @@ function syncClocks(id, enableInd)
     ntrials = 250;
     
     % Any event reporting active?
-    if any(rtbox_info(id).enabled)
+    boxActive = rtbox_info(id).boxScanning;
+    if boxActive
         % Disable all events on box. This will also clear all buffers:
-        enableEvent(id, 'a');
-    else
-        % Clear buffers "manually":
-        purgeRTbox(id);
+        warning('PsychRTBox: syncClocks: Box was still scanning during invocation -- Driverbug?'); %#ok<WNTAG>
+        stopBox(id);
     end
 
     % Switch to realtime priority if not already there:
@@ -950,7 +1271,7 @@ function syncClocks(id, enableInd)
         % from the USB duty cycle and increase the chance of getting a very
         % small time window between scheduling, execution and acknowledge
         % of the send operation:
-        t0=WaitSecs(rand / 1000);
+        WaitSecs(rand / 1000);
         
         % Take pre-Write timestamp in tpre - Sync command not emitted
         % before that time. Write sync command, wait 'blocking' for write
@@ -1031,8 +1352,11 @@ function syncClocks(id, enableInd)
         Priority(oldPriority);
     end
     
-    % Restore event reporting:
-    enableEvent(id, enableCode(find(rtbox_info(id).enabled(enableInd)>0))); %#ok<FNDSB>
+    % Is box scanning supposed to be active?
+    if boxActive
+        % Restore event reporting:
+        startBox(id);
+    end
     
     % At least one sample with acceptable precision acquired?
     if (minwin > rtbox_maxMinwinThreshold) | (ic < 1) %#ok<OR2>
@@ -1193,13 +1517,20 @@ end
 function enableEvent(handle, str)
     global rtbox_info;
 
+    if rtbox_info(handle).boxScanning
+        warning('PsychRTBox: enableEvent() called while box is scanning! Driverbug?'); %#ok<WNTAG>
+    end
+    
     s = rtbox_info(handle).handle;
+    
+    % Wait until we can be sure that the box is ready to receive new
+    % commands. The deadline is computed so that in the worst conceivable
+    % case the box will be ready to receive at least 1 new command byte:
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+        
     for ie=1:length(str)
         % Try 4 times in case of failure:
         for ir=1:4
-            % Clear buffers:
-            purgeRTbox(handle);
-
             % Send control character for event enable/disable:
             IOPort('Write', s, str(ie));
 
@@ -1207,40 +1538,491 @@ function enableEvent(handle, str)
             if IOPort('Read', s, 1, 1) ==str(ie)
                 % Acknowledged:
                 break;
+            else
+                warning('PsychRTBox: enableEvent() Acknowledge failed! Retry...'); %#ok<WNTAG>
             end
 
             if ir==4, RTboxError('notRespond'); end
         end
     end
+    
+    return;
 end
 
-% Purge send-/receive buffers from stale data:
+% Send a 'Y' serial trigger command to box:
+function tpost = sendTrigger(handle)
+    global rtbox_info;
+    global rtbox_global;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Wait until we can be sure that the box is ready to receive new
+    % commands. The deadline is computed so that in the worst conceivable
+    % case the box will be ready to receive at least 1 new command byte:
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+    
+    % Box ready to receive our "disable all event reporting" command code
+    % 'a'. Send it blocking:
+    [nw, tpost] = IOPort('Write', s, 'Y');
+    
+    % Command submission completed at time 'tpost'. Set a new busyUntil
+    % time. After that time, the box should have stopped at the latest:
+    rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
+
+    return;
+end
+
+% Query current state of box buttons -- the raw state, unaffected by
+% debouncing or actual enable event settings, as close to now-time as
+% possible:
+function bState = buttonQuery(handle)
+    global rtbox_info;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Box in scanning mode? And button state change event reporting active?
+    if (rtbox_info(handle).boxScanning) && any(rtbox_info(handle).enabled(1:2))
+        % Yes. Box provides button press/release events, so its sufficient
+        % to parse the receive queue.
+        
+        % Drain the serial receive buffer until either 10 seconds total
+        % time elapsed or no new data for at least 20 msecs:
+        parseQueue(handle, inf, 10, 0.020);
+    else
+        % Box is maybe scanning, but not reporting.
+        
+        % Is box scanning?
+        isActive = rtbox_info(handle).boxScanning;
+        if isActive
+            % Yes. We can't perform a synchronous query with box in
+            % scanning mode. Need to stopBox():
+            stopBox(handle);
+            % Now we startBox(), because this will trigger a callback into
+            % us recursively, i.e. to buttonQuery(), but this time with
+            % isActive == false, therefore the recursive call will go
+            % through the else-clause and execute the query. -- No need for
+            % us to do it here redundantly :-)
+            startBox(handle);
+            
+            % Done.
+        else        
+            % Box is not scanning and reporting, all serial buffers are empty
+            % and idle. We perform a synchronous query:
+            IOPort('write',s,'?'); % ask button state: '4321'*16 63
+            b2=IOPort('read',s, 1, 2); % ? returns 2 bytes
+            if length(b2)~=2 || b2(2)~=63 || mod(b2(1),16)~=0
+                warning('PsychRTBox: Corrupt 2-byte response received in explicit buttonQuery()!'); %#ok<WNTAG>
+            else
+                % Uppermost 4 bits are button states:
+                rtbox_info(handle).buttons(1, :) = [ 0, 0, 0, 0 ];
+                % Set corresponding entries for pressed buttons:
+                rtbox_info(handle).buttons(1, logical(bitget(b2(1), 5:8))) = 1;
+            end
+        end
+    end
+    
+    bState = rtbox_info(handle).buttons(1, :);
+    return;
+end
+
+% Start event scanning, detection and reporting on box:
+function startBox(handle)
+    global rtbox_info;
+    global enableCode;
+    
+    % Box scanning?
+    if rtbox_info(handle).boxScanning
+        % Box already started. Nothing to do:
+        return;
+    end
+    
+    % Emit a buttonstate query command, so we get a button state update:
+    buttonQuery(handle);
+    
+    % Enable all events that are selected by usercode:
+    customEnable = rtbox_info(handle).enabled(1:5);
+    
+    % Synchronize the button up/down events. Either both on or both off.
+    % We do this so our software based button state live reporting in
+    % parseQueue() works correctly - It needs press and release to be
+    % reported:
+    if any(customEnable(1:2))
+        customEnable(1:2) = [1 1];
+    else
+        customEnable(1:2) = [0 0];
+    end
+    
+    enableEvent(handle, [ 'a' enableCode(find(customEnable>0)) ] ); %#ok<FNDSB>
+    
+    % Box event scanning and reporting is active:
+    rtbox_info(handle).boxScanning = 1;
+        
+    return;
+end
+
+% Stop event detection by box and all data transmission. Drain serial
+% receive queue completely after box is idle and enqueue to event queue:
+function stopBox(handle)
+    global rtbox_info;
+    global rtbox_global;
+    
+    % Box scanning?
+    if rtbox_info(handle).boxScanning == 0
+        % Box already stopped. Nothing to do:
+        return;
+    end
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Wait until we can be sure that the box is ready to receive new
+    % commands. The deadline is computed so that in the worst conceivable
+    % case the box will be ready to receive at least 1 new command byte:
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+    
+    % Box ready to receive our "disable all event reporting" command code
+    % 'a'. Send it blocking:
+    [nw, tpost] = IOPort('Write', s, 'a');
+    
+    % Command submission completed at time 'tpost'. Set a new busyUntil
+    % time. After that time, the box should have stopped at the latest:
+    rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+    
+    % Box should be idle now. Submit a marker token which the box can
+    % acknowledge, so we know when all receive queues have fully drained.
+    % We send all disable codes, as they are no-ops (all events are already
+    % disabled) but get acknowledged by the box:
+    markerStr = 'dufopa';
+    for i=1:length(markerStr)
+        IOPort('Write', s, markerStr(i));
+        % We delay for 0.1 msecs after each write just to make absolutely
+        % sure it gets through:
+        WaitSecs(0.0001);
+    end
+    
+    % Marker submitted. After some roundtrip delay, the box will feed this
+    % back as the last element in the receive buffer, after all events that
+    % were detected and dispatched by the box before the 'a' disable all
+    % call took effect.
+    
+    % Drain the serial receive buffer until the marker token has been
+    % received and all queues are completely empty: We allow thist to take
+    % as long as neccessary, i.e., absolute timeout is inf-inity, but we
+    % abort if more than 10 seconds elapse without any new data. Rationale:
+    % If tons of events are pending in the receive buffer, it might take
+    % long to fetch all of them, therefore the generous unlimited inf, but
+    % if nothing new arrives within 10 seconds then the buffer is clearly
+    % empty, no new data is arriving from box and the marker token hasn't
+    % been detected (-1), so something went seriously wrong, e.g.,
+    % communication failure with box or corrupt marker token received, and
+    % we need to recover by aborting the parse-Op:
+    parseQueue(handle, -1, inf, 10); 
+    
+    % Box event scanning and reporting is stopped:
+    rtbox_info(handle).boxScanning = 0;
+    
+    % Ok, the box is completely idle and all serial queues are empty. The
+    % software queue contains all remaining events.
+    return;
+end
+
+% Parse serial port receive queue, dequeue all stored events and store it
+% in internal software queue.
+function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventDelay)
+    global rtbox_info;
+    
+    % Count of added items in this invocation:
+    nadded = 0;
+    tlastadd = 0;
+    
+    % Child protection:
+    if ~rtbox_info(handle).boxScanning
+        warning('PsychRTBox: parseQueue() called but box not in active scanning mode! Driverbug?!?'); %#ok<WNTAG>
+    end
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+
+    if minEvents == -1
+        untilMarker = 1;
+        minEvents = inf;
+    else
+        untilMarker = 0;
+    end
+    
+    % Setup deadline for stop of parsing, based on timeOut:
+    tcurrent = GetSecs;
+    timeOut  = tcurrent + timeOut;
+    tInterTimeout = tcurrent + interEventDelay;
+    
+    % Parse until timeOut reached, or minimum number of requested events
+    % dequeued, whatever comes first:
+    while (tcurrent <= timeOut) && (minEvents > 0) && (tcurrent <= tInterTimeout)
+        % Fetch at most one byte, non-blocking: Also update current
+        % timestamp:
+        [evid, tcurrent] = IOPort('Read', s, 0, 1);
+        
+        if isempty(evid)
+            % Nothing received. Sleep a msec, slacky, to release cpu:
+            tcurrent = WaitSecs('YieldSecs', 0.001);
+            continue;
+        end
+        
+        % Something received. Update interevent timeout:
+        tInterTimeout = tcurrent + interEventDelay;
+
+        % eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
+        
+        % Dispatch depending on type of received data:
+        
+        % 7-Byte event packet?
+        if (evid >= 48 && evid <= 57) || (evid == 89) || (evid == 97)  
+            % Read remaining 6 bytes of 7 byte packet, either a timestamp
+            % or parameters. We do this blocking as we know there must be 6
+            % more bytes pending:
+            [b6, tcurrent] = IOPort('Read', s, 1, 6);
+            if length(b6)<6
+                warning('PsychRTBox: parseQeue: Corrupt 7-byte data packet received from box!'); %#ok<WNTAG>
+            else
+                % evid 'a' is a special case: An 'a' can be either an
+                % acknowledge for disable of all event reporting, or a TTL
+                % pulse trigger event :-(
+                % Treat this special case of character a == 97, but only if
+                % a marker token is expected. Then we might receive the
+                % special 'dufopa' signature in b6:
+                if untilMarker && (evid == 97) && strcmp(char(b6), 'dufopa')
+                    % Marker token detected! This is the end of our
+                    % parsing operation, as we know no further data can
+                    % be received from the box after this marker.
+                    
+                    % Btw. the 'dufopa' also corresponds to a specific 6
+                    % byte timestamp, so this is ambiguous in theory.
+                    % However the timestamp corresponding to 'dufopa' would
+                    % correspond to a box uptime (and therefore computer
+                    % uptime) of over 30 years -- Unlikely / Impossible to
+                    % ever happen in reality, so this is a non-issue.
+                    
+                    % Break out of parser loop:
+                    break;
+                end
+                
+                % If we reach this point, then it is a standard event
+                % packet with a b6 6 byte box timestamp.
+                
+                % Decode timestamp into uncorrected box time in seconds:
+                secs=bytes2secs(b6);
+                                
+                % Buttonstate update needed?
+                if (evid >= 49 && evid <= 56)
+                    % One of the four pushbuttons: Pressed or released?
+                    buttonid = floor((evid - 47)/2);
+                    isdown   = mod(evid, 2);
+
+                    % Update live state:
+                    rtbox_info(handle).buttons(1, buttonid) = isdown;
+                    
+                    % Debouncer implementation: Is this button updated
+                    % after the debounce deadline which defines the "dead"
+                    % interval of ignoring this button?
+                    if secs < rtbox_info(handle).buttons(2, buttonid)
+                        % This event was received within the "dead
+                        % interval" in which state updates for the button
+                        % should be ignored for the purpose of button
+                        % debouncing. We abort processing for this event,
+                        % ie., the event gets discarded:
+                        continue;
+                    else
+                        % Button event received after debounce deadline. We
+                        % accept this event and update the debounce
+                        % deadline accordingly:
+                        rtbox_info(handle).buttons(2, buttonid) = secs + rtbox_info(handle).buttons(3, buttonid);
+                    end
+                    
+                    % Special handling for button press/release events.
+                    % These are always reported by box if one of them is
+                    % enabled. Check if we should discard some of them:
+                    if (isdown && ~rtbox_info(handle).enabled(1)) || (~isdown && ~rtbox_info(handle).enabled(2))
+                        % This event shall not be reported to higher
+                        % layers. Skip it:
+                        continue;
+                    end
+                end
+                
+                % Enqueue event in internal queue:
+                rtbox_info(handle).recQueue(end+1, :) = [ double(evid), secs ];
+                
+                % Increment total count of added events:
+                nadded = nadded + 1;
+                
+                % Update timestamp of last event add operation:
+                tlastadd = GetSecs;
+                
+                % Decrement count of events to parse:
+                minEvents = minEvents - 1;
+            end
+            
+            % Next iteration:
+            continue;
+        end
+        
+        % Button state live query result packet? This has the evid 63 == '?'
+        % Ok, this doesn't work due to a design-flaw in the protocol. The
+        % box sends the data first in the evid byte, then the '?'
+        % identifier in the 2nd byte, so our parser can't dispatch
+        % reliably. :-(
+        %
+        % The only solution / workaround is to never submit a '?' query
+        % while the box is in scanning mode, so this event can't ever
+        % happen. -- We use lot's of ugly magic in buttonQuery() to work
+        % around this synchronously...
+        %
+        %
+        %         if evid == 63
+        %             b1=IOPort('read', s, 1, 1); % ? returns 1 byte with encoded button state.
+        %             if isempty(b1) || mod(b1,16)~=0
+        %                 warning('PsychRTBox: parseQeue: Corrupt 2-byte data packet received from box!'); %#ok<WNTAG>
+        %             else
+        %                 % Uppermost 4 bits are button states:
+        %                 rtbox_info(handle).buttons(1, :) = [ 0, 0, 0, 0 ];
+        %                 % Set corresponding entries for pressed buttons:
+        %                 rtbox_info(handle).buttons(1, logical(bitget(b1, 5:8))) = 1;
+        %             end
+        %
+        %             % Decrement count of events to parse:
+        %             % This is a non-event in the sense of ther parse function... minEvents = minEvents - 1;
+        %
+        %             % Next iteration:
+        %             continue;
+        %         end
+
+        % Next parse iteration:
+    end
+    
+    % Done.
+    return;
+end
+
+% Retrieve events from internal driver queue, optionally fetch new items
+% from serial port device receive queue if internal queue can't satisfy the
+% amount of requested events or usercode wants full coverage of all what is
+% there:
+%
+% - Most of the time you will want to set minItems == MaxItems == nItems
+%   with nItems being the exact amount of events you'd like to have within
+%   some timeout period (for recovery from sleeping subjects), or nItems ==
+%   inf and some reasonable timeouts to get all responses within some
+%   defined response interval.
+%
+% - If the box is not in scanning mode, this will return all data up to
+%   'maxItems' events from the internal receive queue instantaneously and
+%   the timeouts and minItems don't apply.
+%
+function [evts, boxtimes] = getEvents(handle, minItems, maxItems, timeOut, maxInterEvent)
+    global rtbox_info;
+
+    % Must not operate much longer than tdeadline for given timeOut:
+    tcurrent = GetSecs;
+    tdeadline = tcurrent + timeOut;
+    tInterdeadline = tcurrent + maxInterEvent;
+    evAvail   = 0;
+    
+    % Box in scanning mode?
+    % If box is not in active scanning mode then all serial receive buffers
+    % are empty and the box won't produce new data. All we can ever get is
+    % what is already in our internal recQueue. In that case, we skip the
+    % hardware buffer scan loop.
+    if rtbox_info(handle).boxScanning
+        % Yes: New data may arrive from box anytime...
+        % Repeat fetch & assign operation until timeout, or enough items found:
+        while (tcurrent < tdeadline) && (tcurrent < tInterdeadline) && (evAvail < minItems)
+            % How many events are stored in our own filtered, debounced event Queue?
+            evAvail = size(rtbox_info(handle).recQueue, 1);
+
+            % How many do we need to fetch from box serial receive buffer?
+            needMore = minItems - evAvail;
+
+            % Need any?
+            if needMore > 0
+                % Need to fetch from serial queue:
+                tscandeadline = min(tdeadline - tcurrent, tInterdeadline - tcurrent);
+                [nadded, tlastadd] = parseQueue(handle, needMore, tscandeadline, maxInterEvent);
+            else
+                nadded = 0;
+            end
+
+            % Update time:
+            tcurrent = GetSecs;
+
+            % Anything added?
+            if nadded > 0
+                % Yes. Update interevent deadline:
+                tInterdeadline = tlastadd + maxInterEvent;
+            end
+
+            if (needMore > 0) && (nadded == 0)
+                % Nothing received. Sleep a msec, slacky, to release cpu:
+                tcurrent = WaitSecs('YieldSecs', 0.001);
+            end
+            
+            % Check again.
+        end
+    end
+    
+    % How many events are stored in our own filtered, debounced event Queue?
+    evAvail = size(rtbox_info(handle).recQueue, 1);
+
+    % Hopefully got something. Extract subset of at most maxItems oldest
+    % elements:
+    if evAvail > maxItems
+        evAvail = maxItems;
+    end
+    
+    % Assign first evAvail elements of queue to return arguments:
+    if evAvail > 0
+        evts     = rtbox_info(handle).recQueue(1:evAvail, 1);
+        boxtimes = rtbox_info(handle).recQueue(1:evAvail, 2);
+
+        % Strip them from queue:
+        rtbox_info(handle).recQueue = rtbox_info(handle).recQueue(evAvail+1:end, :);
+    else
+        evts     = [];
+        boxtimes = [];
+    end
+    
+    return;
+end
+
+
+% Purge all buffers from stale data:
 function purgeRTbox(handle)
     global rtbox_info;
 
     % Get IOPort handle:
     s = rtbox_info(handle).handle;
 
-    % Set timeout of purge to 1 second:
-    tout=GetSecs+1;
-
-    byte=IOPort('BytesAvailable', s);
-    while 1
-        % Sleep 100 msecs between polls:
-        if WaitSecs(0.1) > tout
-            RTboxError('notRespond');
-        end
-
-        byte1=IOPort('BytesAvailable', s);
-        if byte1==byte
-            % No
-            break;
-        end
-        byte=byte1;
+    % Stop all processing on box, drain its buffers:
+    stopBox(handle);
+    
+    if IOPort('BytesAvailable', s)
+        warning('PsychRTBox: purgeRTBox: Unexpected data in receive buffer after stopBox()! n = %i\n', IOPort('BytesAvailable', s)); %#ok<WNTAG>
+    end
+    
+    % Make additional low-level call to clear all serial port buffers -
+    % This is redundant:
+    IOPort('Purge', s);
+    
+    if IOPort('BytesAvailable', s)
+        warning('PsychRTBox: purgeRTBox: Unexpected data in receive buffer after serial purge! n = %i\n', IOPort('BytesAvailable', s)); %#ok<WNTAG>
     end
 
-    % Clear buffers again:
-    IOPort('Purge', s);
+    % Clear the receive event queue of the box:
+    rtbox_info(handle).recQueue = [];
+    
+    % All pending events cleared:
+    return;    
 end
 
 % Convert 6-byte raw box timestamp x into seconds: 1/115200 is the time
@@ -1408,7 +2190,8 @@ function openRTBox(deviceID, handle)
     
     % First the default settings...
     rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-        'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, 'syncSamples', []);
+                              'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
+                              'busyUntil', 0.1, 'boxScanning', 0, 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], 'syncSamples', [], 'recQueue', []);
 
     % Enabled events at start:
     rtbox_info(handle).enabled=logical([1 0 0 0 0]);
@@ -1422,10 +2205,10 @@ function openRTBox(deviceID, handle)
     rtbox_info(handle).version=char(idn(18:21));
     % Init clock-ratio to an uncalibrated 1.0:
     rtbox_info(handle).clkRatio=1;
-
-    % Disable all event reporting, except for button presses:
-    enableEvent(handle, 'aD');
-
+    
+    % Start with all scanning disabled:
+    enableEvent(handle, 'a');
+    
     % Device open and initialized.
     fprintf('PsychRTBox: RTBox device "%s" opened on serial port device %s.\n', deviceID, port);
 end
