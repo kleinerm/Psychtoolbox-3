@@ -13,7 +13,7 @@ PR655write('Q');
 
 % Close and clear serial port
 if ~isempty(g_serialPort)
-   SerialComm('close', g_serialPort);
+   IOPort('close', g_serialPort);
    g_serialPort = [];
 end
 

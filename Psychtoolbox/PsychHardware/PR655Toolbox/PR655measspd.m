@@ -24,10 +24,11 @@ timeout = 30;
 % See if we can sync to the source
 % and set sync mode appropriately.
 syncFreq = PR655getsyncfreq;
-if ~isempty(syncFreq)
+if ~isempty(syncFreq) && syncFreq ~= 0
 	PR655write('SS1');
 else
     PR655write('SS0');
+    disp('Warning: Could not sync to source.');
 end
 
 % Do raw read

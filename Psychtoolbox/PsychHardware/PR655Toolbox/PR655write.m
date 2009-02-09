@@ -13,7 +13,7 @@ end
 
 % Write sequence of chars to PR655
 for i = 1:length(cmdStr)
-    SerialComm('write', g_serialPort, upper(cmdStr(i)));
+    IOPort('write', g_serialPort, upper(cmdStr(i)));
     pause(0.05)
 end
 
