@@ -1,5 +1,5 @@
-function SaveCalFile(cal,filespec,dir)
-% SaveCalFile(cal,[filespec],[dir])
+function SaveCalFile(cal, filespec, dir)
+% SaveCalFile(cal, [filespec], [dir])
 %
 % Saves calibration data in the structure "cal" to a
 % calibration file in the CalData folder.
@@ -20,28 +20,27 @@ function SaveCalFile(cal,filespec,dir)
 % 7/9/02   dhb  Incorporate filespec/filename fix as suggested by Eiji Kimura.
 
 % Set the filename
-if (nargin < 3 | isempty(dir))
+if nargin < 3 || isempty(dir)
 	dir = CalDataFolder;
 end
-if (nargin < 2 | isempty(filespec))
+if nargin < 2 || isempty(filespec)
 	filespec = 'default';
 	filename = [dir 'default.mat'];
-elseif (isstr(filespec))
+elseif ischar(filespec)
 	filename = [dir filespec '.mat'];
 else
 	filename = [dir sprintf('screen%d.mat',filespec)];
 end
 
 % Load the file to get older calibrations
-[oldCal,oldCals] = LoadCalFile(filespec);
-if (isempty(oldCals))
-	cals = {cal};
+[oldCal, oldCals] = LoadCalFile(filespec);
+if isempty(oldCals)
+	cals = {cal}; %#ok<NASGU>
 else
-	nOldCals = size(oldCals,2);
+	nOldCals = length(oldCals);
 	cals = oldCals;
-	cals{nOldCals+1} = cal;
+	cals{nOldCals+1} = cal; %#ok<NASGU>
 end
 
 % Save the file
-eval(['save ' QuoteString(filename) ' cals']);;
-	
+eval(['save ' QuoteString(filename) ' cals']);

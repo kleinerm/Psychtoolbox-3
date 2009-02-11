@@ -3,7 +3,7 @@ function readStr = PR650rawspd(timeout)
 %
 % Measure spd and return string.
 
-global g_serialPort;
+global g_serialPort g_useIOPort;
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -19,7 +19,11 @@ end
 
 % Make measurement
 % fprintf('Measure\n');
-SerialComm('write', g_serialPort, ['m0' char(10)]);
+if g_useIOPort
+	IOPort('write', g_serialPort, ['m0' char(10)]);
+else
+	SerialComm('write', g_serialPort, ['m0' char(10)]);
+end
 waited = 0;
 inStr = [];
 while isempty(inStr) && (waited < timeout)
@@ -39,7 +43,11 @@ end
 % only reads to the EOL char.  May be able to change
 % this by tweaking PsychSerial, but for now we handle it here.
 % fprintf('Get data\n');
-SerialComm('write', g_serialPort, ['d5' char(10)]);
+if g_useIOPort
+	IOPort('write', g_serialPort, ['d5' char(10)]);
+else
+	SerialComm('write', g_serialPort, ['d5' char(10)]);
+end
 WaitSecs(0.1);
 waited = 0;
 inStr = [];

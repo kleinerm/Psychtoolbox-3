@@ -187,4 +187,3 @@ switch whichMeterType
     otherwise
 		error('Invalid meter type');
 end
-

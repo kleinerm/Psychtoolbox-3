@@ -1,5 +1,5 @@
-function [settings] = GamutToSettingsSch(gammaInput,gammaTable,gamut)
-% [settings] = GamutToSettingsSch(gammaInput,gammaTable,gamut)
+function settings = GamutToSettingsSch(gammaInput, gammaTable, gamut)
+% settings = GamutToSettingsSch(gammaInput, gammaTable, gamut)
 %
 % Find the best device settings to produce
 % the passed linear device coordinates.
@@ -27,7 +27,7 @@ end
 
 % Use a search routine to find the best gamma function
 settings = zeros(m,n);
-values = zeros(m,n);
+% values = zeros(m,n);
 for i = 1:m
-  [settings(i,:)] = SearchGammaTable(gamut(i,:),gammaInput,gammaTable(:,i));
+  settings(i,:) = SearchGammaTable(gamut(i,:), gammaInput, gammaTable(:,i));
 end

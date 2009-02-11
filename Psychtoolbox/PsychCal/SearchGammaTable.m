@@ -1,5 +1,5 @@
-function [values] = SearchGammaTable(targets,input,table)
-% [values] = SearchGammaTable(targets,input,table)
+function values = SearchGammaTable(targets, input, table)
+% values = SearchGammaTable(targets, input, table)
 %
 % Return the [0-1] entry from the passed table that produces
 % output closest to the [0-1] target.
@@ -50,12 +50,12 @@ end
 % that when we ask for 0 out, we get 0 as the answer.
 index = find(table == 0);
 index1 = find(table ~= 0);
-if (length(index >= 1))
+if ~isempty(index)
     table = table([index(1) ; index1]);
     input = input([index(1) ; index1]);
 end
 
 % Invert via linearly interpolation of the passed table
-values = interp1(table,input,targets','linear')';
+values = interp1(table, input, targets', 'linear')';
 
 

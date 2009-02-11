@@ -9,4 +9,9 @@ function [calFormat,n,m] = ImageToCalFormat(image)
 % 7/16/07   dhb     Update help line.
 
 [m,n,k] = size(image);
-calFormat = squeeze(reshape(image,m*n,1,k))';
+
+if m*n == 1
+	calFormat = squeeze(reshape(image,m*n,1,k));
+else
+	calFormat = squeeze(reshape(image,m*n,1,k))';
+end

@@ -1,5 +1,5 @@
-function [cal,cals] = LoadCalFile(filespec,whichCal,dir)
-% [cal,cals] = LoadCalFile([filespec],[whichCal],[dir])
+function [cal, cals] = LoadCalFile(filespec, whichCal, dir)
+% [cal, cals] = LoadCalFile([filespec], [whichCal], [dir])
 %
 % Load calibration data from saved file in the CalData folder.
 % If no argument is given, loads from file default.mat.  If
@@ -29,54 +29,56 @@ function [cal,cals] = LoadCalFile(filespec,whichCal,dir)
 % 8/15/00  dhb  Modify to handle local/demo cal directories.
 
 % Get whichCal
-if (nargin < 2 | isempty(whichCal))
+if nargin < 2 || isempty(whichCal)
 	whichCal = Inf;
 end
 
 % Set the filename
-if (nargin < 3 | isempty(dir))
+if nargin < 3 || isempty(dir)
 	useDir = CalDataFolder;
 else
 	useDir = dir;
 end
-if (nargin < 1 | isempty(filespec))
+if (nargin < 1 || isempty(filespec))
 	filename = [useDir 'default.mat'];
-elseif (isstr(filespec))
+elseif (ischar(filespec))
 	filename = [useDir filespec '.mat'];
 else
-	filename = [useDir sprintf('screen%d.mat',filespec)];
+	filename = [useDir sprintf('screen%d.mat', filespec)];
 end
 
-% Make sure file is present before calling load
-file=fopen(filename);
-
-% If not, make sure to try secondary directory.
-if (file == -1 & (nargin < 3 | isempty(dir)))
+% If the file doesn't exist in the usual location, take a look in the
+% secondary location.
+if (~exist(filename, 'file') && (nargin < 3 || isempty(dir)))
 	useDir = CalDataFolder(1);
-	if (nargin < 1 | isempty(filespec))
+	if (nargin < 1 || isempty(filespec))
 		filename = [useDir 'default.mat'];
-	elseif (isstr(filespec))
+	elseif (ischar(filespec))
 		filename = [useDir filespec '.mat'];
 	else
 		filename = [useDir sprintf('screen%d.mat',filespec)];
 	end
-	file = fopen(filename);
 end
 
 % Now read the sucker if it is there.
-if (file ~= -1)
-	fclose(file);
+if exist(filename, 'file')
 	eval(['load ' QuoteString(filename)]);
-	if (isempty(cals))
+	if isempty(cals) %#ok<NODEF>
 		cal = [];
 	else
-		nCals = size(cals,2);
-		if (whichCal == Inf)
+		% Get the number of calibrations.
+		nCals = length(cals);
+		
+		% User the most recent calibration (the last one in the cals cell
+		% array) by default.  If the user specified a particular cal file,
+		% try to retrieve it or return an empty matrix if the cal index is
+		% out of range.
+		if whichCal == Inf
 			cal = cals{nCals};
-		elseif (whichCal > nCals)
+		elseif whichCal > nCals || whichCal < 1
 			cal = [];
 		else
-			cal = cals(whichCal);
+			cal = cals{whichCal};
 		end
 	end
 else

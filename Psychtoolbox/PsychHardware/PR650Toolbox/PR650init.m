@@ -17,16 +17,14 @@ function retval = PR650init(portNumber, enableHandshaking)
 % should provide more reliable establishment of contact and hints on what to 
 % try if contact fails.  -- MPR
  
-global g_serialPort;
+global g_serialPort g_useIOPort;
 
-% If useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
-useIOPort = 0;
 
 if nargin == 1
     enableHandshaking = 0;
 end
 
-if ~useIOPort
+if ~g_useIOPort
     if enableHandshaking
         handshakeCode = 'h';
     else
@@ -54,39 +52,41 @@ if ~useIOPort
     end
 end
 
-if useIOPort
-    if enableHandshaking
-        handshakeCode = 'FlowControl=Hardware ';
-    else
-        handshakeCode = 'FlowControl=None ';
-    end
+if g_useIOPort
+	if enableHandshaking
+		handshakeCode = 'FlowControl=Hardware ';
+	else
+		handshakeCode = 'FlowControl=None ';
+	end
 
-    % Only open if we haven't already.
-    if isempty(g_serialPort)
-        oldverbo = IOPort('Verbosity', 2);
-        hPort = IOPort('OpenSerialPort', portNumber, handshakeCode);
-        IOPort('Close', hPort);
-        WaitSecs(0.5);
-        hPort = IOPort('OpenSerialPort', portNumber, handshakeCode);
-        IOPort('Verbosity', oldverbo);
-        g_serialPort = hPort;
-    end
+	% Only open if we haven't already.
+	if isempty(g_serialPort)
+		oldverbo = IOPort('Verbosity', 2);
+		hPort = IOPort('OpenSerialPort', portNumber, handshakeCode);
+		IOPort('Close', hPort);
+		WaitSecs(0.5);
+		hPort = IOPort('OpenSerialPort', portNumber, handshakeCode);
+		IOPort('Verbosity', oldverbo);
+		g_serialPort = hPort;
+	end
 
-    % Send set backlight command to high level to check
-    % whether we are talking to the meter.
-    IOPort('write', g_serialPort, ['b3' char(10)]);
+	StartTime = GetSecs;
 
-    % Ok, fake this for IOPort mode. Just return something that keeps us
-    % going.
-    retval ='0';
-    
-    % Of course all successive code will fail! The proper approach if
-    % everything up to this point works is to simply replace all calls to
-    % SerialComms 'Write', 'Read' and 'Close' functions by IOPort. I.e.,
-    % just find all calls and replace the function name SerialComm by the
-    % function name IOPort. Syntax and behaviour of IOPort should be
-    % exactly the same, so a simple text search & replace should do the
-    % job...   
+	% Send set backlight command to high level to check
+	% whether we are talking to the meter.
+	IOPort('write', g_serialPort, ['b3' char(10)]);
+
+	% Make sure the meter responds.
+	retval = [];
+	while isempty(retval) & GetSecs-StartTime < 10 %#ok<AND2>
+		retval = PR650serialread;
+	end
+
+	% Of course all successive code will fail! The proper approach if
+	% everything up to this point works is to simply replace all calls to
+	% SerialComms 'Write', 'Read' and 'Close' functions by IOPort. I.e.,
+	% just find all calls and replace the function name SerialComm by the
+	% function name IOPort. Syntax and behaviour of IOPort should be
+	% exactly the same, so a simple text search & replace should do the
+	% job...
 end
-
-return;

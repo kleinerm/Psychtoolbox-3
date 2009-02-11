@@ -6,7 +6,7 @@ function PR650setsyncfreq(syncFreq)
 %
 % See also PR650getsyncfreq
 
-global g_serialPort;
+global g_serialPort g_useIOPort;
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -24,10 +24,18 @@ while ~isempty(dumpStr)
 end
 
 % Set
-if (syncFreq ~= 0)
-	SerialComm('write', g_serialPort, ['s01,,,,' num2str(syncFreq) ',0,01,1' char(10)]);
+if g_useIOPort
+	if (syncFreq ~= 0)
+		IOPort('write', g_serialPort, ['s01,,,,' num2str(syncFreq) ',0,01,1' char(10)]);
+	else
+		IOPort('write', g_serialPort, ['s01,,,,' ',0,01,1' char(10)]);
+	end
 else
-	SerialComm('write', g_serialPort, ['s01,,,,' ',0,01,1' char(10)]);
+	if (syncFreq ~= 0)
+		SerialComm('write', g_serialPort, ['s01,,,,' num2str(syncFreq) ',0,01,1' char(10)]);
+	else
+		SerialComm('write', g_serialPort, ['s01,,,,' ',0,01,1' char(10)]);
+	end
 end
 
 waited = 0;

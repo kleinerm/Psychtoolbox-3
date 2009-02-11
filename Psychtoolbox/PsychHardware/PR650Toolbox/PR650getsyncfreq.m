@@ -5,7 +5,7 @@ function syncFreq = PR650getsyncfreq
 % empty if can't sync.
 %
 
-global g_serialPort;
+global g_serialPort g_useIOPort;
 
 % Check for initialization
 if isempty(g_serialPort)
@@ -25,7 +25,11 @@ end
 
 % Make measurement
 % fprintf('Measure\n');
-SerialComm('write', g_serialPort, ['f' char(10)]);
+if g_useIOPort
+	IOPort('write', g_serialPort, ['f' char(10)]);
+else
+	SerialComm('write', g_serialPort, ['f' char(10)]);
+end
 
 waited = 0;
 inStr = [];
