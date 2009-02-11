@@ -48,10 +48,12 @@ function CMCheckInit(meterType, PortString)
 %                   a Mac Pro.  Other systems may require more tinkering...
 % 2/07/09  mk, tbc  Add PR-655 support.
 % 2/07/09  mk       Add experimental setup code for use of IOPort instead of SerialComm.
+% 2/11/09  cgb,mk   Small fixes: Now we use IOPort instead of SerialComm --
+%                   by default. Verified to work for both PR650 and PR655 toolboxes.
 
 global g_serialPort g_useIOPort;
 
-% If useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
+% If g_useIOPort == 1 the IOPort driver shall be used instead of SerialComm:
 g_useIOPort = 1;
 
 % Number of retries before giving up:
@@ -135,7 +137,7 @@ switch meterType
                 NumTries = NumTries+1;
                 if (isempty(status) || status == -1) & NumTries >= 3 %#ok<AND2>
                     if IsOSX
-                        if ~useIOPort
+                        if ~g_useIOPort
                             evalc(['SerialComm(''close'',' int2str(portNameIn) ');']);
                             evalc('clear SerialComm');
                         else
@@ -176,7 +178,7 @@ switch meterType
         meterports = LoadCalFile('PR655Ports');
         if isempty(meterports)
             if IsWin || IsOSX || IsLinux
-                portNameIn = FindSerialPort(PortString, useIOPort);
+                portNameIn = FindSerialPort(PortString, g_useIOPort);
             else
                 error(['Unsupported OS ' computer]);
             end

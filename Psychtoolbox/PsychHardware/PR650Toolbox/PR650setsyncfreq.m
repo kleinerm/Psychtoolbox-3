@@ -53,7 +53,7 @@ end
 readStr = inStr;
 while ~isempty(inStr)
 	inStr = PR650serialread;
-	readStr = [readStr inStr];
+	readStr = [readStr inStr]; %#ok<AGROW>
 end
 
 % Parse return

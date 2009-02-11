@@ -16,7 +16,7 @@ if g_useIOPort
 		while ~isempty(tmpData)
 			WaitSecs(0.050);
 			tmpData = IOPort('Read', g_serialPort);
-			serialData = [serialData, char(tmpData)];
+			serialData = [serialData, char(tmpData)]; %#ok<AGROW>
 		end
 	end
 else
@@ -29,7 +29,7 @@ else
 		while ~isempty(tmpData)
 			WaitSecs(0.050);
 			tmpData = char(SerialComm('read', g_serialPort))';
-			serialData = [serialData, tmpData];
+			serialData = [serialData, tmpData]; %#ok<AGROW>
 		end
 	end
 end

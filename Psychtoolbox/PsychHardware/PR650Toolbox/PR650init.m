@@ -19,7 +19,6 @@ function retval = PR650init(portNumber, enableHandshaking)
  
 global g_serialPort g_useIOPort;
 
-
 if nargin == 1
     enableHandshaking = 0;
 end
@@ -81,12 +80,4 @@ if g_useIOPort
 	while isempty(retval) & GetSecs-StartTime < 10 %#ok<AND2>
 		retval = PR650serialread;
 	end
-
-	% Of course all successive code will fail! The proper approach if
-	% everything up to this point works is to simply replace all calls to
-	% SerialComms 'Write', 'Read' and 'Close' functions by IOPort. I.e.,
-	% just find all calls and replace the function name SerialComm by the
-	% function name IOPort. Syntax and behaviour of IOPort should be
-	% exactly the same, so a simple text search & replace should do the
-	% job...
 end
