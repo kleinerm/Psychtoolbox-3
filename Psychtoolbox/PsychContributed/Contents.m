@@ -10,11 +10,6 @@
 %
 %
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
-% nc.exe                       Microsoft Windows executable for netcat. Needed by
-%                              PsychtoolboxRegistration.m for network communication. Netcat
-%                              is included in any OS-X or Linux system by default.
-% nc111nt.zip                  zip-archive with Windows netcat, including source code and
-%                              license. This is distributed as required by the GPL license.
 %
 % macid.exe                    Microsoft Windows command line utility for retrieving the MAC
 %                              ethernet address of the primary network

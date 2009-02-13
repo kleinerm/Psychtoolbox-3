@@ -52,9 +52,12 @@ function PsychtoolboxRegistration(isUpdate, flavor)
 % 5.10.2006  Add queries for Matlabs computer string and for machine
 %            architecture.
 % 31.3.2008  Allow spaces in path to netcat command on Windows (Fix contributed by Tobias Wolf)
+% 13.2.2009  Remove need for netcat on Matlab runtimes, esp. Windows, so we
+%            can get rid of our own nc.exe netcat distribution which made
+%            trouble for users with misconfigured virus scanners. (MK).
 
 % Address and port number of our statistics server:
-ptbserveraddress = 'platypus.psych.upenn.edu 2000';
+ptbserveraddress = 'platypus.psych.upenn.edu';
 
 % Running under OpenGL-PTB? Otherwise we abort.
 AssertOpenGL;
@@ -131,7 +134,7 @@ try
             % Use external helper-utility to try to query MAC address:
             macidcom = [PsychtoolboxRoot 'PsychContributed\macid '];
             [rc mac] = dos(macidcom);
-            if rc==0 & length(mac)>=12
+            if rc==0 & length(mac)>=12 %#ok<AND2>
                 % Worked on Windows: Reassemble MAC into our standard
                 % format:
                 mac = [mac(1) mac(2) ':' mac(3) mac(4) ':' mac(5) mac(6) ':' mac(7) mac(8) ':' mac(9) mac(10) ':' mac(11) mac(12)];
@@ -158,15 +161,51 @@ try
     fprintf('to learn about the purpose and scope of online registration.\n');
     fprintf('Type ''type PsychtoolboxRegistration'' to see the source code of this routine.\n\n');
     fprintf('Data transfer can take up to 10 seconds... The system reports:\n');
-    
-    % Execute transmission command: We time out after 10 seconds if it does not work.
-    syscmd = ['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' '];
-    if IsWin
-        rc = dos(syscmd);
+
+    if IsOctave
+        % pnet not yet supported on Octave. Use netcat as in good ol' days:
+
+        % Execute transmission command: We time out after 10 seconds if it does not work.
+        ptbserveraddress = [ptbserveraddress ' 2000'];
+        syscmd = ['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' '];
+
+        if IsWin
+            rc = dos(syscmd);
+        else
+            rc = system(syscmd);
+        end
+        fprintf('\n');
     else
-        rc = system(syscmd);
+        % pnet supported: Use that...
+        % Specifically that means we will always use pnet() on MS-Windows,
+        % as we don't support Octave there. This will allow us to get rid
+        % of distributing our own nc netcat command, which makes trouble
+        % for some users with really idiotic configurations of virus
+        % scanners and incompetent IT staff.
+        %
+        psychlasterror('reset');
+        rc = 0;
+
+        con=pnet('tcpconnect', ptbserveraddress, 2000);
+        if con >= 0
+            % Connection established.
+            % Write our string, with a timeout of 10 seconds:
+            pnet(con, 'setwritetimeout', 10);
+
+            try
+                % This try-catch is just to work around a bug in
+                % pnet('printf'), pretty annoying.
+                pnet(con, 'printf', '%s\n', uniqueID);
+            catch
+                psychlasterror('reset');
+            end
+        else
+            % Failed!
+            rc = 1;
+        end
+
+        pnet('closeall');
     end
-    fprintf('\n');
     
     % Did it work?
     if rc==0

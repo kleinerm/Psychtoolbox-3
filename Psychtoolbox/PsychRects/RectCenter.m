@@ -1,4 +1,4 @@
-function [x, y] = RectCenter(r);
+function [x, y] = RectCenter(r)
 %   [x,y] = RectCenter(rect);
 %
 %	RectCenter returns the integer x,y point closest to the center of a rect.  
