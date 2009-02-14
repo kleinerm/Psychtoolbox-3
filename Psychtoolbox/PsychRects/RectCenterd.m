@@ -16,7 +16,7 @@ if nargout~=2
 	error('Usage: [x, y] = RectCenter(rect);');
 end
 
-if length(r) == 4
+if PsychNumel(r) == 4
     % Single rect:
     x = (0.5*(r(1)+r(3)));
     y = (0.5*(r(2)+r(4)));

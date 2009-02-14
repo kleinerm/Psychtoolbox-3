@@ -16,7 +16,7 @@ if nargin~=3
 	error('Usage:  newRect = OffsetRect(oldRect,x,y)');
 end
 
-if length(oldRect) == 4
+if PsychNumel(oldRect) == 4
     % Single rect case:
     if size(oldRect,2)~=4
         error('Wrong size rect argument. Usage:  newRect = OffsetRect(oldRect,x,y)');
