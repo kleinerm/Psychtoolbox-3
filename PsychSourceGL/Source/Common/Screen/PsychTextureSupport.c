@@ -465,6 +465,20 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 					// First eat up any pending GL errors to make sure our shutdown path doesn't fail:
 					while(glGetError());
 					
+					// Free all ressources already allocated for this failed texture creation request:
+					glBindTexture(texturetarget, 0);
+					glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+					glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+					glDeleteTextures(1, &win->textureNumber);
+					win->textureNumber = 0;
+					if (!clientstorage) {
+						if (win->textureMemory && (win->textureMemorySizeBytes > 0)) free(win->textureMemory);
+						win->textureMemory=NULL;
+						win->textureMemorySizeBytes=0;
+					}
+
+					while(glGetError());
+					
 					if (glerr == GL_INVALID_VALUE || (gl_rbits + gl_gbits + gl_bbits + gl_abits + gl_lbits == 0)) {
 						// Most likely texture too big for implementation or out of memory condition in VRAM or unsupported format:
 						printf("\n\nPTB-ERROR: Texture creation failed or malfunctioned for a texture of requested size w x h = %i x %i texels\n", twidth, theight);
