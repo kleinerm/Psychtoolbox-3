@@ -3,29 +3,29 @@ function varargout = PsychRTBox(varargin)
 % varargout = PsychRTBox(cmd, varargin);
 %
 % This driver allows to control all functions of the USTC RTBox response
-% button box. The box is a device, connectable to the USB port. It provides
-% 4 response buttons (pushbuttons) for subject responses and can report any
-% button press- or release by the subject. Additionally it has an input for
-% reporting of external TTL trigger signals and a photo-diode input for
-% reporting of visual stimulus onset. The box uses a built-in
-% high-resolution clock to timestamp all button- or trigger events,
-% independent of the host computers clock in order to make it more reliable
-% for response time measurements than most other response devices. It also
-% buffers all events internally, so users experiment scripts can read back
-% events when it is most convenient for the users code. Timestamps can be
-% either reported in Psychtoolboxs standard GetSecs timebase for direct
-% comparison with timestamps from GetSecs, WaitSecs, KbCheck et al.,
-% Screen('Flip') and PsychPortAudio, etc. This simplifies reaction time
-% calculations. Timestamps can also be reported in the boxes own timebase,
-% e.g., time of a button press relative to the photo-diode light trigger
-% signal or TTL trigger signal, if this is more convenient for a given
-% experiment setup.
+% button box. The box is a USB device which provides 4 response buttons
+% (pushbuttons) for subject responses and can report any button press- or
+% release by the subject. Additionally it has an input for reporting of
+% external TTL trigger signals and a photo-diode input for reporting of
+% visual stimulus onset. The box uses a built-in high-resolution clock to
+% timestamp all button- or trigger events, independent of the host
+% computers clock in order to make it more reliable for response time
+% measurements than most other response devices. It also buffers all events
+% internally, so experiment scripts can read back events when it is most
+% convenient. Timestamps can be either reported in Psychtoolbox standard
+% GetSecs timebase for direct comparison with timestamps from GetSecs,
+% WaitSecs, KbCheck et al., Screen('Flip') and PsychPortAudio, etc. This
+% simplifies reaction time calculations. Timestamps can also be reported in
+% timebase of the boxes, e.g., time of a button press relative to the
+% photo-diode light trigger signal or TTL trigger signal, if this is more
+% convenient for a given experiment setup.
 %
 % See http://lobes.usc.edu/RTbox for up to date product information.
 %
 %
 %
 % The following subcommands are currently suppported:
+% ===================================================
 %
 %
 % handle = PsychRTBox('Open' [, deviceID] [, skipSync=0]);
@@ -35,7 +35,7 @@ function varargout = PsychRTBox(varargin)
 % for a connected RTBox and the driver will connect to the first box found.
 % Alternatively you can specify which box to use via the optional
 % 'deviceID' namestring. This can be either the name of a box, or the name
-% of the serial port to which the box is connected. This way you can avoid
+% of the USB-Serial port to which the box is connected. This way you can avoid
 % scanning of all ports and disambiguate in case multiple boxes are
 % connected to your computer.
 %
@@ -68,10 +68,10 @@ function varargout = PsychRTBox(varargin)
 %
 % The clockRatio value tells, how many seconds of GetSecs time elapse when
 % the box clock measures 1 second elapsed time. Ideally this value would be
-% 1, ie. box clocks run at the same speed. A more realistic value would be,
+% 1, ie. both clocks run at the same speed. A more realistic value would be,
 % e.g., 1.000009 -- The computer clock goes 9 microseconds faster than the
-% box clock, so the drift will introduce an error of 9 microseconds during
-% every elapsed second of your study.
+% box clock, so the drift will accumulate an error of 9 microseconds for
+% each elapsed second of your study.
 %
 % As every calibration, this routine involves some measurement/calibration
 % error and is therefore not perfect, so even after a successfull
@@ -93,16 +93,16 @@ function varargout = PsychRTBox(varargin)
 % d) Don't care for clock drift throughout the experiment session, just
 % collect the event timestamps in box clock format (see the 3rd return
 % argument of PsychRTBox('GetSecs') or the returned timing array of
-% PsychRTBox('BoxSecs'); and store them in some array. Remap all timestamps
-% into computers GetSecs time at the end of your session via
-% PsychRTBox('MapBoxSecsToGetSecsPostHoc'). This requires a bit more
+% PsychRTBox('BoxSecs');) and store them in some array. Remap all timestamps
+% into the computers GetSecs time at the end of your session via
+% PsychRTBox('BoxsecsToGetsecs'). This requires a bit more
 % discipline from you in programming and organizing your data, but it
 % provides the most accurate timestamps.
 %
 %
 % [syncResult, clockRatio] = PsychRTBox('SyncClocks' [, handle]);
 % -- Synchronize or resynchronize the clocks of the host computer and the
-% box, return result in 'syncResult' and the current clockRatio in
+% box. Return result in 'syncResult' and the current clockRatio in
 % 'clockRatio'. This routine is automatically carried out during invocation
 % of PsychRTBox('ClockRatio'); but you can repeat the sync procedure
 % anytime between trials via this subfunction for extra accuracy at the
@@ -125,7 +125,7 @@ function varargout = PsychRTBox(varargin)
 % msecs indicate some problem with your system setup that should be fixed
 % before executing any experiment study which involves reaction time
 % measurements. By default, the sync procedure will abort with an error if
-% it can't calibrate to an accuracy with a maximum error of 2 msecs within
+% it can't calibrate to an accuracy with a maximum error of 1.3 msecs within
 % a duration of 0.5 seconds. You can change these default constraints with
 % a call to PsychRTBox('SyncConstraints').
 %
@@ -153,7 +153,10 @@ function varargout = PsychRTBox(varargin)
 % method 0 (prewrite sync) is used, but there is also method 1 (postwrite
 % sync), or method 2 (average) to choose from. If you want to know the
 % difference between the methods, please consult the source code of this
-% file and read the code for the subroutine 'function syncClocks'.
+% file and read the code for the subroutine 'function syncClocks'. All
+% three methods are robust and accurate within the returned confidence
+% window, usually better than 1 msec. Empirically, method 0 seems to get
+% the best results on most setups.
 %
 %
 % oldverbose = PsychRTBox('Verbosity' [, handle], verbosity);
@@ -338,7 +341,7 @@ function varargout = PsychRTBox(varargin)
 % timestamps in a format that is suitable as input to this function.
 %
 %
-% Timestamps can also returned relative to a specific trigger event: You
+% Timestamps can also be returned relative to a specific trigger event: You
 % specify which event acts as a trigger. Then all timestamps of all events
 % are expressed relative to the time of that trigger event, i.e., as
 % deltas. Any event can be the trigger. Format of all arguments is
@@ -459,8 +462,6 @@ function varargout = PsychRTBox(varargin)
 % timestamp generation by box firmware, should we add that small offset in
 % box -> host timestamp remapping to get rid of that offset?
 %
-% - Function call to rearm the light-trigger after auto-disable. How?
-%
 % - Debouncing for PsychRTBox('Buttondown') as well, or leave it "raw"?
 %
 
@@ -471,22 +472,12 @@ function varargout = PsychRTBox(varargin)
 %            by port in the open call (MK).
 % 02/08/2009 Huge redesign of API and internal routines. Now we use an
 %            internal queue (MK).
+% 02/14/2009 Refinements and cleanup (MK).
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
 global rtbox_info;
 global rtbox_global;
-
-global nrOpen;
-global blocking;
-global eventcodes;
-global events4enable;
-global enableCode;
-global cmds;
-global rtbox_oldstylesync;
-global rtbox_maxDuration;
-global rtbox_optMinwinThreshold;
-global rtbox_maxMinwinThreshold;
 
 % Start of driver code -- Entry point:
 
@@ -503,18 +494,18 @@ global rtbox_maxMinwinThreshold;
                               'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
 
         % Setup event codes:
-        eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
+        rtbox_global.eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % List of supported subcommands:
-        cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger' ...
+        rtbox_global.cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
+              'box2getsecs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger' ...
               'debounceinterval', 'engagelighttrigger' };
           
         % Names of events that can be enabled/disabled for reporting:
-        events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
+        rtbox_global.events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
         
         % Low-level protocol codes corresponding to the events:
-        enableCode='DUPOFA'; % char to enable above events, lower case to disable
+        rtbox_global.enableCode='DUPOFA'; % char to enable above events, lower case to disable
         
         % Preload some functions of PTB we'll need:
         eval('GetSecs;WaitSecs(0.001);');
@@ -526,34 +517,34 @@ global rtbox_maxMinwinThreshold;
             % it gives the same results as a polling wait (setting 2), so
             % we prefer blocking for lower cpu load at same quality on
             % Windows as well:
-            blocking = 1;
+            rtbox_global.blocking = 1;
         else
             % On Linux, a polling wait is of advantage, so we use that:
-            blocking = 2;
+            rtbox_global.blocking = 2;
         end
 
         % No devices open at first invocation:
-        nrOpen = 0;
+        rtbox_global.nrOpen = 0;
         
         % Default settings for the syncClocks() function:
         % -----------------------------------------------
         
         % Use new style syncClocks() method with prewrite timestamp by default:
-        rtbox_oldstylesync = 0;
+        rtbox_global.syncmode = 0;
 
         % Maximum duration of a syncClocks calibration run is 0.5 seconds:
-        rtbox_maxDuration = 0.5;
+        rtbox_global.maxDuration = 0.5;
 
         % Desired 'minwin' calibration accuracy is 0.0 msecs: If we manage
         % to get better than that, we abort sampling. We also abort
-        % sampling of the rtbox_maxDuration is reached:
-        rtbox_optMinwinThreshold = 0.0;
+        % sampling of the rtbox_global.maxDuration is reached:
+        rtbox_global.optMinwinThreshold = 0.0;
 
         % Maximum allowable (ie. worst) acceptable minwin for a sample:
         % We default to 1.3 msecs, as a 1.2 msecs minwin is basically never
         % exceeded. It is unlikely that all samples within a syncClocks run
         % are worse than 1.3 msecs and the run would therefore fail.
-        rtbox_maxMinwinThreshold = 0.0013;
+        rtbox_global.maxMinwinThreshold = 0.0013;
         
         % Worst case delay after a command has been received by the box,
         % before it gets actually dequeued from the microprocessors serial
@@ -598,51 +589,51 @@ global rtbox_maxMinwinThreshold;
         end
         
         % Open and initialize box:
-        openRTBox(deviceID, nrOpen+1);
+        openRTBox(deviceID, rtbox_global.nrOpen+1);
 
         % Increment count of open boxes:
-        nrOpen = nrOpen + 1;
+        rtbox_global.nrOpen = rtbox_global.nrOpen + 1;
 
         % Return as handle:
-        varargout{1} = nrOpen;
+        varargout{1} = rtbox_global.nrOpen;
 
         if ~skipSync
             % Perform initial mandatory clock sync:
-            syncClocks(nrOpen);
+            syncClocks(rtbox_global.nrOpen);
         end
         
         % Perform initial button state query:
-        buttonQuery(nrOpen);
+        buttonQuery(rtbox_global.nrOpen);
         
         % Start event scanning on box, with the above default enabled setting,
         % i.e., only button press 'D' reporting active:
-        startBox(nrOpen, 1);
+        startBox(rtbox_global.nrOpen, 1);
         
         return;
     end
 
     if strcmp(cmd, 'syncconstraints')
         % Return current constraint settings:
-        varargout{1} = rtbox_maxDuration;
-        varargout{2} = rtbox_optMinwinThreshold;
-        varargout{3} = rtbox_maxMinwinThreshold;
-        varargout{4} = rtbox_oldstylesync;
+        varargout{1} = rtbox_global.maxDuration;
+        varargout{2} = rtbox_global.optMinwinThreshold;
+        varargout{3} = rtbox_global.maxMinwinThreshold;
+        varargout{4} = rtbox_global.syncmode;
         
         % Set constraints for syncClocks:
         if nargin > 1 && ~isempty(varargin{2})
-            rtbox_maxDuration = varargin{2};
+            rtbox_global.maxDuration = varargin{2};
         end
 
         if nargin > 2 && ~isempty(varargin{3})
-            rtbox_optMinwinThreshold = varargin{3};
+            rtbox_global.optMinwinThreshold = varargin{3};
         end
 
         if nargin > 3 && ~isempty(varargin{4})
-            rtbox_maxMinwinThreshold = varargin{4};
+            rtbox_global.maxMinwinThreshold = varargin{4};
         end
         
         if nargin > 4 && ~isempty(varargin{5})
-            rtbox_oldstylesync = varargin{5};
+            rtbox_global.syncmode = varargin{5};
         end
 
         return;
@@ -672,7 +663,7 @@ global rtbox_maxMinwinThreshold;
     end
     
     % Child protection:
-    if ~isscalar(id) || id < 1 || id > length(rtbox_info) || id > nrOpen
+    if ~isscalar(id) || id < 1 || id > length(rtbox_info) || id > rtbox_global.nrOpen
         error('Invalid device handle specified! Did you open the device already?');
     end
 
@@ -682,7 +673,7 @@ global rtbox_maxMinwinThreshold;
 
     % Build additional cell array of valid read commands:
     read=rtbox_info(id).events;
-    read{end+1}='secs';    % Obsolete: like GetSecs but with old method.
+    read{end+1}='secs';    % Like GetSecs see below.
     read{end+1}='boxsecs'; % All events measured in absolute box time.
     read{end+1}='getsecs'; % All events measured in absolute GetSecs time.
 
@@ -690,11 +681,11 @@ global rtbox_maxMinwinThreshold;
     s = rtbox_info(id).handle;
 
     % Check for invalid commands:
-    if ~any(strmatch(cmd,[cmds read],'exact')) % if invalid cmd, we won't open device
+    if ~any(strmatch(cmd,[rtbox_global.cmds read],'exact')) % if invalid cmd, we won't open device
         if ~isempty(id)
-            RTboxError('unknownCmd',cmd,cmds,rtbox_info(id).events); % invalid command
+            RTboxError('unknownCmd',cmd,rtbox_global.cmds,rtbox_info(id).events); % invalid command
         else
-            RTboxError('unknownCmd',cmd,cmds,{''}); % invalid command
+            RTboxError('unknownCmd',cmd,rtbox_global.cmds,{''}); % invalid command
         end
     end
 
@@ -752,7 +743,7 @@ global rtbox_maxMinwinThreshold;
             % Timestamp relative to trigger wanted?
             if cmdInd<13
                 ind=[cmdInd<5 (cmdInd<9 && cmdInd>4) cmdInd==9:11];
-                if ~rtbox_info(id).enabled(ind), RTboxError('triggerDisabled',events4enable{ind}); end
+                if ~rtbox_info(id).enabled(ind), RTboxError('triggerDisabled',rtbox_global.events4enable{ind}); end
                 % minbytes=14; % at least 2 events
             end
             
@@ -804,7 +795,7 @@ global rtbox_maxMinwinThreshold;
 
             % Map event id to human readable label string:
             for i=1:nevent % extract each event and time
-                ind=min(find(evid(i)==eventcodes)); %#ok<MXFND> % which event
+                ind=min(find(evid(i)==rtbox_global.eventcodes)); %#ok<MXFND> % which event
                 if isempty(ind)
                     RTboxWarn('invalidEvent',evid(i));
                     break; % not continue, rest must be messed up
@@ -815,7 +806,7 @@ global rtbox_maxMinwinThreshold;
             if isempty(timing), return; end
 
             % Convert boxtiming and/or map it to host clock time:
-            if cmdInd==15
+            if cmdInd==15 | cmdInd==13 %#ok<OR2>
                 % Convert into computer time: MK-Style
 
                 % First return optional "raw" array with boxtimes:
@@ -823,15 +814,6 @@ global rtbox_maxMinwinThreshold;
                 
                 % Then remap to GetSecs host timebase:
                 timing = box2GetSecsTime(id, timing);
-                
-            elseif cmdInd==13 % secs: convert into computer time
-                % Convert into computer time: Xiangrui-Style
-
-                % First return optional "raw" array with boxtimes:
-                varargout{3} = timing;
-
-                % Then remap to GetSecs host timebase via Xiangrui's method:
-                timing = box2SecsTime(id, timing);
                 
             elseif cmdInd<13 % trigger: relative to trigger
                 ind=strmatch(cmd,lower(event),'exact'); % trigger index
@@ -879,16 +861,7 @@ global rtbox_maxMinwinThreshold;
             
             [remapped, sd, clockratio] = box2GetSecsTimePostHoc(id, varargin{3}); 
             varargout = { remapped, sd , clockratio};
-                        
-        case 'box2secs'
-            % Map boxtime to GetSecs time according to Xiangruis method:
-            % (Obsolete, just left for debugging):
-            if nIn<2
-                error('You must provide the boxtime to map!');
-            end
-            
-            varargout{1} = box2SecsTime(id, varargin{3});
-            
+                                    
         case 'getcurrentboxtime'
             % Retrieve current time of box clock.
             
@@ -1004,7 +977,7 @@ global rtbox_maxMinwinThreshold;
 
         case {'enable' 'disable'} % enable/disable event detection
             if nIn<2 % no event, return current state
-                varargout{1}=events4enable(rtbox_info(id).enabled);
+                varargout{1}=rtbox_global.events4enable(rtbox_info(id).enabled);
                 return;
             end
 
@@ -1018,12 +991,12 @@ global rtbox_maxMinwinThreshold;
             isEnable=strcmp(cmd,'enable');
             in2=lower(cellstr(in2));
             for i=1:length(in2)
-                ind=strmatch(in2{i},events4enable,'exact');
-                if isempty(ind), RTboxError('invalidEnable',events4enable); end
+                ind=strmatch(in2{i},rtbox_global.events4enable,'exact');
+                if isempty(ind), RTboxError('invalidEnable',rtbox_global.events4enable); end
                 if ind==6, ind=1:5; end % all
                 rtbox_info(id).enabled(ind)=isEnable; % update state
             end
-            if nargout, varargout{1}=events4enable(rtbox_info(id).enabled); end
+            if nargout, varargout{1}=rtbox_global.events4enable(rtbox_info(id).enabled); end
             if ~any(rtbox_info(id).enabled), RTboxWarn('allDisabled',rtbox_info(id).ID); end
             
             if boxActive
@@ -1037,13 +1010,13 @@ global rtbox_maxMinwinThreshold;
             if nIn<2, in2=60; end;
 
             % Interval between trials
-            interval = 1.5 * rtbox_maxDuration;
+            interval = 1.5 * rtbox_global.maxDuration;
             
             % Number of trials to perform:
             ntrial=max(5,round(in2/interval));
 
             if rtbox_info(id).verbosity > 2
-                fprintf('PsychRTBox: Measuring clock ratio on box %s. Trials remaining:%4.f', rtbox_info(id).ID, ntrial);
+                fprintf('PsychRTBox: Measuring clock ratio on box "%s". Trials remaining:%4.f', rtbox_info(id).ID, ntrial);
             end
             
             % Stop event processing on box, if active:
@@ -1129,7 +1102,7 @@ global rtbox_maxMinwinThreshold;
             b2=dec2bin(b2(1)/16,4);
             b2=sprintf('%s ',b2(4:-1:1));
             fprintf(' Button down: %s\n',b2);
-            fprintf(' Events enabled: %s\n',cell2str(events4enable(find(rtbox_info(id).enabled)>0)));
+            fprintf(' Events enabled: %s\n',cell2str(rtbox_global.events4enable(find(rtbox_info(id).enabled)>0)));
             syncClocks(id); % sync clocks, restore detection
             fprintf(' ComputerClock/BoxClock: %.7f\n',rtbox_info(id).clkRatio);
             fprintf(' GetSecs-BoxSecs: %.4f\n',rtbox_info(id).sync(1));
@@ -1139,7 +1112,7 @@ global rtbox_maxMinwinThreshold;
             fprintf(' BoxSecs of event 1 (t0): %.3f s\n\n',t0);
             fprintf('  Data (7 bytes each)%19s  BoxSecs-t0\n','Events');
             for i=1:nevent  % disp each event and time
-                ind=find(data(1,i)==eventcodes); % which event
+                ind=find(data(1,i)==rtbox_global.eventcodes); % which event
                 if isempty(ind)
                     event=''; t=nan; % no error complain
                 else
@@ -1165,7 +1138,7 @@ global rtbox_maxMinwinThreshold;
                 rtbox_info(id).handle = [];
 
                 % Decrease count of open devices:
-                nrOpen = nrOpen - 1;
+                rtbox_global.nrOpen = rtbox_global.nrOpen - 1;
             end
 
         case 'closeall' % Close all devices
@@ -1182,12 +1155,13 @@ global rtbox_maxMinwinThreshold;
                 end
             end
 
-            nrOpen = 0;       % Reset count of open devices to zero.
-            clear rtbox_info; % clear main device info struct array.
-
+            rtbox_global.nrOpen = 0;       % Reset count of open devices to zero.
+            clear rtbox_info;              % clear main device info struct array.
+            clear rtbox_global;            % clear main global settings struct.
+            
         otherwise
             % Unknown command:
-            RTboxError('unknownCmd',cmd,cmds,rtbox_info(id),events);
+            RTboxError('unknownCmd',cmd,rtbox_global.cmds,rtbox_info(id),events);
             
     end % End of subfunction dispatch.
 
@@ -1197,26 +1171,6 @@ end
 
 % Helper functions:
 % -----------------
-
-% Obsolete method for mapping of box timestamps to GetSecs timestamps from
-% original RTBox driver. MK is not fully convinced that this is correct, so
-% we use the box2GetSecsTime() below and keep this for documentation and
-% benchmarking...
-function timing = box2SecsTime(id, timing)
-    global rtbox_info;
-
-    tdiff=rtbox_info(id).sync(1);
-    if isempty(tdiff) % sync never done?
-        syncClocks(id); tdiff=rtbox_info(id).sync(1);
-    elseif any(timing-rtbox_info(id).sync(2)>5) % sync done too long before?
-        sync=rtbox_info(id).sync; % remember last sync for interpolation
-%        syncClocks(id); % update sync
-        sync(2,:)=rtbox_info(id).sync; % append current sync
-        % get tdiff by linear interpolation for all timing
-        tdiff=interp1(sync(:,2),sync(:,1),timing * rtbox_info(id).clkRatio);
-    end
-    timing=(timing * rtbox_info(id).clkRatio) + tdiff - rtbox_info(id).sync(2); % computer time
-end
 
 % Map box timestamps to host clock (aka GetSecs) timestamps, based on clock
 % sync results from syncClocks, and clock drift correction from clock ratio
@@ -1243,7 +1197,7 @@ end
 % sync results from all syncClocks samples from a session:
 function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
     global rtbox_info;
-    global rtbox_maxMinwinThreshold;
+    global rtbox_global;
 
     % Stop box, if active, drain all queues. Please note that we don't
     % auto-restart the box, because this method is meant to be only called
@@ -1257,7 +1211,7 @@ function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
     % total, as the fitting procedure needs at least 2 samples to work:
     while (size(rtbox_info(id).syncSamples, 1) < 2) || ...
           ((GetSecs - rtbox_info(id).syncSamples(end, 1)) > 30) || ...
-          (rtbox_info(id).syncSamples(end, 3) > rtbox_maxMinwinThreshold)
+          (rtbox_info(id).syncSamples(end, 3) > rtbox_global.maxMinwinThreshold)
 
       % Perform a syncClocks to get a fresh sample to finalize the sampleset:
       syncClocks(id);
@@ -1299,11 +1253,7 @@ end
 % internal clock via a sampling and calibration procedure:
 function syncClocks(id)
     global rtbox_info;
-    global blocking;
-    global rtbox_oldstylesync;
-    global rtbox_maxDuration;
-    global rtbox_optMinwinThreshold;
-    global rtbox_maxMinwinThreshold;
+    global rtbox_global;
     
     % Query level of verbosity to use:
     verbosity = rtbox_info(id).verbosity;
@@ -1336,13 +1286,13 @@ function syncClocks(id)
     t = zeros(3,ntrials);
 
     minwin = inf;
-    tdeadline = GetSecs + rtbox_maxDuration;
+    tdeadline = GetSecs + rtbox_global.maxDuration;
     ic = 0;
     
     % Perform measurement trials until success criterion satisfied:
     % Either a sample with a maximum error 'minwin' less than desired
     % threshold, or maximum allowable calibration time reached:
-    while (minwin > rtbox_optMinwinThreshold) && (GetSecs < tdeadline)
+    while (minwin > rtbox_global.optMinwinThreshold) && (GetSecs < tdeadline)
         % Wait some random fraction of a millisecond. This will desync us
         % from the USB duty cycle and increase the chance of getting a very
         % small time window between scheduling, execution and acknowledge
@@ -1350,9 +1300,9 @@ function syncClocks(id)
         WaitSecs(rand / 1000);
         
         % Take pre-Write timestamp in tpre - Sync command not emitted
-        % before that time. Write sync command, wait 'blocking' for write
+        % before that time. Write sync command, wait 'rtbox_global.blocking' for write
         % completion, store completion time in post-write timestamp tpost:
-        [nw tpost, errmsg, tpre] = IOPort('Write', s, 'Y', blocking);
+        [nw tpost, errmsg, tpre] = IOPort('Write', s, 'Y', rtbox_global.blocking);
         
         % We know that sync command emission has happened at some time
         % after tpre and before tpost. This by design of the USB
@@ -1382,8 +1332,24 @@ function syncClocks(id)
             continue;
         end
         
-        % Decode boxtime into seconds (uncorrected for clock-drift etc.):
-        tbox = bytes2secs(b7(2:7));
+        % Decode boxtime into seconds (uncorrected for clock-drift):
+        %
+        % From the computed raw box clock time in seconds, we subtract
+        % another 0.0002 secs, aka 200 microseconds to compensate for the
+        % average delay between reception of the sync token byte, and the
+        % timestamping on the box. Delay is:
+        % 1. Transmission delay from FTDI chip to Microprocessor over
+        % serial link at 112200 baud with 10 bits (1 start + 8 data + 1
+        % stop): 1000/112200*10 msecs = 0.089 msecs.
+        % 2. Average scanning delay by firmware scanning loop: Interval is
+        % 0.1 msecs, expected delay therefore 0.1/2 = 0.050 msecs.
+        % 3. Time taken for firmware to take a snapshot of current box
+        % clock time: 0.060 msecs.
+        %
+        % == 0.199126559714795 msecs. To account for minimal other delays,
+        % we round up to 0.2 msecs aka 0.0002 secs and subtract this
+        % expected delay:
+        tbox = bytes2secs(b7(2:7)) - 0.0002;
         
         % Compute confidence interval for this sample:
         % For each measurement, the time window tpost - tpre defines a
@@ -1393,7 +1359,7 @@ function syncClocks(id)
         
         % If the confidencewindow is greater than the maximum acceptable
         % window, then we reject this sample, else we accept it:
-        if confidencewindow <= rtbox_maxMinwinThreshold
+        if confidencewindow <= rtbox_global.maxMinwinThreshold
             % Within acceptable range. Accept this sample and check if it
             % is the best wrt. to window size so far:
             if confidencewindow < minwin
@@ -1433,12 +1399,12 @@ function syncClocks(id)
     end
     
     % At least one sample with acceptable precision acquired?
-    if (minwin > rtbox_maxMinwinThreshold) | (ic < 1) %#ok<OR2>
+    if (minwin > rtbox_global.maxMinwinThreshold) | (ic < 1) %#ok<OR2>
         % No, not even a single one! Set all results to "invalid"
         rtbox_info(id).sync=[inf, inf, inf];
         
         if verbosity > 1
-            fprintf('PsychRTBox: Warning: On Box "%s", Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_maxMinwinThreshold);
+            fprintf('PsychRTBox: Warning: On Box "%s", Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_global.maxMinwinThreshold);
             fprintf('PsychRTBox: Warning: Likely your system is massively overloaded or misconfigured!\n');
             fprintf('PsychRTBox: Warning: See the help for PsychRTBox(''SyncConstraints'') on how to relax the constraints if you wish to do so.\n');
         end
@@ -1468,7 +1434,7 @@ function syncClocks(id)
     % userconfiguration) is method 0 -- New style with prewrite timestamps.
     % This because this method empirically seems to give best results on
     % low or medium load on our test set of machines and operating systems.
-    switch rtbox_oldstylesync
+    switch rtbox_global.syncmode
         case 2
             % Old style method 2 - Middle of minwin confidence window:
             
@@ -1553,7 +1519,7 @@ function syncClocks(id)
             % return 'minwin' as an upper bound on the calibration error. As
             % 'minwin' was used as a threshold in the sample loop for outlier
             % rejection, we can be certain that our estimate carries no greater
-            % error than 'rtbox_maxMinwinThreshold'.
+            % error than 'rtbox_global.maxMinwinThreshold'.
 
             % Extract all relevant values for the final sample:
 
@@ -1636,7 +1602,7 @@ function syncClocks(id)
             % return 'minwin' as an upper bound on the calibration error. As
             % 'minwin' was used as a threshold in the sample loop for outlier
             % rejection, we can be certain that our estimate carries no greater
-            % error than 'rtbox_maxMinwinThreshold'.
+            % error than 'rtbox_global.maxMinwinThreshold'.
 
             % Extract all relevant values for the final sample:
 
@@ -1655,8 +1621,8 @@ function syncClocks(id)
     minwin = t(2,idx) - t(1,idx);
 
     if verbosity > 3
-        fprintf('PsychRTBox: ClockSync(%i): Box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', rtbox_oldstylesync, rtbox_info(id).ID, ic, 1000 * rtbox_maxMinwinThreshold, 1000 * minwin);
-        if rtbox_oldstylesync == 1
+        fprintf('PsychRTBox: ClockSync(%i): Box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', rtbox_global.syncmode, rtbox_info(id).ID, ic, 1000 * rtbox_global.maxMinwinThreshold, 1000 * minwin);
+        if rtbox_global.syncmode == 1
             fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
         else
             fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(1,:) - t(3,:)));
@@ -1823,7 +1789,7 @@ end
 % Start event scanning, detection and reporting on box:
 function startBox(handle, WaitForStart)
     global rtbox_info;
-    global enableCode;
+    global rtbox_global;
     
     % Box scanning?
     if rtbox_info(handle).boxScanning
@@ -1855,7 +1821,7 @@ function startBox(handle, WaitForStart)
     %
     % enableEvent() will enable the user defined events non-blocking, ie.
     % without waiting for acknowledge from the box:
-    enableEvent(handle, enableCode(find(customEnable>0)) ); %#ok<FNDSB>
+    enableEvent(handle, rtbox_global.enableCode(find(customEnable>0)) ); %#ok<FNDSB>
     
     % Box event scanning and reporting is active:
     rtbox_info(handle).boxScanning = 1;
@@ -1996,7 +1962,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
         % Something received. Update interevent timeout:
         tInterTimeout = tcurrent + interEventDelay;
 
-        % eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
+        % rtbox_global.eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % Dispatch depending on type of received data:
         
@@ -2271,7 +2237,7 @@ end
 % unit of the device clock, i.e., the device clock increments with a
 % granularity of 1/115200 of a second:
 function secs=bytes2secs(b6)
-    secs=256.^(5:-1:0)*b6(:)/115200;
+    secs = (256.^(5:-1:0)*b6(:)/115200);
 end
 
 % Open first available (not yet opened) RT-Box if no specific 'deviceID' is
@@ -2279,7 +2245,8 @@ end
 % opened box in slot 'handle' of the rtbox_info struct array:
 function openRTBox(deviceID, handle)
     global rtbox_info;
-
+    global rtbox_global; %#ok<NUSED>
+    
     % Setup possible port probe list for different operating systems:
     if IsWin
         if ~isempty(strfind(deviceID, 'COM'))
@@ -2489,7 +2456,7 @@ end
 % put verbose error message here, to make main code cleaner
 function RTboxError(err,varargin)
     global rtbox_info;
-    global nrOpen;
+    global rtbox_global;
 
     switch err
         case 'noUSBserial'
@@ -2510,7 +2477,7 @@ function RTboxError(err,varargin)
             end
 
             % Have opened RTbox?
-            if nrOpen > 0
+            if rtbox_global.nrOpen > 0
                 str=sprintf('%s\nAlready opened RTBox device(s): ', str);
                 for i=1:length(rtbox_info)
                     str=sprintf('%s %s at %s,\n',str, char(rtbox_info(i).ID), char(rtbox_info(i).portname));
