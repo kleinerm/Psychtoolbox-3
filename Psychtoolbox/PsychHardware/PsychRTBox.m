@@ -28,7 +28,7 @@ function varargout = PsychRTBox(varargin)
 % The following subcommands are currently suppported:
 %
 %
-% handle = PsychRTBox('Open' [, deviceID]);
+% handle = PsychRTBox('Open' [, deviceID] [, skipSync=0]);
 % -- Try to open a connected RTBox, return a device handle 'handle' to it
 % on success. The handle can be used in all further subcommands to refer to
 % the box. By default, all USB ports (or rather USB-Serial ports) are scanned
@@ -44,7 +44,11 @@ function varargout = PsychRTBox(varargin)
 % specify that parameter as [] or omit it and the driver will use the only
 % open box connected.
 %
-% After opening the box, you usually will want to invoke this method:
+% The optional parameter 'skipSync', if set to 1, will prevent the open
+% routine from performing an initial clock synchronization. By default, it
+% will perform an initial clock synchronization.
+%
+% After opening the box, you may want to invoke this method:
 %
 %
 % clockRatio = PsychRTBox('ClockRatio' [, handle] [, durationSecs]);
@@ -126,8 +130,10 @@ function varargout = PsychRTBox(varargin)
 % a call to PsychRTBox('SyncConstraints').
 %
 %
-% PsychRTBox('SyncConstraints'[, maxDurationSecs][, goodEnoughSecs][, requiredSecs]);
+% [oldmaxDurationSecs, oldgoodEnoughSecs, oldrequiredSecs, oldsyncMethod] = PsychRTBox('SyncConstraints'[, maxDurationSecs][, goodEnoughSecs][, requiredSecs][, syncMethod]);
 % -- Change the constraints to apply during calls to PsychRTBox('SyncClocks');
+% Optionally return old settings.
+%
 % 'maxDurationSecs' limits any call to 'SyncClocks' to a duration of at
 % most the given number of seconds. Calibration aborts after at most that
 % time, even if unsuccessfull - in that case with an error message. By
@@ -141,8 +147,13 @@ function varargout = PsychRTBox(varargin)
 % required precision can be acquired within 'maxDurationSecs', the call
 % will fail with an error, indicating that your system setup doesn't
 % provide the required timing precision for your demands. By default, the
-% minimum required precision is 0.002 seconds, ie., it will tolerate an
-% error of at most 2 msecs.
+% minimum required precision is 0.0013 seconds, ie., it will tolerate an
+% error of at most 1.3 msecs.
+% 'syncMethod' - Select the synchronization method to use. By default,
+% method 0 (prewrite sync) is used, but there is also method 1 (postwrite
+% sync), or method 2 (average) to choose from. If you want to know the
+% difference between the methods, please consult the source code of this
+% file and read the code for the subroutine 'function syncClocks'.
 %
 %
 % oldverbose = PsychRTBox('Verbosity' [, handle], verbosity);
@@ -203,13 +214,19 @@ function varargout = PsychRTBox(varargin)
 % information about events. For this you use these commands:
 %
 %
-% PsychRTBox('Start' [, handle]);
+% PsychRTBox('Start' [, handle] [, dontwaitforstart=0]);
 % -- Start event detection and reporting by the box. The box will start
 % detecting button and trigger events from here on and record them in the
 % event buffer.
 % 
 % You will usually call this at the beginning of a response period. By
 % default, the box has reporting already enabled after 'Open'ing it.
+%
+% The optional 'dontwaitforstart' parameter, if set to 1, will ask the
+% 'Start' function to return control as soon as possible, ie., without
+% waiting for confirmation of the box that event reporting has actually
+% started. By default, the routine waits for an acknowledgement from the
+% box, which can take 16 - 30 msecs in some cases.
 %
 %
 % PsychRTBox('Stop' [, handle]);
@@ -305,7 +322,7 @@ function varargout = PsychRTBox(varargin)
 % around, you can map them later to GetSecs time with very high precision
 % at the end of your experiment session via:
 %
-% [GetSecs, Stddev] = PsychRTBox('MapBoxSecsToGetSecsPostHoc' [, handle], boxTimes);
+% [GetSecs, Stddev] = PsychRTBox('BoxsecsToGetsecs' [, handle], boxTimes);
 % -- Perform a post-hoc mapping of a vector of raw box timestamps
 % 'boxTimes' into a vector of host clock 'GetSecs' timestamps. Return some
 % error measure in 'Stddev' as well, if available.
@@ -334,11 +351,35 @@ function varargout = PsychRTBox(varargin)
 % etc. etc.
 %
 %
-% PsychRTBox('Trigger' [, handle]);
+% sendTime = PsychRTBox('SerialTrigger' [, handle]);
 % -- Send a software generated trigger to the box via the serial port
 % connection. This will register as a event of type 'serial' and you can
 % retrieve timestamps relative to the first trigger within a response
 % period via the PsychRTBox('serial', ...); command.
+%
+%
+% sendTime = PsychRTBox('EngageLightTrigger [, handle]);
+% -- Engage light trigger input on the box for reception of a light trigger
+% signal. This function will return immediately after submitting the
+% request to the box. It may take up to 5 msecs worst-case until the
+% trigger input is really enabled. If you want to wait for the trigger to
+% be really enabled, call PsychRTBox('Enable', handle, 'lighton'); instead,
+% as this function will wait until the trigger is really active.
+%
+% Light trigger events are special: If a light pulse has been received, the
+% box auto-disables the light trigger input, preventing reception of any
+% further light events, until the trigger gets reenabled. The trigger gets
+% reenabled on many occasions if it has been enabled once via the
+% PsychRTBox('Enable', ...); command, e.g., at each call to
+% PsychRTBox('Start'); or PsychRTBox('Clear'). If you want to enable the
+% trigger on-the-fly, then this function is your friend.
+%
+% The reason why light trigger auto-disables itself is because a typical
+% CRT display monitor would generate such trigger signals at the rate of
+% video refresh, once your stimulus is displayed, e.g., at a rate of 100
+% Hz. Usually you only want to know one defined timestamp of initial
+% stimulus onset, therefore the box prevents reception of all but the
+% first light trigger.
 %
 %
 % oldNames = PsychRTBox('ButtonNames' [, handle] [, newNames]);
@@ -459,15 +500,15 @@ global rtbox_maxMinwinThreshold;
         % made there override the settings made here!!!
         rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
                               'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
-                              'busyUntil', 0, 'boxScanning', 0, 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
+                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
 
         % Setup event codes:
         eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % List of supported subcommands:
         cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'mapboxsecstogetsecsposthoc', 'trigger' ...
-              'debounceinterval' };
+              'box2getsecs' 'box2secs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger' ...
+              'debounceinterval', 'engagelighttrigger' };
           
         % Names of events that can be enabled/disabled for reporting:
         events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
@@ -497,7 +538,7 @@ global rtbox_maxMinwinThreshold;
         % Default settings for the syncClocks() function:
         % -----------------------------------------------
         
-        % Use new style syncClocks() method by default:
+        % Use new style syncClocks() method with prewrite timestamp by default:
         rtbox_oldstylesync = 0;
 
         % Maximum duration of a syncClocks calibration run is 0.5 seconds:
@@ -509,10 +550,10 @@ global rtbox_maxMinwinThreshold;
         rtbox_optMinwinThreshold = 0.0;
 
         % Maximum allowable (ie. worst) acceptable minwin for a sample:
-        % On OS/X or Linux we could easily do with 2 msecs, as a 1.2 msecs
-        % minwin is basically never exceeded. On MS-Windows however, 2.x
-        % durations happen occassionally...
-        rtbox_maxMinwinThreshold = 0.002;
+        % We default to 1.3 msecs, as a 1.2 msecs minwin is basically never
+        % exceeded. It is unlikely that all samples within a syncClocks run
+        % are worse than 1.3 msecs and the run would therefore fail.
+        rtbox_maxMinwinThreshold = 0.0013;
         
         % Worst case delay after a command has been received by the box,
         % before it gets actually dequeued from the microprocessors serial
@@ -546,6 +587,16 @@ global rtbox_maxMinwinThreshold;
             deviceID = 'Default';
         end
 
+        if nargin < 3
+            skipSync = [];
+        else
+            skipSync = varargin{3};
+        end
+        
+        if isempty(skipSync)
+            skipSync = 0;
+        end
+        
         % Open and initialize box:
         openRTBox(deviceID, nrOpen+1);
 
@@ -555,15 +606,17 @@ global rtbox_maxMinwinThreshold;
         % Return as handle:
         varargout{1} = nrOpen;
 
-        % Perform initial mandatory clock sync:
-        syncClocks(nrOpen);
-
+        if ~skipSync
+            % Perform initial mandatory clock sync:
+            syncClocks(nrOpen);
+        end
+        
         % Perform initial button state query:
         buttonQuery(nrOpen);
         
         % Start event scanning on box, with the above default enabled setting,
         % i.e., only button press 'D' reporting active:
-        startBox(nrOpen);
+        startBox(nrOpen, 1);
         
         return;
     end
@@ -573,6 +626,7 @@ global rtbox_maxMinwinThreshold;
         varargout{1} = rtbox_maxDuration;
         varargout{2} = rtbox_optMinwinThreshold;
         varargout{3} = rtbox_maxMinwinThreshold;
+        varargout{4} = rtbox_oldstylesync;
         
         % Set constraints for syncClocks:
         if nargin > 1 && ~isempty(varargin{2})
@@ -587,6 +641,10 @@ global rtbox_maxMinwinThreshold;
             rtbox_maxMinwinThreshold = varargin{4};
         end
         
+        if nargin > 4 && ~isempty(varargin{5})
+            rtbox_oldstylesync = varargin{5};
+        end
+
         return;
     end
     
@@ -653,8 +711,13 @@ global rtbox_maxMinwinThreshold;
             % Assign new level of verbosity to device:
             rtbox_info(id).verbosity = in2;
             
-        case 'trigger' % send serial trigger to device
+        case 'serialtrigger' % send serial trigger to device
             tWritten = sendTrigger(id);
+            if nargout, varargout{1}=tWritten; end
+            
+        case 'engagelighttrigger'
+            % Enable light on trigger quickly.
+            tWritten = engageLightTrigger(id);
             if nargout, varargout{1}=tWritten; end
             
         case 'debounceinterval'            
@@ -676,6 +739,9 @@ global rtbox_maxMinwinThreshold;
                 end
                 rtbox_info(id).buttons(3, :) = in2;                
             end
+            
+            % Reset debouncer:
+            rtbox_info(id).buttons(2, :) = [0, 0, 0, 0];
             
         % Retrieve all pending events from the box, aka the serial port
         % receive buffers, parse them, filter/postprocess them, optionally
@@ -797,7 +863,7 @@ global rtbox_maxMinwinThreshold;
             
             varargout{1} = box2GetSecsTime(id, varargin{3});
             
-        case 'mapboxsecstogetsecsposthoc'
+        case 'boxsecstogetsecs'
             % Map boxtime to GetSecs time post-hoc style:
             % We compute an optimal least-squares fit linear mapping
             % function of boxtime to hosttime, using all collected
@@ -841,7 +907,17 @@ global rtbox_maxMinwinThreshold;
             
         case 'start'
             % (Re-)Start event processing and reporting on box:
-            startBox(id);
+
+            if nIn >= 2 && ~isempty(varargin{3}) && varargin{3}
+                % Asynchronous start, i.e. don't wait for acknowledge but
+                % return asap:
+                waitForStart = 0;
+            else
+                % Wait for acknowledge of start:
+                waitForStart = 1;
+            end
+            
+            startBox(id, waitForStart);
             
         case 'clear'
             % Clear all pending events on box, optionally perform clocksync:
@@ -874,7 +950,7 @@ global rtbox_maxMinwinThreshold;
             % Restart box? We restart if it was running before and usercode
             % doesn't forbid a restart:
             if boxActive && (nIn < 3 || isempty(varargin{4}) || varargin{4} == 0)
-                startBox(id);
+                startBox(id, 1);
             end
             
         case 'syncclocks'
@@ -896,7 +972,7 @@ global rtbox_maxMinwinThreshold;
 
             if boxActive
                 % Restart box if it was running:
-                startBox(id);
+                startBox(id, 1);
             end
             
         case 'buttondown'
@@ -952,7 +1028,7 @@ global rtbox_maxMinwinThreshold;
             
             if boxActive
                 % Restart box if it was running:
-                startBox(id);
+                startBox(id, 1);
             end
             
         case 'clockratio' % measure clock ratio computer/box
@@ -1008,7 +1084,7 @@ global rtbox_maxMinwinThreshold;
             
             % Restart scanning on box if it was active before:
             if boxActive
-                startBox(id);
+                startBox(id, 1);
             end
             
             % Octave and older versions of Matlab don't have 'robustfit',
@@ -1277,8 +1353,6 @@ function syncClocks(id)
         % before that time. Write sync command, wait 'blocking' for write
         % completion, store completion time in post-write timestamp tpost:
         [nw tpost, errmsg, tpre] = IOPort('Write', s, 'Y', blocking);
-
-        % tel = 1000 * (tpre - t0)
         
         % We know that sync command emission has happened at some time
         % after tpre and before tpost. This by design of the USB
@@ -1355,7 +1429,7 @@ function syncClocks(id)
     % Is box scanning supposed to be active?
     if boxActive
         % Restore event reporting:
-        startBox(id);
+        startBox(id, 1);
     end
     
     % At least one sample with acceptable precision acquired?
@@ -1366,6 +1440,7 @@ function syncClocks(id)
         if verbosity > 1
             fprintf('PsychRTBox: Warning: On Box "%s", Clock sync failed due to confidence interval of best sample %f secs > allowable maximum %f secs.\n', rtbox_info(id).ID, minwin, rtbox_maxMinwinThreshold);
             fprintf('PsychRTBox: Warning: Likely your system is massively overloaded or misconfigured!\n');
+            fprintf('PsychRTBox: Warning: See the help for PsychRTBox(''SyncConstraints'') on how to relax the constraints if you wish to do so.\n');
         end
         
         % Warn user:
@@ -1379,105 +1454,197 @@ function syncClocks(id)
     % user specified constraints. Prune result array to valid samples 1 to ic:
     t = t(:, 1:ic);
 
-    % We have two different methods for final sample selection. Each has
+    % We have three different methods for final sample selection. Each has
     % its favorable cases, but none of them is better by a large margin.
-    % Both can't guarantee accurate results on highly overloaded systems,
+    % All can't guarantee accurate results on highly overloaded systems,
     % but only provide the best under given circumstances.
     %
-    % Under low-load conditions, the new style method may be slightly more
+    % Under low-load conditions, the new style methods may be slightly more
     % accurate under some conditions, but the difference is usually in the
     % sub-millisecond range, so either choice is ok. The options are mostly
     % here for benchmarking and stress testing of the driver...
-    if rtbox_oldstylesync
-        % Old style method:
-        
-        % Select sample with smallest confidence interval [tpre; tpost]:
-        [mintdiff, idx] = min(t(2,:) - t(1,:));
+    %
+    % The default method (unless overriden by usercode or
+    % userconfiguration) is method 0 -- New style with prewrite timestamps.
+    % This because this method empirically seems to give best results on
+    % low or medium load on our test set of machines and operating systems.
+    switch rtbox_oldstylesync
+        case 2
+            % Old style method 2 - Middle of minwin confidence window:
+            
+            % Select sample with smallest confidence interval [tpre; tpost]:
+            [mintdiff, idx] = min(t(2,:) - t(1,:));
 
-        % Host time corresponds to midpoint of the confidence interval,
-        % assuming a uniform distribution of likelyhood of the true write
-        % time in the interval [tpre ; tpost]:
-        hosttime = (t(1,idx) + t(2,idx)) / 2;
-    else
-        % New style method:
-        
-        % Choose the most accurate sample from the set of candidates. This is
-        % the sample with the smallest difference between the postwrite
-        % timestamp and the associated box timestamp, ie., with the smallest
-        % offset between postwrite host clock time and box clock time at
-        % receive of sync command. The reasoning behind this goes like this:
-        %
-        % 1) The time offset between host clock and box clock is a constant -
-        % at least within a significant multi-second time interval between
-        % successive syncClocks calls (due to only small clock drift), but
-        % certainly within a syncClocks run of a few hundred milliseconds
-        % (error due to clock drift in this interval is negligible).
-        %
-        % 2) Computed box clock time t(3,:) is "close to perfect", as this
-        % timestamp is taken by box microprocessor and firmware with a very
-        % small and basically constant delay after sync token receive, ie.,
-        % write completion. (Maximum theoretical error is smaller than 0.1 msecs).
-        %
-        % 3) The correct and optimal clock offset between host and box would be
-        % tdiff = tsend - t(3,:) iff tsend would be host time at true write
-        % completion.
-        %
-        % 4) The measured host time at write completion t(2,:) is always later
-        % (and therefore numerically greater) than the true host time tsend at
-        % write completion due to an unknown, random, greater than zero delay
-        % tdelta, i.e., t(2,:) = tsend + tdelta, tdelta > 0. tdelta is the sum
-        % of:
-        %
-        % a) The unknown delay of up to 1 msec between USB write-URB completion
-        % by the USB host controller (which would be the real completion time
-        % tsend) and detection of completion due to USB IOC (Interrupt-On-
-        % Completion) due to invocation of the host controllers hardware
-        % interrupt handler and host controller schedule scan and URB
-        % retirement inside the interrupt handler.
-        %
-        % b) Random (and theoretically unbounded) scheduling delay / execution
-        % delay between status update of the serial port data structures by the
-        % interrupt handler and detection of write completion + timestamping by
-        % the IOPort driver in polling mode, or scheduling delay between
-        % wakeup-operation caused by the interrupt handler and start of
-        % execution of the timestamping in the IOPort driver in blocking mode.
-        %
-        % The syncClocks error is therefore directly proportional to the size
-        % of tdelta. Therefore:
-        %
-        % tdiff(:) = t(2,:) - t(3,:) by definition of clock offset host vs. box.
-        % t(2,:) = tsend(:) + tdelta(:) by unknown scheduling/execution noise tdelta.
-        %
-        % It follows that by above definitions:
-        %
-        % tdiff(:) = tsend(:) - t(3,:) + tdelta(:);
-        %
-        % --> As we defined tsend(:) to be the unknown, but perfect and
-        % noise-free, true send timestamp, and t(3,:) to be the perfect receive
-        % timestamp by the box, it follows that by selecting the sample 'idx'
-        % with the minimal tdiff(idx) from the set tdiff(:), we will select the
-        % sample with the unknown, but minimal tdelta(idx). As tdelta accounts
-        % for all the remaining calibration error, minimizing tdelta will
-        % maximize the accuracy of the clock sync.
-        %
-        % ==> Select sample with minimum t(2,:) - t(3,:) as final best result:
-        [mintdiff, idx] = min(t(2,:) - t(3,:));
+            % Host time corresponds to midpoint of the confidence interval,
+            % assuming a uniform distribution of likelyhood of the true write
+            % time in the interval [tpre ; tpost]:
+            hosttime = (t(1,idx) + t(2,idx)) / 2;
+            
+        case 1
+            % New style method 1 - Postwrite timestamps:
 
-        % mintdiff is our best estimate of clock offset host vs. box, and
-        % t(:,idx) is the associated best sample. Unfortunately there isn't any
-        % way to compute the exact residual calibration error tdelta(idx). The
-        % only thing we know is that the error is bounded by the length of the
-        % associated 'minwin' confidence interval of this sample, so we will
-        % return 'minwin' as an upper bound on the calibration error. As
-        % 'minwin' was used as a threshold in the sample loop for outlier
-        % rejection, we can be certain that our estimate carries no greater
-        % error than 'rtbox_maxMinwinThreshold'.
+            % Choose the most accurate sample from the set of candidates. This is
+            % the sample with the smallest difference between the postwrite
+            % timestamp and the associated box timestamp, ie., with the smallest
+            % offset between postwrite host clock time and box clock time at
+            % receive of sync command. The reasoning behind this goes like this:
+            %
+            % 1) The time offset between host clock and box clock is a constant -
+            % at least within a significant multi-second time interval between
+            % successive syncClocks calls (due to only small clock drift), but
+            % certainly within a syncClocks run of a few hundred milliseconds
+            % (error due to clock drift in this interval is negligible).
+            %
+            % 2) Computed box clock time t(3,:) is "close to perfect", as this
+            % timestamp is taken by box microprocessor and firmware with a very
+            % small and basically constant delay after sync token receive, ie.,
+            % write completion. (Maximum theoretical error is smaller than 0.1 msecs).
+            %
+            % 3) The correct and optimal clock offset between host and box would be
+            % tdiff = tsend - t(3,:) iff tsend would be host time at true write
+            % completion.
+            %
+            % 4) The measured host time at write completion t(2,:) is always later
+            % (and therefore numerically greater) than the true host time tsend at
+            % write completion due to an unknown, random, greater than zero delay
+            % tdelta, i.e., t(2,:) = tsend + tdelta, tdelta > 0. tdelta is the sum
+            % of:
+            %
+            % a) The unknown delay of up to 1 msec between USB write-URB completion
+            % by the USB host controller (which would be the real completion time
+            % tsend) and detection of completion due to USB IOC (Interrupt-On-
+            % Completion) due to invocation of the host controllers hardware
+            % interrupt handler and host controller schedule scan and URB
+            % retirement inside the interrupt handler.
+            %
+            % b) Random (and theoretically unbounded) scheduling delay / execution
+            % delay between status update of the serial port data structures by the
+            % interrupt handler and detection of write completion + timestamping by
+            % the IOPort driver in polling mode, or scheduling delay between
+            % wakeup-operation caused by the interrupt handler and start of
+            % execution of the timestamping in the IOPort driver in blocking mode.
+            %
+            % The syncClocks error is therefore directly proportional to the size
+            % of tdelta. Therefore:
+            %
+            % tdiff(:) = t(2,:) - t(3,:) by definition of clock offset host vs. box.
+            % t(2,:) = tsend(:) + tdelta(:) by unknown scheduling/execution noise tdelta.
+            %
+            % It follows that by above definitions:
+            %
+            % tdiff(:) = tsend(:) - t(3,:) + tdelta(:);
+            %
+            % --> As we defined tsend(:) to be the unknown, but perfect and
+            % noise-free, true send timestamp, and t(3,:) to be the perfect receive
+            % timestamp by the box, it follows that by selecting the sample 'idx'
+            % with the minimal tdiff(idx) from the set tdiff(:), we will select the
+            % sample with the unknown, but minimal tdelta(idx). As tdelta accounts
+            % for all the remaining calibration error, minimizing tdelta will
+            % maximize the accuracy of the clock sync.
+            %
+            % ==> Select sample with minimum t(2,:) - t(3,:) as final best result:
+            [mintdiff, idx] = min(t(2,:) - t(3,:));
 
-        % Extract all relevant values for the final sample:
+            % mintdiff is our best estimate of clock offset host vs. box, and
+            % t(:,idx) is the associated best sample. Unfortunately there isn't any
+            % way to compute the exact residual calibration error tdelta(idx). The
+            % only thing we know is that the error is bounded by the length of the
+            % associated 'minwin' confidence interval of this sample, so we will
+            % return 'minwin' as an upper bound on the calibration error. As
+            % 'minwin' was used as a threshold in the sample loop for outlier
+            % rejection, we can be certain that our estimate carries no greater
+            % error than 'rtbox_maxMinwinThreshold'.
 
-        % Host time corresponds to tpost write timestamp, which should be as
-        % close as possible to real host send timestamp:
-        hosttime = t(2,idx);
+            % Extract all relevant values for the final sample:
+
+            % Host time corresponds to tpost write timestamp, which should be as
+            % close as possible to real host send timestamp:
+            hosttime = t(2,idx);
+
+        case 0
+            % New style method 0 - Prewrite timestamps:
+
+            % Choose the most accurate sample from the set of candidates.
+            % This is the sample with the biggest difference between the
+            % prewrite timestamp and the associated box timestamp, ie.,
+            % with the biggest offset between prewrite host clock time and
+            % box clock time at receive of sync command. The reasoning
+            % behind this goes like this:
+            %
+            % 1) The time offset between host clock and box clock is a constant -
+            % at least within a significant multi-second time interval between
+            % successive syncClocks calls (due to only small clock drift), but
+            % certainly within a syncClocks run of a few hundred milliseconds
+            % (error due to clock drift in this interval is negligible).
+            %
+            % 2) Computed box clock time t(3,:) is "close to perfect", as this
+            % timestamp is taken by box microprocessor and firmware with a very
+            % small and basically constant delay after sync token receive, ie.,
+            % write completion. (Maximum theoretical error is smaller than 0.1 msecs).
+            %
+            % 3) The correct and optimal clock offset between host and box would be
+            % tdiff = tsend - t(3,:) where tsend would be unknown host time
+            % at true write completion.
+            %
+            % 4) The measured host time before write submission t(1,:) is
+            % always earlier
+            % (and therefore numerically smaller) than the true host time tsend at
+            % write completion due to an unknown, random, greater than zero delay
+            % tdelta, i.e., t(1,:) = tsend - tdelta, tdelta > 0. tdelta is the sum
+            % of:
+            %
+            % a) The unknown delay of up to 1 msec between USB write-URB completion
+            % by the USB host controller (which would be the real completion time
+            % tsend) and detection of completion due to USB IOC (Interrupt-On-
+            % Completion) due to invocation of the host controllers hardware
+            % interrupt handler and host controller schedule scan and URB
+            % retirement inside the interrupt handler.
+            %
+            % b) Random (and theoretically unbounded) scheduling delay / execution
+            % delay between status update of the serial port data structures by the
+            % interrupt handler and detection of write completion + timestamping by
+            % the IOPort driver in polling mode, or scheduling delay between
+            % wakeup-operation caused by the interrupt handler and start of
+            % execution of the timestamping in the IOPort driver in blocking mode.
+            %
+            % The syncClocks error is therefore directly proportional to the size
+            % of tdelta. Therefore:
+            %
+            % tdiff(:) = t(1,:) - t(3,:) by definition of clock offset host vs. box.
+            % t(1,:) = tsend(:) - tdelta(:) by unknown execution noise tdelta.
+            %
+            % It follows that by above definitions:
+            %
+            % tdiff(:) = tsend(:) - t(3,:) - tdelta(:);
+            %
+            % --> As we defined tsend(:) to be the unknown, but perfect and
+            % noise-free, true send timestamp, and t(3,:) to be the perfect receive
+            % timestamp by the box, it follows that by selecting the sample 'idx'
+            % with the maximal tdiff(idx) from the set tdiff(:), we will select the
+            % sample with the unknown, but minimal tdelta(idx). As tdelta accounts
+            % for all the remaining calibration error, minimizing tdelta will
+            % maximize the accuracy of the clock sync.
+            %
+            % ==> Select sample with maximum t(1,:) - t(3,:) as final best result:
+            [maxtdiff, idx] = max(t(1,:) - t(3,:));
+
+            % maxtdiff is our best estimate of clock offset host vs. box, and
+            % t(:,idx) is the associated best sample. Unfortunately there isn't any
+            % way to compute the exact residual calibration error tdelta(idx). The
+            % only thing we know is that the error is bounded by the length of the
+            % associated 'minwin' confidence interval of this sample, so we will
+            % return 'minwin' as an upper bound on the calibration error. As
+            % 'minwin' was used as a threshold in the sample loop for outlier
+            % rejection, we can be certain that our estimate carries no greater
+            % error than 'rtbox_maxMinwinThreshold'.
+
+            % Extract all relevant values for the final sample:
+
+            % Host time corresponds to tpre write timestamp, which should be as
+            % close as possible to real host send timestamp:
+            hosttime = t(1,idx);
+        otherwise
+            error('PsychRTBox: syncClocks: Unknown timestamping method provided. This is a driverbug!!');
     end
     
     % Box timers time taken "as is":
@@ -1489,7 +1656,11 @@ function syncClocks(id)
 
     if verbosity > 3
         fprintf('PsychRTBox: ClockSync(%i): Box "%s": Got %i valid samples, maxconfidence interval = %f msecs, winner interval %f msecs.\n', rtbox_oldstylesync, rtbox_info(id).ID, ic, 1000 * rtbox_maxMinwinThreshold, 1000 * minwin);
-        fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
+        if rtbox_oldstylesync == 1
+            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(2,:) - t(3,:)));
+        else
+            fprintf('PsychRTBox: Confidence windows in interval [%f - %f] msecs. Range of clock offset variation: %f msecs.\n', 1000 * min(t(2,:)-t(1,:)), 1000 * max(t(2,:)-t(1,:)), 1000 * range(t(1,:) - t(3,:)));
+        end
     end
     
     % Assign (host,box,confidence) sample to sync struct:
@@ -1516,36 +1687,33 @@ end
 % procedure.
 function enableEvent(handle, str)
     global rtbox_info;
+    global rtbox_global;
 
     if rtbox_info(handle).boxScanning
-        warning('PsychRTBox: enableEvent() called while box is scanning! Driverbug?'); %#ok<WNTAG>
+        error('PsychRTBox: enableEvent() called while box is scanning! Driverbug?'); %#ok<WNTAG>
     end
     
     s = rtbox_info(handle).handle;
-    
-    % Wait until we can be sure that the box is ready to receive new
-    % commands. The deadline is computed so that in the worst conceivable
-    % case the box will be ready to receive at least 1 new command byte:
-    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
-        
+            
     for ie=1:length(str)
-        % Try 4 times in case of failure:
-        for ir=1:4
-            % Send control character for event enable/disable:
-            IOPort('Write', s, str(ie));
+        % Wait until we can be sure that the box is ready to receive new
+        % commands. The deadline is computed so that in the worst conceivable
+        % case the box will be ready to receive at least 1 new command byte:
+        WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+        
+        % Send control character for event enable/disable:
+        [nw, tpost] = IOPort('Write', s, str(ie));
 
-            % Wait blocking for acknowledge from box:
-            if IOPort('Read', s, 1, 1) ==str(ie)
-                % Acknowledged:
-                break;
-            else
-                warning('PsychRTBox: enableEvent() Acknowledge failed! Retry...'); %#ok<WNTAG>
-            end
+        % Command submission completed at time 'tpost'. Set a new busyUntil
+        % time. After that time, the box should have stopped at the latest:
+        rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
 
-            if ir==4, RTboxError('notRespond'); end
-        end
+        % Store this command code as one of the codes to be waited for
+        % in parseQueue:
+        rtbox_info(handle).ackTokens(end+1) = str(ie);
     end
-    
+
+    % All enable tokens submitted.
     return;
 end
 
@@ -1565,6 +1733,30 @@ function tpost = sendTrigger(handle)
     % Box ready to receive our "disable all event reporting" command code
     % 'a'. Send it blocking:
     [nw, tpost] = IOPort('Write', s, 'Y');
+    
+    % Command submission completed at time 'tpost'. Set a new busyUntil
+    % time. After that time, the box should have stopped at the latest:
+    rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
+
+    return;
+end
+
+% Send a "enable optical trigger" command to box:
+function tpost = engageLightTrigger(handle)
+    global rtbox_info;
+    global rtbox_global;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Wait until we can be sure that the box is ready to receive new
+    % commands. The deadline is computed so that in the worst conceivable
+    % case the box will be ready to receive at least 1 new command byte:
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+    
+    % Box ready to receive our enable light trigger command code
+    % 'O'. Send it blocking:
+    [nw, tpost] = IOPort('Write', s, 'O');
     
     % Command submission completed at time 'tpost'. Set a new busyUntil
     % time. After that time, the box should have stopped at the latest:
@@ -1599,12 +1791,13 @@ function bState = buttonQuery(handle)
             % Yes. We can't perform a synchronous query with box in
             % scanning mode. Need to stopBox():
             stopBox(handle);
+            
             % Now we startBox(), because this will trigger a callback into
             % us recursively, i.e. to buttonQuery(), but this time with
             % isActive == false, therefore the recursive call will go
             % through the else-clause and execute the query. -- No need for
             % us to do it here redundantly :-)
-            startBox(handle);
+            startBox(handle, 1);
             
             % Done.
         else        
@@ -1628,7 +1821,7 @@ function bState = buttonQuery(handle)
 end
 
 % Start event scanning, detection and reporting on box:
-function startBox(handle)
+function startBox(handle, WaitForStart)
     global rtbox_info;
     global enableCode;
     
@@ -1654,11 +1847,26 @@ function startBox(handle)
         customEnable(1:2) = [0 0];
     end
     
-    enableEvent(handle, [ 'a' enableCode(find(customEnable>0)) ] ); %#ok<FNDSB>
+    % The box always starts and stops with all event processing disabled,
+    % transitions are only possible in startBox() and stopBox(), and we can
+    % only enter startBox() after a previous call to stopBox() or at
+    % initial startup. Therefore we know that all event processing is
+    % disabled when we reach this point.
+    %
+    % enableEvent() will enable the user defined events non-blocking, ie.
+    % without waiting for acknowledge from the box:
+    enableEvent(handle, enableCode(find(customEnable>0)) ); %#ok<FNDSB>
     
     % Box event scanning and reporting is active:
     rtbox_info(handle).boxScanning = 1;
-        
+    
+    % Should we wait until we get acknowledge from box?
+    if WaitForStart
+        % Yes. Stay in parseQueue until all event enable codes
+        % acknowledged:
+        parseQueue(handle, -2, inf, 10);
+    end
+    
     return;
 end
 
@@ -1753,6 +1961,13 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
         untilMarker = 0;
     end
     
+    if minEvents == -2
+        untilAllAcknowledged = 1;
+        minEvents = inf;
+    else
+        untilAllAcknowledged = 0;
+    end
+    
     % Setup deadline for stop of parsing, based on timeOut:
     tcurrent = GetSecs;
     timeOut  = tcurrent + timeOut;
@@ -1761,6 +1976,13 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
     % Parse until timeOut reached, or minimum number of requested events
     % dequeued, whatever comes first:
     while (tcurrent <= timeOut) && (minEvents > 0) && (tcurrent <= tInterTimeout)
+
+        % Shall we repeat until all outstanding tokens acknowledged?
+        if untilAllAcknowledged & isempty(rtbox_info(handle).ackTokens) %#ok<AND2>
+            % Yes. And we're done:
+            break;
+        end
+
         % Fetch at most one byte, non-blocking: Also update current
         % timestamp:
         [evid, tcurrent] = IOPort('Read', s, 0, 1);
@@ -1851,6 +2073,14 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
                     end
                 end
                 
+                % Are there any tokens pending for acknowledge?
+                if ~isempty(rtbox_info(handle).ackTokens)
+                    % Yes. Unacknowledged tokens pending. We discard this
+                    % event. We will discard all events until there are no
+                    % more unacknowedged tokens around:
+                    continue;
+                end
+
                 % Enqueue event in internal queue:
                 rtbox_info(handle).recQueue(end+1, :) = [ double(evid), secs ];
                 
@@ -1868,6 +2098,18 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
             continue;
         end
         
+        % Any acknowledge tokens to wait for?
+        if ~isempty(rtbox_info(handle).ackTokens)
+            % Is current event the next expected token?
+            if evid == rtbox_info(handle).ackTokens(1)
+                % Yes. Dequeue this token.
+                rtbox_info(handle).ackTokens = rtbox_info(handle).ackTokens(2:end);
+                
+                % Next iteration:
+                continue;
+            end
+        end
+                
         % Button state live query result packet? This has the evid 63 == '?'
         % Ok, this doesn't work due to a design-flaw in the protocol. The
         % box sends the data first in the evid byte, then the '?'
@@ -2191,7 +2433,7 @@ function openRTBox(deviceID, handle)
     % First the default settings...
     rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
                               'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
-                              'busyUntil', 0.1, 'boxScanning', 0, 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], 'syncSamples', [], 'recQueue', []);
+                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], 'syncSamples', [], 'recQueue', []);
 
     % Enabled events at start:
     rtbox_info(handle).enabled=logical([1 0 0 0 0]);
@@ -2206,8 +2448,39 @@ function openRTBox(deviceID, handle)
     % Init clock-ratio to an uncalibrated 1.0:
     rtbox_info(handle).clkRatio=1;
     
-    % Start with all scanning disabled:
-    enableEvent(handle, 'a');
+    % Start with all scanning disabled. We do the initial disable via
+    % low-level writes to make absolutely sure that the box is "off", as
+    % all other utility routines rely on a well defined initial off state.
+
+    % Read out whatever junk maybe in the input buffer:
+    IOPort('Read', s, 0);
+    
+    % Submit disable all command:
+    if IOPort('Write', s, 'a')~=1
+        RTBoxError('[In event disable]: Failed to initialize RTBox to proper startup settings!');
+    end
+    
+    % Wait 200 msecs:
+    WaitSecs(0.2);
+    
+    % Go into an infinite loop that repeats until nothing available in
+    % receive buffer:
+    while 1
+        curItem = char(IOPort('Read', s, 1, 1));
+        if IOPort('BytesAvailable', s) == 0
+            break;
+        end
+        
+        WaitSecs(0.050);
+    end
+
+    % Last item == disable all acknowledge?
+    if curItem ~= 'a'
+        RTBoxError('[In event disable II]: Failed to initialize RTBox to proper startup settings!');
+    end
+    
+    % Ok, now the box is fully idle and we return with all event scanning
+    % disabled.
     
     % Device open and initialized.
     fprintf('PsychRTBox: RTBox device "%s" opened on serial port device %s.\n', deviceID, port);
