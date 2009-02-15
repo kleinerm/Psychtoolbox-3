@@ -4,11 +4,12 @@ function str = DirList(dirnm,qdispfiles,lim,pref)
 % as a string
 % QDISPFILES is a boolean indicating whether files should also be listed
 % (true, default)
-% LIM is the maximum number of levels that will be listed (default unlimited (-1))
+% LIM is the maximum number of levels that will be listed (default unlimited (inf))
 % PREF is a prefix for each node in the directorylist
 
 % DN 2007
 % DN and Sam Yeung 2008-07-28 Optionally displays files
+% DN 2009-02-14  Made more intuitive
 
 
 % input checking
@@ -16,7 +17,7 @@ if nargin<4
     pref = '';
 end
 if nargin<3
-    lim = -1;
+    lim = inf;
 end
 if nargin<2
     qdispfiles = true;
@@ -24,12 +25,11 @@ end
 
 % init
 str     = [];
-
 fnms    = dir(dirnm);
 
 % do the work
 for p=1:length(fnms)
-    if fnms(p).name(1)=='.'
+    if strcmp(fnms(p).name,'..') || strcmp(fnms(p).name,'.') % always returned by Matlab, never wanted
         continue;
     end
 
@@ -40,8 +40,6 @@ for p=1:length(fnms)
         str = [str pref '- ' fnms(p).name char(10)];
         if lim>0
             str = [str DirList([dirnm filesep fnms(p).name], qdispfiles, lim-1, [pref '  '])];
-        elseif lim==-1
-            str = [str DirList([dirnm filesep fnms(p).name], qdispfiles, -1   , [pref '  '])];
         end
     end
 end

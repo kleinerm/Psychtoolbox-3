@@ -1,4 +1,4 @@
-function [fold,teller] = FolderFromFolder(folder,mode)
+function [fold,nfold] = FolderFromFolder(folder,mode)
 % [fold,nfold] = FolderFromFolder(folder,mode)
 %
 % Returns struct with all directories in directory FOLDER.
@@ -9,6 +9,8 @@ function [fold,teller] = FolderFromFolder(folder,mode)
 % 2007 IH        Wrote it.
 % 2007 IH&DN     Various additions
 % 2008-08-06 DN  All file properties now in output struct
+% 2009-02-14 DN  Now returns all folders except '..' and '.', code
+%                optimized
 
 if nargin == 2 && strcmp(mode,'silent')
     silent = true;
@@ -16,28 +18,22 @@ else
     silent = false;
 end
 
-A           = double('A');                          % asci-code A
-Z           = double('Z');                          % asci-code Z
-a           = double('a');                          % asci-code a
-z           = double('z');                          % asci-code z
-nul         = double('0');                          % asci-code 0
-negen       = double('9');                          % asci-code 9
+fold        = struct([]);
 filelist    = dir(folder);
 
-teller = 0;
-for p=1:length(filelist),
-    fc = double(filelist(p).name(1));               % fc is ascii code first character
-    if ((fc >= A && fc <= Z)||(fc >= a && fc <= z)||(fc >= nul && fc <= negen)) && filelist(p).isdir==1,
-        teller = teller +1;
-        fold(teller) = filelist(p);
+for p=1:length(filelist)
+    if ~(strcmp(filelist(p).name,'..') || strcmp(filelist(p).name,'.')) && filelist(p).isdir==1
+        fold = cat(1,fold,filelist(p));
     end
 end
 
-if teller == 0,
+nfold = length(fold);
+
+if nfold==0
     if silent
-        disp(sprintf(['FolderFromFolder: No folders found in: ' strrep(folder,'\','\\')]));
+        fprintf('FolderFromFolder: No folders found in: %s',folder);
         fold = [];
     elseif ~silent
-        error(['FolderFromFolder: No folders found in: ' folder]);
+        error('FolderFromFolder: No folders found in: %s',folder);
     end
 end
