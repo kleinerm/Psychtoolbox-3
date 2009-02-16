@@ -499,7 +499,7 @@ global rtbox_global;
         % subfunction each time PsychRTBox('Open') is called! The settings
         % made there override the settings made here!!!
         rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-                              'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
+                              'enabled',[], 'ID','','handle',-1,'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
                               'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
 
         % Setup event codes:
@@ -570,6 +570,29 @@ global rtbox_global;
     cmd = lower(varargin{1});
     if isempty(cmd)
         error('You must provide a non-empty command string to PsychRTBox!');
+    end
+    
+    if strcmp(cmd, 'closeall') % Close all devices
+        % Only close our devices, not other devices that may be opened
+        % via IOPort but unrelated to us:
+        for i=1:length(rtbox_info)
+            s=rtbox_info(i).handle;
+            if s>=0
+                % Disable all scanning on box before close:
+                stopBox(i);
+
+                % Close connection:
+                IOPort('Close', s);
+                
+                rtbox_info(i).handle = -1;
+            end
+        end
+
+        rtbox_global.nrOpen = 0;       % Reset count of open devices to zero.
+        clear rtbox_info;              % clear main device info struct array.
+        clear rtbox_global;            % clear main global settings struct.
+        
+        return;
     end
     
     % Open the connection to device, do initial setup and sync:
@@ -1187,24 +1210,6 @@ global rtbox_global;
                 % Decrease count of open devices:
                 rtbox_global.nrOpen = rtbox_global.nrOpen - 1;
             end
-
-        case 'closeall' % Close all devices
-            % Only close our devices, not other devices that may be opened
-            % via IOPort but unrelated to us:
-            for i=1:length(rtbox_info)
-                s=rtbox_info(i).handle;
-                if s>=0
-                    % Disable all scanning on box before close:
-                    stopBox(i);
-
-                    % Close connection:
-                    IOPort('Close', s);
-                end
-            end
-
-            rtbox_global.nrOpen = 0;       % Reset count of open devices to zero.
-            clear rtbox_info;              % clear main device info struct array.
-            clear rtbox_global;            % clear main global settings struct.
             
         otherwise
             % Unknown command:
@@ -1329,6 +1334,12 @@ function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
         timing = polyval(coef, timing, st, mu);
     end
 
+    if rtbox_info(id).verbosity > 3
+        fprintf('PsychRTBox: In post-hoc box->host mapping: Coefficients of mapping polynom (in decreasing order) are: ');
+        disp(coef);
+        fprintf('\n\n');
+    end
+    
     % Ready.
 end
 
@@ -2482,7 +2493,7 @@ function openRTBox(deviceID, handle)
     
     % First the default settings...
     rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
-                              'enabled',[], 'ID','','handle',[],'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
+                              'enabled',[], 'ID','','handle',-1,'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
                               'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], 'syncSamples', [], 'recQueue', []);
 
     % Enabled events at start:
