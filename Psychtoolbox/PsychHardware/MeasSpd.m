@@ -11,6 +11,7 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 % zero as the answer. 
 %
 % meterType == 1:  PR650 (default)
+% meterType == 4:  PR655
 
 % 9/3/93		dhb		Added default handling of S.
 % 9/14/93		jms		Added global no hardware switch
@@ -34,17 +35,19 @@ function [spectrum,qual] = MeasSpd(S,meterType)
 
 % Handle defaults
 if nargin < 2 || isempty(meterType)
-  meterType = 1;
+    meterType = 1;
 end
 if nargin < 1 || isempty(S)
-  S = [380 5 81];
-end 
+    S = [380 5 81];
+end
 
 switch meterType
-	% PR-650
-  case 1,
-		[spectrum, qual] = PR650measspd(S);				
-	otherwise,
-		error('Unknown meter type');
+    % PR-650
+    case 1,
+        [spectrum, qual] = PR650measspd(S);
+        % PR-655
+    case 4,
+        [spectrum, qual] = PR650measspd(S);
+    otherwise,
+        error('Unknown meter type');
 end
-	

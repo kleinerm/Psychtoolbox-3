@@ -455,12 +455,20 @@ function varargout = PsychRTBox(varargin)
 % Due to the design of the USB bus, the query may be outdated wrt. to the
 % real state by up to 16 - 21 msecs, depending on operating system and
 % driver configuration.
+%
+%
+% buttonState = PsychRTBox('WaitButtonDown' [, handle] [, whichButtons]);
+% -- Wait until at least one of the specified buttons in 'whichButtons' is
+% pressed down. If 'whichButtons' is omitted, all buttons are tested.
+%
+%
+% PsychRTBox('WaitButtonUp' [, handle] [, whichButtons]);
+% -- Wait until all of the specified buttons in 'whichButtons' are
+% released. If 'whichButtons' is omitted, all buttons are tested.
+%
+%
 
 % TODO:
-%
-% - If we know the typical delay between trigger receive by FTDI chip, and
-% timestamp generation by box firmware, should we add that small offset in
-% box -> host timestamp remapping to get rid of that offset?
 %
 % - Debouncing for PsychRTBox('Buttondown') as well, or leave it "raw"?
 %
@@ -473,6 +481,7 @@ function varargout = PsychRTBox(varargin)
 % 02/08/2009 Huge redesign of API and internal routines. Now we use an
 %            internal queue (MK).
 % 02/14/2009 Refinements and cleanup (MK).
+% 02/15/2009 More refinements and rework of post-hoc timestamp remapping (MK).
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -499,7 +508,7 @@ global rtbox_global;
         % List of supported subcommands:
         rtbox_global.cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
               'box2getsecs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger' ...
-              'debounceinterval', 'engagelighttrigger' };
+              'debounceinterval', 'engagelighttrigger', 'waitbuttondown', 'waitbuttonup' };
           
         % Names of events that can be enabled/disabled for reporting:
         rtbox_global.events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
@@ -962,6 +971,39 @@ global rtbox_global;
 
             varargout{1} = bState;
             
+        case 'waitbuttondown'
+            if nIn<2, in2=read(1:4); end % not specified which button
+            in2=cellstr(in2); % convert it to cellstr if it isn't
+            bState = zeros(1,length(in2));
+            
+            % Repeat queries until at least one of the target buttons is
+            % down:
+            while ~any(bState)
+                b2 = buttonQuery(id);
+                for i=1:length(in2)
+                    ind=strmatch(lower(in2{i}),read(1:4),'exact');
+                    if isempty(ind), RTboxError('invalidButtonName',in2{i}); end
+                    bState(i)=b2(ind); %#ok
+                end
+            end
+            
+            varargout{1} = bState;
+
+        case 'waitbuttonup'
+            if nIn<2, in2=read(1:4); end % not specified which button
+            in2=cellstr(in2); % convert it to cellstr if it isn't
+            bState = ones(1,length(in2));
+            
+            % Repeat queries until all of the target buttons are up:
+            while any(bState)
+                b2 = buttonQuery(id);
+                for i=1:length(in2)
+                    ind=strmatch(lower(in2{i}),read(1:4),'exact');
+                    if isempty(ind), RTboxError('invalidButtonName',in2{i}); end
+                    bState(i)=b2(ind); %#ok
+                end
+            end
+            
         case 'buttonnames' % set or query button names
             oldNames=rtbox_info(id).events(1:4);
             if nIn<2, varargout{1}=oldNames; return; end
@@ -1054,6 +1096,11 @@ global rtbox_global;
             if Priority ~= oldPriority
                 Priority(oldPriority);
             end
+            
+            % Delete syncClocks samples collected during this clockRatio
+            % calibration from internal array, as they might bias later
+            % box->host time remapping:
+            rtbox_info(id).syncSamples = rtbox_info(id).syncSamples(1:end-ntrial, :);
             
             % Restart scanning on box if it was active before:
             if boxActive
@@ -1221,30 +1268,66 @@ function [timing, sd, clockratio] = box2GetSecsTimePostHoc(id, timing)
     tbox  = rtbox_info(id).syncSamples(:, 2);
     thost = rtbox_info(id).syncSamples(:, 1);
     
-    % More than 2 samples available?
-    if length(tbox) > 2
-        % Octave and older versions of Matlab don't have 'robustfit',
-        % so we fall back to 'regress' if this function is lacking:
-        if exist('robustfit') %#ok<EXIST>
-            [coef st]=robustfit(tbox,thost);  % fit a line
-            sd=st.robust_s; % stddev. in seconds.
-        else
-            coef =regress(thost, [ones(size(thost,1), 1), tbox ]);  % fit a line
-            sd=0; % stddev. undefined with regress().
-        end
-        clockratio = coef(2);
-        clockbias  = coef(1);
-    else
-        % Only 2 samples available. Use polyfit...
-        [coef st]=polyfit(tbox, thost, 1);
-        clockratio = coef(1);
-        clockbias  = coef(2);
-        sd = st.normr;
-    end
+    % MK: Change of strategy: We always use polyfit() instead of sometimes
+    % regress() or robustfit() for the following reasons:
+    %
+    % 1. Strategy switching may introduce artifacts / non-predictable
+    % behaviour into the results.
+    %
+    % 2. A simple polyfit() is better understood than the more advanced
+    % robustfit() with its tons of tunable parameters and strategies, for
+    % which i don't know which are appropriate for our data.
+    %
+    % 3. robustfit() and regress() require the Matlab statistics toolbox
+    % and therefore won't work on a plain standard Matlab installation,
+    % whereas polyfit() is part of default Matlab and Octave.
+    %
+    % The old code is left here for documentation purpose:
+    %
+    %     % More than 2 samples available?
+    %     if 0 && length(tbox) > 2
+    %         % Octave and older versions of Matlab don't have 'robustfit',
+    %         % so we fall back to 'regress' if this function is lacking:
+    %         if exist('robustfit') %#ok<EXIST>
+    %             [coef st]=robustfit(tbox,thost);  % fit a line
+    %             sd=st.robust_s; % stddev. in seconds.
+    %         else
+    %             coef =regress(thost, [ones(size(thost,1), 1), tbox ]);  % fit a line
+    %             sd=0; % stddev. undefined with regress().
+    %         end
+    %         clockratio = coef(2);
+    %         clockbias  = coef(1);
+    %     else
+    
+    % Use polyfit, i.e., a least squares fit of a polynomial of either
+    % degree 1 (purely linear), or degree 2 (quadratic). We choose a purely
+    % linear fit if only 2 samples are available - the best we can do. If
+    % more than 2 samples are available, we use a quadratic fit to account
+    % for small non-linearities in the clock hardware over long intervals:
+    [coef, st, mu] = polyfit(tbox, thost, min(length(tbox)-1, 2));
+
+    clockratio = coef(1);
+    clockbias  = coef(2); %#ok<NASGU>
+
+    sd.norm = st.normr;
+
+    %     end
     
     % Ok, got mapping equation getsecst = timing * clockratio + clockbias;
     % Apply it to our input timestamps:
-    timing = timing * clockratio + clockbias;
+    %    timing = timing * clockratio + clockbias;
+    %
+    %
+    % Actually, we use polyval() to evaluate the equation. For linear case,
+    % this is the same as above equation, but it conveniently also handles
+    % the quadratic case and provides some margins on mapping error:
+    if length(tbox) > 3
+        [timing, sd.delta] = polyval(coef, timing, st, mu);
+    else
+        % sd.delta undefined for less than 4 elements in timing:
+        sd.delta = repmat(Inf, size(timing));
+        timing = polyval(coef, timing, st, mu);
+    end
 
     % Ready.
 end

@@ -8,17 +8,18 @@
 % ActiveWire          - Win: ActiveWire minimal USB interface, $59.  
 %                            web http://www.activewireinc.com/ -browser ;
 % CedrusResponseBox   - All: Support for RB-x30 response boxes by Cedrus.
-% CMCheckInit         - OS9: Turn on color meter.
-% CMClose             - OS9: Turn off color meter.
-% FindSerialPort      - OSX: Find port number associated with a particular input string.
-% MeasSpd             - OS9: Use color meter to measure a spectral power 
+% CMCheckInit         - All: Turn on and connect to color meter.
+% CMClose             - All: Turn off color meter.
+% FindSerialPort      - All: Find port number associated with a particular input string.
+% MeasSpd             - All: Use color meter to measure a spectral power 
 %                            distribution.
-% MeasXYZ             - OS9: Use color meter to measure XYZ coordinates.
-% CRSColorToolbox     - OS9: Talk to CRS Colorimeter.
-% PR650Toolbox        - OS9: Talk to PR650 Colorimeter. (This will
-%                            eventually supercede PsychObsolete:CMETER.)
+% MeasXYZ             - All: Use color meter to measure XYZ coordinates.
+% CRSColorToolbox     - ???: Talk to CRS Colorimeter.
+% PR650Toolbox        - All: Talk to PR650 Colorimeter.
+% PR655Toolbox        - All: Talk to PR655 Colorimeter.
 % Daq folder          - OSX: Control the USB-1208FS data acquisition
-%                            device.
+%                            device as well as the 1408FS and 1608FS and
+%                            maybe the 1024LS (the latter untested).
 % Joystick            - OS9: Read USB game controllers. OSX: renamed "Gamepad".
 % Gamepad             - OSX: Read USB game controllers. Formerly "Joystick".
 % GetGamepadIndices   - OSX: Get indices of gampads in PsychHID device list.
@@ -27,19 +28,15 @@
 % PsychHID            - OSX: Read/write any HID-compliant USB device. See web page:
 %                            web http://psychtoolbox.org/usb.html
 % PsychRTBox          - All: Driver for RTBox reaction time button box.
-% PsychSerial         - Win, OS9: Send and receive through serial ports.
-% SERIAL              - Win: Send and receive through serial ports. 
+% PsychSerial         - Win, OS9: Send and receive through serial ports. -> DEPRECATED: Use IOPort instead!
+% SERIAL              - Win: Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!
 %                            Standard Matlab function. Requires Java, so it's 
 %                            not available if you run Matlab with the
 %                            -NOJVM switch. In Win we use the -NOJVM switch 
 %                            to fix the problem with GetChar.
-% COMM                - OSX  Send and receive through serial ports.
+% SerialComm          - OSX  Send and receive through serial ports.      -> DEPRECATED: Use IOPort instead!
 %                            web http://www.mathworks.com/matlabcentral/fileexchange/loadFile.do?objectId=4952&objectType=file -browser;
-% Snd                 - Win, OS9, OSX: Play a sound.
-% TestIOPort          - OSX: Use the Code Mercenaries' IO Warrior minimal
-%                            USB interface, 49 euros. "IOPort.mexmac" should be  
-%                            renamed "IOWarrior.mexmac".
-%                            web http://www.codemercs.com/E_index.html -browser;
+% Snd                 - All: Play a sound. Only for simple sounds! Use PsychPortAudio for serious sound playback and capture!
 %
 % EyelinkToolbox      - All: Toolbox for control of the SR-Research Eyelink gazetrackers.
 % iViewXToolbox       - All: Toolbox for control of the MSI-Research iView gazetrackers.

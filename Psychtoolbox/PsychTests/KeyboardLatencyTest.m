@@ -1,5 +1,5 @@
-function KeyboardLatencyTest(triggerlevel, modality)
-% KeyboardLatencyTest([triggerlevel=0.01][,modality=0])
+function KeyboardLatencyTest(triggerlevel, modality, submode)
+% KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode])
 %
 % Uses sound capture with high timing precision via
 % PsychPortAudio() for measuring keyboard and mouse latency.
@@ -17,9 +17,20 @@ function KeyboardLatencyTest(triggerlevel, modality)
 % The 'modality' flag chooses between keyboard (==0 - the default), and
 % mouse (==1). A setting of 2 queries the keyboard with a (theoretically
 % more accurate) method that is only supported on OS/X.
-% A 'modality' of 3 will test the new (highly experimental) driver for the
-% USTCRTBOX reaction time button box, if available, setting 4 will do
-% something similar.
+%
+% A 'modality' of 3 will test the new driver for the USTCRTBOX reaction
+% time button box, if such a box is attached. A setting 4 will also test
+% that box, but without opening a connection to it, ie., it is assumed that
+% the box is already open from a previous call of this function with
+% modality setting '3'. This allows to repeat the test many times without
+% recalibrating the box. The optional 'submode' flag selects different ways
+% of testing the box: A setting of zero will perform a 'ClockRatio'
+% calibration to provide exact live timestamps and to test drift
+% correction. A setting of 1 will skip this, so live timestamps will
+% exhibit clock-drift and only the post-hoc timestamps will be somewhat
+% exact. A setting of 2 will skip collection of post-hoc timestamps.
+%
+% A 'modality' of 5 will exercise the RB-x30 response pads from Cedrus.
 %
 % Obviously this method of measuring carries quite a bit of uncertainty
 % in exact timing, but with a high quality microphone, proper tuning and
@@ -29,28 +40,40 @@ function KeyboardLatencyTest(triggerlevel, modality)
 
 % History:
 % 08/10/2008 Written (MK)
+% 02/15/2009 Updated for Cedrus and RTBox (MK).
 
 tdelay = [];
-tdelay2= [];
+global tdelay2;
+global tSecs;
+global toffset;
 
 if nargin < 1 || isempty(triggerlevel)
     triggerlevel = 0.01;
     fprintf('No "triggerlevel" argument in range 0.0 to 1.0 provided: Will use default of 0.01 ...\n\n');
 end
 
-if nargin < 2
+if nargin < 2 || isempty(modality)
     modality = 0;
+end
+
+if nargin < 3
+    submode = 0;
 end
 
 if modality == 3
     PsychRTBox('Open');
-    PsychRTBox('SyncClocks');
-    PsychRTBox('ClockRatio', [], 30);
+    if submode == 0
+        PsychRTBox('SyncClocks');
+        PsychRTBox('ClockRatio', [], 30);
+    end
+end
+
+if modality == 4
+    PsychRTBox('Start');
 end
 
 if modality == 5
-    p = dir('/dev/cu.usbserial*');
-    cedrusport = ['/dev/' char(p.name)];
+    cedrusport = FindSerialPort('usbserial', 1);
 
     % Open box, at high baud-rate (aka lowBaudrate == 0), perform calibration /
     % clock sync (doCalibrate == 1):
@@ -156,6 +179,12 @@ for trial = 1:10
             while isempty(tKeypress)
                 [tKeypress, evid, tBox] = PsychRTBox('GetSecs');
             end
+            
+            tKeypress = tKeypress(1);
+            tBox = tBox(1);
+            
+            % Store raw box timestamp as well:
+            tdelay2(end+1, 1) = tBox; %#ok<AGROW>
 
         case 5
             % Test Cedrus response box:
@@ -229,6 +258,11 @@ for trial = 1:10
         tdelay = [tdelay dt]; %#ok<AGROW>
     end
     
+    if modality == 3 | modality == 4 %#ok<OR2>
+        % Store raw box timestamp as well:
+        tdelay2(end, 2) = tOnset; %#ok<AGROW>
+    end
+    
     % Next trial after 2 seconds:
     WaitSecs(2);
 end
@@ -238,8 +272,21 @@ PsychPortAudio('Close', pahandle);
 
 % Done.
 fprintf('\nTest finished. Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay), std(tdelay));
-if ~isempty(tdelay2)
-    fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs).\n\n', mean(tdelay2), std(tdelay2));
+if ~isempty(tdelay2) && submode ~= 2
+    % Recompute RTBox timestamps via post-hoc remapping:
+    [tSecs, sd] = PsychRTBox('BoxsecsToGetsecs', [], tdelay2(:, 1));
+    fprintf('Error margin on fit for box->host mapping is %f msecs.\n', sd.norm * 1000);
+
+    % Recompute offset based on remapped timestamps:
+    toffset = (tSecs - tdelay2(:, 2)) * 1000;
+    
+    fprintf('\n\n\n');
+    for i=1:length(toffset)
+        fprintf('Remapped RTBox delay for trial %i == %f milliseconds.         [delta = %f msecs]\n', i, toffset(i), sd.delta(i)*1000);
+    end
+    
+    toffset = toffset((toffset > -100) & (toffset < 100));
+    fprintf('\nTest finished. RTBox 2nd Average delay across valid trials: %f msecs (stddev = %f msecs, range = %f msecs).\n\n', mean(toffset), std(toffset), range(toffset));
 end
 
 if modality == 5

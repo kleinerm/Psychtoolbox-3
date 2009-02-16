@@ -5,7 +5,8 @@ function [XYZ,qual] = MeasXYZ(meterType)
 % cd/m^2.
 % 
 %		meterType == 1:  PR650 (default).
-%   meterType == 3:  CRS colorimeter.
+%       meterType == 3:  CRS colorimeter.
+%		meterType == 4:  PR655.
 
 %	9/14/93		jms		Added global no hardware switch
 %	10/1/93		dhb		Removed print on low light, passed qual on up
@@ -23,18 +24,19 @@ function [XYZ,qual] = MeasXYZ(meterType)
 
 % Handle defaults
 if (nargin < 1 | isempty(meterType))
-  meterType = 1;
+    meterType = 1;
 end
 
 switch meterType
-	% PR-650
-  case 1,
-		[XYZ, qual] = PR650measxyz;
-	case 3,
-		XYZ = CRSColorMeasXYZ;
-		qual = 0;
-	otherwise,
-		error('Unknown meter type');
+    % PR-650
+    case 1,
+        [XYZ, qual] = PR650measxyz;
+    case 3,
+        XYZ = CRSColorMeasXYZ;
+        qual = 0;
+    % PR-655
+    case 4,
+        [XYZ, qual] = PR655measxyz;
+    otherwise,
+        error('Unknown meter type');
 end
-	
-
