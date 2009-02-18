@@ -149,14 +149,16 @@ function varargout = PsychRTBox(varargin)
 % provide the required timing precision for your demands. By default, the
 % minimum required precision is 0.0013 seconds, ie., it will tolerate an
 % error of at most 1.3 msecs.
-% 'syncMethod' - Select the synchronization method to use. By default,
-% method 0 (prewrite sync) is used, but there is also method 1 (postwrite
-% sync), or method 2 (average) to choose from. If you want to know the
-% difference between the methods, please consult the source code of this
-% file and read the code for the subroutine 'function syncClocks'. All
-% three methods are robust and accurate within the returned confidence
-% window, usually better than 1 msec. Empirically, method 0 seems to get
-% the best results on most setups.
+% 'syncMethod' - Select the synchronization method to use. Either, method 0
+% (prewrite sync), or method 1 (postwrite sync), or method 2 (average). If
+% you want to know the difference between the methods, please consult the
+% source code of this file and read the code for the subroutine 'function
+% syncClocks'. All three methods are robust and accurate within the
+% returned confidence window, usually better than 1 msec. So far, method 1
+% seems to get the best results on our test setups, so this is the default
+% for the current driver release. However, we are still evaluating if
+% method 0 would be a tiny bit better and worth switching the default to
+% that.
 %
 %
 % oldverbose = PsychRTBox('Verbosity' [, handle], verbosity);
@@ -538,8 +540,8 @@ global rtbox_global;
         % Default settings for the syncClocks() function:
         % -----------------------------------------------
         
-        % Use new style syncClocks() method with prewrite timestamp by default:
-        rtbox_global.syncmode = 0;
+        % Use syncClocks() method 1 with postwrite timestamp by default:
+        rtbox_global.syncmode = 1;
 
         % Maximum duration of a syncClocks calibration run is 0.5 seconds:
         rtbox_global.maxDuration = 0.5;
