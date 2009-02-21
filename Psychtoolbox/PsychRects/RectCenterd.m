@@ -22,15 +22,15 @@ if PsychNumel(r) == 4
     y = (0.5*(r(2)+r(4)));
 else
     % Multi-rect array:
-    if (size(r, 2)==4) & (size(r,1)>=1)
-        % Multi-row array with one 4-comp. rect per row:
-        x = (0.5*(r(:,1)+r(:,3)));
-        y = (0.5*(r(:,2)+r(:,4)));        
+    if (size(r, 1)==4) && (size(r,2)>=1)
+        % Multi-column array with one 4-comp. rect per column:
+        x = (0.5*(r(1,:)+r(3,:)));
+        y = (0.5*(r(2,:)+r(4,:)));
     else
-        if (size(r, 1)==4) & (size(r,2)>=1)
-            % Multi-column array with one 4-comp. rect per column:
-            x = (0.5*(r(1,:)+r(3,:)));
-            y = (0.5*(r(2,:)+r(4,:)));
+        if (size(r, 2)==4) && (size(r,1)>=1)
+            % Multi-row array with one 4-comp. rect per row:
+            x = (0.5*(r(:,1)+r(:,3)));
+            y = (0.5*(r(:,2)+r(:,4)));
         else
             % Something weird and unknown:
             error('Given matrix of rects not of required 4-by-n or n-by-4 format.');

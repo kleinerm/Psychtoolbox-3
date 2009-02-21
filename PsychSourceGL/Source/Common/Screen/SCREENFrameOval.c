@@ -118,7 +118,7 @@ PsychError SCREENFrameOval(void)
 		outerRadius=rectY/2;
 	}
 	numSlices=3.14159265358979323846  * 2 * outerRadius;
-	innerRadius=outerRadius- 2*penSize;
+	innerRadius=outerRadius - penSize;
 	innerRadius= innerRadius < 0 ? 0 : innerRadius;         
 	
 	// Enable this windowRecords framebuffer as current drawingtarget:
