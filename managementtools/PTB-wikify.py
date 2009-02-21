@@ -110,17 +110,52 @@ def beackern(mkstring):
     mkstring = re.sub(r'(?m)^\s*_{10,}',r'----',mkstring)
     # Replace some non-WikiWord function to internal links
     match = r'(\bScreen\b|' \
-            + r'\bmoglmorpher\b|' \
-            + r'\bFlip\b|' \
-            + r'\bRush\b|' \
-            + r'\bIOPort\b|' \
-            + r'\bGestalt\b|' \
-            + r'\bClose\b|' \
-            + r'\bSnd\b|' \
-            + r'\bBeeper\b|' \
             + r'\bAsk\b|' \
-            + r'\bsca\b|' \
+            + r'\bBandpass\b|' \
+            + r'\bBeeper\b|' \
+            + r'\bCircle\b|' \
+            + r'\bClose\b|' \
+            + r'\bComputeDKL_M\b|' \
+            + r'\bDKLDemo\b|' \
+            + r'\bEllipse\b|' \
+            + r'\bExpand\b|' \
+            + r'\bExplode\b|' \
+            + r'\bFlip\b|' \
+            + r'\bGestalt\b|' \
+            + r'\bIOPort\b|' \
+            + r'\bInterleave\b|' \
+            + r'\bM_PToP\b|' \
+            + r'\bM_PToT\b|' \
+            + r'\bM_TToP\b|' \
+            + r'\bM_TToT\b|' \
+            + r'\bOSAUCSTest\b|' \
+            + r'\bOSName\b|' \
+            + r'\bPriority\b|' \
             + r'\bPsychometric\b|' \
+            + r'\bRandi\b|' \
+            + r'\bRanint\b|' \
+            + r'\bReplace\b|' \
+            + r'\bResolute\b|' \
+            + r'\bRush\b|' \
+            + r'\bSample\b|' \
+            + r'\bScale\b|' \
+            + r'\bShuffle\b|' \
+            + r'\bSnd\b|' \
+            + r'\bStopwatch\b|' \
+            + r'\bTrunc\b|' \
+            + r'\bXYZTouv\b|' \
+            + r'\bhexstr\b|' \
+            + r'\bmoglmorpher\b|' \
+            + r'\bpsychassert\b|' \
+            + r'\bpsychlasterror\b|' \
+            + r'\bpsychrethrow\b|' \
+            + r'\bsca\b|' \
+            + r'\buvTols\b|' \
+            + r'\buvToxy\b|' \
+            + r'\buvYToXYZ\b|' \
+            + r'\bxyTouv\b|' \
+            + r'\bxyYToXYZ\b|' \
+            + r'\log10nw\b|' \
             + r'\bPreference\b)'
     mkstring = re.sub(match,r'[[\1]]',mkstring)
     # purge useless help lines
