@@ -30,7 +30,7 @@ bool exitFunctionRegistered = false;
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 {
 	IOUSBDevRequest request;
-	char command[256], buffer[64], retCode[8];
+	char command[256], buffer[64];
 	int i;
 	
 	// Verify the number of input arguments.
@@ -167,7 +167,6 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 		plhs[2] = mxCreateDoubleScalar((double)zzz);
 	}
 	else if (strcasecmp("ZeroCalibration", command) == 0) {
-		float xxx, yyy, zzz;
 		request.bmRequestType = 0x40;
 		request.wValue = 1;
 		request.wLength = 32;
