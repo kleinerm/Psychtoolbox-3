@@ -7,6 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		830A95350F52204B00A44B04 /* ColorCal.c in Sources */ = {isa = PBXBuildFile; fileRef = 83995D800F51FD0600DA513D /* ColorCal.c */; };
+		830A95360F52204B00A44B04 /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 83995E630F51FDF600DA513D /* mexversion.c */; };
+		830A95380F52204B00A44B04 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D340F51F96B00DA513D /* CoreFoundation.framework */; };
+		830A95390F52204B00A44B04 /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D380F51F97900DA513D /* CoreServices.framework */; };
+		830A953A0F52204B00A44B04 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D3A0F51F98700DA513D /* IOKit.framework */; };
+		830A95710F522AEB00A44B04 /* ColorCal.h in Headers */ = {isa = PBXBuildFile; fileRef = 830A95700F522AEB00A44B04 /* ColorCal.h */; };
+		830A95720F522AEB00A44B04 /* ColorCal.h in Headers */ = {isa = PBXBuildFile; fileRef = 830A95700F522AEB00A44B04 /* ColorCal.h */; };
 		83995D350F51F96B00DA513D /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D340F51F96B00DA513D /* CoreFoundation.framework */; };
 		83995D390F51F97900DA513D /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D380F51F97900DA513D /* CoreServices.framework */; };
 		83995D3B0F51F98700DA513D /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 83995D3A0F51F98700DA513D /* IOKit.framework */; };
@@ -15,6 +22,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		830A953E0F52204B00A44B04 /* ColorCal.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = ColorCal.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		830A95700F522AEB00A44B04 /* ColorCal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ColorCal.h; sourceTree = "<group>"; };
 		83995D340F51F96B00DA513D /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
 		83995D380F51F97900DA513D /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = /System/Library/Frameworks/CoreServices.framework; sourceTree = "<absolute>"; };
 		83995D3A0F51F98700DA513D /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
@@ -24,6 +33,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		830A95370F52204B00A44B04 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				830A95380F52204B00A44B04 /* CoreFoundation.framework in Frameworks */,
+				830A95390F52204B00A44B04 /* CoreServices.framework in Frameworks */,
+				830A953A0F52204B00A44B04 /* IOKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D289988505E68E00004EDB86 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -52,6 +71,7 @@
 			children = (
 				83995E630F51FDF600DA513D /* mexversion.c */,
 				83995D800F51FD0600DA513D /* ColorCal.c */,
+				830A95700F522AEB00A44B04 /* ColorCal.h */,
 			);
 			name = Source;
 			sourceTree = "<group>";
@@ -60,6 +80,7 @@
 			isa = PBXGroup;
 			children = (
 				D2AAC0630554660B00DB518D /* ColorCal.mexmac */,
+				830A953E0F52204B00A44B04 /* ColorCal.mexmaci */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -77,16 +98,42 @@
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
+		830A95330F52204B00A44B04 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				830A95720F522AEB00A44B04 /* ColorCal.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D2AAC0600554660B00DB518D /* Headers */ = {
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				830A95710F522AEB00A44B04 /* ColorCal.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
+		830A95320F52204B00A44B04 /* ColorCal2 Intel */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 830A953B0F52204B00A44B04 /* Build configuration list for PBXNativeTarget "ColorCal2 Intel" */;
+			buildPhases = (
+				830A95330F52204B00A44B04 /* Headers */,
+				830A95340F52204B00A44B04 /* Sources */,
+				830A95370F52204B00A44B04 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "ColorCal2 Intel";
+			productName = ColorCal2;
+			productReference = 830A953E0F52204B00A44B04 /* ColorCal.mexmaci */;
+			productType = "com.apple.product-type.library.dynamic";
+		};
 		D2AAC0620554660B00DB518D /* ColorCal2 PPC */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1DEB914A08733D8E0010E9CD /* Build configuration list for PBXNativeTarget "ColorCal2 PPC" */;
@@ -117,11 +164,21 @@
 			projectRoot = "";
 			targets = (
 				D2AAC0620554660B00DB518D /* ColorCal2 PPC */,
+				830A95320F52204B00A44B04 /* ColorCal2 Intel */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXSourcesBuildPhase section */
+		830A95340F52204B00A44B04 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				830A95350F52204B00A44B04 /* ColorCal.c in Sources */,
+				830A95360F52204B00A44B04 /* mexversion.c in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		D2AAC0610554660B00DB518D /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -218,6 +275,54 @@
 			};
 			name = Release;
 		};
+		830A953C0F52204B00A44B04 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COPY_PHASE_STRIP = NO;
+				EXECUTABLE_PREFIX = lib;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_FIX_AND_CONTINUE = YES;
+				GCC_MODEL_TUNING = G5;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				INSTALL_PATH = /usr/local/lib;
+				PRODUCT_NAME = ColorCal2;
+				ZERO_LINK = YES;
+			};
+			name = Debug;
+		};
+		830A953D0F52204B00A44B04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ARCHS = i386;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DYLIB_COMPATIBILITY_VERSION = "";
+				DYLIB_CURRENT_VERSION = "";
+				EXECUTABLE_EXTENSION = mexmaci;
+				EXECUTABLE_PREFIX = "";
+				GCC_MODEL_TUNING = G5;
+				HEADER_SEARCH_PATHS = $MATLAB_INC_DIR;
+				INSTALL_PATH = /usr/local/lib;
+				LD_DYLIB_INSTALL_NAME = "";
+				LIBRARY_SEARCH_PATHS = $MATLAB_LIB_DIR;
+				LINK_WITH_STANDARD_LIBRARIES = YES;
+				MACH_O_TYPE = mh_bundle;
+				MATLAB_LIB_DIR = /Applications/MATLAB_R2007b/bin/maci;
+				OTHER_LDFLAGS = (
+					"-Wl,-flat_namespace",
+					"-undefined",
+					suppress,
+					"-Wl,-exported_symbols_list,/Applications/$MATLAB_VERSION/extern/lib/mac/mexFunction.map",
+					"-lmx",
+					"-lmex",
+					"-lmat",
+					"-lstdc++",
+				);
+				PRODUCT_NAME = ColorCal;
+				SKIP_INSTALL = YES;
+				USER_HEADER_SEARCH_PATHS = "$MATLAB_INC_DIR $MATLAB_LIB_DIR";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -235,6 +340,15 @@
 			buildConfigurations = (
 				1DEB914F08733D8E0010E9CD /* Debug */,
 				1DEB915008733D8E0010E9CD /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		830A953B0F52204B00A44B04 /* Build configuration list for PBXNativeTarget "ColorCal2 Intel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				830A953C0F52204B00A44B04 /* Debug */,
+				830A953D0F52204B00A44B04 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

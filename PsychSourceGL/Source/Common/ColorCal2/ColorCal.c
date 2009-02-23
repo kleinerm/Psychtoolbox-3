@@ -3,24 +3,7 @@
 // Author: Christopher Broussard
 // Date: 2/16/09
 
-#include <CoreFoundation/CoreFoundation.h>
-#include <CoreServices/CoreServices.h>
-#include <IOKit/IOKitLib.h>
-#include <IOKit/usb/IOUSBLib.h>
-#include <IOKit/IOCFPlugIn.h>
-#include <mach/mach.h>
-#include <string.h>
-#include <mex.h>
-
-#define kOurVendorID        0x0861    //Vendor ID of the USB device
-#define kOurProductID       0x1001    //Product ID of device BEFORE it
-
-// Function Declarations
-IOReturn ConfigureDevice(IOUSBDeviceInterface **dev);
-void OpenDevice(void);
-static void CloseDevice(void);
-double DefunnyMatrixValue(int value);
-UInt16 RefunnyMatrixValue(double value);
+#include "ColorCal.h"
 
 // Globals
 IOUSBDeviceInterface **ccDevice = NULL;
@@ -46,8 +29,12 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[])
 	// If the device isn't open, go ahead and open it.
 	if (ccDevice == NULL) {
 		mexPrintf("- Opening ColorCal device...");
-		OpenDevice();
-		mexPrintf("Done\n");
+		if (OpenDevice() == true) {
+			mexPrintf("Done\n");
+		}
+		else {
+			mexErrMsgTxt("(ColorCal) ColorCal2 device not attached to the computer.");
+		}
 	}
 	
 	// Make sure the exit function is registered.
@@ -428,7 +415,7 @@ static void CloseDevice(void)
 }
 
 
-void OpenDevice(void)
+bool OpenDevice(void)
 {
 	mach_port_t             masterPort;
 	kern_return_t           kr;
@@ -506,7 +493,7 @@ void OpenDevice(void)
 		kr = (*dev)->GetDeviceVendor(dev, &vendor);
 		kr = (*dev)->GetDeviceProduct(dev, &product);
 		kr = (*dev)->GetDeviceReleaseNumber(dev, &release);
-		if ((vendor != kOurVendorID) || (product != kOurProductID)) {
+		if ((vendor != kColorCal2VendorID) || (product != kColorCal2ProductID)) {
 			mexPrintf("Found unwanted device (vendor = %d, product = %d)\n", vendor, product);
 			(void) (*dev)->Release(dev);
 			continue;
@@ -542,6 +529,8 @@ void OpenDevice(void)
 	// Finished with master port
 	mach_port_deallocate(mach_task_self(), masterPort);
 	masterPort = 0;
+	
+	return deviceFound;
 }
 
 
