@@ -16933,7 +16933,6 @@
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = 10.4;
-				MATLAB_DIR_NAME = MATLAB_R2007b;
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
@@ -20553,6 +20552,7 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = PsychPortAudio;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SDKROOT = "";
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};
