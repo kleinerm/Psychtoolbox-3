@@ -214,6 +214,7 @@ typedef unsigned char bool;
         typedef Boolean				boolean;
         typedef GLubyte				psych_uint8;
         typedef GLubyte				ubyte;
+		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;
 		// Datatype for Mutex Locks:	

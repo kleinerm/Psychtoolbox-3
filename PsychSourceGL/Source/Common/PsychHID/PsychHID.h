@@ -131,7 +131,7 @@ boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRec
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
 bool PSYCHHIDColorCal2OpenDevice(void);		// PsychHIDColorCal2OpenDevice.c
-bool PsychHIDColorCal2MakeRequest(psych_
+bool PsychHIDColorCal2MakeRequest(psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 //PsychError PSYCHHIDColorCal2ConfigureDevice(void);	// PsychHIDColorCal2ConfigureDevice.c
 //PsychError PSYCHHIDColorCal2CloseDevice(void);		// PsychHIDColorCal2CloseDevice.c
 

@@ -12,6 +12,26 @@
 
 extern IOUSBDeviceInterface **g_ColorCal2Device;
 
+bool PsychHIDColorCal2MakeRequest(psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+{
+	bool retVal = true;
+	
+	// Setup the USB request data structure.
+	IOUSBDevRequest request;
+	request.bmRequestType = bmRequestType;
+	request.wValue = wValue;
+	request.wLength = wLength;
+	request.wIndex = wIndex;
+	
+	// Send the data across the USB bus.
+	if ((*g_ColorCal2Device)->DeviceRequest(g_ColorCal2Device, &request) != kIOReturnSuccess) {
+		retVal = false;
+	}
+	
+	return retVal;
+}
+
+
 bool PSYCHHIDColorCal2OpenDevice(void)
 {
 	mach_port_t             masterPort;

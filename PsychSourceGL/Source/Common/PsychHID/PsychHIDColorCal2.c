@@ -41,9 +41,11 @@ PsychError PSYCHHIDColorCal2(void)
 		}
 	}
 	
-	if (PsychMatch(command, "thing")) {
+	if (PsychMatch(command, "LEDOn")) {
+		PsychHIDColorCal2MakeRequest(0x40, 2, 0, 0, NULL);
 	}
 	else {
+		PsychErrMsgTxt("Invalid command");
 	}
 		
 	

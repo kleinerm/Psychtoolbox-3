@@ -2005,8 +2005,8 @@
 		F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
 		F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */; };
-		F13E934F0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c */; };
-		F13E93500F53421E007D7EA0 /* PsychHIDColorCal2OpenDevice.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c */; };
+		F13E934F0F534180007D7EA0 /* PsychHIDColorCal2Support.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */; };
+		F13E93500F53421E007D7EA0 /* PsychHIDColorCal2Support.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */; };
 		F13E93580F5345F5007D7EA0 /* PsychHIDColorCal2.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E93570F5345F5007D7EA0 /* PsychHIDColorCal2.c */; };
 		F14A27AF0AD48A2A00BFB68F /* MachGetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95011D04E446B9007A7274 /* MachGetPriorityMex.c */; };
 		F14A27B00AD48A2A00BFB68F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
@@ -3792,7 +3792,7 @@
 		F074321A0AD465B400602397 /* MachSetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F089BD090AD42DF500663D86 /* Screen.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libHIDUtilities-Intel.a"; sourceTree = "<group>"; };
-		F13E934E0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDColorCal2OpenDevice.c; path = ../../../Source/OSX/PsychHID/PsychHIDColorCal2OpenDevice.c; sourceTree = SOURCE_ROOT; };
+		F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDColorCal2Support.c; path = ../../../Source/OSX/PsychHID/PsychHIDColorCal2Support.c; sourceTree = SOURCE_ROOT; };
 		F13E93570F5345F5007D7EA0 /* PsychHIDColorCal2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDColorCal2.c; path = ../../../Source/Common/PsychHID/PsychHIDColorCal2.c; sourceTree = SOURCE_ROOT; };
 		F14A27C20AD48A2A00BFB68F /* MachGetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A27FD0AD48C1200BFB68F /* PsychHID.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -5324,7 +5324,7 @@
 		2F9ABA17045F3596007A7274 /* PsychHID */ = {
 			isa = PBXGroup;
 			children = (
-				F13E934E0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c */,
+				F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */,
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
 				CF566E7307F7D2FC00D4957A /* PsychHID.h */,
@@ -10727,7 +10727,7 @@
 				2FEBA7DE0988883700F4165F /* PsychVersioning.c in Sources */,
 				2FEBA7DF0988883800F4165F /* RegisterProject.c in Sources */,
 				835CD25B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
-				F13E934F0F534180007D7EA0 /* PsychHIDColorCal2OpenDevice.c in Sources */,
+				F13E934F0F534180007D7EA0 /* PsychHIDColorCal2Support.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10989,7 +10989,7 @@
 			files = (
 				2FEBA8FE098990F500F4165F /* mexversion.c in Sources */,
 				2FEBA8FF098990F600F4165F /* MiniBox.c in Sources */,
-				F13E93500F53421E007D7EA0 /* PsychHIDColorCal2OpenDevice.c in Sources */,
+				F13E93500F53421E007D7EA0 /* PsychHIDColorCal2Support.c in Sources */,
 				2FEBA900098990F700F4165F /* MODULEVersion.c in Sources */,
 				2FEBA901098990F700F4165F /* ProjectTable.c in Sources */,
 				2FEBA902098990F800F4165F /* PsychAuthors.c in Sources */,
