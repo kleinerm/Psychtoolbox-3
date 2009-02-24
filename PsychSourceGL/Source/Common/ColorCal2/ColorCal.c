@@ -420,8 +420,8 @@ bool OpenDevice(void)
 	mach_port_t             masterPort;
 	kern_return_t           kr;
 	CFMutableDictionaryRef  matchingDict;
-	SInt32                  usbVendor = kOurVendorID;
-	SInt32                  usbProduct = kOurProductID;
+	SInt32                  usbVendor = kColorCal2VendorID;
+	SInt32                  usbProduct = kColorCal2ProductID;
 	IOUSBDeviceInterface    **dev = NULL;
 	io_iterator_t           iterator;
 	IOCFPlugInInterface     **plugInInterface = NULL;

@@ -51,14 +51,31 @@
 #include <IOKit/HID/IOHIDKeys.h>
 #include "HID_Utilities_External.h"
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+// ColorCal 2  OS X includes.
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreServices/CoreServices.h>
+#include <IOKit/IOKitLib.h>
+#include <IOKit/usb/IOUSBLib.h>
+#include <IOKit/IOCFPlugIn.h>
+#include <mach/mach.h>
+#include <string.h>
+#endif
 
+// ColorCal 2 OS X defines.
+//#define ColorCal2USBStruct IOUSBDevRequest		// Defines the structure that is sent across the USB control channel.
+//#define ColorCal2USBRequest(ccDevice, request) (
+
+// ColorCal 2 constants.
+#define kColorCal2VendorID        0x0861    // Vendor ID of the ColorCal2
+#define kColorCal2ProductID       0x1001    // Product ID of the ColorCal2
 
 //Define constants for use by PsychHID files. 
 #define PSYCH_HID_MAX_DEVICES					256
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH 		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENTS				1024
-#define PSYCH_HID_MAX_KEYBOARD_DEVICES				64	
+#define PSYCH_HID_MAX_KEYBOARD_DEVICES				64
 	
 
 //function prototypes for module subfunctions.
@@ -85,7 +102,7 @@ PsychError PSYCHHIDSetReport(void);				// PsychHIDSetReport.c
 PsychError PSYCHHIDReceiveReports(void);		// PsychHIDReceiveReports.c
 PsychError PSYCHHIDReceiveReportsStop(void);	// PsychHIDReceiveReportsStop.c
 PsychError PSYCHHIDGiveMeReports(void);			// PsychHIDGiveMeReports.c
-
+PsychError PSYCHHIDColorCal2(void);				// PsychHIDColorCal2.c
 
 //internal function protototypes
 PsychError PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
@@ -113,6 +130,10 @@ boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// Psy
 boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);	// PsychHIDHelpers.c
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
+bool PSYCHHIDColorCal2OpenDevice(void);		// PsychHIDColorCal2OpenDevice.c
+bool PsychHIDColorCal2MakeRequest(psych_
+//PsychError PSYCHHIDColorCal2ConfigureDevice(void);	// PsychHIDColorCal2ConfigureDevice.c
+//PsychError PSYCHHIDColorCal2CloseDevice(void);		// PsychHIDColorCal2CloseDevice.c
 
 
 //end include once

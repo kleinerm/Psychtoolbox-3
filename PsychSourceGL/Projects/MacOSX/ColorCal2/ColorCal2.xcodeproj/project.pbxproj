@@ -21,15 +21,27 @@
 		83995E640F51FDF600DA513D /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 83995E630F51FDF600DA513D /* mexversion.c */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		F1385C3B0F531BF6006F56B4 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		830A953E0F52204B00A44B04 /* ColorCal.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = ColorCal.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
-		830A95700F522AEB00A44B04 /* ColorCal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ColorCal.h; sourceTree = "<group>"; };
+		830A95700F522AEB00A44B04 /* ColorCal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ColorCal.h; path = ../../../Source/Common/ColorCal2/ColorCal.h; sourceTree = "<group>"; };
 		83995D340F51F96B00DA513D /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = /System/Library/Frameworks/CoreFoundation.framework; sourceTree = "<absolute>"; };
 		83995D380F51F97900DA513D /* CoreServices.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreServices.framework; path = /System/Library/Frameworks/CoreServices.framework; sourceTree = "<absolute>"; };
 		83995D3A0F51F98700DA513D /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
 		83995D800F51FD0600DA513D /* ColorCal.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ColorCal.c; path = ../../../Source/Common/ColorCal2/ColorCal.c; sourceTree = SOURCE_ROOT; };
 		83995E630F51FDF600DA513D /* mexversion.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = mexversion.c; path = /Applications/MATLAB_R2007b/extern/src/mexversion.c; sourceTree = "<absolute>"; };
-		D2AAC0630554660B00DB518D /* ColorCal.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = ColorCal.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
+		D2AAC0630554660B00DB518D /* ColorCal2.mexmac */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = ColorCal2.mexmac; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -79,7 +91,7 @@
 		1AB674ADFE9D54B511CA2CBB /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				D2AAC0630554660B00DB518D /* ColorCal.mexmac */,
+				D2AAC0630554660B00DB518D /* ColorCal2.mexmac */,
 				830A953E0F52204B00A44B04 /* ColorCal.mexmaci */,
 			);
 			name = Products;
@@ -141,6 +153,7 @@
 				D2AAC0600554660B00DB518D /* Headers */,
 				D2AAC0610554660B00DB518D /* Sources */,
 				D289988505E68E00004EDB86 /* Frameworks */,
+				F1385C3B0F531BF6006F56B4 /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -148,7 +161,7 @@
 			);
 			name = "ColorCal2 PPC";
 			productName = ColorCal2;
-			productReference = D2AAC0630554660B00DB518D /* ColorCal.mexmac */;
+			productReference = D2AAC0630554660B00DB518D /* ColorCal2.mexmac */;
 			productType = "com.apple.product-type.library.dynamic";
 		};
 /* End PBXNativeTarget section */
@@ -233,7 +246,7 @@
 					"-lmat",
 					"-lstdc++",
 				);
-				PRODUCT_NAME = ColorCal;
+				PRODUCT_NAME = ColorCal2;
 				SKIP_INSTALL = YES;
 				USER_HEADER_SEARCH_PATHS = "$MATLAB_INC_DIR $MATLAB_LIB_DIR";
 			};

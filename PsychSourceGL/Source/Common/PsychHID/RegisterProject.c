@@ -56,11 +56,13 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("ReceiveReportsStop",  &PSYCHHIDReceiveReportsStop));
 	PsychErrorExit(PsychRegister("GiveMeReports",  &PSYCHHIDGiveMeReports));
 	PsychErrorExit(PsychRegister("SetReport",  &PSYCHHIDSetReport));
+	PsychErrorExit(PsychRegister("ColorCal2", &PSYCHHIDColorCal2));
 
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dgp");
 	PsychSetModuleAuthorByInitials("mk");
 	PsychSetModuleAuthorByInitials("rpw");
+	PsychSetModuleAuthorByInitials("cgb");
 
 	return(PsychError_none);
 }
