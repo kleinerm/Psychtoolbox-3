@@ -12,7 +12,7 @@ function nr = PsychNumel(x)
 % History:
 % 02/14/09  mk Written.
 
-if exist('numel', 'builtin')
+if exist('numel', 'builtin') && ~IsOctave
   % Call builtin implementation:
   nr = builtin('numel', x);
 else
