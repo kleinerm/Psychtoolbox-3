@@ -1,5 +1,5 @@
-function DriftTexturePrecisionTest(highprecision, verbose)
-% DriftTexturePrecisionTest([highprecision=0][, verbose=0])
+function DriftTexturePrecisionTest(highprecision, verbose, filterMode)
+% DriftTexturePrecisionTest([highprecision=0][, verbose=0][, filterMode=1])
 %
 % This test finds the minimum useful subtexel stepsize of the graphics hardwares
 % texture coordinate interpolators. The minimum stepsize is the finest
@@ -20,10 +20,14 @@ function DriftTexturePrecisionTest(highprecision, verbose)
 % MacBook Pro) is 1/64 th of a pixel, which corresponds to 6 bits subpixel
 % accuracy.
 %
-% If the optional flag 'highprecision' is set to 1 or 2, then a special PTB
-% GLSL interpolation shader is used instead of the hard-wired interpolator
-% of your gfx chip. This is computationally more demanding and therefore
-% slower, but it should provide higher precision and better resolution.
+% If the optional flag 'highprecision' is set to 1 or 2, then floating
+% point textures are used, instead of integer textures with 8 bit
+% resolution. 1 selects 16bpc float textures, 2 selects 32bpc float
+% textures. A setting of 3 or 4 selects also 16bpc or 32bpc float textures,
+% but additionally a special PTB GLSL interpolation shader is used instead
+% of the hard-wired interpolator of your gfx chip. This is computationally
+% more demanding and therefore slower, but it should provide higher
+% precision and better resolution.
 
 % History:
 % 15.04.2007 Written (MK).
@@ -32,8 +36,8 @@ if nargin < 1 || isempty(highprecision)
     highprecision = 0;
 end
 
-if nargin < 2
-    verbose = 0
+if nargin < 2|| isempty(verbose)
+    verbose = 0;
 end
 
 if highprecision > 2
@@ -43,9 +47,16 @@ else
     sflags = 0;
 end
 
+if nargin < 3
+    filterMode = [];
+end
+
 AssertOpenGL;
 screenNumber=max(Screen('Screens'));
 texsize=256;            % Half-Size of the grating image.
+skewden = inf;
+
+KbReleaseWait;
 
 try
 	% Open a double buffered fullscreen window and draw a gray background 
@@ -76,12 +87,12 @@ try
     dstRect=CenterRect(dstRect, screenRect);
 
     % We only sample one single pixel in the center of the display:
-    sampleRect = OffsetRect(CenterRect([0 0 1 5], dstRect), 0, 0);
+    sampleRect = OffsetRect(CenterRect([0 0 1 texsize], dstRect), 0, 0);
     den = 1;
     skewcount = 0;
     
     % Test for stepsizes down to 1/512 th of a texel.
-    while den <= 512
+    while den <= 512 && ~KbCheck
         shiftperframe = 1/den;
         count = 0;
         for i=0:texsize
@@ -93,15 +104,20 @@ try
             srcRect=[xoffset 0 xoffset + texsize texsize];
 
             % Draw texture:
-            Screen('DrawTexture', w, tex, srcRect, dstRect);
+            Screen('DrawTexture', w, tex, srcRect, dstRect, [], filterMode);
 
             % Read back 1 sample pixel from drawn texture for comparison:
             readimgin = Screen('GetImage', w, sampleRect, 'backBuffer');
-            readimg = double(readimgin(1,1,1));
-            readimg2 = double(readimgin(5,1,1));
+            readimg = double(readimgin(10,1,1));
+            readimg2 = double(readimgin(:,1,1));
 
-            if (readimg~=readimg2) skewcount = skewcount + 1; end
+            diffv = (abs(readimg - readimg2) > 0);
             
+            if any(diffv)
+                skewcount = skewcount + 1;
+            end
+            
+            Screen('FillRect', w, [255 255 0], sampleRect)
             Screen('Flip', w);
             
             if (i > 0)
@@ -135,6 +151,7 @@ try
         fprintf('Stepsize 1 / %i th pixel. Nr. of identical frames: %i', den, count);
         if skewcount > 0
             fprintf('  --  Warning: Interpolator skew detected! Your hardware is sampling inaccurate!\n');
+            skewden = min(skewden, den);
         else
             fprintf('\n');
         end
@@ -150,10 +167,21 @@ try
         den = den * 2;
     end
 
-    % Output smallest stepsize that the texture coordinate interpolators of
-    % the hardware can reliably resolve:
-    fprintf('\n\nMinimum useable stepsize for interpolator is 1 / %i th of a pixel.\n', bestden);
-        
+    if den > 512
+        % Output smallest stepsize that the texture coordinate interpolators of
+        % the hardware can reliably resolve:
+        fprintf('\n\nMinimum useable stepsize for interpolator is 1 / %i th of a pixel.\n', bestden);
+    else
+        fprintf('\n\nTest prematurely aborted, results therefore incomplete:\nFinest tested useable stepsize for interpolator is 1 / %i th of a pixel.\n', bestden);
+    end
+    
+    if bestden > skewden || skewden == 1
+        fprintf('However, due to interpolator skew in your hardware, you may already encounter precision issues at a\nstepsize of 1 / %i th of a pixel.\n', skewden);
+        fprintf('If you need absolute precision, e.g, for very strictly controlled low-level stimuli, you should not use a\n');
+        fprintf('stepsize finer than that. You may retry with "highprecision" settings greater than the currenly selected\n');
+        fprintf('setting, to see if your hardware behaves more accurately with such settings.\n\n');
+    end
+    
 	Screen('CloseAll');
 catch
     %this "catch" section executes in case of an error in the "try" section
