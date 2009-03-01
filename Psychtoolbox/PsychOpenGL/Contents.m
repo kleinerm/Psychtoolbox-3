@@ -83,6 +83,9 @@
 % limited at the moment, so read the file carefully to understand its
 % limitations!
 %
+% * moglDrawDots3D() -- High speed drawing of 3D dots or points, similar to
+% Screen('DrawDots') for the 2D case.
+%
 % * moglmorpher()  -- A high-speed shape rendering and morphing function.
 % moglmorpher allows to quickly draw (=render) single 3D objects loaded by
 % LoadOBJFile(). It also allows you to load a collection of shapes and
