@@ -25,9 +25,9 @@
 #include "Screen.h"
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "Screen('LoadNormalizedGammaTable', ScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
+static char useString[] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
 static char synopsisString[] = 
-			"Load the gamma table of the specified screen. You need to pass the new "
+			"Load the gamma table of the specified screen or window 'windowPtrOrScreenNumber'. You need to pass the new "
 			"hardware gamma table 'table' as a 256 rows by 3 columns matrix. Each row corresponds to "
 			"a single color index value in the framebuffer and contains the Red- green- and blue values "
 			"to use for output. Column 1 is the red value, column 2 is the green value and column 3 is "
@@ -44,10 +44,11 @@ static char synopsisString[] =
 			"both the visual stimulus and change of the gamma table with each other and to the vertical retrace. If "
 			"the flag is set to its default value of zero then update of the gamma table will happen at the next "
 			"vertical retrace (or immediately if the graphics driver doesn't support sync to vertical retrace). "
-			"A 'loadOnNextFlip' flat of 2 will load the provided table not into the hardware tables of your graphics "
+			"A 'loadOnNextFlip' flag of 2 will load the provided table not into the hardware tables of your graphics "
 			"card, but into the hardware tables of special display devices, like e.g., the Bits++ box.\n"
 			"On MacOS-X, the optional 'physicalDisplay' flag can be set to 1, zero is the default. In this case, "
-			"the 'ScreenNumber' argument selects among physically present display devices, instead of logical devices. "
+			"the 'windowPtrOrScreenNumber' argument (which then must be a real screen number, not a window index) "
+			"selects among physically present display devices, instead of logical devices. "
 			"This is important if you want to assign different gamma-tables to multiple displays in a 'clone' or "
 			"'mirror mode' configuration, as there is only one logical display, but multiple physical displays, mirroring "
 			"each other. Please note that screen numbering is different for physical vs. logical displays. For a list of "
@@ -85,7 +86,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 	// corresponds to two physical displays which can have different gamma setting requirements:
 	if (PSYCH_SYSTEM == PSYCH_OSX && physicalDisplay > 0) {
 		PsychCopyInIntegerArg(1, TRUE, &screenNumber);
-		if (screenNumber < 1) PsychErrorExitMsg(PsychError_user, "Smaller than one 'screenNumber' provided, although 'physicalDisplay' flag set. This is not allowed!");
+		if (screenNumber < 1) PsychErrorExitMsg(PsychError_user, "A 'screenNumber' that is smaller than one provided, although 'physicalDisplay' flag set. This is not allowed!");
 
 		// Invert screenNumber as a sign its a physical display, not an active display:
 		screenNumber = -1 * screenNumber;

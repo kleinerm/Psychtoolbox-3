@@ -153,11 +153,12 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
 		// Special case: Physical displays handle: Put back into positive range and
 		// correct for 1-based external indexing:
 		screenNumber = (-1 * screenNumber) - 1;
-		if (screenNumber > (int) numPhysicalDisplays) PsychErrorExitMsg(PsychError_user, "Invalid physical screenNumber provided! Higher than number of connected physical displays!");
+		if (screenNumber >= (int) numPhysicalDisplays) PsychErrorExitMsg(PsychError_user, "Invalid physical screenNumber provided! Higher than number of connected physical displays!");
 		
 		// Valid range: Map it:
 		*displayID=displayOnlineCGIDs[screenNumber];
-		
+
+		return;
 	}
 	
     // Standard case: Logical displays:
@@ -170,12 +171,14 @@ void PsychGetCGDisplayIDFromScreenNumber(CGDirectDisplayID *displayID, int scree
     //
     // I'm not sure if this is the best place for performing this lookup, but
     // at least it should be safe to do here...
-    // Old: Fails on some dual-display setups - *displayID=displayCGIDs[screenNumber];
     *displayID=CGDisplayPrimaryDisplay(displayCGIDs[screenNumber]);
+
     // Protection against Apples stupidity... - our our's if we made false assumptions ;-)
     if (CGDisplayUnitNumber(*displayID)!=CGDisplayUnitNumber(displayCGIDs[screenNumber])) {
         mexPrintf("PTB-DEBUG : ACTIVE DISPLAY <-> PRIMARY DISPLAY MISMATCH FOR SCREEN %i!!!!\n", screenNumber);
     }
+	
+	return;
 }
 
 
@@ -538,10 +541,9 @@ int PsychGetDacBitsFromDisplay(int screenNumber)
 	SInt32 dacbits;
 	io_service_t displayService;
 	kern_return_t kr;
-	
+
 	// Retrieve display handle for screen:
-	if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychGetDacBitsFromDisplay() is out of range"); 
-	displayID=displayCGIDs[screenNumber];
+	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenNumber);
 
 	// Retrieve low-level IOKit service port for this display:
 	displayService = CGDisplayIOServicePort(displayID);

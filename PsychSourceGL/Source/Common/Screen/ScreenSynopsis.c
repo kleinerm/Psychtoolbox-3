@@ -141,7 +141,7 @@ void InitializeSynopsis()
 
 	// Load color lookup table of the window's screen (on-screen only)
 	synopsis[i++] = "\n% Load color lookup table of the window's screen (on-screen only):";
-	synopsis[i++] = "[gammatable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber);";
+	synopsis[i++] = "[gammatable, dacbits, reallutsize] = Screen('ReadNormalizedGammaTable', windowPtrOrScreenNumber [, physicalDisplay]);";
 	synopsis[i++] = "Screen('LoadNormalizedGammaTable', windowPtrOrScreenNumber, table [, loadOnNextFlip] [, physicalDisplay]);";
 	synopsis[i++] = "oldclut = Screen('LoadCLUT', windowPtrOrScreenNumber [, clut] [, startEntry=0] [, bits=8]);";
 
