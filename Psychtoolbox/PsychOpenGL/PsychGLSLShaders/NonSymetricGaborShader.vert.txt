@@ -26,6 +26,10 @@ const float deg2rad = 3.141592654 / 180.0;
 /* once when the shader is created: */
 uniform vec2  Center;
 
+/* If disableNorm is set to 1.0, then the normalization term below is    */
+/* not applied to the gabors final values. Default is 0.0, ie. apply it. */
+uniform float disableNorm;
+
 /* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
 attribute vec4 sizeAngleFilterMode;
 attribute vec4 modulateColor;
@@ -61,11 +65,15 @@ void main()
 
     float SpaceConstant = auxParameters0[2];
     Expmultiplier = -0.5 / (SpaceConstant * SpaceConstant);
-    float mc = 1.0 / (sqrtof2pi * SpaceConstant);
+
+
+    /* Conditionally apply non-standard normalization term iff disableNorm == 0.0 */
+    float mc = disableNorm + (1.0 - disableNorm) * (1.0 / (sqrtof2pi * SpaceConstant));
 
     /* The spatial aspect ratio Gamma is stored in the 5th aux parameter. */
     float Gamma = auxParameters1[0];
     GammaSquared = Gamma * Gamma;
+
     /* Premultiply the wanted Contrast to the color: */
     baseColor = modulateColor * mc * Contrast;
 }
