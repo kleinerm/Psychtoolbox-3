@@ -3,8 +3,13 @@ function DriftDemo
 % ___________________________________________________________________
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
-% In the OS X Psychtoolbox Screen('DrawTexture') replaces
+% In Psychtoolbox-3 Screen('DrawTexture') replaces
 % Screen('CopyWindow').     
+%
+% This is a very simple, bare bones demo on how to do frame animation. For
+% much more efficient ways to draw gratings and gabors, have a look at
+% DriftDemo2, DriftDemo3, DriftDemo4, ProceduralGaborDemo, GarboriumDemo,
+% ProceduralGarboriumDemo and DriftWaitDemo.
 %
 % CopyWindow vs. DrawTexture:
 %
@@ -27,6 +32,7 @@ function DriftDemo
 %  4/23/05    mk      Added Priority(0) in catch section, moved Screen('OpenWindow')
 %                     before first call to Screen('MakeTexture') in
 %                     preparation of future improvements to 'MakeTexture'.
+%  2/28/09    mk      Smallish refinements, cleanups, updated comments.
 
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -44,63 +50,87 @@ try
 	screens=Screen('Screens');
 	screenNumber=max(screens);
 	
-    % Find the color values which correspond to white and black.  Though on OS
-	% X we currently only support true color and thus, for scalar color
-	% arguments,
-	% black is always 0 and white 255, this rule is not true on other platforms will
-	% not remain true on OS X after we add other color depth modes.  
+    % Find the color values which correspond to white and black: Usually
+	% black is always 0 and white 255, but this rule is not true if one of
+	% the high precision framebuffer modes is enabled via the
+	% PsychImaging() commmand, so we query the true values via the
+	% functions WhiteIndex and BlackIndex:
 	white=WhiteIndex(screenNumber);
 	black=BlackIndex(screenNumber);
-	gray=(white+black)/2;
-	if round(gray)==white
-		gray=black;
-	end
-	inc=white-gray;
-	
-	% Open a double buffered fullscreen window and draw a gray background 
-	% to front and back buffers:
-	w=Screen('OpenWindow',screenNumber, 0,[],32,2);
-	Screen('FillRect',w, gray);
-	Screen('Flip', w);
-	Screen('FillRect',w, gray);
     
-	% compute each frame of the movie and convert the those frames, stored in
+    % Round gray to integral number, to avoid roundoff artifacts with some
+    % graphics cards:
+	gray=round((white+black)/2);
+
+    % This makes sure that on floating point framebuffers we still get a
+    % well defined gray. It isn't strictly neccessary in this demo:
+    if gray == white
+		gray=white / 2;
+    end
+    
+    % Contrast 'inc'rement range for given white and gray values:
+	inc=white-gray;
+
+    % Open a double buffered fullscreen window and select a gray background 
+	% color:
+	w=Screen('OpenWindow',screenNumber, gray);
+    
+	% Compute each frame of the movie and convert the those frames, stored in
 	% MATLAB matices, into Psychtoolbox OpenGL textures using 'MakeTexture';
 	numFrames=12; % temporal period, in frames, of the drifting grating
 	for i=1:numFrames
 		phase=(i/numFrames)*2*pi;
 		% grating
-		[x,y]=meshgrid(-200:200,-200:200);
+		[x,y]=meshgrid(-300:300,-300:300);
 		angle=30*pi/180; % 30 deg orientation.
 		f=0.05*2*pi; % cycles/pixel
 		a=cos(angle)*f;
 		b=sin(angle)*f;
 		m=exp(-((x/90).^2)-((y/90).^2)).*sin(a*x+b*y+phase);
-		tex(i)=Screen('MakeTexture', w, gray+inc*m);
+		tex(i)=Screen('MakeTexture', w, gray+inc*m); %#ok<AGROW>
 	end
 		
 	% Run the movie animation for a fixed period.  
 	movieDurationSecs=5;
 	frameRate=Screen('FrameRate',screenNumber);
-	if(frameRate==0)  %if MacOSX does not know the frame rate the 'FrameRate' will return 0. 
+
+    % If MacOSX does not know the frame rate the 'FrameRate' will return 0.
+    % That usually means we run on a flat panel with 60 Hz fixed refresh
+    % rate:
+    if frameRate == 0
         frameRate=60;
     end
 
+    % Convert movieDuration in seconds to duration in frames to draw:
     movieDurationFrames=round(movieDurationSecs * frameRate);
 	movieFrameIndices=mod(0:(movieDurationFrames-1), numFrames) + 1;
-	priorityLevel=MaxPriority(w);
+
+    % Use realtime priority for better timing precision:
+    priorityLevel=MaxPriority(w);
 	Priority(priorityLevel);
 
+    % Animation loop:
     for i=1:movieDurationFrames
+        % Draw image:
         Screen('DrawTexture', w, tex(movieFrameIndices(i)));
+        % Show it at next display vertical retrace. Please check DriftDemo2
+        % and later, as well as DriftWaitDemo for much better approaches to
+        % guarantee a robust and constant animation display timing! This is
+        % very basic and not best practice!
         Screen('Flip', w);
     end
 
     Priority(0);
 	
-	%The same commands wich close onscreen and offscreen windows also close
-	%textures.
-	Screen('CloseAll');
+    % Close all textures. This is not strictly needed, as
+    % Screen('CloseAll') would do it anyway. However, it avoids warnings by
+    % Psychtoolbox about unclosed textures. The warnings trigger if more
+    % than 10 textures are open at invocation of Screen('CloseAll') and we
+    % have 12 textues here:
+    Screen('Close');
+    
+    % Close window:
+    Screen('CloseAll');
 
 catch
     %this "catch" section executes in case of an error in the "try" section
@@ -109,11 +139,3 @@ catch
     Priority(0);
     psychrethrow(psychlasterror);
 end %try..catch..
-
-
-
-    
-
-
-
-

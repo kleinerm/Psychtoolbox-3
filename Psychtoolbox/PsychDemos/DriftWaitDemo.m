@@ -1,14 +1,15 @@
 function DriftWaitDemo(movieDurationSecs, waitframes)
-% DriftWaitDemo(movieDurationSecs, waitframes)
+% DriftWaitDemo([movieDurationSecs=10][, waitframes=1])
 % ___________________________________________________________________
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
-% In the OS X Psychtoolbox Screen('DrawTexture') replaces
-% Screen('CopyWindow').     
-%
+% In Psychtoolbox-3 Screen('DrawTexture') replaces Screen('CopyWindow').
+% 
 % This demo illustrates on how to emulate the old Screen('WaitBlanking'...)
 % behaviour: If you set waitframes > 1 then the screen is only updated
 % every waitframes'th monitor refresh interval.
+%
+% Optional parameters:
 %
 % movieDurationSecs == Requested total duration of movie in seconds.
 % waitframes == Number of monitor refresh intervals to wait before each
@@ -37,13 +38,18 @@ function DriftWaitDemo(movieDurationSecs, waitframes)
 %                     before first call to Screen('MakeTexture') in
 %                     preparation of future improvements to 'MakeTexture'.
 %  5/10/05    mk      Added demo-code for WaitBlanking - emulation.
+%  2/28/09    mk      Smallish refinements, cleanups, updated comments.
 
-if nargin<2
-    waitframes=1;
+if nargin < 2
+    waitframes = 1;
 end;
 
-if nargin<1
-    movieDurationSecs=20;
+if nargin < 1
+    movieDurationSecs = [];
+end
+
+if isempty(movieDurationSecs)
+    movieDurationSecs = 10;
 end;
 
 try
@@ -62,25 +68,30 @@ try
 	screens=Screen('Screens');
 	screenNumber=max(screens);
 	
-    % Find the color values which correspond to white and black.  Though on OS
-	% X we currently only support true color and thus, for scalar color
-	% arguments,
-	% black is always 0 and white 255, this rule is not true on other platforms will
-	% not remain true on OS X after we add other color depth modes.  
+    % Find the color values which correspond to white and black: Usually
+	% black is always 0 and white 255, but this rule is not true if one of
+	% the high precision framebuffer modes is enabled via the
+	% PsychImaging() commmand, so we query the true values via the
+	% functions WhiteIndex and BlackIndex:
 	white=WhiteIndex(screenNumber);
 	black=BlackIndex(screenNumber);
-	gray=(white+black)/2;
-	if round(gray)==white
-		gray=black;
-	end
+    
+    % Round gray to integral number, to avoid roundoff artifacts with some
+    % graphics cards:
+	gray=round((white+black)/2);
+
+    % This makes sure that on floating point framebuffers we still get a
+    % well defined gray. It isn't strictly neccessary in this demo:
+    if gray == white
+		gray=white / 2;
+    end
+    
+    % Contrast 'inc'rement range for given white and gray values:
 	inc=white-gray;
-	
-	% Open a double buffered fullscreen window and draw a gray background 
-	% to front and back buffers:
-	w=Screen('OpenWindow',screenNumber, 0,[],32,2);
-	Screen('FillRect',w, gray);
-	Screen('Flip', w);
-	Screen('FillRect',w, gray);
+
+    % Open a double buffered fullscreen window and set default background
+	% color to gray:
+	w = Screen('OpenWindow',screenNumber, gray);
 
     % compute each frame of the movie and convert the those frames, stored in
 	% MATLAB matices, into Psychtoolbox OpenGL textures using 'MakeTexture';
@@ -96,13 +107,16 @@ try
         a=cos(angle)*f;
 		b=sin(angle)*f;
 		m=exp(-((x/90).^2)-((y/90).^2)).*sin(a*x+b*y+phase);
-		tex(i)=Screen('MakeTexture', w, gray+inc*m);
+		tex(i)=Screen('MakeTexture', w, gray+inc*m); %#ok<AGROW>
 	end
 		
 	% Run the movie animation for a fixed period.  
-	%movieDurationSecs=5;
 	frameRate=Screen('FrameRate',screenNumber);
-	if(frameRate==0)  %if MacOSX does not know the frame rate the 'FrameRate' will return 0. 
+
+    % If MacOSX does not know the frame rate the 'FrameRate' will return 0.
+    % That usually means we run on a flat panel with 60 Hz fixed refresh
+    % rate:
+    if frameRate == 0
         frameRate=60;
     end
 
@@ -127,7 +141,9 @@ try
     vbl=Screen('Flip', w);
     
     for i=1:movieDurationFrames
+        % Draw image:
         Screen('DrawTexture', w, tex(movieFrameIndices(i)));
+        
         % NEW: We only flip every 'waitframes' monitor refresh intervals:
         % For this, we calculate a point in time after which Flip should flip
         % at the next possible VBL.
@@ -139,13 +155,19 @@ try
         % This is basically the old Screen('WaitBlanking', w, waitframes)
         % as known from the old PTB...
         vbl = Screen('Flip', w, vbl + (waitframes - 0.5) * ifi);
-	end;
+    end
 
     Priority(0);
 	
-	%The same commands wich close onscreen and offscreen windows also close
-	%textures.
-	Screen('CloseAll');
+    % Close all textures. This is not strictly needed, as
+    % Screen('CloseAll') would do it anyway. However, it avoids warnings by
+    % Psychtoolbox about unclosed textures. The warnings trigger if more
+    % than 10 textures are open at invocation of Screen('CloseAll') and we
+    % have 12 textues here:
+    Screen('Close');
+    
+    % Close window:
+    Screen('CloseAll');
 
 catch
     %this "catch" section executes in case of an error in the "try" section
@@ -154,11 +176,3 @@ catch
     Priority(0);
     psychrethrow(psychlasterror);
 end %try..catch..
-
-
-
-    
-
-
-
-

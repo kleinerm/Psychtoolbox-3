@@ -1,5 +1,5 @@
 function DriftDemo3(cyclespersecond, p)
-% function DriftDemo3(cyclespersecond, p)
+% function DriftDemo3([cyclespersecond=1][, p=32])
 %
 % Display an animated grating using the new Screen('DrawTexture') command.
 % In the OpenGL-Psychtoolbox Screen('DrawTexture') replaces
@@ -9,8 +9,12 @@ function DriftDemo3(cyclespersecond, p)
 % This demo illustrates how to draw an animated grating online by use of
 % only one grating texture with the minimal amount of code and complexity.
 % It is restricted in that the spatial period of the grating in pixels
-% must divide the total size of the pattern without remainder. For a more
-% complex but more general solution see DriftDemoOSX2.
+% must divide the total size of the pattern without remainder and that the
+% size of the grating in pixels must be a power of two, e.g., 256 or 512 or
+% 1024. For a more complex but more general solution which allows for
+% arbitrary grating sizes and also masked gratings, see DriftDemo2. For a
+% very fast and efficient method, which only works on recent graphics
+% hardware, see DriftDemo4.
 %
 % We create one single texture with a static sine grating. The texture
 % is a power-of-two texture, one whose width and height are powers of two.
@@ -22,8 +26,9 @@ function DriftDemo3(cyclespersecond, p)
 % In each successive frame we draw a rectangular region of the sine
 % texture onto the screen that is the size of the texture. This region,
 % the 'srcRect' in the Screen('DrawTexture') command, is shifted each
-% frame. As our special texture is repeating infinitely into each direction,
-% we create the impression of a moving grating.
+% frame. As the graphics hardware makes our special texture to appear as if
+% it is repeating infinitely into each direction, we create the impression of
+% a moving grating.
 %
 % Parameters:
 %
@@ -45,13 +50,18 @@ function DriftDemo3(cyclespersecond, p)
 
 % HISTORY
 %  5/5/06    mk     Adapted from DriftDemoOSX2.m 
+%  2/28/09   mk     Updated with small enhancements + additional comments.
 
-if nargin<1
+if nargin < 1
+    cyclespersecond = [];
+end
+
+if isempty(cyclespersecond)
     % Default speed of grating in cycles per second:
     cyclespersecond=1;
 end;
 
-if nargin<2
+if nargin < 2
     % Default grating spatial period:
     p=32;
 end;
@@ -60,7 +70,7 @@ movieDurationSecs=60;   % Abort demo after 60 seconds.
 visiblesize=512;        % Size of the grating image. Needs to be a power of two.
 
 if rem(visiblesize, p)~=0
-  error('Period p must divide visiblesize without remainder for this demo to work!');
+  error('Period p must divide default visiblesize of 512 pixels without remainder for this demo to work!');
 end;
 
 % This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -77,31 +87,42 @@ AssertOpenGL;
 screens=Screen('Screens');
 screenNumber=max(screens);
 
-% Find the color values which correspond to white and black.  Though on OS
-% X we currently only support true color and thus, for scalar color
-% arguments, black is always 0 and white 255, this rule is not necessarily
-% true on other platforms and will not remain true after we add other color depth modes.  
+% Find the color values which correspond to white and black: Usually
+% black is always 0 and white 255, but this rule is not true if one of
+% the high precision framebuffer modes is enabled via the
+% PsychImaging() commmand, so we query the true values via the
+% functions WhiteIndex and BlackIndex:
 white=WhiteIndex(screenNumber);
 black=BlackIndex(screenNumber);
-gray=(white+black)/2;
-if round(gray)==white
-	gray=black;
+
+% Round gray to integral number, to avoid roundoff artifacts with some
+% graphics cards:
+gray=round((white+black)/2);
+
+% This makes sure that on floating point framebuffers we still get a
+% well defined gray. It isn't strictly neccessary in this demo:
+if gray == white
+    gray=white / 2;
 end
+
+% Contrast 'inc'rement range for given white and gray values:
 inc=white-gray;
 
 % Open a double buffered fullscreen window and draw a gray background 
-% to front and back buffers:
-[w screenRect]=Screen('OpenWindow',screenNumber, gray);
-
-% Flip buffer to show initial gray background:
-Screen('Flip', w);
+% to front and back buffers as background clear color:
+w = Screen('OpenWindow',screenNumber, gray);
 
 % Calculate parameters of the grating:
 f=1/p;
 fr=f*2*pi;    % frequency in radians.
 
-% Create one single static grating image:
-[x,y]=meshgrid(0:visiblesize-1, 0:visiblesize-1);
+% Create one single static 1-D grating image.
+% We only need a texture with a single row of pixels(i.e. 1 pixel in height) to
+% define the whole grating! If the 'srcRect' in the 'Drawtexture' call
+% below is "higher" than that (i.e. visibleSize >> 1), the GPU will
+% automatically replicate pixel rows. This 1 pixel height saves memory
+% and memory bandwith, ie. it is potentially faster on some GPUs.
+x=meshgrid(0:visiblesize-1, 1);
 grating=gray + inc*cos(fr*x);
 
 % Store grating in texture: Set the 'enforcepot' flag to 1 to signal
@@ -136,8 +157,8 @@ while(vbl < vblendtime)
    % area from the texture:
    srcRect=[xoffset 0 xoffset + visiblesize visiblesize];
 
-   % Draw grating texture: Only show subarea 'srcRect', center
-   % texture in the onscreen window.
+   % Draw grating texture: Only show subarea 'srcRect', center texture in
+   % the onscreen window automatically:
    Screen('DrawTexture', w, gratingtex, srcRect);
 
    % Flip 'waitframes' monitor refresh intervals after last redraw.
@@ -155,7 +176,3 @@ Screen('CloseAll');
 
 % Well done!
 return;
-
-
-
-
