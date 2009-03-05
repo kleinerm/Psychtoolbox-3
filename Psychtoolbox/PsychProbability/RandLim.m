@@ -14,7 +14,11 @@ function out = RandLim(n,lower,upper)
 % DN 2008-07-21 Wrote it
 % DN 2008-09-19 Support for vector lower and upper limits
 
-error(nargchk(3, 3, nargin, 'struct'))
+if ~IsOctave
+    error(nargchk(3, 3, nargin, 'struct'))
+else
+    error(nargchk(3, 3, nargin))
+end
 
 r = rand(n);
 if (~isscalar(lower) && any(size(lower)~=size(r))) || (~isscalar(upper) && any(size(upper)~=size(r)))

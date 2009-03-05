@@ -47,7 +47,8 @@ psychassert(depthrangen<depthrangef,'Near clipping plane should be closer than f
 u   = RandLim([1,ndots],0,1);                                           % get uniform random variable
 z   = -(u.*(depthrangef.^3-depthrangen.^3)+depthrangen.^3).^(1/3);      % transform to parabolar distribution (negate as depth postiion is a negative number
 
-yrs = -z*tand(FOV/2);
+FOV = FOV / 360 * 2 * pi;
+yrs = -z*tan(FOV/2);
 y   = RandLim([1,ndots],-yrs,yrs);
 xrs = yrs * aspectr;
 x   = RandLim([1,ndots],-xrs,xrs);
