@@ -23,6 +23,9 @@ vec4 icmTransformColor(vec4 incolor)
     /* Return alpha component unmodified: */
     outcolor.a = incolor.a;
 
+    /* Clamp input to valid 0-1 range: */
+    incolor.rgb = clamp(incolor.rgb, vec3(0.0), vec3(1.0));
+
     /* Map RGB components through power function with Gamma coeff.: */
     outcolor.rgb = pow(incolor.rgb, ICMEncodingGamma);
 
@@ -36,6 +39,9 @@ vec4 icmTransformColor(vec4 incolor)
 float icmTransformColor1(float incolor)
 {
     float outcolor;
+
+    /* Clamp input to valid 0-1 range: */
+    incolor = clamp(incolor, 0.0, 1.0);
 
     /* Map luminance component through power function with Gamma coeff.: */
     outcolor = pow(incolor, ICMEncodingGamma.r);
