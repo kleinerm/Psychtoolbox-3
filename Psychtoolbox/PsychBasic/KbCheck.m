@@ -121,6 +121,9 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 %             provides a significant speedup for KbChecks if used properly.
 %             On non-OS/X, this is emulated in software and does not
 %             provide any speedup.
+% 03/03/9  mk Bugfix for "white-list" code on old Matlab releases. Need to
+%             cast to double and back to uint8, as old Matlabs don't
+%             support .* operation on uint8 class arrays.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -196,7 +199,7 @@ oldSecs = secs;
 % as this is done internally in PsychHID('KbCheck') on OS/X:
 if ~macosx & ~isempty(ptb_kbcheck_enabledKeys) %#ok<AND2>
     % Mask all keys with the enabled keys:
-    keyCode = keyCode .* ptb_kbcheck_enabledKeys;
+    keyCode = uint8(double(keyCode) .* ptb_kbcheck_enabledKeys);
 
     % Reevaluate global key down state:
     keyIsDown = any(keyCode);
