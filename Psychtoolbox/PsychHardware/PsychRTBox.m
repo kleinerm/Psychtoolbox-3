@@ -1792,8 +1792,8 @@ function tpost = sendTrigger(handle)
     % case the box will be ready to receive at least 1 new command byte:
     WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
     
-    % Box ready to receive our "disable all event reporting" command code
-    % 'a'. Send it blocking:
+    % Box ready to receive our "serial trigger" command code
+    % 'Y'. Send it blocking:
     [nw, tpost] = IOPort('Write', s, 'Y');
     
     % Command submission completed at time 'tpost'. Set a new busyUntil
