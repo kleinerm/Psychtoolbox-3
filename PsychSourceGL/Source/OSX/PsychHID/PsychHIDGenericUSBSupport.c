@@ -1,6 +1,5 @@
 /*
- *  PsychHIDColorCal2OpenDevice.c
- *  PsychToolbox
+ *  PsychHIDGenericUSBSupport.c
  *
  *  Platform: OS X
  *
@@ -10,10 +9,15 @@
 
 #include "PsychHID.h"
 
-extern IOUSBDeviceInterface **g_ColorCal2Device;
+// Function Declarations
+IOReturn ConfigureDevice(IOUSBDeviceInterface **dev);
 
-bool PsychHIDColorCal2MakeRequest(psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+// Globals
+extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+
+bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
 {
+	IOUSBDeviceInterface **dev;
 	bool retVal = true;
 	
 	// Setup the USB request data structure.
@@ -22,23 +26,41 @@ bool PsychHIDColorCal2MakeRequest(psych_uint8 bmRequestType, psych_uint16 wValue
 	request.wValue = wValue;
 	request.wLength = wLength;
 	request.wIndex = wIndex;
+	request.pData = pData;
 	
-	// Send the data across the USB bus.
-	if ((*g_ColorCal2Device)->DeviceRequest(g_ColorCal2Device, &request) != kIOReturnSuccess) {
-		retVal = false;
+	dev = g_GenericUSBTracker[usbHandle];
+	if (dev == NULL) {
+		PsychErrMsgTxt("(PsychHIDControlTransfer) USB handle points to NULL device.");
 	}
 	
+	// Send the data across the USB bus.
+	if ((*dev)->DeviceRequest(dev, &request) != kIOReturnSuccess) {
+		retVal = false;
+	}
+		
 	return retVal;
 }
 
 
-bool PSYCHHIDColorCal2OpenDevice(void)
+void PSYCHHIDCloseUSBDevice(int usbHandle)
+{
+	IOUSBDeviceInterface **dev = g_GenericUSBTracker[usbHandle];
+	
+	if (dev != NULL) {
+		(void)(*dev)->USBDeviceClose(dev);
+		(void)(*dev)->Release(dev);
+		dev = NULL;
+	}
+}
+
+
+GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID)
 {
 	mach_port_t             masterPort;
 	kern_return_t           kr;
 	CFMutableDictionaryRef  matchingDict;
-	SInt32                  usbVendor = kColorCal2VendorID;
-	SInt32                  usbProduct = kColorCal2ProductID;
+	SInt32                  usbVendor = (SInt32)vendorID;
+	SInt32                  usbProduct = (SInt32)deviceID;
 	IOUSBDeviceInterface    **dev = NULL;
 	io_iterator_t           iterator;
 	IOCFPlugInInterface     **plugInInterface = NULL;
@@ -53,14 +75,14 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 	// Create a master port for communication with the I/O Kit
 	kr = IOMasterPort(MACH_PORT_NULL, &masterPort);
 	if (kr || !masterPort) {
-		mexErrMsgTxt("(ColorCal) Couldn?t create a master I/O Kit port.");
+		PsychErrMsgTxt("Couldn't create a master I/O Kit port.");
 	}
 	
 	// Set up matching dictionary for class IOUSBDevice and its subclasses
 	matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (!matchingDict) {
 		mach_port_deallocate(mach_task_self(), masterPort);
-		mexErrMsgTxt("(ColorCal) Couldn?t create a USB matching dictionary\n");
+		PsychErrMsgTxt("Couldn't create a USB matching dictionary.");
 	}
 	
 	//Add the vendor and product IDs to the matching dictionary.
@@ -76,7 +98,7 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 	
 	kr = IOServiceGetMatchingServices(masterPort, matchingDict, &iterator);
 	if (kr) {
-		mexErrMsgTxt("(ColorCal) Couldn't get matching services\n");
+		PsychErrMsgTxt("Couldn't get matching services\n");
 	}
 	
 	// Attempt to find the correct device.
@@ -102,7 +124,7 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 		(*plugInInterface)->Release(plugInInterface);
 		
 		if (result || !dev) {
-			printf("Couldn?t create a device interface (%08x)\n", (int) result);
+			printf("Couldn't create a device interface (%08x)\n", (int) result);
 			continue;
 		}
 		
@@ -110,14 +132,14 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 		kr = (*dev)->GetDeviceVendor(dev, &vendor);
 		kr = (*dev)->GetDeviceProduct(dev, &product);
 		kr = (*dev)->GetDeviceReleaseNumber(dev, &release);
-		if ((vendor != kColorCal2VendorID) || (product != kColorCal2ProductID)) {
-			mexPrintf("Found unwanted device (vendor = %d, product = %d)\n", vendor, product);
+		if ((vendor != vendorID) || (product != deviceID)) {
+			printf("Found unwanted device (vendor = %d, device = %d)\n", vendor, product);
 			(void) (*dev)->Release(dev);
 			continue;
 		}
 		else {
 			deviceFound = true;
-			//mexPrintf("Vendor: 0x%x\nProduct: 0x%x\nRelease: 0x%x\n", vendor, product, release);
+			//printf("Vendor: 0x%x\nProduct: 0x%x\nRelease: 0x%x\n", vendor, product, release);
 			break;
 		}
 		
@@ -128,7 +150,7 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 		kr = (*dev)->USBDeviceOpen(dev);
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->Release(dev);
-			mexErrMsgTxt("(ColorCal) Unable to open device.");
+			PsychErrMsgTxt("Unable to open device.");
 		}
 		
 		// Configure device
@@ -136,16 +158,52 @@ bool PSYCHHIDColorCal2OpenDevice(void)
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->USBDeviceClose(dev);
 			(void) (*dev)->Release(dev);
-			mexErrMsgTxt("Unable to configure device");
+			PsychErrMsgTxt("Unable to configure device");
 		}
-		
-		// Store a reference to the device.
-		g_ColorCal2Device = dev;
+	}
+	else {
+		dev = NULL;
 	}
 	
 	// Finished with master port
 	mach_port_deallocate(mach_task_self(), masterPort);
 	masterPort = 0;
 	
-	return deviceFound;	
+	// Return the pointer to the USB device handle.  This will be NULL if
+	// nothing was found.
+	return dev;
+}
+
+
+IOReturn ConfigureDevice(IOUSBDeviceInterface **dev)
+{
+	UInt8                           numConfig;
+	IOReturn                        kr;
+	IOUSBConfigurationDescriptorPtr configDesc;
+	
+	// Get the number of configurations. The sample code always chooses
+	// the first configuration (at index 0) but your code may need a
+	// different one
+	kr = (*dev)->GetNumberOfConfigurations(dev, &numConfig);
+	
+	if (!numConfig) {
+		return -1;
+	}
+	
+	// Get the configuration descriptor for index 0
+	kr = (*dev)->GetConfigurationDescriptorPtr(dev, 0, &configDesc);
+	if (kr) {
+		printf("Couldn?t get configuration descriptor for index %d (err = %08x)\n", 0, kr);
+		return -1;
+	}
+	
+	// Set the device?s configuration. The configuration value is found in
+	// the bConfigurationValue field of the configuration descriptor
+	kr = (*dev)->SetConfiguration(dev, configDesc->bConfigurationValue);
+	if (kr) {
+		printf("Couldn?t set configuration to value %d (err = %08x)\n", 0, kr);
+		return -1;
+	}
+	
+	return kIOReturnSuccess;
 }

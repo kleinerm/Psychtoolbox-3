@@ -52,7 +52,7 @@
 #include "HID_Utilities_External.h"
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-// ColorCal 2  OS X includes.
+// ColorCal 2 required OS X includes.
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <IOKit/IOKitLib.h>
@@ -60,26 +60,23 @@
 #include <IOKit/IOCFPlugIn.h>
 #include <mach/mach.h>
 #include <string.h>
+
+#define GENERIC_USB_TYPE IOUSBDeviceInterface**
+#else
+// Not sure how other platforms will store references in the generic USB tracking array.
+#define GENERIC_USB_TYPE int
 #endif
 
-// ColorCal 2 OS X defines.
-//#define ColorCal2USBStruct IOUSBDevRequest		// Defines the structure that is sent across the USB control channel.
-//#define ColorCal2USBRequest(ccDevice, request) (
-
-// ColorCal 2 constants.
-#define kColorCal2VendorID        0x0861    // Vendor ID of the ColorCal2
-#define kColorCal2ProductID       0x1001    // Product ID of the ColorCal2
-
-//Define constants for use by PsychHID files. 
-#define PSYCH_HID_MAX_DEVICES					256
+// Define constants for use by PsychHID files. 
+#define PSYCH_HID_MAX_DEVICES								256
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_TYPE_NAME_LENGTH 		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH		256
-#define PSYCH_HID_MAX_DEVICE_ELEMENTS				1024
-#define PSYCH_HID_MAX_KEYBOARD_DEVICES				64
-	
+#define PSYCH_HID_MAX_DEVICE_ELEMENTS						1024
+#define PSYCH_HID_MAX_KEYBOARD_DEVICES						64
+#define PSYCH_HID_MAX_GENERIC_USB_DEVICES					4
 
-//function prototypes for module subfunctions.
-PsychError MODULEVersion(void);					// MODULEVersion.c 
+// Function prototypes for module subfunctions.
+PsychError MODULEVersion(void);						// MODULEVersion.c 
 PsychError PSYCHHIDGetNumDevices(void);				// PSYCHHIDGetNumDevices.c
 PsychError PSYCHHIDGetNumElements(void);			// PSYCHHIDGetNumElements.c
 PsychError PSYCHHIDGetNumCollections(void);			// PSYCHHIDGetNumCollections.c
@@ -88,21 +85,23 @@ PsychError PSYCHHIDGetElements(void);				// PsychHIDGetElementList.c
 PsychError PSYCHHIDGetRawState(void);				// PsychHIDGetRawElementState.c
 PsychError PSYCHHIDGetCalibratedState(void);		// PsychHIDGetCalibratedState.c
 PsychError PSYCHHIDGetCollections(void);			// PsychHIDGetCollections.c
-PsychError PSYCHHIDKbCheck(void);				// PsychHIDKbCheck.c
-PsychError PSYCHHIDKbWait(void);				// PsychHIDKbWait.c 
+PsychError PSYCHHIDKbCheck(void);					// PsychHIDKbCheck.c
+PsychError PSYCHHIDKbWait(void);					// PsychHIDKbWait.c 
 PsychError PSYCHHIDKbTriggerWait(void);				// PsychTriggerWait.c
-PsychError PSYCHHIDKbQueueCreate(void);			// PsychHIDKbQueueCreate.c
-PsychError PSYCHHIDKbQueueStart(void);			// PsychHIDKbQueueStart.c
-PsychError PSYCHHIDKbQueueStop(void);			// PsychHIDKbQueueStop.c
-PsychError PSYCHHIDKbQueueCheck(void);			// PsychHIDKbQueueCheck.c
-PsychError PSYCHHIDKbQueueFlush(void);			// PsychHIDKbQueueFlush.c
-PsychError PSYCHHIDKbQueueRelease(void);		// PsychHIDKbQueueRelease.c
-PsychError PSYCHHIDGetReport(void);				// PsychHIDGetReport.c
-PsychError PSYCHHIDSetReport(void);				// PsychHIDSetReport.c
-PsychError PSYCHHIDReceiveReports(void);		// PsychHIDReceiveReports.c
-PsychError PSYCHHIDReceiveReportsStop(void);	// PsychHIDReceiveReportsStop.c
-PsychError PSYCHHIDGiveMeReports(void);			// PsychHIDGiveMeReports.c
-PsychError PSYCHHIDColorCal2(void);				// PsychHIDColorCal2.c
+PsychError PSYCHHIDKbQueueCreate(void);				// PsychHIDKbQueueCreate.c
+PsychError PSYCHHIDKbQueueStart(void);				// PsychHIDKbQueueStart.c
+PsychError PSYCHHIDKbQueueStop(void);				// PsychHIDKbQueueStop.c
+PsychError PSYCHHIDKbQueueCheck(void);				// PsychHIDKbQueueCheck.c
+PsychError PSYCHHIDKbQueueFlush(void);				// PsychHIDKbQueueFlush.c
+PsychError PSYCHHIDKbQueueRelease(void);			// PsychHIDKbQueueRelease.c
+PsychError PSYCHHIDGetReport(void);					// PsychHIDGetReport.c
+PsychError PSYCHHIDSetReport(void);					// PsychHIDSetReport.c
+PsychError PSYCHHIDReceiveReports(void);			// PsychHIDReceiveReports.c
+PsychError PSYCHHIDReceiveReportsStop(void);		// PsychHIDReceiveReportsStop.c
+PsychError PSYCHHIDGiveMeReports(void);				// PsychHIDGiveMeReports.c
+PsychError PSYCHHIDGenericUSBOpen(void);			// PsychHIDGenericUSBOpen.c
+PsychError PSYCHHIDGenericUSBClose(void);			// PsychHIDGenericUSBClose.c
+PsychError PSYCHHIDGenericUSBControlTransfer(void);	// PsychHIDGenericUSBControlTransfer.c
 
 //internal function protototypes
 PsychError PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
@@ -130,11 +129,11 @@ boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// Psy
 boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);	// PsychHIDHelpers.c
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
-bool PSYCHHIDColorCal2OpenDevice(void);		// PsychHIDColorCal2OpenDevice.c
-bool PsychHIDColorCal2MakeRequest(psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
-//PsychError PSYCHHIDColorCal2ConfigureDevice(void);	// PsychHIDColorCal2ConfigureDevice.c
-//PsychError PSYCHHIDColorCal2CloseDevice(void);		// PsychHIDColorCal2CloseDevice.c
 
+// These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
+GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID);
+void PSYCHHIDCloseUSBDevice(int usbHandle);
+bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 //end include once
 #endif

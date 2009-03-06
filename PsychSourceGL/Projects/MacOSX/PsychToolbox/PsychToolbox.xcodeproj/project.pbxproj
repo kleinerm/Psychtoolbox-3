@@ -2006,9 +2006,8 @@
 		F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2F9ABA23045F38B7007A7274 /* System.framework */; };
 		F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */; };
 		F111E6580AD4BDD60090A83E /* libHIDUtilities-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */; };
-		F13E934F0F534180007D7EA0 /* PsychHIDColorCal2Support.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */; };
-		F13E93500F53421E007D7EA0 /* PsychHIDColorCal2Support.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */; };
-		F13E93580F5345F5007D7EA0 /* PsychHIDColorCal2.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E93570F5345F5007D7EA0 /* PsychHIDColorCal2.c */; };
+		F13E934F0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
+		F13E93500F53421E007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */ = {isa = PBXBuildFile; fileRef = F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */; };
 		F14A27AF0AD48A2A00BFB68F /* MachGetPriorityMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95011D04E446B9007A7274 /* MachGetPriorityMex.c */; };
 		F14A27B00AD48A2A00BFB68F /* MachPriorityCommonMex.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F95012904E85245007A7274 /* MachPriorityCommonMex.c */; };
 		F14A27B10AD48A2A00BFB68F /* mexversion.c in Sources */ = {isa = PBXBuildFile; fileRef = 2F26E8BD04343B30007A7274 /* mexversion.c */; };
@@ -2472,6 +2471,9 @@
 		F14A2B730AD4ACE700BFB68F /* CoreAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69ED03DBFA8E01866A1C /* CoreAudio.framework */; };
 		F14A2B740AD4ACE700BFB68F /* CoreServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F56C69FA03DCAC5101866A1C /* CoreServices.framework */; };
 		F14A2B760AD4ACE700BFB68F /* OpenGL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F5FCC41A03833708017A7028 /* OpenGL.framework */; };
+		F183DD400F5C2B8E00896D6A /* PsychHIDGenericUSBOpen.c in Sources */ = {isa = PBXBuildFile; fileRef = F183DD3F0F5C2B8E00896D6A /* PsychHIDGenericUSBOpen.c */; };
+		F183DD420F5C31F100896D6A /* PsychHIDGenericUSBClose.c in Sources */ = {isa = PBXBuildFile; fileRef = F183DD410F5C31F100896D6A /* PsychHIDGenericUSBClose.c */; };
+		F183DD440F5C366000896D6A /* PsychHIDGenericUSBControlTransfer.c in Sources */ = {isa = PBXBuildFile; fileRef = F183DD430F5C366000896D6A /* PsychHIDGenericUSBControlTransfer.c */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXBuildRule section */
@@ -3494,7 +3496,7 @@
 		2FACA6820766CB0400A159D3 /* SystemConfiguration.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SystemConfiguration.framework; path = /System/Library/Frameworks/SystemConfiguration.framework; sourceTree = "<absolute>"; };
 		2FACAD6F0766DAB400A159D3 /* GetEthernetAddress.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = GetEthernetAddress.c; path = ../../../Source/OSX/EthernetAddress/GetEthernetAddress.c; sourceTree = SOURCE_ROOT; };
 		2FACAD700766DAB400A159D3 /* GetEthernetAddress.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = GetEthernetAddress.h; path = ../../../Source/OSX/EthernetAddress/GetEthernetAddress.h; sourceTree = SOURCE_ROOT; };
-		2FB35E54073065570070ABEC /* Info-GetSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecsMex.plist"; sourceTree = "<group>"; };
+		2FB35E54073065570070ABEC /* Info-GetSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetSecsMex.plist"; sourceTree = "<group>"; };
 		2FB35E55073065570070ABEC /* GetSecsMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetSecsMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FB6EED407B88314000CAF40 /* SCREENBlendFunction.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENBlendFunction.c; path = ../../../Source/Common/Screen/SCREENBlendFunction.c; sourceTree = SOURCE_ROOT; };
 		2FBB3CD504393BCA007A7274 /* MachPriority.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = MachPriority.c; path = ../../../Source/Common/Priority/MachPriority.c; sourceTree = SOURCE_ROOT; };
@@ -3522,44 +3524,44 @@
 		2FD0652A08D93F21005BD6CD /* CocoaEventBridgeExitFunction.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = CocoaEventBridgeExitFunction.c; path = ../../../Source/Common/GetChar/CocoaEventBridgeExitFunction.c; sourceTree = SOURCE_ROOT; };
 		2FD31F1B079E1F89005D8F2D /* TimeLists.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = TimeLists.h; path = ../../../Source/Common/Screen/TimeLists.h; sourceTree = SOURCE_ROOT; };
 		2FD31F26079E217F005D8F2D /* TimeLists.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = TimeLists.c; path = ../../../Source/Common/Screen/TimeLists.c; sourceTree = SOURCE_ROOT; };
-		2FD6148707306666008DA6B4 /* Info-DoNothing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-DoNothing.plist"; sourceTree = "<group>"; };
-		2FD614C707306666008DA6B4 /* Info-FontInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-FontInfo.plist"; sourceTree = "<group>"; };
+		2FD6148707306666008DA6B4 /* Info-DoNothing.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-DoNothing.plist"; sourceTree = "<group>"; };
+		2FD614C707306666008DA6B4 /* Info-FontInfo.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-FontInfo.plist"; sourceTree = "<group>"; };
 		2FD614C907306666008DA6B4 /* FontInfo.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FontInfo.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD614DB07306666008DA6B4 /* Info-GetBusFrequencyMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusFrequencyMex.plist"; sourceTree = "<group>"; };
+		2FD614DB07306666008DA6B4 /* Info-GetBusFrequencyMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetBusFrequencyMex.plist"; sourceTree = "<group>"; };
 		2FD614DD07306666008DA6B4 /* GetBusFrequencyMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusFrequencyMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
+		2FD6151107306666008DA6B4 /* Info-GetBusTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetBusTicks.plist"; sourceTree = "<group>"; };
 		2FD6151307306666008DA6B4 /* GetBusTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetBusTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FD6154B07306666008DA6B4 /* Info-GetChar.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = "Info-GetChar.plist"; sourceTree = "<group>"; };
 		2FD6154D07306666008DA6B4 /* CocoaEventBridge.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CocoaEventBridge.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
+		2FD6158307306666008DA6B4 /* Info-GetPID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetPID.plist"; sourceTree = "<group>"; };
 		2FD6158507306666008DA6B4 /* GetPID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetPID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
+		2FD615BB07306666008DA6B4 /* Info-GetSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetSecs.plist"; sourceTree = "<group>"; };
 		2FD615BC07306667008DA6B4 /* GetSecs.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetSecs.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6160307306667008DA6B4 /* Info-GetSecsTick.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetSecsTick.plist"; sourceTree = "<group>"; };
+		2FD6160307306667008DA6B4 /* Info-GetSecsTick.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetSecsTick.plist"; sourceTree = "<group>"; };
 		2FD6160507306667008DA6B4 /* GetSecsTick.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetSecsTick.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6163A07306667008DA6B4 /* Info-GetTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-GetTicks.plist"; sourceTree = "<group>"; };
+		2FD6163A07306667008DA6B4 /* Info-GetTicks.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-GetTicks.plist"; sourceTree = "<group>"; };
 		2FD6163C07306667008DA6B4 /* GetTicks.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = GetTicks.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6164F07306667008DA6B4 /* Info-MachGetPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-MachGetPriorityMex.plist"; sourceTree = "<group>"; };
+		2FD6164F07306667008DA6B4 /* Info-MachGetPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-MachGetPriorityMex.plist"; sourceTree = "<group>"; };
 		2FD6165107306667008DA6B4 /* MachGetPriorityMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachGetPriorityMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6168507306667008DA6B4 /* Info-MachPriority.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-MachPriority.plist"; sourceTree = "<group>"; };
+		2FD6168507306667008DA6B4 /* Info-MachPriority.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-MachPriority.plist"; sourceTree = "<group>"; };
 		2FD6168707306667008DA6B4 /* MachPriority.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachPriority.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6169A07306668008DA6B4 /* Info-MachSetPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-MachSetPriorityMex.plist"; sourceTree = "<group>"; };
+		2FD6169A07306668008DA6B4 /* Info-MachSetPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-MachSetPriorityMex.plist"; sourceTree = "<group>"; };
 		2FD6169C07306668008DA6B4 /* MachSetPriorityMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MachSetPriorityMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD616DD07306668008DA6B4 /* Info-PsychHID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-PsychHID.plist"; sourceTree = "<group>"; };
+		2FD616DD07306668008DA6B4 /* Info-PsychHID.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-PsychHID.plist"; sourceTree = "<group>"; };
 		2FD616DF07306668008DA6B4 /* PsychHID.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PsychHID.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
+		2FD6171307306668008DA6B4 /* Info-Rush.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Rush.plist"; sourceTree = "<group>"; };
 		2FD6171507306668008DA6B4 /* Rush.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Rush.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
+		2FD6179907306668008DA6B4 /* Info-Screen.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-Screen.plist"; sourceTree = "<group>"; };
 		2FD6179B07306669008DA6B4 /* Screen.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Screen.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
-		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
-		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
+		2FD617CF07306669008DA6B4 /* Info-SleepSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-SleepSecs.plist"; sourceTree = "<group>"; };
+		2FD617E307306669008DA6B4 /* Info-SleepSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-SleepSecsMex.plist"; sourceTree = "<group>"; };
+		2FD6181D0730666A008DA6B4 /* Info-SysBeep.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-SysBeep.plist"; sourceTree = "<group>"; };
 		2FD6181F0730666A008DA6B4 /* SysBeep.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SysBeep.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD618310730666A008DA6B4 /* Info-TestPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-TestPriorityMex.plist"; sourceTree = "<group>"; };
+		2FD618310730666A008DA6B4 /* Info-TestPriorityMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-TestPriorityMex.plist"; sourceTree = "<group>"; };
 		2FD618330730666A008DA6B4 /* TestPriorityMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = TestPriorityMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD618670730666B008DA6B4 /* Info-WaitSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-WaitSecs.plist"; sourceTree = "<group>"; };
+		2FD618670730666B008DA6B4 /* Info-WaitSecs.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-WaitSecs.plist"; sourceTree = "<group>"; };
 		2FD618690730666B008DA6B4 /* WaitSecs.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WaitSecs.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FD6187B0730666B008DA6B4 /* Info-WaitSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = "Info-WaitSecsMex.plist"; sourceTree = "<group>"; };
+		2FD6187B0730666B008DA6B4 /* Info-WaitSecsMex.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Info-WaitSecsMex.plist"; sourceTree = "<group>"; };
 		2FD6187D0730666B008DA6B4 /* WaitSecsMex.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WaitSecsMex.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FDA7942055F521C007A711C /* SCREENglPoint.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENglPoint.c; path = ../../../Source/Common/Screen/SCREENglPoint.c; sourceTree = SOURCE_ROOT; };
 		2FDA7944055F6430007A711C /* SCREENgluDisk.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENgluDisk.c; path = ../../../Source/Common/Screen/SCREENgluDisk.c; sourceTree = SOURCE_ROOT; };
@@ -3793,7 +3795,7 @@
 		F074321A0AD465B400602397 /* MachSetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachSetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F089BD090AD42DF500663D86 /* Screen.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = Screen.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F111E6570AD4BDD60090A83E /* libHIDUtilities-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libHIDUtilities-Intel.a"; sourceTree = "<group>"; };
-		F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDColorCal2Support.c; path = ../../../Source/OSX/PsychHID/PsychHIDColorCal2Support.c; sourceTree = SOURCE_ROOT; };
+		F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBSupport.c; path = ../../../Source/OSX/PsychHID/PsychHIDGenericUSBSupport.c; sourceTree = SOURCE_ROOT; };
 		F13E93570F5345F5007D7EA0 /* PsychHIDColorCal2.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDColorCal2.c; path = ../../../Source/Common/PsychHID/PsychHIDColorCal2.c; sourceTree = SOURCE_ROOT; };
 		F14A27C20AD48A2A00BFB68F /* MachGetPriorityMex.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachGetPriorityMex.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A27FD0AD48C1200BFB68F /* PsychHID.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychHID.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -3818,6 +3820,9 @@
 		F14A2B2E0AD4ABB500BFB68F /* IOPort.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = IOPort.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2B590AD4AC8000BFB68F /* MachPriority.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachPriority.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		F14A2B800AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = MachAbsoluteTimeClockFrequency.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		F183DD3F0F5C2B8E00896D6A /* PsychHIDGenericUSBOpen.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBOpen.c; path = ../../../Source/Common/PsychHID/PsychHIDGenericUSBOpen.c; sourceTree = SOURCE_ROOT; };
+		F183DD410F5C31F100896D6A /* PsychHIDGenericUSBClose.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBClose.c; path = ../../../Source/Common/PsychHID/PsychHIDGenericUSBClose.c; sourceTree = SOURCE_ROOT; };
+		F183DD430F5C366000896D6A /* PsychHIDGenericUSBControlTransfer.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = PsychHIDGenericUSBControlTransfer.c; path = ../../../Source/Common/PsychHID/PsychHIDGenericUSBControlTransfer.c; sourceTree = SOURCE_ROOT; };
 		F50D529103D4D6F9012326C4 /* SCREENHideCursorHelper.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENHideCursorHelper.c; path = ../../../Source/Common/Screen/SCREENHideCursorHelper.c; sourceTree = SOURCE_ROOT; };
 		F50D529203D4D6F9012326C4 /* SCREENShowCursorHelper.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENShowCursorHelper.c; path = ../../../Source/Common/Screen/SCREENShowCursorHelper.c; sourceTree = SOURCE_ROOT; };
 		F50D529703D4FA79012326C4 /* SCREENSetMouseHelper.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetMouseHelper.c; path = ../../../Source/Common/Screen/SCREENSetMouseHelper.c; sourceTree = SOURCE_ROOT; };
@@ -5324,7 +5329,10 @@
 		2F9ABA17045F3596007A7274 /* PsychHID */ = {
 			isa = PBXGroup;
 			children = (
-				F13E934E0F534180007D7EA0 /* PsychHIDColorCal2Support.c */,
+				F183DD3F0F5C2B8E00896D6A /* PsychHIDGenericUSBOpen.c */,
+				F183DD410F5C31F100896D6A /* PsychHIDGenericUSBClose.c */,
+				F183DD430F5C366000896D6A /* PsychHIDGenericUSBControlTransfer.c */,
+				F13E934E0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c */,
 				CF566E6807F7D2FC00D4957A /* RegisterProject.h */,
 				CF566E6907F7D2FC00D4957A /* RegisterProject.c */,
 				CF566E7307F7D2FC00D4957A /* PsychHID.h */,
@@ -8231,6 +8239,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			buildConfigurationList = 2F57E2DB08CE718C00A5CF85 /* Build configuration list for PBXProject "PsychToolbox" */;
+			compatibilityVersion = "Xcode 2.4";
 			hasScannedForEncodings = 1;
 			knownPlatforms = (
 				macos,
@@ -10727,7 +10736,7 @@
 				2FEBA7DE0988883700F4165F /* PsychVersioning.c in Sources */,
 				2FEBA7DF0988883800F4165F /* RegisterProject.c in Sources */,
 				835CD25B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */,
-				F13E934F0F534180007D7EA0 /* PsychHIDColorCal2Support.c in Sources */,
+				F13E934F0F534180007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -10989,7 +10998,7 @@
 			files = (
 				2FEBA8FE098990F500F4165F /* mexversion.c in Sources */,
 				2FEBA8FF098990F600F4165F /* MiniBox.c in Sources */,
-				F13E93500F53421E007D7EA0 /* PsychHIDColorCal2Support.c in Sources */,
+				F13E93500F53421E007D7EA0 /* PsychHIDGenericUSBSupport.c in Sources */,
 				2FEBA900098990F700F4165F /* MODULEVersion.c in Sources */,
 				2FEBA901098990F700F4165F /* ProjectTable.c in Sources */,
 				2FEBA902098990F800F4165F /* PsychAuthors.c in Sources */,
@@ -11030,7 +11039,9 @@
 				8325CED20CAF15DC00B498CD /* PsychHIDKbQueueStop.c in Sources */,
 				8325CED50CAF15E900B498CD /* PsychHIDKbTriggerWait.c in Sources */,
 				83AD4CF00DC5172A002E1DF7 /* PsychCellGlue.c in Sources */,
-				F13E93580F5345F5007D7EA0 /* PsychHIDColorCal2.c in Sources */,
+				F183DD400F5C2B8E00896D6A /* PsychHIDGenericUSBOpen.c in Sources */,
+				F183DD420F5C31F100896D6A /* PsychHIDGenericUSBClose.c in Sources */,
+				F183DD440F5C366000896D6A /* PsychHIDGenericUSBControlTransfer.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

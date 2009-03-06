@@ -20,7 +20,7 @@
 
 #include "PsychHID.h"
 
-
+extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
 /*
     PSYCHHIDCheckInit() 
@@ -41,10 +41,20 @@ void PsychHIDVerifyInit(void)
 PsychError PsychHIDCleanup(void) 
 {
 	long error;
+	int i;
 
 	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
 	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
     if(HIDHaveDeviceList())HIDReleaseDeviceList();
+	
+	// Close any open generic USB devices.
+	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
+		if (g_GenericUSBTracker[i] != NULL) {
+			//printf("Closing USB device %d\n", i);
+			PSYCHHIDCloseUSBDevice(i);
+		}
+	}
+	
     return(PsychError_none);
 }
 

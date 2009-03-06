@@ -18,6 +18,9 @@
 #include "Psych.h"
 #include "PsychHID.h"
 
+// Tracker used to maintain references to open generic USB devices.
+GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+
 PsychError PsychModuleInit(void)
 {
 	InitializeSynopsis();  //first initialize the list of synopsis strings.
@@ -31,6 +34,13 @@ PsychError PsychModuleInit(void)
 
 	//register the module exit function
 	PsychRegisterExit(&PsychHIDCleanup);
+	
+	// Make sure that the generic USB tracker is initialized to NULL.
+	int i;
+	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
+		//printf("init usb %d\n", i);
+		g_GenericUSBTracker[i] = NULL;
+	}
 
 	//register module subfunctions
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
@@ -56,7 +66,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("ReceiveReportsStop",  &PSYCHHIDReceiveReportsStop));
 	PsychErrorExit(PsychRegister("GiveMeReports",  &PSYCHHIDGiveMeReports));
 	PsychErrorExit(PsychRegister("SetReport",  &PSYCHHIDSetReport));
-	PsychErrorExit(PsychRegister("ColorCal2", &PSYCHHIDColorCal2));
+	PsychErrorExit(PsychRegister("OpenUSBDevice", &PSYCHHIDGenericUSBOpen));
+	PsychErrorExit(PsychRegister("CloseUSBDevice", &PSYCHHIDGenericUSBClose));
+	PsychErrorExit(PsychRegister("USBControlTransfer", &PSYCHHIDGenericUSBControlTransfer));
 
 	PsychSetModuleAuthorByInitials("awi");
 	PsychSetModuleAuthorByInitials("dgp");

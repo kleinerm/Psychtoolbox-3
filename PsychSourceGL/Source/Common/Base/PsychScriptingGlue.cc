@@ -2134,7 +2134,7 @@ boolean PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType is
 	putOut=PsychAcceptOutputArgumentDecider(isRequired, matchError);
 	if(putOut){
 		mxpp = PsychGetOutArgMxPtr(position);
-		*mxpp = mxCreateByteMatrix3D(m,n,p); 
+		*mxpp = mxCreateByteMatrix3D(m,n,p);
 		*array = (ubyte *)mxGetData(*mxpp);
 	}else{
 		*array= (ubyte *)mxMalloc(sizeof(ubyte)*m*n*maxInt(1,p));
