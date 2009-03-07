@@ -21,7 +21,12 @@ function bool = Ellipse(a,b,horpow,verpow)
 % DN 2009-02-02 Updated to do Circles and input argument handling more
 %               efficiently
 
-error(nargchk(1, 4, nargin, 'struct'));
+if ~IsOctave
+    error(nargchk(1, 4, nargin, 'struct'));
+else
+    error(nargchk(1, 4, nargin));
+end
+
 if nargin < 2
     b = a;
 end
