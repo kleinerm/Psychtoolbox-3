@@ -68,8 +68,8 @@ boolean PsychAllocOutStructArray(	int position,
                                         PsychGenericScriptType **pStruct)
 {
     mxArray **mxArrayOut;
-    int structArrayNumDims=2;
-    int structArrayDims[2];
+    mwSize structArrayNumDims=2;
+    mwSize structArrayDims[2];
 	PsychError matchError;
 	Boolean putOut;
 	

@@ -79,8 +79,8 @@ boolean PsychAllocOutCellVector(	int position,
 									PsychGenericScriptType **pCell)
 {
     mxArray **mxArrayOut;
-    int cellArrayNumDims=2;
-    int cellArrayDims[2];
+    mwSize cellArrayNumDims=2;
+    mwSize cellArrayDims[2];
 	PsychError matchError;
 	Boolean putOut;
 
@@ -203,17 +203,17 @@ void PsychSetCellVectorNativeElement(	int index,
     PsychConvertNativeCellArrayToNativeString() is derived from parts of Denis Pelli's Rush.c from the OS 9 Psychtoolbox
     
 */
-void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType *nativeCellArray, PsychGenericScriptType **nativeString)
+void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType **nativeCellArray, PsychGenericScriptType **nativeString)
 {
                           
     int								error,	numOutputs, numInputs;
-	const PsychGenericScriptType	*inputs[1];
+	PsychGenericScriptType			**inputs;
 	PsychGenericScriptType			*outputs[1]; //, *inputs[1];
     
     numInputs=1; 
     numOutputs=1;
     outputs[0]=NULL;
-    inputs[0]=(const PsychGenericScriptType*)nativeCellArray;
+    inputs = (PsychGenericScriptType**) nativeCellArray;
     error=mexCallMATLAB(numOutputs, outputs, numInputs, inputs, "CatStr"); 	// Psychtoolbox:PsychOneliners:CatStr.m
     if(error)
         PsychErrorExitMsg(PsychError_internal, "Failed to convert a cell array to string");
