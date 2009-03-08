@@ -88,9 +88,12 @@ PsychPortAudio('FillBuffer', pahandle, wavedata);
 t1 = PsychPortAudio('Start', pahandle, repetitions, 0, 1);
 
 % Wait for release of all keys on keyboard:
-while KbCheck; end;
+KbReleaseWait;
 
 fprintf('Audio playback started, press any key for about 1 second to quit.\n');
+
+lastSample = 0;
+lastTime = t1;
 
 % Stay in a little loop until keypress:
 while ~KbCheck
@@ -104,6 +107,10 @@ while ~KbCheck
     fprintf('\n\nAudio playback started, press any key for about 1 second to quit.\n');
     fprintf('This is some status output of PsychPortAudio:\n');
     disp(s);
+    
+    realSampleRate = (s.ElapsedOutSamples - lastSample) / (s.CurrentStreamTime - lastTime);
+    % lastSample = s.ElapsedOutSamples; lastTime = s.CurrentStreamTime;
+    fprintf('Measured average samplerate Hz: %f\n', realSampleRate);
 end
 
 % Stop playback:

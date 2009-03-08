@@ -112,8 +112,9 @@ typedef struct PsychPADevice {
 	int		 outputbuffersize;	// Size of output buffer in bytes.
 	unsigned int loopStartFrame; // Start of current playloop in frames.
 	unsigned int loopEndFrame;  // End of current playloop in frames.
-	unsigned int playposition;	// Current playposition in samples since start of playback (not frames, not bytes!)
+	unsigned int playposition;	// Current playposition in samples since start of playback for current buffer and playloop (not frames, not bytes!)
 	unsigned int writeposition; // Current writeposition in samples since start of playback (for incremental filling).
+	unsigned int totalplaycount; // Total running count of samples since start of playback, accumulated over all buffers and playloop(not frames, not bytes!)
 	float*	 inputbuffer;		// Pointer to float memory buffer with sound input data (captured sound data).
 	int		 inputbuffersize;	// Size of input buffer in bytes.
 	unsigned int recposition;	// Current record position in samples since start of capture.
@@ -860,7 +861,10 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 
 		// Compute output time of last outputted sample from this iteration:
 		dev->currentTime = firstsampleonset + ((double) committedFrames / (double) dev->streaminfo->sampleRate);
-	
+
+		// Update total count of emitted samples since start of playback:
+		dev->totalplaycount+= committedFrames * outchannels;
+		
 		// End of playback reached due to maximum number of possible output samples reached or abortcondition satisfied?
 		if ((i < framesPerBuffer * outchannels) || stopEngine) {
 			// Premature stop of buffer filling because abortcondition satisfied: Need to go idle or stop the whole engine:
@@ -969,7 +973,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
-	synopsis[i++] = "PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+	synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
 	synopsis[i++] =	"PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
 	synopsis[i++] = "PsychPortAudio('SetLoop', pahandle[, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
 	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf]);";
@@ -1617,7 +1621,7 @@ PsychError PSYCHPORTAUDIOClose(void)
  */
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void) 
 {
- 	static char useString[] = "underflow = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+ 	static char useString[] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
 	static char synopsisString[] = 
 		"Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
 		"whose buffer is to be filled. 'bufferdata' is a Matlab double matrix with audio data in double format. Each "
@@ -1633,16 +1637,28 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		"that if you try to refill more than what has been actually played, this function will wait until enough storage space "
 		"is available. It will also fail if you try to refill more than the total buffer capacity. Default is to not do "
 		"streaming refills, i.e., the buffer is filled in one batch while playback is stopped. Such a refill will also "
-		"reset any playloop setting done via the 'SetLoop' subfunction to the full size of the refilled buffer. ";
+		"reset any playloop setting done via the 'SetLoop' subfunction to the full size of the refilled buffer.\n"
+		"Optionally the function returns the following values:\n"
+		"'underflow' A flag: If 1 then the audio buffer underflowed because you didn't refill it in time, ie., some audible "
+		"glitches were present in playback and your further playback timing is screwed.\n"
+		"'nextSampleStartIndex' This is the absolute index in samples since start of playback of the sample that would "
+		"follow after the last sample you added during this 'FillBuffer' call, ie., the first sample during a successive "
+		"'FillBuffer' call.\n"
+		"'nextSampleETASecs' This value is undefined (NaN) if playback isn't running. During a streaming refill, it contains "
+		"the predicted audio onset time in seconds of the sample with index 'nextSampleStartIndex'. Please note that this "
+		"prediction can accumulate a prediction error if your buffer is so large that it contains samples that will only "
+		"playback far in the future.\n";
 
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
   	
 	int inchannels, insamples, p, buffersize;
+	unsigned int totalplaycount;
 	double*	indata = NULL;
 	float*  outdata = NULL;
 	int pahandle   = -1;
 	int streamingrefill = 0;
 	int underrun = 0;
+	double currentTime, etaSecs;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -1650,7 +1666,7 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	
 	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
-	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+	PsychErrorExit(PsychCapNumOutputArgs(3));	 // The maximum number of outputs
 
 	// Make sure PortAudio is online:
 	PsychPortAudioInitialize();
@@ -1714,6 +1730,12 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		// Reset write position to end of buffer:
 		audiodevices[pahandle].writeposition = inchannels * insamples;
 		
+		// Elapsed count of played out samples must be zero as engine is stopped and will restart sometime after this call:
+		totalplaycount = 0;
+		
+		// Current playout time undefined when playback is stopped:
+		currentTime = PsychGetNanValue();
+		
 		// Reset playback loop to full buffer:
 		audiodevices[pahandle].loopStartFrame = 0;
 		audiodevices[pahandle].loopEndFrame = (audiodevices[pahandle].outputbuffersize / sizeof(float) / audiodevices[pahandle].outchannels) - 1;
@@ -1772,9 +1794,15 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 			buffersize-=sizeof(float);
 		}
 		
+		// Retrieve total count of played out samples from engine:
+		totalplaycount = audiodevices[pahandle].totalplaycount;
+
+		// Retrieve corresponding timestamp of last playout:
+		currentTime = audiodevices[pahandle].currentTime;
+		
 		// Check for buffer underrun:
 		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
-
+		
 		// Drop lock here, no longer needed:
 		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);			
 
@@ -1783,7 +1811,14 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 
 	// Copy out underrun flag:
 	PsychCopyOutDoubleArg(1, FALSE, (double) underrun);
-
+	
+	// Copy out number of submitted sample frames, aka the absolute sample frame startindex for next 'Fillbuffer' call.
+	PsychCopyOutDoubleArg(2, FALSE, (double) audiodevices[pahandle].writeposition / (double) audiodevices[pahandle].outchannels);
+	
+	// Compute and return predicted estimated time of arrival for playout of first sample for next 'FillBuffer' call, aka almost of the last sample in this 'FillBuffer' call:
+	etaSecs = currentTime + ((((double) audiodevices[pahandle].writeposition - (double) totalplaycount) / (double) audiodevices[pahandle].outchannels) / (double) audiodevices[pahandle].streaminfo->sampleRate);
+	PsychCopyOutDoubleArg(3, FALSE, etaSecs);
+	
 	// Buffer ready.
 	return(PsychError_none);
 }
@@ -2281,7 +2316,10 @@ PsychError PSYCHPORTAUDIORescheduleStart(void)
 
 	// Reset play position:
 	audiodevices[pahandle].playposition = 0;
-
+	
+	// Reset total count of played out samples:
+	audiodevices[pahandle].totalplaycount = 0;
+	
 	// Setup new rescheduled target start time:
 	audiodevices[pahandle].reqStartTime = when;
 
@@ -2433,6 +2471,9 @@ PsychError PSYCHPORTAUDIOStartAudioDevice(void)
 
 	// Reset play position:
 	audiodevices[pahandle].playposition = 0;
+	
+	// Reset total count of played out samples:
+	audiodevices[pahandle].totalplaycount = 0;
 
 	// Set number of requested repetitions: 0 means loop forever, default is 1 time.
 	audiodevices[pahandle].repeatCount = (repetitions == 0) ? -1 : repetitions;
@@ -2761,7 +2802,11 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 		"involved in sound playback, the value may become available a few msecs before or after actual sound offset.\n"
 		"CurrentStreamTime: Estimate of when the most recently submitted sample will hit the speaker. This corresponds "
 		"roughly to 'PositionSecs' below, but in absolute realtime.\n"
-		"PositionSecs is an estimate of the current stream playback position in seconds, it's not totally accurate, because "
+		"ElapsedOutSamples: Total number of samples played out since start of playback. This count increments monotonically "
+		"from start of playback to stop of playback. This denotes the absolute sample position that will hit the speaker "
+		"at time 'CurrentStreamTime'. \n"
+		"PositionSecs is an estimate of the current stream playback position in seconds within the current playback loop "
+		"of the current buffer. it's not totally accurate, because "
 		"it measures how much sound has been submitted to the sound system, not how much sound has left the "
 		"speakers, i.e., it doesn't take driver and hardware latency into account.\n"
 		"SchedulePosition: Current position in a running schedule, if any.\n"
@@ -2786,7 +2831,10 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*status;
-	const char *FieldNames[]={	"Active", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
+	double currentTime;
+	unsigned int playposition, totalplaycount;
+
+	const char *FieldNames[]={	"Active", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
 								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate" };
 	int pahandle = -1;
 	
@@ -2804,20 +2852,30 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 19, FieldNames, &status);
-	 
+	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 20, FieldNames, &status);
+
 	// Ok, in a perfect world we should hold the device mutex while querying all the device state.
 	// However, we don't: This reduces lock contention at the price of a small chance that the
 	// fetched information is not 100% up to date / that this is not an atomic snapshot of state.
-	// Atomic snapshot would only be needed for low-level debugging, so who cares?
+	//
+	// Instead we only hold the lock to get the most crucial values atomically, then release and get the rest
+	// while not holding the lock:
+	PsychPALockDeviceMutex(&audiodevices[pahandle]);
+	currentTime = audiodevices[pahandle].currentTime;
+	totalplaycount = audiodevices[pahandle].totalplaycount;
+	playposition = audiodevices[pahandle].playposition;
+	PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
+	
+	// Atomic snapshot for remaining fields would only be needed for low-level debugging, so who cares?
 	PsychSetStructArrayDoubleElement("Active", 0, (audiodevices[pahandle].state >= 2) ? 1 : 0, status);
 	PsychSetStructArrayDoubleElement("RequestedStartTime", 0, audiodevices[pahandle].reqStartTime, status);
 	PsychSetStructArrayDoubleElement("StartTime", 0, audiodevices[pahandle].startTime, status);
 	PsychSetStructArrayDoubleElement("CaptureStartTime", 0, audiodevices[pahandle].captureStartTime, status);
 	PsychSetStructArrayDoubleElement("RequestedStopTime", 0, audiodevices[pahandle].reqStopTime, status);
 	PsychSetStructArrayDoubleElement("EstimatedStopTime", 0, audiodevices[pahandle].estStopTime, status);
-	PsychSetStructArrayDoubleElement("CurrentStreamTime", 0, audiodevices[pahandle].currentTime, status);	
-	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(audiodevices[pahandle].playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
+	PsychSetStructArrayDoubleElement("CurrentStreamTime", 0, currentTime, status);	
+	PsychSetStructArrayDoubleElement("ElapsedOutSamples", 0, ((double)(totalplaycount / audiodevices[pahandle].outchannels)), status);
+	PsychSetStructArrayDoubleElement("PositionSecs", 0, ((double)(playposition / audiodevices[pahandle].outchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("RecordedSecs", 0, ((double)(audiodevices[pahandle].recposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("ReadSecs", 0, ((double)(audiodevices[pahandle].readposition / audiodevices[pahandle].inchannels)) / (double) audiodevices[pahandle].streaminfo->sampleRate, status);
 	PsychSetStructArrayDoubleElement("SchedulePosition", 0, audiodevices[pahandle].schedule_pos, status);
