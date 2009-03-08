@@ -81,6 +81,7 @@ static char synopsisString[]=
 "\"deviceNumber\" specifies which device. "
 "\"options.print\" =1 (initial default 0) enables diagnostic printing of a summary of each report when our callback routine receives it. "	
 "\"options.printCrashers\" =1 (initial default 0) enables diagnostic printing of the creation of the callback source and its addition to the CFRunLoop. "
+"\"options.consistencyChecks\" =1 (initial default 0) enables diagnostic printing of the consistency of all report structs. Very time consuming! "
 "\"options.maxReports\" (initial default 10000) allocate space for at least this many reports, shared among all devices. "
 "\"options.maxReportSize\" (initial default 64) allocate this many bytes per report. "
 "Requesting values of maxReports or maxReportSize beyond that provided by the current allocation will result in freeing the current allocation, "
@@ -134,6 +135,7 @@ static boolean             ready[MAXDEVICEINDEXS];
 static CFRunLoopSourceRef source[MAXDEVICEINDEXS]; 
 static boolean optionsPrintReportSummary=0;	// options.print: Enable diagnostic print of report by ReportCallback.
 static boolean optionsPrintCrashers=0;		// options.printCrashers
+static boolean optionsConsistencyChecks=0;	// options.consistencyChecks
 static int optionsMaxReports=10000;			// options.maxReports
 static int optionsMaxReportSize=64;			// options.maxReportSize
 static double optionsSecs=0.010;			// options.secs
@@ -152,6 +154,7 @@ void CountReports(char *string)
 	ReportStruct *r;
 	static boolean reportsHaveBeenAllocated=0;
 
+	// First time init at first invocation after PsycHID load time:
 	if(myRunLoopMode==NULL)myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
 	if(!reportsHaveBeenAllocated){
 		// initial set up. Allocate free reports.
@@ -174,22 +177,30 @@ void CountReports(char *string)
                 }
 	}
 	
-	n=0;
-	for(i=0;i<MAXDEVICEINDEXS;i++){
-		if(i==0)r=freeReportsPtr;
-		else r=deviceReportsPtr[i];
-		listLength[i]=0;
-		while(r!=NULL){
-			r=r->next;
-			listLength[i]++;
+	// Optional consistency check, disabled by default. Do the numbers of
+	// reports enqueued in the different device lists and the free list
+	// sum up to the total number of allocated reports? Print warning and
+	// current numbers if this is not the case:
+	if (optionsConsistencyChecks > 0) {
+		n=0;
+		for(i=0;i<MAXDEVICEINDEXS;i++) {
+			if(i==0)r=freeReportsPtr;
+			else r=deviceReportsPtr[i];
+			listLength[i]=0;
+
+			while(r!=NULL) {
+				r=r->next;
+				listLength[i]++;
+			}
+			n=n+listLength[i];
 		}
-		n=n+listLength[i];
-	}
-	if(n!=MAXREPORTS){
-		printf("%s",string);
-		printf(" device:reports. free:%3d",listLength[0]);
-		for(i=1;i<MAXDEVICEINDEXS;i++)if(listLength[i]>0)printf(", %2d:%3d",i,listLength[i]);
-		printf("\n");
+		
+		if(n!=MAXREPORTS) {
+			printf("%s",string);
+			printf(" device:reports. free:%3d",listLength[0]);
+			for(i=1;i<MAXDEVICEINDEXS;i++) if(listLength[i]>0) printf(", %2d:%3d",i,listLength[i]);
+			printf("\n");
+		}
 	}
 }
 
@@ -293,6 +304,8 @@ PsychError PSYCHHIDReceiveReports(void)
 		if(mx!=NULL)optionsMaxReportSize=(int)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"secs");
 		if(mx!=NULL)optionsSecs=mxGetScalar(mx);
+		mx=mxGetField(mxOptions,0,"consistencyChecks");
+		if(mx!=NULL)optionsConsistencyChecks=(boolean)mxGetScalar(mx);
 	}
 	if(optionsMaxReports>MAXREPORTS)printf("PsychHID ReceiveReports: Sorry, maxReports is fixed at %d.\n",(int)MAXREPORTS);
 	if(optionsMaxReportSize>MAXREPORTSIZE)printf("PsychHID ReceiveReports: Sorry, maxReportSize is fixed at %d.\n",(int)MAXREPORTSIZE);

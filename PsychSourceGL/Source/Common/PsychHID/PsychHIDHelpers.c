@@ -43,6 +43,7 @@ PsychError PsychHIDCleanup(void)
 	long error;
 	int i;
 
+	PsychClearGiveHelp();
 	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
 	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
     if(HIDHaveDeviceList())HIDReleaseDeviceList();
