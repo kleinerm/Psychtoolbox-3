@@ -865,6 +865,9 @@ if strcmpi(cmd, 'Update')
     
     Screen('BeginOpenGL', ctx.silhouetteBuffer);
 
+    % Backup 3D context state:
+    glPushAttrib(GL.ALL_ATTRIB_BITS);
+
     % Perform 1st 3D render pass:
 
     % Need zBuffer occlusion testing for silhouette rendering:
@@ -929,6 +932,9 @@ if strcmpi(cmd, 'Update')
 
     % Just to make sure it's still off:
     glDisable(GL.DEPTH_TEST);
+
+    % Restore 3D context state:
+    glPopAttrib;
 
     % Trackingbuffer should be ready:
     Screen('EndOpenGL', ctx.trackingBuffer);
@@ -1091,7 +1097,7 @@ if strcmpi(cmd, 'Render')
     % Get context object:
     ctx = varargin{1};
 
-    if nargin < 3
+    if nargin < 3 || isempty(varargin{2})
         targetWin = ctx.parentWin;
     else
         targetWin = varargin{2};
