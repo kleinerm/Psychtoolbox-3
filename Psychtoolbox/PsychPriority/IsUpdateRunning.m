@@ -27,5 +27,39 @@ function isRunning=IsUpdateRunning
 % HISTORY
 % 12/06/03  awi     wrote it.
 % 7/15/03   awi     wrote it.
+% 3/10/09    mk     Prevent check and always return "true" on OS/X >=
+%                   10.4.7 to prevent trouble with Matlab R2009a et al.
 
-isRunning=length(GetProcessDescriptorFromCommandName('update'));
+% Any need for this killupdate schnickschnack at all?
+persistent killUpdateNotNeeded;
+if isempty(killUpdateNotNeeded)
+    % Check if this is MacOS-X 10.4.7 or later. We don't need to kill
+    % the update process anymore if that is the case.
+    c = Screen('Computer');
+    osrelease = sscanf(c.kern.osrelease, '%i.%i.%i');
+
+    if (osrelease(1)==8 & osrelease(2)>=7) | (osrelease(1)>=9) %#ok<OR2,AND2>
+        % OS-X 10.4.7 or later -> No need to kill update.
+        killUpdateNotNeeded = 1;
+    else
+        % Pre 10.4.7 system -> Play safe and kill update.
+        killUpdateNotNeeded = 0;
+    end
+
+    % Override for the scared.
+    if exist('AlwaysKillUpdate', 'file')>0
+        % Detected a veto file created by the user. We do kill update.
+        killUpdateNotNeeded = 0;
+    end
+end
+
+if killUpdateNotNeeded
+    % No. We don't kill update, so we don't care about its state and simply
+    % always report it as running:
+    isRunning=1;
+else
+    % Maybe: Need to scan process-list to report run state of update:
+    % N.B.: This seems to be broken on Matlab R2009a and later, but as
+    % these releases don't run on ancient OS/X versions anymore, who cares?
+    isRunning=length(GetProcessDescriptorFromCommandName('update'));
+end
