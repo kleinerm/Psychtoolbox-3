@@ -78,6 +78,11 @@ type = Eyelink('GetNextDataType')
 item = Eyelink('GetFloatData', type)
 
 
+type = Eyelink('GetNextDataType')
+
+[item raw]= Eyelink('GetFloatDataRaw', type)
+
+
 Eyelink('Stoprecording')
 
 

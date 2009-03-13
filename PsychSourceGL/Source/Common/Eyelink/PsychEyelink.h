@@ -74,6 +74,9 @@ PsychError	PsychDisplayEyelinkSynopsis(void);
 // Defined in MODULEVersion.c
 PsychError	MODULEVersion(void);
 
+// Defined in EyelinkShutdown.c
+PsychError PsychEyelinkShutdown(void);
+
 // Eyelink Target sub-commands
 PsychError EyelinkButtonStates(void);
 PsychError EyelinkCommand(void);
@@ -109,10 +112,10 @@ PsychError EyelinkGetTrackerVersion(void);
 PsychError EyelinkNewestFloatSampleRaw(void);
 PsychError EyelinkGetNextDataType(void);
 PsychError EyelinkGetFloatData(void);
+PsychError EyelinkGetFloatDataRaw(void);
 
 PsychError EyelinkTrackerTime(void);
 PsychError EyelinkTimeOffset(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
-#endif 
-
+#endif

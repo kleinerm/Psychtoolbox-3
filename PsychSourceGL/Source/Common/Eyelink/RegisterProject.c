@@ -1,15 +1,16 @@
 /*
 
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/RegisterProject.c
-  
+	/osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/RegisterProject.c
+
 	PROJECTS: Eyelink 
   
 	AUTHORS:
 		cburns@berkeley.edu				cdb
 		E.Peters@ai.rug.nl				emp
 		f.w.cornelissen@med.rug.nl		fwc
+		e_flister@yahoo.com				edf
   
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	All.
     
 	HISTORY:
 		2003	  emp		created alpha version
@@ -17,6 +18,7 @@
 		15/06/06  fwc		adapted and added functions
 		19/10/06  fwc		added raw data function
 		21/01/07  fwc		added new timing functions
+		19/02/09  edf		added EyelinkGetFloatDataRaw
 
 	TARGET LOCATION:
 
@@ -27,17 +29,13 @@
 #include "RegisterProject.h"
 #include "Psych.h"
 
-
 PsychError PsychModuleInit(void)
 {
 	// Initialize Eyelink project variables
 	giSystemInitialized = 0;
-	//
-	// TODO:  REGISTER EYELINK EXIT FUNCTION THAT WOULD SHUTDOWN LINK TO EYELINK
-	//
 	
-	// Register the project exit function
-	PsychErrorExit(PsychRegisterExit(NULL)); 
+	// Register the project exit function:
+	PsychErrorExit(PsychRegisterExit(&PsychEyelinkShutdown)); 
 	
 	// Register the project function which is called when the module
 	// is invoked with no arguments:
@@ -99,7 +97,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("TrackerTime",				&EyelinkTrackerTime));
 	PsychErrorExit(PsychRegister("TimeOffset",				&EyelinkTimeOffset));
 
-	
+	// added as of 19/02/09
+	PsychErrorExit(PsychRegister("GetFloatDataRaw",	&EyelinkGetFloatDataRaw));    
+    
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 	PsychSetModuleAuthorByInitials("emp");
@@ -108,5 +108,3 @@ PsychError PsychModuleInit(void)
 	
 	return(PsychError_none);
 }
-
-

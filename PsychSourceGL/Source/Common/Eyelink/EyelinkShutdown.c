@@ -23,35 +23,13 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "Eyelink('Shutdown')";
-
-static char synopsisString[] = "Shuts down the eyelink";
-
-static char seeAlsoString[] = "";
-
-PsychError EyelinkShutdown(void)
+PsychError PsychEyelinkShutdown(void)
 {
 	int		iStatus		= -1;
 	char	strMsg[256];
-	
-	memset(strMsg, 0, sizeof(strMsg));
-	
-	// Add help strings
-	PsychPushHelp(useString, synopsisString, seeAlsoString);
-	
-	// Output help if asked
-	if(PsychIsGiveHelp()) {
-		PsychGiveHelp();
-		return(PsychError_none);
-	}
 
-	// Check arguments
-	PsychErrorExit(PsychCapNumInputArgs(0));
-	PsychErrorExit(PsychRequireNumInputArgs(0));
-	PsychErrorExit(PsychCapNumOutputArgs(0));
-	
-	// Verify eyelink is up and running
-	//EyelinkSystemIsInitialized();
+	// Zero-out return string:
+	memset(strMsg, 0, sizeof(strMsg));
 
 	// Disconnect if connected
 	if (eyelink_is_connected()) {
@@ -67,6 +45,32 @@ PsychError EyelinkShutdown(void)
 	close_eyelink_system();
 	msec_delay(100);
 	giSystemInitialized = 0;
+	
+	return(PsychError_none);
+}
+
+PsychError EyelinkShutdown(void)
+{
+	static char useString[] = "Eyelink('Shutdown')";
+	static char synopsisString[] = "Shuts down the eyelink";
+	static char seeAlsoString[] = "";
+
+	// Add help strings
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	
+	// Output help if asked
+	if(PsychIsGiveHelp()) {
+		PsychGiveHelp();
+		return(PsychError_none);
+	}
+
+	// Check arguments
+	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychRequireNumInputArgs(0));
+	PsychErrorExit(PsychCapNumOutputArgs(0));
+	
+	// Call actual shutdown routine:
+	PsychEyelinkShutdown();
 
 	return(PsychError_none);
 }

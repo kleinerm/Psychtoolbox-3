@@ -18,6 +18,7 @@ function el=EyelinkInitDefaults(window)
 % 11-01-04  fwc OS X changes
 % 22-06-06  fwc further OSX changes
 % 31-10-06  mk  Unified keyname mapping and such...
+% 19-02-09  edf added LOSTDATAEVENT
 
 el=[];
 
@@ -190,7 +191,8 @@ el.MESSAGEEVENT=24;  % /* user-definable text or data */
 el.BUTTONEVENT=25;  %/* button state change */
 el.INPUTEVENT=28;  % /* change of input port */
 
-
+el.LOSTDATAEVENT=hex2dec('3F'); %/*new addition v2.1, returned by eyelink_get_next_data() to flag a gap in the data stream due to queue filling up (need to get data more frequently)
+                                %/*described in 'EyeLink Programmers Guide.pdf' section 7.2.2, 13.3.2, 18.5.4
 
 
 

@@ -16,6 +16,7 @@
  2003	 emp		first version
  11/23/05  cdb		adapted.
  31-10-06	fwc		added EyelinkNewestFloatSampleRaw function
+ 19-02-09   edf     elaborated doc for EyelinkNewestFloatSampleRaw
  
 	TARGET LOCATION:
  
@@ -98,30 +99,34 @@ PsychError EyelinkNewestFloatSample(void)
 /* 
 Special Raw function
  ON request of e_flister@yahoo.com
- now, the normal data structure returned from eyelink will give you
- pupil position, but not corneal reflection position. we've been
- working with sol simpson at sr research, who has given us access to an
- undocumented way to access the corneal reflection data.
- 
- i've got it working in c, but am dreading integrating it into matlab.
- since it is extremely simple and of potential interest to other
- labs, i was hoping you'd be willing to add support to the eyelink
- toolbox (both windows and osx versions). sol said it was ok to share
- this info with the developers/users of the eyelink toolbox as long as
- i made it very clear that this functionality is unofficial and not
- guaranteed.
- 
- 
+http://tech.groups.yahoo.com/group/psychtoolbox/message/5156
+http://tech.groups.yahoo.com/group/psychtoolbox/message/5336 
  */
 static char useStringRaw[] = "[sample, raw] = Eyelink('NewestFloatSampleRaw')";
 
 static char synopsisStringRaw[] =
-"CAUTION: Not supported on Linux. This makes use of undocumented Eyelink functions, with no "
-"official support from SR-Research: It may or may not work on your setup with your "
-"tracker. Currently it doesn't work on Linux at least.\n\n"
-"Makes copy of most recent float sample received "
-"and will copy extra (raw) data as well "
-"returns -1 if no new sample or error ";
+"Same as Eyelink('NewestFloatSample') but additionally returns raw sample data. "
+"Normal samples do not contain the corneal reflection data, but some (non-saccade-based) calibration methods require this information. "
+"The Eyelink 1000 can be configured to send this information as part of 'raw' samples. "
+"Sol Simpson at SR-Research emphasizes that this is not officially supported or guaranteed. "
+"1. You may need to install Eyelink.dll from the latest software developer kit at https://www.sr-support.com/forums/showthread.php?t=6 "
+"2. Issue the commands: "
+"   Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,AREA,GAZERES,HREF,PUPIL,STATUS,INPUT,HMARKER'); "
+"   Eyelink('command','inputword_is_window = ON'); "
+"More info: "
+"   HMARKER (originally for Eyelink2's infrared head tracking markers) and INPUT (originally for the TTL lines) are jury-rigged to hold the extra data. "
+"   This may cause lots of console output 'data too big 45'.  SR developer Suganthan Subraman says this can be ignored if you are not using velocity functions (eg eyelink_calculate_velocity_and_acceleration). "
+"   You can also set file_sample_data to collect raw samples in the .edf file. "
+"Raw structure fields: "
+"   raw_pupil           raw x, y sensor position of the pupil "
+"   raw_cr              raw x, y sensor position of the corneal reflection "
+"   pupil_area          raw pupil area "
+"   cr_area             raw cornela reflection area "
+"   pupil_dimension     w,h of raw pupil "
+"   cr_dimension        w,h of raw cr "
+"   window_position     position of tracking window on sensor "
+"   pupil_cr            calculated pupil-cr from the raw_pupil and raw_cr fields "
+"CAUTION: Not supported on Linux. It may or may not work on your setup with your tracker. Currently it doesn't work on Linux at least. ";
 
 PsychError EyelinkNewestFloatSampleRaw(void)
 {
@@ -176,6 +181,6 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 	
 	return(PsychError_none);
 #else
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not supported on your system.");
+	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, this function is not supported on Linux.");
 #endif
 }
