@@ -148,6 +148,15 @@ void InitPsychAuthorList(void)
 		"rwoods@ucla.edu",
 		"http://www.ucla.edu"
 	);
+	PsychAddAuthor(
+	// Additions to Eyelink toolbox: 
+		"Erik",
+		"D.",
+		"Flister",
+		"edf",
+		"e_flister@yahoo.com",
+		"http://www.biology.ucsd.edu/labs/reinagel/"
+	);
 }
 
 

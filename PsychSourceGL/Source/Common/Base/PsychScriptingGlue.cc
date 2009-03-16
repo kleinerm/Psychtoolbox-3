@@ -164,7 +164,7 @@ int mexCallMATLAB(const int nargout, mxArray* argout[],
 
 double mxGetNaN(void)
 {
-  PsychErrorExitMsg(PsychError_unimplemented, "FATAL Error: Internal call to mxGetNan(), which is not yet implemented on GNU/Octave port!");
+  return(lo_ieee_nan_value());
 }
 
 mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int realorcomplex)
