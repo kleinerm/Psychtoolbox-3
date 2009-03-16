@@ -76,7 +76,7 @@ PsychError EyelinkImageModeDisplay(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 	
-	if(0)
+	if(1)
 	{
 		// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
 		eyelink_start_setup();	

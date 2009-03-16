@@ -105,6 +105,8 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("emp");
 	PsychSetModuleAuthorByInitials("fwc");
 	PsychSetModuleAuthorByInitials("cdb");
-	
+	PsychSetModuleAuthorByInitials("mk");
+	PsychSetModuleAuthorByInitials("edf");
+
 	return(PsychError_none);
 }

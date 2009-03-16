@@ -49,8 +49,8 @@ void InitializeSynopsis()
 
 	// Init or close eyelink
 	synopsis[i++] = "\n% Initialize or shutdown Eyelink connection:";
-	synopsis[i++] = "[status =] Eyelink('Initialize')";
-	synopsis[i++] = "[status =] Eyelink('InitializeDummy')";
+	synopsis[i++] = "[status =] Eyelink('Initialize' [, displayCallbackFunction])";
+	synopsis[i++] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
 	synopsis[i++] = "status = Eyelink('IsConnected')";
 	synopsis[i++] = "Eyelink('Shutdown')";
 	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
@@ -107,6 +107,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\tJohn Palmer";
 	synopsis[i++] = "\tChris Burns";
 	synopsis[i++] = "\tMario Kleiner";
+	synopsis[i++] = "\tErik Flister";
 	
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {

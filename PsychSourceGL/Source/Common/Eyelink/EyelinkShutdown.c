@@ -41,6 +41,9 @@ PsychError PsychEyelinkShutdown(void)
 		}
 	}
 	
+	// Detach all callback hook functions:
+	PsychEyelink_uninit_core_graphics();
+
 	// Close down eyelink and reset global flag
 	close_eyelink_system();
 	msec_delay(100);

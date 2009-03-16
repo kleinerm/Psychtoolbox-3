@@ -32,12 +32,12 @@
 
 #include "PsychEyelink.h"
 
-char useString[] = "[status =] Eyelink('Initialize')";
-char useDummyString[] = "[status =] Eyelink('InitializeDummy')";
+char useString[] = "[status =] Eyelink('Initialize' [, displayCallbackFunction])";
+char useDummyString[] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
 
 static char synopsisString[] = 
 "Initializes SIMLINK and Ethernet system\n"
-"Opens connection, report any problem\n"
+"Opens connection, reports any problem.\n"
 "Returns: 0 if OK, -1 if error";
 
 static char synopsisDummyString[] = 
@@ -48,9 +48,10 @@ static char seeAlsoString[] = "";
 
 PsychError EyelinkInitialize(void)
 {
+	char*   callbackString;
 	int		iBufferSize = 20000; // Hardcode default
 	int		iStatus		= -1;
-	
+
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	
@@ -61,7 +62,7 @@ PsychError EyelinkInitialize(void)
 	}
 	
 	// Check arguments
-	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychCapNumInputArgs(1));
 	PsychErrorExit(PsychRequireNumInputArgs(0));
 	PsychErrorExit(PsychCapNumOutputArgs(1));
 	
@@ -95,7 +96,15 @@ PsychError EyelinkInitialize(void)
 			giSystemInitialized = 1;
 		}
 	}
-	
+
+	// Initialize graphics callbacks for eye camera et al.:
+	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
+		PsychEyelink_init_core_graphics(callbackString);
+	}
+	else {
+		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");
+	}
+
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
 	
@@ -106,6 +115,7 @@ PsychError EyelinkInitialize(void)
 
 PsychError EyelinkInitializeDummy(void)
 {
+	char*   callbackString;
 	int		iStatus		= -1;
 	// Add help strings
 	PsychPushHelp(useDummyString, synopsisDummyString, seeAlsoString);
@@ -117,7 +127,7 @@ PsychError EyelinkInitializeDummy(void)
 	}
 	
 	// Check arguments
-	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychCapNumInputArgs(1));
 	PsychErrorExit(PsychRequireNumInputArgs(0));
 	PsychErrorExit(PsychCapNumOutputArgs(1));
 	
@@ -151,10 +161,20 @@ PsychError EyelinkInitializeDummy(void)
 			giSystemInitialized = 1;
 		}				
 	}
-		
+	
+	// Initialize graphics callbacks for eye camera et al.:
+	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
+		PsychEyelink_init_core_graphics(callbackString);
+
+		// TEST Code:
+		PsychEyelink_TestEyeImage();
+	}
+	else {
+		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");
+	}
+	
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
-	
+
 	return(PsychError_none);	
 }
-

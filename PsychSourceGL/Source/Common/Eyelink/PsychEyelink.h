@@ -66,6 +66,15 @@ mxArray *CreateMXIEvent(const IEVENT *ie);
 // Defined in PsychEyelink.c
 PsychError	EyelinkSystemIsConnected(void);
 PsychError	EyelinkSystemIsInitialized(void);
+void PsychEyelink_init_core_graphics(const char* callback);
+void PsychEyelink_uninit_core_graphics(void);
+void PsychEyelink_TestEyeImage(void);
+
+//callback functions and supporting functions, also defined in PsychEyelink.c
+static INT16 ELCALLBACK  PsychEyelink_setup_image_display(INT16 width, INT16 height);
+static void ELCALLBACK   PsychEyelink_exit_image_display(void);
+static void ELCALLBACK   PsychEyelink_set_image_palette(INT16 ncolors, byte r[130], byte g[130], byte b[130]);
+static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels);
 
 // Defined in EyelinkSynopsis.c
 void		InitializeSynopsis();
