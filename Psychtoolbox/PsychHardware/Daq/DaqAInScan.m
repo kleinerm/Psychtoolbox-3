@@ -261,6 +261,10 @@ function [data,params]=DaqAInScan(daq,options)
 %               terminology seemed too easily confused with high and low bytes
 %               or high and low channels in 1208FS pin out diagrams.
 % 3/14/08 mpr added warning when data are discarded
+% 3/15/09 mk  timer_preload calculation changed according to bug report and bugfix
+%             suggested by Peter Meilstrup in forum message 9221. There was an
+%             off-by-one bug present...
+
 
 % These USB-1280FS parameters are computed from the user-supplied
 % arguments.
@@ -571,11 +575,17 @@ else
   end
   options.counted=1;
 end
+
 timer_prescale=ceil(log2(10e6/65535/pmd.f)); % Use smallest integer timer_prescale consistent with pmd.f.
 timer_prescale=max(0,min(8,timer_prescale)); % Restrict to available range.
-timer_preload=round(10e6/2^timer_prescale/pmd.f);
-timer_preload=max(1,min(65535,timer_preload)); % Restrict to available range.
-pmd.fActual=10e6/2^timer_prescale/timer_preload;
+
+% MK: timer_preload calculation changed according to bug report and bugfix
+% suggested by Peter Meilstrup in forum message 9221. There was an
+% off-by-one bug present...
+timer_preload=round(10e6/2^timer_prescale/pmd.f) - 1;
+timer_preload=max(0,min(65535,timer_preload)); % Restrict to available range.
+pmd.fActual=10e6/2^timer_prescale/(timer_preload+1);
+
 % Convert from USB-1208FS to user usage.
 % "options.f" and "options.count" refer to samples/channel/s and
 % samples/channel.

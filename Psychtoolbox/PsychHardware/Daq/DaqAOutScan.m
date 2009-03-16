@@ -58,6 +58,9 @@ function params=DaqAOutScan(daq,v,options)
 % 1/10/08 mpr glanced at it; made same changes as in DaqAOut.
 % 1/14/08 mpr changed lowChannel/highChannel terminology to
 %               FirstChannel/LastChannel a la DaqAInScan
+% 3/15/09 mk  timer_preload calculation changed according to bug report and bugfix
+%             suggested by Peter Meilstrup in forum message 9221. There was an
+%             off-by-one bug present...
 
 AllHIDDevices = PsychHID('Devices');
 if strcmp(AllHIDDevices(daq).product(5:6),'16')
@@ -129,9 +132,14 @@ else
 end
 timer_prescale=ceil(log2(10e6/65535/options.f)); % Use smallest integer timer_prescale consistent with options.f.
 timer_prescale=max(0,min(8,timer_prescale)); % Restrict to available range.
-timer_preload=round(10e6/2^timer_prescale/options.f);
-timer_preload=max(1,min(65535,timer_preload)); % Restrict to available range.
-params.fActual=10e6/2^timer_prescale/timer_preload;
+
+% 3/15/09 mk  timer_preload calculation changed according to bug report and bugfix
+%             suggested by Peter Meilstrup in forum message 9221. There was an
+%             off-by-one bug present...
+timer_preload=round(10e6/2^timer_prescale/options.f) - 1;
+timer_preload=max(0,min(65535,timer_preload)); % Restrict to available range.
+params.fActual=10e6/2^timer_prescale/(timer_preload+1);
+
 if abs(log10(params.fActual/options.f))>log10(1.1)
     error('Nearest attainable sampling frequency %.4f kHz is too far from requested %.4f kHz.',...
         params.fActual/1000,options.f/1000);
