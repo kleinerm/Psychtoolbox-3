@@ -40,8 +40,8 @@ char eyelinkDisplayCallbackFunc[1024];
 static byte* eyeimage = NULL;
 
 // Width x Height of eye camera image in pixels:
-static unsigned int eyewidth  = 0;
-static unsigned int eyeheight = 0;
+static int eyewidth  = 0;
+static int eyeheight = 0;
 
 // Color remapping palette table:
 static byte palmap24[3 * 256];
@@ -100,8 +100,12 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	
 	// Assign runtime environment display callback function:
 	memset(eyelinkDisplayCallbackFunc, 0, sizeof(eyelinkDisplayCallbackFunc));
+    #if PSYCH_SYSTEM != PSYCH_WINDOWS
 	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
-
+    #else
+	_snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+    #endif
+    
 	// Assign hooks to Eyelink runtime:
 	setup_graphic_hook_functions(&fcns);
 	
@@ -239,7 +243,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 		p = pixels;
 		
 		// Retrieve v0 as pointer to pixel row in output buffer:
-		byte* v0 = ( eyeimage + ( (line - 1) * width * 4 ) );
+		v0 = ( eyeimage + ( (line - 1) * width * 4 ) );
 		
 		// Copy one row of pixels from input- to output buffer:
 		for(i=0; i < width; i++) {
