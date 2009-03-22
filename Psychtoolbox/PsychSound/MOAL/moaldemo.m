@@ -78,7 +78,7 @@ alSourcef(source, AL.GAIN, 1);
 
 alListenerfv(AL.POSITION, [0, 0, 0]);
 alListenerfv(AL.VELOCITY, [0, 0, 0]);
-alListenerfv(AL.ORIENTATION, [0, 0, -1, 0, 1, 0]);
+%alListenerfv(AL.ORIENTATION, [0, 0, -1, 0, 1, 0]);
 
 % Start playback for this source:
 GetSecs;
@@ -107,10 +107,10 @@ while 1
     
     % Query mouse:
     [xm ym button]=GetMouse;
-    if any(button) 
+    if 1 || any(button) 
        % x,y mouse pos selects sound source position in space:
-       x=(xm-700)/400;
-       z=(ym-500)/400;
+       x=(xm-700)/400
+       z=(ym-500)/400
     end
     
     if ~manual
@@ -121,8 +121,8 @@ while 1
     end
     g=1;
     % Select 3D position of source in space:
+    alSource3f(source, AL.POSITION, g*x, g*z, -1.0);
 %    alSource3f(source, AL.POSITION, g*x, 0, g*z);
-    alSource3f(source, AL.POSITION, g*x, 0, g*z);
     
     % Query current playback position in seconds since start of buffer:
     tref = (GetSecs - tstart);

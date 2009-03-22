@@ -417,11 +417,15 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   memory and compute ressources, so it is potentially faster or provides
 %   a more reliable overall timing.
 %
-%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayTo2ndOutputHead', mirrorscreen);
+%   Usage: PsychImaging('AddTask', 'General', 'MirrorDisplayTo2ndOutputHead', mirrorScreen [, mirrorRectangle]);
 %
 %   The content of the onscreen window shall be shown not only on the
 %   display associated with the screen given to PsychImaging('OpenWindow',
-%   ...); but also (as a copy) on the screen with the index 'mirrorscreen'.
+%   ...); but also (as a copy) on the screen with the index 'mirrorScreen'.
+%
+%   Optionally you can pass a 'mirrorRectangle' if the window with the
+%   mirror image shall not fill the whole 'mirrorScreen', but only a
+%   subregion 'mirrorRectangle'.
 %
 %
 % * 'MirrorDisplayToSingleSplitWindow' Mirror the content of the onscreen
@@ -889,8 +893,8 @@ if strcmp(cmd, 'OpenWindow')
         % Yes. Need to open secondary slave window:
         floc = find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead'));
         [rows cols]= ind2sub(size(reqs), floc);
-        % Extract first parameter - This should be the name of a
-        % calibration file:
+        % Extract first parameter - This should be the id of the slave
+        % screen to which the display should get mirrored:
         slavescreenid = reqs{rows, 3};
 
         if isempty(slavescreenid)
@@ -902,11 +906,15 @@ if strcmp(cmd, 'OpenWindow')
             Screen('CloseAll');
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
+
+        % Extract optional 2nd parameter - The window rectangle of the slave
+        % slave window on the slave screen to which the display should get mirrored:
+        slavewinrect = reqs{rows, 4};
         
-        Screen('OpenWindow', slavescreenid, [255 0 0], [], [], [], stereomode);
+        % Open slave window on slave screen:
+        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], stereomode);
     end
 
-    
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
