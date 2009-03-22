@@ -7,8 +7,12 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % permission, any old installation of the Psychtoolbox is first removed.
 % It's a careful program, checking for all required resources and
 % privileges before it starts.
-% 
-% The "targetdirectory" name may not contain any white space.
+%
+% On Mac OSX, all parameters are optional. On MS-Windows and GNU/Linux, the
+% first parameter "targetdirectory" with the path to the installation
+% target directory is required. The "targetdirectory" name may not contain
+% any white space, otherwise download will fail with mysterious error
+% messages!
 % 
 % On OSX, your working copy of the Psychtoolbox will be placed in either
 % your /Applications or your /Users/Shared folder (depending on permissions
@@ -19,35 +23,19 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % the drive name where Psychtoolbox should be installed, e.g.,
 % 'C:\MyToolboxes\'.
 %
-% The desired flavor of Psychtoolbox release can be selected via the
-% optional "flavor" parameter: 'stable', 'beta' (aka 'current'), or
-% 'Psychtoolbox-x.y.z'. If you don't specify it, 'beta' will be chosen by
-% default.
+% The desired flavor of a Psychtoolbox release can be selected via the
+% optional "flavor" parameter: By default, 'beta' (aka 'current') will be
+% installed if you don't specify otherwise, as this is almost always the
+% best possible choice! You can download an old versioned release via a
+% namestring like 'Psychtoolbox-x.y.z', e.g., 'Psychtoolbox-3.0.7' if you'd
+% want to download version 3.0.7. This is only useful if you run a very old
+% operating system or Matlab version that isn't supported by the current
+% "beta" anymore, so you'd need to stick with an old versioned release.
+% People that really love trouble can also download the 'unsupported'
+% flavor. "Unsupported" was formerly known as "stable" but the new name
+% reflects reality much better and accurately describes the level of support
+% you can expect from us if you use it and run into any trouble!
 %
-% Flavors and their meaning: Use the 'beta' unless you really know what you
-% are doing!!! The 'stable' option is deprecated and will nearly always
-% result in a less optimal software setup!
-%
-% 'beta', 'current' - Download the most recent beta release. This code has
-% been tested by a few developers and is ready for testing by end users.
-% Choose the 'beta' flavor to get pre-release code with early access
-% to bug fixes, enhancements, and new features.  The argument 'current' is
-% a synonym for 'beta'. Never ever choose any other option unless you have
-% very good reasons!
-%
-% 'stable' - Download the most outdated release. Stable releases are usually multiple
-% years behind the Beta releases and contain lots of bugs. We pretty much
-% dropped the idea of having 'stable' releases. They are no longer
-% maintained and dead. Don't use them! The only reason we keep this
-% download option is for disaster recovery: If somebody used a 'stable'
-% release in the past, lost it due to disk crash or whatever and wants to
-% get it back for whatever weird reason.
-%
-% 'Psychtoolbox-x.y.z' - Download the code that corresponds to official
-% release "Psychtoolbox-x.y.z", where "x.y.z" is the version number. This
-% is nearly identical to the packages that can be downloaded from
-% www.psychtoolbox.org. The difference is that critical bugs get fixed in
-% this version.
 %
 % Normally your download should just work(TM). The installer knows three
 % different methods of download and tries all of them if neccessary, ie.,
@@ -55,24 +43,32 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % installer get stuck for an inappropriate amount of time (More than 5-10
 % minutes), you can try to abort it and restart it, providing the
 % additional 'downloadmethod' parameter with a setting of either 1, 2 or 3,
-% to change the order of tried download methods in case the downloader
-% would get stuck with a specific method.
+% to change the order of tried download methods to prevent the downloader
+% from getting stuck with a specific method in rare cases. Very
+% infrequently, the download servers may be overloaded or down for
+% maintenance, resulting in download failure. In that case, please retry a
+% few hours later.
 %
 %
 % The "targetRevision" argument is optional and should be normally omitted.
 % Normal behaviour is to upgrade your working copy to the latest revision.
 % If you provide a specific targetRevision, then this script will
 % *downgrade* your copy of Psychtoolbox to the specified revision.
+%
 % This is only useful if you experience problems after an update and want
 % to revert to an earlier known-to-be-good release.
+%
 % Revisions can be specified by a revision number, a specific date, or by
 % the special flag 'PREV' which will downgrade to the revision before the
 % most current one. By executing this script multiple times with the 'PREV'
-% specifier, you can incrementally downgrade until stuff works for you.
+% specifier, you can incrementally downgrade until stuff works for you
+% again. In any case, please report such a regression to the Psychtoolbox
+% forum so we can fix problems as soon as possible.
 %
 %
 %
-% INSTALLATION INSTRUCTIONS:
+% INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
+% instructions. If in doubt, follow instructions on the Wiki!
 %
 % 1. If you don't already have it, you must install the Subversion client.
 % For Mac OSX, download the latest Mac OSX Subversion client from:
@@ -80,7 +76,9 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % (You can ignore the Subversion README file. If you do read it, you can
 % skip the instruction to manually add /usr/local/bin to your unix path.
 % That's tricky to do, and not needed for installation and updates because
-% we always specify the full path.)
+% we always specify the full path.) Please note that OS/X 10.5 "Leopard"
+% and later often come already with Subversion preinstalled, so you may
+% be able to skip step 1.
 %
 % For Windows, download the Windows Subversion client from:
 % web http://subversion.tigris.org/files/documents/15/34093/svn-1.4.0-setup.exe
@@ -102,25 +100,29 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % addpath('D:\MyOwnFolder\Subversion\'). Our installer should find the
 % client then.
 %
-% 2. On MacOS/X we install the Psychtoolbox in the
-% default location (/Applications or, failing that, /Users/Shared). Just
-% type:
+% 2. On MacOS/X, to install the Psychtoolbox in the default location
+% (/Applications or, failing that, /Users/Shared). Just type:
 %
 % DownloadPsychtoolbox
 %
-% Our standard option is in the Applications folder, but note
-% that, as with installation of any software, you'll need administrator privileges.
-% Also note that if you put the toolbox in the Applications folder, you'll
-% need to reinstall it when MATLAB is updated on your machine.
-% If you must install without access to an administrator, we offer the
-% option of installing into the /Users/Shared/ folder instead. If you must
-% install the Psychtoolbox in some other folder, then specify it in the
-% optional first argument of your call.
+% Our standard option is in the Applications folder, but note that, as with
+% installation of any software, you'll need administrator privileges. Also
+% note that if you put the toolbox in the Applications folder, you'll need
+% to reinstall it when MATLAB is updated on your machine. If you must
+% install without access to an administrator, we offer the option of
+% installing into the /Users/Shared/ folder instead. If you must install
+% the Psychtoolbox in some other folder, then specify it in the optional
+% first argument of your call.
+%
+% On Windows or Linux, provide a pathname, e.g.:
+% DownloadPsychtoolbox('C:\MyToolboxes\');
 %
 % That's it. Any pre-existing installation of the Psychtoolbox will be
 % removed (if you approve). The program will then download the latest
-% Psychtoolbox and update your MATLAB path. Enjoy! If you're new to this,
-% you might start by typing "help Psychtoolbox".
+% Psychtoolbox and update your MATLAB path and other relevant system settings.
+%
+% Enjoy! If you're new to this, you might start by typing "help
+% Psychtoolbox".
 %
 % P.S. If you get stuck, first check the FAQ section and Download section of
 % our Wiki at http://www.psychtoolbox.org. If that doesn't help, post your
@@ -140,15 +142,18 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % UpdatePsychtoolbox
 % 
 % UpdatePsychtoolbox cannot change the flavor of your
-% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox.
+% Psychtoolbox. To change the flavor, run DownloadPsychtoolbox to
+% completely discard your old installation and get a fresh copy with the
+% requested flavor.
 % 
 % PERMISSIONS:
 %
-% There's a thorny issue with permissions. It may not be possible to
+% There's a thorny issue with permissions on OS/X. It may not be possible to
 % install into /Applications (or whatever the targetdirectory is) with the
 % user's existing privileges. The normal situation on Mac OSX is that a few
 % users have "administrator" privileges, and many don't. By default,
 % writing to the /Applications folder requires administrator privileges.
+%
 % Thus all OSX installers routinely demand an extra authorization (if
 % needed), asking the user to type in the name and password of an
 % administrator before proceeding. We haven't yet figured out how to do
@@ -178,6 +183,8 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 % the pathdef.m file permissions to allow write by everyone. This needs to
 % be done only once, after installing MATLAB.
 % web http://www.mathworks.com/access/helpdesk/help/techdoc/matlab_env/ws_pat18.html
+%
+%
 
 % History:
 %
@@ -248,6 +255,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %              inconvenient. Also add some additional warning text and
 %              dialog to tell user how bad 'stable' is and to give him a
 %              chance to reconsider.
+% 03/22/09 mk  Update help text again. Rename 'stable' into 'unsupported'.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -334,19 +342,25 @@ switch (flavor)
     case 'current'
         flavor = 'beta';
     case 'stable'
-        % Very bad choice! Give user a chance to reconsider...
         fprintf('\n\n\nYou request download of the "stable" flavor of Psychtoolbox.\n');
-        fprintf('Use of the "stable" flavor is strongly discouraged! It is outdated and contains\n');
+        fprintf('The "stable" flavor is no longer available, it has been renamed to "unsupported".\n');
+        fprintf('If you really want to use the former "stable" flavor, please retry the download\n');
+        fprintf('under the new name "unsupported".\n\n');
+        error('Flavor "stable" requested. This is no longer available.');
+    case 'unsupported'
+        % Very bad choice! Give user a chance to reconsider...
+        fprintf('\n\n\nYou request download of the "unsupported" flavor of Psychtoolbox.\n');
+        fprintf('Use of the "unsupported" flavor is strongly discouraged! It is outdated and contains\n');
         fprintf('many bugs and deficiencies that have been fixed in the recommended "beta" flavor years ago.\n');
-        fprintf('"stable" is no longer maintained and you will not get any support if you have problems with it.\n');
+        fprintf('"unsupported" is no longer maintained and you will not get any support if you have problems with it.\n');
         fprintf('Please choose "beta" unless you have very good reasons not to do so.\n\n');
         fprintf('If you answer "no" to the following question, i will download the recommended "beta" flavor instead.\n');
-        answer=input('Do you want to continue download of "stable" flavor despite the warnings (yes or no)? ','s');
+        answer=input('Do you want to continue download of "unsupported" flavor despite the warnings (yes or no)? ','s');
         if ~strcmp(answer,'yes')
             flavor = 'beta';
-            fprintf('Download of "stable" flavor cancelled, will download recommended "beta" flavor instead...\n');
+            fprintf('Download of "unsupported" flavor cancelled, will download recommended "beta" flavor instead...\n');
         else
-            fprintf('Download of unsupported "stable" flavor proceeds. You are in for quite a bit of pain...\n');            
+            fprintf('Download of "unsupported" flavor proceeds. You are in for quite a bit of pain...\n');            
         end
 
         fprintf('\n\nPress any key to continue...\n');
@@ -364,10 +378,6 @@ fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',flavor,targetdirectory);
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
-% if any(isspace(targetdirectory))
-%     fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
-%     error('Cannot be any spaces in "targetdirectory" name.');
-% end
 
 % Check for alternative install location of Subversion:
 if isWin
@@ -585,10 +595,6 @@ p=fullfile(targetdirectory,'Psychtoolbox');
 
 % Create quoted version of 'p'ath, so blanks in path are handled properly:
 pt = strcat('"',p,'"');
-
-% if any(isspace(p)) % Double check, to be sure.
-%     error('No spaces are allowed in the destination folder name.');
-% end
 
 % Choose initial download method. Defaults to zero, ie. svn-serve protocol:
 if downloadmethod <= 1

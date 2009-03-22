@@ -71,10 +71,13 @@ if nargin < 2
         fprintf('Info: Failed to determine flavor of this Psychtoolbox. Not a big deal...\n');
     end
 else
-    % Handle 'current' as synonym for 'beta'
+    % Handle 'current' as synonym for 'beta', and 'unsupported' as synonym
+    % for former 'stable'.
     switch (flavor)
         case 'current'
             flavor = 'beta';
+        case 'unsupported'
+            flavor = 'stable';
     end
     
     % Flavor provided: Write it into the flavor file for use by later update calls:
