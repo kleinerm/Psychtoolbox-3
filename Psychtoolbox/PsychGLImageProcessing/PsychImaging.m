@@ -379,6 +379,28 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
 %
 %
+% * 'EnableDualPipeHDROutput' Enable EXPERIMENTAL high-performance driver
+%   for HDR display devices which are composites of two separate displays.
+%
+%   EXPERIMENTAL proof-of-concept code with no real function yet!
+%
+%   This is meant for high-precision luminance or color output. It implies
+%   use of 32 bpc floating point framebuffers unless otherwise specified by
+%   other calls to PsychImaging().
+%
+%   The pair of specially encoded output images that are derived from
+%   content of the onscreen window shall be output to both, the display
+%   associated with the screen given to PsychImaging('OpenWindow',...); and
+%   on the screen with the index 'pipe1Screen', using appropriate encoding
+%   to drive the HDR device or similar composite device.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDualPipeHDROutput', pipe1Screen [, pipe1Rectangle]);
+%
+%   Optionally you can pass a 'pipe1Rectangle' if the window with the
+%   pipe1 image shall not fill the whole 'pipe1Screen', but only a
+%   subregion 'pipe1Rectangle'.
+%
+%
 % * 'AddOffsetToImage' Add a constant color- or intensity offset to the
 %   drawn image, prior to all following image processing and post
 %   processing operations:
@@ -928,6 +950,47 @@ if strcmp(cmd, 'OpenWindow')
         Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
     end
 
+    % Dualwindow output requested? [Essentially the same as display
+    % mirroring, but kept separate for now for simplicity]
+    if ~isempty(find(mystrcmp(reqs, 'EnableDualPipeHDROutput')))
+        % Yes. Need to open secondary slave window:
+        floc = find(mystrcmp(reqs, 'EnableDualPipeHDROutput'));
+        [rows cols]= ind2sub(size(reqs), floc);
+
+        % Extract first parameter - This should be the id of the slave
+        % screen to which the pipe 1 display should get displayed:
+        slavescreenid = reqs{rows, 3};
+
+        if isempty(slavescreenid)
+            Screen('CloseAll');
+            error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of the secondary screen "slavescreen"!');
+        end
+        
+        if ~any(ismember(Screen('Screens'), slavescreenid))
+            Screen('CloseAll');
+            error('In PsychImaging EnableDualPipeHDROutput: You must provide the index of a valid secondary screen "slavescreen"!');
+        end
+        
+        if stereomode == 1
+            Screen('CloseAll');
+            error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
+        end
+        
+        if stereomode == 10
+            Screen('CloseAll');
+            error('In PsychImaging EnableDualPipeHDROutput: Tried to simultaneously enable dual display output stereomode 10! This is not supported.');
+        end
+        
+        % Extract optional 2nd parameter - The window rectangle of the slave
+        % window on the slave screen to which the pipe 1 display should get outputted:
+        slavewinrect = reqs{rows, 4};
+        
+        % Open slave window on slave screen: Set the special dual window
+        % output flag, so Screen('OpenWindow') initializes the internal blit
+        % chain properly:
+        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
+    end
+
     % Perform double-flip, so both back- and frontbuffer get initialized to
     % background color:
     Screen('Flip', win);
@@ -1237,6 +1300,32 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
     ptb_outputformatter_icmAware = 0;    
 end
 
+% Request for native 10 bit per color component ARGB2101010 framebuffer?
+if ~isempty(find(mystrcmp(reqs, 'EnableDualPipeHDROutput')))
+    % Enable imaging pipeline ...
+    imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    % ... final device output formatter chain(s) ...
+    imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
+    % ... and dual stream processing and output to two displays ...
+    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
+
+    % Request 32bpc float FBO unless already a 16 bpc FBO or similar has
+    % been explicitely requested:
+    if ~bitand(imagingMode, kPsychNeed16BPCFloat) && ~bitand(imagingMode, kPsychUse32BPCFloatAsap)
+        imagingMode = mor(imagingMode, kPsychNeed32BPCFloat);
+    end
+
+    % The dual-pipeline HDR output formatter is not yet icm aware -
+    % Incapable of internal color correction. Well, technically it is, but
+    % that code-path is disabled for now. It is probably computationally
+    % more efficient to perform one generic ICM pass on the input buffer
+    % and then feed into the formatters for the two pipes instead of
+    % letting each pipe's formatter apply the same color correction, ie.,
+    % do the same work twice. This needs to be found out in the future. For
+    % now we go for the simple solution:
+    ptb_outputformatter_icmAware = 0;
+end
+
 if ~isempty(find(mystrcmp(reqs, 'LeftView'))) || ~isempty(find(mystrcmp(reqs, 'RightView')))
     % Specific eye channel requested: Need a stereo display mode.
     stereoMode = -2;
@@ -1319,6 +1408,8 @@ needsUnitUnclampedColorRange = 0;
 leftcount = 0;
 rightcount = 0;
 outputcount = 0;
+outputcount0 = 0;
+outputcount1 = 0;
 
 % Flags for horizontal/vertical flip operations:
 leftUDFlip = 0;
@@ -2170,6 +2261,54 @@ if ~isempty(find(mystrcmp(reqs, 'EnableNative10BitFramebuffer')))
 end
 % --- End of output formatter for native 10 bpc ARGB2101010 framebuffer ---
 
+% --- Experimental output formatter for Dual-Pipeline HDR display ---
+floc = find(mystrcmp(reqs, 'EnableDualPipeHDROutput'));
+if ~isempty(floc)
+    [row col]= ind2sub(size(reqs), floc);
+    
+    % outputcount should be zero, i.e., the unified output formatting chain
+    % should be disabled, as we use separate per channel chains:
+    if outputcount > 0
+        fprintf('PsychImaging: WARNING! In setup for task "EnableDualPipeHDROutput": Unified output formatting chain was active (count = %i)!\n', outputcount);
+        fprintf('PsychImaging: WARNING! This conflicts with need for separate output formatting chains! Overriding: Unified chain disabled!\n');
+        fprintf('PsychImaging: WARNING! Check your output stimulus carefully for artifacts!\n');
+
+        % Disable unified output formatting chain and hope for the best:
+        Screen('HookFunction', win, 'Disable', 'FinalOutputFormattingBlit');
+        % Screen('HookFunction', win, 'Disable', 'RightFinalizerBlitChain');
+    end
+    
+    % Setup shader for pipe 0:
+    pipe0shader = LoadGLSLProgramFromFiles('DualPipeHDRPipe0_FormattingShader', 1, icmshader);
+
+    if outputcount0 > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit0', 'Builtin:FlipFBOs', '');
+    end
+    
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit0', 'HDRPipe0 - Output Formatter', pipe0shader, '');
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit0');
+    outputcount0 = outputcount0 + 1;
+    
+    % Setup shader for pipe 1:
+    pipe1shader = LoadGLSLProgramFromFiles('DualPipeHDRPipe1_FormattingShader', 1, icmshader);
+
+    if outputcount1 > 0
+        % Need a bufferflip command:
+        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit1', 'Builtin:FlipFBOs', '');
+    end
+    
+    Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit1', 'HDRPipe1 - Output Formatter', pipe1shader, '');
+    Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit1');
+    outputcount1 = outputcount1 + 1;
+    
+    % Device need an identity clut in the GPU gamma tables:
+    needsIdentityCLUT = 1;
+
+    % Use unit color range, without clamping, but in high-precision mode:
+    needsUnitUnclampedColorRange = 1;
+end
+% --- End of experimental output formatter for Dual-Pipeline HDR display ---
 
 % --- END OF ALL OUTPUT FORMATTERS ---
 

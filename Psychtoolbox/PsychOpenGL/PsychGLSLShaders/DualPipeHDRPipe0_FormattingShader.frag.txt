@@ -1,0 +1,41 @@
+/* DualPipeHDRPipe0_FormattingShader.frag.txt -- High byte image output formatter
+ *
+ * This shader is intended for use as a plugin for the 'FinalOutputFormattingBlit0'
+ * chain of the Psychtoolbox-3 imaging pipeline.
+ *
+ * (c)2009 by Mario Kleiner, part of PTB-3, licensed to you under GPL v2.
+ * See file License.txt in the Psychtoolbox root folder for the license.
+ *
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+
+/* Declare external function for color conversion: */
+vec4 icmTransformColor(vec4 incolor);
+
+void main()
+{
+    /* Get default texel read position (x,y): x is column, y is row of image. */
+    vec2 readpos = gl_FragCoord.xy;
+
+    /* Retrieve RGBA HDR input color value for pixel. */
+    vec4 incolor = texture2DRect(Image, readpos);
+
+    /* Apply some color transformation (clamping, gamma correction etc.): */
+/* Not yet implemented:   incolor = icmTransformColor(incolor); */
+
+    /* Remap all color channels from 0.0 - 1.0 to 0 to 65535: */
+    /* Perform rounding for non-integral numbers and add a small epsilon to take numeric roundoff into account: */
+    vec3 index = floor(incolor.rgb * 65535.0 + 0.5) + 0.01;
+
+    /* Compute high bytes (8 MSBs) for all color components. */
+    vec3 hibytes = floor(index / 256.0) / 255.0;
+
+    /* Output high byte into framebuffer pixel: */
+    gl_FragColor.rgb = hibytes;
+
+    /* Fix alpha channel to 1.0. */
+    gl_FragColor.a = 1.0;
+}

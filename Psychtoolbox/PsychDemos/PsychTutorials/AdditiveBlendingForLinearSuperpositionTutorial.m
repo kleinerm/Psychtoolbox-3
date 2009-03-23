@@ -65,6 +65,10 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay)
 %
 % 'Color++' - User 14 bits per color component mode.
 %
+% 'DualPipeHDR' - Use experimental output to dual-pipeline HDR display
+% device.
+%
+%
 % Please note: Most of these modes only show expected results when the
 % proper devices are attached and calibrated. All modes will work even on
 % standard graphics without special devices, but you'll just see a false
@@ -132,6 +136,9 @@ try
     % 0.5) background and support for 16- or 32 bpc floating point framebuffers.
     PsychImaging('PrepareConfiguration');
 
+    lrect = [];
+    rrect = [];
+    
     % This will try to get 32 bpc float precision if the hardware supports
     % simultaneous use of 32 bpc float and alpha-blending. Otherwise it
     % will use a 16 bpc floating point framebuffer for drawing and
@@ -210,6 +217,19 @@ try
             PsychImaging('AddTask', 'General', 'NormalizedHighresColorRange');
             overlay = 0;
 
+        case {'DualPipeHDR'}
+            % Enable experimental dual display, dual pipeline HDR output:
+            
+            % Handle single-screen vs. dual-screen output:
+            if length(Screen('Screens')) == 1
+                lrect = [0 0 600 600];
+                rrect = [601 0 1201 600];
+            end
+            
+            % Request actual output mode:
+            PsychImaging('AddTask', 'General', 'EnableDualPipeHDROutput', min(Screen('Screens')), rrect);
+            overlay = 0;
+
         otherwise
             error('Unknown "outputdevice" provided.');
     end
@@ -231,8 +251,8 @@ try
     % Finally open a window according to the specs given with above
     % PsychImaging calls, clear it to a background color of 0.5 aka 50%
     % luminance:
-    [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5);
-        
+    [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5, lrect);
+    
     % Use of overlay in Bits++ box Mono++ mode wanted?
     if overlay
         % Get overlay window handle: Drawing into this window will affect
@@ -345,12 +365,12 @@ try
             end
 
             % Change of encoding gamma?
-            if keycode(GammaIncrease) & doTheGamma
+            if keycode(GammaIncrease) && doTheGamma
                 gamma = min(gamma+0.001, 1.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
             
-            if keycode(GammaDecrease) & doTheGamma
+            if keycode(GammaDecrease) && doTheGamma
                 gamma = max(gamma-0.001, 0.0);
                 PsychColorCorrection('SetEncodingGamma', w, gamma);
             end
