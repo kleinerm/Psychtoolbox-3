@@ -61,6 +61,9 @@ static bool jettisoned = false;
 #include <OpenAL/al.h>
 #include <OpenAL/alc.h>
 #include <OpenAL/MacOSX_OALExtensions.h>
+// Prototypes for ASA extensions for Reverb etc. (used in al_manual.c):
+ALenum  alcASASetSource(const ALuint property, ALuint source, ALvoid *data, ALuint dataSize);
+ALenum  alcASASetListener(const ALuint property, ALvoid *data, ALuint dataSize);
 #endif
 
 /* Includes specific to GNU/Linux version of mogl: */

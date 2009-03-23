@@ -9,6 +9,7 @@ function oalconst(glheaderpath, aglheaderpath)
 % 23-Jan-2005 -- constants saved in both struct and OpenGL style (RFM)
 % 05-Mar-2006 -- ability to spec. system header file path added (MK)
 % 05-Feb-2007 -- OpenAL version, derived from OpenGL version (MK)
+% 23-Mar-2009 -- Also parse OS/X extension headerfile on OS/X (MK)
 
 if IsWin
     error('Parsing of AL header files on Windows not yet supported.');
@@ -25,19 +26,9 @@ if nargin < 1
     end;
 end;
 
-if nargin < 2
-    if IsOSX
-        aglheaderpath = '/System/Library/Frameworks/AGL.framework/Headers';
-    end;
-end;
+fprintf('Parsing OpenAL and ALC header files in %s ...\n', glheaderpath);
 
-if IsOSX
-    fprintf('Parsing OpenAL, ALC and AAL header files in %s and %s ...\n',glheaderpath, aglheaderpath);
-else
-    fprintf('Parsing OpenAL and ALC header files in %s ...\n',glheaderpath);
-end;
-
-% get constants from the OpenGL header files.  the 'parsefile' routine
+% get constants from the OpenAL header files.  the 'parsefile' routine
 % defines the constants in the calling workspace, as variables with the
 % same names as the #defined OpenAL constants, e.g., AL_COLOR_BUFFER_BIT.
 % the return argument contains all the constants as fields of a structure,
@@ -47,10 +38,9 @@ end;
 % hundreds of global variables.  later on, we can load whichever style
 % we want from the file where they're all saved.
 AL= parsefile(sprintf('%s/al.h', glheaderpath), 'AL_');
-%AL= parsefile(sprintf('%s/alext.h', glheaderpath), 'AL_', AL);
 ALC=parsefile(sprintf('%s/alc.h', glheaderpath),'ALC_');
 if IsOSX
-%    AAL=parsefile(sprintf('%s/aal.h', aglheaderpath),'AAL_');
+    ALC=parsefile(sprintf('%s/MacOSX_OALExtensions.h', glheaderpath),'ALC_', ALC);
 end;
 
 fname='oalconst.mat';
@@ -122,9 +112,14 @@ while ~feof(fid),
         if strncmp(r.value,'0x',2),
 			% convert hex value
             nvalue=hex2dec(r.value(3:end));
-		else
-			% convert decimal value
-            nvalue=str2num(r.value);
+        else
+            if strncmp(r.value,'''',1)
+                % FOURCC four character code string:
+                nvalue = r.value(2:5);
+            else
+                % convert decimal value
+                nvalue=str2num(r.value);
+            end
         end
         % assign value of zero if conversion failed, e.g., if symbol was
 		% defined using another #define, as in #define GL_THIS GL_THAT.
@@ -144,8 +139,11 @@ while ~feof(fid),
     S=setfield(S,fieldname,nvalue);
     
     % define OpenAL-style variable in calling workspace
-	evalin('caller',sprintf('%s=%d;',r.symbol,nvalue));
-
+    if isnumeric(nvalue)
+        evalin('caller',sprintf('%s=%d;',r.symbol,nvalue));
+    else
+        evalin('caller',sprintf('%s=''%s'';',r.symbol,nvalue));
+    end
 end
 
 % close file
