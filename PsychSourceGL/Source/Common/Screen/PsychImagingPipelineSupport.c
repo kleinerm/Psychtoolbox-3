@@ -178,7 +178,9 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"IdentityBlitChain",
 	"LeftFinalizerBlitChain",
 	"RightFinalizerBlitChain",
-	"UserDefinedBlit"
+	"UserDefinedBlit",
+	"FinalOutputFormattingBlit0",
+	"FinalOutputFormattingBlit1"
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
@@ -194,7 +196,9 @@ char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
 	"Internal(preinitialized): Only for internal use. Only modify for debugging and testing of pipeline itself!",
 	"Internal(preinitialized): Perform last time operation on left (or mono) channel, e.g., draw blue-sync lines.",
 	"Internal(preinitialized): Perform last time operation on right channel, e.g., draw blue-sync lines.",
-	"Defines a user defined image processing operation for the Screen('TransformTexture') command."
+	"Defines a user defined image processing operation for the Screen('TransformTexture') command.",
+	"Perform post-processing on 1st (left) output channel, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
+	"Perform post-processing on 2nd (right) output channel, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators..."
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()
@@ -255,6 +259,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	int winwidth, winheight;
 	Boolean needzbuffer, needoutputconversion, needimageprocessing, needseparatestreams, needfastbackingstore, targetisfinalFB;
 	GLuint glsl;
+	GLint redbits;
 	float rg, gg, bg;	// Gains for color channels and color masking for anaglyph shader setup.
 	char blittercfg[1000];
 
@@ -429,8 +434,8 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	windowRecord->finalizedFBO[1]=fbocount;
 	fbocount++;
 
-	if (windowRecord->stereomode == kPsychDualWindowStereo) {
-		// Dual-window stereo is a special case: This window contains the imaging pipeline for
+	if ((windowRecord->stereomode == kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
+		// Dual-window stereo or dual window output is a special case: This window contains the imaging pipeline for
 		// both views, but its OpenGL context and framebuffer only represents the left-view channel.
 		// The right-view channel is represented by a slave window and its associated context. We
 		// create a framebuffer object and attach it to finalizedFBO[1]. This way, the final left view
@@ -439,9 +444,17 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 		// perform a last blitcopy operation at the end of pipeline processing, where it copies the content
 		// of finalizedFBO[1] into the real system framebuffer for the onscreen window which represents the
 		// user visible right view.
+		//
+		// In dual window output mode, we may only have one merged/composited stereo view or even only
+		// a single monoscopic view, but we still distribute that view to both finalizedFBO's aka different
+		// onscreen windows backbuffers, possibly with separate output formatting / postprocessing.
+		
+		// Query bit depths of native backbuffer: Assume red bits == green bits == blue bits == bit depths.
+		glGetIntegerv(GL_RED_BITS, &redbits);
 		
 		// This is by default always a standard 8bpc fixed point RGBA8 framebuffer without stencil- and z-buffers etc.
-		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), GL_RGBA8, FALSE, winwidth, winheight, 0)) {
+		// If bit depths of native backbuffer is more than 8 bits, we allocate a float32 FBO though...
+		if (!PsychCreateFBO(&(windowRecord->fboTable[fbocount]), ((redbits <= 8) ? GL_RGBA8 : GL_RGBA_FLOAT32_APPLE), FALSE, winwidth, winheight, 0)) {
 			// Failed!
 			PsychErrorExitMsg(PsychError_internal, "Imaging Pipeline setup: Could not setup stage 0 of imaging pipeline for dual-window stereo.");
 		}
@@ -751,7 +764,15 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 			fbocount++;				
 		}
 	}		
-	
+
+	// If dualwindow output is requested and preConversionFBO[1] isn't assigned yet,
+	// we set it to the same FBO as preConversionFBO[0], so the image data of our one
+	// single image buffer is distributed to both output pipes for output conversion and
+	// display:
+	if ((imagingmode & kPsychNeedDualWindowOutput) && (windowRecord->preConversionFBO[1] == -1)) {
+		windowRecord->preConversionFBO[1] = windowRecord->preConversionFBO[0];
+	}
+
 	// Setup imaging mode flags:
 	newimagingmode = (needseparatestreams) ? kPsychNeedSeparateStreams : 0;
 	if (!needseparatestreams && (windowRecord->stereomode > 0)) newimagingmode |= kPsychNeedStereoMergeOp;
@@ -767,6 +788,7 @@ void PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int ima
 	else if (imagingmode & kPsychNeed16BPCFixed) {
 		newimagingmode |= kPsychNeed16BPCFixed;
 	}
+	if (imagingmode & kPsychNeedDualWindowOutput) newimagingmode |= kPsychNeedDualWindowOutput;
 	
 	// Set new final imaging mode and fbocount:
 	windowRecord->imagingMode = newimagingmode;

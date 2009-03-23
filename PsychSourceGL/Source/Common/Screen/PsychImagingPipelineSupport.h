@@ -42,12 +42,15 @@ typedef enum {
 	kPsychStereoRightCompositingBlit =				4,	// Ditto for right channel in stereomode. Can add generic image processing here.
 	kPsychStereoCompositingBlit =					5,	// Performs merge operation from two stereo channels to single output in all modes but quad-buffered stereo.
 	kPsychPostCompositingBlit =						6,	// Not used for now.
-	kPsychFinalOutputFormattingBlit =				7,	// Performs final data conversion/image processing on output immediately before hitting framebuffer.
+	kPsychFinalOutputFormattingBlit =				7,	// Performs unified final data conversion/image processing on both output views immediately before hitting framebuffer.
 	kPsychUserspaceBufferDrawingPrepare =			8,	// Prepare transition to userspace after 'Flip' command.
 	kPsychIdentityBlit=								9,	// Standard blit chain, used when nothing else available: Copy images from one buffer to next.
 	kPsychLeftFinalizerBlit=						10,	// Very last (single-pass only!) operations on left- or mono channel, e.g., drawing stereo sync lines.
 	kPsychRightFinalizerBlit=						11, // Same for right channel in stereo modes.
 	kPsychUserDefinedBlit=							12, // User defined image processing, e.g., for Screen('TransformTexture').
+	kPsychFinalOutputFormattingBlit0 =				13,	// Performs final data conversion/image processing on output view 0 immediately before hitting framebuffer.
+	kPsychFinalOutputFormattingBlit1 =				14,	// Performs final data conversion/image processing on output view 1 immediately before hitting framebuffer.
+	
 } PsychHookType;
 
 // API for PTB core:

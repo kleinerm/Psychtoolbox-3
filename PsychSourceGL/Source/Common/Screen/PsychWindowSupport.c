@@ -3303,6 +3303,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// In mono mode: Image in preConversionFBO[0].
 		// In quad-buffered stereo mode: Left eye image in preConversionFBO[0], Right eye image in preConversionFBO[1].
 		// In other stereo modes: Merged image in both preConversionFBO[0] and preConversionFBO[1], both reference the same image buffer.
+		// If dual window output mode is requested, the merged - or single monoscopic - image is also in both
+		// preConversionFBO[0] and preConversionFBO[1], as both reference the same image buffer.
 		
 		// Ready to create the final content, either for drawing into a snapshot buffer or into the real system framebuffer.
 		// finalizedFBO[0] is set up to take the final image for anything but quad-buffered stereo.
@@ -3310,7 +3312,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Each FBO is either a real FBO for framebuffer "screenshots" or the system framebuffer for final output into the backbuffer.
 
 		// Process each of the (up to two) streams:
-		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo) ? 2 : 1); viewid++) {
+		for (viewid = 0; viewid < ((stereo_mode == kPsychOpenGLStereo || stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) ? 2 : 1); viewid++) {
 
 			// Select final drawbuffer if our target is the system framebuffer:
 			if (windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]->fboid == 0) {
@@ -3324,17 +3326,32 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				}
 			}
 
-			// Output conversion needed, processing chain enabled and non-empty?
-			if ((imagingMode & kPsychNeedOutputConversion) && PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit)) {
-				// Yes - Execute it:
-				PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+			// Output conversion needed, processing chain(s) enabled and non-empty?
+			if ((imagingMode & kPsychNeedOutputConversion) && (PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit) ||
+				(PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit0) && PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit1)))) {
+				// Output conversion needed and unified chain or dual-channel chains operational.
+				// Which ones to use?
+				if (PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit0)) {
+					// Dual stream chains for separate formatting of both output views are active.
+					// Unified chain active as well? That would be reason for a little warning about conflicts...
+					if (PsychIsHookChainOperational(windowRecord, kPsychFinalOutputFormattingBlit) && (PsychPrefStateGet_Verbosity() > 1)) {
+						printf("PTB-WARNING: Both, separate chains *and* unified chain for image output formatting active! Coding bug?!? Will use separate chains as override.\n");
+					}
+
+					// Use proper per view output formatting chain:
+					PsychPipelineExecuteHook(windowRecord, ((viewid > 0) ? kPsychFinalOutputFormattingBlit1 : kPsychFinalOutputFormattingBlit0), NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+				}
+				else {
+					// Single unified formatting chain to be used:
+					PsychPipelineExecuteHook(windowRecord, kPsychFinalOutputFormattingBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), (windowRecord->preConversionFBO[2]>=0) ? &(windowRecord->fboTable[windowRecord->preConversionFBO[2]]) : NULL);
+				}
 			}
 			else {
 				// No conversion needed or chain disabled: Do our identity blit, but only if really needed!
 				// This gets skipped in mono-mode if no conversion needed and only single-pass image processing
 				// applied. In that case, the image processing stage did the final blit already.
 				if (windowRecord->preConversionFBO[viewid] != windowRecord->finalizedFBO[viewid]) {
-					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>3)) printf("PTB-INFO: Processing chain for output conversion disabled -- Using identity copy as workaround.\n");
+					if ((imagingMode & kPsychNeedOutputConversion) && (PsychPrefStateGet_Verbosity()>3)) printf("PTB-INFO: Processing chain(s) for output conversion disabled -- Using identity copy as workaround.\n");
 					PsychPipelineExecuteHook(windowRecord, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->preConversionFBO[viewid]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[viewid]]), NULL);				
 				}
 			}
@@ -3369,11 +3386,11 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		// Restore modelview matrix:
 		glPopMatrix();
 		
-		// In dual-window stereomode we need to copy the finalizedFBO[1] into the backbuffer of
+		// In dual-window stereomode or dual-window output mode, we need to copy the finalizedFBO[1] into the backbuffer of
 		// the slave-window:
-		if (stereo_mode == kPsychDualWindowStereo) {
+		if (stereo_mode == kPsychDualWindowStereo || (imagingMode & kPsychNeedDualWindowOutput)) {
 			if (windowRecord->slaveWindow == NULL) {
-				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode...\n");
+				if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Skipping master->slave blit operation in dual-window stereo mode or output mode...\n");
 			}
 			else {
 				// Perform blit operation: This looks weird. Due to the peculiar implementation of PsychPipelineExecuteHook() we must
@@ -3384,7 +3401,7 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// -> This is a bit dirty and convoluted, but its the most efficient procedure for this special case.
 				PsychPipelineExecuteHook(windowRecord->slaveWindow, kPsychIdentityBlit, NULL, NULL, TRUE, FALSE, &(windowRecord->fboTable[windowRecord->finalizedFBO[1]]), NULL, &(windowRecord->fboTable[windowRecord->finalizedFBO[0]]), NULL);				
 
-				// Paranoia mode: A dual-window stereo display configuration must swap both display windows in
+				// Paranoia mode: A dual-window display configuration must swap both display windows in
 				// close sync with each other and the vertical retraces of their respective display heads. Due
 				// to the non-atomic submission of the swap-commands this config is especially prone to one display
 				// missing the VBL deadline and flipping one video refresh too late. We try to reduce the chance of

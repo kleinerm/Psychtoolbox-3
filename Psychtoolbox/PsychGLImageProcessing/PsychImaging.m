@@ -888,11 +888,12 @@ if strcmp(cmd, 'OpenWindow')
         end
     end
     
-    % Display mirroring in stereomode 10 requested?
+    % Display mirroring requested?
     if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
         % Yes. Need to open secondary slave window:
         floc = find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead'));
         [rows cols]= ind2sub(size(reqs), floc);
+
         % Extract first parameter - This should be the id of the slave
         % screen to which the display should get mirrored:
         slavescreenid = reqs{rows, 3};
@@ -906,13 +907,25 @@ if strcmp(cmd, 'OpenWindow')
             Screen('CloseAll');
             error('In PsychImaging MirrorDisplayTo2ndOutputHead: You must provide the index of a valid secondary screen "slavescreen"!');
         end
-
+        
+        if stereomode == 10
+            fprintf('PsychImaging: WARNING! You simultaneously requested display mirroring to 2nd output head and dual display stereomode 10.\n');
+            fprintf('PsychImaging: WARNING! These are mutually exclusive! Will choose stereomode 10 instead of mirroring.\n');
+        end
+        
+        if stereomode == 1
+            Screen('CloseAll');
+            error('In PsychImaging MirrorDisplayTo2ndOutputHead: Tried to simultaneously enable frame-sequential stereomode 1! This is not supported.');
+        end
+        
         % Extract optional 2nd parameter - The window rectangle of the slave
-        % slave window on the slave screen to which the display should get mirrored:
+        % window on the slave screen to which the display should get mirrored:
         slavewinrect = reqs{rows, 4};
         
-        % Open slave window on slave screen:
-        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], stereomode);
+        % Open slave window on slave screen: Set the special dual window
+        % output flag, so Screen('OpenWindow') initializes the internal blit
+        % chain properly:
+        Screen('OpenWindow', slavescreenid, [255 0 0], slavewinrect, [], [], [], [], kPsychNeedDualWindowOutput);
     end
 
     % Perform double-flip, so both back- and frontbuffer get initialized to
@@ -1111,12 +1124,12 @@ if ~isempty(find(mystrcmp(reqs, 'InterleavedLineStereo')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore, kPsychNeedHalfHeightWindow);    
 end
 
-% Stereomode 10 for display replication needed?
+% Display replication needed?
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
-    % Yes: Must use stereomode 10. This implies kPsychNeedFastBackingStore,
-    % automatically set by Screen('OpenWindow') itself, so no need t do it
-    % here:
-    stereoMode = 10;    
+    % Yes: Must use dual window output mode. This implies
+    % kPsychNeedFastBackingStore, automatically set by Screen('OpenWindow')
+    % itself, so no need to do it here.
+    imagingMode = mor(imagingMode, kPsychNeedDualWindowOutput);
 end
 
 % Custom color correction for display wanted?
@@ -2241,24 +2254,28 @@ end
 
 % --- GPU based mirroring of onscreen window to secondary display head requested? ---
 if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
-    % Yes: This means that stereomode 10 is active and that we (ab)use it
-    % for the purpose of replicating the framebuffer of the master onscreen
+    % Yes: We need to replicate the framebuffer of the master onscreen
     % window to the slave windows framebuffer.
     
-    % What we do: We use the right finalizer blit chain to copy the contents
-    % of the master window's system backbuffer (which is bound during
-    % execution of the right finalizer blit chain) to the colorbuffer
-    % texture of the special finalizedFBO[1] - the shadow framebuffer FBO
-    % of the slave window. Once we did this, the processing code of
-    % stereomode 10 in Screens PsychPreFlipOperations() routine will take
-    % care of the rest --> Blitting that FBO's and its texture to the system
-    % backbuffer of the slave window, thereby cloning the master windows
-    % framebuffer to the slave windows framebuffer:
-    
+    % What we do: We use the right finalizer blit chain to copy the
+    % contents of the master window's system backbuffer (which is bound
+    % during execution of the right finalizer blit chain) to the
+    % colorbuffer texture of the special finalizedFBO[1] - the shadow
+    % framebuffer FBO of the slave window. Once we did this, the processing
+    % code of kPsychNeedDualWindowOutput in Screens
+    % PsychPreFlipOperations() routine will take care of the rest -->
+    % Blitting that FBO's and its texture to the system backbuffer of the
+    % slave window, thereby cloning the master windows framebuffer to the
+    % slave windows framebuffer:
+    % TODO FIXME: We assume that texture handle '1' denotes the color
+    % attachment exture of finalizedFBO[1]. This is true if this is the
+    % first opened onscreen window (ie., 99% of the time). If that
+    % assumption doesn't hold, we will guess the wrong texture handle and
+    % bad things will happen!
     [w, h] = Screen('WindowSize', win);
     myblitstring = sprintf('glBindTexture(34037, 1); glCopyTexSubImage2D(34037, 0, 0, 0, 0, 0, %i, %i); glBindTexture(34037, 0);', w, h);
     Screen('Hookfunction', win, 'AppendMFunction', 'RightFinalizerBlitChain', 'MirrorMasterToSlaveWindow', myblitstring);
-    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');    
+    Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
 end
 % --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
 

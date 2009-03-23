@@ -63,7 +63,7 @@ TO DO:
 #define PSYCH_INVALID_SCUMBER				-1
 
 // Maximum number of different hook chains:
-#define MAX_SCREEN_HOOKS 13
+#define MAX_SCREEN_HOOKS 15
 
 // Maximum number of slots in windowRecords fboTable:
 #define MAX_FBOTABLE_SLOTS 2+2+3+3+2
@@ -108,6 +108,9 @@ TO DO:
 #define kPsychUse32BPCFloatAsap		   4096 // This flag asks to use 32 bpc float FBOs for all stages of the pipeline after the initial drawBufferFBO. The initial drawBufferFBO
 											// should also be a 32 bpc float FBO if the hardware reliably supports framebuffer blending in 32bpc. Otherwise it should be a 16 bpc
 											// float FBO to allow for hardware accelerated framebuffer blending.
+#define kPsychNeedDualWindowOutput    16384 // Apply imaging pipelines output formatting to two visual output streams and distribute result to two onscreen
+											// windows. This allows e.g., to drive two physical displays from one input stimulus image, but applying different
+											// post-processing to the two outputs. An example is display mirroring or special HDR displays.
 #define kPsychUseTextureMatrixForRotation 1 // Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
 											// rotated drawing of textures via texture matrix, not via modelview matrix. To be set as flag in 'DrawTexture(s)'
 #define kPsychDontDoRotation			  2	// Setting for 'specialflags' field of windowRecords that describe textures. If set, drawtexture routine should implement
@@ -117,7 +120,7 @@ TO DO:
 											// and needs some special handling it init, shutdown and during operation.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192. --> Flags above 16384 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192. --> Flags above 32768 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
 // 1,2,1024,S-2048,S-8192. --> Flags above 16384 and higher are available, as well as 4,8,16,32,64,128,256,512,4096

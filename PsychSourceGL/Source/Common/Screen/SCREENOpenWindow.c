@@ -232,10 +232,10 @@ PsychError SCREENOpenWindow(void)
 	
 	// We require use of the imaging pipeline if stereomode for dualwindow display is requested.
 	// This makes heavy use of FBO's and blit operations, so imaging pipeline is needed.
-	if (stereomode==kPsychDualWindowStereo) {
+	if ((stereomode==kPsychDualWindowStereo) || (imagingmode & kPsychNeedDualWindowOutput)) {
 		// Dual window stereo requested, but imaging pipeline not enabled. Enable it:
 		imagingmode|= kPsychNeedFastBackingStore;
-		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode...\n");
+		if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Trying to enable imaging pipeline for dual-window stereo display mode or dual-window output mode...\n");
 	}
 	
     //set the video mode to change the pixel size.  TO DO: Set the rect and the default color  
@@ -331,11 +331,11 @@ PsychError SCREENOpenWindow(void)
     if(!isArgThere) PsychLoadColorStruct(&color, kPsychIndexColor, PsychGetWhiteValueFromWindow(windowRecord)); //or use the default
     PsychCoerceColorMode(&color);
 
-	// Special setup code for dual window stereomode:
-	if (stereomode == kPsychDualWindowStereo) {
+	// Special setup code for dual window stereomode or output mode:
+	if (stereomode == kPsychDualWindowStereo || (imagingmode & kPsychNeedDualWindowOutput)) {
 		if (sharedContextWindow) {
 			// This is creation & setup of the slave onscreen window, ie. the one
-			// representing the right-eye view. This window doesn't do much. It
+			// representing the right-eye or channel 1 view. This window doesn't do much. It
 			// is not used or referenced in the users experiment script. It receives
 			// its final image content during Screen('Flip') operation of the master
 			// onscreen window, then gets flipped in sync with the master window.
@@ -347,7 +347,7 @@ PsychError SCREENOpenWindow(void)
 			// Reset imagingmode for this window prior to imaging pipeline setup. This
 			// window is totally passive so it doesn't need the imaging pipeline.
 			imagingmode = 0;
-						
+
 			// Assign this window to the master window as a slave:
 			sharedContextWindow->slaveWindow = windowRecord;
 			
@@ -360,13 +360,13 @@ PsychError SCREENOpenWindow(void)
 			PsychPipelineAddBuiltinFunctionToHook(windowRecord, "IdentityBlitChain", "Builtin:IdentityBlit", INT_MAX, "");
 			PsychPipelineEnableHook(windowRecord, "IdentityBlitChain");
 
-			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo display mode...\n");
+			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Created master-slave window relationship for dual-window stereo/output display mode...\n");
 
 			// Special config finished. The master-slave combo should work from now on...
 		}
 		else {
 			// This is initial setup & creation of the master onscreen window, ie. the one
-			// representing the left-eye view and doing all the heavy work, acting as a
+			// representing the left-eye or channel 0 view and doing all the heavy work, acting as a
 			// proxy for both windows.
 			
 			// Not much to do here. Just store its windowRecord as a reference for creation
