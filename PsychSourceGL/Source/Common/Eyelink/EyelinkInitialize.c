@@ -101,7 +101,12 @@ PsychError EyelinkInitialize(void)
 
 	// Initialize graphics callbacks for eye camera et al.:
 	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
-		PsychEyelink_init_core_graphics(callbackString);
+        if (strlen(callbackString) > 0) {
+    		PsychEyelink_init_core_graphics(callbackString);
+        }
+        else {
+            PsychEyelink_uninit_core_graphics();
+        }
 	}
 	else {
 		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");
@@ -166,10 +171,14 @@ PsychError EyelinkInitializeDummy(void)
 	
 	// Initialize graphics callbacks for eye camera et al.:
 	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
-		PsychEyelink_init_core_graphics(callbackString);
-
-		// TEST Code:
-		PsychEyelink_TestEyeImage();
+        if (strlen(callbackString) > 0) {
+    		PsychEyelink_init_core_graphics(callbackString);
+            // TEST Code:
+    		PsychEyelink_TestEyeImage();
+        }
+        else {
+            PsychEyelink_uninit_core_graphics();
+        }
 	}
 	else {
 		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");

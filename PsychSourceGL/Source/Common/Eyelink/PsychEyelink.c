@@ -235,8 +235,8 @@ void PsychEyelink_TestEyeImage(void)
 		// Check keyboard:
 		if (PsychEyelink_get_input_key(&keyinput) > 0) {
 			PsychEyelink_alert_printf_hook("Eyelink: Key detected.\n");
-			// Break out of loop on keycode 41 == ESCAPE on OS/X.
-			if (keyinput.key.key == 41) break;
+			// Break out of loop on keycode 41 or 27 == ESCAPE on OS/X or Windows.
+			if (keyinput.key.key == 41 || keyinput.key.key == 27) break;
 		}
 	}
 
@@ -491,7 +491,7 @@ INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
 
 void ELCALLBACK   PsychEyelink_clear_display(void)
 {
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_clear_display()\n");
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_clear_display()\n");
 
 	// Tell runtime to clear display: Command code 6.
 	PsychEyelinkCallRuntime(6, 0, 0, NULL);
@@ -501,7 +501,7 @@ void ELCALLBACK   PsychEyelink_clear_display(void)
 
 void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
 {
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_draw_cal_target(): x=%i y=%i.\n", (int) x, (int) y);
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_draw_cal_target(): x=%i y=%i.\n", (int) x, (int) y);
 
 	// Tell runtime about where to draw calibration target: Command code 5.
 	PsychEyelinkCallRuntime(5, (int) x, (int) y, NULL);
@@ -511,7 +511,7 @@ void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
 
 void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 {
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_image_title(): threshold = %i : Title = %s\n", (int) threshold, title);
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_image_title(): threshold = %i : Title = %s\n", (int) threshold, title);
 
 	// Tell runtime about image title: Command code 4.
 	PsychEyelinkCallRuntime(4, (int) threshold, 0, title);

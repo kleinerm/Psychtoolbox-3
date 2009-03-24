@@ -60,8 +60,8 @@ void InitializeSynopsis()
 	
 	// Calibration
 	synopsis[i++] = "\n% Calibration:";
-	synopsis[i++] = "[result =] Eyelink('StartSetup')";
-	synopsis[i++] = "[status = ] Eyelink('DriftCorrStart', x, y)";
+	synopsis[i++] = "[result =] Eyelink('StartSetup' [, stype=0])";
+	synopsis[i++] = "[status = ] Eyelink('DriftCorrStart', x, y [,dtype=0][, dodraw=1][, allow_setup=0])";
 	synopsis[i++] = "[result = ] Eyelink('ApplyDriftCorr')";
 	synopsis[i++] = "[result, tx, ty] = Eyelink('TargetCheck')";
 	synopsis[i++] = "[result = ] Eyelink('AcceptTrigger')";

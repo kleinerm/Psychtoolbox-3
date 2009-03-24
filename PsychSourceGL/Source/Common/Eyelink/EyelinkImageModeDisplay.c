@@ -27,13 +27,13 @@ static char useString[] = "[result =] Eyelink('ImageModeDisplay')";
 
 static char synopsisString[] =
 	"This handles display of the EyeLink camera images. "
-	"While in imaging mode, it contiuously requests "
+	"While in imaging mode, it continuously requests "
 	"and displays the current camera image. "
 	"It also displays the camera name and threshold setting. "
 	"Keys on the subject PC keyboard are sent to the tracker "
 	"so the experimenter can use it during setup. "
 	"It will exit when the tracker leaves "
-	"imaging mode or discannects. "
+	"imaging mode or disconnects. "
     "RETURNS: 0 if OK, 32767 (Ox7FFF or TERMINATE_KEY) if pressed, -1 if disconnect";
 
 static char seeAlsoString[] = "";
@@ -79,17 +79,7 @@ PsychError EyelinkImageModeDisplay(void)
 	// Optionally dump the whole hookfunctions struct:
 	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PreOp: \n"); PsychEyelink_dumpHookfunctions(); }
 	
-	if(1)
-	{
-		// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
-		// eyelink_start_setup();	
-		iResult = image_mode_display();
-	}
-	else
-	{
-		//mexPrintf("EyelinkImageModeDisplay is not yet implemented.\n");
-		iResult=0;
-	}
+	iResult = image_mode_display();
 	
 	// Optionally dump the whole hookfunctions struct:
 	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PostOp: \n"); PsychEyelink_dumpHookfunctions(); }

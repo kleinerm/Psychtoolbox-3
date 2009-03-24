@@ -23,9 +23,11 @@
 
 #include "PsychEyelink.h"
 
-static char useString[] = "[result =] Eyelink('StartSetup')";
+static char useString[] = "[result =] Eyelink('StartSetup' [, stype=0])";
 
-static char synopsisString[] = "Enters setup mode ";
+static char synopsisString[] =  "Enters setup mode. By default, eyelink_start_setup() is called. "
+                                "If the optional argument 'stype' is set to one, the routine "
+                                "do_tracker_setup() is called instead.\n";
 
 static char seeAlsoString[] = "";
 
@@ -49,7 +51,7 @@ PsychError EyelinkStartSetup(void)
 	}
 
 	// Check arguments
-	PsychErrorExit(PsychCapNumInputArgs(0));
+	PsychErrorExit(PsychCapNumInputArgs(1));
 	PsychErrorExit(PsychRequireNumInputArgs(0));
 	PsychErrorExit(PsychCapNumOutputArgs(1));
 	
@@ -57,7 +59,18 @@ PsychError EyelinkStartSetup(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 
-	iResult = eyelink_start_setup();
+    // Get optional mode flag:
+    iResult = 0;
+    PsychCopyInIntegerArg(1, FALSE, &iResult);
+
+    if (iResult > 0) {
+        // New behaviour:
+        iResult = do_tracker_setup();
+    }
+    else {
+        // Standard behaviour:
+    	iResult = eyelink_start_setup();
+    }
 
 	// Copy out result
 	PsychCopyOutDoubleArg(1, FALSE, iResult);
