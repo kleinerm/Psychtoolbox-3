@@ -70,6 +70,7 @@ PsychError	EyelinkSystemIsInitialized(void);
 void PsychEyelink_init_core_graphics(const char* callback);
 void PsychEyelink_uninit_core_graphics(void);
 void PsychEyelink_TestEyeImage(void);
+void PsychEyelink_dumpHookfunctions(void);
 
 //callback functions and supporting functions, also defined in PsychEyelink.c
 static INT16 ELCALLBACK  PsychEyelink_setup_image_display(INT16 width, INT16 height);
@@ -80,7 +81,7 @@ static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, I
 static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void);
 static void ELCALLBACK   PsychEyelink_clear_display(void);
 static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y);
-static void ELCALLBACK   PsychEyelink_image_title(INT16 unused, char *title);
+static void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title);
 static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput);
 static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg);
 

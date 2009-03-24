@@ -76,6 +76,9 @@ PsychError EyelinkImageModeDisplay(void)
 	EyelinkSystemIsConnected();
 	EyelinkSystemIsInitialized();
 	
+	// Optionally dump the whole hookfunctions struct:
+	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PreOp: \n"); PsychEyelink_dumpHookfunctions(); }
+	
 	if(1)
 	{
 		// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
@@ -88,6 +91,9 @@ PsychError EyelinkImageModeDisplay(void)
 		iResult=0;
 	}
 	
+	// Optionally dump the whole hookfunctions struct:
+	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PostOp: \n"); PsychEyelink_dumpHookfunctions(); }
+
 	// Assign output arg if available
 	PsychCopyOutDoubleArg(1, FALSE, iResult);
 	

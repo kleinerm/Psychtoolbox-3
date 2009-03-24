@@ -121,6 +121,9 @@ int Verbosity(void) {
 void PsychEyelink_init_core_graphics(const char* callback)
 {
 	HOOKFCNS fcns;
+	
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_init_core_graphics()\n");
+	
 	memset(&fcns, 0, sizeof(fcns));
 	
 	// Setup cam image callbacks:
@@ -129,14 +132,19 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	fcns.exit_image_display_hook= PsychEyelink_exit_image_display;
 	fcns.setup_image_display_hook = PsychEyelink_setup_image_display;
 
-	// Not used for now, but defined anyway to make Eyelink runtime happy:
+	// Other callbacks to make Eyelink runtime happy:
 	fcns.setup_cal_display_hook = PsychEyelink_setup_cal_display;
-	fcns.clear_cal_display_hook = PsychEyelink_clear_display;
-	fcns.erase_cal_target_hook  = PsychEyelink_clear_display;
 	fcns.draw_cal_target_hook   = PsychEyelink_draw_cal_target;
 	fcns.image_title_hook       = PsychEyelink_image_title;
 	fcns.get_input_key_hook     = PsychEyelink_get_input_key;
 	fcns.alert_printf_hook      = PsychEyelink_alert_printf_hook;
+
+	// All of these, except the first one, don't make much sense. Just set
+	// to make eyelink-core happy:
+	fcns.clear_cal_display_hook = PsychEyelink_clear_display;
+	fcns.exit_cal_display_hook  = PsychEyelink_clear_display;
+	fcns.erase_cal_target_hook  = PsychEyelink_clear_display;
+	fcns.record_abort_hide_hook = PsychEyelink_clear_display;
 	
 	// Assign runtime environment display callback function:
 	memset(eyelinkDisplayCallbackFunc, 0, sizeof(eyelinkDisplayCallbackFunc));
@@ -149,6 +157,9 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	// Assign hooks to Eyelink runtime:
 	setup_graphic_hook_functions(&fcns);
 	
+	// Optionally dump the whole hookfunctions struct:
+	if (Verbosity() > 5) PsychEyelink_dumpHookfunctions();
+	
 	return;
 }
 
@@ -156,8 +167,27 @@ void PsychEyelink_init_core_graphics(const char* callback)
 void PsychEyelink_uninit_core_graphics(void)
 {
 	HOOKFCNS fcns;
+	
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_uninit_core_graphics()\n");
+	
 	memset(&fcns, 0, sizeof(fcns));
 	setup_graphic_hook_functions(&fcns);
+
+	// Optionally dump the whole hookfunctions struct:
+	if (Verbosity() > 5) PsychEyelink_dumpHookfunctions();
+
+	return;
+}
+
+void PsychEyelink_dumpHookfunctions(void)
+{
+	HOOKFCNS* pfcns = get_all_hook_functions();
+	int i;
+	
+	printf("PsychEyelink: Dump of current Eyelink HOOKFCNS struct as byte array:\n\n");
+	for (i=0; i < sizeof(HOOKFCNS); i++) printf(" %02x", (int)(((unsigned char*) pfcns)[i]));
+	printf("\nPsychEyelink: Dump done\n\n");
+
 	return;
 }
 
@@ -263,6 +293,22 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 // Callback functions, called by Eyelink runtime at various occassions, e.g,
 // during tracker setup, drift correction/calibration etc.:
 // =========================================================================
+
+void ELCALLBACK PsychEyelink_noop(void)
+{
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_exit_image_display()\n");
+
+	// Release any allocated image buffer:
+	if (eyeimage != NULL) free(eyeimage);
+	
+	// Reset everything to startup default:
+	eyeimage  = NULL;
+	eyewidth  = 0;
+	eyeheight = 0;
+	
+	// Done.
+	return;
+}
 
 // PsychEyelink_setup_image_display() tells the width and height of the camera
 // image in pixels.
@@ -463,12 +509,12 @@ void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
 	return;
 }
 
-void ELCALLBACK   PsychEyelink_image_title(INT16 unused, char *title)
+void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 {
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_image_title(): state = %i : Title = %s\n", (int) unused, title);
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_image_title(): threshold = %i : Title = %s\n", (int) threshold, title);
 
 	// Tell runtime about image title: Command code 4.
-	PsychEyelinkCallRuntime(4, (int) unused, 0, title);
+	PsychEyelinkCallRuntime(4, (int) threshold, 0, title);
 
 	return;
 }

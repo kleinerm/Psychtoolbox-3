@@ -28,26 +28,28 @@ PsychError PsychEyelinkShutdown(void)
 	int		iStatus		= -1;
 	char	strMsg[256];
 
-	// Zero-out return string:
-	memset(strMsg, 0, sizeof(strMsg));
-
-	// Disconnect if connected
-	if (eyelink_is_connected()) {
-		set_offline_mode();
-		iStatus = eyelink_close(1);
-		if (iStatus != 0) {
-			sprintf(strMsg, "Eyelink shutdown: eyelink_close error %d\n", iStatus);
-			PsychErrorExitMsg(PsychError_internal, strMsg);
+	if (giSystemInitialized) {
+		// Zero-out return string:
+		memset(strMsg, 0, sizeof(strMsg));
+		
+		// Disconnect if connected
+		if (eyelink_is_connected()) {
+			set_offline_mode();
+			iStatus = eyelink_close(1);
+			if (iStatus != 0) {
+				sprintf(strMsg, "Eyelink shutdown: eyelink_close error %d\n", iStatus);
+				PsychErrorExitMsg(PsychError_internal, strMsg);
+			}
 		}
+		
+		// Detach all callback hook functions:
+		PsychEyelink_uninit_core_graphics();
+		
+		// Close down eyelink and reset global flag
+		close_eyelink_system();
+		msec_delay(100);
+		giSystemInitialized = 0;
 	}
-	
-	// Detach all callback hook functions:
-	PsychEyelink_uninit_core_graphics();
-
-	// Close down eyelink and reset global flag
-	close_eyelink_system();
-	msec_delay(100);
-	giSystemInitialized = 0;
 	
 	return(PsychError_none);
 }
