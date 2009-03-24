@@ -64,6 +64,7 @@ mxArray *CreateMXFEvent(const FEVENT *fe);
 mxArray *CreateMXIEvent(const IEVENT *ie);
 
 // Defined in PsychEyelink.c
+int Verbosity(void);
 PsychError	EyelinkSystemIsConnected(void);
 PsychError	EyelinkSystemIsInitialized(void);
 void PsychEyelink_init_core_graphics(const char* callback);
@@ -75,6 +76,13 @@ static INT16 ELCALLBACK  PsychEyelink_setup_image_display(INT16 width, INT16 hei
 static void ELCALLBACK   PsychEyelink_exit_image_display(void);
 static void ELCALLBACK   PsychEyelink_set_image_palette(INT16 ncolors, byte r[130], byte g[130], byte b[130]);
 static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels);
+
+static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void);
+static void ELCALLBACK   PsychEyelink_clear_display(void);
+static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y);
+static void ELCALLBACK   PsychEyelink_image_title(INT16 unused, char *title);
+static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput);
+static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg);
 
 // Defined in EyelinkSynopsis.c
 void		InitializeSynopsis();
@@ -122,9 +130,11 @@ PsychError EyelinkNewestFloatSampleRaw(void);
 PsychError EyelinkGetNextDataType(void);
 PsychError EyelinkGetFloatData(void);
 PsychError EyelinkGetFloatDataRaw(void);
+PsychError EyelinkGetQueuedItems(void);
 
 PsychError EyelinkTrackerTime(void);
 PsychError EyelinkTimeOffset(void);
+PsychError EyelinkVerbosity(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif

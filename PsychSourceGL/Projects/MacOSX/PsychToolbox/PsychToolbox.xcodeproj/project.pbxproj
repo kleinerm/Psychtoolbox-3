@@ -1656,6 +1656,8 @@
 		8341EF270D2FD0E300B77B0E /* svd.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF220D2FD0E300B77B0E /* svd.cc */; };
 		834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
+		834465780F785919001E77E9 /* EyelinkGetQueuedItems.c in Sources */ = {isa = PBXBuildFile; fileRef = 834465770F785919001E77E9 /* EyelinkGetQueuedItems.c */; };
+		834465790F785919001E77E9 /* EyelinkGetQueuedItems.c in Sources */ = {isa = PBXBuildFile; fileRef = 834465770F785919001E77E9 /* EyelinkGetQueuedItems.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
 		83495CDE09F701E9003973EA /* SCREENSetVideoCaptureParameter.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */; };
 		83587B320E982EBF004BB7BD /* QuadProg++.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83587B300E982EBF004BB7BD /* QuadProg++.cc */; };
@@ -3697,6 +3699,7 @@
 		8341EF230D2FD0E300B77B0E /* svd.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = svd.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/svd.h; sourceTree = SOURCE_ROOT; };
 		834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychSerialUnixGlue.c; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.c; sourceTree = SOURCE_ROOT; };
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
+		834465770F785919001E77E9 /* EyelinkGetQueuedItems.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = EyelinkGetQueuedItems.c; path = ../../../Source/Common/Eyelink/EyelinkGetQueuedItems.c; sourceTree = SOURCE_ROOT; };
 		83495CD909F701B8003973EA /* SCREENLoadCLUT.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLoadCLUT.c; path = ../../../Source/Common/Screen/SCREENLoadCLUT.c; sourceTree = SOURCE_ROOT; };
 		83495CDD09F701E9003973EA /* SCREENSetVideoCaptureParameter.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENSetVideoCaptureParameter.c; path = ../../../Source/Common/Screen/SCREENSetVideoCaptureParameter.c; sourceTree = SOURCE_ROOT; };
 		83587B300E982EBF004BB7BD /* QuadProg++.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = "QuadProg++.cc"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.cc"; sourceTree = SOURCE_ROOT; };
@@ -4913,6 +4916,7 @@
 				806F15D40AF62BBD005949BE /* core_expt.h */,
 				805723350A51DDB900DF6EF6 /* eyelink.h */,
 				80AB76D80A52FE1F00E7FB48 /* EyelinkGetTrackerVersion.c */,
+				834465770F785919001E77E9 /* EyelinkGetQueuedItems.c */,
 				80AB76B50A52F83100E7FB48 /* EyelinkReceiveFile.c */,
 				80AB76B10A52F7EE00E7FB48 /* EyelinkReadTime.c */,
 				80AB76B30A52F81300E7FB48 /* EyelinkRequestTime.c */,
@@ -11374,6 +11378,7 @@
 				806E8B220B63F8780096FC7B /* EyelinkTrackerTime.c in Sources */,
 				806E8B250B63F9350096FC7B /* EyeLinkTargetCheck.c in Sources */,
 				806E8B2C0B63FC500096FC7B /* EyelinkTimeOffset.c in Sources */,
+				834465790F785919001E77E9 /* EyelinkGetQueuedItems.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -11817,6 +11822,7 @@
 				806E8B550B6412800096FC7B /* EyelinkTimeOffset.c in Sources */,
 				806E8B560B6413E80096FC7B /* EyelinkGetNextDataType.c in Sources */,
 				806E8B570B6413FC0096FC7B /* EyelinkGetFloatData.c in Sources */,
+				834465780F785919001E77E9 /* EyelinkGetQueuedItems.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

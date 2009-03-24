@@ -32,6 +32,8 @@
 
 #include "PsychEyelink.h"
 
+
+
 char useString[] = "[status =] Eyelink('Initialize' [, displayCallbackFunction])";
 char useDummyString[] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
 

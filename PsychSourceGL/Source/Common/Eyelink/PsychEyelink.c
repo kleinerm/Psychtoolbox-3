@@ -31,6 +31,7 @@
 // Global variables used throughout eyelink C files
 
 int		giSystemInitialized = 0;
+int		verbosity = 2;
 
 // Callback string for eyelink display callback function:
 char eyelinkDisplayCallbackFunc[1024];
@@ -76,6 +77,45 @@ PsychError EyelinkSystemIsInitialized(void)
 	return(PsychError_none);
 }
 
+/* Eyelink('Verbosity') - Set level of verbosity.
+ */
+PsychError EyelinkVerbosity(void) 
+{
+ 	static char useString[] = "oldlevel = Eyelink('Verbosity' [,level]);";
+	static char synopsisString[] = 
+		"Set level of verbosity for error/warning/status messages. 'level' optional, new level "
+		"of verbosity. 'oldlevel' is the old level of verbosity. The following levels are "
+		"supported: 0 = Shut up. 1 = Print errors, 2 = Print also warnings, 3 = Print also some info, "
+		"4 = Print more useful info (default), >5 = Be very verbose (mostly for debugging the driver itself). ";		
+	static char seeAlsoString[] = " ";	 
+
+	int level= -1;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(1));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	PsychCopyInIntegerArg(1, kPsychArgOptional, &level);
+	if (level < -1) PsychErrorExitMsg(PsychError_user, "Invalid level of verbosity provided. Valid are levels of zero and greater.");
+	
+	// Return current/old level:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) verbosity);
+
+	// Set new level, if one was provided:
+	if (level > -1) verbosity = level;
+
+	return(PsychError_none);
+}
+
+// Return level of verbosity:
+int Verbosity(void) {
+	return(verbosity);
+}
+
 // Initialize all callback hook functions for use by Eyelink runtime, e.g.,
 // all the callbacks for eye camera image display:
 void PsychEyelink_init_core_graphics(const char* callback)
@@ -89,14 +129,14 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	fcns.exit_image_display_hook= PsychEyelink_exit_image_display;
 	fcns.setup_image_display_hook = PsychEyelink_setup_image_display;
 
-	// Not used for now, no clue what they do or if they are needed in any way:
-	//fcns.setup_cal_display_hook = setup_cal_display;
-	//fcns.clear_cal_display_hook = clear_display;
-	//fcns.erase_cal_target_hook  = clear_display;
-	//fcns.draw_cal_target_hook   = draw_cal_target;
-	//fcns.image_title_hook       = image_title;
-	//fcns.get_input_key_hook     = get_input_key;
-	//fcns.alert_printf_hook      = alert_printf_hook;
+	// Not used for now, but defined anyway to make Eyelink runtime happy:
+	fcns.setup_cal_display_hook = PsychEyelink_setup_cal_display;
+	fcns.clear_cal_display_hook = PsychEyelink_clear_display;
+	fcns.erase_cal_target_hook  = PsychEyelink_clear_display;
+	fcns.draw_cal_target_hook   = PsychEyelink_draw_cal_target;
+	fcns.image_title_hook       = PsychEyelink_image_title;
+	fcns.get_input_key_hook     = PsychEyelink_get_input_key;
+	fcns.alert_printf_hook      = PsychEyelink_alert_printf_hook;
 	
 	// Assign runtime environment display callback function:
 	memset(eyelinkDisplayCallbackFunc, 0, sizeof(eyelinkDisplayCallbackFunc));
@@ -126,12 +166,17 @@ void PsychEyelink_TestEyeImage(void)
 	int i, x, y;
 	byte r[256], g[256], b[256];
 	byte scanline[640];
+	InputEvent keyinput;
 	
 	// Pseudo-Eyelink camera image test:
 	
 	// Setup pseudo eye-display of 640 x 480 pixels via setup callback:
 	PsychEyelink_setup_image_display(640, 480);
 
+	// Setup display:
+	PsychEyelink_setup_cal_display();
+	PsychEyelink_clear_display();
+	
 	// Build pseudo color LUT:
 	for (i=0; i < 256; i++) {
 		r[i]=i;
@@ -140,8 +185,14 @@ void PsychEyelink_TestEyeImage(void)
 	}
 	PsychEyelink_set_image_palette(256, r, g, b);
 
+	// Set image title:
+	PsychEyelink_image_title(1, "Foobar-O-Matic:");
+
 	// Run pseudo-display loop for 600 frames:
 	for (i = 0; i < 600; i++) {
+		// Draw calibration target:
+		PsychEyelink_draw_cal_target(i, 200);
+
 		// Fill buffer with image pattern:
 		for (y=1; y <= 480; y++) {
 			// Build y'th scanline:
@@ -150,12 +201,63 @@ void PsychEyelink_TestEyeImage(void)
 			// Submit y'th scanline:
 			PsychEyelink_draw_image_line(640, y, 480, (byte*) &scanline);
 		}
+		
+		// Check keyboard:
+		if (PsychEyelink_get_input_key(&keyinput) > 0) {
+			PsychEyelink_alert_printf_hook("Eyelink: Key detected.\n");
+			// Break out of loop on keycode 41 == ESCAPE on OS/X.
+			if (keyinput.key.key == 41) break;
+		}
 	}
 
 	// Tear down pseudo display:
 	PsychEyelink_exit_image_display();
 
 	return;
+}
+
+int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
+{
+	PsychGenericScriptType	*inputs[2];
+	PsychGenericScriptType	*outputs[1];
+	double* callargs;
+	double rc;
+
+	// Create a Matlab double matrix with 4 elements: 1st is command code '1'
+	// 2nd is the double pointer, 3rd is image width, 4th is image height:
+	outputs[0]  = NULL;
+	inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
+	callargs    = mxGetPr(inputs[0]);
+	
+	callargs[0] = (double) cmd; // Command code.
+	callargs[1] = (double) x;
+	callargs[2] = (double) y;
+
+	if (msg != NULL) {
+		inputs[1] = mxCreateString(msg);
+	}
+	else {
+		inputs[1] = NULL;
+	}
+	
+	// Call the runtime environment:
+	if (mexCallMATLAB((cmd == 2) ? 1 : 0, outputs, (inputs[1]) ? 2 : 1, inputs, eyelinkDisplayCallbackFunc) > 0) {
+		printf("EYELINK: WARNING! PsychEyelinkCallRuntime() Failed to call eyelink callback function!\n");
+	}
+
+	// Release our matrix again:
+	mxDestroyArray(inputs[0]);
+	if (msg != NULL) mxDestroyArray(inputs[1]);
+	
+	if (outputs[0]) {
+		rc = mxGetScalar(outputs[0]);
+		mxDestroyArray(outputs[0]);
+	}
+	else {
+		rc = 0;
+	}
+	
+	return((int) rc);
 }
 
 // Callback functions, called by Eyelink runtime at various occassions, e.g,
@@ -166,6 +268,8 @@ void PsychEyelink_TestEyeImage(void)
 // image in pixels.
 INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 {
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_image_display()\n");
+	
 	// Release any stale image buffer:
 	if (eyeimage != NULL) free(eyeimage);
 	
@@ -191,6 +295,8 @@ INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 		return(-1);
 	}
 	
+	if (Verbosity() > 5) printf("Eyelink: Leaving PsychEyelink_setup_image_display()\n");
+
 	// Done.
 	return(0);
 }
@@ -198,6 +304,8 @@ INT16 ELCALLBACK PsychEyelink_setup_image_display(INT16 width, INT16 height)
 // PsychEyelink_exit_image_display() shuts down any camera image display:
 void ELCALLBACK PsychEyelink_exit_image_display(void)
 {
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_exit_image_display()\n");
+
 	// Release any allocated image buffer:
 	if (eyeimage != NULL) free(eyeimage);
 	
@@ -225,6 +333,8 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 	byte* v0;
 	short i;
 	
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_draw_image_line()\n");
+
 	// width, line, totlines within valid range?
 	if (width < 1 || width > eyewidth || line < 1 || line > eyeheight || totlines < 1 || totlines > eyeheight) {
 		printf("EYELINK: WARNING! Eye camera image with invalid parameters received! (width = %i, line = %i, totlines = %i out of sane range %i x %i)!\n",
@@ -260,6 +370,8 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			v0[(i*4) + 3] = 255;
 		}
 
+		if (Verbosity() > 6) printf("Eyelink: PsychEyelink_draw_image_line(): Scanline %i received.\n", (int) line);
+
 		// Complete new eye image received?
 		if (line == totlines) {
 			// Yes. Our eyeimage buffer contains a new image. Compute double-encoded
@@ -270,6 +382,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			// Now we need to call our Matlab callback function which actually converts
 			// the data in our internal image buffer into a PTB texture, then draws that
 			// texture etc. to display the new eye camera image.
+			if (Verbosity() > 6) printf("Eyelink: PsychEyelink_draw_image_line(): All %i Scanlines received. Calling Runtime!\n", (int) line);
 			
 			// Create a Matlab double matrix with 4 elements: 1st is command code '1'
 			// 2nd is the double pointer, 3rd is image width, 4th is image height:
@@ -303,6 +416,8 @@ void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[]
 {
 	short i;
 	
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_set_image_palette()\n");
+
 	if (ncolors > 256) {
 		printf("EYELINK: WARNING! Invalid color palette size %i (> 256 colors!) received from eyelink: Clamping to 256 colors.\n", (int) ncolors);
 		ncolors = 256;
@@ -314,6 +429,84 @@ void ELCALLBACK PsychEyelink_set_image_palette(INT16 ncolors, byte r[], byte g[]
 		palmap24[(i*3) + 1] = g[i];
 		palmap24[(i*3) + 2] = b[i];
 	}
+
+	return;
+}
+
+INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
+{
+	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_cal_display()\n");
+
+	// Tell runtime to setup calibration display: Command code 7.
+	PsychEyelinkCallRuntime(7, 0, 0, NULL);
+
+	return(0);
+}
+
+void ELCALLBACK   PsychEyelink_clear_display(void)
+{
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_clear_display()\n");
+
+	// Tell runtime to clear display: Command code 6.
+	PsychEyelinkCallRuntime(6, 0, 0, NULL);
+
+	return;
+}
+
+void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y)
+{
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_draw_cal_target(): x=%i y=%i.\n", (int) x, (int) y);
+
+	// Tell runtime about where to draw calibration target: Command code 5.
+	PsychEyelinkCallRuntime(5, (int) x, (int) y, NULL);
+
+	return;
+}
+
+void ELCALLBACK   PsychEyelink_image_title(INT16 unused, char *title)
+{
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_image_title(): state = %i : Title = %s\n", (int) unused, title);
+
+	// Tell runtime about image title: Command code 4.
+	PsychEyelinkCallRuntime(4, (int) unused, 0, title);
+
+	return;
+}
+
+INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
+{
+	int ky = 0;
+	InputEvent *key_input = keyinput;
+
+	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_get_input_key()\n");
+
+	// Call runtime for keycode of pressed key (command code 2):
+	ky = PsychEyelinkCallRuntime(2, 0, 0, NULL);
+	if (ky > 0) {
+		// Fill Eyelinks InputEvent struct:
+		memset(key_input, 0, sizeof(InputEvent));
+		key_input->key.key = ky;
+		key_input->key.state = 1;
+		key_input->key.type = KEYINPUT_EVENT;
+		key_input->key.modifier = 0; //event.key.keysym.mod;
+		key_input->key.unicode = 0;//event.key.keysym.unicode;
+		
+		// One key pressed:
+		return(1);
+	}
+	else {
+		// No key pressed:
+		return(0);
+	}
+}
+
+void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg)
+{
+	// Print error message to runtime console if error output is allowed:
+	if (Verbosity() > 3) printf("Eyelink: Alert! Eyelink says: %s.\n\n", msg);
+	
+	// Tell runtime about alert condition: Command code 3.
+	PsychEyelinkCallRuntime(3, 0, 0, (char*) msg);
 
 	return;
 }

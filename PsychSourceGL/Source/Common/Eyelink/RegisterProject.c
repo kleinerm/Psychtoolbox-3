@@ -19,6 +19,7 @@
 		19/10/06  fwc		added raw data function
 		21/01/07  fwc		added new timing functions
 		19/02/09  edf		added EyelinkGetFloatDataRaw
+		22/03/09  edf		added EyelinkGetQueuedItems
 
 	TARGET LOCATION:
 
@@ -100,6 +101,10 @@ PsychError PsychModuleInit(void)
 	// added as of 19/02/09
 	PsychErrorExit(PsychRegister("GetFloatDataRaw",	&EyelinkGetFloatDataRaw));    
     
+	// added as of 22/03/09
+	PsychErrorExit(PsychRegister("GetQueuedItems", &EyelinkGetQueuedItems));
+	PsychErrorExit(PsychRegister("Verbosity", &EyelinkVerbosity));
+
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 	PsychSetModuleAuthorByInitials("emp");

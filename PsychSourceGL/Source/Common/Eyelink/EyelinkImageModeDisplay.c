@@ -79,7 +79,7 @@ PsychError EyelinkImageModeDisplay(void)
 	if(1)
 	{
 		// NOTE:  Enno's OSX version added this eyelink call. Not sure if we want it or not.
-		eyelink_start_setup();	
+		// eyelink_start_setup();	
 		iResult = image_mode_display();
 	}
 	else

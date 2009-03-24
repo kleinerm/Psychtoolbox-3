@@ -53,6 +53,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[status =] Eyelink('InitializeDummy' [, displayCallbackFunction])";
 	synopsis[i++] = "status = Eyelink('IsConnected')";
 	synopsis[i++] = "Eyelink('Shutdown')";
+	synopsis[i++] = "oldlevel = Eyelink('Verbosity' [,level]);";
 	synopsis[i++] = "[status =] Eyelink('OpenFile','filename')";
 	synopsis[i++] = "[status =] Eyelink('CloseFile')";
 	synopsis[i++] = "[status =] Eyelink('ReceiveFile',['filename'], ['dest'], ['dest_is_path'])";
@@ -73,10 +74,11 @@ void InitializeSynopsis()
 	synopsis[i++] =  "eyeused = Eyelink('EyeAvailable')";
 	synopsis[i++] = "NewOrOld = Eyelink('NewFloatSampleAvailable')";
 	synopsis[i++] = "sample = Eyelink('NewestFloatSample')";
-	synopsis[i++] = "[sample, raw] = Eyelink('NewestFloatSampleRaw')";
+	synopsis[i++] = "[sample, raw] = Eyelink('NewestFloatSampleRaw' [, eye])";
 	synopsis[i++] = "type = Eyelink('GetNextDataType')";
 	synopsis[i++]  = "item = Eyelink('GetFloatData', type)";
-	synopsis[i++]  = "[item, raw] = Eyelink('GetFloatDataRaw', type)";
+	synopsis[i++]  = "[item, raw] = Eyelink('GetFloatDataRaw', type [, eye])";
+	synopsis[i++]  = "[samples, events] = Eyelink('GetQueuedItems'[, eye][, max_items])";
     
 	// Misc eyelink communication:
 	synopsis[i++] = "\n% Miscellaneous functions to communicate with Eyelink:";

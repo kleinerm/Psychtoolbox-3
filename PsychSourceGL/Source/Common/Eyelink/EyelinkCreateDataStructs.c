@@ -1,6 +1,6 @@
 /*
 
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkCreateDataStructs.c
+	/osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/EyelinkCreateDataStructs.c
   
 	PROJECTS: Eyelink 
   
@@ -9,12 +9,13 @@
 		E.Peters@ai.rug.nl				emp
 		f.w.cornelissen@med.rug.nl		fwc
   
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	All  
     
 	HISTORY:
 			2001	emp		created
 		11/23/05    cdb		adapted for OSX.
 		30/10/06	fwc		added CreateMXFSampleRaw
+		22/03/09	edf		added fields to CreateMXFSampleRaw
 
 	TARGET LOCATION:
 
@@ -145,7 +146,7 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
 mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs)
 {
    const char *fieldNames[] = {"raw_pupil","raw_cr","pupil_area","cr_area","pupil_dimension",
-								"cr_dimension", "window_position","pupil_cr"};
+								"cr_dimension", "window_position","pupil_cr","cr_area2","raw_cr2"};
    const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
    mxArray *struct_array_ptr, *mx;
    
@@ -196,6 +197,15 @@ mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs)
    mxGetPr(mx)[1] = (*fs).pupil_cr[1];
    mxSetField(struct_array_ptr,0,"pupil_cr",mx);
               
+   mx = mxCreateDoubleMatrix(1,1,mxREAL);
+   mxGetPr(mx)[0] = (*fs).cr_area2;
+   mxSetField(struct_array_ptr,0,"cr_area2",mx);
+   
+   mx = mxCreateDoubleMatrix(1,2,mxREAL);
+   mxGetPr(mx)[0] = (*fs).raw_cr2[0];
+   mxGetPr(mx)[1] = (*fs).raw_cr2[1];
+   mxSetField(struct_array_ptr,0,"raw_cr2",mx);
+   
    return struct_array_ptr;
 }
 

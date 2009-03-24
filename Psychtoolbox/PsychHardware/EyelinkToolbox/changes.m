@@ -1,6 +1,12 @@
 % 	EyelinkToolbox.
 % 	History and list of changes
 %
+%   March 2009
+%   Completed access to raw sample structs
+%   Added support for LOST_DATA_EVENT
+%   Added GetQueuedItems
+%   Added experimental camera image capture
+%
 %   Version 2, October 2006
 %   Updated Beta version for OpenGL Toolbox
 % 
