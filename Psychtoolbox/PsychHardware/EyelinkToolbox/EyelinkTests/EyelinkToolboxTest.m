@@ -82,7 +82,7 @@ type = Eyelink('GetNextDataType')
 
 [item raw]= Eyelink('GetFloatDataRaw', type)
 
-[samples,events] = Eyelink('GetQueuedItems')
+[samples,events,drained] = Eyelink('GetQueuedItems')
 
 Eyelink('Stoprecording')
 

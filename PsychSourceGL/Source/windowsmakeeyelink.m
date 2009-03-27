@@ -1,57 +1,108 @@
-function windowsmakeeyelink(postR2007a)
-% windowsmakeeyelink([postR2007a=0])
-% windowsmakeeyelink -- Simple build-script for building
-% Eyelink toolbox for M$-Windows:
-% You will need to adapt the paths for your build system manually.
+% go here and install visual studio c/c++ express edition (free)
+% http://www.microsoft.com/express/download/#webInstall
 %
-% postR2007a == 0 --> Build on Matlab R11.
-% postR2007a == 1 --> Build on Matlab R2007a.
+% from wikipedia on visual studio express edition:
+% "Visual C++ 2008 Express can build both native and managed applications. Included is the Windows Platform SDK which can build applications that use the Win32 API.
+% Applications utilizing either MFC or ATL require the Standard Edition or higher, and will not compile with the Express Edition."
+%
+% version 2008 (aka v9.0) with sp1 seems to work (it is listed as supported for mex here http://www.mathworks.com/support/tech-notes/1600/1601.html), at least in matlab 2008a
+%
+% in matlab, choose this compiler via:
+% mex -setup
+%
+% make sure the paths below are set correctly
 
-if nargin < 1
-    postR2007a = [];
+function windowsmakeeyelink(postR2007a,env)
+	% windowsmakeeyelink([postR2007a=0],[env])
+	% windowsmakeeyelink -- Simple build-script for building
+	% Eyelink toolbox for M$-Windows:
+	%
+	% postR2007a == 0 --> Build on Matlab R11.
+	% postR2007a == 1 --> Build on Matlab R2007a.
+	%
+	% env ==
+	%  'tuebingen' --> default
+	%  'eflister'
+
+	if nargin < 1
+		postR2007a = [];
+	end
+
+	if isempty(postR2007a)
+		postR2007a = 0;
+	end
+
+	postR2007a
+
+	if ~exist('env','var') || isempty(env)
+		env='tuebingen';
+	end
+
+	eyelinkPath='C:\Program Files\SR Research\EyeLink\'; %parent of libs and Includes directory
+	switch env %update these for your situation
+		case 'tuebingen'
+			if postR2007a
+				%Build for >= R2007a Matlabs on MPI HDR machine (2007a)
+				path='T:\projects\OpenGLPsychtoolbox\trunk\'; %parent of PsychSourceGL directory
+				compilerPath='C:\Programme\Microsoft Visual Studio 8\VC\Include'; %compiler-provided headers
+			else
+				%Build for pre R2007a Matlabs on MKs Laptop (R11)
+				path='T:\kleinerm\trunk\'; %parent of PsychSourceGL directory
+				eyelinkPath='C:\Programme\SRResearch\EyeLink'; %parent of eyelink libs and Includes directory
+				quicktimePath='C:\Programme\QuickTimeSDK\CIncludes'; %directory of quicktime headers
+				compilerPath='C:\Programme\MicrosoftVisualStudio\VC98\Include'; %compiler-provided headers
+			end
+		case 'eflister'
+			if ~postR2007a
+				error('eflister only uses post 2007a')
+			end
+			path='C:\Documents and Settings\rlab\Desktop\ptb dev branch (writable)\trunk\'; %parent of PsychSourceGL directory
+			compilerPath='C:\Program Files\Microsoft Visual Studio 9.0\VC\include'; %compiler-provided headers
+		otherwise
+			error('unrecognized env')
+	end
+
+	% *****************************
+	%nothing else below should need customization
+
+	requireds={'path', 'eyelinkPath', 'compilerPath'};
+	if any(1~=cellfun(@exist,requireds)) || any(cellfun(@isempty,requireds)) || any(7~=cellfun(@exist,cellfun(@eval,requireds,'UniformOutput',false)))
+		requireds
+		error('must set each of above, and they must be valid directories')
+	end
+	
+	buildPath=fullfile(path,'PsychSourceGL\Projects\Windows\build');
+	if ~exist(buildPath,'dir')
+		error('bad path -- should be parent of PsychSourceGL directory')
+	end
+
+	commonBasePath=fullfile(path,'PsychSourceGL\Source\Common\Base');
+	cd(fullfile(commonBasePath,'..\..\'))
+
+	% Copy our C++ PsychScriptingGlue.cc to a C style PsychScriptingGlue.c so the f%*§$!d M$-Compiler can handle it:
+	copyfile(fullfile(commonBasePath,'PsychScriptingGlue.cc'),fullfile(commonBasePath,'PsychScriptingGlue.c'))
+
+	%buildPath=fullfile(path,'PsychSourceGL\Projects\Windows\build');
+	eyelinkIncludesPath=fullfile(eyelinkPath,'Includes\eyelink');
+	eyelinkLibsPath=fullfile(eyelinkPath,'libs');
+
+	if any(7~=cellfun(@exist,{eyelinkIncludesPath,eyelinkLibsPath}))
+		error('bad eyelinkPath -- should be parent of eyelink ''libs'' and ''Includes'' directories')
+	end
+	
+	% Build sequence for Eyelink.dll: Requires the freely downloadable (after registration) Eyelink-SDK for Windows.
+	mexCmd=sprintf('mex -v -outdir ''%s'' -output Eyelink -I"%s" -I"%s" -ICommon\\Base -ICommon\\Eyelink -IWindows\\Base Windows\\Base\\*.c Common\\Base\\*.c Common\\Eyelink\\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "%s" "%s" "%s"',buildPath,eyelinkIncludesPath,compilerPath,fullfile(eyelinkLibsPath,'eyelink_core.lib'),fullfile(eyelinkLibsPath,'eyelink_w32_comp.lib'),fullfile(eyelinkLibsPath,'eyelink_exptkit20.lib'));
+	if ~postR2007a
+		if ~exist('quicktimePath','var') || isempty(quicktimePath) || ~exist(quicktimePath,'dir')
+			error('pre 2007a eyelink build requires quicktime (may not be true?)')
+		end
+		mexCmd=sprintf('%s -I"%s"',mexCmd,quicktimePath);
+	end
+	eval(mexCmd)
+
+	% Move Eyelink.dll into its proper location:
+	copyfile(fullfile(buildPath,'Eyelink.mexw32'),fullfile(path,'Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\'))
+
+	% Delete the temporary .c version of Scripting Glue:
+	delete(fullfile(commonBasePath,'PsychScriptingGlue.c'))
 end
-
-if isempty(postR2007a)
-    postR2007a = 0;
-end
-
-postR2007a
-
-if postR2007a
-    % Build sequence for >= R2007a Matlabs on MPI HDR machine - build against
-    % R2007a:
-
-    % Copy our C++ PsychScriptingGlue.cc to a C style PsychScriptingGlue.c so the f%*§$!d M$-Compiler
-    % can handle it:
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.cc T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
-
-    % Build sequence for Eyelink.dll: Requires the freely downloadable (after registration) Eyelink-SDK for Windows.
-    %mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output Eyelink.dll -DTARGET_OS_WIN32 -ID:\install\QuickTimeSDK\CIncludes -I"C:\Program Files\SR Research\EyeLink\Includes\eyelink" -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files\SR Research\EyeLink\libs\eyelink_core.lib" "C:\Program Files\SR Research\EyeLink\libs\eyelink_w32_comp.lib" "C:\Program Files\SR Research\EyeLink\libs\eyelink_exptkit20.lib"
-    mex -v -outdir T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\ -output Eyelink -I"C:\Program Files\SR Research\EyeLink\Includes\eyelink" -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "C:\Program Files\SR Research\EyeLink\libs\eyelink_core.lib" "C:\Program Files\SR Research\EyeLink\libs\eyelink_w32_comp.lib" "C:\Program Files\SR Research\EyeLink\libs\eyelink_exptkit20.lib"
-
-    % Move Eyelink.dll into its proper location:
-    dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mexw32 T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\');
-
-    % Delete the temporary .c version of Scripting Glue:
-    delete('T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
-
-else
-    % Build sequence for pre R2007a Matlabs on MKs Laptop - build against
-    % R11:
-
-    % Copy our C++ PsychScriptingGlue.cc to a C style PsychScriptingGlue.c so the f%*§$!d M$-Compiler
-    % can handle it:
-    dos('copy T:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.cc T:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
-
-    % Build sequence for Eyelink.dll: Requires the freely downloadable (after registration) Eyelink-SDK for Windows.
-    mex -v -outdir T:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\ -output Eyelink -IC:\Programme\SRResearch\EyeLink\Includes\eyelink -IC:\Programme\QuickTimeSDK\CIncludes -IC:\Programme\MicrosoftVisualStudio\VC98\Include -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib C:\Programme\SRResearch\EyeLink\libs\eyelink_core.lib C:\Programme\SRResearch\EyeLink\libs\eyelink_w32_comp.lib C:\Programme\SRResearch\EyeLink\libs\eyelink_exptkit20.lib
-
-    % Move Eyelink.dll into its proper location:
-    dos('copy T:\kleinerm\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.dll T:\kleinerm\trunk\Psychtoolbox\PsychHardware\EyelinkToolbox\EyelinkBasic\');
-
-    % Delete the temporary .c version of Scripting Glue:
-    delete('T:\kleinerm\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
-
-end
-
-return;
