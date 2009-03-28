@@ -56,7 +56,7 @@ function windowsmakeeyelink(postR2007a,env)
 			if ~postR2007a
 				error('eflister only uses post 2007a')
 			end
-			path='C:\Documents and Settings\rlab\Desktop\New Folder\trunk\'; %parent of PsychSourceGL directory
+			path='C:\Documents and Settings\rlab\Desktop\ptb dev branch\trunk\'; %parent of PsychSourceGL directory
 			compilerPath='C:\Program Files\Microsoft Visual Studio 9.0\VC\include'; %compiler-provided headers
 		otherwise
 			error('unrecognized env')

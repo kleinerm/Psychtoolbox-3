@@ -1,5 +1,5 @@
 /*
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkGetQueuedData.c
+	/osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/EyelinkGetQueuedData.c
  
 	PROJECTS: Eyelink
  

@@ -1,7 +1,7 @@
 /* EyelinkDriftCorrStart.c */
 
 /* 
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/EyelinkDriftCorrStart.c
+	/osxptb/trunk/PsychSourceGL/Source/Common/Eyelink/EyelinkDriftCorrStart.c
   
 	PROJECTS: Eyelink 
   
@@ -30,7 +30,7 @@ static char useString[] = "[status = ] Eyelink('DriftCorrStart', x, y [,dtype=0]
 static char synopsisString[] = 
    "Start drift correction, specify target position with x and y.\n"
    "If the optional 'dtype' argument is zero, the routine eyelink_driftcorr_start() "
-   "is called. If 'dtype' is one, do_drift_corr() is called. In that case, the "
+   "is called. If 'dtype' is one, do_drift_correct() is called. In that case, the "
    "argument 'dodraw' selects if Eyelink itself should draw the target (1), or "
    "if it is left to usercode. 'allow_setup' if set to 1, will allow eyelink to "
    "enter the setup menu if ESCape key is pressed. Otherwise, eyelink will "
