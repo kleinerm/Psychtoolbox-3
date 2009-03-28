@@ -127,6 +127,7 @@ static char synopsisStringRaw[] =
 	"\t   raw_cr2             raw x, y sensor position of 2nd corneal reflection candidate\n"
 	"CAUTION: Not supported on Linux. It may or may not work on your setup with your tracker. Currently it doesn't work on Linux at least.\n\n";
 
+//forgive the repeated code here, feel free to write a helper
 PsychError EyelinkNewestFloatSampleRaw(void)
 {
 	FSAMPLE			structFloatSample;
@@ -169,6 +170,7 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 			if (eye!=LEFT_EYE && eye!=RIGHT_EYE) {
 				PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: NewestFloatSampleRaw:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
 			}
+			TrackerOKForRawValues();
 			eyelink_get_extra_raw_values_v2(&structFloatSample, eye, &structFloatSampleRaw);
 		} else {
 			mexPrintf("EYELINK: WARNING! Omission of the eye argument to NewestFloatSampleRaw is deprecated.\n");

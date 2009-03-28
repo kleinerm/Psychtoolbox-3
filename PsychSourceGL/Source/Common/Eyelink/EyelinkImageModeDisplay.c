@@ -14,6 +14,7 @@
 	HISTORY:
 
 		11/23/05  cdb		Created.
+		27/03/09  edf       added waiting loop and check that we made it into the mode
 
 	TARGET LOCATION:
 
@@ -22,6 +23,10 @@
 */
 
 #include "PsychEyelink.h"
+
+#define WAIT_MS 10
+#define MAX_LOOPS 1000
+#define ERR_BUFF_LEN 1000
 
 static char useString[] = "[result =] Eyelink('ImageModeDisplay')";
 
@@ -57,6 +62,9 @@ PURPOSE:
 PsychError EyelinkImageModeDisplay(void)
 {
 	int		iResult		= 0;
+	int iMode = 0;
+	int loopNum=0;
+	char buff[ERR_BUFF_LEN]="";
 	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -80,6 +88,22 @@ PsychError EyelinkImageModeDisplay(void)
 	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PreOp: \n"); PsychEyelink_dumpHookfunctions(); }
 	
 	iResult = image_mode_display();
+	
+	/* disabling this check cuz eyelink_current_mode() always comes back as 0 or 1, which doesn't bitand with IN_IMAGE_MODE (32).  why doesn't this work?
+	while(eyelink_wait_for_mode_ready(WAIT_MS) && loopNum++<MAX_LOOPS){
+	}
+	
+	if(iMode=eyelink_wait_for_mode_ready(0)){
+		sprintf(buff,"Eyelink: ImageModeDisplay: eyelink_wait_for_mode_ready returned %d instead of 0.",iMode);
+		PsychErrorExitMsg(PsychError_internal, buff);
+	}
+	
+	iMode=eyelink_current_mode();
+	if(!(iMode & IN_IMAGE_MODE)){
+		sprintf(buff,"Eyelink: ImageModeDisplay: eyelink_current_mode returned %d, which doesn't contain flag %d.",iMode,IN_IMAGE_MODE);
+		PsychErrorExitMsg(PsychError_internal, buff);
+	}
+	 **/
 	
 	// Optionally dump the whole hookfunctions struct:
 	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PostOp: \n"); PsychEyelink_dumpHookfunctions(); }

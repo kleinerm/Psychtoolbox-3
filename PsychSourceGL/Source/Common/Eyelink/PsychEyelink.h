@@ -95,6 +95,9 @@ PsychError	MODULEVersion(void);
 // Defined in EyelinkShutdown.c
 PsychError PsychEyelinkShutdown(void);
 
+// Helpers
+boolean TrackerOKForRawValues(void); //defined in EyelinkGetQueuedData.c
+
 // Eyelink Target sub-commands
 PsychError EyelinkButtonStates(void);
 PsychError EyelinkCommand(void);
@@ -131,7 +134,7 @@ PsychError EyelinkNewestFloatSampleRaw(void);
 PsychError EyelinkGetNextDataType(void);
 PsychError EyelinkGetFloatData(void);
 PsychError EyelinkGetFloatDataRaw(void);
-PsychError EyelinkGetQueuedItems(void);
+PsychError EyelinkGetQueuedData(void);
 
 PsychError EyelinkTrackerTime(void);
 PsychError EyelinkTimeOffset(void);

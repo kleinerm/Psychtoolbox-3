@@ -8,6 +8,7 @@
 		cburns@berkeley.edu				cdb
 		E.Peters@ai.rug.nl				emp
 		f.w.cornelissen@med.rug.nl		fwc
+		e_flister@yahoo.com             edf
   
 	PLATFORMS:	All  
     
@@ -16,13 +17,130 @@
 		11/23/05    cdb		adapted for OSX.
 		30/10/06	fwc		added CreateMXFSampleRaw
 		22/03/09	edf		added fields to CreateMXFSampleRaw
+        27/03/09    edf     added FLOAT_TIME (**BACKWARDS INCOMPATIBLE**) and TODO discussion
 
 	TARGET LOCATION:
 
 		Eyelink.mexmac resides in:
 			EyelinkToolbox
-			
-*/
+    
+     TODO: 
+        matlab sucks at collecting together an array made up of the elements at a particular position 
+          in each of the values of a given field in a struct array.
+        the most efficient option is UGLY (and hardly efficient):
+          tmp=cell2mat({s.px}'); %the px's are rows, as in an MXFSample
+          tmp(:,1) %collect the first element of all the px's into a vector 
+          % note a for loop w/preallocation is inexplicably slightly faster -- must be noticed by their JIT accelerator -- but still too slow
+          see the discussion section here: http://blogs.mathworks.com/loren/2006/06/02/structures-and-comma-separated-lists/
+        this is a common thing users would like to do with our output.  
+        efficiency is at a premium if we don't want to be the cause of missed frame deadlines.
+        we should make it easier on them by only providing scalar fields, providing separate fields for each eye.
+        but this will not be backwards compatible -- possibly have a preference setting to allow old-style output.
+ 
+        eliminate MXISample and MXIEvent
+           -we do not currently use them, they don't seem to be encouraged by the manual,
+            and they are only used by the following eyelink API calls:
+              eyelink_newest_sample (we use eyelink_newest_float_sample instead)
+              eyelink_get_sample (we do not use) 
+              eyelink_get_last_data (we use eyelink_get_float_data instead)
+			  eyelink_get_next_data (we only use with NULL)
+ 
+        switch FSAMPLE and FEVENT to DSAMPLE and DEVENT
+            the new 2kHz mode of trackers means times (in ms) don't fit into unit32's, 
+            so these structures represent times as doubles.  using F* means we need
+            to call the macro FLOAT_TIME to get the true time.
+ 
+        there is a lot of violation of "once and only once" in this file, and it wastes space by making everything doubles. 
+        space may be at a premium if the user is saving all the samples for a trial. 
+            at 2kHz, each second of full samples including raw fields is 768kB in a double representation, 
+            but only 520kB in native types (if we convert their floats to doubles -- 328kB if we use singles instead).  
+            so correctly typed fields allows 32% longer trials (57% if we use singles).
+            is there any reason to suspect we should use doubles instead of singles for their floats?
+        consider redesigning thusly:
+ 
+			typedef struct {
+	         char *name;
+             int type;
+             int arity;
+            } fields_s;
+
+            const fields_s fields[] = {
+                       {"time",     mxUINT32_CLASS, 1}, //change to double if use FLOAT_TIME
+                       {"type",     mxINT16_CLASS,  1},
+                       {"flags",    mxUINT16_CLASS, 1},
+                       {"px",       mxDOUBLE_CLASS, 2},
+                       {"py",       mxDOUBLE_CLASS, 2},
+                       {"hx",       mxDOUBLE_CLASS, 2},
+                       {"hy",       mxDOUBLE_CLASS, 2},
+                       {"pa",       mxDOUBLE_CLASS, 2},
+                       {"gx",       mxDOUBLE_CLASS, 2},
+                       {"gy",       mxDOUBLE_CLASS, 2},
+                       {"rx",       mxDOUBLE_CLASS, 1},
+                       {"ry",       mxDOUBLE_CLASS, 1},
+                       {"status",   mxUINT16_CLASS, 1},
+                       {"input",    mxUINT16_CLASS, 1},
+                       {"buttons",  mxUINT16_CLASS, 1},
+                       {"htype",    mxINT16_CLASS,  1},
+                       {"hdata",    mxINT16_CLASS,  8},
+                                    //raw fields
+                       {"raw_pupil_x",          mxDOUBLE_CLASS, 1},
+                       {"raw_pupil_y",          mxDOUBLE_CLASS, 1},
+                       {"raw_cr_x",             mxDOUBLE_CLASS, 1},
+                       {"raw_cr_y",             mxDOUBLE_CLASS, 1},
+                       {"pupil_area",           mxUINT32_CLASS, 1},
+                       {"cr_area",              mxUINT32_CLASS, 1},
+                       {"pupil_dimension_w",	mxUINT32_CLASS, 1},
+                       {"pupil_dimension_h",    mxUINT32_CLASS, 1},
+                       {"cr_dimension_w",       mxUINT32_CLASS, 1},
+                       {"cr_dimension_h",       mxUINT32_CLASS, 1},
+                       {"window_position_x",	mxUINT32_CLASS, 1},
+                       {"window_position_y",	mxUINT32_CLASS, 1},
+                       {"pupil_cr_x",           mxDOUBLE_CLASS, 1},
+                       {"pupil_cr_y",           mxDOUBLE_CLASS, 1},
+                       {"cr_area2",             mxUINT32_CLASS, 1},
+                       {"raw_cr2_x",            mxDOUBLE_CLASS, 1},
+                       {"raw_cr2_y",            mxDOUBLE_CLASS, 1}};
+            
+            void *tmp;
+            for(i=0;i<numFields;i++){    
+              fieldVal = mxCreateNumericMatrix(1,fields[i].arity, fields[i].type, mxREAL);
+              switch (i){
+                case 0:  tmp = &(fs.time);        break;
+                case 1:  tmp = &(fs.type);        break;
+                case 2:  tmp = &(fs.flags);       break;
+                case 3:  tmp =   fs.px;           break; //don't take address of arrays
+                case 4:  tmp =   fs.py;           break;
+                case 5:  tmp =   fs.hx;           break;
+                case 6:  tmp =   fs.hy;           break;
+                case 7:  tmp =   fs.pa;           break;
+                case 8:  tmp =   fs.gx;           break;
+                case 9:  tmp =   fs.gy;           break;
+                case 10: tmp = &(fs.rx);          break;
+                case 11: tmp = &(fs.ry);          break;
+                case 12: tmp = &(fs.status);      break;
+                case 13: tmp = &(fs.input);       break;
+                case 14: tmp = &(fs.buttons);     break;
+                case 15: tmp = &(fs.htype);       break;
+                case 16: tmp =   fs.hdata;        break;
+                // the rest is raw data
+                case 17: tmp = &(raw.raw_pupil[0]);         break;
+                case 18: tmp = &(raw.raw_pupil[1]);         break;
+                case 19: tmp = &(raw.raw_cr[0]);            break;
+                case 20: tmp = &(raw.raw_cr[1]);            break;
+                case 21: tmp = &(raw.pupil_area);           break;
+                case 22: tmp = &(raw.cr_area);              break;
+                case 23: tmp = &(raw.pupil_dimension[0]);	break;
+                case 24: tmp = &(raw.pupil_dimension[1]);	break;
+                case 25: tmp = &(raw.cr_dimension[0]);      break;
+                case 26: tmp = &(raw.cr_dimension[1]);      break;
+                case 27: tmp = &(raw.window_position[0]);	break;
+                case 28: tmp = &(raw.window_position[1]);	break;
+                case 29: tmp = &(raw.pupil_cr[0]);          break;
+                case 30: tmp = &(raw.pupil_cr[1]);          break;  
+              }
+              memcpy(mxGetData(fieldVal), tmp, sizeof(*tmp)*extendedData[i].arity);  //hmm, can't sizeof() on a dereferenced void*.  any solution other than repeating the field name?
+            }
+ */
 #include "PsychEyelink.h"
 
 /*
@@ -57,7 +175,7 @@ mxArray *CreateMXFSample(const FSAMPLE *fs)
       PrintfExit("Could not create struct matrix (probably out of memory)\n");
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
-   mxGetPr(mx)[0] = (*fs).time;
+   mxGetPr(mx)[0] = FLOAT_TIME(fs); //backwards incompatible change from (*fs).time -- with new 2kHz sample rates, time (in ms) can be fractional, this macro checks fs->flags to see if the uint32 fs->time needs an extra .5 ms
    mxSetField(struct_array_ptr,0,"time",mx);
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
@@ -149,10 +267,6 @@ mxArray *CreateMXFSampleRaw(const FSAMPLE_RAW *fs)
 								"cr_dimension", "window_position","pupil_cr","cr_area2","raw_cr2"};
    const int fieldCount=sizeof(fieldNames)/sizeof(*fieldNames);   
    mxArray *struct_array_ptr, *mx;
-   
-//   if ((*fs).type != SAMPLE_TYPE)
-////      PrintfExit("wrong pointer argument\n");
-//      mexPrintf("wrong pointer argument\n");
  
    /* Create a 1-by-1 structmatrix. */  
    struct_array_ptr = mxCreateStructMatrix(1,1,fieldCount,fieldNames);   
@@ -232,7 +346,7 @@ mxArray *CreateMXISample(const ISAMPLE *is)
       PrintfExit("Could not create struct matrix (probably out of memory)\n");
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
-   mxGetPr(mx)[0] = (*is).time;
+   mxGetPr(mx)[0] = FLOAT_TIME(is); //backwards incompatible change from (*is).time -- with new 2kHz sample rates, time (in ms) can be fractional, this macro checks is->flags to see if the uint32 is->time needs an extra .5 ms
    mxSetField(struct_array_ptr,0,"time",mx);
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
@@ -340,7 +454,7 @@ mxArray *CreateMXFEvent(const FEVENT *fe)
       PrintfExit("Could not create struct matrix (probably out of memory)\n");
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
-   mxGetPr(mx)[0] = (*fe).time;
+   mxGetPr(mx)[0] = (*fe).time; // FLOAT_TIME currently a noop on events, but may change in future!
    mxSetField(struct_array_ptr,0,"time",mx);
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
@@ -486,7 +600,7 @@ mxArray *CreateMXIEvent(const IEVENT *ie)
       PrintfExit("Could not create struct matrix (probably out of memory)\n");
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);
-   mxGetPr(mx)[0] = (*ie).time;
+   mxGetPr(mx)[0] = (*ie).time; // FLOAT_TIME currently a noop on events, but may change in future!
    mxSetField(struct_array_ptr,0,"time",mx);
 
    mx = mxCreateDoubleMatrix(1,1,mxREAL);

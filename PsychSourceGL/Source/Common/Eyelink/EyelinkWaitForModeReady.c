@@ -13,7 +13,8 @@
 	HISTORY:
 
 		15/06/06  fwc		Adapted from early alpha version by emp.
-
+		27/03/09  edf       the help said the opposite of the API manual re: return value, fixed it
+ 
 	TARGET LOCATION:
 
 		Eyelink.mexmac resides in:
@@ -25,9 +26,11 @@
 static char useString[] = "[result = ] Eyelink('WaitForModeReady', maxwait)";
 
 static char synopsisString[] =
-   "waits till new mode is finished setup\n"
-   "maxwait = 0 to just test flag\n"
-   "returns current state of switching flag: 0 if not ready";
+"After a mode-change command is given to the EyeLink tracker,\n"
+"an additional 5 to 30 milliseconds may be needed to complete mode setup.\n"
+"Call this function after mode change functions to wait until they are finished setting up.\n"
+"maxwait is in milliseconds -- max duration to wait for the mode to change.\n"
+"Returns 0 if mode switching is done, else still waiting (assume a tracker error has occurred).\n";
 
 static char seeAlsoString[] = "";
 
@@ -37,7 +40,7 @@ PURPOSE:
    uses INT16 CALLTYPE eyelink_wait_for_mode_ready(UINT32 maxwait);
    waits till new mode is finished setup
    maxwait = 0 to just test flag 
-   rtns current state of switching flag: 0 if not ready*/
+   rtns current state of switching flag*/
 
 PsychError EyelinkWaitForModeReady(void)
 {

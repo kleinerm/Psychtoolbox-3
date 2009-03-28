@@ -56,7 +56,7 @@ function windowsmakeeyelink(postR2007a,env)
 			if ~postR2007a
 				error('eflister only uses post 2007a')
 			end
-			path='C:\Documents and Settings\rlab\Desktop\ptb dev branch (writable)\trunk\'; %parent of PsychSourceGL directory
+			path='C:\Documents and Settings\rlab\Desktop\New Folder\trunk\'; %parent of PsychSourceGL directory
 			compilerPath='C:\Program Files\Microsoft Visual Studio 9.0\VC\include'; %compiler-provided headers
 		otherwise
 			error('unrecognized env')
@@ -101,7 +101,7 @@ function windowsmakeeyelink(postR2007a,env)
 	eval(mexCmd)
 
 	% Move Eyelink.dll into its proper location:
-	copyfile(fullfile(buildPath,'Eyelink.mexw32'),fullfile(path,'Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\'))
+	movefile(fullfile(buildPath,'Eyelink.mexw32'),fullfile(path,'Psychtoolbox\PsychBasic\MatlabWindowsFilesR2007a\'))
 
 	% Delete the temporary .c version of Scripting Glue:
 	delete(fullfile(commonBasePath,'PsychScriptingGlue.c'))

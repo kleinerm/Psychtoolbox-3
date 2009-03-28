@@ -4,7 +4,7 @@
 %   March 2009
 %   Completed access to raw sample structs
 %   Added support for LOST_DATA_EVENT
-%   Added GetQueuedItems
+%   Added GetQueuedData
 %   Added experimental camera image capture
 %
 %   Version 2, October 2006

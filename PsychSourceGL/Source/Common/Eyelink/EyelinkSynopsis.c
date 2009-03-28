@@ -78,7 +78,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "type = Eyelink('GetNextDataType')";
 	synopsis[i++]  = "item = Eyelink('GetFloatData', type)";
 	synopsis[i++]  = "[item, raw] = Eyelink('GetFloatDataRaw', type [, eye])";
-	synopsis[i++]  = "[samples, events, drained] = Eyelink('GetQueuedItems'[, eye])";
+	synopsis[i++]  = "[samples, events, drained] = Eyelink('GetQueuedData'[, eye])";
     
 	// Misc eyelink communication:
 	synopsis[i++] = "\n% Miscellaneous functions to communicate with Eyelink:";

@@ -122,7 +122,7 @@ el.getkeytime=-1; % stores last time eyelinkgetkey was used
 % up quickly. Hence we type:
 warning off MATLAB:namelengthmaxexceeded
 
-% eyelink Tracker state bit: AND with flag word to test functionality
+% eyelink Tracker state bit: bitand() with flag word to test functionality
 
 el.IN_DISCONNECT_MODE=16384;   	% disconnected
 el.IN_UNKNOWN_MODE=0;    		% mode fits no class (i.e setup menu)
