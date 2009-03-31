@@ -399,7 +399,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 		p = pixels;
 		
 		// Retrieve v0 as pointer to pixel row in output buffer:
-		v0 = ( eyeimage + ( (line - 1) * width * 4 ) );
+		v0 = ( eyeimage + ( (totlines - line) * width * 4 ) );
 		
 		// Copy one row of pixels from input- to output buffer:
 		for(i=0; i < width; i++) {
