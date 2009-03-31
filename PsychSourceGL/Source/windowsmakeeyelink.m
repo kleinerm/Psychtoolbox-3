@@ -34,7 +34,11 @@ end
 
 postR2007a %#ok<NOPRT>
 
-if ~exist('env','var') | isempty(env) %#ok<OR2>  (mario's old matlab doesn't have shortcircuiting ops)
+if ~exist('env','var') 
+	env=[];
+end
+
+if isempty(env)
 	env='tuebingen';
 end
 
@@ -69,7 +73,11 @@ requireds={'path', 'eyelinkPath', 'compilerPath'};
 %this line is cool but mario's old matlab doesn't have cellfun
 %if any(1~=cellfun(@exist,requireds)) || any(cellfun(@isempty,requireds)) || any(7~=cellfun(@exist,cellfun(@eval,requireds,'UniformOutput',false)))
 for i=1:length(requireds)
-	if ~exist(requireds{i},'var') | isempty(requireds{i}) | ~exist(eval(requireds{i}),'dir') %#ok<OR2>
+	problem=~exist(requireds{i},'var');
+	if ~problem
+		problem=isempty(requireds{i}) | ~exist(eval(requireds{i}),'dir'); %#ok<OR2> %mario's old matlab doesn't have shortcircuiting ops
+	end
+	if problem
 		error('must set %s to a valid directory',requireds{i})
 	end
 end
@@ -99,9 +107,14 @@ end
 % Build sequence for Eyelink.dll: Requires the freely downloadable (after registration) Eyelink-SDK for Windows.
 mexCmd=sprintf('mex -v -outdir ''%s'' -output Eyelink -I"%s" -I"%s" -ICommon\\Base -ICommon\\Eyelink -IWindows\\Base Windows\\Base\\*.c Common\\Base\\*.c Common\\Eyelink\\*.c user32.lib gdi32.lib advapi32.lib winmm.lib "%s" "%s" "%s"',buildPath,eyelinkIncludesPath,compilerPath,fullfile(eyelinkLibsPath,'eyelink_core.lib'),fullfile(eyelinkLibsPath,'eyelink_w32_comp.lib'),fullfile(eyelinkLibsPath,'eyelink_exptkit20.lib'));
 if ~postR2007a
-	if ~exist('quicktimePath','var') | isempty(quicktimePath) | ~exist(quicktimePath,'dir') %#ok<OR2>
-		error('pre 2007a eyelink build requires quicktime (may not be true?)')
+	problem = ~exist('quicktimePath','var');
+	if ~problem
+		problem= isempty(quicktimePath) | ~exist(quicktimePath,'dir'); %#ok<OR2>
 	end
+	if problem
+		error('pre 2007a must set quicktimePath to a valid directory (edf wonders why it needs quicktime?)')
+	end
+	
 	mexCmd=sprintf('%s -I"%s"',mexCmd,quicktimePath);
 end
 eval(mexCmd)
