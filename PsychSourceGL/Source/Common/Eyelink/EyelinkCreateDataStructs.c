@@ -35,7 +35,7 @@
         this is a common thing users would like to do with our output.  
         efficiency is at a premium if we don't want to be the cause of missed frame deadlines.
         we should make it easier on them by only providing scalar fields, providing separate fields for each eye.
-        but this will not be backwards compatible -- possibly have a preference setting to allow old-style output.
+        but this will not be backwards compatible -- possibly have a preference setting to allow this scalar-style output.
  
         eliminate MXISample and MXIEvent
            -we do not currently use them, they don't seem to be encouraged by the manual,
@@ -56,6 +56,11 @@
             but only 520kB in native types (if we convert their floats to doubles -- 328kB if we use singles instead).  
             so correctly typed fields allows 32% longer trials (57% if we use singles).
             is there any reason to suspect we should use doubles instead of singles for their floats?
+			***mario points out that octave and very old matlabs don't have singles, and the Psych*** abstraction layer realy only wants you to use doubles or uint8's
+			***also this should not be default behavior, but specially requested (so it is backwards compatible)
+			***edf agrees with not making it the default, but thinks this is too big of a space-waste to not offer for users w/recent matlabs
+			***asking users to do the type conversion more than doubles the time they have to sacrifice to eyetracking per frame (but it is still fast, like 0.1ms)
+
         consider redesigning thusly:
  
 			typedef struct {

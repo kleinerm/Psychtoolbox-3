@@ -394,6 +394,7 @@ boolean TrackerOKForRawValues(void) {
 				tryAgain=FALSE;
 			} else {
 				// sent mail to suganthan: eyelink_read_reply(buf) is frequently returning OK_RESULT without setting buf
+				// he says send him an eye.log from the tracker host when this happens.
 				mexPrintf("Eyelink: TrackerOKForRawValues: eyelink_read_request(\"link_sample_data\") needs to try again\n");
 			}
 			

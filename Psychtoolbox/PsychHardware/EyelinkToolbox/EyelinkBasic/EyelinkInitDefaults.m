@@ -199,6 +199,10 @@ function el=EyelinkInitDefaults(window)
 	el.ELKMOD_MODE=hex2dec('4000');
 
 	% other eyelink values
+	
+	
+	el.ELKEY_DOWN=1;
+	el.ELKEY_UP=0;
 
 	el.KB_PRESS=10; % Eyelink.h
 	el.MISSING=-32768; % eyedata.h
