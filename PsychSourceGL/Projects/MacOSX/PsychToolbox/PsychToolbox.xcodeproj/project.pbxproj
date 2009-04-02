@@ -3427,8 +3427,8 @@
 		2F4A2DF0069CBAFA0005EA67 /* FontInfo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = FontInfo.c; path = ../../../Source/OSX/Fonts/FontInfo.c; sourceTree = SOURCE_ROOT; };
 		2F4A2DF1069CBAFA0005EA67 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/OSX/Fonts/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		2F4A57DD053A94E600A80166 /* SCREENTestTexture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENTestTexture.c; path = ../../../Source/Common/Screen/SCREENTestTexture.c; sourceTree = SOURCE_ROOT; };
-		2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychAlphaBlending.c; path = ../../../Source/OSX/Screen/PsychAlphaBlending.c; sourceTree = SOURCE_ROOT; };
-		2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychAlphaBlending.h; path = ../../../Source/OSX/Screen/PsychAlphaBlending.h; sourceTree = SOURCE_ROOT; };
+		2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychAlphaBlending.c; path = ../../../Source/Common/Screen/PsychAlphaBlending.c; sourceTree = SOURCE_ROOT; };
+		2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = PsychAlphaBlending.h; path = ../../../Source/Common/Screen/PsychAlphaBlending.h; sourceTree = SOURCE_ROOT; };
 		2F5432B6090415800051D6CC /* Info-DoNothing copy.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; name = "Info-DoNothing copy.plist"; path = "/Users/ingling/Desktop/1.0.6/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-DoNothing copy.plist"; sourceTree = "<absolute>"; };
 		2F54335C090431DC0051D6CC /* DoNothing.mexmac.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DoNothing.mexmac.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2F54335E090431DC0051D6CC /* Info-DoNothing copy 2.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; name = "Info-DoNothing copy 2.plist"; path = "/Users/ingling/Desktop/1.0.6/PsychSourceGL/Projects/MacOSX/PsychToolbox/Info-DoNothing copy 2.plist"; sourceTree = "<absolute>"; };
@@ -5396,6 +5396,7 @@
 				2F742337068A830200D66E0C /* ScreenPreferenceState.c */,
 				F569F256038E2C77017A7028 /* ScreenSynopsis.c */,
 				F569F253038E2C77017A7028 /* ScreenExit.c */,
+				2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */,
 				F569F24F038E2C77017A7028 /* PsychGLGlue.c */,
 				8306696B0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c */,
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
@@ -5790,7 +5791,6 @@
 				F5AF1EE603B3C6F5017A7028 /* PsychWindowGlue.h */,
 				F5CC1A0B03948070017A7028 /* PsychVideoGlue.h */,
 				2F588F27056AC650007A711C /* PsychWindowTextGlue.h */,
-				2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */,
 				83C94B00092823A80062DB0A /* PsychMovieSupport.h */,
 			);
 			name = Headers;
@@ -5802,7 +5802,6 @@
 				F5CD7AA103B12857017A7028 /* PsychScreenGlue.c */,
 				F5CC19FE0394691F017A7028 /* PsychWindowGlue.c */,
 				2F588F29056AC66D007A711C /* PsychWindowTextGlue.c */,
-				2F4D83D907B8282C00CE685A /* PsychAlphaBlending.c */,
 				83C94B02092823C00062DB0A /* PsychMovieSupport.c */,
 			);
 			name = Source;
@@ -5901,6 +5900,7 @@
 				0F35BB060B23DF9F0083A954 /* glxew.h */,
 				0F35BB070B23DFAD0083A954 /* wglew.h */,
 				F55903740385C81D017A7028 /* RegisterProject.h */,
+				2F4D83DA07B8282C00CE685A /* PsychAlphaBlending.h */,
 				83066A8A0D39AEAF0009C12B /* PsychGraphicsCardRegisterSpecs.h */,
 				8306696E0D3923440009C12B /* PsychGraphicsHardwareHALSupport.h */,
 				0F45C2A20B264AC3004ED5F0 /* PsychImagingPipelineSupport.h */,
