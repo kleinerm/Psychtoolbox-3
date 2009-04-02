@@ -263,10 +263,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	(*winRec)->stippleEnabled=FALSE;
 	
 	// Set GL color buffer writemask glColorMask to "all enabled":
-	(*winRec)->colorMask[0] = TRUE;
-	(*winRec)->colorMask[1] = TRUE;
-	(*winRec)->colorMask[2] = TRUE;
-	(*winRec)->colorMask[3] = TRUE;
+	(*winRec)->colorMask[0] = GL_TRUE;
+	(*winRec)->colorMask[1] = GL_TRUE;
+	(*winRec)->colorMask[2] = GL_TRUE;
+	(*winRec)->colorMask[3] = GL_TRUE;
 	
 	// Initialize stereo settings:
 	(*winRec)->stereomode=0;

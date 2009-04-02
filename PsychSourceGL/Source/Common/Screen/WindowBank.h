@@ -271,7 +271,7 @@ typedef struct _PsychWindowRecordType_{
 	GLint					stippleFactor;
 	boolean					stippleEnabled;
         
-		bool									colorMask[4];			// Boolean 4 element array which encodes the glColorMask() for this window.
+		GLboolean								colorMask[4];			// Boolean 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
 		unsigned int							specialflags;			// Container for all kind of special flags...
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.

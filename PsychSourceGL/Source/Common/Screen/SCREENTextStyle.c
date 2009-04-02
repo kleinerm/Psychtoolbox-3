@@ -7,14 +7,13 @@
   
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 	HISTORY:
 	
 		11/19/03	awi		Wrote it.
 		10/12/04	awi		In useString: changed "SCREEN" to "Screen", and moved commas to inside [].
 
-   
 	DESCRIPTION:
   
 		Sets the text size for the specified window record.
@@ -38,11 +37,14 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextStyle(void) 
 {
-
-    boolean						doSetStyle;
+    boolean						doSetStyle, foundFont;
     PsychWindowRecordType		*windowRecord;
     int							oldTextStyle, newTextStyle;
-    
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+    PsychFontStructType			*fontRecord;
+#endif
+
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -61,19 +63,20 @@ PsychError SCREENTextStyle(void)
     
     //Fetch and set the new size if it is specified. 
     doSetStyle= PsychCopyInIntegerArg(2, FALSE, &newTextStyle);
-    if(doSetStyle) {
+    if (doSetStyle) {
       windowRecord->textAttributes.needsRebuild|=(windowRecord->textAttributes.textStyle != newTextStyle) ? TRUE : FALSE;
       windowRecord->textAttributes.textStyle=newTextStyle;
+	  
+	  #if PSYCH_SYSTEM == PSYCH_OSX
+	  // Need to update font name and number from changed style on OS/X:
+	  foundFont = PsychGetFontRecordFromFontFamilyNameAndFontStyle(windowRecord->textAttributes.textFontName, windowRecord->textAttributes.textStyle, &fontRecord);
+	  if (foundFont) {
+		  strncpy(windowRecord->textAttributes.textFontName, fontRecord->fontFMFamilyName, 255);
+		  windowRecord->textAttributes.textFontNumber= fontRecord->fontNumber;
+	  }
+	  
+	  #endif
     }
-    return(PsychError_none);
-
-}
-
-
 	
-
-
-
-
-
-
+    return(PsychError_none);
+}
