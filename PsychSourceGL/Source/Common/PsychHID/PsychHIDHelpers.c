@@ -20,7 +20,8 @@
 
 #include "PsychHID.h"
 
-extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+// Globals
+extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
 /*
     PSYCHHIDCheckInit() 
@@ -50,9 +51,9 @@ PsychError PsychHIDCleanup(void)
 	
 	// Close any open generic USB devices.
 	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
-		if (g_GenericUSBTracker[i] != NULL) {
+		if (usbDeviceRecordBank[i].valid) {
 			//printf("Closing USB device %d\n", i);
-			PSYCHHIDCloseUSBDevice(i);
+			PSYCHHIDOSCloseUSBDevice(i);
 		}
 	}
 	

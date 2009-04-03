@@ -13,9 +13,9 @@
 IOReturn ConfigureDevice(IOUSBDeviceInterface **dev);
 
 // Globals
-extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
-bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+bool PsychHIDOSControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
 {
 	IOUSBDeviceInterface **dev;
 	bool retVal = true;
@@ -28,9 +28,9 @@ bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uin
 	request.wIndex = wIndex;
 	request.pData = pData;
 	
-	dev = g_GenericUSBTracker[usbHandle];
+	dev = usbDeviceRecordBank[usbHandle].device;
 	if (dev == NULL) {
-		PsychErrMsgTxt("(PsychHIDControlTransfer) USB handle points to NULL device.");
+		PsychErrMsgTxt("USB handle points to NULL device.");
 	}
 	
 	// Send the data across the USB bus.
@@ -42,19 +42,18 @@ bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uin
 }
 
 
-void PSYCHHIDCloseUSBDevice(int usbHandle)
-{
-	IOUSBDeviceInterface **dev = g_GenericUSBTracker[usbHandle];
-	
-	if (dev != NULL) {
-		(void)(*dev)->USBDeviceClose(dev);
-		(void)(*dev)->Release(dev);
-		dev = NULL;
+void PsychHIDOSCloseUSBDevice(int usbHandle)
+{	
+	if (usbDeviceRecordBank[usbHandle].valid) {
+		(void)(*usbDeviceRecordBank[usbHandle].device)->USBDeviceClose(usbDeviceRecordBank[usbHandle].device);
+		(void)(*usbDeviceRecordBank[usbHandle].device)->Release(usbDeviceRecordBank[usbHandle].device);
+		usbDeviceRecordBank[usbHandle].device = NULL;
+		usbDeviceRecordBank[usbHandle].valid = 0;
 	}
 }
 
 
-GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID)
+PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 {
 	mach_port_t             masterPort;
 	kern_return_t           kr;
@@ -71,6 +70,7 @@ GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID)
 	UInt16                  product;
 	UInt16                  release;
 	bool					deviceFound = false;
+	PsychUSBDeviceRecord	devRecord;
 	
 	// Create a master port for communication with the I/O Kit
 	kr = IOMasterPort(MACH_PORT_NULL, &masterPort);
@@ -160,18 +160,21 @@ GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID)
 			(void) (*dev)->Release(dev);
 			PsychErrMsgTxt("Unable to configure device");
 		}
+		
+		devRecord.device = dev;
+		devRecord.valid = 1;
 	}
 	else {
-		dev = NULL;
+		devRecord.device = NULL;
+		devRecord.valid = 0;
 	}
 	
 	// Finished with master port
 	mach_port_deallocate(mach_task_self(), masterPort);
 	masterPort = 0;
 	
-	// Return the pointer to the USB device handle.  This will be NULL if
-	// nothing was found.
-	return dev;
+	// Return the pointer to the USB device record.
+	return devRecord;
 }
 
 

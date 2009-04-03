@@ -60,12 +60,18 @@
 #include <IOKit/IOCFPlugIn.h>
 #include <mach/mach.h>
 #include <string.h>
-
-#define GENERIC_USB_TYPE IOUSBDeviceInterface**
-#else
-// Not sure how other platforms will store references in the generic USB tracking array.
-#define GENERIC_USB_TYPE int
 #endif
+
+// Structure to keep track of a generic USB device.
+struct PsychUSBDeviceRecord_Struct
+{
+    int    valid;    // 0 = Unused record, 1 = Active device record.
+	
+#if PSYCH_SYSTEM == PSYCH_OSX
+    IOUSBDeviceInterface**    device;            // Actual device pointer for os/x...
+#endif
+};
+typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
 
 // Define constants for use by PsychHID files. 
 #define PSYCH_HID_MAX_DEVICES								256
@@ -73,7 +79,7 @@
 #define PSYCH_HID_MAX_DEVICE_ELEMENT_USAGE_NAME_LENGTH		256
 #define PSYCH_HID_MAX_DEVICE_ELEMENTS						1024
 #define PSYCH_HID_MAX_KEYBOARD_DEVICES						64
-#define PSYCH_HID_MAX_GENERIC_USB_DEVICES					4
+#define PSYCH_HID_MAX_GENERIC_USB_DEVICES					64
 
 // Function prototypes for module subfunctions.
 PsychError MODULEVersion(void);						// MODULEVersion.c 
@@ -99,9 +105,9 @@ PsychError PSYCHHIDSetReport(void);					// PsychHIDSetReport.c
 PsychError PSYCHHIDReceiveReports(void);			// PsychHIDReceiveReports.c
 PsychError PSYCHHIDReceiveReportsStop(void);		// PsychHIDReceiveReportsStop.c
 PsychError PSYCHHIDGiveMeReports(void);				// PsychHIDGiveMeReports.c
-PsychError PSYCHHIDGenericUSBOpen(void);			// PsychHIDGenericUSBOpen.c
-PsychError PSYCHHIDGenericUSBClose(void);			// PsychHIDGenericUSBClose.c
-PsychError PSYCHHIDGenericUSBControlTransfer(void);	// PsychHIDGenericUSBControlTransfer.c
+PsychError PSYCHHIDOpenUSBDevice(void);				// PSYCHHIDOpenUSBDevice.c
+PsychError PSYCHHIDCloseUSBDevice(void);			// PSYCHHIDCloseUSBDevice.c
+PsychError PSYCHHIDUSBControlTransfer(void);		// PSYCHHIDUSBControlTransfer.c
 
 //internal function protototypes
 PsychError PsychHIDReceiveReportsCleanup(void); // PsychHIDReceiveReports.c
@@ -131,9 +137,9 @@ void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// Psych
 int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
 
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
-GENERIC_USB_TYPE PSYCHHIDOpenUSBDevice(int vendorID, int deviceID);
-void PSYCHHIDCloseUSBDevice(int usbHandle);
-bool PsychHIDControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID);
+void PsychHIDOSCloseUSBDevice(int usbHandle);
+bool PsychHIDOSControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 //end include once
 #endif
@@ -152,6 +158,3 @@ struct IOHIDEventStruct
 typedef struct IOHIDEventStruct IOHIDEventStruct;
 
 */
-
-
-	

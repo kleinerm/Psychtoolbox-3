@@ -21,38 +21,42 @@ function svnpath = GetSubversionPath
 
 % Check for alternative install location of Subversion:
 if IsWin
-    % Search for Windows executable in Matlabs path:
-    svnpath = which('svn.exe');
+	% Search for Windows executable in Matlabs path:
+	svnpath = which('svn.exe');
 else
-    % Search for Unix executable in Matlabs path:
-    svnpath = which('svn.');
+	% Search for Unix executable in Matlabs path:
+	svnpath = which('svn.');
 end
 
 % Found one?
 if ~isempty(svnpath)
-    % Extract basepath and use it:
-    svnpath=[fileparts(svnpath) filesep];
+	% Extract basepath and use it:
+	svnpath=[fileparts(svnpath) filesep];
 else
-    % Could not find svn executable in Matlabs path. Check the default
-    % install location on OS-X and abort if it isn't there. On M$-Win we
-    % simply have to hope that it is in some system dependent search path.
+	% Could not find svn executable in Matlabs path. Check the default
+	% install location on OS-X and abort if it isn't there. On M$-Win we
+	% simply have to hope that it is in some system dependent search path.
 
-    % Currently, we only know how to check this for Mac OSX.
-    if IsOSX
-        svnpath = '';
-        
-        if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
-            svnpath='/usr/local/bin/';
-        end
+	% Currently, we only know how to check this for Mac OSX.
+	if IsOSX
+		svnpath = '';
 
-        if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
-            svnpath='/usr/bin/';
-        end
+		if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
+			svnpath='/usr/local/bin/';
+		end
 
-        if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
-            svnpath='/bin/';
-        end
-    end
+		if isempty(svnpath) & exist('/usr/bin/svn','file') %#ok<AND2>
+			svnpath='/usr/bin/';
+		end
+
+		if isempty(svnpath) & exist('/bin/svn','file') %#ok<AND2>
+			svnpath='/bin/';
+		end
+
+		if isempty(svnpath) & exist('/opt/local/bin/svn', 'file') %#ok<AND2>
+			svnpath = '/opt/local/bin/';
+		end
+	end
 end
 
 return;

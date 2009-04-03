@@ -13,9 +13,10 @@ static char useString[] = "outData = PsychHID('USBControlTransfer', usbHandle, b
 static char synopsisString[] = "Communicates with a USB device via the control endpoint.  Returns the data array result from the operation.";
 static char seeAlsoString[] = "";
 
-extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+// Globals
+extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
-PsychError PSYCHHIDGenericUSBControlTransfer(void) 
+PsychError PSYCHHIDUSBControlTransfer(void) 
 {
 	int usbHandle, bmRequestType, wValue, wIndex, wLength, dataElementWidth;
 	int m, n, p;
@@ -40,7 +41,7 @@ PsychError PSYCHHIDGenericUSBControlTransfer(void)
 	PsychCopyInIntegerArg(5, TRUE, &wLength);
 	
 	// Check to see if we're trying to talk to an unopened device.
-	if (g_GenericUSBTracker[usbHandle] == NULL) {
+	if (!usbDeviceRecordBank[usbHandle].valid) {
 		PsychErrMsgTxt("(PSYCHHIDGenericUSBControlTransfer) Device associated with usbHandle is not open.");
 	}
 		

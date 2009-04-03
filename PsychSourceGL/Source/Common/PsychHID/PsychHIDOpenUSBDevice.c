@@ -10,12 +10,13 @@ static char useString[] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, devic
 static char synopsisString[] = "Opens a generic USB device specified by 'vendorID' and 'deviceID'.  A handle to the device is returned.";
 static char seeAlsoString[] = "";
 
-extern GENERIC_USB_TYPE g_GenericUSBTracker[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+// Globals
+extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
-PsychError PSYCHHIDGenericUSBOpen(void) 
+PsychError PSYCHHIDOpenUSBDevice(void) 
 {
 	int deviceID, vendorID, i, usbHandle = -1;
-	GENERIC_USB_TYPE usbDevPointer;
+	PsychUSBDeviceRecord usbDev;
 	
 	// Setup the help features.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -33,7 +34,7 @@ PsychError PSYCHHIDGenericUSBOpen(void)
 	
 	// Find the next available USB handle.
 	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
-		if (g_GenericUSBTracker[i] == NULL) {
+		if (usbDeviceRecordBank[i].valid == 0) {
 			usbHandle = i;
 			break;
 		}
@@ -45,12 +46,12 @@ PsychError PSYCHHIDGenericUSBOpen(void)
 	}
 	
 	// Open the device.
-	usbDevPointer = (GENERIC_USB_TYPE)PSYCHHIDOpenUSBDevice(vendorID, deviceID);
-	if (usbDevPointer == NULL) {
+	usbDev = PsychHIDOSOpenUSBDevice(vendorID, deviceID);
+	if (usbDev.valid == 0) {
 		PsychErrMsgTxt("(PSYCHHIDGenericUSBOpen) Failed to open the USB device.  Make sure it is plugged in or not already open.");
 	}
 	else {
-		g_GenericUSBTracker[usbHandle] = usbDevPointer;
+		usbDeviceRecordBank[usbHandle] = usbDev;
 	}
 	
 	PsychCopyOutDoubleArg(1, FALSE, (double)usbHandle);
