@@ -18,15 +18,12 @@
 #include "Psych.h"
 #include "PsychHID.h"
 
-// Tracker used to maintain references to open generic USB devices.
-PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
-
 PsychError PsychModuleInit(void)
 {
 	InitializeSynopsis();  //first initialize the list of synopsis strings.
 
-	//register the project function which is called when the module
-	//is invoked with no arguments:
+	// Register the project function which is called when the module
+	// is invoked with no arguments: In this case just print command overview.
 	PsychRegister(NULL,  &PsychDisplayPsychHIDSynopsis);
 
 	//register the module name
@@ -34,13 +31,6 @@ PsychError PsychModuleInit(void)
 
 	//register the module exit function
 	PsychRegisterExit(&PsychHIDCleanup);
-	
-	// Make sure that the generic USB tracker is initialized to NULL.
-	int i;
-	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
-		//printf("init usb %d\n", i);
-		usbDeviceRecordBank[i].valid = 0;
-	}
 
 	//register module subfunctions
 	PsychErrorExit(PsychRegister("Version",  &MODULEVersion));
@@ -75,6 +65,9 @@ PsychError PsychModuleInit(void)
 	PsychSetModuleAuthorByInitials("mk");
 	PsychSetModuleAuthorByInitials("rpw");
 	PsychSetModuleAuthorByInitials("cgb");
+
+	// Initialize PsychHID core functions:
+	PsychInitializePsychHID();
 
 	return(PsychError_none);
 }

@@ -12,27 +12,95 @@
   5/05/03  awi		Created.
   4/19/05  dgp      cosmetic.
   8/23/07  rpw      added PsychHIDKbQueueRelease() to PsychHIDCleanup()
-  
+  4/04/09  mk		added support routines for generic USB devices and usbDeviceRecordBank.
+
   TO DO:
-  
 
 */
 
 #include "PsychHID.h"
 
-// Globals
-extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+// Tracker used to maintain references to open generic USB devices.
+// PsychUSBDeviceRecord is currently defined in PsychHID.h.
+PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
+
+/* PsychInitializePsychHID()
+ *
+ * Master init routine - Called at module load time / first time init.
+ *
+ */
+void PsychInitializePsychHID(void)
+{
+	int i;
+
+	// Initialize the generic USB tracker to "all off" state:
+	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
+		usbDeviceRecordBank[i].valid = 0;
+	}
+
+	return;
+}
+
+/* PsychHIDGetFreeUSBDeviceSlot();
+ *
+ * Return a device record pointer to a free generic USB device
+ * slot, as well as the associated numeric usbHandle.
+ *
+ * Abort with error if no more slots are free.
+ */
+PsychUSBDeviceRecord* PsychHIDGetFreeUSBDeviceSlot(int* usbHandle)
+{
+	int i;
+	
+	// Find the next available USB slot:
+	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
+		if (usbDeviceRecordBank[i].valid == 0) {
+			*usbHandle = i;
+			return( &(usbDeviceRecordBank[i]) );
+		}
+	}
+
+	// If we reach this point, then all slots are occupied: Fail!
+	PsychErrorExitMsg(PsychError_user, "Unable to open another generic USB device! Too many devices open. Please close one and retry.");
+	return(NULL);
+}
+
+/* PsychHIDGetFreeUSBDeviceSlot();
+ *
+ * Return a device record pointer to a free generic USB device
+ * slot, as well as the associated numeric usbHandle.
+ *
+ * Abort with error if no more slots are free.
+ */
+PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle)
+{
+	// Child protection:
+	if (usbHandle < 0 || usbHandle >= PSYCH_HID_MAX_GENERIC_USB_DEVICES) PsychErrorExitMsg(PsychError_user, "Invalid generic USB device handle provided! Handle outside valid range.");
+	if (usbDeviceRecordBank[usbHandle].valid == 0) PsychErrorExitMsg(PsychError_user, "Invalid generic USB device handle provided! The handle doesn't correspond to an open device.");
+
+	// Valid handle for slot corresponding to an open device. Return PsychUSBDeviceRecord* to it:
+	return( &(usbDeviceRecordBank[usbHandle]) );
+}
+
+void PsychHIDCloseAllUSBDevices(void)
+{
+	int i;
+	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
+		if (usbDeviceRecordBank[i].valid) {
+			PSYCHHIDOSCloseUSBDevice(PsychHIDGetUSBDevice(i));
+		}
+	}
+}
 
 /*
     PSYCHHIDCheckInit() 
     
-    Check to see if we need to create the device list.  If it has not been created then create it.   
+    Check to see if we need to create the USB-HID device list. If it has not been created then create it.   
 */
 void PsychHIDVerifyInit(void)
 {
-    if(!HIDHaveDeviceList())HIDBuildDeviceList( 0, 0);
+    if(!HIDHaveDeviceList()) HIDBuildDeviceList( 0, 0);
 }
-
 
 /*
     PsychHIDCleanup() 
@@ -42,25 +110,24 @@ void PsychHIDVerifyInit(void)
 PsychError PsychHIDCleanup(void) 
 {
 	long error;
-	int i;
 
+	// Disable online help system:
 	PsychClearGiveHelp();
+	
+	// Shutdown keyboard queue functions on OS/X:
 	error=PSYCHHIDKbQueueRelease();			// PsychHIDKbQueueRelease.c, but has to be called with uppercase PSYCH because that's how it's registered (otherwise crashes on clear mex)
+
+	// Shutdown USB-HID report low-level functions, e.g., for DAQ toolbox on OS/X:
 	error=PsychHIDReceiveReportsCleanup(); // PsychHIDReceiveReport.c
+	
+	// Release all other HID device data structures:
     if(HIDHaveDeviceList())HIDReleaseDeviceList();
 	
-	// Close any open generic USB devices.
-	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
-		if (usbDeviceRecordBank[i].valid) {
-			//printf("Closing USB device %d\n", i);
-			PSYCHHIDOSCloseUSBDevice(i);
-		}
-	}
-	
+	// Close and release all open generic USB devices:
+	PsychHIDCloseAllUSBDevices();
+
     return(PsychError_none);
 }
-
-
 
 /* 
     PsychHIDGetDeviceRecordPtrFromIndex()

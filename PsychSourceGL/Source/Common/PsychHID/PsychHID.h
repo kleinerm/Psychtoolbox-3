@@ -6,6 +6,7 @@
 	PLATFORMS:  OSX 
 
 	AUTHORS:
+
 	Allen.Ingling@nyu.edu		awi 
 	  
 	HISTORY:
@@ -14,6 +15,7 @@
 		3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
         4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
 		8/23/07  rpw		Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
+
 	TO DO:
 
 		DONE	1- Emulate KbCheck
@@ -38,21 +40,16 @@
 #include "Psych.h" 
 #include "PsychTimeGlue.h"
 
+// OS/X specific includes:
+#if PSYCH_SYSTEM == PSYCH_OSX
 
-//includes for Apple's HID utilities which lies above the HID device interface.  These are taken from 
-//Apple's "HID Explorer" example
-
-/*
-#include <IOKit/hid/IOHIDLib.h>
-*/
-
-
+// Includes for Apple's HID utilities which are layered above the HID device interface.  These are taken from 
+// Apple's "HID Explorer" example and used for all generic USB-HID interface support:
 #include <Carbon/Carbon.h>
 #include <IOKit/HID/IOHIDKeys.h>
 #include "HID_Utilities_External.h"
 
-#if PSYCH_SYSTEM == PSYCH_OSX
-// ColorCal 2 required OS X includes.
+// Required for generic USB device support:
 #include <CoreFoundation/CoreFoundation.h>
 #include <CoreServices/CoreServices.h>
 #include <IOKit/IOKitLib.h>
@@ -60,17 +57,21 @@
 #include <IOKit/IOCFPlugIn.h>
 #include <mach/mach.h>
 #include <string.h>
+
 #endif
 
-// Structure to keep track of a generic USB device.
-struct PsychUSBDeviceRecord_Struct
-{
-    int    valid;    // 0 = Unused record, 1 = Active device record.
+// Structure to keep track of a generic USB device:
+struct PsychUSBDeviceRecord_Struct {
+    int    valid;    // 0 = Unused/Free device record, 1 = Active device record.
+
+	// OS-Specific parts of the struct:
 	
-#if PSYCH_SYSTEM == PSYCH_OSX
-    IOUSBDeviceInterface**    device;            // Actual device pointer for os/x...
-#endif
+	// OS/X stuff:
+	#if PSYCH_SYSTEM == PSYCH_OSX
+		IOUSBDeviceInterface**    device;            // Actual low-level device specific pointer for OS/X.
+	#endif
 };
+
 typedef struct PsychUSBDeviceRecord_Struct PsychUSBDeviceRecord;
 
 // Define constants for use by PsychHID files. 
@@ -135,26 +136,15 @@ boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// Psy
 boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord);	// PsychHIDHelpers.c
 void PsychHIDVerifyOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c
 int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr);
+void PsychInitializePsychHID(void); // PsychHIDHelpers.c
+void PsychHIDCloseAllUSBDevices(void);
+PsychUSBDeviceRecord* PsychHIDGetFreeUSBDeviceSlot(int* usbHandle);
+PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle);
 
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
-PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID);
-void PsychHIDOSCloseUSBDevice(int usbHandle);
-bool PsychHIDOSControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int vendorID, int deviceID);
+void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
+bool PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 //end include once
 #endif
-
-
-/*
-struct IOHIDEventStruct
-{
-    IOHIDElementType	type;
-    IOHIDElementCookie	elementCookie;
-    SInt32		value;
-    AbsoluteTime	timestamp;
-    UInt32		longValueSize;
-    void *		longValue;
-};
-typedef struct IOHIDEventStruct IOHIDEventStruct;
-
-*/

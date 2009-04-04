@@ -12,25 +12,26 @@
 // Function Declarations
 IOReturn ConfigureDevice(IOUSBDeviceInterface **dev);
 
-// Globals
-extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
-
-bool PsychHIDOSControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+// Perform device control transfer on USB device:
+bool PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
 {
+	IOUSBDevRequest request;
 	IOUSBDeviceInterface **dev;
 	bool retVal = true;
 	
 	// Setup the USB request data structure.
-	IOUSBDevRequest request;
+	memset(&request, 0, sizeof(IOUSBDevRequest));
 	request.bmRequestType = bmRequestType;
 	request.wValue = wValue;
 	request.wLength = wLength;
 	request.wIndex = wIndex;
 	request.pData = pData;
 	
-	dev = usbDeviceRecordBank[usbHandle].device;
+	// MK: FIXME: Why isn't the subfield request.bRequest set to some value? Intention or accident?
+	
+	dev = devRecord->device;
 	if (dev == NULL) {
-		PsychErrMsgTxt("USB handle points to NULL device.");
+		PsychErrorExitMsg(PsychError_internal, "IOUSBDeviceInterface** device points to NULL device!");
 	}
 	
 	// Send the data across the USB bus.
@@ -41,21 +42,20 @@ bool PsychHIDOSControlTransfer(int usbHandle, psych_uint8 bmRequestType, psych_u
 	return retVal;
 }
 
-
-void PsychHIDOSCloseUSBDevice(int usbHandle)
+// Close USB device, mark device record as "free/invalid":
+void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord)
 {	
-	if (usbDeviceRecordBank[usbHandle].valid) {
-		(void)(*usbDeviceRecordBank[usbHandle].device)->USBDeviceClose(usbDeviceRecordBank[usbHandle].device);
-		(void)(*usbDeviceRecordBank[usbHandle].device)->Release(usbDeviceRecordBank[usbHandle].device);
-		usbDeviceRecordBank[usbHandle].device = NULL;
-		usbDeviceRecordBank[usbHandle].valid = 0;
-	}
+	(void)(*(devRecord->device))->USBDeviceClose(devRecord->device);
+	(void)(*(devRecord->device))->Release(devRecord->device);
+	devRecord->device = NULL;
+	devRecord->valid = 0;
 }
 
 
-PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
+// Open first USB device that satisfies given matching critera, mark device record as "active/valid":
+bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int vendorID, int deviceID)
 {
-	mach_port_t             masterPort;
+//	mach_port_t             masterPort;
 	kern_return_t           kr;
 	CFMutableDictionaryRef  matchingDict;
 	SInt32                  usbVendor = (SInt32)vendorID;
@@ -70,19 +70,18 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 	UInt16                  product;
 	UInt16                  release;
 	bool					deviceFound = false;
-	PsychUSBDeviceRecord	devRecord;
 	
 	// Create a master port for communication with the I/O Kit
-	kr = IOMasterPort(MACH_PORT_NULL, &masterPort);
-	if (kr || !masterPort) {
-		PsychErrMsgTxt("Couldn't create a master I/O Kit port.");
-	}
+//	kr = IOMasterPort(MACH_PORT_NULL, &masterPort);
+//	if (kr || !masterPort) {
+//		PsychErrorExitMsg(PsychError_system, "Couldn't create a master I/O Kit port.");
+//	}
 	
 	// Set up matching dictionary for class IOUSBDevice and its subclasses
 	matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
 	if (!matchingDict) {
-		mach_port_deallocate(mach_task_self(), masterPort);
-		PsychErrMsgTxt("Couldn't create a USB matching dictionary.");
+//		mach_port_deallocate(mach_task_self(), masterPort);
+		PsychErrorExitMsg(PsychError_system, "Couldn't create a USB matching dictionary.");
 	}
 	
 	//Add the vendor and product IDs to the matching dictionary.
@@ -96,9 +95,10 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 						 CFNumberCreate(kCFAllocatorDefault,
 										kCFNumberSInt32Type, &usbProduct));
 	
-	kr = IOServiceGetMatchingServices(masterPort, matchingDict, &iterator);
+//	kr = IOServiceGetMatchingServices(masterPort, matchingDict, &iterator);
+	kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iterator);
 	if (kr) {
-		PsychErrMsgTxt("Couldn't get matching services\n");
+		PsychErrorExitMsg(PsychError_system, "Couldn't get matching services\n");
 	}
 	
 	// Attempt to find the correct device.
@@ -108,10 +108,11 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 											   kIOUSBDeviceUserClientTypeID, kIOCFPlugInInterfaceID,
 											   &plugInInterface, &score);
 		
-		// Don?t need the device object after intermediate plug-in is created
-		kr = IOObjectRelease(usbDevice);
+		// Don't need the device object after intermediate plug-in is created
+		IOObjectRelease(usbDevice);
+
 		if ((kIOReturnSuccess != kr) || !plugInInterface) {
-			printf("Unable to create a plug-in (%08x)\n", kr);
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Unable to create a plug-in (%08x)\n", kr);
 			continue;
 		}
 		
@@ -120,11 +121,11 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 													CFUUIDGetUUIDBytes(kIOUSBDeviceInterfaceID),
 													(LPVOID *)&dev);
 		
-		// Don?t need the intermediate plug-in after device interface is created.
+		// Don't need the intermediate plug-in after device interface is created.
 		(*plugInInterface)->Release(plugInInterface);
 		
 		if (result || !dev) {
-			printf("Couldn't create a device interface (%08x)\n", (int) result);
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Couldn't create a device interface (%08x)\n", (int) result);
 			continue;
 		}
 		
@@ -133,7 +134,7 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 		kr = (*dev)->GetDeviceProduct(dev, &product);
 		kr = (*dev)->GetDeviceReleaseNumber(dev, &release);
 		if ((vendor != vendorID) || (product != deviceID)) {
-			printf("Found unwanted device (vendor = %d, device = %d)\n", vendor, product);
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Found unwanted device (vendor = %d, device = %d)\n", vendor, product);
 			(void) (*dev)->Release(dev);
 			continue;
 		}
@@ -142,15 +143,20 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 			//printf("Vendor: 0x%x\nProduct: 0x%x\nRelease: 0x%x\n", vendor, product, release);
 			break;
 		}
-		
 	}
-	
+
+    // Release the iterator now that we're done with it.
+    IOObjectRelease(iterator);
+
+	// At this point, all allocated ressources and objects have been released and
+	// either deviceFound == false on failure, or deviceFound == true and 'dev'
+	// is the device interface to our device.
 	if (deviceFound) {
 		// Open the device to change its state
 		kr = (*dev)->USBDeviceOpen(dev);
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->Release(dev);
-			PsychErrMsgTxt("Unable to open device.");
+			PsychErrorExitMsg(PsychError_system, "Unable to open USB device.");
 		}
 		
 		// Configure device
@@ -158,23 +164,27 @@ PsychUSBDeviceRecord PsychHIDOSOpenUSBDevice(int vendorID, int deviceID)
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->USBDeviceClose(dev);
 			(void) (*dev)->Release(dev);
-			PsychErrMsgTxt("Unable to configure device");
+			PsychErrorExitMsg(PsychError_system, "Unable to configure USB device.");
 		}
 		
-		devRecord.device = dev;
-		devRecord.valid = 1;
+		// Success! Assign device interface and mark device record as active/open/valid:
+		devRecord->device = dev;
+		devRecord->valid = 1;
 	}
 	else {
-		devRecord.device = NULL;
-		devRecord.valid = 0;
+		// No matching device found. NULL-out the record, we're done.
+		// This is not strictly needed, as this NULL state is the initial
+		// state of the record upon entering this function.
+		devRecord->device = NULL;
+		devRecord->valid = 0;
 	}
+
+//	// Finished with master port
+//	mach_port_deallocate(mach_task_self(), masterPort);
+//	masterPort = 0;
 	
-	// Finished with master port
-	mach_port_deallocate(mach_task_self(), masterPort);
-	masterPort = 0;
-	
-	// Return the pointer to the USB device record.
-	return devRecord;
+	// Return the success status.
+	return (deviceFound);
 }
 
 
@@ -189,22 +199,23 @@ IOReturn ConfigureDevice(IOUSBDeviceInterface **dev)
 	// different one
 	kr = (*dev)->GetNumberOfConfigurations(dev, &numConfig);
 	
-	if (!numConfig) {
+	if (kr || (numConfig == 0)) {
+		printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of configurations or no configurations available at all (err = %08x)\n", kr);
 		return -1;
 	}
 	
 	// Get the configuration descriptor for index 0
 	kr = (*dev)->GetConfigurationDescriptorPtr(dev, 0, &configDesc);
 	if (kr) {
-		printf("Couldn?t get configuration descriptor for index %d (err = %08x)\n", 0, kr);
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get configuration descriptor for index %d (err = %08x)\n", 0, kr);
 		return -1;
 	}
 	
-	// Set the device?s configuration. The configuration value is found in
+	// Set the device's configuration. The configuration value is found in
 	// the bConfigurationValue field of the configuration descriptor
 	kr = (*dev)->SetConfiguration(dev, configDesc->bConfigurationValue);
 	if (kr) {
-		printf("Couldn?t set configuration to value %d (err = %08x)\n", 0, kr);
+		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't set configuration to value %d (err = %08x)\n", (int) configDesc->bConfigurationValue, kr);
 		return -1;
 	}
 	

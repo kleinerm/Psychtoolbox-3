@@ -7,16 +7,19 @@
 #include "PsychHID.h"
 
 static char useString[] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID)";
-static char synopsisString[] = "Opens a generic USB device specified by 'vendorID' and 'deviceID'.  A handle to the device is returned.";
+//																 1		   2
+static char synopsisString[] = "Tries to open and initialize a generic USB device specified by 'vendorID' and 'deviceID'.\n"
+							   "On success, a 'usbHandle' to the opened device is returned.\n"
+							   "'vendorID' and 'deviceID' must be numeric (integer) values which identify the "
+							   "target device by the official vendor id of the device manufacturer, and the "
+							   "device id of the specific model of a device. ";
 static char seeAlsoString[] = "";
-
-// Globals
-extern PsychUSBDeviceRecord usbDeviceRecordBank[PSYCH_HID_MAX_GENERIC_USB_DEVICES];
 
 PsychError PSYCHHIDOpenUSBDevice(void) 
 {
-	int deviceID, vendorID, i, usbHandle = -1;
-	PsychUSBDeviceRecord usbDev;
+	int deviceID, vendorID;
+	int usbHandle = -1;
+	PsychUSBDeviceRecord *usbDev = NULL;
 	
 	// Setup the help features.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -26,35 +29,25 @@ PsychError PSYCHHIDOpenUSBDevice(void)
 	}
 	
 	// Make sure the correct number of input arguments is supplied.
+    PsychErrorExit(PsychCapNumInputArgs(2));
 	PsychErrorExit(PsychRequireNumInputArgs(2));
+    PsychErrorExit(PsychCapNumOutputArgs(1));
 	
-	// Grab the vendor and device IDs.
+	// Grab the mandatory vendor and device IDs.
 	PsychCopyInIntegerArg(1, TRUE, &vendorID);
 	PsychCopyInIntegerArg(2, TRUE, &deviceID);
-	
-	// Find the next available USB handle.
-	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
-		if (usbDeviceRecordBank[i].valid == 0) {
-			usbHandle = i;
-			break;
-		}
+
+	// Try to get free slot in internal device bank: This will error-exit if no capacity left.
+	usbDev = PsychHIDGetFreeUSBDeviceSlot(&usbHandle);
+
+	// Try to open the device. This will init the device structure properly and
+	// also set the valid flag to "active/open" if open succeeds:
+	if (!PsychHIDOSOpenUSBDevice(usbDev, vendorID, deviceID)) {
+		PsychErrorExitMsg(PsychError_user, "Failed to open the specified type of generic USB device. Make sure it is plugged in or not already open.");
 	}
-	
-	// Make sure that an available handle was located.
-	if (usbHandle == -1) {
-		PsychErrMsgTxt("(PSYCHHIDGenericUSBOpen) Too many USB devices open.  Please close one before opening again.");
-	}
-	
-	// Open the device.
-	usbDev = PsychHIDOSOpenUSBDevice(vendorID, deviceID);
-	if (usbDev.valid == 0) {
-		PsychErrMsgTxt("(PSYCHHIDGenericUSBOpen) Failed to open the USB device.  Make sure it is plugged in or not already open.");
-	}
-	else {
-		usbDeviceRecordBank[usbHandle] = usbDev;
-	}
-	
-	PsychCopyOutDoubleArg(1, FALSE, (double)usbHandle);
-	
+
+	// Return device handle:
+	PsychCopyOutDoubleArg(1, FALSE, (double) usbHandle);
+
 	return PsychError_none;
 }

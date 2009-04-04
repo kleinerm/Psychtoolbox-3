@@ -13,7 +13,9 @@
   06/20/03  awi		Wrote it.  Based on ScreenSynopsis  
   
 */
+
 #include "Screen.h"
+
 void InitializeSynopsis(void); // I added this prototype to make the compiler happy. dgp.
 
 #define MAX_SYNOPSIS_STRINGS 500  
@@ -28,6 +30,7 @@ void InitializeSynopsis(void)
 
 	synopsis[i++] = "Usage:";
 
+	synopsis[i++] = "\n\nSupport for generic USB-HID devices:\n\n";
 	synopsis[i++] = "numberOfDevices=PsychHID('NumDevices')";
 	synopsis[i++] = "numberOfElements=PsychHID('NumElements',deviceNumber)";
 	synopsis[i++] = "numberOfCollections=PsychHID('NumCollections',deviceNumber)";
@@ -39,6 +42,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 	synopsis[i++] = "[report,err]=PsychHID('GetReport',deviceNumber,reportType,reportID,reportBytes)";
 	synopsis[i++] = "err=PsychHID('SetReport',deviceNumber,reportType,reportID,report)";
+
 	synopsis[i++] = "\n\nQueue based keyboard queries: See 'help KbQueueCreate' for explanations:\n\n";
 	synopsis[i++] = "PsychHID('KbQueueCreate', [deviceNumber], [keyFlags])";
 	synopsis[i++] = "PsychHID('KbQueueRelease')"; 
@@ -47,24 +51,22 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "PsychHID('KbQueueStop')"; 
 	synopsis[i++] = "[keyIsDown, firstKeyPressTimes, firstKeyReleaseTimes, lastKeyPressTimes, lastKeyReleaseTimes]=PsychHID('KbQueueCheck')"; 
 	synopsis[i++] = "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])"; 
+	
+	synopsis[i++] = "\n\nSupport for access to generic USB devices: See 'help ColorCal2' for one usage example:\n\n";
+	synopsis[i++] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID)";
+	synopsis[i++] = "PsychHID('CloseUSBDevice' [, usbHandle])";
+	synopsis[i++] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, wValue, wIndex, wLength, inData)";
+
 	synopsis[i++] = NULL;  // this tells PsychDisplayPsychHIDSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
 		PrintfExit("%s: increase dimension of synopsis[] from %ld to at least %ld and recompile.",__FILE__,(long)MAX_SYNOPSIS_STRINGS,(long)i);
 	}
 }
 
-
 PsychError PsychDisplayPsychHIDSynopsis(void)
 {
-	int i;
-	
-	for (i = 0; synopsisSYNOPSIS[i] != NULL; i++)
-		printf("%s\n",synopsisSYNOPSIS[i]);
-		
+	int i;	
+	for (i = 0; synopsisSYNOPSIS[i] != NULL; i++) printf("%s\n",synopsisSYNOPSIS[i]);
+
 	return(PsychError_none);
 }
-
-
-
-
-
