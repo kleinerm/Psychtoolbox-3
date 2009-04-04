@@ -50,11 +50,13 @@ PsychError PSYCHHIDKbCheck(void)
     long				KbDeviceUsagePage= 1, KbDeviceUsage=6; 
     static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    boolean				isDeviceSpecified, foundUserSpecifiedDevice, isKeyArgPresent, isTimeArgPresent;
+    boolean				isDeviceSpecified, foundUserSpecifiedDevice;
     double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
-	int					m, n, p;
+	int					m, n, p, nout;
 	double				*scanList = NULL;
-	
+	double				dummyKeyDown;
+	double				dummykeyArrayOutput[256];
+
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
@@ -98,12 +100,36 @@ PsychError PSYCHHIDKbCheck(void)
 	}
 
     // Allocate and init out return arguments.
-    isKeyArgPresent = PsychAllocOutDoubleMatArg(3, FALSE, 1, 256, 1, &keyArrayOutput);
-    isTimeArgPresent = PsychAllocOutDoubleArg(2, FALSE, &timeValueOutput);
-    PsychGetPrecisionTimerSeconds(timeValueOutput);
-    PsychAllocOutDoubleArg(1, FALSE, &isKeyDownOutput);
-    *isKeyDownOutput=(double)FALSE;
+	// Either alloc out the arguments, or redirect to
+	// internal dummy variables. This to avoid mxMalloc() call overhead
+	// inside the PsychAllocOutXXX() routines:
+	nout = PsychGetNumNamedOutputArgs();
+
+	// keyDown flag:
+	if (nout >= 1) {
+		PsychAllocOutDoubleArg(1, FALSE, &isKeyDownOutput);
+	}
+	else {
+		isKeyDownOutput = &dummyKeyDown;
+	}
+    *isKeyDownOutput= (double) FALSE;
+
+	// key state vector:
+	if (nout >= 3) {
+		PsychAllocOutDoubleMatArg(3, FALSE, 1, 256, 1, &keyArrayOutput);
+	}
+	else {
+		keyArrayOutput = &dummykeyArrayOutput[0];
+	}
 	memset((void*) keyArrayOutput, 0, sizeof(double) * 256);
+
+	// Query timestamp:
+	if (nout >= 2) {
+		PsychAllocOutDoubleArg(2, FALSE, &timeValueOutput);
+
+		// Get query timestamp:
+		PsychGetPrecisionTimerSeconds(timeValueOutput);
+	}
 	
     //step through the elements of the device.  Set flags in the return array for down keys.
     for(currentElement=HIDGetFirstDeviceElement(deviceRecord, kHIDElementTypeInput); 

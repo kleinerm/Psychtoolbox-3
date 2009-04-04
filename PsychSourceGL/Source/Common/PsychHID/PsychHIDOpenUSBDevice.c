@@ -1,8 +1,22 @@
 /*
- *  PsychHIDGenericUSBOpen.c
- *  PsychToolbox
- *
- */
+ 
+  PsychSourceGL/Source/Common/PsychHID/PsychHIDOpenUSBDevice.c
+ 
+  PROJECTS: PsychHID
+  
+  PLATFORMS:  All.
+  
+  AUTHORS:
+
+	chrg@sas.upenn.edu	cgb
+	
+  HISTORY:
+
+	4.4.2009	Created.
+
+  TO DO:
+  
+*/
 
 #include "PsychHID.h"
 
@@ -17,7 +31,9 @@ static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDOpenUSBDevice(void) 
 {
+	PsychUSBSetupSpec deviceSpec;
 	int deviceID, vendorID;
+	int errcode;
 	int usbHandle = -1;
 	PsychUSBDeviceRecord *usbDev = NULL;
 	
@@ -40,9 +56,23 @@ PsychError PSYCHHIDOpenUSBDevice(void)
 	// Try to get free slot in internal device bank: This will error-exit if no capacity left.
 	usbDev = PsychHIDGetFreeUSBDeviceSlot(&usbHandle);
 
+	// Setup specification of wanted device:
+	// So far we only match against vendorID and deviceID, but may want to extend this
+	// to more options in the future. That's why its passed via a PsychUSBSetupSpec struct.
+	// -> Can rather easily extend that struct (and corresponding open routines) with new
+	// fields without major code rewrites in other places.
+	deviceSpec.vendorID = vendorID;
+	deviceSpec.deviceID = deviceID;
+
+	// This is the index of the device configuration to choose:
+	// MK: For now always config zero. Might want to make this default to zero but allow
+	// usercode to select some other index?
+	deviceSpec.configurationID = 0;
+
 	// Try to open the device. This will init the device structure properly and
 	// also set the valid flag to "active/open" if open succeeds:
-	if (!PsychHIDOSOpenUSBDevice(usbDev, vendorID, deviceID)) {
+	if (!PsychHIDOSOpenUSBDevice(usbDev, &errcode, &deviceSpec)) {
+		// MK TODO: We don't set or use 'errcode' yet.
 		PsychErrorExitMsg(PsychError_user, "Failed to open the specified type of generic USB device. Make sure it is plugged in or not already open.");
 	}
 

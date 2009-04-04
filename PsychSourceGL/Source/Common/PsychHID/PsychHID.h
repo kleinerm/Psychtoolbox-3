@@ -60,6 +60,19 @@
 
 #endif
 
+// Structure which carries all required setup and matching parameters for
+// finding, opening and configuring a generic USB device. This is passed
+// to PsychHIDOSOpenUSBDevice(); to define what device should be opened,
+// and with what parameters. It can be easily extended in the future:
+struct PsychUSBSetupSpec_Struct {
+	int vendorID;			// USB vendor ID.
+	int deviceID;			// USB device ID / product ID.
+	// More specs go here...
+	int configurationID;	// Index of USB configuration to select when configuring the device.
+};
+
+typedef struct PsychUSBSetupSpec_Struct PsychUSBSetupSpec;
+
 // Structure to keep track of a generic USB device:
 struct PsychUSBDeviceRecord_Struct {
     int    valid;    // 0 = Unused/Free device record, 1 = Active device record.
@@ -142,9 +155,9 @@ PsychUSBDeviceRecord* PsychHIDGetFreeUSBDeviceSlot(int* usbHandle);
 PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle);
 
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
-bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int vendorID, int deviceID);
+bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec);
 void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
-bool PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 //end include once
 #endif

@@ -1,25 +1,44 @@
 /*
- *  PsychHIDGenericUSBControlTransfer.c
- *  PsychToolbox
- *
- *  Created by Christopher Broussard on 3/2/09.
- *  Copyright 2009 __MyCompanyName__. All rights reserved.
- *
- */
+ 
+  PsychSourceGL/Source/Common/PsychHID/PsychHIDUSBControlTransfer.c
+ 
+  PROJECTS: PsychHID
+  
+  PLATFORMS:  All.
+  
+  AUTHORS:
+
+	chrg@sas.upenn.edu	cgb
+	
+  HISTORY:
+
+	4.4.2009	Created.
+
+  TO DO:
+  
+*/
 
 #include "PsychHID.h"
 
 static char useString[] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, wValue, wIndex, wLength, inData)";
 //																	1		   2			  3		  4		  5		   6
-static char synopsisString[] = "Communicates with a USB device via the control endpoint.  Returns the data array result from the operation.";
+static char synopsisString[] = "Communicates with a USB device via the control endpoint, aka control transfer.\n"
+							   "The results of out-transfers are returned in return argument 'outData' as a uint8 array.\n"
+							   "'usbHandle' is the handle of the USB device to control. 'bmRequestType' is the type of "
+							   "reqest: Either 0xC0 for an output control transfer, or 0x40 for in input control transfer. "
+							   "'wValue' and 'wIndex' are device- and request specific values. 'wLength' is the amount of "
+							   "data to return at most on a out-transfer, or the amount of data provided for an in-transfer "
+							   "in the optional uint8 vector 'inData'. 'inData' must have at least as many elements as the "
+							   "value of 'wLength'! ";
+
 static char seeAlsoString[] = "";
 
 PsychError PSYCHHIDUSBControlTransfer(void) 
 {
 	PsychUSBDeviceRecord	*dev;
 	int usbHandle, bmRequestType, wValue, wIndex, wLength, dataElementWidth;
-	int m, n, p;
-	ubyte *buffer = NULL;
+	int m, n, p, err;
+	psych_uint8 *buffer = NULL;
 	
 	// Setup the help features.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -52,41 +71,29 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 			PsychErrorExitMsg(PsychError_user, "Argument wLength must be > 0 for an out command!");
 		}
 		
-		buffer = (ubyte*)mxMalloc(wLength);
+		// Allocate return buffer of sufficient size wLength:
 		m = 1; n = wLength; p = 1;
+		PsychAllocOutUnsignedByteMatArg(1, TRUE, m, n, p, &buffer);
 	}
 	else if (bmRequestType == 0x40) {
 		// Get the input buffer if it was specified.
-		if (PsychGetNumInputArgs() == 6) {
-			PsychAllocInUnsignedByteMatArg(6, TRUE, &m, &n, &p, &buffer);
-		}
+		m=n=p=0;
+		PsychAllocInUnsignedByteMatArg(6, FALSE, &m, &n, &p, &buffer);
+		if (p != 1) PsychErrorExitMsg(PsychError_user, "Argument inData must be a 1D vector or 2D matrix of bytes! This is a 3D matrix!");
+		
+		// Is the input buffer at least as big as the provided wLength argument?
+		if ((m * n) < wLength) PsychErrorExitMsg(PsychError_user, "Argument inData has less elements then provided wLength argument! This must match!");
 	}
 	else {
 		PsychErrorExitMsg(PsychError_user, "Argument bmRequestType must be 0x40 or 0xC0 !");
 	}
 	
 	// Make the actual control request.
-	if (PsychHIDControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer) == false) {
+	if ((err = PsychHIDControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0) {
+		// Failed! err contains a non-zero system specific error code from the underlying OS:
+		// MK TODO: Should we fail here, or should we be more lenient and rather return with 'err' as 2nd return argument or something like that?
 		PsychErrorExitMsg(PsychError_system, "The USB Control transfer failed.");
 	}
-		
-	// Copy the buffer to output if not NULL and we've run an out request. 
-	if ((buffer != NULL) && (bmRequestType == 0xC0)) {
-		int i;
-		ubyte *outBuffer;
-		mxArray **mxpp;
-		
-		// Copy the buffer to the Matlab output.  For some reason the Psych function that allocates
-		// a byte matrix was causing memory problems in Matlab, so I just took the guts out of it and
-		// put them here.  Now things seems to be OK.
-		mxpp = PsychGetOutArgMxPtr(1);
-		*mxpp = mxCreateByteMatrix3D(m, n, p);
-		outBuffer = (ubyte*)mxGetData(*mxpp);
-		for (i = 0; i < n; i++) {
-			//printf("char %d: %c\n", i, (char)buffer[i]);
-			outBuffer[i] = buffer[i];
-		}
-	}
-	
+
 	return PsychError_none;
 }

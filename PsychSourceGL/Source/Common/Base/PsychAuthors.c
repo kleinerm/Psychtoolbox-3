@@ -132,9 +132,18 @@ void InitPsychAuthorList(void)
 	PsychAddAuthor(
 	// Port to OS-X on Intel-Macs, and misc stuff: 
 		"Christopher",
-		"",
+		"G.",
 		"Broussard",
 		"cb",
+		"chrg@sas.upenn.edu",
+		"http://color.psych.upenn.edu/lab/"
+	);
+	PsychAddAuthor(
+	// Port to OS-X on Intel-Macs, and misc stuff, as well as PsychHID enhancements: 
+		"Christopher",
+		"G.",
+		"Broussard",
+		"cgb",
 		"chrg@sas.upenn.edu",
 		"http://color.psych.upenn.edu/lab/"
 	);

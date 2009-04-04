@@ -1,8 +1,22 @@
 /*
- *  PsychHIDGenericUSBOpen.c
- *  PsychToolbox
- *
- */
+ 
+  PsychSourceGL/Source/Common/PsychHID/PsychHIDCloseUSBDevice.c
+
+  PROJECTS: PsychHID
+  
+  PLATFORMS:  All.
+  
+  AUTHORS:
+
+	chrg@sas.upenn.edu	cgb
+	
+  HISTORY:
+
+	4.4.2009	Created.
+
+  TO DO:
+  
+*/
 
 #include "PsychHID.h"
 
