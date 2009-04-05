@@ -30,4 +30,13 @@
 %                              See help read_rle_rgbe for copyright & authorship info. This is
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
-
+%
+% WinTab/                      This folder contains the (unsupported!)
+%                              WinTabMex MEX file driver (and its C source
+%                              code) for controlling touch/digitizer
+%                              tablets via the WinTab API on Microsoft
+%                              Windows operating systems. It also contains
+%                              some basic usage instructions and two M-File
+%                              demos, contributed by Andrew Wilson. The
+%                              code is contributed under GPLv2.
+%
