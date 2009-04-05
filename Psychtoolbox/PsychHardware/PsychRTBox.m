@@ -6,7 +6,7 @@ function varargout = PsychRTBox(varargin)
 % button box. The box is a USB device which provides 4 response buttons
 % (pushbuttons) for subject responses and can report any button press- or
 % release by the subject. Additionally it has an input for reporting of
-% external TTL trigger signals and a photo-diode input for reporting of
+% external electronic trigger signals and a photo-diode input for reporting of
 % visual stimulus onset. The box uses a built-in high-resolution clock to
 % timestamp all button- or trigger events, independent of the host
 % computers clock in order to make it more reliable for response time
@@ -17,12 +17,22 @@ function varargout = PsychRTBox(varargin)
 % WaitSecs, KbCheck et al., Screen('Flip') and PsychPortAudio, etc. This
 % simplifies reaction time calculations. Timestamps can also be reported in
 % timebase of the boxes, e.g., time of a button press relative to the
-% photo-diode light trigger signal or TTL trigger signal, if this is more
+% photo-diode light trigger signal or electronic trigger signal, if this is more
 % convenient for a given experiment setup.
 %
-% See http://lobes.usc.edu/RTbox for up to date product information.
+% See http://lobes.usc.edu/RTbox for some product information.
 %
+% Please note that while the device documentation claims that the external
+% electronic pulse port is able to receive TTL trigger signals, we couldn't
+% verify that this is the case with our test sample of a RTbox. While the
+% pulse input port responded to some pulses sent by one TTL compatible device,
+% it failed to detect the majority of signals from TTL most other test devices.
 %
+% This indicates that the pulse port may not be fully TTL compliant and
+% will need additional tinkering for your setup. However, results with
+% production level hardware may be different than our experience with our
+% test sample.
+% 
 %
 % The following subcommands are currently suppported:
 % ===================================================
@@ -196,7 +206,7 @@ function varargout = PsychRTBox(varargin)
 % The following names are valid for the name string 'eventspec':
 % 'press' = Report push-button press. This is the default setting.
 % 'release' = Report push-button release.
-% 'pulse' = Report TTL trigger events on external input port.
+% 'pulse' = Report electronic trigger events on external input port.
 % 'light' = Report reception of light flashes by photo-diode on light port.
 % 'lightoff' = Report offset of light on photo-diode.
 % 'all' = Enable all events.
@@ -294,7 +304,7 @@ function varargout = PsychRTBox(varargin)
 % '2' = 2nd button pressed, '2up' = 2nd button released.
 % '3' = 3rd button pressed, '3up' = 3rd button released.
 % '4' = 4th button pressed, '4up' = 4th button released.
-% 'pulse' = TTL pulse received on TTL pulse input port.
+% 'pulse' = electronic pulse received on electronic pulse input port.
 % 'light' = Light pulse received by photo-diode connected to light input port.
 % 'lightoff' = Light pulse offset on photo-diode connected to light input port.
 % 'serial' = PsychRTBox('Trigger') Softwaretrigger signal received on USB-Serial port.
@@ -350,7 +360,7 @@ function varargout = PsychRTBox(varargin)
 % as in PsychRTBox('BoxSecs' ...);
 %
 % E.g., PsychRTBox('serial', ...); Returns timestamps relative to the first
-% occurence of a TTL input port trigger signal since the last query.
+% occurence of a electronic input port trigger signal since the last query.
 % PsychRTBox('light', ...); Returns timestamps relative to photo-diode
 % light pulse. PsychRTBox('1'); returns relative to press of 1st button,
 % etc. etc.
@@ -1431,21 +1441,21 @@ function syncClocks(id)
         % Decode boxtime into seconds (uncorrected for clock-drift):
         %
         % From the computed raw box clock time in seconds, we subtract
-        % another 0.0002 secs, aka 200 microseconds to compensate for the
+        % another 0.00016 secs, aka 160 microseconds to compensate for the
         % average delay between reception of the sync token byte, and the
         % timestamping on the box. Delay is:
         % 1. Transmission delay from FTDI chip to Microprocessor over
         % serial link at 112200 baud with 10 bits (1 start + 8 data + 1
         % stop): 1000/112200*10 msecs = 0.089 msecs.
         % 2. Average scanning delay by firmware scanning loop: Interval is
-        % 0.1 msecs, expected delay therefore 0.1/2 = 0.050 msecs.
+        % 0.01 msecs, expected delay therefore 0.01/2 = 0.005 msecs.
         % 3. Time taken for firmware to take a snapshot of current box
         % clock time: 0.060 msecs.
         %
-        % == 0.199126559714795 msecs. To account for minimal other delays,
-        % we round up to 0.2 msecs aka 0.0002 secs and subtract this
+        % == 0.154126559714795 msecs. To account for minimal other delays,
+        % we round up to 0.16 msecs aka 0.00016 secs and subtract this
         % expected delay:
-        tbox = bytes2secs(b7(2:7)) - 0.0002;
+        tbox = bytes2secs(b7(2:7)) - 0.00016;
         
         % Compute confidence interval for this sample:
         % For each measurement, the time window tpost - tpre defines a
@@ -1738,7 +1748,7 @@ end
 % characters encode certain types of events. A capital character enables
 % that event type, a minor character disables that event type. The special
 % letter 'A' or 'a' enables or disables all events. See the init routine
-% for a mapping table of button/TTLtrigger,lightTrigger,serialTrigger
+% for a mapping table of button/electronictrigger,lightTrigger,serialTrigger
 % events to control characters.
 %
 % It is useful to disable event detection/reporting both to filter out
@@ -2072,7 +2082,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
                 warning('PsychRTBox: parseQeue: Corrupt 7-byte data packet received from box!'); %#ok<WNTAG>
             else
                 % evid 'a' is a special case: An 'a' can be either an
-                % acknowledge for disable of all event reporting, or a TTL
+                % acknowledge for disable of all event reporting, or a electronic
                 % pulse trigger event :-(
                 % Treat this special case of character a == 97, but only if
                 % a marker token is expected. Then we might receive the
