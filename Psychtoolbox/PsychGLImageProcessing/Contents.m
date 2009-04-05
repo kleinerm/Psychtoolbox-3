@@ -47,6 +47,8 @@
 % HookProcessingChains.m          -- Documentation about hook chains and their options.
 % ImagingStereoDemo.m             -- Counterpart to StereoDemo.m, but using imaging pipeline
 %                                    for increased fidelity, flexibility, ease of use.
+% MakeTextureDrawShader.m         -- Create GLSL shader for use with Screen('DrawTexture') and Screen('MakeTexture')
+%                                    to apply on-the-fly texture filtering operations during texture draw.
 %
 % PsychImaging.m                  -- Generic setup routine for the imaging pipeline. Allows to setup
 %                                    and initialize the pipeline for many common tasks.

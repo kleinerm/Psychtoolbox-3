@@ -31,6 +31,8 @@
 %    DriftDemo2              - More efficient animation of gratings using one texture.
 %    DriftDemo3              - Even more efficient animation of gratings under some constraints.
 %    DriftDemo4              - Very efficient animation of gratings on graphics hardware with shader support.
+%    DriftDemo5              - Animation of dual-gratings via use of alpha blending and color masking.
+%    DriftDemo6              - Very efficient animation of dual-gratings on graphics hardware with shader support.
 %    DriftWaitDemo           - Show how to optimally time animations.
 %    ErrorCatchDemo          - How to handle errors gracefully (try/catch).
 %    ExpandingRingsDemo      - Shows how GLSL procedural textures can be used to

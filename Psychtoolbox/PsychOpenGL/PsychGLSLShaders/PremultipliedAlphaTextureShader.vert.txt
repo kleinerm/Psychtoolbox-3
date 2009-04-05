@@ -1,0 +1,34 @@
+/*
+ * File: PremultipliedAlphaTextureShader.vert.txt
+ *
+ * Shader for drawing of textures where the alpha channel is looked up
+ * separately from the RGB channels, i.e. RGB texel lookup uses texture
+ * coordinates offset by given optional shift parameters.
+ * The shader premultiplies the alpha value to the RGB channels, instead of
+ * outputting it to the alpha channel.
+ *
+ * (c) 2009 by Mario Kleiner, licensed under GPL.
+ *		 
+ */
+
+/* Attributes passed from Screen(): See the ProceduralShadingAPI.m file for infos: */
+attribute vec4 modulateColor;
+attribute vec4 auxParameters0;
+
+/* Information passed to the fragment shader: */
+varying vec4   baseColor;
+
+void main()
+{
+    /* Apply standard geometric transformations to patch: */
+    gl_Position = ftransform();
+
+    /* Don't pass real texture coordinates, but ones corrected for hardware offsets (-0.5,0.5) */
+    gl_TexCoord[0] = (gl_TextureMatrix[0] * gl_MultiTexCoord0) + vec4(-0.5, 0.5, 0.0, 0.0);
+
+    /* Apply offset to primary texcoords, then pass them as secondary texcoords set: */
+    gl_TexCoord[1] = gl_TexCoord[0] + auxParameters0;
+
+    /* Pass through modulateColor: */
+    baseColor = modulateColor;
+}

@@ -1,0 +1,31 @@
+/*
+ * File: SeparateAlphaTextureShader.frag.txt
+ * Shader for drawing of textures where the alpha channel is looked up
+ * separately from the RGB channels, i.e. RGB texel lookup uses texture
+ * coordinates offset by given optional shift parameters.
+ *
+ * (c) 2009 by Mario Kleiner, licensed under GPL.
+ *		 
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect Image;
+uniform vec4 Offset;
+
+varying vec4 baseColor;
+
+void main()
+{
+    /* Read alpha channel value from standard texture coordinate set: */
+    float alpha = texture2DRect(Image, gl_TexCoord[0].st).a;
+
+    /* Read RGB color values from secondary texture coordinate set: */
+    vec3 rgb    = texture2DRect(Image, gl_TexCoord[1].st).rgb;
+
+    /* Assemble back into RGBA quadruple: */
+    vec4 rgba   = vec4(rgb, alpha);
+
+    /* ... and output to framebuffer, with proper modulation and offset applied: */
+    gl_FragColor = (baseColor * rgba) + Offset;
+}
