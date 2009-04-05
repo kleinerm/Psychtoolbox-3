@@ -34,7 +34,9 @@ persistent calxy;
 persistent imgtitle;
 
 % Cached eyelink stucture containing keycodes
-persistent el
+persistent el;
+persistent instructionsDrawn;
+persistent lastImageTime;
 
 % Cached constant definitions:
 persistent GL_RGBA;
@@ -82,6 +84,10 @@ if isscalar(callArgs) && isstruct(callArgs) && isfield(callArgs,'window') && iss
 
 	% assume rest of el structure is valid
 	el = callArgs;
+    
+    instructionsDrawn=false;
+    eyelinktex=[];
+    lastImageTime=GetSecs;
 
 	return;
 end
@@ -99,10 +105,19 @@ if isempty(win)
 	return;
 end
 
+if ~instructionsDrawn
+    %if we do this every frame, text is too slow on osx, and we never get through all the scanlines of one image, and we eventually crash
+    instructionsDrawn=true;
+    helpTxt='hit return (on either ptb comptuer or tacker host computer) to toggle camera image, esc to quit';
+    Screen('DrawText',win,helpTxt,0,0,[0 0 0]);
+    Screen('Flip',win);
+end
+
 switch eyecmd
 	case 1,
 		% Nothing to do here. See code below for eye image display...
-
+        fprintf('image arriving %g ms after last image\n',1000*(GetSecs-lastImageTime))
+        lastImageTime=GetSecs;
 	case 2,
 		% Eyelink Keyboard query:
 
@@ -125,6 +140,7 @@ switch eyecmd
 	case {6 , 7}
 		% Setup calibration display: Do nothing except clear screen:
 		Screen('Flip', win);
+        instructionsDrawn=false;
 
 	otherwise
 		% Unknown command:
@@ -164,6 +180,10 @@ end
 % Draw title:
 if ~isempty(imgtitle)
 	Screen('DrawText', win, imgtitle, eyewidth / 2, 10, [255 0 0]);
+end
+
+if ~IsOSX %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
+	Screen('DrawText',win,helpTxt,0,0,[0 0 0]);
 end
 
 % Show it:

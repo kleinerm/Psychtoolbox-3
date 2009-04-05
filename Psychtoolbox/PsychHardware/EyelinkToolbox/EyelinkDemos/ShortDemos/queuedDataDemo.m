@@ -10,7 +10,7 @@ clc
 
 KbName('UnifyKeyNames')
 
-if (Eyelink('initialize','') ~= 0)
+if (Eyelink('initialize') ~= 0)
     error('could not init connection to Eyelink')
     return;
 end;

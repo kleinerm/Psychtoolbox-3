@@ -85,7 +85,7 @@ static char synopsisString[] =
 "Normal samples do not contain the corneal reflection data, but some (non-saccade-based) calibration methods require this information.\n"
 "The Eyelink 1000 can be configured to send this information as part of 'raw' samples, and this is required before use of this function.\n"
 "Sol Simpson at SR-Research emphasizes that this is not officially supported or guaranteed.\n"
-"1. You need to install Eyelink.dll from the latest software developer kit at https://www.sr-support.com/forums/showthread.php?t=6\n"
+"1. You need to install Eyelink.dll from the latest software developer kit at https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)\n"
 "\t   and the latest tracker host software at https://www.sr-support.com/forums/showthread.php?t=179\n"
 "2. Issue the commands:\n"
 "\t   Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,AREA,GAZERES,HREF,PUPIL,STATUS,INPUT,HMARKER');\n"
@@ -434,7 +434,7 @@ boolean TrackerOKForRawValues(void) {
 	if (Verbosity() > 6) mexPrintf("Eyelink: TrackerOKForRawValues: eyelink dll version: '%s'\n",buf); //currently "1,8,1,0"
 	if(sscanf(buf,"%d,%d,%d,%d",&(ver[0]),&(ver[1]),&(ver[2]),&(ver[3]))==4){
 		if(ver[0]<1 || (ver[0]==1 && ver[1]<8) || (ver[0]==1 && ver[1]==8 && ver[2]<1)){
-			sprintf(errmsg, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6).",buf); //no snprintf in msvs?  bug: buff overflow
+			sprintf(errmsg, "EyeLink: eyelink_dll_version reports '%s' - collecting raw values requires that you install 1.8.1.0 or higher (https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)).",buf); //no snprintf in msvs?  bug: buff overflow
 			PsychErrorExitMsg(PsychError_unimplemented, errmsg);
 		}
 	} else {

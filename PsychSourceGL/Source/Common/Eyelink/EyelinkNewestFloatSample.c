@@ -107,7 +107,7 @@ static char synopsisStringRaw[] =
 	"Normal samples do not contain the corneal reflection data, but some (non-saccade-based) calibration methods require this information.\n"
 	"The Eyelink 1000 can be configured to send this information as part of 'raw' samples.\n"
 	"Sol Simpson at SR-Research emphasizes that this is not officially supported or guaranteed.\n"
-	"1. You may need to install Eyelink.dll from the latest software developer kit at https://www.sr-support.com/forums/showthread.php?t=6\n"
+	"1. You may need to install Eyelink.dll from the latest software developer kit at https://www.sr-support.com/forums/showthread.php?t=6 (windows) or https://www.sr-support.com/forums/showthread.php?t=15 (osx)\n"
 	"2. Issue the commands:\n"
 	"\t   Eyelink('command','link_sample_data = LEFT,RIGHT,GAZE,AREA,GAZERES,HREF,PUPIL,STATUS,INPUT,HMARKER');\n"
 	"\t   Eyelink('command','inputword_is_window = ON');\n"
