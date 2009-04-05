@@ -851,18 +851,28 @@ static HFONT				font=NULL;		// Handle to current font.
 static HDC					dc = NULL;		// Handle to current memory device context.
 static BYTE*				pBits = NULL;	// Pointer to dc's DIB bitmap memory.
 static HBITMAP				hbmBuffer;		// DIB.
+static HBITMAP				defaultDIB;
 static int					oldWidth=-1;	// Size of last target window for drawtext.
 static int					oldHeight=-1;	// dto.
 static PsychWindowRecordType* oldWin = NULL; // Last window to which text was drawn to.
 
 void CleanupDrawTextGDI(void)
 {
-	if (font) DeleteObject(font);
+	if (font) {
+		if (!DeleteObject(font)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release font! Expect memory leaks!!!\n");
+	}
 	font = NULL;
 	
 	if (dc) {
-		DeleteObject((HGDIOBJ) hbmBuffer);
-		DeleteObject((HGDIOBJ) dc);
+		// Unselect hbmBuffer from dc by reselecting default DIB:
+		SelectObject(dc, defaultDIB);
+
+		// Release now detached hbmBuffer:
+		if (!DeleteObject((HGDIOBJ) hbmBuffer)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release DIB buffer! Expect memory leaks!!!\n");
+
+		// Delete device context:
+		if (!DeleteDC(dc)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release device context DC! Expect memory leaks!!!\n");
+
 		hbmBuffer = NULL;
 		pBits = NULL;
 		dc = NULL;
@@ -893,9 +903,10 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
     GLenum						normalSourceBlendFactor, normalDestinationBlendFactor;
 	POINT						xy;
     int							BITMAPINFOHEADER_SIZE = sizeof(BITMAPINFOHEADER) ;
-	BITMAPINFOHEADER			abBitmapInfo;
+	static BITMAPINFOHEADER		abBitmapInfo;
     BITMAPINFOHEADER*			pBMIH = (BITMAPINFOHEADER*) &abBitmapInfo;
 	RECT						trect, brect;
+	HFONT						defaultFont;
 	unsigned char				colorkeyvalue;
 	unsigned char*				scanptr;
 	int skiplines, renderheight;	
@@ -974,8 +985,17 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	// Reallocate device context and bitmap if needed:
 	if ((dc!=NULL) && (oldWidth != PsychGetWidthFromRect(winRec->rect) || oldHeight!=PsychGetHeightFromRect(winRec->rect))) {
 		// Target windows size doesn't match size of our backingstore: Reallocate...
-		DeleteObject((HGDIOBJ) hbmBuffer);
-		DeleteObject((HGDIOBJ) dc);
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In DrawTextGDI: Reallocating backing DC due to change in target window size: %i x %i pixels. \n", (int) PsychGetWidthFromRect(winRec->rect), (int) PsychGetHeightFromRect(winRec->rect));
+
+		// Unselect hbmBuffer from dc by reselecting default DIB:
+		SelectObject(dc, defaultDIB);
+
+		// Release now detached hbmBuffer:
+		if (!DeleteObject((HGDIOBJ) hbmBuffer)) printf("PTB-WARNING: In DrawTextGDI: Failed to release DIB buffer! Expect memory leaks!!!\n");
+
+		// Delete device context:
+		if (!DeleteDC(dc)) printf("PTB-WARNING: In DrawTextGDI: Failed to release device context DC! Expect memory leaks!!!\n");
+
 		hbmBuffer = NULL;
 		dc = NULL;		
 	}
@@ -1004,8 +1024,9 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 											  (VOID **) &pBits,
 											  NULL,
 											  0);
-		// Select DIB into DC.
-		SelectObject(dc, hbmBuffer);
+
+		// Select DIB into DC. Store reference to default DIB:
+		defaultDIB = (HBITMAP) SelectObject(dc, hbmBuffer);
 	}
 	
     // Does the font (better, its display list) need to be build or rebuild, because
@@ -1016,10 +1037,15 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	//
     // This routine will check it and perform all necessary ops if so...
 	if ((winRec->textAttributes.needsRebuild) || (oldWin != winRec)) {
-		// Delete the old font object, if any:
-		if (font) DeleteObject(font);
-		font = NULL; 
+		// Need to realloc font:
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In DrawTextGDI: Rebuilding font due to window switch or rebuild request: needit = %i , oldwin = %p vs. newwin = %p \n", winRec->textAttributes.needsRebuild, oldWin, winRec);
 		
+		// Delete the old font object, if any:
+		if (font) {
+			if (!DeleteObject(font)) printf("PTB-WARNING: In DrawTextGDI: Failed to release font! Expect memory leaks!!!\n");
+		}
+		font = NULL; 
+
 		switch(PsychPrefStateGet_TextAntiAliasing()) {
 			case 0:		// No anti-aliasing:
 				outputQuality = NONANTIALIASED_QUALITY;
@@ -1064,8 +1090,8 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	oldWin = winRec;
 	
 	// Select the font we created:
-	SelectObject(dc, font);
-	
+	defaultFont = (HFONT) SelectObject(dc, font);
+
 	if (yPositionIsBaseline) {
 		// Y position of drawing cursor defines distance between top of text and
 		// baseline of text, i.e. the textheight excluding descenders of letters:
@@ -1144,6 +1170,9 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		// Release unicode textstring, if any:
 		if (textUniString) free(textUniString);
 		
+		// Restore to default font after text drawing:
+		SelectObject(dc, defaultFont);
+
 		// Done, return:
 		return(PsychError_none);
 	}
@@ -1205,7 +1234,6 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		colorkeyvalue = (unsigned char)((((unsigned int) *scanptr) * bincolors[3]) >> 8);
 		*(scanptr++) = bincolors[2];	 // Copy red text color to red byte.
 		*(scanptr++) = colorkeyvalue;	 // Copy final alpha value to alpha byte.
-//		*(scanptr++) = (unsigned char)(128 + colorkeyvalue/2);	 // Copy alpha value to alpha byte.
 	}
 	
 	// Save all GL state:
@@ -1243,6 +1271,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 
     // Setup unpack mode and position for blitting of the bitmap to screen:
 	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
 	// MK: Subracting one should be correct, but isn't (visually). Maybe a
 	// a side-effect of gfx-rasterizer inaccuracy or off-by-one error in our
 	// PsychSetupView() code?!?
@@ -1278,6 +1307,9 @@ drawtext_noop:
 	GetCurrentPositionEx(dc, &xy);
     winRec->textAttributes.textPositionX = xy.x;
     winRec->textAttributes.textPositionY = xy.y;
+	
+	// Restore to default font after text drawing:
+	SelectObject(dc, defaultFont);
 	
 	// We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:    
