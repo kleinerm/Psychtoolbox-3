@@ -253,8 +253,8 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 	double* callargs;
 	double rc;
 
-	// Create a Matlab double matrix with 4 elements: 1st is command code '1'
-	// 2nd is the double pointer, 3rd is image width, 4th is image height:
+	// Create a Matlab double matrix with 4 elements: 1st is command code 
+	// others are available for use specific to each command
 	outputs[0]  = NULL;
 	inputs[0]   = mxCreateDoubleMatrix(1, 4, mxREAL);
 	callargs    = mxGetPr(inputs[0]);
@@ -519,6 +519,8 @@ void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 	return;
 }
 
+#define ELKEY_DOWN 1 //temporary while we wait for sr-research's lib to get updated with this
+
 INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
 {
 	int ky = 0;
@@ -532,7 +534,7 @@ INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
 		// Fill Eyelinks InputEvent struct:
 		memset(key_input, 0, sizeof(InputEvent));
 		key_input->key.key = ky;
-		key_input->key.state = 1;
+		key_input->key.state = ELKEY_DOWN; 
 		key_input->key.type = KEYINPUT_EVENT;
 		key_input->key.modifier = 0; //event.key.keysym.mod;
 		key_input->key.unicode = 0;//event.key.keysym.unicode;

@@ -176,6 +176,7 @@ PsychError EyelinkGetFloatDataRaw(void)
 					PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: GetFloatDataRaw:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
 				}
 				TrackerOKForRawValues();
+				memset(&fr, 0, sizeof(fr));
 				if(err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr)){
 					sprintf(errmsg, "Eyelink: GetFloatDataRaw: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2")); //no snprintf in msvs?  bug: buff overflow
 					PsychErrorExitMsg(PsychError_internal, errmsg);

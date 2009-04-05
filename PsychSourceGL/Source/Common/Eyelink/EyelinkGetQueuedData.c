@@ -142,12 +142,11 @@ PURPOSE:
 	also eliminates usage error of supplying incorrect type from Eyelink('GetNextDataType') to Eyelink('GetFloatData').
  
  TODO:
-    -suganthan says: make sure that you 0 out the FSAMPLE_RAW before you pass in, so you can do a sanity check (in case tracker misconfiguration wasn't caught with MISSING_DATA's)
     -enable BINOCULAR raws
     -request sr research to let us read inputword_is_window
     -option for output in struct format?  would allow deprecating EyelinkGetFloatData, EyelinkGetFloatDataRaw, and EyelinkGetNextDataType
     -would NaN be a better choice (PsychGetNanValue) than MISSING_DATA for LOST_DATA_EVENT?  right now, MISSING_DATA would not fit into the uint type of many of the fields, if we were to offer them in correctly-typed fields of a struct
-    -(also in GetFloatData and ImageModeDisplay) replace all sprintf's with snprintf and _snprintf ala:
+    -(also in GetFloatData and ImageModeDisplay) replace all sprintf's with snprintf and _snprintf ala (note mario is adding a macro for this, probably to be called snprintf):
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 	snprintf(blah, sizeof(blah) - 1, "str",...);
 #else
@@ -220,6 +219,7 @@ PsychError EyelinkGetQueuedData(void)
 				if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: get_float called on sample\n");
 				if (useEye) {
 					if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: calling get_raw\n");
+					memset(&fr, 0, sizeof(fr));
 					if(err = eyelink_get_extra_raw_values_v2(&fs, eye, &fr)){
 						//snprintf(errmsg, ERR_BUFF_LEN, "Eyelink: GetQueuedData: eyelink_get_extra_raw_values_v2 returned error code %d: %s", err, eyelink_get_error(err,"eyelink_get_extra_raw_values_v2"));
 						if (Verbosity() > 6) mexPrintf("Eyelink: GetQueuedData: raw value error\n");

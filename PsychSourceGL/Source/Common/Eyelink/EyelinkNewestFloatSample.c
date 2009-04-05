@@ -171,6 +171,7 @@ PsychError EyelinkNewestFloatSampleRaw(void)
 				PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "EyeLink: NewestFloatSampleRaw:  eye argument must be LEFT_EYE or RIGHT_EYE as returned by EyelinkInitDefaults\n");
 			}
 			TrackerOKForRawValues();
+			memset(&structFloatSampleRaw, 0, sizeof(structFloatSampleRaw));
 			eyelink_get_extra_raw_values_v2(&structFloatSample, eye, &structFloatSampleRaw);
 		} else {
 			mexPrintf("EYELINK: WARNING! Omission of the eye argument to NewestFloatSampleRaw is deprecated.\n");

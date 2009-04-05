@@ -20,6 +20,8 @@
 					rather than the way we do it now.
  29/06/06	fwc		fixed EyelinkInitializeDummy (didn't set giSystemInitialized)
  30-10-06	fwc		no longer use PsychErrorExitMsg to report error, otherwise we cannot connect in dummy mode later on
+ 4-4-09     mk+edf  added registration of callback
+ 
 	TARGET LOCATION:
  
  Eyelink.mexmac resides in:
@@ -40,10 +42,12 @@ char useDummyString[] = "[status =] Eyelink('InitializeDummy' [, displayCallback
 static char synopsisString[] = 
 "Initializes SIMLINK and Ethernet system\n"
 "Opens connection, reports any problem.\n"
+"Optional displayCallbackFunction registers the name of an m-file on the path that will handle callbacks from eyelink (typically 'PsychEyelinkDispatchCallback' to display the camera image in PTB).\n"
 "Returns: 0 if OK, -1 if error";
 
 static char synopsisDummyString[] = 
 "Initializes eyelink in dummy mode, useful for debugging\n"
+"Optional displayCallbackFunction registers the name of an m-file on the path that will handle callbacks from eyelink (typically 'PsychEyelinkDispatchCallback' to display the camera image in PTB).\n"
 "Returns: 0 if OK, -1 if error";
 
 static char seeAlsoString[] = "";
@@ -100,17 +104,12 @@ PsychError EyelinkInitialize(void)
 	}
 
 	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
-        if (strlen(callbackString) > 0) {
-    		PsychEyelink_init_core_graphics(callbackString);
-        }
-        else {
-            PsychEyelink_uninit_core_graphics();
-        }
+	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {	
+		PsychEyelink_init_core_graphics(callbackString);
 	}
 	else {
-		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");
-	}
+		PsychEyelink_uninit_core_graphics();
+    }
 
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
@@ -168,21 +167,16 @@ PsychError EyelinkInitializeDummy(void)
 			giSystemInitialized = 1;
 		}				
 	}
-	
+
 	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString)) {
-        if (strlen(callbackString) > 0) {
-    		PsychEyelink_init_core_graphics(callbackString);
-            // TEST Code:
-    		PsychEyelink_TestEyeImage();
-        }
-        else {
-            PsychEyelink_uninit_core_graphics();
-        }
+	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {	
+		PsychEyelink_init_core_graphics(callbackString);
+		// TEST Code:
+		PsychEyelink_TestEyeImage();
 	}
 	else {
-		PsychEyelink_init_core_graphics("PsychEyelinkDispatchCallback");
-	}
+		PsychEyelink_uninit_core_graphics();
+    }
 	
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
