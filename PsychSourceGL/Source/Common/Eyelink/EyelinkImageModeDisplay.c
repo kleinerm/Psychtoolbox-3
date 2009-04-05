@@ -89,22 +89,6 @@ PsychError EyelinkImageModeDisplay(void)
 	
 	iResult = image_mode_display();
 	
-	/* disabling this check cuz eyelink_current_mode() always comes back as 0 or 1, which doesn't bitand with IN_IMAGE_MODE (32).  why doesn't this work?
-	while(eyelink_wait_for_mode_ready(WAIT_MS) && loopNum++<MAX_LOOPS){
-	}
-	
-	if(iMode=eyelink_wait_for_mode_ready(0)){
-		sprintf(buff,"Eyelink: ImageModeDisplay: eyelink_wait_for_mode_ready returned %d instead of 0.",iMode);
-		PsychErrorExitMsg(PsychError_internal, buff);
-	}
-	
-	iMode=eyelink_current_mode();
-	if(!(iMode & IN_IMAGE_MODE)){
-		sprintf(buff,"Eyelink: ImageModeDisplay: eyelink_current_mode returned %d, which doesn't contain flag %d.",iMode,IN_IMAGE_MODE);
-		PsychErrorExitMsg(PsychError_internal, buff);
-	}
-	 **/
-	
 	// Optionally dump the whole hookfunctions struct:
 	if (Verbosity() > 5) { printf("Eyelink-Debug: ImageModeDisplay: PostOp: \n"); PsychEyelink_dumpHookfunctions(); }
 
