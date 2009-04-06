@@ -178,7 +178,7 @@ if ~isempty(calxy)
 end
 
 % Draw title:
-if ~isempty(imgtitle)
+if ~isempty(imgtitle) && ~IsOSX %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
 	Screen('DrawText', win, imgtitle, eyewidth / 2, 10, [255 0 0]);
 end
 

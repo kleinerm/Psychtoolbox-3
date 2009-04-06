@@ -4,8 +4,8 @@ try
     ListenChar(2)
     w = Screen('OpenWindow', max(Screen('Screens')));
     el=EyelinkInitDefaults(w);
-    PsychEyelinkDispatchCallback(el);
-    if Eyelink('Initialize', 'PsychEyelinkDispatchCallback') ~=0
+    %PsychEyelinkDispatchCallback(el);
+    if Eyelink('Initialize') ~=0
         error('eyelink failed init')
     end
     %Eyelink('Verbosity',7);
