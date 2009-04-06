@@ -87,7 +87,7 @@ void PsychHIDCloseAllUSBDevices(void)
 	int i;
 	for (i = 0; i < PSYCH_HID_MAX_GENERIC_USB_DEVICES; i++) {
 		if (usbDeviceRecordBank[i].valid) {
-			PSYCHHIDOSCloseUSBDevice(PsychHIDGetUSBDevice(i));
+			PsychHIDOSCloseUSBDevice(PsychHIDGetUSBDevice(i));
 		}
 	}
 }

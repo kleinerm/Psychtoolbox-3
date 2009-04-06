@@ -44,6 +44,7 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 	int m, n, p, err;
 	const int USB_OUTTRANSFER = 0x80;	// bmRequestType & USB_OUTTRANSFER? -> Receive data from device.
 	psych_uint8 *buffer = NULL;
+	char *name="",*description="";
 	
 	// Setup the help features.
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -85,7 +86,7 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 		// Get the input buffer if it was specified.
 		m=n=p=0;
 		PsychAllocInUnsignedByteMatArg(7, FALSE, &m, &n, &p, &buffer);
-		if (p != 1) PsychErrorExitMsg(PsychError_user, "Argument inData must be a 1D vector or 2D matrix of bytes! This is a 3D matrix!");
+		if (((m * n) > 0) && (p != 1)) PsychErrorExitMsg(PsychError_user, "Argument inData must be a 1D vector or 2D matrix of bytes! This is a 3D matrix!");
 		
 		// Is the input buffer at least as big as the provided wLength argument?
 		if ((m * n) < wLength) PsychErrorExitMsg(PsychError_user, "Argument inData has less elements then provided wLength argument! This must match!");
@@ -95,9 +96,11 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 	}
 	
 	// Make the actual control request.
-	if ((err = PsychHIDControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint8) bRequest, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0) {
+	if ((err = PsychHIDOSControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint8) bRequest, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0) {
 		// Failed! err contains a non-zero system specific error code from the underlying OS:
-		// MK TODO: Should we fail here, or should we be more lenient and rather return with 'err' as 2nd return argument or something like that?
+		PsychHIDErrors(err, &name, &description); 
+		printf("PsychHID-ERROR: Control transfer failed: Errorcode: %08x = '%s' [%s]\n\n", err, name, description);
+
 		PsychErrorExitMsg(PsychError_system, "The USB Control transfer failed.");
 	}
 

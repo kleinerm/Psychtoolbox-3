@@ -81,6 +81,10 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 	UInt16                  product;
 	UInt16                  release;
 	bool					deviceFound = false;
+	char *name="",*description="";
+
+	// Init errorcode to failed:
+	*errorcode = -2;
 	
 	// Set up matching dictionary for class IOUSBDevice and its subclasses
 	matchingDict = IOServiceMatching(kIOUSBDeviceClassName);
@@ -101,6 +105,9 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 	
 	kr = IOServiceGetMatchingServices(kIOMasterPortDefault, matchingDict, &iterator);
 	if (kr) {
+		*errorcode = (int) kr;
+		PsychHIDErrors(*errorcode, &name, &description); 
+		printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 		PsychErrorExitMsg(PsychError_system, "Couldn't get matching services\n");
 	}
 	
@@ -115,6 +122,9 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 		IOObjectRelease(usbDevice);
 
 		if ((kIOReturnSuccess != kr) || !plugInInterface) {
+			*errorcode = (int) kr;
+			PsychHIDErrors(*errorcode, &name, &description); 
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);			
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Unable to create a plug-in (%08x)\n", kr);
 			continue;
 		}
@@ -128,6 +138,9 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 		(*plugInInterface)->Release(plugInInterface);
 		
 		if (result || !dev) {
+			*errorcode = (int) result;
+			PsychHIDErrors(*errorcode, &name, &description); 
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			printf("PsychHID: PsychHIDOSOpenUSBDevice: WARNING! Couldn't create a device interface (%08x)\n", (int) result);
 			continue;
 		}
@@ -159,6 +172,10 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 		kr = (*dev)->USBDeviceOpen(dev);
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->Release(dev);
+			
+			*errorcode = (int) kr;
+			PsychHIDErrors(*errorcode, &name, &description); 
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			PsychErrorExitMsg(PsychError_system, "Unable to open USB device.");
 		}
 		
@@ -167,12 +184,19 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 		if (kr != kIOReturnSuccess) {
 			(void) (*dev)->USBDeviceClose(dev);
 			(void) (*dev)->Release(dev);
+
+			*errorcode = (int) kr;
+			PsychHIDErrors(*errorcode, &name, &description); 
+			printf("PsychHID: PsychHIDOSOpenUSBDevice: IO-KIT error: %08x = '%s' [%s]\n", *errorcode, name, description);
 			PsychErrorExitMsg(PsychError_system, "Unable to configure USB device.");
 		}
 		
 		// Success! Assign device interface and mark device record as active/open/valid:
 		devRecord->device = dev;
 		devRecord->valid = 1;
+		
+		// Set errorcode to success:
+		*errorcode = 0;
 	}
 	else {
 		// No matching device found. NULL-out the record, we're done.
@@ -199,18 +223,19 @@ IOReturn ConfigureDevice(IOUSBDeviceInterface **dev, int configIdx)
 	kr = (*dev)->GetNumberOfConfigurations(dev, &numConfig);	
 	if (kr || (numConfig == 0)) {
 		printf("PsychHID: USB ConfigureDevice: ERROR! Error getting number of configurations or no configurations available at all (err = %08x)\n", kr);
-		return -1;
+		return(kr);
 	}
 	
 	if (configIdx < 0 || configIdx >= (int) numConfig) {
 		printf("PsychHID: USB ConfigureDevice: ERROR! Provided configuration index %i outside support range 0 - %i for this device!\n", configIdx, (int) numConfig);
+		return(-1);
 	}
 	
 	// Get the configuration descriptor for index 'configIdx':
 	kr = (*dev)->GetConfigurationDescriptorPtr(dev, (UInt8) configIdx, &configDesc);
 	if (kr) {
 		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't get configuration descriptor for index %d (err = %08x)\n", configIdx, kr);
-		return -1;
+		return(kr);
 	}
 	
 	// Set the device's configuration. The configuration value is found in
@@ -218,7 +243,7 @@ IOReturn ConfigureDevice(IOUSBDeviceInterface **dev, int configIdx)
 	kr = (*dev)->SetConfiguration(dev, configDesc->bConfigurationValue);
 	if (kr) {
 		printf("PsychHID: USB ConfigureDevice: ERROR! Couldn't set configuration to value %d (err = %08x)\n", (int) configDesc->bConfigurationValue, kr);
-		return -1;
+		return(kr);
 	}
 	
 	return kIOReturnSuccess;

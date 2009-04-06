@@ -46,7 +46,7 @@ PsychError PSYCHHIDCloseUSBDevice(void)
 	if (PsychCopyInIntegerArg(1, FALSE, &usbHandle)) {
 		// Specific device given. Try to close it. This will error-out if no such
 		// device is open:
-		PSYCHHIDOSCloseUSBDevice(PsychHIDGetUSBDevice(usbHandle));
+		PsychHIDOSCloseUSBDevice(PsychHIDGetUSBDevice(usbHandle));
 	}
 	else {
 		// No specific handle given: Close and release all open generic USB devices:

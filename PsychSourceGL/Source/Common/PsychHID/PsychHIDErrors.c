@@ -63,6 +63,7 @@ int PsychHIDErrors(int error,char **namePtr,char **descriptionPtr)
 	// IOKit error codes. IOReturn.h. Source: "Black & Bleu" application. http://www.bleurose.com/pages/blableu.html
 	// path /System/Library/Frameworks/IOKit.framework/Versions/A/Headers/IOReturn.h
 	case 0xe00002bc: *namePtr="kIOReturnError"; *descriptionPtr="A general error was detected by one of the general routines of the I/O kit framework."; break;
+	case 0xe00002c5: *namePtr="kIOReturnExclusiveAccess"; *descriptionPtr="Failed to open a device for exclusive access, because it is already opened. Need to close it first."; break;
 	case 0xe00002c7: *namePtr="kIOReturnUnsupported"; *descriptionPtr="An unsupported function was called by one of the general routines of the I/O Kit framework."; break;
 	case 0xe00002d9: *namePtr="kIOReturnNotAttached"; *descriptionPtr="A 'device not attached' condition was detected by one of the general routines of the I/O Kit framework."; break;
 	case 0xe00002ed: *namePtr="kIOReturnNotResponding"; *descriptionPtr="A 'device not responding' condition was detected by one of the general routines of the I/O Kit framework."; break;
