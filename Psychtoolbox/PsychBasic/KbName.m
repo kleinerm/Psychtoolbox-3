@@ -153,6 +153,8 @@ function kbNameResult = KbName(arg)
 %   27.10.06    mk      Yet another bugfix for KbName, see forum message 5247.
 %   15.03.07    mk      Minimal fix to recognize uint8 type bools on Linux
 %                       to fix some issue with Matlab7 on Linux.
+%    6.04.09    mk      In KbName('UnifyKeyNames') Override
+%                       'LockingNumLock' to become 'NumLock' on OS/X.
 
 %   TO DO
 %
@@ -783,6 +785,12 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{find(strcmp(kkLinux, 'Num_Lock'))} = 'NumLock';
             kk{find(strcmp(kkLinux, 'Tab'))} = 'tab';
         end
+        
+        if IsOSX
+            kk{131} = 'NumLock'; % Override 'LockingNumLock' ...
+            % FIXME: kk{83} = 'NumLock'; % Override 'NumLockClear' as well?!?
+        end
+        
         % End of keyname unification code.
     else
         if IsOctave
