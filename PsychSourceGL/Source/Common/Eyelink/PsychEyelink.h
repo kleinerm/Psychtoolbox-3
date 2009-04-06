@@ -1,6 +1,6 @@
 /*
 
-	/osxptb/trunk/PsychSourceGL/Source/OSX/Eyelink/PsychEyelink.h
+	PsychSourceGL/Source/Common/Eyelink/PsychEyelink.h
   
 	PROJECTS: Eyelink 
   
@@ -9,7 +9,7 @@
 		E.Peters@ai.rug.nl				emp
 		f.w.cornelissen@med.rug.nl		fwc
   
-	PLATFORMS:	Currently only OS X  
+	PLATFORMS:	All.  
     
 	HISTORY:
 
@@ -139,6 +139,7 @@ PsychError EyelinkGetQueuedData(void);
 PsychError EyelinkTrackerTime(void);
 PsychError EyelinkTimeOffset(void);
 PsychError EyelinkVerbosity(void);
+PsychError EyelinkTestSuite(void);
 
 // PSYCH_IS_INCLUDED_Eyelink
 #endif

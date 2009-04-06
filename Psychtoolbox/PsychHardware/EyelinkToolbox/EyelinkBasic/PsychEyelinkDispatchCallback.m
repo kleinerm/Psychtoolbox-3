@@ -129,9 +129,13 @@ switch eyecmd
 
 	case 4,
 		% Image title:
-		fprintf('Eyelink image title is %s.\n', msg);
-		imgtitle = msg;
-
+		fprintf('Eyelink image title is %s. [Threshold = %f]\n', msg, callArgs(2));
+        if callArgs(2) ~= -1
+            imgtitle = sprintf('Title: %s [Threshold = %f]', msg, callArgs(2));
+        else
+            imgtitle = msg;
+        end
+        
 	case 5,
 		% Draw calibration target:
 		calxy = callArgs(2:3);
@@ -166,8 +170,7 @@ eyeheight = callArgs(4);
 % Return a standard PTB texture handle to it. If such a texture already
 % exists from a previous invocation of this routiene, just recycle it for
 % slightly higher efficiency:
-upsidedown = 0;
-eyelinktex = Screen('SetOpenGLTextureFromMemPointer', win, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, upsidedown, [], GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+eyelinktex = Screen('SetOpenGLTextureFromMemPointer', win, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
 
 % Draw texture centered in window:
 Screen('DrawTexture', win, eyelinktex);
@@ -178,11 +181,12 @@ if ~isempty(calxy)
 end
 
 % Draw title:
-if ~isempty(imgtitle) && ~IsOSX %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
+if ~isempty(imgtitle) %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
 	Screen('DrawText', win, imgtitle, eyewidth / 2, 10, [255 0 0]);
 end
 
-if ~IsOSX %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
+%if ~IsOSX %too slow on OSX, never get through all the scanlines of one image, and we eventually crash
+if exist('helpTxt', 'var')
 	Screen('DrawText',win,helpTxt,0,0,[0 0 0]);
 end
 

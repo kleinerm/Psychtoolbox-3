@@ -104,7 +104,8 @@ PsychError PsychModuleInit(void)
 	// added as of 22/03/09
 	PsychErrorExit(PsychRegister("GetQueuedData", &EyelinkGetQueuedData));
 	PsychErrorExit(PsychRegister("Verbosity", &EyelinkVerbosity));
-
+	PsychErrorExit(PsychRegister("TestSuite", &EyelinkTestSuite));
+	
 	//register synopsis and named subfunctions.
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 	PsychSetModuleAuthorByInitials("emp");

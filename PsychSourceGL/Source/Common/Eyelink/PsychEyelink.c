@@ -148,11 +148,13 @@ void PsychEyelink_init_core_graphics(const char* callback)
 	
 	// Assign runtime environment display callback function:
 	memset(eyelinkDisplayCallbackFunc, 0, sizeof(eyelinkDisplayCallbackFunc));
-    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+
 	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
-    #else
-	_snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
-    #endif
+//    #if PSYCH_SYSTEM != PSYCH_WINDOWS
+//	snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+//    #else
+//	_snprintf(eyelinkDisplayCallbackFunc, sizeof(eyelinkDisplayCallbackFunc) - 1, callback);
+//    #endif
     
 	// Assign hooks to Eyelink runtime:
 	setup_graphic_hook_functions(&fcns);
@@ -237,6 +239,10 @@ void PsychEyelink_TestEyeImage(void)
 			PsychEyelink_alert_printf_hook("Eyelink: Key detected.\n");
 			// Break out of loop on keycode 41 or 27 == ESCAPE on OS/X or Windows.
 			if (keyinput.key.key == 41 || keyinput.key.key == 27) break;
+			if (keyinput.key.key == TERMINATE_KEY) {
+				printf("Eyelink: TestSuite: WARNING: Abort code detected. Master abort.\n");
+				break;
+			}
 		}
 	}
 
@@ -252,6 +258,10 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 	PsychGenericScriptType	*outputs[1];
 	double* callargs;
 	double rc;
+	int retc;
+
+	// Callbacks forcefully disabled by error-handling? Return with error code if so:
+	if (0 == eyelinkDisplayCallbackFunc[0]) return(0xdeadbeef);
 
 	// Create a Matlab double matrix with 4 elements: 1st is command code 
 	// others are available for use specific to each command
@@ -270,10 +280,26 @@ int PsychEyelinkCallRuntime(int cmd, int x, int y, char* msg)
 		inputs[1] = NULL;
 	}
 	
+	// Call the runtime environment, on Matlab with the trap flag set, so control
+	// returns to us on error, instead of returning to Matlab runtime system. Eyelink
+	// runtime system doesn't like losing control and would crash otherwise!
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		mexSetTrapFlag(1);
+	#endif
+	
 	// Call the runtime environment:
-	if (mexCallMATLAB((cmd == 2) ? 1 : 0, outputs, (inputs[1]) ? 2 : 1, inputs, eyelinkDisplayCallbackFunc) > 0) {
-		printf("EYELINK: WARNING! PsychEyelinkCallRuntime() Failed to call eyelink callback function!\n");
+	if ((retc = mexCallMATLAB((cmd == 2) ? 1 : 0, outputs, (inputs[1]) ? 2 : 1, inputs, eyelinkDisplayCallbackFunc)) > 0) {
+		printf("EYELINK: WARNING! PsychEyelinkCallRuntime() Failed to call eyelink runtime callback function %s [rc = %i]!\n", eyelinkDisplayCallbackFunc, retc);
+		printf("EYELINK: WARNING! Make sure that function is on your Matlab/Octave path and properly initialized.\n");
+		printf("EYELINK: WARNING! May also be an error during execution of that function. Type ple at command prompt for error messages.\n");
+		printf("EYELINK: WARNING! Auto-Disabling all callbacks to the runtime environment for safety reasons.\n");
+		eyelinkDisplayCallbackFunc[0] = 0;
 	}
+
+	// Reset error handling to default on Matlab:
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		mexSetTrapFlag(0);
+	#endif
 
 	// Release our matrix again:
 	mxDestroyArray(inputs[0]);
@@ -379,7 +405,10 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 	byte* v0;
 	short i;
 	
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_draw_image_line()\n");
+	if (Verbosity() > 8) printf("Eyelink: Entering PsychEyelink_draw_image_line()\n");
+
+	// Callbacks forcefully disabled by error-handling? Simply return with no-op, if so:
+	if (0 == eyelinkDisplayCallbackFunc[0]) return;
 
 	// width, line, totlines within valid range?
 	if (width < 1 || width > eyewidth || line < 1 || line > eyeheight || totlines < 1 || totlines > eyeheight) {
@@ -416,7 +445,7 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			v0[(i*4) + 3] = 255;
 		}
 
-		if (Verbosity() > 6) printf("Eyelink: PsychEyelink_draw_image_line(): Scanline %i received.\n", (int) line);
+		if (Verbosity() > 8) printf("Eyelink: PsychEyelink_draw_image_line(): Scanline %i received.\n", (int) line);
 
 		// Complete new eye image received?
 		if (line == totlines) {
@@ -441,12 +470,27 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 			callargs[2] = eyewidth;
 			callargs[3] = eyeheight;
 
-			// Call the runtime environment:
+			// Call the runtime environment, on Matlab with the trap flag set, so control
+			// returns to us on error, instead of returning to Matlab runtime system. Eyelink
+			// runtime system doesn't like losing control and would crash otherwise!
+			#if PSYCH_LANGUAGE == PSYCH_MATLAB
+				mexSetTrapFlag(1);
+			#endif
+			
 			rc = mexCallMATLAB(0, outputs, 1, inputs, eyelinkDisplayCallbackFunc);
 			if(rc) {
-				printf("EYELINK: WARNING! Failed to call eyelink camera image display function!\n");
+				printf("EYELINK: WARNING! Failed to call eyelink camera image display callback function %s [rc=%i]!\n", eyelinkDisplayCallbackFunc, rc);
+				printf("EYELINK: WARNING! Make sure that function is on your Matlab/Octave path and properly initialized.\n");
+				printf("EYELINK: WARNING! May also be an error during execution of that function. Type ple at command prompt for error messages.\n");
+				printf("EYELINK: WARNING! Auto-Disabling all callbacks to the runtime environment for safety reasons.\n");
+				eyelinkDisplayCallbackFunc[0] = 0;
 			}
-			
+
+			// Reset error handling to default on Matlab:
+			#if PSYCH_LANGUAGE == PSYCH_MATLAB
+				mexSetTrapFlag(0);
+			#endif
+
 			// Release our matrix again:
 			mxDestroyArray(inputs[0]);
 		}
@@ -484,8 +528,12 @@ INT16  ELCALLBACK PsychEyelink_setup_cal_display(void)
 	if (Verbosity() > 5) printf("Eyelink: Entering PsychEyelink_setup_cal_display()\n");
 
 	// Tell runtime to setup calibration display: Command code 7.
-	PsychEyelinkCallRuntime(7, 0, 0, NULL);
+	if (0xdeadbeef == PsychEyelinkCallRuntime(7, 0, 0, NULL)) {
+		// Error condition. Return error to eyelink runtime:
+		return(-1);
+	}
 
+	// Return success:
 	return(0);
 }
 
@@ -519,17 +567,46 @@ void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title)
 	return;
 }
 
+#ifndef ELKEY_DOWN
 #define ELKEY_DOWN 1 //temporary while we wait for sr-research's lib to get updated with this
+#endif
 
 INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput)
 {
 	int ky = 0;
+	double tnow;
+	static double tlastquery = 0;
+	const  double tmininterval = 0.1;	// Allow one query every 0.1 seconds.
 	InputEvent *key_input = keyinput;
 
-	if (Verbosity() > 6) printf("Eyelink: Entering PsychEyelink_get_input_key()\n");
+	// Throttling routine:
+	// We don't want key queries to call out to the runtime too often, as this
+	// creates a quite significant overhead, e.g., approx. 1 msec for a KbCheck
+	// for a fast 2009'ish machine on OS/X!
+	PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+	if (tnow - tlastquery < tmininterval) {
+		// Last invocation less than tmininterval seconds away. Throttle this,
+		// we just return "no key pressed".
+		if (Verbosity() > 9) printf("Eyelink: In PsychEyelink_get_input_key(): Throttling...\n");
+		return(0);
+	}
+	else {
+		// Last invocation longer than tmininterval seconds away. Accept this
+		// query and update timestamp:
+		tlastquery = tnow;
+	}
+	
+	if (Verbosity() > 7) printf("Eyelink: Entering PsychEyelink_get_input_key()\n");
 
 	// Call runtime for keycode of pressed key (command code 2):
-	ky = PsychEyelinkCallRuntime(2, 0, 0, NULL);
+	if ((ky = PsychEyelinkCallRuntime(2, 0, 0, NULL)) == 0xdeadbeef) {
+		// Error condition in runtime callback! Can't progress. We try to
+		// shutdown the current eyelink runtime operation by sending a fake
+		// keycode corresponding to the terminate key:
+		if (Verbosity() > 0) printf("Eyelink: In PsychEyelink_get_input_key(): Error condition detected: Trying to send TERMINATE_KEY abort keycode!\n");
+		ky = TERMINATE_KEY;
+	}
+	
 	if (ky > 0) {
 		// Fill Eyelinks InputEvent struct:
 		memset(key_input, 0, sizeof(InputEvent));
