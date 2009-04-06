@@ -125,11 +125,6 @@ typedef unsigned char bool;
 	typedef int mwSize;
 #endif
 
-// Old style: manual setup. Not needed anymore...
-//#ifndef USE_MWSIZE
-//typedef int mwSize;
-//#endif
-
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
         typedef bool                            boolean;
@@ -143,17 +138,6 @@ typedef unsigned char bool;
         #endif
         typedef boolean                         Boolean;
         typedef char                            Str255[255];
-//        #if PSYCH_LANGUAGE == PSYCH_MATLAB
-//        // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
-//        #ifndef mxLOGICAL_CLASS
-//        #define mxLOGICAL_CLASS mxUINT8_CLASS
-//        #endif
-//        #define mxGetLogicals(p) ((PsychNativeBooleanType*)mxGetData((p)))
-//        mxArray* mxCreateNativeBooleanMatrix3D(int m, int n, int p);
-//
-//        #define mxCreateLogicalMatrix(m,n) mxCreateNativeBooleanMatrix3D((m), (n), 1)
-//
-//        #endif
 
         // We don't have Quicktime for Linux, so we provide a little hack to
         // make the compiler happy:
@@ -177,7 +161,7 @@ typedef unsigned char bool;
         typedef GLubyte                         ubyte;          
         typedef boolean                         mxLogical;
         typedef boolean                         Boolean;
-//        typedef char                            Str255[255];
+
         // The Visual C 6 compiler doesn't know about the __func__ keyword :(
         #define __func__ "UNKNOWN"
         // Matlab 5 doesn't know about mxLOGICAL_CLASS :(
@@ -230,8 +214,14 @@ typedef unsigned char bool;
 
 //macros
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        #define EXP  //nothing
-// This didn't work with Matlab5:	#define EXP __declspec(dllexport)
+	#define EXP  //nothing
+	
+	// Define snprintf as _snprintf to take Microsoft brain-damage into account:
+	#ifndef snprintf
+	#define snprintf _snprintf
+	#endif
+	
+	// This didn't work with Matlab5:	#define EXP __declspec(dllexport)
 #else
 	#define EXP  //nothing
 #endif

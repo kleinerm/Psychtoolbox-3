@@ -166,6 +166,33 @@ void InitPsychAuthorList(void)
 		"e_flister@yahoo.com",
 		"http://www.biology.ucsd.edu/labs/reinagel/"
 	);
+	PsychAddAuthor(
+	// Additions to Eyelink toolbox: 
+		"Christopher",
+		"D.",
+		"Burns",
+		"cdb",
+		"cburns@berkeley.edu",
+		"http://bankslab.berkeley.edu/"
+	);
+	PsychAddAuthor(
+	// Eyelink toolbox: 
+		"Frans",
+		"W.",
+		"Cornelissen",
+		"fwc",
+		"f.w.cornelissen@rug.nl",
+		"http://cornelis.med.rug.nl/LEO/people/frans/"
+	);
+	PsychAddAuthor(
+	// Eyelink toolbox: 
+		"Enno",
+		"M.",
+		"Peters",
+		"emp",
+		"E.Peters@ai.rug.nl",
+		""
+	);
 }
 
 

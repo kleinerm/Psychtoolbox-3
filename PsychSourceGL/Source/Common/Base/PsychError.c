@@ -122,7 +122,7 @@ static void InitErrorStrings(void)
 	errorStringsERROR[PsychError_scumberNotWindex]= 			"Window index expected, screen number received";
 	errorStringsERROR[PsychError_windexNotScumber]= 			"Screen number expected, window index received";
 	errorStringsERROR[PsychError_invalidIntegerArg]= 			"Supplied value was either fractional or outside of allowed range.";
-	errorStringsERROR[PsychError_invalidWindex]= 				"Invalid Window Index provided: It doesn't correspond to an open window or texture.\nDid you close it accidentally via Screen('Close') or Screen('CloseAll') ?";
+	errorStringsERROR[PsychError_invalidWindex]= 				"Invalid Window (or Texture) Index provided: It doesn't correspond to an open window or texture.\nDid you close it accidentally via Screen('Close') or Screen('CloseAll') ?";
 	errorStringsERROR[PsychError_invalidScumber]= 				"Invalid Screen Number";
 	errorStringsERROR[PsychError_invalidNumdex]= 				"Invalid or missing Screen Number or Window Index";
 	errorStringsERROR[PsychError_invalidColorArg]= 				"Invalid Color Argument";
