@@ -1,4 +1,4 @@
-function queuedDataDemo
+function EyelinkQueuedDataDemo
 % demos use of Eyelink('GetQueuedData')
 % records for a while, then plots samples, events, and execution times of GetQueuedData and some non-preallocated storage including data-conversion to take less space
 	
@@ -189,8 +189,7 @@ try
 
     WaitSecs(0.1);
     cleanup;
-catch ex
-    getReport(ex)
+catch
     cleanup;
 end
 
