@@ -20,12 +20,16 @@
 
 #include "PsychHID.h"
 
-static char useString[] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, wValue, wIndex, wLength, inData)";
-//																	1		   2			  3		  4		  5		   6
+static char useString[] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, inData)";
+//																	1		   2			  3		    4		5		6		 7
 static char synopsisString[] = "Communicates with a USB device via the control endpoint, aka control transfer.\n"
 							   "The results of out-transfers are returned in return argument 'outData' as a uint8 array.\n"
 							   "'usbHandle' is the handle of the USB device to control. 'bmRequestType' is the type of "
-							   "reqest: Either 0xC0 for an output control transfer, or 0x40 for in input control transfer. "
+							   "reqest: If bit 7 is set, this defines a transfer from device to host and 'outData' will be "
+							   "filled with at most 'wLength' bytes received from the device. Otherwise it defines a transfer "
+							   "from host to device and at most 'wLength' bytes will be transfered from 'inData' to "
+							   "the device.\n"
+							   "'bRequest' is the request id.\n"
 							   "'wValue' and 'wIndex' are device- and request specific values. 'wLength' is the amount of "
 							   "data to return at most on a out-transfer, or the amount of data provided for an in-transfer "
 							   "in the optional uint8 vector 'inData'. 'inData' must have at least as many elements as the "
@@ -36,8 +40,9 @@ static char seeAlsoString[] = "";
 PsychError PSYCHHIDUSBControlTransfer(void) 
 {
 	PsychUSBDeviceRecord	*dev;
-	int usbHandle, bmRequestType, wValue, wIndex, wLength, dataElementWidth;
+	int usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, dataElementWidth;
 	int m, n, p, err;
+	const int USB_OUTTRANSFER = 0x80;	// bmRequestType & USB_OUTTRANSFER? -> Receive data from device.
 	psych_uint8 *buffer = NULL;
 	
 	// Setup the help features.
@@ -48,16 +53,17 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 	}
 		
 	// Make sure the correct number of input arguments is supplied.
-	PsychErrorExit(PsychRequireNumInputArgs(5));
-	PsychErrorExit(PsychCapNumInputArgs(6));
+	PsychErrorExit(PsychRequireNumInputArgs(6));
+	PsychErrorExit(PsychCapNumInputArgs(7));
     PsychErrorExit(PsychCapNumOutputArgs(1));
 	
 	// Copy all input values.  The input data is interpreted as a byte array.
 	PsychCopyInIntegerArg(1, TRUE, &usbHandle);
 	PsychCopyInIntegerArg(2, TRUE, &bmRequestType);
-	PsychCopyInIntegerArg(3, TRUE, &wValue);
-	PsychCopyInIntegerArg(4, TRUE, &wIndex);
-	PsychCopyInIntegerArg(5, TRUE, &wLength);
+	PsychCopyInIntegerArg(3, TRUE, &bRequest);
+	PsychCopyInIntegerArg(4, TRUE, &wValue);
+	PsychCopyInIntegerArg(5, TRUE, &wIndex);
+	PsychCopyInIntegerArg(6, TRUE, &wLength);
 	
 	// Get 'dev'icerecord for handle: This will error-out if no such device open:
 	dev = PsychHIDGetUSBDevice(usbHandle);
@@ -66,7 +72,7 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 	// create enough memory to hold the out result.  If we're performing an in command, check to see if an
 	// input buffer was specified and grab a reference to it to pass to the actual control transfer function.
 	// In commands without an input buffer are assumed to be requests that don't require a buffer to function.
-	if (bmRequestType == 0xC0) {
+	if (bmRequestType & USB_OUTTRANSFER) {
 		if (wLength <= 0) {
 			PsychErrorExitMsg(PsychError_user, "Argument wLength must be > 0 for an out command!");
 		}
@@ -75,10 +81,10 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 		m = 1; n = wLength; p = 1;
 		PsychAllocOutUnsignedByteMatArg(1, TRUE, m, n, p, &buffer);
 	}
-	else if (bmRequestType == 0x40) {
+	else if (0 == (bmRequestType & USB_OUTTRANSFER)) {
 		// Get the input buffer if it was specified.
 		m=n=p=0;
-		PsychAllocInUnsignedByteMatArg(6, FALSE, &m, &n, &p, &buffer);
+		PsychAllocInUnsignedByteMatArg(7, FALSE, &m, &n, &p, &buffer);
 		if (p != 1) PsychErrorExitMsg(PsychError_user, "Argument inData must be a 1D vector or 2D matrix of bytes! This is a 3D matrix!");
 		
 		// Is the input buffer at least as big as the provided wLength argument?
@@ -89,7 +95,7 @@ PsychError PSYCHHIDUSBControlTransfer(void)
 	}
 	
 	// Make the actual control request.
-	if ((err = PsychHIDControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0) {
+	if ((err = PsychHIDControlTransfer(dev, (psych_uint8) bmRequestType, (psych_uint8) bRequest, (psych_uint16) wValue, (psych_uint16) wIndex, (psych_uint16) wLength, (void*) buffer)) != 0) {
 		// Failed! err contains a non-zero system specific error code from the underlying OS:
 		// MK TODO: Should we fail here, or should we be more lenient and rather return with 'err' as 2nd return argument or something like that?
 		PsychErrorExitMsg(PsychError_system, "The USB Control transfer failed.");

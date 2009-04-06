@@ -27,7 +27,7 @@
 IOReturn ConfigureDevice(IOUSBDeviceInterface **dev, int configIdx);
 
 // Perform device control transfer on USB device:
-int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
+int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData)
 {
 	IOUSBDevRequest request;
 	IOUSBDeviceInterface **dev;
@@ -35,13 +35,12 @@ int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmReq
 	// Setup the USB request data structure.
 	memset(&request, 0, sizeof(IOUSBDevRequest));
 	request.bmRequestType = bmRequestType;
+	request.bRequest = bRequest;
 	request.wValue = wValue;
 	request.wLength = wLength;
 	request.wIndex = wIndex;
 	request.pData = pData;
-	
-	// MK: FIXME: Why isn't the subfield request.bRequest set to some value? Intention or accident?
-	
+
 	dev = devRecord->device;
 	if (dev == NULL) {
 		PsychErrorExitMsg(PsychError_internal, "IOUSBDeviceInterface** device points to NULL device!");

@@ -157,7 +157,7 @@ PsychUSBDeviceRecord* PsychHIDGetUSBDevice(int usbHandle);
 // These must be defined for each OS in their own PsychHIDGenericUSBSupport.c.
 bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec);
 void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord);
-int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
+int PsychHIDOSControlTransfer(PsychUSBDeviceRecord* devRecord, psych_uint8 bmRequestType, psych_uint8 bRequest, psych_uint16 wValue, psych_uint16 wIndex, psych_uint16 wLength, void *pData);
 
 //end include once
 #endif

@@ -55,7 +55,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "\n\nSupport for access to generic USB devices: See 'help ColorCal2' for one usage example:\n\n";
 	synopsis[i++] = "usbHandle = PsychHID('OpenUSBDevice', vendorID, deviceID)";
 	synopsis[i++] = "PsychHID('CloseUSBDevice' [, usbHandle])";
-	synopsis[i++] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, wValue, wIndex, wLength, inData)";
+	synopsis[i++] = "outData = PsychHID('USBControlTransfer', usbHandle, bmRequestType, bRequest, wValue, wIndex, wLength, inData)";
 
 	synopsis[i++] = NULL;  // this tells PsychDisplayPsychHIDSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
