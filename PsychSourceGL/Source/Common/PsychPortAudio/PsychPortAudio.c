@@ -63,6 +63,10 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // Maximum number of audio channels we support per open device:
 #define MAX_PSYCH_AUDIO_CHANNELS_PER_DEVICE 256
 
+// Initial size (and increment) of audio buffer list. List will grow by that
+// many slots whenever it needs to grow:
+#define PSYCH_AUDIO_BUFFERLIST_INCREMENT 1024
+
 // Uncomment this define MUTEX_LOCK_TIME_STATS to enable tracing of
 // mutex lock hold times for low-level debugging and tuning:
 //#define MUTEX_LOCK_TIME_STATS 1
@@ -145,6 +149,188 @@ boolean		  lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 
 double debugdummy1, debugdummy2;
 
 boolean pa_initialized = FALSE;
+
+// Definition of an audio buffer:
+struct PsychPABuffer_Struct {
+	unsigned int locked;		// locked: >= 1 = Buffer in use by some active audio device. 0 = Buffer unused.
+	float*	 outputbuffer;		// Pointer to float memory buffer with sound output data.
+	int		 outputbuffersize;	// Size of output buffer in bytes.
+	unsigned int outchannels;	// Number of channels.
+};
+
+typedef struct PsychPABuffer_Struct PsychPABuffer;
+
+psych_mutex	bufferListmutex;			// Mutex lock for the audio bufferList.
+PsychPABuffer*  bufferList;				// Pointer to start of audio bufferList.
+unsigned int	bufferListCount;		// Number of slots allocated in bufferList.
+
+// Create a new audiobuffer for 'outchannels' audio channels and 'nrFrames' samples
+// per channel. Init header, allocate zero-filled memory, enqeue in bufferList.
+// Resize/Grow bufferList if neccessary. Return handle to buffer.
+int PsychPACreateAudioBuffer(unsigned int outchannels, unsigned int nrFrames)
+{
+	PsychPABuffer* tmpptr;
+	int i, handle;
+	
+	// Does a bufferList exist?
+	if ((bufferListCount <= 0) || (bufferList == NULL)) {
+		// First call. Allocate and zero-fill initial bufferList:
+		bufferList = (PsychPABuffer*) calloc(PSYCH_AUDIO_BUFFERLIST_INCREMENT, sizeof(PsychPABuffer));
+		if (NULL == bufferList) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free memory for allocating new audio buffers when trying to create internal bufferlist!");
+
+		bufferListCount = PSYCH_AUDIO_BUFFERLIST_INCREMENT;
+	} 
+
+	// Search a free slot in bufferList: We start at slot 1, ie., we skip slot 0.
+	// This because we don't want to ever return a handle of zero, as zero denotes the
+	// special per-audiodevice playback buffer.
+	i = 1; while ((i < bufferListCount) && (NULL != bufferList[i].outputbuffer)) i++;
+
+	// Success?
+	if ((i >= bufferListCount)) {
+		// Nope. Could not find free slot. Need to resize the bufferList with more capacity.
+		
+		// Need to lock bufferList lock to do this:
+		PsychLockMutex(&bufferListmutex);
+		
+		// Reallocate bufferList: This may relocate the bufferList:
+		tmpptr = (PsychPABuffer*) realloc((void*) bufferList, (bufferListCount + PSYCH_AUDIO_BUFFERLIST_INCREMENT) * sizeof(PsychPABuffer) );		
+		if (NULL == tmpptr) {
+			// Failed! Unlock mutex:
+			PsychUnlockMutex(&bufferListmutex);
+			
+			// Error out. The old allocation and parameters are still valid:
+			PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free memory for allocating new audio buffers when trying to grow internal bufferlist!");
+		}
+		
+		// Assign new pointer and size:
+		bufferList = tmpptr;
+		tmpptr = &(bufferList[i]);
+		bufferListCount += PSYCH_AUDIO_BUFFERLIST_INCREMENT;
+		
+		// Done resizing bufferlist. Unlock mutex:
+		PsychUnlockMutex(&bufferListmutex);
+		
+		// Initialize new segment of list to zero:
+		memset((void*) tmpptr, 0, PSYCH_AUDIO_BUFFERLIST_INCREMENT * sizeof(PsychPABuffer));
+		
+		// Ready. 'i' now points to first free slot in new segment of extended bufferList.
+	}
+	
+	// Assign slotid of bufferList slot in handle:
+	handle = i;
+
+	// Allocate actual data buffer:
+	bufferList[handle].outputbuffersize = (int) ((outchannels * nrFrames) * sizeof(float));
+	bufferList[handle].outchannels = outchannels;
+	
+	if (NULL == ( bufferList[handle].outputbuffer = (float*) calloc(1, bufferList[handle].outputbuffersize) )) {
+		// Out of memory: Release bufferList header and error out:
+		PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free memory for allocating new audio buffer when trying to allocate actual buffer!");
+	}
+	
+	// Ok, we're ready with an empty, silence filled audiobuffer. Return its handle:
+	return(handle);
+}
+
+// Delte all audio buffers and bufferList itself: Called during shutdown.
+void PsychPADeleteAllAudioBuffers(void)
+{
+	int i;
+	
+	if (bufferListCount > 0) {
+		
+		// Lock list:
+		PsychLockMutex(&bufferListmutex);
+
+		// Free all audio buffers:
+		for (i = 0; i < bufferListCount; i++) {
+			if (NULL != bufferList[i].outputbuffer) free(bufferList[i].outputbuffer);
+		}
+		
+		// Release memory for bufferheader array itself:
+		free(bufferList);
+		bufferList = NULL;
+		bufferListCount = 0;
+
+		// Unlock list:
+		PsychUnlockMutex(&bufferListmutex);
+	}
+	
+	return;
+}
+
+PsychPABuffer* PsychPAGetAudioBuffer(int handle)
+{
+	// Does buffer with given handle exist?
+	if ((handle < 0) || (handle >= bufferListCount) || (bufferList[handle].outputbuffer == NULL)) {
+		PsychErrorExitMsg(PsychError_user, "Invalid audio bufferhandle provided! The handle doesn't correspond to an existing audiobuffer.");
+	}
+	
+	return( &(bufferList[handle]) );
+}
+
+// Scan all schedules of all active and open audio devices to check which
+// audiobuffers are active and lock them:
+boolean PsychPAUpdateBufferReferences(void)
+{
+	int i, j;
+	boolean anylocked = FALSE;
+	
+	// First we reset all locked flags of all buffers:
+	for (i = 0; i < bufferListCount; i++) bufferList[i].locked = 0;
+	
+	// Scan all open audio devices:
+	for(i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) {
+		// Device open?
+		if (audiodevices[i].stream) {
+			// Schedule attached and device active?
+			if ((audiodevices[i].schedule) && ((audiodevices[i].state > 0) && Pa_IsStreamActive(audiodevices[i].stream))) {
+				// Active schedule. Scan it and mark all referenced buffers as locked:
+				for (j = 0; j < audiodevices[i].schedule_size; j++) {
+					// Slot active and with valid bufferhandle?
+					if ((audiodevices[i].schedule[j].mode > 0) && (audiodevices[i].schedule[j].bufferhandle > 0)) {
+						// Mark used and active audiobuffer as locked:
+						bufferList[ audiodevices[i].schedule[j].bufferhandle ].locked = 1;
+						anylocked = TRUE;
+					}
+				}
+			}
+		}
+	}
+	
+	return(anylocked);
+}
+
+// Delete audiobuffer 'handle' if this is possible. If it isn't possible
+// at the moment, 'waitmode' will determine the strategy:
+int PsychPADeleteAudioBuffer(int handle, int waitmode)
+{
+	// Retrieve buffer:
+	PsychPABuffer* buffer = PsychPAGetAudioBuffer(handle);
+	
+	// Make sure all buffer locked flags are up to date:
+	PsychPAUpdateBufferReferences();
+	
+	// Buffer locked?
+	if (buffer->locked) {
+		// Yes :-( In 'waitmode' zero we fail:
+		if (waitmode == 0) return(0);
+		
+		// In waitmode 1, we retry spin-waiting until buffer available:
+		while (buffer->locked) {
+			PsychYieldIntervalSeconds(yieldInterval);
+			PsychPAUpdateBufferReferences();
+		}
+	}
+	
+	// Delete buffer:
+	if (NULL != buffer->outputbuffer) free(buffer->outputbuffer);
+	memset(buffer, 0, sizeof(PsychPABuffer));
+	
+	// Success:
+	return(1);
+}
 
 static void PsychPALockDeviceMutex(PsychPADevice* dev)
 {
@@ -359,13 +545,27 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 			}
 			else
 			{
-				// Dynamic buffer... TODO
-				// *ret_playoutbuffer = [dev->schedule[slotid].bufferhandle];
-				// outsbsize = [dev->schedule[slotid].bufferhandle].outputbuffersize / sizeof(float);
-				// Until implemented, abort gracefully:
-				return(0);
+				// Dynamic buffer: Dereference bufferhandle and fetch buffer data for later use:
+				
+				// Need to lock bufferList lock to do this:
+				PsychLockMutex(&bufferListmutex);
+
+				if (bufferList && (dev->schedule[slotid].bufferhandle < bufferListCount)) {
+					// Fetch pointer to actual audio data buffer:
+					*ret_playoutbuffer = bufferList[dev->schedule[slotid].bufferhandle].outputbuffer;
+					
+					// Retrieve buffersize in samples:
+					outsbsize = bufferList[dev->schedule[slotid].bufferhandle].outputbuffersize / sizeof(float);
+				}
+				else {
+					*ret_playoutbuffer = NULL;
+					outsbsize = 0;
+				}
+				
+				// Unlock bufferList mutex again:
+				PsychUnlockMutex(&bufferListmutex);
 			}
-			
+
 			// ... then loop and repeat parameters:
 			loopStartFrame = dev->schedule[slotid].loopStartFrame;
 			loopEndFrame   = dev->schedule[slotid].loopEndFrame;
@@ -387,8 +587,8 @@ int PsychPAProcessSchedule(PsychPADevice* dev, unsigned int *playposition, float
 			// ...and make sure it ends on integral sample frame boundaries:
 			playpositionlimit -= playpositionlimit % outchannels;
 			
-			// Check if loop and repetition constraints for this slot are still valid:
-			if ( !((repeatCount == -1) || (*playposition < playpositionlimit)) ) {
+			// Check if loop and repetition constraints as well as actual audio buffer for this slot are still valid:
+			if ( !((repeatCount == -1) || (*playposition < playpositionlimit)) || (NULL == *ret_playoutbuffer)) {
 				// Constraints violated. This slot is used up: Reset playposition and advance to next slot:
 				*playposition = 0;
 				dev->schedule[slotid].mode = 0;
@@ -974,6 +1174,8 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
 	synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+	synopsis[i++] =	"bufferhandle = PsychPortAudio('CreateBuffer', pahandle, bufferdata);";
+	synopsis[i++] =	"PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
 	synopsis[i++] =	"PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
 	synopsis[i++] = "PsychPortAudio('SetLoop', pahandle[, startSample=0][, endSample=max][, UnitIsSeconds=0]);";
 	synopsis[i++] = "startTime = PsychPortAudio('Start', pahandle [, repetitions=1] [, when=0] [, waitForStart=0] [, stopTime=inf]);";
@@ -1055,6 +1257,12 @@ PsychError PsychPortAudioExit(void)
 		}
 		audiodevicecount = 0;
 		
+		// Delete all audio buffers and the bufferlist itself:
+		PsychPADeleteAllAudioBuffers();
+		
+		// Release audiobufferlist mutex lock:
+		PsychDestroyMutex(&bufferListmutex);
+		
 		// Shutdown PortAudio itself:
 		err = Pa_Terminate();
 		if (err) {
@@ -1097,6 +1305,11 @@ void PsychPortAudioInitialize(void)
 		}
 		
 		audiodevicecount=0;
+
+		// Init audio bufferList to empty and Mutex to unlocked:
+		bufferListCount = 0;
+		bufferList = NULL;
+		PsychInitMutex(&bufferListmutex);
 
 		pa_initialized = TRUE;
 	}
@@ -1850,6 +2063,7 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
 	static char seeAlsoString[] = "Open FillBuffer GetStatus ";	 
   	
+	PsychPABuffer* buffer;
 	int inchannels, insamples, p, buffersize, outbuffersize;
 	double*	indata = NULL;
 	float*  outdata = NULL;
@@ -1873,8 +2087,20 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
 
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &bufferhandle);
-	// Check for valid bufferhandle: Currently we only accept the handle zero, as the buffermanagement is not yet implemented.
-	if (bufferhandle < 0 || bufferhandle > 0) PsychErrorExitMsg(PsychError_user, "Invalid audio 'bufferhandle' provided.");
+	// Check for valid bufferhandle:
+	if (bufferhandle < 0) PsychErrorExitMsg(PsychError_user, "Invalid audio 'bufferhandle' provided.");
+
+	// If it is a non-zero handle, try to dereference from dynamic buffer:
+	if (bufferhandle > 0) {
+		// Deref bufferHandle: Issue error if no buffer with such a handle exists:
+		buffer = PsychPAGetAudioBuffer(bufferhandle);
+		
+		// Validate matching output channel count:
+		if (buffer->outchannels != audiodevices[pahandle].outchannels) {
+			printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferhandle, audiodevices[pahandle].outchannels);
+			PsychErrorExitMsg(PsychError_user, "Target audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
+		}
+	}
 
 	PsychAllocInDoubleMatArg(3, kPsychArgRequired, &inchannels, &insamples, &p, &indata);
 	if (inchannels != audiodevices[pahandle].outchannels) {
@@ -1891,7 +2117,9 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 
 	// Assign bufferpointer based on bufferhandle:
 	if (bufferhandle > 0) {
-		// Generic buffer: TODO: Implement.
+		// Generic buffer:
+		outdata = buffer->outputbuffer;
+		outbuffersize = buffer->outputbuffersize;
 	}
 	else {
 		// Standard playout buffer:
@@ -1929,6 +2157,155 @@ PsychError PSYCHPORTAUDIORefillBuffer(void)
 		buffersize-=sizeof(float);
 	}
 	
+	// Done.
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('DeleteBuffer') - Delete a dynamic audio outputbuffer.
+ */
+PsychError PSYCHPORTAUDIODeleteBuffer(void) 
+{
+ 	static char useString[] = "result = PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
+	static char synopsisString[] = 
+		"Delete an existing dynamic audio data playback buffer.\n"
+		"'bufferhandle' is the handle for the buffer to delete. If it is omitted, all "
+		"buffers will be deleted. 'waitmode' defines what happens if a buffer shall be "
+		"deleted that is currently in use, i.e., part of the audio playback schedule "
+		"of an active audio device. The default of zero will simply return without deleting "
+		"the buffer. A setting of 1 will wait until the buffer can be safely deleted.\n";
+
+	static char seeAlsoString[] = "Open FillBuffer GetStatus ";	 
+  	
+	int bufferhandle = 0;
+	int waitmode = 0;
+	int rc = 0;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	// Get optional waitmode with default zero:
+	PsychCopyInIntegerArg(2, FALSE, &waitmode);
+
+	if (PsychCopyInIntegerArg(1, FALSE, &bufferhandle)) {
+		// Specific bufferhandle provided for deletion:
+		
+		// Check if handle valid and error out if so:
+		(void) PsychPAGetAudioBuffer(bufferhandle);
+		
+		// Valid: Try to delete buffer:
+		PsychPADeleteAudioBuffer(bufferhandle, waitmode);
+		rc = 1;
+	}
+	else {
+		// No specific handle: Try to delete all buffers:
+		if (PsychPAUpdateBufferReferences()) {
+			// At least one buffer locked. What do do?
+			if (waitmode == 0) {
+				// Just fail -> No op.
+				rc = 0;
+			}
+			else {
+				// Retry until it works:
+				while (PsychPAUpdateBufferReferences()) PsychYieldIntervalSeconds(yieldInterval);
+				rc = 1;
+			}
+		}
+		else {
+			rc = 1;
+		}
+		
+		// Really delete all buffers if rc == 1:
+		if (rc == 1) PsychPADeleteAllAudioBuffers();
+	}
+	
+	// Return status:
+	PsychCopyOutDoubleArg(1, FALSE, (double) rc);
+
+	// Done.
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('CreateBuffer') - Create and fill dynamic audio outputbuffer of a device with data.
+ */
+PsychError PSYCHPORTAUDIOCreateBuffer(void) 
+{
+ 	static char useString[] = "bufferhandle = PsychPortAudio('CreateBuffer', pahandle, bufferdata);";
+	static char synopsisString[] = 
+		"Create a new dynamic audio data playback buffer for a PortAudio audio device and fill it with initial data.\n"
+		"Return a 'bufferhandle' to the new buffer. 'pahandle' is the handle of the device "
+		"whose buffer is to be filled. 'bufferdata' is a Matlab double matrix with audio data in double "
+		"format. Each row of the matrix specifies one sound channel, each column one sample for each channel. Only floating point "
+		"values in double precision are supported. Samples need to be in range -1.0 to +1.0, 0.0 for silence. This is "
+		"intentionally a very restricted interface. For lowest latency and best timing we want you to provide audio "
+		"data exactly at the optimal format and sample rate, so the driver can safe computation time and latency for "
+		"expensive sample rate conversion, sample format conversion, and bounds checking/clipping.\n\n"
+		"You can refill the buffer anytime via the PsychPortAudio('RefillBuffer') call.\n"
+		"You can delete the buffer via the PsychPortAudio('DeleteBuffer') call, once it is not used anymore. \n"
+		"You can attach the buffer to an audio playback schedule for actual audio playback via the "
+		"PsychPortAudio('AddToSchedule') call.\n"
+		"The same buffer can be attached to and used by multiple audio devices simultaneously, or multiple "
+		"times within one or more playback schedules. ";
+
+	static char seeAlsoString[] = "Open FillBuffer GetStatus ";	 
+  	
+	PsychPABuffer* buffer;
+	int inchannels, insamples, p, buffersize, outbuffersize;
+	double*	indata = NULL;
+	float*  outdata = NULL;
+	int pahandle   = -1;
+	int bufferhandle = 0;
+	int startIndex = 0;
+	
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+	if ((audiodevices[pahandle].opmode & kPortAudioPlayBack) == 0) PsychErrorExitMsg(PsychError_user, "Audio device has not been opened for audio playback, so this call doesn't make sense.");
+
+	PsychAllocInDoubleMatArg(2, kPsychArgRequired, &inchannels, &insamples, &p, &indata);
+	if (inchannels != audiodevices[pahandle].outchannels) {
+		printf("PTB-ERROR: Audio device %i has %i output channels, but provided matrix has non-matching number of %i rows.\n", pahandle, audiodevices[pahandle].outchannels, inchannels);
+		PsychErrorExitMsg(PsychError_user, "Number of rows of audio data matrix doesn't match number of output channels of selected audio device.\n");
+	}
+	
+	if (insamples < 1) PsychErrorExitMsg(PsychError_user, "You must provide at least 1 sample for refill of your audio buffer!");
+	if (p!=1) PsychErrorExitMsg(PsychError_user, "Audio data matrix must be a 2D matrix, but this one is not a 2D matrix!");
+
+	// Create buffer and assign bufferhandle:
+	bufferhandle = PsychPACreateAudioBuffer(inchannels, insamples);
+	
+	// Deref bufferHandle:
+	buffer = PsychPAGetAudioBuffer(bufferhandle);
+	outdata = buffer->outputbuffer;
+	outbuffersize = buffer->outputbuffersize;
+	buffersize = sizeof(float) * inchannels * insamples;
+		
+	// Copy the data, convert it from double to float:
+	while(buffersize > 0) {
+		*(outdata++) = (float) *(indata++);
+		buffersize-=sizeof(float);
+	}
+	
+	// Return bufferhandle:
+	PsychCopyOutDoubleArg(1, FALSE, (double) bufferhandle);
+
 	// Done.
 	return(PsychError_none);
 }
@@ -3438,6 +3815,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	static char seeAlsoString[] = "FillBuffer Start Stop RescheduleStart UseSchedule";
 	
 	PsychPASchedule* slot;
+	PsychPABuffer* buffer;
 	int	slotid;
 	double startSample, endSample, sMultiplier;
 	int maxSample, unitIsSecs;
@@ -3466,8 +3844,20 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 
 	// Get optional bufferhandle:
 	PsychCopyInIntegerArg(2, kPsychArgOptional, &bufferHandle);
-	// TODO: Dynamic buffer handling... Currently limited to handle 0:
-	if (bufferHandle < 0 || bufferHandle > 0) PsychErrorExitMsg(PsychError_user, "Invalid 'bufferHandle' provided. Must be greater or equal to zero, and a handle to an existing buffer!");
+
+	if (bufferHandle < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'bufferHandle' provided. Must be greater or equal to zero, and a handle to an existing buffer!");
+
+	// If it is a non-zero handle, try to dereference from dynamic buffer:
+	if (bufferHandle > 0) {
+		// Deref bufferHandle: Issue error if no buffer with such a handle exists:
+		buffer = PsychPAGetAudioBuffer(bufferHandle);
+		
+		// Validate matching output channel count:
+		if (buffer->outchannels != audiodevices[pahandle].outchannels) {
+			printf("PsychPortAudio-ERROR: Audio channel count %i of audiobuffer with handle %i doesn't match channel count %i of audio device!\n", buffer->outchannels, bufferHandle, audiodevices[pahandle].outchannels);
+			PsychErrorExitMsg(PsychError_user, "Referenced audio buffer 'bufferHandle' has an audio channel count that doesn't match channels of audio device!");
+		}
+	}
 
 	// Get optional repetitions
 	PsychCopyInDoubleArg(3, kPsychArgOptional, &repetitions);

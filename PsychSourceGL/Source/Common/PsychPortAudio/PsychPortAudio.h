@@ -78,6 +78,10 @@ PsychError PSYCHPORTAUDIOGetOpenDeviceCount(void);
 PsychError PSYCHPORTAUDIOUseSchedule(void);
 // Add sot to playback schedule:
 PsychError PSYCHPORTAUDIOAddToSchedule(void);
+// Create and fill dynamic audio buffer:
+PsychError PSYCHPORTAUDIOCreateBuffer(void); 
+// Delete dynamic audio buffer:
+PsychError PSYCHPORTAUDIODeleteBuffer(void); 
 
 //end include once
 #endif
