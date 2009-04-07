@@ -147,7 +147,10 @@ if IsWin
     IOPort('Verbosity', oldverbosity);
 
     % Concatenate busy and ready ports into one list:
-    ThePortDevices = [ availPorts ; busyPorts ];
+    TheTemp = [ availPorts ; busyPorts ];
+    for i=1:length(TheTemp)
+        ThePortDevices(i).name = char(TheTemp(i)); %#ok<AGROW>
+    end
 
     % Done with enumeration on Windows.
 else
@@ -195,6 +198,7 @@ if dontFail == 0
     elseif numPortsFound > 1 % Too many port matches.
         error('\n%s%s%s\n%s\n\n%s\n%s', ...
             'More than one port name matched the ', selectionType, ' type(s)', ...
+            makeDesiredPortTypesString(PortDB), ...
             'A more specific port type is required.', ...
             'This is a list of the port(s) found:', ...
             makeFoundDevicesString(ThePortDevices)); %#ok<SPERR>
@@ -239,7 +243,7 @@ else
         end
     else
         % Windows: Pass "as is":
-        PortNumber = upper(sprintf('%s', ThePortDevices(FoundIndices)));
+        PortNumber = upper(sprintf('%s', ThePortDevices(FoundIndices).name));
     end
 end
 
@@ -275,7 +279,7 @@ if ~IsWin
 else
     % MS-Windows:
     for k = 1:length(ThePortDevices)
-        ThisDevice = sscanf(ThePortDevices(k), '%s');
+        ThisDevice = sscanf(ThePortDevices(k).name, '%s');
         s = [char(s) sprintf('\t\t%s\n', ThisDevice)]; %#ok<AGROW>
     end    
 end
