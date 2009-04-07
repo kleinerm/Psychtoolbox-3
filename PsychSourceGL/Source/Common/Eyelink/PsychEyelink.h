@@ -79,11 +79,19 @@ static void ELCALLBACK   PsychEyelink_set_image_palette(INT16 ncolors, byte r[13
 static void ELCALLBACK   PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totlines, byte *pixels);
 
 static INT16  ELCALLBACK PsychEyelink_setup_cal_display(void);
+static void ELCALLBACK   PsychEyelink_exit_cal_display(void);
 static void ELCALLBACK   PsychEyelink_clear_display(void);
 static void ELCALLBACK   PsychEyelink_draw_cal_target(INT16 x, INT16 y);
+static void ELCALLBACK   PsychEyelink_erase_cal_target(void);
 static void ELCALLBACK   PsychEyelink_image_title(INT16 threshold, char *title);
 static INT16 ELCALLBACK  PsychEyelink_get_input_key(InputEvent *keyinput);
 static void ELCALLBACK   PsychEyelink_alert_printf_hook(const char *msg);
+static void ELCALLBACK	 PsychEyelink_noop(void);
+
+static void ELCALLBACK   PsychEyelink_cal_target_beep_hook(void);
+static void ELCALLBACK	 PsychEyelink_cal_done_beep_hook(INT16 error);
+static void ELCALLBACK	 PsychEyelink_dc_done_beep_hook(INT16 error);
+static void ELCALLBACK   PsychEyelink_dc_target_beep_hook(void);
 
 // Defined in EyelinkSynopsis.c
 void		InitializeSynopsis();

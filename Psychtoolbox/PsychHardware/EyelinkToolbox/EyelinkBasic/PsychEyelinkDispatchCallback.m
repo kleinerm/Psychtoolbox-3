@@ -37,6 +37,7 @@ persistent imgtitle;
 persistent el;
 persistent instructionsDrawn;
 persistent lastImageTime;
+persistent drawcount;
 
 % Cached constant definitions:
 persistent GL_RGBA;
@@ -52,9 +53,12 @@ if isempty(eyelinktex)
 	% initializing the whole PTB OpenGL mode for just two constants:
 	GL_RGBA = 6408;
 	GL_RGBA8 = 32856;
-	GL_UNSIGNED_BYTE = 5121;
+	GL_UNSIGNED_BYTE = 5121; %#ok<NASGU>
+    GL_UNSIGNED_INT_8_8_8_8 = 32821; %#ok<NASGU>
 	GL_UNSIGNED_INT_8_8_8_8_REV = 33639;
     hostDataFormat = GL_UNSIGNED_INT_8_8_8_8_REV;
+    drawcount = 0;
+    lastImageTime = GetSecs;
 end
 
 % Preinit return code to zero:
@@ -117,12 +121,12 @@ end
 
 switch eyecmd
 	case 1,
-		% Nothing to do here. See code below for eye image display...
-        fprintf('image arriving %g ms after last image\n',1000*(GetSecs-lastImageTime))
-        lastImageTime=GetSecs;
+		% New videoframe received. See code below for actual processing.
+        
+        %         fprintf('image arriving %g ms after last image\n',1000*(GetSecs-lastImageTime))
+        %         lastImageTime=GetSecs;
 	case 2,
 		% Eyelink Keyboard query:
-
 		[rc, el]=EyelinkGetKey(el);
 
 	case 3,
@@ -143,10 +147,73 @@ switch eyecmd
 		calxy = callArgs(2:3);
 		Screen('DrawDots', win, calxy, 5, [255 255 0]);
 
-	case {6 , 7}
-		% Setup calibration display: Do nothing except clear screen:
+    case 6,
+        % Clear calibration display:
+		fprintf('clear_cal_display.\n');
+
+	case 7,
+		% Setup calibration display:
+        fprintf('setup_cal_display.\n');
 		Screen('Flip', win);
         instructionsDrawn=false;
+
+        drawcount = 0;
+        lastImageTime = GetSecs;
+
+    case 8,
+        % Setup image display:
+        eyewidth  = callArgs(2);
+        eyeheight = callArgs(3);
+		fprintf('setup_image_display for %i x %i pixels.\n', eyewidth, eyeheight);
+        
+        drawcount = 0;
+        lastImageTime = GetSecs;
+
+    case 9,
+        % Exit image display:
+		fprintf('exit_image_display.\n');
+        fprintf('AVG FPS = %f Hz\n', drawcount / (GetSecs - lastImageTime));
+
+    case 10,
+        % Erase current calibration target:
+        fprintf('erase_cal_target.\n');
+		calxy = [];
+        
+    case 11,
+        fprintf('exit_cal_display.\n');
+        fprintf('AVG FPS = %f Hz\n', drawcount / (GetSecs - lastImageTime));
+        
+    case 12,
+        % New calibration target:
+        fprintf('cal_target_beep_hook.\n');
+        Beeper(1000, 0.8, 0.05);
+        
+    case 13,
+        % New drift correction target:
+        fprintf('dc_target_beep_hook.\n');
+        Beeper(1200, 0.8, 0.05);
+        
+    case 14,
+        errc = callArgs(2);
+        fprintf('cal_done_beep_hook: %i\n', errc);
+        if errc > 0
+            % Calibration failed:
+            Beeper(400, 0.8, 0.25);
+        else
+            % Calibration success:
+            Beeper(800, 0.8, 0.25);
+        end
+
+    case 15,
+        errc = callArgs(2);
+        fprintf('dc_done_beep_hook: %i\n', errc);
+        if errc > 0
+            % Drift correction failed:
+            Beeper(300, 0.8, 0.25);
+        else
+            % Drift correction success:
+            Beeper(700, 0.8, 0.25);
+        end
 
 	otherwise
 		% Unknown command:
@@ -194,6 +261,6 @@ end
 
 % Show it:
 Screen('Flip', win, 0, 0, 2);
-
+drawcount = drawcount + 1;
 % Done.
 return;
