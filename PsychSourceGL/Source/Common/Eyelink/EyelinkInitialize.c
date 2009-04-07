@@ -64,12 +64,17 @@ static char synopsisTestString[] =
 
 static char seeAlsoString[] = "";
 
+#define ERR_BUFF_LEN 1000
+
 PsychError EyelinkInitialize(void)
 {
 	char*   callbackString;
 	int		iBufferSize = 20000; // Hardcode default
 	int		iStatus		= -1;
-
+	char    errMsg[ERR_BUFF_LEN];
+	PsychGenericScriptType	*input[1];
+	PsychGenericScriptType	*output[1];
+	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	
@@ -116,7 +121,20 @@ PsychError EyelinkInitialize(void)
 	}
 
 	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {	
+	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {
+		
+		input[0] = mxCreateString(callbackString);
+		output[0]=NULL;
+		if(mexCallMATLAB/*WithTrap*/(1, output, 1,input, "exist")){
+			PsychErrorExitMsg(PsychError_system, "fatal error calling matlab's exist function");
+		}
+		mxDestroyArray(input[0]);
+		if(2!=mxGetScalar(output[0])){
+			snprintf(errMsg,ERR_BUFF_LEN,"Eyelink: %s not an m-file on your path",callbackString);
+			PsychErrorExitMsg(PsychError_user, errMsg);
+		}
+		mxDestroyArray(output[0]);
+		
 		PsychEyelink_init_core_graphics(callbackString);
 	}
 	else {
@@ -135,7 +153,10 @@ PsychError EyelinkInitializeDummy(void)
 {
 	char*   callbackString;
 	int		iStatus		= -1;
-
+	char    errMsg[ERR_BUFF_LEN];
+	PsychGenericScriptType	*input[1];
+	PsychGenericScriptType	*output[1];
+	
 	// Add help strings
 	PsychPushHelp(useDummyString, synopsisDummyString, seeAlsoString);
 	
@@ -182,7 +203,20 @@ PsychError EyelinkInitializeDummy(void)
 	}
 
 	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {	
+	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {
+		
+		input[0] = mxCreateString(callbackString);
+		output[0]=NULL;
+		if(mexCallMATLAB/*WithTrap*/(1, output, 1,input, "exist")){
+			PsychErrorExitMsg(PsychError_system, "fatal error calling matlab's exist function");
+		}
+		mxDestroyArray(input[0]);
+		if(2!=mxGetScalar(output[0])){
+			snprintf(errMsg,ERR_BUFF_LEN,"Eyelink: %s not an m-file on your path",callbackString);
+			PsychErrorExitMsg(PsychError_user, errMsg);
+		}
+		mxDestroyArray(output[0]);
+
 		PsychEyelink_init_core_graphics(callbackString);
 	}
 	else {
