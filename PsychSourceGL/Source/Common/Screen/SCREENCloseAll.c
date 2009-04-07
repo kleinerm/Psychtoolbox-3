@@ -23,6 +23,11 @@
 
 #include "Screen.h"
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// Cleanup routine of GDI based text renderer. Defined in Common/Screen/SCREENDrawText.c
+void CleanupDrawTextGDI(void);
+#endif
+
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "Screen('CloseAll');";
 static char synopsisString[] = 
@@ -86,6 +91,11 @@ void ScreenCloseAllWindows(void)
 		 
 		PsychShowCursor(i);
     }
+
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	// Call cleanup routine of GDI based text renderer:
+	CleanupDrawTextGDI();
+	#endif
 
     return;
 }

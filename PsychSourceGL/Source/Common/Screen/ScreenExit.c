@@ -28,11 +28,6 @@
 
 #include "Screen.h"
 
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-// Cleanup routine of GDI based text renderer. Defined in Common/Screen/SCREENDrawText.c
-void CleanupDrawTextGDI(void);
-#endif
-
 void PsychCleanupSCREENFillPoly(void);
 
 PsychError ScreenExitFunction(void)
@@ -68,11 +63,6 @@ PsychError ScreenExitFunction(void)
 	// All connections should be closed now. We can't NULL-out the display list, but
 	// Matlab will flush the Screen - Mexfile anyway...
 
-	#endif
-
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// Call cleanup routine of GDI based text renderer:
-	CleanupDrawTextGDI();
 	#endif
 
 	#if PSYCH_SYSTEM == PSYCH_OSX

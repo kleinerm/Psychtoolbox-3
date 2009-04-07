@@ -837,9 +837,10 @@ PsychError SCREENDrawText(void)
 // alpha-channel) is slow and compute intense, data upload and blit in GL
 // is slow due to hostmemory -> VRAM copy.
 
-// The following variables must be released at Screen flush time.
+// The following variables must be released at Screen flush time the latest.
 // The exit routine CleanupDrawTextGDI() does this when invoked
-// from the ScreenExit() function.
+// from the ScreenCloseAllWindows() function, as part of a Screen flush,
+// error abort, or Screen('CloseAll').
 
 // The current (last used) font for GDI text drawing:
 static HFONT				font=NULL;		// Handle to current font.
@@ -858,6 +859,8 @@ static PsychWindowRecordType* oldWin = NULL; // Last window to which text was dr
 
 void CleanupDrawTextGDI(void)
 {
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In CleanupDrawTextGDI: Releasing GDI ressources for DrawTextGDI.\n");
+
 	if (font) {
 		if (!DeleteObject(font)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release font! Expect memory leaks!!!\n");
 	}
