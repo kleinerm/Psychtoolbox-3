@@ -399,6 +399,10 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 	PsychGenericScriptType			*outputs[1];
 	double* callargs;
 	double teximage;
+	static INT16 lastline = -1;
+	static int wrapcount = 0;
+	static tlastwrap = 0.0;
+	double tnow;
 	int rc;
 	int ind;
 	byte* p;
@@ -447,10 +451,41 @@ void ELCALLBACK PsychEyelink_draw_image_line(INT16 width, INT16 line, INT16 totl
 
 		if (Verbosity() > 8) printf("Eyelink: PsychEyelink_draw_image_line(): Scanline %i received.\n", (int) line);
 
+		// Premature wraparound?
+		if (line < lastline) {
+			// Premature wraparound due to too slow processing. Increase wrapcounter:
+			wrapcount++;			
+		}
+
+		// More than some threshold?
+		if (wrapcount > 10) {
+			// Spill a warning?
+			PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+			if (tnow - tlastwrap > 2.0) {
+				// Last invocation longer than 2 seconds away:
+				// Output some warning to console...
+				if (Verbosity() > 1) {
+					printf("Eyelink: Warning: Skipped videoframes from eye camera detected within last seconds (count=%i)\n", wrapcount);
+					printf("Eyelink: Warning: Timing problems on your machine or network problems on tracker connection?!?\n\n");
+				}
+
+				// Update / Reset detector:
+				tlastwrap = tnow;
+				wrapcount = 0;
+			}				
+		}
+		
+		// Update skip detector:
+		lastline = line;
+
 		// Complete new eye image received?
 		if (line == totlines) {
-			// Yes. Our eyeimage buffer contains a new image. Compute double-encoded
-			// Matlab/Octave compatible memory pointer to image buffer:
+			// Yes. Our eyeimage buffer contains a new image.
+			
+			// Reset skip detector:
+			lastline  = -1;
+
+			// Compute double-encoded Matlab/Octave compatible memory pointer to image buffer:
 			teximage = PsychPtrToDouble((void*) eyeimage);
 
 			// Ok, teximage is a memory pointer to our image buffer, encoded as a double.

@@ -126,15 +126,7 @@ el.lalt=KbName('LeftAlt');
 el.ralt=KbName('RightAlt');
 %el.lmeta=KbName('');
 %el.rmeta=KbName('');
-
-%this is necessary even after KbName('UnifyKeyNames')
-if IsWin
-    el.num=KbName('NumLock');
-elseif IsOSX
-    el.num=KbName('LockingNumLock');
-else
-    warning('don''t know kbname for numlock on this platform')
-end
+el.num=KbName('NumLock');
 
 el.caps=KbName('CapsLock');
 %el.mode=KbName('');

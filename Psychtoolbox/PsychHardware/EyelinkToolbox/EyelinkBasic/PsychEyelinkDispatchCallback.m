@@ -41,7 +41,7 @@ persistent lastImageTime;
 % Cached constant definitions:
 persistent GL_RGBA;
 persistent GL_RGBA8;
-persistent GL_UNSIGNED_BYTE;
+persistent hostDataFormat;
 
 if 0==Screen('WindowKind',eyelinktex)
 	eyelinktex=[]; %got persisted from a previous ptb window which has now been closed; needs to be recreated
@@ -53,6 +53,8 @@ if isempty(eyelinktex)
 	GL_RGBA = 6408;
 	GL_RGBA8 = 32856;
 	GL_UNSIGNED_BYTE = 5121;
+	GL_UNSIGNED_INT_8_8_8_8_REV = 33639;
+    hostDataFormat = GL_UNSIGNED_INT_8_8_8_8_REV;
 end
 
 % Preinit return code to zero:
@@ -170,7 +172,7 @@ eyeheight = callArgs(4);
 % Return a standard PTB texture handle to it. If such a texture already
 % exists from a previous invocation of this routiene, just recycle it for
 % slightly higher efficiency:
-eyelinktex = Screen('SetOpenGLTextureFromMemPointer', win, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE);
+eyelinktex = Screen('SetOpenGLTextureFromMemPointer', win, eyelinktex, eyeimgptr, eyewidth, eyeheight, 4, 0, [], GL_RGBA8, GL_RGBA, hostDataFormat);
 
 % Draw texture centered in window:
 Screen('DrawTexture', win, eyelinktex);
@@ -191,7 +193,7 @@ if exist('helpTxt', 'var')
 end
 
 % Show it:
-Screen('Flip', win);
+Screen('Flip', win, 0, 0, 2);
 
 % Done.
 return;

@@ -66,14 +66,53 @@ static char seeAlsoString[] = "";
 
 #define ERR_BUFF_LEN 1000
 
-PsychError EyelinkInitialize(void)
+// Check if optional callback passed, and if so, if it is valid.
+// If passed and valid, enable callbacks:
+void CheckAndAssignCallback(int argpos)
 {
-	char*   callbackString;
-	int		iBufferSize = 20000; // Hardcode default
-	int		iStatus		= -1;
 	char    errMsg[ERR_BUFF_LEN];
+	char*   callbackString;
 	PsychGenericScriptType	*input[1];
 	PsychGenericScriptType	*output[1];
+	
+	// Initialize graphics callbacks for eye camera et al.:
+	if (PsychAllocInCharArg(argpos, FALSE, &callbackString) && strlen(callbackString) > 0) {
+		// Callback string passed. Check if it corresponds to a valid function on
+		// Matlab's path:
+		input[0] = mxCreateString(callbackString);
+		output[0]=NULL;
+
+		// mexCallMatlab should be safe here, as not called from within eyelink callbacks:
+		if(mexCallMATLAB(1, output, 1, input, "exist")) {
+			mxDestroyArray(input[0]);
+			PsychErrorExitMsg(PsychError_system, "Fatal error calling runtime's 'exist' function!");
+		}
+
+		mxDestroyArray(input[0]);
+		
+		if(mxGetScalar(output[0]) <= 0) {
+			mxDestroyArray(output[0]);
+			snprintf(errMsg, ERR_BUFF_LEN, "Eyelink: The provided callback function '%s' is not a defined function, MEX file or M-File on your path as required!", callbackString);
+			PsychErrorExitMsg(PsychError_user, errMsg);
+		}
+
+		mxDestroyArray(output[0]);
+		
+		// Everything good: Initialize callbacks and enable them:
+		PsychEyelink_init_core_graphics(callbackString);
+	}
+	else {
+		// No callback passed: Disable use of callbacks:
+		PsychEyelink_uninit_core_graphics();
+    }
+	
+	return;
+}
+
+PsychError EyelinkInitialize(void)
+{
+	int		iBufferSize = 20000; // Hardcode default
+	int		iStatus		= -1;
 	
 	// Add help strings
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -120,26 +159,8 @@ PsychError EyelinkInitialize(void)
 		}
 	}
 
-	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {
-		
-		input[0] = mxCreateString(callbackString);
-		output[0]=NULL;
-		if(mexCallMATLAB/*WithTrap*/(1, output, 1,input, "exist")){
-			PsychErrorExitMsg(PsychError_system, "fatal error calling matlab's exist function");
-		}
-		mxDestroyArray(input[0]);
-		if(2!=mxGetScalar(output[0])){
-			snprintf(errMsg,ERR_BUFF_LEN,"Eyelink: %s not an m-file on your path",callbackString);
-			PsychErrorExitMsg(PsychError_user, errMsg);
-		}
-		mxDestroyArray(output[0]);
-		
-		PsychEyelink_init_core_graphics(callbackString);
-	}
-	else {
-		PsychEyelink_uninit_core_graphics();
-    }
+	// Check for optional callbackString as argument 1, sanity check and enable callbacks, if provided:
+	CheckAndAssignCallback(1);
 
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
@@ -151,11 +172,7 @@ PsychError EyelinkInitialize(void)
 
 PsychError EyelinkInitializeDummy(void)
 {
-	char*   callbackString;
 	int		iStatus		= -1;
-	char    errMsg[ERR_BUFF_LEN];
-	PsychGenericScriptType	*input[1];
-	PsychGenericScriptType	*output[1];
 	
 	// Add help strings
 	PsychPushHelp(useDummyString, synopsisDummyString, seeAlsoString);
@@ -202,26 +219,8 @@ PsychError EyelinkInitializeDummy(void)
 		}				
 	}
 
-	// Initialize graphics callbacks for eye camera et al.:
-	if (PsychAllocInCharArg(1, FALSE, &callbackString) && strlen(callbackString) > 0) {
-		
-		input[0] = mxCreateString(callbackString);
-		output[0]=NULL;
-		if(mexCallMATLAB/*WithTrap*/(1, output, 1,input, "exist")){
-			PsychErrorExitMsg(PsychError_system, "fatal error calling matlab's exist function");
-		}
-		mxDestroyArray(input[0]);
-		if(2!=mxGetScalar(output[0])){
-			snprintf(errMsg,ERR_BUFF_LEN,"Eyelink: %s not an m-file on your path",callbackString);
-			PsychErrorExitMsg(PsychError_user, errMsg);
-		}
-		mxDestroyArray(output[0]);
-
-		PsychEyelink_init_core_graphics(callbackString);
-	}
-	else {
-		PsychEyelink_uninit_core_graphics();
-    }
+	// Check for optional callbackString as argument 1, sanity check and enable callbacks, if provided:
+	CheckAndAssignCallback(1);
 	
 	// Copy output arg
 	PsychCopyOutDoubleArg(1, FALSE, iStatus);
