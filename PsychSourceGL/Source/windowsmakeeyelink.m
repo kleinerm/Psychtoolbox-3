@@ -75,7 +75,7 @@ requireds={'path', 'eyelinkPath', 'compilerPath'};
 for i=1:length(requireds)
 	problem=~exist(requireds{i},'var');
 	if ~problem
-		problem=isempty(requireds{i}) | ~exist(eval(requireds{i}),'dir'); %#ok<OR2> %mario's old matlab doesn't have shortcircuiting ops
+%		problem=isempty(requireds{i}) | ~exist(eval(requireds{i}),'dir'); %#ok<OR2> %mario's old matlab doesn't have shortcircuiting ops
 	end
 	if problem
 		error('must set %s to a valid directory',requireds{i})
