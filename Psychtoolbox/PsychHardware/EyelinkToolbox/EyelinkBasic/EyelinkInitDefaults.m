@@ -25,11 +25,6 @@ el=[];
 
 % eyelink computer check
 el.computer = computer;
-%if ~(strcmp(el.computer,'PCWIN')==1 | strcmp(el.computer,'MAC2')==1 | strcmp(el.computer,'MAC')==1)
-if ~(IsOSX | IsWin)
-	disp([el.computer,' is not a supported computer type!']);
-	return;
-end
 
 % Enable unified keyname -> keycode mapping for all operating systems:
 KbName('UnifyKeyNames');
