@@ -5,7 +5,7 @@ try
     w = Screen('OpenWindow', max(Screen('Screens')), [255 255 0], [0 0 800 600]);
     el=EyelinkInitDefaults(w);
     PsychEyelinkDispatchCallback(el);
-    if Eyelink('Initialize', 'PsychEyelinkDispatchCallback') ~=0
+    if Eyelink('InitializeDummy', 'PsychEyelinkDispatchCallback') ~=0
         error('eyelink failed init')
     end
     
@@ -26,7 +26,6 @@ end
 
 function cleanup
 sca
-FlushEvents('mouseUp','mouseDown','keyDown','autoKey','update');
 ListenChar(0);
 Eyelink('Shutdown');
 end

@@ -141,7 +141,11 @@ el.keysCached=1;
 
 % since we do not actually remove keypresses the matlab buffer gets filled
 % up quickly. Hence we type:
-warning off MATLAB:namelengthmaxexceeded
+% This is try-catch protected for compatibility to Matlab R11...
+try
+	warning off MATLAB:namelengthmaxexceeded
+catch
+end
 
 % eyelink Tracker state bit: bitand() with flag word to test functionality
 

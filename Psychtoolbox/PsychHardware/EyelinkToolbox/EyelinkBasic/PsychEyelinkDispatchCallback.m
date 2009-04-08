@@ -44,8 +44,8 @@ persistent GL_RGBA;
 persistent GL_RGBA8;
 persistent hostDataFormat;
 
-if 0==Screen('WindowKind',eyelinktex)
-	eyelinktex=[]; %got persisted from a previous ptb window which has now been closed; needs to be recreated
+if 0 == Screen('WindowKind',eyelinktex)
+	eyelinktex = []; %got persisted from a previous ptb window which has now been closed; needs to be recreated
 end
 
 if isempty(eyelinktex)
@@ -76,11 +76,11 @@ if isempty(callArgs)
 	error('You must provide some valid "callArgs" variable as 1st argument!');
 end
 
-if (~isnumeric(callArgs) | ~isvector(callArgs)) & ~isstruct(callArgs) %#ok<AND2,OR2>
+if ~isnumeric(callArgs) & ~isstruct(callArgs) %#ok<AND2,OR2>
 	error('"callArgs" argument must be a EyelinkInitDefaults struct or double vector!');
 end
 
-if isscalar(callArgs) && isstruct(callArgs) && isfield(callArgs,'window') && isscalar(callArgs.window)
+if isstruct(callArgs) & isfield(callArgs,'window')
 	if Screen('WindowKind', callArgs.window) ~= 1
 		error('argument didn''t contain a valid handle of an open onscreen window!  pass in result of EyelinkInitDefaults(previouslyOpenedPTBWindowPtr).');
 	end
@@ -91,7 +91,7 @@ if isscalar(callArgs) && isstruct(callArgs) && isfield(callArgs,'window') && iss
 	% assume rest of el structure is valid
 	el = callArgs;
     
-    instructionsDrawn=false;
+    instructionsDrawn=0;
     eyelinktex=[];
     lastImageTime=GetSecs;
 
@@ -113,7 +113,7 @@ end
 
 if ~instructionsDrawn
     %if we do this every frame, text is too slow on osx, and we never get through all the scanlines of one image, and we eventually crash
-    instructionsDrawn=true;
+    instructionsDrawn=1;
     helpTxt='hit return (on either ptb comptuer or tacker host computer) to toggle camera image, esc to quit';
     Screen('DrawText',win,helpTxt,0,0,[0 0 0]);
     Screen('Flip',win);
@@ -155,7 +155,7 @@ switch eyecmd
 		% Setup calibration display:
         fprintf('setup_cal_display.\n');
 		Screen('Flip', win);
-        instructionsDrawn=false;
+        instructionsDrawn=0;
 
         drawcount = 0;
         lastImageTime = GetSecs;
@@ -260,7 +260,7 @@ if exist('helpTxt', 'var')
 end
 
 % Show it:
-Screen('Flip', win, 0, 0, 2);
+Screen('Flip', win, 0, 0, 1);
 drawcount = drawcount + 1;
 % Done.
 return;
