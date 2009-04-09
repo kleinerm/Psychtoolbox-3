@@ -59,6 +59,10 @@ function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, max
 AssertOpenGL;
 
 if nargin < 4
+    doublebuffer = [];
+end
+
+if isempty(doublebuffer)
    % Use double-buffered windows by default: Single-buffered ones can't sync to
    % retrace and are discouraged anyway. Setting doublebuffer=0 is an easy way
    % to reproduce the visual pattern created by a complete sync-failure though.
@@ -67,15 +71,27 @@ end;
 doublebuffer=doublebuffer+1;
 
 if nargin < 2
+    stereomode = [];
+end
+
+if isempty(stereomode)
    % Use non-stereo display by default. 
    stereomode=0;
 end;
 
 if nargin < 3
+    fullscreen = [];
+end
+
+if isempty(fullscreen)
    fullscreen=1;
 end;
 
 if nargin < 1
+    screen = [];
+end
+
+if isempty(screen)
     if stereomode == 10
         screen(1) = max(Screen('Screens')) - 1;
         screen(2) = max(Screen('Screens'));
@@ -105,8 +121,8 @@ try
    help PerceptualVBLSyncTest;
    fprintf('Press ENTER key to start the test. The test will stop after 10 seconds\n');
    fprintf('or any keypress...\n');
-   pause;
-   while KbCheck; end;
+
+   KbStrokeWait;
    
    if stereomode~=10
        % Standard case:
@@ -122,7 +138,7 @@ try
        % Setup slave window:
        Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);       
    end
-   
+
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
    deadline = GetSecs + maxduration;
