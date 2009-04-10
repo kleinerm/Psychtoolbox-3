@@ -13,13 +13,8 @@ function VideoFeedbackLoop(fps, fifodelay, mirrored, fullscreen)
 % Check if we're running on OpenGL-Psychtoolbox:
 AssertOpenGL;
 
-if IsLinux
-   esckey=KbName('Escape');
-end;
-
-if IsWin
-   esckey=KbName('ESC');
-end;
+KbName('UnifyKeyNames');
+esckey=KbName('ESCAPE');
 
 % Assign defaults for our function arguments:
 if nargin < 1 | isempty(fps)
