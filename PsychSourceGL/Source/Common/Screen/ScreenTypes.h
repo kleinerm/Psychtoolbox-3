@@ -204,6 +204,12 @@ typedef struct {
 // displays via AGL, instead of AGL or CGL fullscreen contexts:
 #define kPsychUseAGLCompositorForFullscreenWindows 16384
 
+// Wait for onset of VBL before emitting a PsychOSFlipWindowBuffers() request, by
+// use of beamposition queries and busy-spin-waiting. This to work-around broken
+// support of sync-to-vbl on some operating systems (e.g., Leopard + NVidia) under
+// certain conditions.
+#define kPsychBusyWaitForVBLBeforeBufferSwapRequest 32768
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

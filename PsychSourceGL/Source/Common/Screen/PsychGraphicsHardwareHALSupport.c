@@ -392,7 +392,7 @@ bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord
 	};
 	
 	// Take timestamp and beamposition:
-	*beamposition = PsychGetDisplayBeamPosition(&displayID, screenId);
+	*beamposition = PsychGetDisplayBeamPosition(displayID, screenId);
 	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
 	// Exit due to timeout?

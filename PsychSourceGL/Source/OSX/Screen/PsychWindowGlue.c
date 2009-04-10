@@ -905,8 +905,47 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
  */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {	
-	CGLError cglerr;
+	CGLError			cglerr;
+    CGDirectDisplayID	cgDisplayID;
+    long				myinterval, vbl_startline, scanline, lastline;
 
+	// Workaround for broken sync-bufferswap-to-VBL support needed?
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) {
+		// Yes: Sync of bufferswaps to VBL requested?
+		cglerr = CGLGetParameter(windowRecord->targetSpecific.contextObject, kCGLCPSwapInterval, &myinterval);
+		if (cglerr) {
+			if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to query system if synchronization to vertical retrace is enabled! Operating system or driver bug?!? [Error: %s]\n\n", CGLErrorString(cglerr));
+			// Don't know real setting due to error. Assume the most common setting of sync-to-VBL:
+			myinterval = 1;
+		}
+		
+		if (myinterval > 0) {
+			// Sync of bufferswaps to retrace requested:
+			// We perform a busy-waiting spin-loop and query current beamposition until
+			// beam leaves VBL area:
+			
+			// Retrieve display handle for beamposition queries:
+			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
+			
+			// Retrieve final vbl_startline, aka physical height of the display in pixels:
+			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
+
+			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
+			// if beamposition queries are broken as well:
+			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+			if (lastline > 0) {
+				// Within video frame. Wait for beamposition wraparound or start of VBL:
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Lastline beampos = %i\n", (int) lastline);
+				scanline = lastline;
+				while ((scanline < vbl_startline) && (scanline >= lastline)) {
+					lastline = scanline;
+					scanline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+				} 
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Scanline beampos = %i\n", (int) scanline);
+			}
+		}
+	}
+	
     // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
     if ((cglerr = CGLFlushDrawable(windowRecord->targetSpecific.contextObject))) {
 		// Failed! This is an internal OpenGL/CGL error. We can't do anything about it, just report it:

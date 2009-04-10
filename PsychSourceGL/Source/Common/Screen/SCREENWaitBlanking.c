@@ -56,7 +56,9 @@ PsychError SCREENWaitBlanking(void)
     int waitFrames, framesWaited;
     double tvbl, ifi;
     long screenwidth, screenheight;
-    int vbl_startline, beampos, oldbeampos;
+    int vbl_startline, beampos;
+	int scanline, lastline;
+
     CGDirectDisplayID	cgDisplayID;
     GLint read_buffer, draw_buffer;
     
@@ -123,15 +125,20 @@ PsychError SCREENWaitBlanking(void)
             // Enough time for a sleep? If the beam is far away from VBL area, we try to sleep to
             // yield some CPU time to other processes in the system -- we are nice citizens ;)
             beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
-            while (( ((float)(vbl_startline - beampos)) / (float) windowRecord->VBL_Endline * ifi) > 0.002) {
-                // At least 2 milliseconds left until retrace. We sleep for 1 millisecond.
+            while (( ((float)(vbl_startline - beampos)) / (float) windowRecord->VBL_Endline * ifi) > 0.003) {
+                // At least 3 milliseconds left until retrace. We sleep for 1 millisecond.
                 PsychWaitIntervalSeconds(0.001);
                 beampos = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
             }
             
-            // Less than 2 ms away from retrace. Busy-Wait for retrace...
-            while (PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber) < vbl_startline);
-            
+            // Less than 3 ms away from retrace. Busy-Wait for retrace...
+			lastline = PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+			beampos = lastline;
+			while ((beampos < vbl_startline) && (beampos >= lastline)) {
+				lastline = beampos;
+				beampos = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+			} 
+			
             // Retrace! Take system timestamp of VBL onset:
             PsychGetAdjustedPrecisionTimerSeconds(&tvbl);
             
@@ -252,4 +259,3 @@ PsychError SCREENWaitBlanking(void)
     // Done.
     return(PsychError_none);
 }
-

@@ -136,6 +136,18 @@
 % precision will be horrible in this mode. Only suitable for presentation
 % of mostly static stimuli with no requirements for frame-accurate timing.
 %
+% 32768 == kPsychBusyWaitForVBLBeforeBufferSwapRequest
+% If Screen('Flip') in sync with vertical retrace is requested and
+% beamposition queries are supported, use a busy-waiting, high cpu load
+% spin-wait loop to wait for onset of vertical blank interval (VBL) before
+% submitting doublebuffer swaprequests to the GPU. This is meant as a
+% last-ressort workaround for GPU's with severely broken sync-to-VBL
+% support. The only known current example is the Apple Leopard operatings
+% system when used with NVidia Geforce 8000 GPU's or later in
+% frame-sequential stereo mode. This will create a very high cpu load and
+% may have negative side effects on system timing. Use as last resort!
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

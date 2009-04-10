@@ -291,6 +291,57 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
 	// At this point, the new onscreen windows master OpenGL context is active and bound...
 
+	// Check for properly working glGetString() -- Some drivers (Some NVidia GF8/9 drivers on WinXP)
+	// have a bug in conjunction with context ressource sharing here. Non-working glGetString is
+	// a showstopper bug, but we should tell the user about the problem and stop safely instead
+	// of taking whole runtime down:
+	if (NULL == glGetString(GL_EXTENSIONS)) {
+		// Game over:
+		printf("PTB CRITICAL ERROR: Your graphics driver seems to have a bug which causes the OpenGL command glGetString() to malfunction!\n");
+		printf("PTB CRITICAL ERROR: Can't continue safely, will therefore abort execution here.\n");
+		printf("PTB CRITICAL ERROR: In the past this bug has been observed with some NVidia Geforce 8000 drivers under WindowsXP when using\n");
+		printf("PTB CRITICAL ERROR: OpenGL 3D graphics mode. The recommended fix is to update your graphics drivers. A workaround that may\n");
+		printf("PTB CRITICAL ERROR: work (but has its own share of problems) is to disable OpenGL context isolation. Type 'help ConserveVRAMSettings'\n");
+		printf("PTB CRICICAL ERROR: and read the paragraph about setting '8' for more info.\n\n");
+
+		// We abort! Close the onscreen window:
+		PsychOSCloseWindow(*windowRecord);
+		// Free the windowRecord:
+		FreeWindowRecordFromPntr(*windowRecord);
+		// Done. Return failure:
+		return(FALSE);
+	}
+
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+    if(PsychPrefStateGet_Verbosity()>1) {
+		if (strstr(glGetString(GL_RENDERER), "GDI")) {
+			printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
+			printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
+			printf("PTB-WARNING: Most likely you do not have native OpenGL vendor supplied drivers (ICD's) for your graphics hardware\n");
+			printf("PTB-WARNING: installed on your system.Many Windows machines (and especially Windows Vista) come without these preinstalled.\n");
+			printf("PTB-WARNING: Go to the webpage of your computer vendor or directly to the webpage of NVidia/AMD/ATI/3DLabs/Intel\n");
+			printf("PTB-WARNING: and make sure that you've download and install their latest driver for your graphics card.\n");
+			printf("PTB-WARNING: Other causes, after you've ruled out the above:\n");
+			printf("PTB-WARNING: Maybe you run at a too high display resolution, or the system is running out of ressources for some other reason.\n");
+			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
+			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
+			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
+			printf("PTB-WARNING: Actually..., it is pointless to continue with the software renderer, that will cause more trouble than good.\n");
+			printf("PTB-WARNING: I will abort now. Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
+			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
+			
+			// We abort! Close the onscreen window:
+			PsychOSCloseWindow(*windowRecord);
+
+			// Free the windowRecord:
+			FreeWindowRecordFromPntr(*windowRecord);
+
+			// Done. Return failure:
+			return(FALSE);			
+		}
+	}
+	#endif
+
 	// Set a flag that we should switch to native 10 bpc framebuffer later on if possible:
 	if ((*windowRecord)->depth == 30) {
 		// Support for kernel driver available?
@@ -484,27 +535,6 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     // the projection and modelview matrices, viewports and such to proper values:
     PsychSetDrawingTarget(*windowRecord);
 
-	// Check for properly working glGetString() -- Some drivers (Some NVidia GF8/9 drivers on WinXP)
-	// have a bug in conjunction with context ressource sharing here. Non-working glGetString is
-	// a showstopper bug, but we should tell the user about the problem and stop safely instead
-	// of taking whole runtime down:
-	if (NULL == glGetString(GL_EXTENSIONS)) {
-		// Game over:
-		printf("PTB CRITICAL ERROR: Your graphics driver seems to have a bug which causes the OpenGL command glGetString() to malfunction!\n");
-		printf("PTB CRITICAL ERROR: Can't continue safely, will therefore abort execution here.\n");
-		printf("PTB CRITICAL ERROR: In the past this bug has been observed with some NVidia Geforce 8000 drivers under WindowsXP when using\n");
-		printf("PTB CRITICAL ERROR: OpenGL 3D graphics mode. The recommended fix is to update your graphics drivers. A workaround that may\n");
-		printf("PTB CRITICAL ERROR: work (but has its own share of problems) is to disable OpenGL context isolation. Type 'help ConserveVRAMSettings'\n");
-		printf("PTB CRICICAL ERROR: and read the paragraph about setting '8' for more info.\n\n");
-
-		// We abort! Close the onscreen window:
-		PsychOSCloseWindow(*windowRecord);
-		// Free the windowRecord:
-		FreeWindowRecordFromPntr(*windowRecord);
-		// Done. Return failure:
-		return(FALSE);
-	}
-
 	if(PsychPrefStateGet_Verbosity()>2) {		
 		  printf("\n\nOpenGL-Extensions are: %s\n\n", glGetString(GL_EXTENSIONS));
 	}
@@ -656,21 +686,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     if (skip_synctests<2) {
       // Normal calibration and at least some sync testing requested:
 
-      // We perform an initial calibration using VBL-Syncing of OpenGL:
-      // We use 50 samples (50 monitor refresh intervals) and provide the ifi_nominal
-      // as a hint to the measurement routine to stabilize it:
-      
-      // We try 3 times a 5 seconds max., in case something goes wrong...
-      while(ifi_estimate==0 && retry_count<3) {
-        numSamples=50;      // Require at least 50 *valid* samples...
-        stddev=0.00020;     // Require a std-deviation less than 200 microseconds..
-        maxsecs=(skip_synctests) ? 1 : 5;  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
-        retry_count++;
-        ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
-      }
-      
-      // Now we try if PsychGetDisplayBeamPosition works and try to estimate monitor refresh from it
-      // as well...
+      // First we try if PsychGetDisplayBeamPosition works and try to estimate monitor refresh from it:
       
       // Check if a beamposition of 0 is returned at two points in time on OS-X:
       i = 0;
@@ -784,6 +800,24 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	if (PsychPrefStateGet_EmulateOldPTB()) PsychGetAdjustedPrecisionTimerSeconds(&((*windowRecord)->time_at_last_vbl));
       }
 
+	  // End of beamposition measurements and validation.
+	  
+	  // We now perform an initial calibration using VBL-Syncing of OpenGL:
+	  // We use 50 samples (50 monitor refresh intervals) and provide the ifi_nominal
+	  // as a hint to the measurement routine to stabilize it:
+      
+      // We try 3 times a 5 seconds max., in case something goes wrong...
+      while(ifi_estimate==0 && retry_count<3) {
+		  numSamples=50;      // Require at least 50 *valid* samples...
+		  stddev=0.00020;     // Require a std-deviation less than 200 microseconds..
+		  maxsecs=(skip_synctests) ? 1 : 5;  // If skipping of sync-test is requested, we limit the calibration to 1 sec.
+		  retry_count++;
+		  ifi_estimate = PsychGetMonitorRefreshInterval(*windowRecord, &numSamples, &maxsecs, &stddev, ifi_nominal);
+		  if((PsychPrefStateGet_Verbosity()>1) && (ifi_estimate==0 && retry_count<3)) {
+			printf("\nWARNING: VBL Calibration run No. %i failed. Retrying...\n", retry_count);
+		  }
+      }
+
       // Compare ifi_estimate from VBL-Sync against beam estimate. If we are in OpenGL native
       // flip-frame stereo mode, a ifi_estimate approx. 2 times the beamestimate would be valid
       // and we would correct it down to half ifi_estimate. If multiSampling is enabled, it is also
@@ -822,51 +856,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
       ifi_beamestimate = 0;
     }
 
-	// HACK: FIXME: On M$-Windows, we forcefully disable beamposition queries for timestamping if we are
-	// running on an Intel onboard gfx-chip. Some of them have problems (hardware or driver bugs), so
-	// until i've implemented a proper detection & workaround code for detecting and fixing this, its
-	// safer to disable this method:
-	// MK 8.8.2008 Update: Our bug detection logic for beamposition related bugs has improved so much
-	// during the last year that we probably can leave it to that logic to spot and handle broken
-	// Intel GPU's. So we unconditionally disable this unconditional lockout of Intel GPU's ;-)
-//	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-//	if (strstr(glGetString(GL_VENDOR), "Intel") || strstr(glGetString(GL_VENDOR), "INTEL")) {
-//		// Shutdown advanced timestamping facilities for Intel onboard chips under Windows:
-//		PsychPrefStateSet_VBLTimestampingMode(-1);
-//		
-//		// And tell the user about the c%!@%p stuff he is trying to use for his work... 
-//		if(PsychPrefStateGet_Verbosity()>1) {
-//			printf("PTB-WARNING: Intel onboard graphics chip detected. Some of these are known to have severe bugs in their drivers or hardware\n");
-//			printf("PTB-WARNING: which could seriously screw up PTBs timestamping code. We disable high-precision timestamping until this issue\n");
-//			printf("PTB-WARNING: is properly resolved by a proper work-around (if possible) in a future PTB release. Screen('Flip') timestamps\n");
-//			printf("PTB-WARNING: will be less robust and accurate and more noisy due to this, but still at least as good as the ones provided by\n");
-//			printf("PTB-WARNING: the old Psychtoolboxes or other toolkits ;-)  -- Stay tuned...\n");
-//		}
-//	}
-//	#endif
-	
 	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
-
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-    if(PsychPrefStateGet_Verbosity()>1) {
-		if (strstr(glGetString(GL_RENDERER), "GDI")) {
-			printf("\n\n\n\nPTB-WARNING: Seems that Microsofts OpenGL software renderer is active! This will likely cause miserable\n");
-			printf("PTB-WARNING: performance, lack of functionality and severe timing and synchronization problems.\n");
-			printf("PTB-WARNING: Most likely you do not have native OpenGL vendor supplied drivers (ICD's) for your graphics hardware\n");
-			printf("PTB-WARNING: installed on your system.Many Windows machines (and especially Windows Vista) come without these preinstalled.\n");
-			printf("PTB-WARNING: Go to the webpage of your computer vendor or directly to the webpage of NVidia/AMD/ATI/3DLabs/Intel\n");
-			printf("PTB-WARNING: and make sure that you've download and install their latest driver for your graphics card.\n");
-			printf("PTB-WARNING: Other causes, after you've ruled out the above:\n");
-			printf("PTB-WARNING: Maybe you run at a too high display resolution, or the system is running out of ressources for some other reason.\n");
-			printf("PTB-WARNING: Another reason could be that you disabled hardware acceleration in the display settings panel: Make sure that\n");
-			printf("PTB-WARNING: in Display settings panel -> Settings -> Advanced -> Troubleshoot -> The hardware acceleration slider is\n");
-			printf("PTB-WARNING: set to 'Full' (rightmost position).\n\n");
-			printf("PTB-WARNING: Actually..., its pointless to continue with the software renderer, that will cause more trouble than good.\n");
-			printf("PTB-WARNING: Read the troubleshooting tips above to fix the problem. You can override this if you add the following\n");
-			printf("PTB-WARNING: command: Screen('Preference', 'Verbosity', 1); to get a functional, but close to useless window up and running.\n\n\n");
-		}
-	}
-	#endif
 
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
@@ -893,7 +883,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	     ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
       if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
       printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
-      if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in sequential frame stereo enabled.\n");
+      if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
       if ((*windowRecord)->stereomode==kPsychFreeFusionStereo) printf("PTB-INFO: Stereo for free fusion or dual-display desktop spanning enabled (2-in-1 stereo).\n");
@@ -2084,6 +2074,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
       // OS-X just schedule update in sync with next retrace, but continue immediately:
       PsychLoadNormalizedGammaTable(windowRecord->screenNumber, windowRecord->inTableSize, windowRecord->inRedTable, windowRecord->inGreenTable, windowRecord->inBlueTable);
     }
+	else {
+		// Need to sync the pipeline, if this special workaround is active to get good timing:
+		if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) glFinish();
+	}
 
     #if PSYCH_SYSTEM == PSYCH_OSX
         // OS-X only: Low level queries to the driver:
@@ -2856,6 +2850,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
         // Ok, now we should have a pretty good estimate of IFI.
         if ( windowRecord->nrIFISamples <= 0 ) {
             printf("PTB-WARNING: Couldn't even collect one single valid flip interval sample! Sanity range checks failed!\n");
+            printf("PTB-WARNING: Could be a system bug, or a temporary timing problem. Retrying the procedure might help if\n");
+            printf("PTB-WARNING: the latter is the culprit.\n");
         }
 
         // Some additional check:
@@ -2866,6 +2862,8 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
             tstddev=1000000.0;
             windowRecord->VideoRefreshInterval = 0;
             printf("PTB-WARNING: Couldn't collect valid flip interval samples! Fatal VBL sync failure!\n");
+            printf("PTB-WARNING: Either synchronization of doublebuffer swapping to the vertical retrace signal of your display is broken,\n");
+            printf("PTB-WARNING: or the mechanism for detection of swap completion is broken. In any case, this is an operating system or gfx-driver bug!\n");
         }
         
         *numSamples = n;
