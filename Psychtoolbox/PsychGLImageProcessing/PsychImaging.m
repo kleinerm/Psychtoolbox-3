@@ -1630,17 +1630,29 @@ if ~isempty(floc)
                 error('PsychImaging: Parameter for ''GeometryCorrection'' missing!');
             end
             
-            % We accept names of calibration files or calibration structs:
-            if isstruct(calibfilename)
-                % Warpstruct passed: Use it.
-                warpstruct = calibfilename;
+            % Is 'calibfilename' a function handle or a final warpstruct?
+            if (~isstruct(calibfilename) && ~ischar(calibfilename)) || ...
+               (isstruct(calibfilename) && isfield(calibfilename, 'gld') && isfield(calibfilename, 'glsl'))
+                % Functionhandle or final warpstruct passed: This
+                % assignment will either assign the warpstruct, or call the
+                % function referenced by the functionhandle and assign the
+                % returned warpstruct:
+                if ~isstruct(calibfilename)
+                    [warpstruct, filterMode] = calibfilename();
+                else
+                    warpstruct = calibfilename;
+                    filterMode = ':Bilinear';
+                end
             else
-                if ~ischar(calibfilename)
+                % Either calibration input parameter struct, or filename of
+                % calibration file: Just pass it to CreateDisplayWarp(),
+                % after some parameter validation:
+                if ischar(calibfilename) && ~exist(calibfilename, 'file')
                     Screen('CloseAll');
-                    error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of a calibration file!');
+                    error('PsychImaging: Passed an argument to ''GeometryCorrection'' which is not a valid name of an accessible calibration file!');
                 end
             
-                % Filename found. Further (optional) parameters passed?
+                % Filename or calibstruct valid. Further (optional) parameters passed?
                 % 2nd parameter, if any, would be a 'visualize' flag that
                 % asks for plotting of some calibration info and additional
                 % output to the console:
@@ -1654,9 +1666,9 @@ if ~isempty(floc)
                 % defined are up to additional 6 parameters 5 to 10. These
                 % default to empty if not provided by user-code.
                 
-                % Use helper function to read the calibration file and build a
-                % proper warp-function:
-                warpstruct = CreateDisplayWarp(win, calibfilename, showCalibOutput, reqs{row, 5:10});
+                % Use helper function to read the calibration file or
+                % parameter struct and build a proper warp-function:
+                [warpstruct, filterMode] = CreateDisplayWarp(win, calibfilename, showCalibOutput, reqs{row, 5:10});
             end
             
             % Is it a display list handle?
@@ -1686,9 +1698,9 @@ if ~isempty(floc)
                     end
                     
                     if glsl
-                        Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));                        
+                        Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));  
                     else
-                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     end
                     Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
                     leftcount = leftcount + 1;
@@ -1702,9 +1714,9 @@ if ~isempty(floc)
                     end
 
                     if glsl
-                        Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));
+                        Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
-                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                        Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     end
                     Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
                     rightcount = rightcount + 1;
@@ -1718,9 +1730,9 @@ if ~isempty(floc)
                     end
 
                     if glsl
-                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i', gld));
+                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', 'GeometricWarpShader', glsl, sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     else
-                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i:Bilinear', gld));
+                        Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:IdentityBlit', sprintf('Blitter:DisplayListBlit:Handle:%i%s', gld, filterMode));
                     end
                     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
                     outputcount = outputcount + 1;

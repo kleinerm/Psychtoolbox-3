@@ -1,5 +1,5 @@
-function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, varargin)
-% warpstruct = CreateDisplayWarp(window, calibfilename [, showCalibOutput=0]);
+function [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename, showCalibOutput, varargin)
+% [warpstruct, filterMode] = CreateDisplayWarp(window, calibfilename [, showCalibOutput=0]);
 %
 % Helper routine for Geometric display undistortion mapping, not to be
 % called inside normal PTB scripts!
@@ -43,6 +43,9 @@ function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, 
 % DisplayUndistortionBezier.m -- Undistortion based on a NURBS surface (Non
 % uniform rational bezier spline surface). A simple procedure.
 %
+% DisplayUndistortionHalfCylinder.m -- Undistortion for projection of
+% images to a half-cylindrical projection surface.
+%
 %
 
 % History:
@@ -51,12 +54,34 @@ function warpstruct = CreateDisplayWarp(window, calibfilename, showCalibOutput, 
 % 10.3.2008 Fixed image inversion bug in BVL calibration (MK).
 %  2.5.2008 Add support for bilinear texture filter shader to handle float
 %           framebuffers on hw that doesn't filter float textures (MK).
+% 13.4.2009 Improved support for bilinear texture filter shaders. (MK).
+%           Optional 'Query' command to query last warpstruct.    (MK).
+%           Support for half-cylinder projection. (MK).
 
+% Global GL handle for access to OpenGL constants needed in setup:
 global GL;
+
+% Cache last generated warpstruct, so code can easily query it:
+persistent oldwarpstruct;
 
 if isempty(GL)
     sca;
     error('PTB internal error: GL struct not initialized?!?');
+end
+
+% Special case of simple query of last created 'warpstruct'?
+if nargin == 1
+    if ~ischar(window)
+        error('Single provided argument is not a command string!');
+    end
+    
+    if ~strcmpi(window, 'Query')
+        error('Single provided argument is not the command string ''Query''!');
+    end
+    
+    % "Query" command recognized. Return last created warpstruct:
+    warpstruct = oldwarpstruct;
+    return;
 end
 
 if nargin < 2
@@ -68,20 +93,158 @@ if nargin < 3 || isempty(showCalibOutput)
     showCalibOutput = 0;
 end
 
-% Load calibration file:
-if ~exist(calibfilename, 'file')
-    sca;
-    error('In setup of geometry undistortion: No such calibration file %s!', calibfilename);
-end
+% Is calibfilename a struct with calibration settings, or a filename of a
+% calibration file?
+if isstruct(calibfilename)
+    % A struct: Assign it directly.
+    calib = calibfilename;
+else
+    % Supposedly the filename of a calibration file:
+    if ~ischar(calibfilename)
+        error('In setup of geometry undistortion: Parameter "calibfilename" is not a filename string!');
+    end
+    
+    % Load calibration file:
+    if ~exist(calibfilename, 'file')
+        sca;
+        error('In setup of geometry undistortion: No such calibration file %s!', calibfilename);
+    end
 
-calib = load(calibfilename);
+    calib = load(calibfilename);
+end
 
 % Preinit warpstruct:
 warpstruct.glsl = [];
 warpstruct.gld = [];
 
+% Assume no need for texture filter shader:
+needFilterShader = 0;
+filterMode = ':Bilinear';
+
+% Do we need a GLSL texture filter shader? We'd need one if the given
+% gfx-hardware is not capable of filtering the input image buffer:
+winfo = Screen('GetWindowInfo', window);
+effectivebpc = 8;
+if winfo.BitsPerColorComponent >= 16
+    % Window is a floating point window with at least 16bpc.
+    effectivebpc = 16;
+    
+    if winfo.BitsPerColorComponent >= 32
+        % All buffers are 32 bpc for certain:
+        effectivebpc = 32;
+    end
+    
+    if (winfo.BitsPerColorComponent == 16)
+        % First buffer is 16 bpc, following ones could be 32 bpc:
+        if bitand(winfo.ImagingMode, kPsychUse32BPCFloatAsap)
+            % All following buffers are 32bpc float. In the tradition of
+            % "better safe than sorry", we assume that the warp op will use
+            % one of the 32 bpc float buffers as input.
+            effectivebpc = 32;            
+        end
+    end    
+end
+
+% Highres input buffer?
+if effectivebpc > 8
+    % Yes. Our input is a float texture. Check if the hardware can filter
+    % textures of effectivebpc bpc in hardware:
+    if effectivebpc > winfo.GLSupportsFilteringUpToBpc
+        % Hardware not capable of handling such deep textures. We need to
+        % create and attach our own bilinear texture filter shader:
+        needFilterShader = 1;
+        filterMode = '';
+    end
+end
+
+% Actual setup code for display warp struct.
+% ==========================================
+
 % Type of setup depends on type of calibration:
 switch(calib.warptype)
+    case {'HalfCylinderProjection'}
+        % Build combo of displaylist and GLSL shader for projection of flat
+        % screen image onto a half-cylinder:
+
+        % Query effective onscreen window size:
+        [winWidth, winHeight] = Screen('WindowSize', window);
+                
+        % Build the unwarp mesh display list within the OpenGL context of
+        % Psychtoolbox:
+        Screen('BeginOpenGL', window, 1);
+                
+        % Build a display list that corresponds to the current calibration:
+        gld = glGenLists(1);
+        glNewList(gld, GL.COMPILE);
+        
+        % "Draw" the warp-mesh once, so it gets recorded in the display list:
+        if isempty(calib.rotationAngle)
+            calib.rotationAngle = 0;
+        end
+        
+        if isempty(calib.inSize)
+            calib.inSize = [winWidth, winHeight];
+        end
+        
+        if isempty(calib.inOffset)
+            calib.inOffset = [0, 0];
+        end
+        
+        if isempty(calib.outOffset)
+            calib.outOffset = [0, 0];
+        end
+        
+        if isempty(calib.outSize)
+            calib.outSize = [winWidth, winHeight];
+        end
+
+        % No color gain correction:
+        glColor4f(1,1,1,1);
+        
+        glTranslatef(calib.outOffset(1), calib.outOffset(2), 0);
+        
+        % Apply some rotation correction for misaligned displays:
+        glTranslatef(calib.outSize(1)/2, calib.outSize(2)/2, 0);
+        glRotatef(calib.rotationAngle, 0.0, 0.0, 1.0);
+        glTranslatef(-calib.outSize(1)/2, -calib.outSize(2)/2, 0);
+        
+        % Draw a single default quad:
+        glBegin(GL.QUADS)
+        glTexCoord2f(0,calib.outSize(2));
+        glVertex2f(0,0);
+
+        glTexCoord2f(calib.outSize(1),calib.outSize(2));
+        glVertex2f(calib.outSize(1),0);
+
+        glTexCoord2f(calib.outSize(1),0);
+        glVertex2f(calib.outSize(1),calib.outSize(2));
+
+        glTexCoord2f(0,0);
+        glVertex2f(0,calib.outSize(2));
+        glEnd;
+
+        
+        % List ready - and already updated in the imaging pipeline:
+        glEndList;
+
+        Screen('EndOpenGL', window);
+
+        % Assign display list to output warpstruct:
+        warpstruct.gld = gld;
+
+        warpstruct.glsl = LoadGLSLProgramFromFiles('CylinderProjectionShader');
+        glUseProgram(warpstruct.glsl);
+        
+        glUniform1i(glGetUniformLocation(warpstruct.glsl, 'doFilter'), needFilterShader);
+        glUniform1i(glGetUniformLocation(warpstruct.glsl, 'Image'), 0);
+        glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inSize'), calib.inSize(1), calib.inSize(2));
+        glUniform2f(glGetUniformLocation(warpstruct.glsl, 'inOffset'), calib.inOffset(1), calib.inOffset(2));
+        glUniform2f(glGetUniformLocation(warpstruct.glsl, 'outSize'), calib.outSize(1), calib.outSize(2));
+        
+        glUseProgram(0);
+        
+        % Ready.
+        
     case {'BezierDisplayList'}
         % Build warp display list for Bezier surface based
         % calibration/remapping:
@@ -194,44 +357,18 @@ switch(calib.warptype)
         error('Unknown calibration method id: %s!', calib.warptype);
 end
 
-% Do we need a GLSL texture filter shader? We'd need one if the given
-% gfx-hardware is not capable of filtering the input image buffer:
-winfo = Screen('GetWindowInfo', window);
-effectivebpc = 8;
-if winfo.BitsPerColorComponent >= 16
-    % Window is a floating point window with at least 16bpc.
-    effectivebpc = 16;
-    
-    if winfo.BitsPerColorComponent >= 32
-        % All buffers are 32 bpc for certain:
-        effectivebpc = 32;
-    end
-    
-    if (winfo.BitsPerColorComponent == 16)
-        % First buffer is 16 bpc, following ones could be 32 bpc:
-        if bitand(winfo.ImagingMode, kPsychUse32BPCFloatAsap)
-            % All following buffers are 32bpc float. In the tradition of
-            % "better safe than sorry", we assume that the warp op will use
-            % one of the 32 bpc float buffers as input.
-            effectivebpc = 32;            
-        end
-    end    
+% Need a filtershader and don't have one assigned yet?
+if (needFilterShader > 0) && isempty(warpstruct.glsl)
+    % Yes. Load, create and assign our default bilinear texture filter
+    % shader:
+    warpstruct.glsl = LoadGLSLProgramFromFiles('BilinearTextureFilterShader');
+    glUseProgram(warpstruct.glsl);
+    glUniform1i(glGetUniformLocation(warpstruct.glsl, 'Image'), 0);
+    glUseProgram(0);
 end
 
-% Highres input buffer?
-if effectivebpc > 8
-    % Yes. Our input is a float texture. Check if the hardware can filter
-    % textures of effectivebpc bpc in hardware:
-    if effectivebpc > winfo.GLSupportsFilteringUpToBpc
-        % Hardware not capable of handling such deep textures. We need to
-        % create and attach our own bilinear texture filter shader:
-        warpstruct.glsl = LoadGLSLProgramFromFiles('BilinearTextureFilterShader');
-        glUseProgram(warpstruct.glsl);
-        glUniform1i(glGetUniformLocation(warpstruct.glsl, 'Image'), 0);
-        glUseProgram(0);
-    end
-end
-
+% Cache created warptstruct for later queries:
+oldwarpstruct = warpstruct;
 
 % Done. Return the warpstruct:
 return;

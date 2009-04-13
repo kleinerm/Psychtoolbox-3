@@ -153,7 +153,7 @@ end
 fprintf('Name of calibration result file: %s\n', caliboutfilename);
 if exist(caliboutfilename, 'file')
     answer = input('This file already exists. Overwrite it [y/n]?','s');
-    if ~strcmp(lower(answer), 'y')
+    if ~strcmp(lower(answer), 'y') %#ok<STCI>
         error('Calibration aborted. Please choose a different name for calibration result file.');
     end
 end
@@ -228,6 +228,8 @@ win = Screen('OpenWindow', screenid, 0, winrect, [], [], stereomode, [], mor(kPs
 
 if ~isempty(refimagename)
     reftex = Screen('MakeTexture', win, refimg);
+else
+    reftex = [];
 end
 
 % Allocate display list handle and build initial warpstruct:
@@ -343,7 +345,7 @@ while 1
         % Visualization of the calibration grid requested.
 
         % Draw backdrop image, if there is one:
-        if reftex
+        if ~isempty(reftex)
             Screen('DrawTexture', win, reftex, [], Screen('Rect', reftex));
 
             % Reset drawing color for calibration grid to red:
@@ -463,7 +465,7 @@ glDisable(GL.MAP2_TEXTURE_COORD_2);
 % Writeout of calibration/undistortion matrices:
 
 % Define type of mapping for this calibration method:
-warptype = 'BezierDisplayList';
+warptype = 'BezierDisplayList'; %#ok<NASGU>
 
 % Save relevant calibration variables to file 'caliboutfilename':
 if ~IsOctave
