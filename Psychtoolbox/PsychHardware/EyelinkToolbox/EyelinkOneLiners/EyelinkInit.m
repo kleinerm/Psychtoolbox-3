@@ -1,4 +1,4 @@
-function [result dummy]=EyelinkInit(dummy, enableCallbacks)
+function [result, dummy]=EyelinkInit(dummy, enableCallbacks)
 % USAGE: [result dummy]=EyelinkInit([dummy=0][enableCallbacks=0])
 %
 % Initialize Eyelink system and connection. Optional arguments:

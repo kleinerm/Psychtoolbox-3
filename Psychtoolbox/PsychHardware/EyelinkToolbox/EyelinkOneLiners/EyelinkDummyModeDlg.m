@@ -8,6 +8,7 @@ function runindummymode=EyelinkDummyModeDlg
 %   10-04-09 mk     Made portable to old Matlabs. De-Uglified.
 
 if exist('questdlg') %#ok<EXIST>
+    drawnow;
     ButtonName=questdlg('Run in dummy mode?', ...
         'Eyelink not connected', ...
         'Yes','Quit','Quit');

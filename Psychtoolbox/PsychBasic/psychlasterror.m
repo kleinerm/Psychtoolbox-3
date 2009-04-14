@@ -12,7 +12,7 @@ function rc = psychlasterror(varargin)
 
 % exist must check for all cases, as lasterror is implemented differently
 % on different Matlab versions (variable, M-File or builtin-function):
-if exist('lasterror') > 0
+if exist('lasterror') > 0 %#ok<EXIST>
     % Call Matlab implementation:
     if nargin > 0
         try
@@ -21,7 +21,11 @@ if exist('lasterror') > 0
             % This catches bugs in lasterror on Matlab 7.0 itself!
             % Doesn't recognize the 'reset' keyword!
             try
-                lasterr('');
+                if strcmpi(varargin{1}, 'reset')
+                    lasterr('');
+                else
+                    lasterr(varargin{1});
+                end
             catch
                 % The climax of sadness!
             end
@@ -33,6 +37,14 @@ else
     % Use our simple fallback-implementation:
     rc.message = lasterr;
     rc.identifier = '';
+    
+    if nargin > 0
+        if strcmpi(varargin{1}, 'reset')
+            lasterr('');
+        else
+            lasterr(varargin{1});
+        end
+    end
 end
 
 return;

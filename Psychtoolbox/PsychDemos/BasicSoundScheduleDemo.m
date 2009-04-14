@@ -42,7 +42,7 @@ KbName('UnifyKeyNames');
 for i=1:10
     key(i) = KbName(sprintf('F%i', i)); %#ok<AGROW>
 end
-for i=11:11+26
+for i=11:11+25
     key(i) = KbName(sprintf('%s', char('a' + i - 11))); %#ok<AGROW>
 end
 
@@ -55,7 +55,7 @@ end
 
 if isempty(wavfilenames)
     % No sound file provided. Load our standard sounds:
-    sounddir = [ PsychtoolboxRoot 'PsychDemos/SoundFiles/' ];
+    sounddir = [ PsychtoolboxRoot 'PsychDemos' filesep 'SoundFiles' filesep ];
     
     % Ok, on MK's machine we have a special treat ;-)
     if exist([PsychHomeDir 'Music/StarTrekSounds/'], 'dir')
@@ -66,7 +66,11 @@ if isempty(wavfilenames)
     infilenames.name;
 
     for i=1:length(infilenames)
-        wavfilenames{i} = [ sounddir infilenames(i).name ];
+        if IsOctave
+            wavfilenames{i} = infilenames(i).name;
+        else
+            wavfilenames{i} = [ sounddir infilenames(i).name ];
+        end
     end
 end
 
@@ -107,6 +111,7 @@ for i=1:nfiles
     catch
         fprintf('Failed to read and add file %s. Skipped.\n', char(wavfilenames(i)));
         dontskip = 0;
+        psychlasterror
         psychlasterror('reset');
     end
 
