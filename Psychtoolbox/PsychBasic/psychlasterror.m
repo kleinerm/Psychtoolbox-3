@@ -15,7 +15,17 @@ function rc = psychlasterror(varargin)
 if exist('lasterror') > 0
     % Call Matlab implementation:
     if nargin > 0
-        rc = lasterror(varargin{1});
+        try
+            rc = lasterror(varargin{1});
+        catch
+            % This catches bugs in lasterror on Matlab 7.0 itself!
+            % Doesn't recognize the 'reset' keyword!
+            try
+                lasterr('');
+            catch
+                % The climax of sadness!
+            end
+        end
     else
         rc = lasterror;
     end
