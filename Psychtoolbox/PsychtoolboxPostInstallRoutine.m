@@ -30,6 +30,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 28/10/2006 Accept 'current' as synonym for 'beta'. (DHB)
 % 23/05/2007 Add Matlab R2007 vs. earlier detection to Windows version (MK).
 % 16/04/2008 Write/Read PTB flavor to/from users PsychtoolboxConfigDir as well for higher robustness (MK).
+% 15/04/2009 Add warning about unsupported OS/X systems older than Tiger (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -114,6 +115,57 @@ try
     end
 catch
     fprintf('Info: Failed to remove .svn subfolders from path. Not a big deal...\n');
+end
+
+% Check for operating system minor version on Mac OS/X when running under
+% Matlab:
+if IsOSX & ~IsOctave %#ok<AND2>
+    % Running on Matlab + OS/X. Find the operating system minor version,
+    % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
+    
+    % Get 32-digit binary encoded minor version from Gestalt() MEX file:
+    binminor = Gestalt('sys2');
+    
+    % Decode into decimal digit:
+    minorver = 0;
+    for i=1:32
+        minorver = minorver + binminor(i) * 2^(32-i);
+    end
+    
+    % Is the operating system minor version 'minorver' < 4?
+    if minorver < 4
+        % Yes. This is MacOS/X 10.3 or earlier, i.e., older than 10.4
+        % Tiger. In all likelihood, this current PTB release won't work on
+        % such a system anymore, because some of the binary MEX files are
+        % linked against incompatible runtimes and frameworks. Output a
+        % clear warning message about this, with tips on how to resolve the
+        % problem:
+        fprintf('\n\n\n\n\n\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n');
+        fprintf('Your operating system is Mac OS/X version 10.%i.\n\n', minorver);
+        fprintf('This release of Psychtoolbox-3 is likely no longer compatible\n');
+        fprintf('to OS/X versions older than 10.4 "Tiger".\n\n');
+        fprintf('That means that some or many crucial functions will fail.\n');
+        fprintf('You may encounter errors or failures during the remainder of\n');
+        fprintf('this installation procedure, or later on during use of the toolkit.\n\n');
+        fprintf('You can fix this problem by switching to the last Psychtoolbox version\n');
+        fprintf('that was known to (mostly) work on your old operating system:\n\n');
+        fprintf('1. Type clear all on the Matlab command prompt.\n\n');
+        fprintf('2. Run the downloader script DownloadPsychtoolbox again,\n');
+        fprintf('   (see help DownloadPsychtoolbox for usage information),\n');
+        fprintf('   but specify the optional "flavor" argument as:\n\n');
+        fprintf('   ''Psychtoolbox-3.0.8-PreTiger''\n\n');
+        fprintf('   Example for a standard installation in standard location:\n\n');
+        fprintf('   DownloadPsychtoolbox([],[],[],''Psychtoolbox-3.0.8-PreTiger'');\n\n\n');
+        fprintf('This will delete your current copy of Psychtoolbox-3 and replace it\n');
+        fprintf('by the last known good version for your system.\n\n');
+        fprintf('Please note that we will no longer provide support, bug fixes or enhancements\n');
+        fprintf('for this old release on your old and obsolete operating system - You are on your own.\n\n');
+        fprintf('We strongly recommend that you upgrade your system to a more recent OS/X version soon.\n\n');
+        fprintf('Thanks for your attention and good luck!');
+        fprintf('\n\n\n==== WARNING WARNING WARNING WARNING ====\n\n\n');
+        fprintf('Press any key on keyboard to continue with setup...\n');
+        pause;
+    end
 end
 
 % Special case handling for different Matlab releases on MS-Windoze:
