@@ -544,15 +544,53 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
-  unsigned int vsync_counter = 0;
+	unsigned int		vsync_counter = 0;
+    CGDirectDisplayID	cgDisplayID;
+    long				myinterval, vbl_startline, scanline, lastline;
+	
+	// Workaround for broken sync-bufferswap-to-VBL support needed?
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) {
+		// Yes: Sync of bufferswaps to VBL requested?
+		
+		// On Linux we don't have a method to query the OS if sync-to-VBL requested, so we
+		// simply assume it is requested if this workaround is enabled. Would be better to
+		// just carry and maintain our own bit of state around though... Later alligator...
+		myinterval = 1;
 
-  //  glXGetVideoSyncSGI(&vsync_counter);
-  //  printf("PREFLIP-VSYNC: %i\n", vsync_counter);
-  //  glXWaitVideoSyncSGI(2000000000, (int) vsync_counter + 10, &vsync_counter);
-  //  printf("POSTFLIP-VSYNC: %i\n", vsync_counter);
-
-  // Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
-  glXSwapBuffers(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
+		if (myinterval > 0) {
+			// Sync of bufferswaps to retrace requested:
+			// We perform a busy-waiting spin-loop and query current beamposition until
+			// beam leaves VBL area:
+			
+			// Retrieve display handle for beamposition queries:
+			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
+			
+			// Retrieve final vbl_startline, aka physical height of the display in pixels:
+			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
+			
+			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
+			// if beamposition queries are broken as well:
+			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+			if (lastline > 0) {
+				// Within video frame. Wait for beamposition wraparound or start of VBL:
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Lastline beampos = %i\n", (int) lastline);
+				scanline = lastline;
+				while ((scanline < vbl_startline) && (scanline >= lastline)) {
+					lastline = scanline;
+					scanline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+				} 
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Scanline beampos = %i\n", (int) scanline);
+			}
+		}
+	}
+	
+	//  glXGetVideoSyncSGI(&vsync_counter);
+	//  printf("PREFLIP-VSYNC: %i\n", vsync_counter);
+	//  glXWaitVideoSyncSGI(2000000000, (int) vsync_counter + 10, &vsync_counter);
+	//  printf("POSTFLIP-VSYNC: %i\n", vsync_counter);
+	
+	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
+	glXSwapBuffers(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
 }
 
 /* Enable/disable syncing of buffer-swaps to vertical retrace. */
