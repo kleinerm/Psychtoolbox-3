@@ -74,5 +74,16 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
 void PsychDCExitVideoCapture(void);
 #endif
 
+// These are the prototypes for the ARVideo capture library, supported on GNU/Linx, OS/X and MS-Windows:
+#ifdef PTBVIDEOCAPTURE_ARVIDEO
+void PsychARVideoCaptureInit(void);
+bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle, int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags);
+void PsychARCloseVideoCaptureDevice(int capturehandle);
+int PsychARGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
+int PsychARVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
+double PsychARVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychARExitVideoCapture(void);
+#endif
+
 //end include once
 #endif

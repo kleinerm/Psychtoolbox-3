@@ -119,7 +119,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
 	"\noldVTOTAL = Screen('Preference', 'VBLEndlineOverride' [, newVTOTAL]);"
-	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire)]);"
+	"\noldMode = Screen('Preference', 'DefaultVideocaptureEngine', [newmode (0=Quicktime-SequenceGrabbers, 1=LibDC1394-Firewire, 2=LibARVideo)]);"
 	"\nresiduals = Screen('Preference', 'SynchronizeDisplays', syncMethod);"
 	"\noldLevel = Screen('Preference', 'Verbosity' [,level]);";
 

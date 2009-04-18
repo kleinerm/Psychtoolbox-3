@@ -79,7 +79,7 @@ static Boolean                          Enable_3d_gfx=FALSE;
 // use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode=1;
 static int								screenVBLEndlineOverride=-1;	// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
-static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire.
+static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire, 2 = ARVideo.
 
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)

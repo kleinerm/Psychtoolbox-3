@@ -150,7 +150,7 @@ PsychError SCREENGetCapturedImage(void)
         }
         else if (rc==-1 && waitForImage != 0) {
             // No new texture available yet. Just sleep a bit and then retry...
-            PsychWaitIntervalSeconds(0.005);
+            PsychYieldIntervalSeconds(0.002);
         }
     }
 

@@ -1814,6 +1814,8 @@
 		83E2C4250D2FCA2000FFD350 /* PsychCV.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4210D2FCA2000FFD350 /* PsychCV.c */; };
 		83E2C4260D2FCA2000FFD350 /* RegisterProject.c in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C4230D2FCA2000FFD350 /* RegisterProject.c */; };
 		83E2C42C0D2FCC1A00FFD350 /* PsychCV.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */; };
+		83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */ = {isa = PBXBuildFile; fileRef = 83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */; };
+		83EFE9F10F9A6433002211F0 /* libARvideo-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */; };
 		83FD4C470BA5F0D700ECC9A4 /* VLTracker2D.cc in Sources */ = {isa = PBXBuildFile; fileRef = 83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */; };
 		CF1D7E4D07F1E112004F308C /* SCREENLineStipple.c in Sources */ = {isa = PBXBuildFile; fileRef = CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */; };
 		CF29B1CD080333DC00723921 /* MiniBox.h in Headers */ = {isa = PBXBuildFile; fileRef = F569F237038E2BE2017A7028 /* MiniBox.h */; };
@@ -3768,6 +3770,9 @@
 		83E2C4230D2FCA2000FFD350 /* RegisterProject.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = RegisterProject.c; path = ../../../Source/Common/PsychCV/RegisterProject.c; sourceTree = SOURCE_ROOT; };
 		83E2C4240D2FCA2000FFD350 /* RegisterProject.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = RegisterProject.h; path = ../../../Source/Common/PsychCV/RegisterProject.h; sourceTree = SOURCE_ROOT; };
 		83E2C42B0D2FCC1A00FFD350 /* PsychCV.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = PsychCV.cc; sourceTree = "<group>"; };
+		83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychVideoCaptureSupportLibARVideo.c; path = ../../../Source/Common/Screen/PsychVideoCaptureSupportLibARVideo.c; sourceTree = SOURCE_ROOT; };
+		83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libARvideo-Intel.a"; sourceTree = SOURCE_ROOT; };
+		83EFE9F20F9A647E002211F0 /* video.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = video.h; path = ../../../Cohorts/ARToolkit/include/AR/video.h; sourceTree = SOURCE_ROOT; };
 		83FD4C450BA5F0CB00ECC9A4 /* VLTracker2D.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = VLTracker2D.h; path = /Users/kleinerm/projects/MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/VLTracker2D.h; sourceTree = "<absolute>"; };
 		83FD4C460BA5F0D700ECC9A4 /* VLTracker2D.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = VLTracker2D.cc; sourceTree = "<group>"; };
 		CF1D7E4C07F1E112004F308C /* SCREENLineStipple.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENLineStipple.c; path = ../../../Source/Common/Screen/SCREENLineStipple.c; sourceTree = SOURCE_ROOT; };
@@ -4636,6 +4641,7 @@
 				F089BCFD0AD42DF500663D86 /* System.framework in Frameworks */,
 				F089BCFE0AD42DF500663D86 /* SystemConfiguration.framework in Frameworks */,
 				83DBBD000C332374002B3C93 /* AGL.framework in Frameworks */,
+				83EFE9F10F9A6433002211F0 /* libARvideo-Intel.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5059,6 +5065,7 @@
 				2F685925072DD4C1003367CA /* Documentation */,
 				29B97315FDCFA39411CA2CEA /* Psychtoolbox Source */,
 				F559032B0385BAEA017A7028 /* MATLAB Resources */,
+				83EFE9EB0F9A63E6002211F0 /* ARToolkit */,
 				2F0B17B30778924A00359736 /* IO Warrior Libs */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
 				2F9934250460950C007A7274 /* HID Utilities */,
@@ -5399,6 +5406,7 @@
 				0F45C2A30B264AE6004ED5F0 /* PsychImagingPipelineSupport.c */,
 				8370C71E096A014E00BD4C8C /* PsychTextureSupport.c */,
 				8365A79C09992499006FF0F4 /* PsychVideoCaptureSupport.c */,
+				83EFE9010F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c */,
 				8320C1B80D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c */,
 				8320C1B50D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c */,
 				8370C6F60969F23000BD4C8C /* PsychWindowSupport.c */,
@@ -5759,6 +5767,15 @@
 			name = PsychCV;
 			path = ../../../Source/Common/PsychCV;
 			sourceTree = SOURCE_ROOT;
+		};
+		83EFE9EB0F9A63E6002211F0 /* ARToolkit */ = {
+			isa = PBXGroup;
+			children = (
+				83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */,
+				83EFE9F20F9A647E002211F0 /* video.h */,
+			);
+			name = ARToolkit;
+			sourceTree = "<group>";
 		};
 		CF29B2000803342100723921 /* MachAbsoluteTimeClockFrequency */ = {
 			isa = PBXGroup;
@@ -11696,6 +11713,7 @@
 				8320C1B70D1F1C3F00B8039D /* PsychVideoCaptureSupportQuickTime.c in Sources */,
 				8320C1BA0D1F1C5F00B8039D /* PsychVideoCaptureSupportLibDC1394.c in Sources */,
 				8306696D0D3920D50009C12B /* PsychGraphicsHardwareHALSupport.c in Sources */,
+				83EFE9020F9A2795002211F0 /* PsychVideoCaptureSupportLibARVideo.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -21058,15 +21076,23 @@
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
+					PTBVIDEOCAPTURE_ARVIDEO,
 					PTBVIDEOCAPTURE_LIBDC,
 					PTBMODULE_Screen,
 					MATLAB_MEX_FILE,
 					USE_MWSIZE,
 				);
-				HEADER_SEARCH_PATHS = /Applications/MATLAB74/extern/include;
+				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../../../Cohorts/ARToolkit/include/**",
+					/Applications/MATLAB74/extern/include,
+				);
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = /Applications/MATLAB74/bin/maci;
+				LIBRARY_SEARCH_PATHS = (
+					/Applications/MATLAB74/bin/maci,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
@@ -21108,6 +21134,11 @@
 					PTBVIDEOCAPTURE_LIBDC,
 					"$(inherited)",
 				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
 				OTHER_LDFLAGS = (
 					/usr/local/lib/libdc1394.a,
 					"$(inherited)",
@@ -21133,7 +21164,11 @@
 				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = YES;
-				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
+				LIBRARY_SEARCH_PATHS = (
+					/Applications/MATLAB72/bin/mac,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
 				MATLAB_DIR_NAME = MATLAB72;
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;
@@ -21153,7 +21188,11 @@
 				HEADER_SEARCH_PATHS = /Applications/MATLAB72/extern/include;
 				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
-				LIBRARY_SEARCH_PATHS = /Applications/MATLAB72/bin/mac;
+				LIBRARY_SEARCH_PATHS = (
+					/Applications/MATLAB72/bin/mac,
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
+				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
 				MATLAB_DIR_NAME = MATLAB72;
 				PREBINDING = NO;
 				PRODUCT_NAME = foo;

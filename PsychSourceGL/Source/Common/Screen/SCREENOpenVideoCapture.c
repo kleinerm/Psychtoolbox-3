@@ -58,7 +58,7 @@ static char synopsisString[] =
 "this mode currently can cause hangs and crashes of PTB for unknown reasons, so better avoid!\n"
 "\n"
 "'captureEngineType' This optional parameter allows selection of the video capture engine to use for this "
-"video source. Allowable values are currently 0 and 1. Zero selects Apples Quicktime Sequence-Grabber API "
+"video source. Allowable values are currently 0, 1 and 2. Zero selects Apples Quicktime Sequence-Grabber API "
 "as capture engine, which is supported on MacOS/X and MS-Windows (for Windows you'll need to install a "
 "Quicktime Video digitizer component VDIG). The Quicktime engine allows movie recording and sound recording "
 "as well (see above). A value of 1 selects Firewire video capture via the free software library libdc1394-V2. "
@@ -67,7 +67,14 @@ static char synopsisString[] =
 "cams allows for much higher flexibility and performance than use of video capture via Quicktime, "
 "however, video recording to harddisk or sound recording isn't yet supported with firewire capture, ie., "
 "the 'targetmoviename' is simply ignored. The firewire capture engine is supported on Linux, MacOS/X and "
-"- with quite a few limitations and bugs - on Windows. If you don't specify 'captureEngineType', the global "
+"- maybe in the future, with quite a few limitations and bugs - on Windows. \n"
+"A value of 2 selects the ARVideo video capture engine from the ARToolkit. This engine doesn't allow for "
+"video recording or sound recording and has limited performance and flexibility, so it combines the "
+"disadvantages of the Quicktime- and Firewire engine. However it is the only engine that allows for "
+"video capture from checp non-IIDC cameras on Linux, and on Windows it should have a higher performance "
+"than the Quicktime engine. This engine is supported on all systems. On Linux it uses the GStreamer media "
+"framework, on Windows it uses the DirectShow framework, on OS/X it uses Quicktime.\n\n"
+"If you don't specify 'captureEngineType', the global "
 "setting from Screen('Preference', 'DefaultVideoCaptureEngine') will be used. If you don't specify that either "
 "then engine selection will default to Quicktime for MacOS/X and MS-Windows, and Firewire libdc1394 on Linux.\n\n"
 "To summarize: \n"
@@ -146,7 +153,7 @@ PsychError SCREENOpenVideoCapture(void)
 	// setting, which by itself defaults to LibDC1394 (type 1) on Linux, and Quicktime/SG (type 0) on all other OSs.
 	engineId = PsychPrefStateGet_VideoCaptureEngine();
 	PsychCopyInIntegerArg(9, FALSE, &engineId);
-	if (engineId<0 || engineId>1)  PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid 'captureEngineType' argument. Valid are zero and one.");
+	if (engineId<0 || engineId>2)  PsychErrorExitMsg(PsychError_user, "OpenVideoCapture called with invalid 'captureEngineType' argument. Valid are zero, one and two.");
 
 	// Try to open the capture device and create & initialize a corresponding capture object.
 	// A MATLAB handle to the video capture object is returned upon successfull operation.
