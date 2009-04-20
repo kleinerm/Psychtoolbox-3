@@ -266,8 +266,8 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     }
 
 #if PSYCH_SYSTEM == PSYCH_OSX
-	// Disable setup dialog, flip image vertically:
-	strcat(config, " -nodialog -flipv");
+	// Disable setup dialog:
+	strcat(config, " -nodialog");
 
 	// Specific deviceIndex requested, instead of auto-select?
     if (deviceIndex > 0) {
@@ -293,6 +293,9 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 			break;
 
 		case 4:
+			reqdepth = 4;
+			sprintf(tmpstr, "");
+			break;
 		case 0:
 			reqdepth = 4;
 			sprintf(tmpstr, " -pixelformat=ARGB");
@@ -675,13 +678,8 @@ int PsychARGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		// Set NULL - special texture object as part of the PTB texture record:
 		out_texture->targetSpecific.QuickTimeGLTexture = NULL;
 		
-		#if PSYCH_SYSTEM == PSYCH_OSX
-		// Set texture orientation as if it were an Offscreen window: Upside.
-		out_texture->textureOrientation = 2;
-		#else
 		// Set texture orientation as if it were an inverted Offscreen window: Upside-down.
 		out_texture->textureOrientation = 3;
-		#endif
 		
 		// Setup a pointer to our buffer as texture data pointer: Setting memsize to zero
 		// prevents unwanted free() operation in PsychDeleteTexture...

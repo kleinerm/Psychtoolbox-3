@@ -65,6 +65,7 @@ PsychError SCREENGetCapturedImage(void)
     double                      presentation_timestamp = 0;
     int							rc=-1;
     double						targetmemptr = 0;
+	double*						tsummed = NULL;
 	psych_uint8					*targetmatrixptr = NULL;
 	static rawcapimgdata		rawCaptureBuffer = {0, 0, 0, NULL};
 
@@ -207,39 +208,45 @@ PsychError SCREENGetCapturedImage(void)
         textureRecord = NULL;
     }
 
-    // Try to fetch an image from the capture object and return it as texture:
+	// Default to no calculation of summed image intensity:
+	tsummed = NULL;
     if ((PsychGetNumOutputArgs() > 3) && !(specialmode & 0x2)) {
+        // Return sum of pixel intensities for all channels of this image: Need to
+		// assign the output pointer for this to happen:
+		tsummed = &summed_intensity;
+	}
+
+    // Try to fetch an image from the capture object and return it as texture:
+	targetmatrixptr = NULL;
+	
+	// Shall we return a Matlab matrix?
+	if ((PsychGetNumOutputArgs() > 3) && (specialmode & 0x2)) {
+		// We shall return a matrix with raw image data. Allocate a uint8 matrix
+		// of sufficient size:
+		PsychAllocOutUnsignedByteMatArg(4, TRUE, rawCaptureBuffer.depth, rawCaptureBuffer.w, rawCaptureBuffer.h, &targetmatrixptr);
+		tsummed = NULL;
+	}
+	
+	// Shall we return data into preallocated memory buffer?
+	if (specialmode & 0x4) {
+		// Copy in memory address (which itself is encoded in a double value):
+		PsychCopyInDoubleArg(6, TRUE, &targetmemptr);
+		targetmatrixptr = (psych_uint8*) PsychDoubleToPtr(targetmemptr);
+	}
+	
+	if (targetmatrixptr == NULL) {
+		// Standard fetch of a texture and its timestamp:
+		rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, tsummed, NULL);
+	}
+	else {
+		// Fetch of a memory raw image buffer + timestamp + possibly a texture:
+		rawCaptureBuffer.data = (void*) targetmatrixptr;
+		rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, tsummed, &rawCaptureBuffer);			
+	}
+	
+    if (tsummed) {
         // Return sum of pixel intensities for all channels of this image:
-        rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, &summed_intensity, NULL);
         PsychCopyOutDoubleArg(4, FALSE, summed_intensity);
-    }
-    else {
-		// Return either only texture/timestamp and/or raw image:
-		targetmatrixptr = NULL;
-		
-		// Shall we return a Matlab matrix?
-		if ((PsychGetNumOutputArgs() > 3) && (specialmode & 0x2)) {
-			// We shall return a matrix with raw image data. Allocate a uint8 matrix
-			// of sufficient size:
-			PsychAllocOutUnsignedByteMatArg(4, TRUE, rawCaptureBuffer.depth, rawCaptureBuffer.w, rawCaptureBuffer.h, &targetmatrixptr);
-		}
-		
-		// Shall we return data into preallocated memory buffer?
-		if (specialmode & 0x4) {
-			// Copy in memory address (which itself is encoded in a double value):
-			PsychCopyInDoubleArg(6, TRUE, &targetmemptr);
-			targetmatrixptr = (psych_uint8*) PsychDoubleToPtr(targetmemptr);
-		}
-		
-		if (targetmatrixptr == NULL) {
-			// Standard fetch of a texture and its timestamp:
-			rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, NULL, NULL);
-		}
-		else {
-			// Fetch of a memory raw image buffer + timestamp + possibly a texture:
-			rawCaptureBuffer.data = (void*) targetmatrixptr;
-			rc = PsychGetTextureFromCapture(windowRecord, capturehandle, 0, 0.0, textureRecord, &presentation_timestamp, NULL, &rawCaptureBuffer);			
-		}
     }
 
     // Real texture requested?
