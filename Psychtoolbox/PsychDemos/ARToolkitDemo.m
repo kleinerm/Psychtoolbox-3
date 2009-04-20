@@ -63,7 +63,7 @@ try
     
     % Initialize ARToolkit: Load camera calibration data, assign image size
     % and properties for raw video input images:
-    ardata = PsychHomeDir('ARToolkitData/');
+    ardata = [ PsychtoolboxRoot() 'PsychDemos/ARToolkitDemoData/' ];
     [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels); %#ok<NASGU>
 
     % Single markers by default:
