@@ -1682,6 +1682,12 @@
 		835CD26B0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
 		835CD26C0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; settings = {COMPILER_FLAGS = "-x c++"; }; };
 		835CD26D0A1811CD000FCEFA /* PsychScriptingGlue.cc in Sources */ = {isa = PBXBuildFile; fileRef = 835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */; };
+		835EA4020F9B6FD5001D1914 /* libAR-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 835EA3FD0F9B6FD5001D1914 /* libAR-Intel.a */; };
+		835EA4030F9B6FD5001D1914 /* libARgsub_lite-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 835EA3FE0F9B6FD5001D1914 /* libARgsub_lite-Intel.a */; };
+		835EA4040F9B6FD5001D1914 /* libARgsub-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 835EA3FF0F9B6FD5001D1914 /* libARgsub-Intel.a */; };
+		835EA4050F9B6FD5001D1914 /* libARgsubUtil-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 835EA4000F9B6FD5001D1914 /* libARgsubUtil-Intel.a */; };
+		835EA4060F9B6FD5001D1914 /* libARMulti-Intel.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 835EA4010F9B6FD5001D1914 /* libARMulti-Intel.a */; };
+		835EA40C0F9B7155001D1914 /* PsychCVARToolkit.c in Sources */ = {isa = PBXBuildFile; fileRef = 835EA40A0F9B7155001D1914 /* PsychCVARToolkit.c */; };
 		8365A77F09991D69006FF0F4 /* SCREENOpenVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */; };
 		8365A78109991DAB006FF0F4 /* SCREENCloseVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */; };
 		8365A78309991E06006FF0F4 /* SCREENStartVideoCapture.c in Sources */ = {isa = PBXBuildFile; fileRef = 8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */; };
@@ -3705,6 +3711,13 @@
 		83587B300E982EBF004BB7BD /* QuadProg++.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = "QuadProg++.cc"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.cc"; sourceTree = SOURCE_ROOT; };
 		83587B310E982EBF004BB7BD /* QuadProg++.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = "QuadProg++.h"; path = "../../../../../../MirrorFace/MirrorFaceSource/Source/Common/MirrorFaceCore/QuadProg++.h"; sourceTree = SOURCE_ROOT; };
 		835CD2590A1811CD000FCEFA /* PsychScriptingGlue.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = PsychScriptingGlue.cc; path = ../../../Source/Common/Base/PsychScriptingGlue.cc; sourceTree = SOURCE_ROOT; };
+		835EA3FD0F9B6FD5001D1914 /* libAR-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libAR-Intel.a"; path = "ARToolkitLibs/libAR-Intel.a"; sourceTree = SOURCE_ROOT; };
+		835EA3FE0F9B6FD5001D1914 /* libARgsub_lite-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libARgsub_lite-Intel.a"; path = "ARToolkitLibs/libARgsub_lite-Intel.a"; sourceTree = SOURCE_ROOT; };
+		835EA3FF0F9B6FD5001D1914 /* libARgsub-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libARgsub-Intel.a"; path = "ARToolkitLibs/libARgsub-Intel.a"; sourceTree = SOURCE_ROOT; };
+		835EA4000F9B6FD5001D1914 /* libARgsubUtil-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libARgsubUtil-Intel.a"; path = "ARToolkitLibs/libARgsubUtil-Intel.a"; sourceTree = SOURCE_ROOT; };
+		835EA4010F9B6FD5001D1914 /* libARMulti-Intel.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libARMulti-Intel.a"; path = "ARToolkitLibs/libARMulti-Intel.a"; sourceTree = SOURCE_ROOT; };
+		835EA40A0F9B7155001D1914 /* PsychCVARToolkit.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; path = PsychCVARToolkit.c; sourceTree = "<group>"; };
+		835EA40B0F9B7155001D1914 /* PsychCVARToolkit.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; path = PsychCVARToolkit.h; sourceTree = "<group>"; };
 		8365A77E09991D69006FF0F4 /* SCREENOpenVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENOpenVideoCapture.c; path = ../../../Source/Common/Screen/SCREENOpenVideoCapture.c; sourceTree = SOURCE_ROOT; };
 		8365A78009991DAB006FF0F4 /* SCREENCloseVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseVideoCapture.c; path = ../../../Source/Common/Screen/SCREENCloseVideoCapture.c; sourceTree = SOURCE_ROOT; };
 		8365A78209991E06006FF0F4 /* SCREENStartVideoCapture.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENStartVideoCapture.c; path = ../../../Source/Common/Screen/SCREENStartVideoCapture.c; sourceTree = SOURCE_ROOT; };
@@ -4601,6 +4614,11 @@
 				83E2C40A0D2FC58200FFD350 /* CoreAudio.framework in Frameworks */,
 				83E2C40B0D2FC58200FFD350 /* CoreServices.framework in Frameworks */,
 				83E2C40C0D2FC58200FFD350 /* OpenGL.framework in Frameworks */,
+				835EA4020F9B6FD5001D1914 /* libAR-Intel.a in Frameworks */,
+				835EA4030F9B6FD5001D1914 /* libARgsub_lite-Intel.a in Frameworks */,
+				835EA4040F9B6FD5001D1914 /* libARgsub-Intel.a in Frameworks */,
+				835EA4050F9B6FD5001D1914 /* libARgsubUtil-Intel.a in Frameworks */,
+				835EA4060F9B6FD5001D1914 /* libARMulti-Intel.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -5761,6 +5779,8 @@
 				8341EF1C0D2FD0E300B77B0E /* OpenEyesCVEyeTracker */,
 				83E2C4210D2FCA2000FFD350 /* PsychCV.c */,
 				83E2C4220D2FCA2000FFD350 /* PsychCV.h */,
+				835EA40A0F9B7155001D1914 /* PsychCVARToolkit.c */,
+				835EA40B0F9B7155001D1914 /* PsychCVARToolkit.h */,
 				83E2C4230D2FCA2000FFD350 /* RegisterProject.c */,
 				83E2C4240D2FCA2000FFD350 /* RegisterProject.h */,
 			);
@@ -5771,6 +5791,11 @@
 		83EFE9EB0F9A63E6002211F0 /* ARToolkit */ = {
 			isa = PBXGroup;
 			children = (
+				835EA3FD0F9B6FD5001D1914 /* libAR-Intel.a */,
+				835EA3FE0F9B6FD5001D1914 /* libARgsub_lite-Intel.a */,
+				835EA3FF0F9B6FD5001D1914 /* libARgsub-Intel.a */,
+				835EA4000F9B6FD5001D1914 /* libARgsubUtil-Intel.a */,
+				835EA4010F9B6FD5001D1914 /* libARMulti-Intel.a */,
 				83EFE9F00F9A6433002211F0 /* libARvideo-Intel.a */,
 				83EFE9F20F9A647E002211F0 /* video.h */,
 			);
@@ -11546,6 +11571,7 @@
 				8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */,
 				8341EF270D2FD0E300B77B0E /* svd.cc in Sources */,
 				83AD4CF80DC51759002E1DF7 /* PsychCellGlue.c in Sources */,
+				835EA40C0F9B7155001D1914 /* PsychCVARToolkit.c in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -20868,6 +20894,7 @@
 				GCC_PREPROCESSOR_DEFINITIONS = MATLAB_MEX_FILE;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
+					"$(SRCROOT)/../../../Cohorts/ARToolkit/include",
 					"$(OPENCV_INCLUDEPATH)",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
@@ -20877,7 +20904,9 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
 					"$(OPENCV_LIBRARYPATH)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
+				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/ARToolkitLibs\"";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
 				MACH_O_TYPE = mh_bundle;
 				MACOSX_DEPLOYMENT_TARGET = "";
@@ -20889,6 +20918,9 @@
 					"-no-cpp-precomp",
 				);
 				OTHER_LDFLAGS = (
+					"-lpng12",
+					"-ltiff",
+					"-lcxcore",
 					"-lhighgui",
 					"-lcv",
 					"-lcvaux",
@@ -20916,9 +20948,11 @@
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_3)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
 				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_3 = "\"$(SRCROOT)/ARToolkitLibs\"";
 				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
 				OPENCV_LIBRARYPATH = /usr/local/lib/;
 				PRODUCT_NAME = PsychPortAudio;
@@ -20941,9 +20975,11 @@
 					/usr/lib/gcc/darwin/2.95.2,
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_3)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
 				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_3 = "\"$(SRCROOT)/ARToolkitLibs\"";
 				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
 				OPENCV_LIBRARYPATH = /usr/local/lib/;
 				PREBINDING = NO;
@@ -20963,9 +20999,11 @@
 					/usr/lib/gcc/darwin/2.95.2,
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_2)",
+					"$(LIBRARY_SEARCH_PATHS_QUOTED_3)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
 				LIBRARY_SEARCH_PATHS_QUOTED_2 = "\"$(SRCROOT)/../../../Cohorts/PortAudio\"";
+				LIBRARY_SEARCH_PATHS_QUOTED_3 = "\"$(SRCROOT)/ARToolkitLibs\"";
 				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
 				OPENCV_LIBRARYPATH = /usr/local/lib/;
 				PREBINDING = NO;

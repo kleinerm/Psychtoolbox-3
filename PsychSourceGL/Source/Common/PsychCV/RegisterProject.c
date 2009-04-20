@@ -24,6 +24,7 @@
 
 #include "Psych.h"
 #include "PsychCV.h"
+#include "PsychCVARToolkit.h"
 
 PsychError PsychModuleInit(void)
 {
@@ -50,7 +51,13 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("OpenEyesTrackEyePosition", &PSYCHCVOpenEyesTrackEyePosition));
 
 	PsychErrorExit(PsychRegister("CopyMatrixToMemBuffer", &PSYCHCVCopyMatrixToMemBuffer));
-//	PsychErrorExit(PsychRegister("FillBuffer", &PSYCHPORTAUDIOFillAudioBuffer));
+
+	PsychErrorExit(PsychRegister("ARInitialize", &PSYCHCVARInitialize));
+	PsychErrorExit(PsychRegister("ARShutdown", &PSYCHCVARShutdown));
+	PsychErrorExit(PsychRegister("ARLoadMarker", &PSYCHCVARLoadMarker));
+	PsychErrorExit(PsychRegister("ARDetectMarkers", &PSYCHCVARDetectMarkers));
+	PsychErrorExit(PsychRegister("ARRenderImage", &PSYCHCVARRenderImage));
+
 //	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
 //	PsychErrorExit(PsychRegister("GetStatus", &PSYCHPORTAUDIOGetStatus));
 //	PsychErrorExit(PsychRegister("LatencyBias", &PSYCHPORTAUDIOLatencyBias));

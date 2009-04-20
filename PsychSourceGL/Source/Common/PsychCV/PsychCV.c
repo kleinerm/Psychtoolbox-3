@@ -45,10 +45,14 @@
 static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 
 // Level of verbosity:
-static unsigned int  verbosity = 4;
+unsigned int  verbosity = 4;
 
 // Status: Initialized or not?
 static boolean psychCVInitialized = FALSE;
+
+// Extern shutdown function for AR toolkit, defined in PsychCVARToolkit.hc
+extern void PsychCVARExit(void);
+
 
 /* Logger callback function to output OpenCV et al. debug messages at 'verbosity' > 5. */
 void PsychCVLogger(const char* msg)
@@ -67,13 +71,20 @@ void InitializeSynopsis()
 	synopsis[i++] = "\nGeneral information and settings:\n";
 	synopsis[i++] = "version = PsychCV('Version');";
 	synopsis[i++] = "oldlevel = PsychCV('Verbosity' [,level]);";
+	synopsis[i++] = "\nHelper functions for memory buffer copies:\n";
+	synopsis[i++] = "PsychCV('CopyMatrixToMemBuffer', matrix, memBufferPtr);";
 	synopsis[i++] = "\nSupport for the OpenEyes computer vision based eye tracker:\n";
 	synopsis[i++] = "[EyeImageMemBuffer, EyeColorImageMemBuffer, SceneImageMemBuffer, ThresholdImageMemBuffer, EllipseImageMemBuffer] = PsychCV('OpenEyesInitialize', handle [, eyeChannels] [, eyeWidth][, eyeHeight][, sceneWidth][, sceneHeight][, logfilename]);";
 	synopsis[i++] = "PsychCV('OpenEyesShutdown', handle);";
  	synopsis[i++] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold][, gaussWidth][, maxPupilEccentricity] [, initialAngleSpread] [, fanoutAngle1] [, fanoutAngle2] [, featuresPerRay] [, specialFlags]);";
 	synopsis[i++] = "EyeResult = PsychCV('OpenEyesTrackEyePosition', handle [, mode] [, px], [, py]);";
-	synopsis[i++] = "\nHelper functions for memory buffer copies:\n";
-	synopsis[i++] = "PsychCV('CopyMatrixToMemBuffer', matrix, memBufferPtr);";
+	synopsis[i++] = "\nSupport for the ARToolkit computer vision based 3D marker tracking library:\n";
+	synopsis[i++] = "[SceneImageMemBuffer, glProjectionMatrix, DebugImageMemBuffer] = PsychCV('ARInitialize', cameraCalibFilename, imgWidth, imgHeight, imgChannels [, imgFormat]);";
+	synopsis[i++] = "PsychCV('ARShutdown');";
+	synopsis[i++] = "[markerId] = PsychCV('ARLoadMarker', markerFilename [, isMultiMarker]);";
+	synopsis[i++] = "[detectedMarkers] = PsychCV('ARDetectMarkers'[, markerSubset][, threshold] [, infoType]);";
+	synopsis[i++] = "PsychCV('ARRenderImage');";
+//	synopsis[i++] 
 
 	synopsis[i++] = NULL;  //this tells PsychDisplayScreenSynopsis where to stop
 	if (i > MAX_SYNOPSIS_STRINGS) {
@@ -99,6 +110,9 @@ PsychError PsychCVExit(void)
 	if (psychCVInitialized) {
 		// Detach our callback function for low-level debug output:
 		// TODO...
+		
+		// Perform AR toolkit shutdown, if needed:
+		PsychCVARExit();
 		
 		// Mark us dead:
 		psychCVInitialized = FALSE;
@@ -518,7 +532,7 @@ PsychError PSYCHCVCopyMatrixToMemBuffer(void)
 			PsychErrorExitMsg(PsychError_user, "Invalid input matrix specified. Must be a uint8 or double matrix!");
 		}
 	}
-	
+
 	// Check dimensions:
 	if (p < 1) p = 1;
 	if (m < 1 || n < 1) PsychErrorExitMsg(PsychError_user, "Invalid input matrix specified. Must have non-zero row- and column count!");
