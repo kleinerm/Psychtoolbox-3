@@ -549,51 +549,44 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 }
 
 /*
+    PsychOSGetVBLTimeAndCount()
+
+    Returns absolute system time of last VBL and current total count of VBL interrupts since
+    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
+    feature is unavailable on the given OS/Hardware configuration.
+*/
+double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
+{
+	unsigned int	vsync_counter = 0;
+
+    // Do we have SGI video sync extensions?
+    if (NULL != glXGetVideoSyncSGI) {
+        // Retrieve absolute count of vbl's since startup:
+		glXGetVideoSyncSGI(&vsync_counter);
+        *vblCount = (psych_uint64) vsync_counter;
+
+        // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
+		// Not yet supported on Linux:
+		return(-1);
+    }
+    else {
+        // Unsupported :(
+        *vblCount = 0;
+        return(-1);
+    }
+}
+
+/*
     PsychOSFlipWindowBuffers()
     
     Performs OS specific double buffer swap call.
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
-	unsigned int		vsync_counter = 0;
-    CGDirectDisplayID	cgDisplayID;
-    long				myinterval, vbl_startline, scanline, lastline;
-	
-	// Workaround for broken sync-bufferswap-to-VBL support needed?
-	if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) {
-		// Yes: Sync of bufferswaps to VBL requested?
-		
-		// On Linux we don't have a method to query the OS if sync-to-VBL requested, so we
-		// simply assume it is requested if this workaround is enabled. Would be better to
-		// just carry and maintain our own bit of state around though... Later alligator...
-		myinterval = 1;
+	// unsigned int		vsync_counter = 0;
 
-		if (myinterval > 0) {
-			// Sync of bufferswaps to retrace requested:
-			// We perform a busy-waiting spin-loop and query current beamposition until
-			// beam leaves VBL area:
-			
-			// Retrieve display handle for beamposition queries:
-			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
-			
-			// Retrieve final vbl_startline, aka physical height of the display in pixels:
-			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
-			
-			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
-			// if beamposition queries are broken as well:
-			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
-			if (lastline > 0) {
-				// Within video frame. Wait for beamposition wraparound or start of VBL:
-				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Lastline beampos = %i\n", (int) lastline);
-				scanline = lastline;
-				while ((scanline < vbl_startline) && (scanline >= lastline)) {
-					lastline = scanline;
-					scanline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
-				} 
-				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Scanline beampos = %i\n", (int) scanline);
-			}
-		}
-	}
+	// Execute OS neutral bufferswap code first:
+	PsychExecuteBufferSwapPrefix(windowRecord);
 	
 	//  glXGetVideoSyncSGI(&vsync_counter);
 	//  printf("PREFLIP-VSYNC: %i\n", vsync_counter);
@@ -609,6 +602,9 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
 {
   // Enable rendering context of window:
   PsychSetGLContext(windowRecord);
+
+  // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+  windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
 
   // Try to set requested swapInterval if swap-control extension is supported on
   // this Linux machine. Otherwise this will be a no-op...

@@ -527,8 +527,8 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     pfd.dwFlags      = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_SWAP_EXCHANGE |flags;  // Want OpenGL capable window with bufferswap via page-flipping...
     pfd.iPixelType   = PFD_TYPE_RGBA; // Want a RGBA pixel format.
     pfd.cColorBits   = 32;            // 32 bpp at least...
-    pfd.cAlphaBits   = 8;             // Want a 8 bit alpha-buffer.
-    
+    pfd.cAlphaBits   = (bpc == 10) ? 2 : 8;	// Want a 8 bit alpha-buffer, unless R10G10B10A2 pixelformat requested for native 10 bpc support.
+
     // Support for OpenGL 3D rendering requested?
     if (PsychPrefStateGet_3DGfx()) {
       // Yes. Allocate and attach a 24bit depth buffer and 8 bit stencil buffer:
@@ -1165,57 +1165,29 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 }
 
 /*
+    PsychOSGetVBLTimeAndCount()
+
+    Returns absolute system time of last VBL and current total count of VBL interrupts since
+    startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
+    feature is unavailable on the given OS/Hardware configuration.
+*/
+double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
+{
+	// Unsupported on Windows so far:(
+	*vblCount = 0;
+	return(-1);
+}
+
+/*
     PsychOSFlipWindowBuffers()
     
     Performs OS specific double buffer swap call.
 */
 void PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord)
 {
-    CGDirectDisplayID	cgDisplayID;
-    long				myinterval, vbl_startline, scanline, lastline;
-	
-	// Workaround for broken sync-bufferswap-to-VBL support needed?
-	if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) {
-		// Yes: Sync of bufferswaps to VBL requested?
-		if (NULL == wglGetSwapIntervalEXT) {
-			if (PsychPrefStateGet_Verbosity()>1) printf("\nPTB-WARNING: FAILED to query system if synchronization to vertical retrace is enabled! Unsupported by operating system or driver.\n\n");
-			// Don't know real setting due to error. Assume the most common setting of sync-to-VBL:
-			myinterval = 1;
-		}
-		else {
-			// Enable rendering context of window:
-			PsychSetGLContext(windowRecord);
-		
-			myinterval = (long) wglGetSwapIntervalEXT();
-		}
-		
-		if (myinterval > 0) {
-			// Sync of bufferswaps to retrace requested:
-			// We perform a busy-waiting spin-loop and query current beamposition until
-			// beam leaves VBL area:
-			
-			// Retrieve display handle for beamposition queries:
-			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
-			
-			// Retrieve final vbl_startline, aka physical height of the display in pixels:
-			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
-			
-			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
-			// if beamposition queries are broken as well:
-			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
-			if (lastline > 0) {
-				// Within video frame. Wait for beamposition wraparound or start of VBL:
-				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Lastline beampos = %i\n", (int) lastline);
-				scanline = lastline;
-				while ((scanline < vbl_startline) && (scanline >= lastline)) {
-					lastline = scanline;
-					scanline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
-				} 
-				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Scanline beampos = %i\n", (int) scanline);
-			}
-		}
-	}
-	
+	// Execute OS neutral bufferswap code first:
+	PsychExecuteBufferSwapPrefix(windowRecord);
+
 	// Trigger the "Front <-> Back buffer swap (flip) (on next vertical retrace)":
 	SwapBuffers(windowRecord->targetSpecific.deviceContext);
 }
@@ -1228,6 +1200,9 @@ void PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterva
   // Enable rendering context of window:
   PsychSetGLContext(windowRecord);
   
+  // Store new setting also in internal helper variable, e.g., to allow workarounds to work:
+  windowRecord->vSynced = (swapInterval > 0) ? TRUE : FALSE;
+
   // Try to set requested swapInterval if swap-control extension is supported on
   // this windows machine. Otherwise this will be a no-op...
   if (wglSwapIntervalEXT) {

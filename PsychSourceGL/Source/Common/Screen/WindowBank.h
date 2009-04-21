@@ -288,6 +288,7 @@ typedef struct _PsychWindowRecordType_{
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
         bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
         bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
+        bool                                    vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
 
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):

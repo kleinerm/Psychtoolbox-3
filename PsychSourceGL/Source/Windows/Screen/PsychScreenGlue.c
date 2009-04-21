@@ -800,6 +800,11 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
 		}
 		
+		// Mask returned beampos with 0xffff: This will not allow any
+		// beamposition greater than 65535 scanlines to be returned.
+		// A reasonable limit for the foreseeable future:
+		beampos &= 0xffff;
+		
 		// Valid result? If so, return it. Otherwise fall-through to error return...
 		if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) return((int) beampos);
 	}

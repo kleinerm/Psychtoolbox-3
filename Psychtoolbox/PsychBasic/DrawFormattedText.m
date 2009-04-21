@@ -213,6 +213,14 @@ while length(tstring)>0
         end
     end
     
+    if IsWin
+        % On Windows, a single ampersand & is translated into a control
+        % character to enable underlined text. To avoid this and actually
+        % draw & symbols in text as & symbols in text, we need to store
+        % them as two && symbols. -> Replace all single & by &&.
+        curstring = strrep(curstring, '&', '&&');
+    end
+    
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
 

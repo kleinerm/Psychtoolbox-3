@@ -315,6 +315,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// off with 16 bpc (float/fixed) or 32 bpc float, or get upgraded to such resolutions. Such
 	// upgrades always happen in a maketexture function or FBO creation function...
 	(*winRec)->bpc = 8;
+	
+	// Sync of doublebuffer-swaps to vertical retrace signal starts off as disabled:
+	(*winRec)->vSynced = FALSE;
 	return;
 }
 

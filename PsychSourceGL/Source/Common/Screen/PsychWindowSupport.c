@@ -2079,27 +2079,25 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) glFinish();
 	}
 
-    #if PSYCH_SYSTEM == PSYCH_OSX
-        // OS-X only: Low level queries to the driver:
-		// We query the timestamp and count of the last vertical retrace. This is needed for
-		// correctness checking and timestamp computation on gfx-hardware without beamposition
-		// queries (IntelMacs as of OS/X 10.4.10).
-		// In frame-sequential stereo mode it also allows to lock bufferswaps either to even
-		// or odd video refresh intervals (if windowRecord->targetFlipFieldType specifies this).
-		// That way one can require stereo stimulus onset with either the left eye view or the
-		// right eye view, depending on flip field selection. In other stereo modes or mono
-		// mode one usually doesn't care about onset in even or odd fields.
-		flipcondition_satisfied = FALSE;
-		do {
-			// Query driver:
-			preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
-			// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
-			// if we don't care about this:
-			flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType);
-			// If in wrong video cycle, we simply sleep a millisecond, then retry...
-			if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
-		} while (!flipcondition_satisfied);
-    #endif
+	// Low level queries to the driver:
+	// We query the timestamp and count of the last vertical retrace. This is needed for
+	// correctness checking and timestamp computation on gfx-hardware without beamposition
+	// queries (IntelMacs as of OS/X 10.4.10).
+	// In frame-sequential stereo mode it also allows to lock bufferswaps either to even
+	// or odd video refresh intervals (if windowRecord->targetFlipFieldType specifies this).
+	// That way one can require stereo stimulus onset with either the left eye view or the
+	// right eye view, depending on flip field selection. In other stereo modes or mono
+	// mode one usually doesn't care about onset in even or odd fields.
+	flipcondition_satisfied = FALSE;
+	do {
+		// Query driver:
+		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
+		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
+		// if we don't care about this:
+		flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType);
+		// If in wrong video cycle, we simply sleep a millisecond, then retry...
+		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
+	} while (!flipcondition_satisfied);
     
 	// Take a measurement of the beamposition at time of swap request:
 	line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
@@ -2200,7 +2198,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         PsychGetAdjustedPrecisionTimerSeconds(&time_at_vbl);
 		time_at_swapcompletion = time_at_vbl;
 
-        #if PSYCH_SYSTEM == PSYCH_OSX
         // Run kernel-level timestamping always in mode > 1 or on demand in mode 1 if beampos.
         // queries don't work properly:
         if (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1)) {
@@ -2223,7 +2220,6 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				vbltimestampquery_retrycount++;
 			}			
         }
-        #endif
         
         // Calculate estimate of real time of VBL, based on our post glFinish() timestamp, post glFinish() beam-
         // position and the roughly known height of image and duration of IFI. The corrected time_at_vbl
@@ -4259,5 +4255,58 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	
 	if (verbose) printf("PTB-DEBUG: Interrogation done.\n\n");
 	
+	return;
+}
+
+// Common (Operating system independent) code to be executed immediately
+// before a OS specific double buffer swap request is performed: This
+// is called from PsychOSFlipWindowBuffers() within the OS specific variants
+// of PsychWindowGlue.c and shall implement special logging actions, workarounds
+// etc.
+//
+// Currently it implements manual syncing of bufferswap requests to VBL onset,
+// i.e., waits via beamposition query for VBL onset before returning. This to
+// work around setups will totally broken VSYNC support.
+void PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord)
+{
+    CGDirectDisplayID	cgDisplayID;
+    long				vbl_startline, scanline, lastline;
+
+	// Workaround for broken sync-bufferswap-to-VBL support needed?
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychBusyWaitForVBLBeforeBufferSwapRequest) {
+		// Yes: Sync of bufferswaps to VBL requested?
+		if (windowRecord->vSynced) {
+			// Sync of bufferswaps to retrace requested:
+			// We perform a busy-waiting spin-loop and query current beamposition until
+			// beam leaves VBL area:
+			
+			// Retrieve display handle for beamposition queries:
+			PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, windowRecord->screenNumber);
+			
+			// Retrieve final vbl_startline, aka physical height of the display in pixels:
+			PsychGetScreenSize(windowRecord->screenNumber, &scanline, &vbl_startline);
+
+			// Busy-Wait: The special handling of <=0 values makes sure we don't hang here
+			// if beamposition queries are broken as well:
+			lastline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+			
+			if (lastline > 0) {
+				// Within video frame. Wait for beamposition wraparound or start of VBL:
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: Lastline beampos = %i\n", (int) lastline);
+
+				scanline = lastline;
+
+				// Wait until entering VBL or wraparound (i.e., VBL skipped). The fudge
+				// factor of -1 is to take yet another NVidia bug into account :-(
+				while ((scanline < vbl_startline) && (scanline >= lastline - 1)) {
+					lastline = (scanline > lastline) ? scanline : lastline;
+					if (scanline < (vbl_startline - 100)) PsychYieldIntervalSeconds(0.0);
+					scanline = (long) PsychGetDisplayBeamPosition(cgDisplayID, windowRecord->screenNumber);
+				}
+				if (PsychPrefStateGet_Verbosity()>9) printf("\nPTB-DEBUG: At exit of loop: Lastline beampos = %i, Scanline beampos = %i\n", (int) lastline, (int) scanline);
+			}
+		}
+	}
+
 	return;
 }

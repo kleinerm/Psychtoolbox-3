@@ -33,8 +33,6 @@
 		
 		¥ PsychFlushGL() and PsychGLFlush() need to be merged.
 
-        
-
 */
 
 //include once
@@ -54,9 +52,8 @@ void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInte
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext);
+double  PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount);
 void    PsychGetMouseButtonState(double* buttonArray);
+
 //end include once
 #endif
-
-
-

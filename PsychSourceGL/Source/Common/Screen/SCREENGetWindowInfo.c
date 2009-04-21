@@ -100,12 +100,10 @@ PsychError SCREENGetWindowInfo(void)
 		lastvbl = -1;
 		postflip_vblcount = 0;
 		
-		#if PSYCH_SYSTEM == PSYCH_OSX
-			// On OS/X we can query the OS for the system time of last VBL, so we can
-			// use the most recent VBL timestamp as baseline for timing calculations, 
-			// instead of one far in the past.
-			if (onscreen) { lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount); }
-		#endif
+		// On supported systems, we can query the OS for the system time of last VBL, so we can
+		// use the most recent VBL timestamp as baseline for timing calculations, 
+		// instead of one far in the past.
+		if (onscreen) { lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount); }
 
 		// If we couldn't determine this information we just set lastvbl to the last known
 		// vbl timestamp of last flip -- better than nothing...
