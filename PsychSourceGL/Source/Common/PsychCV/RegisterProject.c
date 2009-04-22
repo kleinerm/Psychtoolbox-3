@@ -45,11 +45,13 @@ PsychError PsychModuleInit(void)
 	
 	// Register synopsis and named subfunctions.
 	PsychErrorExit(PsychRegister("Verbosity", &PSYCHCVVerbosity));
+	#if PSYCH_SYSTEM == PSYCH_OSX
 	PsychErrorExit(PsychRegister("OpenEyesInitialize", &PSYCHCVOpenEyesInitialize));
 	PsychErrorExit(PsychRegister("OpenEyesShutdown", &PSYCHCVOpenEyesShutdown));
 	PsychErrorExit(PsychRegister("OpenEyesParameters", &PSYCHCVOpenEyesParameters));
 	PsychErrorExit(PsychRegister("OpenEyesTrackEyePosition", &PSYCHCVOpenEyesTrackEyePosition));
-
+	#endif
+	
 	PsychErrorExit(PsychRegister("CopyMatrixToMemBuffer", &PSYCHCVCopyMatrixToMemBuffer));
 
 	PsychErrorExit(PsychRegister("ARInitialize", &PSYCHCVARInitialize));
@@ -57,11 +59,6 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("ARLoadMarker", &PSYCHCVARLoadMarker));
 	PsychErrorExit(PsychRegister("ARDetectMarkers", &PSYCHCVARDetectMarkers));
 	PsychErrorExit(PsychRegister("ARRenderImage", &PSYCHCVARRenderImage));
-
-//	PsychErrorExit(PsychRegister("GetDevices", &PSYCHPORTAUDIOGetDevices));
-//	PsychErrorExit(PsychRegister("GetStatus", &PSYCHPORTAUDIOGetStatus));
-//	PsychErrorExit(PsychRegister("LatencyBias", &PSYCHPORTAUDIOLatencyBias));
-//	PsychErrorExit(PsychRegister("GetAudioData", &PSYCHPORTAUDIOGetAudioData));
 	
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.

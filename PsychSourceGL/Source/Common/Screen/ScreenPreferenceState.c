@@ -48,9 +48,16 @@
 #if PSYCH_SYSTEM == PSYCH_LINUX
 // Linux: Default capture engine is LibDC1394 V2:
 #define PTB_DEFAULTVIDCAPENGINE 1
-#else
-// Other OS: Default engine is Quicktime SequenceGrabbers:
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_OSX
+// OS/X: Default engine is Quicktime SequenceGrabbers:
 #define PTB_DEFAULTVIDCAPENGINE 0
+#endif
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// MS-Windows: Default capture engine is ARVideo, aka DirectShow:
+#define PTB_DEFAULTVIDCAPENGINE 2
 #endif
 
 //PsychTable preference state

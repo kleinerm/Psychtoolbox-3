@@ -54,6 +54,7 @@ void InitializeSynopsis(void);
 // Show command overview:
 PsychError PSYCHCVDisplaySynopsis(void);
 
+#if PSYCH_SYSTEM == PSYCH_OSX
 // Helper functions from the OpenEyesCVEyeTracker submodule:
 boolean cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyeheight, int eyechannels, void** eyeInputImageMono8, void** eyeInputImageColor, int scenewidth, int sceneheight, void** sceneInputImageRGB8, void** ellipseOutputImageRGB8, void** thresholdOutputImageMono8);
 boolean cvEyeTrackerShutdown(void);
@@ -65,6 +66,7 @@ void cvEyeTrackerSetParameters(int pupilEdgeThreshold, int starburstRays, int mi
 								double fanoutAngle1, double fanoutAngle2, int featuresPerRay, int specialFlags);
 void cvEyeTrackerSetRansacConstraints(double minDist, double maxDist, double minArea, double maxArea); 
 void cvEyeTrackerSetOverrideReferencePoint(int rx, int ry);
+#endif
 
 // Publically available functions:
 
@@ -74,10 +76,13 @@ PsychError MODULEVersion(void);
 // Level of verbosity:
 PsychError PSYCHCVVerbosity(void);
 
+#if PSYCH_SYSTEM == PSYCH_OSX
 PsychError PSYCHCVOpenEyesInitialize(void);
 PsychError PSYCHCVOpenEyesShutdown(void);
 PsychError PSYCHCVOpenEyesTrackEyePosition(void);
 PsychError PSYCHCVOpenEyesParameters(void);
+#endif
+
 PsychError PSYCHCVCopyMatrixToMemBuffer(void);
 
 //end include once

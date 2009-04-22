@@ -181,6 +181,8 @@ static double maxPupilEccentricity, initialAngleSpread;
 static double fanoutAngle1, fanoutAngle2;
 static int featuresPerRay, specialFlags;
 
+#if PSYCH_SYSTEM == PSYCH_OSX
+
 /* PsychCV('OpenEyesInitialize') - Initialize a new tracking session with OpenEyes:
  */
 PsychError PSYCHCVOpenEyesInitialize(void)
@@ -493,6 +495,8 @@ PsychError PSYCHCVOpenEyesParameters(void)
 
 	return(PsychError_none);
 }
+
+#endif
 
 PsychError PSYCHCVCopyMatrixToMemBuffer(void)
 {

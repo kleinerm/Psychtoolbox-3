@@ -50,8 +50,6 @@
 
 #ifdef PTBVIDEOCAPTURE_ARVIDEO
 
-#include <inttypes.h>
-
 // These are the includes for ARToolkit and ARVideo:
 #include <AR/video.h>
 
@@ -217,10 +215,30 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	
 	// Default camera config:
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	char *defaultcamconfig = "Data\\WDM_camera_flipV.xml";
-	#elif PSYCH_SYSTEM == PSYCH_OSX
+    //strcat(config, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><dsvl_input><camera show_format_dialog=\"false\" friendly_name=\"\"><pixel_format><RGB32 flip_h=\"false\" flip_v=\"true\"/></pixel_format></camera></dsvl_input>");
+
+	// Prefix:
+    strcat(config, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><dsvl_input><camera show_format_dialog=\"false\" ");
+
+	// Specific deviceIndex requested, instead of auto-select?
+    if (deviceIndex == 1) {
+		// Fetch optional moviename parameter as name spec string:
+		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of one, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
+		sprintf(tmpstr, "friendly_name=\"%s\" ", targetmoviefilename);
+		strcat(config, tmpstr);
+	}
+	else {
+		// Default device index: Just pass through as default device:
+		strcat(config, "friendly_name=\"\" ");
+	}	
+	#endif
+
+
+	#if PSYCH_SYSTEM == PSYCH_OSX
 	char *defaultcamconfig = "";
-	#else
+	#endif
+
+	#if PSYCH_SYSTEM == PSYCH_LINUX
 	char *defaultcamconfig = "-dev=/dev/video0 -channel=0 -palette=YUV420P -width=320 -height=240";
 	#endif
 
@@ -255,7 +273,20 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		#endif
 		
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-		// TODO
+
+		// Could do frame_rate=... if we could do it here :-( need to defer
+		// whole init sequence into the start capture routine like in DC1394
+		// engine, if we wanna set framerate...
+		
+		// Ok, an ugly hack just for testing:
+		if (num_dmabuffers > 0) {
+			// Get framerate from num_dmabuffers argument:
+			sprintf(tmpstr, " frame_width=\"%i\" frame_height=\"%i\" frame_rate=\"%i\" ", w, h, num_dmabuffers);
+		}
+		else {
+			// Don't spec framerate:
+			sprintf(tmpstr, " frame_width=\"%i\" frame_height=\"%i\" ", w, h);
+		}
 		#endif
 
 		#if PSYCH_SYSTEM == PSYCH_LINUX
@@ -310,17 +341,49 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-	reqdepth = 4;
-
-	// Specific deviceIndex requested, instead of auto-select?
-    if (deviceIndex!=-1) {
-//		sprintf(tmpstr, " -grabber=%i", deviceIndex + 1);
-//		strcat(config, tmpstr);
+	if (reqdepth == 4 || reqdepth == 0) {
+		// Default is RGB32 bit:
+		reqdepth = 4;
+		sprintf(tmpstr, "><pixel_format><RGB32 flip_h=\"false\" flip_v=\"true\"/></pixel_format></camera></dsvl_input>");	
 	}
 	else {
-		deviceIndex = 0;
+		// Only other supported format is RGB24 bit:
+		switch (reqdepth) {
+			case 1:
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture engine doesn't support requested Luminance format. Will revert to RGB color instead...\n");
+			break;
+			
+			case 2:
+				// A no-go: Instead we use 1 channel luminance8:
+				if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture engine doesn't support requested Luminance+Alpha format. Will revert to RGB color instead...\n");
+			break;
+			
+			case 3:
+			break;
+				
+			default:
+				// Unknown format:
+				PsychErrorExitMsg(PsychError_user, "You requested an invalid image depths (not one of 0, 1, 2, 3 or 4). Aborted.");
+		}
+		
+		reqdepth = 3;
+		sprintf(tmpstr, "><pixel_format><RGB24 flip_h=\"false\" flip_v=\"true\"/></pixel_format></camera></dsvl_input>");	
 	}
 
+	strcat(config, tmpstr);
+	
+    if (deviceIndex == 2) {
+		// Fetch optional moviename parameter as override configuration string:
+		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of two, but didn't provide the required override configuration string in the 'moviename' argument! Aborted.");
+
+		// Reset config string:
+		config[0] = 0;
+
+		// And load the moviename argument as override string:
+		strcat(config, targetmoviefilename);
+	}
+	
+	// End of MS-Windows specific setup.
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
@@ -355,6 +418,8 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     capdev->num_dmabuffers = num_dmabuffers;
 #endif
 	
+	if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Final configuration string passed to ARVideo library is:\n%s\n", config);
+
 	// Prepare error message in case its needed below:
 	sprintf(msgerr, "PTB-ERROR: Opening the %i. camera (deviceIndex=%i) failed!\n", deviceIndex + 1, deviceIndex);
 
@@ -387,7 +452,6 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     capdev->nrframes = 0;
     capdev->grabber_active = 0;
     
-
     printf("PTB-INFO: Camera successfully opened...\n");
 
     return(TRUE);
@@ -564,7 +628,7 @@ int PsychARGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		outrawbuffer->depth = bpp;
 	}
 	
-    int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
+    // int waitforframe = (checkForImage > 1) ? 1:0; // Blocking wait for new image requested?
 	
 	// A checkForImage 4 means "no op" with the ARVideo capture engine: This is meant to drive
 	// a movie recording engine, ie., grant processing time to it. Our ARVideo engine doesn't
@@ -681,6 +745,11 @@ int PsychARGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		// Set texture orientation as if it were an inverted Offscreen window: Upside-down.
 		out_texture->textureOrientation = 3;
 		
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		// On Windows in non RGB32 bit modes, set orientation to Upright:
+		out_texture->textureOrientation = (capdev->reqpixeldepth == 4) ? 3 : 2;
+		#endif
+
 		// Setup a pointer to our buffer as texture data pointer: Setting memsize to zero
 		// prevents unwanted free() operation in PsychDeleteTexture...
 		out_texture->textureMemorySizeBytes = 0;

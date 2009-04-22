@@ -256,6 +256,8 @@ int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, in
     #ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARGetTextureFromCapture(win, capturehandle, checkForImage, timeindex, out_texture, presentation_timestamp, summed_intensity, outrawbuffer));
 	#endif
+
+    return(-2);
 }
 
 /*
@@ -285,6 +287,8 @@ int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes,
     #ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARVideoCaptureRate(capturehandle, capturerate, dropframes, startattime));
 	#endif
+
+    return(0);
 }
 
 /* Set capture device specific parameters:
@@ -310,6 +314,8 @@ double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, doubl
     #ifdef PTBVIDEOCAPTURE_ARVIDEO
 	if (mastervidcapRecordBANK[capturehandle].engineId == 2) return(PsychARVideoCaptureSetParameter(capturehandle, pname, value)); 
 	#endif
+
+    return(0);
 }
 
 /*
