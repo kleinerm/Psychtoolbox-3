@@ -70,6 +70,24 @@ void PsychVideoCaptureInit(void)
     return;
 }
 
+void PsychEnumerateVideoSources(int engineId, int outPos)
+{
+	bool dispatched = FALSE;
+
+	#ifdef PTBVIDEOCAPTURE_QT
+	if (engineId == 0 || (engineId == 2 && PSYCH_SYSTEM == PSYCH_OSX)) {
+		// Quicktime Sequencegrabber, either native via engine 0 or via ARVideo (2) on OS/X:
+		PsychQTEnumerateVideoSources(outPos);
+		dispatched = TRUE;
+	}
+	#endif
+
+	// Unsupported engine requested?
+	if (!dispatched) PsychErrorExitMsg(PsychError_user, "The requested video capture engine is not supported on your system, either not at all, or has been disabled at compile time.");
+
+	return;
+}
+
 /*
  *      PsychOpenVideoCaptureDevice() -- Create a video capture object.
  *

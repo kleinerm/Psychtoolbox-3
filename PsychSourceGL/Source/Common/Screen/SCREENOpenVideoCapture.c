@@ -171,3 +171,34 @@ PsychError SCREENOpenVideoCapture(void)
 	return(PsychError_none);
 }
 
+static char useString2[] = "devices = Screen('VideoCaptureDevices' [, engineId]);";
+static char synopsisString2[] = 
+"Enumerate all available video devices for a given videocapture engine id 'engineId', or "
+"for the default engine, if none is given. Returns a struct array with one slot per available "
+"device. Entries of each struct in the array are specific to the selected capture engine, "
+"except for the entry 'DeviceIndex' which provides a handle that you could pass to "
+"Screen('OpenVideoCapture', windowPtr, deviceIndex, ...); as the 'deviceIndex' argument "
+"to select the video device corresponding to a given slot.\n"
+"The function may return an empty array if no video capture devices could be detected.\n";
+
+PsychError SCREENVideoCaptureDevices(void) 
+{
+	int engineId;
+	
+	// All sub functions should have these two lines
+	PsychPushHelp(useString2, synopsisString2, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none);};
+
+	PsychErrorExit(PsychCapNumInputArgs(1));            // Max. 1 input args.
+	PsychErrorExit(PsychRequireNumInputArgs(0));        // Min. 1 input args required.
+	PsychErrorExit(PsychCapNumOutputArgs(1));           // Max. 1 output args.
+	
+	engineId = PsychPrefStateGet_VideoCaptureEngine();
+	PsychCopyInIntegerArg(1, FALSE, &engineId);
+	
+	// Do actual enumeration for the given engineId:
+	PsychEnumerateVideoSources(engineId, 1);
+
+	// Ready!
+	return(PsychError_none);	
+}

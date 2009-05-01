@@ -221,10 +221,23 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     strcat(config, "<?xml version=\"1.0\" encoding=\"UTF-8\"?><dsvl_input><camera show_format_dialog=\"false\" ");
 
 	// Specific deviceIndex requested, instead of auto-select?
-    if (deviceIndex == 1) {
+    if (deviceIndex >= 1 && deviceIndex <= 3) {
 		// Fetch optional moviename parameter as name spec string:
-		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of one, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
-		sprintf(tmpstr, "friendly_name=\"%s\" ", targetmoviefilename);
+		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of 1, 2 or 3, but didn't provide the required device name string in the 'moviename' argument! Aborted.");
+		switch(deviceIndex) {
+			case 1:
+				sprintf(tmpstr, "friendly_name=\"%s\" ", targetmoviefilename);
+				break;
+				
+			case 2:
+				sprintf(tmpstr, "device_name=\"%s\" ", targetmoviefilename);
+				break;
+				
+			case 3:
+				sprintf(tmpstr, "ieee1394id=\"%s\" ", targetmoviefilename);
+				break;
+		}
+		
 		strcat(config, tmpstr);
 	}
 	else {
@@ -246,7 +259,26 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     *capturehandle = -1;
     
     if (firsttime) {
-		// First time invocation: Nothing to do...
+		// First time invocation:
+        
+        #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // On Windows, we need to delay-load the libARvideo.dll DLL. This loading
+        // and linking will automatically happen downstream. However, if delay loading
+        // would fail, we would end up with a crash! For that reason, we try here to
+        // load the DLL, just to probe if the real load/link/bind op later on will
+        // likely succeed. If the following LoadLibrary() call fails and returns NULL,
+        // then we know we would end up crashing. Therefore we'll output some helpful
+        // error-message instead:
+        if (NULL == LoadLibrary("libARvideo.dll")) {
+            // Failed:
+            printf("\n\nPTB-ERROR: Tried to startup video capture engine type 2 (ARVideo). This didn't work,\n");
+            printf("PTB-ERROR: because one of the required helper DLL libraries failed to load. Probably because they\n");
+            printf("PTB-ERROR: could not be found or could not be accessed (e.g., due to permission problems).\n\n");
+            printf("PTB-ERROR: Please read the online help by typing 'help ARVideoCapture' for troubleshooting instructions.\n\n");
+			PsychErrorExitMsg(PsychError_user, "Unable to start Videocapture engine ARVideo due to DLL loading problems. Aborted.");
+        }
+        #endif
+        
 		firsttime = FALSE;
     }
 
@@ -272,21 +304,8 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		sprintf(tmpstr, " -width=%i -height=%i", w, h);
 		#endif
 		
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-
-		// Could do frame_rate=... if we could do it here :-( need to defer
-		// whole init sequence into the start capture routine like in DC1394
-		// engine, if we wanna set framerate...
-		
-		// Ok, an ugly hack just for testing:
-		if (num_dmabuffers > 0) {
-			// Get framerate from num_dmabuffers argument:
-			sprintf(tmpstr, " frame_width=\"%i\" frame_height=\"%i\" frame_rate=\"%i\" ", w, h, num_dmabuffers);
-		}
-		else {
-			// Don't spec framerate:
-			sprintf(tmpstr, " frame_width=\"%i\" frame_height=\"%i\" ", w, h);
-		}
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS		
+		sprintf(tmpstr, " frame_width=\"%i\" frame_height=\"%i\" ", w, h);
 		#endif
 
 		#if PSYCH_SYSTEM == PSYCH_LINUX
@@ -295,6 +314,13 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 
 		strcat(config, tmpstr);
     }
+
+	if (num_dmabuffers > 0) {
+		#if PSYCH_SYSTEM == PSYCH_OSX
+		// Get framerate from num_dmabuffers argument:
+		sprintf(tmpstr, " frame_rate=\"%i\" ", num_dmabuffers);
+		#endif
+	}
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 	// Disable setup dialog:
@@ -372,9 +398,9 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 
 	strcat(config, tmpstr);
 	
-    if (deviceIndex == 2) {
+    if (deviceIndex == 4) {
 		// Fetch optional moviename parameter as override configuration string:
-		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of two, but didn't provide the required override configuration string in the 'moviename' argument! Aborted.");
+		if (targetmoviefilename == NULL) PsychErrorExitMsg(PsychError_user, "You set 'deviceIndex' to a value of 4, but didn't provide the required override configuration string in the 'moviename' argument! Aborted.");
 
 		// Reset config string:
 		config[0] = 0;

@@ -50,6 +50,7 @@ void PsychCloseVideoCaptureDevice(int capturehandle);
 int PsychGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychEnumerateVideoSources(int engineId, int outPos);
 void PsychExitVideoCapture(void);
 
 // These are the prototypes for Quicktime/SequenceGrabber versions, supported on OS/X and Windows:
@@ -60,6 +61,7 @@ void PsychQTCloseVideoCaptureDevice(int capturehandle);
 int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp, double* summed_intensity, rawcapimgdata* outrawbuffer);
 int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframes, double* startattime);
 double PsychQTVideoCaptureSetParameter(int capturehandle, const char* pname, double value);
+void PsychQTEnumerateVideoSources(int outPos);
 void PsychQTExitVideoCapture(void);
 #endif
 

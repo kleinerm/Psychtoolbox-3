@@ -31,10 +31,6 @@
 // No Quicktime Sequence Grabber support for GNU/Linux:
 #if PSYCH_SYSTEM != PSYCH_LINUX
 
-// Forward declaration of internal helper function:
-void PsychQTDeleteAllCaptureDevices(void);
-
-
 #if PSYCH_SYSTEM == PSYCH_OSX
 #include <Quicktime/QuickTimeComponents.h>
 #endif
@@ -43,6 +39,10 @@ void PsychQTDeleteAllCaptureDevices(void);
 #include <QTML.h>
 #include <QuickTimeComponents.h>
 #endif
+
+// Forward declaration of internal helper function:
+void PsychQTDeleteAllCaptureDevices(void);
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput);
 
 // Record which defines all state for a capture device:
 typedef struct {
@@ -88,7 +88,7 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
     // Retrieve handle to our capture data structure:
-    handle = (int) chRefCon;
+    handle = (int) refCon;
 
 	// Check if we're called on a video channel. If we're called on a sound channel,
 	// we simply return -- nothing to do in that case.
@@ -189,6 +189,325 @@ void PsychQTVideoCaptureInit(void)
     return;
 }
 
+void PsychQTEnumerateVideoSources(int outPos)
+{
+	PsychGenericScriptType 	*devs;
+	const char *FieldNames[]={"DeviceIndex", "ClassIndex", "InputIndex", "ClassName", "InputName"};
+
+    SeqGrabComponent	seqGrab;
+	SGChannel			sgchannel;
+    SGChannel			*sgchanptr;
+	OSErr				error;
+	SGDeviceList		sgdeviceList;
+    int					i, j, selectedIndex;
+	char				port_str[64];
+	char				class_str[64];
+    Str63				devPStr;
+	Str255				outDeviceName;
+	Str255				outInputName;
+	Str255				devName;
+    char				msgerr[10000];
+	int					deviceClass, deviceInput;
+	int					n;
+	
+    // We startup the Quicktime subsystem only on first invocation.
+    if (firsttime) {
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+        // Initialize Quicktime for Windows compatibility layer: This will fail if
+        // QT isn't installed on the Windows machine...
+        error = InitializeQTML(0);
+        if (error!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "Quicktime Media Layer initialization failed: Quicktime not properly installed?!?");
+        }
+#endif
+
+        // Initialize Quicktime-Subsystem:
+        error = EnterMovies();
+        if (error!=noErr) {
+            PsychErrorExitMsg(PsychError_internal, "Quicktime EnterMovies() failed!!!");
+        }
+        firsttime = FALSE;
+    }
+	
+	// Ok, rather ugly. We create a sequence grabber and associated video channel
+	// for the sole purpose of enumeration:
+    seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
+    if (seqGrab == NULL) {
+		printf("PTB-ERROR: Failed to open sequence grabber video capture component for enumeration!");
+        PsychErrorExitMsg(PsychError_internal, "Failed to open requested sequence grabber for video device enumeration!");
+    }
+
+    // Initialize the sequence grabber component:
+    error = SGInitialize(seqGrab);
+    if (error != noErr) {
+        if (seqGrab) CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "SGInitialize() for capture device enumeration failed!"); 
+    }
+	
+	sgchanptr = &sgchannel;
+	error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
+    if (error == noErr) {
+		// Enumerate all available devices:
+		error = SGGetChannelDeviceList(*sgchanptr, sgDeviceListIncludeInputs, &sgdeviceList);
+		if (error == noErr) {
+			// First scan: Find out how many devices there in total:
+			n = 0;
+			for (i = 0; i< (*sgdeviceList)->count; i++) {				
+				if(NULL != (((*sgdeviceList)->entry[i]).inputs)) {
+					n += (*(((*sgdeviceList)->entry[i]).inputs))->count;
+
+					// One extra slot for default input in this class, if any:
+					if ((*(((*sgdeviceList)->entry[i]).inputs))->count > 0) n++;
+				}
+			}
+
+			// One extra slot for the default device, if any:
+			if (n > 0) {
+				n++;
+			}
+
+			// Create output struct array with n output slots:
+			PsychAllocOutStructArray(outPos, TRUE, n, 5, FieldNames, &devs);
+			n = 0;
+
+			// Second scan: Actually create the output entries:
+			for (i = 0; i< (*sgdeviceList)->count; i++) {
+				p2cstrcpy(class_str, (((*sgdeviceList)->entry[i]).name));
+				// printf("Device Nr. %i is: %s\n\n", i, class_str);
+				
+				if(NULL != (((*sgdeviceList)->entry[i]).inputs)) {
+					for (j = 0; j < (*(((*sgdeviceList)->entry[i]).inputs))->count; j++) {
+						p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[i]).inputs))->entry[j].name);
+						// printf("Device [%i -> %i]: %s\n", i, j, port_str);
+						
+						deviceClass = i + 1;
+						deviceInput = j + 1;
+						PsychSetStructArrayDoubleElement("DeviceIndex", n, deviceClass * 10000 + deviceInput, devs);
+						PsychSetStructArrayDoubleElement("ClassIndex", n, deviceClass, devs);
+						PsychSetStructArrayDoubleElement("InputIndex", n, deviceInput, devs);
+						PsychSetStructArrayStringElement("ClassName", n, class_str, devs);
+						PsychSetStructArrayStringElement("InputName", n, port_str, devs);
+
+						// Next slot:
+						n++;
+						
+						if (j == (*(((*sgdeviceList)->entry[i]).inputs))->selectedIndex) {
+							// Special case: Default device input 0 for this class:
+							PsychSetStructArrayDoubleElement("DeviceIndex", n, deviceClass * 10000, devs);
+							PsychSetStructArrayDoubleElement("ClassIndex", n, deviceClass, devs);
+							PsychSetStructArrayDoubleElement("InputIndex", n, deviceInput, devs);
+							PsychSetStructArrayStringElement("ClassName", n, class_str, devs);
+							PsychSetStructArrayStringElement("InputName", n, port_str, devs);
+							
+							// Next slot:
+							n++;
+						}
+					}
+				}
+			}
+			
+			// If at least one device available, then add the default 0 slot for the default device:
+			if (n > 0) {
+				i = (*sgdeviceList)->selectedIndex;
+				deviceClass = i + 1;
+				p2cstrcpy(class_str, (((*sgdeviceList)->entry[i]).name));
+				j = (*(((*sgdeviceList)->entry[i]).inputs))->selectedIndex;
+				deviceInput = j + 1;
+				p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[i]).inputs))->entry[j].name);
+
+				PsychSetStructArrayDoubleElement("DeviceIndex", n, 0, devs);
+				PsychSetStructArrayDoubleElement("ClassIndex", n, deviceClass, devs);
+				PsychSetStructArrayDoubleElement("InputIndex", n, deviceInput, devs);
+				PsychSetStructArrayStringElement("ClassName", n, class_str, devs);
+				PsychSetStructArrayStringElement("InputName", n, port_str, devs);
+				
+				// Next slot:
+				n++;
+			}
+
+			SGDisposeDeviceList(seqGrab, sgdeviceList);
+		}
+	}
+
+releaseQTEnum:
+	// Done with enumeration: Release ressources:
+	SGDisposeChannel(seqGrab, *sgchanptr);
+    CloseComponent(seqGrab);
+
+	return;
+}
+
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput)
+{
+	ComponentInstance	vdCompInst;
+	OSErr				error;
+	SGDeviceList		sgdeviceList;
+    int					i, j, selectedIndex;
+	char				port_str[64];
+    Str63				devPStr;
+	Str255				outDeviceName;
+	Str255				outInputName;
+	Str255				devName;
+    char				msgerr[10000];
+	int					deviceClass, deviceInput;
+
+	// Child protection:
+	if (deviceIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid negative 'deviceIndex' provided. Must be zero or a positive integral number!");
+
+	// Default to no Error:
+	error = noErr;
+
+	// Special case zero? This means "default device" or take whatever's setup by default,
+	// i.e., change absolutely nothing.
+	if (deviceIndex > 0) {
+		// Non-Zero deviceIndex. Split up into device class and subdevice (input):
+		deviceClass = deviceIndex / 10000;
+		deviceInput = deviceIndex % 10000;
+		
+		// Enumerate all available devices:
+		error = SGGetChannelDeviceList(*sgchanptr, sgDeviceListIncludeInputs, &sgdeviceList);
+		if (error == noErr) {
+			if (showOutput && PsychPrefStateGet_Verbosity() > 4) {
+				printf("Number of available input video device classes: %i\n", (*sgdeviceList)->count);
+				for (i = 0; i< (*sgdeviceList)->count; i++) {
+					p2cstrcpy(port_str, (((*sgdeviceList)->entry[i]).name));
+					printf("Device class Nr. %i is: %s\n", i+1, port_str);
+				}
+				printf("\n\n");
+			}
+
+			// deviceClass zero selected? This would mean that we shall accept the default
+			// device class selection as made by the OS or external software, but only select
+			// the subdevice or input channel within that class:
+			if (deviceClass == 0) {
+				// Default device class: Just fetch currently selected class:
+				selectedIndex = (*sgdeviceList)->selectedIndex;				
+			}
+			else {
+				// Specific device class selected: Validate and try to choose it:
+				selectedIndex = deviceClass - 1;
+				if (selectedIndex >= (*sgdeviceList)->count) {
+					printf("Given deviceIndex %i requests device class %i, but no such device class exists! Failed.\n", deviceIndex, deviceClass);
+					PsychErrorExitMsg(PsychError_user, "Invalid 'deviceIndex' for this system setup provided.");
+				}
+				
+				error =	SGSetChannelDevice(*sgchanptr, (StringPtr) &(((*sgdeviceList)->entry[selectedIndex]).name));
+				if (error!=noErr) {
+					p2cstrcpy(port_str, (((*sgdeviceList)->entry[selectedIndex]).name));
+					if (showOutput && PsychPrefStateGet_Verbosity()>2) printf("PTB-ERROR: Failed to select video input device class %i [%s] for some reason!\n", deviceClass, port_str);
+
+					// Revert to default which is still active after failed switch:
+					selectedIndex = (*sgdeviceList)->selectedIndex;					
+				}
+			}
+
+			// At this point we have either the default class selected, or the requested
+			// device class. 'selectedIndex' points to the selected class.
+			p2cstrcpy(port_str, (((*sgdeviceList)->entry[selectedIndex]).name));
+			if (showOutput && PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Selected input video device class now is %i [Quicktime index %i] aka: %s\n", selectedIndex + 1, selectedIndex, port_str);
+
+			// What about the subclass aka input channel? A zero means - Whatever's the default
+			// in that class. A non-zero value i means: Selected i'th input. For a zero value,
+			// we've got nothing to do:
+			if (deviceInput > 0) {
+				i = selectedIndex;
+
+				// Any inputs for this class?
+				if(NULL != (((*sgdeviceList)->entry[i]).inputs)) {
+					if (showOutput && PsychPrefStateGet_Verbosity() > 4) {
+						printf("\nMapping before device selection:\n");
+						for (j = 0; j < (*(((*sgdeviceList)->entry[i]).inputs))->count; j++) {
+							p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[i]).inputs))->entry[j].name);
+							printf("Device [%i -> %i]: %s\n", i, j, port_str);
+						}
+						printf("\n\n");
+					}
+					
+					// Yep. At least deviceInput's input available?
+					if (deviceInput - 1 < (*(((*sgdeviceList)->entry[i]).inputs))->count) {
+						// Select this input:
+						error = SGSetChannelDeviceInput(*sgchanptr, deviceInput - 1);
+						if (error!=noErr) {
+							// Grabber didn't accept new input video channel:
+							if (showOutput && PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Video digitizer component didn't accept input video channel %i as requested by deviceIndex!\n", deviceInput);
+						}
+						else {
+							if (showOutput && PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: Video digitizer component accepted input %i!\n", deviceInput);
+						}						
+					}
+					else {
+						p2cstrcpy(port_str, (((*sgdeviceList)->entry[selectedIndex]).name));
+						if (showOutput && PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Failed to select %i. video input inside device class %i [%s],\nbecause class only has %i inputs!\n", deviceInput, selectedIndex + 1, port_str, (*(((*sgdeviceList)->entry[i]).inputs))->count);
+					}
+
+					if (showOutput && PsychPrefStateGet_Verbosity() > 4) {
+						printf("\nMapping after device selection:\n");
+						for (j = 0; j < (*(((*sgdeviceList)->entry[i]).inputs))->count; j++) {
+							p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[i]).inputs))->entry[j].name);
+							printf("Device [%i -> %i]: %s\n", i, j, port_str);
+						}
+						printf("\n\n");
+					}
+				}
+				else {
+					// Failed because out of range:
+					if (showOutput && PsychPrefStateGet_Verbosity() > 2) printf("PTB-ERROR: Failed to select video input inside device class %i [%s], because class doesn't seem to have inputs available!\n", deviceClass, port_str);
+				}
+			}
+			
+			if (0) {
+				for (i = 0; i< (*sgdeviceList)->count; i++) {
+					p2cstrcpy(port_str, (((*sgdeviceList)->entry[i]).name));
+					printf("Device Nr. %i is: %s\n\n", i, port_str);
+					
+					if(NULL != (((*sgdeviceList)->entry[i]).inputs)) {
+						for (j = 0; j < (*(((*sgdeviceList)->entry[i]).inputs))->count; j++) {
+							p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[i]).inputs))->entry[j].name);
+							printf("Device [%i -> %i]: %s\n", i, j, port_str);
+						}
+					}
+				}
+				
+				memset(devPStr, 0, sizeof(Str63));
+				for (i = 0; i < (*(((*sgdeviceList)->entry[selectedIndex]).inputs))->count; i++) {
+					p2cstrcpy(port_str, (*(((*sgdeviceList)->entry[selectedIndex]).inputs))->entry[i].name);
+					printf("Device [%i -> %i]: %s\n", selectedIndex, i, port_str);
+				}
+				
+				if (PsychPrefStateGet_Verbosity() > 4) {			
+					if ((vdCompInst = SGGetVideoDigitizerComponent(*sgchanptr))) {
+						msgerr[0] = 0;
+						VDGetInputName(vdCompInst, deviceIndex, devName);
+						p2cstrcpy(msgerr, devName);
+						printf("PTB-INFO: Selected Video digitizer component has device name %s!\n", msgerr);
+					}
+				}
+				
+			}
+
+			// Release device list:
+			SGDisposeDeviceList(seqGrab, sgdeviceList);			
+		}
+		else {
+			// Enumeration failure - Game over:
+            if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-ERROR: Failed to enumerate available video devices! Will stick to default video device!\n");
+		}
+	}
+
+	// Status output about selection requested?
+	if (showOutput && PsychPrefStateGet_Verbosity() > 3) {
+		// Display name of selected video device(-class) and input:
+		SGGetChannelDeviceAndInputNames(*sgchanptr, outDeviceName, outInputName, nil);	
+		p2cstrcpy(msgerr, outDeviceName);
+		printf("PTB-INFO: Selected video input device for deviceIndex %i has outDeviceName: %s\n", deviceIndex, msgerr);
+		p2cstrcpy(msgerr, outInputName);
+		printf("PTB-INFO: Selected video input device for deviceIndex %i has outInputName: %s\n", deviceIndex, msgerr);
+	}
+
+	// Return final status - Should be zero:
+	return(error);
+}
+
 /*
  *      PsychQTOpenVideoCaptureDevice() -- Create a video capture object.
  *
@@ -219,9 +538,8 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     char msgerr[10000];
     char errdesc[1000];
     Rect movierect, newrect;
-	ComponentDescription desc;
-	Component mydevice;
     SeqGrabComponent seqGrab = NULL;
+	ComponentInstance   vdCompInst;
 
     SGChannel *sgchanptr = NULL;
 	SGChannel *sgchanaudioptr = NULL;
@@ -266,30 +584,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         
     // Open sequence grabber:
     // ======================
-    
-	// Definition of a sequence grabber video input source:
-	desc.componentType = SeqGrabChannelType;
-	desc.componentSubType = 'vide';
-	desc.componentManufacturer = 0; //'appl';
-	desc.componentFlags = 0;
-	desc.componentFlagsMask = 0;
-	
-	// Device index in range?
-	if (deviceIndex < 0 || deviceIndex >= CountComponents(&desc)) {
-		printf("PTB-ERROR: deviceIndex %i of requested video source is not in allowed range 0 to %i.\n", deviceIndex, CountComponents(&desc) - 1);
-		printf("PTB-ERROR: Please make sure that at least %i video sources are connected if you think your setting is correct.\n", deviceIndex + 1);
-        PsychErrorExitMsg(PsychError_user, "Invalid deviceIndex specified. Negative or higher than number of installed video sources - 1.");
-	}
-	
-	// Yes. Iterate over component list to find corresponding device:
-	mydevice = 0;
-	for (i=0; i<= deviceIndex; i++) {
-		mydevice = FindNextComponent(mydevice, &desc);
-		if (mydevice == 0) break;
-	}
-	
-	if (mydevice == 0) PsychErrorExitMsg(PsychError_internal, "Failed to locate associated video capture device for deviceIndex!");
-	
+
     seqGrab = OpenDefaultComponent(SeqGrabComponentType, 0);
     if (seqGrab == NULL) {
 		printf("PTB-ERROR: Failed to open sequence grabber video capture component for deviceIndex %i!", deviceIndex);
@@ -316,13 +611,19 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         PsychErrorExitMsg(PsychError_internal, "SGSetDataRef for capture device failed!");            
     }
 
-	 // Set dummy GWorld - we need this to prevent SGNewChannel from crashing on Windoze.
-	 SGSetGWorld(seqGrab, 0, 0);
+	// Set dummy GWorld - we need this to prevent SGNewChannel from crashing on Windoze.
+	SGSetGWorld(seqGrab, 0, 0);
 
     // Create and setup video channel on sequence grabber:
     sgchanptr = &(vidcapRecordBANK[slotid].sgchanVideo);
-    error = SGNewChannelFromComponent(seqGrab, sgchanptr, mydevice);
+	error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
     if (error == noErr) {
+		// Select device and input for this video channel: Returned error code is more
+		// informative than important: The function will always select some device if
+		// it returns, even if it isn't according to given spec, which would be apparent
+		// by  a non-zero error:
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE);
+	
         // Retrieve size of the capture rectangle - and therefore size of
         // our GWorld for offscreen rendering:
         SGGetSrcVideoBounds(*sgchanptr, &movierect);
@@ -425,12 +726,19 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         }
 
         // Create and setup video channel on sequence grabber:
-        error = SGNewChannelFromComponent(seqGrab, sgchanptr, mydevice);
+		error = SGNewChannel(seqGrab, VideoMediaType, sgchanptr);
         if (error !=noErr) {
           DisposeGWorld(vidcapRecordBANK[slotid].gworld);
           vidcapRecordBANK[slotid].gworld = NULL;
           CloseComponent(seqGrab);
           PsychErrorExitMsg(PsychError_internal, "Assignment of GWorld to capture device failed!");            
+        }
+
+		// Select device and input for this video channel:
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, TRUE);
+        if (error!=noErr) {
+            // Grabber didn't accept new rectangle :(
+            if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to select video capture device according to requested deviceIndex %i\n", deviceIndex);
         }
 
         // Try to set our own custom video capture rectangle:
@@ -484,7 +792,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	// us this is "recording only". The callback is needed for video processing by
 	// Matlab+PTB but it comes at a bit of extra overhead:
 	if ((targetmoviefilename == NULL) || !(recordingflags & 4)) {
-		error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), 0);
+		error = SGSetDataProc(seqGrab, NewSGDataUPP(PsychVideoCaptureDataProc), slotid);
 		if (error !=noErr) {
 			DisposeGWorld(vidcapRecordBANK[slotid].gworld);
 			vidcapRecordBANK[slotid].gworld = NULL;

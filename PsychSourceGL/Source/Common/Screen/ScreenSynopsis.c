@@ -206,6 +206,7 @@ void InitializeSynopsis()
         
 	// Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
+	synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";
 	synopsis[i++] = "videoPtr =Screen('OpenVideoCapture', windowPtr [, deviceIndex] [,roirectangle] [, pixeldepth] [, numbuffers] [, allowfallback] [, targetmoviename] [, recordingflags] [, captureEngineType]);";
 	synopsis[i++] = "Screen('CloseVideoCapture', capturePtr);";
     synopsis[i++] = "[fps starttime] = Screen('StartVideoCapture', capturePtr [, captureRateFPS] [, dropframes=0] [, startAt]);";
