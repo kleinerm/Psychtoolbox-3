@@ -42,8 +42,6 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 05/14/07  Return a more meaningful end cursor position (printf - semantics) (MK)
 % 01/31/09  Add optional vSpacing parameter (Alex Leykin).
 
-% We need GL for drawing in 3D rendering mode:
-global GL;
 
 if nargin < 1 || isempty(win)
     error('DrawFormattedText: Windowhandle missing!');
@@ -91,7 +89,7 @@ newlinepos = strfind(tstring, '\n');
 
 % If '\n' is already encoded as a char(10) as in Octave, then
 % there's no need for replacemet.
-if char(10) == '\n'
+if char(10) == '\n' %#ok<STCMP>
    newlinepos = [];
 end
 
@@ -111,9 +109,6 @@ end
 
 % Query textsize for implementation of linefeeds:
 theight = Screen('TextSize', win) * vSpacing;
-
-% Query window size as well:
-[winwidth winheight] = Screen('WindowSize', win);
 
 % Default y start position is top of window:
 if nargin < 4 || isempty(sy)
@@ -142,54 +137,24 @@ end
 % Init cursor position:
 xp = sx;
 yp = sy;
-nx = xp;
-ny = yp;
 
 minx = inf;
 miny = inf;
 maxx = 0;
 maxy = 0;
 
-% If we are in 3D mode, we need to make sure we have a ortho-projection set
-% up.
-if (~isempty(GL)) && (Screen('Preference', 'Enable3DGraphics')>0)
-    % 3D mode active:
-    gl3dmode = 1;
-    
-    % At this point in control flow, we may be set to a different GL
-    % context than the one of our wanted target 'win'dow. Make sure, our
-    % target'win'dow is bound before doing any funky stuff. The
-    % 'GetWindowInfo' call is guaranteed to do this for us:
-    Screen('GetWindowInfo', win);
-    
-    % First we backup all relevant transformation matrices and set up
-    % identity orthonormal transforms for our purpose:
-    glMatrixMode(GL.PROJECTION);
-    glPushMatrix;
-    glLoadIdentity;
-    gluOrtho2D(0, winwidth, winheight, 0);
-    glMatrixMode(GL.MODELVIEW);
-    glPushMatrix;
-    glLoadIdentity;
+% Is the OpenGL userspace context for this 'windowPtr' active, as required?
+[previouswin, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
 
-    % Disable lighting and blending and texture mapping:
-    culling_on = glIsEnabled(GL.CULL_FACE);
-    lights_on = glIsEnabled(GL.LIGHTING);
-    blending_on = glIsEnabled(GL.BLEND);
-    tex2d_on = glIsEnabled(GL.TEXTURE_2D);
-    texrect_on = glIsEnabled(GL.TEXTURE_RECTANGLE_EXT);
-    glDisable(GL.CULL_FACE);
-    glDisable(GL.LIGHTING);
-    glDisable(GL.BLEND);    
-    glDisable(GL.TEXTURE_2D);
-    glDisable(GL.TEXTURE_RECTANGLE_EXT);
-else
-    % Pure 2D drawing, nothing special to do.
-    gl3dmode = 0;
+% OpenGL rendering for this window active?
+if IsOpenGLRendering
+    % Yes. We need to disable OpenGL mode for that other window and
+    % switch to our window:
+    Screen('EndOpenGL', win);
 end
 
 % Parse string, break it into substrings at line-feeds:
-while length(tstring)>0
+while ~isempty(tstring)
     % Find next substring to process:
     crpositions = strfind(tstring, char(10));
     if ~isempty(crpositions)
@@ -207,7 +172,7 @@ while length(tstring)>0
         % would exceed 250 characters. The ATSU text renderer of OS/X can't
         % handle more than 250 characters.
         if size(curstring, 2) > 250
-            tstring = [curstring(251:end) tstring];
+            tstring = [curstring(251:end) tstring]; %#ok<AGROW>
             curstring = curstring(1:250);
             dolinefeed = 1;
         end
@@ -235,7 +200,7 @@ while length(tstring)>0
         % Horizontally centered output required?
         if xcenter
             % Yes. Compute dh, dv position offsets to center it in the center of window.
-            [rect,dh,dv] = CenterRect(bbox, Screen('Rect', win));
+            [rect,dh] = CenterRect(bbox, Screen('Rect', win));
             % Set drawing cursor to horizontal x offset:
             xp = dh;
         end
@@ -301,41 +266,33 @@ maxy = maxy + theight;
 
 % Create final bounding box:
 textbounds = SetRect(minx, miny, maxx, maxy);
+
 % Create new cursor position. The cursor is positioned to allow
 % to continue to print text directly after the drawn text.
 % Basically behaves like printf or fprintf formatting.
 nx = xp;
 ny = yp;
 
-% Was this drawing in 3D mode?
-if gl3dmode > 0
-    % Yes. Need to restore transform matrices and other GL state:
-    glMatrixMode(GL.PROJECTION);
-    glPopMatrix;
-    glMatrixMode(GL.MODELVIEW);
-    glPopMatrix;
+% Our work is done. If a different window than our target window was
+% active, we'll switch back to that window and its state:
+if previouswin ~= win
+    % Different window was active before our invocation:
 
-    % Conditionally reenable lighting and blending and texture mapping:
-    if culling_on
-        glEnable(GL.CULL_FACE);
+    % Was that window in 3D mode, i.e., OpenGL rendering for that window was active?
+    if IsOpenGLRendering
+        % Yes. We need to switch that window back into 3D OpenGL mode:
+        Screen('BeginOpenGL', previouswin);
+    else
+        % No. We just perform a dummy call that will switch back to that
+        % window:
+        Screen('GetWindowInfo', previouswin);
     end
-    
-    if lights_on
-        glEnable(GL.LIGHTING);
+else
+    % Our window was active beforehand.
+    if IsOpenGLRendering
+        % Was in 3D mode. We need to switch back to 3D:
+        Screen('BeginOpenGL', previouswin);
     end
-
-    if blending_on
-        glEnable(GL.BLEND);
-    end
-
-    if tex2d_on
-        glEnable(GL.TEXTURE_2D);
-    end
-
-    if texrect_on
-        glEnable(GL.TEXTURE_RECTANGLE_EXT);
-    end
-
 end
 
 return;
