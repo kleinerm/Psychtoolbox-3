@@ -59,7 +59,9 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("ARLoadMarker", &PSYCHCVARLoadMarker));
 	PsychErrorExit(PsychRegister("ARDetectMarkers", &PSYCHCVARDetectMarkers));
 	PsychErrorExit(PsychRegister("ARRenderImage", &PSYCHCVARRenderImage));
-	
+	PsychErrorExit(PsychRegister("ARTrackerSettings", &PSYCHCVARTrackerSettings));
+	PsychErrorExit(PsychRegister("ARRenderSettings", &PSYCHCVARRenderSettings));
+
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 

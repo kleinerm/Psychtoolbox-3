@@ -22,8 +22,6 @@
 
 	TODO:
 	
-	* Setup of tracker mode and parameters other than defaults.
-	* Setup of rendering parameters other than defaults.
 	* Support for 2-Camera stereo processing.
 	* Input image format/color conversion to cope with different input formats.
 	* Use of other nice bits inside toolkit?
@@ -80,7 +78,8 @@ static ARGL_CONTEXT_SETTINGS_REF gArglSettings = NULL;
 typedef struct PsychCVARMarkerInfoStruct {
 	int		isMultiMarker;
 	double	matchError;
-	
+	double	oldTrans[3][4];	
+
 	union {
 		ARMultiMarkerInfoT*	multiMarker;
 		int					singleMarker;
@@ -330,8 +329,11 @@ PsychError PSYCHCVARLoadMarker(void)
 			printf("PsychCV: ERROR: Failed to load single-markerfile %s.\n", markerFilename);
 			PsychErrorExitMsg(PsychError_user, "Failed to load single marker definition file! Invalid filename or file inaccessible?");
 		}
-		if (-1 == arActivatePatt(arMarkers[markerCount].marker.singleMarker)) PsychErrorExitMsg(PsychError_user, "Failed to activate pattern!");
+//		if (-1 == arActivatePatt(arMarkers[markerCount].marker.singleMarker)) PsychErrorExitMsg(PsychError_user, "Failed to activate pattern!");
 	}
+
+	// Initialize matchError to infinite:
+	arMarkers[markerCount].matchError = DBL_MAX;
 
 	// Return markerhandle:
 	PsychCopyOutDoubleArg(1, kPsychArgRequired, markerCount);
@@ -373,7 +375,6 @@ PsychError PSYCHCVARDetectMarkers(void)
     int             marker_num;
     int             j, k;
 
-	double		trans1[3][4];	
 	double*		xformMatrix;
 	double*		ModelviewMatrixGL;
 	
@@ -393,13 +394,6 @@ PsychError PSYCHCVARDetectMarkers(void)
 
 	// Update AR's debugging level:
 	arDebug = (verbosity > 5) ? 1 : 0;
-
-	// Optional parameters to implement:
-//	arTemplateMatchingMode = AR_TEMPLATE_MATCHING_COLOR / AR_TEMPLATE_MATCHING_BW
-//  arImageProcMode = AR_IMAGE_PROC_IN_FULL / AR_IMAGE_PROC_IN_HALF
-//	arMatchingPCAMode = AR_MATCHING_WITHOUT_PCA / AR_MATCHING_WITH_PCA
-//  arFittingMode   = AR_FITTING_TO_IDEAL / AR_FITTING_TO_INPUT;
-//  argDrawMode     = AR_DRAW_BY_TEXTURE_MAPPING;
 
 	// Get optional markerSubset list:
 	if (PsychAllocInDoubleMatArg(1, FALSE, &m, &n, &p, &markerSubset)) {
@@ -472,10 +466,7 @@ PsychError PSYCHCVARDetectMarkers(void)
 		PsychAllocateNativeDoubleMat(4, 4, 1, &ModelviewMatrixGL, &myMatrix);
 		PsychSetStructArrayNativeElement("ModelViewMatrix", i, myMatrix, detectedMarkers);
 		memset(ModelviewMatrixGL, 0, sizeof(double) * 4 * 4);
-		
-		// Init matchError to infinity, ie., no match:
-		arMarkers[candHandle].matchError = DBL_MAX;
-		
+
 		// Multimarker candidate?
 		if (arMarkers[candHandle].isMultiMarker) {
 			// Multimarker candidate:
@@ -505,10 +496,23 @@ PsychError PSYCHCVARDetectMarkers(void)
 				if (verbosity > 4) printf("PsychCV-INFO: ARDetectMarkers: Non-Matched Marker %i with pattern id %i has matchError %f\n", candHandle, arMarkers[candHandle].marker.singleMarker, (float) arMarkers[candHandle].matchError);
 			}
 			else {
+				if (arMarkers[candHandle].matchError == DBL_MAX) {
+					// Previous iteration didn't detect this marker: Previous trans
+					// matrix is invalid:
+					arGetTransMat(&marker_info[k], patt_center, patt_width, arMarkers[candHandle].oldTrans);
+				}
+				else {
+					// Previous iteration delivered valid result: Use old trans matrix
+					// to stabilize reconstruction in this cycle:
+					arGetTransMatCont(&marker_info[k], arMarkers[candHandle].oldTrans, patt_center, patt_width, arMarkers[candHandle].oldTrans);
+				}
+				
+				// Update reliability:
 				arMarkers[candHandle].matchError = 1.0 - marker_info[k].cf;
-				arGetTransMat(&marker_info[k], patt_center, patt_width, trans1);
-				argConvGlpara(trans1, xformMatrix);
-				arglCameraViewRH(trans1, ModelviewMatrixGL, view_scalefactor);
+				
+				// Extract useful matrices for OpenGL:
+				argConvGlpara(arMarkers[candHandle].oldTrans, xformMatrix);
+				arglCameraViewRH(arMarkers[candHandle].oldTrans, ModelviewMatrixGL, view_scalefactor);
 
 				if (verbosity > 4) printf("PsychCV-INFO: ARDetectMarkers: Marker %i with pattern id %i has matchError %f\n", candHandle, arMarkers[candHandle].marker.singleMarker, (float) arMarkers[candHandle].matchError);
 			}			
@@ -563,7 +567,107 @@ PsychError PSYCHCVARRenderImage(void)
 	}
 
 	// Perform scene render from internal image buffer, hopefully with the proper context bound:
-	arglDispImage(arImagebuffer, &cameraParams, view_scalefactor, gArglSettings);	// zoom = 1.0.
+	arglDispImage(arImagebuffer, &cameraParams, view_scalefactor, gArglSettings);
+
+	// Ready.
+	return(PsychError_none);	
+}
+
+PsychError PSYCHCVARRenderSettings(void)
+{
+ 	static char useString[] = "[scale, minDist, maxDist] = PsychCV('ARRenderSettings' [, scale][, minDist][, maxDist]);";
+	static char synopsisString[] = 
+		"Return current rendering parameters, optionally change rendering parameters.\n"
+		"Both, for backdrop video image rendering in PsychCV('ARRenderImage'); and for "
+		"computation and return of OpenGL compliant projection and modelview matrices "
+		"in PsychCV('ARInitialize') and PsychCV('ARDetectMarkers'), some info about the "
+		"relationship between AR toolkits distance units and OpenGL's distance units "
+		"are needed. These settings are set to reasonable defaults at startup, but "
+		"can be changed anytime with this subfunction. Following settings are available:\n"
+		"'scale' scaling factor from AR's distance units [millimeters] OpenGL units.\n"
+		"'minDist' Near clipping distance for OpenGL frustum computation - Affects projection matrices.\n"
+		"'maxDist' Far clipping distance for OpenGL frustum computation - Affects projection matrices.\n"
+		"The optionally returned 'glProjectionMatrix' reflects the changes in these parameters. \n";
+
+	static char seeAlsoString[] = "";	 
+
+	double			*projmatrixGL;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(4));	 // The maximum number of outputs
+
+	// Copy out old settings:
+	PsychCopyOutDoubleArg(1, FALSE, view_scalefactor);
+	PsychCopyOutDoubleArg(2, FALSE, view_distance_min);
+	PsychCopyOutDoubleArg(3, FALSE, view_distance_max);
+
+	// Copy in optional new settings:
+	PsychCopyInDoubleArg(1, FALSE, &view_scalefactor);
+	PsychCopyInDoubleArg(2, FALSE, &view_distance_min);
+	PsychCopyInDoubleArg(3, FALSE, &view_distance_max);
+
+	//  argDrawMode     = AR_DRAW_BY_TEXTURE_MAPPING;
+
+	// Recompute GL_PROJECTION_MATRIX from new settings, if any:
+
+	// Compute a suitable OpenGL projection matrix for these intrinsic
+	// camera parameters: Return it as 4 x 4 matrix in 2nd optional
+	// return argument:
+	PsychAllocOutDoubleMatArg(4, FALSE, 4, 4, 1, &projmatrixGL);
+	
+	// Let ARToolkit do the actual job:
+	arglCameraFrustumRH(&cameraParams, view_distance_min, view_distance_max, projmatrixGL);
+
+	// Ready.
+	return(PsychError_none);	
+}
+
+PsychError PSYCHCVARTrackerSettings(void)
+{
+ 	static char useString[] = "[templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings' [, templateMatchingInColor][, imageProcessingFullSized][, imageProcessingIdeal][, trackingWithPCA]);";
+	static char synopsisString[] = 
+		"Return current tracker parameters, optionally change tracker parameters.\n"
+		"These settings are set to reasonable defaults at startup, but can be changed "
+		"anytime with this subfunction. Most of these settings define tradeoffs between "
+		"computation time aka tracking speed and quality/robustness of tracking.\n"
+		"Following settings are available:\n"
+		"'templateMatchingInColor' 1 = Use color template matching. 0 = Use intensity only.\n"
+		"'imageProcessingFullSized' 1 = Process full image. 0 = Only work on half-resolution image.\n"
+		"'imageProcessingIdeal' 1 = Undistort image (camera undistortion) before processing. 0 = Work on input image as is.\n"
+		"'trackingWithPCA' 1 = Use PCA for tracking (expensive), 0 = Use simpler strategy.\n";
+
+	static char seeAlsoString[] = "";	 
+
+	int	templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(4));	 // The maximum number of outputs
+
+	// Copy out old settings:
+	PsychCopyOutDoubleArg(1, FALSE, (arTemplateMatchingMode == AR_TEMPLATE_MATCHING_COLOR) ? 1 : 0);
+	PsychCopyOutDoubleArg(2, FALSE, (arImageProcMode == AR_IMAGE_PROC_IN_FULL) ? 1 : 0); 
+	PsychCopyOutDoubleArg(3, FALSE, (arFittingMode == AR_FITTING_TO_IDEAL) ? 1 : 0);
+	PsychCopyOutDoubleArg(4, FALSE, (arMatchingPCAMode == AR_MATCHING_WITH_PCA) ? 1 : 0);
+
+	// Copy in optional new settings:
+	PsychCopyInIntegerArg(1, FALSE, &templateMatchingInColor);
+	arTemplateMatchingMode = (templateMatchingInColor) ? AR_TEMPLATE_MATCHING_COLOR : AR_TEMPLATE_MATCHING_BW;
+	PsychCopyInIntegerArg(2, FALSE, &imageProcessingFullSized);
+	arImageProcMode = (imageProcessingFullSized) ? AR_IMAGE_PROC_IN_FULL : AR_IMAGE_PROC_IN_HALF;
+	PsychCopyInIntegerArg(3, FALSE, &imageProcessingIdeal);
+	arFittingMode = (imageProcessingIdeal) ? AR_FITTING_TO_IDEAL : AR_FITTING_TO_INPUT;
+	PsychCopyInIntegerArg(4, FALSE, &trackingWithPCA);
+	arMatchingPCAMode = (trackingWithPCA) ? AR_MATCHING_WITH_PCA : AR_MATCHING_WITHOUT_PCA;
 
 	// Ready.
 	return(PsychError_none);	

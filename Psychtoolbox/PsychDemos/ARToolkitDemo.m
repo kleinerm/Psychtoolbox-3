@@ -1,7 +1,7 @@
 function ARToolkitDemo(multiMarker)
 % Use ARToolkit to track and visualize 3D objects in live-video.
 %
-% Usage: ARToolkitDemo([multiMarker = 0])
+% Usage: ARToolkitDemo([multiMarker = 2])
 %
 % Minimalistic demo on how to capture video data and use ARToolkit to
 % detect and track the rigid position and orientation of markers, then
@@ -9,9 +9,11 @@ function ARToolkitDemo(multiMarker)
 %
 % Parameters:
 %
-% multiMarker = If set to 0 (default), track single markers. Otherwise
+% multiMarker = If set to 2 (default), track single markers. If set to 1,
 % track so called multi markers or composite markers for more robustness
-% against occlusion of single markers.
+% against occlusion of single markers. A setting of 3 (=1+2) should track
+% both types of markers simultaneously, but this doesn't seem to work well
+% yet.
 %
 
 % History:
@@ -34,7 +36,7 @@ try
     
     % Size of window: Default to fullscreen:
     roi = CenterRect([0 0 640 480], Screen('Rect',screenid));
-    
+
     % Use imaging pipeline to flip image horizontally to avoid confusing
     % the viewer due to mirror view:
     PsychImaging('PrepareConfiguration');
@@ -43,8 +45,8 @@ try
 
     % Open videocapture device: For now we use engine 2, the ARVideo
     % engine, to simplify compatibility issues...
-    Screen('Preference', 'DefaultVideocaptureEngine', 2);
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 4);
+    engineId = 2;
+    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 4, [], [], [], [], engineId);
 
     % Start capture with requested 30 fps:
     Screen('StartVideoCapture', grabber, 30, 1);
@@ -63,12 +65,15 @@ try
     
     % Initialize ARToolkit: Load camera calibration data, assign image size
     % and properties for raw video input images:
-    ardata = [ PsychtoolboxRoot() 'PsychDemos/ARToolkitDemoData/' ];
+    ardata = [ PsychtoolboxRoot 'PsychDemos/ARToolkitDemoData/' ];
+    PsychCV('ARRenderSettings', [], [], 2000)
     [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels); %#ok<NASGU>
+    
+    [templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings')
 
     % Single markers by default:
     if nargin < 1
-        multiMarker = 0;
+        multiMarker = 2;
     end
     
     % Load our (multi-)marker(s):
@@ -76,18 +81,22 @@ try
     % config files are coded relative to working directory :-(
     olddir = pwd;
     try
-        if multiMarker
-            cd([ ardata 'multi/' ]);
-            marker = PsychCV('ARLoadMarker', 'marker.dat', 1);
-        else
+        marker = [];
+                
+        if bitand(multiMarker, 2)
             cd(ardata);
-            marker(1) = PsychCV('ARLoadMarker', 'patt.hiro', 0);
-            marker(2) = PsychCV('ARLoadMarker', 'patt.kanji', 0);
+            marker(end+1) = PsychCV('ARLoadMarker', 'patt.hiro', 0);
+            marker(end+1) = PsychCV('ARLoadMarker', 'patt.kanji', 0);
         end
+        
+        if bitand(multiMarker, 1)
+            cd([ ardata 'multi/' ]);
+            marker(end+1) = PsychCV('ARLoadMarker', 'marker.dat', 1);
+        end        
     catch
     end
     cd(olddir);
-    
+
     % Setup OpenGL 3D rendering for our simple test:
     Screen('BeginOpenGL', win);
 
@@ -172,18 +181,26 @@ try
         % For each candidate marker do...
         for i=1:length(detectedMarkers)
             % i'th candidate detected reliably?
-            if detectedMarkers(i).MatchError < realmax
+            merr = detectedMarkers(i).MatchError;
+
+            if merr < realmax
                 % Yes: Draw 3D object corresponding to i'th pattern:
+                mpos = detectedMarkers(i).ModelViewMatrix(1:3, 4);
                 
-                % Setup rigid positio and orientation via 4x4 xform matrix:
+                statusTxt = sprintf('POS X = %04f  Y = %04f  Z = %04f', mpos(1), mpos(2), mpos(3));
+                DrawFormattedText(win, statusTxt, 'center', 0, [255 0 0], [], 1);
+                
+                % Setup rigid position and orientation via 4x4 xform matrix:
                 glLoadMatrixd(detectedMarkers(i).ModelViewMatrix);
-                
+
                 % Switch drawn object by markerId:
                 switch detectedMarkers(i).Id
                     case marker(1),
-                        glutWireTeapot(sizeMM);
+                        glutSolidTeapot(sizeMM);
                     case marker(2),
                         glutSolidCube(sizeMM);
+                    case marker(2),
+                        glutSolidSphere(sizeMM, 50, 50);
                 end;                
             end
         end
@@ -192,7 +209,7 @@ try
         Screen('EndOpenGL', win);
 
         % Show updated image at next retrace:
-        Screen('Flip', win);
+        Screen('Flip', win, 0, 0, 1);
         
         % Next tracking loop iteration...
         count = count + 1;

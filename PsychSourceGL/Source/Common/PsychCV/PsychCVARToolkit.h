@@ -29,6 +29,8 @@ PsychError PSYCHCVARShutdown(void);
 PsychError PSYCHCVARLoadMarker(void);
 PsychError PSYCHCVARDetectMarkers(void);
 PsychError PSYCHCVARRenderImage(void);
+PsychError PSYCHCVARTrackerSettings(void);
+PsychError PSYCHCVARRenderSettings(void);
 
 void PsychCVARExit(void);
 
