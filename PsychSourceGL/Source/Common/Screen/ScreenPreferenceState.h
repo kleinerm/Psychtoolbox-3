@@ -103,5 +103,9 @@ void PsychPrefStateSet_VBLEndlineOverride(int level);
 int PsychPrefStateGet_VideoCaptureEngine(void);
 void PsychPrefStateSet_VideoCaptureEngine(int mode);
 
+// Window shielding level for windowed mode:
+void PsychPrefStateSet_WindowShieldingLevel(int level);
+int PsychPrefStateGet_WindowShieldingLevel(void);
+
 //end include once
 #endif

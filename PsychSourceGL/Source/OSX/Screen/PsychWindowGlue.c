@@ -212,6 +212,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	PsychRectType					screenrect;
     int attribcount=0;
     int i;
+	int								windowLevel;
 	boolean							useAGL, AGLForFullscreen;
 	WindowRef						carbonWindow = NULL;
 	int								aglbufferid;
@@ -223,6 +224,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	
 	// NULL-out Carbon window handle, so this is well-defined in case of error:
 	windowRecord->targetSpecific.windowHandle = NULL;
+
+	// Retrieve windowLevel, an indicator of where non-fullscreen AGL windows should
+	// be located wrt. to other windows. 0 = Behind everything else, occluded by
+	// everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+	// 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
+	// regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
+	// 2000 is the default.
+	windowLevel = PsychPrefStateGet_WindowShieldingLevel();
 
 	// Use AGL for fullscreen windows?
 	AGLForFullscreen = (PsychPrefStateGet_ConserveVRAM() & kPsychUseAGLForFullscreenWindows) ? TRUE : FALSE;
@@ -271,13 +280,29 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		winRect.left = (short) windowRecord->rect[kPsychLeft];
 		winRect.bottom = (short) windowRecord->rect[kPsychBottom];
 		winRect.right = (short) windowRecord->rect[kPsychRight];
-		if (noErr !=CreateNewWindow(kOverlayWindowClass, kWindowNoUpdatesAttribute, &winRect, &carbonWindow)) {
+
+		WindowClass wclass;
+		if (windowLevel >= 1000) {
+			wclass = kOverlayWindowClass;
+		}
+		else {
+			wclass = kSimpleWindowClass;
+		}
+
+		if (noErr !=CreateNewWindow(wclass, kWindowNoUpdatesAttribute, &winRect, &carbonWindow)) {
 			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
 			return(FALSE);
 		}
 		
-		// Show it!
-		ShowWindow(carbonWindow);
+		// Show it! Unless a windowLevel of -1 requests hiding the window:
+		if (windowLevel != -1) ShowWindow(carbonWindow);
+
+		// Level zero means: Place behind all other windows:
+		if (windowLevel ==  0) SendBehind(carbonWindow, NULL);
+
+		// Levels 1 to 998 define window levels for the group of the window. A level
+		// of 999 would leave this to the system:
+		if (windowLevel > 0 && windowLevel < 999) SetWindowGroupLevel(GetWindowGroup(carbonWindow), (SInt32) windowLevel);
 
 		// Store window handle in windowRecord:
 		windowRecord->targetSpecific.windowHandle = carbonWindow;
@@ -550,9 +575,9 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			return(FALSE);
 		}
 
-		if (FALSE) {
-			// This bit of code would make the window background transparent, so standard GUI
-			// would be visible, wherever nothing is drawn -- Cool but currently not useful for us?
+		if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+			// For windowLevels between 1000 and 2000, make the window background transparent, so standard GUI
+			// would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
 			i = 0;
 			aglSetInteger(glcontext, AGL_SURFACE_OPACITY, &i);
 		}

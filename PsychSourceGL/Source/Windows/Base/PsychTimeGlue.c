@@ -430,7 +430,10 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// Southbridge controller in the machines host chipset - Not a good basis for high precision timing.
 		// See Microsoft Knowledge base article Nr. 274323 for further explanation and a list of known bad
 		// chipsets.
-		if (diff > 0.25) {
+		// We actually allow for an additional slack of 0.000200 seconds or 200 ppm for each
+		// elapsed second of the test interval. This to account for clock drift of up to 200 ppm
+		// between both clocks. According to some docs, 200 ppm drift are possible under MS-Windows!
+		if ( diff > ( 0.25 + ((ticks - oldticks) * 0.000200 ) ) ) {
 			// Mismatch between performance counter and tick counter detected!
 			// Performance counter is faulty! Report this to user, then continue
 			// by use of the older tick counter as a band-aid.

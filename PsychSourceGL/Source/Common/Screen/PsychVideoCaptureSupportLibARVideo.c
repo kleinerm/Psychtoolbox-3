@@ -349,10 +349,11 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 			sprintf(tmpstr, " -pixelformat=24");
 			break;
 
-		case 4:
+		case 5:
 			reqdepth = 4;
 			sprintf(tmpstr, "");
 			break;
+		case 4:
 		case 0:
 			reqdepth = 4;
 			sprintf(tmpstr, " -pixelformat=ARGB");

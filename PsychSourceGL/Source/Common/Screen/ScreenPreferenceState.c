@@ -87,6 +87,9 @@ static Boolean                          Enable_3d_gfx=FALSE;
 static int                              screenVBLTimestampingMode=1;
 static int								screenVBLEndlineOverride=-1;	// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
 static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire, 2 = ARVideo.
+static int								windowShieldingLevel=2000;		// Level of priority of windowed onscreen window wrt. other windows:
+																		// From 0 for "behind everything" to 2000 for "in front of everything. Exact meaning of
+																		// number is OS specific. This value is used at window open time for each window.
 
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)
@@ -355,6 +358,16 @@ int PsychPrefStateGet_VideoCaptureEngine(void)
 void PsychPrefStateSet_VideoCaptureEngine(int mode)
 {
 	videoCaptureEngineId = mode;
+}
+
+int PsychPrefStateGet_WindowShieldingLevel(void)
+{
+    return(windowShieldingLevel);
+}
+
+void PsychPrefStateSet_WindowShieldingLevel(int level)
+{
+    windowShieldingLevel = level;
 }
 
 //****************************************************************************************************************
