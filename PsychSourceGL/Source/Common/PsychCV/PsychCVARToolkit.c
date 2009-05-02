@@ -54,6 +54,9 @@ int imgBinarizationThreshold;
 // Pointer to input image buffer:
 static	ARUint8* arImagebuffer = NULL;
 
+// Pointer to processing image buffer:
+static  ARUint8* arTrackBuffer = NULL;
+
 // Fornat of image buffer:
 int		imgWidth, imgHeight, imgChannels, imgFormat;
 
@@ -79,7 +82,9 @@ typedef struct PsychCVARMarkerInfoStruct {
 	int		isMultiMarker;
 	double	matchError;
 	double	oldTrans[3][4];	
-
+	double	patt_width;
+	double	patt_center[2];
+	
 	union {
 		ARMultiMarkerInfoT*	multiMarker;
 		int					singleMarker;
@@ -89,9 +94,162 @@ typedef struct PsychCVARMarkerInfoStruct {
 struct PsychCVARMarkerInfoStruct	arMarkers[PSYCHCVAR_MAX_MARKERCOUNT];
 static int							markerCount = 0;
 
-// Static pattern properties for single marker matching:
-double          patt_width     = 80.0;
-double          patt_center[2] = {0.0, 0.0};
+// Internal helper: Perform image data conversion if required:
+void PsychCVARConvertInputImage(void)
+{
+	ARUint8* src = arImagebuffer;
+	ARUint8* dst = arTrackBuffer;
+	ARUint8  dummy;
+	int i, count;
+	
+	// Conversion needed at all? If input matches requested channelcount and image format
+	// of ARToolkit, then there ain't nothing to do and we can return immediately:
+	if (imgChannels == AR_PIX_SIZE_DEFAULT && imgFormat == AR_DEFAULT_PIXEL_FORMAT) return;
+
+	count = imgWidth * imgHeight;
+	
+	// Matching channel count from input to output? This would be 3 or 4 channels,
+	// as our target platforms don't use anything else as AR_PIX_SIZE_DEFAULT.
+	if (src == dst) {
+		// Yes: 3 -> 3 or 4 -> 4. So we just need to swizzle...
+		if (AR_PIX_SIZE_DEFAULT == 3) {
+			// RGB -> BGR or BGR -> RGB conversion. In any case, need to
+			// switch 1st and 3rd component:
+			for (i = 0; i < count; i++) {
+				dummy = src[0];
+				src[0] = src[2];
+				src[2] = dummy;
+				src+=3;
+			}
+
+			// Done:
+			return;
+		}
+		else {
+			// ARGB -> BGRA or vice versa. Switch 1st with 4th, 2nd with 3rd:
+			for (i = 0; i < count; i++) {
+				dummy = src[0];
+				src[0] = src[3];
+				src[3] = dummy;
+				dummy = src[2];
+				src[2] = src[1];
+				src[1] = dummy;
+				src+=4;
+			}
+
+			// Done:
+			return;
+		}
+	}
+	else {
+		// Separate buffers: 1->3, 1->4, 3->4 or 4->3:
+		if (imgChannels == 1) {
+			if (AR_PIX_SIZE_DEFAULT == 3) {
+				// Luminance -> RGB expansion:
+				for (i = 0; i < count; i++) {
+					dummy = *(src++);
+					*(dst++) = dummy;
+					*(dst++) = dummy;
+					*(dst++) = dummy;
+				}
+
+				// Done:
+				return;
+			}
+			else {
+				// Luminance -> RGBA (or ABGR) expansion: As
+				// A channel will be ignored, just replicate
+				// luminance into all 4 channels:
+				for (i = 0; i < count; i++) {
+					dummy = *(src++);
+					*(dst++) = dummy;
+					*(dst++) = dummy;
+					*(dst++) = dummy;
+					*(dst++) = dummy;
+				}			
+
+				// Done:
+				return;
+			}
+		}
+		
+		if (imgChannels == 3) {
+			// RGB --> ARGB or BGRA expansion: All our video capture engines
+			// deliver RGB if 3 channel data is requested.
+			if (AR_DEFAULT_PIXEL_FORMAT == AR_PIXEL_FORMAT_ARGB) {
+				for (i = 0; i < count; i++) {
+					// Zero-fill first byte (the A part of ARGB):
+					*(dst++) = 0;
+					// Copy last 3 bytes (RGB part):
+					*(dst++) = *(src++);
+					*(dst++) = *(src++);
+					*(dst++) = *(src++);
+				}
+
+				// Done:
+				return;				
+			}
+			
+			if (AR_DEFAULT_PIXEL_FORMAT == AR_PIXEL_FORMAT_BGRA) {
+				for (i = 0; i < count; i++) {
+					// Copy and swizzle first 3 bytes (RGB part to BGR):
+					*(dst++) = src[2];
+					*(dst++) = src[1];
+					*(dst++) = src[0];
+					src+=3;
+					// Zero-fill last byte (the A part of BGRA):
+					*(dst++) = 0;
+				}
+
+				// Done:
+				return;
+			}
+		
+			// Other target formats etc. are not relevant to our platforms...
+		}
+
+		if (imgChannels == 4) {
+			// ARGB or BGRA --> RGB contraction: Target is always RGB,
+			// source depends on input image format
+			if (imgFormat == AR_PIXEL_FORMAT_ARGB) {
+				for (i = 0; i < count; i++) {
+					// Copy first 3 bytes (RGB part):
+					*(dst++) = *(src++);
+					*(dst++) = *(src++);
+					*(dst++) = *(src++);
+					// Skip last byte (the A part of ARGB):
+					src++;
+				}
+
+				// Done:
+				return;
+			}
+			
+			if (imgFormat == AR_PIXEL_FORMAT_BGRA) {
+				for (i = 0; i < count; i++) {
+					// Skip first byte (the A part of BGRA):
+					src++;
+					// Copy and swizzle last 3 bytes (RGB part to BGR):
+					*(dst++) = src[2];
+					*(dst++) = src[1];
+					*(dst++) = src[0];
+					src+=3;
+				}
+
+				// Done:
+				return;
+			}
+		
+			// Other target formats etc. are not relevant to our platforms...
+		}
+	}
+
+	// If we reach this point, then some unsupported input -> output conversion
+	// was requested!
+	PsychErrorExitMsg(PsychError_user, "Unknown or unsupported input image format settings 'imgChannels' and/or 'imgFormat' encountered! Check your settings in PsychCV('ARInitialize')!");
+	
+	return;
+}
 
 void PsychCVARExit(void)
 {
@@ -101,6 +259,9 @@ void PsychCVARExit(void)
 	// at PsychCV shutdown/flush time, or explicitely via subfunction 'ARShutdown':
 	if (psychCVARInitialized) {
 		// Release buffer memory, if any:
+		if ((arTrackBuffer) && (arTrackBuffer != arImagebuffer)) free(arTrackBuffer);
+		arTrackBuffer = NULL;
+
 		if (arImagebuffer) free(arImagebuffer);
 		arImagebuffer = NULL;
 	
@@ -148,7 +309,12 @@ PsychError PSYCHCVARInitialize(void)
 		"Camera calibration info for the camera used for tracking is loaded from the "
 		"file given by 'cameraCalibFilename'. Internal video image memory buffers "
 		"are setup for input images of size 'imgWidth' x 'imgHeight' pixels, with "
+		"'imgChannels' color channels (1, 3 or 4 are valid settings) and input "
 		"color format 'imgFormat' (or a default setting if 'imgFormat' is omitted). "
+		"imgFormat can be one of:\n"
+		"RGB = 1, BGR = 2, BGRA = 4, ARGB = 7, MONO = 6. Other formats are not "
+		"supported for input images, but these are the ones provided by Psychtoolboxs "
+		"various video capture engines for different video sources and settings.\n"
 		"Then the camera calibration is adapted to the given image size, ARToolkit "
 		"is initialized, and a memory buffer handle 'SceneImageMemBuffer' to the "
 		"internal video memory buffer is returned.\n\n"
@@ -193,7 +359,12 @@ PsychError PSYCHCVARInitialize(void)
 	PsychCopyInIntegerArg(4, TRUE, &imgChannels);
 	if (imgChannels < 1 || imgChannels > 4 || imgChannels == 2) PsychErrorExitMsg(PsychError_invalidRectArg, "Invalid imgChannles provided. Must be 1, 3 or 4!");
 
-	imgFormat = 0;
+	// Setup default imgFormat, depending on number of input channels:
+	imgFormat = AR_DEFAULT_PIXEL_FORMAT;
+	if (imgChannels == 1) imgFormat = AR_PIXEL_FORMAT_MONO;
+	if (imgChannels == 3) imgFormat = AR_PIXEL_FORMAT_RGB;
+	
+	// Get optional imgFormat:
 	PsychCopyInIntegerArg(5, kPsychArgOptional, &imgFormat);
 	if (imgFormat < 0) PsychErrorExitMsg(PsychError_invalidRectArg, "Invalid image format provided!");
 
@@ -224,10 +395,19 @@ PsychError PSYCHCVARInitialize(void)
 	// under certain conditions - After all this wastes at most 4 MB or RAM,
 	// so what?
 	arImagebuffer = (ARUint8*) malloc(imgWidth * imgHeight * 4);
-	if (NULL == arImagebuffer) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to initialze ARToolkit subsystem!");
+	if (NULL == arImagebuffer) PsychErrorExitMsg(PsychError_outofMemory, "Out of memory when trying to initialize ARToolkit subsystem!");
 
 	// Return double-encoded void* memory pointer to video image input buffer:
 	PsychCopyOutDoubleArg(1, kPsychArgRequired, PsychPtrToDouble(arImagebuffer));
+
+	// Check if we need conversion for image data:
+	if (AR_PIX_SIZE_DEFAULT != imgChannels) {
+		// Need conversion and therefore intermediate conversion buffer:
+		arTrackBuffer = (ARUint8*) malloc(imgWidth * imgHeight * AR_PIX_SIZE_DEFAULT);
+	}
+	else {
+		arTrackBuffer = arImagebuffer;
+	}
 
 	// Return double-encoded void* memory pointer to video processing debug buffer:
 	// TODO: Set properly. For now identical to input buffer...
@@ -272,14 +452,18 @@ PsychError PSYCHCVARShutdown(void)
 
 PsychError PSYCHCVARLoadMarker(void)
 {
- 	static char useString[] = "[markerId] = PsychCV('ARLoadMarker', markerFilename [, isMultiMarker]);";
-	//																1				  2
+ 	static char useString[] = "[markerId] = PsychCV('ARLoadMarker', markerFilename [, isMultiMarker][, patt_width][, patt_center_x][, patt_center_y]);";
+	//																1				  2				   3			 4				  5
 	static char synopsisString[] = 
 		"Load a marker definition into ARToolkit subsystem prior to first use.\n"
 		"The marker definition used for tracking is loaded from the file given "
 		"by 'markerFilename'. If the optional argument 'isMultiMarker' is set to "
 		"1, then a multi marker definition file is loaded instead of a single "
 		"marker definition file. Single marker load is the default. \n"
+		"For single markers, you can optionally provide the 'patt_width' width "
+		"of the pattern in millimeters (default is 80 mm), and the center of "
+		"the pattern (x,y) coordinate 'patt_center_x' and 'patt_center_y' with "
+		"a default center of (0,0).\n"
 		"The function returns a unique handle 'markerId' on success. The marker "
 		"will be identified by that handle in all future function calls.\n\n"
 		"After this step, you can commence the actual tracking operations "
@@ -295,7 +479,7 @@ PsychError PSYCHCVARLoadMarker(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(5));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
@@ -329,7 +513,24 @@ PsychError PSYCHCVARLoadMarker(void)
 			printf("PsychCV: ERROR: Failed to load single-markerfile %s.\n", markerFilename);
 			PsychErrorExitMsg(PsychError_user, "Failed to load single marker definition file! Invalid filename or file inaccessible?");
 		}
-//		if (-1 == arActivatePatt(arMarkers[markerCount].marker.singleMarker)) PsychErrorExitMsg(PsychError_user, "Failed to activate pattern!");
+		
+		// Static pattern properties for single marker matching:
+		
+		// Init pattern width to 80 mm:
+		arMarkers[markerCount].patt_width = 80.0;
+
+		// Optional override:
+		PsychCopyInDoubleArg(3, FALSE, &(arMarkers[markerCount].patt_width));
+		
+		// Init pattern center to (0,0)
+		arMarkers[markerCount].patt_center[0] = 0.0;
+		arMarkers[markerCount].patt_center[1] = 0.0;
+
+		// Optional (x,y) override:
+		PsychCopyInDoubleArg(4, FALSE, &(arMarkers[markerCount].patt_center[0]));
+		PsychCopyInDoubleArg(5, FALSE, &(arMarkers[markerCount].patt_center[1]));
+
+		if (-1 == arActivatePatt(arMarkers[markerCount].marker.singleMarker)) PsychErrorExitMsg(PsychError_user, "Failed to activate pattern!");
 	}
 
 	// Initialize matchError to infinite:
@@ -392,6 +593,9 @@ PsychError PSYCHCVARDetectMarkers(void)
 	if (!psychCVARInitialized) PsychErrorExitMsg(PsychError_user, "ARToolkit not yet initialized! Call PsychCV('ARInitialize') first and retry!");
 	if (markerCount < 1) PsychErrorExitMsg(PsychError_user, "No markers loaded for detection! Call PsychCV('ARLoadMarker') first to load at least one marker and retry!");
 
+	// Perform image data conversion if required:
+	PsychCVARConvertInputImage();
+
 	// Update AR's debugging level:
 	arDebug = (verbosity > 5) ? 1 : 0;
 
@@ -430,7 +634,7 @@ PsychError PSYCHCVARDetectMarkers(void)
 	if (infoType < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' provided. Must be positive integer!");
 	
 	// Ok, we got the user arguments. Let's do the actual detection:
-	if(arDetectMarker(arImagebuffer, imgBinarizationThreshold, &marker_info, &marker_num) < 0) {
+	if(arDetectMarker(arTrackBuffer, imgBinarizationThreshold, &marker_info, &marker_num) < 0) {
 		PsychErrorExitMsg(PsychError_user, "Marker detection failed for some reason. [arDetectMarker() failed]!");
 	}
 
@@ -499,12 +703,12 @@ PsychError PSYCHCVARDetectMarkers(void)
 				if (arMarkers[candHandle].matchError == DBL_MAX) {
 					// Previous iteration didn't detect this marker: Previous trans
 					// matrix is invalid:
-					arGetTransMat(&marker_info[k], patt_center, patt_width, arMarkers[candHandle].oldTrans);
+					arGetTransMat(&marker_info[k], arMarkers[candHandle].patt_center, arMarkers[candHandle].patt_width, arMarkers[candHandle].oldTrans);
 				}
 				else {
 					// Previous iteration delivered valid result: Use old trans matrix
 					// to stabilize reconstruction in this cycle:
-					arGetTransMatCont(&marker_info[k], arMarkers[candHandle].oldTrans, patt_center, patt_width, arMarkers[candHandle].oldTrans);
+					arGetTransMatCont(&marker_info[k], arMarkers[candHandle].oldTrans, arMarkers[candHandle].patt_center, arMarkers[candHandle].patt_width, arMarkers[candHandle].oldTrans);
 				}
 				
 				// Update reliability:
@@ -567,7 +771,7 @@ PsychError PSYCHCVARRenderImage(void)
 	}
 
 	// Perform scene render from internal image buffer, hopefully with the proper context bound:
-	arglDispImage(arImagebuffer, &cameraParams, view_scalefactor, gArglSettings);
+	arglDispImage(arTrackBuffer, &cameraParams, view_scalefactor, gArglSettings);
 
 	// Ready.
 	return(PsychError_none);	

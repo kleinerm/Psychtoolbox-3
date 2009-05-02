@@ -81,7 +81,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "\nSupport for the ARToolkit computer vision based 3D marker tracking library:\n";
 	synopsis[i++] = "[SceneImageMemBuffer, glProjectionMatrix, DebugImageMemBuffer] = PsychCV('ARInitialize', cameraCalibFilename, imgWidth, imgHeight, imgChannels [, imgFormat]);";
 	synopsis[i++] = "PsychCV('ARShutdown');";
-	synopsis[i++] = "[markerId] = PsychCV('ARLoadMarker', markerFilename [, isMultiMarker]);";
+	synopsis[i++] = "[markerId] = PsychCV('ARLoadMarker', markerFilename [, isMultiMarker][, patt_width][, patt_center_x][, patt_center_y]);";
 	synopsis[i++] = "[templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings' [, templateMatchingInColor][, imageProcessingFullSized][, imageProcessingIdeal][, trackingWithPCA]);";
 	synopsis[i++] = "[detectedMarkers] = PsychCV('ARDetectMarkers'[, markerSubset][, threshold] [, infoType]);";
 	synopsis[i++] = "[scale, minDist, maxDist] = PsychCV('ARRenderSettings' [, scale][, minDist][, maxDist]);";
