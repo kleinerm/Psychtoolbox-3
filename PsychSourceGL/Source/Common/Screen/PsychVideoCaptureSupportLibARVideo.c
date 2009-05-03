@@ -316,9 +316,10 @@ bool PsychAROpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     }
 
 	if (num_dmabuffers > 0) {
-		#if PSYCH_SYSTEM == PSYCH_OSX
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
 		// Get framerate from num_dmabuffers argument:
 		sprintf(tmpstr, " frame_rate=\"%i\" ", num_dmabuffers);
+		strcat(config, tmpstr);
 		#endif
 	}
 

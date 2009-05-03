@@ -528,6 +528,7 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
  *		// 0 = Record video, stream to disk immediately (slower, but unlimited recording duration).
  *		// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
  *		// 2 = Record audio as well.
+ *		// 4 = Only record, but don't provide as live feed. This saves callback overhead if provided for pure recording sessions.
  *
  */
 bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
