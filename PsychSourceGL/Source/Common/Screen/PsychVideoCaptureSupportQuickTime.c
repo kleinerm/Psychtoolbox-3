@@ -52,6 +52,7 @@ typedef struct {
     SGChannel           sgchanVideo;  // Handle for video channel of sequence grabber.
 	SGChannel			sgchanAudio;  // Handle for audio channel of sequence grabber.
     ImageSequence 	decomSeq;	     // unique identifier for our video decompression sequence
+	ComponentInstance   vdig;		  // Actual VDIG component.
     int nrframes;                     // Total count of decompressed images.
     double fps;                       // Acquisition framerate of capture device.
     int width;                        // Width x height of captured images.
@@ -540,7 +541,6 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     char errdesc[1000];
     Rect movierect, newrect;
     SeqGrabComponent seqGrab = NULL;
-	ComponentInstance   vdCompInst;
 
     SGChannel *sgchanptr = NULL;
 	SGChannel *sgchanaudioptr = NULL;
@@ -742,6 +742,9 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to select video capture device according to requested deviceIndex %i\n", deviceIndex);
         }
 
+		// Assign VDIG handle:
+		vidcapRecordBANK[slotid].vdig = SGGetVideoDigitizerComponent(*sgchanptr);
+
         // Try to set our own custom video capture rectangle:
         error=SGSetVideoRect(*sgchanptr, &movierect);
         if (error!=noErr) {
@@ -835,13 +838,12 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		// Yes. Set it up:
 		FSSpec recfile;
 		CodecType codectypeid;
+		CompressorComponent codeccomp;
+		codectypeid = 0;
 		char* codecstr = strstr(targetmoviefilename, ":CodecType="); 
 		if (codecstr) {
 			sscanf(codecstr, ":CodecType= %i", &codectypeid);
 			*codecstr = 0;
-		}
-		else {
-			codectypeid = 0;
 		}
 		
 		if (PsychPrefStateGet_Verbosity() > 3) {
@@ -875,8 +877,10 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		
 		// This call would select a specific video compressor, if we had any except the default one ;)
 		if (error==noErr && codectypeid!=0) {
-			// MK: Does not work well up to now: error = SGSetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, 32, kH264kCodecType, codecHighQuality, codecHighQuality, 24);
-			// MK: Example of a symbolic spec:	error = SGSetVideoCompressorType(vidcapRecordBANK[slotid].sgchanVideo, kH264CodecType);
+			// MK: Could do this to change compression settings, but don't:
+			//			error = SGSetVideoCompressorType(vidcapRecordBANK[slotid].sgchanVideo, codectypeid);
+			//			error = SGGetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, NULL, &codeccomp, NULL, NULL, NULL);
+			//			error = SGSetVideoCompressor(vidcapRecordBANK[slotid].sgchanVideo, 0, codeccomp, codecHighQuality, 0, 1);
 			error = SGSetVideoCompressorType(vidcapRecordBANK[slotid].sgchanVideo, codectypeid);
 			if (error != noErr && PsychPrefStateGet_Verbosity() > 1) {
 				printf("PTB-WARNING: Video recording engine could not enable requested codec of type id %i: QT Error code %i.\n", (int) codectypeid, (int) error);
@@ -918,6 +922,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 			}
 			else {
 				SetTimeBaseMasterClock(sgTimeBase, (Component) GetTimeBaseMasterClock(soundTimeBase), NULL);
+				error = GetMoviesError();
 			}
 		}
 		else {
@@ -934,8 +939,11 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 			}
 			else {
 				SetTimeBaseMasterClock(sgTimeBase, clockComponent, NULL);
+				error = GetMoviesError();
 			}
 		}
+
+		if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Video recording engine could not assign new timebase: Capture timestamps may be inaccurate! [QT-Error %i]\n", error);
 	}
 
 #endif
@@ -1334,7 +1342,9 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
     OSErr error = noErr;
     Fixed framerate;
 	long usage;
-	
+	Fixed maxframerate;
+	long milliSecPerFrame, bps;
+
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
     }
@@ -1349,19 +1359,18 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (vidcapRecordBANK[capturehandle].grabber_active) PsychErrorExitMsg(PsychError_user, "You tried to start video capture, but capture is already started!");
 
 	// Low latency capture disabled?
-	// TODO FIXME: What if lowlat gets disabled here, but user wants to capture lowlat again later??? 
 	if (dropframes == 0) {
 		// Yes. Need to clear the lowlat flag from our channel config:
 		SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
 		
 		SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
 		usage&=~seqGrabLowLatencyCapture;
-		SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
 		
 		if (vidcapRecordBANK[capturehandle].sgchanAudio) {
 			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
 			usage&=~seqGrabLowLatencyCapture;
-			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
 		}
 		
 		SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
@@ -1375,12 +1384,12 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			
 			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
 			usage|= seqGrabLowLatencyCapture;
-			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
 			
 			if (vidcapRecordBANK[capturehandle].sgchanAudio) {
 				SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
 				usage|= seqGrabLowLatencyCapture;
-				SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+				SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
 			}
 			
 			SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
@@ -1388,13 +1397,16 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	}
 
 	framerate = FloatToFixed((float) capturerate);
-	SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
+	error = SGSetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, framerate);
+	if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: SGSetFrameRate() reports error %i in start function.\n", (int) error);
 
 	// Wait until start deadline reached:
 	if (*startattime != 0) PsychWaitUntilSeconds(*startattime);
 
 	// Start the engine!
+	vidcapRecordBANK[capturehandle].grabber_active = 1;
 	error = SGStartRecord(vidcapRecordBANK[capturehandle].seqGrab);
+	if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: SGStartRecord() reports error %i in start function.\n", (int) error);
 
 	// Record real start time:
 	PsychGetAdjustedPrecisionTimerSeconds(startattime);
@@ -1402,14 +1414,22 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         vidcapRecordBANK[capturehandle].last_pts = -1.0;
         vidcapRecordBANK[capturehandle].nr_droppedframes = 0;
         vidcapRecordBANK[capturehandle].frame_ready = 0;
-        vidcapRecordBANK[capturehandle].grabber_active = 1;
-        SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
+		framerate = (Fixed) 0;
+        error = SGGetFrameRate(vidcapRecordBANK[capturehandle].sgchanVideo, &framerate);
+		if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: SGGetFrameRate() reports error %i in start function.\n", (int) error);
+
         vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(framerate);
-        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture framerate is reported as: %lf\n", vidcapRecordBANK[capturehandle].fps);
+		VDGetDataRate(vidcapRecordBANK[capturehandle].vdig, &milliSecPerFrame, &maxframerate, &bps);
+		
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture framerate is reported as: %lf  [max = %f]\n", vidcapRecordBANK[capturehandle].fps, FixedToFloat(maxframerate));
+        if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture latency is reported as: %i msecs\n", milliSecPerFrame);
     }
     else {
         // Stop capture:
-        error = SGStop(vidcapRecordBANK[capturehandle].seqGrab);
+		if ((error = SGStop(vidcapRecordBANK[capturehandle].seqGrab)) != noErr) {
+			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: SGStop() reports error %i in stop function.\n", (int) error);
+		}
+
         vidcapRecordBANK[capturehandle].frame_ready = 0;
         vidcapRecordBANK[capturehandle].grabber_active = 0;
 
