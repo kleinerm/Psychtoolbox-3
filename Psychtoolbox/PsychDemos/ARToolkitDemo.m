@@ -23,7 +23,7 @@ function ARToolkitDemo(multiMarker)
 AssertOpenGL;
 
 % Size of rendered objects in millimeters:
-sizeMM = 50;
+sizeMM = 80;
 
 try
     % No sync tests for this simple demo:
@@ -45,9 +45,21 @@ try
 
     % Open videocapture device: For now we use engine 2, the ARVideo
     % engine, to simplify compatibility issues...
-    engineId = 2;
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 4, [], [], [], [], engineId);
-
+    imgFormat = [];
+    engineId = 0;
+    
+    switch engineId
+        case 2,
+            grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], 5, [], [], [], [], engineId);
+        case 0,
+            grabber = Screen('OpenVideoCapture', win, 30000, [0 0 640 480], 4, [], [], [], [], engineId);
+            imgFormat = 4;
+        case 1,
+            grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], [], [], [], [], [], engineId);
+        otherwise
+            error('Unknown video capture engineId');
+    end
+    
     % Start capture with requested 30 fps:
     Screen('StartVideoCapture', grabber, 30, 1);
 
@@ -67,7 +79,14 @@ try
     % and properties for raw video input images:
     ardata = [ PsychtoolboxRoot 'PsychDemos/ARToolkitDemoData/' ];
     PsychCV('ARRenderSettings', [], [], 2000)
-    [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels); %#ok<NASGU>
+    % ON OS/X:
+    %
+    % imgFormat == 4 fuer Quicktime 0,4 channel or ARVideo 0,4 channel.
+    % imgFormat == [] or 7 fuer ARVideo 5 channels (aka 4 channels swizzled).
+    % imgFormat == [] or 1 fuer Quicktime or ARVideo 3 channels.
+    % imgFormat == [] or 6 fuer Quicktime 1,2 channels.
+    % imgFormat == [] fuer Firewire 0,1,2,3,4 channels.
+    [imgbuffer, projectionMatrix, debugimagebuffer] = PsychCV('ARInitialize', [ardata 'camera_para.dat'], w, h, channels, imgFormat); %#ok<NASGU>
     
     [templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings')
 
