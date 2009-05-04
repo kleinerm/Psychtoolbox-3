@@ -289,7 +289,17 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 			wclass = kSimpleWindowClass;
 		}
 
-		if (noErr !=CreateNewWindow(wclass, kWindowNoUpdatesAttribute, &winRect, &carbonWindow)) {
+		// Additional attribs to set:
+		WindowAttributes addAttribs;
+		addAttribs = 0;
+		
+		// For levels 1000 to 1499, where the window is a partially transparent
+		// overlay window with global alpha 0.0 - 1.0, we disable reception of mouse
+		// events. --> Can move and click to windows behind the window!
+		// A range 1500 to 1999 would also allow transparency, but block mouse events:
+		if (windowLevel >= 1000 && windowLevel < 1500) addAttribs += kWindowIgnoreClicksAttribute;
+		
+		if (noErr !=CreateNewWindow(wclass, kWindowNoUpdatesAttribute | kWindowNoActivatesAttribute | addAttribs, &winRect, &carbonWindow)) {
 			printf("\nPTB-ERROR[CreateNewWindow failed]: Failed to open Carbon onscreen window\n\n");
 			return(FALSE);
 		}
@@ -576,10 +586,13 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 		}
 
 		if ((windowLevel >= 1000) && (windowLevel < 2000)) {
-			// For windowLevels between 1000 and 2000, make the window background transparent, so standard GUI
+			// For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
 			// would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
 			i = 0;
 			aglSetInteger(glcontext, AGL_SURFACE_OPACITY, &i);
+			
+			// Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+			SetWindowAlpha(carbonWindow, ((float) (windowLevel % 500)) / 499.0);
 		}
 		
 		if (AGLForFullscreen) {

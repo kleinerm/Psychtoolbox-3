@@ -530,7 +530,7 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
  *		// 1 = Record video, stream to memory, then at end of recording to disk (limited duration by RAM size, but faster).
  *		// 2 = Record audio as well.
  *		// 4 = Only record, but don't provide as live feed. This saves callback overhead if provided for pure recording sessions.
- *
+ *		// 8 = Don't call SGPrepare() / SGRelease().
  */
 bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
@@ -758,8 +758,6 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
             // note we don't set seqGrabPlayDuringRecord
             error = SGSetChannelUsage(*sgchanptr, seqGrabRecord | seqGrabLowLatencyCapture | seqGrabAlwaysUseTimeBase);
         }
-        
-        //if (error==noErr) error = SGGetChannelBounds(*sgchanptr, &movierect);
 
         if (error != noErr) {
             // clean up on failure
@@ -899,8 +897,22 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         PsychErrorExitMsg(PsychError_internal, "Assignment of SGSetDataOutput() to capture device failed!");            
     }
 
+    // Get ready! Unless recordingflags set to 8, in which case we won't SGPrepare():
+	error = noErr;
+    if (!(recordingflags & 8)) error = SGPrepare(seqGrab, false, true);
+    if (error !=noErr) {
+        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
+        vidcapRecordBANK[slotid].gworld = NULL;
+        SGDisposeChannel(seqGrab, *sgchanptr);
+        *sgchanptr = NULL;
+        CloseComponent(seqGrab);
+        PsychErrorExitMsg(PsychError_internal, "SGPrepare() for capture device failed!");            
+    }
+
 	// Setup of timebase for sequence grabber: This only works on OS/X, not
-	// with Quicktime SDK for Windows, at least not with the brain-damaged MS-Compiler:
+	// with Quicktime SDK for Windows, at least not with the brain-damaged MS-Compiler. Also,
+	// SGPrepare() must have been called beforehand if audio clock is requested, because otherwise
+	// audio timebase won't be available yet:
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
 	
@@ -909,23 +921,27 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Video capture engine could not retrieve timebase. Capture timestamps and/or audio-video sync may be inaccurate!\n");
 	}
 	else {
+		// Set error: This will trigger assignment of system clock below if
+		// no sound recording requested:
+		error = 1;
+		
 		// Sound recording requested?
 		if (recordingflags & 2) {
 			// Sound recording: We assign the masterclock of the sound timebase as master for sequence grabber.
 			// This should give best possible audio-video sync:
-			if (noErr != GetComponentInfo((Component)GetTimeBaseMasterClock(sgTimeBase), &looking, NULL, NULL, NULL)) {
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: (I) Video recording engine could not assign sound timebase as master timebase: Audio-video sync may be inaccurate!\n");
-			}
 			
-			if (noErr != (error = SGGetChannelTimeBase(vidcapRecordBANK[slotid].sgchanAudio, &soundTimeBase))) {
-				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: (II) Video recording engine could not assign sound timebase as master timebase: Audio-video sync may be inaccurate! [QT-Error %i]\n", error);
+			if ((noErr != (error = SGGetChannelTimeBase(vidcapRecordBANK[slotid].sgchanAudio, &soundTimeBase))) || (NULL == soundTimeBase)) {
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: (I) Video recording engine could not assign sound timebase as master timebase: Audio-video sync may be inaccurate! [QT-Error %i]\n", error);
 			}
 			else {
 				SetTimeBaseMasterClock(sgTimeBase, (Component) GetTimeBaseMasterClock(soundTimeBase), NULL);
 				error = GetMoviesError();
 			}
 		}
-		else {
+		
+		// No sound recording requested (error == 1) or error during audio clock assignment?
+		// If so, error != noErr and we assign the system clock as timebase:
+		if (noErr != error) {
 			// Only video recording/capture: We assign the system clock as masterclock for sequence grabber.
 			// This provides capturetimestamps that are in sync with all other PTB clocks:
 			looking.componentType = clockComponentType;
@@ -947,17 +963,6 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	}
 
 #endif
-
-    // Get ready!
-    error = SGPrepare(seqGrab, false, true);
-    if (error !=noErr) {
-        DisposeGWorld(vidcapRecordBANK[slotid].gworld);
-        vidcapRecordBANK[slotid].gworld = NULL;
-        SGDisposeChannel(seqGrab, *sgchanptr);
-        *sgchanptr = NULL;
-        CloseComponent(seqGrab);
-        PsychErrorExitMsg(PsychError_internal, "SGPrepare() for capture device failed!");            
-    }
     
     // Grabber should be ready now.
     
@@ -1017,6 +1022,9 @@ void PsychQTCloseVideoCaptureDevice(int capturehandle)
     // Stop capture immediately:
     SGStop(vidcapRecordBANK[capturehandle].seqGrab);
     
+	// Release SG if previously prepared:
+    if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+
     // Delete GWorld if any:
     if (vidcapRecordBANK[capturehandle].gworld) DisposeGWorld(vidcapRecordBANK[capturehandle].gworld);
     vidcapRecordBANK[capturehandle].gworld = NULL;
@@ -1114,6 +1122,9 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		// movie recording mode with sound recording, we can get intermittent errors in SGIdle() which are
 		// meaningless so they are best ignored and must not lead to interruption of PTB operation.
         if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychGetTextureFromCapture(): SGIdle() returns error code %i\n", (int) error);
+
+		// Return abort error code:
+		return(-2);
 	}
     
 	// Ist this device in "recording only" mode? If so then it doesn't have a
@@ -1344,7 +1355,9 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	long usage;
 	Fixed maxframerate;
 	long milliSecPerFrame, bps;
-
+	int retrycount = 0;
+	unsigned long storageRem;
+	
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
     }
@@ -1361,38 +1374,46 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 	// Low latency capture disabled?
 	if (dropframes == 0) {
 		// Yes. Need to clear the lowlat flag from our channel config:
-		SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+		if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) error = SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+		if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In highlat: SGRelease() reports error %i in start function.\n", (int) error);
 		
-		SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		error = SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
 		usage&=~seqGrabLowLatencyCapture;
-		SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
+		error = SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
+		if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In highlat: Video SGSetChannelUsage() reports error %i in start function.\n", (int) error);
 		
 		if (vidcapRecordBANK[capturehandle].sgchanAudio) {
-			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+			error = SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
 			usage&=~seqGrabLowLatencyCapture;
-			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
+			error = SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
+			if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In highlat: Audio SGSetChannelUsage() reports error %i in start function.\n", (int) error);
 		}
 		
-		SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+		if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) error = SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+		if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In highlat: SGPrepare() reports error %i in start function.\n", (int) error);
 	}
 	else {
 		// dropframes non-null. lowlat flag set?
-		SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+		error = SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
 		if (!(usage & seqGrabLowLatencyCapture)) {
 			// Lowlatency requested, but flag not set. Need to set it:			
-			SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+			if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) error = SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
+			if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In lowlat: SGRelease() reports error %i in start function.\n", (int) error);
 			
-			SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
+			error = SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, &usage);
 			usage|= seqGrabLowLatencyCapture;
-			SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
+			error = SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanVideo, usage);
+			if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In lowlat: Video SGSetChannelUsage() reports error %i in start function.\n", (int) error);
 			
 			if (vidcapRecordBANK[capturehandle].sgchanAudio) {
-				SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
+				error = SGGetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, &usage);
 				usage|= seqGrabLowLatencyCapture;
-				SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
+				error = SGSetChannelUsage(vidcapRecordBANK[capturehandle].sgchanAudio, usage);
+				if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In lowlat: Audio SGSetChannelUsage() reports error %i in start function.\n", (int) error);
 			}
 			
-			SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+			if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) error = SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+			if ((noErr != error) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: In lowlat: SGPrepare() reports error %i in start function.\n", (int) error);
 		}
 	}
 
@@ -1425,9 +1446,16 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
         if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture latency is reported as: %i msecs\n", milliSecPerFrame);
     }
     else {
+		if (PsychPrefStateGet_Verbosity() > 3) {
+			SGGetStorageSpaceRemaining(vidcapRecordBANK[capturehandle].seqGrab, &storageRem);
+			printf("PTB-INFO: At stop time, device %i reports %f MB of storage space remaining.\n", capturehandle, ((float) storageRem) / 1024 / 1024);
+		}
+
         // Stop capture:
-		if ((error = SGStop(vidcapRecordBANK[capturehandle].seqGrab)) != noErr) {
-			if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: SGStop() reports error %i in stop function.\n", (int) error);
+		retrycount = 0;
+		while ( (retrycount < 4) && ((error = SGStop(vidcapRecordBANK[capturehandle].seqGrab)) != noErr) ) {
+			retrycount++;
+			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: %i st. invocation of SGStop() reports error %i in stop function.\n", retrycount, (int) error);
 		}
 
         vidcapRecordBANK[capturehandle].frame_ready = 0;

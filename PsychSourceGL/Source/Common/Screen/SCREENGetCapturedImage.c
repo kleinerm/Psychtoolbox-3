@@ -62,6 +62,7 @@ PsychError SCREENGetCapturedImage(void)
     int                         capturehandle = -1;
     int                         waitForImage = TRUE;
     int                         specialmode = 0;
+	double						timeout, tnow;
     double                      presentation_timestamp = 0;
     int							rc=-1;
     double						targetmemptr = 0;
@@ -121,12 +122,18 @@ PsychError SCREENGetCapturedImage(void)
     // Get the optional specialmode flag:
     PsychCopyInIntegerArg(5, FALSE, &specialmode);
 
-    while (rc==-1) {
+	// Set a 10 second maximum timeout for waiting for new frames:
+	PsychGetAdjustedPrecisionTimerSeconds(&timeout);
+	timeout+=10;
+
+    while (rc==-1) {		
       // We pass a checkForImage value of 2 if waitForImage>0. This way we can signal if we are in polling or blocking mode.
       // With the libdc1394 engine this allows to do a real blocking wait in the driver -- much more efficient than the spin-waiting approach!
       rc = PsychGetTextureFromCapture(windowRecord, capturehandle, ((waitForImage>0 && waitForImage<3) ? 2 : 1), 0.0, NULL, &presentation_timestamp, NULL, &rawCaptureBuffer);
-        if (rc==-2) {
-            // No image available and there won't be any in the future, because capture has been stopped.
+		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        if (rc==-2 || (tnow > timeout)) {
+            // No image available and there won't be any in the future, because capture has been stopped or there is a timeout:
+			if (tnow > timeout) printf("PTB-WARNING: In Screen('GetCapturedImage') timed out waiting for a new frame. No video data in over 10 seconds!\n");
 
             // No new texture available: Return a negative handle:
             PsychCopyOutDoubleArg(1, TRUE, -1);
