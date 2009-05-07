@@ -398,6 +398,9 @@ while ~KbCheck
   % trade-offs...
   gluSphere(mysphere, 0.7, 100, 100);
 
+  % Could do a textured cylinder by uncommenting the following line:
+  % gluCylinder(mysphere, 1.0, 1.0, 1.0, 360, 100);
+
   % Finish OpenGL rendering into PTB window. This will switch back to the
   % standard 2D drawing functions of Screen and will check for OpenGL errors.
   Screen('EndOpenGL', win);

@@ -21,7 +21,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 % 'codec' an (optional) number, indicating the type of video codec you want to use.
 % Defaults to "whatever the system default is". Valid settings are between
-% 0 and 9. Some codecs are very fast, i.e., high framerates and low system
+% 0 and 10. Some codecs are very fast, i.e., high framerates and low system
 % load, others provide high compression rates, i.e., small video files at
 % good quality. Usually there's a tradeoff between encoding speed, quality
 % and compression ratio, so you'll have to try out different ones to find
@@ -36,7 +36,7 @@ function VideoRecordingDemo(moviename, codec, withsound, showit, windowed)
 %
 % Codecs supported by this demo: 0 = Default, 1 = H.264, 2 = Apple Pixlet,
 % 3 = MPEG-4, 4 = Component video, 5 = DV-PAL, 6 = DVCPRO-NTSC, 7 =
-% DVCPRO-PAL, 8 = DVCPRO50-NTSC, 9 = DVCPRO50-PAL.
+% DVCPRO-PAL, 8 = DVCPRO50-NTSC, 9 = DVCPRO50-PAL, 10 = H.263
 %
 % Empirically, the MPEG-4 codec (codec=3) seems to provide a good tradeoff
 % between quality, compression, speed and cpu load. It allows to reliably
@@ -120,6 +120,8 @@ else
             codec = ':CodecType=1685468526'; % DVCPRO50 - NTSC codec.
         case 9,
             codec = ':CodecType=1685468528'; % DVCPRO50 - PAL codec.
+        case 10,
+            codec = ':CodecType=1748121139'; % H.263 codec.
         otherwise
             error('Unknown codec specified, only know types 0 to 9.');
     end
@@ -190,9 +192,8 @@ try
     % Set text size for info text. 24 pixels is also good for Linux.
     Screen('TextSize', win, 24);
             
-    % Capture video + audio to disk. We request a 640x480 capture
-    % resolution, assuming this is the most common case:
-    grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480],[] ,[], [] , [moviename codec], withsound);
+    % Capture video + audio to disk:
+    grabber = Screen('OpenVideoCapture', win, [], [],[] ,[], [] , [moviename codec], withsound);
 
     % Start capture, request 30 fps. Capture hardware will fall back to
     % fastest supported framerate if its not supported (i think).
