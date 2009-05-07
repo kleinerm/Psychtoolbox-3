@@ -110,11 +110,15 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
         if (vidcapRecordBANK[handle].decomSeq == 0) {
             // Need to do one-time setup of decompression sequence:
             ImageDescriptionHandle imageDesc = (ImageDescriptionHandle) NewHandle(0);
-            
+
             // retrieve a channelÕs current sample description, the channel returns a sample description that is
             // appropriate to the type of data being captured
             err = SGGetChannelSampleDescription(c, (Handle)imageDesc);
-                        
+			if (PsychPrefStateGet_Verbosity() > 4) {
+				printf("PTB-INFO: Video source %i - In proc: Video size is %i x %i pixels.\n", handle, (*imageDesc)->width, (*imageDesc)->height);
+				printf("PTB-INFO: Video source %i - In proc: Video res is  %i x %i pixels.\n", handle, Fix2Long((*imageDesc)->hRes), Fix2Long((*imageDesc)->vRes));
+			}
+
             // begin the process of decompressing a sequence of frames
             // this is a set-up call and is only called once for the sequence - the ICM will interrogate different codecs
             // and construct a suitable decompression chain, as this is a time consuming process we don't want to do this
@@ -624,11 +628,45 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		// it returns, even if it isn't according to given spec, which would be apparent
 		// by  a non-zero error:
 		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE);
-	
-        // Retrieve size of the capture rectangle - and therefore size of
+
+		// Some low-level debug output, if requested:
+        SGGetVideoRect(*sgchanptr, &newrect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: VideoRect ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+
+		SGGetChannelBounds(*sgchanptr, &newrect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: ChannelBounds ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+
+		// Retrieve size of the capture rectangle - and therefore size of
         // our GWorld for offscreen rendering:
-        SGGetSrcVideoBounds(*sgchanptr, &movierect);
-        
+        error = SGGetSrcVideoBounds(*sgchanptr, &movierect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: [%i] SrcVideoBounds ROI is %i,%i,%i,%i\n", error, movierect.left, movierect.top, movierect.right, movierect.bottom);
+
+		// Reasonable movierect returned?
+		if ((noErr != error) || ((movierect.right == 1600) && (movierect.bottom == 1200) && (PSYCH_SYSTEM == PSYCH_OSX))) {
+			// Either none returned or the typical 1600 x 1200 default IIDC max rectangle on OS/X.
+			// In both cases we can be quite certain that the values are bogus.
+			if (NULL == capturerectangle) {
+				if (PsychPrefStateGet_Verbosity() > 2) {
+					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device with deviceIndex %i:\n", deviceIndex);
+					printf("PTB-INFO: Your code doesn't specify an explicit 'roirectangle' for requested camera resolution, but wants me to\n");
+					printf("PTB-INFO: auto-detect the optimal image size. The operating system recommends a size of 1600 x 1200 pixels for your\n");
+					printf("PTB-INFO: camera, which is almost always a wrong and bogus setting! I'll therefore default to the most commonly found\n");
+					printf("PTB-INFO: reasonable default of 640 x 480 pixels and hope that this is ok. If this doesn't work or if you have indeed\n");
+					printf("PTB-INFO: a high-end camera with 1600 x 1200 pixels resolution connected, then please specify the proper settings via\n");
+					printf("PTB-INFO: the 'roirectangle' parameter in Screen('OpenVideoCapture', ...);\n\n");
+				}
+				
+				// Assign more reasonable default: Works with most entry level and intermediate level
+				// IIDC cameras, most NTSC video sources and with the Apple iSight:
+				movierect.left = 0;
+				movierect.top = 0;
+				movierect.right = 640;
+				movierect.bottom = 480;
+			}
+		}
+
+        error = noErr;
+		
         // Capture-Rectangle (ROI) specified?
         if (capturerectangle) {
             // Yes. Try to set it up...
@@ -650,20 +688,23 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
             }
             
             // Try to set our own custom video capture rectangle for the digitizer hardware:
-            error=SGSetVideoRect(*sgchanptr, &newrect);
-            if (error!=noErr) {
-                // Grabber didn't accept new rectangle :(
-                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full hardware capture area,\n");
-                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Trying to only process specified ROI by restricting conversion to ROI in software...\n");
+			// Disabled: Does more harm than good! Instead just assign our override movierect:
+//            error=SGSetVideoRect(*sgchanptr, &newrect);
+//            if (error!=noErr) {
+//                // Grabber didn't accept new rectangle :(
+//                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full hardware capture area,\n");
+//                if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Trying to only process specified ROI by restricting conversion to ROI in software...\n");
+
                 movierect.left=(int) capturerectangle[kPsychLeft];
                 movierect.top=(int) capturerectangle[kPsychTop];
                 movierect.right=(int) capturerectangle[kPsychRight];
                 movierect.bottom=(int) capturerectangle[kPsychBottom];
-            }
-            else {
-                // Retrieve new capture rectangle settings:
-                error = SGGetVideoRect(*sgchanptr, &movierect);
-            }
+
+//            }
+//            else {
+//                // Retrieve new capture rectangle settings:
+//                error = SGGetVideoRect(*sgchanptr, &movierect);
+//            }
         }
         
         // Store our roirect in structure:
@@ -745,8 +786,17 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		// Assign VDIG handle:
 		vidcapRecordBANK[slotid].vdig = SGGetVideoDigitizerComponent(*sgchanptr);
 
+		// More debug output:
+		VDGetMaxSrcRect(vidcapRecordBANK[slotid].vdig, currentIn, &newrect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: VDGetMaxSrcRect ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+
+		VDGetDigitizerRect(vidcapRecordBANK[slotid].vdig, &newrect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: VDGetDigitizerRect ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
+		
         // Try to set our own custom video capture rectangle:
-        error=SGSetVideoRect(*sgchanptr, &movierect);
+		error = noErr;
+
+        // Disabled: Does more harm than good: error=SGSetVideoRect(*sgchanptr, &newrect);
         if (error!=noErr) {
             // Grabber didn't accept new rectangle :(
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Video capture device didn't accept new capture area. Reverting to full area...\n"); fflush(NULL);
@@ -768,6 +818,9 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
             if (seqGrab) CloseComponent(seqGrab);
             PsychErrorExitMsg(PsychError_internal, "SGSetChannelBounds() or SGSetChannelUsage() for capture device failed!");            
         }
+
+        SGGetVideoRect(*sgchanptr, &newrect);
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: VideoRect ROI is %i,%i,%i,%i\n", newrect.left, newrect.top, newrect.right, newrect.bottom);
     }
     else {
         // clean up on failure
@@ -1001,7 +1054,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	// Store final recordingflags:
 	vidcapRecordBANK[slotid].recordingflags = recordingflags;
 	
-    if (PsychPrefStateGet_Verbosity()>3) printf("W x h = %i x  %i at %lf fps...\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height, vidcapRecordBANK[slotid].fps);
+    if (PsychPrefStateGet_Verbosity()>4) printf("PTB-INFO: Final assigned size of video input image is W x h = %i x  %i.\n", vidcapRecordBANK[slotid].width, vidcapRecordBANK[slotid].height);
 
     return(TRUE);
 }
@@ -1444,6 +1497,11 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 		
         if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture framerate is reported as: %lf  [max = %f]\n", vidcapRecordBANK[capturehandle].fps, FixedToFloat(maxframerate));
         if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Capture latency is reported as: %i msecs\n", milliSecPerFrame);
+		if ((FixedToFloat(maxframerate) > 0) && ((double) FixedToFloat(maxframerate) < vidcapRecordBANK[capturehandle].fps)) {
+			// Maxframerate valid and lower than reported framerate?!? Clamp to maximum:
+			vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(maxframerate);
+			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Maximum framerate overrides reported one! Will assume a capture framerate of: %lf fps for further operation.\n", vidcapRecordBANK[capturehandle].fps);
+		}
     }
     else {
 		if (PsychPrefStateGet_Verbosity() > 3) {
