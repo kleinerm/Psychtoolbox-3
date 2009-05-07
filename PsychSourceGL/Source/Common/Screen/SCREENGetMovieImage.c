@@ -49,6 +49,7 @@ PsychError SCREENGetMovieImage(void)
     PsychWindowRecordType		*windowRecord;
     PsychWindowRecordType		*textureRecord;
     PsychRectType				rect;
+	double						deadline, tnow;
     int                         moviehandle = -1;
     int                         waitForImage = TRUE;
     double                      requestedTimeIndex = -1;
@@ -93,11 +94,16 @@ PsychError SCREENGetMovieImage(void)
     // Get the optional specialFlags2 flag:
     PsychCopyInIntegerArg(6, FALSE, &specialFlags2);
 
+	PsychGetAdjustedPrecisionTimerSeconds(&deadline);
+	deadline += 5;
+
     while (rc==0) {
         rc = PsychGetTextureFromMovie(windowRecord, moviehandle, TRUE, requestedTimeIndex, NULL, NULL);
-        if (rc<0) {
+		PsychGetAdjustedPrecisionTimerSeconds(&tnow);
+        if (rc<0 || (tnow > deadline)) {
             // No image available and there won't be any in the future, because the movie has reached
             // its end and we are not in looped playback mode:
+			if (tnow > deadline) printf("PTB-ERROR: In Screen('GetMovieImage') for movie %i: Timed out while waiting for new frame after 5 seconds!", moviehandle);
 
             // No new texture available: Return a negative handle:
             PsychCopyOutDoubleArg(1, TRUE, -1);
