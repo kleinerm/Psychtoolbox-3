@@ -1064,6 +1064,8 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
  */
 void PsychQTCloseVideoCaptureDevice(int capturehandle)
 {
+	OSErr err = noErr;
+
     if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided!");
     }
@@ -1071,16 +1073,31 @@ void PsychQTCloseVideoCaptureDevice(int capturehandle)
     if (vidcapRecordBANK[capturehandle].gworld == NULL) {
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No capture device associated with this handle !!!");
     }
-        
+
     // Stop capture immediately:
     SGStop(vidcapRecordBANK[capturehandle].seqGrab);
     
 	// Release SG if previously prepared:
     if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
 
+	// Release decompression sequence, if any:
+	if (vidcapRecordBANK[capturehandle].decomSeq > 0) {
+		err = CDSequenceEnd(vidcapRecordBANK[capturehandle].decomSeq);
+		if ((noErr != err) && PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: In shutdown of video capture device %i: Release of decompression sequence reports QT error %i. Ressource leakage??\n", capturehandle, (int) err);
+		}
+		vidcapRecordBANK[capturehandle].decomSeq = 0;
+	}
+
     // Delete GWorld if any:
     if (vidcapRecordBANK[capturehandle].gworld) DisposeGWorld(vidcapRecordBANK[capturehandle].gworld);
     vidcapRecordBANK[capturehandle].gworld = NULL;
+
+    if (vidcapRecordBANK[capturehandle].sgchanVideo) CloseComponent(vidcapRecordBANK[capturehandle].sgchanVideo);
+	vidcapRecordBANK[capturehandle].sgchanVideo = NULL;
+
+    if (vidcapRecordBANK[capturehandle].sgchanAudio) CloseComponent(vidcapRecordBANK[capturehandle].sgchanAudio);
+	vidcapRecordBANK[capturehandle].sgchanAudio = NULL;
     
     // Release grabber:
     CloseComponent(vidcapRecordBANK[capturehandle].seqGrab);
