@@ -109,6 +109,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable, 2 = EnableHighQuality]);"
 	"\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Default OS-specific [fast]), 1 = HighQ OS-specific]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
+	"\noldEnableFlag = Screen('Preference', 'FrameRectCorrection', [enableFlag=1]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\n\nWorkaround flags to work around all kind of deficient drivers and hardware:\n"
 	"See 'help ConserveVRAMSettings' for settings and their effect.\n"
@@ -355,6 +356,14 @@ PsychError SCREENPreference(void)
 					if(numInputArgs==2){
 						PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
 						PsychPrefStateSet_Verbosity(tempInt);
+					}
+			preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "FrameRectCorrection")){
+					PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_FrameRectCorrection());
+					if(numInputArgs==2){
+						PsychCopyInDoubleArg(2, kPsychArgRequired, &inputDoubleValue);
+						PsychPrefStateSet_FrameRectCorrection(inputDoubleValue);
 					}
 			preferenceNameArgumentValid=TRUE;
 		}else 

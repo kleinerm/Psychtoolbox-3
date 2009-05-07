@@ -90,6 +90,7 @@ static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video
 static int								windowShieldingLevel=2000;		// Level of priority of windowed onscreen window wrt. other windows:
 																		// From 0 for "behind everything" to 2000 for "in front of everything. Exact meaning of
 																		// number is OS specific. This value is used at window open time for each window.
+static double							frameRectLadderCorrection=1.0;	// Tweak factor to apply in SCREENFrameRect.c for different GPU's.
 
 //All state checking goes through accessors located in this file.  
 void PrepareScreenPreferences(void)
@@ -369,6 +370,18 @@ void PsychPrefStateSet_WindowShieldingLevel(int level)
 {
     windowShieldingLevel = level;
 }
+
+// Correction tweak offset for proper Screen('FrameRect') behaviour:
+void PsychPrefStateSet_FrameRectCorrection(double level)
+{
+	frameRectLadderCorrection = level;
+}
+
+double PsychPrefStateGet_FrameRectCorrection(void)
+{
+	return(frameRectLadderCorrection);
+}
+
 
 //****************************************************************************************************************
 //Debug preferences

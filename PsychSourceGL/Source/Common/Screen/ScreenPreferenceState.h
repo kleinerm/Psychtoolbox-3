@@ -107,5 +107,9 @@ void PsychPrefStateSet_VideoCaptureEngine(int mode);
 void PsychPrefStateSet_WindowShieldingLevel(int level);
 int PsychPrefStateGet_WindowShieldingLevel(void);
 
+// Correction tweak offset for proper Screen('FrameRect') behaviour:
+void PsychPrefStateSet_FrameRectCorrection(double level);
+double PsychPrefStateGet_FrameRectCorrection(void);
+
 //end include once
 #endif

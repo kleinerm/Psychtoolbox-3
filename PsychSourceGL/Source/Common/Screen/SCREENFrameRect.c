@@ -52,7 +52,7 @@ PsychError SCREENFrameRect(void)
 	PsychWindowRecordType			*windowRecord;
 	int								whiteValue;
 	boolean							isArgThere;
-	double							penSize;
+	double							penSize, lf;
 	GLdouble						dVals[4]; 
     double							*xy, *colors, *penSizes;
 	unsigned char					*bytecolors;
@@ -65,6 +65,9 @@ PsychError SCREENFrameRect(void)
 	//check for superfluous arguments
 	PsychErrorExit(PsychCapNumInputArgs(4));   //The maximum number of inputs
 	PsychErrorExit(PsychCapNumOutputArgs(0));  //The maximum number of outputs
+
+	// Get tweakable correction factor for framerect:
+	lf = PsychPrefStateGet_FrameRectCorrection();
 
 	//get the window record from the window record argument and get info from the window record
 	PsychAllocInWindowRecordArg(1, kPsychArgRequired, &windowRecord);
@@ -136,12 +139,12 @@ PsychError SCREENFrameRect(void)
 			glBegin(GL_LINES);
 			// Draw 4 separate segments, extend the left and right
 			// vertical segments by half a penWidth.
-			glVertex2d(rect[kPsychLeft], rect[kPsychTop]-penSize/2);
-			glVertex2d(rect[kPsychLeft], rect[kPsychBottom]+penSize/2);
+			glVertex2d(rect[kPsychLeft], rect[kPsychTop] - lf * penSize/2);
+			glVertex2d(rect[kPsychLeft], rect[kPsychBottom] + lf * penSize/2);
 			glVertex2d(rect[kPsychLeft], rect[kPsychTop]);
 			glVertex2d(rect[kPsychRight], rect[kPsychTop]);
-			glVertex2d(rect[kPsychRight], rect[kPsychTop]-penSize/2);
-			glVertex2d(rect[kPsychRight], rect[kPsychBottom]+penSize/2);
+			glVertex2d(rect[kPsychRight], rect[kPsychTop] - lf * penSize/2);
+			glVertex2d(rect[kPsychRight], rect[kPsychBottom] + lf * penSize/2);
 			glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
 			glVertex2d(rect[kPsychLeft], rect[kPsychBottom]);
 			glEnd();			
