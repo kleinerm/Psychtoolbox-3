@@ -165,6 +165,22 @@ function varargout = moglFDF(cmd, varargin)
 % iteration of your stimulus loop, instead of the default of zero.
 %
 %
+% context = moglFDF('SetColorTexture', context, textureId, textureTarget);
+% - Assign a regular color texture map with handle 'textureId' and texture
+% mapping target 'textureTarget' to 'context'. This will enable assignment
+% of colors to drawn 2D dots (in moglFDF('Render',...);) and fetch the
+% relevant per-dot colors from the assigned texture map 'textureId'.
+%
+% Assigning an empty or negative textureId will disable texture mapping.
+% Texture mapping is disabled by default, i.e. at context creation time.
+%
+%
+% context = moglFDF('SetDrawShader', context, fgShaderId);
+% - Assign a GLSL shader with handle 'fgShaderId' during 2D drawing of
+% foreground dots in moglFDF('Render',...); Passing a 'fgShaderId' which is
+% empty or negative disables shading. Shading is disabled by default.
+%
+%
 % context = moglFDF('Update', context [, instantOn=0]);
 % - Perform an 'update' cycle for given context. A new "3D frame" is rendered
 % via the rendercallback function, then analysed, resampled etc. to create
@@ -194,7 +210,7 @@ function varargout = moglFDF(cmd, varargin)
 % invokes the render op.
 %
 %
-% [xyFGdots, xyBGdots] = moglFDF('GetResults', context); - Returns a 2 row
+% [xyFGdots, xyBGdots, uvFGdots] = moglFDF('GetResults', context); - Returns a 2 row
 % by n columns vector of all random dot positions, for processing within
 % Matlab/Octave. Row 1 is x-locations, Row 2 is y-locations of dots, each
 % column defines one dot. The 'xyFGDots' contains all foreground dots which
@@ -203,6 +219,10 @@ function varargout = moglFDF(cmd, varargin)
 % Screen('DrawDots'); However, invocation of moglFDF('Render',...); is a
 % more efficient method of rendering these dot fields, unless you have very
 % special needs.
+%
+% The optional 'uvFGdots' argument returns 2D texture coordinates as
+% assigned to the rendered 3D object.
+%
 
 % History:
 %  05/02/08  Initial "proof of concept" implementation (MK).
@@ -593,6 +613,13 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     
         % Shader for creation of background dots VBO spec:
         ctx.createBGDotsShader = LoadGLSLProgramFromFiles([shaderpath 'moglFDFBackgroundDotsRenderShader'], 1);
+        
+        % Setup default coloring mode: No textures, no texture mapping:
+        ctx.colorTexId = -1;
+        ctx.colorTexTarget = -1;
+
+        % Also disable 2D FG dot drawing shader by default:
+        ctx.draw2DShaderFG = -1;
     end
     
     % Setup trackingRenderShader:
@@ -645,6 +672,17 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     % Define size of GeometryBuffer -- wrapAround values for interpolated
     % texture lookup coordinates:
     glUniform2f(glGetUniformLocation(ctx.createFGDotsShader, 'texWrapAround'), ctx.texResolution(1), ctx.texResolution(2));
+
+    % Define inverse remapping of texture coordinates into range
+    % 0-texResolution -- The size of the trackingBuffer. N.B.: A neutral
+    % mapping would be (0, 0, 1, 1) - That would pass trackingBuffer
+    % texture coordinates instead of object texture coordinates.
+    glUniform4f(glGetUniformLocation(ctx.createFGDotsShader, 'TextureOffsetBias'), ctx.texCoordMin(1), ctx.texCoordMin(2), 1 / (ctx.texResolution(1)/(ctx.texCoordMax(1) - ctx.texCoordMin(1))), 1 / (ctx.texResolution(2)/(ctx.texCoordMax(2) - ctx.texCoordMin(2))));
+    
+    % Set default 'clipVertex' position to (x,y,u,v) = (-1, 0, 0, 0): This
+    % will prevent any vertex to which this is applied from drawing,
+    % because it is clipped away due to its negative x-location outside viewport:
+    glUniform4f(glGetUniformLocation(ctx.createFGDotsShader, 'clipVertex'), -1, 0, 0, 0);
 
     glUseProgram(0);
     
@@ -747,6 +785,56 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
     contextcount = contextcount + 1;
 
     % Init for this 'ctx' context done: Return it to usercode:
+    varargout{1} = ctx;
+    
+    return;
+end
+
+% Assign color texture handle and target to context, enable texture mapping
+% during 2D dot drawing:
+if strcmpi(cmd, 'SetColorTexture')
+    if nargin < 4
+        error('In "SetColorTexture": You must provide the "context", "textureId" and "textureTarget"!');
+    end
+
+    % Get context object:
+    ctx = varargin{1};
+    
+    % Get texture handle and target:
+    ctx.colorTexId = varargin{2};
+    ctx.colorTexTarget = varargin{3};
+    
+    % Empty or negative assignment resets to "no texture assigned":
+    if isempty(ctx.colorTexId) || ctx.colorTexId < 0
+        ctx.colorTexId = -1;
+        ctx.colorTexTarget = -1;
+    end
+
+    % Return updated 'ctx' to usercode:
+    varargout{1} = ctx;
+    
+    return;
+end
+
+% Assign shader handle for application of a GLSL shader during 2D dot
+% drawing:
+if strcmpi(cmd, 'SetDrawShader')
+    if nargin < 3
+        error('In "SetDrawShader": You must provide the "context" and shader handle!');
+    end
+
+    % Get context object:
+    ctx = varargin{1};
+    
+    % Get texture handle and target:
+    ctx.draw2DShaderFG = varargin{2};
+    
+    % Empty or negative assignment resets to "no shader assigned":
+    if isempty(ctx.draw2DShaderFG) || ctx.draw2DShaderFG < 0
+        ctx.draw2DShaderFG = -1;
+    end
+
+    % Return updated 'ctx' to usercode:
     varargout{1} = ctx;
     
     return;
@@ -1161,22 +1249,59 @@ if strcmpi(cmd, 'Render')
     % The 'GetWindowInfo' binds our ctx.parentWin so we can render to it:
     Screen('GetWindowInfo', targetWin);
         
+    % Backup old 2D context state bits:    
+    glPushAttrib(GL.ALL_ATTRIB_BITS);
+    
     % Bind and enable vertex position VBO:
     glEnableClientState(GL.VERTEX_ARRAY);
     
     if drawFG
         % Foreground render:
         glBindBuffer(GL.ARRAY_BUFFER, ctx.FGvbo);
-        glVertexPointer(4, GL.FLOAT, 0, 0);
 
+        % Old style: glVertexPointer(4, GL.FLOAT, 0, 0);
+        glVertexPointer(2, GL.FLOAT, 4 * 4, 0);
+        
+        if ctx.colorTexId >= 0
+            % Texture mapping for colored dot drawing:
+            
+            % Assign texture coord array, which is interleaved with vertex
+            % coord array within FGvbo VBO: (x,y,tx,ty)....
+            glEnableClientState(GL.TEXTURE_COORD_ARRAY);
+            glTexCoordPointer(2, GL.FLOAT, 4 * 4, 2 * 4);
+            
+            % Enable texture mapping for proper target, and assign texture:
+            glEnable(ctx.colorTexTarget);
+            glBindTexture(ctx.colorTexTarget, ctx.colorTexId);
+        end
+        
         % Bind vertex index VBO:
         glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, ctx.FGibo);
 
+        % Enable draw GLSL shader, if any:
+        if ctx.draw2DShaderFG > -1
+            glUseProgram(ctx.draw2DShaderFG);
+        end
+        
         % Perform draw operation: All vertices, each triggering render for a
         % single GL.POINT primitive. Colors, sizes, anti-aliasing flags etc.
         % can be set from external code as appropriate. Application of textures
         % or shaders is also possible:
         glDrawRangeElements(GL.POINTS, 0, ctx.maxFGDots-1, ctx.maxFGDots, GL.UNSIGNED_INT, 0);
+        
+        % Disable draw GLSL shader, if any:
+        if ctx.draw2DShaderFG > -1
+            glUseProgram(0);
+        end
+
+        if ctx.colorTexId >= 0
+            % Disable interleaved texturecoord array:
+            glDisableClientState(GL.TEXTURE_COORD_ARRAY);
+
+            % Disable texture mapping for proper target, and assign texture:
+            glDisable(ctx.colorTexTarget);
+            glBindTexture(ctx.colorTexTarget, 0);
+        end        
     end
     
     if drawBG
@@ -1200,6 +1325,9 @@ if strcmpi(cmd, 'Render')
 
     % Disable vertex array:
     glDisableClientState(GL.VERTEX_ARRAY);
+    
+    % Restore old 2D context state bits:
+    glPopAttrib;
     
     % Render completed. Restore pre-render state:
     RestoreGL;
@@ -1240,19 +1368,28 @@ if strcmpi(cmd, 'GetResults')
     % Readback to matrix: Cast from float aka single() type to double() type:
     readbackdata = double(glReadPixels(0, 0, ctx.samplesPerLine, ctx.sampleLinesTotal, GL.RGBA, GL.FLOAT));
     
-    % Return readback (x,y) dot locations, reshaped into a 2 rows array
+    % Return readback (x,y) FG dot locations, reshaped into a 2 rows array
     % with one column per (x,y) dot:
     varargout{1} = [ reshape(readbackdata(:,:,1), 1, ctx.samplesPerLine * ctx.sampleLinesTotal) ; reshape(readbackdata(:,:,2), 1, ctx.samplesPerLine * ctx.sampleLinesTotal) ];
 
-    Screen('GetWindowInfo', ctx.BGDotsBuffer);
+    % Optionally also return texture coordinates (u,v) of FG dots as 3rd output arg:
+    if nargout > 2
+        varargout{3} = [ reshape(readbackdata(:,:,3), 1, ctx.samplesPerLine * ctx.sampleLinesTotal) ; reshape(readbackdata(:,:,4), 1, ctx.samplesPerLine * ctx.sampleLinesTotal) ];
+    end
     
-    % Readback to matrix: Cast from float aka single() type to double() type:
-    readbackdata = double(glReadPixels(0, 0, ctx.BGsamplesPerLine, ctx.BGsampleLinesTotal, GL.RGBA, GL.FLOAT));
-    
-    % Return readback (x,y) dot locations, reshaped into a 2 rows array
-    % with one column per (x,y) dot:
-    varargout{2} = [ reshape(readbackdata(:,:,1), 1, ctx.BGsamplesPerLine * ctx.BGsampleLinesTotal) ; reshape(readbackdata(:,:,2), 1, ctx.BGsamplesPerLine * ctx.BGsampleLinesTotal) ];
+    % Return optional readback (x,y) BG dot locations, reshaped into a 2 rows array
+    % with one column per (x,y) dot as 2nd output arg:
+    if nargout > 1
+        Screen('GetWindowInfo', ctx.BGDotsBuffer);
 
+        % Readback to matrix: Cast from float aka single() type to double() type:
+        readbackdata = double(glReadPixels(0, 0, ctx.BGsamplesPerLine, ctx.BGsampleLinesTotal, GL.RGBA, GL.FLOAT));
+
+        % Return readback (x,y) dot locations, reshaped into a 2 rows array
+        % with one column per (x,y) dot:
+        varargout{2} = [ reshape(readbackdata(:,:,1), 1, ctx.BGsamplesPerLine * ctx.BGsampleLinesTotal) ; reshape(readbackdata(:,:,2), 1, ctx.BGsamplesPerLine * ctx.BGsampleLinesTotal) ];
+    end
+    
     % Reenable alpha blending if it was enabled:
     if alphaenabled
         glEnable(GL.BLEND);

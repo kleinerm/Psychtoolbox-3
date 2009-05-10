@@ -1,0 +1,24 @@
+/* FDF shader for drawing 2D dots, applying a texture to them.
+ * The shader just implements standard texture mapping, the only
+ * speciality is that it mixes a constant settable color with the
+ * texels color, controlled by a mix weight.
+ *
+ * This to control the amount of object color information present in
+ * the 2D dot stimuli, kind of a SNR between dynamic and static form.
+ *
+ * (c) 2009 by Mario Kleiner, licensed under GPL.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2D Image;
+uniform vec4      constantColor;
+uniform float     texWeight;
+
+void main(void)
+{
+    /* Read texel from texture: */
+    vec4 texel = texture2D(Image, gl_TexCoord[0].st);
+    /* Mix with constant color, output it: */
+    gl_FragColor = mix(constantColor, texel, texWeight);
+}

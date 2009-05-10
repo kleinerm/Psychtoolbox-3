@@ -15,6 +15,8 @@ uniform sampler2DRect Silhouette;
 uniform float zThreshold;
 uniform float ViewportHeight;
 uniform vec2  texWrapAround;
+uniform vec4  TextureOffsetBias;
+uniform vec4  clipVertex;
 
 void main(void)
 {
@@ -46,19 +48,19 @@ void main(void)
         /* Check for occlusion - Discard this vertex if z-values do not match aka occluded: */
         if (abs(zpos - refz) > zThreshold) {
             /* Discard this hidden vertex: Set it to a position that will get clipped away: */
-            gl_FragColor = vec4(0.0, 0.0, -10.0, 1.0);
+            gl_FragColor = clipVertex;
         }
         else {
             /* Return dot (x,y) image plane position in R and G channels: */
             gl_FragColor.rg = vec2(position.x, ViewportHeight - position.y);
 
-            /* Set z-component to neutral 0.5, w-component to 1 in BA channels: */
-            gl_FragColor.ba = vec2(0.5, 1.0);
+            /* Set (z,w) components (aka (b,a)) to remapped 'texinpos' texture coordinates of sample: */
+            gl_FragColor.ba = (texinpos * TextureOffsetBias.zw) + TextureOffsetBias.xy;
         }
     }
     else {
         /* Dead/Invalid sample: Writeout a null vertex which will */
         /* get clipped away during rendering: */
-        gl_FragColor = vec4(0.0, 0.0, -10.0, 1.0); 
+        gl_FragColor = clipVertex; 
     }
 }
