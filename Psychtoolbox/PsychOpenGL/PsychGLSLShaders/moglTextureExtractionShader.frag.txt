@@ -1,0 +1,56 @@
+/* Shader for extraction of 3D object textures from video input images.
+ * Used by PTB function moglExtractTexture.m
+ *
+ * (c) 2009 by Mario Kleiner, licensed under GPL.
+ */
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect InputImage;
+uniform sampler2DRect GeometryBuffer;
+uniform sampler2DRect Silhouette;
+
+uniform float zThreshold;
+uniform float ViewportHeight;
+uniform vec2  texWrapAround;
+
+void main(void)
+{
+    /* texinpos is our (x,y) readposition in GeometryBuffer: */
+    /* We use bilinear filtering to reduce aliasing artifacts when reading from this buffer: */
+    vec2 texinpos = gl_FragCoord.xy; /* gl_TexCoord[0].st; */
+
+    vec4 tl=texture2DRect(GeometryBuffer, mod(floor(texinpos), texWrapAround));
+    vec4 tr=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(1.0, 0.0), texWrapAround));
+    vec4 bl=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(0.0, 1.0), texWrapAround));
+    vec4 br=texture2DRect(GeometryBuffer, mod(floor(texinpos) + vec2(1.0, 1.0), texWrapAround));
+
+    /* Perform weighted linear interpolation -- bilinear interpolation of the 4: */
+    tl=mix(tl,tr,fract(texinpos.x));
+    bl=mix(bl,br,fract(texinpos.x));
+
+    /* position is our image space 4D (x,y,z,w) position to extract color data from: */
+    vec4 position = mix(tl, bl, fract(texinpos.y));
+
+    /* position.xyz = position.xyz / position.w; */
+
+    /* Potential zpos from GeometryBuffer, iff surface location 'position' is not occluded: */
+    float zpos = position.z;
+
+    /* Reference zdepth from Silhouette buffer - Our depth buffer for occlusion handling: */
+    float refz = texture2DRect(Silhouette, position.xy).a;
+
+    /* Check for occlusion - Discard this sample if z-values do not match -> Occluded: */
+    if ((texture2DRect(Silhouette, position.xy).b == 0.0)|| (position.w == 0.0) || (abs(zpos - refz) > zThreshold)) {
+        /* Discard this fragment: We write an all-black pixel */
+        gl_FragColor = vec4(0.0);
+    }
+    else {
+        /* Readout image pixel color in input image texture at location position.xy, write it to target buffer: */
+        /* gl_FragColor.rgb = texture2DRect(InputImage, vec2(position.x, ViewportHeight - position.y)).rgb; */
+        gl_FragColor.rgb = texture2DRect(InputImage, position.xy).rgb;
+
+        /* Set alpha channel to 1.0 to mark this texel as valid: */
+        gl_FragColor.a = 1.0;
+    }
+}
