@@ -76,7 +76,7 @@
 %                    color saturation and such. Can also estimate the
 %                    internal latency of the camera for known models,
 %                    currently Basler A602f and Unibrain Fire.i
-%
+% PsychGetCamIdForSpec - Return deviceIndex of a specified camera.
 % PsychOpenEyes    - Control interface for PTB's integrated vision based
 %                    eyetracker, based on the OpenEyes toolkit.
 %
