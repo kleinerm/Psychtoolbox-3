@@ -92,7 +92,7 @@ function varargout = moglExtractTexture(cmd, varargin)
 % - Destroy a processing context, release all of its ressources.
 %
 %
-% texBuffer = moglExtractTexture('Extract', context, inputTexture);
+% [texBuffer, texId, texTarget] = moglExtractTexture('Extract', context, inputTexture [, newTexture = 0]);
 % - Perform an 'Extract' cycle for given context. A new "3D frame" is rendered
 % via the rendercallback function, then analysed, to provide the 3D surface
 % geometry and occlusion info and mapping for texture extraction. This info
@@ -105,7 +105,15 @@ function varargout = moglExtractTexture(cmd, varargin)
 % for texture mapping, etc. You are even allowed to perform destructive
 % write informations on the buffer to change its pixel content. But do not
 % destory and reallocate the buffer, change its size, number of layers,
-% resolution or any other property!
+% resolution or any other property! For your convenience, 'texId' and
+% 'texTarget' also provide standard OpenGL handles to texture id and
+% target, associated with 'texBuffer'.
+%
+% Alternatively you can set the optional flag 'newTexture' to a value of 1.
+% In that case, a new extracted texture 'texBuffer' is returned and you own
+% this texture, ie., you can do with it whatever you want and you are
+% responsible for releasing the texture via Screen('Close', texBuffer);
+% once you are done with it.
 %
 
 % History:
@@ -493,6 +501,17 @@ if strcmpi(cmd, 'Extract')
         error(sprintf('In "%s": You must provide the "inputImage"!', cmd)); %#ok<SPERR>
     end
 
+    if nargin >= 4
+        doNotRecycle = varargin{3};
+    else
+        doNotRecycle = [];
+    end
+    
+    % Do recycle texture extraction buffer by default:
+    if isempty(doNotRecycle)
+        doNotRecycle = 0;
+    end
+    
     % Get context object:
     ctx = varargin{1};
     
@@ -594,16 +613,27 @@ if strcmpi(cmd, 'Extract')
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, ctx.silhouetteTexture);
     glActiveTexture(GL.TEXTURE0);    
     
-    % Clear texture extraction result buffer:
-    Screen('FillRect', ctx.OutTextureBuffer, [0 0 0 0])
-
     % Screen('TransformTexture') will apply the texture extraction operator
     % to the inputImage video image texture and write the extracted texture
     % into OutTextureBuffer. It will automatically bind inputImage and
     % trackingBuffer as input textures to units 0 and 1, whereas we
     % manually bound the silhouetteTexture to unit 2:
-    ctx.OutTextureBuffer = Screen('TransformTexture', ctx.trackingBuffer, ctx.textureExtractionOperator, inputImage, ctx.OutTextureBuffer);
+    if doNotRecycle
+        recycleBuffer = [];
+    else
+        % Clear texture extraction result buffer:
+        Screen('FillRect', ctx.OutTextureBuffer, [0 0 0 0])
+
+        % Assign this buffer for recycling aka rewrite:
+        recycleBuffer = ctx.OutTextureBuffer;
+    end
     
+    extractedTexture = Screen('TransformTexture', ctx.trackingBuffer, ctx.textureExtractionOperator, inputImage, recycleBuffer);
+    
+    if ~doNotRecycle
+        ctx.OutTextureBuffer = extractedTexture;
+    end
+
     % Ok, the ctx.OutTextureBuffer should contain the extracted texture.
     
     % Clear out all intermediate result buffers in preparation of next extraction cycle:
@@ -611,15 +641,16 @@ if strcmpi(cmd, 'Extract')
     Screen('FillRect', ctx.silhouetteBuffer, [0 0 0 0])
 
     if debug == 3
-        Screen('DrawTexture', ctx.parentWin, ctx.OutTextureBuffer, [], [], [], [], [], debugGain);
+        Screen('DrawTexture', ctx.parentWin, extractedTexture, [], [], [], [], [], debugGain);
     end
     
     % Restore previous OpenGL context state:
     RestoreGL;
     
     % Ready: Return handle to our extracted texture buffer:
-    varargout{1} = ctx.OutTextureBuffer;
-    
+    varargout{1} = extractedTexture;
+    [varargout{2}, varargout{3}] = Screen('GetOpenGLTexture', ctx.parentWin, extractedTexture);
+
     return;
 end
 
