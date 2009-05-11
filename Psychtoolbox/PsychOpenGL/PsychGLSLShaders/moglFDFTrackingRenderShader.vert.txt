@@ -13,7 +13,7 @@ uniform vec4 Viewport;
 void main(void)
 {
     /* Position encodes 2D surface texture coordinate -> Position in our pseudo-texture: */
-    gl_Position.xy = gl_MultiTexCoord0.st;
+    gl_Position.xy = (gl_TextureMatrix[0] * gl_MultiTexCoord0).st;
 
     /* Need to remap to normalized range -1 to +1 so vertex clipping doesn't spoil our day: */
     gl_Position.xy = ((gl_Position.xy - TextureOffsetBias.xy) * TextureOffsetBias.zw) - vec2(1.0, 1.0);
