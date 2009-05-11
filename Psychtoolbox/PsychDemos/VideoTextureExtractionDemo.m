@@ -1,7 +1,7 @@
-function VideoTextureExtractionDemo(multiMarker)
+function VideoTextureExtractionDemo(objtype, multiMarker)
 % Use ARToolkit to track and visualize 3D objects in live-video.
 %
-% Usage: ARToolkitDemo([multiMarker = 2])
+% Usage: ARToolkitDemo([objtype = 3][, multiMarker = 2])
 %
 % Minimalistic demo on how to capture video data and use ARToolkit to
 % detect and track the rigid position and orientation of markers, then
@@ -28,6 +28,14 @@ AssertOpenGL;
 % Size of rendered objects in millimeters:
 sizeMM = 80; %#ok<NASGU>
 
+if nargin < 1
+    objtype = [];
+end
+
+if isempty(objtype)
+    objtype = 3;
+end
+
 try
     % No sync tests for this simple demo:
     olsync = Screen('Preference', 'SkipSyncTests', 2);
@@ -38,13 +46,17 @@ try
     screenid = max(Screen('Screens'));
     
     % Size of window: Default to fullscreen:
-    roi = CenterRect(1.5 * [0 0 640 480], Screen('Rect',screenid));
-
+    if objtype ~= 3
+        roi = CenterRect(1.5 * [0 0 640 480], Screen('Rect',screenid));
+    else
+        roi = [];
+    end
+    
     % Use imaging pipeline to flip image horizontally to avoid confusing
     % the viewer due to mirror view:
     PsychImaging('PrepareConfiguration');
     PsychImaging('AddTask', 'General', 'UseFastOffscreenWindows');
-%    PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
+    PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
     win = PsychImaging('OpenWindow', screenid, 0, roi);
 
     % Open videocapture device: For now we use engine 2, the ARVideo
@@ -56,7 +68,8 @@ try
         case 2,
             grabber = Screen('OpenVideoCapture', win, 0, [], 5, [], [], [], [], engineId);
         case 0,
-            grabber = Screen('OpenVideoCapture', win, 0, [], 4, [], [], [], [], engineId);
+            devid = PsychGetCamIdForSpec('Eye');
+            grabber = Screen('OpenVideoCapture', win, devid, [], 4, [], [], [], [], engineId);
             imgFormat = 4;
         case 1,
             grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], [], [], [], [], [], engineId);
@@ -96,7 +109,7 @@ try
     % [templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings')
 
     % Single markers by default:
-    if nargin < 1
+    if nargin < 2
         multiMarker = 2;
     end
     
@@ -121,21 +134,51 @@ try
     end
     cd(olddir);
 
-    texCoordMin = [0, 0];
-    texCoordMax = [1, 1];
+    if objtype == 3
+        % Setup our 3D dense OpenGL head model for mirroring -- Our "Avatar":
+        MFHeadmodel('Initialize', win);
+
+        % Enable lighting model for head rendering:
+        MFHeadmodel('SetLighting', 0);
+
+        % Load OBJ's and initialize morph & render engine:
+        CGHeadModelFile = 'CGHeadModels/TwentySevenCGKeyExpressions/TwentySevenCGKeyExpressions.mat';
+        ExpressionsCount = MFHeadmodel('LoadModels', sprintf('%s%s', MFData, CGHeadModelFile)); %#ok<NASGU>
+        
+        % Compute nonrigid facial expression morph for this frame:
+        morphWeights = 1;
+        MFHeadmodel('MorphHead', morphWeights);
+        
+        texprops = MFHeadmodel('GetModelTextureProperties') %#ok<NOPRT>
+        texResolution = texprops.texResolution;
+        texSize = max(texResolution);
+        texCoordMin = texprops.texCoordMin;
+        texCoordMax = texprops.texCoordMax;
+        texSize = 512;
+        texScale = texSize / max(texResolution);
+        texCoordMin = [0, 0];
+        texCoordMax = [texSize, texSize];
+        texResolution = [texSize, texSize];
+        
+    else
+        texSize = 512;
+        texCoordMin = [0, 0];
+        texCoordMax = [texSize, texSize];
+        texResolution = [texSize, texSize];
+    end
     
-    texResolution = [512 512];
-    zThreshold = 0.0001;
+    % zThreshold may need tweaking for depth range of object:
+    zThreshold = 0.00001;
     callbackEvalString = 'glCallList(gld);';
     
     context = moglExtractTexture('CreateContext', win, [0 0 w h], texCoordMin, texCoordMax, texResolution, zThreshold);
     context = moglExtractTexture('SetRenderCallback', context, callbackEvalString);
-
+    
     % Setup OpenGL 3D rendering for our simple test:
     Screen('BeginOpenGL', win);
 
     % Enable lighting and depth-test:
-    glColor3f(1,1,0);
+    glColor3f(1,1,1);
     glEnable(GL.LIGHTING);
     glEnable(GL.LIGHT0);
     glEnable(GL.DEPTH_TEST);
@@ -157,14 +200,65 @@ try
     glClearColor(0,0,0,0);
     glClear;
 
+    % Absolutely crucial that alpha blending is "off"!
+    glDisable(GL.BLEND);
+
+    % Build display list with static texture extraction 3D object:
     gld = glGenLists(1);
     glNewList(gld, GL.COMPILE);
-    drawTexExtObject();
+    texmin = 0.00;
+    texmax = 1.00;
+    glPushMatrix;
+    glTranslated(-sizeMM/2, -sizeMM/2, 0);
+
+    switch(objtype)
+        case 1,
+            glTranslated(0, -sizeMM, 0);
+            glBegin(GL.QUADS);
+            glTexCoord2f(texmin, texmin);
+            glVertex2f(0.0, 0.0);
+            glTexCoord2f(texmin, texmax);
+            glVertex2f(0.0, 1.0 * sizeMM);
+            glTexCoord2f(texmax, texmax);
+            glVertex2f(1.0 * sizeMM, 1.0 * sizeMM);
+            glTexCoord2f(texmax, texmin);
+            glVertex2f(1.0 * sizeMM, 0.0);
+            glEnd;
+
+        case 2,
+            mysphere = gluNewQuadric;
+            gluQuadricTexture(mysphere, GL.TRUE);
+            glMatrixMode(GL.TEXTURE);
+            glPushMatrix;
+            glLoadIdentity;
+            glScaled(texSize, texSize, 1);
+            gluSphere(mysphere, sizeMM, 100, 100);
+            glPopMatrix;
+            glMatrixMode(GL.MODELVIEW);
+            gluDeleteQuadric(mysphere);
+
+        case 3,
+            glTranslated(3*sizeMM, 0, 0);
+            glMatrixMode(GL.TEXTURE);
+            glPushMatrix;
+            glLoadIdentity;
+            glScaled(texScale, texScale, 1);
+            moglmorpher('render');
+            glPopMatrix;
+            glMatrixMode(GL.MODELVIEW);
+    end
+
+    glPopMatrix;
     glEndList;
-    
+
     % OpenGL 3D setup done:
     Screen('EndOpenGL', win);
-        
+    
+    % Shutdown head renderer: We can release the MFHeadmodels ressources
+    % here already, because we only need 1 static "neutral expression"
+    % shape, which we stored conveniently into a GL display list above :-)
+    MFHeadmodel('Shutdown');
+    
     % Init segmentation gain to 50% of avg image intensity:
     gain = 0.5;
     SetMouse(gain * Screen('WindowSize', win)/2, 100);
@@ -184,6 +278,10 @@ try
         % Update image segmentation gain from horizontal mouse position:
         [xm, ym, buttons] = GetMouse;
         gain = 2 * xm / Screen('WindowSize', win);
+        
+        if xm == 0 && ym == 0
+            break;
+        end
         
         if buttons(1) && ~oldbuttons
             doExtract = 1 - doExtract;
@@ -229,13 +327,27 @@ try
                 % Setup rigid position and orientation via 4x4 xform matrix:
                 glLoadMatrixd(detectedMarkers(i).ModelViewMatrix);
 
-                if doExtract
+                if doExtract                    
                     % Perform texture extraction pass from input video image:
-                    texBuffer = moglExtractTexture('Extract', context, inImage);
+                    [texBuffer, texId, texTarget] = moglExtractTexture('Extract', context, inImage, 0);
                 else
                     % Perform regular render pass:
-                    glCallList(gld);
+                    if isempty(texBuffer)
+                        glCallList(gld);
+                    end
                 end
+                
+                % Rerender:
+                if ~isempty(texBuffer)
+                    if objtype ~= 3
+                        glTranslatef(2.2*sizeMM, 0, 0);
+                    end
+                    glEnable(texTarget);
+                    glBindTexture(texTarget, texId);
+                    glCallList(gld);
+                    glBindTexture(texTarget, 0);
+                    glDisable(texTarget);
+                end                
             end
         end
         
@@ -244,9 +356,15 @@ try
 
         if doExtract && ~isempty(texBuffer)
             % Draw extracted texture:
-            Screen('DrawTexture', win, texBuffer);
+%            Screen('DrawTexture', win, texBuffer);
         end
-        
+
+%         if ~isempty(texBuffer)
+%             % Close previously extracted texture:
+%             Screen('Close', texBuffer);
+%             texBuffer = [];
+%         end
+
         % Show updated image at next retrace:
         Screen('Flip', win, 0, 0, 1);
         
@@ -257,6 +375,9 @@ try
     telapsed = GetSecs - t;
     
     moglExtractTexture('DestroyContext', context);
+    
+    % Shutdown head renderer:
+    MFHeadmodel('Shutdown');
     
     % Stop capture, close engine and onscreen window:
     Screen('StopVideoCapture', grabber);
@@ -276,25 +397,4 @@ end;
 % Restore sync settings:
 Screen('Preference', 'SkipSyncTests', olsync);
 
-return
-
-function drawTexExtObject() %#ok<DEFNU>
-global GL;
-global sizeMM;
-    %glutSolidTeapot(sizeMM)
-    texmin = 0.01;
-    texmax = 0.99;
-    glPushMatrix;
-    glTranslated(-sizeMM/2, -sizeMM/2, 0);
-    glBegin(GL.QUADS);
-        glTexCoord2f(texmin, texmin);
-        glVertex2f(0.0, 0.0);
-        glTexCoord2f(texmin, texmax);
-        glVertex2f(0.0, 1.0 * sizeMM);
-        glTexCoord2f(texmax, texmax);
-        glVertex2f(1.0 * sizeMM, 1.0 * sizeMM);
-        glTexCoord2f(texmax, texmin);
-        glVertex2f(1.0 * sizeMM, 0.0);
-    glEnd;
-    glPopMatrix;    
 return
