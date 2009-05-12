@@ -17,8 +17,18 @@ uniform float     texWeight;
 
 void main(void)
 {
+    const float b = 0.075;
+    float r;
+
     /* Read texel from texture: */
     vec4 texel = texture2D(Image, gl_TexCoord[0].st);
     /* Mix with constant color, output it: */
     gl_FragColor = mix(constantColor, texel, texWeight);
+
+    /* We compute an alpha value dependent on radius within a dot: */
+    /* This for point smoothing on GPU's that don't support this with shaders: */
+    /* 'b' controls smoothness of transition area, 0.5 is max radius at which */
+    /* point completely disappears, ie., alpha = 0. */
+    r = length(gl_TexCoord[1].st - vec2(0.5, 0.5));
+    gl_FragColor.a = gl_FragColor.a * smoothstep(r, r + b, 0.5);
 }

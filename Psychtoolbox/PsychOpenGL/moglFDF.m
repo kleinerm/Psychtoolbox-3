@@ -175,10 +175,23 @@ function varargout = moglFDF(cmd, varargin)
 % Texture mapping is disabled by default, i.e. at context creation time.
 %
 %
-% context = moglFDF('SetDrawShader', context, fgShaderId);
+% context = moglFDF('SetDrawShader', context, fgShaderId [, bgShaderId] [, needSprites]);
 % - Assign a GLSL shader with handle 'fgShaderId' during 2D drawing of
 % foreground dots in moglFDF('Render',...); Passing a 'fgShaderId' which is
 % empty or negative disables shading. Shading is disabled by default.
+%
+% The optional 'bgShaderId' assigns potential shaders for drawing of
+% background dots.
+%
+% The optional flag 'needSprites' if set to 1, will enable generation of
+% point-sprite texture coordinates on texture unit 1 while using a shader
+% with point-smoothing enabled. A setting of 0 disables point sprites.
+% Point sprites plus special code within your drawing fragment shader are
+% needed if you want to draw nicely anti-aliased dots on GPUs that don't
+% support simultaneous use of fragment shaders and anti-aliased dots. On
+% such systems you can roll your own anti-aliasing via point-sprites.
+% Please note that almost all consumer class GPU's don't support
+% anti-aliased dots in conjunction with fragment shaders.
 %
 %
 % context = moglFDF('Update', context [, instantOn=0]);
@@ -618,8 +631,10 @@ if strcmpi(cmd, 'CreateContext') | strcmpi(cmd, 'ReinitContext') %#ok<OR2>
         ctx.colorTexId = -1;
         ctx.colorTexTarget = -1;
 
-        % Also disable 2D FG dot drawing shader by default:
+        % Also disable 2D dot drawing shaders by default:
         ctx.draw2DShaderFG = -1;
+        ctx.draw2DShaderBG = -1;
+        ctx.needSprites = 0;
     end
     
     % Setup trackingRenderShader:
@@ -829,9 +844,42 @@ if strcmpi(cmd, 'SetDrawShader')
     % Get texture handle and target:
     ctx.draw2DShaderFG = varargin{2};
     
+    if nargin >= 4
+        ctx.draw2DShaderBG = varargin{3};
+    end
+    
+    % Optional sprite enable flag provided?
+    if nargin >= 5 && ~isempty(varargin{4})
+        ctx.needSprites = varargin{4};
+
+        if ctx.needSprites ~= 1
+            ctx.needSprites = 0;
+        end
+        
+        % Enable or disable point-sprite coord generation on texture unit
+        % 1, depending if point sprites shall be enabled or disabled:
+        glActiveTexture(GL.TEXTURE1);
+        
+        if ctx.needSprites == 1
+            % Enable point sprite coordinate generation on unit 1:
+            glTexEnvi(GL.POINT_SPRITE, GL.COORD_REPLACE, GL.TRUE);
+        else
+            % Disable point sprite coordinate generation on unit 1:
+            glTexEnvi(GL.POINT_SPRITE, GL.COORD_REPLACE, GL.FALSE);
+        end
+
+        glActiveTexture(GL.TEXTURE0);
+    end
+    
     % Empty or negative assignment resets to "no shader assigned":
-    if isempty(ctx.draw2DShaderFG) || ctx.draw2DShaderFG < 0
+    if isempty(ctx.draw2DShaderFG) || ctx.draw2DShaderFG <= 0
+        % Detach shader:
         ctx.draw2DShaderFG = -1;
+    end
+
+    if isempty(ctx.draw2DShaderBG) || ctx.draw2DShaderBG <= 0
+        % Detach shader:
+        ctx.draw2DShaderBG = -1;
     end
 
     % Return updated 'ctx' to usercode:
@@ -1254,12 +1302,16 @@ if strcmpi(cmd, 'Render')
     
     % Bind and enable vertex position VBO:
     glEnableClientState(GL.VERTEX_ARRAY);
+
+    % Is point anti-aliasing enabled?
+    pSmooth = glIsEnabled(GL.POINT_SMOOTH);
     
     if drawFG
         % Foreground render:
         glBindBuffer(GL.ARRAY_BUFFER, ctx.FGvbo);
 
-        % Old style: glVertexPointer(4, GL.FLOAT, 0, 0);
+        % Assign vertex pointer, setup proper stride for interleave with
+        % texture coordinates from same VBO:
         glVertexPointer(2, GL.FLOAT, 4 * 4, 0);
         
         if ctx.colorTexId >= 0
@@ -1281,6 +1333,10 @@ if strcmpi(cmd, 'Render')
         % Enable draw GLSL shader, if any:
         if ctx.draw2DShaderFG > -1
             glUseProgram(ctx.draw2DShaderFG);
+            
+            if pSmooth && ctx.needSprites
+                glEnable(GL.POINT_SPRITE_ARB);
+            end
         end
         
         % Perform draw operation: All vertices, each triggering render for a
@@ -1292,6 +1348,10 @@ if strcmpi(cmd, 'Render')
         % Disable draw GLSL shader, if any:
         if ctx.draw2DShaderFG > -1
             glUseProgram(0);
+
+            if pSmooth && ctx.needSprites
+                glDisable(GL.POINT_SPRITE_ARB);
+            end
         end
 
         if ctx.colorTexId >= 0
@@ -1312,11 +1372,29 @@ if strcmpi(cmd, 'Render')
         % Bind vertex index VBO:
         glBindBuffer(GL.ELEMENT_ARRAY_BUFFER_ARB, ctx.BGibo);
 
+        % Enable draw GLSL shader, if any:
+        if ctx.draw2DShaderBG > -1
+            glUseProgram(ctx.draw2DShaderBG);
+
+            if pSmooth && ctx.needSprites
+                glEnable(GL.POINT_SPRITE_ARB);
+            end
+        end
+        
         % Perform draw operation: All vertices, each triggering render for a
         % single GL.POINT primitive. Colors, sizes, anti-aliasing flags etc.
         % can be set from external code as appropriate. Application of textures
         % or shaders is also possible:
         glDrawRangeElements(GL.POINTS, 0, ctx.maxBGDots-1, ctx.maxBGDots, GL.UNSIGNED_INT, 0);
+        
+        % Disable draw GLSL shader, if any:
+        if ctx.draw2DShaderBG > -1
+            glUseProgram(0);
+
+            if pSmooth && ctx.needSprites
+                glDisable(GL.POINT_SPRITE_ARB);
+            end        
+        end
     end
     
     % Unbind our VBOs:
