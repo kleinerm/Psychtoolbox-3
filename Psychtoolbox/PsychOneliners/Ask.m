@@ -8,7 +8,8 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 % 
 % "rectAlign1" and "rectAlign2", if present, are applied after the above
 % alignment. The values should be selected from: RectLeft, RectRight,
-% RectTop, RectBottom.
+% RectTop, RectBottom. Alternatively you can pass in one of the strings
+% 'left','top','right','bottom','center'.
 % 
 % "fontSize" is the font size you want text typed in; will restore old
 % fontsize before returning.
@@ -17,7 +18,7 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 % reply=Ask(window,'Click when ready.'); % Wait for (multiple) mouse clicks, return number of clicks.
 % reply=Ask(window,'What''s your name?',[],[],'GetString'); % Accept keyboard input, but don't show it.
 % reply=Ask(window,'Who are you?',[],[],'GetChar',RectLeft,RectTop); % Accept keyboard input, echo it to screen.
-% 
+%
 % See also GetString.
 
 % 3/9/97  dgp	Wrote it, based on dhb's WaitForClick.m
@@ -29,6 +30,8 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 % 6/6/07   mk   remove Screen('WindowToFron') unsupported on PTB-3, other
 %               small fixes...
 
+dontClear = 1;
+
 if nargin < 2
     error('Ask: Must provide at least the first two arguments.');
 end
@@ -37,8 +40,6 @@ if ~Screen(window, 'WindowKind')
 	error('Invalid window handle provided.')
 end
 
-screenRect = Screen('Rect', window);
-
 if nargin > 7 && ~isempty(fontsize)
     oldFontSize=Screen('TextSize', window, fontsize);
 else
@@ -46,8 +47,8 @@ else
 end;
 
 if nargin>4
-	if isempty(replyFun)
-		replyFun='GetClicks';
+    if isempty(replyFun)
+        replyFun='GetClicks';
     end
 
     if isa(replyFun,'double')
@@ -60,7 +61,7 @@ end
 % Create the box to hold the text that will be drawn on the screen.
 screenRect = Screen('Rect', window);
 if ~isempty(message)
-    [tbx, tby] = Screen('TextBounds', window, message);
+    tbx = Screen('TextBounds', window, message);
     width = tbx(3);
     height = tbx(4);
 else
@@ -79,16 +80,10 @@ else
 end
 
 if nargin>6 && ~isempty(rectAlign2)
-	if ~isa(rectAlign2,'double')
-		error('Ask: rectAlign2 must be a double, e.g. RectLeft.');
-	end
 	r=AlignRect(r,screenRect,rectAlign2);
 end
 
 if nargin>5  && ~isempty(rectAlign1)
-	if ~isa(rectAlign1,'double')
-		error('Ask: rectAlign1 must be a double, e.g. RectLeft.');
-	end
 	r=AlignRect(r,screenRect,rectAlign1);
 end
 
@@ -103,14 +98,14 @@ end
 %Screen(window,'WindowToFront');       % asg commented out
 
 [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
-Screen('Flip', window, 0, 1);      % asg added
+Screen('Flip', window, 0, dontClear);      % asg added
 
 if strcmp(replyFun,'GetChar')
     FlushEvents('keyDown');
     i=1;
     reply(i)=GetChar(0,1);  % get the 1st typed character (with no timing info. and ascii codes only)
     [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor); % put coverted ascii code letter on screen
-    Screen('Flip', window, 0, 1);   % flip it to the screen
+    Screen('Flip', window, 0, dontClear);   % flip it to the screen
     i=2;
     reply(i)=GetChar(0,1);  % get the 2nd typed character (with no timing info. and ascii codes only)
 
@@ -118,11 +113,11 @@ if strcmp(replyFun,'GetChar')
         i=1;
         Screen('FillRect', window, bgColor);
         [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor); % redraw text with no response letters
-        Screen('Flip', window, 0, 1);   % flip it to the screen
+        Screen('Flip', window, 0, dontClear);   % flip it to the screen
         reply(i)=GetChar(0,1);  % get the next typed character (with no timing info. and ascii codes only)
         if reply(i)~=8
             [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
-            Screen('Flip', window, 0, 1);
+            Screen('Flip', window, 0, dontClear);
             i=2;
             reply(i)=GetChar(0,1);
         end;
@@ -130,7 +125,7 @@ if strcmp(replyFun,'GetChar')
 
     while ~eq(reply(i),10)  % until they hit RETURN
         [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),newX(i-1),newY(i-1),textColor); % put coverted ascii code letter on screen
-        Screen('Flip', window, 0, 1);   % flip it to the screen
+        Screen('Flip', window, 0, dontClear);   % flip it to the screen
         i=i+1;
         reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
         while reply(i)==8  % backspace/delete was typed
@@ -139,11 +134,11 @@ if strcmp(replyFun,'GetChar')
                 i=1;
                 Screen('FillRect', window, bgColor);
                 [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);% redraw text with no response letters
-                Screen('Flip', window, 0, 1);   % flip it to the screen
+                Screen('Flip', window, 0, dontClear);   % flip it to the screen
                 reply(i)=GetChar(0,1);
                 if reply(i)~=8
                     [newX(i), newY(i)]=Screen(window,'DrawText',char(reply(i)),oldX,oldY,textColor);
-                    Screen('Flip', window, 0, 1);
+                    Screen('Flip', window, 0, dontClear);
                     i=2;
                     reply(i)=GetChar(0,1);
                 end;
@@ -151,7 +146,7 @@ if strcmp(replyFun,'GetChar')
                 Screen('FillRect', window, bgColor);
                 [oldX, oldY]=Screen(window,'DrawText',message,r(RectLeft),r(RectBottom),textColor);
                 [newX(i-1), newY(i-1)]=Screen(window,'DrawText',char(reply(1:i-1)), oldX, oldY, textColor); % put old letters on screen
-                Screen('Flip', window, 0, 1);   % flip it to the screen
+                Screen('Flip', window, 0, dontClear);   % flip it to the screen
                 reply(i)=GetChar(0,1);  % get the next character (with no timing info. and ascii codes only)
             end;
         end;
@@ -160,7 +155,7 @@ if strcmp(replyFun,'GetChar')
     Screen('FillRect', window, bgColor);
     Screen('Flip', window);
 
-    for d=min(find(reply==8 | reply==10))-1
+    for d=min(find(reply==8 | reply==10))-1 %#ok<MXFND>
         reply = reply(1:d);
     end;
     

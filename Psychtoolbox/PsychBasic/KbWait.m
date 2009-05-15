@@ -15,7 +15,7 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
 %
 % If you have trouble with KbWait always returning immediately, this could
 % be due to "stuck keys". See "help DisableKeysForKbCheck" on how to work
-% around this problem.
+% around this problem. See also "help RestrictKeysForKbCheck".
 %
 % GetChar and CharAvail are character oriented (and slow), whereas KbCheck
 % and KbWait are keypress oriented (and fast).
