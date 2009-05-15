@@ -157,19 +157,25 @@ try
     % If texture mapping is on, load a texture mapping shader to
     % demonstrate mixing static color with texture:
     if textoggle > 0
-        drawShader = LoadGLSLProgramFromFiles('moglFDFTexturedDotsRenderShader.frag');
+        drawShader = LoadGLSLProgramFromFiles('moglFDFTexturedDotsRenderShader.frag', 1);
         glUseProgram(drawShader);
         glUniform1i(glGetUniformLocation(drawShader, 'Image'), 0);
-        % Assign static color:
-        glUniform4f(glGetUniformLocation(drawShader, 'constantColor'), 1, 1, 1, 1);
+
+        % Tell shader that it should roll its own pointsprite based
+        % anti-aliasing, instead of leaving the job up to the GPU:
+        % Very recent GPU's may be able to do this themselves, e.g., NVidia
+        % Geforce 8800 and later on OS/X 10.5.6 and later. In such a case,
+        % setting doPointSprites to zero may provide a slight speedup:
+        doPointSprites = 1;
+        glUniform1i(glGetUniformLocation(drawShader, 'doSmooth'), doPointSprites);
 
         % Assign mixweight: 0.0 = static color only, 1.0 = texture only,
         % intermediate levels provide a mix between 0% and 100% texture:
-        glUniform1f(glGetUniformLocation(drawShader, 'texWeight'), 1.0);
+        glUniform1f(glGetUniformLocation(drawShader, 'texWeight'), 0.5);
         glUseProgram(0);
         
         % Assign shader for 2D foreground dot draw:
-        fdf = moglFDF('SetDrawShader', fdf, drawShader);
+        fdf = moglFDF('SetDrawShader', fdf, drawShader, [], doPointSprites);
         
         % Enable texture:
         fdf = moglFDF('SetColorTexture', fdf, gltex, gltextarget);
@@ -317,13 +323,13 @@ try
             % anti-aliased dots:
             glBlendFunc(GL.SRC_ALPHA, GL.ONE_MINUS_SRC_ALPHA);
             glEnable(GL.BLEND);
-            glPointSize(3.0);
+            glPointSize(5.0);
             glEnable(GL.POINT_SMOOTH);
         end
         
         % Render 2D dot set in white:
         glColor3f(1,1,1);
-        
+                
         % This performs the actual high-speed drawing of the dot field into
         % window 'win':
         fdf = moglFDF('Render', fdf, win, [1 1]);
