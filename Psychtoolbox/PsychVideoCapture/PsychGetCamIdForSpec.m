@@ -48,6 +48,10 @@ if nargin < 2
 end
 
 if nargin < 3
+    instance = [];
+end
+
+if isempty(instance)
     instance = 0;
 end
 

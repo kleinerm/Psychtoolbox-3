@@ -253,7 +253,7 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
                 fprintf('After a new installation of Psychtoolbox, you must manually copy the BrightSide runtime libraries into that\n');
                 fprintf('folder, ie., replace the empty directory .../BSRuntimeLibs/ by the one contained in the zip file with the\n');
                 fprintf('proprietary Brightside runtime libraries.\n');
-                fprintf('As of June 2008, in MPI Tuebingen, this zip file can be found in \\uni.kyb.local\home\kleinerm\projects\OpenGLPsychtoolbox\BrightSideHDRRuntime.zip\n');
+                fprintf('As of June 2008, in MPI Tuebingen, this zip file can be found in \\\\uni.kyb.local\\home\\kleinerm\\projects\\OpenGLPsychtoolbox\\BrightSideHDRRuntime.zip\n');
                 fprintf('Check this, then retry...\n');
                 
                 Screen('CloseAll');
