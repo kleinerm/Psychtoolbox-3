@@ -10,7 +10,14 @@ function reply=Ask(window,message,textColor,bgColor,replyFun,rectAlign1,rectAlig
 % alignment. The values should be selected from: RectLeft, RectRight,
 % RectTop, RectBottom. Alternatively you can pass in one of the strings
 % 'left','top','right','bottom','center'.
-% 
+%
+% If you want to align the text to a different rectangular box than the
+% window, then pass the rectangle defining that box as argument
+% 'rectAlign1', and the wanted alignment as argument 'rectAlign2', e.g.,
+% if rectAlign1 = [400 300 600 400] and rectAlign2 = 'center', then the
+% text 'message' would get centered in the box with left-top corner
+% (400,300) and right-bottom corner (600,400).
+%
 % "fontSize" is the font size you want text typed in; will restore old
 % fontsize before returning.
 %
@@ -70,7 +77,12 @@ else
     message = '';
 end
 
-r=[0 0 width height+30];
+if nargin>5 && ~isempty(rectAlign1) && (length(rectAlign1) == 4) && isnumeric(rectAlign1)
+    % rectAlign1 overrides reference box screenRect:
+    screenRect = rectAlign1;
+end
+
+r=[0 0 width height + Screen('TextSize', window)];
 if strcmp(replyFun,'GetChar')
     % In 'GetChar' mode we default to left-alignment of message:
     r=AlignRect(r,screenRect,RectLeft,RectTop); % asg changed to align on Left side of screen
@@ -83,7 +95,7 @@ if nargin>6 && ~isempty(rectAlign2)
 	r=AlignRect(r,screenRect,rectAlign2);
 end
 
-if nargin>5  && ~isempty(rectAlign1)
+if nargin>5  && ~isempty(rectAlign1) && ((length(rectAlign1) ~= 4) || ischar(rectAlign1))
 	r=AlignRect(r,screenRect,rectAlign1);
 end
 

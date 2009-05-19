@@ -148,6 +148,12 @@
 % may have negative side effects on system timing. Use as last resort!
 %
 %
+% 65536 == kPsychDontUseNativeBeamposQuery
+% Do not use operating system native beamposition queries, but try to use
+% own mechanism, or none at all. This to work around bugs in OS native
+% beamposition query mechanisms, e.g., Leopard 10.5.7 + ATI GPU's.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

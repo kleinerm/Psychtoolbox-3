@@ -27,11 +27,14 @@
 %
 % GL_OutputLibrary.dll -- From BrightSide software.
 % CoreLibrary_GL.dll   -- From BrightSide software.
+% opengl32.dll         -- Part of your graphics driver installation.
 % glew32.dll           -- From http://glew.sourceforge.net
 % glut32.dll           -- From the source of the GLUT toolkit.
 % cg.dll               -- From NVidia's Cg toolkit SDK:
 %                         http://developer.nvidia.com/page/cg_main.html
 % cgGL.dll             -- From NVidia's Cg toolkit SDK.
+% MSVCP71.dll          -- To be found in Psychtoolbox/PsychContributed/ARToolkitStuff
+% MSVCR71.dll
 %
 % Additionally in the subfolders...
 % Resources/Textures
