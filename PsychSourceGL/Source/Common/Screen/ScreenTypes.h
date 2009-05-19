@@ -210,6 +210,11 @@ typedef struct {
 // certain conditions.
 #define kPsychBusyWaitForVBLBeforeBufferSwapRequest 32768
 
+// Don't use native beamposition query mechanism but either our own
+// homegrown solution, or no beampos query at all:
+// Currently used to work around bugs in Leopard 10.5.7 + ATI gfx:
+#define kPsychDontUseNativeBeamposQuery 65536
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

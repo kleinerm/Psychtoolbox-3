@@ -139,9 +139,11 @@ PsychError SCREENComputer(void)
 	int							stringLengthChars, ethernetMACStrSizeBytes;
 	long						gestaltResult;
 	OSErr						gestaltError;
-	Str255						systemVersionStr, systemVersionStrForward;
+//	Str255						systemVersionStr, systemVersionStrForward;
 	int							i,strIndex, bcdDigit, lengthSystemVersionString;
-
+	long						osMajor, osMinor, osBugfix;
+	char						systemVersionStr[256];
+	
     //all subfunctions should have these two lines
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -352,6 +354,18 @@ PsychError SCREENComputer(void)
 	free(ethernetMACStr);
 
 	//Add the system version string:
+	Gestalt(gestaltSystemVersionMajor, &osMajor);
+	Gestalt(gestaltSystemVersionMinor, &osMinor);
+	Gestalt(gestaltSystemVersionBugFix, &osBugfix);
+	
+	sprintf(systemVersionStr, "Mac OS %i.%i.%i", osMajor, osMinor, osBugfix);
+
+	//embed it in the return struct
+	PsychSetStructArrayStringElement("system", 0, systemVersionStr, majorStruct);
+
+/*
+	OLD DEAD Implementation, left for now as a reference...
+	//Add the system version string:
 	gestaltError=Gestalt(gestaltSystemVersion, &gestaltResult);
 
 	//The result is a four-digit value stored in BCD in the lower 16-bits  of the result.  There are implicit decimal
@@ -362,7 +376,6 @@ PsychError SCREENComputer(void)
 	//                         1    0.   3.   6
 
 	strIndex=0;
-
 	//4th digit.
 	bcdDigit=gestaltResult & 15;
 	gestaltResult= gestaltResult>>4;
@@ -400,9 +413,9 @@ PsychError SCREENComputer(void)
 	}
 
 	systemVersionStrForward[lengthSystemVersionString]='\0';
-
 	//embed it in the return struct
 	PsychSetStructArrayStringElement("system", 0, systemVersionStrForward, majorStruct);
+*/
 
     return(PsychError_none);
 }

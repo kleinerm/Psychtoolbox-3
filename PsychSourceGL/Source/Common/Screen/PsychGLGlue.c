@@ -222,7 +222,7 @@ void PsychGLClear(PsychWindowRecordType *windowRecord)
 		// clear color:
 
 		// Query currently bound shader:
-		glGetIntegerv(GL_CURRENT_PROGRAM, &oldShader);
+		oldShader = PsychGetCurrentShader(windowRecord);
 
 		// Assign hdr draw shader:
 		nowShader = PsychSetShader(windowRecord, -1);

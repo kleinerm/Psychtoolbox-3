@@ -568,6 +568,34 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     CGDisplayCount totaldisplaycount=0;
     CGGetOnlineDisplayList(0, NULL, &totaldisplaycount);
     
+	// More than one display online?
+	if (totaldisplaycount > 1) {
+		// Yes. Is this an ATI GPU?
+		if (strstr(glGetString(GL_VENDOR), "ATI")) {
+			// Is this OS/X 10.5.7?
+			long osMinor, osBugfix, osArch;
+			Gestalt(gestaltSystemVersionMinor, &osMinor);
+			Gestalt(gestaltSystemVersionBugFix, &osBugfix);
+			Gestalt(gestaltSysArchitecture, &osArch);
+			
+			if (osMinor == 5 && osBugfix == 7 && osArch == gestaltIntel) {
+				// OS/X 10.5.7 on IntelMac with an ATI GPU in dual-display or multi-display mode.
+				// This specific configuration has serious bugs in CGDisplayBeamposition() beamposition
+				// queries on multi-display setups. We mark the native beamposition mechanism as
+				// unreliable, so our fallback kernel driver based solution is used instead - or
+				// no beampos mechanism at all if driver not loaded:
+				PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychDontUseNativeBeamposQuery);
+				
+				if(PsychPrefStateGet_Verbosity()>1) {
+					printf("\n\nPTB-INFO: This is Mac OS/X 10.5.7 on an Intel Mac with an ATI GPU in multi-display mode.\n");
+					printf("PTB-INFO: Beamposition queries are broken on this configuration! Will disable them.\n");
+					printf("PTB-INFO: Our own beamposition mechanism will still work though if you have the PsychtoolboxKernelDriver loaded.\n");
+					printf("PTB-INFO: Type 'help PsychtoolboxKernelDriver' at the command prompt for more info about this option.\n\n");
+				}
+			}
+		}
+	}
+	
     if(PsychPrefStateGet_Verbosity()>1){
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
@@ -860,29 +888,29 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
-      printf("PTB-Info: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
+      printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
-          printf("PTB-Info: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
+          printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
           if (PsychPrefStateGet_VBLTimestampingMode()==3 && PSYCH_SYSTEM == PSYCH_OSX) {
-              printf("PTB-Info: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
+              printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
           }
           else {
-              if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-Info: Will use beamposition query for accurate Flip time stamping.\n");
-              if (PsychPrefStateGet_VBLTimestampingMode()< 0) printf("PTB-Info: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+              if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
+              if (PsychPrefStateGet_VBLTimestampingMode()< 0) printf("PTB-INFO: Beamposition queries are supported, but disabled. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
       }
       else {
           if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && PSYCH_SYSTEM == PSYCH_OSX) {
-              printf("PTB-Info: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
+              printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
           }
           else {
-              printf("PTB-Info: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
+              printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
           }
       }
-      printf("PTB-Info: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
+      printf("PTB-INFO: Measured monitor refresh interval from VBLsync = %f ms [%f Hz]. (%i valid samples taken, stddev=%f ms.)\n",
 	     ifi_estimate * 1000, 1/ifi_estimate, numSamples, stddev*1000);
-      if (ifi_nominal > 0) printf("PTB-Info: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
-      printf("PTB-Info: Small deviations between reported values are normal and no reason to worry.\n");
+      if (ifi_nominal > 0) printf("PTB-INFO: Reported monitor refresh interval from operating system = %f ms [%f Hz].\n", ifi_nominal * 1000, 1/ifi_nominal);
+      printf("PTB-INFO: Small deviations between reported values are normal and no reason to worry.\n");
       if ((*windowRecord)->stereomode==kPsychOpenGLStereo) printf("PTB-INFO: Stereo display via OpenGL built-in frame-sequential stereo enabled.\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTLBRStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=LeftEye, Bot.=RightEye).\n");
       if ((*windowRecord)->stereomode==kPsychCompressedTRBLStereo) printf("PTB-INFO: Stereo display via vertical image compression enabled (Top=RightEye, Bot.=LeftEye).\n");
@@ -4046,6 +4074,25 @@ int PsychRessourceCheckAndReminder(boolean displayMessage) {
 	return(i + j);
 }
 
+/* PsychGetCurrentShader() - Returns currently bound GLSL
+ * program object, if any. Returns 0 if fixed-function pipeline
+ * is active.
+ *
+ * This needs to distinguish between OpenGL 2.0 and earlier.
+ */
+int PsychGetCurrentShader(PsychWindowRecordType *windowRecord) {
+	int curShader;
+	
+	if (GLEW_VERSION_2_0) {
+		glGetIntegerv(GL_CURRENT_PROGRAM, &curShader);
+	}
+	else {
+		curShader = (int) glGetHandleARB(GL_PROGRAM_OBJECT_ARB);
+	}
+
+	return(curShader);
+}
+
 /* PsychSetShader() -- Lazily choose a GLSL shader to use for further operations.
  *
  * The routine shall bind the shader 'shader' for the OpenGL context of window
@@ -4076,8 +4123,8 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
 		if (shader <  -1) { printf("PTB-BUG: Invalid shader id %i requested in PsychSetShader()! Switching to fixed function.\n", shader); shader = 0; }
 		
 		// Query currently bound shader:
-		glGetIntegerv(GL_CURRENT_PROGRAM, &oldShader);
-		
+		oldShader = PsychGetCurrentShader(windowRecord);
+
 		// Switch required? Switch if so:
 		if (shader != oldShader) glUseProgram((GLuint) shader);
 	}

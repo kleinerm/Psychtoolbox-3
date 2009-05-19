@@ -58,7 +58,7 @@ void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
 int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
 void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);
 void	PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord);
+int		PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
 
 //end include once
 #endif
-

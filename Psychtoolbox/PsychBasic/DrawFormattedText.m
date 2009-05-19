@@ -183,7 +183,11 @@ while ~isempty(tstring)
         % character to enable underlined text. To avoid this and actually
         % draw & symbols in text as & symbols in text, we need to store
         % them as two && symbols. -> Replace all single & by &&.
-        curstring = strrep(curstring, '&', '&&');
+        if isa(curstring, 'char')
+            % Only works with char-acters, not doubles, so we can't do this
+            % when string is represented as double-encoded Unicode:
+            curstring = strrep(curstring, '&', '&&');
+        end
     end
     
     % tstring contains the remainder of the input string to process in next

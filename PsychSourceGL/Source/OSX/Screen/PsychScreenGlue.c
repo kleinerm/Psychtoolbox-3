@@ -776,6 +776,12 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	// First try standard, official Apple OS/X supported method:
 	int beampos = -1;
 	
+	if (PsychPrefStateGet_ConserveVRAM() & kPsychDontUseNativeBeamposQuery) {
+		// OS/X native beamposition queries forcefully disabled!
+		// Try to use our own homegrown fallback solution:
+		return(PsychOSKDGetBeamposition(screenNumber));
+	}
+
 	if (repeatedZeroBeamcount[screenNumber] == -20000) {
 		// OS/X native beamposition queries verified to work: Use 'em:
 		return((int) CGDisplayBeamPosition(cgDisplayId));

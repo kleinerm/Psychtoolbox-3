@@ -887,11 +887,12 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 	}
 	else {
 		// Yes. Set it up:
+        char* codecstr;
 		FSSpec recfile;
 		CodecType codectypeid;
 		CompressorComponent codeccomp;
 		codectypeid = 0;
-		char* codecstr = strstr(targetmoviefilename, ":CodecType="); 
+		codecstr = strstr(targetmoviefilename, ":CodecType="); 
 		if (codecstr) {
 			sscanf(codecstr, ":CodecType= %i", &codectypeid);
 			*codecstr = 0;
