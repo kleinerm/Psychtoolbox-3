@@ -572,14 +572,14 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 	if (totaldisplaycount > 1) {
 		// Yes. Is this an ATI GPU?
 		if (strstr(glGetString(GL_VENDOR), "ATI")) {
-			// Is this OS/X 10.5.7?
+			// Is this OS/X 10.5.7 or later?
 			long osMinor, osBugfix, osArch;
 			Gestalt(gestaltSystemVersionMinor, &osMinor);
 			Gestalt(gestaltSystemVersionBugFix, &osBugfix);
 			Gestalt(gestaltSysArchitecture, &osArch);
 			
-			if (osMinor == 5 && osBugfix == 7 && osArch == gestaltIntel) {
-				// OS/X 10.5.7 on IntelMac with an ATI GPU in dual-display or multi-display mode.
+			if (osMinor == 5 && osBugfix >= 7 && osArch == gestaltIntel) {
+				// OS/X 10.5.7 or later on IntelMac with an ATI GPU in dual-display or multi-display mode.
 				// This specific configuration has serious bugs in CGDisplayBeamposition() beamposition
 				// queries on multi-display setups. We mark the native beamposition mechanism as
 				// unreliable, so our fallback kernel driver based solution is used instead - or
@@ -587,7 +587,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
 				PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychDontUseNativeBeamposQuery);
 				
 				if(PsychPrefStateGet_Verbosity()>1) {
-					printf("\n\nPTB-INFO: This is Mac OS/X 10.5.7 on an Intel Mac with an ATI GPU in multi-display mode.\n");
+					printf("\n\nPTB-INFO: This is Mac OS/X 10.5.%i on an Intel Mac with an ATI GPU in multi-display mode.\n", (int) osBugfix);
 					printf("PTB-INFO: Beamposition queries are broken on this configuration! Will disable them.\n");
 					printf("PTB-INFO: Our own beamposition mechanism will still work though if you have the PsychtoolboxKernelDriver loaded.\n");
 					printf("PTB-INFO: Type 'help PsychtoolboxKernelDriver' at the command prompt for more info about this option.\n\n");

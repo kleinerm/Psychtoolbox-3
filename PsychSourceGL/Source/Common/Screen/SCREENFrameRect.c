@@ -52,7 +52,7 @@ PsychError SCREENFrameRect(void)
 	PsychWindowRecordType			*windowRecord;
 	int								whiteValue;
 	boolean							isArgThere;
-	double							penSize, lf;
+	double							penSize, lf, fudge;
 	GLdouble						dVals[4]; 
     double							*xy, *colors, *penSizes;
 	unsigned char					*bytecolors;
@@ -129,40 +129,54 @@ PsychError SCREENFrameRect(void)
 		
 		if (penSizes[j] != penSize) {
 			penSize = penSizes[j];
-			glLineWidth((GLfloat) penSize);
+			if (lf != -1) glLineWidth((GLfloat) penSize);
 		}
 		
 		if (IsPsychRectEmpty(rect)) continue;
-		
-		if (penSize > 1) {
-			// Width > 1
-			glBegin(GL_LINES);
-			// Draw 4 separate segments, extend the left and right
-			// vertical segments by half a penWidth.
-			glVertex2d(rect[kPsychLeft], rect[kPsychTop] - lf * penSize/2);
-			glVertex2d(rect[kPsychLeft], rect[kPsychBottom] + lf * penSize/2);
-			glVertex2d(rect[kPsychLeft], rect[kPsychTop]);
-			glVertex2d(rect[kPsychRight], rect[kPsychTop]);
-			glVertex2d(rect[kPsychRight], rect[kPsychTop] - lf * penSize/2);
-			glVertex2d(rect[kPsychRight], rect[kPsychBottom] + lf * penSize/2);
-			glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
-			glVertex2d(rect[kPsychLeft], rect[kPsychBottom]);
-			glEnd();			
+
+		if (lf == -1) {
+			// New style rendering: More robust against variations in GPU implementations:
+			fudge = penSize;
+			glRectd(rect[kPsychLeft], rect[kPsychTop], rect[kPsychRight], rect[kPsychTop] + fudge);
+			glRectd(rect[kPsychLeft], rect[kPsychBottom], rect[kPsychRight], rect[kPsychBottom] - fudge);
+			glRectd(rect[kPsychLeft], rect[kPsychTop]+fudge, rect[kPsychLeft]+fudge, rect[kPsychBottom]-fudge);
+			glRectd(rect[kPsychRight]-fudge, rect[kPsychTop]+fudge, rect[kPsychRight], rect[kPsychBottom]-fudge);
 		}
 		else {
-			// Width <= 1: Simple case...
-			glBegin(GL_LINE_LOOP);
-			glVertex2d(rect[kPsychLeft], rect[kPsychBottom]);
-			glVertex2d(rect[kPsychLeft], rect[kPsychTop]);
-			glVertex2d(rect[kPsychRight], rect[kPsychTop]);
-			glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
-			glEnd();
+			// Old style: Has a couple of problems in corner cases. Left for now as reference...
+			if (penSize > 1) {
+				// Width > 1
+				
+				fudge = (penSize > 1) ? lf * penSize/2 : 0.0;
+				
+				glBegin(GL_LINES);
+				// Draw 4 separate segments, extend the left and right
+				// vertical segments by half a penWidth.
+				glVertex2d(rect[kPsychLeft], rect[kPsychTop] - fudge);
+				glVertex2d(rect[kPsychLeft], rect[kPsychBottom] + fudge);
+				glVertex2d(rect[kPsychRight], rect[kPsychTop]);
+				glVertex2d(rect[kPsychLeft], rect[kPsychTop]);
+				glVertex2d(rect[kPsychRight], rect[kPsychBottom] + fudge);
+				glVertex2d(rect[kPsychRight], rect[kPsychTop] - fudge);
+				glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
+				glVertex2d(rect[kPsychLeft], rect[kPsychBottom]);
+				glEnd();			
+			}
+			else {
+				// Width <= 1: Simple case...
+				glBegin(GL_LINE_LOOP);
+				glVertex2d(rect[kPsychLeft], rect[kPsychBottom]);
+				glVertex2d(rect[kPsychLeft], rect[kPsychTop]);
+				glVertex2d(rect[kPsychRight], rect[kPsychTop]);
+				glVertex2d(rect[kPsychRight], rect[kPsychBottom]);
+				glEnd();
+			}
 		}
 		// Next rect...
 	}
 	
 	// Need to reset line width?
-	if (penSize!=1) glLineWidth(1);
+	if (penSize!=1 && lf!=-1) glLineWidth(1);
 
 	// Mark end of drawing op. This is needed for single buffered drawing:
 	PsychFlushGL(windowRecord);
