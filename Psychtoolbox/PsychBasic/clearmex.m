@@ -16,3 +16,4 @@ clearWaitSecs;
 clearmoglcore;
 clearPsychPortAudio;
 clearIOPort;
+clearPsychHID;
