@@ -26,6 +26,9 @@
 
 */
 
+#ifndef PSYCH_IS_INCLUDED_PsychIncludes
+#define PSYCH_IS_INCLUDED_PsychIncludes
+
 #include "PsychPlatform.h"
 
 //Includes dependent on runtime environment:
@@ -127,3 +130,5 @@
 	#include "SDL.h"
 #endif
 
+//end include once
+#endif

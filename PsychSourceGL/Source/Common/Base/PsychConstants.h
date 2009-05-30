@@ -34,7 +34,6 @@ typedef unsigned char bool;
 #endif
 #endif
 
-
 //bring in the standard c and system headers 
 #include "PsychIncludes.h"
 
@@ -107,6 +106,7 @@ typedef unsigned char bool;
 #define GL_TEXTURE_DEPTH 0x8071
 #endif
 
+#ifndef PTBOCTAVE3MEX
 // mwSize is a new type introduced around Matlab R2006b. Define
 // it to be an integer on older Matlab releases and other runtime
 // environments: (MX_API_VER is defined in Matlabs matrix.h file)
@@ -118,6 +118,7 @@ typedef unsigned char bool;
 	#if  MX_API_VER < 0x07030000
 		#define SELFMADE_MWSIZE 1
 	#endif
+#endif
 #endif
 
 // Do we need to define mwSize ourselves?

@@ -45,9 +45,15 @@
 #endif
 
 #if PSYCH_LANGUAGE == PSYCH_MATLAB
+#ifndef PTBOCTAVE3MEX
 //Placeholder for the MATLAB version at build time.
 #define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "Matlab"
+#else
+// Binary plugin for Octave-3 or later via the MEX interface:
+#define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave-3"
 #endif
+#endif
+
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 //Placeholder for the Octave version at build time.
 #define PSYCHTOOLBOX_SCRIPTING_LANGUAGE_NAME	                "GNU/Octave"

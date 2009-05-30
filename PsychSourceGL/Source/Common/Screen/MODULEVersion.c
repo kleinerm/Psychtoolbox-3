@@ -64,7 +64,7 @@ PsychError MODULEVersion(void)
     //get the build and version string
     buildNumber=PsychGetBuildNumber();
     versionString=PsychGetVersionString();
-    
+
     //create a structure and populate it.
     PsychAllocOutStructArray(1, FALSE, numVersionFieldDimensions, numVersionFieldNames, versionFieldNames, &versionStructArray);
     PsychSetStructArrayStringElement("version", 0, versionString, versionStructArray);
