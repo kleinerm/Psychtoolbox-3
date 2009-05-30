@@ -13,7 +13,7 @@ function [x, y] = RectCenterd(r)
 %   5/18/08 mk Non-rounding version, trivially derived from RectCenter.
 
 if nargout~=2
-	error('Usage: [x, y] = RectCenter(rect);');
+	error('Usage: [x, y] = RectCenterd(rect);');
 end
 
 if PsychNumel(r) == 4
