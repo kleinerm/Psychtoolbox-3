@@ -14,7 +14,7 @@ function resultFlag = IsOctave
 
 % If the built-in variable OCTAVE_VERSION exists,
 % then we are running under GNU/Octave, otherwise not.
-if exist('OCTAVE_VERSION', 'builtin') == 102
+if ismember(exist('OCTAVE_VERSION', 'builtin'), [102, 5])
   resultFlag = 1;
 else
   resultFlag = 0;

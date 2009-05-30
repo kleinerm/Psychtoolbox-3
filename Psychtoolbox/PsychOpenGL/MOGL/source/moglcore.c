@@ -75,7 +75,7 @@ extern void mogl_rebindARBExtensionsToCore(void);
 #endif
 
 // Automatic checking and handling for glError's and GLSL errors.
-void mogl_checkerrors(const char* cmd, mxArray *prhs[]);
+void mogl_checkerrors(const char* cmd, const mxArray *prhs[]);
 
 void mexExitFunction(void)
 {
@@ -580,7 +580,7 @@ void mogl_glunsupported(const char* fname)
     mexErrMsgTxt(errtxt);
 }
 
-void mogl_checkerrors(const char* cmd, mxArray *prhs[]) 
+void mogl_checkerrors(const char* cmd, const mxArray *prhs[]) 
 {
     char errtxt[10000];
     GLint err, status, handle;

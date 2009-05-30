@@ -1,3 +1,6 @@
+// Only build this file internally to moglcore.oct if we are building an OCT file for Octave-2!
+#ifndef PTBOCTAVE3MEX
+
 #include <octave/oct.h>
 
 DEFUN_DLD (castDouble2Float, args, ,
@@ -78,3 +81,5 @@ DEFUN_DLD (castDouble2Float, args, ,
     return(octave_value(mout));
   }
 }
+
+#endif

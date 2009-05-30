@@ -153,10 +153,10 @@ try
         end;
         
         [mx, my, buttons]=GetMouse(screenNumber);
-        if KbCheck | find(buttons) % break out of loop
+        if KbCheck | any(buttons) % break out of loop
             break;
         end;
-
+        
         xy = xy + dxdy;						% move dots
         r = r + dr;							% update polar coordinates too
 

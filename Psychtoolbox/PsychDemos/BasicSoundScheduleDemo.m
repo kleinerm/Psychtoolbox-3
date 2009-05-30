@@ -66,11 +66,7 @@ if isempty(wavfilenames)
     infilenames.name;
 
     for i=1:length(infilenames)
-        if IsOctave
-            wavfilenames{i} = infilenames(i).name;
-        else
-            wavfilenames{i} = [ sounddir infilenames(i).name ];
-        end
+        wavfilenames{i} = [ sounddir infilenames(i).name ];
     end
 end
 

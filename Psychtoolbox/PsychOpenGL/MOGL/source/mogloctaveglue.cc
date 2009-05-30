@@ -9,6 +9,9 @@
  *
  */
 
+// Only build this file if we are building an OCT file for Octave-2!
+#ifdef PTBOCTAVE
+
 // Include our own datatype and pseudo mex function definitions:
 #include "mogltypes.h"
 
@@ -493,3 +496,5 @@ char* mxArrayToString(mxArray* arrayPtr)
 
   return(outstr);
 }
+
+#endif // PTBOCTAVE

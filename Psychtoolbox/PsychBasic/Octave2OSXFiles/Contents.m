@@ -1,7 +1,7 @@
-% Psychtoolbox:PsychBasic:OctaveOSXFiles
+% Psychtoolbox:PsychBasic:Octave2OSXFiles
 %
 % This folder contains the binary plugins for running Psychtoolbox under
-% GNU/Octave on MacOS/X IntelMac. OCT files are the counterparts to Matlabs
+% GNU/Octave V2.0 on MacOS/X IntelMac. OCT files are the counterparts to Matlabs
 % MEX-Files -- Compiled C code.
 %
 % All OCT files for all platforms end with the same .oct extension, therefore

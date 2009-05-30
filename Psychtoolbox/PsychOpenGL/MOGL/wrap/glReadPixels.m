@@ -93,22 +93,37 @@ if bufferoffset == -1
     switch(type)
         case GL.UNSIGNED_BYTE
             pixels = uint8(pixels);
+            pclass = 'uint8';
         case GL.BYTE
             pixels = int8(pixels);
+            pclass = 'int8';
         case GL.UNSIGNED_SHORT
             pixels = uint16(pixels);
+            pclass = 'uint16';
         case GL.SHORT
             pixels = int16(pixels);
+            pclass = 'int16';
         case GL.UNSIGNED_INT
             pixels = uint32(pixels);
+            pclass = 'uint32';
         case GL.INT
             pixels = int32(pixels);
+            pclass = 'int32';
         case GL.FLOAT
             pixels = moglsingle(pixels);
+            pclass = 'double';
     end;
 
     % Execute actual call:
     moglcore( 'glReadPixels', x, y, width, height, format, type, pixels );
+
+    if IsOctave
+        if type == GL.FLOAT
+            pixels = mogldouble(pixels);
+        end
+        
+        retpixels = zeros(size(pixels,2), size(pixels,3), size(pixels,1), pclass);
+    end
 
     % Rearrange data in Matlab friendly format:
     for i=1:numperpixel
