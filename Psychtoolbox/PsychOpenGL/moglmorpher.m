@@ -613,29 +613,17 @@ if strcmp(cmd, 'addMesh')
     maxvertex=max(max(faces));
     
     % 2nd argument is vertex array:
-    if usetype==GL.FLOAT
-        vertices = moglsingle(arg2);
-    else
-        vertices = double(arg2);
-    end;
-
+    vertices = double(arg2);
+    
     % 3rd (optional) argument is texture coordinate array:
     if argcount>3 && ~isempty(arg3)
-        if usetype==GL.FLOAT
-            texcoords = moglsingle(arg3);
-        else
-            texcoords = double(arg3);
-        end;
+        texcoords = double(arg3);
         usetextures = 1;    
     end;
     
     % 4th (optional) argument is normal vectors array:
     if argcount>4 && ~isempty(arg4)
-        if usetype==GL.FLOAT
-            normals = moglsingle(arg4);
-        else
-            normals = double(arg4);
-        end;
+        normals = double(arg4);
         usenormals = 1;
     end;
 
@@ -645,18 +633,32 @@ if strcmp(cmd, 'addMesh')
     if ~gpubasedmorphing
         % CPU based operation: Just copy vertices and normals into our
         % internal arrays of keyshapes:
+        
+        % If runtime can handle native single() aka FLOAT data type, then
+        % downcase to float --> More memory and speed efficient on CPU!
+        % Otherwise (Matlab < 7.0 or current Octave 2 and 3) keep it at our
+        % current double() format:
+        if usetype==GL.FLOAT
+            vertices = moglsingle(vertices);
+            texcoords = moglsingle(texcoords);
+            normals = moglsingle(normals);
+        end;
+        
         keyvertices(:,:,objcount)=vertices(:,:);
         keynormals(:,:,objcount)=normals(:,:);
     else    
         % GPU based operation: Setup "shape textures" ie, floating point
         % textures that encode vertex and normal vectors.
 
+        % The current format of vertices, texcoords and normals is
+        % double(), which is what we need for creation of floating point
+        % textures...
+        
         % Build shape vector texture:
         texlinelength = 1024;
         nrows = ceil(size(vertices, 2) / texlinelength);
         ncols = texlinelength;
         npad = (texlinelength - mod(size(vertices, 2), texlinelength));
-        %oldsize = size(vertices)
 
         if npad ~= texlinelength
             invertices = [vertices zeros(3, npad)];
@@ -669,8 +671,6 @@ if strcmp(cmd, 'addMesh')
                 innormals = normals;
             end
         end
-
-        %newsize = size(invertices)
 
         c1 = flipud(transpose(reshape(invertices(1,:), ncols, nrows)));
         c2 = flipud(transpose(reshape(invertices(2,:), ncols, nrows)));
@@ -687,7 +687,6 @@ if strcmp(cmd, 'addMesh')
         myshapeimg(:,:,1) = c1;
         myshapeimg(:,:,2) = c2;
         myshapeimg(:,:,3) = c3;
-        %myshapesize = size(myshapeimg)
         
         % Query current OpenGL state:
         [targetwindow, IsOpenGLRendering] = Screen('GetOpenGLDrawMode');
@@ -796,7 +795,7 @@ if strcmp(cmd, 'addMesh')
                 % nr-coords * sizeof(float) (ie 4)
                 texcoordsize = size(texcoords,1) * size(texcoords,2) * 4;
                 glBufferData(GL.ARRAY_BUFFER, buffersize, 0, GL.STREAM_COPY);
-                glBufferSubData(GL.ARRAY_BUFFER, 0, texcoordsize, texcoords);
+                glBufferSubData(GL.ARRAY_BUFFER, 0, texcoordsize, moglsingle(texcoords));
                 vbovertexstart = texcoordsize;
             end
             
@@ -924,7 +923,10 @@ if strcmp(cmd, 'renderMorph') | strcmp(cmd, 'computeMorph')
     if size(arg1, 2)~=1
         arg1 = transpose(arg1);
     end
- 
+
+    % Make sure the weights are in double() format:
+    arg1 = double(arg1);
+    
     % By default we morph normal vectors as well. As this is not mathematically correct,
     % the parent-code can prevent normal morphing by providing the optional morphnormals=0
     % flag.
@@ -1429,7 +1431,7 @@ if strcmp(cmd, 'getVertexPositions')
       % No single precision float's available :( - Need to do our
       % ugly trick: Request data as uint32 array, then use our special cast routine to upcast it to a double matrix.
       tmpbuffer = moglgetbuffer(feedbackptr, GL.UNSIGNED_INT, nritems * 4);
-      tmpbuffer = castDouble2Float(tmpbuffer, 1);
+      tmpbuffer = mogldouble(tmpbuffer);
    end;
 
    % Reshape it to be a n-by-4 matrix:
