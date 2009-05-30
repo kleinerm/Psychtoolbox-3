@@ -54,12 +54,13 @@
 	now works.
  */
 
+#include "PsychHID.h"
+
 // HIDGetReport
-#include "HID_Utilities_External.h" 
+
 // Get a report from an HID device.
 // Apple's HID Utilities Source/HID_Queue_Utilities.c
 long HIDGetReport(pRecDevice pDevice,const IOHIDReportType reportType, const UInt32 reportID, void* reportBuffer, UInt32* reportBufferSize);
-#include "PsychHID.h"
 
 //#include "IOHIDLib.h" // setInterruptReportHandlerCallback
 

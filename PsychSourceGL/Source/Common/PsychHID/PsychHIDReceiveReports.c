@@ -63,11 +63,10 @@
 	now works.
  */
 
-#include "HID_Utilities_External.h" // HIDGetReport
-//#include "/usr/include/mach/mach_port.h" // mach_port_deallocate
-//#include "IOHIDLib.h" // setInterruptReportHandlerCallback
-#include <IOKit/HID/IOHIDLib.h>
 #include "PsychHID.h"
+
+#include <IOKit/HID/IOHIDLib.h>
+
 void CheckRunLoopSource(int deviceIndex,char *caller,int line);
 
 static char useString[]= "err=PsychHID('ReceiveReports',deviceNumber[,options])";
