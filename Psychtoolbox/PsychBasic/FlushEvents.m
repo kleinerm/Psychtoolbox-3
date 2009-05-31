@@ -38,8 +38,24 @@ function FlushEvents(varargin)
 %               receiving mouse clicks that were meant to be only processed by the
 %               experiment script. In other words: Fix more Matlab
 %               brain-damage.
+%
+% 05/31/09 mk   Add support for Octave and Matlab in noJVM mode.
 
 global OSX_JAVA_GETCHAR;
+
+% We only flush the character queue if we are either called without
+% any arguments, or an empty argument string (which means: Flush
+% all events), or if one of the arguments is the 'keyDown' event.
+doclear = 0;
+if length(varargin)==0 %#ok<ISMT>
+    doclear = 1;
+else
+    for i=1:length(varargin)
+        if strcmp(lower(char(varargin{i})), 'keydown')==1 %#ok<STCI>
+            doclear = 1;
+        end
+    end
+end;
 
 if ~IsOctave
     % Execute a single drawnow() to kick in Matlabs event processing.
@@ -59,28 +75,16 @@ if ~IsOctave
             end
             OSX_JAVA_GETCHAR.register;
         end
-
-        % We only flush the character queue if we are either called without
-        % any arguments, or an empty argument string (which means: Flush
-        % all events), or if one of the arguments is the 'keyDown' event.
-        doclear = 0;
-        if length(varargin)==0
-            doclear = 1;
-        else
-            for i=1:length(varargin)
-                if strcmp(lower(char(varargin{i})), 'keydown')==1
-                    doclear = 1;
-                end
-            end
-        end;
         
         if doclear == 1
             % Clear the internal queue of characters:
             OSX_JAVA_GETCHAR.clear;
             % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
             % reported by Denis:
-            while CharAvail, drawnow; dummy = GetChar; end;
+            while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
         end
+        
+        return;
     else
         % Java VM unavailable, i.e., running in -nojvm mode.
         % On Windows, we can fall back to the old FlushEvents.dll.
@@ -88,12 +92,22 @@ if ~IsOctave
             % FlushEvents.dll has been renamed to FlushEventsNoJVM.dll. Call it.
             FlushEventsNoJVM(char(varargin{:}));
             return;
-        else
-            % There's no replacement for Java FlushEvents on OS-X or Linux :(
-            error('Sorry! FlushEvents is not supported in ''matlab -nojvm'' or ''matlab -nodesktop'' mode on MacOS-X or GNU/Linux.');
         end
     end
-else
-    % Running on Octave! That is a no go.
-    error('Sorry! FlushEvents is not yet supported on GNU/Octave.');
 end
+
+% Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:
+
+if doclear == 1
+    % Clear the internal queue of characters:
+
+    % Screen's GetMouseHelper with command code 13 clears the queue of
+    % characters on stdin:
+    Screen('GetMouseHelper', -13);
+
+    % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
+    % reported by Denis:
+    while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+end
+
+return;

@@ -113,15 +113,6 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % keystrokes, "when' return argument fields differs between OS 9 and OS X.
 % GetChar sets fields for which it returns no value to the value 'Nan'.  
 %
-% OS 9: ___________________________________________________________________
-%
-% Command-Period always causes an immediate exit.
-% When BACKGROUNDING is enabled, Matlab removes all characters from the
-% event queue before executing each Matlab statement, so CharAvail and
-% EventAvail('keyDown') always report 0. So turn off BACKGROUNDING:
-% 	Screen('Preference','Backgrounding',0); 
-% _________________________________________________________________________
-%
 % See also: ListenChar, CharAvail, FlushEvents, TestGetChar, KbCheck,
 % KbWait
 
@@ -167,8 +158,8 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 % 9/18/06  mk  GetChar now works on all Matlabs (OS-X, Windows) in JVM
 %              mode. In -nojvm mode on Windows, it falls back to the old
 %              Windows DLL ...
-
-
+%
+% 05/31/09 mk  Add support for Octave and Matlab in noJVM mode.
 
 % TO DO
 % 
@@ -193,23 +184,21 @@ function [ch, when] = GetChar(getExtendedData, getRawCode)
 
 global OSX_JAVA_GETCHAR;
 
-% Java based GetChar is only supported on Matlab, not on Octave, due to
-% Octaves lack of a Java virtual machine.
+% If no command line argument was passed we'll assume that the user only
+% wants to get character data and timing/modifier data.
+if nargin == 0
+    getExtendedData = 1;
+    getRawCode = 0;
+elseif nargin == 1
+    getRawCode = 0;
+end
+
 if ~IsOctave
     % This is Matlab. Is the Java VM and AWT and Desktop running?
     if psychusejava('desktop')
         % Java virtual machine and AWT and Desktop are running. Use our Java based
         % GetChar.
         
-        % If no command line argument was passed we'll assume that the user only
-        % wants to get character data and timing/modifier data.
-        if nargin == 0
-            getExtendedData = 1;
-            getRawCode = 0;
-        elseif nargin == 1
-            getRawCode = 0;
-        end
-
         % Make sure that the GetCharJava class is loaded and registered with
         % the java focus manager.
         if isempty(OSX_JAVA_GETCHAR)
@@ -270,6 +259,8 @@ if ~IsOctave
         else
             when = [];
         end
+        
+        return;
     else
         % Java VM unavailable, i.e., running in -nojvm mode.
         % On Windows, we can fall back to the old GetChar.dll, although we
@@ -279,12 +270,46 @@ if ~IsOctave
             ch = GetCharNoJVM;
             when = [];
             return;
-        else
-            % There's no replacement for Java GetChar on OS-X or Linux :(
-            error('Sorry! GetChar is not supported in ''matlab -nojvm'' or ''matlab -nodesktop'' mode on MacOS-X or GNU/Linux.');
         end
     end
-else
-    % Running on Octave! That is a no go.
-    error('Sorry! GetChar is not yet supported on GNU/Octave.');
 end
+
+% Either Octave or Matlab in No JVM mode on Linux or OS/X:
+
+% Loop until we receive character input.
+keepChecking = 1;
+while keepChecking
+    % Check to see if a character is available, and stop looking if
+    % we've found one.
+
+    % Screen's GetMouseHelper with command code 15 delivers
+    % id of currently pending characters on stdin:
+    charValue = Screen('GetMouseHelper', -15);
+    keepChecking = charValue == 0;
+    if keepChecking
+        drawnow;
+        if exist('fflush')
+            builtin('fflush', 1);
+        end
+    end
+end
+
+% Throw an error if we've exceeded the buffer size.
+if charValue == -1
+    % Reenable keystroke display to leave us with a
+    % functional console.
+    Screen('GetMouseHelper', -11);
+    error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+end
+
+% Get the typed character.
+if getRawCode
+    ch = charValue;
+else
+    ch = char(charValue);
+end
+
+% No extended data in this mode:
+when = [];
+
+return;

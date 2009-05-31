@@ -61,6 +61,9 @@
 
 #include "Screen.h"
 
+// Current ListenChar state:
+static int	listenchar_enabled = 0;
+
 #if PSYCH_SYSTEM == PSYCH_LINUX
 
 /* These are needed for realtime scheduling and memory locking control: */
@@ -68,6 +71,149 @@
 #include <errno.h>
 #include <sys/mman.h>
 #endif
+
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+
+/**
+ POSIX implementation of _kbhit() for Linux and OS/X:
+ Adapted from example code by Morgan McGuire, morgan@cs.brown.edu
+*/
+
+#include <stdio.h>
+#include <sys/select.h>
+#include <sys/ioctl.h>
+#include <termios.h>
+
+int _kbhit(void) {
+	struct termios		term;
+    static const int	STDIN = 0;
+    static int			current_mode = 0;
+    int					bytesWaiting;
+
+	// Change of mode requested?
+    if (current_mode != listenchar_enabled) {
+        // Use termios to turn off line buffering
+        tcgetattr(STDIN, &term);
+
+		// MK: Ok, none of these settings works as we'd like it to work :-(
+		// The only reasonable case is clearing the ICANON flag, which gives
+		// us what we want. All other settings commented out, because they
+		// do more harm than good.
+		
+		if (listenchar_enabled == 0) {
+			// Enable canonic input processing - The normal mode:
+//			term.c_lflag |= ICANON;
+		}
+		else {
+			// Disable canonic input processing so we don't need to wait
+			// for newline before we get input:
+			term.c_lflag &= ~ICANON;
+		}
+		
+//		if (listenchar_enabled == 2) {
+//			// Disable echoing of characters:
+//			term.c_lflag &= ~(ECHO);
+//		}
+//		else {
+//			// Enable echoing of characters:
+//			term.c_lflag |= (ECHO);
+//		}
+		
+        tcsetattr(STDIN, TCSANOW, &term);
+		
+		// Disable bufferin of characters:
+        setbuf(stdin, NULL);
+
+		// New opmode established:
+        current_mode = listenchar_enabled;
+    }
+
+	// Query number of pending characters in stdin stream:
+    ioctl(STDIN, FIONREAD, &bytesWaiting);
+    return bytesWaiting;
+}
+
+#else
+// _kbhit() is part of MS-Windows CRT standard runtime library. We just
+// need to include the conio header file:
+#include <conio.h>
+#endif
+
+// Special console handler: Performs functions of ListenChar, FlushEvents,
+// CharAvail and GetChar when run in terminal mode without GUI and JavaVM:
+void ConsoleInputHelper(int ccode)
+{
+	int ret;
+	
+	switch(ccode) {
+		case -10:	// ListenChar(0);
+			// Disable char listening:
+			listenchar_enabled = 0;
+			_kbhit();
+		break;
+		
+		case -11:	// ListenChar(1);
+			// Enable char listening:
+			listenchar_enabled = 1;
+			_kbhit();
+		break;
+
+		case -12:	// ListenChar(2);
+			// Enable char listening and suppress output to console:
+			listenchar_enabled = 1 + 2;
+			_kbhit();
+		break;
+
+		case -13:	// FlushEvents:
+			// Enable char listening:
+			listenchar_enabled |= 1;
+
+			// Drain queue from all pending characters:
+			while (_kbhit()) getchar();
+		break;
+
+		case -14:	// CharAvail():
+			// Enable char listening:
+			listenchar_enabled |= 1;
+
+			// Return number of pending chars in queue:
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) _kbhit());
+		break;
+
+		case -15:	// GetChar():
+			// Enable char listening:
+			listenchar_enabled |= 1;
+			
+			// Retrieve one character: Return if none available.
+			// We call _kbhit() once to turn the terminal into non-blocking mode,
+			// so it doesn't wait for newlines:
+			if (0 == _kbhit()) {
+				// Nothing available: Return zero result code:
+				ret = 0;
+			}
+			else {
+				// At least one available: Fetch one...
+				ret = getchar();
+				// Valid?
+				if (ret == EOF) {
+					// Failed - End of stream or error! Clear error condition:
+					clearerr(stdin);
+					errno = 0;
+					// Return error code -1:
+					ret = -1;
+				}
+			}
+			
+			// Return whatever we've got:
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) ret);
+		break;
+		
+		default:
+			PsychErrorExitMsg(PsychError_internal, "Invalid command code encountered in ConsoleInputHelper()! This is an implementation BUG!");
+	}
+
+	return;
+}
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "[x, y, buttonValueArray]= Screen('GetMouseHelper', numButtons [, screenNumber]);";
@@ -107,6 +253,13 @@ PsychError SCREENGetMouseHelper(void)
 	PsychCopyInDoubleArg(1, kPsychArgRequired, &numButtons);
 	if(numButtons > 32)
 		PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "numButtons must not exceed 32");
+
+	// Special codes -10 to -15? --> Console keyboard queries:
+	if(numButtons <= -10 && numButtons >= -15) {
+		ConsoleInputHelper((int) numButtons);
+		return(PsychError_none);
+	}
+
 	if(numButtons < 1) 
 		PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "numButtons must exceed 1");
 	doButtonArray=PsychAllocOutDoubleMatArg(3, kPsychArgOptional, (int)1, (int)numButtons, (int)1, &buttonArray);
@@ -159,6 +312,12 @@ PsychError SCREENGetMouseHelper(void)
 	  // This is a hack to provide keyboard queries until a PsychHID() implementation
 	  // for Microsoft Windows is available...
 
+		// Special codes -10 to -15? --> Console keyboard queries:
+		if(numButtons <= -10 && numButtons >= -15) {
+			ConsoleInputHelper((int) numButtons);
+			return(PsychError_none);
+		}
+		
 	  if (firsttime) {
 			// First time init:
 			firsttime = 0;
@@ -358,6 +517,12 @@ PsychError SCREENGetMouseHelper(void)
 	  // This is a hack to provide keyboard queries until a PsychHID() implementation
 	  // for Linux is available...
 
+		// Special codes -10 to -15? --> Console keyboard queries:
+		if(numButtons <= -10 && numButtons >= -15) {
+			ConsoleInputHelper((int) numButtons);
+			return(PsychError_none);
+		}
+		
 	  if (numButtons==-1 || numButtons==-2) {
 	    // KbCheck()/KbWait() mode:
 

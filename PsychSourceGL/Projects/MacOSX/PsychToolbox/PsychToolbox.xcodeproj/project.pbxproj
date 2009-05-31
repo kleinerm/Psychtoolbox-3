@@ -15557,12 +15557,17 @@
 		2F57E2DC08CE718C00A5CF85 /* Development */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DEPLOYMENT_LOCATION = YES;
+				DSTROOT = "$(PSYCHTOOLBOXROOT)/";
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
+				INSTALL_PATH = "/$(PSYCHMEXDESTFOLDER)";
 				LIBRARY_SEARCH_PATHS = (
 					/usr/lib/gcc/darwin/3.3/,
 					"$(LIBRARY_SEARCH_PATHS)",
 				);
 				MATLAB_DIR_NAME = MATLAB74;
+				PSYCHMEXDESTFOLDER = PsychBasic;
+				PSYCHTOOLBOXROOT = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
 				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 				USER_HEADER_SEARCH_PATHS = "/usr/local/include $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/src $(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include $(USER_HEADER_SEARCH_PATHS)";
 			};
@@ -15573,6 +15578,7 @@
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				MATLAB_DIR_NAME = MATLAB71;
+				PSYCHTOOLBOXROOT = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
 				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};
 			name = Deployment;
@@ -15582,6 +15588,7 @@
 			buildSettings = {
 				GCC_INPUT_FILETYPE = sourcecode.c.c;
 				MATLAB_DIR_NAME = MATLAB71;
+				PSYCHTOOLBOXROOT = /Users/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox;
 				SDKROOT = /Developer/SDKs/MacOSX10.4u.sdk;
 			};
 			name = Default;
@@ -23099,6 +23106,7 @@
 					"$(LIBRARY_SEARCH_PATHS_QUOTED_1)",
 				);
 				LIBRARY_SEARCH_PATHS_QUOTED_1 = "\"$(SRCROOT)\"";
+				LINK_WITH_STANDARD_LIBRARIES = NO;
 				OTHER_LDFLAGS = (
 					/usr/local/lib/libdc1394.a,
 					"$(inherited)",
@@ -24520,6 +24528,7 @@
 			buildSettings = {
 				ARCHS = "$(NATIVE_ARCH)";
 				COPY_PHASE_STRIP = NO;
+				DEPLOYMENT_LOCATION = YES;
 				EXECUTABLE_EXTENSION = mexmaci;
 				EXPORTED_SYMBOLS_FILE = "";
 				FRAMEWORK_SEARCH_PATHS = (
@@ -24543,7 +24552,6 @@
 					"$(SRCROOT)/../../../Cohorts/ARToolkit/include/**",
 					/Applications/MATLAB74/extern/include,
 				);
-				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					/Applications/MATLAB74/bin/maci,
@@ -24572,6 +24580,7 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = Screen;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
 				USER_HEADER_SEARCH_PATHS = "$(inherited)";
 				WARNING_CFLAGS = "-Wno-long-double";
