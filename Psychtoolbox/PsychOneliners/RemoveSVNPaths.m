@@ -8,6 +8,7 @@ function newPathList = RemoveSVNPaths(pathList)
 % History:
 % 14.07.06 Written by Christopher Broussard.
 % 25.07.06 Modified to work on M$-Windows and GNU/Octave as well (MK).
+% 31.05.09 Adapted to fully work on Octave-3 (MK).
 
 % If no pathList was passed to the function we'll just grab the one from
 % Matlab.
@@ -23,14 +24,22 @@ try
     % case.
     
     % Break the path list into individual path elements.
-    pathElements = strread(pathList, '%s', 'delimiter', pathsep);
-
+    if IsOctave
+        pathElements = cell(0,0);
+        mypath = path;
+        while ~isempty(mypath)
+            [pathElements{end+1}, mypath] = strtok(mypath, pathsep); %#ok<STTOK,AGROW>
+        end;
+    else
+        pathElements = strread(pathList, '%s', 'delimiter', pathsep);
+    end
+    
     % Look at each element from the path.  If it doesn't contain a .svn folder
     % then we add it to the end of our new path list.
     newPathList = [];
     for i = 1:length(pathElements)
         if isempty(findstr(pathElements{i}, [filesep '.svn']))
-            newPathList = [newPathList, pathElements{i}, pathsep];
+            newPathList = [newPathList, pathElements{i}, pathsep]; %#ok<AGROW>
         end
     end
 

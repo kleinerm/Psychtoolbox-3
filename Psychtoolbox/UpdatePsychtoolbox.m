@@ -43,6 +43,7 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              This to work-around questions of the client about accepting
 %              security certificates...
 % 01/05/09 mk  Remove && or || to make old Matlab versions happier.
+% 05/31/09 mk  Add support for Octave-3.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -53,7 +54,7 @@ if nargin < 1
 end
 
 if isempty(targetdirectory)
-    targetdirectory=fileparts(which(fullfile('Psychtoolbox','Contents.m')));
+    targetdirectory=PsychtoolboxRoot;
 end
 
 if nargin<2
@@ -73,8 +74,9 @@ end
 
 % Check OS
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
-isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
-isLinux=strcmp(computer,'GLNX86');
+isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
+isLinux=strcmp(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));
+
 if ~isWin & ~isOSX & ~isLinux
     os=computer;
     if strcmp(os,'MAC2')
@@ -143,7 +145,7 @@ fprintf('\n');
 % Remove old Psychtoolbox paths. Add new Psychtoolbox paths.
 rmpath(oldPath);
 addpath(genpath(targetdirectory));
-fprintf('Your MATLAB path has been updated. Now trying to save the new MATLAB path...\n\n');
+fprintf('Your MATLAB/OCTAVE path has been updated. Now trying to save the new MATLAB/OCTAVE path...\n\n');
 
 % Does SAVEPATH work?
 if exist('savepath')
@@ -153,13 +155,21 @@ else
 end
 
 if err
-p=fullfile(matlabroot,'toolbox','local','pathdef.m');
-fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
-        'Please ask a user with administrator privileges to enable \n'...
-        'write by everyone for the file:\n''%s''\n'],p);
-fprintf(['Once that''s done, run ' mfilename ' again. For this MATLAB session, Psychtoolbox\n']);
-fprintf('will be fully functional, but you will need to save your path settings to make them persistent.\n\n');
-error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
+    try
+        % If this works then we're likely on Matlab:
+        p=fullfile(matlabroot,'toolbox','local','pathdef.m');
+        fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
+            'Please ask a user with administrator privileges to enable \n'...
+            'write by everyone for the file:\n\n''%s''\n\n'],p);
+    catch
+        % Probably on Octave:
+        fprintf(['Sorry, SAVEPATH failed. Probably your ~/.octaverc file lacks write permission. \n'...
+            'Please ask a user with administrator privileges to enable \n'...
+            'write by everyone for that file.\n\n']);
+    end
+
+    fprintf(['Once that''s done, run ' mfilename ' again. For this session, Psychtoolbox\n']);
+    fprintf('will be fully functional, but you will need to save your path settings to make them persistent.\n\n');
 end
 
 fprintf('Fully done. Your new Psychtoolbox folder is ready to use. Enjoy!\n\n')

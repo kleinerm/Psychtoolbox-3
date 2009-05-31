@@ -119,17 +119,30 @@ end
 
 % Check for operating system minor version on Mac OS/X when running under
 % Matlab:
-if IsOSX & ~IsOctave %#ok<AND2>
-    % Running on Matlab + OS/X. Find the operating system minor version,
-    % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
-    
-    % Get 32-digit binary encoded minor version from Gestalt() MEX file:
-    binminor = Gestalt('sys2');
-    
-    % Decode into decimal digit:
-    minorver = 0;
-    for i=1:32
-        minorver = minorver + binminor(i) * 2^(32-i);
+if IsOSX
+    if ~IsOctave %#ok<AND2>
+        % Running on Matlab + OS/X. Find the operating system minor version,
+        % i.e., the 'y' in the x.y.z number, e.g., y=3 for 10.3.7:
+
+        % Get 32-digit binary encoded minor version from Gestalt() MEX file:
+        binminor = Gestalt('sys2');
+
+        % Decode into decimal digit:
+        minorver = 0;
+        for i=1:32
+            minorver = minorver + binminor(i) * 2^(32-i);
+        end
+    else
+        % Running on Octave + OS/X: Query kernel version via system() call:
+        [s, did]=system('uname -r');
+        if s == 0
+            % Parse string for kernel major number, then translate to OS
+            % minor version by subtracting 4:
+            minorver = sscanf(did, '%i') - 4;
+        else
+            % Failed to query: Assume we're good for now...
+            minorver = inf;
+        end
     end
     
     % Is the operating system minor version 'minorver' < 4?
@@ -166,6 +179,94 @@ if IsOSX & ~IsOctave %#ok<AND2>
         fprintf('Press any key on keyboard to continue with setup...\n');
         pause;
     end
+end
+
+% Special case handling for Octave:
+if IsOctave
+    % OS/X or Linux under Octave. Need to prepend the proper folder with
+    % the pseudo-MEX files to path:
+    rc = 0;
+    try
+        % Remove binary MEX folders from path:
+        rmpath([PsychtoolboxRoot 'PsychBasic/Octave2LinuxFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic/Octave2OSXFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles']);
+        
+        % Encode prefix and Octave major version of proper folder:
+        octavemajorv = sscanf(version, '%i');
+        rdir = [PsychtoolboxRoot 'PsychBasic/Octave' num2str(octavemajorv)];
+        
+        % Add proper OS dependent postfix:
+        if IsLinux
+            rdir = [rdir 'LinuxFiles'];
+        end
+        
+        if IsOSX
+            rdir = [rdir 'OSXFiles'];
+        end
+        
+        fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
+        fprintf(' %s ...\n', rdir);
+        addpath(rdir);
+
+        if exist('savepath')
+            rc = savepath;
+        else
+            rc = path2rc;
+        end
+    catch
+        rc = 2;
+    end
+
+    if rc > 0
+        fprintf('=====================================================================\n');
+        fprintf('ERROR: Failed to prepend folder %s to Octave path!\n', rdir);
+        fprintf('ERROR: This will likely cause complete failure of PTB to work.\n');
+        fprintf('ERROR: Please fix the problem (maybe insufficient permissions?)\n');
+        fprintf('ERROR: If everything else fails, add this folder manually to the\n');
+        fprintf('ERROR: top of your Octave path.\n');
+        fprintf('ERROR: Trying to continue but will likely fail soon.\n');
+        fprintf('=====================================================================\n\n');
+    end
+    
+    if octavemajorv < 3
+        fprintf('\n\n=================================================================================\n');
+        fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
+        fprintf('WARNING: using the latest stable version of Octave-3 for use with Psychtoolbox.\n');
+        fprintf('WARNING: Stuff may not work or only suboptimal with earlier versions and we don''t\n');
+        fprintf('WARNING: provide any support for such old versions.\n');
+        fprintf('\nPress any key to continue with setup.\n');
+        fprintf('=================================================================================\n\n');
+        pause;
+    end
+    
+    try
+        % Rehash the Octave toolbox cache:
+        path(path);
+        rehash;
+        clear WaitSecs;
+    catch
+        fprintf('WARNING: rehashing the Octave toolbox cache failed. I may fail and recommend\n');
+        fprintf('WARNING: Quitting and restarting Octave, then retry.\n');
+    end
+    
+    try
+        % Try if Screen MEX file works...
+        WaitSecs(0.1);
+    catch
+        % Failed! Either screwed setup of path or missing VC++ 2005 runtime
+        % libraries.
+        fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
+        fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);        
+        fprintf('ERROR: use of the latest stable version of Octave-3 as announced on www.octave.org website.\n');
+        fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
+        fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
+        fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');
+        return;
+    end
+    
+    % End of special Octave setup.
 end
 
 % Special case handling for different Matlab releases on MS-Windoze:
@@ -218,8 +319,8 @@ if IsWin & ~IsOctave
     try
         % Rehash the Matlab toolbox cache:
         path(path);
-        rehash pathreset;
-        rehash toolboxreset;
+        rehash('pathreset');
+        rehash('toolboxreset');
         clear WaitSecs;
     catch
         fprintf('WARNING: rehashing the Matlab toolbox cache failed. I may fail and recommend\n');

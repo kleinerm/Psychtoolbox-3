@@ -3,7 +3,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 % This script downloads the latest Mac OSX, GNU/Linux or Windows Psychtoolbox from the
 % Subversion master server to your disk, creating your working copy, ready
-% to use as a new toolbox in your MATLAB application. Subject to your
+% to use as a new toolbox in your MATLAB/OCTAVE application. Subject to your
 % permission, any old installation of the Psychtoolbox is first removed.
 % It's a careful program, checking for all required resources and
 % privileges before it starts.
@@ -256,6 +256,7 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %              dialog to tell user how bad 'stable' is and to give him a
 %              chance to reconsider.
 % 03/22/09 mk  Update help text again. Rename 'stable' into 'unsupported'.
+% 05/31/09 mk  Add support for Octave-3.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -263,19 +264,20 @@ clear mex
 
 % Check OS
 isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
-isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI');
-isLinux=strcmp(computer,'GLNX86');
+isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
+isLinux=strcmp(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));
+
 if ~isWin & ~isOSX & ~isLinux
-os=computer;
-if strcmp(os,'MAC2')
-os='Mac OS9';
-end
-fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
-fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
-   'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
-   'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
-   'web http://psychtoolbox.org/download.html\n']);
-error(['Your operating system is not supported by ' mfilename '.']);
+    os=computer;
+    if strcmp(os,'MAC2')
+        os='Mac OS9';
+    end
+    fprintf('Sorry, this installer doesn''t support your operating system: %s.\n',os);
+    fprintf([mfilename ' can only install the new (OSX, Linux and Windows) \n'...
+        'OpenGL-based versions of the Psychtoolbox. To install the older (OS9 and Windows) \n'...
+        'versions (not based on OpenGL) please go to the psychtoolbox website: \n'...
+        'web http://psychtoolbox.org/download.html\n']);
+    error(['Your operating system is not supported by ' mfilename '.']);
 end
 
 if nargin < 1
@@ -440,15 +442,25 @@ else
 end
 
 if err
-    p=fullfile(matlabroot,'toolbox','local','pathdef.m');
-    fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
-        'Please ask a user with administrator privileges to enable \n'...
-        'write by everyone for the file:\n''%s''\n'],p);
+    try
+        % If this works then we're likely on Matlab:
+        p=fullfile(matlabroot,'toolbox','local','pathdef.m');
+        fprintf(['Sorry, SAVEPATH failed. Probably the pathdef.m file lacks write permission. \n'...
+            'Please ask a user with administrator privileges to enable \n'...
+            'write by everyone for the file:\n\n''%s''\n\n'],p);
+    catch
+        % Probably on Octave:
+        fprintf(['Sorry, SAVEPATH failed. Probably your ~/.octaverc file lacks write permission. \n'...
+            'Please ask a user with administrator privileges to enable \n'...
+            'write by everyone for that file.\n\n']);
+    end
+    
     fprintf(['Once "savepath" works (no error message), run ' mfilename ' again.\n']);
     fprintf('Alternatively you can choose to continue with installation, but then you will have\n');
-    fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n');
+    fprintf('to resolve this permission isssue later and add the path to the Psychtoolbox manually.\n\n');
     answer=input('Do you want to continue the installation despite the failure of SAVEPATH (yes or no)? ','s');
     if ~strcmp(answer,'yes')
+        fprintf('\n\n');
         error('SAVEPATH failed. Please get an administrator to allow everyone to write pathdef.m.');
     end
 end
@@ -691,15 +703,21 @@ end
 
 fprintf(['Now setting permissions to allow everyone to write to the Psychtoolbox folder. This will \n'...
     'allow future updates by every user on this machine without requiring administrator privileges.\n']);
-if isOSX | isLinux
-    [s,m,mm]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
-else
-    [s,m,mm]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+try
+    if isOSX | isLinux
+        [s,m]=fileattrib(p,'+w','a','s'); % recursively add write privileges for all users.
+    else
+        [s,m]=fileattrib(p,'+w','','s'); % recursively add write privileges for all users.
+    end
+catch
+    s = 0;
+    m = 'Setting file attributes is not supported under Octave.';
 end
+
 if s
     fprintf('Success.\n\n');
 else
-    fprintf('FILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
+    fprintf('\nFILEATTRIB failed. Psychtoolbox will still work properly for you and other users, but only you\n');
     fprintf('or the system administrator will be able to run the UpdatePsychtoolbox script to update Psychtoolbox,\n');
     fprintf('unless you or the system administrator manually set proper write permissions on the Psychtoolbox folder.\n');
     fprintf('The error message of FILEATTRIB was: %s\n\n', m);
