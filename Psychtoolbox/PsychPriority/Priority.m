@@ -168,8 +168,10 @@ function oldPriority=Priority(newPriority)
 %                later. We do not kill and restart the system update process
 %                anymore in that case as it isn't necessary anymore.
 % 5/15/07   mk   Priority.dll on Windoze replaced by code in this M-File.
+% 6/01/09   mk   Enable Priority() support for OS/X + Octave-3.
 
 persistent killUpdateNotNeeded;
+persistent didPriorityKillUpdate;
 
 if IsLinux
    % Linux: We do not use a separate MEX file anymore. Instead we use a
@@ -184,7 +186,7 @@ if IsLinux
       oldPriority = Screen('GetMouseHelper', -5);
    else
       % New priority provided: Query and return old level, set new one:
-      if newPriority < 0 | newPriority > 99
+      if newPriority < 0 | newPriority > 99 %#ok<OR2>
          error('Invalid Priority level specified! Not one between 0 and 99.');
       end
 
@@ -195,23 +197,23 @@ if IsLinux
    return;
 end;
 
-if IsOSX & IsOctave
-    % Not yet implemented on MacOS-X + GNU/Octave. Just return zero.
-    oldPriority=0;
-    return;
+if IsOSX & IsOctave %#ok<AND2>
+    % Not implemented on MacOS-X + GNU/Octave versions older than 3:
+    if sscanf(version, '%i') < 3
+        % Pre Octave-3: Just return zero -- Noop:
+        oldPriority=0;
+        return;
+    end
 end;
 
 if IsOSX
-    
-    persistent didPriorityKillUpdate;
-
     if isempty(killUpdateNotNeeded)
         % Check if this is MacOS-X 10.4.7 or later. We don't need to kill
         % the update process anymore if that is the case.
         c = Screen('Computer');
         osrelease = sscanf(c.kern.osrelease, '%i.%i.%i');
 
-        if (osrelease(1)==8 & osrelease(2)>=7) | (osrelease(1)>=9)
+        if (osrelease(1)==8 & osrelease(2)>=7) | (osrelease(1)>=9) %#ok<AND2,OR2>
             % OS-X 10.4.7 or later -> No need to kill update.
             killUpdateNotNeeded = 1;
         else
@@ -220,7 +222,7 @@ if IsOSX
         end
 
         % Override for the scared.
-	if exist('AlwaysKillUpdate', 'file')>0
+        if exist('AlwaysKillUpdate', 'file')>0
             % Detected a veto file created by the user. We do kill update.
             killUpdateNotNeeded = 0;
         end
@@ -233,7 +235,7 @@ if IsOSX
     else % strcmp('THREAD_TIME_CONSTRAINT_POLICY', flavorNameString)
         %Values in priority struct returned by MachGetPriorityFlavor are in ticks but should be in seconds
         %it does not matter here because we are only concerned with the ratio
-        if priorityStruct.policy.period == 0 | priorityStruct.policy.computation == 0
+        if priorityStruct.policy.period == 0 | priorityStruct.policy.computation == 0 %#ok<OR2>
             %this is an illegitimate setting, so restore to standard priority
             %and go from there.
             MachSetStandardPriority;
@@ -285,7 +287,7 @@ if IsOSX
         defaultFrameRate=60;    %Hz
         screenNumbers=Screen('Screens');
         for i = 1:length(screenNumbers)
-            frameRates(i)=Screen('FrameRate', screenNumbers(i));
+            frameRates(i)=Screen('FrameRate', screenNumbers(i)); %#ok<AGROW>
         end
         [zeroRates, zeroRateIndices]=find(frameRates==0);
         frameRates(zeroRateIndices)=defaultFrameRate;
@@ -328,7 +330,7 @@ if IsWin
       oldPriority = Screen('GetMouseHelper', -3);
    else
       % New priority provided: Query and return old level, set new one:
-      if newPriority<0 | newPriority>2
+      if newPriority<0 | newPriority>2 %#ok<OR2>
          error('Invalid Priority level specified! Not one of 0, 1 or 2.');
       end
       
