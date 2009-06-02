@@ -70,6 +70,15 @@ try
         return;
     end;
     
+    if IsOctave
+        % No registration for GNU/Octave versions older than 3:
+        if sscanf(version, '%i') < 3
+            % Pre Octave-3: Just return -- Noop:
+            fprintf('PsychtoolboxRegistration: Octave version < 3 detected. Skipping registration...\n');
+            return;
+        end
+    end;
+    
     % Default path and name for netcat command:
     nccommand = 'nc';
     

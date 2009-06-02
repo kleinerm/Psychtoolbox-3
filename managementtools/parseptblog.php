@@ -51,6 +51,7 @@ $stablecount = 0;
 $trunkcount = 0;
 $unknowncount = 0;
 $oldptb307count = 0;
+$ptb308pretigercount = 0;
 $osxcount = 0;
 $wincount = 0;
 $linuxcount = 0;
@@ -77,6 +78,10 @@ $winmatrothercount = 0;
 $matv5count = 0;
 $matv6count = 0;
 $matv7count = 0;
+
+$octavelinuxcount = 0;
+$octaveosxcount   = 0;
+$octavewincount   = 0;
 
 $intransaction = 0;
 $linescount = 0;
@@ -163,6 +168,12 @@ foreach($uniqueptbs as $ofl) {
   // Reset assigned flag:
   $assigned = 0;
 
+  $isoctave = 0;
+  $ismatlab = 0;
+  $islinux  = 0;
+  $iswin    = 0;
+  $isosx    = 0;
+
   // Now count by category:
 
   // Flavor:
@@ -171,18 +182,27 @@ foreach($uniqueptbs as $ofl) {
   if (strpos($ofl, '<FLAVOR>trunk</FLAVOR>')) { $assigned++ ; $trunkcount++; }
   if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.7</FLAVOR>')) { $assigned++ ; $oldptb307count++; }
   if (strpos($ofl, '<FLAVOR>unknown</FLAVOR>')) { $assigned++ ; $unknowncount++; }
+  if (strpos($ofl, '<FLAVOR>Psychtoolbox-3.0.8-PreTiger</FLAVOR>')) { $assigned++ ; $ptb308pretigercount++; }
+  if (strpos($ofl, '<ENVIRONMENT>Matlab')) {
+    $ismatlab = 1;
 
-  // Matlab major version:
-  if (strpos($ofl, '<ENVVERSION>5.')) { $matv5count++; }
-  if (strpos($ofl, '<ENVVERSION>6.')) { $matv6count++; }
-  if (strpos($ofl, '<ENVVERSION>7.')) { $matv7count++; }
+    // Matlab major version:
+    if (strpos($ofl, '<ENVVERSION>5.')) { $matv5count++; }
+    if (strpos($ofl, '<ENVVERSION>6.')) { $matv6count++; }
+    if (strpos($ofl, '<ENVVERSION>7.')) { $matv7count++; }
+  }
+
+  if (strpos($ofl, '<ENVIRONMENT>Octave')) {
+    $isoctave = 1;
+  }
 
   // Operating system:
-  if (strpos($ofl, '<OS>Linux')) { $assigned++ ; $linuxcount++; }
+  if (strpos($ofl, '<OS>Linux')) { $assigned++ ; $linuxcount++; $islinux = 1;}
 
   if (strpos($ofl, '<OS>Windows')) {
     $assigned++ ;
     $wincount++;
+    $iswin = 1;
 
     if (strpos($ofl, 'Windows-Unknown')) { $winunknowncount++; }
     if (strpos($ofl, 'Windows 2000')) { $win2kcount++; }
@@ -190,19 +210,20 @@ foreach($uniqueptbs as $ofl) {
     if (strpos($ofl, 'Windows Vista')) { $winvistacount++; }
     if (strpos($ofl, 'Windows 7')) { $win7count++; }
 
-    // Which Matlab release class on Windows?
-    if (strpos($ofl, '(R200')) {
-      // Some R200x release:
-      $winmatr200xcount++;
+    if ($ismatlab > 0) {
+        // Which Matlab release class on Windows?
+        if (strpos($ofl, '(R200')) {
+          // Some R200x release:
+          $winmatr200xcount++;
 
-      // Take R2006 series into special account:
-      if (strpos($ofl, '(R2006')) { $winmatr2006count++; }
+          // Take R2006 series into special account:
+          if (strpos($ofl, '(R2006')) { $winmatr2006count++; }
+        }
+        else {
+          // Pre R200x series:
+          $winmatrothercount++;
+        }
     }
-    else {
-      // Pre R200x series:
-      $winmatrothercount++;
-    }
-
   }
 
   // On MacOS-X by system architecture and type:
@@ -210,6 +231,7 @@ foreach($uniqueptbs as $ofl) {
 
     $assigned++;
     $osxcount++;
+    $isosx = 1;
 
     if (strpos($ofl, '10.3.')) { $panthercount++; }
     if (strpos($ofl, '10.4.')) { $tigercount++; }
@@ -225,18 +247,35 @@ foreach($uniqueptbs as $ofl) {
       $intelmaccount++;
 
       // What type?
-      if (strpos($ofl, '<ENVARCH>MACI')){
-	// IntelMac native:
-	$intelnativecount++;
-      }
-      else {
-	// Rosetta emulated:
-	$intelrosettacount++;
+      if ($ismatlab > 0) {
+        if (strpos($ofl, '<ENVARCH>MACI')){
+	      // IntelMac native:
+	      $intelnativecount++;
+        }
+        else {
+	      // Rosetta emulated:
+	      $intelrosettacount++;
+        }
       }
     }
     else {
       // Unclassified:
       $somemaccount++;
+    }
+  }
+
+  // Accounting for Octave-3 and later on Linux or OS/X:
+  if ($isoctave > 0) {
+    if ($islinux > 0) {
+        $octavelinuxcount++;
+    }
+
+    if ($isosx > 0) {
+        $octaveosxcount++;
+    }
+
+    if ($iswin > 0) {
+        $octavewincount++;
     }
   }
 
@@ -255,12 +294,13 @@ print "Earliest registration was at            : $firstdate<br />";
 print "<br />";
 print "Total number of unique installations    : $totalcount<br />";
 
-print "<br />Breakdown by Psychtoolbox flavor:<br /><br />";
-print "Number of 'beta'/'current' installations: $betacount<br />";
-print "Number of 'stable' installations        : $stablecount<br />";
-print "Number of 'trunk' installations         : $trunkcount<br />";
-print "Number of unclassified installations    : $unknowncount<br />";
-print "Number of Psychtoolbox-3.0.7 installs   : $oldptb307count<br />";
+print "<br />Breakdown of installations by Psychtoolbox flavor:<br /><br />";
+print "'beta'/'current'              : $betacount<br />";
+print "'unsupported' aka 'stable'    : $stablecount<br />";
+print "'trunk'                       : $trunkcount<br />";
+print "Psychtoolbox-3.0.7            : $oldptb307count<br />";
+print "Psychtoolbox-3.0.8-PreTiger   : $ptb308pretigercount<br />";
+print "Unclassified                  : $unknowncount<br />";
 
 print "<br />Breakdown by host operating system:<br /><br />";
 printf('MacOS-X: %8d (%7.3f%%) <br />', $osxcount, 100 * $osxcount / $totalcount);
@@ -270,8 +310,9 @@ printf('Linux  : %8d (%7.3f%%) <br />', $linuxcount, 100 * $linuxcount / $totalc
 print "<br />For Macintosh - Breakdown by system architecture:<br /><br />";
 
 printf('PowerMac                     : %4d (%7.3f%% of all Apple systems) <br />', $ppccount, 100 * $ppccount / $osxcount);
-print "IntelMac (Matlab w. Rosetta) : $intelrosettacount<br />";
-print "IntelMac (Native Matlab)     : $intelnativecount<br />";
+print "IntelMac                     : $intelmaccount<br />";
+print "IntelMac (Intel Matlab)      : $intelnativecount<br />";
+print "IntelMac (Matlab on Rosetta) : $intelrosettacount<br />";
 print "Unknown                      : $somemaccount<br />";
 
 print "<br />For Macintosh - Breakdown by OS/X version:<br /><br />";
@@ -281,7 +322,7 @@ print "10.5 - Leopard               : $leopardcount<br />";
 print "10.6 - Snow Leopard          : $snowleopardcount<br />";
 
 print "<br />For MS-Windows - Breakdown by Windows version:<br /><br />";
-print "Windows Unknown flavor       : $winunknowncount<br />";
+print "Windows additional preVistas : $winunknowncount<br />";
 print "Windows 2000                 : $win2kcount<br />";
 print "Windows XP                   : $winxpcount<br />";
 print "Windows Vista                : $winvistacount<br />";
@@ -295,10 +336,15 @@ $r11eqvcount = $winmatrothercount + $winmatr2006count;
 print "Matlab R2007a (V7.4) or later: $r2007aeqvcount<br />";
 print "Previous Matlab releases     : $r11eqvcount<br />";
 
-print "<br />Breakdown by Matlab major versions:<br /><br />";
+print "<br />Breakdown for all systems by Matlab major versions:<br /><br />";
 print "Matlab 5.x                   : $matv5count<br />";
 print "Matlab 6.x                   : $matv6count<br />";
 print "Matlab 7.x                   : $matv7count<br />";
+
+print "<br />Number of GNU/Octave V3+ installations by system:<br /><br />";
+print "Octave on OS/X               : $octaveosxcount<br />";
+print "Octave on Linux              : $octavelinuxcount<br />";
+print "Octave on Windows            : $octavewincount<br />";
 
 print "</pre></h3><pre>";
 print "Parsed lines in registration log        : $linescount<br />";
