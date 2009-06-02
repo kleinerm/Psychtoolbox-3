@@ -171,19 +171,25 @@ try
     fprintf('Type ''type PsychtoolboxRegistration'' to see the source code of this routine.\n\n');
     fprintf('Data transfer can take up to 10 seconds... The system reports:\n');
 
-    if IsOctave
+    %if IsOctave
+    % MK: Octave now supports pnet, so we can disable this code branch:
+    if 0
         % pnet not yet supported on Octave. Use netcat as in good ol' days:
 
         % Execute transmission command: We time out after 10 seconds if it does not work.
         ptbserveraddress = [ptbserveraddress ' 2000'];
         syscmd = ['echo "' uniqueID '" | ' nccommand ' -w 10 -v ' ptbserveraddress ' '];
 
+        fflush(stdout);
+        
         if IsWin
             rc = dos(syscmd);
         else
             rc = system(syscmd);
         end
         fprintf('\n');
+        
+        fflush(stdout);
     else
         % pnet supported: Use that...
         % Specifically that means we will always use pnet() on MS-Windows,
