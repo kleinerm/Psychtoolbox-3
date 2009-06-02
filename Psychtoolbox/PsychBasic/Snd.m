@@ -15,6 +15,11 @@ function err = Snd(command,signal,rate,sampleSize)
 % implementations of Matlab. There are many bugs, latency- and timing
 % problems associated with the use of Snd.
 %
+% GNU/OCTAVE: You must install the optional "audio" package from
+% Octave-Forge, as of Octave 3.0.5, otherwise the required sound() function
+% won't be available and this function will fail!
+%
+%
 % Supported functions:
 % --------------------
 %
@@ -179,6 +184,7 @@ function err = Snd(command,signal,rate,sampleSize)
 % 5/20/08    mk Explain that Snd() is deprecated --> Point to PsychPortAudio!
 % 1/12/09    mk Make sure that 'signal' is a 2-row matrix in stereo, not 2
 %               column.
+% 6/01/09    mk Add compatibility with Octave-3.
 
 global endTime;
 if isempty(endTime)
@@ -188,7 +194,7 @@ end
 sSize = 16;
 err=0;
 
-if IsWin | IsOSX 
+if (IsWin | IsOSX) | IsOctave
     if nargin == 0
         error('Wrong number of arguments: see Snd.');
     end
@@ -220,7 +226,27 @@ if IsWin | IsOSX
             error('signal must be a 2 rows by n column matrix for stereo sounds.');
         end
        	WaitSecs(endTime-GetSecs); % Wait until any ongoing sound is done.
-        sound(signal',rate,sampleSize);
+        if IsOctave
+            if exist('sound') %#ok<EXIST>
+                sound(signal',rate);
+            else
+                % Unavailable: Try to load the package, assuming its
+                % installed but not auto-loaded:
+                try
+                    pkg('load','audio');
+                catch
+                end
+
+                % Retry...
+                if exist('sound') %#ok<EXIST>
+                    sound(signal',rate);
+                else
+                    warning('Required Octave command sound() is not available. Install and "pkg load audio" the "audio" package from Octave-Forge!'); %#ok<WNTAG>
+                end
+            end
+        else
+            sound(signal',rate,sampleSize);
+        end
 		endTime=GetSecs+length(signal)/rate;
 	elseif streq(command,'Wait')
 		if nargin>1
@@ -240,8 +266,10 @@ if IsWin | IsOSX
 	elseif streq(command,'Quiet') | streq(command,'Close')
 		if nargin>1
 			error('Wrong number of arguments: see Snd.');
-		end
-		clear playsnd; % Stop any ongoing sound.
+        end
+        if ~IsOctave
+            clear playsnd; % Stop any ongoing sound.
+        end
 		endTime=0;
 		err=0;
 	elseif streq(command,'DefaultRate')
