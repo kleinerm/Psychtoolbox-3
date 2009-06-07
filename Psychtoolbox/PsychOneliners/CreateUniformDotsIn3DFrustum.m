@@ -40,15 +40,17 @@ function [x,y,z] = CreateUniformDotsIn3DFrustum(ndots,FOV,aspectr,depthrangen,de
 % \end{document}
 % ----
 
-% 2008 DN  Wrote it.
+% 2008       DN  Wrote it.
+% 2009-06-06 DN  Changed input check to allow for vector near and far
+%                depthrange and allowed near and far depthrange to be
+%                the same, to place dots at exactly that depth
 
-psychassert(depthrangen<depthrangef,'Near clipping plane should be closer than far clipping plane');
+psychassert(all(depthrangen<=depthrangef),'Near clipping plane should be closer than far clipping plane');
 
 u   = RandLim([1,ndots],0,1);                                           % get uniform random variable
 z   = -(u.*(depthrangef.^3-depthrangen.^3)+depthrangen.^3).^(1/3);      % transform to parabolar distribution (negate as depth postiion is a negative number
 
-FOV = FOV / 360 * 2 * pi;
-yrs = -z*tan(FOV/2);
+yrs = -z*tand(FOV/2);
 y   = RandLim([1,ndots],-yrs,yrs);
 xrs = yrs * aspectr;
 x   = RandLim([1,ndots],-xrs,xrs);
