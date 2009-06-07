@@ -178,6 +178,13 @@ function [scal] = DisplayUndistortionBVL(caliboutfilename, screenid, xnum, ynum,
 % Running on PTB-3? Abort otherwise:
 AssertOpenGL;
 
+% Need to temporarily add the '/private' subfolder to Octave's path, as
+% Octave as of V3.0.5 doesn't know about private subfolders yet:
+if IsOctave
+    warning('As of Octave version 3.0.5, this function does not always produce correct results, due to insufficient support for the griddata() function!');
+    addpath([ fileparts(mfilename('fullpath')) '/private' ]);
+end
+
 % Enable unified key mapping for all operating systems:
 KbName('UnifyKeyNames');
 

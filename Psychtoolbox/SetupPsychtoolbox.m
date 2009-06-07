@@ -42,6 +42,7 @@ function SetupPsychtoolbox
 %              stripped down version of it.
 %
 % 05/31/09 mk  Add support for Octave-3.
+% 06/07/09 mk  Apply smallish fix to fix counting, contributed by Chuan Zeng.
 
 % Flush all MEX files: This is needed at least on M$-Windows to
 % work if Screen et al. are still loaded.
@@ -116,7 +117,8 @@ end
 while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     fprintf('Your old Psychtoolbox appears in the MATLAB/OCTAVE path:\n');
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
-    fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
+    fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']'],'match')));
+    % Old and wrong, counts too many instances: fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
     answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');
     if ~strcmp(answer,'yes')
         fprintf('You didn''t say "yes", so I''m taking it as no.\n');

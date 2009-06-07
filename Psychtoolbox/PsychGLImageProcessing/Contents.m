@@ -57,6 +57,7 @@
 %
 % SetAnaglyphStereoParameters.m   -- Function for runtime tuning of Anaglyph stereo parameters,
 %                                    see ImagingStereoDemo for example of use.
+% SetStereoBlueLineSyncParameters -- Change settings for drawing of stereo sync lines in frame-sequential stereo mode.
 %
 % Constants for imagingmode flag of Screen('OpenWindow', ...., imagingmode);
 % One can 'or' them together, e.g., imagingmode = mor(kPsychNeed16BPCFixed, kPsychNeedFastBackingStore);

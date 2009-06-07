@@ -105,7 +105,11 @@ try
 
     % Open double-buffered onscreen window with the requested stereo mode:
     [windowPtr, windowRect]=Screen('OpenWindow', scrnNum, BlackIndex(scrnNum), [], [], [], stereoMode);
-
+    
+    % This call would change the color of blue-sync lines in
+    % frame-sequential stereo mode to blue:
+    % SetStereoBlueLineSyncParameters(windowPtr, [], [], [0,0,1]);
+    
     if stereoMode == 10
         % In dual-window, dual-display mode, we open the slave window on
         % the secondary screen. Please note that, after opening this window
