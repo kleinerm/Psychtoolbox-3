@@ -75,7 +75,7 @@ void PsychDetectTextureTarget(PsychWindowRecordType *win)
         // Yes. Need to auto-detect texturetarget to use. This routine is called with
 		// the OpenGL context for the 'win' already attached, from PsychOpenOnscreenWindow().
 
-        if (strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
+        if ((strstr(glGetString(GL_EXTENSIONS), "GL_EXT_texture_rectangle") || strstr(glGetString(GL_EXTENSIONS), "GL_ARB_texture_rectangle")) && GL_TEXTURE_RECTANGLE_EXT != GL_TEXTURE_2D) {
 	    // Great! GL_TEXTURE_RECTANGLE_EXT is available! Use it.
 	    texturetarget = GL_TEXTURE_RECTANGLE_EXT;
 	    if(PsychPrefStateGet_Verbosity()>2)
