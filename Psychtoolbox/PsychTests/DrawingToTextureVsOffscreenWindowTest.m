@@ -43,7 +43,7 @@ Screen('DrawText', window, 'Draw Texture', screenRect(3)/2-100, screenRect(4)/2,
 Screen('Flip', window);
 Screen('Flip',window,getsecs+2,1);
 bgd_texture=repmat(127,300,300);
-bgd=SCREEN('MakeTexture',window,bgd_texture);
+bgd=Screen('MakeTexture',window,bgd_texture);
 Screen('drawline',bgd,[255 0 0],0,0,300,300,1);
 Screen('DrawTexture', window,bgd);
 Screen('Flip', window);
