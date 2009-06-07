@@ -413,6 +413,9 @@ function varargout = PsychRTBox(varargin)
 % events, and '7up', 'whatsup', 'hickup' and 'screwup' for release events
 % of the corresponding buttons.
 %
+% Please note that the assignment of names to buttons must be unique, ie.
+% assigning the same name to multiple buttons is not allowed.
+%
 %
 % oldIntervals = PsychRTBox('DebounceInterval' [, handle] [, debounceSecs]);
 % -- Query current button debounce intervals (in 4-element vector
@@ -494,6 +497,8 @@ function varargout = PsychRTBox(varargin)
 %            internal queue (MK).
 % 02/14/2009 Refinements and cleanup (MK).
 % 02/15/2009 More refinements and rework of post-hoc timestamp remapping (MK).
+% 06/07/2009 Check for ambiguous assignment of buttonnames to avoid errors.
+%            Bug found by Vinzenz Schoenfelder (MK).
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -1043,9 +1048,20 @@ global rtbox_global;
             oldNames=rtbox_info(id).events(1:4);
             if nIn<2, varargout{1}=oldNames; return; end
             if length(in2)~=4 || ~iscellstr(in2), RTboxError('invalidButtonNames'); end
+            
             for i=1:length(in2)
                 in2{i} = lower(in2{i});
             end
+            
+            % Check for unambiguous assignment: Each buttonname must be
+            % unique!
+            for i=1:length(in2)
+                if length(strmatch(lower(in2{i}), in2,'exact')) ~= 1
+                    % Ambituous naming -> Same buttoname multiple times!
+                    error('Same name assigned to multiple buttons! Sorry, names must be unique!');
+                end
+            end
+            
             rtbox_info(id).events(1:4)=in2;
             for i=5:8
                 rtbox_info(id).events(i)=cellstr([char(rtbox_info(id).events(i-4)) 'up']);
