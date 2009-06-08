@@ -279,23 +279,25 @@ ny = yp;
 
 % Our work is done. If a different window than our target window was
 % active, we'll switch back to that window and its state:
-if previouswin ~= win
-    % Different window was active before our invocation:
+if previouswin > 0
+    if previouswin ~= win
+        % Different window was active before our invocation:
 
-    % Was that window in 3D mode, i.e., OpenGL rendering for that window was active?
-    if IsOpenGLRendering
-        % Yes. We need to switch that window back into 3D OpenGL mode:
-        Screen('BeginOpenGL', previouswin);
+        % Was that window in 3D mode, i.e., OpenGL rendering for that window was active?
+        if IsOpenGLRendering
+            % Yes. We need to switch that window back into 3D OpenGL mode:
+            Screen('BeginOpenGL', previouswin);
+        else
+            % No. We just perform a dummy call that will switch back to that
+            % window:
+            Screen('GetWindowInfo', previouswin);
+        end
     else
-        % No. We just perform a dummy call that will switch back to that
-        % window:
-        Screen('GetWindowInfo', previouswin);
-    end
-else
-    % Our window was active beforehand.
-    if IsOpenGLRendering
-        % Was in 3D mode. We need to switch back to 3D:
-        Screen('BeginOpenGL', previouswin);
+        % Our window was active beforehand.
+        if IsOpenGLRendering
+            % Was in 3D mode. We need to switch back to 3D:
+            Screen('BeginOpenGL', previouswin);
+        end
     end
 end
 
