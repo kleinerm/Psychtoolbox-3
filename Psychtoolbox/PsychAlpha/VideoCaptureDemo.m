@@ -56,10 +56,6 @@ if nargin < 3
     roi = [];
 end
 
-if isempty(roi)
-    roi = [0 0 640 480];
-end
-
 screenid=max(Screen('Screens'));
 
 try
