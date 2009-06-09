@@ -318,6 +318,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	
 	// Sync of doublebuffer-swaps to vertical retrace signal starts off as disabled:
 	(*winRec)->vSynced = FALSE;
+	
+	// Default to unknown maximum supported texture size:
+	(*winRec)->maxTextureSize = 0;
+	
 	return;
 }
 

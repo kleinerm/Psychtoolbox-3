@@ -4165,6 +4165,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
 	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS_EXT, &maxcolattachments);
 	if ((glewIsSupported("GL_ARB_fragment_program") || glewIsSupported("GL_ARB_vertex_program")) && glGetProgramivARB!=NULL) glGetProgramivARB(GL_FRAGMENT_PROGRAM_ARB, GL_MAX_PROGRAM_NATIVE_ALU_INSTRUCTIONS_ARB, &maxaluinst);
+
+	// Fallback query for max 2D texture size, in case rectangle texture size query should fail:
+	if (maxtexsize == 0) glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxtexsize);
+
+	// Cache maximum supported texture size for reuse by other routines:
+	windowRecord->maxTextureSize = (int) maxtexsize;
+
 	while (glGetError());
 	
 	if (verbose) {

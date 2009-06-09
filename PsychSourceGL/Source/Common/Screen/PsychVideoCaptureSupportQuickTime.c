@@ -42,7 +42,7 @@
 
 // Forward declaration of internal helper function:
 void PsychQTDeleteAllCaptureDevices(void);
-OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput);
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput, char* retDeviceName);
 
 // Record which defines all state for a capture device:
 typedef struct {
@@ -67,6 +67,8 @@ typedef struct {
     double avg_decompresstime;        // Average time spent in Quicktime/Sequence Grabber decompressor.
     double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
     int nrgfxframes;                  // Count of fetched textures.
+	char capDeviceName[1000];		  // Camera name string.
+
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -342,7 +344,7 @@ releaseQTEnum:
 	return;
 }
 
-OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput)
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput, char* retDeviceName)
 {
 	ComponentInstance	vdCompInst;
 	OSErr				error;
@@ -499,10 +501,13 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
 		}
 	}
 
+	// Retrieve and return capture device name:
+	SGGetChannelDeviceAndInputNames(*sgchanptr, outDeviceName, outInputName, nil);
+	if (retDeviceName) p2cstrcpy(retDeviceName, outDeviceName);
+
 	// Status output about selection requested?
 	if (showOutput && PsychPrefStateGet_Verbosity() > 3) {
 		// Display name of selected video device(-class) and input:
-		SGGetChannelDeviceAndInputNames(*sgchanptr, outDeviceName, outInputName, nil);	
 		p2cstrcpy(msgerr, outDeviceName);
 		printf("PTB-INFO: Selected video input device for deviceIndex %i has outDeviceName: %s\n", deviceIndex, msgerr);
 		p2cstrcpy(msgerr, outInputName);
@@ -627,7 +632,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 		// informative than important: The function will always select some device if
 		// it returns, even if it isn't according to given spec, which would be apparent
 		// by  a non-zero error:
-		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE);
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, FALSE, &(vidcapRecordBANK[slotid].capDeviceName));
 
 		// Some low-level debug output, if requested:
         SGGetVideoRect(*sgchanptr, &newrect);
@@ -646,8 +651,11 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 			// Either none returned or the typical 1600 x 1200 default IIDC max rectangle on OS/X.
 			// In both cases we can be quite certain that the values are bogus.
 			if (NULL == capturerectangle) {
-				if (PsychPrefStateGet_Verbosity() > 2) {
-					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device with deviceIndex %i:\n", deviceIndex);
+				// Only output warning message about bogus capture area settings and resulting 640 x 480 override
+				// if the device namestring doesn't contain "iSight", as we know the iSight behaves like that on
+				// every Apple computer, so no point of cluttering the screen with warnings about the obvious:
+				if ((NULL == strstr(vidcapRecordBANK[slotid].capDeviceName, "iSight")) && (PsychPrefStateGet_Verbosity() > 2)) {
+					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device %s with deviceIndex %i:\n", vidcapRecordBANK[slotid].capDeviceName, deviceIndex);
 					printf("PTB-INFO: Your code doesn't specify an explicit 'roirectangle' for requested camera resolution, but wants me to\n");
 					printf("PTB-INFO: auto-detect the optimal image size. The operating system recommends a size of 1600 x 1200 pixels for your\n");
 					printf("PTB-INFO: camera, which is almost always a wrong and bogus setting! I'll therefore default to the most commonly found\n");
@@ -777,7 +785,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
         }
 
 		// Select device and input for this video channel:
-		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, TRUE);
+		error = PsychQTSelectVideoSource(seqGrab, sgchanptr, deviceIndex, TRUE, &(vidcapRecordBANK[slotid].capDeviceName));
         if (error!=noErr) {
             // Grabber didn't accept new rectangle :(
             if (PsychPrefStateGet_Verbosity()>1) printf("PTB-WARNING: Failed to select video capture device according to requested deviceIndex %i\n", deviceIndex);

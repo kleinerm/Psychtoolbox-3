@@ -259,12 +259,22 @@ PsychError SCREENDrawText(void)
 	// my "solution" is to simply extend the width by one: 
     textWidth=PsychGetWidthFromRect(textBoundsPRectOrigin) + 1.0;
     textHeight=PsychGetHeightFromRect(textBoundsPRectOrigin);
+	
+	// Clamp maximum size of text bitmap to maximum supported texture size of GPU:
+	if (textWidth > winRec->maxTextureSize) textWidth = winRec->maxTextureSize;
+	if (textHeight > winRec->maxTextureSize) textHeight = winRec->maxTextureSize;
+
     // printf("N: Width %lf x Height %lf :: ", textWidth, textHeight); 
     PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
     //Allocate memory the size of the texture.  The CG context is the same size.  It could be smaller, because Core Graphics surfaces don't have the power-of-two
     //constraint requirement.   
     textureWidth=PsychGetWidthFromRect(textureRect);
     textureHeight=PsychGetHeightFromRect(textureRect);
+
+	// Reclamp maximum size of text bitmap to maximum supported texture size of GPU:
+	if (textureWidth > winRec->maxTextureSize) textureWidth = winRec->maxTextureSize;
+	if (textureHeight > winRec->maxTextureSize) textureHeight = winRec->maxTextureSize;
+	
     memoryRowSizeBytes=sizeof(UInt32) * textureWidth;
     memoryTotalSizeBytes= memoryRowSizeBytes * textureHeight;
     textureMemory=(UInt32 *)valloc(memoryTotalSizeBytes);

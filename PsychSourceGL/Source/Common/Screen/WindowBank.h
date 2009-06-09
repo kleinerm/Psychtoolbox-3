@@ -274,6 +274,7 @@ typedef struct _PsychWindowRecordType_{
 		GLboolean								colorMask[4];			// Boolean 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
 		unsigned int							specialflags;			// Container for all kind of special flags...
+		int										maxTextureSize;			// Maximum size of a texture supported by GPU.
         int                                     stereomode;             // MK: Is this a stereo window? 0=non-stereo, >0 == specific type of stero.
         int                                     stereodrawbuffer;       // MK: Which drawbuffer is active in stereo? 0=left, 1=right, 2=none
 		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.
