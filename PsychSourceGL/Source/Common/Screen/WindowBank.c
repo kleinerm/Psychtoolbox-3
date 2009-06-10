@@ -530,6 +530,7 @@ void  PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecord
 
 	// Inherit capability bits of parents context:
 	childWin->gfxcaps = parentWin->gfxcaps;
+	childWin->maxTextureSize = parentWin->maxTextureSize;
 	
 	return;
 }

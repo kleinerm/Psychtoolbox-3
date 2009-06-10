@@ -68,6 +68,7 @@ typedef struct {
     double avg_gfxtime;               // Average time spent in GWorld --> OpenGL texture conversion and statistics.
     int nrgfxframes;                  // Count of fetched textures.
 	char capDeviceName[1000];		  // Camera name string.
+	MatrixRecordPtr	scaleMatrixPtr;	  // Pointer to scaling matrix, if any. NULL otherwise.
 
 } PsychVidcapRecordType;
 
@@ -87,6 +88,8 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
     CodecFlags	ignore;
     TimeScale 	timeScale;
     double tstart, tend;
+	short exph, expw;				
+	Fixed scaleX, scaleY;
 
     PsychGetAdjustedPrecisionTimerSeconds(&tstart);
     
@@ -121,6 +124,32 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
 				printf("PTB-INFO: Video source %i - In proc: Video res is  %i x %i pixels.\n", handle, Fix2Long((*imageDesc)->hRes), Fix2Long((*imageDesc)->vRes));
 			}
 
+			// Matching roirect (expected size of image and dimension of target GWorld) and real image size?
+			if ((*imageDesc)->height != (vidcapRecordBANK[handle].roirect.bottom - vidcapRecordBANK[handle].roirect.top) ||
+				(*imageDesc)->width != (vidcapRecordBANK[handle].roirect.right - vidcapRecordBANK[handle].roirect.left)) {
+				exph = (vidcapRecordBANK[handle].roirect.bottom - vidcapRecordBANK[handle].roirect.top);
+				expw = (vidcapRecordBANK[handle].roirect.right - vidcapRecordBANK[handle].roirect.left);
+
+				if (PsychPrefStateGet_Verbosity() > 1) {	
+					printf("PTB-WARNING: Real size of video image from camera %i ['%s'] %i x %i doesn't match expected size %i x %i!\n", handle, vidcapRecordBANK[handle].capDeviceName, (*imageDesc)->width, (*imageDesc)->height, expw, exph);
+					printf("PTB-WARNING: Will perform some software scaling to compensate for this. However this will incur significant performance loss!\n");
+					printf("PTB-WARNING: It is strongly recommended that you specify a roirect of [0, 0, %i, %i] in the Screen('OpenVideocapture')\n", (*imageDesc)->width, (*imageDesc)->height);
+					printf("PTB-WARNING: call to set a proper image resolution, so this compute intense scaling can be avoided in future sessions!\n");
+				}
+				
+				// Build scaling matrix to compensate for mismatch in size of input image and
+				// destination GWorld / roirect:
+				vidcapRecordBANK[handle].scaleMatrixPtr = malloc(sizeof(MatrixRecord));
+				SetIdentityMatrix(vidcapRecordBANK[handle].scaleMatrixPtr);
+				scaleX = FixRatio(expw, (*imageDesc)->width);
+				scaleY = FixRatio(exph, (*imageDesc)->height);
+				ScaleMatrix(vidcapRecordBANK[handle].scaleMatrixPtr, scaleX, scaleY, 0, 0);
+			}
+			else {
+				// No scaling matrix needed: Assign NULL matrix:
+				vidcapRecordBANK[handle].scaleMatrixPtr = NULL;
+			}
+			
             // begin the process of decompressing a sequence of frames
             // this is a set-up call and is only called once for the sequence - the ICM will interrogate different codecs
             // and construct a suitable decompression chain, as this is a time consuming process we don't want to do this
@@ -132,7 +161,7 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
                                           vidcapRecordBANK[handle].gworld,      // port for the DESTINATION image
                                           NULL,					// graphics device handle, if port is set, set to NULL
                                           &(vidcapRecordBANK[handle].roirect),	// source rectangle defining the portion of the image to decompress 
-                                          NULL,                                 // transformation matrix
+                                          vidcapRecordBANK[handle].scaleMatrixPtr,	// transformation matrix
                                           srcCopy,				// transfer mode specifier
                                           (RgnHandle)NULL,                      // clipping region in dest. coordinate system to use as a mask
                                           0,					// flags
@@ -591,7 +620,8 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     vidcapRecordBANK[slotid].gworld=NULL;
     vidcapRecordBANK[slotid].decomSeq=0;    
     vidcapRecordBANK[slotid].grabber_active = 0;
-        
+	vidcapRecordBANK[slotid].scaleMatrixPtr = NULL;
+
     // Open sequence grabber:
     // ======================
 
@@ -655,7 +685,7 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
 				// if the device namestring doesn't contain "iSight", as we know the iSight behaves like that on
 				// every Apple computer, so no point of cluttering the screen with warnings about the obvious:
 				if ((NULL == strstr(vidcapRecordBANK[slotid].capDeviceName, "iSight")) && (PsychPrefStateGet_Verbosity() > 2)) {
-					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device %s with deviceIndex %i:\n", vidcapRecordBANK[slotid].capDeviceName, deviceIndex);
+					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device '%s' with deviceIndex %i:\n", vidcapRecordBANK[slotid].capDeviceName, deviceIndex);
 					printf("PTB-INFO: Your code doesn't specify an explicit 'roirectangle' for requested camera resolution, but wants me to\n");
 					printf("PTB-INFO: auto-detect the optimal image size. The operating system recommends a size of 1600 x 1200 pixels for your\n");
 					printf("PTB-INFO: camera, which is almost always a wrong and bogus setting! I'll therefore default to the most commonly found\n");
@@ -1096,6 +1126,12 @@ void PsychQTCloseVideoCaptureDevice(int capturehandle)
 			printf("PTB-WARNING: In shutdown of video capture device %i: Release of decompression sequence reports QT error %i. Ressource leakage??\n", capturehandle, (int) err);
 		}
 		vidcapRecordBANK[capturehandle].decomSeq = 0;
+	}
+
+	// Delete scaling matrix, if any:
+	if (vidcapRecordBANK[capturehandle].scaleMatrixPtr) {
+		free(vidcapRecordBANK[capturehandle].scaleMatrixPtr);
+		vidcapRecordBANK[capturehandle].scaleMatrixPtr = NULL;
 	}
 
     // Delete GWorld if any:
