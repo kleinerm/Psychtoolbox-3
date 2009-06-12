@@ -41,6 +41,8 @@ function DaqTest
 % 11/xx/07 - 
 %  1/xx/08 mpr  Instituted various fixes to get this to work for a USB-1608FS
 %                   in Leopard
+% 05/11/09 mk Add if isempty(FinalStatus) in line 444 and later to catch
+%             empty returns from DaqGetStatus.
 
 debugging=0; % Used by dgp to track down a crash in PsychHID.
 
@@ -442,6 +444,11 @@ else
       return;
     end
     FinalStatus = DaqGetStatus;
+    if isempty(FinalStatus)
+      fprintf(['\nIt looks like I had trouble reading the updated status from the device\n' ...
+               'I don''t want to mess things up, so I return control to you.\n\n']);
+      return;
+    end
     if FinalStatus.program ~= TheStatus.program
       fprintf(['\nIt looks like I had trouble re-setting the update program mode bit\n' ...
                'after I changed it.  I am going to stop now.  I hope I haven''t caused a problem.\n\n']);
