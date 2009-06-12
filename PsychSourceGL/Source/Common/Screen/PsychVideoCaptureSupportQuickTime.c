@@ -43,9 +43,12 @@
 // Forward declaration of internal helper function:
 void PsychQTDeleteAllCaptureDevices(void);
 OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput, char* retDeviceName);
+void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast);
+
 
 // Record which defines all state for a capture device:
 typedef struct {
+	psych_mutex			mutex;			// Access mutex to coordinate access between worker thread and masterthread, if any.
 	unsigned int		recordingflags; // Flags specified at device open time.
     GWorldPtr           gworld;       // Offscreen GWorld into which captured frame is decompressed.
     SeqGrabComponent 	seqGrab;	     // Sequence grabber handle.
@@ -69,7 +72,7 @@ typedef struct {
     int nrgfxframes;                  // Count of fetched textures.
 	char capDeviceName[1000];		  // Camera name string.
 	MatrixRecordPtr	scaleMatrixPtr;	  // Pointer to scaling matrix, if any. NULL otherwise.
-
+	psych_thread		worker;		  // Handle of worker thread, if any. NULL otherwise.
 } PsychVidcapRecordType;
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
@@ -199,9 +202,60 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
         // Update framecounter:
         vidcapRecordBANK[handle].nrframes++;
     }
-    
-    
+
     return(noErr);
+}
+
+/* Main routine of video capture background worker thread: */
+void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast)
+{
+	double idlesecs;
+	int error;
+	
+	// Cast to our video capture record struct:
+	PsychVidcapRecordType *dev = (PsychVidcapRecordType*) vidcapRecordToCast;
+	
+	// Signal to QuickTime that this is a separate thread.
+	if ((error = EnterMoviesOnThread(0)) != noErr) {
+		printf("PTB-ERROR: In PsychQTVideoCaptureThreadMain(): EnterMoviesOnThread() returns error code %i\n", (int) error);
+
+		// Emergency exit:
+		return (NULL);
+	}
+	
+	// Is grabbing logically active? Otherwise we're done:
+	while (dev->grabber_active > 0) {
+		// Grabber active. Wait a quarter capture cycle duration. This is save, even
+		// if grabber should become inactive during this period, as we will recheck below.
+		// We wait imprecisely, as a msecs more or less won't matter here:
+		idlesecs = (1.0 / dev->fps) / 4;
+		PsychYieldIntervalSeconds(idlesecs);
+		
+		// Time for work. Lock the mutex:
+		PsychLockMutex(&(dev->mutex));
+		
+		// Do the SGIdle() call if device still active:
+		if (dev->grabber_active > 0) {
+			if ((error = (int) SGIdle(dev->seqGrab))!= (int) noErr) {
+				// We don't abort on non noErr case, but only (optionally) report it. This is because when in harddisc
+				// movie recording mode with sound recording, we can get intermittent errors in SGIdle() which are
+				// meaningless so they are best ignored and must not lead to interruption of PTB operation.
+				if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychQTVideoCaptureThreadMain(): SGIdle() returns error code %i\n", (int) error);
+			}
+		}
+
+		// Done. Unlock mutex:
+		PsychUnlockMutex(&(dev->mutex));
+
+		// Next iteration...
+	}
+
+	if ((error = ExitMoviesOnThread()) != noErr) {
+		printf("PTB-ERROR: In PsychQTVideoCaptureThreadMain(): ExitMoviesOnThread() returns error code %i\n", (int) error);
+	}
+
+	// Done. Return a NULL result:
+	return(NULL);
 }
 
 /*
@@ -219,6 +273,7 @@ void PsychQTVideoCaptureInit(void)
         vidcapRecordBANK[i].seqGrab = (SeqGrabComponent) NULL;
         vidcapRecordBANK[i].decomSeq = 0;
         vidcapRecordBANK[i].grabber_active = 0;
+		vidcapRecordBANK[i].worker = NULL;
     }    
     numCaptureRecords = 0;
     
@@ -569,6 +624,7 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
  *		// 2 = Record audio as well.
  *		// 4 = Only record, but don't provide as live feed. This saves callback overhead if provided for pure recording sessions.
  *		// 8 = Don't call SGPrepare() / SGRelease().
+ *		// 16 = Use background worker thread to call SGIdle() for automatic capture/recording.
  */
 bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
@@ -1058,6 +1114,9 @@ bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int d
     
     // Grabber should be ready now.
     
+	// Create and initialize Mutex:
+	PsychInitMutex(&(vidcapRecordBANK[slotid].mutex));
+
     // Assign new record:
     vidcapRecordBANK[slotid].seqGrab=seqGrab;    
 
@@ -1113,9 +1172,21 @@ void PsychQTCloseVideoCaptureDevice(int capturehandle)
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No capture device associated with this handle !!!");
     }
 
+	// Clear grabber_active flag, also as a signal to potential worker thread to terminate:
+	vidcapRecordBANK[capturehandle].grabber_active = 0;
+
+	// Worker thread still active?
+	if (vidcapRecordBANK[capturehandle].worker) {
+		// Destroy it, wait for destruction, clean it up:
+		PsychDeleteThread(&vidcapRecordBANK[capturehandle].worker);
+	}
+
     // Stop capture immediately:
     SGStop(vidcapRecordBANK[capturehandle].seqGrab);
     
+	// Destroy Mutex:
+	PsychDestroyMutex(&(vidcapRecordBANK[capturehandle].mutex));
+
 	// Release SG if previously prepared:
     if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) SGRelease(vidcapRecordBANK[capturehandle].seqGrab);
 
@@ -1231,28 +1302,38 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 		outrawbuffer->depth = reqdepth;
 	}
     
-    // Grant some processing time to the sequence grabber engine:
-    if ((error=SGIdle(vidcapRecordBANK[capturehandle].seqGrab))!=noErr) {
-		// We don't abort on non noErr case, but only (optionally) report it. This is because when in harddisc
-		// movie recording mode with sound recording, we can get intermittent errors in SGIdle() which are
-		// meaningless so they are best ignored and must not lead to interruption of PTB operation.
-        if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychGetTextureFromCapture(): SGIdle() returns error code %i\n", (int) error);
+	// Lock device mutex so we have exclusive access:
+	PsychLockMutex(&(vidcapRecordBANK[capturehandle].mutex));
 
-		// Return abort error code:
-		return(-2);
+	// Actual capture ops driven by parallel background worker thread, so nothing to do for us?
+	if (NULL == vidcapRecordBANK[capturehandle].worker) {
+		// No, we need to do it: Grant some processing time to the sequence grabber engine:
+		if ((error=SGIdle(vidcapRecordBANK[capturehandle].seqGrab))!=noErr) {
+			// We don't abort on non noErr case, but only (optionally) report it. This is because when in harddisc
+			// movie recording mode with sound recording, we can get intermittent errors in SGIdle() which are
+			// meaningless so they are best ignored and must not lead to interruption of PTB operation.
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: In PsychGetTextureFromCapture(): SGIdle() returns error code %i\n", (int) error);
+			
+			// Unlock mutex:
+			PsychUnlockMutex(&(vidcapRecordBANK[capturehandle].mutex));
+			
+			// Return abort error code:
+			return(-2);
+		}
 	}
-    
+
 	// Ist this device in "recording only" mode? If so then it doesn't have a
 	// callback proc assigned, therefore all the processing below this line would
 	// just cause a deadlock. The only allowed mode is checkForImage == 4 in this
 	// case:
 	if ((vidcapRecordBANK[capturehandle].recordingflags & 4) && (checkForImage!=4)) {
 		// Invalid mode of invocation!
+
+		// Unlock mutex:
+		PsychUnlockMutex(&(vidcapRecordBANK[capturehandle].mutex));
+
 		PsychErrorExitMsg(PsychError_user, "Capturedevice was opened in ''disk recording only'' mode: You must specify a 'waitForImage' flag of 4 in your Screen('GetCapturedImage') call!");
 	}
-	
-	// TODO CHECK FIXME: Race condition here? Not if callback thread is called single-threaded in SGIdle(),
-	// but is this always the case for all digitizers???
 	
     // Check if a new captured frame is ready for retrieval...
     newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
@@ -1267,6 +1348,9 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     
     // Should we just check for new image? If so, just return availability status:
     if (checkForImage) {
+		// Unlock mutex: No further access to shared variables until return():
+		PsychUnlockMutex(&(vidcapRecordBANK[capturehandle].mutex));
+
         if (vidcapRecordBANK[capturehandle].grabber_active == 0) {
             // Grabber stopped. We'll never get a new image:
             return(-2);
@@ -1307,6 +1391,7 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     // Lock GWorld:
     if(!LockPixels(GetGWorldPixMap(vidcapRecordBANK[capturehandle].gworld))) {
         // Locking surface failed! We abort.
+		PsychUnlockMutex(&(vidcapRecordBANK[capturehandle].mutex));
         PsychErrorExitMsg(PsychError_internal, "PsychGetTextureFromCapture(): Locking GWorld pixmap surface failed!!!");
     }
 
@@ -1381,6 +1466,10 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
         // Let PsychCreateTexture() do the rest of the job of creating, setting up and
         // filling an OpenGL texture with GWorlds content:
+		//
+		// CAUTION: An error abort inside this function could leave us with a locked mutex!
+		// However, error aborts inside this are not likely, and users will hopefully "clear all"
+		// and thereby resolve dangling mutex issues after such a fatal error:
         PsychCreateTexture(out_texture);
 
         // Undo hack from above after texture creation: Now we need the real width of the
@@ -1442,6 +1531,9 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 
     // Record timestamp as reference for next check:    
     vidcapRecordBANK[capturehandle].last_pts = *presentation_timestamp;
+
+	// Unlock mutex:
+	PsychUnlockMutex(&(vidcapRecordBANK[capturehandle].mutex));
     
     // Timestamping:
     PsychGetAdjustedPrecisionTimerSeconds(&tend);
@@ -1564,11 +1656,30 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			vidcapRecordBANK[capturehandle].fps = (double) FixedToFloat(maxframerate);
 			if (PsychPrefStateGet_Verbosity()>3) printf("PTB-INFO: Maximum framerate overrides reported one! Will assume a capture framerate of: %lf fps for further operation.\n", vidcapRecordBANK[capturehandle].fps);
 		}
+		
+		// Start worker thread for video capture, if requested:
+		if (vidcapRecordBANK[capturehandle].recordingflags & 16) {
+			if ((error = (OSErr) PsychCreateThread(&vidcapRecordBANK[capturehandle].worker, NULL, PsychQTVideoCaptureThreadMain, (void*) &vidcapRecordBANK[capturehandle]))) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: In start of videocapture for device %i: Failed to start worker thread [%s]!\n", capturehandle, strerror((int) error));
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: Videocapture for device %i uses a parallel background capture thread for operation as requested.\n", capturehandle);
+			}
+		}
     }
     else {
 		if (PsychPrefStateGet_Verbosity() > 3) {
 			SGGetStorageSpaceRemaining(vidcapRecordBANK[capturehandle].seqGrab, &storageRem);
 			printf("PTB-INFO: At stop time, device %i reports %f MB of storage space remaining.\n", capturehandle, ((float) storageRem) / 1024 / 1024);
+		}
+
+		// Clear grabber_active flag, also as a signal to potential worker thread to terminate:
+        vidcapRecordBANK[capturehandle].grabber_active = 0;
+
+		// Worker thread active?
+		if (vidcapRecordBANK[capturehandle].worker) {
+			// Destroy it, wait for destruction, clean it up:
+			PsychDeleteThread(&vidcapRecordBANK[capturehandle].worker);
 		}
 
         // Stop capture:
@@ -1578,8 +1689,8 @@ int PsychQTVideoCaptureRate(int capturehandle, double capturerate, int dropframe
 			if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: %i st. invocation of SGStop() reports error %i in stop function.\n", retrycount, (int) error);
 		}
 
+		// Reset frame_ready:
         vidcapRecordBANK[capturehandle].frame_ready = 0;
-        vidcapRecordBANK[capturehandle].grabber_active = 0;
 
         // Output count of dropped frames:
         if ((dropped=vidcapRecordBANK[capturehandle].nr_droppedframes) > 0) {
