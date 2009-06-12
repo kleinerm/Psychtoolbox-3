@@ -372,3 +372,42 @@ int PsychUnlockMutex(psych_mutex* mutex)
 {
 	return(pthread_mutex_unlock(mutex));
 }
+
+/* Create a parallel thread of execution, invoke its main routine: */
+int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
+{
+	// threadparams not yet used, this line just to make compiler happy:
+	(void*) threadparams;
+	
+	// Return result code of pthread_create - We're a really thin wrapper around this Posix call:
+	return( pthread_create(threadhandle, NULL, start_routine, arg) );
+}
+
+/* Join a parallel thread - Wait for its termination, then return its result code: */
+int PsychDeleteThread(psych_thread* threadhandle)
+{
+	// Join on the thread, wait for termination:
+	int rc = pthread_join(*threadhandle, NULL);
+	// Null out now invalid thread handle of dead thread:
+	*threadhandle = NULL;
+	// Return return code of joined thread:
+	return(rc);
+}
+
+/* Send abort request to thread: */
+int PsychAbortThread(psych_thread* threadhandle)
+{
+	return( pthread_cancel(*threadhandle) );
+}
+
+/* Return handle of calling thread: */
+psych_thread PsychGetThreadId(void)
+{
+	return( pthread_self() );
+}
+
+/* Check if two given thread handles do refer to the same thread: */
+int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
+{
+	return( pthread_equal(threadOne, threadTwo) );
+}

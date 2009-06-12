@@ -613,3 +613,63 @@ int PsychUnlockMutex(psych_mutex* mutex)
 	LeaveCriticalSection(mutex);
 	return(0);
 }
+
+/* Create a parallel thread of execution, invoke its main routine: */
+int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
+{
+	// threadparams not yet used, this line just to make compiler happy:
+	(void*) threadparams;
+	
+	// Create thread, running, with default system settings, assign thread handle:
+	*threadhandle = CreateThread(NULL, 0, start_routine, arg, 0, NULL);
+	
+	// Return result code: If successfull, return 0. Otherwise return 1:
+	return( (*threadhandle != NULL) ? 0 : 1);
+}
+
+/* Join a parallel thread - Wait for its termination, then return its result code: */
+int PsychDeleteThread(psych_thread* threadhandle)
+{
+	int rc;
+	
+	// Join on the thread, wait for termination:
+	rc = (int) WaitForSingleObject(*threadhandle, INFINITE);
+	if (WAIT_FAILED != rc) {
+		// Retrieve exit code of terminated thread:
+		GetExitCodeThread(*threadhandle, &rc);
+		
+		// Destroy its associated ressources:
+		CloseHandle(*threadhandle);
+	}
+	else {
+		printf("PTB-CRITICAL: In PsychDeleteThread: Waiting for termination of a worker thread failed! Prepare for trouble!\n");
+	}
+	
+	// Null out now invalid thread handle of dead thread:
+	*threadhandle = NULL;
+
+	// Return return code of joined thread:
+	return(rc);
+}
+
+/* Send abort request to thread: */
+int PsychAbortThread(psych_thread* threadhandle)
+{
+	// This is an emergency abort call! Maybe should think about a "softer" solution for Windows?
+	return( TerminateThread(*threadhandle, 0) );
+}
+
+/* Return handle of calling thread:
+ * CAUTION: Returned handle can only be used within the calling thread, not for other
+ *          threads to refer to this thread! See MSDN docs for rationale.
+ */
+psych_thread PsychGetThreadId(void)
+{
+	return( GetCurrentThread() );
+}
+
+/* Check if two given thread handles do refer to the same thread: */
+int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
+{
+	return( GetThreadId(threadOne) == GetThreadId(threadTwo) );
+}

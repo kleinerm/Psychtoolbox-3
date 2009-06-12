@@ -50,6 +50,11 @@ int	PsychInitMutex(psych_mutex* mutex);
 int	PsychDestroyMutex(psych_mutex* mutex);
 int PsychLockMutex(psych_mutex* mutex);
 int PsychUnlockMutex(psych_mutex* mutex);
+int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg);
+int PsychDeleteThread(psych_thread* threadhandle);
+int PsychAbortThread(psych_thread* threadhandle);
+psych_thread PsychGetThreadId(void);
+int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo);
 
 //end include once
 #endif

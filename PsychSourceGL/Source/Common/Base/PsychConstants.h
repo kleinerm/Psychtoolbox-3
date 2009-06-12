@@ -150,6 +150,8 @@ typedef unsigned char bool;
         typedef unsigned int CFDictionaryRef;
 		// Datatype for Mutex Locks:
 		typedef pthread_mutex_t		psych_mutex;
+		// Datatype for threads:
+		typedef pthread_t			psych_thread;		
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -182,6 +184,8 @@ typedef unsigned char bool;
         //typedef unsigned int CFDictionaryRef;
 		// Datatype for Mutex Locks:
 		typedef CRITICAL_SECTION		psych_mutex;
+		// Datatype for threads:
+		typedef HANDLE					psych_thread;		
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	typedef Boolean				boolean;
@@ -204,6 +208,8 @@ typedef unsigned char bool;
         typedef unsigned long long	psych_uint64;
 		// Datatype for Mutex Locks:	
 		typedef pthread_mutex_t		psych_mutex;
+		// Datatype for threads:
+		typedef pthread_t			psych_thread;
 #endif
 
 
