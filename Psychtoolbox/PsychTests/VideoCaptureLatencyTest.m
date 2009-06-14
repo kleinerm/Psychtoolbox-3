@@ -54,9 +54,8 @@ end;
 depth
 
 if IsOctave
-more off;
-ignore_function_time_stamp = 'all';
-
+    more off;
+    ignore_function_time_stamp('all');
 end
 
 %try

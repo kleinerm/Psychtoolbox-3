@@ -108,7 +108,7 @@ if exist('subDir', 'var')
     % Create subDir on first use:
     if ~exist(ThePath, 'dir')
         [DirMade, DirMessage] = mkdir(ThePath);
-        if (IsOctave & DirMade~=0) | (~IsOctave & DirMade==0)
+        if DirMade == 0
             error(sprintf('I could not create a subfolder in your homedirectory in\n\n%s [%s]\n\nWhat are the permissions on that folder?',StringStart, DirMessage)); %#ok<SPERR>
         end
     end

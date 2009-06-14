@@ -116,7 +116,7 @@ end
 % Remove "Psychtoolbox" from path
 while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     fprintf('Your old Psychtoolbox appears in the MATLAB/OCTAVE path:\n');
-    paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
+    paths=regexp(path,['[^' pathsep ']*'],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']'],'match')));
     % Old and wrong, counts too many instances: fprintf('Your old Psychtoolbox appears %d times in the MATLAB/OCTAVE path.\n',length(paths));
     answer=input('Before you decide to delete the paths, do you want to see them (yes or no)? ','s');

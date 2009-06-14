@@ -1,7 +1,7 @@
-function VideoTextureExtractionDemo(objtype, multiMarker)
+function VideoTextureExtractionDemo(lightson, objtype, multiMarker)
 % Use ARToolkit to track and visualize 3D objects in live-video.
 %
-% Usage: ARToolkitDemo([objtype = 3][, multiMarker = 2])
+% Usage: ARToolkitDemo([lightson = 0][, objtype = 3][, multiMarker = 2])
 %
 % Minimalistic demo on how to capture video data and use ARToolkit to
 % detect and track the rigid position and orientation of markers, then
@@ -26,9 +26,17 @@ global sizeMM;
 AssertOpenGL;
 
 % Size of rendered objects in millimeters:
-sizeMM = 80; %#ok<NASGU>
+sizeMM = 40; %#ok<NASGU>
 
 if nargin < 1
+    lightson = [];
+end
+
+if isempty(lightson)
+    lightson = 0;
+end
+
+if nargin < 2
     objtype = [];
 end
 
@@ -69,8 +77,8 @@ try
             grabber = Screen('OpenVideoCapture', win, 0, [], 5, [], [], [], [], engineId);
         case 0,
             devid = PsychGetCamIdForSpec('Eye');
-            grabber = Screen('OpenVideoCapture', win, devid, [], 4, [], [], [], [], engineId);
-            imgFormat = 4;
+            grabber = Screen('OpenVideoCapture', win, devid, [], 1, [], [], [], [], engineId);
+%            imgFormat = 4;
         case 1,
             grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], [], [], [], [], [], engineId);
         otherwise
@@ -109,7 +117,7 @@ try
     % [templateMatchingInColor, imageProcessingFullSized, imageProcessingIdeal, trackingWithPCA] = PsychCV('ARTrackerSettings')
 
     % Single markers by default:
-    if nargin < 2
+    if nargin < 3
         multiMarker = 2;
     end
     
@@ -122,8 +130,9 @@ try
                 
         if bitand(multiMarker, 2)
             cd(ardata);
-            marker(end+1) = PsychCV('ARLoadMarker', 'patt.hiro', 0);
-            marker(end+1) = PsychCV('ARLoadMarker', 'patt.kanji', 0);
+%            marker(end+1) = PsychCV('ARLoadMarker', 'patt.sample2', 0, 40);
+%            marker(end+1) = PsychCV('ARLoadMarker', 'patt.hiro', 0);
+            marker(end+1) = PsychCV('ARLoadMarker', 'patt.kanji', 0, 40);
         end
         
         if bitand(multiMarker, 1)
@@ -168,7 +177,7 @@ try
     end
     
     % zThreshold may need tweaking for depth range of object:
-    zThreshold = 0.00001;
+    zThreshold = 0.000001;
     callbackEvalString = 'glCallList(gld);';
     
     context = moglExtractTexture('CreateContext', win, [0 0 w h], texCoordMin, texCoordMax, texResolution, zThreshold);
@@ -179,7 +188,9 @@ try
 
     % Enable lighting and depth-test:
     glColor3f(1,1,1);
-    glEnable(GL.LIGHTING);
+    if lightson
+        glEnable(GL.LIGHTING);
+    end
     glEnable(GL.LIGHT0);
     glEnable(GL.DEPTH_TEST);
 
@@ -209,10 +220,10 @@ try
     texmin = 0.00;
     texmax = 1.00;
     glPushMatrix;
-    glTranslated(-sizeMM/2, -sizeMM/2, 0);
 
     switch(objtype)
         case 1,
+            glTranslated(-sizeMM/2, -sizeMM/2, 0);
             glTranslated(0, -sizeMM, 0);
             glBegin(GL.QUADS);
             glTexCoord2f(texmin, texmin);
@@ -226,6 +237,7 @@ try
             glEnd;
 
         case 2,
+            glTranslated(-sizeMM/2, -sizeMM/2, 0);
             mysphere = gluNewQuadric;
             gluQuadricTexture(mysphere, GL.TRUE);
             glMatrixMode(GL.TEXTURE);
@@ -238,7 +250,8 @@ try
             gluDeleteQuadric(mysphere);
 
         case 3,
-            glTranslated(3*sizeMM, 0, 0);
+            glTranslated(0, 1*sizeMM, 0);
+            glRotated(180, 0, 0, 1);
             glMatrixMode(GL.TEXTURE);
             glPushMatrix;
             glLoadIdentity;
@@ -398,3 +411,26 @@ end;
 Screen('Preference', 'SkipSyncTests', olsync);
 
 return
+
+function MCalib = computeRigidXForm(MTarget, MHandle) 
+    TTarget = MTarget(1:3, 4);
+    RTarget = MTarget(1:3, 1:3);
+    
+    % Tinverse is the 4x4 translation matrix with the negated
+    % (inverted) T ranslation vector of the tracking target:
+    Tinverse = diag([1 1 1 1]);
+    Tinverse(1:3, 4) = -TTarget;
+
+    % Rinverse is the transpose (==inverse) of the tracking targets
+    % rotation matrix RTarget, extended to a 4x4 matrix:
+    Rinverse = diag([1 1 1 1]);
+    Rinverse(1:3, 1:3) = transpose(RTarget);
+
+    % Build final inverse transformation:
+    MTargetInverse = Rinverse * Tinverse;
+    
+    % Build combined forward transformation:
+    MCalib = MTargetInverse * MHandle;
+
+    return;
+end

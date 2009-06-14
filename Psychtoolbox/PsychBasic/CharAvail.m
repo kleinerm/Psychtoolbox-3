@@ -48,45 +48,43 @@ function [avail, numChars] = CharAvail
 global OSX_JAVA_GETCHAR;
 persistent isjavadesktop;
 
-if ~IsOctave
-    % Only check this once because psychusejava is a slow command.
-    if isempty(isjavadesktop)
-        isjavadesktop = psychusejava('desktop');
+% Only check this once because psychusejava is a slow command.
+if isempty(isjavadesktop)
+    isjavadesktop = psychusejava('desktop');
+end
+
+if isjavadesktop
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        try
+            OSX_JAVA_GETCHAR = AssignGetCharJava;
+        catch
+            error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+        end
+        OSX_JAVA_GETCHAR.register;
     end
 
-    if isjavadesktop
-        % Make sure that the GetCharJava class is loaded and registered with
-        % the java focus manager.
-        if isempty(OSX_JAVA_GETCHAR)
-            try
-                OSX_JAVA_GETCHAR = AssignGetCharJava;
-            catch
-                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
-            end
-            OSX_JAVA_GETCHAR.register;
-        end
+    % Check to see if any characters are available.
+    avail = OSX_JAVA_GETCHAR.getCharCount;
 
-        % Check to see if any characters are available.
-        avail = OSX_JAVA_GETCHAR.getCharCount;
+    % Make sure that there isn't a buffer overflow.
+    if avail == -1
+        error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+    end
 
-        % Make sure that there isn't a buffer overflow.
-        if avail == -1
-            error('GetChar buffer overflow. Use "FlushEvents" to clear error');
-        end
+    numChars = avail;
+    avail = avail > 0;
 
-        numChars = avail;
-        avail = avail > 0;
-
+    return;
+else
+    % Java VM unavailable, i.e., running in -nojvm mode.
+    % On Windows, we can fall back to the old CharAvail.dll.
+    if IsWin
+        % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
+        avail = CharAvailNoJVM;
+        numChars = [];
         return;
-    else
-        % Java VM unavailable, i.e., running in -nojvm mode.
-        % On Windows, we can fall back to the old CharAvail.dll.
-        if IsWin
-            % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
-            avail = CharAvailNoJVM;
-            numChars = [];
-            return;
-        end
     end
 end
 

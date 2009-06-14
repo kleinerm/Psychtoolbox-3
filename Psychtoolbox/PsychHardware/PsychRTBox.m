@@ -499,6 +499,7 @@ function varargout = PsychRTBox(varargin)
 % 02/15/2009 More refinements and rework of post-hoc timestamp remapping (MK).
 % 06/07/2009 Check for ambiguous assignment of buttonnames to avoid errors.
 %            Bug found by Vinzenz Schoenfelder (MK).
+% 06/14/2009 Remove special case code for Octave. No longer needed (MK).
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -2397,16 +2398,8 @@ function openRTBox(deviceID, handle)
                 candidateports=dir('/dev/ttyUSB*');
             end
 
-            % Different handling for Octave, as its dir() function returns
-            % results in slightly different format than Matlab:
-            if ~IsOctave
-                for i=1:length(candidateports)
-                    ports{i} = ['/dev/', candidateports(i).name];
-                end
-            else
-                for i=1:length(candidateports)
-                    ports{i} = candidateports(i).name;
-                end
+            for i=1:length(candidateports)
+                ports{i} = ['/dev/', candidateports(i).name];
             end
 
             nPorts = length(candidateports);

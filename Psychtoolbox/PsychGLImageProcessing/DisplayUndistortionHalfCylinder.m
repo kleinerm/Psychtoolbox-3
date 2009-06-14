@@ -154,11 +154,7 @@ try
                 % Save all relevant calibration variables to file 'calibfilename'. This
                 % method should work on both, Matlab 6.x, 7.x, ... and GNU/Octave - create
                 % files that are readable by all runtime environments:
-                if ~IsOctave
-                    save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', '-mat', '-V6');
-                else
-                    save('-mat', calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize');
-                end
+                save(calibfilename, 'warptype', 'rotationAngle', 'inSize', 'inOffset', 'outOffset', 'outSize', '-mat', '-V6');
 
                 Beeper;
                 continue;

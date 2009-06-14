@@ -5,8 +5,10 @@ function rc = castDouble2Float(arg1, arg2)
 % castDouble2Float.oct file which is needed when running under Octave.
 % castDouble2Float.m is needed on Matlab, so Matlab does not complain
 % about non-existing functions.
-if IsOctave
-  error('M-File version of castDouble2Float called! castDouble2Float.oct missing!!!!');
-else
-  rc = arg1;
-end;
+%
+% Update: castDouble2Float is not even needed on Octave anymore, so this is
+% really a placeholder just to keep old code working that relied on its now
+% "no op" presence.
+%
+
+rc = arg1;

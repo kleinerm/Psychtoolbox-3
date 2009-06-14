@@ -135,12 +135,12 @@ for i=1:1000
                 end
             case 3,
                 if mode == 1
-                    Screen('FrameOval', win, colors, myrect);
+                    Screen('FrameOval', win, colors, myrect, sizes);
                 end
 
                 if mode == 0
                     for j=1:n
-                        Screen('FrameOval', win, colors(:,j)', myrect(:,j)');
+                        Screen('FrameOval', win, colors(:,j)', myrect(:,j)', sizes(j));
                     end
                 end
 

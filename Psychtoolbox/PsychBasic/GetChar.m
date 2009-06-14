@@ -193,84 +193,82 @@ elseif nargin == 1
     getRawCode = 0;
 end
 
-if ~IsOctave
-    % This is Matlab. Is the Java VM and AWT and Desktop running?
-    if psychusejava('desktop')
-        % Java virtual machine and AWT and Desktop are running. Use our Java based
-        % GetChar.
-        
-        % Make sure that the GetCharJava class is loaded and registered with
-        % the java focus manager.
-        if isempty(OSX_JAVA_GETCHAR)
-            try
-                OSX_JAVA_GETCHAR = AssignGetCharJava;
-            catch
-                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
-            end
-            OSX_JAVA_GETCHAR.register;
-        end
+% This is Matlab. Is the Java VM and AWT and Desktop running?
+if psychusejava('desktop')
+    % Java virtual machine and AWT and Desktop are running. Use our Java based
+    % GetChar.
 
-        % Make sure the Matlab window has keyboard focus:
-        if exist('commandwindow')
-            % Call builtin implementation:
-            commandwindow;
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        try
+            OSX_JAVA_GETCHAR = AssignGetCharJava;
+        catch
+            error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
-        
-        % Loop until we receive character input.
-        keepChecking = 1;
-        while keepChecking
-            % Check to see if a character is available, and stop looking if
-            % we've found one.
-            charValue = OSX_JAVA_GETCHAR.getChar;
-            keepChecking = charValue == 0;
-            if keepChecking
-                drawnow;
-            end
-        end
+        OSX_JAVA_GETCHAR.register;
+    end
 
-        % Throw an error if we've exceeded the buffer size.
-        if charValue == -1
-            % Reenable keystroke dispatching to Matlab to leave us with a
-            % functional Matlab console.
-            OSX_JAVA_GETCHAR.setRedispatchFlag(0);
-            error('GetChar buffer overflow. Use "FlushEvents" to clear error');
-        end
+    % Make sure the Matlab window has keyboard focus:
+    if exist('commandwindow') %#ok<EXIST>
+        % Call builtin implementation:
+        commandwindow;
+    end
 
-        % Get the typed character.
-        if getRawCode
-            ch = charValue;
-        else
-            ch = char(charValue);
+    % Loop until we receive character input.
+    keepChecking = 1;
+    while keepChecking
+        % Check to see if a character is available, and stop looking if
+        % we've found one.
+        charValue = OSX_JAVA_GETCHAR.getChar;
+        keepChecking = charValue == 0;
+        if keepChecking
+            drawnow;
         end
+    end
 
-        % Only fill up the 'when' data stucture if extended data was requested.
-        if getExtendedData
-            when.address=nan;
-            when.mouseButton=nan;
-            when.alphaLock=nan;
-            modifiers = OSX_JAVA_GETCHAR.getModifiers;
-            when.commandKey = modifiers(1);
-            when.controlKey = modifiers(2);
-            when.optionKey = modifiers(3);
-            when.shiftKey = modifiers(4);
-            rawEventTimeMs = OSX_JAVA_GETCHAR.getEventTime;  % result is in units of ms.
-            when.ticks = nan;
-            when.secs = JavaTimeToGetSecs(rawEventTimeMs, -1);
-        else
-            when = [];
-        end
-        
-        return;
+    % Throw an error if we've exceeded the buffer size.
+    if charValue == -1
+        % Reenable keystroke dispatching to Matlab to leave us with a
+        % functional Matlab console.
+        OSX_JAVA_GETCHAR.setRedispatchFlag(0);
+        error('GetChar buffer overflow. Use "FlushEvents" to clear error');
+    end
+
+    % Get the typed character.
+    if getRawCode
+        ch = charValue;
     else
-        % Java VM unavailable, i.e., running in -nojvm mode.
-        % On Windows, we can fall back to the old GetChar.dll, although we
-        % only get info about typed characters, no 'when' extended data.
-        if IsWin
-            % GetChar.dll has been renamed to GetCharNoJVM.dll. Call it.
-            ch = GetCharNoJVM;
-            when = [];
-            return;
-        end
+        ch = char(charValue);
+    end
+
+    % Only fill up the 'when' data stucture if extended data was requested.
+    if getExtendedData
+        when.address=nan;
+        when.mouseButton=nan;
+        when.alphaLock=nan;
+        modifiers = OSX_JAVA_GETCHAR.getModifiers;
+        when.commandKey = modifiers(1);
+        when.controlKey = modifiers(2);
+        when.optionKey = modifiers(3);
+        when.shiftKey = modifiers(4);
+        rawEventTimeMs = OSX_JAVA_GETCHAR.getEventTime;  % result is in units of ms.
+        when.ticks = nan;
+        when.secs = JavaTimeToGetSecs(rawEventTimeMs, -1);
+    else
+        when = [];
+    end
+
+    return;
+else
+    % Java VM unavailable, i.e., running in -nojvm mode.
+    % On Windows, we can fall back to the old GetChar.dll, although we
+    % only get info about typed characters, no 'when' extended data.
+    if IsWin
+        % GetChar.dll has been renamed to GetCharNoJVM.dll. Call it.
+        ch = GetCharNoJVM;
+        when = [];
+        return;
     end
 end
 
@@ -288,7 +286,7 @@ while keepChecking
     keepChecking = charValue == 0;
     if keepChecking
         drawnow;
-        if exist('fflush')
+        if exist('fflush') %#ok<EXIST>
             builtin('fflush', 1);
         end
     end

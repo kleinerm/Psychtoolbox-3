@@ -54,7 +54,7 @@ if isempty(panickeyCodes)
     
     % Attach to callback:
     if IsOctave
-        input_event_hook('PsychWatchDog', []);
+        add_input_event_hook(mfilename, []);
     end
 end
 
@@ -81,7 +81,7 @@ if ~isempty(heartbeat)
     if heartbeat == -1
         % Disable and detach:
         if IsOctave
-            input_event_hook;
+            remove_input_event_hook(mfilename);
         end
         
         panickeyCodes = [];

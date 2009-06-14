@@ -207,12 +207,10 @@ while count < 10000
         maxdiff = max(max(dimg));
         totmax = max([maxdiff totmax]);
 
-        if ~IsOctave
-	  % Show color-coded difference image:
-          imagesc(dimg);
-	  colorbar;
-          drawnow;
-        end
+        % Show color-coded difference image:
+        imagesc(dimg);
+        colorbar;
+        drawnow;
     end
     
     if benchmark~=1

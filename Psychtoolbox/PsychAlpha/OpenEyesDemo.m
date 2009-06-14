@@ -74,12 +74,12 @@ try
         end
     end
     
-    minDist = RectWidth(eyeRect) / 4
+    minDist = RectWidth(eyeRect) / 8
     maxDist = RectWidth(eyeRect) / 2 * 1.2
 %     apprArea = RectWidth(eyeRect)/2 * RectHeight(eyeRect)/2 * pi;
-    apprArea = max(RectWidth(eyeRect), RectWidth(eyeRect))/2;
-    minArea = apprArea * 0.8
-    maxArea = apprArea * 1.2
+    apprArea = max(RectWidth(eyeRect), RectHeight(eyeRect))/2;
+    minArea = apprArea * 0.2
+    maxArea = apprArea * 2
 
     % Set constraints on minimum and maximum distance of features wrt. the
     % pupil center, and on the rough size of the allowable pupil/limbus fit
@@ -106,9 +106,9 @@ try
             curpar.fanoutAngle1 = 0; %-45;
             curpar.fanoutAngle2 = 180; % 180 + 45;
             curpar.featuresPerRay = 2;
-            curpar.specialFlags = 0;
-            curpar.rays = curpar.initialAngleSpread;
-            curpar.gaussWidth = 5;
+            curpar.specialFlags = +1;
+            curpar.rays = round(curpar.initialAngleSpread * 0.1);
+            curpar.gaussWidth = 3;
             % Commit (possibly changed) parameters to tracker:
             PsychOpenEyes('TrackerParameters', oeyes, curpar.pupilEdgeThresh, curpar.rays, curpar.minCand, curpar.corneaWinSize, curpar.edgeThresh, curpar.gaussWidth, curpar.eccentricity, curpar.initialAngleSpread, curpar.fanoutAngle1, curpar.fanoutAngle2, curpar.featuresPerRay, curpar.specialFlags);
         end

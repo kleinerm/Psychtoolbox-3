@@ -16,11 +16,6 @@ if ~IsOSX
     return;
 end
 
-if IsOctave
-    rc = 2;
-    return;
-end
-
 gestaltbits=Gestalt('sys1');
 majorversion=bin2dec(char(49*gestaltbits+48*~gestaltbits));
 

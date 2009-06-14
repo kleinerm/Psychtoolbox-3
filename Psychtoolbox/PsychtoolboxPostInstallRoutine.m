@@ -186,6 +186,8 @@ if IsOctave
     % OS/X or Linux under Octave. Need to prepend the proper folder with
     % the pseudo-MEX files to path:
     rc = 0;
+    rdir = '';
+    
     try
         % Remove binary MEX folders from path:
         rmpath([PsychtoolboxRoot 'PsychBasic/Octave2LinuxFiles']);
@@ -194,7 +196,10 @@ if IsOctave
         rmpath([PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles']);
         
         % Encode prefix and Octave major version of proper folder:
-        octavemajorv = sscanf(version, '%i');
+        octavev = sscanf(version, '%i.%i');
+        octavemajorv = octavev(1);
+        octaveminorv = octavev(2);
+        
         rdir = [PsychtoolboxRoot 'PsychBasic/Octave' num2str(octavemajorv)];
         
         % Add proper OS dependent postfix:
@@ -209,7 +214,7 @@ if IsOctave
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
-
+        
         if exist('savepath')
             rc = savepath;
         else
@@ -230,10 +235,10 @@ if IsOctave
         fprintf('=====================================================================\n\n');
     end
     
-    if octavemajorv < 3
+    if octavemajorv < 3 | octaveminorv < 2
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
-        fprintf('WARNING: using the latest stable version of Octave-3 for use with Psychtoolbox.\n');
+        fprintf('WARNING: using the latest stable version of at least Octave 3.2.0 for use with Psychtoolbox.\n');
         fprintf('WARNING: Stuff may not work or only suboptimal with earlier versions and we don''t\n');
         fprintf('WARNING: provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
@@ -259,7 +264,7 @@ if IsOctave
         % libraries.
         fprintf('ERROR: WaitSecs-MEX does not work, most likely other MEX files will not work either.\n');
         fprintf('ERROR: One reason might be that your version %s of Octave is incompatible. We recommend\n', version);        
-        fprintf('ERROR: use of the latest stable version of Octave-3 as announced on www.octave.org website.\n');
+        fprintf('ERROR: use of the latest stable version of Octave-3.2.x as announced on www.octave.org website.\n');
         fprintf('ERROR: Another conceivable reason would be missing or incompatible required system libraries on your system.\n\n');
         fprintf('ERROR: After fixing the problem, restart this installation/update routine.\n\n');
         fprintf('\n\nInstallation aborted. Fix the reported problem and retry.\n\n');

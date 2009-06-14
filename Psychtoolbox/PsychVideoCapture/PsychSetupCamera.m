@@ -47,7 +47,7 @@ if IsOctave
 
    % Tell Octave to not check timestamps of all M-Files
    % on each invocation -- Saves *a lot* of overhead.
-   ignore_function_time_stamp = 'all';
+   oldIgnore = ignore_function_time_stamp('all');
 end
 
 % Open fullscreen onscreen window with black background
@@ -126,7 +126,7 @@ Screen('CloseAll');
 
 if IsOctave
    % Reenable timestamp checking.
-   ignore_function_time_stamp = 'system';
+   ignore_function_time_stamp(oldIgnore);
 end
 
 % Plot final timing stats:

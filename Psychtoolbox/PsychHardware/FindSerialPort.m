@@ -40,6 +40,7 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 %                           enumeration code is directly derived (with
 %                           minimal modifications) from sample code donated
 %                           by Xiangrui Li. Thanks!
+%           6/14/09   mk    Remove redundant special case code for Octave.
 
 % Comments from mpr:
 %
@@ -236,11 +237,7 @@ else
     % New-Style: Path name of port itself for use with IOPort:
     if ~IsWin
         % Unix systems: Absolute device file path needed:
-        if IsOctave
-            PortNumber = sprintf('%s', ThePortDevices(FoundIndices).name);
-        else
-            PortNumber = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
-        end
+        PortNumber = sprintf('/dev/%s', ThePortDevices(FoundIndices).name);
     else
         % Windows: Pass "as is":
         PortNumber = upper(sprintf('%s', ThePortDevices(FoundIndices).name));
@@ -266,11 +263,7 @@ if ~IsWin
         prefix = 'tty';
     end
 
-    if IsOctave
-        prefix = ['/dev/' prefix '%s'];
-    else
-        prefix = [prefix '%s'];
-    end
+    prefix = [prefix '%s'];
 
     for k = 1:length(ThePortDevices)
         ThisDevice = sscanf(ThePortDevices(k).name,prefix);

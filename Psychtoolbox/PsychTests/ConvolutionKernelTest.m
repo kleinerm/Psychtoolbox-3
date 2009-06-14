@@ -99,6 +99,7 @@ function [passed difference speedup] = ConvolutionKernelTest(win, nrinchannels, 
 %
 % History:
 % 10/13/2007 Written (MK).
+% 06/13/2009 Remove Octave special case handling.
 
 global GL;
 
@@ -208,13 +209,9 @@ try
     Screen('Flip', win);
 
     % Cast back to single precision for CPU:
-    if ~IsOctave
-        noiseimg=single(noiseimg(:,:,1));
-        kernel1= single(kernel1);
-        kernel2= single(kernel2);
-    else
-        noiseimg=double(noiseimg(:,:,1));
-    end
+    noiseimg=single(noiseimg(:,:,1));
+    kernel1= single(kernel1);
+    kernel2= single(kernel2);
 
     kernel = kernel1;
     

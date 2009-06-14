@@ -8,9 +8,10 @@
 
 % History:
 % 05/11/06 written (MK)
+% 06/14/09 Made obsolete by Octave 3.2+ (MK)
 
 % Call clear functions for all Psychtoolbox MEX/OCT files.
-clearmex;
+% clearmex;
 
 % Call generic 'clear all' command of Matlab or Octave to take
 % care of the rest.

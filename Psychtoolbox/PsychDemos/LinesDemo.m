@@ -1,4 +1,4 @@
- 
+
 function LinesDemo
 % Line motion demo using SCREEN('DrawLines') subfunction
 % Derived from DotDemo, whose original author was Keith Schneider, 12/13/04
@@ -28,22 +28,22 @@ try
     min_d       = 1;    % minumum
     dot_w       = 0.1;  % width of line (deg)
     fix_r       = 0.15; % radius of fixation point (deg)
-    f_kill      = 0.01; % fraction of lines to kill each frame (limited lifetime)    
+    f_kill      = 0.01; % fraction of lines to kill each frame (limited lifetime)
     differentcolors =1; % Use a different color for each point if == 1. Use common color white if == 0.
     differentsizes = 0; % Use different sizes for each point if >= 1. Use one common size if == 0.
     waitframes = 1;     % Show new line-images at each waitframes'th monitor refresh.
-    
+
     if differentsizes>0  % drawing large lines is a bit slower
         ndots=round(ndots/5);
     end
-    
+
     % ---------------
     % open the screen
     % ---------------
 
     doublebuffer=1
     screens=Screen('Screens');
-	screenNumber=max(screens);
+    screenNumber=max(screens);
     % [w, rect] = Screen('OpenWindow', screenNumber, 0,[1,1,801,601],[], doublebuffer+1);
     [w, rect] = Screen('OpenWindow', screenNumber, 0,[], 32, doublebuffer+1);
 
@@ -51,19 +51,19 @@ try
     % for drawing of smoothed points:
     Screen('BlendFunction', w, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     [center(1), center(2)] = RectCenter(rect);
-	 fps=Screen('FrameRate',w);      % frames per second
+    fps=Screen('FrameRate',w);      % frames per second
     ifi=Screen('GetFlipInterval', w);
     if fps==0
-       fps=1/ifi;
+        fps=1/ifi;
     end;
-    
+
     black = BlackIndex(w);
     white = WhiteIndex(w);
     HideCursor;	% Hide the mouse cursor
-    
+
     % Do initial flip...
     vbl=Screen('Flip', w);
-    
+
     % ---------------------------------------
     % initialize line positions and velocities
     % ---------------------------------------
@@ -92,27 +92,27 @@ try
     else
         colvect=white;
     end;
-    
+
     % Create a vector with different point sizes for each single line, if
     % requested:
     if (differentsizes>0)
-        s=(1+rand(1, ndots)*(differentsizes-1))*s;        
+        s=(1+rand(1, ndots)*(differentsizes-1))*s;
     end;
-    
+
     buttons=0;
-    
+
     xymatrix=zeros(2, ndots*2);
-    
+
     % --------------
     % animation loop
-    % --------------    
+    % --------------
     for i = 1:nframes
         if (i>1)
             Screen('FillOval', w, uint8(white), fix_cord);	% draw fixation dot (flip erases it)
             Screen('DrawLines', w, xymatrix, s, colvect, center,1);  % change 1 to 0 to draw non anti-aliased lines.
             Screen('DrawingFinished', w); % Tell PTB that no further drawing commands will follow before Screen('Flip')
         end;
-        
+
         if KbCheck % break out of loop
             break;
         end;
@@ -141,15 +141,24 @@ try
             dxdy(r_out,:) = [dr(r_out) dr(r_out)] .* cs(r_out,:);
             oldxy(r_out, :)= xy(r_out,:);
         end;
-        
-        for i=0:ndots - 1
-            xymatrix(:, 1 + i*2) = transpose(xy(i+1, :));
-            xymatrix(:, 2 + i*2) = transpose(oldxy(i+1, :));
+
+        % Set this 1 to 0 to test performance of slooow non-vectorized code:
+        if 1
+            % Vectorized synthesis of lines matrix for next frame:
+            xymatrix(:, 1:2:(1+(2*ndots-2))) = xy';
+            xymatrix(:, 2:2:(2+(2*ndots-2))) = oldxy';
+        else
+            % Slow synthesis of lines matrix for next frame:
+            % This is 10-13x slower on Matlab, 320x slower on Octave 3.2!
+            for i=0:ndots - 1
+                xymatrix(:, 1 + i*2) = transpose(xy(i+1, :));
+                xymatrix(:, 2 + i*2) = transpose(oldxy(i+1, :));
+            end
         end
-        
+
         if (doublebuffer==1)
             vbl=Screen('Flip', w, vbl + (waitframes-0.5)*ifi);
-         end;
+        end;
     end;
     ShowCursor
     Screen('CloseAll');

@@ -15,6 +15,7 @@ function retpixels = glReadPixels( x, y, width, height, format, type, bufferoffs
 % 24-Jan-2006 -- created (generated automatically from header files)
 % 25-Jan-2006 -- return argument allocated for case format=GL_RGB,
 %                type=GL_UNSIGNED_BYTE (RFM)
+% 13-Jun-2009 -- Remove special code for Octave -> No longer needed. (MK)
 
 % ---allocate---
 % ---protected---
@@ -49,11 +50,11 @@ end
 % check format and type
 global GL
 
-if x < 0 | y<0
+if x < 0 | y<0 %#ok<OR2>
     error('Invalid (negative) (x,y) offset passed to glReadPixels.');
 end;
 
-if width <= 0 | height<=0
+if width <= 0 | height<=0 %#ok<OR2>
     error('Invalid (negative or zero) (width, height) passed to glReadPixels.');
 end;
 
@@ -69,17 +70,6 @@ switch(format)
     otherwise
         error('Invalid format passed to glReadPixels.');
 end;    
-        
-switch(type)
-    case {GL.UNSIGNED_BYTE , GL.BYTE }
-        numsize = 1;
-    case { GL.UNSIGNED_SHORT , GL.SHORT }
-        numsize = 2;
-    case { GL.UNSIGNED_INT , GL.INT , GL.FLOAT }
-        numsize = 4;
-    otherwise
-        error('Invalid type passed to glReadPixels.');
-end;
 
 if bufferoffset == -1
     % Readback to host memory, aka Matlab- or Octave- matrix:
@@ -112,20 +102,15 @@ if bufferoffset == -1
         case GL.FLOAT
             pixels = moglsingle(pixels);
             pclass = 'double';
+        otherwise
+            error('Invalid type argument passed to glReadPixels()!');
     end;
 
     % Execute actual call:
     moglcore( 'glReadPixels', x, y, width, height, format, type, pixels );
 
-    if IsOctave
-        if type == GL.FLOAT
-            pixels = mogldouble(pixels);
-        end
-        
-        retpixels = zeros(size(pixels,2), size(pixels,3), size(pixels,1), pclass);
-    end
-
     % Rearrange data in Matlab friendly format:
+    retpixels = zeros(size(pixels,2), size(pixels,3), size(pixels,1), pclass);
     for i=1:numperpixel
         retpixels(:,:,i) = pixels(i,:,:);
     end;

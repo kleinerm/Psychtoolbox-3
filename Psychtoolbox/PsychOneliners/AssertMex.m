@@ -1,42 +1,19 @@
 function callStack = AssertMex(varargin)
-
-% AssertMex([platform1,] [platform2,] ...)
+% Handle missing or dysfunctional MEX files on Matlab or Octave.
 %
-% OSX and OS9: _____________________________________________________________
+% AssertMex(targetname)
 %
 % AssertMex detects missing mex files.  Calling AssertMex from
 % your help file, e.g. foo.m, asserts the existence of a mex file foo.mex.
 % If no such mex file exists then AssertMex will exit with an error.
 %
-% You may specify on which platforms your help file expects a corresponding
-% mex file by using optional "platform" arguments. If no arguments are
-% supplied then AssertMex will issue an error on any platform on which it
-% cannot find a mex file.  If any platform names are supplied then
-% AssertMex will issue errors only if MATLAB fails to find the mex file on
-% the named platforms.
-%
 % Assert Mex is useful for detecting the error condition when a .m help
 % file is mistakenly executed because the correspondig .mex file is
 % missing. When foo.mex is missing, MATLAB silently executes the help file
 % foo.m instead.  Calling AssertMex within foo.m detects and reports that
-% error. 
-% 
-% AssertMex accepts platform names as returned by Matlab's COMPUTER
-% command:
-% 'PCWIN', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86',
-% 'MAC', 'MAC2'
-%
-% NOTE: Counterintuitively, "MAC" refers to OS X and "MAC2" refers to its 
-% predecessor, OS9.
-%
-% AssertMex also accepts these synonyms in place of MATLAB's names:
-%  'OSX', 'OS9', 'Win' and 'Windows'
-%
-% WIN: ________________________________________________________________
-% 
-% AssertMex does not yet exist in Windows.
-% 
-% _________________________________________________________________________
+% error. E.g., in Screen.m you'll find AssertMex('Screen.m') to handle
+% missing or dysfunctional Screen mex files properly.
+%  _________________________________________________________________________
 %
 % See also: AssertOpenGL, COMPUTER, IsOSX, IsOS9, IsWin
 
@@ -59,8 +36,10 @@ function callStack = AssertMex(varargin)
 % 10/06/05	awi     Fixed bug: Changed "okSupNameMatches"  to match addition of  'WIN' to 
 %								to "okSupNames"
 % 3/3/06    awi     Rewrote help for improved clarity.
+% 6/13/09    mk     Update to handle execution failures and missing files
+%                   on Octave-3.2 et al. as well.
 
-persistent okNames mexExtensions okSupNames okSupNameMatches;
+persistent okNames mexExtensions;
 
 % Different processing on Octave build.
 if IsOctave
@@ -69,10 +48,10 @@ if IsOctave
         return;
     end
 
-    octFilename = [ myName(1:end-1) 'oct'];
-    fprintf('\nIn place of the expected Octave .oct binary plugin file this placeholder file was executed:\n\n');
+    octFilename = [ myName(1:end-1) 'mex'];
+    fprintf('\nIn place of the expected Octave .mex binary plugin file this placeholder file was executed:\n\n');
     fprintf(['  ' myName '\n\n']);
-    fprintf('This OCT file seems to be missing or inaccessible on your Octave path or it is dysfunctional:\n\n')
+    fprintf('This MEX file seems to be missing or inaccessible on your Octave path or it is dysfunctional:\n\n')
     fprintf(['  ' octFilename '\n\n']);
 
     if ~exist(octFilename, 'file')
@@ -82,16 +61,19 @@ if IsOctave
         fprintf('fix possible path problems.\n');
         fprintf('Make sure that the path is readable by you as well...\n');
         if IsLinux
-            fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveLinuxFiles/']);
+            fprintf('The following directory should be the *first one* on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
         else
-            fprintf('The following directory should be on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/OctaveOSXFiles/']);
+            fprintf('The following directory should be the *first one* on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
         end
+        fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
+        fprintf('after you have restarted Octave, then you may encounter a bug present in Octave 3.2.0.\n');
+        fprintf('Try the following at the Octave prompt: First type "savepath" + Enter to save the current Octave path again.\n');
+        fprintf('Then exit Octave and restart it. Now try again - It may work now, if the problem was caused by aforementioned bug.\n\n');
     else
         % Check for supported Octave version:
         curversion = sscanf(version, '%i.%i.%i');
-        if curversion(1)~=2 | curversion(2)~=1 | curversion(3)<73
-            fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 2.1.73 or later,\n', version);
-            fprintf('i.e., a version with 2.1.x x>=73 in its name, but *not* Octave 2.9 or later!!\n');
+        if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
+            fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
             error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
         end
 
@@ -100,46 +82,18 @@ if IsOctave
         fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
     end
     error('Missing, inaccessible or dysfunctional Psychtoolbox Oct file for this system. Read the help text above carefully!!\n');
-end;
+end
 
 % Initialize the persistent variables.
 if isempty(okNames)
     okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2', 'MACI', 'i486-pc-linux-gnu'};
     mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex', 'mexmaci', 'oct'};
-    okSupNames = {'WINDOWS', 'WIN', 'OS9', 'OSX'};
-    okSupNameMatches = {'PCWIN', 'PCWIN', 'MAC2', 'MAC'};
 end
-
-% This code-chunk disabled: Doesn't make sense anymore for current PTB-3:
-% Code left for documentation...
-
-% Replace any non-standard platform names in the argument list with their
-% official equivalents.  Our non-standard names
-% match our shorthand platform tests: IsOS9, IsWin, and IsOSX.
-
-% inputNames = upper(varargin);
-% 
-% for i = 1:length(okSupNames)
-%     foundices=find(streq(okSupNames{i},upper(inputNames)));
-%     if foundices
-%         inputNames{foundices}=okSupNameMatches{i};
-%     end
-% end
-% 
-% % Check for invalid arguments.
-% badNames = setdiff(inputNames, okNames); 
-% if ~(isempty(badNames) | streq(badNames,'')) % badNames was often {''} which is not empty for isempty()
-%     nameList=[];
-%     for i = 1:length(badNames)
-%         nameList = [nameList ' ' badNames{i}];
-%     end
-%     error(['Invalid OS names: ' nameList '\n']);
-% end
 
 inputNames = [];
 
 % Check to see if there should be a mex file for our platform.
-if isempty(inputNames) | ismember(computer, inputNames)
+if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
     % Element 1 will always be AssertMex. Element 2 will be the calling
     % function unless it is invoked from the commnand line.
     callStack = dbstack;
@@ -172,7 +126,7 @@ if isempty(inputNames) | ismember(computer, inputNames)
         fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
         fprintf('fix possible path problems.\n\n');
     else
-        if IsWin & ~IsOctave
+        if IsWin
             fprintf('It is important that the folder which contains the Screen.dll file is located *before*\n');
             fprintf('the PsychBasic folder on your Matlab path. On Matlab prior to V7.4, the folder\n');
             fprintf('%sPsychBasic\\MatlabWindowsFilesR11\\ must be before the folder\n%sPsychBasic\\ \n\n', PsychtoolboxRoot, PsychtoolboxRoot);
@@ -186,7 +140,7 @@ if isempty(inputNames) | ismember(computer, inputNames)
         fprintf('Another reason could be insufficient access permissions or \n');
         fprintf('some missing 3rd party libraries on your system.\n\n');
 
-        if IsWin & ~IsOctave
+        if IsWin
             fprintf('On Microsoft Windows with recent Matlab versions (>= V7.4) it could also be that\n');
             fprintf('the required Visual C++ 2005 runtime libraries are missing on your system.\n');
             fprintf('Visit http://www.mathworks.com/support/solutions/data/1-2223MW.html for instructions how to\n');

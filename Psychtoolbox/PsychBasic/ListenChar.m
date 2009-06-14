@@ -47,49 +47,47 @@ if ~ismember(listenFlag, [0,1,2])
     error('Invalid listenFlag provided!  See "help ListenChar" for more information');
 end
 
-if ~IsOctave
-    % This is Matlab. Is the JVM running?
-    if psychusejava('desktop')
-        % Java enabled. There's work to do.
+% This is Matlab. Is the JVM running?
+if psychusejava('desktop')
+    % Java enabled. There's work to do.
 
-        % Make sure that the GetCharJava class is loaded.
-        if isempty(OSX_JAVA_GETCHAR)
-            try
-                OSX_JAVA_GETCHAR = AssignGetCharJava;
-            catch
-                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
-            end
+    % Make sure that the GetCharJava class is loaded.
+    if isempty(OSX_JAVA_GETCHAR)
+        try
+            OSX_JAVA_GETCHAR = AssignGetCharJava;
+        catch
+            error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
+        end
+    end
+
+    if listenFlag
+        % Start listening for characters.
+        OSX_JAVA_GETCHAR.register;
+
+        % Make sure the Matlab window has keyboard focus:
+        if exist('commandwindow') %#ok<EXIST>
+            % Call builtin implementation:
+            commandwindow;
+            drawnow;
         end
 
-        if listenFlag
-            % Start listening for characters.
-            OSX_JAVA_GETCHAR.register;
-            
-            % Make sure the Matlab window has keyboard focus:
-            if exist('commandwindow') %#ok<EXIST>
-                % Call builtin implementation:
-                commandwindow;
-                drawnow;
-            end
-
-            % Should we block output of characters to Matlab?
-            if listenFlag > 1
-                % Disable redispatching:
-                OSX_JAVA_GETCHAR.setRedispatchFlag(1);
-            else
-                % Enable redispatching: This is the startup default.
-                OSX_JAVA_GETCHAR.setRedispatchFlag(0);
-            end
+        % Should we block output of characters to Matlab?
+        if listenFlag > 1
+            % Disable redispatching:
+            OSX_JAVA_GETCHAR.setRedispatchFlag(1);
         else
-            % Stop listening for characters and clear the buffer.
-            OSX_JAVA_GETCHAR.unregister;
-            OSX_JAVA_GETCHAR.clear;
-            % Enable redispatching:
+            % Enable redispatching: This is the startup default.
             OSX_JAVA_GETCHAR.setRedispatchFlag(0);
         end
-        
-        return;
+    else
+        % Stop listening for characters and clear the buffer.
+        OSX_JAVA_GETCHAR.unregister;
+        OSX_JAVA_GETCHAR.clear;
+        % Enable redispatching:
+        OSX_JAVA_GETCHAR.setRedispatchFlag(0);
     end
+
+    return;
 end
 
 % Running either on Octave or on OS/X or Linux with Matlab in No JVM mode:

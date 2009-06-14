@@ -58,6 +58,12 @@ if nargin < 2
 end
 
 if isempty(wavfilename)
+    % Ok, assign this as default sound file: Better than ol' handel - we're
+    % sick of that sound.
+    wavfilename = [ PsychtoolboxRoot 'PsychDemos' filesep 'SoundFiles' filesep 'funk.wav'];
+end
+
+if isempty(wavfilename)
     % No sound file provided. Load standard handel.mat of Matlab:
     load handel;
     nrchannels = 1; % One channel only -> Mono sound.

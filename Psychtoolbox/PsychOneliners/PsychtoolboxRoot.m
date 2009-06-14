@@ -9,6 +9,6 @@ function path=PsychtoolboxRoot
 %               appears no longer to exist, and neither did DiskRoot, but I'd 
 %               already written a function to do what that did so I donated it 
 
-path=which('PsychtoolboxRoot.m');
+path=which('PsychtoolboxRoot');
 i=find(filesep==path);
 path=path(1:i(end-1));

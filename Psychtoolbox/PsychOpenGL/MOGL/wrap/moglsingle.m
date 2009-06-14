@@ -1,5 +1,5 @@
 function retval = moglsingle(arg)
-%
+% --- OBSOLETE --- OBSOLETE --- OBSOLETE --- OBSOLETE ---
 % PSYCHTOOLBOX SPECIFIC single() implementation:
 %
 % retval = moglsingle(arg) -- convert into
@@ -10,10 +10,16 @@ function retval = moglsingle(arg)
 % object of single precision floating point format.
 %
 % If a builtin single() function is available,
-% as on Matlab, it calls the builtin single() function.
+% as on Matlab and Octave 3.2+, it calls the builtin
+% single() function.
 %
-% Otherwise (Octave) it calls our own special
+% Otherwise (Octave) it would call our own special
 % implementation.
+%
+% This is no longer needed as of Octave 3.2.0, but we leave the function
+% here as many internal and external code relies on its presence.
+%
+% For Octave pre 3.2, this applied:
 %
 % This is a hack needed to make OpenGL (MOGL) work
 % on GNU/Octave, despite Octave's lack of a single
@@ -23,9 +29,16 @@ function retval = moglsingle(arg)
 %
 
 if exist('single', 'builtin')==5
-   retval = builtin('single', arg);
+    % If this is Octave, then we can use dispatch() to optimize calls to
+    % moglsingle() away, ie., all calls to moglsingle() will get redirected
+    % to single() unconditionally to save some overhead:
+    if IsOctave
+        dispatch('moglsingle', 'single', 'all');
+    end
+    
+    retval = builtin('single', arg);
 else
-   retval = castDouble2Float(double(arg));
+    retval = castDouble2Float(double(arg));
 end
 
 return;

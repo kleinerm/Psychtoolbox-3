@@ -50,11 +50,7 @@ if PsychNumel(oldRect) == 4
         end
     end
 else
-    % Multirect case:
-    if ~isscalar(x) | ~isscalar(y) %#ok<OR2>
-        error('When multiple rects are passed, then the x and y offsets must be single scalars, ie. no vectors!');
-    end
-    
+    % Multirect case: Offsets (x,y) can be vectors, or a single point:    
     if size(oldRect, 1)==4
         newRect(RectTop, :) = oldRect(RectTop, :) + y;
         newRect(RectBottom, :) = oldRect(RectBottom, :) + y;

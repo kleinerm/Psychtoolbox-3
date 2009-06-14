@@ -468,11 +468,7 @@ glDisable(GL.MAP2_TEXTURE_COORD_2);
 warptype = 'BezierDisplayList'; %#ok<NASGU>
 
 % Save relevant calibration variables to file 'caliboutfilename':
-if ~IsOctave
-    save(caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts', '-mat', '-V6');
-else
-    save('-mat', caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts');
-end
+save(caliboutfilename, 'warptype', 'subdivision', 'frompts', 'topts', '-mat', '-V6');
 
 % Close Display:
 Screen('CloseAll');

@@ -106,11 +106,7 @@ if preparse>0
     QuadFaces=[];
 
     % Rewind to beginning of file in preparation of real data parse pass:
-    if IsOctave
-        fseek(fid, 0, SEEK_SET);
-    else
-        frewind(fid);
-    end
+    frewind(fid);
 else
     % We do not preallocate, but just create empty arrays. This is needed
     % to accomodate for the special cases where an item has a

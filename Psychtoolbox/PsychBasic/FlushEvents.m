@@ -57,42 +57,40 @@ else
     end
 end;
 
-if ~IsOctave
-    % Execute a single drawnow() to kick in Matlabs event processing.
-    % This will nicely eat up pending mouse-clicks, so they can't "spill over"
-    % into Matlab GUI after end of an experiment script.
-    drawnow;
-    
-    % This is Matlab. Is the Java VM and AWT running?
-    if psychusejava('desktop')
-        % Make sure that the GetCharJava class is loaded and registered with
-        % the java focus manager.
-        if isempty(OSX_JAVA_GETCHAR)
-            try
-                OSX_JAVA_GETCHAR = AssignGetCharJava;
-            catch
-                error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
-            end
-            OSX_JAVA_GETCHAR.register;
+% Execute a single drawnow() to kick in Matlabs event processing.
+% This will nicely eat up pending mouse-clicks, so they can't "spill over"
+% into Matlab GUI after end of an experiment script.
+drawnow;
+
+% This is Matlab. Is the Java VM and AWT running?
+if psychusejava('desktop')
+    % Make sure that the GetCharJava class is loaded and registered with
+    % the java focus manager.
+    if isempty(OSX_JAVA_GETCHAR)
+        try
+            OSX_JAVA_GETCHAR = AssignGetCharJava;
+        catch
+            error('Could not load Java class GetCharJava! Read ''help PsychJavaTrouble'' for help.');
         end
-        
-        if doclear == 1
-            % Clear the internal queue of characters:
-            OSX_JAVA_GETCHAR.clear;
-            % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
-            % reported by Denis:
-            while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
-        end
-        
+        OSX_JAVA_GETCHAR.register;
+    end
+
+    if doclear == 1
+        % Clear the internal queue of characters:
+        OSX_JAVA_GETCHAR.clear;
+        % This is a stupid hack that hopefully "fixes" GetChar race-conditions as
+        % reported by Denis:
+        while CharAvail, drawnow; dummy = GetChar; end; %#ok<NASGU>
+    end
+
+    return;
+else
+    % Java VM unavailable, i.e., running in -nojvm mode.
+    % On Windows, we can fall back to the old FlushEvents.dll.
+    if IsWin
+        % FlushEvents.dll has been renamed to FlushEventsNoJVM.dll. Call it.
+        FlushEventsNoJVM(char(varargin{:}));
         return;
-    else
-        % Java VM unavailable, i.e., running in -nojvm mode.
-        % On Windows, we can fall back to the old FlushEvents.dll.
-        if IsWin
-            % FlushEvents.dll has been renamed to FlushEventsNoJVM.dll. Call it.
-            FlushEventsNoJVM(char(varargin{:}));
-            return;
-        end
     end
 end
 

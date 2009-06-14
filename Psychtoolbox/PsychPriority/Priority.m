@@ -197,15 +197,6 @@ if IsLinux
    return;
 end;
 
-if IsOSX & IsOctave %#ok<AND2>
-    % Not implemented on MacOS-X + GNU/Octave versions older than 3:
-    if sscanf(version, '%i') < 3
-        % Pre Octave-3: Just return zero -- Noop:
-        oldPriority=0;
-        return;
-    end
-end;
-
 if IsOSX
     if isempty(killUpdateNotNeeded)
         % Check if this is MacOS-X 10.4.7 or later. We don't need to kill

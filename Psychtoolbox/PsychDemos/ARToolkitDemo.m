@@ -46,13 +46,14 @@ try
     % Open videocapture device: For now we use engine 2, the ARVideo
     % engine, to simplify compatibility issues...
     imgFormat = [];
-    engineId = 2;
+    engineId = 0;
     
     switch engineId
         case 2,
             grabber = Screen('OpenVideoCapture', win, 0, [], 5, [], [], [], [], engineId);
         case 0,
-            grabber = Screen('OpenVideoCapture', win, 30000, [0 0 640 480], 4, [], [], [], [], engineId);
+            devid = PsychGetCamIdForSpec('Eye');
+            grabber = Screen('OpenVideoCapture', win, devid, [0 0 640 480], 4, [], [], [], [], engineId);
             imgFormat = 4;
         case 1,
             grabber = Screen('OpenVideoCapture', win, 0, [0 0 640 480], [], [], [], [], [], engineId);
