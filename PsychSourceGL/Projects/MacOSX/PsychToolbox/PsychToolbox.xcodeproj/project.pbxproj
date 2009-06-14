@@ -1656,7 +1656,7 @@
 		8341EF240D2FD0E300B77B0E /* cvEyeTracker.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1D0D2FD0E300B77B0E /* cvEyeTracker.cc */; };
 		8341EF250D2FD0E300B77B0E /* ransac_ellipse.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF1E0D2FD0E300B77B0E /* ransac_ellipse.cc */; };
 		8341EF260D2FD0E300B77B0E /* remove_corneal_reflection.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */; };
-		8341EF270D2FD0E300B77B0E /* svd.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF220D2FD0E300B77B0E /* svd.cc */; };
+		8341EF270D2FD0E300B77B0E /* svd.cc in Sources */ = {isa = PBXBuildFile; fileRef = 8341EF220D2FD0E300B77B0E /* svd.cc */; settings = {COMPILER_FLAGS = "-x c"; }; };
 		834260BB0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		834260BC0DAD9FA300363E05 /* PsychSerialUnixGlue.c in Sources */ = {isa = PBXBuildFile; fileRef = 834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */; };
 		83495CDA09F701B8003973EA /* SCREENLoadCLUT.c in Sources */ = {isa = PBXBuildFile; fileRef = 83495CD909F701B8003973EA /* SCREENLoadCLUT.c */; };
@@ -3702,7 +3702,7 @@
 		8341EF1F0D2FD0E300B77B0E /* ransac_ellipse.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ransac_ellipse.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/ransac_ellipse.h; sourceTree = SOURCE_ROOT; };
 		8341EF200D2FD0E300B77B0E /* remove_corneal_reflection.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = remove_corneal_reflection.cc; sourceTree = "<group>"; };
 		8341EF210D2FD0E300B77B0E /* remove_corneal_reflection.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = remove_corneal_reflection.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/remove_corneal_reflection.h; sourceTree = SOURCE_ROOT; };
-		8341EF220D2FD0E300B77B0E /* svd.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; path = svd.cc; sourceTree = "<group>"; };
+		8341EF220D2FD0E300B77B0E /* svd.cc */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.cpp; fileEncoding = 30; path = svd.cc; sourceTree = "<group>"; };
 		8341EF230D2FD0E300B77B0E /* svd.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = svd.h; path = ../../../Source/Common/PsychCV/OpenEyesCVEyeTracker/svd.h; sourceTree = SOURCE_ROOT; };
 		834260BA0DAD9FA300363E05 /* PsychSerialUnixGlue.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = PsychSerialUnixGlue.c; path = ../../../Source/Common/IOPort/PsychSerialUnixGlue.c; sourceTree = SOURCE_ROOT; };
 		8342DA600B0A466000E0A2F4 /* ptbstartlogo.h */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.h; name = ptbstartlogo.h; path = ../../../Source/Common/Screen/ptbstartlogo.h; sourceTree = SOURCE_ROOT; };
@@ -23863,7 +23863,7 @@
 		83726C9D0FD05B3500ED39A4 /* Development-Octave-3build */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				BUNDLE_LOADER = "/Applications/Octave.app/Contents/Resources/bin/octave-3.0.5";
+				BUNDLE_LOADER = "/Applications/Octave.app/Contents/Resources/bin/octave-3.2.0";
 				DEPLOYMENT_LOCATION = YES;
 				DSTROOT = "$(PSYCHTOOLBOXROOT)/";
 				EXECUTABLE_EXTENSION = mex;
@@ -23891,6 +23891,7 @@
 					"-no-cpp-precomp",
 				);
 				OTHER_LDFLAGS = (
+					"-lfftw3f",
 					"-lstdc++",
 					"-lcruft",
 					"-loctave",
