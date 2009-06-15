@@ -788,6 +788,16 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{find(strcmp(kkLinux, 'period'))} = '.>';
             kk{find(strcmp(kkLinux, 'comma'))} = ',<';
             kk{find(strcmp(kkLinux, 'slash'))} = '/?';
+            kk{find(strcmp(kkLinux, '0'))} = '0)';
+            kk{find(strcmp(kkLinux, '1'))} = '1!';
+            kk{find(strcmp(kkLinux, '2'))} = '2@';
+            kk{find(strcmp(kkLinux, '3'))} = '3#';
+            kk{find(strcmp(kkLinux, '4'))} = '4$';
+            kk{find(strcmp(kkLinux, '5'))} = '5%';
+            kk{find(strcmp(kkLinux, '6'))} = '6^';
+            kk{find(strcmp(kkLinux, '7'))} = '7&';
+            kk{find(strcmp(kkLinux, '8'))} = '8*';
+            kk{find(strcmp(kkLinux, '9'))} = '9(';
         end
         
         if IsOSX
