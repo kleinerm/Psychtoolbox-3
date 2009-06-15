@@ -440,14 +440,14 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   // Special case: Buggy ATI driver: Supports the VSync extension and glXSwapIntervalSGI, but provides the
   // wrong extension namestring "WGL_EXT_swap_control" (from MS-Windows!), so GLEW doesn't auto-detect and
   // bind the extension. If this special case is present, we do it here manually ourselves:
-  if ( (glXSwapIntervalSGI == NULL) && (strstr(glXQueryExtensionsString(dpy, scrnum), "WGL_EXT_swap_control") != NULL) ) {
+  if ( (glXSwapIntervalSGI == NULL) && (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control") != NULL) ) {
 	// Looks so: Bind manually...
 	glXSwapIntervalSGI = glXGetProcAddressARB("glXSwapIntervalSGI");
   }
 
   // Extension finally supported?
   if (glXSwapIntervalSGI==NULL || ( strstr(glXQueryExtensionsString(dpy, scrnum), "GLX_SGI_swap_control")==NULL &&
-	  strstr(glXQueryExtensionsString(dpy, scrnum), "WGL_EXT_swap_control")==NULL )) {
+	  strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")==NULL )) {
 	  // No, total failure to bind extension:
 	  glXSwapIntervalSGI = NULL;
 	  printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");

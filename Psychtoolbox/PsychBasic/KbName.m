@@ -3,18 +3,18 @@ function kbNameResult = KbName(arg)
 % 	
 % 	KbName maps between KbCheck-style keyscan codes and key names.
 % 	
-% 	‚ If arg is a string designating a key label then KbName returns the 
+% 	ï¿½ If arg is a string designating a key label then KbName returns the 
 % 	  keycode of the indicated key.  
 %
-% 	‚ If arg is a keycode, KbName returns the label of the designated key. 
+% 	ï¿½ If arg is a keycode, KbName returns the label of the designated key. 
 %
-% 	‚ If no argument is supplied then KbName waits one second and then 
+% 	ï¿½ If no argument is supplied then KbName waits one second and then 
 %     calls KbCheck.  KbName then returns a cell array holding the names of
 %     all keys which were down at the time of the KbCheck call. The 
 %     one-second delay preceeding the call to KbCheck avoids catching the 
 %     <return> keypress used to execute the KbName function. 
 %
-%   ‚ If arg is 'UnifyKeyNames', KbName will switch its internal naming
+%   ï¿½ If arg is 'UnifyKeyNames', KbName will switch its internal naming
 %     scheme from the operating system specific scheme (which was used in
 %     the old Psychtoolboxes on MacOS-9 and on Windows) to the MacOS-X
 %     naming scheme, thereby allowing to use one common naming scheme for
@@ -24,19 +24,19 @@ function kbNameResult = KbName(arg)
 % 	  CAUTION: This function may contain bugs. Please report them (or fix
 % 	  them) if you find some.
 %
-%   ‚ If arg is 'KeyNames', KbName will print out a table of all
+%   ï¿½ If arg is 'KeyNames', KbName will print out a table of all
 %     keycodes->keynames mappings.
 %
-%   ‚ If arg is 'KeyNamesOSX', KbName will print out a table of all
+%   ï¿½ If arg is 'KeyNamesOSX', KbName will print out a table of all
 %     keycodes->keynames mappings for MacOS-X.
 %
-%   ‚ If arg is 'KeyNamesOS9', KbName will print out a table of all
+%   ï¿½ If arg is 'KeyNamesOS9', KbName will print out a table of all
 %     keycodes->keynames mappings for MacOS-9.
 %
-%   ‚ If arg is 'KeyNamesWindows', KbName will print out a table of all
+%   ï¿½ If arg is 'KeyNamesWindows', KbName will print out a table of all
 %     keycodes->keynames mappings for M$-Windows.
 %
-%   ‚ If arg is 'KeyNamesLinux', KbName will print out a table of all
+%   ï¿½ If arg is 'KeyNamesLinux', KbName will print out a table of all
 %     keycodes->keynames mappings for GNU/Linux, X11.
 %
 % 	KbName deals with keys, not characters. See KbCheck help for an 
@@ -785,6 +785,9 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{find(strcmp(kkLinux, 'Menu'))} = 'Application';
             kk{find(strcmp(kkLinux, 'Num_Lock'))} = 'NumLock';
             kk{find(strcmp(kkLinux, 'Tab'))} = 'tab';
+            kk{find(strcmp(kkLinux, 'period'))} = '.>';
+            kk{find(strcmp(kkLinux, 'comma'))} = ',<';
+            kk{find(strcmp(kkLinux, 'slash'))} = '/?';
         end
         
         if IsOSX
