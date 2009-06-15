@@ -16,6 +16,14 @@
 #define PSYCH_LANGUAGE PSYCH_MATLAB
 #include "mex.h"
 
+#define printf mexPrintf
+#ifndef true
+#define true 1
+#endif
+
+#ifndef false
+#define false 0
+#endif
 
 #else
 

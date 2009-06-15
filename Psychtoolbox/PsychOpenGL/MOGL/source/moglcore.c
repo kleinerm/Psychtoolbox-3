@@ -422,6 +422,12 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
         // Perform dynamic rebinding of ARB extensions to core functions, if necessary:
         mogl_rebindARBExtensionsToCore();
         
+	#ifdef FREEGLUT
+	// FreeGlut must be initialized, otherwise it will emergency abort the whole application!
+	int noargs = 0; 
+	glutInit( &noargs, NULL);
+	#endif
+
 	// Register exit-handler: When flushing the mex-file, we free all allocated buffer memory:
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
 	mexAtExit(&mexExitFunction);
