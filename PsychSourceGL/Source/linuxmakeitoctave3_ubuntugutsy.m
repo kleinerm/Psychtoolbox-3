@@ -17,7 +17,8 @@ fprintf('Building plugin type %i ...\n\n', mode);
 
 if mode==0
     % Build Screen.mex:
-    mex -v -g --output ../Projects/Linux/build/Screen.mex -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lX11 -lXext /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a
+% With ARVideo - incomplete:    mex -v -g --output ../Projects/Linux/build/Screen.mex -DPTBVIDEOCAPTURE_ARVIDEO -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -I../Cohorts/ARToolkit/include -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lX11 -lXext /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a ../Projects/Linux/ARToolkit/libARvideo.a /usr/lib/libgstreamer-0.10.a 
+    mex -v -g --output ../Projects/Linux/build/Screen.mex -DPTBVIDEOCAPTURE_LIBDC -DPTBOCTAVE3MEX -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lX11 -lXext /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a 
     unix('mv /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/Screen.mex /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/Octave3LinuxFiles/');
 end;
 

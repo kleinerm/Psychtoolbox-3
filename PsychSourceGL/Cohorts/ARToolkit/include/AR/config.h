@@ -72,7 +72,7 @@
 #undef  AR_INPUT_V4L
 #undef  AR_INPUT_DV
 #undef  AR_INPUT_1394CAM
-#undef  AR_INPUT_GSTREAMER
+#define  AR_INPUT_GSTREAMER
 
 #  ifdef AR_INPUT_V4L
 #    ifdef USE_EYETOY
