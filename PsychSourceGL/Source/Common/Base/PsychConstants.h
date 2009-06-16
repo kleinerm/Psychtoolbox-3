@@ -151,7 +151,8 @@ typedef unsigned char bool;
 		// Datatype for Mutex Locks:
 		typedef pthread_mutex_t		psych_mutex;
 		// Datatype for threads:
-		typedef pthread_t			psych_thread;		
+		typedef pthread_t			psych_thread;
+		typedef pthread_t			psych_threadid;		
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
@@ -160,10 +161,12 @@ typedef unsigned char bool;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
         typedef WORD                            psych_uint16;
-        typedef GLubyte                         psych_uint8;
-        typedef GLubyte                         ubyte;          
+        // typedef GLubyte                         psych_uint8;
+        typedef GLubyte                         ubyte;
+		#ifndef PTBOCTAVE3MEX
         typedef boolean                         mxLogical;
         typedef boolean                         Boolean;
+		#endif
 
         // The Visual C 6 compiler doesn't know about the __func__ keyword :(
         #define __func__ "UNKNOWN"
@@ -185,7 +188,14 @@ typedef unsigned char bool;
 		// Datatype for Mutex Locks:
 		typedef CRITICAL_SECTION		psych_mutex;
 		// Datatype for threads:
-		typedef HANDLE					psych_thread;		
+		typedef struct psych_threadstruct {
+			HANDLE		handle;		// Handle to actual thread (NULL == Invalid).
+			DWORD		threadId;	// Unique numeric id (0 = Invalid.)
+		};
+		typedef struct psych_threadstruct*	psych_thread;
+
+		typedef psych_uint32		psych_threadid;
+		
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
 	typedef Boolean				boolean;
@@ -210,6 +220,7 @@ typedef unsigned char bool;
 		typedef pthread_mutex_t		psych_mutex;
 		// Datatype for threads:
 		typedef pthread_t			psych_thread;
+		typedef pthread_t			psych_threadid;
 #endif
 
 

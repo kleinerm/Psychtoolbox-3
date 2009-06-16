@@ -215,6 +215,7 @@ void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast)
 	// Cast to our video capture record struct:
 	PsychVidcapRecordType *dev = (PsychVidcapRecordType*) vidcapRecordToCast;
 	
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	// Signal to QuickTime that this is a separate thread.
 	if ((error = EnterMoviesOnThread(0)) != noErr) {
 		printf("PTB-ERROR: In PsychQTVideoCaptureThreadMain(): EnterMoviesOnThread() returns error code %i\n", (int) error);
@@ -222,7 +223,8 @@ void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast)
 		// Emergency exit:
 		return (NULL);
 	}
-	
+	#endif
+
 	// Is grabbing logically active? Otherwise we're done:
 	while (dev->grabber_active > 0) {
 		// Grabber active. Wait a quarter capture cycle duration. This is save, even
@@ -250,10 +252,12 @@ void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast)
 		// Next iteration...
 	}
 
+	#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	if ((error = ExitMoviesOnThread()) != noErr) {
 		printf("PTB-ERROR: In PsychQTVideoCaptureThreadMain(): ExitMoviesOnThread() returns error code %i\n", (int) error);
 	}
-
+	#endif
+	
 	// Done. Return a NULL result:
 	return(NULL);
 }

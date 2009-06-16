@@ -615,61 +615,76 @@ int PsychUnlockMutex(psych_mutex* mutex)
 }
 
 /* Create a parallel thread of execution, invoke its main routine: */
+/* FIXME: void* is wrong return argument type for start_routine!!! Works on Win32, but would crash on Win64!!! */
 int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg)
 {
 	// threadparams not yet used, this line just to make compiler happy:
 	(void*) threadparams;
 	
+	*threadhandle = (psych_thread) malloc(sizeof(struct psych_threadstruct));
+	if (*threadhandle == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free RAM memory when trying to create processing thread!");
+	(*threadhandle)->handle = NULL;
+	(*threadhandle)->threadId = 0;
+	
 	// Create thread, running, with default system settings, assign thread handle:
-	*threadhandle = CreateThread(NULL, 0, start_routine, arg, 0, NULL);
+	(*threadhandle)->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) start_routine, arg, 0, &((*threadhandle)->threadId));
 	
 	// Return result code: If successfull, return 0. Otherwise return 1:
-	return( (*threadhandle != NULL) ? 0 : 1);
+	return( ((*threadhandle)->handle != NULL) ? 0 : 1);
 }
 
 /* Join a parallel thread - Wait for its termination, then return its result code: */
 int PsychDeleteThread(psych_thread* threadhandle)
 {
-	int rc;
-	
+	psych_uint32 rc;
+
 	// Join on the thread, wait for termination:
-	rc = (int) WaitForSingleObject(*threadhandle, INFINITE);
+	rc = (int) WaitForSingleObject((*threadhandle)->handle, INFINITE);
 	if (WAIT_FAILED != rc) {
 		// Retrieve exit code of terminated thread:
-		GetExitCodeThread(*threadhandle, &rc);
+		GetExitCodeThread((*threadhandle)->handle, &rc);
 		
 		// Destroy its associated ressources:
-		CloseHandle(*threadhandle);
+		CloseHandle((*threadhandle)->handle);
 	}
 	else {
 		printf("PTB-CRITICAL: In PsychDeleteThread: Waiting for termination of a worker thread failed! Prepare for trouble!\n");
 	}
 	
 	// Null out now invalid thread handle of dead thread:
+	(*threadhandle)->handle = NULL;
+	(*threadhandle)->threadId = 0;
+	
+	free(*threadhandle);
 	*threadhandle = NULL;
-
+	
 	// Return return code of joined thread:
-	return(rc);
+	return((int) rc);
 }
 
 /* Send abort request to thread: */
 int PsychAbortThread(psych_thread* threadhandle)
 {
 	// This is an emergency abort call! Maybe should think about a "softer" solution for Windows?
-	return( TerminateThread(*threadhandle, 0) );
+	return( TerminateThread((*threadhandle)->handle, 0) );
 }
 
-/* Return handle of calling thread:
- * CAUTION: Returned handle can only be used within the calling thread, not for other
- *          threads to refer to this thread! See MSDN docs for rationale.
+/* Return thread id of calling thread:
  */
-psych_thread PsychGetThreadId(void)
+psych_threadid PsychGetThreadId(void)
 {
-	return( GetCurrentThread() );
+	psych_threadid threadid = (psych_threadid) GetCurrentThreadId();
+	return(threadid);
 }
 
 /* Check if two given thread handles do refer to the same thread: */
 int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
 {
-	return( GetThreadId(threadOne) == GetThreadId(threadTwo) );
+	return( threadOne->threadId == threadTwo->threadId );
+}
+
+/* Check if current (invoking) thread has an id equal to given threadid: */
+int PsychIsCurrentThreadEqualToId(psych_threadid threadId)
+{
+	return( PsychGetThreadId() == threadId );
 }

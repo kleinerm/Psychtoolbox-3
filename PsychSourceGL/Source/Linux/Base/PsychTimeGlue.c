@@ -401,7 +401,7 @@ int PsychAbortThread(psych_thread* threadhandle)
 }
 
 /* Return handle of calling thread: */
-psych_thread PsychGetThreadId(void)
+psych_threadid PsychGetThreadId(void)
 {
 	return( pthread_self() );
 }
@@ -410,4 +410,10 @@ psych_thread PsychGetThreadId(void)
 int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
 {
 	return( pthread_equal(threadOne, threadTwo) );
+}
+
+/* Check if current (invoking) thread has an id equal to given threadid: */
+int PsychIsCurrentThreadEqualToId(psych_threadid threadId)
+{
+	return( PsychGetThreadId() == threadId );
 }

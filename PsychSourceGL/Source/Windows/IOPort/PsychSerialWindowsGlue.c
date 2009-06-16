@@ -129,7 +129,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     DCB				options;
 	PsychSerialDeviceRecord* device = NULL;
 	bool			usererr = FALSE;
-	unsigned int	errno;
+	unsigned int	myerrno;
 	
 	// Init errmsg error message to empty == no error:
 	errmsg[0] = 0;
@@ -138,17 +138,17 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     fileDescriptor = CreateFile(portSpec, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
     if (fileDescriptor == INVALID_HANDLE_VALUE)
     {
-		errno = GetLastError();
-		if (errno == ERROR_FILE_NOT_FOUND) {
-			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, errno);
+		myerrno = GetLastError();
+		if (myerrno == ERROR_FILE_NOT_FOUND) {
+			sprintf(errmsg, "Error opening serial port device %s - No such serial port device exists! (%d) [ENOENT].\n", portSpec, myerrno);
 			usererr = TRUE;
 		}
-		else if (errno == ERROR_SHARING_VIOLATION || errno == ERROR_ACCESS_DENIED) {
-			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! (%d) [EBUSY EPERM]. Could be a permission problem as well.\n", portSpec, errno);
+		else if (myerrno == ERROR_SHARING_VIOLATION || myerrno == ERROR_ACCESS_DENIED) {
+			sprintf(errmsg, "Error opening serial port device %s - The serial port is already open, close it first! (%d) [EBUSY EPERM]. Could be a permission problem as well.\n", portSpec, myerrno);
 			usererr = TRUE;
 		}
 		else {
-			sprintf(errmsg, "Error opening serial port device %s - Errorcode (%d).\n", portSpec, errno);
+			sprintf(errmsg, "Error opening serial port device %s - Errorcode (%d).\n", portSpec, myerrno);
 		}
         goto error;
     }
@@ -573,7 +573,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
     // Cause the new options to take effect immediately.
     if (updatetermios && (SetCommState(device->fileDescriptor, &options) == 0))
     {
-        if (verbosity > 0) printf("Error setting new serial port configuration attributes for device %s - (%d).\n", device->portSpec, errno);
+        if (verbosity > 0) printf("Error setting new serial port configuration attributes for device %s - (%d).\n", device->portSpec, GetLastError());
         return(PsychError_system);
     }
 
