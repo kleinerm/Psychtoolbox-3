@@ -23789,7 +23789,13 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				DSTROOT = /Users/kleinerm/projects/MirrorFace/MirrorFace/;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					MACOSX,
+					NONLINUX,
+					"$(inherited)",
+				);
 				INSTALL_PATH = /MFBasic/;
+				LINK_WITH_STANDARD_LIBRARIES = YES;
 				PRODUCT_NAME = MirrorFaceCore;
 				SKIP_INSTALL = NO;
 			};
