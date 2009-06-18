@@ -40,7 +40,7 @@ PsychError SCREENDrawLine(void)
 	PsychColorType					color;
 	PsychWindowRecordType			*windowRecord;
 	int								whiteValue;
-	boolean							isArgThere;
+	psych_bool							isArgThere;
 	double							sX, sY, dX, dY, penSize;
     
 	//all sub functions should have these two lines

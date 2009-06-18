@@ -33,16 +33,16 @@ typedef void (*MexFunctionPtr)(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray
 
 extern int PrintfExit(const char *format,...);
 char *BreakLines(char *string,long lineLength);
-Boolean PsychMatch(char *s1,char *s2);
+psych_bool PsychMatch(char *s1,char *s2);
 char *int2str(int num);
 int PsychIndexElementFrom2DArray(int mDim/*|Y|*/, int nDim/*|X|*/, int m/*y*/, int n/*x*/);
 int PsychIndexElementFrom3DArray(int mDim/*|Y|*/, int nDim/*|X|*/, int pDim/*|Z|*/, int m/*y*/, int n/*x*/, int p/*z*/);
 int PsychIndexPlaneFrom3DArray(int mDim, int nDim, int pDim, int planeIndex);
 int maxInt(int a, int b);  //might be better to define max as a macro...
-boolean PsychIsIntegerInDouble(double *value);
+psych_bool PsychIsIntegerInDouble(double *value);
 
-Boolean PsychIsPsychMatchCaseSensitive(void);
-void PsychSetPsychMatchCaseSenstive(Boolean arg);
+psych_bool PsychIsPsychMatchCaseSensitive(void);
+void PsychSetPsychMatchCaseSenstive(psych_bool arg);
 
 //end include once
 #endif

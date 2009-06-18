@@ -37,7 +37,7 @@
 static char *functionUseHELP = NULL; 
 static char *functionSynopsisHELP = NULL;
 static char *functionSeeAlsoHELP = NULL;
-static boolean giveHelpHELP=FALSE;
+static psych_bool giveHelpHELP=FALSE;
 
 
 // functions for flipping a flag to indicate whether function help should be given.    
@@ -51,7 +51,7 @@ void PsychClearGiveHelp(void)
 	giveHelpHELP = FALSE;
 }
 
-boolean PsychIsGiveHelp(void)
+psych_bool PsychIsGiveHelp(void)
 {
 	return(giveHelpHELP);
 }

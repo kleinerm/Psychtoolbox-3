@@ -53,9 +53,9 @@ static HINSTANCE hInstance = 0;
 static int win32_windowcount = 0;
 
 // Mouse button states:
-static boolean mousebutton_l=FALSE;
-static boolean mousebutton_m=FALSE;
-static boolean mousebutton_r=FALSE;
+static psych_bool mousebutton_l=FALSE;
+static psych_bool mousebutton_m=FALSE;
+static psych_bool mousebutton_r=FALSE;
 
 // Definitions for dynamic binding of VSYNC extension:
 //typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
@@ -73,10 +73,10 @@ static boolean mousebutton_r=FALSE;
     We switch to RT scheduling during PsychGetMonitorRefreshInterval() and a few other timing tests in
     PsychOpenWindow() to reduce measurement jitter caused by possible interference of other tasks.
 */
-boolean PsychRealtimePriority(boolean enable_realtime)
+psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
     HANDLE	   currentProcess;
-    static boolean old_enable_realtime = FALSE;
+    static psych_bool old_enable_realtime = FALSE;
     static DWORD   oldPriority = NORMAL_PRIORITY_CLASS;
     const  DWORD   realtime_class = REALTIME_PRIORITY_CLASS;
 
@@ -257,7 +257,7 @@ void PsychGetMouseButtonState(double* buttonArray)
 	return;
 }
 
-boolean ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
+psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
 {
   DEVMODE dmScreenSettings; // Device mode structure
 
@@ -305,7 +305,7 @@ boolean ChangeScreenResolution (int screenNumber, int width, int height, int bit
     would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
     PsychOpenOnscreenWindow().
 */
-boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
+psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
   char winname[100];
   RECT winRec;
@@ -323,7 +323,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   int x, y, width, height, i, bpc;
   GLenum      glerr;
   DWORD flags;
-  boolean fullscreen = FALSE;
+  psych_bool fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
   // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
   // the new Java-GetChar can do its job.
@@ -1065,7 +1065,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	
 	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
 */
-boolean PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
+psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
 {
   /*
     //PsychTargetSpecificWindowRecordType 	cgStuff;
@@ -1265,7 +1265,7 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
  * optionally copying state from PTBs context.
  */
-void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext)
+void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext)
 {
 	// Child protection:
 	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");

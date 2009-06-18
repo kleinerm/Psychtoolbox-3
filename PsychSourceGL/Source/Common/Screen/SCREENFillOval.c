@@ -60,7 +60,7 @@ PsychError SCREENFillOval(void)
 	double					numSlices, radius, xScale, yScale, xTranslate, yTranslate, rectY, rectX;
 	PsychWindowRecordType	*windowRecord;
 	int						whiteValue;
-	boolean					isArgThere;
+	psych_bool					isArgThere;
 	GLdouble				dVals[4]; 
     double					*xy, *colors;
 	unsigned char			*bytecolors;

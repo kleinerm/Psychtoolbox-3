@@ -85,11 +85,20 @@ if ischar(filenames)
     % Add default shader path if no path is specified as part of
     % 'filenames':
     if isempty(fileparts(filenames))
-        filenames = [ PsychtoolboxRoot 'PsychOpenGL/PsychGLSLShaders/' filenames ];
+        filenames = fullfile(PsychtoolboxRoot,'PsychOpenGL','PsychGLSLShaders', filenames);
     end;
     
+    % Fixup use of wrong fileseparators for platform:
+    if IsWin
+        prep = strfind(filenames, '/');
+        filenames(prep) = filesep;
+    else
+        prep = strfind(filenames, '\');
+        filenames(prep) = filesep;
+    end
+    
     shaderobjs=dir([filenames '*']);
-    shaderobjpath = [fileparts([filenames '*']) '/'];
+    shaderobjpath = [fileparts([filenames '*']) filesep];
     numshaders=size(shaderobjs,1)*size(shaderobjs,2);
     
     if numshaders == 0

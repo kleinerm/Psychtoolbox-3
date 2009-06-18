@@ -36,7 +36,7 @@ static char seeAlsoString[] = "";
 PsychError COCOAEVENTBRIDGEFlushChars(void) 
 {
 
-	Boolean						loadBundleError, charAvail;
+	psych_bool						loadBundleError, charAvail;
 	int							numKeypresses;
 	
 

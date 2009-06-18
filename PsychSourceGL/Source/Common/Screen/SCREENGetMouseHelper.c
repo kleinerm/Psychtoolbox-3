@@ -234,7 +234,7 @@ PsychError SCREENGetMouseHelper(void)
 	UInt32		buttonState;
 	double		numButtons, *buttonArray;
 	int		i;
-	boolean		doButtonArray;
+	psych_bool		doButtonArray;
 	
 	
 	//all subfunctions should have these two lines.  

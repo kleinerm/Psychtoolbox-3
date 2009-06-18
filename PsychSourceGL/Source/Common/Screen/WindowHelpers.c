@@ -97,7 +97,7 @@ void PsychCheckIfWindowRecordIsValid(PsychWindowRecordType *winRec)
         PsychErrorExit(PsychError_InvalidWindowRecord);
 }
 
-boolean PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord)
+psych_bool PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord)
 {
     return(windowRecord->windowType==kPsychSingleBufferOnscreen || windowRecord->windowType==kPsychDoubleBufferOnscreen);
         
@@ -109,20 +109,20 @@ boolean PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord)
     stand-in for actual detection; No window records will are Matlab windows until we provide a way to 
     grab those, therefore return FALSE.    
 */
-boolean PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord)
+psych_bool PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord)
 {
     return(FALSE);
 }
 
 
-boolean PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord)
+psych_bool PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord)
 {
     return(windowRecord->windowType==kPsychVideoMemoryOffscreen || windowRecord->windowType==kPsychSystemMemoryOffscreen ||
            windowRecord->windowType==kPsychTexture);
 }
 
 
-boolean PsychIsTexture(PsychWindowRecordType *windowRecord)
+psych_bool PsychIsTexture(PsychWindowRecordType *windowRecord)
 {
     return(windowRecord->windowType==kPsychTexture);
 }

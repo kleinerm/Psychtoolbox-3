@@ -33,10 +33,10 @@ static char seeAlsoString[] = "GetChar";
 
 PsychError COCOAEVENTBRIDGEGetChar(void) 
 {
-	static Boolean				firstTime=TRUE;
+	static psych_bool				firstTime=TRUE;
     double						returnValue, inputValue;
-	static	Boolean wasWindowOpenedFlag=FALSE;
-	Boolean						isThere, inputValueBoolean, lostKeyWindowFlag;
+	static	psych_bool wasWindowOpenedFlag=FALSE;
+	psych_bool						isThere, inputValueBoolean, lostKeyWindowFlag;
 //	InitializeCocoaProc			CocoaInitializeCocoa;
 	char						readChar[2];
 	double						readTime;
@@ -49,7 +49,7 @@ PsychError COCOAEVENTBRIDGEGetChar(void)
 	CFRange						characterRange;
 	UniChar						keypressCharacterUnicode[1];
 	double						keypressCharacterAsValue, nowGetSecs, nowTickCount, characterTickCount, keypressAddressDouble;
-	Boolean						loadBundleError;
+	psych_bool						loadBundleError;
 	//for the return structure in the second argument
 	const char *charTimeFieldNames[]={"ticks", "secs", "address", "alphaLock", "commandKey", "controlKey", "optionKey", "shiftKey", "numericKeypad", "functionKey"};
     int 	numStructElements=1, numStructFieldNames=10;
@@ -149,15 +149,15 @@ PsychError COCOAEVENTBRIDGEGetChar(void)
 				PsychSetStructArrayDoubleElement("ticks", 0, keypressTickCountDouble, charTimeStruct);
 				PsychSetStructArrayDoubleElement("secs", 0, keypressTimeDouble, charTimeStruct);	  
 				PsychSetStructArrayDoubleElement("address", 0, keypressAddressDouble, charTimeStruct);	  
-				PsychSetStructArrayBooleanElement("alphaLock", 0, (Boolean)alphaLockCFlag, charTimeStruct);
-				PsychSetStructArrayBooleanElement("commandKey", 0, (Boolean)commandKeyCFlag, charTimeStruct);
-				PsychSetStructArrayBooleanElement("controlKey", 0, (Boolean)controlKeyCFlag, charTimeStruct);
-				PsychSetStructArrayBooleanElement("optionKey", 0, (Boolean)optionKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("alphaLock", 0, (psych_bool)alphaLockCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("commandKey", 0, (psych_bool)commandKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("controlKey", 0, (psych_bool)controlKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("optionKey", 0, (psych_bool)optionKeyCFlag, charTimeStruct);
 	//			new for OS X
-				PsychSetStructArrayBooleanElement("shiftKey", 0, (Boolean)shiftKeyCFlag, charTimeStruct);
-				PsychSetStructArrayBooleanElement("numericKeypad", 0, (Boolean)numericKeypadCFlag, charTimeStruct);
-	//			PsychSetStructArrayBooleanElement("helpKey", 0, (Boolean)helpKeyCFlag, charTimeStruct);
-				PsychSetStructArrayBooleanElement("functionKey", 0, (Boolean)functionKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("shiftKey", 0, (psych_bool)shiftKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("numericKeypad", 0, (psych_bool)numericKeypadCFlag, charTimeStruct);
+	//			PsychSetStructArrayBooleanElement("helpKey", 0, (psych_bool)helpKeyCFlag, charTimeStruct);
+				PsychSetStructArrayBooleanElement("functionKey", 0, (psych_bool)functionKeyCFlag, charTimeStruct);
 				
 			}
 			CFRelease(keypressDictionary);

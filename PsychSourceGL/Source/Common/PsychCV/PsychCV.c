@@ -48,7 +48,7 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 unsigned int  verbosity = 4;
 
 // Status: Initialized or not?
-static boolean psychCVInitialized = FALSE;
+static psych_bool psychCVInitialized = FALSE;
 
 // Extern shutdown function for AR toolkit, defined in PsychCVARToolkit.hc
 extern void PsychCVARExit(void);
@@ -339,7 +339,7 @@ PsychError PSYCHCVOpenEyesTrackEyePosition(void)
 	int					handle = -1;
 	int					mode;
 	double				px, py, minArea, maxArea;
-	boolean				useGUI = FALSE;
+	psych_bool				useGUI = FALSE;
 	PsychCVEyeResult	eyeResult;
 
 	// Setup online help: 

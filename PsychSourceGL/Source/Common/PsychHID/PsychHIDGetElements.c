@@ -77,11 +77,11 @@ PsychError PSYCHHIDGetElements(void)
         PsychSetStructArrayDoubleElement("rangeMax",		elementIndex, 	(double)currentElement->max, 		elementStruct);
         PsychSetStructArrayDoubleElement("scaledRangeMin",	elementIndex, 	(double)currentElement->scaledMin, 	elementStruct);
         PsychSetStructArrayDoubleElement("scaledRangeMax",	elementIndex, 	(double)currentElement->scaledMax,	elementStruct);
-        PsychSetStructArrayDoubleElement("relative",		elementIndex, 	(double)currentElement->relative,	elementStruct);	//boolean flag
-        PsychSetStructArrayDoubleElement("wrapping",		elementIndex, 	(double)currentElement->wrapping,	elementStruct);	//boolean flag	
-        PsychSetStructArrayDoubleElement("nonLinear",		elementIndex, 	(double)currentElement->nonLinear,	elementStruct);	//boolean flag
-        PsychSetStructArrayDoubleElement("preferredState",	elementIndex, 	(double)currentElement->preferredState,	elementStruct);	//boolean flag
-        PsychSetStructArrayDoubleElement("nullState",		elementIndex, 	(double)currentElement->nullState,	elementStruct);	//boolean flag
+        PsychSetStructArrayDoubleElement("relative",		elementIndex, 	(double)currentElement->relative,	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("wrapping",		elementIndex, 	(double)currentElement->wrapping,	elementStruct);	//psych_bool flag	
+        PsychSetStructArrayDoubleElement("nonLinear",		elementIndex, 	(double)currentElement->nonLinear,	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("preferredState",	elementIndex, 	(double)currentElement->preferredState,	elementStruct);	//psych_bool flag
+        PsychSetStructArrayDoubleElement("nullState",		elementIndex, 	(double)currentElement->nullState,	elementStruct);	//psych_bool flag
 
         PsychSetStructArrayDoubleElement("calMin",		elementIndex, 	(double)currentElement->calMin,		elementStruct);	
         PsychSetStructArrayDoubleElement("calMax",		elementIndex, 	(double)currentElement->calMax,		elementStruct);	

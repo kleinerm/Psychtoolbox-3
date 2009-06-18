@@ -97,7 +97,7 @@ static char seeAlsoString[] = "";
 
 static void ReportSysctlError(int errorValue)
 {
-	Boolean	foundError;
+	psych_bool	foundError;
     int sysctlErrors[]={EFAULT, EINVAL, ENOMEM, ENOTDIR, EISDIR, EOPNOTSUPP, EPERM};
     int i, errorIndex, numSysctlErrors=7; 
     char *sysctlErrorStrings[]={"EFAULT", "EINVAL", "ENOMEM", "ENOTDIR", "EISDIR", "EOPNOTSUPP", "EPERM", "UNRECOGNIZED"};
@@ -135,7 +135,7 @@ PsychError SCREENComputer(void)
 	unsigned long int			tempULongInt;
 	char						*tempStrPtr;
 	CFStringRef					tempCFStringRef;
-	Boolean						stringSuccess;
+	psych_bool						stringSuccess;
 	int							stringLengthChars, ethernetMACStrSizeBytes;
 	long						gestaltResult;
 	OSErr						gestaltError;

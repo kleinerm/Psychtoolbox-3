@@ -128,7 +128,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     HANDLE			fileDescriptor = INVALID_HANDLE_VALUE;
     DCB				options;
 	PsychSerialDeviceRecord* device = NULL;
-	bool			usererr = FALSE;
+	psych_bool			usererr = FALSE;
 	unsigned int	myerrno;
 	
 	// Init errmsg error message to empty == no error:
@@ -311,7 +311,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	char*			p;
 	float			infloat;
 	int				inint, inint2;
-	bool			updatetermios = FALSE;
+	psych_bool			updatetermios = FALSE;
 
 	// Init DCBlength field to size of structure! Fixed as of 31.12.2008 -- May have caused
 	// trouble in some setups with earlier releases!

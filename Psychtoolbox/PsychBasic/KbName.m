@@ -155,7 +155,7 @@ function kbNameResult = KbName(arg)
 %                       to fix some issue with Matlab7 on Linux.
 %    6.04.09    mk      In KbName('UnifyKeyNames') Override
 %                       'LockingNumLock' to become 'NumLock' on OS/X.
-%   13.06.09    mk      Remove special code for Octave -> No longer needed.
+%   13.06.09    mk      Remove special code for Octave on all platforms except Windows.
 
 %   TO DO
 %
@@ -807,7 +807,17 @@ elseif ischar(arg)      % argument is a character, so find the code
         
         % End of keyname unification code.
     else
-        kbNameResult = find(strcmpi(kk, arg));
+        if IsOctave & IsWin
+            % GNU/Octave on Windows does not yet support index mode for strcmpi, need to do it manually...
+            for i=1:length(kk)
+                if strcmpi(char(kk(i)), arg)
+                    kbNameResult = i;
+                    break;
+                end
+            end
+        else
+            kbNameResult=find(strcmpi(kk, arg));
+        end
         if isempty(kbNameResult)
             error(['Key name "' arg '" not recognized. Maybe you need to add KbName(''UnifyKeyNames''); to top of your script?']);
         end

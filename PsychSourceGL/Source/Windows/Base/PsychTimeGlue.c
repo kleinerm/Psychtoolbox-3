@@ -46,13 +46,13 @@
 
 static double			precisionTimerAdjustmentFactor=1;
 static double			estimatedGetSecsValueAtTickCountZero;
-static Boolean			isKernelTimebaseFrequencyHzInitialized=FALSE;
+static psych_bool			isKernelTimebaseFrequencyHzInitialized=FALSE;
 static long double	kernelTimebaseFrequencyHz;
-static Boolean       counterExists=FALSE;
-static Boolean       firstTime=TRUE;
+static psych_bool       counterExists=FALSE;
+static psych_bool       firstTime=TRUE;
 static double        sleepwait_threshold = 0.003;
-static Boolean			Timertrouble = FALSE;
-static Boolean 		schedulingtrouble = FALSE;
+static psych_bool			Timertrouble = FALSE;
+static psych_bool 		schedulingtrouble = FALSE;
 static double			tickInSecsAtLastQuery = -1;
 static double			timeInSecsAtLastQuery = -1;
 

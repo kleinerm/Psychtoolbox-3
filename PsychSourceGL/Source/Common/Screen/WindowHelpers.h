@@ -38,10 +38,10 @@ int					PsychGetNumBuffersFromWindowRecord(PsychWindowRecordType *windowRecord);
 int					PsychGetNumPlanesFromWindowRecord(PsychWindowRecordType *windowRecord);
 void				PsychSetWindowRecordValid(PsychWindowRecordType *winRec);
 void				PsychCheckIfWindowRecordIsValid(PsychWindowRecordType *winRec);
-boolean				PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord);
-boolean				PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord);
-boolean				PsychIsTexture(PsychWindowRecordType *windowRecord);
-boolean				PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool				PsychIsOnscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool				PsychIsOffscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool				PsychIsTexture(PsychWindowRecordType *windowRecord);
+psych_bool				PsychIsMatlabOnscreenWindow(PsychWindowRecordType *windowRecord);
 
 
 

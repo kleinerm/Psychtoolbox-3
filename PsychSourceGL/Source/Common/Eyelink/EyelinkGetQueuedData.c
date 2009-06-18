@@ -161,7 +161,7 @@ PsychError EyelinkGetQueuedData(void)
 	FEVENT       fe;
 	int numSamples = 0, numEvents = 0, maxSamples, maxEvents, type, eye, fieldNum, index, numSampleFields, err;
 	double *samples, *events;
-	boolean useEye=FALSE;
+	psych_bool useEye=FALSE;
 	PsychNativeBooleanType drained=(PsychNativeBooleanType)FALSE;
 	char errmsg[ERR_BUFF_LEN]="";
 	
@@ -359,12 +359,12 @@ PsychError EyelinkGetQueuedData(void)
 }
 
 
-boolean TrackerOKForRawValues(void) {
-	static boolean OK=FALSE;
+psych_bool TrackerOKForRawValues(void) {
+	static psych_bool OK=FALSE;
 	
 	int err,ver[4];
 	char errmsg[ERR_BUFF_LEN]="",buf[ERR_BUFF_LEN]="";
-	boolean tryAgain=TRUE;
+	psych_bool tryAgain=TRUE;
 	
 	if(OK){ //check static value so we don't do the expensive stuff below more than once
 		return OK;

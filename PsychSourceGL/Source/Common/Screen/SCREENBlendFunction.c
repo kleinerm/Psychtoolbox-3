@@ -67,7 +67,7 @@ PsychError SCREENBlendFunction(void)
 	GLenum					oldSource, oldDestination, newSource, newDestination;
 	char					*oldSoureStr, *oldDestinationStr, *newSourceStr, *newDestinationStr;
 	int						oldSourceStrSize, oldDestinationStrSize, isSourceStringValid, isDestinationStringValid;
-	Boolean					isSourceSupplied, isDestinationSupplied, isSourceChoiceValid, isDestinationChoiceValid;
+	psych_bool					isSourceSupplied, isDestinationSupplied, isSourceChoiceValid, isDestinationChoiceValid;
 	double					*oldColorMask, *newColorMask;
 	int						m, n, p;
 	

@@ -53,6 +53,7 @@ extern "C" {
 // include it when building PsychScriptingGlue.cc
 // in order to prevent build-failure due to some
 // broken header dependencies...
+#pragma once
 #include "RegisterProject.h"
 #include "TimeLists.h"
 #endif

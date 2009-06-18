@@ -50,12 +50,12 @@
 // significantly speed up drawing (2-3 times!). In the future, we'll implement a clever scheme
 // so that PTB can decide by itself on a case-by-case bases, if renderswap true or false is
 // the better choice. For the 1.0.6 release we'll just keep it fixed to "false"...
-static Boolean renderswap = FALSE;
+static psych_bool renderswap = FALSE;
 
 // If set to true, then the apple client storage extensions are used: I doubt that they have any
 // advantage for the current way PTB is used, but it can be useful to conserve VRAM on very
 // low-mem gfx cards if Screen('Preference', 'ConserveVRAM') is set appropriately.
-static Boolean clientstorage = FALSE;
+static psych_bool clientstorage = FALSE;
 
 // This stores the texture format/mode to use: We autodetect available types at first
 // invocation of PsychCreateTexture()... We try to use GL_EXT_TEXTURE_RECTANGLE_2D textures for
@@ -231,7 +231,7 @@ void PsychCreateTexture(PsychWindowRecordType *win)
 	long							screenWidth, screenHeight;
 	int								twidth, theight, pass, texcount;
 	void*							texmemptr;
-	bool							recycle = FALSE, avoidCPUGPUSync;
+	psych_bool							recycle = FALSE, avoidCPUGPUSync;
 	GLenum							glerr;
 	int								verbosity;
 

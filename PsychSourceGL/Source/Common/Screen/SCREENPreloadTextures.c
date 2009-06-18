@@ -46,15 +46,15 @@ static char seeAlsoString[] = "MakeTexture DrawTexture GetMovieImage";
 PsychError SCREENPreloadTextures(void)  
 {	
 	PsychWindowRecordType                   *windowRecord, *texwin;
-	boolean                                 isArgThere;
+	psych_bool                                 isArgThere;
         int                                     *texhandles;
         PsychWindowRecordType                   **windowRecordArray;        
         int                                     i, n, numWindows, myhandle; 
         double                                  *success;
-        boolean*                                residency;
+        psych_bool*                                residency;
         GLuint*                                 texids;
         GLboolean*                              texresident;
-        Boolean                                 failed = false;
+        psych_bool                                 failed = false;
         GLclampf                                maxprio = 1.0f;
         GLenum                                  target;
 
@@ -189,7 +189,7 @@ PsychError SCREENPreloadTextures(void)
         PsychAllocOutBooleanMatArg(2, FALSE, n, 1, 1, &residency);
         
         for (i=0; i<n; i++) {
-            residency[i] = (Boolean) ((*success) ? TRUE : texresident[i]);
+            residency[i] = (psych_bool) ((*success) ? TRUE : texresident[i]);
         }
         
         PsychTestForGLErrors();

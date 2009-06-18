@@ -39,7 +39,7 @@ PsychError SCREENglPoint(void)
 	double					*xPosition, *yPosition, dotSize;
 	PsychWindowRecordType	*windowRecord;
 	int						whiteValue;
-	boolean					isArgThere;
+	psych_bool					isArgThere;
     
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);

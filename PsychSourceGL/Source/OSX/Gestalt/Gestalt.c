@@ -60,7 +60,7 @@ PsychError GESTALTGestalt(void)
 	OSErr					callError;
 	long					responseLong, i;
 	PsychNativeBooleanType	*responseArray;
-	Boolean					returnResponse;
+	psych_bool					returnResponse;
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
     PsychErrorExit(PsychCapNumInputArgs(1));

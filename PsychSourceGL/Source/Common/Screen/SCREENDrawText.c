@@ -97,7 +97,7 @@ PsychError SCREENDrawText(void)
     PsychRectType		windowRect;
     //	double			textureSizeX, textureSizeY;
     char			*textString;
-    Boolean			doSetColor, doSetBackgroundColor;
+    psych_bool			doSetColor, doSetBackgroundColor;
     PsychColorType		colorArg, backgroundColorArg;
     //	CGImageAlphaInfo	quartzAlphaMode, correctQuartzAlphaMode, correctQuartzAlphaModeMaybe;
     CGRect			quartzRect;
@@ -125,7 +125,7 @@ PsychError SCREENDrawText(void)
 	double*			unicodedoubles;
 	int ix;
 	GLubyte* rpb;
-	Boolean bigendian;
+	psych_bool bigendian;
 	
 	// Detect endianity (byte-order) of machine:
     ix=255;
@@ -442,8 +442,6 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
 // The code below will need to be restructured and moved to the proper
 // places in PTB's source tree when things have stabilized a bit...
 
-#include <gl/glaux.h>
-
 /* PsychOSReBuildFont
  *
  * (Re)Build a font for the specified winRec, based on OpenGL display lists.
@@ -453,7 +451,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
  * requested font. These routines are specific to Microsoft Windows, so they
  * need to be reimplemented for other OS'es...
  */
-boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
+psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
 {
   GLYPHMETRICSFLOAT	gmf[256];	// Address Buffer For Font Storage
   HFONT	font, oldfont;			// Windows Font ID
@@ -488,7 +486,7 @@ boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
 			CLIP_DEFAULT_PRECIS,		// Clipping Precision: Use system default.
 			ANTIALIASED_QUALITY,		// Output Quality:     We want antialiased smooth looking fonts.
 			FF_DONTCARE|DEFAULT_PITCH,	// Family And Pitch:   Use system default.
-			winRec->textAttributes.textFontName);		// Font Name as requested by user.
+			(char*) winRec->textAttributes.textFontName);		// Font Name as requested by user.
   
   // Child-protection:
   if (font==NULL) {
@@ -547,7 +545,7 @@ boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
 // Include of tolower() function:
 #include <ctype.h>
 
-boolean PsychOSRebuildFont(PsychWindowRecordType *winRec)
+psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
 {
   char fontname[512];
   char** fontnames=NULL;
@@ -682,11 +680,10 @@ PsychError SCREENDrawText(void)
     PsychRectType		     windowRect;
     char			           *textString;
     int                   stringl;
-    Boolean			        doSetColor, doSetBackgroundColor;
+    psych_bool			        doSetColor, doSetBackgroundColor;
     PsychColorType		  colorArg, backgroundColorArg;
-    int				        depthValue, whiteValue, i, yPositionIsBaseline;
+    int				        i, yPositionIsBaseline;
     float                 accumWidth, maxHeight, textHeightToBaseline, scalef; 
-    static GLuint	        base=0;	     // Base Display List For The Font Set
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
 		 // Use GDI based text renderer on Windows, instead of display list based one?
@@ -717,9 +714,6 @@ PsychError SCREENDrawText(void)
     PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
     PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
     
-    //Get the depth from the window, we need this to interpret the color argument.
-    depthValue=PsychGetWindowDepthValueFromWindowRecord(winRec);
-   
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
     if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
@@ -908,7 +902,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	int							stringLengthChars;
 	WCHAR*						textUniString;
 	int							dummy1, dummy2;
-    Boolean						doSetColor, doSetBackgroundColor;
+    psych_bool						doSetColor, doSetBackgroundColor;
     PsychColorType				colorArg, backgroundColorArg;
     int							i, yPositionIsBaseline;
 	GLdouble					incolors[4];
@@ -1087,7 +1081,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 							CLIP_DEFAULT_PRECIS,		// Clipping Precision: Use system default.
 							outputQuality,		// Output Quality wrt. Anti-Aliasing.
 							FF_DONTCARE|DEFAULT_PITCH,	// Family And Pitch:   Use system default.
-							winRec->textAttributes.textFontName);		// Font Name as requested by user.
+							(char*) winRec->textAttributes.textFontName);		// Font Name as requested by user.
 		
 		// Child-protection:
 		if (font==NULL) {

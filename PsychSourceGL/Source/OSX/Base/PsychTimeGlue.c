@@ -38,7 +38,7 @@
 
 static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
-static Boolean		isKernelTimebaseFrequencyHzInitialized=FALSE;
+static psych_bool		isKernelTimebaseFrequencyHzInitialized=FALSE;
 static long double	kernelTimebaseFrequencyHz;
 
 /*

@@ -63,7 +63,7 @@ PsychError RUSHRush(void)
 	const PsychGenericScriptType	*codeNativeString, *codeNativeCell;
     PsychGenericScriptType			*evalCallInputs[2], *priorityCallInputs_1[1], *priorityCallOutputs_1[1], *priorityCallOutputs_2[1];
     PsychGenericScriptType			*evalCallOutputs[1], *lasterrCallInputs[1], *lasterrCallOutputs[1]; 
-    Boolean							isCellArray, isCharArray, rushError;
+    psych_bool							isCellArray, isCharArray, rushError;
     int								numPriorityCallInputs, numPriorityCallOutputs, numEvalCallInputs, numEvalCallOutputs, errorPrefixStringLength;
     int								numLasterrCallInputs, numLasterrCallOutputs, error, error2;
     char							errorString[MAX_ERROR_STRING_LENGTH];

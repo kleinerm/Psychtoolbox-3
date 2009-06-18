@@ -81,7 +81,7 @@ PsychError SCREENDrawLines(void)
 	PsychWindowRecordType		*windowRecord;
 	int							m,n,p, smooth;
 	int							nrsize, nrcolors, nrvertices, mc, nc, pc, i;
-	boolean                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+	psych_bool                     isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double						*xy, *size, *center, *dot_type, *colors;
 	unsigned char               *bytecolors;
 	float						linesizerange[2];

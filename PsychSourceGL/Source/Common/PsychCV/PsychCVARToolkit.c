@@ -44,9 +44,9 @@
 extern unsigned int  verbosity;
 
 // Status: PsychCVARToolkit Initialized or not?
-static boolean psychCVARInitialized = FALSE;
+static psych_bool psychCVARInitialized = FALSE;
 
-static boolean arglInitialized = FALSE;
+static psych_bool arglInitialized = FALSE;
 
 // Threshold for binarization of input image via intensity thresholding:
 int imgBinarizationThreshold;

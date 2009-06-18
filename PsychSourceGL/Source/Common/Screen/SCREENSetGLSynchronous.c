@@ -20,7 +20,7 @@
 
 
 //define variables local to SCREENSetGLSynchonous.cpp
-static boolean isSynchSETGLSYNC=0;  
+static psych_bool isSynchSETGLSYNC=0;  
 
 //declare local functions.
 void PsychGLFlush(void);

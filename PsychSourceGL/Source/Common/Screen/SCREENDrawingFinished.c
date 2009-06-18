@@ -86,7 +86,7 @@ static char seeAlsoString[] = "Flip";
 PsychError SCREENDrawingFinished(void) 
 {
     PsychWindowRecordType *windowRecord;
-    boolean syncflag=false;
+    psych_bool syncflag=false;
     int dontclear=0;
     double t=0;
     

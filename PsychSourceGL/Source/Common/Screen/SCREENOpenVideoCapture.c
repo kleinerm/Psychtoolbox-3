@@ -100,7 +100,7 @@ PsychError SCREENOpenVideoCapture(void)
 	int                                     width;
 	int                                     height;
 	PsychRectType                           roirectangle;
-	Boolean                                 roiassigned;
+	psych_bool                                 roiassigned;
 	int                                     reqdepth = 0;
 	int                                     num_dmabuffers = 0;
 	int                                     allow_lowperf_fallback = 1;

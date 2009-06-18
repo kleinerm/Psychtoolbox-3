@@ -67,9 +67,9 @@ GLenum blendingModeConstants[]={
 	Return TRUE if the choice if valid and false otherwise.
 	
 */
-Boolean PsychValidateBlendingConstantForSource(GLenum sourceFactor)
+psych_bool PsychValidateBlendingConstantForSource(GLenum sourceFactor)
 {
-	Boolean isValid;
+	psych_bool isValid;
 
 	switch(sourceFactor)
 	{
@@ -99,9 +99,9 @@ Boolean PsychValidateBlendingConstantForSource(GLenum sourceFactor)
 	Return TRUE if the choice if valid and false otherwise.
   
 */
-Boolean PsychValidateBlendingConstantForDestination(GLenum destinationFactor)
+psych_bool PsychValidateBlendingConstantForDestination(GLenum destinationFactor)
 {
-	Boolean isValid;
+	psych_bool isValid;
 	
 	switch(destinationFactor)
 	{

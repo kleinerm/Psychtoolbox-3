@@ -108,7 +108,7 @@ PsychError PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* 
  * 'enable'   True = Enable ABGR2101010 support, False = Disable ARGB2101010 support, reenable ARGB8888 support. 
  *
  */
-boolean	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, boolean enable)
+psych_bool	PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable)
 {
 	int i,si,ei, headid, screenId;
 	unsigned int lutreg, ctlreg, value, status;
@@ -345,7 +345,7 @@ void PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord)
  *
  *  Return value: FALSE if swap happened already, TRUE if swap is imminent.
  */
-bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition)
+psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition)
 {
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
     CGDirectDisplayID displayID;

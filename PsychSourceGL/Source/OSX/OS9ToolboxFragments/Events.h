@@ -28,7 +28,7 @@ PURPOSE:
 */
 
 void WaitTicks(long ticks);
-Boolean WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,RgnHandle mouseRgn);
-Boolean CommandPeriod(void);
-Boolean IsCommandPeriod(EventRecord *eventPtr);
+psych_bool WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,RgnHandle mouseRgn);
+psych_bool CommandPeriod(void);
+psych_bool IsCommandPeriod(EventRecord *eventPtr);
 

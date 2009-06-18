@@ -75,7 +75,7 @@ PsychError MACHPRIORITYMachPriority(void)
     mach_msg_type_number_t	msgTypeNumber;
     boolean_t			getDefault;
     char 			*flavorStr;
-    boolean			setNewMode;
+    psych_bool			setNewMode;
     double			*periodArg, *computationArg, *constraintArg, *preemptibleArg;
     char 			errorMessageStr[256];
     	 

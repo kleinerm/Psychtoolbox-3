@@ -65,7 +65,7 @@ void PsychHIDOSCloseUSBDevice(PsychUSBDeviceRecord* devRecord)
 // errorcode would contain a diagnostic error code on failure, but is not yet used.
 // spec contains the specification of the device to open and how to configure it at open time.
 // Returns true on success, false on error or if no matching device could be found.
-bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec)
+psych_bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, PsychUSBSetupSpec* spec)
 {
 	kern_return_t           kr;
 	CFMutableDictionaryRef  matchingDict;
@@ -80,7 +80,7 @@ bool PsychHIDOSOpenUSBDevice(PsychUSBDeviceRecord* devRecord, int* errorcode, Ps
 	UInt16                  vendor;
 	UInt16                  product;
 	UInt16                  release;
-	bool					deviceFound = false;
+	psych_bool					deviceFound = false;
 	char *name="",*description="";
 
 	// Init errorcode to failed:

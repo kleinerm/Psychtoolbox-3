@@ -241,7 +241,7 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
     int				fileDescriptor = -1;
     struct termios	options;
 	PsychSerialDeviceRecord* device = NULL;
-	bool			usererr = FALSE;
+	psych_bool			usererr = FALSE;
 	
 	// Init errmsg error message to empty == no error:
 	errmsg[0] = 0;
@@ -404,7 +404,7 @@ PsychError PsychIOOSConfigureSerialPort(PsychSerialDeviceRecord* device, const c
 	float			infloat;
 	int				inint;
 	unsigned long	mics = 0UL;
-	bool			updatetermios = FALSE;
+	psych_bool			updatetermios = FALSE;
 
     // The serial port attributes such as timeouts and baud rate are set by modifying the termios
     // structure and then calling tcsetattr() to cause the changes to take effect. Note that the

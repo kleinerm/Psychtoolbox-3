@@ -66,7 +66,7 @@ int PsychGetBuildNumber(void)
     char monthStr[10];   //gcc just gives 3-letter abbr. but we don't know about all compilers".  
     char *monthNames[]={"Jan", "Feb", "Mar", "Apr", "May",  "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"}; 
     static int buildNumber;
-    static boolean firstTime=TRUE;
+    static psych_bool firstTime=TRUE;
     
     
     if(firstTime){
@@ -97,7 +97,7 @@ char *PsychGetVersionString(void)
 {
     #define MAX_VERSION_STRING_LENGTH 100
     static char versionString[MAX_VERSION_STRING_LENGTH];
-    static boolean firstTime=TRUE;
+    static psych_bool firstTime=TRUE;
     int buildNumber;
     
     if(firstTime){

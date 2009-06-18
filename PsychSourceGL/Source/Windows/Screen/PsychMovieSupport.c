@@ -34,7 +34,7 @@
 
 // We typedef all missing functions on Windows away...
 // typedef void* QTVisualContextRef;
-//Boolean QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
+//psych_bool QTVisualContextIsNewImageAvailable(void* a, void* b) { return(false); }
 //OSErr QTVisualContextCopyImageForTime(void* a, int blobber, void* b, void* c) { return(noErr); };
 //void QTVisualContextRelease(void* a) { return; }
 //void QTVisualContextTask(void *a) { return; }
@@ -70,7 +70,7 @@ typedef struct {
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
-static Boolean firsttime = TRUE;
+static psych_bool firsttime = TRUE;
 
 /*
  *     PsychMovieInit() -- Initialize movie subsystem.
@@ -163,7 +163,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
     OSErr error;
 //    CFStringRef movieLocation;
 //    CFStringRef coreAudioDeviceUID;
-    boolean trueValue = TRUE;
+    psych_bool trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
     int propcount = 0;
     char msgerr[10000];

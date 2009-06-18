@@ -53,7 +53,7 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextFont(void) 
 {
-    boolean			doSetByName, doSetByNumber, foundFont;
+    psych_bool			doSetByName, doSetByNumber, foundFont;
     PsychWindowRecordType	*windowRecord;
 #if PSYCH_SYSTEM == PSYCH_OSX
     PsychFontStructType		*fontRecord;

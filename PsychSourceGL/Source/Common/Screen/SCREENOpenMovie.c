@@ -89,7 +89,7 @@ PsychError SCREENOpenMovie(void)
         int                                     width;
         int                                     height;
         int                                     asyncFlag = 0;
-        static Boolean                          firstTime = TRUE;
+        static psych_bool                          firstTime = TRUE;
 		double									preloadSecs = 1;
 #if PSYCH_SYSTEM == PSYCH_OSX
         struct sched_param sp;

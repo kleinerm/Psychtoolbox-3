@@ -39,9 +39,9 @@ PsychError SCREENTextMode(void)
     PsychTextDrawingModeType		newCopyMode;
     Str255							oldCopyModeName; 
     char							*newCopyModeName;
-    boolean							doSetMode;
+    psych_bool							doSetMode;
     PsychWindowRecordType			*windowRecord;
-    boolean							nameError;                           
+    psych_bool							nameError;                           
     
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);

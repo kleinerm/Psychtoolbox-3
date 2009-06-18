@@ -49,9 +49,9 @@ extern "C" {
 #endif
   
   /* Floating point representation */
-  bool mxIsNaN(double v);
-  bool mxIsFinite(double v);
-  bool mxIsInf(double v);
+  psych_bool mxIsNaN(double v);
+  psych_bool mxIsFinite(double v);
+  psych_bool mxIsInf(double v);
   double mxGetEps(void);
   double mxGetInf(void);
   double mxGetNaN(void);
@@ -115,9 +115,9 @@ extern "C" {
   void* mxGetData(const mxArray* arrayPtr);
   mxArray* mxCreateLogicalMatrix(int rows, int cols);
 #if PSYCH_SYSTEM == PSYCH_LINUX
-  bool* mxGetLogicals(const mxArray* arrayPtr);
+  psych_bool* mxGetLogicals(const mxArray* arrayPtr);
 #else
-  Boolean* mxGetLogicals(const mxArray* arrayPtr);
+  psych_bool* mxGetLogicals(const mxArray* arrayPtr);
 #endif
 
   /* structure support */

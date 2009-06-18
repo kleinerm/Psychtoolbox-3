@@ -73,9 +73,9 @@ static struct {
     We switch to RT scheduling during PsychGetMonitorRefreshInterval() and a few other timing tests in
     PsychOpenWindow() to reduce measurement jitter caused by possible interference of other tasks.
 */
-boolean PsychRealtimePriority(boolean enable_realtime)
+psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
-    bool				isError;
+    psych_bool				isError;
     thread_policy_flavor_t		flavorConstant;
     int					kernError;
     task_t				threadID;
@@ -85,8 +85,8 @@ boolean PsychRealtimePriority(boolean enable_realtime)
     static mach_msg_type_number_t	old_policyCountFilled;
     boolean_t				isDefault;
     
-    static boolean old_enable_realtime = FALSE;
-    static boolean oldModeWasStandard = FALSE;
+    static psych_bool old_enable_realtime = FALSE;
+    static psych_bool oldModeWasStandard = FALSE;
     
     if (old_enable_realtime == enable_realtime) {
         // No transition with respect to previous state -> Nothing to do.
@@ -197,7 +197,7 @@ boolean PsychRealtimePriority(boolean enable_realtime)
     =2          == Use compressed frame stereo: Put both views into one framebuffer, one in top half, other in lower half.
 
 */
-boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
+psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
     CGLRendererInfoObj				rendererInfo;
     CGOpenGLDisplayMask 			displayMask;
@@ -213,7 +213,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
     int attribcount=0;
     int i;
 	int								windowLevel;
-	boolean							useAGL, AGLForFullscreen;
+	psych_bool							useAGL, AGLForFullscreen;
 	WindowRef						carbonWindow = NULL;
 	int								aglbufferid;
 	AGLPixelFormat					pf = NULL;
@@ -839,7 +839,7 @@ double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 	
 	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
 */
-boolean PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
+psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
 {
 
     //PsychTargetSpecificWindowRecordType 	cgStuff;
@@ -980,7 +980,7 @@ void PsychOSSetGLContext(PsychWindowRecordType *windowRecord)
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
  * optionally copying state from PTBs context.
  */
-void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext)
+void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext)
 {
 	// Child protection:
 	if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user, "GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");

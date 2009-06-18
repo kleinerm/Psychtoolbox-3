@@ -42,12 +42,12 @@ void PsychMakeRect(double *psychRect, double left, double top, double right, dou
 	the volume is >= 1 pixel.
 */
 
-boolean IsPsychRectEmpty(PsychRectType rect)
+psych_bool IsPsychRectEmpty(PsychRectType rect)
 {
         return((rect[kPsychLeft] == rect[kPsychRight] || rect[kPsychTop]==rect[kPsychBottom]));
 }
 
-boolean ValidatePsychRect(double *rect)
+psych_bool ValidatePsychRect(double *rect)
 {
 	if(rect[kPsychLeft] > rect[kPsychRight] || rect[kPsychTop]>rect[kPsychBottom])
 		return(FALSE);
@@ -182,7 +182,7 @@ void PsychInvertRectY(double *rectB, double *rectA, double *frameA)
 	
 }
 
-Boolean PsychMatchRect(double *rectA, double *RectB)
+psych_bool PsychMatchRect(double *rectA, double *RectB)
 {
 	return( rectA[kPsychLeft] == RectB[kPsychLeft] &&
 			rectA[kPsychTop] == RectB[kPsychTop] &&

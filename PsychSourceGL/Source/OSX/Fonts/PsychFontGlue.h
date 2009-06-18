@@ -98,8 +98,8 @@ typedef struct _PsychFontStructType_{
 int 			PsychFreeFontList(void);
 PsychFontStructPtrType	PsychGetFontListHead(void);
 int 			PsychGetFontListLength(void);
-Boolean			PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct);
-Boolean			PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontName, FMFontStyle fontStyle, PsychFontStructType **fontStruct);
+psych_bool			PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct);
+psych_bool			PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontName, FMFontStyle fontStyle, PsychFontStructType **fontStruct);
 void 			PsychCopyFontRecordsToNativeStructArray(int numFonts, PsychFontStructType **fontStructs, PsychGenericScriptType **nativeStructArray);  
 
 //functions for dealing with Font Manager styles
@@ -107,8 +107,8 @@ int				PsychFindNumFMFontStylesFromStyle(FMFontStyle fmStyleFlag);
 void 			PsychGetFMFontStyleNameFromIndex(int styleIndex, FMFontStyle fontStyle, char *styleName, int styleNameLength);
 
 
-//boolean	PsychGetFontNameAndStyleFromFontNumber(char *fontName, int fontNameSize, FMFontStyle *fontStyle, int fontNumber);
-//boolean	PsychGetFontNumberFromFontNameAndStyle(char *fontName, FMFontStyle fontStyle, int *fontNumber);
+//psych_bool	PsychGetFontNameAndStyleFromFontNumber(char *fontName, int fontNameSize, FMFontStyle *fontStyle, int fontNumber);
+//psych_bool	PsychGetFontNumberFromFontNameAndStyle(char *fontName, FMFontStyle fontStyle, int *fontNumber);
 
 //end include once
 #endif

@@ -190,17 +190,18 @@ if IsOctave
     
     try
         % Remove binary MEX folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic/Octave2LinuxFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic/Octave2OSXFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave2LinuxFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave2OSXFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
+        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         
         % Encode prefix and Octave major version of proper folder:
         octavev = sscanf(version, '%i.%i');
         octavemajorv = octavev(1);
         octaveminorv = octavev(2);
         
-        rdir = [PsychtoolboxRoot 'PsychBasic/Octave' num2str(octavemajorv)];
+        rdir = [PsychtoolboxRoot 'PsychBasic' filesep 'Octave' num2str(octavemajorv)];
         
         % Add proper OS dependent postfix:
         if IsLinux
@@ -211,6 +212,10 @@ if IsOctave
             rdir = [rdir 'OSXFiles'];
         end
         
+        if IsWin
+            rdir = [rdir 'WindowsFiles'];
+        end
+
         fprintf('Octave major version %i detected. Will prepend the following folder to your Octave path:\n', octavemajorv);
         fprintf(' %s ...\n', rdir);
         addpath(rdir);
@@ -486,6 +491,8 @@ fprintf('between Psychtoolbox-2 and Psychtoolbox-3.\n\n');
 fprintf('\nEnjoy!\n\n');
 
 % Clear out everything:
-clear all;
+if ~IsOctave & IsWin
+    clear all;
+end
 
 return;

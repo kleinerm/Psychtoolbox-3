@@ -28,7 +28,7 @@
   
 */
 
-
+#include "Psych.h"
 #include <CoreFoundation/CoreFoundation.h>
 
 #include <IOKit/IOKitLib.h>
@@ -40,7 +40,7 @@
 static kern_return_t FindEthernetInterfaces(io_iterator_t *matchingServices);
 static kern_return_t GetMACAddress(io_iterator_t intfIterator, UInt8 *MACAddress);
 //for Psychtoolbox
-static Boolean GetPrimaryEthernetAddress(UInt8 *MACAddress);
+static psych_bool GetPrimaryEthernetAddress(UInt8 *MACAddress);
 static int GetEthernetAddressLengthBytes(void);
 
 
@@ -74,7 +74,7 @@ static kern_return_t FindEthernetInterfaces(io_iterator_t *matchingServices)
         printf("IOServiceMatching returned a NULL dictionary.\n");
     }
     else {
-        // Each IONetworkInterface object has a Boolean property with the key kIOPrimaryInterface. Only the
+        // Each IONetworkInterface object has a psych_bool property with the key kIOPrimaryInterface. Only the
         // primary (built-in) interface has this property set to TRUE.
         
         // IOServiceGetMatchingServices uses the default matching criteria defined by IOService. This considers
@@ -204,9 +204,9 @@ static int GetEthernetAddressLengthBytes(void)
 }
 
 
-static Boolean GetPrimaryEthernetAddress(UInt8 *MACAddress)
+static psych_bool GetPrimaryEthernetAddress(UInt8 *MACAddress)
 {
-	Boolean			errorReturn;
+	psych_bool			errorReturn;
     kern_return_t	kernResult; 
     io_iterator_t	intfIterator;
  
@@ -234,11 +234,11 @@ static Boolean GetPrimaryEthernetAddress(UInt8 *MACAddress)
 	GetPrimaryEthernetAddressStringLengthBytes() and add 1, for the string terminator,  to the result.
 	In practice it should always be fine to use a static string such as Str255 without risk of overflow.     
 */
-int GetPrimaryEthernetAddressString(char *addressStr, Boolean capsFlag, Boolean colonSeparatedFlag)
+int GetPrimaryEthernetAddressString(char *addressStr, psych_bool capsFlag, psych_bool colonSeparatedFlag)
 {
 	int			i, tempDigitValue, addressStringLength, addressLengthBytes, numCharsPrinted, currentPosition;
 	UInt8		MACAddress[256];
-	Boolean		errorResult;
+	psych_bool		errorResult;
 	Str255		tempRawStrBuffer, tempDigitStrBuffer, tempResultBuffer;
 	
 	addressLengthBytes= GetEthernetAddressLengthBytes();
@@ -283,7 +283,7 @@ int GetPrimaryEthernetAddressString(char *addressStr, Boolean capsFlag, Boolean 
 
 
 
-int GetPrimaryEthernetAddressStringLengthBytes(Boolean colonSeparatedFlag)
+int GetPrimaryEthernetAddressStringLengthBytes(psych_bool colonSeparatedFlag)
 {
 	return(GetPrimaryEthernetAddressString(NULL, TRUE, colonSeparatedFlag));
 }

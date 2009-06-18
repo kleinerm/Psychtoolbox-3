@@ -95,11 +95,21 @@ try
 
     if IsWin
         ostype = 'Windows';
-        try
-            osversion = deblank([system_dependent('getos'),' ',system_dependent('getwinsys')]);
-        catch
-            osversion = 'Unknown';
+        if ~IsOctave
+            try
+                osversion = deblank([system_dependent('getos'),' ',system_dependent('getwinsys')]);
+            catch
+                osversion = 'Unknown';
+            end
+        else
+            try
+                [status, osversion] = system('uname -s');
+                osversion = deblank(osversion);
+            catch
+                osversion = 'Unknown';
+            end            
         end
+        
         
         if isempty(osversion)
            osversion = 'Unknown';

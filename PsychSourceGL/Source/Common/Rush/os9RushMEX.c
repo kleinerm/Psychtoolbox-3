@@ -124,10 +124,10 @@ typedef struct{
 	long getTimes,iterations,error;
 	CONSTmxArray *mxString;
 	mxArray *mxTimes;
-	Boolean trapErrors;
+	psych_bool trapErrors;
 } Stuff;
 static void fun(void *argPtr);
-static int CallMATLAB(CONSTmxArray *mxString,Boolean trapErrors);
+static int CallMATLAB(CONSTmxArray *mxString,psych_bool trapErrors);
 
 /*
 ROUTINE: mexFunction()
@@ -137,11 +137,11 @@ char useRush[]="Rush(string,[priorityLevel])";
 
 void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 {
-	static Boolean firstTime=1,deferAvailable;
+	static psych_bool firstTime=1,deferAvailable;
 	long priorityLevel=-1;
 	double a;
 	Stuff stuff;
-	Boolean isString,oldMatlabBackgrounding;
+	psych_bool isString,oldMatlabBackgrounding;
 
 	plhs;
 	InitMEX();
@@ -250,7 +250,7 @@ static void fun(void *argPtr)
 	}
 }
 
-static int CallMATLAB(CONSTmxArray *mxString,Boolean trapErrors)
+static int CallMATLAB(CONSTmxArray *mxString,psych_bool trapErrors)
 {
 	int nlhs=0,nrhs,error=0;
 	mxArray *plhs[1]={NULL},*prhs[2]={NULL,NULL};

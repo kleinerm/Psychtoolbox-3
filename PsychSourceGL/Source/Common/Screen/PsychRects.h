@@ -38,8 +38,8 @@ typedef double PsychRectType[4];
 
 //Accessors for PsychRectType
 void			PsychMakeRect(double *psychRect, double left, double top, double right, double bottom);
-boolean                 IsPsychRectEmpty(PsychRectType rect);
-boolean 		ValidatePsychRect(PsychRectType rect);
+psych_bool                 IsPsychRectEmpty(PsychRectType rect);
+psych_bool 		ValidatePsychRect(PsychRectType rect);
 double 			PsychGetWidthFromRect(const double *rect);
 double 			PsychGetHeightFromRect(const double *rect);
 void			PsychCenterRect(const double *innerRect, const double *outerRect, double *newRect);
@@ -49,7 +49,7 @@ void			PsychGetCenterFromRectAbsolute(const double *rect, double *rectCenterX, d
 void 			PsychGetManhattanDistance(double x1, double y1, double x2, double y2, double *deltaX, double *deltaY);
 void			PsychNormalizeRect(double *rect, double *normRect);
 void			PsychInvertRectY(double *rectB, double *rectA, double *frameA);
-Boolean			PsychMatchRect(double *rectA, double *RectB);
+psych_bool			PsychMatchRect(double *rectA, double *RectB);
 void			PsychFindEnclosingTextureRect(double *rectA, double *enclosingRect);
 
     

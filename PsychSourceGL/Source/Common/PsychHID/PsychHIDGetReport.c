@@ -99,7 +99,7 @@ PsychError PSYCHHIDGetReport(void)
 	mxArray **outReport,**outErr;
 	char *name="",*description="",string[256];
 	IOHIDDeviceInterface122** interface=NULL;
-	boolean reportAvailable;
+	psych_bool reportAvailable;
 	double reportTime;
 
     PsychPushHelp(useString,synopsisString,seeAlsoString);

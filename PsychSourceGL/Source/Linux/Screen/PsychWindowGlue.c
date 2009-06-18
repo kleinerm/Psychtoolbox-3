@@ -45,9 +45,9 @@ static int x11_windowcount = 0;
     We switch to RT scheduling during PsychGetMonitorRefreshInterval() and a few other timing tests in
     PsychOpenWindow() to reduce measurement jitter caused by possible interference of other tasks.
 */
-boolean PsychRealtimePriority(boolean enable_realtime)
+psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
-    static boolean old_enable_realtime = FALSE;
+    static psych_bool old_enable_realtime = FALSE;
     static int   oldPriority = SCHED_OTHER;
     const  int   realtime_class = SCHED_RR;
     struct sched_param param, oldparam;
@@ -112,7 +112,7 @@ boolean PsychRealtimePriority(boolean enable_realtime)
     would be better to just issue an PsychErrorExit() and have that clean up everything allocated outside of
     PsychOpenOnscreenWindow().
 */
-boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
+psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM)
 {
   PsychRectType             screenrect;
   CGDirectDisplayID         dpy;
@@ -125,7 +125,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
   XVisualInfo *visinfo;
   int i, x, y, width, height;
   GLenum glerr;
-  boolean fullscreen = FALSE;
+  psych_bool fullscreen = FALSE;
   int attrib[30];
   int attribcount=0;
   int depth, bpc;
@@ -486,7 +486,7 @@ boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psych
 	
 	TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
 */
-boolean PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
+psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
 {
   // This function is obsolete and does nothing.
   return(FALSE);
@@ -657,7 +657,7 @@ void PsychOSUnsetGLContext(PsychWindowRecordType* windowRecord)
 /* Same as PsychOSSetGLContext() but for selecting userspace rendering context,
  * optionally copying state from PTBs context.
  */
-void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext)
+void PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext)
 {
   // Child protection:
   if (windowRecord->targetSpecific.glusercontextObject == NULL) PsychErrorExitMsg(PsychError_user,"GL Userspace context unavailable! Call InitializeMatlabOpenGL *before* Screen('OpenWindow')!");

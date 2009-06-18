@@ -60,7 +60,7 @@
     
 
 */
-boolean PsychAllocOutStructArray(	int position, 
+psych_bool PsychAllocOutStructArray(	int position, 
                                         PsychArgRequirementType isRequired, 
                                         int numElements,
                                         int numFields, 
@@ -71,7 +71,7 @@ boolean PsychAllocOutStructArray(	int position,
     mwSize structArrayNumDims=2;
     mwSize structArrayDims[2];
 	PsychError matchError;
-	Boolean putOut;
+	psych_bool putOut;
 	
     
     structArrayDims[0]=1;
@@ -103,13 +103,13 @@ boolean PsychAllocOutStructArray(	int position,
     
 */
 
-boolean PsychAssignOutStructArray(	int position, 
+psych_bool PsychAssignOutStructArray(	int position, 
                                         PsychArgRequirementType isRequired,   
                                         PsychGenericScriptType *pStruct)
 {
     mxArray **mxArrayOut;
 	PsychError matchError;
-	Boolean putOut;
+	psych_bool putOut;
         
     PsychSetReceivedArgDescriptor(position, PsychArgOut);
     PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_structArray, isRequired, 1,1,0,kPsychUnboundedArraySize,0,0);
@@ -141,7 +141,7 @@ void PsychSetStructArrayStringElement(	char *fieldName,
                                         PsychGenericScriptType *pStruct)
 {
     int fieldNumber, numElements;
-    boolean isStruct;
+    psych_bool isStruct;
     mxArray *mxFieldValue;
 	 char errmsg[256];
     
@@ -176,7 +176,7 @@ void PsychSetStructArrayDoubleElement(	char *fieldName,
                                         PsychGenericScriptType *pStruct)
 {
     int fieldNumber, numElements;
-    boolean isStruct;
+    psych_bool isStruct;
     mxArray *mxFieldValue;
 	 char errmsg[256];
 
@@ -209,11 +209,11 @@ void PsychSetStructArrayDoubleElement(	char *fieldName,
 */                                    
 void PsychSetStructArrayBooleanElement(	char *fieldName,
                                         int index,
-                                        boolean state,
+                                        psych_bool state,
                                         PsychGenericScriptType *pStruct)
 {
     int fieldNumber, numElements;
-    boolean isStruct;
+    psych_bool isStruct;
     mxArray *mxFieldValue;
 	 char errmsg[256];
 
@@ -252,7 +252,7 @@ void PsychSetStructArrayStructElement(	char *fieldName,
                                         PsychGenericScriptType *pStructOuter)
 {
     int fieldNumber, numElements;
-    boolean isStruct;
+    psych_bool isStruct;
   	 char errmsg[256];
 
   
@@ -290,7 +290,7 @@ void PsychSetStructArrayNativeElement(	char *fieldName,
                                         PsychGenericScriptType *pStructArray)
 {
     int fieldNumber, numElements;
-    boolean isStruct;
+    psych_bool isStruct;
     char errmsg[256];
 
 

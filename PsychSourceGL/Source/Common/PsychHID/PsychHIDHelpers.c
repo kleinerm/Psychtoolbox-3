@@ -272,7 +272,7 @@ pRecElement PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecDe
         invoke HIDBuildDeviceList().  Therefore, PsychHID verifies that the device interface has been opened before accessing the elements of a device.
         
 */ 
-boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex)
+psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex)
 {
     pRecDevice 			deviceRecord;
 
@@ -281,7 +281,7 @@ boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex)
     return(deviceRecord->interface != NULL);    
 }
 
-boolean PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord)
+psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceRecordPtr(pRecDevice deviceRecord)
 {
     PsychHIDVerifyInit();
     return(deviceRecord->interface != NULL);

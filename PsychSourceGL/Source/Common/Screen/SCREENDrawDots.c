@@ -80,7 +80,7 @@ PsychError SCREENDrawDots(void)
 	PsychWindowRecordType                   *windowRecord;
 	int                                     whiteValue, m,n,p,mc,nc,pc,idot_type;
 	int                                     i, nrpoints, nrsize;
-	boolean                                 isArgThere, usecolorvector, isdoublecolors, isuint8colors;
+	psych_bool                                 isArgThere, usecolorvector, isdoublecolors, isuint8colors;
 	double									*xy, *size, *center, *dot_type, *colors;
 	unsigned char                           *bytecolors;
 	GLfloat									pointsizerange[2];

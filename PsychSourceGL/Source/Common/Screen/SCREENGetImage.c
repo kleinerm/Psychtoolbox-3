@@ -72,7 +72,7 @@ PsychError SCREENGetImage(void)
 	PsychWindowRecordType	*windowRecord;
 	GLboolean		isDoubleBuffer, isStereo;
 	char*           buffername = NULL;
-	boolean			floatprecision = FALSE;
+	psych_bool			floatprecision = FALSE;
 	GLenum			whichBuffer = 0; 
 	
 	//all sub functions should have these two lines

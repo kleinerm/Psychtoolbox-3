@@ -93,7 +93,7 @@ void PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord)
 
    Helper routine, called from the different batch drawing functions of Screen():
 */
-void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean enable, int mc, double* colors, unsigned char *bytecolors)
+void PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors)
 {
 	if (enable) {
 		// Enable and setup whatever's used:
@@ -295,7 +295,7 @@ char *PsychGetGLErrorNameString(GLenum errorConstant)
 	PsychGetGLErrorListString()
 	
 */ 
-Boolean PsychGetGLErrorListString(const char **errorListStr)
+psych_bool PsychGetGLErrorListString(const char **errorListStr)
 {
 	#define MAX_GL_ERROR_LIST_LEN			2048
 	#define MAX_GL_ERROR_LIST_DELTA_LEN		256
@@ -303,7 +303,7 @@ Boolean PsychGetGLErrorListString(const char **errorListStr)
 	char	*errorNameStr;
 	int		currentIndex, deltaStrLen, nextCurrentIndex;
     GLenum	glError;
-    boolean	isError=FALSE;
+    psych_bool	isError=FALSE;
 	
 	currentIndex=0;
     for(glError=glGetError(); glError!=GL_NO_ERROR; glError=glGetError()){
@@ -328,7 +328,7 @@ Boolean PsychGetGLErrorListString(const char **errorListStr)
 
 void PsychTestForGLErrorsC(int lineNum, const char *funcName, const char *fileName)
 {
-    boolean			isError;
+    psych_bool			isError;
 	const char		*glErrorListString;
     
 	isError=PsychGetGLErrorListString(&glErrorListString);
@@ -386,7 +386,7 @@ void PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_pos
 	PsychColorType							color;
 	int                                     whiteValue, m,n,p,mc,nc,pc,idot_type;
 	int                                     i, nrpoints, nrsize;
-	boolean                                 isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
+	psych_bool                                 isArgThere, isdoublecolors, isuint8colors, usecolorvector, needxy;
 	double									*tmpcolors, *pcolors, *tcolors;
 	double									convfactor;
 

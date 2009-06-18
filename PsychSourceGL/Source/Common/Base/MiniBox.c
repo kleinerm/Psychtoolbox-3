@@ -39,7 +39,7 @@ TO DO:
 
 #define MAX_PRINTFEXIT_LEN  2000 
 
-static Boolean			isPsychMatchCaseSensitive=FALSE;
+static psych_bool			isPsychMatchCaseSensitive=FALSE;
 
 
 /* PrintfExit used some fancy stuff to allocate the memory
@@ -94,20 +94,20 @@ char *BreakLines(char *string,long lineLength)
 }
 
 
-Boolean PsychIsPsychMatchCaseSensitive(void)
+psych_bool PsychIsPsychMatchCaseSensitive(void)
 {
 	return(isPsychMatchCaseSensitive);
 }
 
 
-void PsychSetPsychMatchCaseSenstive(Boolean arg)
+void PsychSetPsychMatchCaseSenstive(psych_bool arg)
 {
 	isPsychMatchCaseSensitive=arg;
 }
 
 
 // Compare two strings for equality. Ignore case if Psychtoolbox preferences ignore case is set.
-Boolean PsychMatch(char *s1,char *s2)
+psych_bool PsychMatch(char *s1,char *s2)
 {
 	char a;
 	
@@ -164,7 +164,7 @@ int maxInt(int a, int b)
     If the value stored in the specified double does not have a fractional part an the value is within
     the bounds of the integet type then return TRUE.
 */
-boolean PsychIsIntegerInDouble(double *value)
+psych_bool PsychIsIntegerInDouble(double *value)
 {
     return(*value >= INT_MIN && *value <= INT_MAX && floor(*value) == *value); 
 }

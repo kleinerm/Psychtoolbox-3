@@ -16,6 +16,8 @@
 #define PSYCH_LANGUAGE PSYCH_MATLAB
 #include "mex.h"
 
+#include <stdio.h>
+
 #define printf mexPrintf
 #ifndef true
 #define true 1
@@ -68,9 +70,6 @@ static bool jettisoned = false;
 
 /* Includes specific to MacOS-X version of mogl: */
 #ifdef MACOSX
-
-//#include <ApplicationServices/ApplicationServices.h>
-//#include <Carbon/Carbon.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -78,7 +77,7 @@ static bool jettisoned = false;
 #include <OpenGL/gl.h>
 #include <OpenGL/glu.h>
 #include <GLUT/glut.h>
-#ifndef PTBOCTAVE 
+#ifdef MATLAB_MEX_FILE 
 #include <AGL/agl.h>
 #endif
 #endif
@@ -105,12 +104,16 @@ static bool jettisoned = false;
 
 /* Hacks to get Windows version running - to be replaced soon. */
 double gluCheckExtension(const GLubyte* a, const GLubyte* b);
-double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
 double gluBuild1DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, void* a9);
 double gluBuild2DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, double a9, void* a10);
 double gluBuild3DMipmapLevels(double a1, double a2, double a3, double a4, double a5, double a6, double a7, double a8, double a9, double a10, void* a11);
 double gluBuild3DMipmaps(double a1, double a2, double a3, double a4, double a5, double a6, double a7, void* a8);
+
+#ifndef PTBOCTAVE3MEX
+// These two already defined on Octave, no need to "fake" them:
+double gluUnProject4(double a1, double a2, double a3, double a4, double* a5, double* a6, int* a7, double a8, double a9, double* a10, double* a11, double* a12, double* a13);
 mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
+#endif
 
 #endif
 

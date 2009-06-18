@@ -43,9 +43,9 @@ void WaitTicks(long ticks)
     
     
 */
-Boolean WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,RgnHandle mouseRgn)
+psych_bool WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,RgnHandle mouseRgn)
 {
-	Boolean wne;
+	psych_bool wne;
 
 	if(CommandPeriod()){
 			PrintfExit("User typed cmd-. Exiting.");
@@ -63,7 +63,7 @@ Boolean WaitNextEventOrQuit(int mask,EventRecord *eventPtr,unsigned long sleep,R
     
     
 */
-Boolean CommandPeriod(void)
+psych_bool CommandPeriod(void)
 {
 	EventRecord event;
 
@@ -80,9 +80,9 @@ Boolean CommandPeriod(void)
 
 
 */
-Boolean IsCommandPeriod(EventRecord *eventPtr)
+psych_bool IsCommandPeriod(EventRecord *eventPtr)
 {
-	Boolean isCommandPeriod;
+	psych_bool isCommandPeriod;
 
 	isCommandPeriod=(eventPtr->what==keyDown || eventPtr->what==autoKey) 
 		&& IsCmdChar(eventPtr,'.') 

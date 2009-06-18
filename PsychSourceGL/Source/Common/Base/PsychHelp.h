@@ -37,7 +37,7 @@
 
 void PsychSetGiveHelp(void);
 void PsychClearGiveHelp(void);
-boolean PsychIsGiveHelp(void);
+psych_bool PsychIsGiveHelp(void);
 void PsychPushHelp(char *functionUse, char *functionSynopsis, char *functionSeeAlso);
 void PsychGiveHelp(void);
 void PsychGiveUsage(void);

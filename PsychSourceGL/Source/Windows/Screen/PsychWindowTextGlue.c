@@ -41,7 +41,7 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
 	char tryFontName[]="Courier New";
-	Boolean foundFont;
+	psych_bool foundFont;
 	// FIXME	PsychFontStructType	*initFontRecord;
 
 	settings->textMode=kPsychTextFill;
@@ -94,7 +94,7 @@ void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, i
     the string in the list of allowable strings then return true to indicate error.  Otherwise return FALSE to 
     indicate no error. 
 */
-boolean PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr)
+psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr)
 {
     int i;
     

@@ -49,7 +49,7 @@ function SetupPsychtoolbox
 clear mex
 
 % Check OS
-isWin=strcmp(computer,'PCWIN');
+isWin=strcmp(computer,'PCWIN')| strcmp(computer, 'i686-pc-mingw32');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
 isLinux=strcmp(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));
 

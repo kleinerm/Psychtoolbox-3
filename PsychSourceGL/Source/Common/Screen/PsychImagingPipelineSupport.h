@@ -31,7 +31,7 @@
 #include "Screen.h"
 
 // Definition of a pointer to a blitter function: See below for conforming blitter function prototypes:
-typedef boolean (*PsychBlitterFunc)(PsychWindowRecordType*, PsychHookFunction*, void*, boolean, boolean, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
+typedef psych_bool (*PsychBlitterFunc)(PsychWindowRecordType*, PsychHookFunction*, void*, psych_bool, psych_bool, PsychFBO**, PsychFBO**, PsychFBO**, PsychFBO**);
 
 // Symbolic names for Hook-Chains: The text strings for user-space and synopsis strings are in the PsychImagingPipelineSupport.c file.
 typedef enum {
@@ -56,7 +56,7 @@ typedef enum {
 // API for PTB core:
 void	PsychInitImagingPipelineDefaultsForWindowRecord(PsychWindowRecordType *windowRecord);
 void	PsychInitializeImagingPipeline(PsychWindowRecordType *windowRecord, int imagingmode, int multiSample);
-void	PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, Boolean openglpart);
+void	PsychShutdownImagingPipeline(PsychWindowRecordType *windowRecord, psych_bool openglpart);
 void	PsychPipelineListAllHooks(PsychWindowRecordType *windowRecord);
 void	PsychPipelineDumpAllHooks(PsychWindowRecordType *windowRecord);
 void	PsychPipelineDumpHook(PsychWindowRecordType *windowRecord, const char* hookString);
@@ -70,8 +70,8 @@ void	PsychPipelineAddRuntimeFunctionToHook(PsychWindowRecordType *windowRecord, 
 void	PsychPipelineAddCFunctionToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, void* procPtr);
 void	PsychPipelineAddShaderToHook(PsychWindowRecordType *windowRecord, const char* hookString, const char* idString, int where, unsigned int shaderid, const char* blitterString, unsigned int luttexid1);
 
-boolean	PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
-boolean	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+psych_bool	PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+psych_bool	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 // Internal helper functions:
 
@@ -79,32 +79,32 @@ PsychHookFunction* PsychAddNewHookFunction(PsychWindowRecordType *windowRecord, 
 int		PsychGetHookByName(const char* hookName);
 
 // Setup source -> rendertarget binding for next rendering pass:
-void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, boolean scissor_ignore);
+void	PsychPipelineSetupRenderFlow(PsychFBO* srcfbo1, PsychFBO* srcfbo2, PsychFBO* dstfbo, psych_bool scissor_ignore);
 
 // Create OpenGL framebuffer object for internal rendering, setup PTB info struct for it:
-Boolean PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, Boolean needzbuffer, int width, int height, int multisample);
+psych_bool PsychCreateFBO(PsychFBO** fbo, GLenum fboInternalFormat, psych_bool needzbuffer, int width, int height, int multisample);
 
 // Check if provided PTB texture already has a PsychFBO attached. Do nothing if so. If a FBO is missing, create one:
-void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, Boolean asRendertarget, int forImagingmode);
+void PsychCreateShadowFBOForTexture(PsychWindowRecordType *textureRecord, psych_bool asRendertarget, int forImagingmode);
 
 // On demand normalization of texture orientation to standard upright format:
 void PsychNormalizeTextureOrientation(PsychWindowRecordType *sourceRecord);
 
-boolean PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
-boolean PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+psych_bool PsychIsHookChainOperational(PsychWindowRecordType *windowRecord, int hookid);
+psych_bool PsychPipelineExecuteBlitter(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 // Try to create GLSL shader from source strings and return handle to new shader.
 GLuint  PsychCreateGLSLProgram(const char* fragmentsrc, const char* vertexsrc, const char* primitivesrc);
 
 // Assign special filter/lookup shaders to textures, e.g., in HDR mode, for float textures, etc...
-boolean PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int usefloatformat, int userRequest);
+psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* textureRecord, PsychWindowRecordType* windowRecord, int usefloatformat, int userRequest);
 
 // Builtin functions:
 
 // PsychPipelineBuiltinRenderClutBitsPlusPlus - Encode Bits++ CLUT into framebuffer.
-boolean PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 // PsychPipelineBuiltinRenderStereoSyncLine - Rendering of blue-sync lines for stereo shutter glasses in quad-buffered stereo mode:
-boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 
 // Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
 // =============================================================================
@@ -112,8 +112,8 @@ boolean PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRe
 // Identity blitter: Blits from srcfbo1 color attachment to dstfbo without geometric transformations or other extras.
 // This is the most common one for one-to-one copies or simple shader image processing. It gets automatically used
 // when no special (non-default) blitter is requested by core code or users blitter parameter string:
-boolean PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
-boolean PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, boolean srcIsReadonly, boolean allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+psych_bool PsychBlitterDisplayList(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc, void* hookUserData, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 
 //end include once
 #endif

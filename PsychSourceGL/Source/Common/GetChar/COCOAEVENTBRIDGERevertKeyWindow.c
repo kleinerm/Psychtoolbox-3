@@ -34,7 +34,7 @@ static char seeAlsoString[] = "GetChar";
 PsychError COCOAEVENTBRIDGERevertKeyWindow(void) 
 {
 
-	Boolean						loadBundleError;
+	psych_bool						loadBundleError;
 	
 
 	//all subfunctions should have these two lines.  

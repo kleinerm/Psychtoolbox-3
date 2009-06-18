@@ -83,14 +83,14 @@ PsychError SCREENOpenWindow(void)
     PsychRectType 			rect, screenrect;
     PsychColorType			color;
     PsychColorModeType  	mode; 
-    boolean					isArgThere, settingsMade, didWindowOpen, useAGL;
+    psych_bool					isArgThere, settingsMade, didWindowOpen, useAGL;
     PsychScreenSettingsType	screenSettings;
     PsychWindowRecordType	*windowRecord;
     double dVals[4];
     PsychDepthType			specifiedDepth, possibleDepths, currentDepth, useDepth;
 	int dummy1;
 	double dummy2, dummy3, dummy4;
-	Boolean EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
+	psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
     
 	//just for debugging
     //if (PSYCH_DEBUG == PSYCH_ON) printf("Entering SCREENOpen\n");

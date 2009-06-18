@@ -50,7 +50,7 @@ PsychError PSYCHHIDKbCheck(void)
     long				KbDeviceUsagePage= 1, KbDeviceUsage=6; 
     static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    boolean				isDeviceSpecified, foundUserSpecifiedDevice;
+    psych_bool				isDeviceSpecified, foundUserSpecifiedDevice;
     double				*timeValueOutput, *isKeyDownOutput, *keyArrayOutput;
 	int					m, n, p, nout;
 	double				*scanList = NULL;

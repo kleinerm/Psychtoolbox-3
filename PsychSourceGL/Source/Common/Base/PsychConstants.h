@@ -27,8 +27,10 @@
 //begin include once 
 #ifndef PSYCH_IS_INCLUDED_PsychConstants
 #define PSYCH_IS_INCLUDED_PsychConstants
-// !defined(PTBMODULE_PsychHID)
-#if !defined(__cplusplus) && !defined(bool) 
+
+// This is obsolete, as PTBOCTAVE is only defined for Octave-2, which we have
+// effectively phased out, but leave it here for documentation:
+#if !defined(__cplusplus) && !defined(bool)
 #ifdef PTBOCTAVE
 typedef unsigned char bool;
 #endif
@@ -126,18 +128,20 @@ typedef unsigned char bool;
 	typedef int mwSize;
 #endif
 
+// Define our own base psych_bool type psych_bool to be an unsigned char,
+// i.e., 1 byte per value on each platform:
+typedef unsigned char		psych_bool;
+
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
-        typedef bool                            boolean;
         typedef unsigned long long              psych_uint64;
         typedef unsigned int                    psych_uint32;
         typedef unsigned char                   psych_uint8;
         typedef unsigned short                  psych_uint16;
         typedef GLubyte                         ubyte;          
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        typedef boolean                         mxLogical;
+        typedef psych_bool                      mxLogical;
         #endif
-        typedef boolean                         Boolean;
         typedef char                            Str255[255];
 
         // We don't have Quicktime for Linux, so we provide a little hack to
@@ -156,16 +160,13 @@ typedef unsigned char bool;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-// typedef BOOL                            boolean;  //Windows already defines this.  
         typedef LONG                            psych_uint64;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
         typedef WORD                            psych_uint16;
-        // typedef GLubyte                         psych_uint8;
         typedef GLubyte                         ubyte;
 		#ifndef PTBOCTAVE3MEX
-        typedef boolean                         mxLogical;
-        typedef boolean                         Boolean;
+        typedef psych_bool                      mxLogical;
 		#endif
 
         // The Visual C 6 compiler doesn't know about the __func__ keyword :(
@@ -191,31 +192,28 @@ typedef unsigned char bool;
 		typedef struct psych_threadstruct {
 			HANDLE		handle;		// Handle to actual thread (NULL == Invalid).
 			DWORD		threadId;	// Unique numeric id (0 = Invalid.)
-		};
+		} psych_threadstruct;
 		typedef struct psych_threadstruct*	psych_thread;
 
 		typedef psych_uint32		psych_threadid;
-		
 
 #elif PSYCH_SYSTEM == PSYCH_OS9
-	typedef Boolean				boolean;
 	typedef unsigned long 			psych_uint32;
-	typedef Byte				psych_uint8;
+	typedef Byte					psych_uint8;
 	typedef unsigned short 			psych_uint16;
-        typedef GLubyte				psych_uint8;
-        typedef GLubyte				ubyte;		
+	typedef GLubyte				ubyte;		
 
 #elif PSYCH_SYSTEM == PSYCH_OSX
         #if PSYCH_LANGUAGE == PSYCH_OCTAVE
-        typedef Boolean                         mxLogical;
+        typedef psych_bool			mxLogical;
         #endif
 
-        typedef Boolean				boolean;
         typedef GLubyte				psych_uint8;
         typedef GLubyte				ubyte;
 		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;
+
 		// Datatype for Mutex Locks:	
 		typedef pthread_mutex_t		psych_mutex;
 		// Datatype for threads:

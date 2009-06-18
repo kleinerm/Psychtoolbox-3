@@ -55,7 +55,7 @@ PsychError SCREENGetWindowInfo(void)
 	psych_uint64 postflip_vblcount;
 	double vbl_startline;
 	long scw, sch;
-	bool onscreen;
+	psych_bool onscreen;
 
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);

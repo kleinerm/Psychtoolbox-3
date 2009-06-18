@@ -126,7 +126,7 @@ PsychError SCREENFillPoly(void)
 	PsychWindowRecordType		*windowRecord;
 	int							whiteValue;
 	int							i, mSize, nSize, pSize;
-	boolean						isArgThere;
+	psych_bool						isArgThere;
 	double						*pointList;
 	double						isConvex;
 	int							j,k;

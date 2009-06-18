@@ -130,11 +130,11 @@ typedef struct ReportStruct{
 } ReportStruct;
 
 // These are out here for easy access by several routines in this file.
-static boolean             ready[MAXDEVICEINDEXS]; 
+static psych_bool             ready[MAXDEVICEINDEXS]; 
 static CFRunLoopSourceRef source[MAXDEVICEINDEXS]; 
-static boolean optionsPrintReportSummary=0;	// options.print: Enable diagnostic print of report by ReportCallback.
-static boolean optionsPrintCrashers=0;		// options.printCrashers
-static boolean optionsConsistencyChecks=0;	// options.consistencyChecks
+static psych_bool optionsPrintReportSummary=0;	// options.print: Enable diagnostic print of report by ReportCallback.
+static psych_bool optionsPrintCrashers=0;		// options.printCrashers
+static psych_bool optionsConsistencyChecks=0;	// options.consistencyChecks
 static int optionsMaxReports=10000;			// options.maxReports
 static int optionsMaxReportSize=64;			// options.maxReportSize
 static double optionsSecs=0.010;			// options.secs
@@ -151,7 +151,7 @@ void CountReports(char *string)
 	int i,n;
 	int listLength[MAXDEVICEINDEXS];
 	ReportStruct *r;
-	static boolean reportsHaveBeenAllocated=0;
+	static psych_bool reportsHaveBeenAllocated=0;
 
 	// First time init at first invocation after PsycHID load time:
 	if(myRunLoopMode==NULL)myRunLoopMode=CFSTR("myMode"); // kCFRunLoopDefaultMode
@@ -294,9 +294,9 @@ PsychError PSYCHHIDReceiveReports(void)
 	mxOptions=PsychGetInArgMxPtr(2);
 	if(mxOptions!=NULL){
 		mx=mxGetField(mxOptions,0,"print");
-		if(mx!=NULL)optionsPrintReportSummary=(boolean)mxGetScalar(mx);
+		if(mx!=NULL)optionsPrintReportSummary=(psych_bool)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"printCrashers");
-		if(mx!=NULL)optionsPrintCrashers=(boolean)mxGetScalar(mx);
+		if(mx!=NULL)optionsPrintCrashers=(psych_bool)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"maxReports");
 		if(mx!=NULL)optionsMaxReports=(int)mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"maxReportSize");
@@ -304,7 +304,7 @@ PsychError PSYCHHIDReceiveReports(void)
 		mx=mxGetField(mxOptions,0,"secs");
 		if(mx!=NULL)optionsSecs=mxGetScalar(mx);
 		mx=mxGetField(mxOptions,0,"consistencyChecks");
-		if(mx!=NULL)optionsConsistencyChecks=(boolean)mxGetScalar(mx);
+		if(mx!=NULL)optionsConsistencyChecks=(psych_bool)mxGetScalar(mx);
 	}
 	if(optionsMaxReports>MAXREPORTS)printf("PsychHID ReceiveReports: Sorry, maxReports is fixed at %d.\n",(int)MAXREPORTS);
 	if(optionsMaxReportSize>MAXREPORTSIZE)printf("PsychHID ReceiveReports: Sorry, maxReportSize is fixed at %d.\n",(int)MAXREPORTSIZE);
@@ -393,7 +393,7 @@ PsychError GiveMeReports(int deviceIndex,int reportBytes)
 
 
 // Called solely by PsychHIDGetReport, but resides here in order to access the linked list of reports.
-PsychError GiveMeReport(int deviceIndex,boolean *reportAvailablePtr,unsigned char *reportBuffer,UInt32 *reportBytesPtr,double *reportTimePtr)
+PsychError GiveMeReport(int deviceIndex,psych_bool *reportAvailablePtr,unsigned char *reportBuffer,UInt32 *reportBytesPtr,double *reportTimePtr)
 {
 	ReportStruct *r,*rOld;
 	long error;
@@ -452,7 +452,7 @@ PsychError ReceiveReports(int deviceIndex)
 		// setInterruptReportHandlerCallback
 		static unsigned char buffer[MAXREPORTSIZE];
 		UInt32 bufferSize=MAXREPORTSIZE;
-		boolean createSource;
+		psych_bool createSource;
 
 		createSource=(source[deviceIndex]==NULL);
 		if(createSource){

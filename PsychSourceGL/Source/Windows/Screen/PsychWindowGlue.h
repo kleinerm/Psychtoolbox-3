@@ -41,9 +41,9 @@
 
 #include "Screen.h"
 
-boolean PsychRealtimePriority(boolean enable_realtime);
-boolean PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM);
-boolean PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
+psych_bool PsychRealtimePriority(psych_bool enable_realtime);
+psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType *windowRecord, int numBuffers, int stereomode, int conserveVRAM);
+psych_bool PsychOSOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
 void	PsychOSCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychOSCloseWindow(PsychWindowRecordType *windowRecord);
 void	PsychOSCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
@@ -51,7 +51,7 @@ void    PsychOSFlipWindowBuffers(PsychWindowRecordType *windowRecord);
 void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInterval);
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
-void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, Boolean copyfromPTBContext);
+void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext);
 double  PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount);
 void    PsychGetMouseButtonState(double* buttonArray);
 

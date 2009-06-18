@@ -33,7 +33,7 @@
 
 typedef struct
 {
-	boolean		enabled;
+	psych_bool		enabled;
 	char		firstName[32];
 	char		middleName[32];
 	char		lastName[32];

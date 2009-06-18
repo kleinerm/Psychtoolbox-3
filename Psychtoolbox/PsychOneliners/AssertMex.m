@@ -54,34 +54,48 @@ if IsOctave
     fprintf('This MEX file seems to be missing or inaccessible on your Octave path or it is dysfunctional:\n\n')
     fprintf(['  ' octFilename '\n\n']);
 
-    if ~exist(octFilename, 'file')
+    fpath = which(myName(1:end-2));
+    if isempty(fpath)
         fprintf('Hmm. I cannot find the file on your Octave path?!?\n\n');
         fprintf('One reason could be that your Octave path is wrong or not up to date\n');
         fprintf('for the current Psychtoolbox. You may want to run SetupPsychtoolbox to \n');
         fprintf('fix possible path problems.\n');
         fprintf('Make sure that the path is readable by you as well...\n');
-        if IsLinux
-            fprintf('The following directory should be the *first one* on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
-        else
-            fprintf('The following directory should be the *first one* on your Octave path: %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
-        end
-        fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
-        fprintf('after you have restarted Octave, then you may encounter a bug present in Octave 3.2.0.\n');
-        fprintf('Try the following at the Octave prompt: First type "savepath" + Enter to save the current Octave path again.\n');
-        fprintf('Then exit Octave and restart it. Now try again - It may work now, if the problem was caused by aforementioned bug.\n\n');
     else
-        % Check for supported Octave version:
-        curversion = sscanf(version, '%i.%i.%i');
-        if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
-            fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
-            error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
-        end
+        % Some file with such a function exists on the Octave path:
+        [dum1, dum2, fpathext] = fileparts(fpath);
+        % Proper extension for the .mex file?
+        if isempty(strfind(fpathext, '.mex'))
+            % Nope, wrong file bound:
+            if IsLinux
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3LinuxFiles/']);
+            end
+            if IsOSX
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic/Octave3OSXFiles/']);
+            end
+            if IsWindows
+                fprintf('The following directory should be the *first one* on your Octave path:\n %s \n\n', [PsychtoolboxRoot 'PsychBasic\Octave3WindowsFiles\']);
+            end
+            
+            fprintf('\n\nIf you have just installed Psychtoolbox, it worked properly and suddenly stopped working\n');
+            fprintf('after you have restarted Octave, then you may encounter a bug present in Octave 3.2.0.\n');
+            fprintf('Try the following at the Octave prompt: First type "savepath" + Enter to save the current Octave path again.\n');
+            fprintf('Then exit Octave and restart it. After that try again - It may work then, if the problem was caused by aforementioned bug.\n\n');
+        else
+            % Correct file with correct extension, still load failure:
+            % Check for supported Octave version:
+            curversion = sscanf(version, '%i.%i.%i');
+            if curversion(1) < 3 | curversion(2) < 2 %#ok<OR2>
+                fprintf('Your version of Octave (%s) is incompatible with Psychtoolbox: We support Octave 3.2.0 or later.\n', version);
+                error('Tried to run Psychtoolbox on an incompatible Octave version.\n');
+            end
 
-        fprintf('A reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
-        fprintf('Our default installation also only supports 32 bit versions of operating system and Octave.\n');
-        fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
+            fprintf('A reason could be some missing 3rd party dynamic link shared libraries on your system.\n');
+            fprintf('Our default installation also only supports 32 bit versions of operating system and Octave.\n');
+            fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
+        end
     end
-    error('Missing, inaccessible or dysfunctional Psychtoolbox Oct file for this system. Read the help text above carefully!!\n');
+    error('Missing, inaccessible or dysfunctional Psychtoolbox Oct file for this system, or Octave path wrong. Read the help text above carefully!!\n');
 end
 
 % Initialize the persistent variables.

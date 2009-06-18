@@ -23,7 +23,7 @@
 /*
 
 //file local variables:
-static boolean isSurfaceLocked=FALSE;
+static psych_bool isSurfaceLocked=FALSE;
 
 //file local functions
 Uint32 GetPixelFromSurface(int x, int y, SDL_Surface *surface);

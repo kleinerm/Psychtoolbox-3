@@ -37,7 +37,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTextBackgroundColor(void) 
 {
 
-    Boolean					doSetColor;
+    psych_bool					doSetColor;
     PsychWindowRecordType	*winRec;
 	PsychColorType			colorArg;
 	

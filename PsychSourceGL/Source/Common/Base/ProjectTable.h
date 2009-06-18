@@ -38,8 +38,8 @@
 
 typedef struct ProjectTable{
   //	CONSTmxArray	*numdex;   
-	boolean			giveHelp; 
-	boolean			ignoreCase;
+	psych_bool			giveHelp; 
+	psych_bool			ignoreCase;
 } ProjectTable;
 
 

@@ -74,7 +74,7 @@ PsychError PSYCHHIDKbTriggerWait(void)
     long		KbDeviceUsagePage=0x01, KbDeviceUsage=0x06;			// Generic Desktop page (0x01), keyboard (0x06)
     int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    boolean		isDeviceSpecified, foundUserSpecifiedDevice;
+    psych_bool		isDeviceSpecified, foundUserSpecifiedDevice;
     double		*timeValueOutput;
 	
 	IOHIDQueueInterface **queue;
@@ -139,7 +139,7 @@ PsychError PSYCHHIDKbTriggerWait(void)
 	// corresponding cookies
 	{
 		CFArrayRef elements;
-		boolean usedDictionary=FALSE;
+		psych_bool usedDictionary=FALSE;
 		{
 			CFDictionaryRef dict=NULL;
 		

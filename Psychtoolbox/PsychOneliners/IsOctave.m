@@ -11,13 +11,19 @@ function resultFlag = IsOctave
 % 03/08/06 Added the 'var' parameter to the exist function to make it
 %          faster.  On my box it cuts 4+ ms off this function call. (CGB)
 % 18/09/06 'var' parameter was wrong! It is a 'builtin' parameter (MK).
+% 18/06/09 Add persistent rc caching to speed it up (MK).
 
-% If the built-in variable OCTAVE_VERSION exists,
-% then we are running under GNU/Octave, otherwise not.
-if ismember(exist('OCTAVE_VERSION', 'builtin'), [102, 5])
-  resultFlag = 1;
-else
-  resultFlag = 0;
-end;
+persistent rc;
 
+if isempty(rc)
+	% If the built-in variable OCTAVE_VERSION exists,
+	% then we are running under GNU/Octave, otherwise not.
+	if ismember(exist('OCTAVE_VERSION', 'builtin'), [102, 5])
+	  rc = 1;
+	else
+	  rc = 0;
+	end;
+end
+
+resultFlag = rc;
 return;

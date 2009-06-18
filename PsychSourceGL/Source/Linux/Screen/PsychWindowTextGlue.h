@@ -65,7 +65,7 @@ typedef struct {
 	PsychColorType			textColor;
 	PsychColorType			textBackgroundColor;
         GLuint                          DisplayList;         // Base-Id for font display lists: Handle for ASCII character zero.
-        boolean                         needsRebuild;  // If set to true, the display lists need to be rebuild becaue font has changed.
+        psych_bool                         needsRebuild;  // If set to true, the display lists need to be rebuild becaue font has changed.
         float                           glyphWidth[256];  // Width of each ASCII character glyph in GL units.
         float                           glyphHeight[256]; // Height of each ASCII character glyph in GL units.
 } PsychTextAttributes;
@@ -74,7 +74,7 @@ typedef struct {
 //function prototypes
 void PsychInitTextRecordSettings(PsychTextAttributes *settings);		
 void PsychGetTextDrawingModeNameFromTextDrawingModeConstant(char *modeNameStr, int modeNameStrSize, PsychTextDrawingModeType mode);
-boolean PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr);
+psych_bool PsychGetTextDrawingModeConstantFromTextDrawingModeName(PsychTextDrawingModeType *mode, char *modeNameStr);
 
 //end include once
 #endif

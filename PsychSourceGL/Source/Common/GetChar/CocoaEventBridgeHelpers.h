@@ -23,7 +23,7 @@
 
 
 //function prototypes
-Boolean LoadCocoaBundle(void);
+psych_bool LoadCocoaBundle(void);
 
 //functions loaded from the Cocoa bundle.  Helpful to call LoadCocoaBundle() before using these.  
 typedef	void (*InitializeCocoaProc)(void);
@@ -41,7 +41,7 @@ typedef	CFDictionaryRef (*CopyReadNextKeypressProc)(void);
 typedef	CFDictionaryRef (*CopyPeekNextKeypressProc)(void);
 typedef	void (*ClearKeypressListProc)(void);
 typedef	int (*GetNumKeypressesProc)(void);
-typedef	Boolean	(*IsKeyWindowProc)(void);
+typedef	psych_bool	(*IsKeyWindowProc)(void);
 
 
 

@@ -237,14 +237,14 @@ typedef struct _PsychWindowRecordType_{
 	int					surfaceSizeBytes;	// Estimate of used system memory in bytes. Only used for accounting and debugging output.
 	PsychRectType              rect;		// Effective rectangle of window -- Normalized to always have top-left corner in (0,0)!
 	PsychRectType			globalrect;		// Same as rect, but not normalized -- Contains real window location in global desktop reference frame.
-	boolean					isValid;		//between when we allocate the record and when we fill in values.
+	psych_bool					isValid;		//between when we allocate the record and when we fill in values.
 	int					depth;				//Number of bits per pixel -- Attention: This is often misleading and not really reliable!
 	int					nrchannels;
 	int					bpc;				// Number of bits per color component: Typically 8 for LDR, but can be 16 or 32 for float drawables.
 	int                                     multiSample;            // Number of samples to use for anti-aliasing of each drawn pixel:
                                                                         // 0=Standard GL, n>0 : Use Multisampling, try to get at least n samples/pixel.
 	//used only when this structure holds a window
-	Boolean					actualEnableBlending;
+	psych_bool					actualEnableBlending;
 	GLenum					actualSourceAlphaBlendingFactor;
 	GLenum					actualDestinationAlphaBlendingFactor;
 	GLenum					nextSourceAlphaBlendingFactor;
@@ -269,9 +269,9 @@ typedef struct _PsychWindowRecordType_{
 	//line stipple attributes, for windows not textures.
 	GLushort				stipplePattern;
 	GLint					stippleFactor;
-	boolean					stippleEnabled;
+	psych_bool					stippleEnabled;
         
-		GLboolean								colorMask[4];			// Boolean 4 element array which encodes the glColorMask() for this window.
+		GLboolean								colorMask[4];			// psych_bool 4 element array which encodes the glColorMask() for this window.
 		unsigned int							gfxcaps;				// Bitfield of gfx-cards capabilities and limitations: See constants kPsychGfxCapXXXX above.
 		unsigned int							specialflags;			// Container for all kind of special flags...
 		int										maxTextureSize;			// Maximum size of a texture supported by GPU.
@@ -280,16 +280,16 @@ typedef struct _PsychWindowRecordType_{
 		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.
 		PsychWindowRecordPntrType				parentWindow;			// MK: Ptr. to windowRecord of the parent window, or NULL if this window doesn't have a parent.
 		int										targetFlipFieldType;	// MK: Usually == -1 (=Don't care). Can select that bufferswap should always happen in even frames (=0) or odd frames (=1). Useful for frame sequential stereo.
-        bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
+        psych_bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.
 		double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
         double                                  VideoRefreshInterval;   // MK: Estimated video refresh interval of display. Can be different to IFI.
 		double									ifi_beamestimate;		// MK: Yet another video refresh estimate, based on beamposition method (or 0 if invalid).
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
-        bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
-        bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
-        bool                                    vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
+        psych_bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
+        psych_bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
+        psych_bool                                    vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
 
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
@@ -308,7 +308,7 @@ typedef struct _PsychWindowRecordType_{
 	double					clearColor[4];							// Window clear color (as GL double vector) to use in PsychGLClear();
 	int						imagingMode;							// Master mode switch for imaging and callback hook pipeline.
 	PtrPsychHookFunction	HookChain[MAX_SCREEN_HOOKS];			// Array of pointers to the hook-chains for different hooks.
-	Boolean					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.
+	psych_bool					HookChainEnabled[MAX_SCREEN_HOOKS];		// Array of Booleans to en-/disable single chains temporarily.
 
 	// Indices into our FBO table: The special value -1 means: Don't use.
 	int						drawBufferFBO[2];						// Storage for drawing FBOs: These are the targets of all drawing operations before
@@ -382,13 +382,13 @@ void 			PsychCreateWindowRecord(PsychWindowRecordType **winRec);
 PsychError 		FreeWindowRecordFromIndex(PsychWindowIndexType windowIndex);
 PsychError 		FreeWindowRecordFromPntr(PsychWindowRecordType *winRec);
 int 			PsychCountOpenWindows(PsychWindowType winType);
-boolean 		IsValidScreenNumber(PsychNumdexType numdex);
-boolean			IsValidScreenNumberOrUnaffiliated(PsychNumdexType numdex);
-boolean 		IsWindowIndex(PsychNumdexType numdex);
-boolean			IsScreenNumberUnaffiliated(PsychNumdexType numdex);
+psych_bool 		IsValidScreenNumber(PsychNumdexType numdex);
+psych_bool			IsValidScreenNumberOrUnaffiliated(PsychNumdexType numdex);
+psych_bool 		IsWindowIndex(PsychNumdexType numdex);
+psych_bool			IsScreenNumberUnaffiliated(PsychNumdexType numdex);
 PsychError 		FindWindowRecord(PsychWindowIndexType windowIndex, PsychWindowRecordType **windowRecord);
 PsychError 		FindScreenRecord(int screenNumber, PsychScreenRecordType **screenRecord);
-boolean 		PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord);
+psych_bool 		PsychIsLastOnscreenWindow(PsychWindowRecordType *windowRecord);
 void			PsychCreateVolatileWindowRecordPointerList(int *numWindows, PsychWindowRecordType ***pointerList);
 void 			PsychDestroyVolatileWindowRecordPointerList(PsychWindowRecordType **pointerList);
 void			PsychAssignParentWindow(PsychWindowRecordType *childWin, PsychWindowRecordType *parentWin);

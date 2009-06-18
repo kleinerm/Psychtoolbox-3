@@ -71,7 +71,7 @@ static const struct {
 #endif
 
 /* Flag which defines if userspace rendering is active: */
-static boolean inGLUserspace = FALSE;
+static psych_bool inGLUserspace = FALSE;
 
 // We keep track of the current active rendertarget in order to
 // avoid needless state changes:
@@ -176,7 +176,7 @@ void PsychRebindARBExtensionsToCore(void)
         Contains experimental support for flipping multiple displays synchronously, e.g., for dual display stereo setups.
  
 */
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow)
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow)
 {
     PsychRectType dummyrect;
     double ifi_nominal=0;    
@@ -197,9 +197,9 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     int ringTheBell=-1;
     long VRAMTotal=0;
     long TexmemTotal=0;
-    bool multidisplay = FALSE;
-    bool sync_trouble = false;
-    bool sync_disaster = false;
+    psych_bool multidisplay = FALSE;
+    psych_bool sync_trouble = false;
+    psych_bool sync_disaster = false;
     int  skip_synctests = PsychPrefStateGet_SkipSyncTests();
     int visual_debuglevel = PsychPrefStateGet_VisualDebugLevel();
     int conserveVRAM = PsychPrefStateGet_ConserveVRAM();
@@ -1118,7 +1118,7 @@ boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWi
     create the texture, allocate a window record and record the window specifications and memory location there.
     TO DO:  We need to walk down the screen number and fill in the correct value for the benefit of TexturizeOffscreenWindow
 */
-boolean PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
+psych_bool PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord)
 {
     // This is a complete no-op as everything is implemented in SCREENOpenOffscreenWindow at the moment.
     return(TRUE);
@@ -1597,7 +1597,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
  *	Returns success state: TRUE on success, FALSE on error.
  *
  */
-bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
+psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 {
 	int rc;
 	PsychFlipInfoStruct* flipRequest;
@@ -1887,9 +1887,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
     int screenheight, screenwidth;
     GLint read_buffer, draw_buffer;
     unsigned char bufferstamp;
-    const boolean vblsyncworkaround=false;  // Setting this to 'true' would enable some checking code. Leave it false by default.
+    const psych_bool vblsyncworkaround=false;  // Setting this to 'true' would enable some checking code. Leave it false by default.
     static unsigned char id=1;
-    boolean sync_to_vbl;                    // Should we synchronize the CPU to vertical retrace? 
+    psych_bool sync_to_vbl;                    // Should we synchronize the CPU to vertical retrace? 
     double tremaining;                      // Remaining time to flipwhen - deadline
     CGDirectDisplayID displayID;            // Handle for our display - needed for beampos-query.
     double time_at_vbl=0;                   // Time (in seconds) when last Flip in sync with start of VBL happened.
@@ -1914,7 +1914,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	int line_pre_swaprequest = -1;			// Scanline of display immediately before swaprequest.
 	int line_post_swaprequest = -1;			// Scanline of display immediately after swaprequest.
 	int min_line_allowed = 20;				// The scanline up to which "out of VBL" swaps are accepted: A fudge factor for broken drivers...
-	boolean flipcondition_satisfied;	
+	psych_bool flipcondition_satisfied;	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
     int	i;
@@ -3705,7 +3705,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 {
     static unsigned int		recursionLevel = 0;
     int						twidth, theight;
-    Boolean EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
+    psych_bool EmulateOldPTB = PsychPrefStateGet_EmulateOldPTB();
 
 	// Are we called from the main interpreter thread? If not, then we return
 	// immediately (No-Op). Worker threads for async flip don't expect this
@@ -4024,18 +4024,18 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
 }
 
 /* Set Screen - global flag which tells PTB if userspace rendering is active or not. */
-void PsychSetUserspaceGLFlag(boolean inuserspace)
+void PsychSetUserspaceGLFlag(psych_bool inuserspace)
 {
 	inGLUserspace = inuserspace;
 }
 
 /* Get Screen - global flag which tells if we are in userspace rendering mode: */
-boolean PsychIsUserspaceRendering(void)
+psych_bool PsychIsUserspaceRendering(void)
 {
 	return(inGLUserspace);
 }
 
-int PsychRessourceCheckAndReminder(boolean displayMessage) {
+int PsychRessourceCheckAndReminder(psych_bool displayMessage) {
 	int i,j = 0;
 
 	#if PSYCH_SYSTEM != PSYCH_LINUX
@@ -4152,10 +4152,10 @@ int PsychSetShader(PsychWindowRecordType *windowRecord, int shader)
  */
 void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 {
-	boolean verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
+	psych_bool verbose = (PsychPrefStateGet_Verbosity() > 5) ? TRUE : FALSE;
 	
-	boolean nvidia = FALSE;
-	boolean ati = FALSE;
+	psych_bool nvidia = FALSE;
+	psych_bool ati = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
 	
 	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) ati = TRUE;

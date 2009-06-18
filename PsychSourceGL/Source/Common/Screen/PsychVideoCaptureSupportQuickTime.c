@@ -42,7 +42,7 @@
 
 // Forward declaration of internal helper function:
 void PsychQTDeleteAllCaptureDevices(void);
-OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput, char* retDeviceName);
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, psych_bool showOutput, char* retDeviceName);
 void* PsychQTVideoCaptureThreadMain(void* vidcapRecordToCast);
 
 
@@ -77,7 +77,7 @@ typedef struct {
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
-static Boolean firsttime = TRUE;
+static psych_bool firsttime = TRUE;
 
 /** PsychVideoCaptureDataProc
  *  This callback is called by the SequenceGrabber subsystem whenever a new frame arrives from
@@ -432,7 +432,7 @@ releaseQTEnum:
 	return;
 }
 
-OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, bool showOutput, char* retDeviceName)
+OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, int deviceIndex, psych_bool showOutput, char* retDeviceName)
 {
 	ComponentInstance	vdCompInst;
 	OSErr				error;
@@ -630,7 +630,7 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
  *		// 8 = Don't call SGPrepare() / SGRelease().
  *		// 16 = Use background worker thread to call SGIdle() for automatic capture/recording.
  */
-bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+psych_bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
     int i;
@@ -1268,7 +1268,7 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned char* pixptr;
 	unsigned char* outpixptr;
 	unsigned char swapbyte;
-    Boolean newframe = FALSE;
+    psych_bool newframe = FALSE;
     double tstart, tend;
     unsigned int pixval, alphacount;
     int nrdropped;
@@ -1340,7 +1340,7 @@ int PsychQTGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 	}
 	
     // Check if a new captured frame is ready for retrieval...
-    newframe = (Boolean) vidcapRecordBANK[capturehandle].frame_ready;
+    newframe = (psych_bool) vidcapRecordBANK[capturehandle].frame_ready;
     // ...and clear out the ready flag immediately:
     vidcapRecordBANK[capturehandle].frame_ready = 0;
 

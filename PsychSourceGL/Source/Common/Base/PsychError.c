@@ -31,7 +31,7 @@
 static char *errorStringsERROR[MAX_PSYCH_ERRORS];       
 static char *errorNameStringsERROR[MAX_PSYCH_ERRORS];
 static char *ArgTypeStringsERROR[PsychArgType_MAX+1]; //+1 so we can 1 index
-boolean usageErrorFlagsERROR[MAX_PSYCH_ERRORS];
+psych_bool usageErrorFlagsERROR[MAX_PSYCH_ERRORS];
 PsychArgDescriptorType specifiedArgERROR, receivedArgERROR;
  
 
@@ -242,12 +242,12 @@ int PsychDecomposeArgFormat(PsychArgFormatType argType,  const char **names)
 {
 	int i, numTypes=0; 
 	PsychArgFormatType strIndex; 
-  	boolean isElement;
+  	psych_bool isElement;
   	
 	//we are given a composite of types so find which to name in the string
 	for(i=0;i<PsychArgType_NUMTYPES;i++){
 		strIndex = (PsychArgFormatType)pow(2,i);
-		isElement = (boolean)((int)argType & (int)strIndex);
+		isElement = (psych_bool)(((int)argType & (int)strIndex) > 0);
 		if(isElement){
 			if(names!=NULL) //in case we only want a count and pass NULL for names
 				names[numTypes]=ArgTypeStringsERROR[strIndex];

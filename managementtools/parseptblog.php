@@ -205,10 +205,10 @@ foreach($uniqueptbs as $ofl) {
     $iswin = 1;
 
     if (strpos($ofl, 'Windows-Unknown')) { $winunknowncount++; }
-    if (strpos($ofl, 'Windows 2000')) { $win2kcount++; }
-    if (strpos($ofl, 'Windows XP')) { $winxpcount++; }
-    if (strpos($ofl, 'Windows Vista')) { $winvistacount++; }
-    if (strpos($ofl, 'Windows 7')) { $win7count++; }
+    if (strpos($ofl, 'Windows 2000') || strpos($ofl, 'NT-5.0')) { $win2kcount++; }
+    if (strpos($ofl, 'Windows XP') || strpos($ofl, 'NT-5.1')) { $winxpcount++; }
+    if (strpos($ofl, 'Windows Vista') || strpos($ofl, 'NT-6.0')) { $winvistacount++; }
+    if (strpos($ofl, 'Windows 7') || strpos($ofl, 'NT-6.1')) { $win7count++; }
 
     if ($ismatlab > 0) {
         // Which Matlab release class on Windows?

@@ -73,7 +73,7 @@ if any(isspace(targetdirectory))
 end
 
 % Check OS
-isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64');
+isWin=strcmp(computer,'PCWIN') | strcmp(computer,'PCWIN64') | strcmp(computer, 'i686-pc-mingw32');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
 isLinux=strcmp(computer,'GLNX86') | ~isempty(findstr(computer, 'linux-gnu'));
 

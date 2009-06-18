@@ -50,7 +50,7 @@
 PsychError	PsychSynchronizeDisplayScreens(int *numScreens, int* screenIds, int* residuals, unsigned int syncMethod, double syncTimeOut, int allowedResidual);
 
 // Enable/Disable native 10 bpc RGB framebuffer modes.
-boolean		PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, boolean enable);
+psych_bool		PsychEnableNative10BitFramebuffer(PsychWindowRecordType* windowRecord, psych_bool enable);
 
 // Keep 10 bpc framebuffer mode enabled across unwanted changes caused by gfx-driver: Must be called after end-of-scene marker commands, e.g., after
 // each glClear() command! Is a no-op if fixup not needed, so cheap to call.
@@ -60,7 +60,7 @@ void		PsychFixupNative10BitFramebufferEnableAfterEndOfSceneMarker(PsychWindowRec
 void		PsychStoreGPUSurfaceAddresses(PsychWindowRecordType* windowRecord);
 
 // Wait until a bufferswap is complete or bufferswap at next retrace is certain:
-bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
+psych_bool		PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* windowRecord, double* timestamp, int *beamposition);
 
 // End of routines.
 

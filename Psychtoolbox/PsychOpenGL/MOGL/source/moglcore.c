@@ -118,7 +118,6 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
     // Start of dispatcher:
     int i;
     GLenum err;
-    bool errorcondition = false;
 
        
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
@@ -151,7 +150,6 @@ DEFUN_DLD(moglcore, inprhs, nlhs,
       // PsychErrorExit() or friends called! The CPU and stack are restored to a sane state.
       // Call our cleanup-routine to release memory that is PsychMallocTemp()'ed and to other
       // error-handling...
-      errorcondition = true;
       goto moglreturn;
     }
 
@@ -734,7 +732,6 @@ void *PsychMallocTemp(unsigned long n, int mlist)
 void PsychFreeTemp(void* ptr, int mlist)
 {
   void* ptrbackup = ptr;
-  unsigned long* psize = NULL;
   unsigned int* next = PsychTempMemHead[mlist];
   unsigned int* prevptr = NULL;
 
@@ -793,7 +790,6 @@ void PsychFreeTemp(void* ptr, int mlist)
 void PsychFreeAllTempMemory(int mlist)
 {
   unsigned int* p = NULL;
-  unsigned long* psize = NULL;
   unsigned int* next = PsychTempMemHead[mlist];
 
   // Walk our whole buffer list and release all buffers on it:

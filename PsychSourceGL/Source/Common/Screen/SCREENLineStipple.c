@@ -32,19 +32,19 @@ static char synopsisString[] =
 static char seeAlsoString[] = "FrameRect";	
 
 static void ConvertShortToStippleArray(PsychNativeBooleanType *patternArray, GLushort shortPattern);
-static void ConvertStippleArrayToShort(boolean *patternArray, GLushort *shortPattern);
+static void ConvertStippleArrayToShort(psych_bool *patternArray, GLushort *shortPattern);
 
 PsychError SCREENLineStipple(void)  
 {
 	
 	PsychWindowRecordType			*winRec;
 	static GLushort					stipplePatternTemp;
-	boolean							isFactorThere, isPatternThere, isFlagThere, didChange;
+	psych_bool							isFactorThere, isPatternThere, isFlagThere, didChange;
 	double							*newFactor;
-	boolean							*newPatternArray;
+	psych_bool							*newPatternArray;
 	int								numInputVectorElements;
 	PsychNativeBooleanType			*oldPatternArray;
-	boolean							*newEnableFlag;
+	psych_bool							*newEnableFlag;
 								
     
 	//all sub functions should have these two lines
@@ -119,7 +119,7 @@ static void ConvertShortToStippleArray(PsychNativeBooleanType *patternArray, GLu
 }
 
 
-static void ConvertStippleArrayToShort(boolean *patternArray, GLushort *shortPattern)
+static void ConvertStippleArrayToShort(psych_bool *patternArray, GLushort *shortPattern)
 {
 	int i;
 	

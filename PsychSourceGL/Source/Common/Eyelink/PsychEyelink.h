@@ -115,7 +115,7 @@ PsychError	MODULEVersion(void);
 PsychError PsychEyelinkShutdown(void);
 
 // Helpers
-boolean TrackerOKForRawValues(void); //defined in EyelinkGetQueuedData.c
+psych_bool TrackerOKForRawValues(void); //defined in EyelinkGetQueuedData.c
 
 // Eyelink Target sub-commands
 PsychError EyelinkButtonStates(void);

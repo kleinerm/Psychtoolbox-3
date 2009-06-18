@@ -92,7 +92,7 @@ PsychError SCREENMakeTexture(void)
     PsychWindowRecordType		*textureRecord;
     PsychWindowRecordType		*windowRecord;
     PsychRectType			rect;
-    Boolean				isImageMatrixBytes, isImageMatrixDoubles;
+    psych_bool				isImageMatrixBytes, isImageMatrixDoubles;
     int					numMatrixPlanes, xSize, ySize, iters; 
     unsigned char			*byteMatrix;
     double				*doubleMatrix;
@@ -103,7 +103,7 @@ PsychError SCREENMakeTexture(void)
     GLubyte *rpb, *gpb, *bpb, *apb;    
     int                                 usepoweroftwo, usefloatformat, assume_texorientation, textureShader;
     double                              optimized_orientation;
-    Boolean                             bigendian;
+    psych_bool                             bigendian;
 
     // Detect endianity (byte-order) of machine:
     ix=255;

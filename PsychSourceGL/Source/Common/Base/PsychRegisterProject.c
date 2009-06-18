@@ -219,7 +219,7 @@ PsychFunctionPtr PsychGetProjectExitFunction(void)
 */
 static PsychError PsychRegisterModuleName(char *name)
 {
-	static boolean nameRegistered=FALSE; 
+	static psych_bool nameRegistered=FALSE; 
 	
 	if(nameRegistered)
 		return(PsychError_registered);

@@ -59,7 +59,7 @@ PsychError SCREENLoadCLUT(void)
     int		i, screenNumber, numEntries, inM, inN, inP, start, bits;
     float 	*outRedTable, *outGreenTable, *outBlueTable, *inRedTable, *inGreenTable, *inBlueTable;
     double	 *inTable, *outTable, maxval;	
-    boolean     isclutprovided;
+    psych_bool     isclutprovided;
 
     start = 0;
     bits = 8;

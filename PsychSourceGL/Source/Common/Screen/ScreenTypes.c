@@ -75,7 +75,7 @@ void PsychAddValueToDepthStruct(int value, PsychDepthType *depth)
     Accepts two depth structs and returns true if the one depth held by the first struct is among the one or more 
     depths within the second struct. 
 */
-boolean PsychIsMemberDepthStruct(PsychDepthType *depth, PsychDepthType *depthSet)
+psych_bool PsychIsMemberDepthStruct(PsychDepthType *depth, PsychDepthType *depthSet)
 {
     int numDepths, i;
     

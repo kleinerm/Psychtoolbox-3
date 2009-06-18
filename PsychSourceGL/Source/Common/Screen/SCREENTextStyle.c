@@ -37,7 +37,7 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextStyle(void) 
 {
-    boolean						doSetStyle, foundFont;
+    psych_bool						doSetStyle, foundFont;
     PsychWindowRecordType		*windowRecord;
     int							oldTextStyle, newTextStyle;
 

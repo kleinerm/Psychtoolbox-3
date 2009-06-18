@@ -58,26 +58,26 @@
 
 
 // query, put and get windows and screen specifiers by specifying argument position
-boolean			PsychAllocInWindowRecordArg(int position, boolean required, PsychWindowRecordType **winRec);
-boolean 		PsychAllocInScreenRecordArg(int position, boolean reqired, PsychScreenRecordType **screenRecord);
-boolean 		PsychCopyInWindowIndexArg(int position, boolean required, PsychWindowIndexType *windowIndex);
-boolean 		PsychCopyInScreenNumberArg(int position, boolean required, int *screenNumber);
-boolean			PsychCopyInScreenNumberOrUnaffiliatedArg(int position, boolean required, int *screenNumber);
-boolean 		PsychIsWindowIndexArg(int position);
-boolean 		PsychIsScreenNumberArg(int position);
-boolean			PsychIsScreenNumberOrUnaffiliatedArg(int position);
-boolean			PsychIsUnaffiliatedScreenNumberArg(int position);
+psych_bool			PsychAllocInWindowRecordArg(int position, psych_bool required, PsychWindowRecordType **winRec);
+psych_bool 		PsychAllocInScreenRecordArg(int position, psych_bool reqired, PsychScreenRecordType **screenRecord);
+psych_bool 		PsychCopyInWindowIndexArg(int position, psych_bool required, PsychWindowIndexType *windowIndex);
+psych_bool 		PsychCopyInScreenNumberArg(int position, psych_bool required, int *screenNumber);
+psych_bool			PsychCopyInScreenNumberOrUnaffiliatedArg(int position, psych_bool required, int *screenNumber);
+psych_bool 		PsychIsWindowIndexArg(int position);
+psych_bool 		PsychIsScreenNumberArg(int position);
+psych_bool			PsychIsScreenNumberOrUnaffiliatedArg(int position);
+psych_bool			PsychIsUnaffiliatedScreenNumberArg(int position);
 
 
 // put and get color and rect and depth specifiers directly from arguments
-boolean 		PsychCopyInColorArg(int position, boolean required, PsychColorType *color);
-boolean 		PsychCopyOutColorArg(int position, boolean required, PsychColorType *color);
-boolean 		PsychCopyInRectArg(int position, boolean required, PsychRectType rect);
-boolean 		PsychCopyOutRectArg(int position, boolean required, PsychRectType rect);
-boolean 		PsychAllocOutRectArg(int position, boolean required, const double **rect);
-boolean 		PsychCopyInSingleDepthArg(int position, boolean required, PsychDepthType *depth);
-boolean			PsychCopyInDepthValueArg(int position, boolean required, int *depth);
-boolean 		PsychCopyOutDepthArg(int position, boolean required, PsychDepthType *depths);
+psych_bool 		PsychCopyInColorArg(int position, psych_bool required, PsychColorType *color);
+psych_bool 		PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color);
+psych_bool 		PsychCopyInRectArg(int position, psych_bool required, PsychRectType rect);
+psych_bool 		PsychCopyOutRectArg(int position, psych_bool required, PsychRectType rect);
+psych_bool 		PsychAllocOutRectArg(int position, psych_bool required, const double **rect);
+psych_bool 		PsychCopyInSingleDepthArg(int position, psych_bool required, PsychDepthType *depth);
+psych_bool			PsychCopyInDepthValueArg(int position, psych_bool required, int *depth);
+psych_bool 		PsychCopyOutDepthArg(int position, psych_bool required, PsychDepthType *depths);
 
 
 //end include once

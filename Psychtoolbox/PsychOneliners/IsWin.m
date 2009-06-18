@@ -13,6 +13,6 @@ function resultFlag = IsWin
 persistent rc;
 
 if isempty(rc)
-     rc=streq(computer,'PCWIN') | streq(computer,'PCWIN64');
+     rc=streq(computer,'PCWIN') | streq(computer,'PCWIN64') | streq(computer, 'i686-pc-mingw32');
 end;
 resultFlag=rc;

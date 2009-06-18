@@ -46,7 +46,7 @@ PsychError SCREENFramePoly(void)
 	PsychWindowRecordType			*windowRecord;
 	int								whiteValue;
 	int								i, mSize, nSize, pSize;
-	boolean							isArgThere;
+	psych_bool							isArgThere;
 	double							penSize, *pointList;
     
 	//all sub functions should have these two lines

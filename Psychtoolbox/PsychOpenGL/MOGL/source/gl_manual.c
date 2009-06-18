@@ -213,6 +213,7 @@ void moglcopybuffertomatrix(int nlhs, mxArray *plhs[], int nrhs, const mxArray *
       if (dims * sizeof(unsigned char) < n) dims++;
       break;
     default:
+	  type = 0;
       mexErrMsgTxt("MOGL-ERROR: Unknown matrix type requested in moglgetbuffer()! Ignored.");
     }
 

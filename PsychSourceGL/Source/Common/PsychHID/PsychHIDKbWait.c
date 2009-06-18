@@ -57,9 +57,9 @@ PsychError PSYCHHIDKbWait(void)
     long			KbDeviceUsagePage= 1, KbDeviceUsage=6; 
     int				deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice			deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
-    boolean 			isDeviceSpecified, foundUserSpecifiedDevice;
+    psych_bool 			isDeviceSpecified, foundUserSpecifiedDevice;
     double			*timeValueOutput;
-    boolean 			isKeyDown;
+    psych_bool 			isKeyDown;
     	 
 
     PsychPushHelp(useString, synopsisString, seeAlsoString);

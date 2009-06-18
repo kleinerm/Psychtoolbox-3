@@ -99,7 +99,7 @@ PsychError SCREENTextBounds(void)
 	TextToUnicodeInfo		textToUnicodeInfo;
 	TextEncoding			textEncoding;
 	ATSUStyle			atsuStyle;
-	Boolean				foundFont;
+	psych_bool				foundFont;
 	int				dummy1, dummy2;
 	double*			unicodedoubles;
 
@@ -300,18 +300,18 @@ typedef struct _PsychFontStructType_{
 /*
 PsychSetATSUTStyleAttributesFromPsychAttributes(ATSUStyle style, PsychTextAttributes	psychTextAttributes)
 {
-	Boolean					foundFont;
+	psych_bool					foundFont;
 	PsychFontStructType		*fontRecord;
 	//for ATSU attributes
 	ATSUFontID				atsuFontID;
 	Fixed					atsuSize;
-	Boolean					isBold;
-	Boolean					isItalic;
-	Boolean					isUnderline;
-	Boolean					isCondensed;
-	Boolean					isExtended;
+	psych_bool					isBold;
+	psych_bool					isItalic;
+	psych_bool					isUnderline;
+	psych_bool					isCondensed;
+	psych_bool					isExtended;
 	ATSUAttributeTag		aaTags[] =  {kATSUFontTag, kATSUSizeTag, kATSUQDBoldTag, kATSUItalicTag, kATSUUnderlineTag, kATSUCondensedTag, kATSUExtendedTag};
-	ByteCount				aaSizes[] = {sizeof(ATSUFontID) sizeof(Fixed), sizeof(Boolean), sizeof(Boolean), sizeof(Boolean), sizeof(Boolean), sizeof(Boolean) };
+	ByteCount				aaSizes[] = {sizeof(ATSUFontID) sizeof(Fixed), sizeof(psych_bool), sizeof(psych_bool), sizeof(psych_bool), sizeof(psych_bool), sizeof(psych_bool) };
 	ATSUAttributeValuePtr   aaValue[] = {&atsuFontID, &atsuSize, &isBold, &isItalic, &isUnderline, &isCondensed, &isExtended};
 	
 	//get the font record for font number given within the window record's text attributes substruct
@@ -331,7 +331,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
 
 // This function PsychOSRebuildFont() is implemented in the Windows-portion
 // of SCREENDrawText.c
-boolean PsychOSRebuildFont(PsychWindowRecordType *winRec);
+psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec);
 
 PsychError SCREENTextBounds(void)
 {

@@ -32,12 +32,12 @@
 
 #include "Psych.h"
 
-boolean PsychAllocOutCellVector(int position, PsychArgRequirementType isRequired, int numElements,  PsychGenericScriptType **pCell);
+psych_bool PsychAllocOutCellVector(int position, PsychArgRequirementType isRequired, int numElements,  PsychGenericScriptType **pCell);
 void PsychSetCellVectorStringElement(int index, const char *text, PsychGenericScriptType *cellVector);
 void PsychSetCellVectorDoubleElement(int index, double value, PsychGenericScriptType *cellVector);
 void PsychSetCellVectorNativeElement(int index, PsychGenericScriptType *pNativeElement,  PsychGenericScriptType *cellVector);
-boolean PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector);
-boolean PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString);
+psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector);
+psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString);
 void PsychConvertNativeCellArrayToNativeString(const PsychGenericScriptType **nativeCellArray, PsychGenericScriptType **nativeString);
          
                                                                              

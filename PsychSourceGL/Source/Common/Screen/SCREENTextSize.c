@@ -39,7 +39,7 @@ static char seeAlsoString[] = "";
 PsychError SCREENTextSize(void) 
 {
 
-    boolean						doSetSize;
+    psych_bool						doSetSize;
     PsychWindowRecordType		*windowRecord;
     int							oldTextSize, newTextSize;
     

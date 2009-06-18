@@ -36,7 +36,7 @@ typedef struct {
 static PsychMasterVidcapRecordType mastervidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
 
-static Boolean firsttime = TRUE;
+static psych_bool firsttime = TRUE;
 
 /*
  *     PsychVideoCaptureInit() -- Initialize video capture subsystem.
@@ -72,7 +72,7 @@ void PsychVideoCaptureInit(void)
 
 void PsychEnumerateVideoSources(int engineId, int outPos)
 {
-	bool dispatched = FALSE;
+	psych_bool dispatched = FALSE;
 
 	#ifdef PTBVIDEOCAPTURE_QT
 	if (engineId == 0 || (engineId == 2 && PSYCH_SYSTEM == PSYCH_OSX)) {
@@ -111,11 +111,11 @@ void PsychEnumerateVideoSources(int engineId, int outPos)
  *		// 2 = Record audio as well.
  *
  */
-bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+psych_bool PsychOpenVideoCaptureDevice(int engineId, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
     int i, slotid;
-	bool dispatched = FALSE;
+	psych_bool dispatched = FALSE;
     *capturehandle = -1;
 
 	// Sanity checking:

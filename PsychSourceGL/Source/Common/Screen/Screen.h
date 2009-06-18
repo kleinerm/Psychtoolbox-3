@@ -57,10 +57,13 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+#ifndef QUICKTIME_IS_INCLUDED
+#define QUICKTIME_IS_INCLUDED
 	#include <Movies.h>
-	#include <CoreVideo.h>
-	#include <GXMath.h>
-	#include <ImageCompression.h>
+//	#include <CoreVideo.h>
+    #include <GXMath.h>
+//	#include <ImageCompression.h>
+#endif
 #endif
 
 #include "PsychVideoGlue.h"
@@ -106,7 +109,7 @@ void ScreenCloseAllWindows();           //SCREENCloseAll.c
 int		PsychConvertColorToDoubleVector(PsychColorType *color, PsychWindowRecordType *windowRecord, GLdouble *valueArray);
 // int		PsychConvertColorAndColorSizeToDoubleVector(PsychColorType *color, int colorSize, GLdouble *valueArray);
 void		PsychSetGLColor(PsychColorType *color, PsychWindowRecordType *windowRecord);
-void		PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, boolean enable, int mc, double* colors, unsigned char *bytecolors);
+void		PsychSetupVertexColorArrays(PsychWindowRecordType *windowRecord, psych_bool enable, int mc, double* colors, unsigned char *bytecolors);
 void		PsychSetArrayColor(PsychWindowRecordType *windowRecord, int i, int mc, double* colors, unsigned char *bytecolors);
 void		PsychGLClear(PsychWindowRecordType *windowRecord);
 void		PsychGLRect(double *psychRect);

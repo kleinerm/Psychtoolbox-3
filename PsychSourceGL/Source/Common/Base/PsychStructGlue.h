@@ -34,7 +34,7 @@
 
 
 
-boolean PsychAllocOutStructArray(	int position, 
+psych_bool PsychAllocOutStructArray(	int position, 
                                         PsychArgRequirementType isRequired, 
                                         int numElements,
                                         int numFields, 
@@ -54,7 +54,7 @@ void PsychSetStructArrayDoubleElement(	char *fieldName,
                                         
 void PsychSetStructArrayBooleanElement(	char *fieldName,
                                         int index,
-                                        boolean state,
+                                        psych_bool state,
                                         PsychGenericScriptType *pStruct);
                                         
 //You can use PsychSetStructArrayNativeElement instead of PsychSetStructArrayStructElement, the latter checks that pStructInner is really a struct.   
@@ -68,7 +68,7 @@ void PsychSetStructArrayNativeElement(	char *fieldName,
                                         PsychGenericScriptType *nativeElement,
                                         PsychGenericScriptType *pStructOuter);
                                         
-boolean PsychAssignOutStructArray(	int position, 
+psych_bool PsychAssignOutStructArray(	int position, 
                                         PsychArgRequirementType isRequired,   
                                         PsychGenericScriptType *pStruct);
 

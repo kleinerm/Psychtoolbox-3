@@ -250,7 +250,7 @@ typedef struct{
 	volatile long A,error,failedAttempts;
 	void (*functionPtr)(void *argPtr);
 	void *argPtr;
-	volatile Boolean done;
+	volatile psych_bool done;
 	int priorityLevel;
 } Stuff;
 #if TARGET_CPU_PPC
@@ -264,7 +264,7 @@ int Rush(int priorityLevel,void (*functionPtr)(void *argPtr),void *argPtr);
 
 int Rush(int priorityLevel,void (*functionPtr)(void *argPtr),void *argPtr)
 {
-	static Boolean firstTime=1,deferAvailable;
+	static psych_bool firstTime=1,deferAvailable;
 	static DeferredTaskUPP deferredTaskUPP;
 	int oldPriority;
 	DeferredTask deferredTask;
@@ -395,7 +395,7 @@ int Rush(int priorityLevel,void (*functionPtr)(void *argPtr),void *argPtr)
 static void CallFunction(Stuff *stuffPtr)
 {
 	ProcessSerialNumber psn;
-	Boolean isOurs;
+	psych_bool isOurs;
 	int error;
 
 	error=GetCurrentProcess(&psn);

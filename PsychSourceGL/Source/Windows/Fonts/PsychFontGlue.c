@@ -32,7 +32,7 @@ what's available to your app.
 
 //declare file local functions
 static void						PsychInitFontList(void);
-static PsychFontStructPtrType	PsychFontListHeadKeeper(Boolean set, PsychFontStructPtrType value);
+static PsychFontStructPtrType	PsychFontListHeadKeeper(psych_bool set, PsychFontStructPtrType value);
 
 
 
@@ -51,7 +51,7 @@ static PsychFontStructPtrType	PsychFontListHeadKeeper(Boolean set, PsychFontStru
     PsychGetFontListHead().
     
 */
-static PsychFontStructPtrType	PsychFontListHeadKeeper(Boolean set, PsychFontStructPtrType value)
+static PsychFontStructPtrType	PsychFontListHeadKeeper(psych_bool set, PsychFontStructPtrType value)
 {
     static PsychFontStructPtrType		fontListHead=NULL;
 
@@ -138,7 +138,7 @@ void PsychInitFontList(void)
     //for font field names
     CFStringRef 		cfFontName;
     int				i;
-    Boolean			resultOK;
+    psych_bool			resultOK;
     //for font file
     //OSErr			osError;
     OSStatus			osStatus;			
@@ -326,10 +326,10 @@ int PsychGetFontListLength(void)
     Font numbers are something the Psychtoolbox assigns when building its font list.  They are not genine properties of the 
     font.
 */
-Boolean	PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct)
+psych_bool	PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fontStruct)
 {
     PsychFontStructPtrType	current;
-    Boolean			found;
+    psych_bool			found;
 
     found=0;
     for(current=PsychGetFontListHead();  current; current=current->next){
@@ -352,10 +352,10 @@ Boolean	PsychGetFontRecordFromFontNumber(int fontIndex, PsychFontStructType **fo
     Accept a font family name and a font style.  Lookup the specified font in the list of font records.  If the font is found in the 
     list then set the fontStruct pointer to point to the font record.  Otherwise set fontStruct to NULL and return FALSE.    
 */
-Boolean	PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontFamilyName, FMFontStyle fontStyle, PsychFontStructType **fontStruct)
+psych_bool	PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontFamilyName, FMFontStyle fontStyle, PsychFontStructType **fontStruct)
 {
     PsychFontStructPtrType	current;
-    Boolean			nameMatch, styleMatch, found;
+    psych_bool			nameMatch, styleMatch, found;
 
     found=0;
     for(current=PsychGetFontListHead();  current; current=current->next){
@@ -389,7 +389,7 @@ Boolean	PsychGetFontRecordFromFontFamilyNameAndFontStyle(char *fontFamilyName, F
 int	PsychMemberFontsFromFontFamilyName(char *fontFamilyName, PsychFontStructPtrType *pFontStructArray)
 {
     int				i;
-    Boolean			nameMatch;
+    psych_bool			nameMatch;
     PsychFontStructPtrType	current;
     
     i=0;

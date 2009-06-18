@@ -35,6 +35,19 @@
 
 #include "Screen.h"
 #include <Windows.h>
+
+#ifdef PTBOCTAVE3MEX
+// For some weird reason, this isn't defined on Octave-3 builds, although
+// all other relevant information that would usually go along with this in
+// MultiMon.h (MSVC) or multimon.h (DirectX-SDK) is present.
+#define MONITOR_DEFAULTTONULL       0x00000000
+#define MONITOR_DEFAULTTOPRIMARY    0x00000001
+#define MONITOR_DEFAULTTONEAREST    0x00000002
+
+#define MONITORINFOF_PRIMARY        0x00000001
+
+#endif
+
 // We need to define this and include Multimon.h to allow for enumeration of multiple display screens:
 #define COMPILE_MULTIMON_STUBS
 #include <Multimon.h>
@@ -44,30 +57,30 @@
 
 // file local variables
 
-// Maybe use NULLs in the settings arrays to mark entries invalid instead of using boolean flags in a different array.   
-static boolean			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
+static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static CFDictionaryRef	displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
-static boolean			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef	displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
-static boolean			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];    
 static char*                    displayDeviceName[kPsychMaxPossibleDisplays];   // Windows internal monitor device name. Default display has NULL
 static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays]; // Top-Left corner of display on virtual screen. Default display has (0,0).
 static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
 static LPDIRECTDRAW             displayDeviceDDrawObject[kPsychMaxPossibleDisplays]; // Pointer to associated DirectDraw object, if any. NULL otherwise.
-static boolean enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
+static psych_bool enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
 
 //file local functions
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
-boolean PsychCheckScreenSettingsLock(int screenNumber);
-boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+psych_bool PsychCheckScreenSettingsLock(int screenNumber);
+psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
 void PsychTestDDrawBeampositionQueries(void);
 
 // This is actually a function in PsychWindowGlue.c, we redefine the prototype here to make compiler happy:
-extern boolean ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);
+extern psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);
 
 //Initialization functions
 void InitializePsychDisplayGlue(void)
@@ -94,9 +107,9 @@ void InitializePsychDisplayGlue(void)
 // hMonitor struct which contains the Windows internal name for the detected display. We
 // need to pass this name string to a variety of Windows-Functions to refer to the monitor
 // of interest.
-Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
+psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
 
-Boolean CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
+psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
 	MONITORINFOEX moninfo;
 
@@ -259,7 +272,7 @@ void PsychUnlockScreenSettings(int screenNumber)
     displayLockSettingsFlags[screenNumber]=FALSE;
 }
 
-boolean PsychCheckScreenSettingsLock(int screenNumber)
+psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 {
     return(displayLockSettingsFlags[screenNumber]);
 }
@@ -290,7 +303,7 @@ void PsychReleaseScreen(int screenNumber)
     PsychUnlockScreenSettings(screenNumber);
 }
 
-boolean PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }    
@@ -383,7 +396,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** h
     static PsychGetCGModeFromVideoSettings()
    
 */
-boolean  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+psych_bool  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
   /*
     FIXME - We just return a 1.
@@ -434,7 +447,7 @@ boolean  PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSett
     Check all available video display modes for the specified screen number and return true if the 
     settings are valid and false otherwise.
 */
-boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 {
         CFDictionaryRef cgMode;       
         return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
@@ -591,10 +604,10 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
       
 */
 
-boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *settings)
+psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
     CFDictionaryRef 		cgMode;
-    boolean 			isValid, isCaptured;
+    psych_bool 			isValid, isCaptured;
     CGDisplayErr 		error;
 
     //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
@@ -646,9 +659,9 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
     
 */
-boolean PsychRestoreScreenSettings(int screenNumber)
+psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    boolean 			isCaptured;
+    psych_bool 			isCaptured;
     CGDisplayErr 		error=0;
 
 
@@ -712,7 +725,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
 	 // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
     // Each entry is a 16-bit word with the n most significant bits used for an n-bit DAC.
 	 psych_uint16	gammaTable[256 * 3]; 
-    BOOL    ok;
+    psych_bool    ok;
 	 int     i;        
 
     // Query OS for gamma table:
@@ -733,7 +746,7 @@ void PsychReadNormalizedGammaTable(int screenNumber, int *numEntries, float **re
 
 void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redTable, float *greenTable, float *blueTable)
 {
-    BOOL 	ok; 
+    psych_bool 	ok; 
     CGDirectDisplayID	cgDisplayID;
 	 int     i;        
 	 // Windows hardware LUT has 3 tables for R,G,B, 256 slots each, concatenated to one table.
@@ -817,7 +830,7 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 }
 
 // Do not have kernel driver support for MS-Windows:
-boolean PsychOSIsKernelDriverAvailable(int screenId)
+psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
 	return(FALSE);
 }

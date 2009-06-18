@@ -52,7 +52,7 @@ void InitializeSynopsis()
 PsychError DisplayEventBridgeSynopsis(void)
 {
 	int i;
-	static Boolean	isSynopsisInitialized=FALSE;
+	static psych_bool	isSynopsisInitialized=FALSE;
 	
 	if(!isSynopsisInitialized){
 		InitializeSynopsis();

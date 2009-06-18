@@ -79,7 +79,7 @@ typedef struct {
 
 static PsychMovieRecordType movieRecordBANK[PSYCH_MAX_MOVIES];
 static int numMovieRecords = 0;
-static Boolean firsttime = TRUE;
+static psych_bool firsttime = TRUE;
 
 /*
  *     PsychMovieInit() -- Initialize movie subsystem.
@@ -220,13 +220,13 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
     CFStringRef movieLocation;
 	CFURLRef movieURLLocation;
     CFStringRef coreAudioDeviceUID;
-    boolean trueValue = TRUE;
+    psych_bool trueValue = TRUE;
     QTNewMoviePropertyElement newMovieProperties[4] = {0};
     int propcount = 0;
     char msgerr[10000];
     char errdesc[1000];
     Rect movierect;
-    Boolean printErrors;
+    psych_bool printErrors;
 
     // Suppress output of error-messages if moviehandle == 1000. That means we
     // run in our own Posix-Thread, not in the Matlab-Thread. Printing via Matlabs
@@ -889,7 +889,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // media sample:
 		if (nextFramesTime == myNextTime) {
 			// Invalid value? Try to hack something that gets us unstuck:
-			GetMovieTime(theMovie, &myNextTime);
+			myNextTime = GetMovieTime(theMovie, NULL);
 			nextFramesTime = myNextTime + (TimeValue) 1;
 		}
 

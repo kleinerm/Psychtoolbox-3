@@ -39,7 +39,7 @@ static char seeAlsoString[] = "GetChar";
 PsychError COCOAEVENTBRIDGEPathToBundle(void) 
 {
 
-	Boolean						isNewArgThereFlag;
+	psych_bool						isNewArgThereFlag;
 	int							newNameLength;
 	char						*tempBundleFilePathNameStr, *localBundleFilePathNameStr;
 	

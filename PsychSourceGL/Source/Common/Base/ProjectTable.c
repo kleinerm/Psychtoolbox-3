@@ -20,7 +20,10 @@
 */
 
 
-#include "Psych.h"
+// #include "Psych.h"
+#define PTBINSCRIPTINGGLUE 1
+    #include "Psych.h"
+#undef PTBINSCRIPTINGGLUE
 
 
 ProjectTable *GetProjectTable(void)

@@ -85,7 +85,7 @@ typedef struct {
 
 static PsychVidcapRecordType vidcapRecordBANK[PSYCH_MAX_CAPTUREDEVICES];
 static int numCaptureRecords = 0;
-static Boolean firsttime = TRUE;
+static psych_bool firsttime = TRUE;
 static dc1394_t *libdc = NULL;		// Master handle to DC1394 library.
 
 // Forward declaration of internal helper function:
@@ -212,7 +212,7 @@ void PsychDCCloseVideoCaptureDevice(int capturehandle)
  *      allow_lowperf_fallback = If set to 1 then PTB can use a slower, low-performance fallback path to get nasty devices working.
  *		targetmoviefilename and recordingflags are currently ignored, they would refer to video harddics recording capabilities.
  */
-bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
+psych_bool PsychDCOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
 {
     PsychVidcapRecordType *capdev = NULL;
@@ -1121,7 +1121,7 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
     unsigned int intensity = 0;
     unsigned int count, i;
     unsigned char* pixptr;
-    Boolean newframe = FALSE;
+    psych_bool newframe = FALSE;
     double tstart, tend;
     unsigned int pixval, alphacount;
     dc1394error_t error;
@@ -1356,7 +1356,7 @@ double PsychDCVideoCaptureSetParameter(int capturehandle, const char* pname, dou
   int triggercount;
 
   double oldvalue = DBL_MAX; // Initialize return value to the "unknown/unsupported" default.
-  boolean assigned = false;
+  psych_bool assigned = false;
 
   // Retrieve device record for handle:
   PsychVidcapRecordType* capdev = PsychGetVidcapRecord(capturehandle);

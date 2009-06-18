@@ -186,7 +186,7 @@ void PsychScreenUnmapDeviceMemory(void)
 // Helper routine: Check if a supported ATI Radeon card (X1000, HD2000 or HD3000 .... series)
 // is installed, detect base address of its register space, mmap() it into our address space.
 // This is done by parsing the output of the lspci command...
-boolean PsychScreenMapRadeonCntlMemory(void)
+psych_bool PsychScreenMapRadeonCntlMemory(void)
 {
 	int pipefd[2];
 	int forkrc;
@@ -302,12 +302,12 @@ boolean PsychScreenMapRadeonCntlMemory(void)
 }
 
 
-// Maybe use NULLs in the settings arrays to mark entries invalid instead of using boolean flags in a different array.   
-static boolean			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
+static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static CFDictionaryRef	        displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
-static boolean			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef	        displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
-static boolean			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
 
 // displayCGIDs stores the X11 Display* handles to the display connections of each PTB logical screen:
@@ -352,8 +352,8 @@ static int (*x11_olderrorhandler)(Display*, XErrorEvent*);
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
-boolean PsychCheckScreenSettingsLock(int screenNumber);
-//boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+psych_bool PsychCheckScreenSettingsLock(int screenNumber);
+//psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
 void InitPsychtoolboxKernelDriverInterface(void);
 
 // Error callback handler for X11 errors:
@@ -532,7 +532,7 @@ void PsychUnlockScreenSettings(int screenNumber)
     displayLockSettingsFlags[screenNumber]=FALSE;
 }
 
-boolean PsychCheckScreenSettingsLock(int screenNumber)
+psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 {
     return(displayLockSettingsFlags[screenNumber]);
 }
@@ -571,7 +571,7 @@ void PsychReleaseScreen(int screenNumber)
     PsychUnlockScreenSettings(screenNumber);
 }
 
-boolean PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }    
@@ -665,7 +665,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** h
     static PsychGetCGModeFromVideoSettings()
    
 */
-boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
   // Dummy assignment:
   *cgMode = 1;
@@ -679,7 +679,7 @@ boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSetti
     Check all available video display modes for the specified screen number and return true if the 
     settings are valid and false otherwise.
 */
-boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 {
         CFDictionaryRef cgMode;       
         return(PsychGetCGModeFromVideoSetting(&cgMode, setting));
@@ -949,10 +949,10 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
       
 */
 
-boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *settings)
+psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
     CFDictionaryRef 		cgMode;
-    boolean 			isValid, isCaptured;
+    psych_bool 			isValid, isCaptured;
     CGDisplayErr 		error;
 
     //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
@@ -1004,9 +1004,9 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
     
 */
-boolean PsychRestoreScreenSettings(int screenNumber)
+psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    boolean 			isCaptured;
+    psych_bool 			isCaptured;
     CGDisplayErr 		error=0;
 
 
@@ -1203,7 +1203,7 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 	return;
 }
 
-boolean PsychOSIsKernelDriverAvailable(int screenId)
+psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
 	// Currently our "kernel driver" is available if MMIO mem could be mapped:
 	// A real driver would indicate its presence via numKernelDrivers > 0 (see init/teardown code just above this routine):

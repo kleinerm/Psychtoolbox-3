@@ -39,7 +39,7 @@
 
 static double		precisionTimerAdjustmentFactor=1;
 static double		estimatedGetSecsValueAtTickCountZero;
-static Boolean		isKernelTimebaseFrequencyHzInitialized=FALSE;
+static psych_bool		isKernelTimebaseFrequencyHzInitialized=FALSE;
 static double	        kernelTimebaseFrequencyHz;
 static double           sleepwait_threshold = 0.01;
 static double		clockinc = 0;
@@ -232,7 +232,7 @@ void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)
 void PsychGetPrecisionTimerSeconds(double *secs)
 
 {
-  static boolean firstTime = TRUE;
+  static psych_bool firstTime = TRUE;
   struct timespec res;
 
   // First time invocation?

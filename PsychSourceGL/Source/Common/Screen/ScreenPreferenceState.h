@@ -34,7 +34,7 @@
 void PrepareScreenPreferences(void);
 
 // Text matching.  Function definition in MiniBox.c 
-Boolean PsychIsPsychMatchCaseSensitive(void);
+psych_bool PsychIsPsychMatchCaseSensitive(void);
 
 //PsychTable preferences
 int PsychPrefStateGet_PsychTableVersion(void);
@@ -59,8 +59,8 @@ void PsychPrefStateSet_DefaultTextSize(int textSize);
 int PsychPrefStateGet_DefaultTextStyle(void);
 void PsychPrefStateSet_DefaultTextStyle(int textStyle);
 
-Boolean PsychPrefStateGet_TextAlphaBlending(void);
-void PsychPrefStateSet_TextAlphaBlending(Boolean enableFlag);
+psych_bool PsychPrefStateGet_TextAlphaBlending(void);
+void PsychPrefStateSet_TextAlphaBlending(psych_bool enableFlag);
 
 // Screen self-test and calibration preferences.  
 int PsychPrefStateGet_SkipSyncTests(void);
@@ -72,20 +72,20 @@ void PsychPrefStateSet_VisualDebugLevel(int level);
 int PsychPrefStateGet_ConserveVRAM(void);
 void PsychPrefStateSet_ConserveVRAM(int level);
 
-Boolean PsychPrefStateGet_EmulateOldPTB(void);
-void PsychPrefStateSet_EmulateOldPTB(Boolean level);
+psych_bool PsychPrefStateGet_EmulateOldPTB(void);
+void PsychPrefStateSet_EmulateOldPTB(psych_bool level);
 
 // 3D graphics rendering support:
-Boolean PsychPrefStateGet_3DGfx(void);
-void PsychPrefStateSet_3DGfx(Boolean level);
+psych_bool PsychPrefStateGet_3DGfx(void);
+void PsychPrefStateSet_3DGfx(psych_bool level);
 
 //Debug preferences.  
-Boolean PsychPrefStateGet_DebugMakeTexture(void);
-void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag);
+psych_bool PsychPrefStateGet_DebugMakeTexture(void);
+void PsychPrefStateSet_DebugMakeTexture(psych_bool setFlag);
 
 // Master switch for debug output:
-Boolean PsychPrefStateGet_SuppressAllWarnings(void);
-void PsychPrefStateSet_SuppressAllWarnings(Boolean setFlag);
+psych_bool PsychPrefStateGet_SuppressAllWarnings(void);
+void PsychPrefStateSet_SuppressAllWarnings(psych_bool setFlag);
 
 // Level of verbosity:
 int PsychPrefStateGet_Verbosity(void);

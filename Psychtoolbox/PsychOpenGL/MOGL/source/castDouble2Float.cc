@@ -1,5 +1,6 @@
 // Only build this file internally to moglcore.oct if we are building an OCT file for Octave-2!
 #ifndef PTBOCTAVE3MEX
+#ifndef MATLAB_MEX_FILE
 
 #include <octave/oct.h>
 
@@ -82,4 +83,5 @@ DEFUN_DLD (castDouble2Float, args, ,
   }
 }
 
+#endif
 #endif

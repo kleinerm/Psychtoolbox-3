@@ -145,7 +145,7 @@ PsychError SCREENFlip(void)
 	double time_at_flipend;
 	double time_at_onset;
 	unsigned int opmode;
-	boolean flipstate;
+	psych_bool flipstate;
 
 #if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
 
@@ -388,7 +388,7 @@ PsychError SCREENWaitUntilAsyncFlipCertain(void)
 	int	   beamposition;
 	double vbl_startline, vbl_endline, vbl_lines_elapsed, onset_lines_togo;
 	double vbl_time_elapsed, onset_time_togo, currentrefreshestimate;
-	bool   swappending;
+	psych_bool   swappending;
 	long   scw, sch;
 	
 	// Push usage string and/or give online help:

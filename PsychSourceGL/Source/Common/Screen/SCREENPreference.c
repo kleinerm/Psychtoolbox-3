@@ -52,7 +52,7 @@ psych_uint64 getpid(void)
 OS 9 Psychtoolbox preferences:
 
 	Supported
-oldBool=Screen('Preference', 'IgnoreCase' [,bool])
+oldBool=Screen('Preference', 'IgnoreCase' [,psych_bool])
 tick0Secs=Screen('Preference', 'Tick0Secs', tick0Secs)
 psychTableVersion=Screen('Preference', 'PsychTableVersion')
 mexFunctionName=Screen('Preference', 'PsychTableCreator')
@@ -60,35 +60,35 @@ proc=Screen('Preference', 'Process', signature)   //returns PID and does not acc
 
 
 	Read supported but will not accept set:
-oldBool=Screen('Preference','Backgrounding',[bool])
+oldBool=Screen('Preference','Backgrounding',[psych_bool])
 oldSecondsMultiplier=Screen('Preference', 'SecondsMultiplier' [,secondsMultiplier])
 	
 	Unsupported and we should
-oldBool=Screen('Preference' ',AllowMirroring' [,bool])
-bool=Screen('Preference' ',MirroringIsOn')
+oldBool=Screen('Preference' ',AllowMirroring' [,psych_bool])
+psych_bool=Screen('Preference' ',MirroringIsOn')
 oldBits=Screen(windowPtrOrScreenNumber, 'Preference', 'DacBits', bits) 
 
 	Unsupported
 available=Screen('Preference','Available')
 nextProc=Screen('Preference','NextProcess',[proc])
-oldBool=Screen('Preference','UseNewHideMenuBar',[bool])
+oldBool=Screen('Preference','UseNewHideMenuBar',[psych_bool])
 
 	Unsupported OS 9 Mac video driver specific 
-bool=Screen(windowPtrOrScreenNumber,'Preference','FixedClut')
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutDriverWaitsForBlanking',[bool])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','AskSetClutDriverToWaitForBlanking',[bool])
+psych_bool=Screen(windowPtrOrScreenNumber,'Preference','FixedClut')
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutDriverWaitsForBlanking',[psych_bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','AskSetClutDriverToWaitForBlanking',[psych_bool])
 oldValue=Screen(windowPtrOrScreenNumber,'Preference','SetClutSAI',[value])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutCallsWaitBlanking',[bool])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutPunchesBlankingClock',[bool])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','InterruptPunchesBlankingClock',[bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutCallsWaitBlanking',[psych_bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','SetClutPunchesBlankingClock',[psych_bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','InterruptPunchesBlankingClock',[psych_bool])
 oldPriority=Screen(windowPtrOrScreenNumber,'Preference','MaxPriorityForBlankingInterrupt',[priority])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','WaitBlankingAlwaysCallsSetClut',[bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','WaitBlankingAlwaysCallsSetClut',[psych_bool])
 oldSecs=Screen(windowPtrOrScreenNumber,'Preference','BlankingDuration',[secs])
 oldN=Screen(windowPtrOrScreenNumber,'Preference','MinimumEntriesForSetClutToWaitForBlanking',[n])
 oldPriority=Screen(windowPtrOrScreenNumber,'Preference','MinimumSetClutPriority',[priority])
 oldPriority=Screen(windowPtrOrScreenNumber,'Preference','MaximumSetClutPriority',[priority])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','DipPriorityAfterSetClut',[bool])
-oldBool=Screen(windowPtrOrScreenNumber,'Preference','UsesHighGammaBits',[bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','DipPriorityAfterSetClut',[psych_bool])
+oldBool=Screen(windowPtrOrScreenNumber,'Preference','UsesHighGammaBits',[psych_bool])
 
 */
 
@@ -98,7 +98,7 @@ static char synopsisString[] =
 	"Get or set a Psychtoolbox preference."
 	"Preference settings are global - they affect all operations of a module until changed."
 	""
-	"\noldBool = Screen('Preference', 'IgnoreCase', [bool]);"
+	"\noldBool = Screen('Preference', 'IgnoreCase', [psych_bool]);"
 	"\ntick0Secs = Screen('Preference', 'Tick0Secs', tick0Secs);"
 	"\npsychTableVersion = Screen('Preference', 'PsychTableVersion');"
 	"\nmexFunctionName = Screen('Preference', 'PsychTableCreator');"
@@ -162,7 +162,7 @@ PsychError SCREENPreference(void)
 	PsychArgFormatType		arg1Type;
 	char					*preferenceName, *newFontName;
 	const char				*tableCreator, *oldDefaultFontName;
-	Boolean					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
+	psych_bool					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
 	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt, tempInt2, tempInt3;
 	double					returnDoubleValue, inputDoubleValue;
 	

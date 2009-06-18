@@ -21,10 +21,10 @@
 
 
 */
-boolean PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector)
+psych_bool PsychAllocInNativeCellVector(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **cellVector)
 {
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_cellArray, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
@@ -41,10 +41,10 @@ boolean PsychAllocInNativeCellVector(int position, PsychArgRequirementType isReq
 
     
 */
-boolean PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString)
+psych_bool PsychAllocInNativeString(int position, PsychArgRequirementType isRequired, const PsychGenericScriptType **nativeString)
 {
 	PsychError  matchError;
-	Boolean		acceptArg;
+	psych_bool		acceptArg;
     
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_char, isRequired, 1, kPsychUnboundedArraySize,1, kPsychUnboundedArraySize,0, 1);
@@ -73,7 +73,7 @@ boolean PsychAllocInNativeString(int position, PsychArgRequirementType isRequire
     
 
 */
-boolean PsychAllocOutCellVector(	int position, 
+psych_bool PsychAllocOutCellVector(	int position, 
 									PsychArgRequirementType isRequired, 
 									int numElements,  
 									PsychGenericScriptType **pCell)
@@ -82,7 +82,7 @@ boolean PsychAllocOutCellVector(	int position,
     mwSize cellArrayNumDims=2;
     mwSize cellArrayDims[2];
 	PsychError matchError;
-	Boolean putOut;
+	psych_bool putOut;
 
     
     cellArrayDims[0]=1;
@@ -117,7 +117,7 @@ void PsychSetCellVectorStringElement(  int index,
                                         PsychGenericScriptType *cellVector)
 {
     int numElements;
-    boolean isCell;
+    psych_bool isCell;
     mxArray *mxFieldValue;
     
     //check for bogus arguments
@@ -145,7 +145,7 @@ void PsychSetCellVectorDoubleElement(	int index,
                                         PsychGenericScriptType *cellVector)
 {
     int numElements;
-    boolean isCell;
+    psych_bool isCell;
     mxArray *mxFieldValue;
 
     //check for bogus arguments
@@ -176,7 +176,7 @@ void PsychSetCellVectorNativeElement(	int index,
                                         PsychGenericScriptType *cellVector)
 {
     int numElements;
-    boolean isCell;
+    psych_bool isCell;
     
     //check for bogus arguments
     numElements=mxGetM(cellVector) *mxGetN(cellVector);

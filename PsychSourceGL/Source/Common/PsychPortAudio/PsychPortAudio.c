@@ -143,12 +143,12 @@ PsychPADevice audiodevices[MAX_PSYCH_AUDIO_DEVS];
 unsigned int  audiodevicecount = 0;
 unsigned int  verbosity = 4;
 double		  yieldInterval = 0.001;	// How long to wait in calls to PsychYieldIntervalSeconds().
-boolean		  uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
-boolean		  lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
+psych_bool		  uselocking = TRUE;		// Use Mutex locking and signalling code for thread synchronization?
+psych_bool		  lockToCore1 = TRUE;		// Lock all engine threads to run on cpu core 1 on Windows to work around broken TSC sync on multi-cores?
 
 double debugdummy1, debugdummy2;
 
-boolean pa_initialized = FALSE;
+psych_bool pa_initialized = FALSE;
 
 // Definition of an audio buffer:
 struct PsychPABuffer_Struct {
@@ -167,10 +167,10 @@ unsigned int	bufferListCount;		// Number of slots allocated in bufferList.
 // Scan all schedules of all active and open audio devices to check if
 // given audiobuffer is referenced. Invalidate reference, if so:
 // The special handle == -1 invalidates all references except the ones to special buffer zero.
-boolean PsychPAInvalidateBufferReferences(int handle)
+psych_bool PsychPAInvalidateBufferReferences(int handle)
 {
 	int i, j;
-	boolean anylocked = FALSE;
+	psych_bool anylocked = FALSE;
 
 	// Scan all open audio devices:
 	for(i = 0; i < MAX_PSYCH_AUDIO_DEVS; i++) {
@@ -309,10 +309,10 @@ PsychPABuffer* PsychPAGetAudioBuffer(int handle)
 
 // Scan all schedules of all active and open audio devices to check which
 // audiobuffers are active and lock them:
-boolean PsychPAUpdateBufferReferences(void)
+psych_bool PsychPAUpdateBufferReferences(void)
 {
 	int i, j;
-	boolean anylocked = FALSE;
+	psych_bool anylocked = FALSE;
 	
 	// First we reset all locked flags of all buffers:
 	for (i = 0; i < bufferListCount; i++) bufferList[i].locked = 0;
@@ -693,7 +693,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 	double repeatCount;	
 	psych_uint64 playpositionlimit;
 	PaHostApiTypeId hA;
-	boolean	stopEngine;
+	psych_bool	stopEngine;
 
 	
 	// Device struct attached to stream? If no device struct

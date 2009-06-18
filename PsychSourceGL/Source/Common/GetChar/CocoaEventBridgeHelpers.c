@@ -46,11 +46,11 @@ IsKeyWindowProc					IsKeyWindow=NULL;
 static void	LoadPrivateFrameworkBundle( CFStringRef framework, CFBundleRef *bundlePtr );
 static	CFBundleRef	gStoreBitLibBundle=NULL;		//	"StoreBitLib.bundle" 
 
-Boolean LoadCocoaBundle(void) 
+psych_bool LoadCocoaBundle(void) 
 {
-	static Boolean				firstTime=TRUE;
-	Boolean						failed;
-	static	Boolean				foundAllFunctions;
+	static psych_bool				firstTime=TRUE;
+	psych_bool						failed;
+	static	psych_bool				foundAllFunctions;
 	char						*localPathToCocoaBundleStr;
 	CFStringRef					localPathToCocoaBundle;
 

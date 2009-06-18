@@ -215,10 +215,10 @@ PsychError PSYCHHIDKbQueueCreate(void)
 		PsychHIDGetDeviceListByUsage(kHIDPage_GenericDesktop, kHIDUsage_GD_Keyboard, &numDeviceIndices, deviceIndices, deviceRecords);  
 		{
 			int deviceIndex;
-			boolean isDeviceSpecified=PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
+			psych_bool isDeviceSpecified=PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
 			if(deviceIndex<0) isDeviceSpecified=FALSE;	// A negative device number causes the default device to be used
 			if(isDeviceSpecified){
-				boolean foundUserSpecifiedDevice;
+				psych_bool foundUserSpecifiedDevice;
 				//make sure that the device number provided by the user is really a keyboard.
 				for(i=0;i<numDeviceIndices;i++){
 					if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))

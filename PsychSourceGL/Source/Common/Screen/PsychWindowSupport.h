@@ -32,8 +32,8 @@
 
 #include "Screen.h"
 
-boolean PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow);
-boolean PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
+psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, PsychWindowRecordType **windowRecord, int numBuffers, int stereomode, double* rect, int multiSample, PsychWindowRecordType* sharedContextWindow);
+psych_bool PsychOpenOffscreenWindow(double *rect, int depth, PsychWindowRecordType **windowRecord);
 void	PsychCloseOnscreenWindow(PsychWindowRecordType *windowRecord);
 void	PsychCloseWindow(PsychWindowRecordType *windowRecord);
 void	PsychCloseOffscreenWindow(PsychWindowRecordType *windowRecord);
@@ -48,12 +48,12 @@ void    PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmo
 PsychWindowRecordType* PsychGetDrawingTarget(void);
 void    PsychSetDrawingTarget(PsychWindowRecordType *windowRecord);
 void    PsychSetupView(PsychWindowRecordType *windowRecord);
-void	PsychSetUserspaceGLFlag(Boolean inuserspace);
-boolean PsychIsUserspaceRendering(void);
+void	PsychSetUserspaceGLFlag(psych_bool inuserspace);
+psych_bool PsychIsUserspaceRendering(void);
 double	PsychGetWhiteValueFromWindow(PsychWindowRecordType *windowRecord);
 void	PsychSwitchFixedFunctionStereoDrawbuffer(PsychWindowRecordType *windowRecord);
-int		PsychRessourceCheckAndReminder(boolean displayMessage);
-bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
+int		PsychRessourceCheckAndReminder(psych_bool displayMessage);
+psych_bool	PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord);
 void	PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord);
 int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
 void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);

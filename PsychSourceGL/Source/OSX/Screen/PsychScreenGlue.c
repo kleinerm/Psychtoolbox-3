@@ -52,12 +52,12 @@
 
 // file local variables
 
-// Maybe use NULLs in the settings arrays to mark entries invalid instead of using boolean flags in a different array.   
-static boolean				displayLockSettingsFlags[kPsychMaxPossibleDisplays];
+// Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
+static psych_bool				displayLockSettingsFlags[kPsychMaxPossibleDisplays];
 static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
-static boolean				displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool				displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
 static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
-static boolean				displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
+static psych_bool				displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays, numPhysicalDisplays;
 static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];
 static CGDirectDisplayID 	displayOnlineCGIDs[kPsychMaxPossibleDisplays];
@@ -71,8 +71,8 @@ static int					repeatedZeroBeamcount[kPsychMaxPossibleDisplays];
 void InitCGDisplayIDList(void);
 void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
-boolean PsychCheckScreenSettingsLock(int screenNumber);
-boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
+psych_bool PsychCheckScreenSettingsLock(int screenNumber);
+psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
 void InitPsychtoolboxKernelDriverInterface(void);
 kern_return_t PsychOSKDDispatchCommand(io_connect_t connect, const PsychKDCommandStruct* inStruct, PsychKDCommandStruct* outStruct, unsigned int* status);
 io_connect_t PsychOSCheckKDAvailable(int screenId, unsigned int * status);
@@ -208,7 +208,7 @@ void PsychUnlockScreenSettings(int screenNumber)
     displayLockSettingsFlags[screenNumber]=FALSE;
 }
 
-boolean PsychCheckScreenSettingsLock(int screenNumber)
+psych_bool PsychCheckScreenSettingsLock(int screenNumber)
 {
     return(displayLockSettingsFlags[screenNumber]);
 }
@@ -243,7 +243,7 @@ void PsychReleaseScreen(int screenNumber)
     PsychUnlockScreenSettings(screenNumber);
 }
 
-boolean PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }    
@@ -360,7 +360,7 @@ int PsychGetAllSupportedScreenSettings(int screenNumber, long** widths, long** h
     static PsychGetCGModeFromVideoSettings()
    
 */
-boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
+psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting)
 {
     CFArrayRef modeList;
     CFNumberRef n;
@@ -402,7 +402,7 @@ boolean PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSetti
     Check all available video display modes for the specified screen number and return true if the 
     settings are valid and false otherwise.
 */
-boolean PsychCheckVideoSettings(PsychScreenSettingsType *setting)
+psych_bool PsychCheckVideoSettings(PsychScreenSettingsType *setting)
 {
         CFDictionaryRef cgMode;
         
@@ -605,10 +605,10 @@ void PsychGetScreenSettings(int screenNumber, PsychScreenSettingsType *settings)
       
 */
 
-boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *settings)
+psych_bool PsychSetScreenSettings(psych_bool cacheSettings, PsychScreenSettingsType *settings)
 {
     CFDictionaryRef 		cgMode;
-    boolean 			isValid, isCaptured;
+    psych_bool 			isValid, isCaptured;
     CGDisplayErr 		error;
 
     //get the display IDs.  Maybe we should consolidate this out of these functions and cache the IDs in a file static
@@ -662,9 +662,9 @@ boolean PsychSetScreenSettings(boolean cacheSettings, PsychScreenSettingsType *s
     can not be restored because a lock is in effect, which would mean that there are still open windows.    
     
 */
-boolean PsychRestoreScreenSettings(int screenNumber)
+psych_bool PsychRestoreScreenSettings(int screenNumber)
 {
-    boolean 			isCaptured;
+    psych_bool 			isCaptured;
     CGDisplayErr 		error;
 
     if(screenNumber>=numDisplays) PsychErrorExitMsg(PsychError_internal, "screenNumber passed to PsychRestoreScreenSettings() is out of range");
@@ -969,7 +969,7 @@ void PsychOSShutdownPsychtoolboxKernelDriverInterface(void)
 	return;
 }
 
-boolean PsychOSIsKernelDriverAvailable(int screenId)
+psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 {
 	return((displayConnectHandles[screenId]) ? TRUE : FALSE);
 }

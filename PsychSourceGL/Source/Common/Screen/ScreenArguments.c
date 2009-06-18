@@ -26,11 +26,11 @@
 #include "Screen.h"
 
 
-boolean PsychCopyInWindowIndexArg(int position, boolean required, PsychWindowIndexType *windowIndex)
+psych_bool PsychCopyInWindowIndexArg(int position, psych_bool required, PsychWindowIndexType *windowIndex)
 {
 
 	double *arg;
-        boolean isThere;
+        psych_bool isThere;
 	
 	if(position==kPsychUseDefaultArgPosition)
 		position = kPsychDefaultNumdexArgPosition; 
@@ -57,11 +57,11 @@ boolean PsychCopyInWindowIndexArg(int position, boolean required, PsychWindowInd
         From the caller's point of view looking up a prexisting record and allocating a new
         one should be equivalent.  
 */
-boolean PsychAllocInWindowRecordArg(int position, boolean required, PsychWindowRecordType **winRec)
+psych_bool PsychAllocInWindowRecordArg(int position, psych_bool required, PsychWindowRecordType **winRec)
 {
 	PsychWindowIndexType windowIndex;
 	double arg;
-	boolean isThere;
+	psych_bool isThere;
         
 	if(position==kPsychUseDefaultArgPosition)
             position = kPsychDefaultNumdexArgPosition; 	
@@ -81,12 +81,12 @@ boolean PsychAllocInWindowRecordArg(int position, boolean required, PsychWindowR
     Otherwise return the screen number if that is what is provided.
         
 */
-boolean PsychCopyInScreenNumberArg(int position, boolean required, int *screenNumber)
+psych_bool PsychCopyInScreenNumberArg(int position, psych_bool required, int *screenNumber)
 {
 	PsychNumdexType numdex;
 	PsychWindowRecordType *winRec;
 	double arg;
-        boolean isThere;
+        psych_bool isThere;
 
 	if(position==kPsychUseDefaultArgPosition)
 		position = kPsychDefaultNumdexArgPosition; 	
@@ -117,12 +117,12 @@ boolean PsychCopyInScreenNumberArg(int position, boolean required, int *screenNu
     Like PsychCopyInScreenNumberArg but we will also accept -1 to indicate no particular screen.
         
 */
-boolean PsychCopyInScreenNumberOrUnaffiliatedArg(int position, boolean required, int *screenNumber)
+psych_bool PsychCopyInScreenNumberOrUnaffiliatedArg(int position, psych_bool required, int *screenNumber)
 {
 	PsychNumdexType numdex;
 	PsychWindowRecordType *winRec;
 	double arg;
-        boolean isThere;
+        psych_bool isThere;
 
 	if(position==kPsychUseDefaultArgPosition)
 		position = kPsychDefaultNumdexArgPosition; 	
@@ -154,10 +154,10 @@ boolean PsychCopyInScreenNumberOrUnaffiliatedArg(int position, boolean required,
     
     Write PsychCopyInRawScreenNumberArg for cases where we might not want to do that. 
 */
-boolean PsychAllocInScreenRecordArg(int position, boolean required, PsychScreenRecordType **screenRecord)
+psych_bool PsychAllocInScreenRecordArg(int position, psych_bool required, PsychScreenRecordType **screenRecord)
 {
 	int screenNumber;
-        boolean isThere;
+        psych_bool isThere;
 	
 	if(position==kPsychUseDefaultArgPosition)
 		position = kPsychDefaultNumdexArgPosition; 
@@ -169,7 +169,7 @@ boolean PsychAllocInScreenRecordArg(int position, boolean required, PsychScreenR
 }
 
 		
-boolean PsychIsWindowIndexArg(int position)
+psych_bool PsychIsWindowIndexArg(int position)
 {
 	PsychNumdexType numdex;
 	double arg;
@@ -190,7 +190,7 @@ boolean PsychIsWindowIndexArg(int position)
 	which means not to associate a window with any particular display.  For now that value is -1 but  within
 	the PTB environment we could also alow NaN because that makes more sense than -1.
 */
-boolean PsychIsScreenNumberOrUnaffiliatedArg(int position)
+psych_bool PsychIsScreenNumberOrUnaffiliatedArg(int position)
 {
 	PsychNumdexType numdex;
 	double arg;
@@ -211,7 +211,7 @@ boolean PsychIsScreenNumberOrUnaffiliatedArg(int position)
 	display.  For now that value is -1 but  within the PTB environment we could also alow NaN because that makes 
 	more sense than -1.
 */
-boolean PsychIsUnaffiliatedScreenNumberArg(int position)
+psych_bool PsychIsUnaffiliatedScreenNumberArg(int position)
 {
 	PsychNumdexType numdex;
 	double arg;
@@ -227,7 +227,7 @@ boolean PsychIsUnaffiliatedScreenNumberArg(int position)
 
 
 
-boolean PsychIsScreenNumberArg(int position)
+psych_bool PsychIsScreenNumberArg(int position)
 {
 	PsychNumdexType numdex;
 	double arg;
@@ -270,10 +270,10 @@ boolean PsychIsScreenNumberArg(int position)
 		A. If argument is not present then don't touch *color and return false.
 		B. If argument is present and valid then load it into *color and return true.
 */
-boolean PsychCopyInColorArg(int position, boolean required, PsychColorType *color)
+psych_bool PsychCopyInColorArg(int position, psych_bool required, PsychColorType *color)
 {
 	int i,m,n,p,argSize;
-	boolean isArg;
+	psych_bool isArg;
 	double dummyColor[4];
 	double *colorArgMat=NULL;
 	unsigned char *colorArgMatBytes=NULL;
@@ -341,7 +341,7 @@ boolean PsychCopyInColorArg(int position, boolean required, PsychColorType *colo
 */
 
 
-boolean PsychCopyOutColorArg(int position, boolean required, PsychColorType *color)
+psych_bool PsychCopyOutColorArg(int position, psych_bool required, PsychColorType *color)
 {
 	double *colorArgMat;
 	
@@ -385,10 +385,10 @@ boolean PsychCopyOutColorArg(int position, boolean required, PsychColorType *col
 		B. If argument is present and valid then load it into *rect and return true.
 
 */
-boolean PsychCopyInRectArg(int position, boolean required, PsychRectType rect)
+psych_bool PsychCopyInRectArg(int position, psych_bool required, PsychRectType rect)
 {
 	int m,n,p,argSize;
-	boolean isArg;
+	psych_bool isArg;
 	double *rectArgMat=NULL;
 	
 	if(position == kPsychUseDefaultArgPosition)
@@ -423,7 +423,7 @@ boolean PsychCopyInRectArg(int position, boolean required, PsychRectType rect)
 	We could add a PsychAllocRectArg statement also.    
 	
 */
-boolean PsychCopyOutRectArg(int position, boolean required, PsychRectType rect)
+psych_bool PsychCopyOutRectArg(int position, psych_bool required, PsychRectType rect)
 {
 	double *rectArgMat;
 	
@@ -433,7 +433,7 @@ boolean PsychCopyOutRectArg(int position, boolean required, PsychRectType rect)
 	return(TRUE);
 }
 
-boolean PsychAllocOutRectArg(int position, boolean required, const double **rect)
+psych_bool PsychAllocOutRectArg(int position, psych_bool required, const double **rect)
 {
 	double *rectArg;
 	
@@ -450,7 +450,7 @@ boolean PsychAllocOutRectArg(int position, boolean required, const double **rect
     Use PsychCopyInMultiDepthArg() for reading in lists of depths.
 */
 
-boolean PsychCopyInSingleDepthArg(int position, boolean required, PsychDepthType *depth)
+psych_bool PsychCopyInSingleDepthArg(int position, psych_bool required, PsychDepthType *depth)
 {
     double *depthArray;
     int m,n,p;
@@ -466,9 +466,9 @@ boolean PsychCopyInSingleDepthArg(int position, boolean required, PsychDepthType
 }
 
 
-boolean	PsychCopyInDepthValueArg(int position, boolean required, int *depth)
+psych_bool	PsychCopyInDepthValueArg(int position, psych_bool required, int *depth)
 {
-    boolean	isThere;
+    psych_bool	isThere;
     double	value;
     
     if(isThere=PsychCopyInDoubleArg(position,required, &value)){
@@ -482,7 +482,7 @@ boolean	PsychCopyInDepthValueArg(int position, boolean required, int *depth)
 
 
 
-boolean PsychCopyOutDepthArg(int position, boolean required, PsychDepthType *depths)
+psych_bool PsychCopyOutDepthArg(int position, psych_bool required, PsychDepthType *depths)
 {
     double *depthsArray;
     int i;

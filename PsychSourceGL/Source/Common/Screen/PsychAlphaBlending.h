@@ -30,8 +30,8 @@ DESCRIPTION:
 int PsychGetAlphaBlendingFactorConstantFromString(char *blendString, GLenum *blendConstant);
 int PsychGetAlphaBlendingFactorStringFromConstant(GLenum blendConstant, char *blendString);
 void PsychInitWindowRecordAlphaBlendingFactors(PsychWindowRecordType *winRec);
-Boolean PsychValidateBlendingConstantForSource(GLenum sourceFactor);
-Boolean PsychValidateBlendingConstantForDestination(GLenum destinationFactor);
+psych_bool PsychValidateBlendingConstantForSource(GLenum sourceFactor);
+psych_bool PsychValidateBlendingConstantForDestination(GLenum destinationFactor);
 void PsychGetAlphaBlendingFactorsFromWindow(PsychWindowRecordType *winRec, GLenum *oldSource, GLenum *oldDestination);
 void PsychStoreAlphaBlendingFactorsForWindow(PsychWindowRecordType *winRec, GLenum sourceBlendConstant, GLenum destinationBlendConstant);
 void PsychUpdateAlphaBlendingFactorLazily(PsychWindowRecordType *winRec);

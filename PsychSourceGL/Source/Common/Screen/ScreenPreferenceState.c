@@ -70,18 +70,18 @@ static int								defaultTextYPositionIsBaseline=0; // Use new style of text pos
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize=12;
 static int								defaultTextStyle=0;             // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
-static Boolean                          textAlphaBlending=FALSE;
+static psych_bool                          textAlphaBlending=FALSE;
 static int								textAntiAliasing=-1;            // -1=System defined (don't care), 0=Always off, 1=Always on.
 static int								textRenderer=PTB_DEFAULT_TEXTRENDERER;	// 0=Default OS specific (fast one), 1=OS specific High quality.
 static int                              screenSkipSyncTests=0;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
 //Debug preference state
-static Boolean                          TimeMakeTextureFlag=FALSE;
+static psych_bool                          TimeMakeTextureFlag=FALSE;
 static int								screenVisualDebugLevel=4;
 static int                              screenConserveVRAM=0;
 // If EmulateOldPTB is set to true, then try to behave like the old OS-9 PTB:
-static Boolean                          EmulateOldPTB=FALSE;
+static psych_bool                          EmulateOldPTB=FALSE;
 // Support for real 3D rendering enabled?
-static Boolean                          Enable_3d_gfx=FALSE;
+static psych_bool                          Enable_3d_gfx=FALSE;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode=1;
@@ -99,7 +99,7 @@ void PrepareScreenPreferences(void)
 	psychTableVersion=20;
 	
 }
-static Boolean							suppressAllWarnings=FALSE;
+static psych_bool							suppressAllWarnings=FALSE;
 
 // General level of verbosity:
 // 0 = Shut up.
@@ -174,7 +174,7 @@ preference: DefaultFontName
 */
 void PsychPrefStateGet_DefaultFontName(const char **fontName )
 {
-	static Boolean  firstTime=TRUE;
+	static psych_bool  firstTime=TRUE;
 	
 	if(firstTime){
 		strcpy(defaultFontName, INITIAL_DEFAULT_FONT_NAME);
@@ -220,12 +220,12 @@ void PsychPrefStateSet_DefaultTextStyle(int textStyle)
 /*
 preference: TextAlphaBlending
 */
-Boolean PsychPrefStateGet_TextAlphaBlending(void)
+psych_bool PsychPrefStateGet_TextAlphaBlending(void)
 {
 	return(textAlphaBlending);
 }
 
-void PsychPrefStateSet_TextAlphaBlending(Boolean enableFlag)
+void PsychPrefStateSet_TextAlphaBlending(psych_bool enableFlag)
 {
 	textAlphaBlending=enableFlag;
 }
@@ -321,12 +321,12 @@ void PsychPrefStateSet_ConserveVRAM(int level)
 // Note: Internally we still use a double-buffered context, but the front buffer is
 // the drawing/reading target for all commands and the backbuffer is used as a
 // scratchpad buffer for Offscreen window handling.
-Boolean PsychPrefStateGet_EmulateOldPTB(void)
+psych_bool PsychPrefStateGet_EmulateOldPTB(void)
 {
     return(EmulateOldPTB);
 }
 
-void PsychPrefStateSet_EmulateOldPTB(Boolean level)
+void PsychPrefStateSet_EmulateOldPTB(psych_bool level)
 {
     EmulateOldPTB = level;
 	// When emulation for old PTB gets enabled, we change the default for
@@ -340,12 +340,12 @@ void PsychPrefStateSet_EmulateOldPTB(Boolean level)
 // and depth-buffers additionally to the AUX and Colorbuffers and perform additional
 // bookkeeping to make sure we can do real 3D rendering and interface to external
 // OpenGL mexfiles like, e.g., moglcore...
-Boolean PsychPrefStateGet_3DGfx(void)
+psych_bool PsychPrefStateGet_3DGfx(void)
 {
     return(Enable_3d_gfx);
 }
 
-void PsychPrefStateSet_3DGfx(Boolean level)
+void PsychPrefStateSet_3DGfx(psych_bool level)
 {
     Enable_3d_gfx = level;
 }
@@ -386,24 +386,24 @@ double PsychPrefStateGet_FrameRectCorrection(void)
 //****************************************************************************************************************
 //Debug preferences
 
-Boolean PsychPrefStateGet_DebugMakeTexture(void)
+psych_bool PsychPrefStateGet_DebugMakeTexture(void)
 {
 	return(TimeMakeTextureFlag);
 }
 
-void PsychPrefStateSet_DebugMakeTexture(Boolean setFlag)
+void PsychPrefStateSet_DebugMakeTexture(psych_bool setFlag)
 {
 	TimeMakeTextureFlag=setFlag;
 }
 
 
 
-Boolean PsychPrefStateGet_SuppressAllWarnings(void)
+psych_bool PsychPrefStateGet_SuppressAllWarnings(void)
 {
 	return(suppressAllWarnings);
 }
 
-void PsychPrefStateSet_SuppressAllWarnings(Boolean setFlag)
+void PsychPrefStateSet_SuppressAllWarnings(psych_bool setFlag)
 {
 	suppressAllWarnings=setFlag;
 }

@@ -59,7 +59,7 @@ PsychError SCREENResolution(void)
 	PsychDepthType			useDepth;
     int						screenNumber, specialMode;
 	long					newWidth, newHeight, newHz, newBpp;
-	boolean					rc;
+	psych_bool					rc;
 	
 	// Purpose of 'specialMode': If bit zero is set, then its possible to switch display settings while
 	// onscreen windows - possibly fullscreen windows and display capture - are open/active. This is mostly

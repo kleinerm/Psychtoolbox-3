@@ -46,7 +46,7 @@ PsychError SCREENTransformTexture(void)
 	int testarg, tmpimagingmode, specialFlags, usefloatformat, d;
 	PsychFBO *fboptr;
 	GLint fboInternalFormat;
-	Boolean needzbuffer;
+	psych_bool needzbuffer;
 	
     // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);

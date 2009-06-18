@@ -1367,7 +1367,7 @@ int main( int argc, char** argv )
 // Psychtoolbox:
 
 // Initially setup tracker, reset everything to defaults:
-boolean cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyeheight, int eyechannels, void** eyeInputImageMono8, void** eyeInputImageColor, int scenewidth, int sceneheight, void** sceneInputImageRGB8, void** ellipseOutputImageRGB8, void** thresholdOutputImageMono8)
+psych_bool cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyeheight, int eyechannels, void** eyeInputImageMono8, void** eyeInputImageColor, int scenewidth, int sceneheight, void** sceneInputImageRGB8, void** ellipseOutputImageRGB8, void** thresholdOutputImageMono8)
 {
 	// Disable logfile by default:
 	logfile = NULL;
@@ -1446,7 +1446,7 @@ boolean cvEyeTrackerInitialize(const char* logfilename, int eyewidth, int eyehei
 }
 
 // Shutdown and release tracker:
-boolean cvEyeTrackerShutdown(void)
+psych_bool cvEyeTrackerShutdown(void)
 {
 	// Close logfile if any open:
 	if (logfile) { Close_Logfile(); logfile = NULL; }
@@ -1471,11 +1471,11 @@ boolean cvEyeTrackerShutdown(void)
 // Typical tracking cycle:
 //
 // 1. Grab a frame into the trackers internal memory buffers inside M-File via Screen('GetCaputuredImage',...);
-// 2. Execute cvEyeTrackerExecuteTrackingCycle(<#PsychCVEyeResult * eyeResult#>,<#boolean useHighGUI#>);
+// 2. Execute cvEyeTrackerExecuteTrackingCycle(<#PsychCVEyeResult * eyeResult#>,<#psych_bool useHighGUI#>);
 // 3. Encode and return tracking result eyeResult to Matlab/Octave space.
 // 4. After other Psychtoolbox M-File stuff, goto 1.
 //
-boolean cvEyeTrackerExecuteTrackingCycle(PsychCVEyeResult* eyeResult, boolean useHighGUI)
+psych_bool cvEyeTrackerExecuteTrackingCycle(PsychCVEyeResult* eyeResult, psych_bool useHighGUI)
 {
 	char c;
 
@@ -1573,7 +1573,7 @@ void cvEyeTrackerAddCalibrationPoint(int px, int py)
 
 // Recalculates calibration from current point correspondences, activates if
 // enough points available.
-void cvEyeTrackerRecalibrate(boolean resetCalib)
+void cvEyeTrackerRecalibrate(psych_bool resetCalib)
 {
 	if (resetCalib) {
 		Zero_Calibration();

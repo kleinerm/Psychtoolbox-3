@@ -120,7 +120,7 @@ void PsychRenderArc(unsigned int mode)
 	PsychWindowRecordType	*windowRecord;
 	int						whiteValue;
 	double                  dotSize;
-	boolean					isArgThere;
+	psych_bool					isArgThere;
 	GLUquadric              *diskQuadric = NULL;
 	double cx, cy, w, h;
 	
@@ -138,7 +138,7 @@ void PsychRenderArc(unsigned int mode)
 	// Get the rect to which the object should be inscribed: Default is "full screen"
 	PsychMakeRect(rect, 0, 0, PsychGetWidthFromRect(windowRecord->rect), PsychGetHeightFromRect(windowRecord->rect));
 	PsychCopyInRectArg(3, FALSE, rect);
-	if (IsPsychRectEmpty(rect)) return(PsychError_none);
+	if (IsPsychRectEmpty(rect)) return;
 	
 	w=PsychGetWidthFromRect(rect);
 	h=PsychGetHeightFromRect(rect);

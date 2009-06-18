@@ -231,7 +231,7 @@ mxArray* mxCreateNumericArray(int numDims, int dimArray[], int arraytype, int re
   else if (arraytype==mxLOGICAL_CLASS) {
     if (DEBUG_PTBOCTAVEGLUE) printf("NEW BOOLMATRIX: %i, %i\n", rows, cols, layers); fflush(NULL);
     // Create empty double-matrix of type mxREAL...
-    if (layers>1) PsychErrorExitMsg(PsychError_internal, "In mxCreateNumericArray: Tried to allocate a 3D boolean matrix!?! Unsupported.");
+    if (layers>1) PsychErrorExitMsg(PsychError_internal, "In mxCreateNumericArray: Tried to allocate a 3D psych_bool matrix!?! Unsupported.");
 
     boolMatrix m(rows, cols);
     // Retrieve a pointer to internal representation. As m is new
@@ -295,9 +295,9 @@ double* mxGetPr(const mxArray* arrayPtr)
   return((double*) mxGetData(arrayPtr));
 }
 
-Boolean* mxGetLogicals(const mxArray* arrayPtr)
+psych_bool* mxGetLogicals(const mxArray* arrayPtr)
 {
-  return((Boolean*) mxGetData(arrayPtr));
+  return((psych_bool*) mxGetData(arrayPtr));
 }
 #define GETOCTPTR(x) ((octave_value*) (x)->o)
 
@@ -586,15 +586,15 @@ static mxArray* prhsGLUE[MAX_INPUT_ARGS];  // An array of pointers to the octave
 extern const char *mexFunctionName; // This gets initialized by Octave wrapper to contain our function name.
 #endif
 
-static Boolean nameFirstGLUE;
+static psych_bool nameFirstGLUE;
 //static PsychFunctionPtr psychExitFunctionGLUE=NULL; 
-static Boolean subfunctionsEnabledGLUE=FALSE;
-static Boolean baseFunctionInvoked=FALSE;
+static psych_bool subfunctionsEnabledGLUE=FALSE;
+static psych_bool baseFunctionInvoked=FALSE;
 static void PsychExitGlue(void);
 
 //local function declarations
-static Boolean PsychIsEmptyMat(CONSTmxArray *mat);
-static Boolean PsychIsDefaultMat(CONSTmxArray *mat);
+static psych_bool PsychIsEmptyMat(CONSTmxArray *mat);
+static psych_bool PsychIsDefaultMat(CONSTmxArray *mat);
 static int mxGetP(const mxArray *array_ptr);
 static int mxGetNOnly(const mxArray *arrayPtr);
 static mxArray *mxCreateDoubleMatrix3D(int m, int n, int p);
@@ -606,7 +606,7 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[]);
 
 #if PSYCH_LANGUAGE == PSYCH_OCTAVE
 PsychError PsychExitOctaveGlue(void);
-static Boolean jettisoned = FALSE;
+static psych_bool jettisoned = FALSE;
 #endif
 
 // Forward declaration for GNU/Linux compile:
@@ -646,9 +646,9 @@ EXP void mexFunction(int nlhs, mxArray *plhs[], int nrhs, CONSTmxArray *prhs[])
 EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 #endif
 {
-	static Boolean firstTime = TRUE;
-	Boolean errorcondition = FALSE;
-	Boolean isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
+	static psych_bool firstTime = TRUE;
+	psych_bool errorcondition = FALSE;
+	psych_bool isArgThere[2], isArgEmptyMat[2], isArgText[2], isArgFunction[2];
 	PsychFunctionPtr fArg[2], baseFunction;
 	char argString[2][MAX_CMD_NAME_LENGTH];
 	int i; 
@@ -790,7 +790,7 @@ EXP octave_value_list octFunction(const octave_value_list& prhs, const int nlhs)
 	      // Done.
 	    }
 	    else {
-	      // Seems to be a non-uint8 NDArray, i.e. boolean type or double type.
+	      // Seems to be a non-uint8 NDArray, i.e. psych_bool type or double type.
 	      if (DEBUG_PTBOCTAVEGLUE) printf("INPUT %i: DOUBLE-MATRIX\n", i); fflush(NULL);
 
 	      // We create a generic double NDArray from it...
@@ -1186,7 +1186,7 @@ void PsychEnableSubfunctions(void)
 }
 
 
-boolean PsychAreSubfunctionsEnabled(void)
+psych_bool PsychAreSubfunctionsEnabled(void)
 {
 	return(subfunctionsEnabledGLUE);
 }
@@ -1249,7 +1249,7 @@ mxArray *mxCreateDoubleMatrix3D(int m, int n, int p)
 /*
     mxCreateNativeBooleanMatrix3D()
     
-    Create a 2D or 3D matrix of native boolean types. 
+    Create a 2D or 3D matrix of native psych_bool types. 
 	
     Requirements are that m>0, n>0, p>=0.  
 */
@@ -1500,7 +1500,7 @@ PsychError PsychSetSpecifiedArgDescriptor_old(	int			position,
 		kPsychArgAnything					- the argument can be absent or anything
 
 */
-Boolean PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError)
+psych_bool PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError)
 {
 	if(isRequired==kPsychArgRequired){
 		if(matchError)
@@ -1540,7 +1540,7 @@ Boolean PsychAcceptInputArgumentDecider(PsychArgRequirementType isRequired, Psyc
 	back to the scripting environment.  
 
 */
-Boolean PsychAcceptOutputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError)
+psych_bool PsychAcceptOutputArgumentDecider(PsychArgRequirementType isRequired, PsychError matchError)
 {
 
 	if(isRequired==kPsychArgRequired){
@@ -1735,12 +1735,12 @@ PsychError PsychMatchDescriptorsOld(void)
 //___________________________________________________________________________________________
 
 
-Boolean PsychIsDefaultMat(CONSTmxArray *mat)
+psych_bool PsychIsDefaultMat(CONSTmxArray *mat)
 {
 	return (PsychIsEmptyMat(mat) && !mxIsChar(mat));
 }
 
-Boolean PsychIsEmptyMat(CONSTmxArray *mat)
+psych_bool PsychIsEmptyMat(CONSTmxArray *mat)
 {
 	return(mxGetM(mat)==0 || mxGetN(mat)==0);
 }
@@ -1811,12 +1811,12 @@ PsychError PsychCapNumOutputArgs(int maxNamedOutputs)
 /*
 	The argument is not present if a default m*n=0 matrix was supplied, '' or []	
 */
-boolean PsychIsArgPresent(PsychArgDirectionType direction, int position)
+psych_bool PsychIsArgPresent(PsychArgDirectionType direction, int position)
 {
 	int numArgs;
 	
 	if(direction==PsychArgOut){
-		return((boolean)(PsychGetNumOutputArgs()>=position));
+		return((psych_bool)(PsychGetNumOutputArgs()>=position));
 	}else{
 		if((numArgs=PsychGetNumInputArgs())>=position)
 			return(!(PsychIsDefaultMat(PsychGetInArgMxPtr(position)))); //check if its default
@@ -1828,7 +1828,7 @@ boolean PsychIsArgPresent(PsychArgDirectionType direction, int position)
 /*
 	The argument is present if anything was supplied, including the default matrix
 */
-boolean PsychIsArgReallyPresent(PsychArgDirectionType direction, int position)
+psych_bool PsychIsArgReallyPresent(PsychArgDirectionType direction, int position)
 {
 	
 	return(direction==PsychArgOut ? PsychGetNumOutputArgs()>=position : PsychGetNumInputArgs()>=position);
@@ -1871,14 +1871,14 @@ int PsychGetArgP(int position)
     PyschCheckInputArgType()
     
     Check that the input argument at the specifid position matches at least one of the types passed in the argType
-    argument.  If the argument violates the proscription exit with an error.  Otherwise return a boolean indicating
+    argument.  If the argument violates the proscription exit with an error.  Otherwise return a psych_bool indicating
     whether the argument was present.   
     
 */
-boolean PsychCheckInputArgType(int position, PsychArgRequirementType isRequired, PsychArgFormatType argType)
+psych_bool PsychCheckInputArgType(int position, PsychArgRequirementType isRequired, PsychArgFormatType argType)
 {
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, argType, isRequired, 0,kPsychUnboundedArraySize,0,kPsychUnboundedArraySize,0,kPsychUnboundedArraySize);
@@ -1915,11 +1915,11 @@ returns control to the Matlab environemnt.  To make it non volatile, call Psych?
 
 
 
-boolean PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, double value)
+psych_bool PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, double value)
 {
 	mxArray **mxpp;
 	PsychError matchError;
-	Boolean putOut;
+	psych_bool putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double,  isRequired, 1,1,1,1,0,0);
@@ -1939,8 +1939,8 @@ boolean PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, 
     PsychAllocOutDoubleArg_2()
     
     usage:
-    boolean PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value)
-    boolean PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, PsychGenericScriptType **nativeDouble)
+    psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value)
+    psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, PsychGenericScriptType **nativeDouble)
     
     PsychAllocOutDoubleArg_2() is an experimental enhanced version of PsychAllocOutDoubleArg which will accept the kPsychNoArgReturn  
     constant in the position argument and then return via the optional 4th input a pointer to a native scripting type which holds the 
@@ -1953,7 +1953,7 @@ boolean PsychCopyOutDoubleArg(int position, PsychArgRequirementType isRequired, 
     
 */
 /*
-boolean PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, ...)
+psych_bool PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequired, double **value, ...)
 {
 	mxArray **mxpp;
         va_list ap;
@@ -1984,11 +1984,11 @@ boolean PsychAllocOutDoubleArg_2(int position, PsychArgRequirementType isRequire
 
 
   
-boolean PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
+psych_bool PsychAllocOutDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, 1,1,1,1,0,0);
@@ -2016,11 +2016,11 @@ B)return argument optional:
 	1)return argument not present:  	return FALSE to indicate absent return argument.  Create an array.   Set *array to the new array. 
 	2)return argument present:	 	allocate an output matrix and set return arg. pointer. Set *array to the array within the new matrix.  Return TRUE.   
 */
-boolean PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double **array)
+psych_bool PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
@@ -2039,11 +2039,11 @@ boolean PsychAllocOutDoubleMatArg(int position, PsychArgRequirementType isRequir
 /*
     PsychCopyOutBooleanArg()
 */
-boolean PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType value)
+psych_bool PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType value)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
@@ -2062,11 +2062,11 @@ boolean PsychCopyOutBooleanArg(int position, PsychArgRequirementType isRequired,
 /*
     PsychAllocOutBooleanArg()
 */
-boolean PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
+psych_bool PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired, PsychNativeBooleanType **value)
 {
 	mxArray **mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, 1,1,1,1,0,0);
@@ -2094,11 +2094,11 @@ boolean PsychAllocOutBooleanArg(int position, PsychArgRequirementType isRequired
 	1)return argument not present:  	return FALSE to indicate absent return argument.  Create an array.   Set *array to the new array. 
 	2)return argument present:	 	allocate an output matrix and set return arg. pointer. Set *array to the array within the new matrix.  Return TRUE.   
 */
-boolean PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, PsychNativeBooleanType **array)
+psych_bool PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, PsychNativeBooleanType **array)
 {
 	mxArray			**mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_boolean, isRequired, m,m,n,n,p,p);
@@ -2122,11 +2122,11 @@ boolean PsychAllocOutBooleanMatArg(int position, PsychArgRequirementType isRequi
     
     Like PsychAllocOutDoubleMatArg() execept for unsigned bytes instead of doubles.  
 */
-boolean PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, ubyte **array)
+psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, ubyte **array)
 {
 	mxArray **mxpp;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_uint8, isRequired, m,m,n,n,p,p);
@@ -2144,12 +2144,12 @@ boolean PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType is
 
 
 
-boolean PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double *fromArray)
+psych_bool PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequired, int m, int n, int p, double *fromArray)
 {
 	mxArray **mxpp;
 	double *toArray;
 	PsychError		matchError;
-	Boolean			putOut;
+	psych_bool			putOut;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_double, isRequired, m,m,n,n,p,p);
@@ -2172,11 +2172,11 @@ boolean PsychCopyOutDoubleMatArg(int position, PsychArgRequirementType isRequire
 	Accept a null terminated string and return it in the specified position.  
 	  
 */
-boolean PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired, const char *str)
+psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired, const char *str)
 {
 	mxArray **mxpp;
 	PsychError		matchError;
-	Boolean			putOut;	
+	psych_bool			putOut;	
 
 	PsychSetReceivedArgDescriptor(position, PsychArgOut);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgOut, PsychArgType_char, isRequired, 0, strlen(str),0,strlen(str),0,0);
@@ -2211,11 +2211,11 @@ B)input argument optional:
 
 */
 // TO DO: Needs to be updated for kPsychArgAnything
-boolean PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, double **array)
+psych_bool PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, double **array)
 {
     const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
     
     PsychSetReceivedArgDescriptor(position, PsychArgIn);
     PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,-1,1,-1,0,-1);
@@ -2241,11 +2241,11 @@ boolean PsychAllocInDoubleMatArg(int position, PsychArgRequirementType isRequire
 	
 	Otherwise it just here to imitate the version written for other scripting languages.
 */
-boolean PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array)
+psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array)
 {
     int m, n, p,i; 
     double *doubleMatrix;
-    boolean isThere; 
+    psych_bool isThere; 
 
     isThere=PsychAllocInDoubleMatArg(position, isRequired, &m, &n, &p, &doubleMatrix);
     if(!isThere)
@@ -2268,11 +2268,11 @@ boolean PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequi
     
     Like PsychAllocInDoubleMatArg() except it returns an array of unsigned bytes.  
 */
-boolean PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array)
+psych_bool PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isRequired, int *m, int *n, int *p, unsigned char **array)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_uint8, isRequired, 1,-1,1,-1,0,-1);
@@ -2306,11 +2306,11 @@ boolean PsychAllocInUnsignedByteMatArg(int position, PsychArgRequirementType isR
     presense and conditinally filing in values.  
 */
 // TO DO: Needs to be updated for kPsychArgAnything
-boolean PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, double *value)
+psych_bool PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, double *value)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
 	PsychSetSpecifiedArgDescriptor(position, PsychArgIn, PsychArgType_double, isRequired, 1,1,1,1,1,1);
@@ -2334,12 +2334,12 @@ boolean PsychCopyInDoubleArg(int position, PsychArgRequirementType isRequired, d
     We could also accept matlab native integer types by specifying a conjunction of those as the third argument 
     in the PsychSetSpecifiedArgDescriptor() call, but why bother ?    
 */
-boolean PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
+psych_bool PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired, int *value)
 {
 	const mxArray 	*mxPtr;
 	double			tempDouble;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
@@ -2362,11 +2362,11 @@ boolean PsychCopyInIntegerArg(int position,  PsychArgRequirementType isRequired,
     PsychAllocInDoubleArg()
      
 */
-boolean PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
+psych_bool PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, double **value)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 	
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
@@ -2397,12 +2397,12 @@ boolean PsychAllocInDoubleArg(int position, PsychArgRequirementType isRequired, 
         2	kPsychArgAnything  Permit any argument type without error, but only read the specified type. 
 		
 */
-boolean PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str)
+psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str)
 {
 	const mxArray 	*mxPtr;
 	int status,strLen;	
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
 
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
@@ -2423,7 +2423,7 @@ boolean PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, ch
 
 
 /*
-	Get a boolean flag from the specified argument position.  The matlab type can be be boolean, uint8, or
+	Get a psych_bool flag from the specified argument position.  The matlab type can be be psych_bool, uint8, or
 	char.  If the numerical value is equal to zero or if its empty then the flag is FALSE, otherwise the
 	flag is TRUE.
 	
@@ -2440,11 +2440,11 @@ boolean PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, ch
 	calling that instead of doing all of this stuff...
 		
 */
-boolean PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, boolean **argVal)
+psych_bool PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, psych_bool **argVal)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
@@ -2457,29 +2457,29 @@ boolean PsychAllocInFlagArg(int position,  PsychArgRequirementType isRequired, b
 		//That's because we want the booleans returned to the caller by PsychAllocInFlagArg() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char, 
 		//or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
 		//uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).     
-	    *argVal = (boolean *)mxMalloc(sizeof(boolean));
+	    *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool));
 		mxPtr = PsychGetInArgMxPtr(position);
 		if(mxIsLogical(mxPtr)){
 			if(mxGetLogicals(mxPtr)[0])
-				**argVal=(boolean)1;
+				**argVal=(psych_bool)1;
 			else
-				**argVal=(boolean)0;
+				**argVal=(psych_bool)0;
 		}else{	
 			if(mxGetScalar(mxPtr))
-				**argVal=(boolean)1;
+				**argVal=(psych_bool)1;
 			else
-				**argVal=(boolean)0;
+				**argVal=(psych_bool)0;
 		}
 	}
 	return(acceptArg);    //the argument was not present (and optional).	
 }
 
 
-boolean PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequired, int *numElements, boolean **argVal)
+psych_bool PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequired, int *numElements, psych_bool **argVal)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 	int				i;
 
 	
@@ -2500,18 +2500,18 @@ boolean PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequi
 		//That's because we want the booleans returned to the caller by PsychAllocInFlagArgVector() to alwyas be 8-bit booleans, yet we accept as flags either 64-bit double, char, 
 		//or logical type.  Restricting to logical type would be a nuisance in the MATLAB environment and does not solve the problem because on some platforms MATLAB
 		//uses for logicals 64-bit doubles and on others 8-bit booleans (check your MATLAB mex/mx header files).     		
-	    *argVal = (boolean *)mxMalloc(sizeof(boolean) * *numElements);
+	    *argVal = (psych_bool *)mxMalloc(sizeof(psych_bool) * *numElements);
 		for(i=0; i< *numElements;i++){
 			if(mxIsLogical(mxPtr)){
 				if(mxGetLogicals(mxPtr)[i])
-					(*argVal)[i]=(boolean)1;
+					(*argVal)[i]=(psych_bool)1;
 				else
-					(*argVal)[i]=(boolean)0;
+					(*argVal)[i]=(psych_bool)0;
 			}else{
 				if(mxGetPr(mxPtr)[i])
-					(*argVal)[i]=(boolean)1;
+					(*argVal)[i]=(psych_bool)1;
 				else
-					(*argVal)[i]=(boolean)0;
+					(*argVal)[i]=(psych_bool)0;
 			}
 		}
 	}
@@ -2522,11 +2522,11 @@ boolean PsychAllocInFlagArgVector(int position,  PsychArgRequirementType isRequi
 /*
 	PsychCopyInFlagArg()
 */
-boolean PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, boolean *argVal)
+psych_bool PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, psych_bool *argVal)
 {
 	const mxArray 	*mxPtr;
 	PsychError		matchError;
-	Boolean			acceptArg;
+	psych_bool			acceptArg;
 	
 	
 	PsychSetReceivedArgDescriptor(position, PsychArgIn);
@@ -2538,14 +2538,14 @@ boolean PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, boo
 		mxPtr = PsychGetInArgMxPtr(position);
 		if(mxIsLogical(mxPtr)){
 			if(mxGetLogicals(mxPtr)[0])
-				*argVal=(boolean)1;
+				*argVal=(psych_bool)1;
 			else
-				*argVal=(boolean)0;
+				*argVal=(psych_bool)0;
 		}else{	
 			if(mxGetScalar(mxPtr))
-				*argVal=(boolean)1;
+				*argVal=(psych_bool)1;
 			else
-				*argVal=(boolean)0;
+				*argVal=(psych_bool)0;
 		}	
 	}
 	return(acceptArg);    //the argument was not present (and optional).	
@@ -2553,7 +2553,7 @@ boolean PsychCopyInFlagArg(int position, PsychArgRequirementType isRequired, boo
 
 
 
-boolean PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired, boolean argVal)
+psych_bool PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired, psych_bool argVal)
 {
 	return(PsychCopyOutDoubleArg(position, isRequired, (double)argVal));
 }
@@ -2565,8 +2565,8 @@ boolean PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired, bo
 	This seems silly.  Find out where its used and consider using an array of booleans instead.  Probably the best thing
 	is just to transparently map arrays of booleans to logical arrays MATLAB.  
     
-    In Matlab our boolean flags are actually doubles.  This will not be so in all scripting languages.  We disguise the 
-    implementation of boolean flags within the scripting envrironment by making the flag list opaque and
+    In Matlab our psych_bool flags are actually doubles.  This will not be so in all scripting languages.  We disguise the 
+    implementation of psych_bool flags within the scripting envrironment by making the flag list opaque and
     providing accessor fucntions PsychLoadFlagListElement, PsychSetFlagListElement, and PsychClearFlagListElement.
     
     TO DO: maybe this should return a logical array instead of a bunch of doubles.  Itwould be better for modern versions
@@ -2574,12 +2574,12 @@ boolean PsychCopyOutFlagArg(int position, PsychArgRequirementType isRequired, bo
 	
 
 */
-boolean PsychAllocOutFlagListArg(int position, PsychArgRequirementType isRequired, int numElements, PsychFlagListType *flagList)
+psych_bool PsychAllocOutFlagListArg(int position, PsychArgRequirementType isRequired, int numElements, PsychFlagListType *flagList)
 {
     return(PsychAllocOutDoubleMatArg(position, isRequired, (int)1, numElements, (int)0, flagList));
 }
 
-void PsychLoadFlagListElement(int index, boolean value, PsychFlagListType flagList)
+void PsychLoadFlagListElement(int index, psych_bool value, PsychFlagListType flagList)
 {
     flagList[index]=(double)value; 
 }
