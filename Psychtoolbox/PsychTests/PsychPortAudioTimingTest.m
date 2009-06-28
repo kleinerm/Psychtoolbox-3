@@ -106,7 +106,12 @@ reqlatencyclass = 2; % class 2 empirically the best, 3 & 4 == 2
 % Requested output frequency, may need adaptation on some audio-hw:
 freq = 44100;       % Must set this. 96khz, 48khz, 44.1khz.
 buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
+suggestedLatencySecs = [];
 
+if IsWin
+	 suggestedLatencySecs = 0.015
+end
+ 
 % Needs to determined via measurement once for each piece of audio
 % hardware:
 if nargin < 3 
@@ -141,7 +146,7 @@ end
 waitframes
 
 % Open audio device for low-latency output:
-pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize);
+pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize, suggestedLatencySecs);
 
 % Tell driver about hardwares inherent latency, determined via calibration
 % once:

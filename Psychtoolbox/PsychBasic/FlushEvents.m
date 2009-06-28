@@ -87,7 +87,7 @@ if psychusejava('desktop')
 else
     % Java VM unavailable, i.e., running in -nojvm mode.
     % On Windows, we can fall back to the old FlushEvents.dll.
-    if IsWin
+    if IsWin & ~IsOctave %#ok<AND2>
         % FlushEvents.dll has been renamed to FlushEventsNoJVM.dll. Call it.
         FlushEventsNoJVM(char(varargin{:}));
         return;

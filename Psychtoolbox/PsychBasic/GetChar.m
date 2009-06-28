@@ -264,7 +264,7 @@ else
     % Java VM unavailable, i.e., running in -nojvm mode.
     % On Windows, we can fall back to the old GetChar.dll, although we
     % only get info about typed characters, no 'when' extended data.
-    if IsWin
+    if IsWin & ~IsOctave %#ok<AND2>
         % GetChar.dll has been renamed to GetCharNoJVM.dll. Call it.
         ch = GetCharNoJVM;
         when = [];

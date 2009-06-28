@@ -67,10 +67,24 @@ try
    value=Screen('Preference', 'SkipSyncTests'); %#ok<NASGU>
    return;
 catch
-   % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
    fprintf('\n\n\nA very simple test call to the Screen() MEX file failed in AssertOpenGL, indicating\n');
    fprintf('that either Screen is totally dysfunctional, or you are trying to run your script on\n');
    fprintf('a system without Psychtoolbox-3 properly installed - or not installed at all.\n\n');
+
+   if IsWin	& IsOctave
+		le = psychlasterror;
+		if ~isempty(strfind(le.message, 'library or dependents')) & ~isempty(strfind(le.message, 'Screen.mex'))
+			% Likely the required libARVideo.dll or DSVL.dll for loading Screen.mex aren't installed yet!
+			fprintf('The most likely cause, based on the fact you are running on Octave under Windows\n');
+			fprintf('and given this error message: %s\n', le.message);
+			fprintf('is that the required libARVideo.dll and DSVL.dll are not yet installed on your system.\n\n');
+			fprintf('Please type ''help ARVideoCapture'' and read the installation instructions carefully.\n');
+			fprintf('After this one-time setup, the Screen command should work properly.\n\n');
+			fprintf('If this has been ruled out as a reason for failure, the following could be the case:\n\n');
+		end
+   end
+   
+   % Tried to execute old Screen command of old Win-PTB or MacOS9-PTB. This will tell user about non-OpenGL PTB.
    fprintf('This script or function is designated to run only an Psychtoolbox based on OpenGL. Read "help  AssertOpenGL" for more info.\n\n');
    fprintf('A first more diagnostic test would be to simply type Screen in your Matlab/Octave console and check what its output is.\n\n');
    fprintf('\n\nThe returned error message by Matlab/Octave was:\n');

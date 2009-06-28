@@ -80,7 +80,7 @@ if isjavadesktop
 else
     % Java VM unavailable, i.e., running in -nojvm mode.
     % On Windows, we can fall back to the old CharAvail.dll.
-    if IsWin
+    if IsWin & ~IsOctave %#ok<AND2>
         % CharAvail.dll has been renamed to CharAvailNoJVM.dll. Call it.
         avail = CharAvailNoJVM;
         numChars = [];

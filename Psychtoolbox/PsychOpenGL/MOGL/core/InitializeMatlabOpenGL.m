@@ -1,5 +1,5 @@
-function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D)
-% InitializeMatlabOpenGL([opengl_c_style] [, debuglevel] [, noswitchto3D])
+function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitchto3D, specialFlags)
+% InitializeMatlabOpenGL([opengl_c_style] [, debuglevel] [, noswitchto3D] [, specialFlags=0])
 %
 % InitializeMatlabOpenGL -- Initialize the OpenGL for Matlab wrapper 'mogl'.
 %
@@ -39,6 +39,23 @@ function varargout = InitializeMatlabOpenGL(opengl_c_style, debuglevel, noswitch
 % but doesn't intend to do real 3D rendering. Mostly called from PTB
 % internal helper functions, e.g., imaging pipeline. Defaults to zero, aka
 % "switch to real 3D mode".
+%
+% specialFlags = 0: Setting this optional parameter will enable some
+% special properties of the created OpenGL context. You can add the
+% following values to setup such a special configuration:
+%
+%    + 2  == Enable and attach an OpenGL accumulation buffer, with
+%    requested 16 bits resolution per color component, i.e., R16G16B16A16.
+%    The system may decide to allocate an accumulation buffer with more or
+%    less than the preferred 16 bpc, or it may decide not to allocate an
+%    accumulation buffer at all. On most graphics cards the accumulation
+%    buffer is implemented in software - using it may drastically reduce
+%    graphics performance down to redraw rates of only a few frames per
+%    second! There are better methods based on clever use of alpha blending
+%    and floating point resolution offscreen windows on modern graphics
+%    cards, or by direct low-level use of framebuffer objects.
+%
+%    -> This flag is needed to make the glAccum() command work.
 %
 % The 'OpenGL for Matlab' low level wrapper mogl was developed, implemented
 % and contributed to Psychtoolbox under GPL license by
@@ -94,6 +111,14 @@ if isempty(noswitchto3D)
     noswitchto3D = 0;
 end
 
+if nargin < 4
+    specialFlags = [];
+end
+
+if isempty(specialFlags)
+    specialFlags = 0;
+end
+
 % Load all GL constants:
 evalin('caller','global AGL GL GLU');
 
@@ -140,7 +165,8 @@ cachedDebuglevel = debuglevel;
 if noswitchto3D > 0
     noswitchto3D = 0;
 else
-    noswitchto3D = 1;
+    % Merge 1 flag (enable 3D mode) with passed specialFlags:
+    noswitchto3D = mor(1, specialFlags);
 end
 
 % Conditionally enable full 3D mode of Screen. Enable it if noswitchto3D is

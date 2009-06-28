@@ -1,5 +1,5 @@
-function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTexture)
-% MinimalisticOpenGLDemo([multiSample][, imagingPipeline][, checkerBoardTexture])
+function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTexture, doAccumulate)
+% MinimalisticOpenGLDemo([multiSample][, imagingPipeline][, checkerBoardTexture][, doAccumulate=0])
 %
 % This demo demonstrates use of OpenGL commands in a Matlab script to
 % perform some very boring 3D rendering in Psychtoolbox.
@@ -35,6 +35,15 @@ function MinimalisticOpenGLDemo(multiSample, imagingPipeline, checkerBoardTextur
 % a "earth surface texture image". This demonstrates algorithmic texture
 % generation and the use of trilinear mipmap filtering to improve image
 % quality for high frequency edges and such...
+%
+% The optional parameter 'doAccumulate' allows to demonstrate an additional
+% motion blur effect by use of the accumulation buffer. If you set the
+% imagingPipeline flag to zero and doAccumulate to 1, then use of the -
+% nowadays deprecated and extremely slow - accumulation buffer is
+% demonstrated. If you set imagingPipeline to 1 and doAccumulate to 2 then
+% a new fast technique is demonstrated. Both achieve the same visual effect
+% with very similar code, but the latter technique is well supported on
+% recent hardware, much more flexible and much faster.
 %
 %
 % Notable implementation details regarding use of OpenGL:
@@ -131,6 +140,28 @@ if isempty(checkerBoardTexture)
     checkerBoardTexture = 0;
 end
 
+if nargin < 4
+    doAccumulate = [];
+end
+
+if isempty(doAccumulate)
+    doAccumulate = 0;
+end
+
+if (doAccumulate >= 2) & (imagingPipeline == 0) %#ok<AND2>
+    error('You must set the imagingPipeline flag to 1 if you set doAccumulate to 2!');
+end
+
+if (doAccumulate == 1) & (imagingPipeline > 0) %#ok<AND2>
+    error('You must set the imagingPipeline flag to 0 if you set doAccumulate to 1!');
+end
+
+if doAccumulate == 1
+    doAccum = 2;
+else
+    doAccum = 0;
+end
+
 % Is the script running in OpenGL Psychtoolbox? Abort, if not.
 AssertOpenGL;
 
@@ -138,11 +169,13 @@ AssertOpenGL;
 screenid=max(Screen('Screens'));
 
 % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
-% mogl OpenGL for Matlab wrapper:
-InitializeMatlabOpenGL;
+% mogl OpenGL for Matlab wrapper: A special setting of doAccum == 2 will
+% enable OpenGL accumulation buffer support if code wants to use the
+% glAccum() function.
+InitializeMatlabOpenGL([],[],[], doAccum);
 
 % Open a double-buffered full-screen window on the main displays screen.
-[win , winRect] = Screen('OpenWindow', screenid, [],[],[],[],0,multiSample, imagingPipeline);
+[win , winRect] = Screen('OpenWindow', screenid, 0,[],[],[],0,multiSample, imagingPipeline);
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
@@ -290,7 +323,9 @@ if ~checkerBoardTexture
     myimg = imread([PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']);
 else
     % Apply regular checkerboard pattern as texture:
-    myimg = double(checkerboard(16, 32, 32)>0.5) * 255;
+    bv = zeros(16);
+    wv = ones(16);
+    myimg = double(repmat([bv wv; wv bv],32,32) > 0.5) * 255;
 end
 
 % Make a special power-of-two texture from the image by setting the enforcepot - flag to 1
@@ -400,7 +435,7 @@ while ~KbCheck
 
   % Could do a textured cylinder by uncommenting the following line:
   % gluCylinder(mysphere, 1.0, 1.0, 1.0, 360, 100);
-
+  
   % Finish OpenGL rendering into PTB window. This will switch back to the
   % standard 2D drawing functions of Screen and will check for OpenGL errors.
   Screen('EndOpenGL', win);
@@ -413,6 +448,110 @@ while ~KbCheck
 
   % Ready for next draw loop iteration...
 end;
+
+KbReleaseWait;
+
+% Demonstrate simple motion blur effect, once implemented via slow
+% accumulation buffer, once implemented via fast imaging pipeline based
+% method:
+if doAccumulate
+    % Control amount of blur with blurf in range 0 to 1:
+    blurf = 0.9;
+
+    % Fast Offscreenwindow/FBO/alpha-blending based method on modern GPU's?
+    if (doAccumulate == 2) & (imagingPipeline > 0) %#ok<AND2>
+        % Yes: Perform one-time setup of pipeline:
+        
+        Screen('EndOpenGL', win);
+        % We'll render each single image to the offscreen window 'wint',
+        % with proper multiSample anti-aliasing enabled:
+        wint  = Screen('OpenOffscreenWindow', win, [0 0 0 255], [], [], [], multiSample);
+        
+        % We create another offscreen window as 'accum'ulation buffer
+        % work-alike, with a pixeldepths of 64 bits, ie., 16 bit floating
+        % point resolution per color channel, so we have sufficient
+        % numerical precision for a nice blur-by-averaging effect:
+        accum = Screen('OpenOffscreenWindow', win, [0 0 0 255], [], 64);
+
+        % We enable alpha-blending for all drawing ops into this
+        % accum-ulation window, so we can control the weighted average by
+        % selection of the alpha-values:
+        Screen('Blendfunction', accum, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        
+        % Prepare rendering into wint:
+        Screen('BeginOpenGL', wint);
+    else
+        % Standard rendering into backbuffer: wint == win:
+        wint = win;
+    end
+    
+    ts = GetSecs;
+    fc = 0;
+
+    while ~KbCheck
+        % Increment framecounter:
+        fc = fc + 1;
+
+        % Clear out backbuffer and depth buffer:
+        glClear;
+
+        % Increment rotation angle around new z-Axis (0,0,1)  by 1.1 degrees:
+        glRotatef(1.1, 0, 0, 1);
+
+        % Draw the textured sphere-quadric of radius 0.7. As OpenGL has to approximate
+        % all curved surfaces (i.e. spheres) with flat triangles, we tell it to resolve
+        % the sphere into 100 slices in elevation and 100 sectors in azimuth: Higher values
+        % provide a better approximation, but they take longer to draw. Live is full of
+        % trade-offs...
+        gluSphere(mysphere, 0.7, 100, 100);
+
+        % Could do a textured cylinder by uncommenting the following line:
+        % gluCylinder(mysphere, 1.0, 1.0, 1.0, 360, 100);
+
+        % Standard accumulation buffer blur?
+        if doAccumulate == 1
+            % Yes, old-school stuff...
+            if fc > 1
+                % Compute new content of accumulation buffer as:
+                % newvalue = blurf * oldvalue + (1-blurf) * currentrenderedimage;
+                glAccum(GL.MULT, blurf);
+                glAccum(GL.ACCUM, 1-blurf);
+            else
+                % On first frame, init the accumulation buffer with first image:
+                glAccum(GL.LOAD, 1);
+            end
+
+            % Copyback new blurred image in accumulation buffer to regular backbuffer
+            % for display:
+            glAccum(GL.RETURN, 1);
+
+            Screen('EndOpenGL', wint);
+        else
+            % New style: Same as above, but with drawtexture and
+            % alpha-blending for accumulation-blur:
+            Screen('EndOpenGL', wint);
+            if fc > 1
+                Screen('DrawTexture', accum, wint, [], [], [], 0, (1-blurf));
+            else
+                Screen('DrawTexture', accum, wint, [], [], [], 0, 1);
+            end
+
+            % Copy current blurred accum-ulation buffer window back into
+            % framebuffer of onscreen win-dow for display:
+            Screen('DrawTexture', win, accum, [], [], [], 0);
+        end
+
+        % Show new image at next retrace:
+        Screen('Flip', win);
+
+        % Start OpenGL rendering again after flip for drawing of next frame...
+        Screen('BeginOpenGL', wint);
+
+        % Ready for next draw loop iteration...
+    end;
+
+    fprintf('Average framerate for motion blur is %f Hz.\n', fc / (GetSecs - ts));
+end
 
 % Done with the drawing loop:
 

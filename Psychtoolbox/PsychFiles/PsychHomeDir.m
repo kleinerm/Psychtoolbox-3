@@ -46,12 +46,14 @@ if isempty(ThePath)
     elseif IsWindows
         [ErrMsg,StringStart] = dos('echo %UserData%');
         % end-1 to trim trailing carriage return
-        StringStart = StringStart(1:(end-1));
-        if strcmp(StringStart,'%UserData%')
+        %StringStart = StringStart(1:(end-1));
+		StringStart = deblank(StringStart);
+        if strfind(StringStart,'%UserData')
             FoundHomeDir = 0;
             [ErrMsg,HomeDir] = dos('echo %UserProfile%');
-            HomeDir = HomeDir(1:(end-1));
-            if strcmp(HomeDir,'%UserProfile%')
+            % HomeDir = HomeDir(1:(end-1));
+			HomeDir = deblank(HomeDir);
+            if strfind(HomeDir,'%UserProfile')
                 HomeDir = uigetdir('','Please find your home folder for me');
                 if ischar(HomeDir)
                     FoundHomeDir = 1;
@@ -86,7 +88,7 @@ if isempty(ThePath)
     if exist(TheDir,'dir')
         ThePath = TheDir; %#ok<NASGU>
     else
-        error(sprintf('I could not find your home directory as expected in\n\n%s [%s]\n\nWhat are the permissions on that folder?',StringStart, DirMessage)); %#ok<SPERR>
+        error(sprintf('I could not find your home directory as expected in\n\n%s\n\nWhat are the permissions on that folder?',TheDir)); %#ok<SPERR>
     end
 
     ThePath = [ThePath filesep];

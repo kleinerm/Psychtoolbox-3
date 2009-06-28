@@ -27,8 +27,7 @@ try
 
     % Wait for a click and hide the cursor
     Screen(theWindow,'FillRect',0);
-    %Screen(theWindow,'TextFont','Arial');
-    %Screen(theWindow,'TextSize',18);
+    Screen(theWindow,'TextSize',24);
     Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,255);
     Screen('Flip', theWindow);
     while (1)
@@ -37,8 +36,7 @@ try
           break;
         end
     end
-    Screen(theWindow,'DrawText','Drag mouse (i.e. hold button down) to draw',50,50,0);
-    %Screen(theWindow,'DrawText','Release button to finish',50,50,255);
+    Screen(theWindow,'DrawText','Release button to finish',50,50,255);
 
     HideCursor;
 
@@ -54,8 +52,8 @@ try
         if ~buttons(1)
             break;
         end
-        if (x ~= theX | y ~= theY)
-            thePoints = [thePoints ; x y];
+        if (x ~= theX | y ~= theY) %#ok<OR2>
+            thePoints = [thePoints ; x y]; %#ok<AGROW>
             [numPoints, two]=size(thePoints);
             % Only draw the most recent line segment: This is possible,
             % because...
