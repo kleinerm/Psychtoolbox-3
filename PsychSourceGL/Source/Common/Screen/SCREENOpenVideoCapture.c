@@ -60,6 +60,8 @@ static char synopsisString[] =
 "A setting of 8 will avoid some calls that are supposed to provide better realtime behaviour, but may "
 "cause some problems with some video codecs when recording to disk. A setting of 16 will perform most "
 "of the heavy work on a separate parallel background thread, utilizing multi-core machines better.\n"
+"A setting of 32 will try to select the highest quality codec for texture creation from captured video, "
+"instead of the normal quality codec.\n"
 "\n"
 "'captureEngineType' This optional parameter allows selection of the video capture engine to use for this "
 "video source. Allowable values are currently 0, 1 and 2. Zero selects Apples Quicktime Sequence-Grabber API "

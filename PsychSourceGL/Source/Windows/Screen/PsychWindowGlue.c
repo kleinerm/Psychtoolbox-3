@@ -317,7 +317,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   HWND        hWnd;
   WNDCLASS    wc;
   PIXELFORMATDESCRIPTOR pfd;
-  int         attribs[48];
+  int         attribs[58];
   int         attribcount;
   float       fattribs[2]={0,0};
   int x, y, width, height, i, bpc;
@@ -538,6 +538,25 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       attribs[attribcount++]=24;
       attribs[attribcount++]=0x2023; // WGL_STENCIL_BITS_ARB
       attribs[attribcount++]=8;
+	  // Alloc an accumulation buffer as well?
+	  if (PsychPrefStateGet_3DGfx() & 2) {
+		  // Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
+		  attribs[attribcount++] = WGL_ACCUM_BITS_EXT;
+		  attribs[attribcount++] = 64;
+		  attribs[attribcount++] = WGL_ACCUM_RED_BITS_EXT;
+		  attribs[attribcount++] = 16;
+		  attribs[attribcount++] = WGL_ACCUM_GREEN_BITS_EXT;
+		  attribs[attribcount++] = 16;
+		  attribs[attribcount++] = WGL_ACCUM_BLUE_BITS_EXT;
+		  attribs[attribcount++] = 16;
+		  attribs[attribcount++] = WGL_ACCUM_ALPHA_BITS_EXT;
+		  attribs[attribcount++] = 16;
+		  pfd.cAccumBits      = 64;
+		  pfd.cAccumRedBits   = 16;
+		  pfd.cAccumGreenBits = 16;
+		  pfd.cAccumBlueBits  = 16;
+		  pfd.cAccumAlphaBits = 16;
+	  }	  
     }
     
     // Multisampled Anti-Aliasing requested?
@@ -1173,9 +1192,32 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 */
 double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 {
-	// Unsupported on Windows so far:(
-	*vblCount = 0;
-	return(-1);
+	psych_uint64 ust, msc, sbc;
+	CGDirectDisplayID displayID;
+
+	// Retrieve displayID, aka HDC for this screenid:
+	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenid);
+	
+	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
+	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
+	// affordable graphics card that would support this extension, but who knows??
+	if ((NULL != wglGetSyncValuesOML) && (wglGetSyncValuesOML((HDC) displayID, (INT64*) &ust, (INT64*) &msc, (INT64*) &sbc))) {
+		*vblCount = msc;
+		if (!(PsychGetTimeBaseHealthiness() & 1) && (PsychGetKernelTimebaseFrequencyHz() > 10000)) {
+			// Convert ust into regular GetSecs timestamp:
+			// At least we hope this conversion is correct...
+			return( ((double) ust) / PsychGetKernelTimebaseFrequencyHz() );
+		}
+		else {
+			// Last VBL timestamp unavailable:
+			return(-1);
+		}
+	}
+	else {
+		// Unsupported on Windows so far :(
+		*vblCount = 0;
+		return(-1);
+	}
 }
 
 /*

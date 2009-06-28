@@ -168,8 +168,8 @@ OSErr PsychVideoCaptureDataProc(SGChannel c, Ptr p, long len, long *offset, long
                                           srcCopy,				// transfer mode specifier
                                           (RgnHandle)NULL,                      // clipping region in dest. coordinate system to use as a mask
                                           0,					// flags
-                                          codecNormalQuality,                   // accuracy in decompression
-                                          bestSpeedCodec);                      // compressor identifier or special identifiers ie. bestSpeedCodec
+                                          ((vidcapRecordBANK[handle].recordingflags & 32) ? codecMaxQuality : codecNormalQuality),  // accuracy in decompression
+                                          ((vidcapRecordBANK[handle].recordingflags & 32) ? bestFidelityCodec : bestSpeedCodec));   // compressor identifier or special identifiers ie. bestSpeedCodec
             if (err!=noErr) {
                 printf("PTB-ERROR: Error in Video capture callback!!!\n");
                 fflush(NULL);
@@ -629,6 +629,7 @@ OSErr PsychQTSelectVideoSource(SeqGrabComponent seqGrab, SGChannel* sgchanptr, i
  *		// 4 = Only record, but don't provide as live feed. This saves callback overhead if provided for pure recording sessions.
  *		// 8 = Don't call SGPrepare() / SGRelease().
  *		// 16 = Use background worker thread to call SGIdle() for automatic capture/recording.
+ *		// 32 = Try to select the highest quality codec for texture creation - codecLosslessQuality instead of codecNormalQuality.
  */
 psych_bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win, int deviceIndex, int* capturehandle, double* capturerectangle,
 				 int reqdepth, int num_dmabuffers, int allow_lowperf_fallback, char* targetmoviefilename, unsigned int recordingflags)
@@ -743,8 +744,9 @@ psych_bool PsychQTOpenVideoCaptureDevice(int slotid, PsychWindowRecordType *win,
 			if (NULL == capturerectangle) {
 				// Only output warning message about bogus capture area settings and resulting 640 x 480 override
 				// if the device namestring doesn't contain "iSight", as we know the iSight behaves like that on
-				// every Apple computer, so no point of cluttering the screen with warnings about the obvious:
-				if ((NULL == strstr(vidcapRecordBANK[slotid].capDeviceName, "iSight")) && (PsychPrefStateGet_Verbosity() > 2)) {
+				// every Apple computer, so no point of cluttering the screen with warnings about the obvious.
+				// Same goes for the "unibrain Fire-i":
+				if ((NULL == strstr(vidcapRecordBANK[slotid].capDeviceName, "iSight")) && (NULL == strstr(vidcapRecordBANK[slotid].capDeviceName, "unibrain Fire-i")) && (PsychPrefStateGet_Verbosity() > 2)) {
 					printf("\nPTB-INFO: In Screen('OpenVideoCapture',...) for video capture device '%s' with deviceIndex %i:\n", vidcapRecordBANK[slotid].capDeviceName, deviceIndex);
 					printf("PTB-INFO: Your code doesn't specify an explicit 'roirectangle' for requested camera resolution, but wants me to\n");
 					printf("PTB-INFO: auto-detect the optimal image size. The operating system recommends a size of 1600 x 1200 pixels for your\n");

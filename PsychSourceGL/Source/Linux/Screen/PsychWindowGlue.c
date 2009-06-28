@@ -126,7 +126,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int i, x, y, width, height;
   GLenum glerr;
   psych_bool fullscreen = FALSE;
-  int attrib[30];
+  int attrib[38];
   int attribcount=0;
   int depth, bpc;
 
@@ -229,6 +229,18 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attrib[attribcount++]= GLX_STENCIL_SIZE;
     attrib[attribcount++]= 8;
 
+	// Alloc an accumulation buffer as well?
+	if (PsychPrefStateGet_3DGfx() & 2) {
+		// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
+		attribs[attribcount++] = GLX_ACCUM_RED_SIZE;
+		attribs[attribcount++] = 16;
+		attribs[attribcount++] = GLX_ACCUM_GREEN_SIZE;
+		attribs[attribcount++] = 16;
+		attribs[attribcount++] = GLX_ACCUM_BLUE_SIZE;
+		attribs[attribcount++] = 16;
+		attribs[attribcount++] = GLX_ACCUM_ALPHA_SIZE;
+		attribs[attribcount++] = 16;
+	}
   }
 
   // Double buffering requested?
@@ -558,21 +570,45 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
 double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 {
 	unsigned int	vsync_counter = 0;
-
-    // Do we have SGI video sync extensions?
-    if (NULL != glXGetVideoSyncSGI) {
-        // Retrieve absolute count of vbl's since startup:
-		glXGetVideoSyncSGI(&vsync_counter);
-        *vblCount = (psych_uint64) vsync_counter;
-
-        // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-		// Not yet supported on Linux:
-		return(-1);
-    }
-    else {
-        // Unsupported :(
-        *vblCount = 0;
-        return(-1);
+	psych_uint64	ust, msc, sbc;
+	CGDirectDisplayID displayID;
+	int scrnum;
+	
+	// Retrieve displayID, aka dpy for this screenid:
+	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenid);
+	scrnum = PsychGetXScreenIdForScreen(screenid);
+	
+	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
+	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
+	// affordable graphics card that would support this extension, but who knows??
+	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML((Display*) displayID, (GLXDrawable) RootWindow(displayID, scrnum), (int64_t*) ust, (int64_t*) msc, (int64_t*) sbc))) {
+		*vblCount = msc;
+		if (PsychGetKernelTimebaseFrequencyHz() > 10000) {
+			// Convert ust into regular GetSecs timestamp:
+			// At least we hope this conversion is correct...
+			return( ((double) ust) / PsychGetKernelTimebaseFrequencyHz() );
+		}
+		else {
+			// Last VBL timestamp unavailable:
+			return(-1);
+		}
+	}
+	else {
+		// Do we have SGI video sync extensions?
+		if (NULL != glXGetVideoSyncSGI) {
+			// Retrieve absolute count of vbl's since startup:
+			glXGetVideoSyncSGI(&vsync_counter);
+			*vblCount = (psych_uint64) vsync_counter;
+			
+			// Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
+			// Not yet supported on Linux:
+			return(-1);
+		}
+		else {
+			// Unsupported :(
+			*vblCount = 0;
+			return(-1);
+		}
     }
 }
 

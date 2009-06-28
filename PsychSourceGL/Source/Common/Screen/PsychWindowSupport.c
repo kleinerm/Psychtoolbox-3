@@ -926,7 +926,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		printf("PTB-WARNING: You asked me for reducing VRAM consumption but for this, your graphics hardware would need\n");
 		printf("PTB-WARNING: to support the GL_APPLE_client_storage extension, which it doesn't! Sorry... :(\n");
       }
-      if (PsychPrefStateGet_3DGfx()) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
+      if (PsychPrefStateGet_3DGfx() > 0) printf("PTB-INFO: Support for OpenGL 3D graphics rendering enabled: 24 bit depth-buffer and 8 bit stencil buffer attached.\n");
+      if (PsychPrefStateGet_3DGfx() & 2) printf("PTB-INFO: Additional accumulation buffer for OpenGL 3D graphics rendering attached.\n");
+	  
       if (multiSample>0) {
 	if ((*windowRecord)->multiSample >= multiSample) {
 	  printf("PTB-INFO: Anti-Aliasing with %i samples per pixel enabled.\n", (*windowRecord)->multiSample);
@@ -3134,7 +3136,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 		if (stereo_mode==kPsychCompressedTLBRStereo || stereo_mode==kPsychCompressedTRBLStereo) {
 			if (auxbuffers<2) {
 				PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! The requested stereo mode doesn't work without them.\n"
-								  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+								  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?\n"
+								  "On a modern graphics card, try to enable the imaging pipeline (see 'help PsychImaging') to make it work anyway.");
 			}
 			
 			// Compressed stereo mode active. Compositing already done?
@@ -3161,7 +3164,8 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 			if (stereo_mode==kPsychOpenGLStereo) {
 				if (auxbuffers<2) {
 					PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
-									  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+									  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?\n"
+									  "On a modern graphics card, try to enable the imaging pipeline (see 'help PsychImaging') to make it work anyway.");
 				}
 				
 				glDrawBuffer(GL_AUX0);
@@ -3174,14 +3178,21 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
 			}
 			else {
-				if (auxbuffers<1) {
-					PsychErrorExitMsg(PsychError_user, "OpenGL AUX buffers unavailable! dontclear=1 in Screen-Flip doesn't work without them.\n"
-									  "Either unsupported by your graphics card, or you disabled them via call to Screen('Preference', 'ConserveVRAM')?");
+				// Single backbuffer: Here we provide a fallback implementation in case AUX buffers
+				// are unavailable:
+				if (auxbuffers < 1) {
+					// No aux buffers. We use OpenGL textures as replacement solution.
+					// Backup current backbuffer of current onscreen window to a texture, create
+					// the texture if neccessary:
+					PsychBackupFramebufferToBackingTexture(windowRecord);
 				}
-				glDrawBuffer(GL_AUX0);
-				glReadBuffer(GL_BACK);
-				glRasterPos2i(0, screenheight);
-				glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+				else {
+					// At least one aux buffer: Use it for fast backup/restore:
+					glDrawBuffer(GL_AUX0);
+					glReadBuffer(GL_BACK);
+					glRasterPos2i(0, screenheight);
+					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);            
+				}
 			}
 			
 			if (blending_on) glEnable(GL_BLEND);
@@ -3472,6 +3483,7 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     int screenwidth=(int) PsychGetWidthFromRect(windowRecord->rect);
     int screenheight=(int) PsychGetHeightFromRect(windowRecord->rect);
     int stereo_mode=windowRecord->stereomode;
+	GLint blending_on, auxbuffers;
 
     // Switch to associated GL-Context of windowRecord:
     PsychSetGLContext(windowRecord);
@@ -3506,7 +3518,8 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				// We shall not clear the back buffer(s), but restore them to state before "Flip",
 				// so previous stim can be incrementally updated where this makes sense.
 				// Copy back our backup-copy from AUX buffers:
-				glDisable(GL_BLEND);
+				blending_on = (int) glIsEnabled(GL_BLEND);
+				if (blending_on) glDisable(GL_BLEND);
 				
 				// Need to do it on both backbuffers when OpenGL native stereo is enabled:
 				if (stereo_mode==kPsychOpenGLStereo) {
@@ -3520,13 +3533,23 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
 				}
 				else {
-					glDrawBuffer(GL_BACK);
-					glReadBuffer(GL_AUX0);
-					glRasterPos2i(0, screenheight);
-					glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+					// At least one AUX buffer supported?
+					glGetIntegerv(GL_AUX_BUFFERS, &auxbuffers);
+					if (auxbuffers > 0) {
+						// Restore backbuffer from aux buffer 0:
+						glDrawBuffer(GL_BACK);
+						glReadBuffer(GL_AUX0);
+						glRasterPos2i(0, screenheight);
+						glCopyPixels(0, 0, screenwidth, screenheight, GL_COLOR);
+					}
+					else {
+						// Restore backbuffer from backing shadow texture:
+						glDrawBuffer(GL_BACK);
+						PsychBlitTextureToDisplay(windowRecord, windowRecord, windowRecord->rect, windowRecord->rect, 0, 0, 1);
+					}
 				}
 				
-				glEnable(GL_BLEND);
+				if (blending_on) glEnable(GL_BLEND);
 			}
 			else {
 				// Clearing (both)  back buffer requested:
@@ -3539,7 +3562,6 @@ void PsychPostFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
 				else {
 					glDrawBuffer(GL_BACK);
 					PsychGLClear(windowRecord);
-
 				}
 			}
 		}
@@ -3854,61 +3876,8 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
                         // share the backbuffer as scratchpad. Each onscreen window has its own frontbuffer, so
                         // it will be unaffected by the switch --> No need to backup & restore.
                         if (!EmulateOldPTB || (EmulateOldPTB && !PsychIsOnscreenWindow(currentRendertarget))) {
-                            if (currentRendertarget->textureNumber == 0) {
-                                // This one is an onscreen window that doesn't have a shadow-texture yet. Create a suitable one.
-                                glGenTextures(1, &(currentRendertarget->textureNumber));
-                                glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-								// If this system only supports power-of-2 textures, then we'll need a little trick:
-								if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
-									// Ok, we need to create an empty texture of suitable power-of-two size:
-									// Now we can do subimage texturing...
-									twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
-									theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
-									glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
-									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));
-								}
-								else {
-									// Supports rectangle textures. Just create texture as copy of framebuffer:
-									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect), 0); 
-								}
-                            }
-                            else {
-								// Texture for this one already exist: Bind and update it:
-								twidth  = (int) PsychGetWidthFromRect(currentRendertarget->rect);
-								theight = (int) PsychGetHeightFromRect(currentRendertarget->rect);
-								
-								// If this is a texture in non-normal orientation, we need to swap width and height, and reset orientation
-								// to upright:
-								if (!PsychIsOnscreenWindow(currentRendertarget)) {
-									// Texture. Handle size correctly:
-									if ((currentRendertarget->textureOrientation <= 1) && (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D)) {
-										// Transposed power of two texture. Need to realloc texture...
-										twidth=1; while(twidth < (int) PsychGetWidthFromRect(currentRendertarget->rect)) { twidth = twidth * 2; };
-										theight=1; while(theight < (int) PsychGetHeightFromRect(currentRendertarget->rect)) { theight = theight * 2; };
-										glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
-
-										// Reassign real size:
-										twidth  = (int) PsychGetWidthFromRect(currentRendertarget->rect);
-										theight = (int) PsychGetHeightFromRect(currentRendertarget->rect);
-
-										currentRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
-									}
-									
-									// After this backup-op, the texture orientation will be a nice upright one:
-									currentRendertarget->textureOrientation = 2;
-								}
-								
-								glBindTexture(PsychGetTextureTarget(currentRendertarget), currentRendertarget->textureNumber);
-								if (PsychGetTextureTarget(currentRendertarget)==GL_TEXTURE_2D) {
-									// Special case for power-of-two textures:
-									glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, twidth, theight);
-								}
-								else {
-									// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(currentRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(currentRendertarget->rect), (int) PsychGetHeightFromRect(currentRendertarget->rect));                         
-									glCopyTexImage2D(PsychGetTextureTarget(currentRendertarget), 0, GL_RGBA8, 0, 0, twidth, theight, 0);
-									currentRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
-								}
-                            }
+							// Call helper routine defined below:
+							PsychBackupFramebufferToBackingTexture(currentRendertarget);
                         } // Backbuffer -> Texture backup code.
                     } // Transition from- or to a texture.
                 } // currentRenderTarget non-NULL.
@@ -4021,6 +3990,84 @@ void PsychSetupView(PsychWindowRecordType *windowRecord)
     // Switch back to modelview matrix, but leave it unaltered:
     glMatrixMode(GL_MODELVIEW);
     return;
+}
+
+/* PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget)
+ * Copy current content of current backbuffer into a texture of matching size and RGBA8
+ * format.
+ *
+ * This is used by PsychSetDrawingTarget() for target window switches when no imaging pipeline
+ * aka OpenGL framebuffer objects are available. Mostly for offscreen <-> onscreen window switching
+ * and offscreen <-> offscreen window switching.
+ *
+ * It is also used by PsychPreFlipOperations() in non-imaging mode when clearmode 1 requires a
+ * backbuffer backup/restore but the system doesn't support AUX buffers which are the preferred
+ * solution in such a case.
+ *
+ */
+void PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget)
+{
+	int twidth, theight;
+	
+	// Already a shadow-texture available as backing store?
+	if (backupRendertarget->textureNumber == 0) {
+		// This one is an onscreen window that doesn't have a shadow-texture yet. Create a suitable one.
+		glGenTextures(1, &(backupRendertarget->textureNumber));
+		glBindTexture(PsychGetTextureTarget(backupRendertarget), backupRendertarget->textureNumber);
+
+		// If this system only supports power-of-2 textures, then we'll need a little trick:
+		if (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D) {
+			// Ok, we need to create an empty texture of suitable power-of-two size:
+			// Now we can do subimage texturing...
+			twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+			theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+			glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect));
+		}
+		else {
+			// Supports rectangle textures. Just create texture as copy of framebuffer:
+			glCopyTexImage2D(PsychGetTextureTarget(backupRendertarget), 0, GL_RGBA8, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect), 0); 
+		}
+	}
+	else {
+		// Texture for this one already exist: Bind and update it:
+		twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
+		theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
+		
+		// If this is a texture in non-normal orientation, we need to swap width and height, and reset orientation
+		// to upright:
+		if (!PsychIsOnscreenWindow(backupRendertarget)) {
+			// Texture. Handle size correctly:
+			if ((backupRendertarget->textureOrientation <= 1) && (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D)) {
+				// Transposed power of two texture. Need to realloc texture...
+				twidth=1; while(twidth < (int) PsychGetWidthFromRect(backupRendertarget->rect)) { twidth = twidth * 2; };
+				theight=1; while(theight < (int) PsychGetHeightFromRect(backupRendertarget->rect)) { theight = theight * 2; };
+				glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, twidth, theight, 0, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, NULL);
+				
+				// Reassign real size:
+				twidth  = (int) PsychGetWidthFromRect(backupRendertarget->rect);
+				theight = (int) PsychGetHeightFromRect(backupRendertarget->rect);
+				
+				backupRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
+			}
+			
+			// After this backup-op, the texture orientation will be a nice upright one:
+			backupRendertarget->textureOrientation = 2;
+		}
+		
+		glBindTexture(PsychGetTextureTarget(backupRendertarget), backupRendertarget->textureNumber);
+		if (PsychGetTextureTarget(backupRendertarget)==GL_TEXTURE_2D) {
+			// Special case for power-of-two textures:
+			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0, twidth, theight);
+		}
+		else {
+			// This would be appropriate but crashes for no good reason on OS-X 10.4.4: glCopyTexSubImage2D(PsychGetTextureTarget(backupRendertarget), 0, 0, 0, 0, 0, (int) PsychGetWidthFromRect(backupRendertarget->rect), (int) PsychGetHeightFromRect(backupRendertarget->rect));                         
+			glCopyTexImage2D(PsychGetTextureTarget(backupRendertarget), 0, GL_RGBA8, 0, 0, twidth, theight, 0);
+			backupRendertarget->surfaceSizeBytes = 4 * twidth * theight; 
+		}
+	}
+	
+	return;
 }
 
 /* Set Screen - global flag which tells PTB if userspace rendering is active or not. */

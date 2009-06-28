@@ -59,6 +59,7 @@ int		PsychSetShader(PsychWindowRecordType *windowRecord, int shader);
 void	PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord);
 void	PsychExecuteBufferSwapPrefix(PsychWindowRecordType *windowRecord);
 int		PsychGetCurrentShader(PsychWindowRecordType *windowRecord);
+void	PsychBackupFramebufferToBackingTexture(PsychWindowRecordType *backupRendertarget);
 
 //end include once
 #endif

@@ -528,6 +528,8 @@ void PsychDeleteAllMovies(void)
  */
 int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int checkForImage, double timeindex, PsychWindowRecordType *out_texture, double *presentation_timestamp)
 {
+	static TimeValue myNextTimeCached = -2;
+	static TimeValue nextFramesTimeCached = -2;
     TimeValue		myCurrTime;
     TimeValue		myNextTime;
     TimeValue           nextFramesTime=0;
@@ -608,30 +610,68 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
         // no synced audio output. The user just wants to manually fetch movie frames into
         // textures for manual playback in a standard Matlab-loop.
 
-        // Image for specific point in time requested?
-        if (timeindex >= 0) {
-            // Yes. We try to retrieve the next possible image for requested timeindex.
-            myCurrTime = (TimeValue) ((timeindex * (double) GetMovieTimeScale(theMovie)) + 0.5f);
-        }
-        else {
-            // No. We just retrieve the next frame, given the current movie time.
-            myCurrTime = GetMovieTime(theMovie, NULL);
-        }
+		// First pass - checking for new image?
+		if (checkForImage) {
+			// Image for specific point in time requested?
+			if (timeindex >= 0) {
+				// Yes. We try to retrieve the next possible image for requested timeindex.
+				myCurrTime = (TimeValue) ((timeindex * (double) GetMovieTimeScale(theMovie)) + 0.5f);
+			}
+			else {
+				// No. We just retrieve the next frame, given the current movie time.
+				myCurrTime = GetMovieTime(theMovie, NULL);
+			}
             
-        // Retrieve timeindex of the closest image sample after myCurrTime:
-        myFlags = nextTimeStep + nextTimeEdgeOK;	// We want the next frame in the movie's media.
-        myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
-        GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, &nextFramesTime);
-        error = GetMoviesError();
-        if (error != noErr) {
-            PsychErrorExitMsg(PsychError_internal, "Failed to fetch texture from movie for given timeindex!");
-        }
-        
-        // Set movies current time to myNextTime, so the next frame will be fetched from there:
-        SetMovieTimeValue(theMovie, myNextTime);
-        // nextFramesTime is the timeindex to which we need to advance for retrieval of next frame: (see code below)
-        nextFramesTime=myNextTime + nextFramesTime;
-    }
+			// Retrieve timeindex of the closest image sample after myCurrTime:
+			myFlags = nextTimeStep + nextTimeEdgeOK;	// We want the next frame in the movie's media.
+			myTypes[0] = VisualMediaCharacteristic;		// We want video samples.
+			GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myCurrTime, FloatToFixed(1), &myNextTime, &nextFramesTime);
+			error = GetMoviesError();
+			if (error != noErr) {
+				PsychErrorExitMsg(PsychError_internal, "Failed to fetch texture from movie for given timeindex!");
+			}
+			
+			// Found useful event?
+			if (myNextTime == -1) {
+				if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-WARNING: Bogus timevalue in movie track for movie %i. Trying to keep going.\n", moviehandle);
+				
+				// No. Just push timestamp to current time plus a little bit in the hope
+				// this will get us unstuck:
+				myNextTime = myCurrTime + (TimeValue) 1;
+				nextFramesTime = (TimeValue) 0;
+			}
+			
+			if (myNextTime != myNextTimeCached) {
+				// Set movies current time to myNextTime, so the next frame will be fetched from there:
+				SetMovieTimeValue(theMovie, myNextTime);
+				
+				// nextFramesTime is the timeindex to which we need to advance for retrieval of next frame: (see code below)
+				nextFramesTime=myNextTime + nextFramesTime;
+				
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Current timevalue in movie track for movie %i is %lf secs.\n", moviehandle, (double) myNextTime / (double) GetMovieTimeScale(theMovie));
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Next timevalue in movie track for movie %i is %lf secs.\n", moviehandle, (double) nextFramesTime / (double) GetMovieTimeScale(theMovie));
+				
+				// Cache values for 2nd pass:
+				myNextTimeCached = myNextTime;
+				nextFramesTimeCached = nextFramesTime;
+			}
+			else {
+				// Somehow got stuck? Do nothing...
+				if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Seem to be a bit stuck at timevalue [for movie %i] of %lf secs. Nudging a bit forward...\n", moviehandle, (double) myNextTime / (double) GetMovieTimeScale(theMovie));
+				// Nudge the timeindex a bit forware in the hope that this helps:
+				SetMovieTimeValue(theMovie, GetMovieTime(theMovie, NULL) + 1);
+			}
+		}
+		else {
+			// This is the 2nd pass: Image fetching. Use cached values from first pass:
+			// Caching in a static works because we're always called immediately for 2nd
+			// pass after successfull return from 1st pass, and we're not multi-threaded,
+			// i.e., don't need to be reentrant or thread-safe here:
+			myNextTime = myNextTimeCached;
+			nextFramesTime = nextFramesTimeCached;
+			myNextTimeCached = -2;
+		}
+	}
     else {
         // myNextTime unavailable if in autoplayback-mode:
         myNextTime=-1;
@@ -853,6 +893,12 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
     if (0 == GetMovieRate(theMovie)) {
         // We are in manual fetch mode: Need to manually advance movie time to next
         // media sample:
+		if (nextFramesTime == myNextTime) {
+			// Invalid value? Try to hack something that gets us unstuck:
+			myNextTime = GetMovieTime(theMovie, NULL);
+			nextFramesTime = myNextTime + (TimeValue) 1;
+		}
+
         SetMovieTimeValue(theMovie, nextFramesTime);        
     }
     

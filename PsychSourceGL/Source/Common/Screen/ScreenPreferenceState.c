@@ -79,9 +79,9 @@ static psych_bool                          TimeMakeTextureFlag=FALSE;
 static int								screenVisualDebugLevel=4;
 static int                              screenConserveVRAM=0;
 // If EmulateOldPTB is set to true, then try to behave like the old OS-9 PTB:
-static psych_bool                          EmulateOldPTB=FALSE;
-// Support for real 3D rendering enabled?
-static psych_bool                          Enable_3d_gfx=FALSE;
+static psych_bool                       EmulateOldPTB=FALSE;
+// Support for real 3D rendering enabled? Any non-zero value enables 3D rendering, a setting of 1 with defaults, values > 1 enable additional features. Disabled by default.
+static int								Enable_3d_gfx=0;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
 static int                              screenVBLTimestampingMode=1;
@@ -340,13 +340,14 @@ void PsychPrefStateSet_EmulateOldPTB(psych_bool level)
 // and depth-buffers additionally to the AUX and Colorbuffers and perform additional
 // bookkeeping to make sure we can do real 3D rendering and interface to external
 // OpenGL mexfiles like, e.g., moglcore...
-psych_bool PsychPrefStateGet_3DGfx(void)
+int PsychPrefStateGet_3DGfx(void)
 {
     return(Enable_3d_gfx);
 }
 
-void PsychPrefStateSet_3DGfx(psych_bool level)
+void PsychPrefStateSet_3DGfx(int level)
 {
+	if (level < 0) PsychErrorExitMsg(PsychError_invalidIntegerArg, "3D graphics preference setting must be a non-negative integer value! You passed a negative one.");
     Enable_3d_gfx = level;
 }
 

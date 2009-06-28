@@ -204,7 +204,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     CGLError						error;
 	OSStatus						err;
     CGDirectDisplayID				cgDisplayID;
-    CGLPixelFormatAttribute			attribs[32];
+    CGLPixelFormatAttribute			attribs[40];
     long							numVirtualScreens;
     GLboolean						isDoubleBuffer, isFloatBuffer;
     GLint bpc;
@@ -422,6 +422,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         attribs[attribcount++]=24;
         attribs[attribcount++]=kCGLPFAStencilSize;
         attribs[attribcount++]=8;
+		// Alloc an accumulation buffer as well?
+		if (PsychPrefStateGet_3DGfx() & 2) {
+			// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
+			if (!useAGL && !AGLForFullscreen) {
+				attribs[attribcount++]=kCGLPFAAccumSize;
+				attribs[attribcount++]=64;
+			}
+			else {
+				attribs[attribcount++]=AGL_ACCUM_RED_SIZE;
+				attribs[attribcount++]=16;
+				attribs[attribcount++]=AGL_ACCUM_GREEN_SIZE;
+				attribs[attribcount++]=16;
+				attribs[attribcount++]=AGL_ACCUM_BLUE_SIZE;
+				attribs[attribcount++]=16;
+				attribs[attribcount++]=AGL_ACCUM_ALPHA_SIZE;
+				attribs[attribcount++]=16;
+			}
+		}
     }
     if(numBuffers>=2){
         // Enable double-buffering:

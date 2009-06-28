@@ -224,6 +224,9 @@ PsychError SCREENCopyWindow(void)
 			// Set target windows framebuffer as drawing target:
 			PsychSetDrawingTarget(targetWin);
 
+			// Disable alpha-blending:
+			glDisable(GL_BLEND);
+			
 			// Disable any shading during copy-op:
 			PsychSetShader(targetWin, 0);
 
@@ -246,6 +249,9 @@ PsychError SCREENCopyWindow(void)
 				// Sourcewin != Targetwin and/or imaging pipe (FBO storage) not used. We blit the
 				// backing texture into itself, aka into its representation inside the system
 				// backbuffer. The blit routine will setup proper bindings:
+
+				// Disable alpha-blending:
+				glDisable(GL_BLEND);
 
 				// We use filterMode == 1 aka Bilinear filtering, so we get nice texture copies
 				// if size of sourceRect and targetRect don't match and some scaling is needed.
@@ -273,6 +279,9 @@ PsychError SCREENCopyWindow(void)
 		// Update selected textures content:
 		// Looks weird but we need the framebuffer of sourceWin:
 		PsychSetDrawingTarget(sourceWin);
+
+		// Disable alpha-blending:
+		glDisable(GL_BLEND);
 		
 		// Disable any shading during copy-op:
 		PsychSetShader(sourceWin, 0);
@@ -300,6 +309,9 @@ PsychError SCREENCopyWindow(void)
 
 		// Set target windows framebuffer as drawing target:
 		PsychSetDrawingTarget(targetWin);
+		
+		// Disable alpha-blending:
+		glDisable(GL_BLEND);
 		
 		// Disable any shading during copy-op:
 		PsychSetShader(targetWin, 0);

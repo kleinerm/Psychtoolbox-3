@@ -76,8 +76,8 @@ psych_bool PsychPrefStateGet_EmulateOldPTB(void);
 void PsychPrefStateSet_EmulateOldPTB(psych_bool level);
 
 // 3D graphics rendering support:
-psych_bool PsychPrefStateGet_3DGfx(void);
-void PsychPrefStateSet_3DGfx(psych_bool level);
+int PsychPrefStateGet_3DGfx(void);
+void PsychPrefStateSet_3DGfx(int level);
 
 //Debug preferences.  
 psych_bool PsychPrefStateGet_DebugMakeTexture(void);

@@ -116,7 +116,7 @@ static char synopsisString[] =
 	"\noldMode = Screen('Preference', 'ConserveVRAM', mode);"
 	"\n\nActivate compatibility mode: Try to behave like the old MacOS-9 Psychtoolbox:"
 	"\noldEnableFlag = Screen('Preference', 'EmulateOldPTB', [enableFlag]);\n"
-	"\noldEnableFlag = Screen('Preference', 'Enable3DGraphics', [enableFlag]);"
+	"\noldEnableFlags = Screen('Preference', 'Enable3DGraphics', [enableFlags]);"
 	"\noldEnableFlag = Screen('Preference', 'SuppressAllWarnings', [enableFlag]);"
 	"\noldMode = Screen('Preference', 'VBLTimestampingMode', [newmode]);"
 	"\noldVTOTAL = Screen('Preference', 'VBLEndlineOverride' [, newVTOTAL]);"
@@ -378,8 +378,8 @@ PsychError SCREENPreference(void)
 			if(PsychMatch(preferenceName, "Enable3DGraphics")){
 				PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_3DGfx());
 				if(numInputArgs==2){
-					PsychCopyInFlagArg(2, kPsychArgRequired, &tempFlag);
-					PsychPrefStateSet_3DGfx(tempFlag);
+					PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
+					PsychPrefStateSet_3DGfx(tempInt);
 				}
 				preferenceNameArgumentValid=TRUE;
 		}else 
