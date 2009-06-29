@@ -31,6 +31,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 23/05/2007 Add Matlab R2007 vs. earlier detection to Windows version (MK).
 % 16/04/2008 Write/Read PTB flavor to/from users PsychtoolboxConfigDir as well for higher robustness (MK).
 % 15/04/2009 Add warning about unsupported OS/X systems older than Tiger (MK).
+% 15/06/2009 Add support for postinstall for Octave-3.2.x, remove Octave-2 support (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -190,9 +191,7 @@ if IsOctave
     
     try
         % Remove binary MEX folders from path:
-        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave2LinuxFiles']);
         rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3LinuxFiles']);
-        rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave2OSXFiles']);
         rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3OSXFiles']);
         rmpath([PsychtoolboxRoot 'PsychBasic' filesep 'Octave3WindowsFiles']);
         
@@ -244,8 +243,8 @@ if IsOctave
         fprintf('\n\n=================================================================================\n');
         fprintf('WARNING: Your version %s of Octave is obsolete. We strongly recommend\n', version);
         fprintf('WARNING: using the latest stable version of at least Octave 3.2.0 for use with Psychtoolbox.\n');
-        fprintf('WARNING: Stuff may not work or only suboptimal with earlier versions and we don''t\n');
-        fprintf('WARNING: provide any support for such old versions.\n');
+        fprintf('WARNING: Stuff may not work at all or only suboptimal with earlier versions and we\n');
+        fprintf('WARNING: don''t provide any support for such old versions.\n');
         fprintf('\nPress any key to continue with setup.\n');
         fprintf('=================================================================================\n\n');
         pause;

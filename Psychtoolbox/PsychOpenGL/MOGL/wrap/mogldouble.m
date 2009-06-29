@@ -30,9 +30,7 @@ if IsOctave
     % If this is Octave, then we can use dispatch() to optimize calls to
     % mogldouble() away, ie., all calls to mogldouble() will get redirected
     % to double() unconditionally to save some overhead:
-    if IsOctave
-        dispatch('mogldouble', 'double', 'all');
-    end
+    dispatch('mogldouble', 'double', 'all');
 end
 
 retval = double(arg);
