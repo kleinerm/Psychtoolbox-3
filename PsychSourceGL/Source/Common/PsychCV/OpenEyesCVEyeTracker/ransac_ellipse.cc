@@ -27,6 +27,7 @@
  *
  */
 
+#ifdef PSYCHCV_USE_OPENCV
 
 #include <stdlib.h>
 #include <stdio.h>
@@ -497,3 +498,5 @@ int* pupil_fitting_inliers(UINT8* pupil_image, int width, int height,  int &retu
   return_max_inliers_num = max_inliers;
   return max_inliers_index;
 }
+
+#endif

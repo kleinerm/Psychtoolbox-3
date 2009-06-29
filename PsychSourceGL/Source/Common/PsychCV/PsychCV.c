@@ -28,7 +28,19 @@
 	
 	The initial implementation will also contain other interesting bits of computer vision
 	code taken from OpenCV.
+
+	IMPORTANT:
 	
+	PsychCV will be built with CVEyeTracker / OpenEyes support and OpenCV library support
+	enabled if the #define PSYCHCV_USE_OPENCV 1 is defined somewhere in the build scripts!
+	
+	By default (if this is omitted), it will build without OpenCV / OpenEyes support.
+	The reason is that support of OpenCV incurs a large number of library dependencies which
+	make installation quite a hazzle.
+	
+	As long as OpenEyes support is not in a enduser useable state anyway, we can save
+	ourselves and the users from this dependency hell.
+
 */
 
 
@@ -67,17 +79,30 @@ void InitializeSynopsis()
 	int i=0;
 	const char **synopsis = synopsisSYNOPSIS;  //abbreviate the long name
 	
-	synopsis[i++] = "PsychCV - Helper module for miscellaneous stuff related to OpenCV and/or computer vision:\n";
+	synopsis[i++] = "PsychCV - Helper module for miscellaneous stuff related to OpenCV and/or computer vision:\n\n";
+	synopsis[i++] = "This module contains a large amount of 3rd party software, so here are the credits for those parts:\n";
+	#ifdef PSYCHCV_USE_OPENCV
+	synopsis[i++] = "OpenEyes eye tracking is based mostly on a modified version of the OpenEyes toolkit,";
+	synopsis[i++] = "http://hcvl.hci.iastate.edu/openEyes which was written by Dongheng Li, Derrick Parkhurst,";
+	synopsis[i++] = "Jason Babcock and David Winfield.";
+	synopsis[i++] = "OpenEyes toolkit is licensed to you under GPL v2.\n";
+	synopsis[i++] = "PsychCV is also dependent on the OpenCV Open computer vision library: http://sourceforge.net/projects/opencvlibrary/ \n";
+	synopsis[i++] = "which is licensed under the BSD license.\n";
+	#endif
+	synopsis[i++] = "The 'ARxxx' subfunctions are based on the ARToolkit: http://www.hitl.washington.edu/artoolkit/";
+	synopsis[i++] = "ARToolkit is licensed to you under GPL v2.\n";
 	synopsis[i++] = "\nGeneral information and settings:\n";
 	synopsis[i++] = "version = PsychCV('Version');";
 	synopsis[i++] = "oldlevel = PsychCV('Verbosity' [,level]);";
 	synopsis[i++] = "\nHelper functions for memory buffer copies:\n";
 	synopsis[i++] = "PsychCV('CopyMatrixToMemBuffer', matrix, memBufferPtr);";
+	#ifdef PSYCHCV_USE_OPENCV
 	synopsis[i++] = "\nSupport for the OpenEyes computer vision based eye tracker:\n";
 	synopsis[i++] = "[EyeImageMemBuffer, EyeColorImageMemBuffer, SceneImageMemBuffer, ThresholdImageMemBuffer, EllipseImageMemBuffer] = PsychCV('OpenEyesInitialize', handle [, eyeChannels] [, eyeWidth][, eyeHeight][, sceneWidth][, sceneHeight][, logfilename]);";
 	synopsis[i++] = "PsychCV('OpenEyesShutdown', handle);";
  	synopsis[i++] = "[oldSettings, ...] = PsychCV('OpenEyesParameters', handle [, pupilEdgeThreshold][, starburstRays][, minFeatureCandidates][, corneaWindowSize][, edgeThreshold][, gaussWidth][, maxPupilEccentricity] [, initialAngleSpread] [, fanoutAngle1] [, fanoutAngle2] [, featuresPerRay] [, specialFlags]);";
 	synopsis[i++] = "EyeResult = PsychCV('OpenEyesTrackEyePosition', handle [, mode] [, px], [, py]);";
+	#endif
 	synopsis[i++] = "\nSupport for the ARToolkit computer vision based 3D marker tracking library:\n";
 	synopsis[i++] = "[SceneImageMemBuffer, glProjectionMatrix, DebugImageMemBuffer] = PsychCV('ARInitialize', cameraCalibFilename, imgWidth, imgHeight, imgChannels [, imgFormat]);";
 	synopsis[i++] = "PsychCV('ARShutdown');";
@@ -183,7 +208,7 @@ static double maxPupilEccentricity, initialAngleSpread;
 static double fanoutAngle1, fanoutAngle2;
 static int featuresPerRay, specialFlags;
 
-#if PSYCH_SYSTEM == PSYCH_OSX
+#ifdef PSYCHCV_USE_OPENCV
 
 /* PsychCV('OpenEyesInitialize') - Initialize a new tracking session with OpenEyes:
  */

@@ -29,6 +29,8 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
+#ifdef PSYCHCV_USE_OPENCV
+
 #include <math.h>
 #include <stdlib.h>
 #include "svd.h"
@@ -320,4 +322,4 @@ void svd(int m, int n, double **a, double **p, double *d, double **q)
 
 }
 
-
+#endif

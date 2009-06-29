@@ -24145,7 +24145,6 @@
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
 				);
-				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
@@ -24159,17 +24158,12 @@
 				MATLAB_DIR_NAME = MATLAB73;
 				OPENCV_INCLUDEPATH = /usr/local/include/opencv;
 				OPENCV_LIBRARYPATH = /usr/local/lib/;
+				OPENCV_LINKERFLAGS = "-lpng12 -ltiff -lcxcore -lhighgui -lcv -lcvaux ";
 				OTHER_CFLAGS = (
 					"-fexceptions",
 					"-no-cpp-precomp",
 				);
 				OTHER_LDFLAGS = (
-					"-lpng12",
-					"-ltiff",
-					"-lcxcore",
-					"-lhighgui",
-					"-lcv",
-					"-lcvaux",
 					"-Wl,-flat_namespace",
 					"-undefined",
 					suppress,
@@ -24182,6 +24176,7 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = PsychCV;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};

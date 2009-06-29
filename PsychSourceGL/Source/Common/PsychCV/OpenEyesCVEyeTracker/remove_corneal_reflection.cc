@@ -27,6 +27,7 @@
  *
  */
 
+#ifdef PSYCHCV_USE_OPENCV
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -230,4 +231,4 @@ int array_len)
   free(perimeter_pixel);
 }
 
-
+#endif

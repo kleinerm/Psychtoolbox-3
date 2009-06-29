@@ -45,7 +45,7 @@ PsychError PsychModuleInit(void)
 	
 	// Register synopsis and named subfunctions.
 	PsychErrorExit(PsychRegister("Verbosity", &PSYCHCVVerbosity));
-	#if PSYCH_SYSTEM == PSYCH_OSX
+	#ifdef PSYCHCV_USE_OPENCV
 	PsychErrorExit(PsychRegister("OpenEyesInitialize", &PSYCHCVOpenEyesInitialize));
 	PsychErrorExit(PsychRegister("OpenEyesShutdown", &PSYCHCVOpenEyesShutdown));
 	PsychErrorExit(PsychRegister("OpenEyesParameters", &PSYCHCVOpenEyesParameters));

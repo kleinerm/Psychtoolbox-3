@@ -27,6 +27,8 @@
  *
  */
 
+#ifdef PSYCHCV_USE_OPENCV
+
 // These two includes not strictly needed, as included later on,
 // but doppelt gemoppelt haelt besser ;-)
 #include <string.h>
@@ -1628,3 +1630,5 @@ void cvEyeTrackerSetOverrideReferencePoint(int rx, int ry)
 	
 	return;
 }
+
+#endif
