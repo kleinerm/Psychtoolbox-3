@@ -254,7 +254,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 		/* for every line up to the "Radeon" string */
 		if(fgets(line,sizeof(line),fp) == NULL) {  /* if end of file */
 			printf("PTB-INFO: No ATI Radeon hardware found in lspci output. Beamposition queries unsupported.\n");
-			close(fp);
+			fclose(fp);
 			return(FALSE);
 		}
 		
@@ -267,7 +267,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	while(1) { /* for every line up till memory statement */
 		if(fgets(line,sizeof(line),fp) == NULL || line[0] != '\t') {  /* if end of file */
 			printf("PTB-INFO: ATI Radeon control memory not found in lspci output. Beamposition queries unsupported.\n");
-			close(fp);
+			fclose(fp);
 			return(FALSE);
 		}
 		
@@ -279,7 +279,7 @@ psych_bool PsychScreenMapRadeonCntlMemory(void)
 	};
 	
 	// Close lspci output and comm-pipe:
-	close(fp);
+	fclose(fp);
 	
 	// Extract base address from config-line:
 	if(sscanf(line,"%*s%*s%x",&base) == 0) { /* third token as hex number */
@@ -571,7 +571,7 @@ void PsychReleaseScreen(int screenNumber)
     PsychUnlockScreenSettings(screenNumber);
 }
 
-psych_bool PsychIsScreenCaptured(screenNumber)
+psych_bool PsychIsScreenCaptured(int screenNumber)
 {
     return(PsychCheckScreenSettingsLock(screenNumber));
 }    

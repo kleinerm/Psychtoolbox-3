@@ -232,14 +232,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	// Alloc an accumulation buffer as well?
 	if (PsychPrefStateGet_3DGfx() & 2) {
 		// Yes: Alloc accum buffer, request 64 bpp, aka 16 bits integer per color component if possible:
-		attribs[attribcount++] = GLX_ACCUM_RED_SIZE;
-		attribs[attribcount++] = 16;
-		attribs[attribcount++] = GLX_ACCUM_GREEN_SIZE;
-		attribs[attribcount++] = 16;
-		attribs[attribcount++] = GLX_ACCUM_BLUE_SIZE;
-		attribs[attribcount++] = 16;
-		attribs[attribcount++] = GLX_ACCUM_ALPHA_SIZE;
-		attribs[attribcount++] = 16;
+		attrib[attribcount++] = GLX_ACCUM_RED_SIZE;
+		attrib[attribcount++] = 16;
+		attrib[attribcount++] = GLX_ACCUM_GREEN_SIZE;
+		attrib[attribcount++] = 16;
+		attrib[attribcount++] = GLX_ACCUM_BLUE_SIZE;
+		attrib[attribcount++] = 16;
+		attrib[attribcount++] = GLX_ACCUM_ALPHA_SIZE;
+		attrib[attribcount++] = 16;
 	}
   }
 
@@ -532,7 +532,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   XSync(dpy, 0);
 
   XDestroyWindow(windowRecord->targetSpecific.deviceContext, windowRecord->targetSpecific.windowHandle);
-  windowRecord->targetSpecific.windowHandle=NULL;
+  windowRecord->targetSpecific.windowHandle=0;
 
   // Wait for X-Server to settle...
   XSync(dpy, 0);
@@ -577,11 +577,12 @@ double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 	// Retrieve displayID, aka dpy for this screenid:
 	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenid);
 	scrnum = PsychGetXScreenIdForScreen(screenid);
-	
+
+	#ifdef GLX_OML_sync_control
 	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
 	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
 	// affordable graphics card that would support this extension, but who knows??
-	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML((Display*) displayID, (GLXDrawable) RootWindow(displayID, scrnum), (int64_t*) ust, (int64_t*) msc, (int64_t*) sbc))) {
+	if ((NULL != glXGetSyncValuesOML) && (glXGetSyncValuesOML((Display*) displayID, (GLXDrawable) RootWindow(displayID, scrnum), (int64_t*) &ust, (int64_t*) &msc, (int64_t*) &sbc))) {
 		*vblCount = msc;
 		if (PsychGetKernelTimebaseFrequencyHz() > 10000) {
 			// Convert ust into regular GetSecs timestamp:
@@ -593,23 +594,25 @@ double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 			return(-1);
 		}
 	}
+	#else
+	#warning GLX_OML_sync_control unsupported! Compile with -std=gnu99 to enable it!
+	#endif
+
+	// Do we have SGI video sync extensions?
+	if (NULL != glXGetVideoSyncSGI) {
+		// Retrieve absolute count of vbl's since startup:
+		glXGetVideoSyncSGI(&vsync_counter);
+		*vblCount = (psych_uint64) vsync_counter;
+		
+		// Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
+		// Not yet supported on Linux:
+		return(-1);
+	}
 	else {
-		// Do we have SGI video sync extensions?
-		if (NULL != glXGetVideoSyncSGI) {
-			// Retrieve absolute count of vbl's since startup:
-			glXGetVideoSyncSGI(&vsync_counter);
-			*vblCount = (psych_uint64) vsync_counter;
-			
-			// Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-			// Not yet supported on Linux:
-			return(-1);
-		}
-		else {
-			// Unsupported :(
-			*vblCount = 0;
-			return(-1);
-		}
-    }
+		// Unsupported :(
+		*vblCount = 0;
+		return(-1);
+	}
 }
 
 /*

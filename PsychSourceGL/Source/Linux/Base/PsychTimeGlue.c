@@ -389,7 +389,7 @@ int PsychDeleteThread(psych_thread* threadhandle)
 	// Join on the thread, wait for termination:
 	int rc = pthread_join(*threadhandle, NULL);
 	// Null out now invalid thread handle of dead thread:
-	*threadhandle = NULL;
+	*threadhandle = 0;
 	// Return return code of joined thread:
 	return(rc);
 }
