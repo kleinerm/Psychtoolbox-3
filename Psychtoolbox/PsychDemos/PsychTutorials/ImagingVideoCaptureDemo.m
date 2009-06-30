@@ -66,10 +66,11 @@ try
         Screen('FillRect', win, [0 255 0], [0 0 10 10]);
         if (tex>0)
             %rect = Screen('Rect', tex)
-            ftex = Screen('TransformTexture', tex, bluroperator, blurmaptex, ftex);
+            ftex = Screen('TransformTexture', tex, bluroperator, blurmaptex);
+            
             % Draw new texture from framegrabber.
             Screen('DrawTexture', win, ftex); %Screen('Rect', win));
-            
+            Screen('Close', ftex);
             % Show it.
             Screen('Flip', win);
         end;        

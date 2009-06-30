@@ -467,6 +467,18 @@ if doAccumulate
         % with proper multiSample anti-aliasing enabled:
         wint  = Screen('OpenOffscreenWindow', win, [0 0 0 255], [], [], [], multiSample);
         
+        % If wint is allocated with multiSample anti-aliasing, then we need
+        % to perform a manual multisample-resolve copy operation later down
+        % in the code. For this we need an additional 'winres' window which
+        % has the same format as wint, but is not multiSample'd:
+        if multiSample > 0
+            % Allocate multisample resolve target window winres:
+            winres  = Screen('OpenOffscreenWindow', win, [0 0 0 255]);
+        else
+            % No need for manual resolve, set winres == wint:
+            winres = wint;
+        end
+        
         % We create another offscreen window as 'accum'ulation buffer
         % work-alike, with a pixeldepths of 64 bits, ie., 16 bit floating
         % point resolution per color channel, so we have sufficient
@@ -530,10 +542,18 @@ if doAccumulate
             % New style: Same as above, but with drawtexture and
             % alpha-blending for accumulation-blur:
             Screen('EndOpenGL', wint);
+            
+            % If 'wint' is multiSample'd, we need to perform a manual
+            % multisample-resolve operation into winres by use of the
+            % 'CopyWindow' function:
+            if multiSample > 0
+                Screen('CopyWindow', wint, winres);
+            end
+
             if fc > 1
-                Screen('DrawTexture', accum, wint, [], [], [], 0, (1-blurf));
+                Screen('DrawTexture', accum, winres, [], [], [], 0, (1-blurf));
             else
-                Screen('DrawTexture', accum, wint, [], [], [], 0, 1);
+                Screen('DrawTexture', accum, winres, [], [], [], 0, 1);
             end
 
             % Copy current blurred accum-ulation buffer window back into

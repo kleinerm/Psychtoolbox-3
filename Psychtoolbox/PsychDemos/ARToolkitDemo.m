@@ -43,14 +43,22 @@ try
     PsychImaging('AddTask', 'AllViews', 'FlipHorizontal');
     win = PsychImaging('OpenWindow', screenid, 0, roi);
 
-    % Open videocapture device: For now we use engine 2, the ARVideo
-    % engine, to simplify compatibility issues...
     imgFormat = [];
-    engineId = 0;
+    if IsOSX
+        engineId = 0;
+    end
+    
+    if IsWin
+        engineId = 2;
+    end
+    
+    if IsLinux
+        engineId = 1;
+    end
     
     switch engineId
         case 2,
-            grabber = Screen('OpenVideoCapture', win, 0, [], 5, [], [], [], [], engineId);
+            grabber = Screen('OpenVideoCapture', win, 0, [], 4, [], [], [], [], engineId);
         case 0,
             devid = PsychGetCamIdForSpec('Eye');
             grabber = Screen('OpenVideoCapture', win, devid, [0 0 640 480], 4, [], [], [], [], engineId);
