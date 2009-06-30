@@ -82,7 +82,7 @@ else
 
     if what == 5
         % Build PsychCV.mex
-        mexoctave -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychCV.mex -DPTBMODULE_PsychCV -DTARGET_OS_WIN32 -ID:\install\QuickTimeSDK\CIncludes -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -I"C:\Program Files\Microsoft DirectX SDK\Include" -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
+        mexoctave -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychCV.mex -DPTBMODULE_PsychCV -DTARGET_OS_WIN32 -ID:\install\QuickTimeSDK\CIncludes -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ID:\MicrosoftDirectXSDK\Include -ICommon\Base -ICommon\PsychCV -IWindows\Base -I..\Cohorts\ARToolkit\include Windows\Base\*.c Common\Base\*.c Common\PsychCV\*.c kernel32.lib user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib winmm.lib delayimp.lib libARvideo.lib libARgsub.lib libARgsub_lite.lib libARgsubUtil.lib libARMulti.lib libAR.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\PsychCV.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
     end
 	
@@ -90,7 +90,14 @@ else
         % Build moglcore.mex
 		mexoctave -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\moglcore.mex -DTARGET_OS_WIN32 -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -IU:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychOpenGL\MOGL\source -DWINDOWS -DGLEW_STATIC windowhacks.c gl_auto.c gl_manual.c mogl_rebinder.c moglcore.c glew.c user32.lib gdi32.lib advapi32.lib glu32.lib opengl32.lib glut32.lib
         dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\moglcore.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
-	end
+    end
+    
+    if what == 7
+        % Build Eyelink.mex
+		mexoctave -v --output T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex -DTARGET_BUILD_WIN32R11 -LD:\SRResearch\EyeLink\libs -ID:\SRResearch\EyeLink\Includes\eyelink -I"C:\Programme\Microsoft Visual Studio 8\VC\Include" -ICommon\Base -ICommon\Eyelink -IWindows\Base Windows\Base\*.c Common\Base\*.c Common\Eyelink\*.c user32.lib gdi32.lib advapi32.lib winmm.lib eyelink_core.lib eyelink_w32_comp.lib eyelink_exptkit20.lib 
+        dos('copy T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Projects\Windows\build\Eyelink.mex T:\projects\OpenGLPsychtoolbox\trunk\Psychtoolbox\PsychBasic\Octave3WindowsFiles\');
+    end
+    
 end
 
 delete('T:\projects\OpenGLPsychtoolbox\trunk\PsychSourceGL\Source\Common\Base\PsychScriptingGlue.c');
