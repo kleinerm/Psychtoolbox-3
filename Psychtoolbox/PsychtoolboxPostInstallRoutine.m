@@ -472,13 +472,28 @@ if ~IsOctave
 end % if ~IsOctave
 
 % Some goodbye, copyright and getting started blurb...
-fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n');
+fprintf('\nDone with post-installation. Psychtoolbox is ready for use.\n\n\n');
+fprintf('GENERAL LICENSING CONDITIONS:\n');
+fprintf('-----------------------------\n\n');
+fprintf('Almost all of the material contained in the Psychtoolbox-3 distribution\n');
+fprintf('is free software. Most material is covered by the GNU General Public license (GPL).\n');
+fprintf('A few internal libraries and components are covered by other free software\n');
+fprintf('licenses which we understand to be compatible with the GPL v2, e.g., the GNU LGPL\n');
+fprintf('license, or the MIT license used by PortAudio, or they are in the public domain.\n\n');
+fprintf('3rd-party components which are freely redistributable due to the authors permissions,\n')
+fprintf('but are not neccessarily licensed as free software, can be found in the "PsychContributed"\n');
+fprintf('subfolder of the Psychtoolbox distribution, accompanied by their respective licenses.\n\n');
+fprintf('Unless otherwise noted for specific components, the GPL license applies:\n');
 fprintf('Psychtoolbox is free software; you can redistribute it and/or modify\n');
 fprintf('it under the terms of the GNU General Public License as published by\n');
 fprintf('the Free Software Foundation; either version 2 of the License, or\n');
 fprintf('(at your option) any later version. See the file ''License.txt'' in\n');
 fprintf('the Psychtoolbox root folder for exact licensing conditions.\n\n');
-
+fprintf('Your standard Psychtoolbox distribution comes without the source code for\n');
+fprintf('the binary plugins (the MEX files). If you want to access the corresponding\n');
+fprintf('source code, please type "help UseTheSource" for download instructions.\n\n');
+fprintf('BEGINNERS READ THIS:\n');
+fprintf('--------------------\n\n');
 fprintf('If you are new to the Psychtoolbox, you might try this: \nhelp Psychtoolbox\n\n');
 fprintf('Psychtoolbox website:\n');
 fprintf('web http://www.psychtoolbox.org -browser\n');

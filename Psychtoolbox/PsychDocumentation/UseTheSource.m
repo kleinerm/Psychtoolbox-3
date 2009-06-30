@@ -17,9 +17,15 @@
 %    PATH. On Windows, the svn client should be already in your
 %    %PATH%
 %
-% 3. The following command would download the full PTB distribution
-%    into the subdirectory /Users/kleinerm/MyPTB :
-%    svn checkout svn://svn.berlios.de/osxptb/trunk /Users/kleinerm/MyPTB/
+% 3. The following command would download the current development branch of
+%    the full PTB distribution into the subdirectory /Users/kleinerm/MyPTB :
+%
+%    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/trunk /Users/kleinerm/MyPTB/
+%
+%    This command would download the full 'beta' distribution,
+%    corresponding to official, tested, production releases:
+%
+%    svn checkout https://svn.berlios.de/svnroot/repos/osxptb/beta /Users/kleinerm/MyPTB/
 %
 %    Inside the /Users/kleinerm/MyPTB you would see the following
 %    subfolders:
@@ -33,11 +39,18 @@
 %
 %    The toolbox itself is split into multiple branches:
 %
-%    trunk  - The code that is currently under development.
-%    beta   - Source code corresponding to the 'beta' release, derived
-%             from 'trunk'.
-%    stable - Source code corresponding to the 'stable' release, derived
-%             from 'beta'.
+%    trunk  - The code that is currently under development. May or may not
+%             compile and work at any given point in time, may or may not
+%             be consistent. For developers and early testers only!
+%
+%    beta   - Source code corresponding to the current 'beta' release, derived
+%             from 'trunk'. This is what normal users should use, because
+%             it is somewhat tested.
+%
+%    If you type the command "PsychtoolboxVersion" in Matlab or Octave, it
+%    will tell you the flavor (trunk or beta) and SVN revision number of
+%    your currently installed PTB distribution. This allows you to locate
+%    the corresponding code in the SVN repository.
 %
 %    Be aware that you can only download code from the repository. If
 %    you want to participate in PTBs development you'll need write access
@@ -48,11 +61,22 @@
 %    You can also browse the source code and all development logs via a
 %    web interface: http://svn.berlios.de/wsvn/osxptb
 %
+%    For almost all source code, i.e., unless otherwise stated in the
+%    source files themselves, the GNU GPL license applies:
+%
 %    Psychtoolbox is free software; you can redistribute it and/or modify
 %    it under the terms of the GNU General Public License as published by
 %    the Free Software Foundation; either version 2 of the License, or
 %    (at your option) any later version. The file License.txt in the
 %    Psychtoolbox root folder contains the exact conditions for use,
-%    modification and redistribution.  
+%    modification and redistribution.
+%
+%    Components & Libraries which are not covered by the GPL, but other GPL
+%    compatible free software licenses will carry individual descriptions
+%    of their licenses inside the source files or in accompanying license
+%    files within the corresponding subfolders. Such libraries are usually
+%    contained in the PsychSourceGL/Cohorts/ subdirectory of the
+%    distribution.
 %
 %    Good luck and "Use the source" (Master Yoda).
+%

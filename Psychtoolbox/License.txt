@@ -1,3 +1,39 @@
+LICENSING CONDITIONS FOR THE PSYCHTOOLBOX-3 DISTRIBUTION:
+
+Psychtoolbox-3 is a combined distribution of many different materials, useful for
+performing cognitive science experiments with Matlab and GNU/Octave.
+
+All of the material in the distribution is free for you to use and freely
+redistributable by you. The majority of the material is also free software,
+licensed to you under the GNU General Public license (GPL), or a compatible
+free sofware license. Below you'll find the full official text of the GNU GPL
+license for your reference.
+
+For almost all source code, i.e., unless otherwise stated in the
+source files or other relevant prominent places themselves, the GNU GPL
+license applies.
+
+3rd party components which are not covered by the GPL, but by other GPL compatible
+free software licenses, will carry individual descriptions of their licenses
+inside the source files or in accompanying license files within the corresponding
+subfolders.
+
+As far as C and C++ source code is concerned, such libraries are usually contained
+in the PsychSourceGL/Cohorts/ subdirectory of the full source distribution. Type
+"help UseTheSource" in Matlab or Octave for instructions how to obtain the full
+distribution, as opposed to the runtime distribution (without source code)
+that you'd normally get from our installer.
+
+3rd party components with different licenses than the GPL within the regular
+runtime distribution (i.e., the "Psychtoolbox" folder), will be usually located within
+the "PsychContributed" subfolder of the main "Psychtoolbox" folder, accompanied
+with the relevant licenses.
+
+
+Following is the full text of the GPL v2 license:
+=================================================
+
+
 		    GNU GENERAL PUBLIC LICENSE
 		       Version 2, June 1991
 
