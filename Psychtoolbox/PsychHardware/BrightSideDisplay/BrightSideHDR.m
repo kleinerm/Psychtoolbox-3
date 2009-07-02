@@ -28,7 +28,18 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % Same as OpenWindow, but just init a dummy mode that operates on standard
 % displays without the Brightside-Libraries - useful for off-site testing.
 %
-% In 99% of all applications you won't ever need to use any of the commands
+%
+% [win, winRect] = BrightSideHDR('RawOpenWindow', screenid, ...);
+% Same as DummyOpenWindow, but just init a bare-minimum window on the HDR
+% display suitable for playback of previously computed raw framebuffer
+% images (see raw capture and replay support below). This will essentially
+% open a fullscreen window on the HDR display, with proper window settings
+% and identity gamma tables to make sure framebuffer content is passed
+% unaltered 1-to-1 to the display. The imaging pipeline is disabled, this
+% is a pure "fast replay" mode of content created in a previous session.
+%
+%
+% In most applications you won't ever need to use any of the commands
 % below, as PTB does all this stuff automatically behind the scenes...
 % Ignore them unless you know what you're doing.
 %
@@ -43,6 +54,52 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % BrightSideHDR('Debuglevel', level); -- Set level of verbosity for
 % debugging. The default is zero which means to be silent. A level of 1
 % produces some debug output.
+%
+%
+% SUPPORT FOR RAW HDR IMAGE CAPTURE AND REPLAY:
+%
+% [sourceWin, destWin] = BrightSideHDR('CreateSnapshotBufferPair');
+% - Create a pair of offscreen windows useable for "offline" HDR->BrightSide
+% conversion. Will create 'sourceWin' as a offscreen window with 32bpc
+% float RGBA format, 'destWin' as a offscreenwindow with 8 bpc RGBA format.
+% Both windows will have the size of the HDR displays framebuffer.
+%
+% You can draw into the 'sourceWin' just as you'd do to an onscreen window.
+% Then you can call BrightSideHDR('ConvertImageToSnapshotBuffer', destWin,
+% sourceWin); to convert the HDR image into a BrightSide formatted image in
+% 'destWin'. You can use 'destWin' or its content in the
+% BrightSideHDR('BlitRawFramebufferSnapshot') call for quick "replay" of
+% HDR content.
+%
+%
+% [rawImg] = BrightSideHDR('ConvertImageToSnapshotBuffer', destWin, sourceWin);
+% - Convert HDR image in offscreen window 'sourceWin' into a HDR
+% useable raw image in offscreen window 'destWin'. Optionally return a
+% Matlab uint8 RGB image matrix with the raw data as 1st return argument
+% rawImg.
+%
+% You could save 'rawImg' to disk and later load it and "replay" it on the
+% HDR display via calls to BrightSideHDR('BlitRawFramebufferSnapshot',
+% sourceWin);
+%
+%
+% rawSnapshotMatrix = BrightSideHDR('GetRawFramebufferSnapshot');
+% -Call immediately after Screen('Flip'). This will create a "screenshot" of the
+% framebuffer for the currently displaying HDR image and return a Matlab
+% matrix with proper raw framebuffer data, formatted for the HDR display.
+% Can be used to Screen('MakeTexture') a texture that you can blit into the
+% framebuffer via BrightSideHDR('BlitRawFramebufferSnapshot') without need
+% for expensive conversion at runtime.
+%
+% 
+% BrightSideHDR('BlitRawFramebufferSnapshot', sourceWin); Blit the given
+% RGB8 or RGBA8 texture or offscreen window into the framebuffer of HDR
+% display, so it gets displayed at the next invocation of Screen('Flip').
+% The 'sourceWin' must be a texture or offscreen window whose image content
+% was previously created by one of the raw snapshotting functions above,
+% ie., it must be already encoded in the special data format for BrightSide
+% displays.
+%
 %
 % Callbacks: Usually called automatically by Screen(), no need to use them
 % in your script directly! Some of them may disappear in the future,
@@ -68,16 +125,19 @@ function [win, winRect] = BrightSideHDR(cmd, arg, dummy, varargin)
 % implementation of the floating point imaging pipeline. (MK)
 % 07/05/2007 Bugfixes to rewrite. Improvements. Now its really ready for
 % use with the new imaging pipeline. (MK)
+% 07/01/2009 Add functions for capturing and replaying HDR framebuffers. (MK)
 
 global GL;
 persistent windowPtr;
 persistent winwidth;
 persistent winheight;
 persistent hdrtexid;
+persistent fboid;
 persistent online;
 persistent dummymode;
 persistent debuglevel;
 persistent oldTextRenderer;
+persistent reassign;
 
 % Cold start: Setup our variables to safe defaults.
 if isempty(online)
@@ -85,6 +145,7 @@ if isempty(online)
     dummymode = 0;
     debuglevel = 0;
     hdrtexid = 0;
+    reassign = 1;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -92,7 +153,7 @@ if nargin < 1 || isempty(cmd)
 end
 
 % Command dispatcher:
-if strcmp(cmd, 'Debuglevel')
+if strcmpi(cmd, 'Debuglevel')
     if nargin < 1 || isempty(arg)
         error('BrightSideHDR: "Debuglevel" called without specifiying a new level.');
     end
@@ -107,7 +168,7 @@ if strcmp(cmd, 'Debuglevel')
     return;
 end
 
-if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'Initialize')
+if strcmpi(cmd, 'OpenWindow') || strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd, 'RawOpenWindow') || strcmpi(cmd, 'Initialize')
 
     % OpenGL mode of Psychtoolbox already initialized?
     if isempty(GL)
@@ -118,7 +179,7 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
     end
 
     % Open onscreen window as well or just perform initialization?
-    if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow')
+    if strcmpi(cmd, 'OpenWindow') || strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd, 'RawOpenWindow')
         % Execute the Screen('OpenWindow') command with proper flags, followed
         % by our own Initialization. Return values of 'OpenWindow'.
         % BrightSideHDR('OpenWindow', ...) is a drop-in replacement for
@@ -148,8 +209,8 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
         % Same for double-buffering:
         numbuffers = 2;
         
-        % stereomode we take...
-        if nargin >= 7
+        % stereomode we take, unless raw window requested:
+        if nargin >= 7 && ~strcmpi(cmd, 'RawOpenWindow')
             stereomode = varargin{4};
         else
             stereomode = [];
@@ -166,17 +227,26 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
             imagingmode = 0;
         end
         
-        % We need at least fast backing store and support for final output
-        % conversion:
-        imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
+        % On a raw "playback only" window, we disable the imaging pipeline
+        % to avoid interference:
+        if ~strcmpi(cmd, 'RawOpenWindow')
+            % Non-Raw: Need pipeline...
+            
+            % We need at least fast backing store and support for final output
+            % conversion:
+            imagingmode = mor(imagingmode, kPsychNeedFastBackingStore, kPsychNeedOutputConversion);
 
-        % We require 32 bit floating point framebuffers if user doesn't
-        % explicitely request the lower resolution, but higher speed 16 bit
-        % floating point framebuffers:
-        if bitand(imagingmode, kPsychNeed16BPCFloat) == 0
-            imagingmode = mor(imagingmode, kPsychNeed32BPCFloat);
+            % We require 32 bit floating point framebuffers if user doesn't
+            % explicitely request the lower resolution, but higher speed 16 bit
+            % floating point framebuffers:
+            if bitand(imagingmode, kPsychNeed16BPCFloat) == 0
+                imagingmode = mor(imagingmode, kPsychNeed32BPCFloat);
+            end
+        else
+            % Raw window: Force pipeline off:
+            imagingmode = 0;            
         end
-
+        
         % Open the window, pass all parameters (partially modified or
         % overriden), return Screen's return values:
         if nargin > 9
@@ -191,7 +261,7 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
         arg = win;
         
         % Operate in dummy mode or real mode?
-        if strcmp(cmd, 'DummyOpenWindow')
+        if strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd, 'RawOpenWindow')
             dummy = 1;
         else
             dummy = 0;
@@ -211,7 +281,7 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
         error('BrightSideHDR: "Initialize" called without valid HDR onscreen window handle.');
     end
 
-    if strcmp(cmd, 'Initialize') && (nargin < 3 || isempty(dummy))
+    if strcmpi(cmd, 'Initialize') && (nargin < 3 || isempty(dummy))
         dummymode = 0;
     else
         dummymode = dummy;
@@ -292,15 +362,24 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
     Screen('HookFunction', windowPtr, 'AppendMFunction', 'CloseOnscreenWindowPreGLShutdown', 'Shutdown BrightSide core before window close.', 'BrightSideHDR(''Shutdown'')');
     Screen('HookFunction', windowPtr, 'Enable', 'CloseOnscreenWindowPreGLShutdown');
 
-    % Disable color clamping in the GL pipeline. It's not useful for our
-    % purpose, unless we are in dummymode. Also set color scaling to 1.0,
-    % i.e. do not scale color values at all - Doesn't make much sense with
-    % the BrightSide HDR display.
-    Screen('ColorRange', windowPtr, 1, 0);
+    if ~strcmpi(cmd, 'RawOpenWindow')
+        % Disable color clamping in the GL pipeline. It's not useful for our
+        % purpose, unless we are in dummymode. Also set color scaling to 1.0,
+        % i.e. do not scale color values at all - Doesn't make much sense with
+        % the BrightSide HDR display.
+        Screen('ColorRange', windowPtr, 1, 0);
 
-    % Eat up all OpenGL errors caused by this:
-    while glGetError; end;
+        % Eat up all OpenGL errors caused by this:
+        while glGetError; end;
+    else
+        % A raw window for pure playback of previously "recorded" buffers
+        % still needs a linearized video output to work properly:
 
+        % Load the gfx-hardware gamma-tables / CLUT's with identity, so
+        % they can't mess with BrightSide encoded image data:
+        LoadIdentityClut(windowPtr);
+    end
+    
     % Use old display list text renderer - The new one is not HDR ready: It
     % has a restricted color value range 0.0-1.0 for text colors, which
     % will create way too dark text, and its internal use of alpha-blending
@@ -318,7 +397,7 @@ if strcmp(cmd, 'OpenWindow') || strcmp(cmd, 'DummyOpenWindow') || strcmp(cmd, 'I
     return;
 end
 
-if strcmp(cmd, 'Shutdown')
+if strcmpi(cmd, 'Shutdown')
     % Shutdown command:
 
     % Child protection:
@@ -341,15 +420,17 @@ if strcmp(cmd, 'Shutdown')
 
     % Reset to preinit state:
     hdrtexid = 0;
+    fboid = 0;
     windowPtr = 0;
     dummymode = 0;
+    reassign = 1;
 
     % Shutdown complete, we're offline:
     online = 0;    
     return;
 end
 
-if strcmp(cmd, 'BrightSideExecuteBlit')
+if strcmpi(cmd, 'BrightSideExecuteBlit')
     % Initiate float FBO -> Backbuffer data conversion to convert a HDR
     % float image into data format required by BrightSide HDR:
     if ~online
@@ -389,6 +470,245 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
         needhdrinit = 0;
     end
     
+    % Execute actual conversion op:
+    DoExecuteHDRBlit(dummymode, winwidth, winheight, needhdrinit, hdrtexid, fboid);
+    
+    % Ready:
+    return;
+end
+
+if strcmpi(cmd, 'CreateSnapshotBufferPair')
+    if ~online
+        error(sprintf('BrightSideHDR: "%s" command called, although display is offline.', cmd)); %#ok<SPERR>
+    end
+
+    % Create source offscreen window: Has 128 bpp or 32bpc float RGBA
+    % representation:
+    srcBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 128);
+
+    % Yes. Create a target RGBA8 offscreen window of sufficient size:
+    dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32);
+    
+    win = srcBuffer;
+    winRect = dstBuffer;
+    
+    return;
+end
+
+% Convert a HDR floating point image (inside a texture or offscreen window)
+% into an RGBA8 raw image buffer, suitable for directly driving the HDR display.
+if strcmpi(cmd, 'ConvertImageToSnapshotBuffer') || strcmpi(cmd, 'GetSnapshotBuffer')
+    if ~online
+        error(sprintf('BrightSideHDR: "%s" command called, although display is offline.', cmd)); %#ok<SPERR>
+    end
+
+    % Shall we create a suitable target RGBA8 buffer ourselves?
+    if strcmpi(cmd, 'GetSnapshotBuffer')
+        % Yes. Create a RGBA8 offscreen window of sufficient size:
+        dstBuffer = Screen('OpenOffscreenWindow', windowPtr, 0, [], 32);
+        
+        if exist('arg', 'var') && ~isempty(arg)
+            srcBuffer = arg;            
+        else
+            % No srcBuffer provided:
+            srcBuffer = [];
+        end
+
+        scmode = 1;
+        
+        % First return argument will be destination offscreen window handle:
+        win = dstBuffer;        
+    else
+        % No. Sanity check and then use the provided handle:
+        if ~exist('arg', 'var') || isempty(arg)
+            error(sprintf('BrightSideHDR:%s: Required destinationWindow handle missing!', cmd)); %#ok<SPERR>
+        end
+        
+        % Assign dstBuffer handle:
+        dstBuffer = arg;
+        
+        % Proper type of destination?
+        if Screen('WindowKind', dstBuffer) ~= -1
+            error(sprintf('BrightSideHDR:%s: Invalid destinationWindow handle passed. Not an offscreen window!', cmd)); %#ok<SPERR>
+        end
+
+        % Matching dimensions with display framebuffer?
+        [w, h] = Screen('WindowSize', dstBuffer);
+        if w~=winwidth || h~=winheight
+            error(sprintf('BrightSideHDR:%s: Size of destinationWindow %i x %i pixels doesn''t match size of display %i x %i pixels as required!', cmd, w, h, winwidth, winheight)); %#ok<SPERR>
+        end
+        
+        % Check format of destination window: Must be a 8bpc, RGBA8, 32
+        % bpp:
+        bpp = Screen('PixelSize', dstBuffer);
+        if  bpp ~= 32
+            error(sprintf('BrightSideHDR:%s: Pixelsize %i bpp of destinationWindow handle is not the required 32 bpp for a RGBA8 target!', cmd, bpp)); %#ok<SPERR>
+        end
+        
+        % Ok, checks passed. Check optional source argument:
+        if exist('dummy', 'var') && ~isempty(dummy)
+            % Assign it:
+            srcBuffer = dummy;  
+        else
+            % No srcBuffer provided:
+            srcBuffer = [];
+        end
+        scmode = 0; 
+    end
+    
+    % Extract srcTex texture handle for the RGBA floating point source
+    % texture for BrightSide conversion:
+    
+    % srcBuffer provided?
+    if isempty(srcBuffer)
+        % No source window provided: We default the srcTex texture id
+        % to the texture of our regular PTB imaging pipeline
+        % framebuffer:
+        srcTex = hdrtexid;
+        
+        % Make sure pending rendering operations are finished:
+        Screen('DrawingFinished', windowPtr, [], 1);
+    else
+        % Proper type of source?
+        if Screen('WindowKind', srcBuffer) ~= -1
+            error(sprintf('BrightSideHDR:%s: Invalid sourceWindow handle passed. Not an offscreen window or texture!', cmd)); %#ok<SPERR>
+        end
+
+        % Matching dimensions with display framebuffer?
+        [w, h] = Screen('WindowSize', srcBuffer);
+        if w~=winwidth || h~=winheight
+            error(sprintf('BrightSideHDR:%s: Size of sourceWindow %i x %i pixels doesn''t match size of display %i x %i pixels as required!', cmd, w, h, winwidth, winheight)); %#ok<SPERR>
+        end
+
+        % srcBuffer is eligible as source window for conversion.
+        % Extract its OpenGL texture id:
+        srcTex = Screen('GetOpenGLTexture', windowPtr, srcBuffer);
+        
+        % Make sure pending rendering operations are finished:
+        Screen('DrawingFinished', srcBuffer, [], 1); 
+    end
+
+    % Need to extract FBO id for dstBuffer of BrightSide conversion:
+    
+    % The call to 'GetWindowInfo' will as a side effect bind the FBO for dstBuffer:
+    Screen('GetWindowInfo', dstBuffer);
+
+    % Query it:
+    dstFBOid = double(glGetIntegerv(GL.FRAMEBUFFER_BINDING_EXT));
+    
+    % Disable shaders, if any active:
+    glUseProgram(0);
+        
+    if ~dummymode
+        % Ok, we have a valid source texture id and destination FBO id. Call
+        % BrightSideCore to setup the library for conversion between these buffers:
+        DoExecuteHDRBlit(0, winwidth, winheight, reassign, srcTex, dstFBOid);
+    else
+        % In dummymode, DoExecuteHDRBlit() is a no-op, so we need to
+        % replace it by a plain 1->1 blit:
+        Screen('CopyWindow', srcBuffer, dstBuffer);
+    end
+    % Switch library back to standard source and destination assignment:
+    if ~dummymode
+        % MK BUG: reassign should be 1 and the commented out command should be
+        % used: We should switch back and forth in the assignment of source
+        % textures and target fbos for the BrightSide library for optimal
+        % behaviour. However the library doesn't like multiple successive
+        % switches at all -- The whole beast fails if we try to do it.
+        % Therefore we perform this assignment only 1 time --> Doesn't
+        % allow us to switch between offline and online use!
+        % It is unclear if we encounter a bug in the BrightSide library,
+        % some Psychtoolbox bug, some coding bug here or a NVidia driver
+        % bug. We do know however that the BrightSide libs are often
+        % leaking OpenGl state and are pretty bad and faulty in managing state, so it
+        % might be a BrightSide bug...
+        reassign = 0;
+        %        BrightSideCore(3, hdrtexid, fboid);
+    end
+    
+    % Ok, now we should have our final BrightSide ready RGB8 framebuffer
+    % image in dstBuffer. Should we also return a snapshot as Matlab RGB8
+    % matrix in uint8 format, suitable for later texture creation?
+    if (scmode && nargout > 1) || (~scmode && nargout > 0)
+        % Yes. Get "screenshot"
+        outImg = Screen('GetImage', dstBuffer, [], [], 0, 3);
+        
+        % Assign to proper return argument:
+        if scmode
+            winRect = outImg;
+        else
+            win = outImg;
+        end
+    end
+
+    % Done.
+    return;
+end
+
+if strcmpi(cmd, 'GetRawFramebufferSnapshot')
+    if ~online
+        error(sprintf('BrightSideHDR: "%s" command called, although display is offline.', cmd)); %#ok<SPERR>
+    end
+    
+    % Retrieve RGB8 uint8 snapshot image matrix of the system frontbuffer
+    % suitable for creating a raw RGB8 texture for driving the BrightSide
+    % display without imaging pipeline, kind'a raw playback:
+    win = Screen('GetImage', windowPtr, [], 'frontBuffer', 0, 3);
+    
+    % Done.
+    return;
+end
+
+if strcmpi(cmd, 'BlitRawFramebufferSnapshot')
+    if ~online
+        error(sprintf('BrightSideHDR: "%s" command called, although display is offline.', cmd)); %#ok<SPERR>
+    end
+
+    if ~exist('arg', 'var') || isempty(arg)
+        error(sprintf('BrightSideHDR:%s: Mandatory srcWindow handle argument missing!', cmd)); %#ok<SPERR>
+    end
+    
+    srcBuffer = arg;
+    
+    % Proper type of source?
+    if Screen('WindowKind', srcBuffer) ~= -1
+        error(sprintf('BrightSideHDR:%s: Invalid sourceWindow handle passed. Not an offscreen window or texture!', cmd)); %#ok<SPERR>
+    end
+
+    % Matching dimensions with display framebuffer?
+    [w, h] = Screen('WindowSize', srcBuffer);
+    if w~=winwidth || h~=winheight
+        error(sprintf('BrightSideHDR:%s: Size of sourceWindow %i x %i pixels doesn''t match size of display %i x %i pixels as required!', cmd, w, h, winwidth, winheight)); %#ok<SPERR>
+    end
+    
+    % Make sure that at least the final output formatter is off:
+    Screen('HookFunction', windowPtr, 'Disable', 'FinalOutputFormattingBlit');
+    
+    % Perform blit: We use CopyWindow to get an identity blit, possibly
+    % accelerated via FBO blit extensions on modern hardware:
+    Screen('CopyWindow', srcBuffer, windowPtr);
+    %    Screen('DrawTexture', windowPtr, srcBuffer, [], [], [], 0);
+    
+    % We enforce finalization of preflip operations:
+    Screen('DrawingFinished', windowPtr, [], 1);
+        
+    % Reenable output formatter if it was active before:
+    if Screen('HookFunction', windowPtr, 'Query', 'FinalOutputFormattingBlit', 0) ~= -1
+        Screen('HookFunction', windowPtr, 'Enable', 'FinalOutputFormattingBlit');
+    end
+
+    % Done.
+    return;
+end
+
+% Unknown command.
+error('BrightSideHDR: Unknown subcommand specified! Type ''help BrightSideHDR'' for usage info.');
+end
+
+% Helper routine: Performs actual library calls to perform HDR -> RGBA8 conversion:
+function DoExecuteHDRBlit(dummymode, winwidth, winheight, needhdrinit, mhdrtexid, mfboid)
+global GL;
+
     if ~dummymode
         % Setup special projection matrices for the BrightSide core lib:
         glMatrixMode(GL.PROJECTION);
@@ -435,7 +755,7 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
             % source color texture, which is only reliably available at first
             % invocation of this subroutine. Same for 'fboid' (although
             % this will be zero in 99.99% of all PTB applications ;-) )
-            BrightSideCore(3, hdrtexid, fboid);
+            BrightSideCore(3, mhdrtexid, mfboid);
         end
         
         % Perform actual conversion-blit:
@@ -451,9 +771,5 @@ if strcmp(cmd, 'BrightSideExecuteBlit')
         glPopMatrix;
     end
     
-    % Ready:
     return;
 end
-
-% Unknown command.
-error('BrightSideHDR: Unknown subcommand specified! Type ''help BrightSideHDR'' for usage info.');
