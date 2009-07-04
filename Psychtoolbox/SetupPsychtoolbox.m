@@ -125,7 +125,7 @@ while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     else
         for p=paths
             s=char(p);
-            if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+            if any(regexp(s,[filesep 'Psychtoolbox']))
                 fprintf('%s\n',s);
             end
         end
@@ -138,7 +138,7 @@ while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     end
     for p=paths
         s=char(p);
-        if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+        if any(regexp(s,[filesep 'Psychtoolbox']))
             % fprintf('rmpath(''%s'')\n',s);
             rmpath(s);
         end

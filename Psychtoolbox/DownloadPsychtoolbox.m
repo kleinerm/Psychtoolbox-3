@@ -341,6 +341,7 @@ end
 
 switch (flavor)
     % 'current' is a synonym for 'beta'.
+    case 'beta'
     case 'current'
         flavor = 'beta';
     case 'stable'
