@@ -616,31 +616,18 @@ if strcmpi(cmd, 'SetLookupTable')
     % Convert 'clut' to single(), so it is a float format for OpenGL:
     clut = single(clut);
     
-    % Try to encode in highest precision format that the hardware can still
-    % filter and process on the fast path:
+    % Try to encode in highest precision format that the hardware supports:
     winfo = Screen('GetWindowInfo', win);
-    if winfo.GLSupportsFilteringUpToBpc >= 32
+    if winfo.GLSupportsTexturesUpToBpc >= 32
         % Full 32 bits single precision float:
         internalFormat = GL.LUMINANCE_FLOAT32_APPLE;
         fprintf('PsychColorCorrection: Using a 32 bit float CLUT -> 23 bits effective linear output precision for color correction.\n');
     else
-        % No hardware accelerated float32 filtering:
-        if (winfo.GLSupportsTexturesUpToBpc >= 16) && ((winfo.BitsPerColorComponent > 8) || (max(max(clut)) > 255) || (min(min(clut)) < 0))
-            % We have a greater than 8 bit framebuffer and support for 16
-            % bpc float textures. Choose 16 bpc texture anyway to retain precision.
-            % We will end up with no linear interpolation or hw
-            % acceleration though...
+        % No float32 textures:
+        if (winfo.GLSupportsTexturesUpToBpc >= 16)
+            % Choose 16 bpc float textures:
             internalFormat = GL.LUMINANCE_FLOAT16_APPLE;
-
-            if winfo.GLSupportsFilteringUpToBpc >= 16
-                % 16 bits half precision float hw accelerated:
-                fprintf('PsychColorCorrection: Using a 16 bit float CLUT -> 11 bits effective linear output precision for color correction.\n');
-            else
-                % No hw acceleration - use anyway:
-                fprintf('PsychColorCorrection: Using a 16 bit float CLUT -> 11 bits effective linear output precision for color correction.\n');
-                fprintf('PsychColorCorrection: This format can''t be automatically linearly interpolated in hardware, so you may experience either\n');
-                fprintf('PsychColorCorrection: a loss in speed, or a loss in precision if your CLUT doesn''t contain enough slots to cover the input range.\n');
-            end
+            fprintf('PsychColorCorrection: Using a 16 bit float CLUT -> 10 bits effective linear output precision for color correction.\n');
         else
             % No support for > 8 bpc textures at all and/or no need for
             % more than 8 bpc precision or range. Choose 8 bpc texture:
@@ -653,7 +640,7 @@ if strcmpi(cmd, 'SetLookupTable')
                 % can use a float16 texture, even if no linear texture
                 % filtering is possible that way. Loss of accuracy is
                 % better than completely wrong results.
-                fprintf('\nWARNING!PsychColorCorrection: CLUT contains values greater than 255 or negative values which can''t be handled properly on your hardware!!\n');
+                fprintf('\nWARNING!PsychColorCorrection: CLUT contains values greater than 255 or negative values, which your hardware can''t handle!!\n');
                 fprintf('WARNING!PsychColorCorrection: This will likely cause remapping artifacts in color correction!!\n');
             end
             
@@ -668,11 +655,12 @@ if strcmpi(cmd, 'SetLookupTable')
     % Bind relevant texture object:
     glBindTexture(GL.TEXTURE_RECTANGLE_EXT, icmDataForHandle(win));
     
-    % Set filters properly: Want bilinear filtering for linear
-    % interpolation inbetween reference values of the clut if clut is of
-    % lower resolution than the output resolution of the display device:
-    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.LINEAR);
-    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.LINEAR);
+    % Set filters properly: Want nearest neighbour filtering, ie., no filtering
+    % at all. We'll do our own linear filtering in the ICM shader. This way
+    % we can provide accelerated linear interpolation on all GPU's with all
+    % texture formats, even if GPU's are old:
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MIN_FILTER, GL.NEAREST);
+    glTexParameteri(GL.TEXTURE_RECTANGLE_EXT, GL.TEXTURE_MAG_FILTER, GL.NEAREST);
 
     % Want clamp-to-edge behaviour to saturate at minimum and maximum
     % intensity value, and to make sure that a pure-luminance 1 row clut is

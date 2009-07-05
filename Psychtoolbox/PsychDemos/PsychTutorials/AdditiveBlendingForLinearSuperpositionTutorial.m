@@ -311,11 +311,11 @@ try
             case 3,
                 % A simple inverted one channel (luminance) map with only two slots
                 % for linearly interpolated values inbetween:
-                clut = 1 - (0:1)';
+                clut = 1 - (0:1)'
             case 4,
                 % Extreme amplification CLUT: Only meaningful on the
                 % BrightSide HDR:
-                clut = 3800 * (0:1)'
+                clut = 3800 * (0:1)';
             otherwise,
                 clut = colormap;
         end                
