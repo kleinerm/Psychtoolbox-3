@@ -137,6 +137,7 @@ persistent online;
 persistent dummymode;
 persistent debuglevel;
 persistent oldTextRenderer;
+persistent calledfromPsychImaging;
 persistent reassign;
 
 % Cold start: Setup our variables to safe defaults.
@@ -146,6 +147,7 @@ if isempty(online)
     debuglevel = 0;
     hdrtexid = 0;
     reassign = 1;
+    calledfromPsychImaging = 0;
 end
 
 if nargin < 1 || isempty(cmd)
@@ -165,6 +167,16 @@ if strcmpi(cmd, 'Debuglevel')
         BrightSideCore(-1, debuglevel);
     end
     
+    return;
+end
+
+if strcmpi(cmd, 'CalledFromPsychImaging')
+    % Mark us as being called from PsychImaging:
+    if nargin < 1 || isempty(arg)
+        error('BrightSideHDR: "CalledFromPsychImaging" called without specifiying a new level.');
+    end
+    calledfromPsychImaging = arg;
+
     return;
 end
 
@@ -387,10 +399,22 @@ if strcmpi(cmd, 'OpenWindow') || strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd,
     % the old and trouble-free one:
     oldTextRenderer = Screen('Preference', 'TextRenderer', 0);
     
-    % Set the background clear color via old fullscreen 'FillRect' trick,
-    % followed by a flip:
-    Screen('FillRect', windowPtr, clearcolor);
-    Screen('Flip', win);
+    % We must skip the following code if called from PsychImaging!
+    % Reason: PsychImaging will execute this call sequence internally, but
+    % after setup of its PsychColorCorrection - ie., in a different order.
+    % The first call to Screen('Flip') will determine which internal FBO is
+    % the correct source FBO for BrightSide libs, and PsychImaging may
+    % still change/add/swizzle the order of internal FBO's and imaging
+    % operations, so it would be too early for us to bind the final source
+    % FBO, iow. to do the first 'Flip'. If we 'flipped' here, the wrong FBO
+    % might be permanently bound, thereby preventing proper image
+    % processing sequence in PsychImaging code:
+    if ~calledfromPsychImaging
+        % Set the background clear color via old fullscreen 'FillRect' trick,
+        % followed by a flip:
+        Screen('FillRect', windowPtr, clearcolor);
+        Screen('Flip', win);
+    end
     
     % We are online:
     online = 1;
@@ -437,6 +461,12 @@ if strcmpi(cmd, 'BrightSideExecuteBlit')
         error('BrightSideHDR: "BrightSideExecuteBlit" command called, although display is offline.');
     end
 
+    % If we are still in the PsychImaging setup phase...
+    if calledfromPsychImaging
+        % Then turn this call into a no-op!
+        return;
+    end
+    
     % Disable shaders, if any active:
     glUseProgram(0);
 

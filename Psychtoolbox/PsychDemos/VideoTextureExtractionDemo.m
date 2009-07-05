@@ -411,6 +411,7 @@ end;
 Screen('Preference', 'SkipSyncTests', olsync);
 
 return
+end
 
 function MCalib = computeRigidXForm(MTarget, MHandle) 
     TTarget = MTarget(1:3, 4);

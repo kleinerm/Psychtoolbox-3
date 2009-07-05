@@ -590,6 +590,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % 18.5.2008 A few bug fixes and support for 'DisplayColorCorrection' setup
 %           code: Now a central solution that will work for all current and
 %           future output devices (hopefully). (MK).
+% 02.7.2009 Add CLUT configuration support for ICM color correction (MK).
 
 persistent configphase_active;
 persistent reqs;
@@ -842,10 +843,20 @@ if strcmp(cmd, 'OpenWindow')
             error('You specified multiple conflicting output display device drivers! This will not work.');
         end
 
-        if nargin > 10
-            [win, winRect] = BrightSideHDR('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        if IsWin
+            % On Windows, do the real thing:
+            myopenstring = 'OpenWindow';
         else
-            [win, winRect] = BrightSideHDR('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
+            % On other platforms no support for BrightSide HDR - use cheap
+            % emulation:
+            myopenstring = 'DummyOpenWindow';
+            warning('BrightSide HDR output device selected on a non MS-Windows platform! Unsupported! Will use dummy emulation mode instead!');
+        end
+        
+        if nargin > 10
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
+        else
+            [win, winRect] = BrightSideHDR(myopenstring, screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode);
         end        
     end
 
@@ -899,10 +910,6 @@ if strcmp(cmd, 'OpenWindow')
 
     if isempty(win)
         % Standard openwindow path:
-        if ~isempty(win)
-            error('You specified multiple conflicting output display device drivers! This will not work.');
-        end
-
         if nargin > 10
             [win, winRect] = Screen('OpenWindow', screenid, clearcolor, winRect, pixelSize, numbuffers, stereomode, multiSample, imagingMode, varargin{9:end});
         else
@@ -1236,6 +1243,10 @@ if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
     imagingMode = mor(imagingMode, kPsychNeedOutputConversion);
     % The BrightSide formatter is not icm aware - Incapable of internal color correction!
     ptb_outputformatter_icmAware = 0;
+    
+    % Tell BrightSide driver that it is called from us, so it can adapt to
+    % some specific boundary conditions caused by us:
+    BrightSideHDR('CalledFromPsychImaging', 1);
 end
 
 if ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++Output'))) || ~isempty(find(mystrcmp(reqs, 'EnableBits++Mono++OutputWithOverlay')))
@@ -1802,6 +1813,7 @@ end
 % conversion.
 icmshader = [];
 icmstring = [];
+icmconfig = [];
 icmformatting_downstream = 0;
 
 floc = find(mystrcmp(reqs, 'DisplayColorCorrection'));
@@ -1827,6 +1839,12 @@ if ~isempty(floc)
     
     if ~isempty(find(mystrcmp(reqs, 'EnableBrightSideHDROutput')))
         handlebrightside = 1;
+
+        % Device needs an identity clut in the GPU gamma tables:
+        needsIdentityCLUT = 1;
+
+        % Use unit color range, without clamping, but in high-precision mode:
+        needsUnitUnclampedColorRange = 1;
     end
         
     % Which channel?
@@ -1846,7 +1864,7 @@ if ~isempty(floc)
             
             % Load and build shader objects: icmshader is the compiled
             % color correction shader:
-            [icmshader icmstring] = PsychColorCorrection('GetCompiledShaders', win, 1);
+            [icmshader icmstring icmconfig] = PsychColorCorrection('GetCompiledShaders', win, 1);
 
             % Output formatter with built-in ICM capabilities selected? And
             % color correction for final formatting chain insted of
@@ -1905,7 +1923,7 @@ if ~isempty(floc)
                     % Need a bufferflip command:
                     Screen('HookFunction', win, 'AppendBuiltin', 'StereoLeftCompositingBlit', 'Builtin:FlipFBOs', '');
                 end
-                Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', icmstring, shader);
+                Screen('HookFunction', win, 'AppendShader', 'StereoLeftCompositingBlit', icmstring, shader, icmconfig);
                 Screen('HookFunction', win, 'Enable', 'StereoLeftCompositingBlit');
                 leftcount = leftcount + 1;
             end
@@ -1916,7 +1934,7 @@ if ~isempty(floc)
                     % Need a bufferflip command:
                     Screen('HookFunction', win, 'AppendBuiltin', 'StereoRightCompositingBlit', 'Builtin:FlipFBOs', '');
                 end
-                Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', icmstring, shader);
+                Screen('HookFunction', win, 'AppendShader', 'StereoRightCompositingBlit', icmstring, shader, icmconfig);
                 Screen('HookFunction', win, 'Enable', 'StereoRightCompositingBlit');
                 rightcount = rightcount + 1;
             end
@@ -1930,7 +1948,7 @@ if ~isempty(floc)
                             % Need a bufferflip command:
                             Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
                         end
-                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader);
+                        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', icmstring, shader, icmconfig);
                     else
                         % Special case: A BitsPlusPlus or BrightSideHDR output formatter has
                         % been attached at the end of queue already. We need
@@ -1952,15 +1970,26 @@ if ~isempty(floc)
                         % the last slot gets pushed back one element:
                         insertPos = insertPos - 1;
 
-                        % Need to prepend a bufferflip command in front of
-                        % bitsplusplus:
-                        insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
-                        Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
-
+                        % This insertPos >= 0 check makes sure we also work
+                        % in BrightSide HDR dummy emulation mode, where no
+                        % actual slot is attached:
+                        if insertPos >= 0
+                            % Need to prepend a bufferflip command in front of
+                            % bitsplusplus or brightside:
+                            insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
+                            Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                        else
+                            % No real output formatter due to emulation
+                            % mode (BrightSide on unsupported platforms).
+                            % Force insertPos to 0, so at least
+                            % colorcorrection applies:
+                            insertPos = 0;
+                        end
+                        
                         % Then need to prepend our shader in front of that
                         % FlipFBO's:
                         insertSlot = sprintf('InsertAt%iShader', insertPos);
-                        Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', icmstring, shader);
+                        Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', icmstring, shader, icmconfig);
 
                         % If we're not the first, we need to prepend a
                         % FlipFBO's for ourselves:
@@ -1968,6 +1997,13 @@ if ~isempty(floc)
                             % Need a bufferflip command:
                             insertSlot = sprintf('InsertAt%iBuiltin', insertPos);
                             Screen('HookFunction', win, insertSlot, 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
+                        end
+                        
+                        % BrightSide setup?
+                        if handlebrightside
+                            % Tell BrightSide driver that it is called from us, so it can adapt to
+                            % some specific boundary conditions caused by us:
+                            BrightSideHDR('CalledFromPsychImaging', 0);
                         end
                     end
 
@@ -2000,6 +2036,7 @@ if ptb_outputformatter_icmAware
         % operation of the output formatter doesn't fail:
         icmshader = LoadShaderFromFile('ICMPassThroughShader.frag.txt', [], 1);
         icmstring = '';
+        icmconfig = '';
     else
         % Nothing to do. Just perform some sanity check here to catch
         % possible future implementation bugs:
@@ -2075,12 +2112,12 @@ if ~isempty(floc)
         % Need a bufferflip command:
         Screen('HookFunction', win, 'AppendBuiltin', 'FinalOutputFormattingBlit', 'Builtin:FlipFBOs', '');
     end
-    pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+    pgconfig = sprintf('TEXTURERECT2D(1)=%i %s', pglutid, icmconfig);
     pgidstring = sprintf('Generic high precision luminance output formatting shader: %s', icmstring);
     Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', pgidstring, pgshader, pgconfig);
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
     outputcount = outputcount + 1;
-        
+    
     % Use unit color range, without clamping, but in high-precision mode:
     needsUnitUnclampedColorRange = 1;
 end
@@ -2159,7 +2196,7 @@ if ~isempty(floc)
         glUseProgram(0);
 
         pgidstring = sprintf('VideoSwitcher simple high precision luminance output formatting shader: %s', icmstring);
-        pgconfig = '';
+        pgconfig = icmconfig;
     else
         % LUT calibrated VideoSwitcher setup:
 
@@ -2197,7 +2234,7 @@ if ~isempty(floc)
         pglutid = PsychVideoSwitcher('GetLUTTexture', win, lut, btrr, pgshader);
                 
         pgidstring = sprintf('VideoSwitcher calibrated high precision luminance output formatting shader: %s', icmstring);
-        pgconfig = sprintf('TEXTURERECT2D(1)=%i', pglutid);
+        pgconfig = sprintf('TEXTURERECT2D(1)=%i %s', pglutid, icmconfig);        
     end
         
     if outputcount > 0

@@ -1,5 +1,5 @@
-function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay)
-% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'] [, overlay=1]);
+function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, colorclut)
+% AdditiveBlendingForLinearSuperpositionTutorial([outputdevice='None'] [, overlay=1] [ colorclut=0]);
 %
 % Illustrates use of floating point textures in combination with
 % source-weighted additive alpha blending to create linear superpositions
@@ -65,8 +65,22 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay)
 %
 % 'Color++' - User 14 bits per color component mode.
 %
+% 'BrightSide' - Enable drivers for BrightSide's HDR display. This only
+% works if you have a BrightSide HDR display + the proper driver libraries
+% installed on MS-Windows. On other operating systems it just uses a simple
+% dummy emulation of the display with less than spectacular results.
+%
 % 'DualPipeHDR' - Use experimental output to dual-pipeline HDR display
 % device.
+%
+%
+% The third optional parameter 'colorclut' if provided, will use color
+% lookup table based color correction / mapping, ie., mapping of luminance
+% values to RGB values in the framebuffer - or intensity values if
+% applicable. Any non-zero number will select a different CLUT. Look into
+% the code for description. This just to demonstrate that you can use CLUT
+% based color/intensity correction instead of simple power-law gamma
+% correction if you want.
 %
 %
 % Please note: Most of these modes only show expected results when the
@@ -117,6 +131,11 @@ end
 if nargin < 2 || isempty(overlay)
     overlay = 1;
 end
+
+if nargin < 3 || isempty(colorclut)
+    colorclut = 0;
+end
+
 
 try
 	% This script calls Psychtoolbox commands available only in OpenGL-based 
@@ -204,7 +223,11 @@ try
             % (see help for this file):
             PsychImaging('AddTask', 'General', 'EnableNative10BitFramebuffer');
             overlay = 0;
-
+        case {'BrightSide'}
+            % Enable drivers for BrightSide's HDR display:
+            PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
+            overlay = 0;
+            
         case {'None'}
             % No high precision output, just the plain 8 bit framebuffer,
             % but with software gamma correction:
@@ -236,14 +259,19 @@ try
     
     % Do not use gamma correction in calibrated video switcher mode or no
     % gamma mode -- wouldn't make sense in either of these:
-    if ~strcmp(outputdevice, 'VideoSwitcherCalibrated') && ~strcmp(outputdevice, 'NoneNoGamma')
-        % Choose method of color correction: 'SimpleGamma' is simple gamma
-        % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
-        PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
-        doTheGamma =1;
+    if ~strcmp(outputdevice, 'NoneNoGamma')
+        if ~colorclut
+            % Choose method of color correction: 'SimpleGamma' is simple gamma
+            % correction of monochrome stims via power-law, ie., Lout = Lin ^ gamma.
+            PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamma');
+            doTheGamma =1;
+        else
+            % Use CLUT based color correction:
+            PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'LookupTable');
+            doTheGamma =0;
+        end
     else
         doTheGamma = 0;
-        gamma = 1;
     end
     
     %PsychImaging('AddTask', 'General', 'InterleavedLineStereo', 0);
@@ -268,8 +296,33 @@ try
         % for some quite significant speedups in stimulus conversion:
         PsychVideoSwitcher('SetBackgroundLuminanceHint', w, 0.5);
     end
-    
-    %PsychColorCorrection('SetColorClampingRange', w, 0, 1);
+
+    % Assign a CLUT for color correction?
+    if colorclut
+        % Yes. 
+        switch colorclut
+            case 1,
+                % Create a standard colormap() 3 channel RGB CLUT for a nice effect:
+                clut = colormap;
+            case 2,
+                % A 1024 slots CLUT with inverted green channel:
+                clut = ((0:1/1023:1)' * ones(1, 3));
+                clut(:, 2) = 1 - clut(:, 2);
+            case 3,
+                % A simple inverted one channel (luminance) map with only two slots
+                % for linearly interpolated values inbetween:
+                clut = 1 - (0:1)';
+            case 4,
+                % Extreme amplification CLUT: Only meaningful on the
+                % BrightSide HDR:
+                clut = 3800 * (0:1)'
+            otherwise,
+                clut = colormap;
+        end                
+
+        % Assign the CLUT:
+        PsychColorCorrection('SetLookupTable', w, clut);
+    end
     
     if doTheGamma
         % We set initial encoding gamma to correct for a display with a
@@ -277,6 +330,8 @@ try
         % somewhere between 1.8 and 2.2:
         gamma = 1 / 2.0;
         PsychColorCorrection('SetEncodingGamma', w, gamma);
+    else
+        gamma = 1;
     end
     
     % From here on, all color values should be specified in the range 0.0

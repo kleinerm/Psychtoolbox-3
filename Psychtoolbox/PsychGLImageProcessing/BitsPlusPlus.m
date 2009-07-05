@@ -244,6 +244,7 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % xx.12.2007 Support for DIO T-Lock code generation (MK).
 % 17.04.2008 Add support for overlay windows in Mono++ mode, and for color
 %            correction/gamma correction via PsychColorCorrection (MK).
+%  4.07.2009 Add support for other color correction methods like CLUT (MK).
 
 global GL;
 
@@ -678,7 +679,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     % color-transformations immediately before Mono++ conversion. This
     % is mostly meant to implement gammacorrection, clamping or other
     % transformations needed for a well calibrated display:
-    [icmShaders, icmIdString] = PsychColorCorrection('GetCompiledShaders', win, debuglevel);
+    [icmShaders, icmIdString, icmConfig] = PsychColorCorrection('GetCompiledShaders', win, debuglevel);
     
     % Operate in Mono++ mode or Color++ mode?
     if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay')
@@ -740,6 +741,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % Mono++ data formatting shader: We append the shader because it
         % absolutely must be the last shader to execute in that chain!
         idString = sprintf('Mono++ output formatting shader for CRS Bits++ : %s', icmIdString);
+        pString  = [ pString ' ' icmConfig ];
         Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', idString, shader, pString);        
     else
         % Setup for Color++ mode:
@@ -757,7 +759,9 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % blit, to take the fact into account that the internal window
         % buffers only have half display width.
         idString = sprintf('Color++ output formatting shader for CRS Bits++ : %s', icmIdString);
-        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', idString, shader, 'Scaling:2.0:1.0');
+        pString  = 'Scaling:2.0:1.0';
+        pString  = [ pString ' ' icmConfig ];
+        Screen('HookFunction', win, 'AppendShader', 'FinalOutputFormattingBlit', idString, shader, pString);
     end
 
     % Setup shaders image source as the first texture unit, this is by
@@ -834,7 +838,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
-        warning(sprintf('\n\nBitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.')); %#ok<SPWRN>
+        warning(sprintf('\n\nBitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.')); %#ok<WNTAG,SPWRN>
     end
     
     % Set the background clear color via old fullscreen 'FillRect' trick,

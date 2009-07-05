@@ -1,0 +1,63 @@
+/* Shader for color correction of RGB and Luminance textures by CLUT lookup.
+ * Uses a RGB color lookup table, encoded in a texture, to independently
+ * lookup corresponding remapped output red, green or blue intensity values
+ * for given input red, green or blue intensity values in the input texture.
+ *
+ * This shader is used by PsychColorCorrection() in 'LookupTable' mode,
+ * as part of PTB's built-in stimulus color correction.
+ *
+ * (w)2009 by Mario Kleiner.
+*/
+
+#extension GL_ARB_texture_rectangle : enable
+
+uniform sampler2DRect   ICMCLUT;
+uniform float           ICMPrescale;
+uniform float           ICMMaxInputValue;
+
+/* Allowable range for output values: To be initialized by PsychColorCorrection() typically: */
+uniform vec2            ICMClampToColorRange;
+
+vec4 icmTransformColor(vec4 incolor)
+{
+    vec4 outcolor;
+
+    /* Return alpha component unmodified: */
+    outcolor.a = incolor.a;
+
+    /* Clamp input to valid 0-ICMMaxInputValue range: */
+    incolor.rgb = clamp(incolor.rgb, vec3(0.0), vec3(ICMMaxInputValue));
+
+    /* Remap them to index in resolution range: */
+    incolor.rgb = (incolor.rgb * ICMPrescale) + 0.5;
+
+    /* Lookup values for each channel in rows of texture: */
+    outcolor.r = texture2DRect(ICMCLUT, vec2(incolor.r, 0.5)).r;
+    outcolor.g = texture2DRect(ICMCLUT, vec2(incolor.g, 1.5)).r;
+    outcolor.b = texture2DRect(ICMCLUT, vec2(incolor.b, 2.5)).r;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor.rgb = clamp(outcolor.rgb, vec3(ICMClampToColorRange[0]), vec3(ICMClampToColorRange[1]));
+
+    return(outcolor);
+}
+
+
+float icmTransformColor1(float incolor)
+{
+    float outcolor;
+
+    /* Clamp input to valid 0-ICMMaxInputValue range: */
+    incolor = clamp(incolor, 0.0, ICMMaxInputValue);
+
+    /* Remap them to index in resolution range: */
+    incolor = (incolor * ICMPrescale) + 0.5;
+
+    /* Lookup values for each channel in rows of texture: */
+    outcolor = texture2DRect(ICMCLUT, vec2(incolor, 0.5)).r;
+
+    /* Clamp outcolor to range given by ICMClampToColorRange: */
+    outcolor = clamp(outcolor, ICMClampToColorRange[0], ICMClampToColorRange[1]);
+
+    return(outcolor);
+}
