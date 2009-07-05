@@ -157,8 +157,8 @@ PsychError SCREENSetOpenGLTexture(void)
 	glGetTexLevelParameteriv(target, 0, GL_TEXTURE_RED_SIZE, (GLint*) &d);
 	if (d <= 0) glGetTexLevelParameteriv(target, 0, GL_TEXTURE_LUMINANCE_SIZE, (GLint*) &d);
 	
-	if (d<=8) usefloatformat = 0;
-	if (d == 16) usefloatformat = 1;
+	if (d <  16) usefloatformat = 0;
+	if (d >= 16) usefloatformat = 1;
 	if (d >= 32) usefloatformat = 2;
 
 	// Assign bpc value:

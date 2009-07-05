@@ -313,7 +313,9 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	// Bits per color component value: Initialize to 8 bits per channel. This is true for all
 	// standard textures, offscreen- and onscreen windows. Only FBO backed drawables can start
 	// off with 16 bpc (float/fixed) or 32 bpc float, or get upgraded to such resolutions. Such
-	// upgrades always happen in a maketexture function or FBO creation function...
+	// upgrades always happen in a maketexture function or FBO creation function.
+	// This will be later replaced by true bitdepths for onscreen windows, e.g., to account for
+	// 10 bit native framebuffers on latest GPUs:
 	(*winRec)->bpc = 8;
 	
 	// Sync of doublebuffer-swaps to vertical retrace signal starts off as disabled:

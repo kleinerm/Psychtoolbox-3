@@ -453,15 +453,25 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 
 	// We need the real color depth (bits per color component) of the framebuffer attached
 	// to this onscreen window. We need it to setup color range correctly:
+	// Assign true bit depth bpc of framebuffer, unless we're using our own
+	// special native 10 bit framebuffer mode on OS/X and Linux via kernel driver.
+	// In that special case, the imaging pipeline will reassign a proper effective
+	// depths of 16 bpc or 32 bpc for the float FBO drawbuffer later on.
 	if (!((*windowRecord)->specialflags & kPsychNative10bpcFBActive)) {
-		// Let's assume the red bits value is representative for the green and blue channel as well:
-		glGetIntegerv(GL_RED_BITS, &bpc);
+		// Standard native framebuffer/backbuffer for this onscreen window bound.
+		// Effective bpc is that of the OpenGL context. Query and assign:
+		bpc = 8;
+        glGetIntegerv(GL_RED_BITS, &bpc);		
+		(*windowRecord)->bpc = bpc;
+		if ((PsychPrefStateGet_Verbosity() > 2) && (bpc > 8)) printf("PTB-INFO: Real (native, queried) color resolution of the GPU framebuffer is %i bits per RGB color component.\n", bpc);
 	}
 	else {
 		// Special 10 bpc framebuffer activated by our own method:
 		bpc = 10;
+		if (PsychPrefStateGet_Verbosity() > 2) printf("PTB-INFO: Real (kernel driver provided) color resolution of the GPU framebuffer is 10 bits per RGB color component.\n");
 	}
-	
+
+	// Compute colorRange for bit depths:
 	(*windowRecord)->colorRange = (double) ((1 << bpc) - 1);
 
     // Now we start to fill in the remaining windowRecord with settings:
@@ -586,7 +596,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 				// no beampos mechanism at all if driver not loaded:
 				PsychPrefStateSet_ConserveVRAM(PsychPrefStateGet_ConserveVRAM() | kPsychDontUseNativeBeamposQuery);
 				
-				if(PsychPrefStateGet_Verbosity()>1) {
+				if (((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW) && (PsychPrefStateGet_Verbosity()>1)) {
 					printf("\n\nPTB-INFO: This is Mac OS/X 10.5.%i on an Intel Mac with an ATI GPU in multi-display mode.\n", (int) osBugfix);
 					printf("PTB-INFO: Beamposition queries are broken on this configuration! Will disable them.\n");
 					printf("PTB-INFO: Our own beamposition mechanism will still work though if you have the PsychtoolboxKernelDriver loaded.\n");
@@ -596,7 +606,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 		}
 	}
 	
-    if(PsychPrefStateGet_Verbosity()>1){
+    if((PsychPrefStateGet_Verbosity() > 1) && ((*windowRecord)->windowIndex == PSYCH_FIRST_WINDOW)) {
 		multidisplay = (totaldisplaycount>1) ? true : false;    
 		if (multidisplay) {
 			printf("\n\nPTB-INFO: You are using a multi-display setup (%i active displays):\n", totaldisplaycount);
