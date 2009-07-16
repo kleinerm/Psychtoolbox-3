@@ -58,10 +58,10 @@ end
 lat =  reqlatency / 1000;
 
 % Try a sample rate of 48kHz. Should be supported by most hardware:
-freq = 48000;
+freq = 96000;
 
 % Wait for release of all keys on keyboard:
-while KbCheck; end;
+KbReleaseWait;
 
 % Perform low-level initialization of the sound driver:
 InitializePsychSound(1);
@@ -124,9 +124,10 @@ painputstart = PsychPortAudio('Start', painput, 0, 0, 1);
 % Wait for at least lat secs of sound data to become available: This
 % directly defines a lower bound on real feedback latency. Its also a weak
 % point, because waiting longer than 'lat' will increase output latency...
-availsecs = 0;
+s=PsychPortAudio('GetStatus', painput);
+availsecs = s.RecordedSecs;
 while availsecs < lat
-    WaitSecs(0.001);
+    WaitSecs(0.0001);
     s=PsychPortAudio('GetStatus', painput);
     availsecs = s.RecordedSecs;
 end
@@ -159,16 +160,16 @@ fprintf('Expected latency at least %f msecs.\n', expecteddelay);
 while ~KbCheck
     % Sleep about lat/2 secs to give the engines time to at least capture and
     % output lat/2 secs worth of sound ...
-    WaitSecs(lat/2);
+    WaitSecs(lat/5);
     
     % Get new captured sound data ...
-    [audiodata offset overrun]= PsychPortAudio('GetAudioData', painput);
+    [audiodata, offset, overrun] = PsychPortAudio('GetAudioData', painput);
     
     % ... and stream it into our output buffer:
     while size(audiodata, 2) > 0
         % Make sure to never push more data in the buffer than it can
         % actually hold, ie not more than half its maximum capacity:
-        fetch = min(size(audiodata, 2), freq * lat/2);
+        fetch = min(size(audiodata, 2), floor(freq * lat/2));
         % We feed data in chunks...
         pushdata = audiodata(:, 1:fetch);
         audiodata = audiodata(:, fetch+1:end);

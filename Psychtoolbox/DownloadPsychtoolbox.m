@@ -51,20 +51,16 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %
 %
 % The "targetRevision" argument is optional and should be normally omitted.
-% Normal behaviour is to upgrade your working copy to the latest revision.
+% Normal behaviour is to download the latest revision of Psychtoolbox.
 % If you provide a specific targetRevision, then this script will
-% *downgrade* your copy of Psychtoolbox to the specified revision.
+% install a copy of Psychtoolbox according to the specified revision.
 %
-% This is only useful if you experience problems after an update and want
+% This is only useful if you experience problems and want
 % to revert to an earlier known-to-be-good release.
 %
 % Revisions can be specified by a revision number, a specific date, or by
-% the special flag 'PREV' which will downgrade to the revision before the
-% most current one. By executing this script multiple times with the 'PREV'
-% specifier, you can incrementally downgrade until stuff works for you
-% again. In any case, please report such a regression to the Psychtoolbox
-% forum so we can fix problems as soon as possible.
-%
+% the special flag 'PREV' which will choose the revision before the
+% most current one.
 %
 %
 % INSTALLATION INSTRUCTIONS: The Wiki contains much more up to date
@@ -292,8 +288,8 @@ if isempty(targetdirectory)
         % We do not have a default path on Windows, so the user must provide it:
         fprintf('You did not provide the full path to the directory where Psychtoolbox should be\n');
         fprintf('installed. This is required for Microsoft Windows and Linux installation. Please enter a full\n');
-        fprintf('path as the second argument to this script, e.g. DownloadPsychtoolbox(''beta'',''C:\\Toolboxes\\'').\n');
-        error('For Windows, the call to %s must specify a full path for the location of installation.',mfilename);
+        fprintf('path as the first argument to this script, e.g. DownloadPsychtoolbox(''C:\\Toolboxes\\'').\n');
+        error('For Windows and Linux, the call to %s must specify a full path for the location of installation.',mfilename);
     end     
 end
 
@@ -377,7 +373,7 @@ switch (flavor)
         pause;
 end
 
-fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',flavor,targetdirectory);
+fprintf('DownloadPsychtoolbox(''%s'',''%s'')\n',targetdirectory, flavor);
 fprintf('Requested flavor is: %s\n',flavor);
 fprintf('Requested location for the Psychtoolbox folder is inside: %s\n',targetdirectory);
 fprintf('\n');
@@ -472,6 +468,7 @@ p='Psychtoolbox123test';
 if success
     rmdir(fullfile(targetdirectory,p));
 else
+	fprintf('Write permission test in folder %s failed.\n', targetdirectory);
     if strcmp(m,'Permission denied')
         if isOSX
             fprintf([
@@ -554,8 +551,18 @@ while (exist('Psychtoolbox','dir') | exist(fullfile(targetdirectory,'Psychtoolbo
     end
 end
 
+% Handle Windows ambiguity of \ symbol being the filesep'arator and a
+% parameter marker:
+if isWin
+    searchpattern = [filesep filesep 'Psychtoolbox[' filesep pathsep ']'];
+    searchpattern2 = [filesep filesep 'Psychtoolbox'];
+else
+    searchpattern  = [filesep 'Psychtoolbox[' filesep pathsep ']'];
+    searchpattern2 = [filesep 'Psychtoolbox'];
+end
+
 % Remove "Psychtoolbox" from path
-while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+while any(regexp(path,searchpattern))
     fprintf('Your old Psychtoolbox appears in the MATLAB path:\n');
     paths=regexp(path,['[^' pathsep ']*' pathsep],'match');
     fprintf('Your old Psychtoolbox appears %d times in the MATLAB path.\n',length(paths));
@@ -565,7 +572,7 @@ while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     else
         for p=paths
             s=char(p);
-            if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+            if any(regexp(s,searchpattern2))
                 fprintf('%s\n',s);
             end
         end
@@ -578,7 +585,7 @@ while any(regexp(path,[filesep 'Psychtoolbox[' filesep pathsep ']']))
     end
     for p=paths
         s=char(p);
-        if any(regexp(s,[filesep 'Psychtoolbox[' filesep pathsep ']']))
+        if any(regexp(s,searchpattern2))
             % fprintf('rmpath(''%s'')\n',s);
             rmpath(s);
         end

@@ -70,6 +70,14 @@ flattransparency=0;
 teximage = imread([ PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/snowy_rgb.png' ]);
 alpha    = imread([ PsychtoolboxRoot 'PsychDemos/OpenGL4MatlabDemos/snowy_a.png' ]);
 
+% Make sure our teximage is represented as a 3-layer RGB image, even if
+% delivered by imread() as a one layer luminance image: This is a lame way
+% of simplifying code later down the road...
+if size(teximage,3) == 1
+    teximage(:,:,2) = teximage(:,:,1);
+    teximage(:,:,3) = teximage(:,:,1);
+end
+
 % Add alpha channel as 4th layer to image:
 teximage(:,:,4)=alpha(:,:);
 

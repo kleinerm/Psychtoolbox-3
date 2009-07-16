@@ -399,6 +399,9 @@ if strcmpi(cmd, 'OpenWindow') || strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd,
     % the old and trouble-free one:
     oldTextRenderer = Screen('Preference', 'TextRenderer', 0);
     
+    % We are online:
+    online = 1;
+
     % We must skip the following code if called from PsychImaging!
     % Reason: PsychImaging will execute this call sequence internally, but
     % after setup of its PsychColorCorrection - ie., in a different order.
@@ -416,8 +419,6 @@ if strcmpi(cmd, 'OpenWindow') || strcmpi(cmd, 'DummyOpenWindow') || strcmpi(cmd,
         Screen('Flip', win);
     end
     
-    % We are online:
-    online = 1;
     return;
 end
 
@@ -716,8 +717,8 @@ if strcmpi(cmd, 'BlitRawFramebufferSnapshot')
     
     % Perform blit: We use CopyWindow to get an identity blit, possibly
     % accelerated via FBO blit extensions on modern hardware:
-    Screen('CopyWindow', srcBuffer, windowPtr);
-    %    Screen('DrawTexture', windowPtr, srcBuffer, [], [], [], 0);
+    %Screen('CopyWindow', srcBuffer, windowPtr);
+        Screen('DrawTexture', windowPtr, srcBuffer, [], [], [], 0);
     
     % We enforce finalization of preflip operations:
     Screen('DrawingFinished', windowPtr, [], 1);
