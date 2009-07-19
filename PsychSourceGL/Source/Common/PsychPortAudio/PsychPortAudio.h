@@ -82,6 +82,7 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void);
 PsychError PSYCHPORTAUDIOCreateBuffer(void); 
 // Delete dynamic audio buffer:
 PsychError PSYCHPORTAUDIODeleteBuffer(void); 
-
+// Change device opMode at runtime:
+PsychError PSYCHPORTAUDIOSetOpMode(void);
 //end include once
 #endif

@@ -1216,8 +1216,9 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "\n\nDevice setup and shutdown:\n";
 	synopsis[i++] = "pahandle = PsychPortAudio('Open' [, deviceid][, mode][, reqlatencyclass][, freq][, channels][, buffersize][, suggestedLatency][, selectchannels]);";
 	synopsis[i++] = "PsychPortAudio('Close' [, pahandle]);";
+	synopsis[i++] = "oldOpMode = PsychPortAudio('SetOpMode', pahandle [, opModeOverride]);";
 	synopsis[i++] = "oldbias = PsychPortAudio('LatencyBias', pahandle [,biasSecs]);";
-	synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+	synopsis[i++] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
 	synopsis[i++] =	"bufferhandle = PsychPortAudio('CreateBuffer' [, pahandle], bufferdata);";
 	synopsis[i++] =	"PsychPortAudio('DeleteBuffer'[, bufferhandle] [, waitmode]);";
 	synopsis[i++] =	"PsychPortAudio('RefillBuffer', pahandle [, bufferhandle=0], bufferdata [, startIndex=0]);";
@@ -1878,7 +1879,8 @@ PsychError PSYCHPORTAUDIOClose(void)
  */
 PsychError PSYCHPORTAUDIOFillAudioBuffer(void) 
 {
- 	static char useString[] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0);";
+ 	static char useString[] = "[underflow, nextSampleStartIndex, nextSampleETASecs] = PsychPortAudio('FillBuffer', pahandle, bufferdata [, streamingrefill=0][, startIndex=Append]);";
+	//							1		   2					 3												   1		 2			   3					4
 	static char synopsisString[] = 
 		"Fill audio data playback buffer of a PortAudio audio device. 'pahandle' is the handle of the device "
 		"whose buffer is to be filled. 'bufferdata' is usually a Matlab double matrix with audio data in double format. Each "
@@ -1896,10 +1898,17 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		"This is useful for streaming playback or for creating live audio feedback loops. However, the current implementation "
 		"doesn't really append the audio data. Instead it replaces already played audio data with your new data. This means "
 		"that if you try to refill more than what has been actually played, this function will wait until enough storage space "
-		"is available. It will also fail if you try to refill more than the total buffer capacity. Default is to not do "
+		"is available. A 'streamingrefill' flag of 2 will always refill immediately, ie., without waiting for sufficient buffer "
+		"space to become available, even if this causes audible artifacts or some sound data to be overwritten. This is useful "
+		"for a few very special audio feedback tricks, only use if you really know what you're doing!\n"
+		"It will also fail if you try to refill more than the total buffer capacity. Default is to not do "
 		"streaming refills, i.e., the buffer is filled in one batch while playback is stopped. Such a refill will also "
 		"reset any playloop setting done via the 'SetLoop' subfunction to the full size of the refilled buffer.\n"
-		"Optionally the function returns the following values:\n"
+		"If the 'streamingrefill' flag is non-zero and the optional 'startIndex' argument is provided, then the refilling "
+		"of the buffer will happen at the provided linear sample index 'startIndex'. If the argument is omitted, new data "
+		"will be appended at the end of the current soundbuffers content. The 'startIndex' argument is ignored if no streaming "
+		"refill is requested.\n"
+		"\nOptionally the function returns the following values:\n"
 		"'underflow' A flag: If 1 then the audio buffer underflowed because you didn't refill it in time, ie., some audible "
 		"glitches were present in playback and your further playback timing is screwed.\n"
 		"'nextSampleStartIndex' This is the absolute index in samples since start of playback of the sample that would "
@@ -1924,12 +1933,14 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	int streamingrefill = 0;
 	int underrun = 0;
 	double currentTime, etaSecs;
+	int startIndex = 0;
+	double tBehind = 0.0;
 	
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(3));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(4));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(2)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(3));	 // The maximum number of outputs
 
@@ -2029,6 +2040,16 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 	else {
 		// Streaming refill while playback is running:
 
+		// Get optional startIndex for new writePosition, if any:
+		if (PsychCopyInIntegerArg(4, kPsychArgOptional, &startIndex)) {
+			// New writePosition provided:
+			if (startIndex < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'startIndex' provided. Must be greater or equal to zero.");
+			
+			// Set writePosition to given startIndex: We can do this without lock held, because writeposition is only
+			// touched by us, ie., the main thread, but never by one of the PortAudio threads:
+			audiodevices[pahandle].writeposition = (unsigned int) (inchannels * startIndex);
+		}
+		
 		// Engine stopped? [No need to mutex-lock, as engine can't change from state 0 to other state without our intervention]
 		if (audiodevices[pahandle].state == 0) PsychErrorExitMsg(PsychError_user, "Audiodevice not in playback mode! Can't do a streaming buffer refill while stopped.");
 
@@ -2043,18 +2064,27 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		PsychPALockDeviceMutex(&audiodevices[pahandle]);
 
 		// Check for buffer underrun:
-		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
+		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) {
+			underrun = 1;
+			tBehind = (double) audiodevices[pahandle].playposition - (double) audiodevices[pahandle].writeposition;
+		}
 
 		// Boundary conditions met. Can we refill immediately or do we need to wait for playback
-		// position to progress far enough?
-		while ((audiodevices[pahandle].state > 0) && ((audiodevices[pahandle].outputbuffersize / sizeof(float)) - (audiodevices[pahandle].writeposition - audiodevices[pahandle].playposition) - inchannels) <= (inchannels * insamples)) {
+		// position to progress far enough? We skip this test if the streamingrefill flag is > 1:
+		while ((streamingrefill < 2) && (audiodevices[pahandle].state > 0) && (!underrun) && (((audiodevices[pahandle].outputbuffersize / (int) sizeof(float)) - ((int) audiodevices[pahandle].writeposition - (int) audiodevices[pahandle].playposition) - (int) inchannels) <= (inchannels * insamples))) {
 			// Sleep a bit, drop the lock throughout sleep:
 			PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);
 			// TODO: We could do better here by predicting how long it will take at least until we're ready to refill,
 			// but a perfect solution would require quite a bit of effort... ...Something for a really boring afternoon.
 			PsychYieldIntervalSeconds(yieldInterval);
 			PsychPALockDeviceMutex(&audiodevices[pahandle]);
-		} 
+
+			// Recheck for buffer underrun:
+			if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) {
+				underrun = 1;
+				tBehind = (double) audiodevices[pahandle].playposition - (double) audiodevices[pahandle].writeposition;
+			}
+		}
 
 		// Exit with lock held...
 		
@@ -2102,12 +2132,18 @@ PsychError PSYCHPORTAUDIOFillAudioBuffer(void)
 		currentTime = audiodevices[pahandle].currentTime;
 		
 		// Check for buffer underrun:
-		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) underrun = 1;
+		if (audiodevices[pahandle].writeposition < audiodevices[pahandle].playposition) {
+			underrun = 1;
+			tBehind = (double) audiodevices[pahandle].playposition - (double) audiodevices[pahandle].writeposition;
+		}
 		
 		// Drop lock here, no longer needed:
 		PsychPAUnlockDeviceMutex(&audiodevices[pahandle]);			
 
-		if ((underrun > 0) && (verbosity > 1)) printf("PsychPortAudio-WARNING: Underrun of audio playback buffer detected during streaming refill. Some sound data will be skipped!\n");
+		if ((underrun > 0) && (verbosity > 1)) {
+			printf("PsychPortAudio-WARNING: Underrun of audio playback buffer detected during streaming refill at approximate play position %f secs [%f msecs behind]. Sound will be skipped, timing may be wrong and audible glitches may occur!\n",
+					((double) audiodevices[pahandle].playposition / ((double) audiodevices[pahandle].outchannels * (double) audiodevices[pahandle].streaminfo->sampleRate)) , tBehind / ((double) audiodevices[pahandle].outchannels * (double) audiodevices[pahandle].streaminfo->sampleRate) * 1000.0);
+		}
 	}
 
 	// Copy out underrun flag:
@@ -3459,8 +3495,13 @@ PsychError PSYCHPORTAUDIOLatencyBias(void)
 		"'pahandle'. The device must be open for this setting to take effect. It is reset to zero at "
 		"each reopening of the device. PsychPortAudio computes a latency value for the expected latency "
 		"of an audio output device to get its timing right. If this latency value is slightly off for "
-		"some reason, you can provide a bias value with this function to correct the computed value. "
-		"See the online help for PsychPortAudio for more in depth explanation of latencies. ";		
+		"some reason, you can provide a bias value with this function to correct the computed value.\n\n"
+		"Please note that this 'biasSecs' setting is applied to either audio playback or audio capture "
+		"if your device is configured in simplex mode, either for playback *or* capture. If your device "
+		"is opened in full-duplex mode for simultaneous capture and playback, then the bias value is only "
+		"applied to the playback timing and timestamps, but not to the capture timing and timestamps!\n\n"
+		"See the online help for PsychPortAudio for more in depth explanation of latencies. ";
+
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	
 	double bias= DBL_MAX;
@@ -4082,5 +4123,80 @@ PsychError PSYCHPORTAUDIOAddToSchedule(void)
 	// Return optional remaining number of free slots:
 	PsychCopyOutDoubleArg(2, kPsychArgOptional, (double) freeslots);
 	
+	return(PsychError_none);
+}
+
+/* PsychPortAudio('SetOpMode') - Change opmode of an already opened device.
+ */
+PsychError PSYCHPORTAUDIOSetOpMode(void) 
+{
+ 	static char useString[] = "oldOpMode = PsychPortAudio('SetOpMode', pahandle [, opModeOverride]);";
+	static char synopsisString[] = 
+		"Override basic mode of operation of an open audio device 'pahandle' and/or return old/current mode.\n"
+		"The device must be open for this setting to take effect and operations must be stopped. "
+		"If the device isn't stopped, it will be forcefully stopped. "
+		"The current/old opMode is returned in the optional return value 'oldOpMode'. "
+		"'opModeOverride' is the optional new opMode: At device open time, the initial opMode is assigned "
+		"via the 'mode' parameter of PsychPortAudio('Open', ...); and defaults to audio playback if omitted.\n\n"
+		"The mode can only be changed within certain constraints. It is not possible to switch a device "
+		"from playback to capture mode, or from simplex to full-duplex mode after it has been opened. It "
+		"is possible to change other special opMode flags though, e.g., one can enable/disable the live (software based) "
+		"low-latency monitoring mode of full-duplex devices by adding or not adding the value '4' to the opMode value.\n\n"
+		"The function will ignore settings that can't be changed while the device is open.\n";
+
+	static char seeAlsoString[] = "Start Stop RescheduleStart Open Close";
+	
+	// Mode bits defined in ignoreMask can not be changed/overriden by this function:
+	// Currently the untouchables are device playback/capture/full-/halfduplex configuration, as
+	// these require a full close/reopen cycle in PortAudio:
+	const int ignoreMask = (kPortAudioPlayBack | kPortAudioCapture | kPortAudioFullDuplex);
+	int opMode = -1;
+	int pahandle = -1;
+
+	// Setup online help: 
+	PsychPushHelp(useString, synopsisString, seeAlsoString);
+	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
+	
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
+	PsychErrorExit(PsychRequireNumInputArgs(1)); // The required number of inputs	
+	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
+
+	// Make sure PortAudio is online:
+	PsychPortAudioInitialize();
+
+	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
+	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
+
+	// Copy in optional opMode value:
+	PsychCopyInIntegerArg(2, kPsychArgOptional, &opMode);
+	
+	// Return current/old opMode:
+	PsychCopyOutDoubleArg(1, kPsychArgOptional, audiodevices[pahandle].opmode);
+
+	// Set new opMode, if one was provided:
+	if (opMode != -1) {
+		// Stop engine if it is running:
+		if (!Pa_IsStreamStopped(audiodevices[pahandle].stream)) Pa_StopStream(audiodevices[pahandle].stream);
+
+		// Reset state:
+		audiodevices[pahandle].state = 0;
+		audiodevices[pahandle].reqstate = 255;
+
+		if (opMode < 0) PsychErrorExitMsg(PsychError_user, "Invalid 'opModeOverride' provided. Check the 'mode' parameter in the help for PsychPortAudio('Open', ...)!");
+
+		// Make sure that number of capture and playback channels is the same and device is in full-duplex mode for fast monitoring/feedback mode:
+		if (opMode & kPortAudioMonitoring) {
+			if (((audiodevices[pahandle].opmode & kPortAudioFullDuplex) != kPortAudioFullDuplex) || (audiodevices[pahandle].outchannels != audiodevices[pahandle].inchannels)) {
+				PsychErrorExitMsg(PsychError_user, "Fast monitoring/feedback mode selected, but device is not in full-duplex mode or number of capture and playback channels differs! They must be the same for this mode!");
+			}
+		}
+
+		// Combine old current mode with override mode, mask out untouchable bits:
+		opMode = (audiodevices[pahandle].opmode & ignoreMask) | (opMode & (~ignoreMask));
+
+		// Assign new opMode:
+		audiodevices[pahandle].opmode = opMode;
+	}
+
 	return(PsychError_none);
 }

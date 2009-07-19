@@ -58,7 +58,7 @@ end
 lat =  reqlatency / 1000;
 
 % Try a sample rate of 48kHz. Should be supported by most hardware:
-freq = 96000;
+freq = 48000;
 
 % Wait for release of all keys on keyboard:
 KbReleaseWait;
