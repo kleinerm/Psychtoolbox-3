@@ -10,7 +10,7 @@
 %    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemo         - A variant of AlphaImageDemoOSX, demonstrates rotated drawing.
 %    ArcDemo                 - Demonstrate the 'FrameArc', 'FillArc' functions.
-%    BasicSoundFeedbackDemo  - Demonstrates a audio feedback loop via PsychPortAudio()
+%    BasicSoundFeedbackDemo  - Demonstrates a audio feedback loop via PsychPortAudio(). See DelayedSoundFeedbackDemo for a more research grade approach.
 %    BasicSoundInputDemo     - Demonstrate basic usage of PsychPortAudio() for sound capture.
 %    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() for sound playback.
 %    BasicSoundScheduleDemo  - Demonstrate basic usage of sound schedules and buffers with PsychPortAudio().
@@ -23,6 +23,7 @@
 %    ContrastModulatedNoiseTheElegantStyleDemo - Demonstrate creation of contrast modulated noise.
 %                                                Elegant and efficient, but needs recent hardware.
 %
+%    DelayedSoundFeedbackDemo - Demonstrates a audio feedback loop via PsychPortAudio() with exactly controlled latency.
 %    DotDemo                 - Animate dots with Screen('DrawDots).
 %    DKLDemo                 - Demonstrate DKL color space.
 %    DrawFormattedTextDemo   - Demonstrate formatted text drawing via DrawFormattedText()
