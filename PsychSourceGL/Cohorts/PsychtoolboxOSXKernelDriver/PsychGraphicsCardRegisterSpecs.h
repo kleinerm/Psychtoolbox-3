@@ -26,18 +26,37 @@
 #ifndef PSYCH_IS_INCLUDED_PsychGraphicsCardRegisterSpecs
 #define PSYCH_IS_INCLUDED_PsychGraphicsCardRegisterSpecs
 
+// PCI vendor ids:
+#define PCI_VENDOR_ID_NVIDIA	0x10de
+#define PCI_VENDOR_ID_AMD       0x1022
+#define PCI_VENDOR_ID_ATI       0x1002
+
 // The following register offsets and specs are taken from the official AMD/ATI
 // specs, downloadable from http://www.x.org/docs/AMD/ the website of the X-ORG
 // foundation, home of the open source Linux X11 server. These specs are official
 // specs from AMD/ATI, released in autumn 2007 to the open-source community.
-#define RADEON_D1CRTC_INTERRUPT_CONTROL	0x60DC
 
-#define RADEON_R500_GEN_INT_CNTL   0x100
-#define RADEON_R500_GEN_INT_STATUS 0x104
-//#define RADEON_R500_GEN_INT_CNTL   0x040
-//#define RADEON_R500_GEN_INT_STATUS 0x044
-//#define RADEON_R500_GEN_INT_CNTL   0x200
-//#define RADEON_R500_GEN_INT_STATUS 0x204
+// R500 master interrupt control and status registers:
+#define RADEON_R500_GEN_INT_CNTL   0x040
+#define RADEON_R500_GEN_INT_STATUS 0x044
+
+// Display controller interrupt occured? [Selection mask]:
+#define RADEON_R500_DISPLAY_INT_STATUS	(1 << 0)
+
+// Interrupt status register for reporting of display controller interrupts:
+#define RADEON_R500_DISP_INTERRUPT_STATUS 0x7edc
+
+// Interrupt mask for reporting display head 1 or 2 VBLANK interrupts:
+#define RADEON_R500_D1_VBLANK_INTERRUPT (1 << 4)
+#define RADEON_R500_D2_VBLANK_INTERRUPT (1 << 5)
+
+// Acknowledge target registers to acknowledge display controller interrupts for...
+// Display head 1
+#define RADEON_R500_D1MODE_VBLANK_STATUS 0x6534
+// Display head 2
+#define RADEON_R500_D2MODE_VBLANK_STATUS 0x6d34
+// Acknowledge bit for acknowledging display VBLANK interrupts:
+#define RADEON_R500_VBLANK_ACK     (1<<4)
 
 // The D1CRTC_STATUS_POSITION register (32 bits) encodes vertical beam position in
 // bits 0:12 (the least significant 13 bits), and horizontal beam position in

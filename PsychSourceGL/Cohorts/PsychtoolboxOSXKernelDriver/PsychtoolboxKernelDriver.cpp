@@ -59,6 +59,7 @@ OSDefineMetaClassAndStructors(PsychtoolboxKernelDriver, IOService)
 bool PsychtoolboxKernelDriver::start(IOService* provider)
 {
     bool					success;
+	UInt8					pciBARReg;
 	IOMemoryDescriptor *	mem;
     IOMemoryMap *			map;
     IOPhysicalAddress		candidate_phys_addr;
@@ -67,7 +68,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	const char*				providerName = NULL;
 	
 	// Say Hello ;-)
-    IOLog("%s::start() called from IOKit. Starting up and trying to attach to ATI Radeon gfx:\n", (getName()) ? getName() : "PTB-3");
+    IOLog("%s::start() called from IOKit. Starting up and trying to attach to GPU:\n", (getName()) ? getName() : "PTB-3");
 	
 	// Start our parent provider:
     success = super::start(provider);
@@ -106,6 +107,23 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 
 	// Ok, store internal reference to our provider:
     fPCIDevice = (IOPCIDevice *) provider;
+
+	// Read PCI configuration register 0, a 16 bit register with the
+	// Vendor ID. Match it against NVidia's id:
+	if (PCI_VENDOR_ID_NVIDIA == fPCIDevice->configRead16(0)) {
+		// Assume it is a NVIDIA GeForce GPU: BAR 0 is the MMIO registers:
+		pciBARReg = kIOPCIConfigBaseAddress0;
+		fDeviceType = kPsychGeForce;
+		IOLog("%s: This is a NVidia GPU, hopefully a compatible GeForce...\n", getName());
+	}
+	else {
+		// Assume it is a ATI Radeon GPU: BAR 2 is the MMIO registers:
+		pciBARReg = kIOPCIConfigBaseAddress2;
+		fDeviceType = kPsychRadeon;
+		IOLog("%s: This is a ATI/AMD GPU, hopefully a compatible Radeon...\n", getName());
+		if (PCI_VENDOR_ID_ATI == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have ATI's vendor id.\n", getName());
+		if (PCI_VENDOR_ID_AMD == fPCIDevice->configRead16(0)) IOLog("%s: Confirmed to have AMD's vendor id.\n", getName());
+	}
 
     /*
      * Enable memory response from the card
@@ -159,53 +177,58 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	
 */
 
-    /* print all the device's memory ranges */
-    for( UInt32 index = 0;
-         index < fPCIDevice->getDeviceMemoryCount();
-         index++ ) {
-
-        mem = fPCIDevice->getDeviceMemoryWithIndex( index );
-        assert( mem );
-        IOLog("%s: AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
-		
-		// Find the MMIO range of expected size around 0x10000: We find the one with size > 0x1000 and not bigger
-		// than 0x10000, ie. in the range 4 Kb < size < 64 Kb. This likely represents the register space.
-		
-		// Much bigger than 0x10000 would be either 3D engine command FIFO's or VRAM framebuffer. Much smaller
-		// would be the PCI config space registerset (or maybe VGA set?!?)
-		if (mem->getLength() >= 0x1000 && mem->getLength() <= 0x10000) {
-			// A possible candidate:
-			candidate_phys_addr = mem->getPhysicalAddress();
-			candidate_size = mem->getLength();
-			candidate_count++;
-			IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
+	// Perform complex probing and double-checking on Radeon GPU's:
+	if (fDeviceType == kPsychRadeon) {
+		/* print all the device's memory ranges */
+		for( UInt32 index = 0;
+			 index < fPCIDevice->getDeviceMemoryCount();
+			 index++ ) {
+			
+			mem = fPCIDevice->getDeviceMemoryWithIndex( index );
+			assert( mem );
+			IOLog("%s: PCI Range[%ld] %08lx:%08lx\n", getName(), index, mem->getPhysicalAddress(), mem->getLength());
+			
+			// Find the MMIO range of expected size around 0x10000: We find the one with size > 0x1000 and not bigger
+			// than 0x10000, ie. in the range 4 Kb < size < 64 Kb. This likely represents the register space.
+			
+			// Much bigger than 0x10000 would be either 3D engine command FIFO's or VRAM framebuffer. Much smaller
+			// would be the PCI config space registerset (or maybe VGA set?!?)
+			if (mem->getLength() >= 0x1000 && mem->getLength() <= 0x10000) {
+				// A possible candidate:
+				candidate_phys_addr = mem->getPhysicalAddress();
+				candidate_size = mem->getLength();
+				candidate_count++;
+				IOLog("%s: ==> AMD/ATI Radeon PCI Range[%ld] %08lx:%08lx is %ld. candidate for register block.\n", getName(), index, mem->getPhysicalAddress(), mem->getLength(), candidate_count);
+			}
 		}
-    }
-
-	/* More than one candidate found? */
-	if (candidate_count != 1) {
-		IOLog("%s: Found %i candidates for Radeon register block. Not equal one - Ambigous mapping! Not good...\n", getName(), candidate_count);		
-	}
-	
-    /* look up a range based on its config space base address register */
-    mem = fPCIDevice->getDeviceMemoryWithRegister(kIOPCIConfigBaseAddress2);
-    if( mem ) {
-		IOLog("%s: Range@0x%x %08lx:%08lx\n", getName(), kIOPCIConfigBaseAddress2, mem->getPhysicalAddress(), mem->getLength());
-	}
-	else {
-		IOLog("%s: Could not find MMIO mapping for config base address register 0x%x!\n", getName(), kIOPCIConfigBaseAddress2);
-	}
-	
-	/* Exactly one candidate found and mapping consistent with config register mapping? */
-	if (candidate_count != 1 || mem == NULL || candidate_phys_addr != mem->getPhysicalAddress() || candidate_size != mem->getLength()) {
-		IOLog("%s: Could not resolve relevant MMIO register block unambigously!! Will abort here - this is not a safe ground for proceeding.\n", getName());
-
-		// Detach our device handle, so our cleanup routine won't do anything later on:
-		fPCIDevice = NULL;
 		
-		// We will exit with "success", but the fPCIDevice == NULL signals failure whenever any
-		// of our methods gets called, so we are basically idle from now on...
-		return(success);
+		/* More than one candidate found? */
+		if (candidate_count != 1) {
+			IOLog("%s: Found %i candidates for Radeon register block. Not equal one - Ambigous mapping! Not good...\n", getName(), candidate_count);		
+		}
+		
+		/* look up a range based on its config space base address register */
+		mem = fPCIDevice->getDeviceMemoryWithRegister(pciBARReg);
+		if( mem ) {
+			IOLog("%s: Range@0x%x %08lx:%08lx\n", getName(), pciBARReg, mem->getPhysicalAddress(), mem->getLength());
+		}
+		else {
+			IOLog("%s: Could not find MMIO mapping for config base address register 0x%x!\n", getName(), pciBARReg);
+		}
+		
+		/* Exactly one candidate found and mapping consistent with config register mapping? */
+		if (candidate_count != 1 || mem == NULL || candidate_phys_addr != mem->getPhysicalAddress() || candidate_size != mem->getLength()) {
+			IOLog("%s: Could not resolve relevant MMIO register block unambigously!! Will abort here - this is not a safe ground for proceeding.\n", getName());
+			
+			// Detach our device handle, so our cleanup routine won't do anything later on:
+			fPCIDevice = NULL;
+			
+			// We will exit with "success", but the fPCIDevice == NULL signals failure whenever any
+			// of our methods gets called, so we are basically idle from now on...
+			return(success);
+		}
+
+		// End of Radeon specific probing.
 	}
 	
 	// Ok, we think we have a good candidate for the MMIO block in "mem". Let's try to map it
@@ -215,17 +238,16 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
      * this is how the driver gets access to its memory mapped registers
      * the getVirtualAddress() method returns a kernel virtual address
      * for the register mapping */
-    map = fPCIDevice->mapDeviceMemoryWithRegister( kIOPCIConfigBaseAddress2 );
+    map = fPCIDevice->mapDeviceMemoryWithRegister( pciBARReg );
     if( map ) {
-        IOLog("%s: Radeon MMIO register block Range@0x%x (%08lx) mapped to kernel virtual address %08x\n", getName(),
-                kIOPCIConfigBaseAddress2,
+        IOLog("%s: GPU MMIO register block Range@0x%x (%08lx) mapped to kernel virtual address %08x\n", getName(),
+                pciBARReg,
                 map->getPhysicalAddress(),
                 map->getVirtualAddress());
-
         /* Assign the map object, and the mapping itself to our private members: */
 		fRadeonMap = map;
 		fRadeonRegs = map->getVirtualAddress();
-		fRadeonSize = (UInt32) candidate_size;
+		fRadeonSize = (UInt32) map->getLength();
     }
 	else {
 		// Failed! Cleanup and exit:
@@ -242,11 +264,10 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	// Execute an I/O memory barrier, so order of execution and CPU <-> GPU sync is guaranteed:
 	OSSynchronizeIO();
 	
-	// Only enable this chunk of code for debugging! Attaching to Radeons IRQ 1 doesn't work :-(
-	// Well, detaching the Radeon driver from the IRQ and attaching ourselves does work, but somehow
-	// the ATI driver seems to notice this manipulation and permanently disable IRQ delivery, so
-	// we don't get to see any IRQs --> Useless for our purpose :-(
-	// N.B.: Detaching the Radeon driver seems to do "limited damage" to OS/X operation:
+	// The following code chunk if enabled, will detaching the Radeon driver IRQ handler and
+	// instead attach our own fastPathInterruptHandler() to IRQ 1 of Radeon GPU's.
+	//
+	// Detaching the Radeon driver seems to do "limited damage" to OS/X operation:
 	//
 	// 1. Our VBL userspace timestamping doesn't work anymore, because it relies on VBL timestamps from the driver
 	//    This gets detected, handled and reported by PTB's consistency checks -- So this is a good method of
@@ -260,7 +281,7 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 	//
 	//	  Of course, this behaviour may change on each different gfx-card and OS/X release, so it is
 	//    not desirable for production use -- Tradeoffs all over the place...
-	if (false) {
+	if (false && (fDeviceType == kPsychRadeon)) {
 		// Setup our own interrupt handler for gfx-card interrupts:
 		if (!InitializeInterruptHandler()) {
 			// Failed!
@@ -271,27 +292,13 @@ bool PsychtoolboxKernelDriver::start(IOService* provider)
 			IOLog("%s: Graphics card IRQ Snoop - interrupt handler installed. Cool :-)\n", getName());
 		}
 	}
-	else {
-		// Dump current IRQ status of GPU:
-//		IOLog("%s: In IRQ handler setup: Initial: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-//		IOLog("%s: In IRQ handler setup: Initial: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
-//		WriteRegister(RADEON_R500_GEN_INT_CNTL, 0);
-//		IOSleep(5);
-//		IOLog("%s: In IRQ handler setup: Now: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-//		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0);
-//		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
-//		WriteRegister(RADEON_D1CRTC_INTERRUPT_CONTROL, 0xffffffff);
-//		IOLog("%s: In IRQ handler setup: Now: Current crtc1 irqControl is %lx.\n", getName(), ReadRegister(RADEON_D1CRTC_INTERRUPT_CONTROL));
-	}
 
 	// We should be ready...
-	IOLog("%s: Psychtoolbox-3 kernel-level support driver for ATI Radeon gfx ready for use!\n", getName());
-	IOLog("%s: This driver is copyright 2008 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
+	IOLog("\n");
+	IOLog("%s: Psychtoolbox-3 kernel-level support driver for ATI Radeon and NVidia GeForce GPU's ready for use!\n", getName());
+	IOLog("%s: This driver is copyright 2008, 2009 Mario Kleiner and the Psychtoolbox-3 project developers.\n", getName());
 	IOLog("%s: The driver is licensed to you under GNU General Public License (GPL) Version 2 or later,\n", getName());
 	IOLog("%s: see the file License.txt in the Psychtoolbox root installation folder for details.\n", getName());
-	
-//	DumpGfxState();
-
 	
 	// If everything worked, we publish ourselves and our services:
     if (success) {
@@ -324,7 +331,8 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
 			myWorkLoop->removeEventSource(fInterruptSrc);
 			fInterruptSrc->release();
 			
-			IOLog("%s::stop(): Final interrupt count is %ld. ", getName(), fInterruptCounter);
+			IOLog("%s::stop(): Final total interrupt count is %ld.\n", getName(), fInterruptCounter);
+			IOLog("%s::stop(): Final VBL interrupt counts are Head[0] = %ld, Head[1] = %ld \n", getName(), fVBLCounter[0], fVBLCounter[1]);
 			fastPathInterruptHandler(NULL, NULL);
 
 			fInterruptSrc = NULL;
@@ -337,7 +345,7 @@ void PsychtoolboxKernelDriver::stop(IOService* provider)
 		
 		// Release memory mapping, if any:
 		if (fRadeonMap) {
-			IOLog("%s::stop(): Releasing MMIO memory mapped Radeon register block...\n", getName());
+			IOLog("%s::stop(): Releasing MMIO memory mapped GPU register block...\n", getName());
 			fRadeonMap->release();
 		}
 		
@@ -365,6 +373,7 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
         return false;
 	}
 
+	fDeviceType = kPsychUnknown;
 	fPCIDevice = NULL;
 	fRadeonMap = NULL;
 	fRadeonRegs = NULL;
@@ -372,6 +381,8 @@ bool PsychtoolboxKernelDriver::init(OSDictionary* dictionary)
 	fInterruptSrc = NULL;
 	fInterruptCookie = 0xdeadbeef;
 	fInterruptCounter = 0;
+	fVBLCounter[0] = 0;
+	fVBLCounter[1] = 0;
 
 	return true;
 }
@@ -544,13 +555,8 @@ bool PsychtoolboxKernelDriver::InitializeInterruptHandler(void)
 	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
 	IOLog("%s: In IRQ handler setup: After setup IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
 
-	// Acknowledge all pending IRQ's:
-	WriteRegister(RADEON_R500_GEN_INT_STATUS, ReadRegister(RADEON_R500_GEN_INT_STATUS));
-	IOLog("%s: In IRQ handler setup: After acknowledge IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
-	
-	WriteRegister(RADEON_R500_GEN_INT_CNTL, ReadRegister(RADEON_R500_GEN_INT_CNTL) | 0xffffffff);
-	IOLog("%s: In IRQ handler setup: After enable2 IRQ: Current hw irqControl is %lx.\n", getName(), ReadRegister(RADEON_R500_GEN_INT_CNTL));
-	IOLog("%s: In IRQ handler setup: After enable2 IRQ: Current hw irqStatus is  %lx.\n",	getName(), ReadRegister(RADEON_R500_GEN_INT_STATUS));
+	// Acknowledge all pending IRQ's via a special-call to our fastPathInterruptHandler:
+	fastPathInterruptHandler(NULL, (IOFilterInterruptEventSource*) 0x1);
 	
 	// Return success status:
 	return(true);
@@ -562,6 +568,7 @@ bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilt
 {
 	static UInt32 myCounter = 0;
 	static UInt32 irqStatus = 0xdeadbeef;
+	static UInt32 displayirqStatus = 0;
 	
 	// Special readout request from outside interrupt path?
 	if (myself == NULL && mySource == NULL) {
@@ -592,6 +599,32 @@ bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilt
 		irqStatus = 0;
 		irqStatus = ReadRegister(RADEON_R500_GEN_INT_STATUS);
 		
+		// We are specifically interested in display interrupts: Any such?
+		if (irqStatus & RADEON_R500_DISPLAY_INT_STATUS) {
+			// Display interrupt! Which one?
+			displayirqStatus = ReadRegister(RADEON_R500_DISP_INTERRUPT_STATUS);
+			
+			// Handle IRQ acknowledge and triggered actions per display pipe:
+			if (displayirqStatus & RADEON_R500_D1_VBLANK_INTERRUPT) {
+				// Display head 0 [Pipe 1]:
+				WriteRegister(RADEON_R500_D1MODE_VBLANK_STATUS, RADEON_R500_VBLANK_ACK);
+
+				// Perform whatever actions need to be performed:
+				handleVBLIRQ(0);
+			}
+
+			if (displayirqStatus & RADEON_R500_D2_VBLANK_INTERRUPT) {
+				// Display head 1 [Pipe 2]:
+				WriteRegister(RADEON_R500_D2MODE_VBLANK_STATUS, RADEON_R500_VBLANK_ACK);
+
+				// Perform whatever actions need to be performed:
+				handleVBLIRQ(1);
+			}
+		}
+		
+		// Acknowledge IRQs, if any:
+		if (irqStatus) WriteRegister(RADEON_R500_GEN_INT_STATUS, irqStatus);
+		
 		// Increment the gloabl fInterruptCounter which counts the graphics cards interrupts we're interested in:
 		fInterruptCounter++;
 	}
@@ -607,6 +640,15 @@ bool PsychtoolboxKernelDriver::fastPathInterruptHandler(OSObject* myself, IOFilt
 void PsychtoolboxKernelDriver::workLoopInterruptHandler(OSObject* myself, IOInterruptEventSource* mySource, int pendingIRQs)
 {
 	// Nothing to do yet: Just return.
+	return;
+}
+
+// Handle VBLANK IRQ's for display head 'headId':
+void PsychtoolboxKernelDriver::handleVBLIRQ(UInt32 headId)
+{
+	// Increment per-head counter:
+	fVBLCounter[headId]++;
+	
 	return;
 }
 

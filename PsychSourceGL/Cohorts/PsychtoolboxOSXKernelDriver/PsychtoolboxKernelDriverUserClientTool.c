@@ -31,6 +31,7 @@
 #define	IO_OBJECT_NULL	((io_object_t) 0)
 #endif
 
+void GeforceDither(int headId, int ditherOn);
 
 kern_return_t MyUserClientOpenExample(io_service_t service, io_connect_t *connect)
 {
@@ -252,11 +253,13 @@ unsigned int PsychOSKDWriteRegister(io_connect_t connect, unsigned int offset, u
 	return(0);
 }
 
+// Define globally for subroutines:
+io_connect_t	connect;
+
 int main(int argc, char* argv[])
 {
     kern_return_t	kernResult; 
     io_service_t	service;
-    io_connect_t	connect;
     io_iterator_t 	iterator;
     CFDictionaryRef	classToMatch;
     int				i,j;
@@ -301,41 +304,47 @@ int main(int argc, char* argv[])
 
 		if (connect != IO_OBJECT_NULL) {	
 
-			// Trigger display resync and print result:
-			// printf("Our Resync result is %i\n\n", PsychOSSynchronizeAllDisplayHeads(connect));
-			
-			// Test beamposition queries with 100 samples:
-			// for (i=0; i<100; i++) printf("Sample %i: Beampos: %i\n", i, PsychOSKDGetBeamposition(connect, 0));
-			
-			printf("D1: Primary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS));
-			printf("D1: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS));
-			printf("D1: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PITCH));
-			printf("D2: Primary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS));
-			printf("D2: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
-			printf("D2: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_PITCH));
-
-			while(1) {
-				if (PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS)!=i) {
-					i=PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS);
-					printf("D2: New Primary surface is %lx\n\n", i);
-					printf("D2: New Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
-				}
+			if (argc > 3 && atoi(argv[1]) == 1) {
+				// NVidia test:
+				GeforceDither(atoi(argv[2]), atoi(argv[3]));
 			}
-			
-			if (0) {
-				printf("D1: RADEON_D1GRPH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL));
-				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0x1 << 8);
-				printf("D1: RADEON_D1GRPH_LUT_SEL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_LUT_SEL));
+			else {
+				// Trigger display resync and print result:
+				// printf("Our Resync result is %i\n\n", PsychOSSynchronizeAllDisplayHeads(connect));
 				
-				printf("Switching to ARGB2101010...\n");
-				ov = PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL);
-				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ((0x1 << 8) | ov));
-				for(j=1; j<10; j++) for(i=1; i< 1000*1000*1000; i++);
-				printf("Switching back to ARGB8888...\n");
-				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ov);
-				PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0);
+				// Test beamposition queries with 100 samples:
+				// for (i=0; i<100; i++) printf("Sample %i: Beampos: %i\n", i, PsychOSKDGetBeamposition(connect, 0));
 				
-				printf("D1: RADEON_LVTMA_BIT_DEPTH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_LVTMA_BIT_DEPTH_CONTROL));
+				printf("D1: Primary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PRIMARY_SURFACE_ADDRESS));
+				printf("D1: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_SECONDARY_SURFACE_ADDRESS));
+				printf("D1: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_PITCH));
+				printf("D2: Primary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS));
+				printf("D2: Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
+				printf("D2: Pitch is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_PITCH));
+				
+				while(1) {
+					if (PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS)!=i) {
+						i=PsychOSKDReadRegister(connect, RADEON_D2GRPH_PRIMARY_SURFACE_ADDRESS);
+						printf("D2: New Primary surface is %lx\n\n", i);
+						printf("D2: New Secondary surface is %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D2GRPH_SECONDARY_SURFACE_ADDRESS));
+					}
+				}
+				
+				if (0) {
+					printf("D1: RADEON_D1GRPH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL));
+					PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0x1 << 8);
+					printf("D1: RADEON_D1GRPH_LUT_SEL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_D1GRPH_LUT_SEL));
+					
+					printf("Switching to ARGB2101010...\n");
+					ov = PsychOSKDReadRegister(connect, RADEON_D1GRPH_CONTROL);
+					PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ((0x1 << 8) | ov));
+					for(j=1; j<10; j++) for(i=1; i< 1000*1000*1000; i++);
+					printf("Switching back to ARGB8888...\n");
+					PsychOSKDWriteRegister(connect, RADEON_D1GRPH_CONTROL, ov);
+					PsychOSKDWriteRegister(connect, RADEON_D1GRPH_LUT_SEL, 0);
+					
+					printf("D1: RADEON_LVTMA_BIT_DEPTH_CONTROL %lx\n\n", PsychOSKDReadRegister(connect, RADEON_LVTMA_BIT_DEPTH_CONTROL));
+				}
 			}
 			
 			// Close the user client and tear down the connection.
@@ -344,4 +353,44 @@ int main(int argc, char* argv[])
 	}
 	
 	return 0;
+}
+
+void G80DispCommand(unsigned int addr, unsigned int data)
+{
+	int headId;
+	
+    PsychOSKDWriteRegister(connect, 0x00610304, data);
+    PsychOSKDWriteRegister(connect, 0x00610300, addr | 0x80010001);
+
+    while(PsychOSKDReadRegister(connect, 0x00610300) & 0x80000000) {
+        const int super = ffs((PsychOSKDReadRegister(connect, 0x00610024) >> 4) & 7);
+
+        if(super) {
+            if(super == 2) {
+				for (headId = 0; headId<2; headId++) {
+					const int headOff = 0x800 * headId;
+                    if ( (PsychOSKDReadRegister(connect, 0x00614200 + headOff) & 0xc0) == 0x80 ) {
+						printf("IN G80DispCommand: Would need to call G80CrtcSetPClk(%i); but not implemented! Prepare for trouble!!!\n", headId);
+                        // No way to implement this without pulling in lot's of code from XServer's NVidia driver: G80CrtcSetPClk(headId);
+					}
+                }
+            }
+
+            PsychOSKDWriteRegister(connect, 0x00610024, 8 << super);
+            PsychOSKDWriteRegister(connect, 0x00610030, 0x80000000);
+        }
+    }
+}
+
+// Test code for G70 dithering enable/disable hacks:
+void GeforceDither(int headId, int ditherOn)
+{
+	printf("GEFORCE DITHER TEST: Head[%i] = %i \n", headId, ditherOn);
+	const int headOff = 0x400 * headId;
+
+    G80DispCommand(0x000008A0 + headOff, (ditherOn) ? 0x11 : 0); // G80DispCommand
+// Do we need this?!? Sounds like potential troublemaker:   if(update) G80DispCommand(0x00000080, 0);
+
+	printf("GEFORCE DITHER TEST DONE - ANY CHANGE?\n");
+	return;
 }

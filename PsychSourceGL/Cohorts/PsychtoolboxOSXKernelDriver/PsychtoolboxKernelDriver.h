@@ -21,6 +21,11 @@
 #include <IOKit/IOInterruptEventSource.h>
 #include <IOKit/IOFilterInterruptEventSource.h>
 
+// Settings for member fDeviceType:
+#define kPsychUnknown 0
+#define kPsychGeForce 1
+#define kPsychRadeon  2
+
 struct PsychKDCommandStruct;
 
 class PsychtoolboxKernelDriver : public IOService
@@ -28,6 +33,7 @@ class PsychtoolboxKernelDriver : public IOService
     OSDeclareDefaultStructors(PsychtoolboxKernelDriver)
 	
 private:
+	UInt32							fDeviceType;
     IOPCIDevice *					fPCIDevice;
 	IOMemoryMap *					fRadeonMap;
 	IOVirtualAddress				fRadeonRegs;
@@ -36,7 +42,8 @@ private:
 	
 	UInt32							fInterruptCookie;
 	UInt32							fInterruptCounter;
-	
+	UInt32							fVBLCounter[2];
+
 	// Initialize our own interrupt handler for snooping on gfx-card state changes:
 	bool InitializeInterruptHandler(void);	
 
@@ -45,6 +52,9 @@ private:
 
 	// Slow-Path WorkLoop interrupt handler: Gets called if the fast-path handler returns "true".
 	void workLoopInterruptHandler(OSObject* myself, IOInterruptEventSource* mySource, int pendingIRQs);
+	
+	// Handle VBLANK IRQ's for display head 'headId':
+	void handleVBLIRQ(UInt32 headId);
 	
 	// Read 32 bit control register at 'offset':
 	UInt32	ReadRegister(UInt32 offset);
