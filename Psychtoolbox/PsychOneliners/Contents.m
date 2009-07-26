@@ -77,6 +77,7 @@
 %   ShrinkMatrix            - Shrinks a 2-D or 3-D matrix (an image) by a factor.
 %   SmartVec                - Creates a vector/sequence that satisfies certain conditions.
 %   SortCell                - Sorts cell matrices containing different data types in different columns.
+%   Speek                   - Use speech synthesis output to speak a given text. Mac OS/X only.
 %   Stopwatch               - Time intervals.
 %   streq                   - strcmp.
 %   StrPad                  - Makes a string a specified length, either by pre-padding it with a specified character or cutting from its beginning.

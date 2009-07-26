@@ -78,4 +78,4 @@ function PsychHID(varargin)
 % See also: PsychHIDTest, Daq, DaqTest, KbCheck, Gamepad, PsychHardware. 
 % web http://psychtoolbox.org/usb.html -browser;
 
-AssertMex;
+AssertMex('PsychHID.m');
