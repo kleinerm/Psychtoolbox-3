@@ -104,7 +104,7 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		// OS-X allows tables with other than 256 slots. It either passes them to hw if in native size, or performs
 		// software interpolation to convert it into native size:
 		if((inM != 256) && (inM != 512) && (inM != 1024) && (inM != 2048) && (inM != 4096) && (inM != 8192) && (inM != 16384) && (inM != 32768) && (inM != 65535)) {
-			PsychErrorExitMsg(PsychError_user, "The gamma table must have a number of rows equal to one of these: 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 or 65535.");
+//			PsychErrorExitMsg(PsychError_user, "The gamma table must have a number of rows equal to one of these: 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 or 65535.");
 		}
 	#else
 		// Windows requires 256 slots, i didn't check for Linux yet, but this is always safe, so...
