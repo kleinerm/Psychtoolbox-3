@@ -32,6 +32,7 @@ enum {
 	kPsychKDReadRegister,
 	KPsychKDWriteRegister,
 	kPsychKDDumpMiscInfo,
+	kPsychKDSetDitherMode,
 	kPsychKDMaxCommands
 };
 

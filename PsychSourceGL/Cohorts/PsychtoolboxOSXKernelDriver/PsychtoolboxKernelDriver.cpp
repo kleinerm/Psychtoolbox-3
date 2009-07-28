@@ -685,6 +685,65 @@ void PsychtoolboxKernelDriver::WriteRegister(UInt32 offset, UInt32 value)
 	return;
 }
 
+// This blob of code will disable the GPU's output dithering for
+// flat-panels reliably. It will also cause interference with the
+// OS/X graphics stack and GPU hangs pretty reliably on many operations
+// thereafter, e.g., cursor movements between dual-display screens, display
+// mode changes and redetections, gamma LUT updates etc... It kills all
+// functionality which accesses the same command FIFO that our blob uses...
+// -> Proof-of-concept, but pretty unuseable in production systems :-(
+void PsychtoolboxKernelDriver::G80DispCommand(UInt32 addr, UInt32 data)
+{
+	UInt32 headId, super, v;
+
+    WriteRegister(0x00610304, data);
+    WriteRegister(0x00610300, addr | 0x80010001);
+
+    while(ReadRegister(0x00610300) & 0x80000000) {
+        v = (ReadRegister(0x00610024) >> 4) & 7;
+		super = 0;
+		if (v > 0) {
+			while(true) {
+				super++;
+				if (v & 0x1) break;
+				v = v >> 1;
+			}
+		}
+
+        if(super) {
+            if(super == 2) {
+				for (headId = 0; headId<2; headId++) {
+					const int headOff = 0x800 * headId;
+                    if ( (ReadRegister(0x00614200 + headOff) & 0xc0) == 0x80 ) {
+						IOLog("%s: IN G80DispCommand: Would need to call G80CrtcSetPClk(%i); but not implemented! Prepare for trouble!!!\n", getName(), headId);
+                        // No way to implement this without pulling in lot's of code from XServer's NVidia driver: G80CrtcSetPClk(headId);
+					}
+                }
+            }
+			
+            WriteRegister(0x00610024, 8 << super);
+            WriteRegister(0x00610030, 0x80000000);
+        }
+    }
+}
+
+// Try to change hardware dither mode on GPU:
+void PsychtoolboxKernelDriver::SetDitherMode(UInt32 headId, UInt32 ditherOn)
+{
+	//	printf("GEFORCE DITHER TEST: Head[%i] = %i \n", headId, ditherOn);
+	UInt32 headOff = 0x400 * headId;
+
+    G80DispCommand(0x000008A0 + headOff, (ditherOn) ? 0x11 : 0); // G80DispCommand
+
+	// Do we need this?!? Sounds like potential troublemaker:
+	// Yes, we do! Change doesn't take effect without.   
+	G80DispCommand(0x00000080, 0);
+
+	//	printf("GEFORCE DITHER TEST DONE - ANY CHANGE?\n");
+
+	return;
+}
+
 // Return current vertical rasterbeam position of display head 'headId' (0=Primary CRTC1, 1=Secondary CRTC2):
 UInt32 PsychtoolboxKernelDriver::GetBeamPosition(UInt32 headId)
 {
@@ -895,6 +954,10 @@ IOReturn PsychtoolboxKernelDriver::PsychKDDispatchCommand(PsychKDCommandStruct* 
 
 		case KPsychKDWriteRegister:		// Write value to specific register:
 			WriteRegister(inStruct->inOutArgs[0], inStruct->inOutArgs[1]);
+		break;
+
+		case kPsychKDSetDitherMode:		// Write value to specific register:
+			SetDitherMode(inStruct->inOutArgs[0], inStruct->inOutArgs[1]);
 		break;
 
 		default:

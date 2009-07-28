@@ -61,12 +61,18 @@ private:
 
 	// Write 32 bit control register at 'offset' with 'value':
 	void	WriteRegister(UInt32 offset, UInt32 value);
+
+	// Helper function for SetDitherMode() on G80 GPUs:
+	void    G80DispCommand(UInt32 addr, UInt32 data);
 	
 	// Return current vertical rasterbeam position of display head 'headId' (0=Primary CRTC1, 1=Secondary CRTC2):
 	UInt32 GetBeamPosition(UInt32 headId);
 	
 	// Instantaneously resynchronize display heads of a Radeon dual-head gfx-card:
 	SInt32	FastSynchronizeAllDisplayHeads(void);
+	
+	// Try to change hardware dither mode on GPU:
+	void SetDitherMode(UInt32 headId, UInt32 ditherOn);
 	
 	// Perform instant state snapshot of interesting registers and return'em:
 	void	GetStateSnapshot(PsychKDCommandStruct* outStruct);

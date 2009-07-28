@@ -21,6 +21,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include "PsychtoolboxKernelDriverUserClientInterface.h"
 #include <limits.h>
+#include <unistd.h>
 
 #define kMyPathToSystemLog			"/var/log/system.log"
 
@@ -31,7 +32,7 @@
 #define	IO_OBJECT_NULL	((io_object_t) 0)
 #endif
 
-void GeforceDither(int headId, int ditherOn);
+void G80SetCursorPosition(int headId, int ditherOn);
 
 kern_return_t MyUserClientOpenExample(io_service_t service, io_connect_t *connect)
 {
@@ -253,6 +254,28 @@ unsigned int PsychOSKDWriteRegister(io_connect_t connect, unsigned int offset, u
 	return(0);
 }
 
+unsigned int PsychOSKDSetDitherMode(io_connect_t connect, unsigned int head, unsigned int dither)
+{
+	PsychKDCommandStruct syncCommand;
+    IOByteCount			 structSize1 = sizeof(PsychKDCommandStruct);
+	
+	// Set command code for display sync:
+	syncCommand.command = kPsychKDSetDitherMode;
+	syncCommand.inOutArgs[0] = head;
+	syncCommand.inOutArgs[1] = dither;
+	
+	// Issue request:
+	kern_return_t kernResult = PsychKDDispatchCommand(connect, structSize1, &syncCommand, &structSize1, &syncCommand);    
+	if (kernResult != KERN_SUCCESS) {
+		printf("PTB-ERROR: Kernel driver kPsychKDSetDitherMode failed (Kernel error code: %lx).\n", kernResult);
+		// A value of 1 signals failure:
+		return(1);
+	}
+	
+	// Return success:
+	return(0);
+}
+
 // Define globally for subroutines:
 io_connect_t	connect;
 
@@ -302,11 +325,18 @@ int main(int argc, char* argv[])
 		// Release the io_service_t now that we're done with it.
 		IOObjectRelease(service);
 
+		if (kernResult != KERN_SUCCESS) {
+			fprintf(stderr, "Failed to open connection to driver!\n");
+			if (kernResult == kIOReturnExclusiveAccess) fprintf(stderr, "Check if other app is using driver already [kIOReturnExclusiveAccess]!\n");
+			return(-1);
+		}
+		
 		if (connect != IO_OBJECT_NULL) {	
 
 			if (argc > 3 && atoi(argv[1]) == 1) {
 				// NVidia test:
-				GeforceDither(atoi(argv[2]), atoi(argv[3]));
+				PsychOSKDSetDitherMode(connect, atoi(argv[2]), atoi(argv[3]));
+				G80SetCursorPosition(atoi(argv[2]), atoi(argv[3]));
 			}
 			else {
 				// Trigger display resync and print result:
@@ -355,42 +385,21 @@ int main(int argc, char* argv[])
 	return 0;
 }
 
-void G80DispCommand(unsigned int addr, unsigned int data)
+// This blob of code allows to change the G90 GPU's hardware cursor position.
+// Proof that our MMIO mapping works correctly, but other than that pretty pointles...
+void G80SetCursorPosition(int headId, int ditherOn)
 {
-	int headId;
+    const int headOff = 0x1000 * headId;
+	int x, y, xr, yr;
 	
-    PsychOSKDWriteRegister(connect, 0x00610304, data);
-    PsychOSKDWriteRegister(connect, 0x00610300, addr | 0x80010001);
-
-    while(PsychOSKDReadRegister(connect, 0x00610300) & 0x80000000) {
-        const int super = ffs((PsychOSKDReadRegister(connect, 0x00610024) >> 4) & 7);
-
-        if(super) {
-            if(super == 2) {
-				for (headId = 0; headId<2; headId++) {
-					const int headOff = 0x800 * headId;
-                    if ( (PsychOSKDReadRegister(connect, 0x00614200 + headOff) & 0xc0) == 0x80 ) {
-						printf("IN G80DispCommand: Would need to call G80CrtcSetPClk(%i); but not implemented! Prepare for trouble!!!\n", headId);
-                        // No way to implement this without pulling in lot's of code from XServer's NVidia driver: G80CrtcSetPClk(headId);
-					}
-                }
-            }
-
-            PsychOSKDWriteRegister(connect, 0x00610024, 8 << super);
-            PsychOSKDWriteRegister(connect, 0x00610030, 0x80000000);
-        }
-    }
-}
-
-// Test code for G70 dithering enable/disable hacks:
-void GeforceDither(int headId, int ditherOn)
-{
-	printf("GEFORCE DITHER TEST: Head[%i] = %i \n", headId, ditherOn);
-	const int headOff = 0x400 * headId;
-
-    G80DispCommand(0x000008A0 + headOff, (ditherOn) ? 0x11 : 0); // G80DispCommand
-// Do we need this?!? Sounds like potential troublemaker:   if(update) G80DispCommand(0x00000080, 0);
-
-	printf("GEFORCE DITHER TEST DONE - ANY CHANGE?\n");
+	for (yr=0; yr< 500; yr+=20) {
+		for (xr=0; xr< 500; xr++) {
+			x = xr & 0xffff;
+			y = yr & 0xffff;
+			PsychOSKDWriteRegister(connect, (0x00647084 + headOff), y << 16 | x);
+			PsychOSKDWriteRegister(connect, (0x00647080 + headOff), 0);
+			usleep(1000);
+		}
+	}
 	return;
 }
