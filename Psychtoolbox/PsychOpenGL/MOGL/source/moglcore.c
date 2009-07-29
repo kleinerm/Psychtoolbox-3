@@ -584,6 +584,16 @@ void mogl_glunsupported(const char* fname)
     mexErrMsgTxt(errtxt);
 }
 
+// Function prototype for exit with printf(), like mogl_glunsupported...
+void mogl_printfexit(const char* str)
+{
+    // Reset recursion level for glBegin() / glEnd() statements:
+    glBeginLevel = 0;
+    
+    // Exit to Matlab prompt with error message in 'str':
+    mexErrMsgTxt(str);
+}
+
 void mogl_checkerrors(const char* cmd, const mxArray *prhs[]) 
 {
     char errtxt[10000];

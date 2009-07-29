@@ -12,6 +12,7 @@ function handle = LoadShaderFromFile(filename, shadertype, debug)
 %
 
 % 29-Mar-2006 written by MK
+% 29-Jul-2009 Bugfixes by MK: debug must default to 1, not 2!
 
 global GL;
 
@@ -23,10 +24,14 @@ end;
 AssertGLSL;
 
 if nargin < 3
-    debug = 2;
+    debug = 1;
 end;
 
-if nargin < 1 | isempty(filename)
+if nargin < 1 
+    filename = [];
+end
+
+if isempty(filename)
     % Set default shader file name:
     error('LoadShaderFromFile() called without any shader filename!');
 end;
@@ -39,7 +44,11 @@ if isempty(fileparts(filename))
     filename = [ PsychtoolboxRoot 'PsychOpenGL/PsychGLSLShaders/' filename ];
 end;
 
-if nargin < 2 | isempty(shadertype)
+if nargin < 2
+    shadertype = [];
+end
+
+if isempty(shadertype)
     % Try to autodetect shadertype from file extension:
     if ~isempty(strfind(filename, '.frag'))
         shadertype = GL.FRAGMENT_SHADER;

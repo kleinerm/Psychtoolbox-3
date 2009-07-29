@@ -93,11 +93,20 @@ void gl_shadersource( int nlhs, mxArray *plhs[], int nrhs, const mxArray *prhs[]
         count++;
     }
 
-    if (NULL == glShaderSource || mxGetScalar(prhs[2])>0) {
+    if (mxGetScalar(prhs[2])>0) {
         printf("\n\n");
         for(i=0; i<count; i++) printf("Shader Line %i: %s\n", i, srcstrings[i]);
         printf("\n\n");
         fflush(NULL);
+        // Free the sourcestring:
+        mxFree(sourcestring);
+        // Free our array:
+        free(srcstrings);
+        // Abort with error:
+        mogl_printfexit("MOGL-Info: In call to glShaderSource(): Called with debug flag set to non-zero.\nMOGL-Info: Therefore i've dumped the shader source code to the console and will now exit.");
+    }
+    
+    if (NULL == glShaderSource) {        
         // Free the sourcestring:
         mxFree(sourcestring);
         // Free our array:

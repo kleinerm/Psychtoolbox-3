@@ -3760,7 +3760,7 @@
 		83C94B0E092825020062DB0A /* SCREENCloseMovie.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENCloseMovie.c; path = ../../../Source/Common/Screen/SCREENCloseMovie.c; sourceTree = SOURCE_ROOT; };
 		83C94B10092825770062DB0A /* SCREENglMatrixFunctionWrappers.c */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.c.c; name = SCREENglMatrixFunctionWrappers.c; path = ../../../Source/Common/Screen/SCREENglMatrixFunctionWrappers.c; sourceTree = SOURCE_ROOT; };
 		83C94B14092826FE0062DB0A /* QuickTime.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickTime.framework; path = /Developer/SDKs/MacOSX10.4u.sdk/System/Library/Frameworks/QuickTime.framework; sourceTree = "<absolute>"; };
-		83CBD6540BC01FB0007CB68C /* PsychPortAudio.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = PsychPortAudio.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
+		83CBD6540BC01FB0007CB68C /* moglcore.mexmaci */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.objfile"; includeInIndex = 0; path = moglcore.mexmaci; sourceTree = BUILT_PRODUCTS_DIR; };
 		83CBD6600BC02109007CB68C /* AGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AGL.framework; path = /System/Library/Frameworks/AGL.framework; sourceTree = "<absolute>"; };
 		83CBD6640BC02124007CB68C /* GLUT.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLUT.framework; path = /System/Library/Frameworks/GLUT.framework; sourceTree = "<absolute>"; };
 		83CBD66F0BC02323007CB68C /* castDouble2Float.cc */ = {isa = PBXFileReference; fileEncoding = 30; lastKnownFileType = sourcecode.cpp.cpp; name = castDouble2Float.cc; path = ../../../../Psychtoolbox/PsychOpenGL/MOGL/source/castDouble2Float.cc; sourceTree = SOURCE_ROOT; };
@@ -5064,7 +5064,7 @@
 				F14A2B800AD4ACE700BFB68F /* MachAbsoluteTimeClockFrequency.mexmaci */,
 				83C8027C0B8CB29300097021 /* MirrorFaceCore.mexmaci */,
 				833C1F080BB19D0100FB9B4F /* PsychPortAudio.mexmaci */,
-				83CBD6540BC01FB0007CB68C /* PsychPortAudio.mexmaci */,
+				83CBD6540BC01FB0007CB68C /* moglcore.mexmaci */,
 				836DECC80C30A0F900CFE76B /* PsychPortAudio.mexmac */,
 				83E2C4130D2FC58200FFD350 /* PsychCV.mexmaci */,
 			);
@@ -7812,7 +7812,7 @@
 			);
 			name = "moglcore Intel";
 			productName = foo;
-			productReference = 83CBD6540BC01FB0007CB68C /* PsychPortAudio.mexmaci */;
+			productReference = 83CBD6540BC01FB0007CB68C /* moglcore.mexmaci */;
 			productType = "com.apple.product-type.objfile";
 		};
 		83E2C3F40D2FC58200FFD350 /* PsychCV Intel */ = {
@@ -24036,7 +24036,7 @@
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
 				);
-				INSTALL_PATH = /usr/local/lib;
+				INSTALL_PATH = /PsychOpenGL/MOGL/core/;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = (
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci",
@@ -24062,8 +24062,9 @@
 					"-lstdc++",
 				);
 				PREBINDING = NO;
-				PRODUCT_NAME = PsychPortAudio;
+				PRODUCT_NAME = moglcore;
 				PSYCHTOOLBOX_SUBFOLDER = PsychBasic;
+				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};

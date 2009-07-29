@@ -117,6 +117,9 @@ mxArray* mxCreateNumericMatrix(int m, int n, int class, int complex);
 
 #endif
 
+// Function prototype for exit with printf(), like mogl_glunsupported...
+void mogl_printfexit(const char* str);
+
 // Function prototype for error handler for unsupported gl-Functions.
 void mogl_glunsupported(const char* fname);
 
