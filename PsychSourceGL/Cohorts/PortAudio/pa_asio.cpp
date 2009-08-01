@@ -2991,3 +2991,60 @@ PaError PaAsio_GetOutputChannelName( PaDeviceIndex device, int channelIndex,
 error:
     return result;
 }
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
+/** Control zero latency direct input monitoring feature on some cards:
+ @return paNoError on success, or paBadIODeviceCombination if feature
+ not supported by device or paInvalidFlag on other errors..
+*/
+PaError DirectInputMonitoring(PaStream *s, int enable, int inputChannel, int outputChannel, double gain, double pan)
+{
+	ASIOError err;
+	ASIOInputMonitor monitor;
+
+    PaAsioStream *stream = (PaAsioStream*) s;
+
+	/* Validate outputChannel to be an even index, otherwise abort: */
+	if ((outputChannel % 2) == 1) return(paInvalidFlag);
+
+	/* Assign input channel: */
+	monitor.input  = (long) inputChannel;
+
+	/* Assign output channel: */
+	monitor.output = (long) outputChannel;
+
+	/* Assign gain: Range -1.0 to 0.0 = -inf 0dB gain to 0 dB. Range 0.0 - 1.0 = 0 dB to 12 dB gain. */
+	/* Mapping according to ASIO 2 spec: */
+	monitor.gain   = (long) 536870912 + ( (gain >= 0.0) ? ((long)(gain * 1610612735.0)) : ((long)(gain * 536870912.0)) );
+	/* Overrides / clamps for out of bounds values: Make absolutely sure we get the min and max right: */
+	if (gain < -1.0) monitor.gain = (long) 0;
+	if (gain > 1.0) monitor.gain  = (long) 0x7fffffff;
+
+	/* Assign stereo pan: */
+	monitor.pan    = (long) ( pan * ((double) 0x7fffffff) );
+	if (pan <= 0.0) monitor.pan = (long) 0;
+	if (pan >= 1.0) monitor.pan = (long) 0x7fffffff;
+
+	/* Assign enable flag: */
+	monitor.state = (ASIOBool) ((enable > 0) ? ASIOTrue : ASIOFalse);
+
+	/* Perform actual setup call: */
+	err = ASIOFuture(kAsioSetInputMonitor, &monitor);
+
+	/* Direct input monitoring unsupported? */
+	if (err == ASE_NotPresent) return(paBadIODeviceCombination);
+
+	/* Unknown other error? */
+	if (err != ASE_SUCCESS)    return(paInvalidFlag);
+
+	/* Made it to the end: Report back success! */
+    return(paNoError);
+}
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */

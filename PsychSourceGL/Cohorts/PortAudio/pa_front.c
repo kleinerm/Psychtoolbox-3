@@ -88,7 +88,7 @@
 
 
 #define PA_VERSION_  1899
-#define PA_VERSION_TEXT_ "PortAudio V19-devel"
+#define PA_VERSION_TEXT_ "PortAudio V19-devel WITH-DIM"
 
 
 
@@ -159,7 +159,6 @@ void PaUtil_SetLastHostErrorInfo( PaHostApiTypeId hostApiType, long errorCode,
 }
 
 /*
-MK CHANGED PTB - Already defined in pa_debugprint
 void PaUtil_DebugPrint( const char *format, ... )
 {
     va_list ap;
@@ -1960,5 +1959,40 @@ PaError Pa_GetSampleSize( PaSampleFormat format )
 #endif
 
     return (PaError) result;
+}
+
+/* Forward definition of DirectInputMonitoring function in host API's */
+PaError DirectInputMonitoring(PaStream *s, int enable, int inputChannel, int outputChannel, double gain, double pan);
+
+/** Control zero latency direct input monitoring feature on some cards:
+ @return paNoError on success, or paBadIODeviceCombination if feature
+ not supported by device or paInvalidFlag on other errors..
+*/
+PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan)
+{
+    PaError result = PaUtil_ValidateStreamPointer( stream );
+
+#ifdef PA_LOG_API_CALLS
+    PaUtil_DebugPrint("Pa_DirectInputMonitoring called:\n" );
+    PaUtil_DebugPrint("\tPaStream* stream: 0x%p\n", stream );
+#endif
+
+    if( result == paNoError )
+    {
+#ifndef PA_NO_ASIO
+		/* ASIO support compiled in - Delegate to ASIO subroutine for this job: */
+		result = DirectInputMonitoring(stream, enable, inputChannel, outputChannel, gain, pan);
+#else
+		/* No ASIO support compiled in */
+		result = paBadIODeviceCombination;
+#endif
+    }
+
+#ifdef PA_LOG_API_CALLS
+    PaUtil_DebugPrint("Pa_DirectInputMonitoring returned:\n" );
+    PaUtil_DebugPrint("\tPaError: %d ( %s )\n\n", result, Pa_GetErrorText( result ) );
+#endif
+
+    return result;
 }
 

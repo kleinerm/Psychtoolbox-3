@@ -1125,7 +1125,8 @@ PaError Pa_GetSampleSize( PaSampleFormat format );
 */
 void Pa_Sleep( long msec );
 
-
+/** Forward define of prototype of our own new PortAudio extension function for Zero latency direct input monitoring: */
+PaError Pa_DirectInputMonitoring(PaStream *stream, int enable, int inputChannel, int outputChannel, double gain, double pan);
 
 #ifdef __cplusplus
 }

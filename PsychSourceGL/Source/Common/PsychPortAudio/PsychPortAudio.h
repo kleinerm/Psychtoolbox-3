@@ -84,5 +84,7 @@ PsychError PSYCHPORTAUDIOCreateBuffer(void);
 PsychError PSYCHPORTAUDIODeleteBuffer(void); 
 // Change device opMode at runtime:
 PsychError PSYCHPORTAUDIOSetOpMode(void);
+// Enable/Disable or reconfigure direct input monitoring:
+PsychError PSYCHPORTAUDIODirectInputMonitoring(void);
 //end include once
 #endif

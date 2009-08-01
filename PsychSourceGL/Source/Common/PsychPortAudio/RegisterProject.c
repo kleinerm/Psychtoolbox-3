@@ -65,7 +65,8 @@ PsychError PsychModuleInit(void)
 	PsychErrorExit(PsychRegister("CreateBuffer", &PSYCHPORTAUDIOCreateBuffer));
 	PsychErrorExit(PsychRegister("DeleteBuffer", &PSYCHPORTAUDIODeleteBuffer));
 	PsychErrorExit(PsychRegister("SetOpMode", &PSYCHPORTAUDIOSetOpMode));
-
+	PsychErrorExit(PsychRegister("DirectInputMonitoring", &PSYCHPORTAUDIODirectInputMonitoring));
+	
 	// Setup synopsis help strings:
 	InitializeSynopsis();   //Scripting glue won't require this if the function takes no arguments.
 
