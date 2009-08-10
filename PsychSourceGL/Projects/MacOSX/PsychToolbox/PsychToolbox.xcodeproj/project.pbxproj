@@ -26814,7 +26814,6 @@
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/extern/include",
 					"$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/simulink/include",
 				);
-				INSTALL_PATH = /usr/local/lib;
 				KEEP_PRIVATE_EXTERNS = NO;
 				LIBRARY_SEARCH_PATHS = "$(SYSTEM_APPS_DIR)/$(MATLAB_DIR_NAME)/bin/maci";
 				LINK_WITH_STANDARD_LIBRARIES = YES;
@@ -26838,6 +26837,7 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = IOPort;
 				PSYCHTOOLBOX_SUBFOLDER = PsychAlpha;
+				SKIP_INSTALL = NO;
 				STRIP_STYLE = all;
 				WARNING_CFLAGS = "-Wno-long-double";
 			};

@@ -60,7 +60,7 @@
 // None yet.
 #endif
 
-typedef struct PsychSerialDeviceRecord {
+typedef volatile struct PsychSerialDeviceRecord {
 	char				portSpec[1000];			// Name string of the device file.
 	int					fileDescriptor;			// Device handle.
 	struct termios		OriginalTTYAttrs;		// Stores original settings of device to allow restore on close.
@@ -73,6 +73,11 @@ typedef struct PsychSerialDeviceRecord {
 	int					readerThreadWritePos;	// Position of next data write for readerThread.
 	int					clientThreadReadPos;	// Position of next data read from main thread.
 	int					readGranularity;		// Amount of bytes to request per blocking read call in readerThread.
+	int					isBlockingBackgroundRead;  // 1 = Blocking background read, 0 = Polling operation.
+	double*				timeStamps;				// Buffer for async-read timestamps. Size = readBufferSize / readGranularity Bytes.
+	int					bounceBufferSize;		// Size of bounceBuffer in Bytes.
+	unsigned char*		bounceBuffer;			// Bouncebuffer.
+	unsigned int		readFilterFlags;		// Special flags to enable certain postprocessing operations on read data.
 } PsychSerialDeviceRecord;
 
 #endif

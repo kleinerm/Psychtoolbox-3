@@ -39,6 +39,10 @@
 #include "PsychSerialWindowsGlue.h"
 #endif
 
+// Special filterflags for input processing:
+#define kPsychIOPortCMUPSTFiltering 1			// Filtering for CMU/PST button boxes.
+#define kPsychIOPortCRLFFiltering   2			// Filtering for USB/32 Bitwhacker with StickOS.
+
 // Types of Input/Output port we support:
 #define KPsychIOPortNone		0				// No port: This indicates a free slot.
 #define kPsychIOPortSerial		1				// Serial port.

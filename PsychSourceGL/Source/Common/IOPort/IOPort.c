@@ -392,7 +392,12 @@ PsychError IOPORTOpenSerialPort(void)
 		"data collection from devices that stream some data at a constant rate. You set up background read, let the parallel "
 		"thread do all data collection in the background and collect the data at the end of a session with a sequence of "
 		"IOPort('Read') calls. This way, data collection doesn't clutter your main experiment script.\n\n"
-		"StopBackgroundRead -- Stop running background read operation, discard all pending data.\n\n";
+		"BlockingBackgroundRead=0 -- Perform blocking background reads instead of polling reads, if set to 1.\n\n"
+		"StopBackgroundRead -- Stop running background read operation, discard all pending data.\n\n"
+		"ReadFilterFlags=0 -- Special flags to specify certain post-processing operations on read input data.\n"
+		"* A setting of 1 will enable special filtering for serial input data from the CMU or PST response button boxes.\n"
+		"* A setting of 2 will filter out CR and LF character codes 10 and 13 from the inputstream.\n"
+		"\n\n";
 
 	static char seeAlsoString[] = "'CloseAll'";	 
   	
