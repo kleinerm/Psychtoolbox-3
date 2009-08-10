@@ -86,6 +86,7 @@ function DelayedSoundFeedbackDemo(reqlatency, duplex, freq, minLatency)
 % History:
 % 07/20/2007 Written (MK)
 % 07/19/2009 Derived and largely rewritten from BasicSoundFeedbackDemo (MK)
+% 08/02/2009 Add support for 'DirectInputMonitoring' for reqLatency=0 (MK)
 
 % oldMode = PsychPortAudio('SetOpMode', paoutput, 4)
 % oldMode2 = PsychPortAudio('SetOpMode', paoutput)
@@ -188,21 +189,72 @@ if (reqlatency == 0) & duplex %#ok<AND2>
     %
     % More specifically: It should work well on Windows + ASIO hardware,
     % but not very well on at least OS/X:
-    fprintf('Full-duplex monitoring mode active.\n');
     pa = PsychPortAudio('Open', [], 4+2+1, latmode, freq, 2, [], minLatency);
-    PsychPortAudio('Start', pa, 0, 0, 1);
-    while ~KbCheck
-        WaitSecs(0.5);
-        s=PsychPortAudio('GetStatus', pa);
-        disp(s);
-        if s.CaptureStartTime > 0
-            % This Info should be available on ASIO hardware, and probably
-            % Linux, but isn't available on OS/X yet:
-            fprintf('Estimated minimal roundtrip latency is %f msecs.\n', 1000 * (s.StartTime - s.CaptureStartTime));
+
+    % Now that the device is open, try to enable the "Zero latency direct input
+    % monitoring" feature of some subset of ASIO V2.0 compliant cards. If
+    % supported, this feature will cause the card to route sound directly
+    % from its input connectors to its output connectors without any
+    % extended processing on the card itself, and without any processing by
+    % the host computer or our driver. A typical implementation on a
+    % higher-end card would configure the analog mixing and amplifier
+    % circuits on the card to directly route analog from input to output,
+    % without even AD/DA conversion. This would provide true zero latency
+    % feedback.
+    %
+    % This call will ask to enable (=1) routing of all inputs (inputChannel
+    % = -1) to output 0 and following (outputChannel = 0), applying zero
+    % decibel gain (gain = 0.0) ie., no attenuation or amplification of the
+    % signal. On stereo outputs, signals shall be distributed equally
+    % between left and right channel, ie., 50% left, 50% right, as
+    % requested by the stereoPan = 0.5 setting.
+    % See "PsychPortAudio DirectInputMonitoring?" for more info and details
+    % on further parameters. Please note that the following commented out
+    % call...
+    % diResult = PsychPortAudio('DirectInputMonitoring', pa, 1);    
+    % ...would do the same, the extended call is just to illustrate some
+    % available optional parameters and their default settings.
+    %
+    % The return value 'diResult' will be zero if the call was successfull.
+    % A non-zero value of diResult signals failure to enable and configure
+    % direct input monitoring, either because your hardware doesn't support
+    % it, or because our driver doesn't support it. See the help for
+    % meaning of the different non-zero return codes.
+    diResult = PsychPortAudio('DirectInputMonitoring', pa, 1, -1, 0, 0.0, 0.5);
+
+    % Does direct input monitoring work (diResult == 0)? Then we're set.
+    % Otherwise it doesn't work and we'll need to use PsychPortAudio's
+    % full-duplex monitoring mode instead, which is the 2nd best
+    % alternative, although certainly not zero latency:
+    if diResult > 0
+        % Failed! Need to use our fallback implementation:    
+        fprintf('Full-duplex monitoring mode active.\n');
+        PsychPortAudio('Start', pa, 0, 0, 1);
+        while ~KbCheck
+            WaitSecs(0.5);
+            s=PsychPortAudio('GetStatus', pa);
+            disp(s);
+            if s.CaptureStartTime > 0
+                % This Info should be available on ASIO hardware, and probably
+                % Linux, but isn't available on OS/X yet:
+                fprintf('Estimated minimal roundtrip latency is %f msecs.\n', 1000 * (s.StartTime - s.CaptureStartTime));
+            end
         end
+        PsychPortAudio('Stop', pa);
+    else
+        % Direct input monitoring active :-) Don't need to do anything
+        % here, except waiting for a keypress from the user to finish the
+        % demo:
+        fprintf('Zero latency direct input monitoring mode active.\n');
+        KbPressWait;
+        
+        % User wants us to finish. Disable input monitoring:
+        PsychPortAudio('DirectInputMonitoring', pa, 0);
     end
-    PsychPortAudio('Stop', pa);
+    
+    % Done - Close device and driver:
     PsychPortAudio('Close');
+    
     return;
 end
 
