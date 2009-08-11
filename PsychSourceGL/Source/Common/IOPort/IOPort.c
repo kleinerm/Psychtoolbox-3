@@ -382,7 +382,7 @@ PsychError IOPORTOpenSerialPort(void)
 		"SendTimeout=1.0 -- Interbyte send timeout in seconds. Only used on Windows.\n\n"
 		"ReceiveTimeout=1.0 -- Interbyte receive timeout in seconds.\n\n"
 		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
-		"PollLatency=0.0005 (0.005 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
+		"PollLatency=0.0005 (0.001 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n"
 		"StartBackgroundRead=readGranularity -- Enable asynchronous background read operations on the port. This is only supported "
 		"on Linux and OS/X for now. A parallel background thread is started which tries to fetch 'readGranularity' bytes of data, "
@@ -402,8 +402,8 @@ PsychError IOPORTOpenSerialPort(void)
 	static char seeAlsoString[] = "'CloseAll'";	 
   	
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// Difference to Unices: PollLatency defaults to 5 msecs instead of 0.5 msecs due to shoddy windows scheduler:
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	// Difference to Unices: PollLatency defaults to 1 msecs instead of 0.5 msecs due to shoddy windows scheduler:
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.001 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
 	#else
 	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
 	#endif
