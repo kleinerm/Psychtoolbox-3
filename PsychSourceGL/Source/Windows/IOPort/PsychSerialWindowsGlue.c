@@ -131,6 +131,8 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 {
 	int rc, nread;
 	int navail;
+	int tmpcurpos, naccumread;
+	unsigned char lastcharacter, lineterminator;	
 	double t;
 	COMSTAT dstatus;
 	DWORD   dummy;
@@ -145,6 +147,11 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 
 	// Main loop: Runs until external thread cancellation signal device->abortThreadReq set to non-zero:
 	while (0 == device->abortThreadReq) {
+        if ((rc=PsychIOOSCheckError(device, NULL))>0) {
+				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d)! Aborted.\n", device->portSpec, rc);
+				return(0);
+        }
+        
 		// Polling read requested?
 		if (device->isBlockingBackgroundRead == 0) {
 			// Polling operation:
@@ -194,51 +201,119 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 		// clean buffersegment in case of a short-read, e.g., in cooked mode on end-of-line:
 		memset(&(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), 0, device->readGranularity);
 		
-		// Enough data available. Read it!
-		if (ReadFile(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), device->readGranularity, &nread, NULL) == 0) {
-			// Some error:
-			if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Error during blocking read from device %s - (%d).\n", device->portSpec, GetLastError());
-			return(0);
-		}
+		// Async linebuffered read op?
+		if (device->readFilterFlags & kPsychIOPortAsyncLineBufferFiltering) {
+			// Emulation of linebuffered readop, similar to Unix cooked, canonical input processing mode:
+			tmpcurpos = (device->readerThreadWritePos) % (device->readBufferSize);
+			lineterminator = device->lineTerminator;
+			lastcharacter  = lineterminator + 1;
+			naccumread = 0;
+			t = DBL_MIN;
 
-		// Sufficient amount read?
-		if (nread != device->readGranularity) {
-			// Should not happen, unless device is in cooked (canonical) input processing mode, where any read() will
-			// at most return the content of a single line of buffered input, regardless of requested amount. In this
-			// case it is not only a perfectly valid and expected result, but also safe, becuse our memset() above will
-			// zero-fill the remainder of the buffer with a defined value. For this reason we only output an error
-			// if high verbosity level is selected for debug output:
-			if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", device->readGranularity, nread);
-		}
+			// Repeat reading until a maximum of readGranularity bytes has been read or until
+			// lineterminator character is encountered, whatever comes first:
+			while ( (naccumread < device->readGranularity) && (lastcharacter != lineterminator) ) {
+                // Check for termination request:
+                if (device->abortThreadReq > 0) return(0);
 
-		// Filtermode for filtering out CR and LF characters active (e.g., for UBW32-Bitwhacker with StickOS)?
-		if ((device->readFilterFlags & kPsychIOPortCRLFFiltering) &&
-			((device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == 10) ||
-			(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == 13))) {
-			// Current read byte is code 10 or 13 aka CR or LF. Discard & Skip:
-			continue;
-		}
+				// Read 1 Byte:
+				if (ReadFile(device->fileDescriptor, &lastcharacter, 1, &nread, NULL) == 0) {
+					// Some error:
+					nread = -1;
+				}
+				
+				if (nread > 0) {
+					// Put it into readBuffer:
+					device->readBuffer[tmpcurpos++] = lastcharacter;
 
-		// Filtermode for CMU button box or PST button box enabled?
-		if (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) {
-			// Special input data filter for the CMU button box and the PST button box.
-			// Both boxes are hillarious masterpieces of totally braindamaged protocol design.
-			// They send a continous stream of status bytes, at a rate of 1000 Hz (!?!), regardless
-			// if the status of the box has changed or not, instead of just sending a status update
-			// when actually something has changed. This creates a lot of load on the host computer
-			// and a s***load of redundant data. As these shoddy beasts are still sold to customers,
-			// and quite widespread, we implement special filtering. We check each received byte if
-			// it matches its predecessor. If so, we discard it, as it is redundant.
-			if ((device->readerThreadWritePos > 0) && (device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == device->readBuffer[(device->readerThreadWritePos - 1) % (device->readBufferSize)])) {
-				// Current read byte value is identical to last stored value.
-				// --> No status change, therefore no reason to store this redundant value.
-				// We skip processing and wait for the next byte:
+					// Get representative timestamp of "start of line terminated new line" for first received byte:
+					if (0 == naccumread) PsychGetAdjustedPrecisionTimerSeconds(&t);
+
+					// Increment count of received bytes:
+					naccumread++;
+				}
+				else {
+					// 1 Byte read failed!
+
+					// Diagnostic:
+					if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Linebuffered read: Failed to read 1 byte of data for reason [%d] at relative position %i! Padding...\n", GetLastError(), naccumread);
+					
+					// Break out of while() loop:
+					break;
+				}
+			}
+			
+			// Done with this read quantum, either due to error, line-terminator reached, or readGranularity bytes stored.
+
+			// Increment serial bytes received counter:
+			device->asyncReadBytesCount += (naccumread > 0) ? naccumread : 0;			
+		}
+		else {
+			// Standard non-linebuffered readop:
+			
+			// How much data to read? We use the last 4-Bytes of a readGranularity quantum for our
+			// serial bytes counter if kPsychIOPortCMUPSTFiltering is active:
+			naccumread = (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) ? (device->readGranularity - 4) : device->readGranularity;
+			if (naccumread < 0) naccumread = 0;
+			
+			// Enough data available. Read it!
+			if (ReadFile(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), naccumread, &nread, NULL) == 0) {
+				// Some error:
+				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Error during blocking read from device %s - (%d).\n", device->portSpec, GetLastError());
+				return(0);
+			}
+			
+			// Sufficient amount read?
+			if (nread != naccumread) {
+				// Should not happen, unless device is in cooked (canonical) input processing mode, where any read() will
+				// at most return the content of a single line of buffered input, regardless of requested amount. In this
+				// case it is not only a perfectly valid and expected result, but also safe, becuse our memset() above will
+				// zero-fill the remainder of the buffer with a defined value. For this reason we only output an error
+				// if high verbosity level is selected for debug output:
+				if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", naccumread, nread);
+			}
+			
+			// Increment serial bytes received counter:
+			device->asyncReadBytesCount += (nread > 0) ? nread : 0;
+			
+			// Filtermode for filtering out CR and LF characters active (e.g., for UBW32-Bitwhacker with StickOS)?
+			if ((device->readFilterFlags & kPsychIOPortCRLFFiltering) &&
+				((device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == 10) ||
+				 (device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == 13))) {
+				// Current read byte is code 10 or 13 aka CR or LF. Discard & Skip:
 				continue;
 			}
-		}
-
-		// Take read completion timestamp:
-		PsychGetAdjustedPrecisionTimerSeconds(&t);
+			
+			// Filtermode for CMU button box or PST button box enabled?
+			if (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) {
+				// Special input data filter for the CMU button box and the PST button box.
+				// Both boxes are hillarious masterpieces of totally braindamaged protocol design.
+				// They send a continous stream of status bytes, at a rate of 1000 Hz (!?!), regardless
+				// if the status of the box has changed or not, instead of just sending a status update
+				// when actually something has changed. This creates a lot of load on the host computer
+				// and a s***load of redundant data. As these shoddy beasts are still sold to customers,
+				// and quite widespread, we implement special filtering. We check each received byte if
+				// it matches its predecessor. If so, we discard it, as it is redundant.
+				if ((device->readerThreadWritePos > 0) && (device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)] == lastcharacter)) {
+					// Current read byte value is identical to last stored value.
+					// --> No status change, therefore no reason to store this redundant value.
+					// We skip processing and wait for the next byte:
+					continue;
+				}
+				else {
+					// Store current character as "lastcharacter" reference for next iteration:
+					lastcharacter = device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)];
+					
+					// Store new counter as a 32-bit unsigned int, which may possibly be not 32-bit boundary aligned
+					// on the target architecture!
+					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+1) % (device->readBufferSize)])) = (unsigned int) device->asyncReadBytesCount;
+				}
+			}
+			
+			// Take read completion timestamp:
+			PsychGetAdjustedPrecisionTimerSeconds(&t);
+			
+		}	// End of regular non-linebuffered readop.
 
 		// Store timestamp for this read chunk of data:
 		device->timeStamps[(device->readerThreadWritePos / device->readGranularity) % (device->readBufferSize / device->readGranularity)] = t;
@@ -280,9 +355,6 @@ void PsychIOOSShutdownSerialReaderThread( PsychSerialDeviceRecord* device)
 	if (device->readerThread) {
 		// Signal the thread that it should cancel:
 		device->abortThreadReq = 1;
-
-		// Make sure we don't hold the mutex:
-		PsychUnlockMutex(&(device->readerLock));
 
 		// Wait for it to die:
 		PsychDeleteThread(&(device->readerThread));
@@ -401,7 +473,9 @@ PsychSerialDeviceRecord* PsychIOOSOpenSerialPort(const char* portSpec, const cha
 	// demand would be also awfully slow, and as it doesn't do any harm for non-blocking writes AFAIK,
 	// we now always unconditionally enable it already here during device setup, where extra delays of
 	// 1-2 msecs don't matter.
-	if (SetCommMask(device->fileDescriptor, EV_TXEMPTY)==0) {
+	//
+	// If eventCharEnabled is set, we also enable EV_RXFLAG events...
+	if (SetCommMask(device->fileDescriptor, ((device->eventCharEnabled > 0) ? (EV_TXEMPTY | EV_RXFLAG) : EV_TXEMPTY))==0) {
 		sprintf(errmsg, "Error during setup for blocking write operations to device %s during call to SetCommMask(EV_TXEMPTY) - (%d).\n", portSpec, GetLastError());
 		goto error;
 	}
@@ -572,6 +646,64 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 				return(PsychError_system);
 			}
 		}
+	}
+
+	// Assign line terminator if any:
+	if ((p = strstr(configString, "Terminator="))) {
+		if (1!=sscanf(p, "Terminator=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for Terminator= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+
+		device->lineTerminator = (unsigned char) inint;
+		
+		// We also assign the line terminator as Event Character: This allows
+		// some line-delimited input buffering with the lineTerminator as
+		// delimiter in synchronous reads.
+		// It may also set the lineTerminator as event character and enable it
+		// in Serial-USB converters from FTDI, thereby allowing to drastically
+		// lower receive latency on reception of lineTerminator delimited data
+		// packets:
+		if (inint >= 0) {
+			// Enable event character:
+			options.EvtChar = (char) inint;
+			device->eventCharEnabled = 1;
+		}
+		else {
+			// Disable use of event characters (maybe):
+			options.EvtChar = (char) 255;
+			device->eventCharEnabled = 0;
+		}
+		updatetermios = TRUE;
+
+		// Need to update the event mask as well, depending on the new enable setting
+		// for event characters. See comments in PsychIOOSOpenSerialPort(); for SetCommMask() call as well!
+		if (SetCommMask(device->fileDescriptor, ((device->eventCharEnabled > 0) ? (EV_TXEMPTY | EV_RXFLAG) : EV_TXEMPTY))==0) {
+			if (verbosity > 0) printf("IOPort: Error: SetCommMask() call for 'Terminator' setup failed on device %s - (%d).\n", device->portSpec, GetLastError());
+			return(PsychError_system);
+		}
+	}
+
+	// Assign receiver enable state, if any:
+	if ((p = strstr(configString, "ReceiverEnable="))) {
+		if (1!=sscanf(p, "ReceiverEnable=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for ReceiverEnable= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+
+		// 'ReceiverEnable' is so far unsupported on Windows. Don't know if the OS has any
+		// way to allow to change the setting.
+		/*
+		if (inint > 0) {
+			// Enable receiver:
+			
+		}
+		else {
+			// Disable receiver:
+		}
+
+		updatetermios = TRUE;
+		*/
 	}
 
 	// Set common baud rate for send and receive:
@@ -868,6 +1000,7 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 			}
 			
 			// Setup data structures:
+			device->asyncReadBytesCount = 0;			
 			device->readerThreadWritePos = 0;
 			device->clientThreadReadPos  = 0;
 			device->readGranularity = inint;
@@ -985,11 +1118,15 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			// Take timestamp for completeness although it doesn't make much sense in the blocking case:
 			PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
 
-			// Really wait for write completion, ie., until the last byte has left the transmitter:
-			// (N.B.: No need to clear or init EvtMask, it is a pure return parameter)
-			if (WaitCommEvent(device->fileDescriptor, (LPDWORD) &EvtMask, NULL)==0) {
-				sprintf(errmsg, "Error during blocking write to device %s during call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
-				return(-1);
+			// Wait until a event mask with EV_TXEMPTY event signalled is received:
+			EvtMask = 0;
+			while (0 == (EvtMask & EV_TXEMPTY)) {
+				// Really wait for write completion, ie., until the last byte has left the transmitter:
+				// (N.B.: No need to clear or init EvtMask, it is a pure return parameter)
+				if (WaitCommEvent(device->fileDescriptor, (LPDWORD) &EvtMask, NULL)==0) {
+					sprintf(errmsg, "Error during blocking write to device %s during call to WaitCommEvent(EV_TXEMPTY) - (%d).\n", device->portSpec, GetLastError());
+					return(-1);
+				}
 			}
 		}
 	}

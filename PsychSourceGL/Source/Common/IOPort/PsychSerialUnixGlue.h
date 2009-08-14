@@ -78,6 +78,9 @@ typedef volatile struct PsychSerialDeviceRecord {
 	int					bounceBufferSize;		// Size of bounceBuffer in Bytes.
 	unsigned char*		bounceBuffer;			// Bouncebuffer.
 	unsigned int		readFilterFlags;		// Special flags to enable certain postprocessing operations on read data.
+	int					asyncReadBytesCount;	// Counter of total bytes read via async thread so far. [Updates not mutex protected!]
+	unsigned char		lineTerminator;			// Line terminator byte, if any.
+	unsigned char		cookedMode;				// Cooked input processing mode active? Set to 1 if so.
 } PsychSerialDeviceRecord;
 
 #endif

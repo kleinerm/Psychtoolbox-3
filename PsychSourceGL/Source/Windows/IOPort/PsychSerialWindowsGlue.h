@@ -50,7 +50,10 @@ typedef volatile struct PsychSerialDeviceRecord {
 	double*				timeStamps;				// Buffer for async-read timestamps. Size = readBufferSize / readGranularity Bytes.
 	int					bounceBufferSize;		// Size of bounceBuffer in Bytes.
 	unsigned char*		bounceBuffer;			// Bouncebuffer.
-	unsigned int		readFilterFlags;		// Special flags to enable certain postprocessing operations on read data.	
+	unsigned int		readFilterFlags;		// Special flags to enable certain postprocessing operations on read data.
+	int					asyncReadBytesCount;	// Counter of total bytes read via async thread so far. [Updates not mutex protected!]
+	unsigned char		lineTerminator;			// Line terminator byte, if any.
+	unsigned char		eventCharEnabled;		// 0 = Waiting for "event character received" event is disabled. Otherwise it is enabled.
 } PsychSerialDeviceRecord;
 
 #endif
