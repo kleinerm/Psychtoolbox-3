@@ -36,7 +36,7 @@ FlushEvents('keyDown');
 
 % Write the message
 Screen('DrawText', windowPtr, msg, x, y, textColor, bgColor);
-Screen('Flip', windowPtr);
+Screen('Flip', windowPtr, 0, 1);
 
 string = '';
 while true

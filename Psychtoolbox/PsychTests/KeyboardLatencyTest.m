@@ -32,6 +32,9 @@ function KeyboardLatencyTest(triggerlevel, modality, submode)
 %
 % A 'modality' of 5 will exercise the RB-x30 response pads from Cedrus.
 %
+% A 'modality' of 6 will exercise the PST serial response button box.
+% A 'modality' of 7 will exercise the CMU serial response button box.
+%
 % Obviously this method of measuring carries quite a bit of uncertainty
 % in exact timing, but with a high quality microphone, proper tuning and
 % good sound hardware, it shouldn't be off too much. At least you get a
@@ -41,6 +44,7 @@ function KeyboardLatencyTest(triggerlevel, modality, submode)
 % History:
 % 08/10/2008 Written (MK)
 % 02/15/2009 Updated for Cedrus and RTBox (MK).
+% 08/15/2009 Updated for CMU and PST serial response button boxes (MK).
 
 tdelay = [];
 global tdelay2;
@@ -87,6 +91,20 @@ if modality == 5
     fprintf('... done.\n');
 end
 
+% CMU or PST serial response button box?
+if ismember(modality, [6,7])
+    if modality == 6
+        % Open PST box, calibrate, start response collection:
+        hcmu = CMUBox('Open', 'pst');
+    else
+        % Open CMU box, calibrate, start response collection:
+        hcmu = CMUBox('Open', 'cmu');
+    end
+else
+    % None of these...
+    hcmu = [];
+end
+
 fprintf('Auditory keyboard / mouse latency test:\n');
 fprintf('After you see the instruction "Hit me baby one more time!", hit ');
 if modality == 1
@@ -95,7 +113,11 @@ else
     if modality == 0
         fprintf('a keyboard button\n');
     else
-        fprintf('the keyboard space bar\n');
+        if modality == 2
+            fprintf('the keyboard space bar\n');
+        else
+            fprintf('a response button on your response box device\n');
+        end
     end
 end
 
@@ -203,6 +225,28 @@ for trial = 1:10
             while ~isempty(evt)
                 evt = CedrusResponseBox('GetButtons', hcedrus);
             end
+        case {6, 7}
+            % CMU or PST box, handled by CMUBox driver:
+
+            % Drain the event queue of the box to remove any stale events:
+            while 1
+                WaitSecs(0.1);
+                evt = CMUBox('GetEvent', hcmu);
+                if isempty(evt)
+                    break;
+                end
+            end
+            
+            fprintf('From now on... ');
+
+            % Wait for first event:
+            evt = [];
+            while isempty(evt)
+                evt = CMUBox('GetEvent', hcmu);
+            end
+
+            % Decode:
+            tKeypress = evt.time;
             
         otherwise
             error('Unknown "modality" specified.');
@@ -291,6 +335,12 @@ end
 
 if modality == 5
     CedrusResponseBox('Close', hcedrus);
+end
+
+if ~isempty(hcmu)
+    fprintf('Final status of CMUBox is:\n');
+    status = CMUBox('Status', hcmu) %#ok<NASGU,NOPRT>
+    CMUBox('Close', hcmu);
 end
 
 return;

@@ -67,6 +67,9 @@ function varargout = CMUBox(cmd, handle, varargin)
 %
 %
 
+% History:
+% 9.08.2009  mk  Written. Initial prototype.
+
 % Cell array of structs for our boxes: One cell for each open box.
 persistent boxes;
 
@@ -120,16 +123,20 @@ if strcmpi(cmd, 'GetEvent')
     % Repeat until forceful abortion via break as long as either waiting
     % for new events is requested, or - in non-blocking mode - new status
     % bytes from the box are available to parse:
-    while (waitEvent > 0) | (IOPort('BytesAvailable', box.port) > 0) %#ok<OR2>
+    while (waitEvent > 0) | (IOPort('BytesAvailable', box.port) >= 5) %#ok<OR2>
 
-        % Wait blocking for at least one status byte from box:
-        [data, t, err] = IOPort('Read', box.port, 1, 1);
+        % Wait blocking for at least one status packet of 5 bytes from box:
+        [inpkt, t, err] = IOPort('Read', box.port, 1, 5);
 
         % Error condition?
         if ~isempty(err)
             % Game over!
             error('CMUBox: GetEvent: I/O ERROR!! System says: %s\n', err);
         end
+
+        data = inpkt(1);
+        serNumber = inpkt(2) * 256^0 + inpkt(3) * 256^1 + inpkt(4) * 256^2 + inpkt(5) * 256^3;
+        refTime = (serNumber * box.dt) + box.baseTime;
 
         % Special case for Bitwhacker emulation: Filter out codes 10 and
         % 13, they're an artifact of the emulation:
@@ -158,6 +165,7 @@ if strcmpi(cmd, 'GetEvent')
         if data ~= oldState
             % Yes. We have a new event. Store it and break out of loop:
             evt.time = t;
+            evt.streamTime = refTime;
             evt.state = data;
             evt.trouble = tTrouble;
             break;
@@ -285,7 +293,8 @@ if strcmpi(cmd, 'Open')
         % redundant data:
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=3');
     else
-        % Set input filter to discard redundant data:
+        % Set input filter to discard redundant data and attach a total
+        % streamcount tag of 32 bit size to each read datum:
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=1');
         box.useBitwhacker = 0;
     end
@@ -294,11 +303,11 @@ if strcmpi(cmd, 'Open')
         % PST box: Disable streaming from box and switch off all lamps:
         % Bit 7 = 128 -> Enable/Disable streaming.
         % Bit 6 =  64 -> Lower bits control lamp state.
-        % Bit 5 =  32 -> Nop?
+        % Bit 5 =  32 -> Enable/Disable button queries.
         % Bit 0-4 = 1-16 = Enable/Disable Lamp 0-4.
         IOPort('Write', box.port, uint8(64));
         
-        % Wait extra 250 msecs for box to cam down:
+        % Wait extra 250 msecs for box to calm down:
         WaitSecs(0.25);
         
         % Now we can reasonably assume that no new data will arrive from
@@ -306,6 +315,22 @@ if strcmpi(cmd, 'Open')
         % OS receive buffers.
     end
 
+    if box.type == 2
+        % CMU box: Disable serial port receiver to stop the data stream
+        % from box at the receiving side, as this braindead box can't be
+        % instructed to stop streaming by itself. This call will only work
+        % on OS/X and Linux and even there only on a small subset of serial
+        % port hardware :-(
+        IOPort('ConfigureSerialPort', box.port, 'ReceiverEnable=0');
+
+        % Wait extra 250 msecs for box to calm down:
+        WaitSecs(0.25);
+        
+        % Now we can at least pray that no new data will arrive from
+        % box and no data is in-flight. Whatever's there should be in the
+        % OS receive buffers.
+    end
+    
     % Purge all input and output buffers:
     IOPort('Purge', box.port);
         
@@ -314,10 +339,104 @@ if strcmpi(cmd, 'Open')
         IOPort('Read', box.port, 0);
     end
 
+    % Preheat GetSecs:
+    GetSecs;
+    
+    if box.type == 3 | box.type == 2 %#ok<OR2>
+        % Calibrate inter-byte-interval:
+        if box.type == 3
+            % PST box: Enable streaming:
+            IOPort('Write', box.port, uint8(128+64+32+1+4+16), 0);
+        else
+            % CMU box: Enable receiver:
+            IOPort('ConfigureSerialPort', box.port, 'ReceiverEnable=1');
+        end
+
+        % Wait until 8000 bytes have arrived, read them and timestamp:
+        while IOPort('BytesAvailable', box.port) == 0
+            % Still waiting for 1st byte...
+            when1 = GetSecs;
+        end
+        
+        nscanned = 0;
+        while nscanned < 8000        
+            % Wait for final byte: We must not request more than 1000 Bytes
+            % per request, otherwise we'll get in trouble on OS/X!
+            [dummy, when2] = IOPort('Read', box.port, 1, 1000);
+            nscanned = nscanned + length(dummy);
+        end
+        
+        if box.type == 3
+            % PST: Stop streaming from box:
+            IOPort('Write', box.port, uint8(64+2+8));
+        else
+            % CMU: Disable receiver:
+            IOPort('ConfigureSerialPort', box.port, 'ReceiverEnable=0');            
+        end
+        
+        % Wait extra 250 msecs for box to calm down:
+        WaitSecs(0.25);
+
+        % Purge all input and output buffers:
+        IOPort('Purge', box.port);
+
+        % Now try to get rid of all of it:
+        while IOPort('BytesAvailable', box.port) > 0
+            IOPort('Read', box.port, 0);
+        end
+        
+        % All buffer drained, no more data. Compute real byteduration of a
+        % single samplebyte:
+        box.dt = (when2 - when1) / nscanned;
+
+        if box.type == 2
+            % If this is Windows, or if the results seem implausible for the
+            % CMU box, ie., more than 0.1 msecs off the expected 1.0 msec, then
+            % we simply hard-code dt to 1.0 msec.
+            if IsWin | (box.dt < 0.0009) | (box.dt > 0.0011) %#ok<OR2>
+                % CMU Box: Assume 1 msec per sample:
+                box.dt = 1/1000;
+            end
+        end
+    end
+
+    % Setup Async-Reads with blocking background read behaviour. This also
+    % affects regular Sync-Reads by avoiding polling for the first byte!
+    % This will cause the background async reader thread to block in the
+    % serial port read function until data is available, then fetch,
+    % process, timestamp and enqueue it, then repeat the cycle. No cpu
+    % resources are wasted polling and the accuracy of the timestamps is
+    % only limited by the scheduling latency of the operating system:
+    IOPort('ConfigureSerialPort', box.port, 'BlockingBackgroundRead=1');
+
+    if box.type == 3
+        % PST box: Enable streaming from box:
+        % Technically only bit 7 (128) controls streaming and its speed, the
+        % rest controls lamp state (1 = Lamp dark, 0 = Lamp on) as
+        % described above. A setting of 255 will enable streaming (128) and will
+        % switch on all lamps due to 64 + 32 + 16 + 8 + 4 + 2 + 1:
+        IOPort('Write', box.port, uint8(255), 0);
+    end
+    
+    if box.type == 2
+        % CMU box: Enable serial port receiver to start the data stream
+        % from box at the receiving side, as this braindead box can't be
+        % instructed to start streaming by itself. This call will only work
+        % on OS/X and Linux and even there only on a small subset of serial
+        % port hardware :-(
+        IOPort('ConfigureSerialPort', box.port, 'ReceiverEnable=1');
+    end
+    
+    % Fetch 1st sample synchronously, so we don't get a skewed box.baseTime
+    % due to startup latencies of the async reader thread:
+    [box.oldState, box.baseTime, box.olderr] = IOPort('Read', box.port, 1, 1);
+    
     % Start background read operation, try to fetch and timestamp data at a
-    % granularity of 1 Byte -- Each status byte from the box gets
-    % timestamped individually:
-    IOPort('ConfigureSerialPort', box.port, 'StartBackgroundRead=1');
+    % granularity of 5 Byte -- Each single status byte from the box gets
+    % timestamped individually, and a 4 Byte streamcount of read bytes gets
+    % attached, resulting in 5 Bytes of data for each single non-redundant
+    % byte of data from the box:
+    IOPort('ConfigureSerialPort', box.port, 'StartBackgroundRead=5');
     
     % CAUTION: As soon as StartBackgroundRead has been called, we should
     % avoid calling IOPort('Write') or IOPort('Purge') etc. on MS-Windows.
@@ -326,39 +445,9 @@ if strcmpi(cmd, 'Open')
     % background thread accesses as well. Only 'Read', 'BytesAvailable',
     % and a subset of 'ConfigureSerialPort' commands are safe on Windoze.
     
-    % Now try to get rid of all of it:
-    while IOPort('BytesAvailable', box.port) > 0
-        IOPort('Read', box.port, 1, IOPort('BytesAvailable', box.port));
-    end
+    % baseTime is first oldTime:
+    box.oldTime = box.baseTime;
     
-    if box.type == 3
-        % PST box: Enable streaming from box:
-        % Technically only bit 7 (128) controls streaming and its speed, the
-        % rest controls lamp state (1 = Lamp dark, 0 = Lamp on) as
-        % described above. A setting of 255 will enable streaming (128) and will
-        % switch on all lamps due to 64 + 32 + 16 + 8 + 4 + 2 + 1:
-        IOPort('Write', box.port, uint8(255));
-    end
-    
-    % Start Async-Reads with blocking background read behaviour. This also
-    % affects regular Sync-Reads by avoiding polling for the first byte!
-    % This will cause the background async reader thread to block in the
-    % serial port read function until data is available, then fetch,
-    % process, timestamp and enqueue it, then repeat the cycle. No cpu
-    % resources are wasted polling and the accuracy of the timestamps is
-    % only limited by the scheduling latency of the operating system:
-    IOPort('ConfigureSerialPort', box.port, 'BlockingBackgroundRead=1');
-    
-    % Now that we're kind of in a defined state, retrieve one status byte
-    % from the box to initialize to our start status:
-    if IOPort('BytesAvailable', box.port) > 0
-        [box.oldState, box.oldTime, box.olderr] = IOPort('Read', box.port, 1, 1);
-    else
-       box.olderr = '';
-       box.oldState = -1;
-       box.oldTime = 0;
-    end
-
     % Reset trouble counter:
     box.tTrouble = 0;
     
