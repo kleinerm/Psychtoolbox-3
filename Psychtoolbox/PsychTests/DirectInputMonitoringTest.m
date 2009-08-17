@@ -26,20 +26,12 @@ function DirectInputMonitoringTest
 % monitoring to work:
 pa = PsychPortAudio('Open', [], 1+2, 1, 44100, 2);
 
-% Start with safe assumption of 2 input/output channels:
-ninputs = 2;
-noutputs = 2;
-
-% Query all ASIO devices on Windows and assign in/outchannelcount if
-% possible:
-if IsWin
-    devs = PsychPortAudio('GetDevices', 3);
-    if ~isempty(devs)
-        devs = devs(1);
-        ninputs = devs.NrInputChannels;
-        noutputs = devs.NrOutputChannels;
-    end
-end
+% Retrieve number of input- and output soundchannels for device pa:
+status = PsychPortAudio('GetStatus', pa);
+outdev = PsychPortAudio('GetDevices', [], status.OutDeviceIndex);
+noutputs = outdev.NrOutputChannels;
+inpdev = PsychPortAudio('GetDevices', [], status.InDeviceIndex);
+ninputs = inpdev.NrInputChannels;
 
 % Select all inputchannels (-1) for monitoring. Could also spec a specific
 % channel number >=0 to set monitoring settings on a per-channel basis:
