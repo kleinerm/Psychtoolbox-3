@@ -207,7 +207,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 	// round robin realtime scheduling, with a tweakPriority of +1, ie., raise the relative
 	// priority level by +1 wrt. to the current level:
 	if ((rc = PsychSetThreadPriority(NULL, 1, 1)) > 0) {
-		if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
+		if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
 	}
 
 	// Main loop: Runs until external thread cancellation:
