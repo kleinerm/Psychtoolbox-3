@@ -367,6 +367,12 @@ int PsychLockMutex(psych_mutex* mutex)
 	return(pthread_mutex_lock(mutex));
 }
 
+/* Try to lock a Mutex, returning immediately, with a return code that tells if mutex could be locked or not: */
+int PsychTryLockMutex(psych_mutex* mutex)
+{
+	return(pthread_mutex_trylock(mutex));
+}
+
 /* Unlock a Mutex: */
 int PsychUnlockMutex(psych_mutex* mutex)
 {
@@ -400,6 +406,16 @@ int PsychAbortThread(psych_thread* threadhandle)
 	return( pthread_cancel(*threadhandle) );
 }
 
+/* Check for abort request to thread: Exit thread gracefully if abort requested: */
+void PsychTestCancelThread(psych_thread* threadhandle)
+{
+	// threadhandle unused on POSIX: This line just to make compiler happy:
+	(psych_thread*) threadhandle;
+	
+	// Test for cancellation, cancel if so:
+	pthread_testcancel();
+}
+
 /* Return handle of calling thread: */
 psych_threadid PsychGetThreadId(void)
 {
@@ -415,5 +431,129 @@ int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
 /* Check if current (invoking) thread has an id equal to given threadid: */
 int PsychIsCurrentThreadEqualToId(psych_threadid threadId)
 {
-	return( PsychGetThreadId() == threadId );
+	return( pthread_equal(PsychGetThreadId(), threadId) );
+}
+
+/* Check if current (invoking) thread is equal to given threadhandle: */
+int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
+{
+	return( pthread_equal(PsychGetThreadId(), threadhandle) );
+}
+
+/* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
+ * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
+ * 'tweakPriority' modulates more fine-grained within the category given by 'basepriority'. It
+ * can be anywhere between 0 and some big value where bigger means more priority.
+ *
+ * Returns zero on success, non-zero on failure to set new priority.
+ */
+int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority)
+{
+	int rc = 0;
+	int policy;
+	struct sched_param sp;
+	pthread_t thread;
+
+	if (NULL != threadhandle) {
+		// Retrieve thread handle of thread to change:
+		thread = *threadhandle;
+	}
+	else {
+		// Retrieve handle of calling thread:
+		thread = pthread_self();
+	}
+	
+	// Retrieve current scheduling policy and parameters:
+	pthread_getschedparam(thread, &policy, &sp);
+
+	switch(basePriority) {
+		case 0:	// Normal priority. No change to scheduling priority:
+			policy = SCHED_OTHER;
+			sp.sched_priority = sp.sched_priority;
+		break;
+		
+		case 1: // High priority / Round robin realtime.
+			policy = SCHED_RR;
+			sp.sched_priority = sp.sched_priority + tweakPriority;		
+		break;
+		
+		case 2: // Highest priority: FIFO scheduling
+			policy = SCHED_FIFO;
+			sp.sched_priority = sp.sched_priority + tweakPriority;
+		break;
+
+		default:
+			printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Invalid/Unknown basePriority %i provided!\n", basePriority);
+			rc = 2;
+	}
+
+	// Try to apply new priority and scheduling method:
+	if (rc == 0) rc = pthread_setschedparam(thread, policy, &sp);
+	
+	// rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:
+	return(rc);
+}
+
+/* Initialize condition variable:
+ * CAUTION: Use of condition_attribute is non-portable! Code using it will not work properly
+ * on MS-Windows as this attribute is unsupported there! Pass NULL for this argument for
+ * portable operation!
+ */
+int PsychInitCondition(psych_condition* condition, const pthread_condattr_t* condition_attribute)
+{
+	return(pthread_cond_init(condition, condition_attribute));
+}
+
+/* Destroy condition variable: */
+int PsychDestroyCondition(psych_condition* condition)
+{
+	return(pthread_cond_destroy(condition));
+}
+
+/* Signal/wakeup exactly one thread waiting on the given condition variable: */
+int PsychSignalCondition(psych_condition* condition)
+{
+	return(pthread_cond_signal(condition));
+}
+
+/* Signal/Wakeup all threads waiting on the given condition variable:
+ * CAUTION: Use of this function is non-portable to MS-Windows for now! Code
+ * using it will malfunction if used on MS-Windows!
+ */
+int PsychBroadcastCondition(psych_condition* condition)
+{
+	return(pthread_cond_broadcast(condition));
+}
+
+/* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
+ * being signalled, then waking up and trying to re-lock the 'mutex'. Will return with
+ * mutex locked.
+ */
+int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
+{
+	return(pthread_cond_wait(condition, mutex));
+}
+
+/* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
+ * being signalled, then waking up and trying to re-lock the 'mutex'. Will return with
+ * mutex locked.
+ *
+ * Like PsychWaitCondition, but function will timeout if it fails being signalled before
+ * timeout interval 'maxwaittimesecs' expires. In any case, it will only return after
+ * reacquiring the mutex. It will retun zero on successfull wait, non-zero (ETIMEDOUT) if
+ * timeout was triggered without the condition being signalled.
+ */
+int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs)
+{
+	struct timespec abstime;
+	// Split maxwaittimesecs in...
+	
+	// ... full integral seconds (floor() it)...
+	abstime.tv_sec  = (time_t) maxwaittimesecs;
+
+	// ... and fractional seconds, expressed as nanoseconds in (long) format:
+	abstime.tv_nsec = (long) (((double) maxwaittimesecs - (double) abstime.tv_sec) * (double) (1e9));
+
+	// Perform wait with timeout:
+	return(pthread_cond_timedwait(condition, mutex, &abstime));
 }

@@ -84,9 +84,9 @@ PsychError SCREENFlip(void)
 	"information for the finalized flip by use of the commands Screen('AsyncFlipCheckEnd') and Screen('AsyncFlipEnd');\n\n"
 	"In general you should avoid using asynchronous flips and instead use conventional 'Flip' unless you have a "
 	"good reason to do otherwise, because async flips come with a couple of strings attached:\n\n"
-	"- They are not portable to MS-Windows: Code written with async flip will only \n"
-	"  work on Apple OS/X and GNU/Linux. There are no plans to ever support this\n"
-	"  feature on MS-Windows, we don't want to beat that shaky beast to death...\n\n"
+//	"- They are not portable to MS-Windows: Code written with async flip will only \n"
+//	"  work on Apple OS/X and GNU/Linux. There are no plans to ever support this\n"
+//	"  feature on MS-Windows, we don't want to beat that shaky beast to death...\n\n"
 	"- You are restricted in what you can do with Screen() or OpenGL while async\n"
 	"  flips are in progress: You can not do anything with textures or offscreen\n"
 	"  windows while any onscreen window is in async flip state. You can only\n"
@@ -147,8 +147,6 @@ PsychError SCREENFlip(void)
 	unsigned int opmode;
 	psych_bool flipstate;
 
-#if PSYCH_SYSTEM == PSYCH_OSX || PSYCH_SYSTEM == PSYCH_LINUX
-
 	// Change our "personality" depending on the name with which we were called:
 	if (PsychMatch(PsychGetFunctionName(), "AsyncFlipBegin")) {
 		// Async flip invocation:
@@ -178,14 +176,6 @@ PsychError SCREENFlip(void)
 		// Push usage string and/or give online help:
 		PsychPushHelp(useString0, synopsisString0, seeAlsoString);
 	};
-#else
-	// Windows: No async flip support:
-	// Standard synchronous flip:
-	opmode = 0;
-
-	// Push usage string and/or give online help:
-	PsychPushHelp(useString0, synopsisString0, seeAlsoString);
-#endif
 	
 	// Give online help, if requested:
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};

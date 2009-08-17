@@ -77,12 +77,10 @@ static psych_bool inGLUserspace = FALSE;
 // avoid needless state changes:
 static PsychWindowRecordType* currentRendertarget = NULL;
 
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
 // The handle of the masterthread - The Matlab/Octave/PTB main interpreter thread: This
 // is initialized when opening the first onscreen window. Its used in PsychSetDrawingTarget()
 // to discriminate between the masterthread and the worker threads for async flip operations:
-static pthread_t	masterthread = NULL;
-#endif
+static psych_threadid	masterthread = NULL;
 
 // Count of currently async-flipping onscreen windows:
 static unsigned int	asyncFlipOpsActive = 0;
@@ -237,10 +235,11 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 			printf("PTB-INFO: Currently implemented: Screen('OpenOffscreenWindow'), Screen('CopyWindow') and Screen('WaitBlanking')\n");
 		}
 		
-		#if PSYCH_SYSTEM != PSYCH_WINDOWS
-			masterthread = pthread_self();
-		#endif
-
+		// Assign unique id of this thread (the Matlab/Octave main interpreter thread)
+		// as masterthread. This masterthread is the only one allowed to execute complex
+		// OpenGL code, therefore some routines check for that, e.g., PsychSetDrawingTarget().
+		// This is part of the async flip mechanism:
+		masterthread = PsychGetThreadId();
 	}
 	
     // Assign the passed windowrect 'rect' to the new window:
@@ -1309,6 +1308,10 @@ void PsychFlushGL(PsychWindowRecordType *windowRecord)
     if(PsychIsOnscreenWindow(windowRecord) && PsychPrefStateGet_EmulateOldPTB()) glFinish();            
 }
 
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#define strerror(x) "UNKNOWN"
+#endif
+
 /* PsychReleaseFlipInfoStruct() -- Cleanup flipInfo struct
  *
  * This routine cleans up the flipInfo struct field of onscreen window records at
@@ -1349,59 +1352,72 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 				printf("PTB-WARNING: Infinite loop detected. Trying to break out in a cruel way. This may hang, crash or go into another infinite loop...\n");
 				fflush(NULL);
 				flipRequest->asyncstate = 0;
+
+				// Decrement the asyncFlipOpsActive count:
+				asyncFlipOpsActive--;
 			}
 		}
 	}
 	
 	// Decrement the asyncFlipOpsActive count:
-	asyncFlipOpsActive--;
+	// asyncFlipOpsActive--;
 
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	// Any threads attached?
 	if (flipRequest->flipperThread) {
 		// Yes. Cancel and destroy / release it, also release all mutex locks:
 
 		// Set opmode to "terminate please":
 		flipRequest->opmode = -1;
-		
-		// Unlock the lock in case we hold it, so the thread can't block on it:
-		if ((rc=pthread_mutex_unlock(&(flipRequest->performFlipLock))) && (rc!=EPERM)) {
-			printf("PTB-DEBUG: In PsychReleaseFlipInfoStruct(): mutex_unlock in thread shutdown operation failed  [%s].\n", strerror(rc));
-			printf("PTB-ERROR: This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
-			// Anyway, just hope its not fatal for us...
+
+		// Do we hold the mutex? Given a flipperThread exist if we made it until here,
+		// at least one async flip has happened in this session, which means that we do
+		// hold the lock after an async flip has finalized (2) and/or Screen('AsyncFlipEnd/Check')
+		// has gathered the data from the finalized flip and reset to synchronous mode (0). In
+		// any of these cases, the flipper thread is sleeping on its condition variable, waiting
+		// for new instructions and we have the lock. Check for asyncstate 2 or 0 to decide
+		// if we need to release the lock:
+		if ((flipRequest->asyncstate == 0) || (flipRequest->asyncstate == 2)) {
+			// Unlock the lock, so the thread can't block on it:
+			PsychUnlockMutex(&(flipRequest->performFlipLock));
 		}
 		
-		// Signal the thread in case its waiting on the condition variable:
-		if ((rc=pthread_cond_signal(&(flipRequest->flipperGoGoGo)))) {
+		// Signal the thread in case it is waiting on the condition variable:
+		if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
 			printf("PTB-ERROR: In PsychReleaseFlipInfoStruct(): pthread_cond_signal in thread shutdown operation failed  [%s].\n", strerror(rc));
 			printf("PTB-ERROR: This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
-			// Anyway, just hope its not fatal for us...
+
+			// Anyway, just hope it is not fatal for us...
 			// Try to cancel the thread in a more cruel manner. That's the best we can do.
-			pthread_cancel(flipRequest->flipperThread);
+			PsychAbortThread(&(flipRequest->flipperThread));
 		}
+
+		// Thread should wake up on the signal/condition now, reaquire the lock, parse
+		// our opmode = -1 abort command and therefore release the lock and terminate.
 
 		// Wait for thread to stop and die:
 		if (PsychPrefStateGet_Verbosity()>5) printf("PTB-DEBUG: Waiting (join()ing) for helper thread of window %p to finish up. If this doesn't happen quickly, you'll have to kill Matlab/Octave...\n", windowRecord);
 
 		// If any error happened here, it wouldn't be a problem for us...
-		pthread_join(flipRequest->flipperThread, NULL);
+		// Wait for thread termination, cleanup and release the thread:
+		PsychDeleteThread(&(flipRequest->flipperThread));
 		
 		// Ok, thread is dead. Mark it as such:
 		flipRequest->flipperThread = NULL;
+
+		// Destroy the mutex:
+		if ((rc=PsychDestroyMutex(&(flipRequest->performFlipLock)))) {
+			printf("PTB-WARNING: In PsychReleaseFlipInfoStruct: Could not destroy performFlipLock mutex lock [%s].\n", strerror(rc));
+			printf("PTB-WARNING: This will cause ressource leakage. Maybe you should better exit and restart Matlab/Octave?");
+		}
+		
+		// Destroy condition variable:
+		if ((rc=PsychDestroyCondition(&(flipRequest->flipperGoGoGo)))) {
+			printf("PTB-WARNING: In PsychReleaseFlipInfoStruct: Could not destroy flipperGoGoGo condition variable [%s].\n", strerror(rc));
+			printf("PTB-WARNING: This will cause ressource leakage. Maybe you should better exit and restart Matlab/Octave?");
+		}
+		
+		// At this point, the thread and all other async flip resources have been terminated and released.
 	}
-	
-	// Destroy the mutex:
-	if ((rc=pthread_mutex_destroy(&(flipRequest->performFlipLock))) && (rc!=EINVAL)) {
-		printf("PTB-WARNING: In PsychReleaseFlipInfoStruct: Could not destroy performFlipLock mutex lock [%s].\n", strerror(rc));
-		printf("PTB-WARNING: This will cause ressource leakage. Maybe you should better exit and restart Matlab/Octave?");
-	}
-	
-	// Destroy condition variable:
-	if ((rc=pthread_cond_destroy(&(flipRequest->flipperGoGoGo))) && (rc!=EINVAL)) {
-		printf("PTB-WARNING: In PsychReleaseFlipInfoStruct: Could not destroy flipperGoGoGo condition variable [%s].\n", strerror(rc));
-		printf("PTB-WARNING: This will cause ressource leakage. Maybe you should better exit and restart Matlab/Octave?");
-	}
-#endif
 
 	// Release struct:
 	free(flipRequest);
@@ -1441,7 +1457,6 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
  */
 void* PsychFlipperThreadMain(void* windowRecordToCast)
 {
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
 	int rc;
 
 	// Get a handle to our info structs: These pointers must not be NULL!!!
@@ -1449,7 +1464,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	PsychFlipInfoStruct*	flipRequest	 = windowRecord->flipInfo;
 	
 	// Try to lock, block until available if not available:
-	if ((rc=pthread_mutex_lock(&(flipRequest->performFlipLock)))) {
+	if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
 		// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
 		// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
 		// wreak havoc -- maybe it goes to the system log, which should be safer...
@@ -1470,7 +1485,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// the master thread. This is an atomic operation, both unlock and sleep happen simultaneously.
 		// After a wakeup due to signalling, the lock is automatically reacquired, so no need to mutex_lock
 		// anymore. This is also a thread cancellation point...
-		if ((rc=pthread_cond_wait(&(flipRequest->flipperGoGoGo), &(flipRequest->performFlipLock)))) {
+		if ((rc=PsychWaitCondition(&(flipRequest->flipperGoGoGo), &(flipRequest->performFlipLock)))) {
 			// Failed: Log it in a hopefully not too unsafe way:
 			fprintf(stderr, "PTB-ERROR: In PsychFlipperThreadMain():  pthread_cond_wait() on flipperGoGoGo trigger failed  [%s].\n", strerror(rc));
 			
@@ -1479,7 +1494,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			return;
 		}
 		
-		// Got woken up, work to do! We have to lock from auto-reqacquire in cond_wait:
+		// Got woken up, work to do! We have the lock from auto-reaquire in cond_wait:
 		
 		// Check if we are supposed to terminate:
 		if (flipRequest->opmode == -1) {
@@ -1526,7 +1541,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 	
 	// Need to unlock the mutex:
 	if (flipRequest->flipperState == 4) {
-		if ((rc=pthread_mutex_unlock(&(flipRequest->performFlipLock)))) {
+		if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
 			// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
 			// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
 			// wreak havoc -- maybe it goes to the system log, which should be safer...
@@ -1537,8 +1552,6 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 			return;
 		}
 	}
-
-#endif
 
 	// Ok, we're not blocked on condition variable and we've unlocked the lock (or at least, did our best to do so),
 	// and set the termination state: Go and die peacefully...
@@ -1631,8 +1644,6 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		return(TRUE);
 	}
 
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
-
 	// Asynchronous flip mode, either request to trigger one or request to finalize one:
 	if (flipRequest->opmode == 1) {
 		// Async flip start request:
@@ -1659,12 +1670,12 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// printf("IN THREADCREATE\n"); fflush(NULL);
 
 			// Create & Init the two mutexes:
-			if ((rc=pthread_mutex_init(&(flipRequest->performFlipLock), NULL))) {
+			if ((rc=PsychInitMutex(&(flipRequest->performFlipLock)))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create performFlipLock mutex lock [%s].\n", strerror(rc));
 				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
 			}
 			
-			if ((rc=pthread_cond_init(&(flipRequest->flipperGoGoGo), NULL))) {
+			if ((rc=PsychInitCondition(&(flipRequest->flipperGoGoGo), NULL))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipperGoGoGo condition variable [%s].\n", strerror(rc));
 				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for condition variable creation as part of async flip setup!");
 			}
@@ -1673,7 +1684,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			flipRequest->flipperState = 0;
 			
 			// Create and startup thread:
-			if ((rc=pthread_create(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
+			if ((rc=PsychCreateThread(&(flipRequest->flipperThread), NULL, PsychFlipperThreadMain, (void*) windowRecord))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): Could not create flipper  [%s].\n", strerror(rc));
 				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
 			}
@@ -1697,7 +1708,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			
 				//printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_LOCK\n"); fflush(NULL);
 
-				if ((rc=pthread_mutex_lock(&(flipRequest->performFlipLock)))) {
+				if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
 					printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): First mutex_lock in init failed  [%s].\n", strerror(rc));
 					PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip setup!");
 				}
@@ -1712,7 +1723,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
 				//printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_UNLOCK\n"); fflush(NULL);
 
-				if ((rc=pthread_mutex_unlock(&(flipRequest->performFlipLock)))) {
+				if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
 					printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): First mutex_unlock in init failed  [%s].\n", strerror(rc));
 					PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip setup!");
 				}
@@ -1720,7 +1731,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 				//printf("ENTERING THREADCREATEFINISHED MUTEX: MUTEX_UNLOCKED\n"); fflush(NULL);
 
 				// Thread not ready. Sleep a millisecond and repeat...
-				PsychWaitIntervalSeconds(0.001);
+				PsychYieldIntervalSeconds(0.001);
 
 				//printf("ENTERING THREADCREATEFINISHED MUTEX: RETRY\n"); fflush(NULL);
 			}
@@ -1746,10 +1757,8 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
 		// printf("IN ASYNCSTART: MUTEXUNLOCK\n"); fflush(NULL);
 
-		// Release the lock: This is not strictly needed, as the ptrhead_cond_signal() semantics
-		// would automatically take the lock from us and assign it to the signalled thread.
-		// TODO CHECK: Might be even better to not unlock for more deterministic flow of scheduling...
-		if ((rc=pthread_mutex_unlock(&(flipRequest->performFlipLock)))) {
+		// Release the lock:
+		if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
 			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in trigger operation failed  [%s].\n", strerror(rc));
 			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
 		}
@@ -1757,7 +1766,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		// printf("IN ASYNCSTART: MUTEXUNLOCKED -- SIGNALLING %s\n", strerror(rc)); fflush(NULL);
 		
 		// Trigger the thread:
-		if ((rc=pthread_cond_signal(&(flipRequest->flipperGoGoGo)))) {
+		if ((rc=PsychSignalCondition(&(flipRequest->flipperGoGoGo)))) {
 			printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): pthread_cond_signal in trigger operation failed  [%s].\n", strerror(rc));
 			PsychErrorExitMsg(PsychError_internal, "This must not ever happen! PTB design bug or severe operating system or runtime environment malfunction!! Memory corruption?!?");
 		}
@@ -1785,25 +1794,15 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 
 				//printf("END: MUTEX_LOCK\n"); fflush(NULL);
 				
-				if ((rc=pthread_mutex_lock(&(flipRequest->performFlipLock)))) {
-					printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_lock in wait for finish failed  [%s].\n", strerror(rc));
+				if ((rc=PsychLockMutex(&(flipRequest->performFlipLock)))) {
+					printf("PTB-ERROR: In Screen('AsyncFlipEnd'): PsychFlipWindowBuffersIndirect(): mutex_lock in wait for finish failed  [%s].\n", strerror(rc));
 					PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip end!");
 				}
 			}
 			else {
 				// Polling mode:
-				// Try to lock, fail if not available:
-
-				//printf("END: MUTEX_TRYLOCK: %i\n", flipRequest->flipperState); fflush(NULL);
-
-				if ((rc=pthread_mutex_trylock(&(flipRequest->performFlipLock)))) {
-					// Failed. If errno == EBUSY then the lock is busy and we exit our polling operation totally:
-					if(rc == EBUSY) return(FALSE);
-					
-					// Otherwise bad things happened!
-					printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_lock in poll for finish failed  [%s].\n", strerror(rc));
-					PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip poll end!");
-				}
+				// Try to lock, return to caller if not available:
+				if (PsychTryLockMutex(&(flipRequest->performFlipLock)) > 0) return(FALSE);
 			}
 
 			// printf("END: MUTEX_LOCKED\n"); fflush(NULL);
@@ -1817,7 +1816,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			//printf("END: NOTREADY MUTEX_UNLOCK\n"); fflush(NULL);
 
 			// Not finished. Unlock:
-			if ((rc=pthread_mutex_unlock(&(flipRequest->performFlipLock)))) {
+			if ((rc=PsychUnlockMutex(&(flipRequest->performFlipLock)))) {
 				printf("PTB-ERROR: In Screen('FlipAsyncBegin'): PsychFlipWindowBuffersIndirect(): mutex_unlock in wait/poll for finish failed  [%s].\n", strerror(rc));
 				PsychErrorExitMsg(PsychError_system, "Internal error or deadlock avoided as part of async flip end!");
 			}
@@ -1833,7 +1832,7 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			
 			// Waiting mode, need to repeat:
 			// Thread not finished. Sleep a millisecond and repeat...
-			PsychWaitIntervalSeconds(0.001);
+			PsychYieldIntervalSeconds(0.001);
 		}
 
 		//printf("END: SUCCESS\n"); fflush(NULL);
@@ -1857,15 +1856,12 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		return(TRUE);
 	}
 
-#else
-
-	// MS-Windows: Async flip ops not supported:
-	PsychErrorExitMsg(PsychError_unimplemented, "Sorry, asynchronous display flip operations are not supported on inferior operating systems.");
-
-#endif
-
 	return(TRUE);
 }
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+#undef strerror
+#endif
 
 /*
     PsychFlipWindowBuffers()
@@ -2643,44 +2639,43 @@ void PsychSetGLContext(PsychWindowRecordType *windowRecord)
 	// Check if any async flip on any onscreen window in progress: In that case only the async flip worker thread is allowed to call PsychSetGLContext()
 	// on async-flipping onscreen windows, and none of the threads is allowed to attach to non-onscreen-window ressources.
 	// asyncFlipOpsActive is a count of currently async-flipping onscreen windows...
-	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-		// Any async flips in progress? If not, then we can skip this whole checking...
-		if (asyncFlipOpsActive > 0) {
-			// At least one async flip in progress. Find the parent window of this windowRecord, ie.,
-			// the onscreen window which "owns" the relevant OpenGL context. This can be the windowRecord
-			// itself if it is an onscreen window:
-			parentRecord = PsychGetParentWindow(windowRecord);
-			
-			// We allow the main thread to attach to the OpenGL contexts owned by "parentRecord" windows which are not (yet) involved in an async flip operation.
-			// Only the worker thread of an async flipping "parentRecord" window is allowed to attach that window while async flip in progress:
-			if ((parentRecord->flipInfo) && (parentRecord->flipInfo->asyncstate == 1) && (!pthread_equal(parentRecord->flipInfo->flipperThread, pthread_self()))) {
-				// Wrong thread - This one is not allowed to attach to any OpenGL context for this parentRecord at the moment.
-				// Likely a programming error by the user:
-				if (!PsychIsOnscreenWindow(windowRecord)) {
-					PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an offscreen window, texture or proxy while some asynchronous flip operation was in progress for the parent window!\nThis is not allowed for that command! Finalize the async flip(s) first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");
-				}
-				else {
-					PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an onscreen window while an asynchronous flip operation was in progress on that window!\nThis is not allowed for that command! Finalize the flip first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");    
-				}
+
+	// Any async flips in progress? If not, then we can skip this whole checking...
+	if (asyncFlipOpsActive > 0) {
+		// At least one async flip in progress. Find the parent window of this windowRecord, ie.,
+		// the onscreen window which "owns" the relevant OpenGL context. This can be the windowRecord
+		// itself if it is an onscreen window:
+		parentRecord = PsychGetParentWindow(windowRecord);
+		
+		// We allow the main thread to attach to the OpenGL contexts owned by "parentRecord" windows which are not (yet) involved in an async flip operation.
+		// Only the worker thread of an async flipping "parentRecord" window is allowed to attach that window while async flip in progress:
+		if ((parentRecord->flipInfo) && (parentRecord->flipInfo->asyncstate == 1) && (!PsychIsCurrentThreadEqualToPsychThread(parentRecord->flipInfo->flipperThread))) {
+			// Wrong thread - This one is not allowed to attach to any OpenGL context for this parentRecord at the moment.
+			// Likely a programming error by the user:
+			if (!PsychIsOnscreenWindow(windowRecord)) {
+				PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an offscreen window, texture or proxy while some asynchronous flip operation was in progress for the parent window!\nThis is not allowed for that command! Finalize the async flip(s) first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");
 			}
-			
-			// Note: We allow drawing to non-async-flipping onscreen windows and offscreen windows/textures/proxies which don't have
-			// the same OpenGL context as any of the async-flipping windows. This should be sufficient to prevent crash'es and/or
-			// other GL malfunctions, so formally this is safe. However, once created all textures/FBO's are shared between all contexts
-			// because we enable context ressource sharing on all our contexts. That means that operations performed on them may impact
-			// the performance and latency of operations in unrelated contexts, e.g., the ones involved in async flip --> Potential to
-			// impair the stimulus onset timing of async-flipping windows. Another reason for impaired timing is that some ressources on
-			// the GPU can't be used in parallel to async flips, so operations in parallely executing contexts get serialized due to
-			// ressource contention. Examples would be the command processor CP on ATI Radeons, which only exists once, so all command
-			// streams have to be serialized --> Bufferswap trigger command packet could get stuck/stalled behind a large bunch of drawing
-			// commands for an unrelated GL context and command stream in the worst case! This is totally dependent on the gfx-drivers
-			// implementation of register programming for swap -- e.g., done through CP or done via direct register writes?
-			//
-			// All in all, the option to render to non-flipping ressources may give a performance boost when used very carefully, but
-			// may also impair good timing if not used by advanced/experienced users. But in some sense that is true for the whole async
-			// flip stuff -- its pushing the system pretty hard so it will always be more fragile wrt. system load fluctuations etc...
+			else {
+				PsychErrorExitMsg(PsychError_user, "Your code tried to execute a Screen() graphics command or Matlab/Octave/C OpenGL command for an onscreen window while an asynchronous flip operation was in progress on that window!\nThis is not allowed for that command! Finalize the flip first via Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd')!");    
+			}
 		}
-	#endif
+		
+		// Note: We allow drawing to non-async-flipping onscreen windows and offscreen windows/textures/proxies which don't have
+		// the same OpenGL context as any of the async-flipping windows. This should be sufficient to prevent crash'es and/or
+		// other GL malfunctions, so formally this is safe. However, once created all textures/FBO's are shared between all contexts
+		// because we enable context ressource sharing on all our contexts. That means that operations performed on them may impact
+		// the performance and latency of operations in unrelated contexts, e.g., the ones involved in async flip --> Potential to
+		// impair the stimulus onset timing of async-flipping windows. Another reason for impaired timing is that some ressources on
+		// the GPU can't be used in parallel to async flips, so operations in parallely executing contexts get serialized due to
+		// ressource contention. Examples would be the command processor CP on ATI Radeons, which only exists once, so all command
+		// streams have to be serialized --> Bufferswap trigger command packet could get stuck/stalled behind a large bunch of drawing
+		// commands for an unrelated GL context and command stream in the worst case! This is totally dependent on the gfx-drivers
+		// implementation of register programming for swap -- e.g., done through CP or done via direct register writes?
+		//
+		// All in all, the option to render to non-flipping ressources may give a performance boost when used very carefully, but
+		// may also impair good timing if not used by advanced/experienced users. But in some sense that is true for the whole async
+		// flip stuff -- its pushing the system pretty hard so it will always be more fragile wrt. system load fluctuations etc...
+	}
 	
 	// Call OS - specific context switching code:
     PsychOSSetGLContext(windowRecord);
@@ -3742,9 +3737,7 @@ void PsychSetDrawingTarget(PsychWindowRecordType *windowRecord)
 	// Are we called from the main interpreter thread? If not, then we return
 	// immediately (No-Op). Worker threads for async flip don't expect this
 	// subroutine to execute!
-	#if PSYCH_SYSTEM != PSYCH_WINDOWS
-		if (!pthread_equal(masterthread, pthread_self())) return;
-	#endif
+	if (!PsychIsCurrentThreadEqualToId(masterthread)) return;
 
 	// Called from main thread --> Work to do.
 

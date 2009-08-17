@@ -84,14 +84,6 @@ static const char *synopsisSYNOPSIS[MAX_SYNOPSIS_STRINGS];
 // mutex lock hold times for low-level debugging and tuning:
 //#define MUTEX_LOCK_TIME_STATS 1
 
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-	// HANDLE to Win32 event object:
-	typedef HANDLE psychpa_conditionvar;
-#else
-	// Posix condition variable:
-	typedef pthread_cond_t psychpa_conditionvar;
-#endif
-
 typedef struct PsychPASchedule {
 	unsigned int	mode;				// Mode of schedule slot: 0 = Invalid slot, > 0 valid slot, where different bits in the int mean something...
 	double			repetitions;		// Number of repetitions for the playloop defined in this slot.
@@ -104,12 +96,14 @@ typedef struct PsychPASchedule {
 // Our device record:
 typedef struct PsychPADevice {
 	psych_mutex	mutex;			// Mutex lock for the PsychPADevice struct.
-	psychpa_conditionvar changeSignal;	// Condition variable or event object for change signalling (see above).
+	psych_condition changeSignal;	// Condition variable or event object for change signalling (see above).
 	int		 opmode;			// Mode of operation: Playback, capture or full duplex?
 	int		 runMode;			// Runmode: 0 = Stop engine at end of playback, 1 = Keep engine running in hot-standby, ...
 	PaStream *stream;			// Pointer to associated portaudio stream.
 	PaStreamInfo* streaminfo;   // Pointer to stream info structure, provided by PortAudio.
 	PaHostApiTypeId hostAPI;	// Type of host API.
+	int		indeviceidx;		// Device index of capture device. -1 if none open.
+	int		outdeviceidx;		// Device index of output device. -1 if none open.
 	volatile double	 reqStartTime;		// Requested start time in system time (secs).
 	volatile double	 startTime;			// Real start time in system time (secs). Returns real start time after start.
 								// The real start time is the time when the first sample hit the speaker in playback or full-duplex mode.
@@ -411,19 +405,7 @@ static void PsychPAUnlockDeviceMutex(PsychPADevice* dev)
 static void PsychPACreateSignal(PsychPADevice* dev)
 {
 	if (uselocking) {
-		// Locking and signalling: We have to wait for a signal, and we
-		// enter here with the device mutex held. Waiting is operating system dependent:
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-			// MS-Windows: Create auto-reset event-object:
-			dev->changeSignal = CreateEvent(NULL,               // default security attributes
-											FALSE,              // auto-reset event
-											FALSE,              // initial state is nonsignaled
-											NULL				// no object name
-											); 
-		#else
-			// Unices aka Posix: Create condition variable:
-			pthread_cond_init(&(dev->changeSignal), NULL);
-		#endif
+		PsychInitCondition(&(dev->changeSignal), NULL);
 	}
 }
 
@@ -431,30 +413,14 @@ static void PsychPACreateSignal(PsychPADevice* dev)
 static void PsychPADestroySignal(PsychPADevice* dev)
 {
 	if (uselocking) {
-		// Locking and signalling: We have to wait for a signal, and we
-		// enter here with the device mutex held. Waiting is operating system dependent:
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-			// MS-Windows: Destroy event-object:
-			CloseHandle(dev->changeSignal); 
-		#else
-			// Unices aka Posix: Destroy condition variable:
-			pthread_cond_destroy(&(dev->changeSignal));
-		#endif
+		PsychDestroyCondition(&(dev->changeSignal));
 	}
 }
 
 static void PsychPASignalChange(PsychPADevice* dev)
 {
 	if (uselocking) {
-		// Locking and signalling: We have to wait for a signal, and we
-		// enter here with the device mutex held. Waiting is operating system dependent:
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-			// MS-Windows: Set our event-object to signalled state to wake up waiting master thread, if any:
-			SetEvent(dev->changeSignal);
-		#else
-			// Unices aka Posix: Signal our condition variable to wake up waiting master thread, if any:
-			pthread_cond_signal(&(dev->changeSignal));
-		#endif
+		PsychSignalCondition(&(dev->changeSignal));
 	}
 }
 
@@ -463,17 +429,7 @@ static void PsychPAWaitForChange(PsychPADevice* dev)
 	if (uselocking) {
 		// Locking and signalling: We have to wait for a signal, and we
 		// enter here with the device mutex held. Waiting is operating system dependent:
-		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-			// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
-			// state, then reacquire the mutex:
-			PsychPAUnlockDeviceMutex(dev);
-			WaitForSingleObject(dev->changeSignal, INFINITE);
-			PsychPALockDeviceMutex(dev);
-		#else
-			// Unices aka Posix: Wait on a condition variable to signal. Dropping and reaquiring
-			// the lock happens automatically in an atomic manner:
-			pthread_cond_wait(&(dev->changeSignal), &(dev->mutex));
-		#endif
+		PsychWaitCondition(&(dev->changeSignal), &(dev->mutex));
 	}
 	else {
 		// No locking and signalling: Just yield for a bit, then retry...
@@ -1222,7 +1178,7 @@ void InitializeSynopsis(void)
 	synopsis[i++] = "version = PsychPortAudio('Version');";
 	synopsis[i++] = "oldlevel = PsychPortAudio('Verbosity' [,level]);";
 	synopsis[i++] = "count = PsychPortAudio('GetOpenDeviceCount');";
-	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype]);";
+	synopsis[i++] = "devices = PsychPortAudio('GetDevices' [,devicetype] [, deviceIndex]);";
 	synopsis[i++] = "\nGeneral settings:\n";
 	synopsis[i++] = "[oldyieldInterval, oldMutexEnable, lockToCore1] = PsychPortAudio('EngineTunables' [, yieldInterval] [, MutexEnable] [, lockToCore1]);";
 	synopsis[i++] = "oldRunMode = PsychPortAudio('RunMode', pahandle [,runMode]);";
@@ -1705,7 +1661,7 @@ PsychError PSYCHPORTAUDIOOpen(void)
 		break;
 		
 		case paDirectSound:	// DirectSound defaults to 120 msecs, which is way too much! It doesn't accept 0.0 msecs.
-			lowlatency = 0.02;	// Choose some half-way safe tradeoff: 20 msecs.
+			lowlatency = 0.04;	// Choose some half-way safe tradeoff: 40 msecs.
 		break;
 		
 		case paASIO:		
@@ -1797,6 +1753,8 @@ PsychError PSYCHPORTAUDIOOpen(void)
 	audiodevices[audiodevicecount].schedule_size = 0;
 	audiodevices[audiodevicecount].schedule_pos = 0;
 	audiodevices[audiodevicecount].schedule_writepos = 0;
+	audiodevices[audiodevicecount].outdeviceidx = (audiodevices[audiodevicecount].opmode & kPortAudioPlayBack) ? outputParameters.device : -1;
+	audiodevices[audiodevicecount].indeviceidx  = (audiodevices[audiodevicecount].opmode & kPortAudioCapture)  ? inputParameters.device  : -1;
 
 	// If we use locking, we need to initialize the per-device mutex:
 	if (uselocking && PsychInitMutex(&(audiodevices[audiodevicecount].mutex))) {
@@ -3375,6 +3333,10 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 		"LatencyBias: Is an additional bias setting you can impose via PsychPortAudio('LatencyBias', pahandle, bias); "
 		"in case our drivers estimate is a bit off. Allows fine-tuning.\n"
 		"SampleRate: Is the sampling rate for playback/recording in samples per second (Hz).\n"
+		"OutDeviceIndex: Is the deviceindex of the playback device, or -1 if not opened for playback. "
+		"You can pass OutDeviceIndex to PsychPortAudio('GetDevices', [], OutDeviceIndex); to query information "
+		"about the device.\n"
+		"InDeviceIndex: Is the deviceindex of the capture device, or -1 if not opened for capture.\n"
 		"RecordedSecs: Is the total amount of recorded sound data (in seconds) since start of capture.\n"
 		"ReadSecs: Is the total amount of sound data (in seconds) that has been fetched from the internal buffer. "
 		"The difference between RecordedSecs and ReadSecs is the amount of recorded sound data pending for retrieval. ";
@@ -3385,7 +3347,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	unsigned int playposition, totalplaycount;
 
 	const char *FieldNames[]={	"Active", "RequestedStartTime", "StartTime", "CaptureStartTime", "RequestedStopTime", "EstimatedStopTime", "CurrentStreamTime", "ElapsedOutSamples", "PositionSecs", "RecordedSecs", "ReadSecs", "SchedulePosition",
-								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate" };
+								"XRuns", "TotalCalls", "TimeFailed", "BufferSize", "CPULoad", "PredictedLatency", "LatencyBias", "SampleRate",
+								"OutDeviceIndex", "InDeviceIndex" };
 	int pahandle = -1;
 	
 	// Setup online help: 
@@ -3402,7 +3365,7 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychCopyInIntegerArg(1, kPsychArgRequired, &pahandle);
 	if (pahandle < 0 || pahandle>=MAX_PSYCH_AUDIO_DEVS || audiodevices[pahandle].stream == NULL) PsychErrorExitMsg(PsychError_user, "Invalid audio device handle provided.");
 
-	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 20, FieldNames, &status);
+	PsychAllocOutStructArray(1, kPsychArgOptional, 1, 22, FieldNames, &status);
 
 	// Ok, in a perfect world we should hold the device mutex while querying all the device state.
 	// However, we don't: This reduces lock contention at the price of a small chance that the
@@ -3437,6 +3400,8 @@ PsychError PSYCHPORTAUDIOGetStatus(void)
 	PsychSetStructArrayDoubleElement("PredictedLatency", 0, audiodevices[pahandle].predictedLatency, status);
 	PsychSetStructArrayDoubleElement("LatencyBias", 0, audiodevices[pahandle].latencyBias, status);
 	PsychSetStructArrayDoubleElement("SampleRate", 0, audiodevices[pahandle].streaminfo->sampleRate, status);
+	PsychSetStructArrayDoubleElement("OutDeviceIndex", 0, audiodevices[pahandle].outdeviceidx, status);
+	PsychSetStructArrayDoubleElement("InDeviceIndex", 0, audiodevices[pahandle].indeviceidx, status);
 	return(PsychError_none);
 }
 
@@ -3552,13 +3517,16 @@ PsychError PSYCHPORTAUDIOLatencyBias(void)
  */
 PsychError PSYCHPORTAUDIOGetDevices(void) 
 {
- 	static char useString[] = "devices = PsychPortAudio('GetDevices' [,devicetype]);";
+ 	static char useString[] = "devices = PsychPortAudio('GetDevices' [, devicetype] [, deviceIndex]);";
 	static char synopsisString[] = 
-		"Returns 'devices', an array of structs, one struct for each available PortAudio device. "
+		"Returns 'devices', an array of structs, one struct for each available PortAudio device.\n\n"
+		"If the optional parameter 'deviceIndex' is provided and the optional parameter 'devicetype' "
+		"is set to [], then only returns a single struct with information about the device with index "
+		"'deviceIndex'.\n\n"
 		"Each struct contains information about its associated PortAudio device. The optional "
 		"parameter 'devicetype' can be used to enumerate only devices of a specific class: \n"
 		"1=Windows/DirectSound, 2=Windows/MME, 3=Windows/ASIO, 11=Windows/WDMKS, 13=Windows/WASAPI, "
-		"8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n "
+		"8=Linux/ALSA, 7=Linux/OSS, 12=Linux/JACK, 5=MacOSX/CoreAudio.\n\n"
 		"On OS/X you'll usually only see devices for the CoreAudio API, a first-class audio subsystem. "
 		"On Linux you may have the choice between ALSA, JACK and OSS. ALSA or JACK provide very low "
 		"latencies and very good timing, OSS is an older system which is less capable but not very "
@@ -3567,13 +3535,14 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 		"latency, it should give you comparable performance to OS/X or Linux. 2nd best choice "
 		"would be WASAPI (on Windows-Vista) or WDMKS (on Windows-2000/XP) for ok latency on good days. DirectSound is the next "
 		"worst choice if you have hardware with DirectSound support. If everything else fails, you'll be left "
-		"with MMS, a premium example of system misdesign successfully sold to paying customers.";
+		"with MME, a premium example of system misdesign successfully sold to paying customers.";
 		
 	static char seeAlsoString[] = "Open GetDeviceSettings ";	 
 	PsychGenericScriptType 	*devices;
 	const char *FieldNames[]={	"DeviceIndex", "HostAudioAPIId", "HostAudioAPIName", "DeviceName", "NrInputChannels", "NrOutputChannels", 
 								 		"LowInputLatency", "HighInputLatency", "LowOutputLatency", "HighOutputLatency",  "DefaultSampleRate", "xxx" };
 	int devicetype = -1;
+	int deviceindex = -1;
 	int count = 0;
 	int i, ic, filteredcount;
 	PaDeviceInfo* padev = NULL;
@@ -3583,7 +3552,7 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()) {PsychGiveHelp(); return(PsychError_none); };
 	
-	PsychErrorExit(PsychCapNumInputArgs(1));     // The maximum number of inputs
+	PsychErrorExit(PsychCapNumInputArgs(2));     // The maximum number of inputs
 	PsychErrorExit(PsychRequireNumInputArgs(0)); // The required number of inputs	
 	PsychErrorExit(PsychCapNumOutputArgs(1));	 // The maximum number of outputs
 
@@ -3591,7 +3560,13 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	PsychPortAudioInitialize();
 
 	PsychCopyInIntegerArg(1, kPsychArgOptional, &devicetype);
-	if (devicetype < -1) PsychErrorExitMsg(PsychError_user, "Invalid 'devicetype' provided. Valid are levels of zero and greater.");
+	if (devicetype < -1) PsychErrorExitMsg(PsychError_user, "Invalid 'devicetype' provided. Valid are values of zero and greater.");
+
+	PsychCopyInIntegerArg(2, kPsychArgOptional, &deviceindex);
+	if (deviceindex < -1) PsychErrorExitMsg(PsychError_user, "Invalid 'deviceindex' provided. Valid are values of zero and greater.");
+	
+	// Provided deviceIndex overrides potentially provided deviceType, if any:
+	if (deviceindex >= 0 && devicetype >=0) PsychErrorExitMsg(PsychError_user, "Provided 'deviceindex' and 'devicetype'! This is forbidden. Provide one or the other.");
 	
 	// Query number of devices and allocate out struct array:
 	count = (int) Pa_GetDeviceCount();
@@ -3607,6 +3582,10 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 			}
 		}
 
+		// Only return one single struct if specific deviceindex given:
+		if (deviceindex >= 0) filteredcount = 1;
+		
+		// Alloc output struct array:
 		PsychAllocOutStructArray(1, kPsychArgOptional, filteredcount, 11, FieldNames, &devices);
 	}
 	else {
@@ -3616,22 +3595,30 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 	// Iterate through device list:
 	ic = 0;
 	for (i=0; i<count; i++) {
-		padev = Pa_GetDeviceInfo((PaDeviceIndex) i);
-		hainfo = Pa_GetHostApiInfo(padev->hostApi);
-		if ((devicetype==-1) || (hainfo->type == devicetype)) {
-			PsychSetStructArrayDoubleElement("DeviceIndex", ic, i, devices);
-			PsychSetStructArrayDoubleElement("HostAudioAPIId", ic, hainfo->type, devices);
-			PsychSetStructArrayStringElement("HostAudioAPIName", ic, hainfo->name, devices);
-			PsychSetStructArrayStringElement("DeviceName", ic, padev->name, devices);
-			PsychSetStructArrayDoubleElement("NrInputChannels", ic, padev->maxInputChannels, devices);
-			PsychSetStructArrayDoubleElement("NrOutputChannels", ic, padev->maxOutputChannels, devices);
-			PsychSetStructArrayDoubleElement("LowInputLatency", ic, padev->defaultLowInputLatency, devices);
-			PsychSetStructArrayDoubleElement("HighInputLatency", ic, padev->defaultHighInputLatency, devices);
-			PsychSetStructArrayDoubleElement("LowOutputLatency", ic, padev->defaultLowOutputLatency, devices);
-			PsychSetStructArrayDoubleElement("HighOutputLatency", ic, padev->defaultHighOutputLatency, devices);
-			PsychSetStructArrayDoubleElement("DefaultSampleRate", ic, padev->defaultSampleRate, devices);
-			// PsychSetStructArrayDoubleElement("xxx", ic, 0, devices);
-			ic++;
+		// Return info about deviceindex i if it matches the selected deviceindex or if
+		// all devices should be returned:
+		if ((deviceindex == -1) || (deviceindex == i)) {
+			// Get info about deviceindex i:
+			padev = Pa_GetDeviceInfo((PaDeviceIndex) i);
+			hainfo = Pa_GetHostApiInfo(padev->hostApi);
+			
+			// Return info if devicetype doesn't matter or if it matches the required one:
+			if ((devicetype==-1) || (hainfo->type == devicetype)) {
+				// Fill slot ic of struct array with info of deviceindex i:
+				PsychSetStructArrayDoubleElement("DeviceIndex", ic, i, devices);
+				PsychSetStructArrayDoubleElement("HostAudioAPIId", ic, hainfo->type, devices);
+				PsychSetStructArrayStringElement("HostAudioAPIName", ic, hainfo->name, devices);
+				PsychSetStructArrayStringElement("DeviceName", ic, padev->name, devices);
+				PsychSetStructArrayDoubleElement("NrInputChannels", ic, padev->maxInputChannels, devices);
+				PsychSetStructArrayDoubleElement("NrOutputChannels", ic, padev->maxOutputChannels, devices);
+				PsychSetStructArrayDoubleElement("LowInputLatency", ic, padev->defaultLowInputLatency, devices);
+				PsychSetStructArrayDoubleElement("HighInputLatency", ic, padev->defaultHighInputLatency, devices);
+				PsychSetStructArrayDoubleElement("LowOutputLatency", ic, padev->defaultLowOutputLatency, devices);
+				PsychSetStructArrayDoubleElement("HighOutputLatency", ic, padev->defaultHighOutputLatency, devices);
+				PsychSetStructArrayDoubleElement("DefaultSampleRate", ic, padev->defaultSampleRate, devices);
+				// PsychSetStructArrayDoubleElement("xxx", ic, 0, devices);
+				ic++;
+			}
 		}
 	}
 	

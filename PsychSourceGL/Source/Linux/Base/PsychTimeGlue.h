@@ -46,13 +46,22 @@ double PsychGetEstimatedSecsValueAtTickCountZero(void);
 int	PsychInitMutex(psych_mutex* mutex);
 int	PsychDestroyMutex(psych_mutex* mutex);
 int PsychLockMutex(psych_mutex* mutex);
+int PsychTryLockMutex(psych_mutex* mutex);
 int PsychUnlockMutex(psych_mutex* mutex);
 int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*start_routine)(void *), void *arg);
 int PsychDeleteThread(psych_thread* threadhandle);
 int PsychAbortThread(psych_thread* threadhandle);
+void PsychTestCancelThread(psych_thread* threadhandle);
 psych_threadid PsychGetThreadId(void);
 int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo);
 int PsychIsCurrentThreadEqualToId(psych_threadid threadId);
+int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority);
+int PsychInitCondition(psych_condition* condition, const pthread_condattr_t* condition_attribute);
+int PsychDestroyCondition(psych_condition* condition);
+int PsychSignalCondition(psych_condition* condition);
+int PsychBroadcastCondition(psych_condition* condition);
+int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex);
+int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs);
 
 //end include once
 #endif

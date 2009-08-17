@@ -607,6 +607,13 @@ int PsychLockMutex(psych_mutex* mutex)
 	return(0);
 }
 
+/* Try to lock a Mutex, returning immediately, with a return code that tells if mutex could be locked or not: */
+int PsychTryLockMutex(psych_mutex* mutex)
+{
+	// Must #define _WIN32_WINNT as at least 0x0400 in master include file PsychIncludes.h for this to compile!
+	return((((int) TryEnterCriticalSection(mutex)) != 0) ? 0 : 1);
+}
+
 /* Unlock a Mutex: */
 int PsychUnlockMutex(psych_mutex* mutex)
 {
@@ -626,6 +633,12 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 	(*threadhandle)->handle = NULL;
 	(*threadhandle)->threadId = 0;
 	
+	// Create termination event for thread: It can be set to signalled via PsychAbortThread() and
+	// threads can test for its state via PsychTestCancelThread(), which will exit the thread cleanly
+	// if the event is signalled.
+	(*threadhandle)->terminateReq = NULL;
+	if (PsychInitCondition(&((*threadhandle)->terminateReq), NULL)) PsychErrorExitMsg(PsychError_system, "Failed to initialize associated condition/signal object when trying to create processing thread!");
+
 	// Create thread, running, with default system settings, assign thread handle:
 	(*threadhandle)->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) start_routine, arg, 0, &((*threadhandle)->threadId));
 	
@@ -651,9 +664,13 @@ int PsychDeleteThread(psych_thread* threadhandle)
 		printf("PTB-CRITICAL: In PsychDeleteThread: Waiting for termination of a worker thread failed! Prepare for trouble!\n");
 	}
 	
+	// Release event/condition variable for signalling of terminate requests:
+	if (PsychDestroyCondition(&((*threadhandle)->terminateReq))) printf("PTB-CRITICAL: In PsychDeleteThread: Failed to destroy associated condition/signal object when trying to delete processing thread!");
+
 	// Null out now invalid thread handle of dead thread:
 	(*threadhandle)->handle = NULL;
 	(*threadhandle)->threadId = 0;
+	(*threadhandle)->terminateReq = NULL;
 	
 	free(*threadhandle);
 	*threadhandle = NULL;
@@ -666,7 +683,31 @@ int PsychDeleteThread(psych_thread* threadhandle)
 int PsychAbortThread(psych_thread* threadhandle)
 {
 	// This is an emergency abort call! Maybe should think about a "softer" solution for Windows?
-	return( TerminateThread((*threadhandle)->handle, 0) );
+	// This is more like an option for a future PsychKillThread(): return( TerminateThread((*threadhandle)->handle, 0) );
+	
+	// Signal the terminateReq condition variable/signal to politely ask the thread to terminate:
+	return(PsychSignalCondition(&((*threadhandle)->terminateReq)));
+}
+
+/* Check for abort request to thread: Exit thread gracefully if abort requested: */
+void PsychTestCancelThread(psych_thread* threadhandle)
+{
+	int rc;
+
+	// Test for signalled state of abort request event with zero timeout, ie., return immediately if
+	// non-signalled:
+	rc = (int) WaitForSingleObject((*threadhandle)->terminateReq, 0);
+	if (rc == WAIT_FAILED) {
+		rc = (int) GetLastError();
+		printf("PTB-CRITICAL: In call to PsychTestCancelThread(%p): WaitForSingleObject(%i) FAILED [GetLastError()=%i]! Expect disaster!!!", threadhandle, (int) (*threadhandle)->terminateReq, rc);
+		return;
+	}
+
+	// Event state signalled? Otherwise we just return:
+	if (rc != WAIT_OBJECT_0) return;
+
+	// Signalled --> Terminate request: We terminate our calling thread with a zero exit code:
+	ExitThread(0);
 }
 
 /* Return thread id of calling thread:
@@ -687,4 +728,202 @@ int PsychIsThreadEqual(psych_thread threadOne, psych_thread threadTwo)
 int PsychIsCurrentThreadEqualToId(psych_threadid threadId)
 {
 	return( PsychGetThreadId() == threadId );
+}
+
+/* Check if current (invoking) thread is equal to given threadhandle: */
+int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
+{
+	return( PsychGetThreadId() == threadhandle->threadId );
+}
+
+/* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
+ * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
+ * 'tweakPriority' modulates more fine-grained within the category given by 'basepriority'. It
+ * can be anywhere between 0 and some big value where bigger means more priority.
+ *
+ * Returns zero on success, non-zero on failure to set new priority.
+ */
+int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority)
+{
+	int rc;
+	HANDLE thread;
+	
+	// tweakPriority unused for now:
+	(int) tweakPriority;
+	
+	if (NULL != threadhandle) {
+		// Retrieve thread HANDLE of thread to change:
+		thread = (*threadhandle)->handle;
+	}
+	else {
+		// Retrieve handle of calling thread:
+		thread = GetCurrentThread();
+	}
+	
+	switch(basePriority) {
+		case 0:	// Normal priority.
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
+			if (rc == 0) {
+				rc = GetLastError();	// Failed!
+			}
+			else {
+				rc = 0;
+			}
+			
+		break;
+		
+		case 1: // High priority / Round robin realtime.
+			rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+			if (rc == 0) {
+				rc = GetLastError();	// Failed!
+			}
+			else {
+				rc = 0;
+			}
+		break;
+		
+		case 2: // Highest priority: This preempts basically any system service!
+			if ((rc = SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL)) == 0) {
+				// Failed to get TIME_CRITICAL priority. Retry with HIGHEST priority:
+				rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+			}
+			if (rc == 0) {
+				rc = GetLastError();	// Failed!
+			}
+			else {
+				rc = 0;
+			}
+		break;
+		
+		default:
+			printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Invalid/Unknown basePriority %i provided!\n", basePriority);
+			rc = 2;
+	}
+
+	// rc is either zero for success, or 2 for invalid arg, or some other non-zero GetLastError() failure code:
+	return(rc);
+}
+
+/* Initialize condition variable:
+ * CAUTION: Use of condition_attribute is not supported! Code using it may or may not work properly
+ * on MS-Windows! Pass NULL for this argument for portable operation!
+ */
+int PsychInitCondition(psych_condition* condition, const void* condition_attribute)
+{
+	// Catch unsupported use of condition_attribute and output warning:
+	if (NULL != condition_attribute) PsychErrorExitMsg(PsychError_unimplemented, "Tried to pass a condition_attribute in call to PsychInitCondition()! Unsupported on MS-Windows!!");
+
+	// Create properly initialized event object: Will return NULL on failure.
+	*condition =	CreateEvent(NULL,	// default security attributes
+								FALSE,	// auto-reset event: This would need to be set TRUE for PsychBroadcastCondition() to work on Windows!
+								FALSE,	// initial state is nonsignaled
+								NULL	// no object name
+								); 
+
+	// Return 0 on success, GetLastError() error code on failure:
+	return((int) ((*condition == NULL) ? GetLastError() : 0));
+}
+
+/* Destroy condition variable: */
+int PsychDestroyCondition(psych_condition* condition)
+{
+	return((int) ((CloseHandle(*condition) == 0) ? GetLastError() : 0));
+}
+
+/* Signal/wakeup exactly one thread waiting on the given condition variable: */
+int PsychSignalCondition(psych_condition* condition)
+{
+	return((int) ((SetEvent(*condition) == 0) ? GetLastError() : 0));
+}
+
+/* Signal/Wakeup all threads waiting on the given condition variable:
+ * CAUTION: Use of this function is non-portable to MS-Windows for now! Code
+ * using it will malfunction if used on MS-Windows!
+ */
+int PsychBroadcastCondition(psych_condition* condition)
+{
+	// Abort for now: PulseEvent(), besides being flaky anyway, would need Event objects
+	// with the auto-reset property set to TRUE. We don't support this, neither can we
+	// support intermixing calls to PsychSignalCondition() with calls to PsychBroadcastCondition()
+	// in any way on Windows - It is simply not possible. One would need to create each condition
+	// for either being useable for one method or the other and then carefully keep track of past
+	// usage.
+	PsychErrorExitMsg(PsychError_unimplemented, "Tried to call PsychBroadcastCondition()! Unsupported on MS-Windows!!");
+
+	// According to MSDN, PulseEvent is unreliable and should not be used.
+	return((int) ((PulseEvent(*condition) == 0) ? GetLastError() : 0));
+}
+
+/* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
+ * being signalled, then waking up and trying to re-lock the 'mutex'. Will return with
+ * mutex locked.
+ */
+int PsychWaitCondition(psych_condition* condition, psych_mutex* mutex)
+{
+	int rc, rc2;
+
+	// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
+	// state, then reacquire the mutex:
+	if ((rc = PsychUnlockMutex(mutex))) {
+		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc);
+		return(rc);
+	}
+	
+	if ((rc = WaitForSingleObject(*condition, INFINITE)) != WAIT_OBJECT_0) {
+		rc = (int) GetLastError();
+		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): WaitForSingleObject(%p) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, condition, rc);
+	}
+	
+	if ((rc2 = PsychLockMutex(mutex))) {
+		printf("PTB-CRITICAL: In call to PsychWaitCondition(%p, %p): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, mutex, rc2);
+		return(rc2);
+	}
+	
+	return(rc);
+}
+
+/* Atomically release the 'mutex' lock and go to sleep, waiting for the 'condition' variable
+ * being signalled, then waking up and trying to re-lock the 'mutex'. Will return with
+ * mutex locked.
+ *
+ * Like PsychWaitCondition, but function will timeout if it fails being signalled before
+ * timeout interval 'maxwaittimesecs' expires. In any case, it will only return after
+ * reacquiring the mutex. It will retun zero on successfull wait, non-zero (WAIT_TIMEOUT) if
+ * timeout was triggered without the condition being signalled.
+ */
+int PsychTimedWaitCondition(psych_condition* condition, psych_mutex* mutex, double maxwaittimesecs)
+{
+	int rc, rc2;
+	int maxmillisecs;
+
+	if (maxwaittimesecs < 0) {
+		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): NEGATIVE timeout value passed! Clamping to zero! Expect trouble!!", condition, mutex, maxwaittimesecs);
+		maxmillisecs = 0;
+	}
+	else {
+		// Convert seconds to milliseconds:
+		maxmillisecs = (int) (maxwaittimesecs * 1000.0);
+	}
+	
+	// MS-Windows: Unlock mutex, wait for our event-object to go to signalled
+	// state, then reacquire the mutex:
+	if ((rc = PsychUnlockMutex(mutex))) {
+		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychUnlockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc);
+		return(rc);
+	}
+	
+	rc = (int) WaitForSingleObject(*condition, (DWORD) maxmillisecs);
+	if ((rc != WAIT_OBJECT_0) && (rc != WAIT_TIMEOUT)) {
+		rc = (int) GetLastError();
+		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): WaitForSingleObject(%p, %i) FAILED [GetLastError()=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, condition, maxmillisecs, rc);
+	}
+	
+	if ((rc2 = PsychLockMutex(mutex))) {
+		printf("PTB-CRITICAL: In call to PsychTimedWaitCondition(%p, %p, %f): PsychLockMutex(%p) FAILED [rc=%i]! Expect disaster!!!", condition, mutex, maxwaittimesecs, mutex, rc2);
+		return(rc2);
+	}
+	
+	// Success: Either in the sense of "signalled" or in the sense of "timeout".
+	// rc will tell the caller what happened: 0 = Signalled, 0x00000102L == WAIT_TIMEOUT for timeout.
+	return(rc);
 }

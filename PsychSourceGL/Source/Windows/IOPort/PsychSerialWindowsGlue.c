@@ -32,84 +32,6 @@ int PsychIOOSCheckError(PsychSerialDeviceRecord* device, char* inerrmsg);
 // Externally defined level of verbosity:
 extern int verbosity;
 
-// Map numeric baud rate to Posix constant:
-//static int BaudToConstant(int inint)
-//{
-//	// Need to map from numeric values to predefined constants. On OS/X the
-//	// constants are identical to the input values, but on Linux they aren't, so better safe
-//	// than sorry, although it looks as if Linux accepts the "raw" numbers properly as well...
-//	switch(inint) {
-//		case 50: inint = B50; break;
-//		case 75: inint = B75; break;
-//		case 110: inint = B110; break;
-//		case 134: inint = B134; break;
-//		case 150: inint = B150; break;
-//		case 200: inint = B200; break;
-//		case 300: inint = B300; break;
-//		case 600: inint = B600; break;
-//		case 1200: inint = B1200; break;
-//		case 1800: inint = B1800; break;
-//		case 2400: inint = B2400; break;
-//		case 4800: inint = B4800; break;
-//		case 9600: inint = B9600; break;
-//		case 19200: inint = B19200; break;
-//		case 38400: inint = B38400; break;
-//		case 57600: inint = B57600; break;
-//		case 115200: inint = B115200; break;
-//		case 230400: inint = B230400; break;
-//		case 7200: inint = B7200; break;
-//		case 14400: inint = B14400; break;
-//		case 28800: inint = B28800; break;
-//		case 76800: inint = B76800; break;
-//
-//		default:
-//			// Pass inint unchanged in the hope that the OS will accept it:
-//			if (verbosity > 1) printf("IOPort: Non-standard BaudRate %i specified. We'll see if the OS likes this. Double-check the settings!\n", inint);
-//	}
-//	
-//	return(inint);
-//}
-//
-// Map Posix constant to numeric baud rate:
-//static int ConstantToBaud(int inint)
-//{
-//	// Need to map predefined constants to numeric values On OS/X the
-//	// constants are identical to the input values, but on Linux they aren't, so better safe
-//	// than sorry, although it looks as if Linux accepts the "raw" numbers properly as well...
-//	switch(inint) {
-//		case B50: inint = 50; break;
-//		case B75: inint = 75; break;
-//		case B110: inint = 110; break;
-//		case B134: inint = 134; break;
-//		case B150: inint = 150; break;
-//		case B200: inint = 200; break;
-//		case B300: inint = 300; break;
-//		case B600: inint = 600; break;
-//		case B1200: inint = 1200; break;
-//		case B1800: inint = 1800; break;
-//		case B2400: inint = 2400; break;
-//		case B4800: inint = 4800; break;
-//		case B9600: inint = 9600; break;
-//		case B19200: inint = 19200; break;
-//		case B38400: inint = 38400; break;
-//		case B57600: inint = 57600; break;
-//		case B115200: inint = 115200; break;
-//		case B230400: inint = 230400; break;
-//		#if PSYCH_SYSTEM == PSYCH_OSX
-//		// Only defined on OS/X:
-//		case B7200: inint = 7200; break;
-//		case B14400: inint = 14400; break;
-//		case B28800: inint = 28800; break;
-//		case B76800: inint = 76800; break;
-//		#endif
-//		default:
-//			// Pass inint unchanged in the hope that the OS will accept it:
-//			if (verbosity > 1) printf("IOPort: Non-standard BaudRate %i detected. Let's see if this makes sense...\n", inint);
-//	}
-//	
-//	return(inint);
-//}
-
 int PsychSerialWindowsGlueAsyncReadbufferBytesAvailable(PsychSerialDeviceRecord* device)
 {	
 	int navail = 0;
@@ -140,15 +62,21 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 	// Get a handle to our device struct: These pointers must not be NULL!!!
 	PsychSerialDeviceRecord* device = (PsychSerialDeviceRecord*) deviceToCast;
 
-	// Try to raise our priority:
-	if ((rc = SetThreadPriority(device->readerThread->handle, THREAD_PRIORITY_HIGHEST)) == 0) {
-		if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to switch to realtime priority [%i]!\n", GetLastError());
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
+	// round robin realtime scheduling, with a tweakPriority of +1, ie., raise the relative
+	// priority level by +1 wrt. to the current level:
+	if ((rc = PsychSetThreadPriority(NULL, 1, 1)) > 0) {
+		if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to switch to realtime priority [%i]!\n", rc);
 	}
 
 	// Main loop: Runs until external thread cancellation signal device->abortThreadReq set to non-zero:
 	while (0 == device->abortThreadReq) {
+		if (verbosity > 9) printf("IOPort-DEBUG: In PsychSerialWindowsGlueReaderThreadMain(): New loop iteration, abortflag = %i, checking abort signal.\n", device->abortThreadReq); 
+		PsychTestCancelThread(&(device->readerThread));
+		if (verbosity > 9) printf("IOPort-DEBUG: In PsychSerialWindowsGlueReaderThreadMain(): New loop iteration, abortflag = %i, abort signal negative.\n", device->abortThreadReq); 
+
         if ((rc=PsychIOOSCheckError(device, NULL))>0) {
-				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d)! Aborted.\n", device->portSpec, rc);
+				if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d)! Aborted.\n", device->portSpec, rc);
 				return(0);
         }
         
@@ -167,6 +95,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			while(navail < device->readGranularity) {
 				// Cancellation point: Test for cancel request and terminate, if so:
 				if (device->abortThreadReq > 0) return(0);
+				PsychTestCancelThread(&(device->readerThread));
 
 				// Yield...
 				PsychYieldIntervalSeconds(device->pollLatency);
@@ -215,6 +144,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			while ( (naccumread < device->readGranularity) && (lastcharacter != lineterminator) ) {
                 // Check for termination request:
                 if (device->abortThreadReq > 0) return(0);
+				PsychTestCancelThread(&(device->readerThread));
 
 				// Read 1 Byte:
 				if (ReadFile(device->fileDescriptor, &lastcharacter, 1, &nread, NULL) == 0) {
@@ -355,14 +285,18 @@ void PsychIOOSShutdownSerialReaderThread( PsychSerialDeviceRecord* device)
 	if (device->readerThread) {
 		// Signal the thread that it should cancel:
 		device->abortThreadReq = 1;
-
+		if (verbosity > 6) printf("IOPort-DEBUG: In PsychIOOSShutdownSerialReaderThread(): Calling PsychAbortThread()...\n"); 
+		PsychAbortThread(&(device->readerThread));
+		
 		// Wait for it to die:
+		if (verbosity > 6) printf("IOPort-DEBUG: In PsychIOOSShutdownSerialReaderThread(): Calling PsychDeleteThread()...\n"); 
 		PsychDeleteThread(&(device->readerThread));
 
 		// Mark it as dead:
 		device->readerThread = NULL;
 		
 		// Release the mutex:
+		if (verbosity > 6) printf("IOPort-DEBUG: In PsychIOOSShutdownSerialReaderThread(): Calling PsychDestroyMutex()...\n"); 
 		PsychDestroyMutex(&(device->readerLock));
 
 		// Reset cancel signal:

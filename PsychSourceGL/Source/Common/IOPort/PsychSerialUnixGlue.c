@@ -179,13 +179,13 @@ int PsychSerialUnixGlueAsyncReadbufferBytesAvailable(volatile PsychSerialDeviceR
 	int navail = 0;
 	
 	// Lock data structure:
-	pthread_mutex_lock(&(device->readerLock));
+	PsychLockMutex(&(device->readerLock));
 	
 	// Compute amount of pending data for readout:
 	navail = (device->readerThreadWritePos - device->clientThreadReadPos);
 
 	// Unlock data structure:
-	pthread_mutex_unlock(&(device->readerLock));
+	PsychUnlockMutex(&(device->readerLock));
 		
 	// Return it.
 	return(navail);
@@ -199,22 +199,21 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 	unsigned char lastcharacter, lineterminator;
 	double t;
 	int doBlockingRead = 0;
-	struct sched_param sp;
 
 	// Get a handle to our device struct: These pointers must not be NULL!!!
 	volatile PsychSerialDeviceRecord* device = (volatile PsychSerialDeviceRecord*) deviceToCast;
 
-	// Try to raise our priority and switch to realtime scheduling:
-	pthread_getschedparam(pthread_self(), &rc, &sp);
-	sp.sched_priority = sp.sched_priority + 1;
-	if ((rc = pthread_setschedparam(pthread_self(), SCHED_RR, &sp)) > 0) {
+	// Try to raise our priority: We ask to switch ourselves (NULL) to priority class 1 aka
+	// round robin realtime scheduling, with a tweakPriority of +1, ie., raise the relative
+	// priority level by +1 wrt. to the current level:
+	if ((rc = PsychSetThreadPriority(NULL, 1, 1)) > 0) {
 		if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
 	}
 
 	// Main loop: Runs until external thread cancellation:
 	while (1) {
 		// Test for explicit cancellation by mother-thread:
-		pthread_testcancel();
+		PsychTestCancelThread(&(device->readerThread));
 	
 		// Polling read requested?
 		doBlockingRead = device->isBlockingBackgroundRead;
@@ -227,7 +226,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 			ioctl(device->fileDescriptor, FIONREAD, &navail);
 			
 			while(navail < device->readGranularity) {
-				pthread_testcancel();
+				PsychTestCancelThread(&(device->readerThread));
 				PsychWaitIntervalSeconds(device->pollLatency);
 				ioctl(device->fileDescriptor, FIONREAD, &navail);
 			}
@@ -320,7 +319,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 					ioctl(device->fileDescriptor, FIONREAD, &navail);
 					
 					while(navail < naccumread) {
-						pthread_testcancel();
+						PsychTestCancelThread(&(device->readerThread));
 						PsychWaitIntervalSeconds(device->pollLatency);
 						ioctl(device->fileDescriptor, FIONREAD, &navail);
 					}
@@ -388,7 +387,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 		device->timeStamps[(device->readerThreadWritePos / device->readGranularity) % (device->readBufferSize / device->readGranularity)] = t;
 		
 		// Try to lock, block until available if not available:
-		if ((rc=pthread_mutex_lock(&(device->readerLock)))) {
+		if ((rc=PsychLockMutex(&(device->readerLock)))) {
 			// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
 			// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
 			// wreak havoc -- maybe it goes to the system log, which should be safer...
@@ -402,7 +401,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 		device->readerThreadWritePos += device->readGranularity;
 		
 		// Need to unlock the mutex:
-		if ((rc=pthread_mutex_unlock(&(device->readerLock)))) {
+		if ((rc=PsychUnlockMutex(&(device->readerLock)))) {
 			// This could potentially kill Matlab, as we're printing from outside the main interpreter thread.
 			// Use fprintf() instead of the overloaded printf() (aka mexPrintf()) in the hope that we don't
 			// wreak havoc -- maybe it goes to the system log, which should be safer...
@@ -426,19 +425,19 @@ void PsychIOOSShutdownSerialReaderThread(volatile PsychSerialDeviceRecord* devic
 {
 	if (device->readerThread) {
 		// Make sure we don't hold the mutex:
-		pthread_mutex_unlock(&(device->readerLock));
+		PsychUnlockMutex(&(device->readerLock));
 
 		// Cancel the thread:
-		pthread_cancel(device->readerThread);
-		
+		PsychAbortThread(&(device->readerThread));
+
 		// Wait for it to die:
-		pthread_join(device->readerThread, NULL);
+		PsychDeleteThread(&(device->readerThread));
 		
 		// Mark it as dead:
 		device->readerThread = NULL;
 		
 		// Release the mutex:
-		pthread_mutex_destroy(&(device->readerLock));
+		PsychDestroyMutex(&(device->readerLock));
 		
 		// Release timestamp buffer:
 		free(device->timeStamps);
@@ -1126,13 +1125,13 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 			device->timeStamps = (double*) calloc(sizeof(double), device->readBufferSize / device->readGranularity);
 			
 			// Create & Init the mutex:
-			if ((rc=pthread_mutex_init(&(device->readerLock), NULL))) {
+			if ((rc=PsychInitMutex(&(device->readerLock)))) {
 				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create readerLock mutex lock [%s].\n", strerror(rc));
 				return(PsychError_system);
 			}
 			
 			// Create and startup thread:
-			if ((rc=pthread_create(&(device->readerThread), NULL, PsychSerialUnixGlueReaderThreadMain, (void*) device))) {
+			if ((rc=PsychCreateThread(&(device->readerThread), NULL, PsychSerialUnixGlueReaderThreadMain, (void*) device))) {
 				printf("PTB-ERROR: In StartBackgroundReadCould(): Could not create background reader thread [%s].\n", strerror(rc));
 				return(PsychError_system);
 			}
@@ -1461,13 +1460,13 @@ int PsychIOOSReadSerialPort(volatile PsychSerialDeviceRecord* device, void** rea
 			sprintf(errmsg, "Error: Readbuffer overflow for background read operation on device %s. Flushing buffer to recover. At least %i bytes of input data have been lost, expect data corruption!\n", device->portSpec, nread);
 
 			// Flush readBuffer - Try to get a fresh start...
-			pthread_mutex_lock(&(device->readerLock));
+			PsychLockMutex(&(device->readerLock));
 			
 			// Set read pointer to current write pointer, effectively emptying the buffer:
 			device->clientThreadReadPos = device->readerThreadWritePos;
 			
 			// Unlock data structure:
-			pthread_mutex_unlock(&(device->readerLock));
+			PsychUnlockMutex(&(device->readerLock));
 			
 			// Return error code:
 			return(-1);
@@ -1561,7 +1560,7 @@ void PsychIOOSPurgeSerialPort(volatile PsychSerialDeviceRecord* device)
 		// Purge the input buffer of async reader thread as well:
 
 		// Lock data structure:
-		pthread_mutex_lock(&(device->readerLock));
+		PsychLockMutex(&(device->readerLock));
 		
 		// Set read pointer to current write pointer, effectively emptying the buffer:
 		// It is important to not modify the write pointer, only the read pointer, otherwise
@@ -1571,7 +1570,7 @@ void PsychIOOSPurgeSerialPort(volatile PsychSerialDeviceRecord* device)
 		device->clientThreadReadPos = device->readerThreadWritePos;
 		
 		// Unlock data structure:
-		pthread_mutex_unlock(&(device->readerLock));
+		PsychUnlockMutex(&(device->readerLock));
 	}
 
 	return;

@@ -152,6 +152,9 @@ typedef unsigned char		psych_bool;
         typedef Display* CGDirectDisplayID;
         typedef int CGDisplayErr;
         typedef unsigned int CFDictionaryRef;
+		
+		// Datatype for condition variables:
+		typedef pthread_cond_t		psych_condition;		
 		// Datatype for Mutex Locks:
 		typedef pthread_mutex_t		psych_mutex;
 		// Datatype for threads:
@@ -186,12 +189,16 @@ typedef unsigned char		psych_bool;
         typedef HDC CGDirectDisplayID;
         typedef int CGDisplayErr;
         //typedef unsigned int CFDictionaryRef;
+
+		// Datatype for condition variables:
+		typedef HANDLE					psych_condition;		
 		// Datatype for Mutex Locks:
 		typedef CRITICAL_SECTION		psych_mutex;
 		// Datatype for threads:
 		typedef struct psych_threadstruct {
-			HANDLE		handle;		// Handle to actual thread (NULL == Invalid).
-			DWORD		threadId;	// Unique numeric id (0 = Invalid.)
+			HANDLE				handle;			// Handle to actual thread (NULL == Invalid).
+			DWORD				threadId;		// Unique numeric id (0 = Invalid.)
+			psych_condition		terminateReq;	// Condition/Event object to signal the request for termination.
 		} psych_threadstruct;
 		typedef struct psych_threadstruct*	psych_thread;
 
@@ -214,6 +221,8 @@ typedef unsigned char		psych_bool;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;
 
+		// Datatype for condition variables:
+		typedef pthread_cond_t		psych_condition;
 		// Datatype for Mutex Locks:	
 		typedef pthread_mutex_t		psych_mutex;
 		// Datatype for threads:

@@ -62,6 +62,8 @@
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+	// Need to define #define _WIN32_WINNT as 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
+	#define _WIN32_WINNT 0x0400
 	#include <windows.h>
 	//#include <gl/gl.h>
 	//#include <gl/glu.h>

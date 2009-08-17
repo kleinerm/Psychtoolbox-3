@@ -168,18 +168,9 @@ typedef struct PsychFlipInfoStruct {
 	double					time_at_onset;
 	double					vbl_timestamp;
 
-	// OS specific variables for thread handling and thread synchronization:
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
-	// UNIX: POSIX threads for threading and mutex locking/sync:
-	pthread_t				flipperThread;		// Thread handle for background flipping thread.
-	pthread_mutex_t			performFlipLock;	// Primary lock.
-	pthread_cond_t			flipperGoGoGo;		// Signalling condition variable to trigger execution of a flip request by the flipper thread.
-#else
-	// Windows: Not implemented. Just dummy variables to make compiler happy:
-	void*					flipperThread;		// Thread handle for background flipping thread.
-	unsigned int			performFlipLock;	// Primary lock.
-	unsigned int			flipperGoGoGo;		// Signalling condition variable to trigger execution of a flip request by the flipper thread.
-#endif
+	psych_thread			flipperThread;		// Thread handle for background flipping thread.
+	psych_mutex				performFlipLock;	// Primary lock.
+	psych_condition			flipperGoGoGo;		// Signalling condition variable to trigger execution of a flip request by the flipper thread.
 } PsychFlipInfoStruct;
 
 
