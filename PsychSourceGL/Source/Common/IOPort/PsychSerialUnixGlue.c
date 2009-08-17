@@ -161,15 +161,19 @@ int PsychSerialUnixGlueSetBlockingMinBytes(volatile PsychSerialDeviceRecord* dev
 	// Change the number of bytes that must be received for blocking read()'s before read() returns.
 	// read() will return if it can fetch at least that many bytes (we want 'minBytes' bytes at least),
 	// or if the user specified timeout occurs (as set in Open or Configure routine):
-	options.c_cc[VMIN] = (unsigned char) minBytes;
+	// N.B.: We do this lazily, only executing the call if the current and requested setting differ,
+	// as the tcsetattr() call may be expensive on some system/driver combinations...
+	if (options.c_cc[VMIN] != (unsigned char) minBytes) {
+		options.c_cc[VMIN] = (unsigned char) minBytes;
 	
-	// Cause the new options to take effect immediately.
-	if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
-	{
-		if (verbosity > 0) fprintf(stderr, "IOPort: Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
-		return(-1);
+		// Cause the new options to take effect immediately.
+		if (tcsetattr(device->fileDescriptor, TCSANOW, &options) == -1)
+		{
+			if (verbosity > 0) fprintf(stderr, "IOPort: Error setting new serial port configuration attributes for device %s - %s(%d).\n", device->portSpec, strerror(errno), errno);
+			return(-1);
+		}
 	}
-	
+
 	// Return really set value:
 	return(rc);
 }
@@ -241,7 +245,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 			// Set filedescriptor to blocking mode:
 			// Clear the O_NONBLOCK flag so subsequent I/O will block.
 			// See fcntl(2) ("man 2 fcntl") for details.
-			fcntl(device->fileDescriptor, F_SETFL, 0);
+			if (fcntl(device->fileDescriptor, F_GETFL, 0) != 0) fcntl(device->fileDescriptor, F_SETFL, 0);
 		}
 
 		// Zerofill the space we're gonna read in next read() request, so we have a nice
