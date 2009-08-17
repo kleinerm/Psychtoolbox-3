@@ -2,9 +2,9 @@ function AsyncFlipTest(screenid)
 
 AssertOpenGL;
 
-if IsWin
-    error('Sorry, asynchronous display flipping is only supported on well designed operating systems.');
-end
+% if IsWin
+%     error('Sorry, asynchronous display flipping is only supported on well designed operating systems.');
+% end
 
 if nargin < 1
     screenid = [];
@@ -31,19 +31,27 @@ while ~KbCheck
  %   Screen('FillRect', w(2), [0   255*cm 0]);
     
     tbase=GetSecs
-    Screen('AsyncFlipBegin', w(1), tv1); % + i1);
- %   Screen('AsyncFlipBegin', w(2), tv2 + i2);
-    
- %   fprintf('Initiated flip for w1.... waiting\n');
+    Screen('AsyncFlipBegin', w(1), tv1+0.5); % + i1);
+    %   Screen('AsyncFlipBegin', w(2), tv2 + i2);
 
-    [tref1 vref1 cref1] = Screen('WaitUntilAsyncFlipCertain', w(1))
- 
-    tv1 = Screen('AsyncFlipEnd', w(1));
+    %   fprintf('Initiated flip for w1.... waiting\n');
+
+    %    [tref1 vref1 cref1] = Screen('WaitUntilAsyncFlipCertain', w(1))
+     
+    if 1
+        tv1=0;
+        while tv1 == 0
+            tv1 = Screen('AsyncFlipCheckEnd', w(1));
+        end
+    else
+        tv1 = Screen('AsyncFlipEnd', w(1));
+    end
+
  %   tv2 = Screen('AsyncFlipEnd', w(2));
         
-    tref1
+%     tref1
     tv1
-    delta = tv1 - tref1
+%     delta = tv1 - tref1
     cm = 1-cm;
 end
 

@@ -1,5 +1,5 @@
-function KeyboardLatencyTest(triggerlevel, modality, submode)
-% KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode])
+function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
+% KeyboardLatencyTest([triggerlevel=0.01][,modality=0][,submode][,portString])
 %
 % Uses sound capture with high timing precision via
 % PsychPortAudio() for measuring keyboard and mouse latency.
@@ -33,7 +33,19 @@ function KeyboardLatencyTest(triggerlevel, modality, submode)
 % A 'modality' of 5 will exercise the RB-x30 response pads from Cedrus.
 %
 % A 'modality' of 6 will exercise the PST serial response button box.
+% Setting 'submode' to 1 will optimize for use with FTDI serial-USB
+% converters.
+%
 % A 'modality' of 7 will exercise the CMU serial response button box.
+% Setting 'submode' to 1 will optimize for use with FTDI serial-USB
+% converters.
+%
+%
+% The optional 'portString' argument can be set to define the serial port
+% to connect to for response devices that are connected via serial port.
+% By default, the proper serial port is auto-detected, but you can override
+% a wrong detection this way.
+%
 %
 % Obviously this method of measuring carries quite a bit of uncertainty
 % in exact timing, but with a high quality microphone, proper tuning and
@@ -61,7 +73,15 @@ if nargin < 2 || isempty(modality)
 end
 
 if nargin < 3
+    submode = [];
+end
+
+if isempty(submode)
     submode = 0;
+end
+
+if nargin < 4
+    portString = [];
 end
 
 if modality == 3
@@ -93,19 +113,25 @@ end
 
 % CMU or PST serial response button box?
 if ismember(modality, [6,7])
+    if submode > 0
+        foption = 'ftdi';
+    else
+        foption = '';
+    end
+    
     if modality == 6
         % Open PST box, calibrate, start response collection:
-        hcmu = CMUBox('Open', 'pst');
+        hcmu = CMUBox('Open', 'pst', portString, foption);
     else
         % Open CMU box, calibrate, start response collection:
-        hcmu = CMUBox('Open', 'cmu');
+        hcmu = CMUBox('Open', 'cmu', portString, foption);
     end
 else
     % None of these...
     hcmu = [];
 end
 
-fprintf('Auditory keyboard / mouse latency test:\n');
+fprintf('Auditory keyboard / mouse / response box latency test:\n');
 fprintf('After you see the instruction "Hit me baby one more time!", hit ');
 if modality == 1
     fprintf('a mouse button\n');
