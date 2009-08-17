@@ -71,7 +71,7 @@ function PortNumber = FindSerialPort(PortString, forIOPort, dontFail)
 if ~nargin || isempty(PortString)	
 	% List of serial port devices to look for. These should all be lower case:
     if ~IsWin
-        PortDB = { lower('usa19'), lower('keyserial1'), lower('usbmodem'), lower('usbserial') };
+        PortDB = { lower('usa19'), lower('keyserial1'), lower('usbmodem'), lower('usbserial'), lower('USB'), lower('modem') };
     else
         PortDB = { 'com1', 'com2', 'com3', 'com4', 'com5' };
     end
