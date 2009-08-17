@@ -4,7 +4,7 @@ function varargout = CMUBox(cmd, handle, varargin)
 % Commands and their syntax:
 % --------------------------
 %
-% handle = CMUBox('Open', boxtype [, portName]);
+% handle = CMUBox('Open', boxtype [, portName] [, options]);
 % - Open response box connected to serial port 'portName', or the first
 % serial port found, if 'portName' is omitted. Initialize it, return a
 % 'handle' to it. You'll have to pass 'handle' to all following functions
@@ -13,6 +13,14 @@ function varargout = CMUBox(cmd, handle, varargin)
 % If your system has multiple devices connected to multiple serial ports
 % then you should explicitely specify the 'portName', otherwise the driver
 % may connect to the wrong port and choke!
+%
+% The optional string parameter 'options' allows to tweak the behaviour of
+% the driver for certain configurations. It supports the following options:
+%
+% 'ftdi' - Tells the driver that it is connecting to a Serial-over-USB port
+% and that the converter/driver is from FTDI Inc., or a compatible device.
+% Allows for certain optimizations in timing accuracy.
+%
 %
 % The mandatory parameter 'boxtype' is a name string defining the
 % type/model of box to connnect to. Supported settings are:
@@ -34,6 +42,10 @@ function varargout = CMUBox(cmd, handle, varargin)
 % Verify that the DIP switches or jumpers inside the box are properly set
 % up.
 %
+% 'forpserial-1' - Connect to a fORP interface unit type FIU-005 on the
+% serial port, configured with a program switch setting of 1. This is
+% exactly the same as a PST box running with 800 Samples/Sec streaming
+% rate.
 %
 % CMUBox('Close', handle);
 % - Close connection to response box 'handle'. The 'handle' is invalid
@@ -87,7 +99,7 @@ if strcmpi(cmd, 'GetEvent')
         error('CMUBox: GetEvent: No "handle" for box to close provided!');
     end
 
-    if ~isscalar(handle)
+    if length(handle) ~= 1
         error('CMUBox: GetEvent: Passed argument is not a valid response box "handle"!');
     end
     
@@ -164,6 +176,30 @@ if strcmpi(cmd, 'GetEvent')
         % Box status changed since last query?
         if data ~= oldState
             % Yes. We have a new event. Store it and break out of loop:
+            
+            % USB-Serial converter type?
+            if box.ftdiusbserialtype > 0
+                % Special timestamp correction for some transitions possible:
+                if oldState == 0
+                    % Zero to non-zero transition: As zeros are reported with 1
+                    % msec internal latency, and the latency timer is reset
+                    % at each reported zero, the first non-zero will be
+                    % delayed by the latency of the FTDI latencytimer,
+                    % i.e., with 2 msecs delay. Therefore we can subtract 2
+                    % msecs to compensate for this case:
+                    t = t - 0.002;
+                else
+                    if data == 0
+                        % Non-zero to zero transition: Transmitted with
+                        % only 1 msec delay due to FTDI special event
+                        % character set to trigger on zeros, as requested
+                        % by setting the 'Terminator' to 0. We subtract 1
+                        % msecs to take this into account:
+                        t = t - 0.001;
+                    end
+                end
+            end
+            
             evt.time = t;
             evt.streamTime = refTime;
             evt.state = data;
@@ -194,7 +230,9 @@ if strcmpi(cmd, 'Open')
     else
         boxtype = handle;
     end
-    
+
+    %IOPort('Verbosity', 9);
+
     switch(lower(boxtype))
         case {'bitwhacker'},
             % No special options for UBW32/Bitwhacker:
@@ -219,6 +257,13 @@ if strcmpi(cmd, 'Open')
             box.type = 3;
             fprintf('CMUBox: Using PST serial response button box!\n');
             
+        case {'forpserial-1'},
+            % BaudRate is 19.2 KiloBaud, 8-N-1 config without flow control:
+            pString = 'BaudRate=19200 ReceiveTimeout=10.0';
+            box.useBitwhacker = 0;
+            box.type = 3;
+            fprintf('CMUBox: Using fORP interface program 1 as serial response button box!\n');
+
         otherwise,
             error('CMUBox: Open: Unknown "boxtype" specified! Typo?');
     end
@@ -234,12 +279,40 @@ if strcmpi(cmd, 'Open')
         portName = FindSerialPort([], 1);
     end
     
+    if length(varargin) >= 2
+        specialOptions = varargin{2};
+    else
+        specialOptions = '';
+    end
+    
+    if ~isempty(findstr(specialOptions, 'ftdi'))
+        % USB-Serial port via FTDI converter chip:
+        box.ftdiusbserialtype = 1;
+    else
+        % Default to non-FTDI:
+        box.ftdiusbserialtype = 0;
+    end
+    
     % Try to open connection: Allocate an input buffer of a size of
     % 1600 * 1 * 3600 = 5760000 Bytes. This is sufficient for 1 hour of
     % uninterrupted box operation without ever reading out events from the
-    % queue at highest box operating speed:
+    % queue at highest box operating speed.
+    % On MS-Windows, we set the driver receivebuffer seize to 32 kB.
+    %
+    % The Terminator=0 setting is interesting for USB-Serial converters of
+    % FTDI Inc. It will configure the converter to transmit zero bytes,
+    % ie., "button resting position" immediately at each USB work-cycle
+    % with at most 1 msec converter-internal latency. Other states, ie.,
+    % "at least one button pressed", will be reported with the latency set
+    % in the latency timer - at least 2 msecs delay. This however means
+    % that a zero -> non-zero transition is known to have 2 msecs delay and
+    % we can account for that, and that a non-zero -> zero transition has 1
+    % msec delay and we can account for that. Net result is that we get a
+    % low-latency for button transitions, as long as they are from none to
+    % some and some to none.
     box.portName = portName;
-    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=5760000 HardwareBufferSizes=32768,32768 ' pString]);
+    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=5760000 HardwareBufferSizes=32768,32768 Terminator=0 ' pString]);
+    
     
     % Is this a testrun with an emulated CMU/PST box by use of the
     % UBW32-Bitwhacker device with StickOS?
@@ -330,7 +403,10 @@ if strcmpi(cmd, 'Open')
         % box and no data is in-flight. Whatever's there should be in the
         % OS receive buffers.
     end
-    
+
+    % Preheat GetSecs:
+    GetSecs;
+
     % Purge all input and output buffers:
     IOPort('Purge', box.port);
         
@@ -338,9 +414,6 @@ if strcmpi(cmd, 'Open')
     while IOPort('BytesAvailable', box.port) > 0
         IOPort('Read', box.port, 0);
     end
-
-    % Preheat GetSecs:
-    GetSecs;
     
     if box.type == 3 | box.type == 2 %#ok<OR2>
         % Calibrate inter-byte-interval:
@@ -353,6 +426,7 @@ if strcmpi(cmd, 'Open')
         end
 
         % Wait until 8000 bytes have arrived, read them and timestamp:
+        when1 = GetSecs;
         while IOPort('BytesAvailable', box.port) == 0
             % Still waiting for 1st byte...
             when1 = GetSecs;
@@ -466,7 +540,7 @@ if strcmpi(cmd, 'Close')
         error('CMUBox: Close: No "handle" for box to close provided!');
     end
     
-    if ~isscalar(handle)
+    if length(handle) ~= 1
         error('CMUBox: Close: Passed argument is not a valid response box "handle"!');
     end
     
@@ -481,9 +555,11 @@ if strcmpi(cmd, 'Close')
         error('CMUBox: Close: Passed argument is not a valid response box "handle"!');
     end
 
+    %    IOPort('Verbosity', 10);
+    
     % Stop async read, release queues:
     IOPort('ConfigureSerialPort', box.port, 'StopBackgroundRead');
-    
+
     % Emulated box?
     if box.useBitwhacker
         % Stop streaming: Send a CTRL+C control character (ascii code 3).
@@ -552,7 +628,7 @@ if strcmpi(cmd, 'Status')
         error('CMUBox: Status: No "handle" for box to close provided!');
     end
     
-    if ~isscalar(handle)
+    if length(handle) ~= 1
         error('CMUBox: Status: Passed argument is not a valid response box "handle"!');
     end
     
