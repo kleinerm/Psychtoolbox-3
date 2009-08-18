@@ -79,6 +79,27 @@ function varargout = CMUBox(cmd, handle, varargin)
 %
 %
 
+% How to setup latency timer and eventChar under Linux for FTDI
+% USB-Serial converters?
+%
+% Example for Ubuntu Linux 7.1 with first serial converter device ttyUSB0:
+%
+% su + Superuser password.
+% cd /sys/bus/usb-serial/devices/ttyUSB0
+%
+% Set event character:
+%
+% echo X > event_char
+% with X being 0 to disable event character, or 256 + ASCII code of
+% event character, e.g., echo 256 > event_char for ASCII code 0, or
+% echo 266 > event_char for ASCII code 10, because 266 = 256 + 10.
+%
+% Set latency timer to 1 millisecond: (Default is 16 msecs)
+% echo 1 > latency_timer
+%
+% Query current latency timer setting:
+% cat latency_timer
+%
 % History:
 % 9.08.2009  mk  Written. Initial prototype.
 
