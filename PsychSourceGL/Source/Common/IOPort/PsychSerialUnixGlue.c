@@ -670,6 +670,10 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 			device->cookedMode = 1;
 			updatetermios = TRUE;
 
+			// Disable any kind of output processing in cooked mode.
+			// We only use the input processing facilities of cooked mode!
+			options.c_oflag &= ~OPOST;
+
 			// If no lineTerminator is set, assign it to be the Unix default of ASCII 10 aka LF aka NL:
 			if (device->lineTerminator == _POSIX_VDISABLE) device->lineTerminator = (unsigned char) 10;
 		}
