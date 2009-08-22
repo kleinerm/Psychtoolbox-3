@@ -4207,9 +4207,13 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	psych_bool nvidia = FALSE;
 	psych_bool ati = FALSE;
 	GLint maxtexsize=0, maxcolattachments=0, maxaluinst=0;
+
+	// Init Id string for GPU core to zero. This has at most 8 Bytes, including 0-terminator,
+	// so use at most 7 letters!
+	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 	
-	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) ati = TRUE;
-	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) nvidia = TRUE;
+	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 	
 	while (glGetError());
 	glGetIntegerv(GL_MAX_RECTANGLE_TEXTURE_SIZE_EXT, &maxtexsize);
@@ -4241,7 +4245,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		windowRecord->gfxcaps |= kPsychGfxCapNeedsUnsignedByteRGBATextureUpload;
 	}
 	
-	// Does usercode want us to override the autmatic choice of optimal texture upload format for RGBA8 textures?
+	// Does usercode want us to override the automatic choice of optimal texture upload format for RGBA8 textures?
 	if (PsychPrefStateGet_ConserveVRAM() & kPsychTextureUploadFormatOverride) {
 		// Override! Invert current setting:
 		if (windowRecord->gfxcaps & kPsychGfxCapNeedsUnsignedByteRGBATextureUpload) {
@@ -4288,6 +4292,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (ati && (windowRecord->gfxcaps & kPsychGfxCapFBO)) {
 			// ATI hardware with float texture support is a R300 core or later: They support floating point FBO's as well:
 			if (verbose) printf("Assuming ATI R300 core or later: Hardware supports basic floating point framebuffers of 16bpc and 32bpc float format.\n");
+			sprintf(windowRecord->gpuCoreId, "R300");
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
 			windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
 			
@@ -4296,6 +4301,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			if (maxtexsize > 4000) {
 				// R500 core or later:
 				if (verbose) printf("Assuming ATI R500 or later (maxtexsize=%i): Hardware supports floating point blending on 16bpc float format.\n", maxtexsize);
+				sprintf(windowRecord->gpuCoreId, "R500");
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend16;
 
 				if (verbose) printf("Hardware supports full 32 bit floating point precision shading.\n");
@@ -4310,6 +4316,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				if (strstr(glGetString(GL_RENDERER), "Radeon") && strstr(glGetString(GL_RENDERER), "HD")) {
 					// Ok, a Radeon HD 2xxx/3xxx or later -> R600 or later:
 					if (verbose) printf("Assuming ATI R600 or later (Matching namestring): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n");
+					sprintf(windowRecord->gpuCoreId, "R600");
 					windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
 					windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
 					windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
@@ -4317,11 +4324,11 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 				else if (maxaluinst > 2000) {
 					// Name matching failed, but number ALU instructions is high, so maybe a FireGL with R600 core?
 					if (verbose) printf("Assuming ATI R600 or later (Max native ALU inst. = %i): Hardware supports floating point blending and filtering on 16bpc and 32bpc float formats.\n", maxaluinst);
+					sprintf(windowRecord->gpuCoreId, "R600");
 					windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
 					windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
 					windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;					
 				}
-				
 			}
 		}
 		
@@ -4329,12 +4336,14 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 		if (nvidia && (windowRecord->gfxcaps & kPsychGfxCapFBO)) {
 			// NVIDIA hardware with float texture support is a NV30 core or later: They support floating point FBO's as well:
 			if (verbose) printf("Assuming NV30 core or later...\n");
+			sprintf(windowRecord->gpuCoreId, "NV30");
 			
 			// Use maximum number of color attachments as differentiator between GeforceFX and GF6xxx/7xxx/....
 			if (maxcolattachments > 1) {
 				// NV40 core of GF 6000 or later supports at least 16 bpc float texture filtering and framebuffer blending:
 				if (verbose) printf("Assuming NV40 core or later (maxcolattachments=%i): Hardware supports floating point blending and filtering on 16bpc float format.\n", maxcolattachments);
                 if (verbose) printf("Hardware also supports floating point framebuffers of 16bpc and 32bpc float format.\n");
+				sprintf(windowRecord->gpuCoreId, "NV40");
                 windowRecord->gfxcaps |= kPsychGfxCapFPFBO16;
                 windowRecord->gfxcaps |= kPsychGfxCapFPFBO32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;
@@ -4349,6 +4358,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 			// They also support a max texture size of > 4096 texels --> 8192 texels, so we use that as detector:
 			if (maxtexsize > 4100) {
 				if (verbose) printf("Assuming G80 core or later (maxtexsize=%i): Hardware supports full floating point blending and filtering on 16bpc and 32bpc float format.\n", maxtexsize);
+				sprintf(windowRecord->gpuCoreId, "G80");
 				windowRecord->gfxcaps |= kPsychGfxCapFPBlend32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter32;
 				windowRecord->gfxcaps |= kPsychGfxCapFPFilter16;

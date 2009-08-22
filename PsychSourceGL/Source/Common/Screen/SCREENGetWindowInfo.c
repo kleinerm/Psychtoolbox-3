@@ -41,13 +41,13 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 PsychError SCREENGetWindowInfo(void) 
 {
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
-							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion",
+							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent" };
 							   
-	const int  fieldCount = 23;
+	const int  fieldCount = 24;
 	PsychGenericScriptType	*s;
-	
+
     PsychWindowRecordType *windowRecord;
     double beamposition, lastvbl;
 	int beamposonly = 0;
@@ -136,7 +136,8 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
 		PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
 		PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
-
+		PsychSetStructArrayStringElement("GPUCoreId", 0, windowRecord->gpuCoreId, s);
+		
 		// FBO's supported, and how deep?
 		if (windowRecord->gfxcaps & kPsychGfxCapFBO) {
 			if (windowRecord->gfxcaps & kPsychGfxCapFPFBO32) {

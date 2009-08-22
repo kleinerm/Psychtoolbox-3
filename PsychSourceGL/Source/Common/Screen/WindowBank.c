@@ -323,7 +323,10 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 	
 	// Default to unknown maximum supported texture size:
 	(*winRec)->maxTextureSize = 0;
-	
+
+	// No GPU core id assigned yet:
+	(*winRec)->gpuCoreId[0] = 0;
+
 	return;
 }
 

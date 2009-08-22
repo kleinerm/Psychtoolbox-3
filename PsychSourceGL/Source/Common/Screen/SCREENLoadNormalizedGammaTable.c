@@ -95,17 +95,28 @@ PsychError SCREENLoadNormalizedGammaTable(void)
 		PsychCopyInScreenNumberArg(1, TRUE, &screenNumber);
 	}
     
-    //load, sanity check the input matrix, and covert from float to doubles
-    PsychAllocInDoubleMatArg(2, TRUE, &inM,  &inN, &inP, &inTable);
+    // Load and sanity check the input matrix:
+	inM = -1; inN = -1; inP = -1;
+    if (!PsychAllocInDoubleMatArg(2, FALSE, &inM,  &inN, &inP, &inTable)) {
+		if (PSYCH_SYSTEM == PSYCH_OSX) {
+			// Special case: Allow passing in an empty gamma table argument. This
+			// triggers auto-load of identity LUT via Bytetable transfer.
+			inM = 0; inN = 3; inP = 1;
+		}
+		else {
+			PsychErrorExitMsg(PsychError_user, "You must provide a non-empty m-by-3 gamma table as 2nd argument on Linux and Windows!");
+		}
+	}
 
+	// Sanity check dimensions:
     if((inN != 3) || (inP != 1)) PsychErrorExitMsg(PsychError_user, "The gamma table must have 3 columns (Red, Green, Blue).");
 	
 	#if PSYCH_SYSTEM == PSYCH_OSX
 		// OS-X allows tables with other than 256 slots. It either passes them to hw if in native size, or performs
-		// software interpolation to convert it into native size:
-		if((inM != 256) && (inM != 512) && (inM != 1024) && (inM != 2048) && (inM != 4096) && (inM != 8192) && (inM != 16384) && (inM != 32768) && (inM != 65535)) {
-//			PsychErrorExitMsg(PsychError_user, "The gamma table must have a number of rows equal to one of these: 256, 512, 1024, 2048, 4096, 8192, 16384, 32768 or 65535.");
-		}
+		// software interpolation to convert it into native size. We allow any table size with 1 - x slots.
+		// A table size of 1 row will have a special meaning. It interprets the 1 row of the table as gamma formula
+		// min, max, gamma and lets the OS compute a corresponding gamma correction table.
+		// A table size of zero rows will trigger an internal upload of an identity table via byte transfer.
 	#else
 		// Windows requires 256 slots, i didn't check for Linux yet, but this is always safe, so...
 		if(inM != 256) {
