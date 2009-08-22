@@ -753,10 +753,34 @@ void PsychLoadNormalizedGammaTable(int screenNumber, int numEntries, float *redT
 {
     CGDisplayErr 	error; 
     CGDirectDisplayID	cgDisplayID;
-    
+    CGByteValue byteLUT[256];
+	int i;
+	
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenNumber);
-    error=CGSetDisplayTransferByTable(cgDisplayID, (CGTableCount)numEntries, redTable, greenTable, blueTable);
-    
+	
+	// More than one row in table?
+	if (numEntries > 1) {
+		// Yes: This is the regular case. We upload a 0.0 - 1.0 encoded table with numEntries slots. The OS will
+		// interpolate inbetween our slots if the number of required slots in the GPU doesn't match the numEntries
+		// we provided:
+		error=CGSetDisplayTransferByTable(cgDisplayID, (CGTableCount)numEntries, redTable, greenTable, blueTable);
+		if (error) PsychErrorExitMsg(PsychError_system, "Failed to update the gamma tables in call to CGSetDisplayTransferByTable() !");
+	}
+	else {
+		if (numEntries <= 0) {
+			// No: Special case 0-Slot table. We shall upload an identity CLUT:
+			for (i = 0; i < 256; i++) byteLUT[i] = (CGByteValue) i;
+			error=CGSetDisplayTransferByByteTable(cgDisplayID, (CGTableCount) 256, &byteLUT[0], &byteLUT[0], &byteLUT[0]);
+			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload identity gamma tables in call to CGSetDisplayTransferByByteTable() !");
+		}
+		else {
+			// No: Special case 1-slot table: Interpret red, green and blue value of single slot as min, max and gamma value for CGSetDisplayTransferByFormula()
+			error=CGSetDisplayTransferByFormula(cgDisplayID, redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0], redTable[0], greenTable[0], blueTable[0]);
+			if (error) PsychErrorExitMsg(PsychError_system, "Failed to upload computed gamma tables in call to CGSetDisplayTransferByFormula() !");
+		}
+	}
+
+	return;
 }
 
 // PsychGetDisplayBeamPosition() contains the implementation of display beamposition queries.
