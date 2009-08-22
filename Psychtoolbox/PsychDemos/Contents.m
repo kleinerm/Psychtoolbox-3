@@ -23,6 +23,7 @@
 %    ContrastModulatedNoiseTheElegantStyleDemo - Demonstrate creation of contrast modulated noise.
 %                                                Elegant and efficient, but needs recent hardware.
 %
+%    DatarecordingFromSerialPortDemo - Template for asynchronous data collection and timestamping from serial port.
 %    DelayedSoundFeedbackDemo - Demonstrates a audio feedback loop via PsychPortAudio() with exactly controlled latency.
 %    DotDemo                 - Animate dots with Screen('DrawDots).
 %    DKLDemo                 - Demonstrate DKL color space.

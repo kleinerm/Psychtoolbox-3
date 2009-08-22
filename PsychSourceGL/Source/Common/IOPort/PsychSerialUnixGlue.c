@@ -651,8 +651,8 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
     // See tcsetattr(4) ("man 4 tcsetattr") for details.
     if (verbosity > 3) {
 		printf("IOPort-Info: Configuration for device %s:\n", device->portSpec);
-		printf("IOPort-Info: Current input baud rate is %d\n", (int) cfgetispeed(&options));
-		printf("IOPort-Info: Current output baud rate is %d\n", (int) cfgetospeed(&options));
+		printf("IOPort-Info: Current input baud rate is %d\n", ConstantToBaud((int) cfgetispeed(&options)));
+		printf("IOPort-Info: Current output baud rate is %d\n", ConstantToBaud((int) cfgetospeed(&options)));
     }
 	
     // Set raw input (non-canonical) mode: No line-based processing or editing of
@@ -917,7 +917,7 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
     if (verbosity > 3) {
 			// Retrieve baudrate and check for equal rate on input- and output queue:
 			inint = cfgetispeed(&options);
-			if ((inint != cfgetospeed(&options)) && (verbosity > 1)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", inint, (int) cfgetospeed(&options)); 
+			if ((inint != cfgetospeed(&options)) && (verbosity > 1)) printf("IOPort: Warning: Hmm, new input- and output baudrates %i vs. %i don't match!? May or may not be a problem...\n", ConstantToBaud((int) inint), ConstantToBaud((int) cfgetospeed(&options))); 
 
 			// Output new baud rate:
 			printf("IOPort-Info: Baud rate changed to %d\n", (int) ConstantToBaud(inint));
