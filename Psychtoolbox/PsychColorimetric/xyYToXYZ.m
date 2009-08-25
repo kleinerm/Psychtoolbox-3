@@ -1,7 +1,10 @@
 function XYZ = xyYToXYZ(xyY)
 % XYZ = xyYToXYZ(xyY)
+%
 % Compute tristimulus coordinates from
 % chromaticity and luminance.
+%
+% 8/24/09  dhb  Look at it.
 
 [m,n] = size(xyY);
 XYZ = zeros(m,n);
