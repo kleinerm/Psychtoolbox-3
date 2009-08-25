@@ -1,12 +1,12 @@
 function [sensor] = PrimaryToSensor(cal,primary)
 % [sensor] = PrimaryToSensor(cal,primary)
 %
-% Convert from primary coordinates to sesnor color 
+% Convert from primary coordinates to sensor color 
 % space coordinates.  The ambient lighting is added to
 % the color space coordinates of the device.
 %
 % This depends on the standard calibration globals.
-%
+
 % 9/26/93    dhb   Added calData argument.
 % 10/19/93   dhb   Allow device characterization dimensions to exceed
 %                  device settings dimensions.
