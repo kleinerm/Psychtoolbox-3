@@ -120,6 +120,9 @@ try
     % Get the aspect ratio of the screen:
     ar=RectHeight(winRect) / RectWidth(winRect);
 
+	% Set viewport properly:
+	glViewport(0, 0, RectWidth(winRect), RectHeight(winRect));
+	
     % Setup default drawing color to yellow (R,G,B)=(1,1,0). This color only
     % gets used when lighting is disabled - if you comment out the call to
     % glEnable(GL.LIGHTING).

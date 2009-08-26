@@ -95,7 +95,7 @@ if IsOctave
             fprintf('Another reason could be some binary incompatibility. You would need to recompile Psychtoolbox from source!\n\n');
         end
     end
-    error('Missing, inaccessible or dysfunctional Psychtoolbox Oct file for this system, or Octave path wrong. Read the help text above carefully!!\n');
+    error('Missing, inaccessible or dysfunctional Psychtoolbox Mex file for this system, or Octave path wrong. Read the help text above carefully!!\n');
 end
 
 % Initialize the persistent variables.
