@@ -22,6 +22,11 @@ This would be used if you want runtime linking instead:
 
 mex -v WinTabMex.c -IINCLUDE -DUSE_X_LIB user32.lib LIB\I386\wntab32x.lib
 
+If you want to compile on Octave, do this:
+
+mex -v WinTabMex.c -DPTBOCTAVE3MEX -IINCLUDE LIB\I386\wintab32.lib
+
+
 ------------------------------------------------------------------------------
 
     WinTabMex.c is Copyright (C) 2008, 2009 Mario Kleiner
@@ -46,8 +51,8 @@ mex -v WinTabMex.c -IINCLUDE -DUSE_X_LIB user32.lib LIB\I386\wntab32x.lib
 
 /* Windows includes: */
 #include <windows.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* WinTab includes: */
 #include <wintab.h>
@@ -63,7 +68,9 @@ mex -v WinTabMex.c -IINCLUDE -DUSE_X_LIB user32.lib LIB\I386\wntab32x.lib
 
 /* Matlab includes: */
 #include "mex.h"
+#ifndef PTBOCTAVE3MEX
 #include "matrix.h"
+#endif
 
 /* -------------------------------------------------------------------------- */
 #define Inch2Cm	CASTFIX32(2.54)
@@ -166,7 +173,7 @@ void mexFunction(int nlhs, mxArray *plhs[], int nrhs, const mxArray*prhs[])
 	const char* me = mexFunctionName();
 
 	if(nrhs<1) {
-		mexPrintf("WinTabMex: A simple Matlab MEX file for driving touch tablets which are\n");
+		mexPrintf("WinTabMex: A simple Matlab/Octave MEX file for driving touch tablets which are\n");
 		mexPrintf("compatible with the WinTAB API on Microsoft Windows.\n\n");
 		mexPrintf("(C) 2008, 2009 by Mario Kleiner -- Licensed to you under GPLv2 or any later version.\n");
 		mexPrintf("This file is part of Psychtoolbox-3 but should also work independently.\n");

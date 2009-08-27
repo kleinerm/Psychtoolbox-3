@@ -22,14 +22,20 @@
 % macidpascalsource/           This folder contains the Delphi-7 Pascal source code
 %                              of macid.exe, as required by macid's GPL license.
 %
-% ple.m                        Prints useful debugging output, including a stack trace in case
+% ple                          Prints useful debugging output, including a stack trace in case
 %                              a script exits via rethrow() or psychrethrow(). See help ple for
 %                              copyright info.
 %
-% read_rle_rgbe.m              Reader routine for RLE encoded RGBE high dynamic range images.
+% read_rle_rgbe                Reader routine for RLE encoded RGBE high dynamic range images.
 %                              See help read_rle_rgbe for copyright & authorship info. This is
 %                              a helper routine for ReadHDR - the recommended function for user
 %                              scripts.
+%
+% WinJoystickMex               WinJoystickMex is a very simple/rudimentary
+%                              joystick driver for basic query of position
+%                              and button state of joysticks under
+%                              MS-Windows, written by Mario Kleiner. The
+%                              code is contributed under GPLv2.
 %
 % WinTab/                      This folder contains the (unsupported!)
 %                              WinTabMex MEX file driver (and its C source
