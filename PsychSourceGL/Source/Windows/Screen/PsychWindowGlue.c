@@ -47,6 +47,15 @@
 
 #include "Screen.h"
 
+#ifndef WS_EX_LAYERED
+/* Define prototype for this function: */
+BOOL SetLayeredWindowAttributes(      
+    HWND hwnd,
+    COLORREF crKey,
+    BYTE bAlpha,
+    DWORD dwFlags);
+#endif
+
 // Application instance handle:
 static HINSTANCE hInstance = 0;
 // Number of currently open onscreen windows:
@@ -127,13 +136,23 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 {
   static PAINTSTRUCT ps;
   PsychWindowRecordType	**windowRecordArray;
-  int i, numWindows; 
+  int i, numWindows;
+  int verbosity = PsychPrefStateGet_Verbosity();
 
+  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): Called!\n");
+  
   // What event happened?
   switch(uMsg) {
+	case WM_MOUSEACTIVATE:
+		// Mouseclick into our inactive window (non-fullscreen) received. Eat it:
+		if (verbosity > 6) printf("PTB-DEBUG: WndProc(): MOUSE ACTIVATION!\n");
+		return(MA_NOACTIVATEANDEAT);
+	break;
+	
     case WM_SYSCOMMAND:
       // System command received: We intercept system commands that would start
       // the screensaver or put the display into powersaving sleep-mode:
+	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SYSCOMMAND!\n");
       switch(wParam) {
 			case SC_SCREENSAVE:
 			case SC_MONITORPOWER:
@@ -177,6 +196,7 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
       // doesn't have a concept of redrawing a stimulus. As this is mostly useful
       // for debugging, we just do a double doublebuffer swap in the hope that this
       // will restore the frontbuffer...
+	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
       BeginPaint(hWnd, &ps);
       EndPaint(hWnd, &ps);
       // Scan the list of windows to find onscreen window with handle hWnd:
@@ -197,6 +217,8 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
     case WM_SIZE:
       // Window resize event: Only happens in debug-mode (non-fullscreen).
       // We resize the viewport accordingly and then trigger a repaint-op.
+	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
+
       glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
       PostMessage(hWnd, WM_PAINT, 0, 0);
       // printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
@@ -205,6 +227,7 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
     case WM_CLOSE:
       // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
       // -> Manually closing an onscreen window does the same as pressing the Abort-key.
+	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
       wParam='@';
     case WM_CHAR:
       // Character received. We only care about one key, the '@' key.
@@ -227,33 +250,34 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 /* PsychGetMouseButtonState: Returns current mouse button up-/down state. Called by SCREENGetMouseHelper. */
 void PsychGetMouseButtonState(double* buttonArray)
 {
-  // MSG msg;
-	// Old-Style mouse button queries by parsing events in the event-queue and
-	// keeping track of state changes... Obsoleted by GetAsyncKeyState() below.
+    MSG msg;
 
-	// Run our message dispatch loop until we've processed all mouse-related events
-	// in the queue:
-	//	while(PeekMessage(&msg, NULL, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE)) {
-	//	// Mouse event in queue. Dispatch it to our WndProc...
-	//	TranslateMessage(&msg);
-	//	// The WndProc will keep track of the current mouse button state by
-	//	// updating it according to the UP or DOWN message.
-	//	DispatchMessage(&msg);
-	// }
+	// Run our message dispatch loop until we've processed all events in the event queue for our onscreen windows:
+	// We need to do this periodically so WindowsXP and later are convinced that our window/application is still
+	// alive and responsive. Otherwise it might conclude trouble and replace our onscreen window by a ghost window
+	// which is effectively dead and useless for OpenGL rendering and display. See "About Messages and Message Queues"
+	// at MSDN: http://msdn.microsoft.com/en-us/library/ms644927(VS.85).aspx for explanation of this braindead
+	// mechanism...
+	while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+		// Translate event in case it is a keyboard event that needs translation:
+		TranslateMessage(&msg);
+		
+		// Dispatch to the WndProc() function above for final event handling:
+		DispatchMessage(&msg);
+	}
 
-	// The routine expects a preallocated 3-element double matrix for the three mouse-buttons:
-	// It simply copies our internally held current state to the output matrix:
-	//buttonArray[0]=(double) mousebutton_l;
-	//buttonArray[1]=(double) mousebutton_m;
-	//buttonArray[2]=(double) mousebutton_r;
-
-	// GetAsyncKeyState() directly returns the current state of the physical mouse
-	// buttons, independent of window system event processing, keyboard or mouse
-	// focus and such. Much more robust.
-	buttonArray[0]=(double) ((GetAsyncKeyState(VK_LBUTTON) & -32768) ? 1 : 0);
-	buttonArray[1]=(double) ((GetAsyncKeyState(VK_MBUTTON) & -32768) ? 1 : 0);
-	buttonArray[2]=(double) ((GetAsyncKeyState(VK_RBUTTON) & -32768) ? 1 : 0);
-
+	// The routine expects a preallocated 3-element double matrix for the three mouse-buttons. If
+	// NULL is passed, it doesn't execute the actual mouse query, but only performs the event processing
+	// above:
+	if (NULL != buttonArray) {
+		// GetAsyncKeyState() directly returns the current state of the physical mouse
+		// buttons, independent of window system event processing, keyboard or mouse
+		// focus and such. Much more robust than old approach:
+		buttonArray[0]=(double) ((GetAsyncKeyState(VK_LBUTTON) & -32768) ? 1 : 0);
+		buttonArray[1]=(double) ((GetAsyncKeyState(VK_MBUTTON) & -32768) ? 1 : 0);
+		buttonArray[2]=(double) ((GetAsyncKeyState(VK_RBUTTON) & -32768) ? 1 : 0);
+	}
+	
 	return;
 }
 
@@ -321,6 +345,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int         attribcount;
   float       fattribs[2]={0,0};
   int x, y, width, height, i, bpc;
+  int		  windowLevel;
   GLenum      glerr;
   DWORD flags;
   psych_bool fullscreen = FALSE;
@@ -333,6 +358,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
 		 fflush(NULL);
 	 }
+
+	// Retrieve windowLevel, an indicator of where non-fullscreen windows should
+	// be located wrt. to other windows. 0 = Behind everything else, occluded by
+	// everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+	// 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
+	// regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
+	// 2000 is the default.
+	windowLevel = PsychPrefStateGet_WindowShieldingLevel();
 
 	 // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
@@ -373,14 +406,26 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     else {
       windowStyle |= WS_OVERLAPPEDWINDOW;
-      windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
-
+	  // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
+	  // windows all the time, unless windowLevel is smaller than 1000:
+	  if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
+	  // If windowLevel is that of a transparent window, then try to enable support for transparent
+	  // windows:
+      // Could also define _WIN32_WINNT >= 0x0500
+      #ifndef WS_EX_LAYERED
+      #define WS_EX_LAYERED           0x00080000
+      #endif
+      #ifndef LWA_ALPHA
+      #define LWA_ALPHA               2
+      #endif
+	  if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
+	  
 	  // Copy absolute screen location and area of window to 'globalrect',
 	  // so functions like Screen('GlobalRect') can still query the real
 	  // bounding gox of a window onscreen:
 	  PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
     }
-
+	
     // Define final position and size of window:
     x=windowRecord->rect[kPsychLeft];
     y=windowRecord->rect[kPsychTop];
@@ -399,7 +444,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // Only register the window class once - use hInstance as a flag.
     if (!hInstance) {
       hInstance = GetModuleHandle(NULL);
-      wc.style         = CS_OWNDC;
+      wc.style         = ((windowLevel >= 1000) && (windowLevel <  2000)) ? 0 : CS_OWNDC;
       wc.lpfnWndProc   = WndProc;
       wc.cbClsExtra    = 0;
       wc.cbWndExtra    = 0;
@@ -442,6 +487,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         printf("\nPTB-ERROR[CreateWindow() failed]: Unknown error, Win32 specific.\n\n");
         return(FALSE);
     }
+
+	// Setup transparency level for eligible non-fullscreen windows:
+	if (!fullscreen && (windowLevel >= 1000) && (windowLevel < 2000)) {
+		// For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
+		// would be visible, wherever nothing is drawn, i.e., where alpha channel is zero.
+		// Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+		SetLayeredWindowAttributes(hWnd, 0, (BYTE) ((((float) (windowLevel % 500)) / 499.0) * 255 + 0.5), LWA_ALPHA);
+	}
 
     // Retrieve device context for the window:
     hDC = GetDC(hWnd);
@@ -707,6 +760,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     	}
 
+		// Setup transparency level for eligible non-fullscreen windows:
+		if (!fullscreen && (windowLevel >= 1000) && (windowLevel < 2000)) {
+			// For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
+			// would be visible, wherever nothing is drawn, i.e., where alpha channel is zero.
+			// Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:
+			SetLayeredWindowAttributes(hWnd, 0, (BYTE) ((((float) (windowLevel % 500)) / 499.0) * 255 + 0.5), LWA_ALPHA);
+		}
+		
 	   // Retrieve device context for the window:
     	hDC = GetDC(hWnd);
 
@@ -1064,6 +1125,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somewhere in the display settings\n");
       printf("PTB-WARNING: tab of your machine.\n");
     }
+
+	// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
+	// make windows GUI event processing happy:
+	PsychGetMouseButtonState(NULL);
 
     // Ok, we should be ready for OS independent setup...
 	 if (PsychPrefStateGet_Verbosity()>4) {

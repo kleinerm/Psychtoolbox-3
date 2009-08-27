@@ -27,17 +27,19 @@ if nargin < 1
     opaqueForHID = 0;
 end
 
-if IsOSX
+if IsOSX | IsWin %#ok<OR2>
     % Disable high precision timestamping:
     Screen('Preference', 'VBLTimestampingMode', -1);
 
     % Skip sync tests:
     Screen('Preference', 'SkipSyncTests', 2);
     
-    % Use AGL + Carbon, even for fullscreen windows:
-    oldconserve = Screen('Preference', 'ConserveVRAM');
-    Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
-
+    if IsOSX
+        % Use AGL + Carbon, even for fullscreen windows:
+        oldconserve = Screen('Preference', 'ConserveVRAM');
+        Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
+    end
+    
     if opaqueForHID
         % Set windows to be transparent, but not for mouse and keyboard:
         Screen('Preference', 'WindowShieldingLevel', 1750);

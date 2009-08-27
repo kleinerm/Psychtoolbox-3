@@ -63,7 +63,9 @@
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 	// Need to define #define _WIN32_WINNT as 0x0400 so we can use TryEnterCriticalSection() call for PsychTryLockMutex() implementation.
-	#define _WIN32_WINNT 0x0400
+    // We set WINVER and _WIN32_WINNT to 0x0500, which requires Windows 2000 or later as target system:
+	#define _WIN32_WINNT 0x0500
+    #define WINVER       0x0500
 	#include <windows.h>
 	//#include <gl/gl.h>
 	//#include <gl/glu.h>
