@@ -161,7 +161,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "[width, height]=Screen('WindowSize', windowPointerOrScreenNumber);";
 	synopsis[i++] = "[width, height]=Screen('DisplaySize', ScreenNumber);";
 	synopsis[i++] = "[oldmaximumvalue oldclampcolors] = Screen('ColorRange', windowPtr [, maximumvalue][, clampcolors=1]);";
-	synopsis[i++] = "info = Screen('GetWindowInfo', windowPtr [, beamposOnly=0]);";
+	synopsis[i++] = "info = Screen('GetWindowInfo', windowPtr [, infoType=0] [, auxArg1]);";
 	synopsis[i++] = "resolutions=Screen('Resolutions', screenNumber);";
 	synopsis[i++] = "oldResolution=Screen('Resolution', screenNumber [, newwidth] [, newheight] [, newHz] [, newPixelSize] [, specialMode]);";
 
