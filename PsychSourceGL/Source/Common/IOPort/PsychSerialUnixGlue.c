@@ -201,6 +201,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 	int navail;
 	int tmpcurpos, naccumread;
 	unsigned char lastcharacter, lineterminator;
+	double dt, oldt;
 	double t;
 	int doBlockingRead = 0;
 
@@ -213,6 +214,10 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 	if ((rc = PsychSetThreadPriority(NULL, 1, 1)) > 0) {
 		if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to switch to realtime priority [%s]!\n", strerror(rc));
 	}
+
+	// Init reference timestamp of last scan:
+	PsychGetAdjustedPrecisionTimerSeconds(&oldt);
+	dt = 0;
 
 	// Main loop: Runs until external thread cancellation:
 	while (1) {
@@ -303,9 +308,9 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 		else {
 			// Standard non-linebuffered readop:
 		
-			// How much data to read? We use the last 4-Bytes of a readGranularity quantum for our
-			// serial bytes counter if kPsychIOPortCMUPSTFiltering is active:
-			naccumread = (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) ? (device->readGranularity - 4) : device->readGranularity;
+			// How much data to read? We use the last 8-Bytes of a readGranularity quantum for our
+			// serial bytes counter and our dt to last scan time if kPsychIOPortCMUPSTFiltering is active:
+			naccumread = (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) ? (device->readGranularity - 8) : device->readGranularity;
 			if (naccumread < 0) naccumread = 0;
 
 			// Setup minimum byte counter for 'naccumread' Bytes blocking reads:
@@ -342,6 +347,13 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 				if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialUnixGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", naccumread, nread);
 			}
 			
+			// Take read completion timestamp:
+			PsychGetAdjustedPrecisionTimerSeconds(&t);
+			
+			// Compute timedelta to last read() scan:
+			dt = t - oldt;
+			oldt = t;
+			
 			// Increment serial bytes received counter:
 			device->asyncReadBytesCount += (nread > 0) ? nread : 0;
 			
@@ -376,12 +388,10 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 					// Store new counter as a 32-bit unsigned int, which may possibly be not 32-bit boundary aligned
 					// on the target architecture!
 					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+1) % (device->readBufferSize)])) = (unsigned int) device->asyncReadBytesCount;
+					// Store dt as a 32 bit unsigned int: It contains dt in microseconds - That resolution should be more than sufficient!
+					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+2) % (device->readBufferSize)])) = (unsigned int) (dt * 1e6);
 				}
 			}
-			
-			// Take read completion timestamp:
-			PsychGetAdjustedPrecisionTimerSeconds(&t);
-
 		}	// End of regular non-linebuffered readop.
 		
 		// Prevent our cancellation:
@@ -428,9 +438,6 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 void PsychIOOSShutdownSerialReaderThread(volatile PsychSerialDeviceRecord* device)
 {
 	if (device->readerThread) {
-		// Make sure we don't hold the mutex:
-		PsychUnlockMutex(&(device->readerLock));
-
 		// Cancel the thread:
 		PsychAbortThread(&(device->readerThread));
 
@@ -1092,6 +1099,27 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 		}
 	}
 	
+	if ((p = strstr(configString, "BlockingBackgroundRead="))) {
+		if (1!=sscanf(p, "BlockingBackgroundRead=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		device->isBlockingBackgroundRead = inint;
+	}
+
+	if ((p = strstr(configString, "ReadFilterFlags="))) {
+		if (1!=sscanf(p, "ReadFilterFlags=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		device->readFilterFlags = (unsigned int) inint;
+	}
+
+	// Stop a background reader?
+	if ((p = strstr(configString, "StopBackgroundRead"))) {
+		PsychIOOSShutdownSerialReaderThread(device);
+	}
+	
 	// Async background read via parallel thread requested?
 	if ((p = strstr(configString, "StartBackgroundRead="))) {
 		if (1!=sscanf(p, "StartBackgroundRead=%i", &inint)) {
@@ -1144,27 +1172,6 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 				return(PsychError_system);
 			}
 		}
-	}
-
-	if ((p = strstr(configString, "BlockingBackgroundRead="))) {
-		if (1!=sscanf(p, "BlockingBackgroundRead=%i", &inint)) {
-			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
-			return(PsychError_invalidIntegerArg);
-		}
-		device->isBlockingBackgroundRead = inint;
-	}
-
-	// Stop a background reader?
-	if ((p = strstr(configString, "StopBackgroundRead"))) {
-		PsychIOOSShutdownSerialReaderThread(device);
-	}
-
-	if ((p = strstr(configString, "ReadFilterFlags="))) {
-		if (1!=sscanf(p, "ReadFilterFlags=%i", &inint)) {
-			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
-			return(PsychError_invalidIntegerArg);
-		}
-		device->readFilterFlags = (unsigned int) inint;
 	}
 
 	// Done.

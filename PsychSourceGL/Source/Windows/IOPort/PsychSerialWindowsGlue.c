@@ -51,11 +51,14 @@ int PsychSerialWindowsGlueAsyncReadbufferBytesAvailable(PsychSerialDeviceRecord*
 
 void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 {
+	char errmsg[1024];
 	int rc, nread;
 	int navail;
 	int tmpcurpos, naccumread;
 	unsigned char lastcharacter, lineterminator;	
+	double dt, oldt;
 	double t;
+	
 	COMSTAT dstatus;
 	DWORD   dummy;
 
@@ -69,15 +72,25 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 		if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to switch to realtime priority [%i]!\n", rc);
 	}
 
+	// Perform initial check for device errors, clear error state:
+	errmsg[0] = 0;
+	if ((rc=PsychIOOSCheckError(device, &errmsg[0]))>0) {
+		if (verbosity > 0) printf("PTB-ERROR: In startup of IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d) [%s]! Trying to recover.\n", device->portSpec, rc, errmsg);
+	}
+
+	// Init reference timestamp of last scan:
+	PsychGetAdjustedPrecisionTimerSeconds(&oldt);
+	dt = 0;
+
 	// Main loop: Runs until external thread cancellation signal device->abortThreadReq set to non-zero:
 	while (0 == device->abortThreadReq) {
 		if (verbosity > 9) printf("IOPort-DEBUG: In PsychSerialWindowsGlueReaderThreadMain(): New loop iteration, abortflag = %i, checking abort signal.\n", device->abortThreadReq); 
 		PsychTestCancelThread(&(device->readerThread));
 		if (verbosity > 9) printf("IOPort-DEBUG: In PsychSerialWindowsGlueReaderThreadMain(): New loop iteration, abortflag = %i, abort signal negative.\n", device->abortThreadReq); 
 
-        if ((rc=PsychIOOSCheckError(device, NULL))>0) {
-				if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d)! Aborted.\n", device->portSpec, rc);
-				return(0);
+		errmsg[0] = 0;
+        if ((rc=PsychIOOSCheckError(device, &errmsg[0]))>0) {
+			if (verbosity > 0) printf("PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Errorcheck on device %s returned errorcode (%d) [%s]! Trying to recover.\n", device->portSpec, rc, errmsg);
         }
         
 		// Polling read requested?
@@ -86,8 +99,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			
 			// Enough data available for read of requested granularity?
 			if (ClearCommError(device->fileDescriptor, &dummy, &dstatus)==0) {
-				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): ClearCommError() bytes available query on device %s returned (%d)\n", device->portSpec, GetLastError());
-				return(0);
+				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): ClearCommError() bytes available query on device %s returned error code (%d)!\n", device->portSpec, GetLastError());
 			}
 			navail = (int) dstatus.cbInQue;
 			
@@ -102,8 +114,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 
 				// ... and retest:
 				if (ClearCommError(device->fileDescriptor, &dummy, &dstatus)==0) {
-					if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): ClearCommError() bytes available query on device %s returned (%d)\n", device->portSpec, GetLastError());
-					return(0);
+					if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): ClearCommError() bytes available query on device %s returned error code (%d)!\n", device->portSpec, GetLastError());
 				}
 				navail = (int) dstatus.cbInQue;
 			}
@@ -122,7 +133,6 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 			
 			if (SetCommTimeouts(device->fileDescriptor, &(device->timeouts)) == 0) {
 				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Error calling SetCommTimeouts on device %s for blocking read - (%d).\n", device->portSpec, GetLastError());
-				return(0);
 			}
 		}
 
@@ -181,16 +191,15 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 		else {
 			// Standard non-linebuffered readop:
 			
-			// How much data to read? We use the last 4-Bytes of a readGranularity quantum for our
-			// serial bytes counter if kPsychIOPortCMUPSTFiltering is active:
-			naccumread = (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) ? (device->readGranularity - 4) : device->readGranularity;
+			// How much data to read? We use the last 8-Bytes of a readGranularity quantum for our
+			// serial bytes counter and our dt to last scan time if kPsychIOPortCMUPSTFiltering is active:
+			naccumread = (device->readFilterFlags & kPsychIOPortCMUPSTFiltering) ? (device->readGranularity - 8) : device->readGranularity;
 			if (naccumread < 0) naccumread = 0;
 			
 			// Enough data available. Read it!
 			if (ReadFile(device->fileDescriptor, &(device->readBuffer[(device->readerThreadWritePos) % (device->readBufferSize)]), naccumread, &nread, NULL) == 0) {
 				// Some error:
 				if (verbosity > 0) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Error during blocking read from device %s - (%d).\n", device->portSpec, GetLastError());
-				return(0);
 			}
 			
 			// Sufficient amount read?
@@ -202,6 +211,13 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 				// if high verbosity level is selected for debug output:
 				if (verbosity > 5) fprintf(stderr, "PTB-ERROR: In IOPort:PsychSerialWindowsGlueReaderThreadMain(): Failed to read %i bytes of data for unknown reason (Got only %i bytes)! Padding...\n", naccumread, nread);
 			}
+			
+			// Take read completion timestamp:
+			PsychGetAdjustedPrecisionTimerSeconds(&t);
+			
+			// Compute timedelta to last read() scan:
+			dt = t - oldt;
+			oldt = t;
 			
 			// Increment serial bytes received counter:
 			device->asyncReadBytesCount += (nread > 0) ? nread : 0;
@@ -237,12 +253,10 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 					// Store new counter as a 32-bit unsigned int, which may possibly be not 32-bit boundary aligned
 					// on the target architecture!
 					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+1) % (device->readBufferSize)])) = (unsigned int) device->asyncReadBytesCount;
+					// Store dt as a 32 bit unsigned int: It contains dt in microseconds - That resolution should be more than sufficient!
+					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+2) % (device->readBufferSize)])) = (unsigned int) (dt * 1e6);
 				}
 			}
-			
-			// Take read completion timestamp:
-			PsychGetAdjustedPrecisionTimerSeconds(&t);
-			
 		}	// End of regular non-linebuffered readop.
 
 		// Store timestamp for this read chunk of data:
@@ -285,6 +299,7 @@ void PsychIOOSShutdownSerialReaderThread( PsychSerialDeviceRecord* device)
 	if (device->readerThread) {
 		// Signal the thread that it should cancel:
 		device->abortThreadReq = 1;
+		
 		if (verbosity > 6) printf("IOPort-DEBUG: In PsychIOOSShutdownSerialReaderThread(): Calling PsychAbortThread()...\n"); 
 		PsychAbortThread(&(device->readerThread));
 		
@@ -905,6 +920,27 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 		}
 	}
 
+	if ((p = strstr(configString, "BlockingBackgroundRead="))) {
+		if (1!=sscanf(p, "BlockingBackgroundRead=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		device->isBlockingBackgroundRead = inint;
+	}
+
+	if ((p = strstr(configString, "ReadFilterFlags="))) {
+		if (1!=sscanf(p, "ReadFilterFlags=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		device->readFilterFlags = (unsigned int) inint;
+	}
+
+	// Stop a background reader?
+	if ((p = strstr(configString, "StopBackgroundRead"))) {
+		PsychIOOSShutdownSerialReaderThread(device);
+	}
+
 	// Async background read via parallel thread requested?
 	if ((p = strstr(configString, "StartBackgroundRead="))) {
 		if (1!=sscanf(p, "StartBackgroundRead=%i", &inint)) {
@@ -954,27 +990,6 @@ PsychError PsychIOOSConfigureSerialPort( PsychSerialDeviceRecord* device, const 
 				return(PsychError_system);
 			}
 		}
-	}
-
-	if ((p = strstr(configString, "BlockingBackgroundRead="))) {
-		if (1!=sscanf(p, "BlockingBackgroundRead=%i", &inint)) {
-			if (verbosity > 0) printf("Invalid parameter for BlockingBackgroundRead= set!\n");
-			return(PsychError_invalidIntegerArg);
-		}
-		device->isBlockingBackgroundRead = inint;
-	}
-
-	// Stop a background reader?
-	if ((p = strstr(configString, "StopBackgroundRead"))) {
-		PsychIOOSShutdownSerialReaderThread(device);
-	}
-
-	if ((p = strstr(configString, "ReadFilterFlags="))) {
-		if (1!=sscanf(p, "ReadFilterFlags=%i", &inint)) {
-			if (verbosity > 0) printf("Invalid parameter for ReadFilterFlags= set!\n");
-			return(PsychError_invalidIntegerArg);
-		}
-		device->readFilterFlags = (unsigned int) inint;
 	}
 
 	// Done.
@@ -1045,7 +1060,9 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 				PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
 
 				// Poll: This updates num_output_pending as side effect:
-				PsychIOOSCheckError(device, errmsg);
+				if (PsychIOOSCheckError(device, errmsg) > 0) {
+					return(-1);
+				}
 			}
 		}
 		else {
@@ -1069,11 +1086,11 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 	PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
 	// Check for communication errors, acknowledge them, clear the error state and return error message, if any:
-	PsychIOOSCheckError(device, errmsg);
+	if (PsychIOOSCheckError(device, errmsg)) return(-1); 
 	
-	// Write successfully completed if we reach this point. Clear error message, return:
+	// Write successfully completed if we reach this point. Return:
 	errmsg[0] = 0;
-	
+
 	return(nwritten);
 }
 
@@ -1278,7 +1295,7 @@ int PsychIOOSReadSerialPort( PsychSerialDeviceRecord* device, void** readdata, u
 		PsychGetAdjustedPrecisionTimerSeconds(timestamp);
 
 		// Check for communication errors, acknowledge them, clear the error state and return error message:
-		PsychIOOSCheckError(device, errmsg);
+		if (PsychIOOSCheckError(device, errmsg)) return(-1);
 
 		// Assign returned data:
 		*readdata = (void*) device->readBuffer;

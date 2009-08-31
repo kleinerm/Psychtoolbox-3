@@ -156,10 +156,10 @@ if strcmpi(cmd, 'GetEvent')
     % Repeat until forceful abortion via break as long as either waiting
     % for new events is requested, or - in non-blocking mode - new status
     % bytes from the box are available to parse:
-    while (waitEvent > 0) | (IOPort('BytesAvailable', box.port) >= 5) %#ok<OR2>
+    while (waitEvent > 0) | (IOPort('BytesAvailable', box.port) >= 9) %#ok<OR2>
 
-        % Wait blocking for at least one status packet of 5 bytes from box:
-        [inpkt, t, err] = IOPort('Read', box.port, 1, 5);
+        % Wait blocking for at least one status packet of 9 bytes from box:
+        [inpkt, t, err] = IOPort('Read', box.port, 1, 9);
 
         % Error condition?
         if ~isempty(err)
@@ -167,9 +167,19 @@ if strcmpi(cmd, 'GetEvent')
             error('CMUBox: GetEvent: I/O ERROR!! System says: %s\n', err);
         end
 
+        % Box status byte:
         data = inpkt(1);
+        
+        % Serial number of byte in stream:
         serNumber = inpkt(2) * 256^0 + inpkt(3) * 256^1 + inpkt(4) * 256^2 + inpkt(5) * 256^3;
-        refTime = (serNumber * box.dt) + box.baseTime;
+        refTime   = (serNumber * box.dt) + box.baseTime;
+        
+        % Time delta between consecutive stream scans in seconds:
+        % Effectively the sampling interval and therefore uncertainty of
+        % the time measurement: If this deviates significantly from the
+        % expected per-byte transmission interval then the timestamps are
+        % not to be trusted!
+        deltaScan = (inpkt(6) * 256^0 + inpkt(7) * 256^1 + inpkt(8) * 256^2 + inpkt(9) * 256^3) / 1e6;
 
         % Special case for Bitwhacker emulation: Filter out codes 10 and
         % 13, they're an artifact of the emulation:
@@ -177,11 +187,13 @@ if strcmpi(cmd, 'GetEvent')
             continue;
         end
         
-        % Timestamps at least 0.5 msecs apart?
-        if t - box.oldTime < 0.0005
+        % Timestamps at least 0.5 msecs apart and no more than 1.5 msecs
+        % apart? This window should be sufficient for the CMU and PST box
+        % in all streaming modes:
+        if (t - box.oldTime < 0.0005) | (deltaScan < 0.0005) | (deltaScan > 0.0015) %#ok<OR2>
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
-            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs.\n', 1000 * (t - box.oldTime)); %#ok<WNTAG>
+            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * deltaScan); %#ok<WNTAG>
         end
 
         % Keep track of last events timestamp:
@@ -388,7 +400,8 @@ if strcmpi(cmd, 'Open')
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=3');
     else
         % Set input filter to discard redundant data and attach a total
-        % streamcount tag of 32 bit size to each read datum:
+        % streamcount tag and dT tag of 32 bit size to each read datum,
+        % i.e., 2 * 32 bit = 8 bytes:
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=1');
         box.useBitwhacker = 0;
     end
@@ -527,11 +540,12 @@ if strcmpi(cmd, 'Open')
     [box.oldState, box.baseTime, box.olderr] = IOPort('Read', box.port, 1, 1);
     
     % Start background read operation, try to fetch and timestamp data at a
-    % granularity of 5 Byte -- Each single status byte from the box gets
+    % granularity of 9 Byte -- Each single status byte from the box gets
     % timestamped individually, and a 4 Byte streamcount of read bytes gets
-    % attached, resulting in 5 Bytes of data for each single non-redundant
-    % byte of data from the box:
-    IOPort('ConfigureSerialPort', box.port, 'StartBackgroundRead=5');
+    % attached, as well as a 4 byte timedelta in microseconds, resulting in
+    % 9 Bytes of data for each single non-redundant byte of data from the
+    % box:
+    IOPort('ConfigureSerialPort', box.port, 'StartBackgroundRead=9');
     
     % CAUTION: As soon as StartBackgroundRead has been called, we should
     % avoid calling IOPort('Write') or IOPort('Purge') etc. on MS-Windows.
