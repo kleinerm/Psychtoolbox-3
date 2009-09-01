@@ -179,7 +179,7 @@ if strcmpi(cmd, 'GetEvent')
         % the time measurement: If this deviates significantly from the
         % expected per-byte transmission interval then the timestamps are
         % not to be trusted!
-        deltaScan = (inpkt(6) * 256^0 + inpkt(7) * 256^1 + inpkt(8) * 256^2 + inpkt(9) * 256^3) / 1e6;
+        box.deltaScan = (inpkt(6) * 256^0 + inpkt(7) * 256^1 + inpkt(8) * 256^2 + inpkt(9) * 256^3) / 1e6;
 
         % Special case for Bitwhacker emulation: Filter out codes 10 and
         % 13, they're an artifact of the emulation:
@@ -187,13 +187,13 @@ if strcmpi(cmd, 'GetEvent')
             continue;
         end
         
-        % Timestamps at least 0.5 msecs apart and no more than 1.5 msecs
+        % Timestamps at least 0.5 msecs apart and no more than 2 msecs
         % apart? This window should be sufficient for the CMU and PST box
         % in all streaming modes:
-        if (t - box.oldTime < 0.0005) | (deltaScan < 0.0005) | (deltaScan > 0.0015) %#ok<OR2>
+        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | (box.deltaScan > 0.002) %#ok<OR2>
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
-            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * deltaScan); %#ok<WNTAG>
+            fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); %#ok<WNTAG>
         end
 
         % Keep track of last events timestamp:
@@ -237,6 +237,7 @@ if strcmpi(cmd, 'GetEvent')
             evt.streamTime = refTime;
             evt.state = data;
             evt.trouble = tTrouble;
+            evt.deltaScan = box.deltaScan;
             break;
         end
         
@@ -565,6 +566,9 @@ if strcmpi(cmd, 'Open')
     
     % Return box handle:
     varargout{1} = box.port + 1;
+    
+    % Perform one dummy read to discard first event: It is always invalid.
+    IOPort('Read', box.port, 1, 9);
     
     return;
 end

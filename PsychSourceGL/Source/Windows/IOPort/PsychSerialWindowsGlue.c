@@ -254,7 +254,7 @@ void* PsychSerialWindowsGlueReaderThreadMain(void* deviceToCast)
 					// on the target architecture!
 					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+1) % (device->readBufferSize)])) = (unsigned int) device->asyncReadBytesCount;
 					// Store dt as a 32 bit unsigned int: It contains dt in microseconds - That resolution should be more than sufficient!
-					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+2) % (device->readBufferSize)])) = (unsigned int) (dt * 1e6);
+					*((unsigned int*) &(device->readBuffer[(device->readerThreadWritePos+5) % (device->readBufferSize)])) = (unsigned int) (dt * 1e6);
 				}
 			}
 		}	// End of regular non-linebuffered readop.
