@@ -148,6 +148,11 @@ static char synopsisString[] =
 	"If set to 2, information about the window server is returned (or -1 if unsupported).\n"
 	"If set to 3, low-level window server settings are changed according to 'auxArg1'. Do *not* use, "
 	"unless you really know what you're doing and have read the relevant PTB source code!\n"
+    "If set to 4, returns a single value with the current activity status of asynchronous flips. "
+	"1 if a Screen('AsyncFlipBegin') was called and the flip is still active, ie., hasn't "
+	"been finished with a matching Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd');, 0 otherwise."
+    "You can call this function with an infoType of zero only if no async flips are active. This is why "
+    "you need to use the special infoType 4 to find out if async flips are active.\n"
 	"The info struct contains all kinds of information. Just check its output to see what "
 	"is returned. Most of this info is not interesting for normal users, mostly provided "
 	"for internal use by M-Files belonging to Psychtoolbox itself, e.g., display tests.\n\n"
@@ -159,8 +164,6 @@ static char synopsisString[] =
 	"LastVBLTimeOfFlip if the system doesn't support queries of this property (currently only OS/X does.)\n"
 	"VBLCount: Running count of vertical blank intervals since (graphics)system startup. Or zero if not"
 	"supported by system. Currently only OS/X and Linux do support this with some GPU's.\n"
-	"AsyncFlipActive: 1 if a Screen('AsyncFlipBegin') was called and the flip is still active, ie., hasn't "
-	"been finished with a matching Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd');, 0 otherwise.\n"
 	"VideoRefreshFromBeamposition: Estimate of video refresh cycle from beamposition measurement method.\n"
 	"GLVendor, GLRenderer, GLVersion: Vendor name, renderer name and version of the OpenGL implementation.\n"
 	"StereoMode: Currently selected stereomode, as requested in call to Screen('OpenWindow', ...);\n"
@@ -191,12 +194,12 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 
 PsychError SCREENGetWindowInfo(void) 
 {
-    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "AsyncFlipActive", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent" };
 							   
-	const int  fieldCount = 25;
+	const int  fieldCount = 24;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -208,7 +211,7 @@ PsychError SCREENGetWindowInfo(void)
 	double vbl_startline;
 	long scw, sch;
 	psych_bool onscreen;
-
+    
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
@@ -219,7 +222,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-	if (infoType < 0 || infoType > 3) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2 and 3.");
+	if (infoType < 0 || infoType > 4) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3 and 4.");
 
 	// Windowserver info requested?
 	if (infoType == 2 || infoType == 3) {
@@ -280,6 +283,10 @@ PsychError SCREENGetWindowInfo(void)
 		// Return the measured beamposition:
 		PsychCopyOutDoubleArg(1, FALSE, beamposition);
 	}
+    else if (infoType == 4) {
+        // Return async flip state: 1 = Active, 0 = Inactive.
+        PsychCopyOutDoubleArg(1, FALSE, (((NULL != windowRecord->flipInfo) && (0 != windowRecord->flipInfo->asyncstate)) ? 1 : 0));
+    }
 	else {
 		// Return all information:
 		PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
@@ -305,9 +312,7 @@ PsychError SCREENGetWindowInfo(void)
 		if (lastvbl < 0) lastvbl = windowRecord->time_at_last_vbl;
 		PsychSetStructArrayDoubleElement("LastVBLTime", 0, lastvbl, s);
 		PsychSetStructArrayDoubleElement("VBLCount", 0, (double) postflip_vblcount, s);
-		PsychSetStructArrayDoubleElement("AsyncFlipActive", 0, (double) (((NULL != windowRecord->flipInfo) && (0 != windowRecord->flipInfo->asyncstate)) ? 1 : 0), s);
-		
-
+        
 		// Misc. window parameters:
 		PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);
 		PsychSetStructArrayDoubleElement("ImagingMode", 0, windowRecord->imagingMode, s);
@@ -327,12 +332,8 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Video refresh interval duration from beamposition method:
 		PsychSetStructArrayDoubleElement("VideoRefreshFromBeamposition", 0, windowRecord->ifi_beamestimate, s);
-		
-		// Renderer information:
-		PsychSetDrawingTarget(windowRecord);
-		PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
-		PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
-		PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
+    
+        // Which basic GPU architecture is this?
 		PsychSetStructArrayStringElement("GPUCoreId", 0, windowRecord->gpuCoreId, s);
 		
 		// FBO's supported, and how deep?
@@ -376,8 +377,16 @@ PsychError SCREENGetWindowInfo(void)
 		if (windowRecord->gfxcaps & kPsychGfxCapFP32Shading) {
 			PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 1, s);
 		} else PsychSetStructArrayDoubleElement("GLSupportsFP32Shading", 0, 0, s);
-	}
 
+		// Renderer information: This comes last, and would fail if async flips
+        // are active, because it needs PsychSetDrawingTarget, which in turn needs async
+        // flips to be inactive:
+        PsychSetDrawingTarget(windowRecord);
+        PsychSetStructArrayStringElement("GLVendor", 0, glGetString(GL_VENDOR), s);
+        PsychSetStructArrayStringElement("GLRenderer", 0, glGetString(GL_RENDERER), s);
+        PsychSetStructArrayStringElement("GLVersion", 0, glGetString(GL_VERSION), s);
+    }
+    
     // Done.
     return(PsychError_none);
 }

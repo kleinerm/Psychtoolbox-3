@@ -58,6 +58,7 @@ BOOL SetLayeredWindowAttributes(
 
 // Application instance handle:
 static HINSTANCE hInstance = 0;
+
 // Number of currently open onscreen windows:
 static int win32_windowcount = 0;
 
@@ -65,6 +66,21 @@ static int win32_windowcount = 0;
 static psych_bool mousebutton_l=FALSE;
 static psych_bool mousebutton_m=FALSE;
 static psych_bool mousebutton_r=FALSE;
+
+// Module handle for the DWM library 'dwmapi.dll': Or 0 if unsupported.
+HMODULE dwmlibrary = 0;
+
+// dwmSupported is true if DWM is supported and library is linked:
+static psych_bool dwmSupported = FALSE;
+
+// DWM function definitions and procpointers:
+typedef HRESULT (APIENTRY *DwmIsCompositionEnabledPROC)(BOOL *pfEnabled);
+typedef HRESULT (APIENTRY *DwmEnableCompositionPROC)(UINT enable);
+typedef HRESULT (APIENTRY *DwmEnableMMCSSPROC)(BOOL fEnableMMCSS);
+
+DwmIsCompositionEnabledPROC PsychDwmIsCompositionEnabled = NULL;
+DwmEnableCompositionPROC    PsychDwmEnableComposition = NULL;
+DwmEnableMMCSSPROC          PsychDwmEnableMMCSS = NULL;
 
 // Definitions for dynamic binding of VSYNC extension:
 //typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
@@ -348,6 +364,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int		  windowLevel;
   GLenum      glerr;
   DWORD flags;
+  BOOL        compositorEnabled;
+  
   psych_bool fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
   // The WS_EX_NOACTIVATE flag prevents the window from grabbing keyboard focus. That way,
@@ -375,13 +393,39 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // HDC windows hardware device context handle.
     PsychGetCGDisplayIDFromScreenNumber(&cgDisplayID, screenSettings->screenNumber);
 
+    // The compositing desktop window manager (DWM) of MS-Vista and later needs special
+    // treatment. Under normal operating conditions we want to disable it, because it
+    // can severely interfere with display timing. In certain conditions we want to
+    // keep it enabled. In any case we need access to the functions for query and setup
+    // of DWM state. As we can't know beforehand if we're running on Vista, we need to
+    // dynamically load and link the relevant functions:
+    
+    // First time invocation? hInstance is zero at this point, if so. We only execute
+    // the whole dynamic library detection code once for performance reasons:
+    if (!hInstance) {
+        // First time. Check if we can load the dwmapi.dll:
+        dwmSupported = FALSE;
+        dwmlibrary = LoadLibrary("dwmapi.dll");
+        if (dwmlibrary) {
+            // Load success. Dynamically bind the relevant functions:
+            PsychDwmIsCompositionEnabled = (DwmIsCompositionEnabledPROC) GetProcAddress(dwmlibrary, "DwmIsCompositionEnabled");
+            PsychDwmEnableComposition    = (DwmEnableCompositionPROC) GetProcAddress(dwmlibrary, "DwmEnableComposition");
+            PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");            
+            // TODO: Compositor timing info: HRESULT DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *pTimingInfo);
+            
+            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS) {
+                // Mark dwm as supported:
+                dwmSupported = TRUE;
+            }
+        }        
+    }
+    
     // Check if this should be a fullscreen window:
     PsychGetScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect)) {
       // This is supposed to be a fullscreen window with the dimensions of
       // the current display/desktop:
-      // Switch system to fullscreen-mode without changing any settings:
-      fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
+      fullscreen = TRUE;
     }
     else {
       // Window size different from current screen size:
@@ -389,6 +433,60 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
       fullscreen = FALSE;
     }
 
+    // DWM supported?
+    if (dwmSupported) {
+        // This is Vista, Windows-7, or a later system with DWM compositing window manager.
+        if (PsychDwmIsCompositionEnabled(&compositorEnabled)) {
+            // Failed to query state: Assume the worst, i.e., compositor on:
+            compositorEnabled = TRUE;
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to query state of Windows desktop compositor! Assuming it is ON!\n");
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 3) {
+                printf("PTB-INFO: Aero desktop compositor is currently %s.\n", (compositorEnabled) ? "enabled" : "disabled");
+            }
+        }
+        
+        // Should the compositor be enabled?
+        // Should stay on if either forced on via kPsychUseAGLCompositorForFullscreenWindows conserveVRAM setting,
+        // or if it is a windowed non-fullscreen window with transparency enabled, aka shieldinglevel < 2000:
+        if ( (conserveVRAM & kPsychUseAGLCompositorForFullscreenWindows) ||
+             ((!fullscreen) && (windowLevel < 2000)) ) {
+            // Compositor shall be on:
+            compositorEnabled = TRUE;
+        }
+        else {
+            // Compositor shall be off:
+            compositorEnabled = FALSE;            
+        }
+
+        if (PsychPrefStateGet_Verbosity() > 3) {
+            printf("PTB-INFO: Will %s Windows Aero desktop compositor.\n", (compositorEnabled) ? "enable" : "disable");
+        }
+        
+        // Set new compositor state:
+        if (PsychDwmEnableComposition((compositorEnabled) ? 1 : 0)) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to change state of Windows desktop compositor! Expect timing and performance problems!!\n");
+            }
+        }
+        
+        // Switch compositor to MMCSS scheduling for good timing, if compositor shall be enabled:
+        if (compositorEnabled && (PsychDwmEnableMMCSS(compositorEnabled))) {
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows desktop compositor to realtime scheduling! Expect timing and performance problems!!\n");
+            }
+        }
+    }
+    
+    // Wanna fullscreen?
+    if (fullscreen) {
+      // Switch system to fullscreen-mode without changing any settings:
+      fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
+    }
+    
 	 // Special case for explicit multi-display setup under Windows when opening a window on
 	 // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
     // if anything of our automatic full-desktop window emulation code goes wrong on exotic setups,
@@ -1238,6 +1336,13 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     if (hInstance) {
       UnregisterClass("PTB-OpenGL", hInstance);
       hInstance=NULL;
+      
+      // Free dwmapi.dll if loaded:
+      if (dwmlibrary) {
+          FreeLibrary(dwmlibrary);
+          dwmlibrary = 0;
+          dwmSupported = FALSE;
+      }
     }
   }
 

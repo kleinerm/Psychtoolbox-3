@@ -923,15 +923,14 @@ void PsychTestDDrawBeampositionQueries(void)
 			// All queries failed in VBL?
 			if (bogusvalueinvblcount == bogusvaluecount) {
 				// Yes. This allows for an ugly but workable workaround:
-				if (verbosity > 1) {
-					printf("PTB-WARNING: Seems beamposition queries malfunction whenever the display is in a vertical retrace state!\n");
-					printf("PTB-WARNING: I will enable a work-around which should satisfy the timing needs of most applications, ie.\n");
-					printf("PTB-WARNING: robust and jitter-free deterministic timestamps. However, all reported timestamps may have a\n");
-					printf("PTB-WARNING: constant offset of up to the duration of the vertical blanking interval (max 1 msec worst case)\n");
-					printf("PTB-WARNING: of your display. Read 'help BeampositionQueries' on how you can remove that bias by some manual\n");
-					printf("PTB-WARNING: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
-					printf("PTB-WARNING: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
-					printf("PTB-WARNING: Check your vendors website for driver updates regularly, so you can get rid of this workaround asap.\n\n");
+				if (verbosity > 2) {
+					printf("PTB-INFO: Seems beamposition queries are unsupported whenever the display is in a vertical retrace state.\n");
+					printf("PTB-INFO: I will enable a work-around which should satisfy the timing needs of most applications, ie.\n");
+					printf("PTB-INFO: robust and jitter-free deterministic timestamps. However, all reported timestamps may have a\n");
+					printf("PTB-INFO: constant offset of up to the duration of the vertical blanking interval (max 1 msec worst case)\n");
+					printf("PTB-INFO: of your display. Read 'help BeampositionQueries' on how you can remove that bias by some manual\n");
+					printf("PTB-INFO: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
+					printf("PTB-INFO: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
 				}
 				
 				// Enable beampos workaround by default:
@@ -963,7 +962,7 @@ void PsychTestDDrawBeampositionQueries(void)
 				// Force it on:
 				if (verbosity > 2) {
 					printf("PTB-INFO: Automatic startup test of beamposition queries couldn't detect any beamposition problems on your system,\n");
-					printf("PTB-INFO: but  by setting the special flag Screen('Preference', 'ConserveVRAM', 4096); somewhere in your script,\n");
+					printf("PTB-INFO: but by setting the special flag Screen('Preference', 'ConserveVRAM', 4096); somewhere in your script,\n");
 					printf("PTB-INFO: you requested that the workaround for beamposition problems is always unconditionally enabled.\n");
 					printf("PTB-INFO: Therefore i will enable the work-around: This should satisfy the timing needs of most applications, ie.\n");
 					printf("PTB-INFO: robust and jitter-free deterministic timestamps. However, all reported timestamps may have a\n");
@@ -971,7 +970,6 @@ void PsychTestDDrawBeampositionQueries(void)
 					printf("PTB-INFO: of your display. Read 'help BeampositionQueries' on how you can remove that bias by some manual\n");
 					printf("PTB-INFO: intervention, should you need that last bit of accuracy. A second drawback is increased cpu load,\n");
 					printf("PTB-INFO: which may cause louder air-fan noise due to heat production and lower battery runtime of laptops.\n");
-					printf("PTB-INFO: Check your vendors website for driver updates regularly, so you can get rid of this workaround asap.\n\n");
 				}
 				
 				// Enable beampos workaround by default:
