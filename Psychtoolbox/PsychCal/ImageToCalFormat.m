@@ -5,6 +5,8 @@ function [calFormat,n,m] = ImageToCalFormat(image)
 % to a format that may be used to Psychtoolbox
 % calibration routines.
 %
+% See also CalFormatToImage
+%
 % 8/04/04	dhb		Wrote it.
 % 7/16/07   dhb     Update help line.
 
