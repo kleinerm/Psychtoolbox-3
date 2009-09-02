@@ -56,6 +56,18 @@ BOOL SetLayeredWindowAttributes(
     DWORD dwFlags);
 #endif
 
+#ifdef MATLAB_R11
+/* This is the rusty old build system that can't handle Windows 200 only
+   headers and their functions. It doesn't support SetLayeredWindowAttributes()
+   We define our own dummy "do nothing" implementation here: */
+BOOL SetLayeredWindowAttributes(HWND hwnd, COLORREF crKey, BYTE bAlpha, DWORD dwFlags)
+{
+	printf("PTB-INFO: Sorry, transparent windows unsupported. You need Matlab 7.4 (R2007a) or later for this to work at all.\n");
+	return(TRUE);
+}
+
+#endif
+
 // Application instance handle:
 static HINSTANCE hInstance = 0;
 
