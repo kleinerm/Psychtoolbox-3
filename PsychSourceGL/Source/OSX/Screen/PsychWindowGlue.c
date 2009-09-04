@@ -832,8 +832,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
     feature is unavailable on the given OS/Hardware configuration.
 */
-double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
+double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
+	unsigned int screenid = windowRecord->screenNumber;
+	
     // Do we have a valid shared mapping?
     if (fbsharedmem[screenid].shmem) {
         // Retrieve absolute count of vbls since startup:

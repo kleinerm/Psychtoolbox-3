@@ -255,11 +255,35 @@ PsychError SCREENGetWindowInfo(void)
 			}
 		}
 
-		#else
+		#endif
+		
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
 
+		const char *DWMGraphicsFieldNames[]={ "OnsetVBLCount", "OnsetVBLTime", "FrameId", "CompositionFPS" };
+		const int DWMGraphicsFieldCount = 4;
+
+		psych_uint64 onsetVBLCount, frameId;
+		double onsetVBLTime, compositionRate;
+		
+		PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
+		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate)) {
+			// Query success:
+			PsychAllocOutStructArray(1, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
+			PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) onsetVBLCount, s);
+			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
+			PsychSetStructArrayDoubleElement("FrameId", 0      , (double) frameId, s);			
+			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);			
+		}
+		else {
+			// Unsupported / Failed:
+			PsychCopyOutDoubleArg(1, FALSE, -1);
+		}
+
+		#endif
+
+		#if PSYCH_SYSTEM == PSYCH_LINUX
 		// Unsupported:
-		PsychCopyOutDoubleArg(1, FALSE, -1);		
-
+		PsychCopyOutDoubleArg(1, FALSE, -1);
 		#endif
 
 		// Done.
@@ -305,7 +329,7 @@ PsychError SCREENGetWindowInfo(void)
 		// On supported systems, we can query the OS for the system time of last VBL, so we can
 		// use the most recent VBL timestamp as baseline for timing calculations, 
 		// instead of one far in the past.
-		if (onscreen) { lastvbl = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount); }
+		if (onscreen) { lastvbl = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount); }
 
 		// If we couldn't determine this information we just set lastvbl to the last known
 		// vbl timestamp of last flip -- better than nothing...

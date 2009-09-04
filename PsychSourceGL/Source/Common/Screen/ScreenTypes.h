@@ -215,6 +215,9 @@ typedef struct {
 // Currently used to work around bugs in Leopard 10.5.7 + ATI gfx:
 #define kPsychDontUseNativeBeamposQuery 65536
 
+// Disable the Aero WDM desktop composition manager on Windows Vista and later:
+#define kPsychDisableAeroWDM 131072
+
 //function protoptypes
 
 //Accessors for PsychDepthType 

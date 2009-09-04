@@ -165,8 +165,7 @@ double PsychGetMovieTimeIndex(int moviehandle)
 /*
  *  PsychSetMovieTimeIndex()  -- Set current playback time of movie.
  */
-double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
+double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
   return(0.0);
 }
-

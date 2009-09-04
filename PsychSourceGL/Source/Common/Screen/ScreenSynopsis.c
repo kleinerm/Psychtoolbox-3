@@ -202,8 +202,8 @@ void InitializeSynopsis()
 	synopsis[i++] =  "[ texturePtr [timeindex]]=Screen('GetMovieImage', windowPtr, moviePtr, [waitForImage], [fortimeindex], [specialFlags = 0] [, specialFlags2 = 0]);";
 	synopsis[i++] =  "[droppedframes] = Screen('PlayMovie', moviePtr, rate, [loop], [soundvolume]);";
  	synopsis[i++] =  "timeindex = Screen('GetMovieTimeIndex', moviePtr);";
- 	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex);";
-        
+ 	synopsis[i++] =  "[oldtimeindex] = Screen('SetMovieTimeIndex', moviePtr, timeindex [, indexIsFrames=0]);";
+
 	// Video capture support:
 	synopsis[i++] = "\n% Video capture functions:";
 	synopsis[i++] = "devices = Screen('VideoCaptureDevices' [, engineId]);";

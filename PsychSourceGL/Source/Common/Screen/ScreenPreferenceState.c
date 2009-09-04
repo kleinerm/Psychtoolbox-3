@@ -66,40 +66,32 @@ static char								PsychTableCreator[]="Screen";   //there is no psych table yet
 //Text preference state
 #define MAX_DEFAULT_FONT_NAME_LENGTH    256
 #define INITIAL_DEFAULT_FONT_NAME		"Courier"
-static int								defaultTextYPositionIsBaseline=0; // Use new style of text positioning by default: y-pos is top of text.
+static int								defaultTextYPositionIsBaseline; // Use new style of text positioning by default: y-pos is top of text.
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
-static int								defaultTextSize=12;
-static int								defaultTextStyle=0;             // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
-static psych_bool                          textAlphaBlending=FALSE;
-static int								textAntiAliasing=-1;            // -1=System defined (don't care), 0=Always off, 1=Always on.
-static int								textRenderer=PTB_DEFAULT_TEXTRENDERER;	// 0=Default OS specific (fast one), 1=OS specific High quality.
-static int                              screenSkipSyncTests=0;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
+static int								defaultTextSize;
+static int								defaultTextStyle;				// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
+static psych_bool                       textAlphaBlending;
+static int								textAntiAliasing;				// -1=System defined (don't care), 0=Always off, 1=Always on.
+static int								textRenderer;					// 0=Default OS specific (fast one), 1=OS specific High quality.
+static int                              screenSkipSyncTests;			// 0=Do full synctests, abort on failure, 1=Reduced tests, continue with warning, 2=Skip'em
 //Debug preference state
-static psych_bool                          TimeMakeTextureFlag=FALSE;
-static int								screenVisualDebugLevel=4;
-static int                              screenConserveVRAM=0;
+static psych_bool						TimeMakeTextureFlag;
+static int								screenVisualDebugLevel;
+static int                              screenConserveVRAM;
 // If EmulateOldPTB is set to true, then try to behave like the old OS-9 PTB:
-static psych_bool                       EmulateOldPTB=FALSE;
+static psych_bool                       EmulateOldPTB;
 // Support for real 3D rendering enabled? Any non-zero value enables 3D rendering, a setting of 1 with defaults, values > 1 enable additional features. Disabled by default.
-static int								Enable_3d_gfx=0;
+static int								Enable_3d_gfx;
 // Default mode for flip and vbl timestamping: Beampos vs. kernel-level irqs: Defaults to 1, i.e.,
 // use beampos if available, fall back to kernel-level otherwise:
-static int                              screenVBLTimestampingMode=1;
-static int								screenVBLEndlineOverride=-1;	// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
-static int								videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;	// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire, 2 = ARVideo.
-static int								windowShieldingLevel=2000;		// Level of priority of windowed onscreen window wrt. other windows:
+static int                              screenVBLTimestampingMode;
+static int								screenVBLEndlineOverride;		// Manual override for VTOTAL - Endline of VBL. -1 means "auto-detect" this is the default.
+static int								videoCaptureEngineId;			// Default video capture engine: 0 = Quicktime, 1 = LibDC1394 Firewire, 2 = ARVideo.
+static int								windowShieldingLevel;			// Level of priority of windowed onscreen window wrt. other windows:
 																		// From 0 for "behind everything" to 2000 for "in front of everything. Exact meaning of
 																		// number is OS specific. This value is used at window open time for each window.
-static double							frameRectLadderCorrection=-1.0;	// Tweak factor to apply in SCREENFrameRect.c for different GPU's.
-
-//All state checking goes through accessors located in this file.  
-void PrepareScreenPreferences(void)
-{
-	//set the fake psych table version
-	psychTableVersion=20;
-	
-}
-static psych_bool							suppressAllWarnings=FALSE;
+static double							frameRectLadderCorrection;		// Tweak factor to apply in SCREENFrameRect.c for different GPU's.
+static psych_bool						suppressAllWarnings;
 
 // General level of verbosity:
 // 0 = Shut up.
@@ -108,7 +100,40 @@ static psych_bool							suppressAllWarnings=FALSE;
 // 3 = Above + Basic Info, e.g., window properties and copyright. This is the default.
 // 4 = Lot's more debug output and infos.
 // 5 = Extreme debug output.
-static int								Verbosity=3;
+static int								Verbosity;
+
+
+//All state checking goes through accessors located in this file.
+
+// Called by Screen init code first: Sets up all default values after a
+// (re-)load of the MEX file, ie., at first invocation, or after a clear all, clear mex etc. 
+void PrepareScreenPreferences(void)
+{
+	//set the fake psych table version
+	psychTableVersion=20;
+	sprintf(PsychTableCreator, "Screen");
+	defaultTextYPositionIsBaseline=0;
+	defaultTextSize=12;
+	defaultTextStyle=0;
+	textAlphaBlending=FALSE;
+	textAntiAliasing=-1;
+	textRenderer=PTB_DEFAULT_TEXTRENDERER;
+	screenSkipSyncTests=0;
+	TimeMakeTextureFlag=FALSE;
+	screenVisualDebugLevel=4;
+	screenConserveVRAM=0;
+	EmulateOldPTB=FALSE;
+	Enable_3d_gfx=0;
+	screenVBLTimestampingMode=1;
+	screenVBLEndlineOverride=-1;
+	videoCaptureEngineId=PTB_DEFAULTVIDCAPENGINE;
+	windowShieldingLevel=2000;
+	frameRectLadderCorrection=-1.0;
+	suppressAllWarnings=FALSE;
+	Verbosity=3;
+
+	return;
+}
 
 //Accessors
 

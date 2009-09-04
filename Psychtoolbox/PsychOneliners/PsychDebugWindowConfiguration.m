@@ -34,9 +34,7 @@ if IsOSX | IsWin %#ok<OR2>
 
         % Skip sync tests:
         Screen('Preference', 'SkipSyncTests', 2);
-    end
 
-    if IsOSX | IsWin %#ok<OR2>
         % Use AGL + Carbon, even for fullscreen windows:
         oldconserve = Screen('Preference', 'ConserveVRAM');
         Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));

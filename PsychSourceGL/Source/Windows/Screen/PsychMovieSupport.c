@@ -1082,10 +1082,14 @@ double PsychGetMovieTimeIndex(int moviehandle)
 /*
  *  PsychSetMovieTimeIndex()  -- Set current playback time of movie.
  */
-double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
+double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames)
 {
-    Movie   theMovie;
-    double  oldtime;
+    Movie		theMovie;
+    double		oldtime;
+	long		targetIndex, myIndex;
+    short		myFlags;
+    TimeValue	myTime;
+    OSType		myTypes[1];
     
     if (moviehandle < 0 || moviehandle >= PSYCH_MAX_MOVIES) {
         PsychErrorExitMsg(PsychError_user, "Invalid moviehandle provided!");
@@ -1100,21 +1104,65 @@ double PsychSetMovieTimeIndex(int moviehandle, double timeindex)
     // Retrieve current timeindex:
     oldtime = (double) GetMovieTime(theMovie, NULL) / (double) GetMovieTimeScale(theMovie);
     
-    // Set new timeindex:
-    SetMovieTimeValue(theMovie, (TimeValue) (((timeindex * (double) GetMovieTimeScale(theMovie))) + 0.5f));
+	// Index based or target time based seeking?
+	if (indexIsFrames) {
+		// Index based seeking:
+		
+		// Seek to given targetIndex:
+		targetIndex = (long) (timeindex + 0.5);
+
+		// We want video samples.
+		myTypes[0] = VisualMediaCharacteristic;
+		
+		// We want to begin with the first frame in the movie:
+		myFlags = nextTimeStep + nextTimeEdgeOK;
+		
+		// Start with iteration at beginning:
+		myTime = 0;
+		myIndex = -1;
+		
+		// We iterate until end of movie (myTime < 0) or targetIndex reached:
+		while ((myTime >= 0) && (myIndex < targetIndex)) {
+			// Increment our index position:
+			myIndex++;
+			
+			// Look for the next frame in the track; when there are no more frames,
+			// myTime is set to -1, so we'll exit the while loop
+			GetMovieNextInterestingTime(theMovie, myFlags, 1, myTypes, myTime, FloatToFixed(1), &myTime, NULL);
+
+			// after the first interesting time, don't include the time we're currently at
+			myFlags = nextTimeStep;
+		}    
+		
+		// Valid time for existing target frame?
+		if (myTime >= 0) {
+			// Yes. Seek to it:
+			SetMovieTimeValue(theMovie, myTime);
+		}
+
+		// Done with seek.
+	}
+	else {
+		// Time based seeking:
+
+		// Set new timeindex as time in seconds:
+		SetMovieTimeValue(theMovie, (TimeValue) (((timeindex * (double) GetMovieTimeScale(theMovie))) + 0.5f));
+
+		// Done with seek.
+	}
 
     // Check if end of movie is reached. Rewind, if so...
     if (IsMovieDone(theMovie) && movieRecordBANK[moviehandle].loopflag > 0) {
-        if (GetMovieRate(theMovie)>0) {
+        if (GetMovieRate(theMovie) > 0) {
             GoToBeginningOfMovie(theMovie);
         } else {
             GoToEndOfMovie(theMovie);
         }
     }
-        
+
+	// Yield some processing time to Quicktime to update properly:
     MoviesTask(theMovie, 0);
     
-    // Return old value:
+    // Return old time value of previous position:
     return(oldtime);
 }
-

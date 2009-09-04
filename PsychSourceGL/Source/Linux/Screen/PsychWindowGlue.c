@@ -567,8 +567,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
     feature is unavailable on the given OS/Hardware configuration.
 */
-double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
+double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount);
 {
+	unsigned int	screenid = windowRecord->screenNumber;
 	unsigned int	vsync_counter = 0;
 	psych_uint64	ust, msc, sbc;
 	CGDirectDisplayID displayID;

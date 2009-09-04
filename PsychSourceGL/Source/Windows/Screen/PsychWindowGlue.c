@@ -89,10 +89,12 @@ static psych_bool dwmSupported = FALSE;
 typedef HRESULT (APIENTRY *DwmIsCompositionEnabledPROC)(BOOL *pfEnabled);
 typedef HRESULT (APIENTRY *DwmEnableCompositionPROC)(UINT enable);
 typedef HRESULT (APIENTRY *DwmEnableMMCSSPROC)(BOOL fEnableMMCSS);
+typedef HRESULT (APIENTRY *DwmGetCompositionTimingInfoPROC)(HWND hwnd, DWM_TIMING_INFO* pTimingInfo);
 
-DwmIsCompositionEnabledPROC PsychDwmIsCompositionEnabled = NULL;
-DwmEnableCompositionPROC    PsychDwmEnableComposition = NULL;
-DwmEnableMMCSSPROC          PsychDwmEnableMMCSS = NULL;
+DwmIsCompositionEnabledPROC			PsychDwmIsCompositionEnabled = NULL;
+DwmEnableCompositionPROC			PsychDwmEnableComposition = NULL;
+DwmEnableMMCSSPROC					PsychDwmEnableMMCSS = NULL;
+DwmGetCompositionTimingInfoPROC		PsychDwmGetCompositionTimingInfo = NULL;
 
 // Definitions for dynamic binding of VSYNC extension:
 //typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
@@ -375,8 +377,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int x, y, width, height, i, bpc;
   int		  windowLevel;
   GLenum      glerr;
-  DWORD flags;
-  BOOL        compositorEnabled;
+  DWORD		  flags;
+  BOOL        compositorEnabled, compositorPostEnabled;
   
   psych_bool fullscreen = FALSE;
   DWORD windowStyle = WS_CLIPSIBLINGS | WS_CLIPCHILDREN;
@@ -416,20 +418,33 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // the whole dynamic library detection code once for performance reasons:
     if (!hInstance) {
         // First time. Check if we can load the dwmapi.dll:
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Checking for Aero desktop compositor support... "); 
+		
         dwmSupported = FALSE;
         dwmlibrary = LoadLibrary("dwmapi.dll");
         if (dwmlibrary) {
             // Load success. Dynamically bind the relevant functions:
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager available on a Vista or later system. Binding controls ..."); 
             PsychDwmIsCompositionEnabled = (DwmIsCompositionEnabledPROC) GetProcAddress(dwmlibrary, "DwmIsCompositionEnabled");
             PsychDwmEnableComposition    = (DwmEnableCompositionPROC) GetProcAddress(dwmlibrary, "DwmEnableComposition");
-            PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");            
-            // TODO: Compositor timing info: HRESULT DwmGetCompositionTimingInfo(HWND hwnd, DWM_TIMING_INFO *pTimingInfo);
+            PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");
+            PsychDwmGetCompositionTimingInfo = (DwmGetCompositionTimingInfoPROC) GetProcAddress(dwmlibrary, "DwmGetCompositionTimingInfo");
             
-            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS) {
+            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS && PsychDwmGetCompositionTimingInfo) {
                 // Mark dwm as supported:
                 dwmSupported = TRUE;
+				if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n"); 
             }
-        }        
+			else {
+				FreeLibrary(dwmlibrary);
+				dwmlibrary = 0;
+				if (PsychPrefStateGet_Verbosity() > 5) printf(" ...FAILED!\n"); 
+				if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Could not attach to DWM window manager control library dwmapi.dll - Trouble ahead!!\n"); 
+			}
+        }
+		else {
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager unsupported. Running on Pre-Vista system.\n"); 
+		}
     }
     
     // Check if this should be a fullscreen window:
@@ -448,6 +463,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // DWM supported?
     if (dwmSupported) {
         // This is Vista, Windows-7, or a later system with DWM compositing window manager.
+		
+		// Check current enable state:
         if (PsychDwmIsCompositionEnabled(&compositorEnabled)) {
             // Failed to query state: Assume the worst, i.e., compositor on:
             compositorEnabled = TRUE;
@@ -462,20 +479,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
         
         // Should the compositor be enabled?
-        // Should stay on if either forced on via kPsychUseAGLCompositorForFullscreenWindows conserveVRAM setting,
-        // or if it is a windowed non-fullscreen window with transparency enabled, aka shieldinglevel < 2000:
-        if ( (conserveVRAM & kPsychUseAGLCompositorForFullscreenWindows) ||
-             ((!fullscreen) && (windowLevel < 2000)) ) {
+        // It should always be enabled, unless it is forced off via kPsychDisableAeroWDM conserveVRAM setting,
+        if (conserveVRAM & kPsychDisableAeroWDM) {
+            // Compositor shall be off:
+            compositorEnabled = FALSE;            
+            if (PsychPrefStateGet_Verbosity() > 2) {
+				printf("PTB-INFO: Will disable Aero desktop compositor on user request, because the kPsychDisableAeroWDM flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
+			}
+        }
+        else {
             // Compositor shall be on:
             compositorEnabled = TRUE;
         }
-        else {
-            // Compositor shall be off:
-            compositorEnabled = FALSE;            
-        }
 
-        if (PsychPrefStateGet_Verbosity() > 3) {
-            printf("PTB-INFO: Will %s Windows Aero desktop compositor.\n", (compositorEnabled) ? "enable" : "disable");
+        if (PsychPrefStateGet_Verbosity() > 2) {
+            printf("PTB-INFO: Will try to %s Windows Aero desktop compositor.\n", (compositorEnabled) ? "enable" : "disable");
         }
         
         // Set new compositor state:
@@ -484,9 +502,30 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to change state of Windows desktop compositor! Expect timing and performance problems!!\n");
             }
         }
+
+		// Retest state:
+        if (PsychDwmIsCompositionEnabled(&compositorPostEnabled)) {
+            // Failed to query state: Assume the worst, i.e., compositor on:
+            compositorPostEnabled = TRUE;
+            if (PsychPrefStateGet_Verbosity() > 1) {
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to query state of Windows desktop compositor! Assuming it is ON!\n");
+            }
+        }
+        else {
+            if (PsychPrefStateGet_Verbosity() > 2) {
+                printf("PTB-INFO: Aero desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
+            }
+        }
+		
+		if (compositorPostEnabled != compositorEnabled) {
+            if (PsychPrefStateGet_Verbosity() > 0) {
+                printf("PTB-ERROR: PsychOSOpenOnscreenWindow: Windows desktop compositor is not %s as requested!\n", (compositorEnabled) ? "enabled" : "disabled");
+                printf("PTB-ERROR: PsychOSOpenOnscreenWindow: EXPECT SERIOUS PROBLEMS WITH VISUAL STIMULUS ONSET TIMING AND TIMESTAMPING!!\n");
+            }
+		}
         
         // Switch compositor to MMCSS scheduling for good timing, if compositor shall be enabled:
-        if (compositorEnabled && (PsychDwmEnableMMCSS(compositorEnabled))) {
+        if (compositorPostEnabled && (PsychDwmEnableMMCSS(compositorPostEnabled))) {
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows desktop compositor to realtime scheduling! Expect timing and performance problems!!\n");
             }
@@ -1350,7 +1389,7 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
       hInstance=NULL;
       
       // Free dwmapi.dll if loaded:
-      if (dwmlibrary) {
+      if (dwmSupported && dwmlibrary) {
           FreeLibrary(dwmlibrary);
           dwmlibrary = 0;
           dwmSupported = FALSE;
@@ -1372,13 +1411,50 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
     startup of gfx-system for the given screen. Returns a time of -1 and a count of 0 if this
     feature is unavailable on the given OS/Hardware configuration.
 */
-double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
+double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
+	DWM_TIMING_INFO	dwmtiming;	
 	psych_uint64 ust, msc, sbc;
 	CGDirectDisplayID displayID;
+	HRESULT rc1 = 0;
+	HRESULT rc2 = 0;
+	unsigned int screenid = windowRecord->screenNumber;
 
 	// Retrieve displayID, aka HDC for this screenid:
 	PsychGetCGDisplayIDFromScreenNumber(&displayID, screenid);
+
+	// Windows Vista DWM available, supported and enabled?
+	dwmtiming.cbSize = sizeof(DWM_TIMING_INFO);
+	if ( dwmSupported && (NULL != PsychDwmGetCompositionTimingInfo) && (
+		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
+		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
+		)) {
+		// Yes. Supported, enabled, and we got timing info from it. Extract:
+		
+		// VBLCount of last VBL:
+		*vblCount = (psych_uint64) dwmtiming.cRefresh;
+		
+		// VBLTime of last VBL in QPC, ie., as query performance counter 64-but psych_uint64 value:
+		ust = (psych_uint64) dwmtiming.qpcVBlank;
+
+		if (!(PsychGetTimeBaseHealthiness() & 1) && (PsychGetKernelTimebaseFrequencyHz() > 10000)) {
+			// Convert ust into regular GetSecs timestamp:
+			// At least we hope this conversion is correct...
+			return( ((double) ust) / PsychGetKernelTimebaseFrequencyHz() );
+		}
+		else {
+			// Last VBL timestamp unavailable:
+			return(-1);
+		}		
+	}
+	else {
+		 if (dwmSupported && PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", rc1, rc2, GetLastError());
+		}
+	}
+
+	// DWM unsupported, unavailable, disabled or failed to query if we reach this point.
+	// Let's try if we have more luck with OpenML support...
 	
 	// Ok, this will return VBL count and last VBL time via the OML GetSyncValuesOML call
 	// if that extension is supported on this setup. As of mid 2009 i'm not aware of any
@@ -1400,6 +1476,73 @@ double PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount)
 		*vblCount = 0;
 		return(-1);
 	}
+}
+
+/*
+	PsychOSGetPresentationTimingInfo()
+
+	Retrieve low-level counts and timestamps related to stimulus onset
+	for the last presented frame via PsychOSFlipWindowBuffers().
+	
+	Returns true on success, false on error.
+
+*/
+psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate)
+{
+	DWM_TIMING_INFO	dwmtiming;	
+	psych_uint64 qpcFrameDisplayed;
+	static double qpcfreq = -1;
+	HRESULT rc1 = 0;
+	HRESULT rc2 = 0;
+	
+	// First time call?
+	if (qpcfreq == -1) {
+		// Query and assign QPC frequency:
+		qpcfreq = PsychGetKernelTimebaseFrequencyHz();
+		
+		// Reliable?
+		if ((PsychGetTimeBaseHealthiness() & 1) || (qpcfreq < 10000)) {
+			// QPC doesn't work correctly. We disable ourselves:
+			qpcfreq = 0;
+		}
+	}
+	
+	// Faile if qpcfreq == 0 ie. timing trouble:
+	if (qpcfreq == 0) return(FALSE);
+
+	// Windows Vista DWM available, supported and enabled?
+	dwmtiming.cbSize = sizeof(DWM_TIMING_INFO);	
+	if ( dwmSupported && (NULL != PsychDwmGetCompositionTimingInfo) && (
+		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
+		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
+		)) {
+		// Yes. Supported, enabled, and we got timing info from it. Extract:
+		
+		// QPC timestamp of last presented/composited frame:
+		qpcFrameDisplayed = (psych_uint64) dwmtiming.qpcFrameDisplayed;
+
+		// Convert to GetSecs() time:
+		*onsetVBLTime = (double) qpcFrameDisplayed / qpcfreq;
+		
+		// Assumed onset VBL count:
+		*onsetVBLCount = (psych_uint64) dwmtiming.cRefreshFrameDisplayed;
+		
+		// Assumed frame id:
+		*frameId = (psych_uint64) dwmtiming.cFrameDisplayed;
+
+		// Current composition rate of the DWM:
+		*compositionRate = (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator;
+		
+		return(TRUE);
+	}
+	else {
+		 if (dwmSupported && PsychPrefStateGet_Verbosity()>6) {
+			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", rc1, rc2, GetLastError());
+		}
+	}
+
+	// Unsupported, disabled or failed:
+	return(FALSE);
 }
 
 /*

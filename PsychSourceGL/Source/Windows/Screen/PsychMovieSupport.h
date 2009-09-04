@@ -39,7 +39,7 @@ int PsychGetTextureFromMovie(PsychWindowRecordType *win, int moviehandle, int ch
 int PsychPlaybackRate(int moviehandle, double playbackrate, int loop, double soundvolume);
 void PsychExitMovies(void);
 double PsychGetMovieTimeIndex(int moviehandle);
-double PsychSetMovieTimeIndex(int moviehandle, double timeindex);
+double PsychSetMovieTimeIndex(int moviehandle, double timeindex, psych_bool indexIsFrames);
 
 //end include once
 #endif

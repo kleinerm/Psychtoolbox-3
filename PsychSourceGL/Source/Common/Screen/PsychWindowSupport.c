@@ -1507,7 +1507,7 @@ void* PsychFlipperThreadMain(void* windowRecordToCast)
 		// Got the lock: Set our state to "executing - flip in progress":
 		flipRequest->flipperState = 2;
 
-		// fprintf(stdout, "WAITING UNTIL T = %lf\n", flipRequest->flipwhen); fflush(NULL);
+		// fprintf(stdout, "WAITING UNTIL T = %f\n", flipRequest->flipwhen); fflush(NULL);
 
 		// Setup context etc. manually, as PsychSetDrawingTarget() is a no-op when called from
 		// this thread:
@@ -2127,7 +2127,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	flipcondition_satisfied = FALSE;
 	do {
 		// Query driver:
-		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &preflip_vblcount);
+		preflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &preflip_vblcount);
 		// Check if ready for flip, ie. if the proper even/odd video refresh cycle is approaching or
 		// if we don't care about this:
 		flipcondition_satisfied = (windowRecord->targetFlipFieldType == -1) || (((preflip_vblcount + 1) % 2) == windowRecord->targetFlipFieldType);
@@ -2242,7 +2242,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
             // in IOKits workloop can do its job. But first let's try to do it without yielding...
 			vbltimestampquery_retrycount = 0;
 			PsychWaitIntervalSeconds(0.00025);
-			postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+			postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
 
 			// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
 			// happen inside a VBL interval (in which case this would be a legal condition), we retry the
@@ -2252,7 +2252,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// in 2 msecs then something's pretty screwed and we should just give up.
             while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
                 PsychWaitIntervalSeconds(0.00025);
-                postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord->screenNumber, &postflip_vblcount);
+                postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
 				vbltimestampquery_retrycount++;
 			}			
         }
@@ -2330,7 +2330,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         if (preflip_vbltimestamp > 0 && vbltimestampmode==2) {
             // Yes. Check both methods for consistency: We accept max. 1 ms deviation.
             if ((fabs(postflip_vbltimestamp - time_at_vbl) > 0.001) || (verbosity > 20)) {
-                printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %lf  -  beampos_vbltimestamp = %lf  == Delta is = %lf \n",
+                printf("VBL timestamp deviation: precount=%i , postcount=%i, delta = %i, postflip_vbltimestamp = %f  -  beampos_vbltimestamp = %f  == Delta is = %f \n",
                    (int) preflip_vblcount, (int) postflip_vblcount, (int) (postflip_vblcount - preflip_vblcount), postflip_vbltimestamp, time_at_vbl, postflip_vbltimestamp - time_at_vbl);
             }
         }
@@ -2361,11 +2361,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 			// Ohoh! Broken timing. Disable beamposition timestamping for future operations, warn user.			
 			if (verbosity > 0) {
-				printf("\n\nPTB-ERROR: Screen('Flip'); beamposition timestamping computed an *impossible stimulus onset value* of %lf secs, which would indicate that\n", time_at_vbl);
-				printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest theoretically possible %lf secs).\n\n", time_at_swaprequest);
-				printf("PTB-ERROR: Some more diagnostic values (only for experts): line_pre_swaprequest = %i, line_post_swaprequest = %i, time_post_swaprequest = %lf\n", line_pre_swaprequest, line_post_swaprequest, time_post_swaprequest);
-				printf("PTB-ERROR: Some more diagnostic values (only for experts): preflip_vblcount = %i, preflip_vbltimestamp = %lf\n", (int) preflip_vblcount, preflip_vbltimestamp);
-				printf("PTB-ERROR: Some more diagnostic values (only for experts): postflip_vblcount = %i, postflip_vbltimestamp = %lf, vbltimestampquery_retrycount = %i\n", (int) postflip_vblcount, postflip_vbltimestamp, (int) vbltimestampquery_retrycount);
+				printf("\n\nPTB-ERROR: Screen('Flip'); beamposition timestamping computed an *impossible stimulus onset value* of %f secs, which would indicate that\n", time_at_vbl);
+				printf("PTB-ERROR: stimulus onset happened *before* it was actually requested! (Earliest theoretically possible %f secs).\n\n", time_at_swaprequest);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): line_pre_swaprequest = %i, line_post_swaprequest = %i, time_post_swaprequest = %f\n", line_pre_swaprequest, line_post_swaprequest, time_post_swaprequest);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): preflip_vblcount = %i, preflip_vbltimestamp = %f\n", (int) preflip_vblcount, preflip_vbltimestamp);
+				printf("PTB-ERROR: Some more diagnostic values (only for experts): postflip_vblcount = %i, postflip_vbltimestamp = %f, vbltimestampquery_retrycount = %i\n", (int) postflip_vblcount, postflip_vbltimestamp, (int) vbltimestampquery_retrycount);
 				printf("\n");
 			}
 			
@@ -2461,7 +2461,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// Yes. Try some consistency checks for that:
 
 			// Some diagnostics at high debug-levels:
-			if (vbltimestampquery_retrycount > 0 && verbosity > 10) printf("PTB-DEBUG: In PsychFlipWindowBuffers(), VBLTimestamping: RETRYCOUNT %i : Delta Swaprequest - preflip_vbl timestamp: %lf secs.\n", (int) vbltimestampquery_retrycount, time_at_swaprequest - preflip_vbltimestamp);
+			if (vbltimestampquery_retrycount > 0 && verbosity > 10) printf("PTB-DEBUG: In PsychFlipWindowBuffers(), VBLTimestamping: RETRYCOUNT %i : Delta Swaprequest - preflip_vbl timestamp: %f secs.\n", (int) vbltimestampquery_retrycount, time_at_swaprequest - preflip_vbltimestamp);
 
 			if ((vbltimestampquery_retrycount>=8) && (preflip_vbltimestamp == postflip_vbltimestamp) && (preflip_vbltimestamp > 0)) {
 				// Postflip timestamp equals valid preflip timestamp after many retries:
@@ -2476,7 +2476,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					// so no reason to worry...
 					if (verbosity > 10) {
 						printf("PTB-DEBUG: With kernel-level timestamping: ");
-						printf("vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %lf, time_at_swaprequest= %lf\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
+						printf("vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %f, time_at_swaprequest= %f\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
 					}
 				}
 				else {
@@ -2484,7 +2484,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 					// This could be either broken queries, or broken sync to VBL:
 					if (verbosity > 0) {
 						printf("\n\nPTB-ERROR: Screen('Flip'); kernel-level timestamping computed bogus values!!!\n");
-						printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %lf, time_at_swaprequest= %lf\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
+						printf("PTB-ERROR: vbltimestampquery_retrycount = %i, preflip_vbltimestamp=postflip= %f, time_at_swaprequest= %f\n", (int) vbltimestampquery_retrycount, preflip_vbltimestamp, time_at_swaprequest);
 						printf("PTB-ERROR: This error can be due to either of the following causes (No simple way to discriminate):\n");
 						printf("PTB-ERROR: Either something is broken in your systems VBL-IRQ timestamping. I've disabled high precision\n");
 						printf("PTB-ERROR: timestamping for now. Returned timestamps will be less robust and accurate, but at least ok, if that was the culprit.\n\n");
@@ -2514,7 +2514,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 				if (verbosity > 0) {
 					printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]!\n");
 					printf("PTB-ERROR: Will disable them for now until the problem is resolved. You may want to restart Matlab and retry.\n");
-					printf("PTB-ERROR: postflip - time_at_swapcompletion == %lf secs.\n", postflip_vbltimestamp - time_at_swapcompletion);
+					printf("PTB-ERROR: postflip - time_at_swapcompletion == %f secs.\n", postflip_vbltimestamp - time_at_swapcompletion);
 					printf("PTB-ERROR: Btw. if you are running in windowed mode, this is not unusual -- timestamping doesn't work well in windowed mode...\n");
 				}
 				
@@ -2903,7 +2903,7 @@ double PsychGetMonitorRefreshInterval(PsychWindowRecordType *windowRecord, int* 
 		// Verbose output requested? We dump our whole buffer of samples to the console:
 		if (samples) {
 			printf("\n\nPTB-DEBUG: Output of all acquired samples of calibration run follows:\n");
-			for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %lf\n", j, samples[j]);
+			for (j=0; j<i; j++) printf("PTB-DEBUG: Sample %i: %f\n", j, samples[j]);
 			printf("PTB-DEBUG: End of calibration data for this run...\n\n");
 			free(samples);
 			samples = NULL;

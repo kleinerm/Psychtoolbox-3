@@ -163,7 +163,7 @@ typedef unsigned char		psych_bool;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
-        typedef LONG                            psych_uint64;
+        typedef ULONGLONG                       psych_uint64;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
         typedef WORD                            psych_uint16;

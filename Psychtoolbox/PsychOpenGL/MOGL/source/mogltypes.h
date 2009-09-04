@@ -136,7 +136,7 @@ typedef struct cmdhandler {
 #ifndef WINDOWS
 typedef unsigned long long int psych_uint64;
 #else
-typedef LONG psych_uint64;
+typedef ULONGLONG psych_uint64;
 #endif
 
 // Convert a double value (which encodes a memory address) into a ptr:

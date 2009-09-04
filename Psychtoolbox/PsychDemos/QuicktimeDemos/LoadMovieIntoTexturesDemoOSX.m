@@ -1,6 +1,6 @@
-function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
+function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, indexisFrames, benchmark)
 %
-% LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
+% LoadMovieIntoTexturesDemoOSX(moviename [, fromTime=0][, toTime=end][, indexisFrames=0][, benchmark=0])
 %
 % A demo implementation on how to load a Quicktime movie into standard
 % Psychtoolbox textures for precisely controlled presentation timing and
@@ -15,6 +15,10 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 %
 % toTime - End time (in seconds) upto which the movie should be read
 % into textures. Defaults to end of movie, if not provided.
+%
+% indexIsFrames - If set to 1 then the fromTime and toTime parameters are
+% interpreted as frameindex (starting with 0 for the first frame), instead
+% of seconds.
 %
 % benchmark - If you set this parameter to 1, the demo will compute the
 % time it takes to load the movie and the maximum display speed without
@@ -44,6 +48,7 @@ function LoadMovieIntoTexturesDemoOSX(moviename, fromTime, toTime, benchmark)
 % History:
 % 12/25/05  mk  Wrote it.
 % 02/03/06  mk  Adapted for use on Windows.
+% 09/03/09  mk  Add support for frameindex seeking instead of timeindex.
 
 % Child protection: Make sure we run on the OSX / OpenGL Psychtoolbox.
 % Abort if we don't:
@@ -87,11 +92,19 @@ if isempty(toTime)
 end;
 
 if nargin < 4
-    benchmark=0;
+    indexisFrames = [];
+end
+
+if isempty(indexisFrames)
+    indexisFrames = 0;
+end
+
+if nargin < 5
+    benchmark = [];
 end;
 
 if isempty(benchmark)
-    benchmark=0;
+    benchmark = 0;
 end;
 
 fprintf('Loading movie %s ...\n', moviename);
@@ -102,6 +115,7 @@ try
     % Open onscreen window. We use the display with the highest number on
     % multi-display setups:
     screen=max(Screen('Screens'));
+
     % This will open a screen with default settings, aka black background,
     % fullscreen, double buffered with 32 bits color depth:
     win = Screen('OpenWindow', screen); % , 0, [0 0 800 600]);
@@ -115,7 +129,8 @@ try
     % Show instructions...
     tsize=20;
     Screen('TextSize', win, tsize);
-    [x, y]=Screen('DrawText', win, 'Loading movie into textures. Please wait...',40, 100);    
+    Screen('DrawText', win, 'Loading movie into textures. Please wait...',40, 100);    
+
     % Flip to show the startup screen:
     Screen('Flip',win);
         
@@ -124,7 +139,7 @@ try
     [movie movieduration fps imgw imgh] = Screen('OpenMovie', win, moviename);
 
     % Move to requested timeindex where texture loading should start:
-    Screen('SetMovieTimeIndex', movie, fromTime);
+    Screen('SetMovieTimeIndex', movie, fromTime, indexisFrames);
     
     movietexture=0;     % Texture handle for the current movie frame.
     lastpts=-1;          % Presentation timestamp of last frame.
@@ -134,7 +149,7 @@ try
     tloadstart=GetSecs;
     
     % Movie to texture conversion loop:
-    while(movietexture>=0 & pts < toTime)
+    while (movietexture>=0) & ((~indexisFrames & (pts < toTime)) | (indexisFrames & (fromTime + count <= toTime))) %#ok<OR2,AND2>
             % This call waits for arrival of a new frame from the movie. If
             % a new frame is ready, it converts the video frame into a
             % Psychtoolbox texture image and returns a handle in
@@ -155,7 +170,7 @@ try
             % lastpts then we would have ran over the end of movie - in
             % that case, the time will automatically wrap around to zero.
             % If we don't check for this, we'll have an infinite loop!
-            if (movietexture>0 & pts>lastpts)
+            if (movietexture>0 & pts>lastpts) %#ok<AND2>
                 % Store its texture handle and exact movie timestamp in
                 % arrays for later use:
                 count=count + 1;
@@ -173,7 +188,7 @@ try
             
             if (benchmark==0)
                 % Show the progress text:
-                [x, y]=Screen('DrawText', win, ['Loaded texture ' num2str(count) '...'],40, 100);
+                Screen('DrawText', win, ['Loaded texture ' num2str(count) '...'],40, 100);
                 Screen('Flip',win);
             end;
     end;

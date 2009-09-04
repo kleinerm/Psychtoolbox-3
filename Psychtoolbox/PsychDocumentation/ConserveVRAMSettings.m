@@ -154,6 +154,14 @@
 % beamposition query mechanisms, e.g., Leopard 10.5.7 + ATI GPU's.
 %
 %
+% 131072 == kPsychDisableAeroWDM 
+% Disable the Aero WDM desktop composition manager on Windows Vista and
+% later. By default, Psychtoolbox will try to keep the WDM running,
+% actually enforce use of it, as this provides better timing behaviour. If
+% you find otherwise on your setup or have special needs, specify this flag
+% to force the WDM off.
+%
+%
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
 % meant as a last ressort, e.g., if you need to get something going quickly

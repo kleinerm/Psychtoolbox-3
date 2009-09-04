@@ -99,6 +99,9 @@
 
 PsychError PsychModuleInit(void)
 {
+	// Initialize all Screen('Preference', ...); settings to startup defaults:
+	PrepareScreenPreferences();
+
 	// Register the project exit function
 	PsychErrorExitMsg(PsychRegisterExit(&ScreenExitFunction), "Failed to register the Screen exit function.");
 	
@@ -229,7 +232,6 @@ PsychError PsychModuleInit(void)
 	InitWindowBank();
 	PsychMovieInit();
 	PsychVideoCaptureInit();
-	PrepareScreenPreferences();
     
 	// Call wait-routine for 0.1 secs: This to initialize the time glue on MS-Windows,
 	// so the first call to a timing function won't delay:

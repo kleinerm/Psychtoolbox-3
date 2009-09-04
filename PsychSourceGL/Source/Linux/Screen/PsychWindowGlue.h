@@ -45,7 +45,7 @@ void    PsychOSSetVBLSyncLevel(PsychWindowRecordType *windowRecord, int swapInte
 void	PsychOSSetGLContext(PsychWindowRecordType *windowRecord);
 void	PsychOSUnsetGLContext(PsychWindowRecordType *windowRecord);
 void    PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool copyfromPTBContext);
-double  PsychOSGetVBLTimeAndCount(unsigned int screenid, psych_uint64* vblCount);
+double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount);
 
 // Special query function, only defined on Linux/X11:
 int PsychGetXScreenIdForScreen(int screenNumber);
