@@ -80,10 +80,12 @@ escape = KbName('ESCAPE');
 screenid=max(Screen('Screens'));
 
 try
-    % Open onscreen window: We request a 16 bit per color component
-    % floating point framebuffer:
+    % Open onscreen window: We request a 32 bit per color component
+    % floating point framebuffer if it supports alpha-blendig. Otherwise
+    % the system shall fall back to a 16 bit per color component
+    % framebuffer:
     PsychImaging('PrepareConfiguration');
-    PsychImaging('AddTask', 'General', 'FloatingPoint16Bit');
+    PsychImaging('AddTask', 'General', 'FloatingPoint32BitIfPossible');
     [win, winRect] = PsychImaging('OpenWindow', screenid);
 
     % We use a normalized color range from now on. All color values are

@@ -279,8 +279,12 @@ PsychError SCREENDrawText(void)
     memoryTotalSizeBytes= memoryRowSizeBytes * textureHeight;
     textureMemory=(UInt32 *)valloc(memoryTotalSizeBytes);
     if(!textureMemory) PsychErrorExitMsg(PsychError_internal, "Failed to allocate surface memory\n");
-    // printf("N: TexWidth %lf x TexHeight %lf :: ", textureWidth, textureHeight); 
-    
+    // printf("N: TexWidth %lf x TexHeight %lf :: ", textureWidth, textureHeight);
+	
+	// This zero-fill of memory should not be neccessary, but it is, as a workaround for some bug introduced
+	// by Apple into OS/X 10.6.0 -- Apparently fails to initialize memory properly, so pixeltrash gets through...
+    memset(textureMemory, 0, memoryTotalSizeBytes);
+
     //Create the Core Graphics bitmap graphics context.  We can tell CoreGraphics to use the same memory storage format as will our GL texture, and in fact use
     //  the idential memory for both.   
     cgColorSpace=CGColorSpaceCreateDeviceRGB();
