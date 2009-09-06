@@ -46,8 +46,7 @@
 
 static double			precisionTimerAdjustmentFactor;
 static double			estimatedGetSecsValueAtTickCountZero;
-static psych_bool		isKernelTimebaseFrequencyHzInitialized;
-static long double		kernelTimebaseFrequencyHz;
+static psych_uint64		kernelTimebaseFrequencyHz;
 static psych_bool       counterExists;
 static psych_bool       firstTime;
 static double			sleepwait_threshold;
@@ -180,16 +179,14 @@ void PsychYieldIntervalSeconds(double delaySecs)
 
 double	PsychGetKernelTimebaseFrequencyHz(void)
 {
-  if(!isKernelTimebaseFrequencyHzInitialized){
-    isKernelTimebaseFrequencyHzInitialized=TRUE;
-    PsychGetPrecisionTimerTicksPerSecond(&kernelTimebaseFrequencyHz);
-  }
-  return((double)kernelTimebaseFrequencyHz);
+  return((double) kernelTimebaseFrequencyHz);
 }
 
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
+	LARGE_INTEGER	counterFreq;
+
 	// Initialize our timeglue mutex:
 
 	// Alternative would be InitializeCriticalSection().
@@ -202,7 +199,11 @@ void PsychInitTimeGlue(void)
 
 	// Setup defaults for all state variables:
 	precisionTimerAdjustmentFactor=1;
-	isKernelTimebaseFrequencyHzInitialized=FALSE;
+	kernelTimebaseFrequencyHz = 0;
+	if (QueryPerformanceFrequency(&counterFreq)) {
+		kernelTimebaseFrequencyHz = (psych_uint64) counterFreq.QuadPart;
+	}
+	
 	counterExists=FALSE;
 	firstTime=TRUE;
 	sleepwait_threshold = 0.003;
@@ -255,6 +256,16 @@ void PsychGetPrecisionTimerTicksPerSecond(double *frequency)
     *frequency=1000.0f;
   }
   return;
+}
+
+double PsychMapPrecisionTimerTicksToSeconds(psych_uint64 ticks)
+{
+	if (!Timertrouble) {
+		return((double) ticks / (double) kernelTimebaseFrequencyHz);
+	}
+	else {
+		return(-1);
+	}
 }
 
 void PsychGetPrecisionTimerTicksMinimumDelta(psych_uint32 *delta)

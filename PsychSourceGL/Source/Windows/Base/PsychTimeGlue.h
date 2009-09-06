@@ -46,6 +46,7 @@ void PsychEstimateGetSecsValueAtTickCountZero(void);
 double PsychGetEstimatedSecsValueAtTickCountZero(void);
 double PsychGetTimeGetTimeValueAtLastTimeQuery(double* precisionRawtime);
 unsigned int PsychGetTimeBaseHealthiness(void);
+double PsychMapPrecisionTimerTicksToSeconds(psych_uint64 ticks);
 int	PsychInitMutex(psych_mutex* mutex);
 int	PsychDestroyMutex(psych_mutex* mutex);
 int PsychLockMutex(psych_mutex* mutex);

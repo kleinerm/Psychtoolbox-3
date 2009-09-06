@@ -259,20 +259,21 @@ PsychError SCREENGetWindowInfo(void)
 		
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
 
-		const char *DWMGraphicsFieldNames[]={ "OnsetVBLCount", "OnsetVBLTime", "FrameId", "CompositionFPS" };
+		const char *DWMGraphicsFieldNames[]={ "DroppedCount", "OnsetVBLTime", "GlitchCount", "CompositionFPS" };
 		const int DWMGraphicsFieldCount = 4;
 
 		psych_uint64 onsetVBLCount, frameId;
 		double onsetVBLTime, compositionRate;
-		
+
 		PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate)) {
 			// Query success:
 			PsychAllocOutStructArray(1, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
-			PsychSetStructArrayDoubleElement("OnsetVBLCount", 0, (double) onsetVBLCount, s);
+			PsychSetStructArrayDoubleElement("DroppedCount", 0, (double) onsetVBLCount, s);
 			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
-			PsychSetStructArrayDoubleElement("FrameId", 0      , (double) frameId, s);			
+			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) frameId, s);			
 			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);			
+			printf("SUCCESS!!!\n");
 		}
 		else {
 			// Unsupported / Failed:
