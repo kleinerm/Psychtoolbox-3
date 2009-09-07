@@ -43,6 +43,21 @@
 
 */
 
+// Module handle for the MMCSS interface API library 'avrt.dll': Or 0 if unsupported.
+HMODULE Avrtlibrary = 0;
+
+// dwmSupported is true if MMCSS is supported and library is linked:
+static psych_bool AvrtSupported = FALSE;
+
+// MMCSS function definitions and procpointers:
+typedef BOOL (WINAPI *AvSetMmThreadPriorityPROC)(HANDLE AvrtHandle, int Priority);
+typedef BOOL (WINAPI *AvRevertMmThreadCharacteristicsPROC)(HANDLE taskHandle);
+typedef HANDLE (WINAPI *AvSetMmMaxThreadCharacteristicsPROC)(LPCTSTR firstTask, LPCTSTR secondTask, LPDWORD taskIndex);
+
+AvSetMmThreadPriorityPROC			PsychAvSetMmThreadPriority				= NULL;
+AvRevertMmThreadCharacteristicsPROC	PsychAvRevertMmThreadCharacteristics	= NULL;
+AvSetMmMaxThreadCharacteristicsPROC	PsychAvSetMmMaxThreadCharacteristics	= NULL;
+
 
 static double			precisionTimerAdjustmentFactor;
 static double			estimatedGetSecsValueAtTickCountZero;
@@ -218,6 +233,31 @@ void PsychInitTimeGlue(void)
 
 	// Setup mapping of ticks to time:
 	PsychEstimateGetSecsValueAtTickCountZero();
+
+	// Try to load and bind MMCSS API library on Microsoft Vista and later:
+	// This would allow us to take advantage of MMCSS scheduling for better timing precision...
+	AvrtSupported = FALSE;
+	Avrtlibrary = LoadLibrary("Avrt.dll");
+	if (Avrtlibrary) {
+		// Load success. Dynamically bind the relevant functions:
+		PsychAvSetMmThreadPriority				= (AvSetMmThreadPriorityPROC) GetProcAddress(Avrtlibrary, "AvSetMmThreadPriority");
+		PsychAvSetMmMaxThreadCharacteristics	= (AvSetMmMaxThreadCharacteristicsPROC) GetProcAddress(Avrtlibrary, "AvSetMmMaxThreadCharacteristics");
+		PsychAvRevertMmThreadCharacteristics	= (AvRevertMmThreadCharacteristicsPROC) GetProcAddress(Avrtlibrary, "AvRevertMmThreadCharacteristics");
+		
+		if (PsychAvSetMmThreadPriority && PsychAvSetMmMaxThreadCharacteristics && PsychAvRevertMmThreadCharacteristics) {
+			// Mark MMCSS API as supported:
+			AvrtSupported = TRUE;
+		}
+		else {
+			// Failed:
+			FreeLibrary(Avrtlibrary);
+			Avrtlibrary = 0;
+			PsychAvRevertMmThreadCharacteristics = NULL;
+			PsychAvSetMmMaxThreadCharacteristics = NULL;
+			PsychAvSetMmThreadPriority = NULL;
+		}
+	}
+	
 }
 
 /* Called at module shutdown/jettison time: */
@@ -226,6 +266,16 @@ void PsychExitTimeGlue(void)
 	// Release our timeglue mutex:
 	DeleteCriticalSection(&time_lock);
 
+	// Free Avrt.dll if loaded: Disable MMCSS services...
+	if (AvrtSupported && Avrtlibrary) {
+		FreeLibrary(Avrtlibrary);
+		Avrtlibrary = 0;
+		AvrtSupported = FALSE;
+		PsychAvRevertMmThreadCharacteristics = NULL;
+		PsychAvSetMmMaxThreadCharacteristics = NULL;
+		PsychAvSetMmThreadPriority = NULL;
+	}
+	
 	return;
 }
 
@@ -677,7 +727,8 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 	if (*threadhandle == NULL) PsychErrorExitMsg(PsychError_outofMemory, "Insufficient free RAM memory when trying to create processing thread!");
 	(*threadhandle)->handle = NULL;
 	(*threadhandle)->threadId = 0;
-	
+	(*threadhandle)->taskHandleMMCS = NULL;
+
 	// Create termination event for thread: It can be set to signalled via PsychAbortThread() and
 	// threads can test for its state via PsychTestCancelThread(), which will exit the thread cleanly
 	// if the event is signalled.
@@ -784,27 +835,39 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 /* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
  * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
  * 'tweakPriority' modulates more fine-grained within the category given by 'basepriority'. It
- * can be anywhere between 0 and some big value where bigger means more priority.
+ * can be anywhere between 0 and 2 where bigger means more priority.
+ *
+ * See http://msdn.microsoft.com/en-us/library/ms684247(VS.85).aspx for explanation of the MMCSS
+ * scheduling services on Vista and later. The short story is: A non-Administrator user can usually
+ * get no more than HIGH_PRIORITY scheduling for the Matlab/Octave process, and even for admin users,
+ * running with REALTIME_PRIORTY is usually too dangerous with most Psychtoolbox applications. If we
+ * are able to use MMCSS scheduling on Vista and later, we get something better than HIGH_PRIORITY,
+ * pretty close to REALTIME_PRIORITY, but with a safety net that should prevent disaster, assuming
+ * the Windows MMCSS service knows what it is doing...
  *
  * Returns zero on success, non-zero on failure to set new priority.
  */
 int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int tweakPriority)
 {
 	int rc;
+	DWORD foo;
 	HANDLE thread;
-	
-	// tweakPriority unused for now:
-	(int) tweakPriority;
-	
+
 	if (NULL != threadhandle) {
 		// Retrieve thread HANDLE of thread to change:
 		thread = (*threadhandle)->handle;
+
+		// If this is a MMCSS scheduled thread, we need to revert it to normal mode first:
+		if (AvrtSupported && ((*threadhandle)->taskHandleMMCS)) {
+			PsychAvRevertMmThreadCharacteristics((*threadhandle)->taskHandleMMCS);
+			(*threadhandle)->taskHandleMMCS = NULL;
+		}
 	}
 	else {
 		// Retrieve handle of calling thread:
 		thread = GetCurrentThread();
 	}
-	
+
 	switch(basePriority) {
 		case 0:	// Normal priority.
 			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
@@ -829,8 +892,29 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		
 		case 2: // Highest priority: This preempts basically any system service!
 			if ((rc = SetThreadPriority(thread, THREAD_PRIORITY_TIME_CRITICAL)) == 0) {
-				// Failed to get TIME_CRITICAL priority. Retry with HIGHEST priority:
-				rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+				// Failed to get TIME_CRITICAL priority!
+				// Try to get as close as possible to TIME_CRITICAL. On Vista and later,
+				// we can try to abuse MMCSS scheduling to get to a pretty high priority,
+				// certainly higher than HIGHEST, close to TIME_CRITICAL:
+				if (AvrtSupported && (NULL != threadhandle)) {
+					foo = 0;
+					(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Games", &foo);
+					if ((*threadhandle)->taskHandleMMCS) {
+						// Success! Apply tweakPriority as well...
+						PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
+						rc = 0;
+					}
+					else {
+						// Failed! Retry with HIGHEST priority:
+						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+					}
+				}
+				else {
+					// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
+					// Retry with HIGHEST priority, the best we can do on pre-Vista:
+					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+				}
+				 
 			}
 			if (rc == 0) {
 				rc = GetLastError();	// Failed!
@@ -839,7 +923,28 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 				rc = 0;
 			}
 		break;
-		
+
+		case 10: // MMCSS scheduling: Vista, Windows-7 and later only...
+			if (AvrtSupported && (NULL != threadhandle)) {
+				foo = 0;
+				(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Games", &foo);
+				if ((*threadhandle)->taskHandleMMCS) {
+					// Success! Apply tweakPriority as well...
+					PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
+					rc = 0;
+				}
+				else {
+					// Failed! Retry with HIGHEST priority:
+					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+				}
+			}
+			else {
+				// MMCSS not supported on pre-Vista system, or thread not eligible for MMCSS.
+				// Retry with HIGHEST priority, the best we can do on pre-Vista:
+				rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+			}
+		break;
+
 		default:
 			printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Invalid/Unknown basePriority %i provided!\n", basePriority);
 			rc = 2;

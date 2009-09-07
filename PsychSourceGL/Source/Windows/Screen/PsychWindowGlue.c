@@ -1625,7 +1625,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		// cRefresh is a running count of redraw cyles, i.e., refresh cycles of
 		// the DWM itself, not the display!
 		
-		// VBLTime of last VBL in QPC, ie., as query performance counter 64-but psych_uint64 value:
+		// VBLTime of last VBL in QPC, ie., as query performance counter 64-bit psych_uint64 value:
 		ust = (psych_uint64) dwmtiming.qpcVBlank;
 
 		if (PsychPrefStateGet_Verbosity() > 15) {
@@ -1711,8 +1711,12 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 		)) {
 		// Yes. Supported, enabled, and we got timing info from it. Extract:
 		
-		// QPC timestamp of last presented/composited frame:
-		qpcFrameDisplayed = (psych_uint64) dwmtiming.qpcFrameDisplayed;
+		// QPC timestamp of last presented/composited frame, minus the refresh interval duration as
+		// measured by the DWM. Working assumption: qpcFrameDisplayed tells about the *end* of the video
+		// refresh cycle when the frame was displayed the first time, so if we subtract the refresh duration
+		// we'll get the beginning of that refresh cycle, i.e., a value as close as possible to our regular
+		// beamposition query based flip timestamps:
+		qpcFrameDisplayed = (psych_uint64) (dwmtiming.qpcFrameDisplayed - dwmtiming.qpcRefreshPeriod);
 
 		// Convert to GetSecs() time:
 		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameDisplayed);
@@ -1725,6 +1729,19 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 
 		// Current composition rate of the DWM:
 		*compositionRate = (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator;
+
+		if (PsychPrefStateGet_Verbosity() > 15) {
+			printf("PTB-DEBUG: === PsychDwmGetCompositionTimingInfo returned data follows: ===\n\n");
+			printf("qpcFrameDisplayed: %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed));
+			printf("qpcRefreshPeriod : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod));
+			printf("qpcFrameComplete : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete));
+			printf("cFramesLate      : %i \n", (psych_uint64) dwmtiming.cFramesLate);
+			printf("cFramesDropped   : %i \n", (psych_uint64) dwmtiming.cFramesDropped);
+			printf("cFramesMissed    : %i \n", (psych_uint64) dwmtiming.cFramesMissed);
+			printf("cBuffersEmpty    : %i \n", (psych_uint64) dwmtiming.cBuffersEmpty);
+			
+			printf("PTB-DEBUG: === End of PsychDwmGetCompositionTimingInfo returned data.  ===\n\n");
+		}
 		
 		return(TRUE);
 	}

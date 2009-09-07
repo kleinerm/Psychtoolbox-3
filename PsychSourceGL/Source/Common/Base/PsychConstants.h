@@ -199,6 +199,7 @@ typedef unsigned char		psych_bool;
 			HANDLE				handle;			// Handle to actual thread (NULL == Invalid).
 			DWORD				threadId;		// Unique numeric id (0 = Invalid.)
 			psych_condition		terminateReq;	// Condition/Event object to signal the request for termination.
+			HANDLE				taskHandleMMCS; // Handle to task for MMCSS scheduled thread, NULL otherwise.
 		} psych_threadstruct;
 		typedef struct psych_threadstruct*	psych_thread;
 
