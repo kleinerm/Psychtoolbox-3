@@ -325,11 +325,11 @@ if isempty(isbuggyatidriver)
     isbuggyatidriver = 0;
     
     % ATI X1000 series on OS/X?
-    if ~isempty(findstr(glGetString(GL.RENDERER), 'Radeon X1600')) & IsOSX
-        % OS/X 10.4.x ATI driver is buggy, but not 10.5.5s...
+    if ~isempty(findstr(glGetString(GL.RENDERER), 'Radeon X1')) && IsOSX
+        % OS/X 10.4.x ATI driver is buggy, but not 10.5.5 and later.
         compinfo = Screen('Computer');
         osrelease = sscanf(compinfo.system, '%*s %*s %*i.%i.%i');
-        if osrelease(1) < 5 || osrelease(2) < 5
+        if (osrelease(1) < 5) || ((osrelease(1) == 5) && (osrelease(2) < 5))
             % Buggy 10.4.x or a 10.5.4 or earlier: Enable workaround.
             isbuggyatidriver = 1;
         end
