@@ -4306,11 +4306,12 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 	rc = 3;
 	
 	// Feature currently only supported on MS-Windows...
-	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+	#if PSYCH_SYSTEM != PSYCH_LINUX
 		// MS-Windows: Is the device in question opened as an ASIO device? If not, then game over. Otherwise we know
-		// we're using the ASIO enabled portaudio_x86.dll which may support this feature on this hardware:
-		if (audiodevices[pahandle].hostAPI == paASIO) {
-			// ASIO device opened as such via ASIO capable Portaudio plugin. Is the plugin recent enough
+		// we're using the ASIO enabled portaudio_x86.dll which may support this feature on this hardware.
+		// OS/X CoreAudio: Same logic applies...
+		if ((audiodevices[pahandle].hostAPI == paASIO) || (audiodevices[pahandle].hostAPI == paCoreAudio)) {
+			// ASIO / CoreAudio device opened as such via ASIO capable Portaudio plugin. Is the plugin recent enough
 			// to support the directmonitoring interface?
 			if (strstr(Pa_GetVersionText(), "WITH-DIM")) {
 				// Plugin supports the API, so at least we can safely call it without crashing.
@@ -4337,17 +4338,34 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 						// Default to unknown failure:
 						rc = 1;
 				}
-				if ((verbosity > 1) && (rc != 0)) printf("PsychPortAudio('DirectInputMonitoring'): Failed to change monitoring settings for calling with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+				if ((verbosity > 1) && (rc > 0)) {
+					switch(rc) {
+						case 1:
+							printf("PsychPortAudio('DirectInputMonitoring'): Failed to change monitoring settings for call with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+							printf("PsychPortAudio('DirectInputMonitoring'): Could be due to invalid parameters? Or some other unknown error. Rerun with PsychPortAudio('Verbosity', 10); for possible clues.\n");
+						break;
+						
+						case 2:
+							printf("PsychPortAudio('DirectInputMonitoring'): Failed to change monitoring settings for call with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+							printf("PsychPortAudio('DirectInputMonitoring'): DirectInputMonitoring is not supported by the target audio hardware.\n");
+						break;
+						
+						default:
+							printf("PsychPortAudio('DirectInputMonitoring'): Failed to change monitoring settings for call with padev=%i (%p), enable = %i, in=%i, out=%i, gain=%f, pan=%f.\n", pahandle, audiodevices[pahandle].stream, enable, inputChannel, outputChannel, gain, stereoPan);
+							printf("PsychPortAudio('DirectInputMonitoring'): Reason unknown.\n");
+					}
+				}
 			}
 			else {
-				if (verbosity > 1) printf("PsychPortAudio('DirectInputMonitoring'): Your portaudio_x86.dll plugin is too old to support this feature! Download a more recent one from the Psychtoolbox Wiki!\n");	
+				if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paASIO)) printf("PsychPortAudio('DirectInputMonitoring'): Your portaudio_x86.dll plugin is too old to support this feature! Download a more recent one from the Psychtoolbox Wiki!\n");	
+				if (verbosity > 1 && (audiodevices[pahandle].hostAPI == paCoreAudio)) printf("PsychPortAudio('DirectInputMonitoring'): Your installed portaudio.0.0.19.dylib plugin is too old to support this feature! Reinstall the latest one from the Psychtoolbox/PsychSound/ subfolder!\n");	
 			}
 		}
 		else {
 			if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not supported on this non ASIO sound hardware.\n");	
 		}
 	#else
-		// Linux or OS/X:
+		// Linux:
 		if (verbosity > 3) printf("PsychPortAudio('DirectInputMonitoring'): Tried to call, but feature not yet supported on your operating system.\n");	
 	#endif
 

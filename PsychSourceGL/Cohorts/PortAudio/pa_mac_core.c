@@ -2053,3 +2053,95 @@ static double GetStreamCpuLoad( PaStream* s )
 
     return PaUtil_GetCpuLoad( &stream->cpuLoadMeasurer );
 }
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif /* __cplusplus */
+
+/** MK CHANGED-PTB Control zero latency direct input monitoring feature on some cards:
+ @return paNoError on success, or paBadIODeviceCombination if feature
+ not supported by device or paInvalidFlag on other errors..
+*/
+PaError DirectInputMonitoring(PaStream *s, int enable, int inputChannel, int outputChannel, double gain, double pan)
+{
+	PaError result = 0;
+	Float32 volume, fpan;
+	UInt32  dSize = 0xdeadbeef;
+	UInt32* dbuf  = NULL;
+	int		i;
+	static int	firstTime = 1;
+	
+	// Get stream pointer:
+    PaMacCoreStream *stream = (PaMacCoreStream*)s;
+
+	if (firstTime) {
+		firstTime = 0;
+		if ((0 == AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertyPlayThruDestinations, &dSize, NULL)) && (dSize != 0xdeadbeef)) {
+			PA_DEBUG(("DirectInputMonitoring: Enumerating all %i [hexbuffersize %x] destination channels for DirectInputMonitoring:\n", dSize / sizeof(UInt32), dSize));
+			dbuf = calloc(1, dSize);
+			AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertyPlayThruDestinations, &dSize, dbuf);
+			for (i = 0; i < dSize / sizeof(UInt32); i++) {
+				PA_DEBUG(("Destination Channel id %i \n", (int) dbuf[i]));
+			}
+			free(dbuf);
+			dbuf = NULL;
+		}
+		else {
+			PA_DEBUG(("DirectInputMonitoring: Could not enumerate possible destination channels.\n"));
+		}
+	}
+
+	dSize = sizeof(int);
+	result = ERR( AudioDeviceGetProperty(stream->inputDevice, inputChannel + 1, TRUE, kAudioDevicePropertyPlayThru, &dSize, &i) );
+	if (result) {
+		PA_DEBUG( ("DirectInputMonitoring: Failed to query playthrough state on channel %i. [OSResult = %x] --> Reporting unsupported.\n", inputChannel, result ) );
+		return(paBadIODeviceCombination);
+	}
+	else {
+		PA_DEBUG( ("DirectInputMonitoring: Query of playthrough state on channel %i reports setting %i.\n", inputChannel, i) );
+	}
+
+	// Set enable flag: 1 = Enable playthrough aka DirectInputMonitoring for target 'inputChannel', 0 = Disable playthrough:
+	enable = (enable > 0) ? 1 : 0;
+	// A inputChannel setting of 0 would be the master channel under OS/X, channels 1 - x correspond to the different
+	// input channels. Our syntax says that channel -1 means "All channels", values from 0 to x-1 are channels 0 to x-1.
+	// We add +1 to the inputChannel argument, so our special value -1 maps to OS/X special value 0 aka masterchannel,
+	// whereas our channel specifiers 0 - x-1 map to OS/X channels 1 to x. This will hopefully do the trick...
+	result = ERR( AudioDeviceSetProperty(stream->inputDevice, NULL, inputChannel + 1, TRUE, kAudioDevicePropertyPlayThru, sizeof(int), &enable) );
+	if (result) {
+		PA_DEBUG( ("DirectInputMonitoring: Failed to %s playthrough on channel %i. [OSResult = %x]\n", (enable) ? "enable" : "disable", inputChannel, result ) );
+		return(paInvalidFlag);
+	}
+	
+	// Set playthrough destination channels: Also add an offset of 1, in the hope this is correct??
+	outputChannel+=1;
+	result = ERR( AudioDeviceSetProperty(stream->inputDevice, NULL, inputChannel + 1, TRUE, kAudioDevicePropertyPlayThruDestination, sizeof(int), &outputChannel) );
+	if (result) {
+		PA_DEBUG( ("DirectInputMonitoring: Failed to set destination channel %i for input channel %i. [OSResult = %x]\n", outputChannel - 1, inputChannel, result ) );
+		// We continue without error, as we are supposed to "silently ignore" such things instead of failing.
+	}
+	
+	// Set playthrough gain in dB:
+	volume = (Float32) gain;
+	result = ERR( AudioDeviceSetProperty(stream->inputDevice, NULL, inputChannel + 1, TRUE, kAudioDevicePropertyPlayThruVolumeDecibels, sizeof(Float32), &volume) );
+	if (result) {
+		PA_DEBUG( ("DirectInputMonitoring: Failed to set gain level %f dB for input channel %i. [OSResult = %x]\n", (float) volume, inputChannel, result ) );
+		// We continue without error, as we are supposed to "silently ignore" such things instead of failing.
+	}
+
+	// Set stereo channel pan:
+	fpan = (Float32) pan;
+	result = ERR( AudioDeviceSetProperty(stream->inputDevice, NULL, inputChannel + 1, TRUE, kAudioDevicePropertyPlayThruStereoPan, sizeof(Float32), &fpan) );
+	if (result) {
+		PA_DEBUG( ("DirectInputMonitoring: Failed to set stereo output pan position %f for input channel %i. [OSResult = %x]\n", (float) fpan, inputChannel, result ) );
+		// We continue without error, as we are supposed to "silently ignore" such things instead of failing.
+	}
+
+	/* Made it to the end: Report back success! */
+    return(paNoError);
+}
+
+#ifdef __cplusplus
+}
+#endif /* __cplusplus */
