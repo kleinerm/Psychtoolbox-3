@@ -1335,6 +1335,50 @@ static PaError OpenStream( struct PaUtilHostApiRepresentation *hostApi,
     }
     stream->bufferProcessorIsInitialized = TRUE;
 
+	/* MK added for PTB: Query hardware and CoreAudio delays, do some accouting in debug mode for interested 3rd parties: */
+	if (1) {
+		int rc;
+		UInt32 propSize;
+		UInt32 frameLatency1, frameLatency2;
+		rc = 0;
+		propSize = sizeof(UInt32);
+		rc = WARNING(AudioDeviceGetProperty(stream->outputDevice, 0, FALSE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+		if (!rc) {
+			propSize = sizeof(UInt32);
+			rc = WARNING(AudioDeviceGetProperty(stream->outputDevice, 0, FALSE, kAudioDevicePropertySafetyOffset, &propSize, &frameLatency2));
+			if (!rc) {
+				// Got all info we need:
+				PA_DEBUG( ("For audio output path:\n") );
+				PA_DEBUG( ("CoreAudio DMA buffer safety offset is %i frames (%f msecs)\n", frameLatency2, 1000 * (double) frameLatency2 / (double) sampleRate) );
+				PA_DEBUG( ("Audio hardware FIFO delay is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
+				PA_DEBUG( ("Audio hostbuffersize is likely %i frames (%f msecs)\n", framesPerBuffer, 1000 * (double) framesPerBuffer / (double) sampleRate) );
+				PA_DEBUG( ("Bufferprocessor adds %i frames (%f msecs)\n", PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor), 1000 * (double) PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor) / (double) sampleRate) );
+				frameLatency1 = frameLatency1 + frameLatency2 + framesPerBuffer + PaUtil_GetBufferProcessorOutputLatency(&stream->bufferProcessor);
+				PA_DEBUG( ("Estimated total output latency is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
+				PA_DEBUG( ("----------------------\n") );
+			}
+		}
+
+		rc = 0;
+		propSize = sizeof(UInt32);
+		rc = WARNING(AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertyLatency, &propSize, &frameLatency1));
+		if (!rc) {
+			propSize = sizeof(UInt32);
+			rc = WARNING(AudioDeviceGetProperty(stream->inputDevice, 0, TRUE, kAudioDevicePropertySafetyOffset, &propSize, &frameLatency2));
+			if (!rc) {
+				// Got all info we need:
+				PA_DEBUG( ("For audio input path:\n") );
+				PA_DEBUG( ("CoreAudio DMA buffer safety offset is %i frames (%f msecs)\n", frameLatency2, 1000 * (double) frameLatency2 / (double) sampleRate) );
+				PA_DEBUG( ("Audio hardware FIFO delay is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
+				PA_DEBUG( ("Audio hostbuffersize is likely %i frames (%f msecs)\n", framesPerBuffer, 1000 * (double) framesPerBuffer / (double) sampleRate) );
+				PA_DEBUG( ("Bufferprocessor adds %i frames (%f msecs)\n", PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor), 1000 * (double) PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor) / (double) sampleRate) );
+				frameLatency1 = frameLatency1 + frameLatency2 + framesPerBuffer + PaUtil_GetBufferProcessorInputLatency(&stream->bufferProcessor);
+				PA_DEBUG( ("Estimated total input latency is %i frames (%f msecs)\n", frameLatency1, 1000 * (double) frameLatency1 / (double) sampleRate) );
+				PA_DEBUG( ("----------------------\n") );
+			}
+		}
+	}
+	
     /*
         IMPLEMENT ME: initialise the following fields with estimated or actual
         values.
