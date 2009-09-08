@@ -1689,6 +1689,11 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 				PsychErrorExitMsg(PsychError_system, "Insufficient system ressources for mutex creation as part of async flip setup!");
 			}
 
+			// Additionally try to schedule flipperThread MMCSS: This will lift it roughly into the
+			// same scheduling range as HIGH_PRIORITY_CLASS, even if we are non-admin users
+			// on Vista and Windows-7 and later, however with a scheduler safety net applied.
+			PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
+			
 			//printf("ENTERING THREADCREATEFINISHED MUTEX\n"); fflush(NULL);
 			
 			// The thread is started with flipperState == 0, ie., not "initialized and ready", the lock is unlocked.

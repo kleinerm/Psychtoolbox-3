@@ -43,6 +43,11 @@
 
 */
 
+// Pseudo-Threadstruct for masterPsychtoolboxThread: Used in PsychSetThreadPriority()
+// and hopefully nowhere else:
+static psych_threadstruct masterPsychtoolboxThread;
+static psych_thread		  masterPsychtoolboxThreadhandle = NULL;
+
 // Module handle for the MMCSS interface API library 'avrt.dll': Or 0 if unsupported.
 HMODULE Avrtlibrary = 0;
 
@@ -197,6 +202,32 @@ double	PsychGetKernelTimebaseFrequencyHz(void)
   return((double) kernelTimebaseFrequencyHz);
 }
 
+/* Returns TRUE on MS-Vista and later, FALSE otherwise: */
+int PsychIsMSVista(void)
+{
+	// Info struct for queries to OS:
+	OSVERSIONINFO osvi;
+	
+	// Init flag to -1 aka unknown:
+	static int isVista = -1;
+	
+	if (isVista == -1) {
+		// First call: Do the query!
+		
+		// Query info about Windows version:
+		memset(&osvi, 0, sizeof(OSVERSIONINFO));
+		osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+		GetVersionEx(&osvi);
+
+		// It is a Vista or later if major version is equal to 6 or higher:
+		// 6.0  = Vista, 6.1 = Windows-7, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
+		isVista = (osvi.dwMajorVersion >= 6) ? 1 : 0;
+	}
+	
+	// Return flag:
+	return(isVista);
+}
+
 /* Called at module init time: */
 void PsychInitTimeGlue(void)
 {
@@ -231,6 +262,10 @@ void PsychInitTimeGlue(void)
 	// Has less capable error handling etc., but what can one do...
 	InitializeCriticalSection(&time_lock);
 
+	// Init the master thread handle and associated struct:
+	masterPsychtoolboxThreadhandle = &masterPsychtoolboxThread;
+	memset(masterPsychtoolboxThreadhandle, 0, sizeof(masterPsychtoolboxThread));
+	
 	// Setup mapping of ticks to time:
 	PsychEstimateGetSecsValueAtTickCountZero();
 
@@ -275,6 +310,9 @@ void PsychExitTimeGlue(void)
 		PsychAvSetMmMaxThreadCharacteristics = NULL;
 		PsychAvSetMmThreadPriority = NULL;
 	}
+
+	// NULL out the master thread handle:
+	masterPsychtoolboxThreadhandle = NULL;
 	
 	return;
 }
@@ -833,6 +871,7 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 }
 
 /* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
+ * threadhandle == 0x1 means "Main Psychtoolbox thread" and may incur special treatment.
  * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
  * 'tweakPriority' modulates more fine-grained within the category given by 'basepriority'. It
  * can be anywhere between 0 and 2 where bigger means more priority.
@@ -853,21 +892,32 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	DWORD foo;
 	HANDLE thread;
 
-	if (NULL != threadhandle) {
+	if ((NULL != threadhandle) && (0x1 != threadhandle)) {
 		// Retrieve thread HANDLE of thread to change:
 		thread = (*threadhandle)->handle;
-
-		// If this is a MMCSS scheduled thread, we need to revert it to normal mode first:
-		if (AvrtSupported && ((*threadhandle)->taskHandleMMCS)) {
-			PsychAvRevertMmThreadCharacteristics((*threadhandle)->taskHandleMMCS);
-			(*threadhandle)->taskHandleMMCS = NULL;
-		}
 	}
 	else {
 		// Retrieve handle of calling thread:
 		thread = GetCurrentThread();
+		
+		// Is this a special "Masterthread" pseudo-handle?
+		if (0x1 == (int) threadhandle) {
+			// Yes: This is the Psychtoolbox main thread calling. We don't have
+			// a "normal" psych_thread* threadhandle for this one, so we need to
+			// kind'a bootstrap one for this thread. Space for one handle for the
+			// masterthread is allocated at the top of this C file in
+			// masterPsychtoolboxThreadthreadhandle. It gets zero-filled on init,
+			// cleared/freed on exit.
+			threadhandle = &masterPsychtoolboxThreadhandle;
+		}
 	}
 
+	// If this is a MMCSS scheduled thread, we need to revert it to normal mode first:
+	if (AvrtSupported && (NULL != threadhandle) && ((*threadhandle)->taskHandleMMCS)) {
+		PsychAvRevertMmThreadCharacteristics((*threadhandle)->taskHandleMMCS);
+		(*threadhandle)->taskHandleMMCS = NULL;
+	}
+	
 	switch(basePriority) {
 		case 0:	// Normal priority.
 			rc = SetThreadPriority(thread, THREAD_PRIORITY_NORMAL);
@@ -898,7 +948,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 				// certainly higher than HIGHEST, close to TIME_CRITICAL:
 				if (AvrtSupported && (NULL != threadhandle)) {
 					foo = 0;
-					(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Games", &foo);
+					(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Capture", &foo);
 					if ((*threadhandle)->taskHandleMMCS) {
 						// Success! Apply tweakPriority as well...
 						PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
@@ -907,6 +957,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 					else {
 						// Failed! Retry with HIGHEST priority:
 						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+						printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 					}
 				}
 				else {
@@ -927,7 +978,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		case 10: // MMCSS scheduling: Vista, Windows-7 and later only...
 			if (AvrtSupported && (NULL != threadhandle)) {
 				foo = 0;
-				(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Games", &foo);
+				(*threadhandle)->taskHandleMMCS = PsychAvSetMmMaxThreadCharacteristics("Pro Audio", "Capture", &foo);
 				if ((*threadhandle)->taskHandleMMCS) {
 					// Success! Apply tweakPriority as well...
 					PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
@@ -936,6 +987,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 				else {
 					// Failed! Retry with HIGHEST priority:
 					rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
+					printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 				}
 			}
 			else {

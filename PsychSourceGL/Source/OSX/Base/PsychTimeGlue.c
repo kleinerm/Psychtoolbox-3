@@ -316,6 +316,7 @@ int PsychIsCurrentThreadEqualToPsychThread(psych_thread threadhandle)
 }
 
 /* Change priority for thread 'threadhandle', or for the calling thread if 'threadhandle' == NULL.
+ * threadhandle == 0x1 means "Main Psychtoolbox thread" and may incur special treatment.
  * 'basePriority' can be 0 for normal scheduling, 1 for higher priority and 2 for highest priority.
  * 'tweakPriority' modulates more fine-grained within the category given by 'basepriority'. It
  * can be anywhere between 0 and some big value where bigger means more priority.
@@ -329,7 +330,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	struct sched_param sp;
 	pthread_t thread;
 
-	if (NULL != threadhandle) {
+	if ((NULL != threadhandle) && (0x1 != (int) threadhandle)) {
 		// Retrieve thread handle of thread to change:
 		thread = *threadhandle;
 	}
@@ -347,7 +348,8 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 			sp.sched_priority = sp.sched_priority;
 		break;
 		
-		case 1: // High priority / Round robin realtime.
+		case 1:   // High priority / Round robin realtime.
+		case 10:  // Multimedia class scheduling emulation for non-Windows:
 			policy = SCHED_RR;
 			sp.sched_priority = sp.sched_priority + tweakPriority;		
 		break;

@@ -247,7 +247,7 @@ try
     % Query size of screen:
     screenwidth=screensize(3)
     screenheight=screensize(4)
-    
+    screenNumber = 0
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
     w=Screen('OpenWindow',screenNumber, 0,[],32,2, stereo);
@@ -261,7 +261,7 @@ try
     % Switch to realtime-priority to reduce timing jitter and interruptions
     % caused by other applications and the operating system itself:
     Priority(MaxPriority(w));
-
+	
     % Query nominal framerate as returned by Operating system:
     % If OS returns 0, then we assume that we run on a flat-panel with
     % fixed 60 Hz refresh interval.
@@ -292,7 +292,7 @@ try
     % estimated ifi in 'ifi': We require an accuracy of 0.05 ms == 0.00005
     % secs. If this level of accuracy can't be reached, we time out after
     % 20 seconds...
-    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 20);
+    [ ifi nvalid stddev ]= Screen('GetFlipInterval', w, 100, 0.00005, 5);
     fprintf('Measured refresh interval, as reported by "GetFlipInterval" is %2.5f ms. (nsamples = %i, stddev = %2.5f ms)\n', ifi*1000, nvalid, stddev*1000);
     
     % Init data-collection arrays for collection of n samples:
@@ -302,6 +302,7 @@ try
     flipfin=ts;
     td=ts;
     so=ts;
+    tSecondary = ts;
     
     % Compute random load distribution for provided loadjitter value:
     wt=rand(1,n)*(loadjitter*ifi);
@@ -360,6 +361,29 @@ try
         % they just indicate either a slower machine or some types of flat-panels...
         [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
 
+        if IsWin
+			while 1
+				wdminfo = Screen('GetWindowInfo', w, 2);
+				if isstruct(wdminfo)
+					if (i > 1) && (tSecondary(i-1) == wdminfo.OnsetVBLTime)
+						wdminfo.OnsetVBLTime
+						continue;
+					else
+						if (i>1)
+							fprintf('---> tnew - told = %0.10f \n', wdminfo.OnsetVBLTime - tSecondary(i-1));
+						end
+					end
+					tSecondary(i) = wdminfo.OnsetVBLTime;
+					break;
+				else
+					tSecondary(i) = 0;
+					break;
+				end
+			end
+        else
+            tSecondary(i) = 0;            
+        end
+        
         % Record timestamp for later use:
         ts(i) = tvbl;
         
@@ -405,6 +429,10 @@ try
         end;
     end; % Draw next frame...
 
+	if IsWin
+		wdminfo = Screen('GetWindowInfo', w, 2)
+	end
+	
     % Shutdown realtime scheduling:
     finalprio = Priority(0)
 
@@ -461,6 +489,13 @@ try
         plot(td*1000);
         title('Total duration of all drawing commands in milliseconds:');
     end;
+    
+    if IsWin && (tSecondary(1)>0 && tSecondary(2)>0)
+        figure;
+        plot((tSecondary - so) * 1000);
+        title('Time delta in milliseconds between stimulus onset according to DWM and stimulus onset according to Flip:');
+		fprintf('Average discrepancy between DWM and beamposition timestamping is %f msecs, stddev = %f msecs.\n', mean((tSecondary - so) * 1000), std((tSecondary - so) * 1000));
+    end
     
     % Count and output number of missed flip on VBL deadlines:
     numbermisses=0;

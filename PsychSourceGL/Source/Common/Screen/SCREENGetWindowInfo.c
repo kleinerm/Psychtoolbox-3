@@ -273,7 +273,6 @@ PsychError SCREENGetWindowInfo(void)
 			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
 			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) frameId, s);			
 			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);			
-			printf("SUCCESS!!!\n");
 		}
 		else {
 			// Unsupported / Failed:

@@ -221,16 +221,27 @@ void InitCGDisplayIDList(void)
     
     printf("\n"); fflush(NULL);
 
-    // On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
-    // Users are free to override the default. This behaviour will be changed in the future when multi-display support
-    // for DirectDraw has been properly implemented and tested:
-    PsychPrefStateSet_VBLTimestampingMode(-1);
-	printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
-	printf("PTB-INFO: default on MS-Windows multi-display setups. If you want to use them, first run the 'PerceptualVBLSyncTest'\n");
-	printf("PTB-INFO: script to verify they're working correctly on your setup. Then you can add the command:\n");
-	printf("PTB-INFO: Screen('Preference', 'VBLTimestampingMode', 1); at the top of your script to manually enable them.\n");
-	printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
-	printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n\n");
+	if ((numDisplays == 3) && (w1 == w2) && (h1 == h2) && (PsychGetNominalFramerate(1) == PsychGetNominalFramerate(2)) && PsychIsMSVista()) {
+		printf("PTB-INFO: This setup is running on a MS-Vista system or later with two displays of same resolution and refresh rate.\n");
+		printf("PTB-INFO: I believe it is safe under this conditions to keep high-precision timestamping enabled, but you should run the\n");
+		printf("PTB-INFO: 'PerceptualVBLSyncTest' script at least once after any big change in display configuration to verify this.\n\n");
+	}
+	else {
+		// On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
+		// Users are free to override the default. This behaviour will be changed in the future when multi-display support
+		// for DirectDraw has been properly implemented and tested:
+		PsychPrefStateSet_VBLTimestampingMode(-1);
+		printf("PTB-INFO: This setup is either a pre-Vista (Win2k or WinXP) setup, or it has more than two displays connected, or\n");
+		printf("PTB-INFO: it is a dual-display Vista/Windows-7 setup, but display settings for the displays are not identical.\n\n");
+		printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
+		printf("PTB-INFO: default on such MS-Windows multi-display setups. If you want to use them, first run the 'PerceptualVBLSyncTest'\n");
+		printf("PTB-INFO: script to verify they're working correctly on your setup. Then you can add the command:\n");
+		printf("PTB-INFO: Screen('Preference', 'VBLTimestampingMode', 1); at the top of your script to manually enable them.\n");
+		printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
+		printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n");
+		printf("PTB-INFO: Make also sure that the 'primary monitor' in the display settings is set to your main stimulus \n");
+		printf("PTB-INFO: presentation displayfor more reliable timing and generally less problems.\n\n");
+	}
   }
 
   // Ready.

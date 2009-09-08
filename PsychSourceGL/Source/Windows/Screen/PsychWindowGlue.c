@@ -1672,7 +1672,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate)
 {
 	DWM_TIMING_INFO	dwmtiming;	
-	psych_uint64 qpcFrameDisplayed;
+	psych_uint64 qpcFrameDisplayed, qpcFrameComplete;
 	static double qpcfreq = -1;
 	HRESULT rc1 = 0;
 	HRESULT rc2 = 0;
@@ -1718,8 +1718,11 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 		// beamposition query based flip timestamps:
 		qpcFrameDisplayed = (psych_uint64) (dwmtiming.qpcFrameDisplayed - dwmtiming.qpcRefreshPeriod);
 
+		// qpcFrameComplete seems to correspond more closely to our concept of stimulus onset, so use this:
+		qpcFrameComplete = (psych_uint64) dwmtiming.qpcFrameComplete;
+		
 		// Convert to GetSecs() time:
-		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameDisplayed);
+		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameComplete);
 		
 		// Assumed onset VBL count:
 		*onsetVBLCount = (psych_uint64) dwmtiming.cFramesDropped;
@@ -1730,7 +1733,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 		// Current composition rate of the DWM:
 		*compositionRate = (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator;
 
-		if (PsychPrefStateGet_Verbosity() > 15) {
+		if (PsychPrefStateGet_Verbosity() > 5) {
 			printf("PTB-DEBUG: === PsychDwmGetCompositionTimingInfo returned data follows: ===\n\n");
 			printf("qpcFrameDisplayed: %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed));
 			printf("qpcRefreshPeriod : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod));
