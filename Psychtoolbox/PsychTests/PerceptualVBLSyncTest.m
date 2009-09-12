@@ -138,6 +138,11 @@ try
        % Setup slave window:
        Screen('OpenWindow', screen(2), 0, rect2, 32, doublebuffer, stereomode);       
    end
+   
+	if IsWin & 0
+		winfo = Screen('GetWindowInfo', win, 0);
+		Screen('GetWindowInfo', win, 3, winfo.VBLCount + 180, 1);
+	end
 
    flickerRect = InsetRect(winRect, 100, 0);
    color = 0;
@@ -174,7 +179,8 @@ try
       
       if doublebuffer>1
          % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+%         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, 1, multiflip);
       	%beampos=400 + 100 * sin(GetSecs);   
       else
          % Just wait a bit in non-buffered case:

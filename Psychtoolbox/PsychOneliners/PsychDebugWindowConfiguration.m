@@ -14,6 +14,7 @@ function PsychDebugWindowConfiguration(opaqueForHID)
 % disallow mouse clicks and other mouse actions to "get through" to the
 % GUI, ie., it will make the onscreen window opaque to the mouse pointer.
 %
+% A setting of -1 will disable the debug mode again.
 %
 % Stimulus onset timing and timestamping will be inaccurate in this mode
 % and graphics performance will be reduced! Don't use for timing tests or
@@ -47,6 +48,11 @@ if IsOSX | IsWin %#ok<OR2>
         % Set windows to be transparent, also for mouse and keyboard:
         Screen('Preference', 'WindowShieldingLevel', 1250);
     end
+	
+	if opaqueForHID == -1
+        % Set windows to be normal, i.e., completely opaque:
+        Screen('Preference', 'WindowShieldingLevel', 2000);
+	end
 end
 
 return;

@@ -205,7 +205,7 @@ PsychError SCREENGetWindowInfo(void)
     PsychWindowRecordType *windowRecord;
     double beamposition, lastvbl;
 	int infoType = 0, retIntArg;
-	double auxArg1;
+	double auxArg1, auxArg2;
 	CGDirectDisplayID displayId;
 	psych_uint64 postflip_vblcount;
 	double vbl_startline;
@@ -216,7 +216,7 @@ PsychError SCREENGetWindowInfo(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(3));     //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(4));     //The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
     PsychErrorExit(PsychCapNumOutputArgs(1));    //The maximum number of outputs
 
@@ -264,7 +264,8 @@ PsychError SCREENGetWindowInfo(void)
 
 		psych_uint64 onsetVBLCount, frameId;
 		double onsetVBLTime, compositionRate;
-
+		psych_uint64 targetVBL;
+		
 		PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
 		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate)) {
 			// Query success:
@@ -272,7 +273,18 @@ PsychError SCREENGetWindowInfo(void)
 			PsychSetStructArrayDoubleElement("DroppedCount", 0, (double) onsetVBLCount, s);
 			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
 			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) frameId, s);			
-			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);			
+			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);
+			
+			if ( (infoType == 3) && PsychCopyInDoubleArg(3, FALSE, &auxArg1) && PsychCopyInDoubleArg(4, FALSE, &auxArg2)) {
+				if (auxArg1 < 0) auxArg1 = 0;
+				targetVBL = auxArg1;
+				if (PsychOSSetPresentParameters(windowRecord, targetVBL, 8, auxArg2)) {
+					if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to PsychOSSetPresentParameters(%i, %f) SUCCESS!\n", (int) auxArg1, auxArg2);
+				}
+				else {
+					if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to PsychOSSetPresentParameters() failed!\n");
+				}
+			}
 		}
 		else {
 			// Unsupported / Failed:

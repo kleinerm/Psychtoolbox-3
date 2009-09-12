@@ -253,6 +253,23 @@ typedef  struct DWM_TIMING_INFO {
 
 } DWM_TIMING_INFO;
 
+typedef enum _DWM_SOURCE_FRAME_SAMPLING {
+    DWM_SOURCE_FRAME_SAMPLING_POINT = 1,
+    DWM_SOURCE_FRAME_SAMPLING_COVERAGE,
+    DWM_SOURCE_FRAME_SAMPLING_LAST
+} DWM_SOURCE_FRAME_SAMPLING;
+
+typedef struct _DWM_PRESENT_PARAMETERS {
+    UINT32 cbSize;
+    BOOL fQueue;
+    DWM_FRAME_COUNT cRefreshStart;
+    UINT cBuffer;
+    BOOL fUseSourceRate;
+    UNSIGNED_RATIO rateSource;
+    UINT cRefreshesPerFrame;
+    DWM_SOURCE_FRAME_SAMPLING eSampling;
+} DWM_PRESENT_PARAMETERS;
+
 #pragma pack(pop)
 
 // Application instance handle:
@@ -272,16 +289,21 @@ HMODULE dwmlibrary = 0;
 // dwmSupported is true if DWM is supported and library is linked:
 static psych_bool dwmSupported = FALSE;
 
+// Store enabled state of DWM: TRUE == Is enabled, FALSE == Is disabled or non-existent:
+psych_bool IsDWMEnabled = FALSE;
+
 // DWM function definitions and procpointers:
 typedef HRESULT (APIENTRY *DwmIsCompositionEnabledPROC)(BOOL *pfEnabled);
 typedef HRESULT (APIENTRY *DwmEnableCompositionPROC)(UINT enable);
 typedef HRESULT (APIENTRY *DwmEnableMMCSSPROC)(BOOL fEnableMMCSS);
 typedef HRESULT (APIENTRY *DwmGetCompositionTimingInfoPROC)(HWND hwnd, DWM_TIMING_INFO* pTimingInfo);
+typedef HRESULT (APIENTRY *DwmSetPresentParametersPROC)(HWND hwnd, DWM_PRESENT_PARAMETERS *pPresentParams);
 
 DwmIsCompositionEnabledPROC			PsychDwmIsCompositionEnabled = NULL;
 DwmEnableCompositionPROC			PsychDwmEnableComposition = NULL;
 DwmEnableMMCSSPROC					PsychDwmEnableMMCSS = NULL;
 DwmGetCompositionTimingInfoPROC		PsychDwmGetCompositionTimingInfo = NULL;
+DwmSetPresentParametersPROC			PsychDwmSetPresentParameters = NULL;
 
 // Definitions for dynamic binding of VSYNC extension:
 //typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
@@ -586,6 +608,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	// 2000 is the default.
 	windowLevel = PsychPrefStateGet_WindowShieldingLevel();
 
+	#ifndef MATLAB_R11
+		// No op on old R11 builds due to lack of API support.
+		// Shielding levels below 1500 will let mouse event through to underlying windows, i.e.,
+		// the window is non-existent for the mouse:
+		if (windowLevel < 1500) windowExtendedStyle = windowExtendedStyle | WS_EX_TRANSPARENT;
+	#endif
+
 	 // Init to safe default:
     windowRecord->targetSpecific.glusercontextObject = NULL;
     
@@ -616,8 +645,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             PsychDwmEnableComposition    = (DwmEnableCompositionPROC) GetProcAddress(dwmlibrary, "DwmEnableComposition");
             PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");
             PsychDwmGetCompositionTimingInfo = (DwmGetCompositionTimingInfoPROC) GetProcAddress(dwmlibrary, "DwmGetCompositionTimingInfo");
-            
-            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS && PsychDwmGetCompositionTimingInfo) {
+            PsychDwmSetPresentParameters = (DwmSetPresentParametersPROC) GetProcAddress(dwmlibrary, "DwmSetPresentParameters");
+			
+            if (PsychDwmIsCompositionEnabled && PsychDwmEnableComposition && PsychDwmEnableMMCSS && PsychDwmGetCompositionTimingInfo && PsychDwmSetPresentParameters) {
                 // Mark dwm as supported:
                 dwmSupported = TRUE;
 				if (PsychPrefStateGet_Verbosity() > 5) printf(" ...done\n"); 
@@ -636,7 +666,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     
     // Check if this should be a fullscreen window:
     PsychGetScreenRect(screenSettings->screenNumber, screenrect);
-    if (PsychMatchRect(screenrect, windowRecord->rect)) {
+    if (PsychMatchRect(screenrect, windowRecord->rect) && (windowLevel >= 2000)) {
       // This is supposed to be a fullscreen window with the dimensions of
       // the current display/desktop:
       fullscreen = TRUE;
@@ -692,7 +722,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 
 		// Retest state:
         if (PsychDwmIsCompositionEnabled(&compositorPostEnabled)) {
-            // Failed to query state: Assume the worst, i.e., compositor on:
+            // Failed to query state: Assume the best, i.e., compositor on:
             compositorPostEnabled = TRUE;
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to query state of Windows desktop compositor! Assuming it is ON!\n");
@@ -717,8 +747,15 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows desktop compositor to realtime scheduling! Expect timing and performance problems!!\n");
             }
         }
+		
+		// Store state globally:
+		IsDWMEnabled = compositorPostEnabled;
     }
-    
+    else {
+		// Store globally that DWM is unsupported and therefore off on this system:
+		IsDWMEnabled = FALSE;
+	}
+
     // Wanna fullscreen?
     if (fullscreen) {
       // Switch system to fullscreen-mode without changing any settings:
@@ -745,23 +782,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  // Set The Extended Window Style To WS_EX_TOPMOST, ie., this window is in front of all other
 	  // windows all the time, unless windowLevel is smaller than 1000:
 	  if (windowLevel >= 1000) windowExtendedStyle |= WS_EX_TOPMOST;
+	  
 	  // If windowLevel is that of a transparent window, then try to enable support for transparent
 	  // windows:
-      // Could also define _WIN32_WINNT >= 0x0500
-      #ifndef WS_EX_LAYERED
-      #define WS_EX_LAYERED           0x00080000
-      #endif
-      #ifndef LWA_ALPHA
-      #define LWA_ALPHA               2
-      #endif
+	  // Could also define _WIN32_WINNT >= 0x0500
+	  #ifndef WS_EX_LAYERED
+	  #define WS_EX_LAYERED           0x00080000
+	  #endif
+	  #ifndef LWA_ALPHA
+	  #define LWA_ALPHA               2
+	  #endif
 	  if ((windowLevel >= 1000) && (windowLevel <  2000)) windowExtendedStyle |= WS_EX_LAYERED;
-	  
+
 	  // Copy absolute screen location and area of window to 'globalrect',
 	  // so functions like Screen('GlobalRect') can still query the real
 	  // bounding gox of a window onscreen:
 	  PsychCopyRect(windowRecord->globalrect, windowRecord->rect);	  
     }
-	
+
     // Define final position and size of window:
     x=windowRecord->rect[kPsychLeft];
     y=windowRecord->rect[kPsychTop];
@@ -1613,17 +1651,15 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
 	
-	if ( dwmSupported && (NULL != PsychDwmGetCompositionTimingInfo) && (
+	if ( IsDWMEnabled && (NULL != PsychDwmGetCompositionTimingInfo) && (
 		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
 		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
 		)) {
 		// Yes. Supported, enabled, and we got timing info from it. Extract:
 		
 		// VBLCount of last VBL:
-		*vblCount = (psych_uint64) dwmtiming.cDXRefresh;
-
-		// cRefresh is a running count of redraw cyles, i.e., refresh cycles of
-		// the DWM itself, not the display!
+		// *vblCount = (psych_uint64) dwmtiming.cDXRefresh;
+		*vblCount = (psych_uint64) dwmtiming.cRefresh;
 		
 		// VBLTime of last VBL in QPC, ie., as query performance counter 64-bit psych_uint64 value:
 		ust = (psych_uint64) dwmtiming.qpcVBlank;
@@ -1636,7 +1672,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		return(PsychMapPrecisionTimerTicksToSeconds(ust));
 	}
 	else {
-		 if (dwmSupported && PsychPrefStateGet_Verbosity()>6) {
+		 if (IsDWMEnabled && PsychPrefStateGet_Verbosity()>6) {
 			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc1, rc2, GetLastError());
 		}
 	}
@@ -1675,11 +1711,10 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 	psych_uint64 qpcFrameDisplayed, qpcFrameComplete;
 	static double qpcfreq = -1;
 	HRESULT rc1 = 0;
-	HRESULT rc2 = 0;
 
 	// First time call?
 	if (qpcfreq == -1) {
-		// Query and assign QPC frequency:
+		// Query and assign QPC frequency: This just to make sure that our QPC timebase is working correctly:
 		qpcfreq = PsychGetKernelTimebaseFrequencyHz();
 
 		if (PsychPrefStateGet_Verbosity() > 15) {
@@ -1702,59 +1737,93 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
+	if ( IsDWMEnabled && ((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ) {
+		// Yes. Supported, enabled, and we got valid timing info from it. Extract:
 
-	if (PsychPrefStateGet_Verbosity() > 15) printf("dwmSupported = %i cbSize = %i!\n", dwmSupported, (int) sizeof(dwmtiming));
-	
-	if ( dwmSupported && (
-		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
-		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
-		)) {
-		// Yes. Supported, enabled, and we got timing info from it. Extract:
-		
-		// QPC timestamp of last presented/composited frame, minus the refresh interval duration as
-		// measured by the DWM. Working assumption: qpcFrameDisplayed tells about the *end* of the video
-		// refresh cycle when the frame was displayed the first time, so if we subtract the refresh duration
-		// we'll get the beginning of that refresh cycle, i.e., a value as close as possible to our regular
-		// beamposition query based flip timestamps:
-		qpcFrameDisplayed = (psych_uint64) (dwmtiming.qpcFrameDisplayed - dwmtiming.qpcRefreshPeriod);
-
-		// qpcFrameComplete seems to correspond more closely to our concept of stimulus onset, so use this:
+		// qpcFrameComplete seems to correspond almost perfectly to our concept of stimulus onset time, so use this:
 		qpcFrameComplete = (psych_uint64) dwmtiming.qpcFrameComplete;
 		
 		// Convert to GetSecs() time:
 		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameComplete);
 		
-		// Assumed onset VBL count:
-		*onsetVBLCount = (psych_uint64) dwmtiming.cFramesDropped;
+		// VBL count of stimulus onset:
+		*onsetVBLCount = (psych_uint64) dwmtiming.cRefreshFrameDisplayed;
 		
-		// Assumed frame id:
-		*frameId = (psych_uint64) dwmtiming.cFramesLate;
+		// Assumed frame id: Basically a flip count - Very first bufferswap is id 0, and so on -- A unique
+		// serial number for each Screen('Flip') request: This is the id of the most recently completed flip:
+		*frameId = (psych_uint64) dwmtiming.cFrameComplete;
 
-		// Current composition rate of the DWM:
+		// Current composition rate of the DWM: Ideally at least our video refresh rate.
 		*compositionRate = (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator;
 
-		if (PsychPrefStateGet_Verbosity() > 5) {
+		if (PsychPrefStateGet_Verbosity() > 6) {
 			printf("PTB-DEBUG: === PsychDwmGetCompositionTimingInfo returned data follows: ===\n\n");
-			printf("qpcFrameDisplayed: %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed));
-			printf("qpcRefreshPeriod : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod));
-			printf("qpcFrameComplete : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete));
-			printf("cFramesLate      : %i \n", (psych_uint64) dwmtiming.cFramesLate);
-			printf("cFramesDropped   : %i \n", (psych_uint64) dwmtiming.cFramesDropped);
-			printf("cFramesMissed    : %i \n", (psych_uint64) dwmtiming.cFramesMissed);
-			printf("cBuffersEmpty    : %i \n", (psych_uint64) dwmtiming.cBuffersEmpty);
+			printf("qpcFrameDisplayed       : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed));
+			printf("qpcRefreshPeriod        : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod));
+			printf("qpcFrameComplete        : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete));
+			printf("cFrameComplete          : %i \n", (psych_uint64) dwmtiming.cFrameComplete);
+			printf("cFramePending           : %i \n", (psych_uint64) dwmtiming.cFramePending);
+			printf("qpcFramePending         : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFramePending));
+			printf("cRefreshFrameDisplayed  : %i \n", (psych_uint64) dwmtiming.cRefreshFrameDisplayed);
+			printf("cRefreshStarted         : %i \n", (psych_uint64) dwmtiming.cRefreshStarted);
+			printf("cFramesLate             : %i \n", (psych_uint64) dwmtiming.cFramesLate);
+			printf("cFramesDropped          : %i \n", (psych_uint64) dwmtiming.cFramesDropped);
+			printf("cFramesMissed           : %i \n", (psych_uint64) dwmtiming.cFramesMissed);
+			printf("cBuffersEmpty           : %i \n", (psych_uint64) dwmtiming.cBuffersEmpty);
 			
 			printf("PTB-DEBUG: === End of PsychDwmGetCompositionTimingInfo returned data.  ===\n\n");
 		}
 		
+		// Return success:
 		return(TRUE);
 	}
 	else {
-		if (dwmSupported && PsychPrefStateGet_Verbosity() > 6) {
-			printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", rc1, rc2, GetLastError());			
+		if (IsDWMEnabled && PsychPrefStateGet_Verbosity() > 6) {
+			printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, GetLastError() = %i\n", rc1, GetLastError());			
 		}
 	}
+
+	// DWM Unsupported, DWM disabled or query failed:
+	return(FALSE);
+}
+
+/* PsychOSIsDWMEnabled()
+ *
+ * Return current Desktop Window Manager (DWM) status. Zero for disabled, Non-Zero for enabled.
+ */
+int	PsychOSIsDWMEnabled(void)
+{
+	return(IsDWMEnabled);
+}
+
+psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psych_uint64 targetVBL, unsigned int queueLength, double rateDuration)
+{
+	int rc;
+	DWM_PRESENT_PARAMETERS dwmPresentParams;
+	UNSIGNED_RATIO rateSource;
 	
-	// Unsupported, disabled or failed:
+	// Map positive rateDuration to some refresh rate:
+	if (rateDuration >= 0) {
+		rateSource.uiNumerator = (int) rateDuration;
+	}
+	else {
+		rateSource.uiNumerator = 0;
+	}
+	rateSource.uiDenominator = 1;
+	
+	dwmPresentParams.cbSize = sizeof(dwmPresentParams);
+	dwmPresentParams.fQueue = (targetVBL > 0) ? TRUE : FALSE;
+	dwmPresentParams.cRefreshStart = targetVBL;
+	dwmPresentParams.cBuffer = queueLength;
+	dwmPresentParams.fUseSourceRate = (rateDuration >= 0) ? TRUE : FALSE;
+	dwmPresentParams.rateSource = rateSource;
+	dwmPresentParams.cRefreshesPerFrame = (int) (rateDuration < 0) ? -rateDuration : 0;
+	dwmPresentParams.eSampling = DWM_SOURCE_FRAME_SAMPLING_POINT;
+	
+	// Call function if DWM is supported and enabled:
+	if (PsychOSIsDWMEnabled() && ((rc = PsychDwmSetPresentParameters(windowRecord->targetSpecific.windowHandle, &dwmPresentParams)) == 0)) return(TRUE);
+	
+	// DWM unsupported, disabled, or call failed:
 	return(FALSE);
 }
 

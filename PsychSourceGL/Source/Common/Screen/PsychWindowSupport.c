@@ -828,6 +828,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
 	else {
 	  // Compute ifi from beampos:
 	  ifi_beamestimate = tsum / tcount;
+	  
+	  if ((vbl_startline >= VBL_Endline) && (PsychPrefStateGet_Verbosity() > 2)) {
+		printf("PTB-INFO: The detected endline of the vertical blank interval is equal or lower than the startline. This indicates\n");
+		printf("PTB-INFO: that i couldn't detect the duration of the vertical blank interval and won't be able to correct timestamps\n");
+		printf("PTB-INFO: for it. This will introduce a very small and constant offset (typically << 1 msec). Read 'help BeampositionQueries'\n");
+		printf("PTB-INFO: for how to correct this, should you really require that last few microseconds of precision.\n");
+	  }
 	}
       }
       else {
@@ -893,15 +900,26 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
       ifi_beamestimate = 0;
     }
 
-	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
+	// Windows Vista / Windows-7 / any later Windows system with Aero desktop compositor support enabled?
+	// High precision timestamp enabled?
+	if (PsychOSIsDWMEnabled() && (PsychPrefStateGet_VBLTimestampingMode() >= 0)) {
+		// Yes, the DWM is active. Beamposition based timestamping is not reliable on a DWM composited desktop,
+		// but DWM timestamps are (hopefully!). Switch to timestamping mode 3, i.e., use DWM timestamp queries.
+		if(PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Timestamping mode was set to %i, but Windows DWM is active. Overriding timestamping mode to new setting 3, aka use DWM timestamping.\n", PsychPrefStateGet_VBLTimestampingMode());
 
+		// Switch to "DWM timestamping or nothing":
+		PsychPrefStateSet_VBLTimestampingMode(3);
+	}
+
+	if(PsychPrefStateGet_Verbosity()>2) printf("\n\nPTB-INFO: OpenGL-Renderer is %s :: %s :: %s\n", glGetString(GL_VENDOR), glGetString(GL_RENDERER), glGetString(GL_VERSION));
     if(PsychPrefStateGet_Verbosity()>2) {
       if (VRAMTotal>0) printf("PTB-INFO: Renderer has %li MB of VRAM and a maximum %li MB of texture memory.\n", VRAMTotal / 1024 / 1024, TexmemTotal / 1024 / 1024);
       printf("PTB-INFO: VBL startline = %i , VBL Endline = %i\n", (int) vbl_startline, VBL_Endline);
       if (ifi_beamestimate>0) {
           printf("PTB-INFO: Measured monitor refresh interval from beamposition = %f ms [%f Hz].\n", ifi_beamestimate * 1000, 1/ifi_beamestimate);
-          if (PsychPrefStateGet_VBLTimestampingMode()==3 && PSYCH_SYSTEM == PSYCH_OSX) {
-              printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
+          if (PsychPrefStateGet_VBLTimestampingMode()==3 && (PSYCH_SYSTEM == PSYCH_OSX || PsychOSIsDWMEnabled())) {
+              if (PSYCH_SYSTEM == PSYCH_OSX) printf("PTB-INFO: Will try to use kernel-level interrupts for accurate Flip time stamping.\n");
+			  if (PsychOSIsDWMEnabled()) printf("PTB-INFO: Will use Windows Vista DWM compositor timestamps for accurate Flip time stamping.\n");
           }
           else {
               if (PsychPrefStateGet_VBLTimestampingMode()>=0) printf("PTB-INFO: Will use beamposition query for accurate Flip time stamping.\n");
@@ -909,8 +927,9 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
           }
       }
       else {
-          if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && PSYCH_SYSTEM == PSYCH_OSX) {
-              printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
+          if ((PsychPrefStateGet_VBLTimestampingMode()==1 || PsychPrefStateGet_VBLTimestampingMode()==3) && (PSYCH_SYSTEM == PSYCH_OSX || PsychOSIsDWMEnabled())) {
+              if (PSYCH_SYSTEM == PSYCH_OSX) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use kernel-level vbl interrupts as fallback.\n");
+			  if (PsychOSIsDWMEnabled()) printf("PTB-INFO: Beamposition queries unsupported on this system. Will try to use Windows Vista DWM compositor timestamps as fallback.\n");
           }
           else {
               printf("PTB-INFO: Beamposition queries unsupported or defective on this system. Using basic timestamping as fallback: Timestamps returned by Screen('Flip') will be less robust and accurate.\n");
@@ -1927,6 +1946,11 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	int line_pre_swaprequest = -1;			// Scanline of display immediately before swaprequest.
 	int line_post_swaprequest = -1;			// Scanline of display immediately after swaprequest.
 	int min_line_allowed = 20;				// The scanline up to which "out of VBL" swaps are accepted: A fudge factor for broken drivers...
+	psych_uint64 dwmPreOnsetVBLCount, preFlipFrameId; 
+	psych_uint64 dwmPostOnsetVBLCount, postFlipFrameId; 
+	double dwmPreOnsetVBLTime, dwmOnsetVBLTime;
+	double dwmCompositionRate = 0;
+	int	   dwmrc;
 	psych_bool flipcondition_satisfied;	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
@@ -2139,6 +2163,22 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		// If in wrong video cycle, we simply sleep a millisecond, then retry...
 		if (!flipcondition_satisfied) PsychWaitIntervalSeconds(0.001);
 	} while (!flipcondition_satisfied);
+
+	// Reset to "undefined":
+	preFlipFrameId = -1;
+	dwmCompositionRate = 0;
+	
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		// Vista or later? DWM supported and enabled?		
+		if (PsychIsMSVista() && PsychOSGetPresentationTimingInfo(windowRecord, FALSE, 0, &dwmPreOnsetVBLCount, &dwmPreOnsetVBLTime, &preFlipFrameId, &dwmCompositionRate)) {
+			// Ok, now we've got the preflip state:
+			if (verbosity > 5) printf("PTB-DEBUG: Preflip DWM Timing: VBLCount = %i  : PreOnsetTime = %15.6f : PreFlipFrameId = %i : CompositionRate = %f Hz.\n", (int) dwmPreOnsetVBLCount, dwmPreOnsetVBLTime, (int) preFlipFrameId, dwmCompositionRate);
+		}
+		else {
+			preFlipFrameId = -1;
+			dwmCompositionRate = 0;
+		}
+	#endif
     
 	// Take a measurement of the beamposition at time of swap request:
 	line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
@@ -2242,26 +2282,56 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         // Run kernel-level timestamping always in mode > 1 or on demand in mode 1 if beampos.
         // queries don't work properly:
         if (vbltimestampmode > 1 || (vbltimestampmode == 1 && windowRecord->VBL_Endline == -1)) {
-            // OS-X only: Low level query to the driver: We need to yield the cpu for a couple of
-            // microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
-            // in IOKits workloop can do its job. But first let's try to do it without yielding...
-			vbltimestampquery_retrycount = 0;
-			PsychWaitIntervalSeconds(0.00025);
-			postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
-
-			// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
-			// happen inside a VBL interval (in which case this would be a legal condition), we retry the
-			// query up to 8 times, each time sleeping for 0.25 msecs, for a total retry time of 2 msecs.
-			// The sleeping is meant to release the processor to other system tasks which may be crucial for
-			// correct timestamping, but preempted by our Matlab thread in realtime mode. If we don't succeed
-			// in 2 msecs then something's pretty screwed and we should just give up.
-            while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
-                PsychWaitIntervalSeconds(0.00025);
-                postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
-				vbltimestampquery_retrycount++;
-			}			
+			
+			// Preinit to no DWM timestamps:
+			dwmrc = FALSE;
+			
+			// On MS-Windows Vista / Windows-7 systems with DWM support, we try to get a
+			// onset timestamp from the DWM: TODO: Make this more general / OS independent.
+			#if PSYCH_SYSTEM == PSYCH_WINDOWS
+				// Vista or later? DWM supported and enabled?		
+				if (PsychIsMSVista() && (dwmCompositionRate > 0) && (preFlipFrameId != -1)) {
+					// DWM available and enabled, preflip query worked. Perform repeated queries until we get
+					// valid results (i.e., different from the preflip query), or an error happens:
+					while (((dwmrc = PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &dwmPostOnsetVBLCount, &dwmOnsetVBLTime, &postFlipFrameId, &dwmCompositionRate)) == TRUE) && (preFlipFrameId == postFlipFrameId)) {
+						// Query successfull, but still returns same ol' values. Need to repeat query.
+						// But first we yield a bit of cpu time to the system by taking a nap:
+						if (verbosity > 10) printf("PTB-DEBUG: Not yet finished, napping... : PostFlip DWM Timing: VBLCount = %i  : PostOnsetTime = %15.6f : PostFlipFrameId = %i : CompositionRate = %f Hz.\n", (int) dwmPostOnsetVBLCount, dwmOnsetVBLTime, (int) postFlipFrameId, dwmCompositionRate);
+						PsychYieldIntervalSeconds(0);
+					}
+				}
+			#endif
+			
+			// No DWM timestamps?
+			if (!dwmrc) {
+				// Some systems (e.g., OS/X) only: Low level query to the driver: We need to yield the cpu for a couple of
+				// microseconds, let's say 250 microsecs. for now, so the low-level vbl interrupt task
+				// in IOKits workloop can do its job. But first let's try to do it without yielding...
+				vbltimestampquery_retrycount = 0;
+				PsychWaitIntervalSeconds(0.00025);
+				postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
+				
+				// If a valid preflip timestamp equals the postflip timestamp although the swaprequest likely didn't
+				// happen inside a VBL interval (in which case this would be a legal condition), we retry the
+				// query up to 8 times, each time sleeping for 0.25 msecs, for a total retry time of 2 msecs.
+				// The sleeping is meant to release the processor to other system tasks which may be crucial for
+				// correct timestamping, but preempted by our Matlab thread in realtime mode. If we don't succeed
+				// in 2 msecs then something's pretty screwed and we should just give up.
+				while ((preflip_vbltimestamp > 0) && (preflip_vbltimestamp == postflip_vbltimestamp) && (vbltimestampquery_retrycount < 8) && (time_at_swaprequest - preflip_vbltimestamp > 0.001)) {
+					PsychWaitIntervalSeconds(0.00025);
+					postflip_vbltimestamp = PsychOSGetVBLTimeAndCount(windowRecord, &postflip_vblcount);
+					vbltimestampquery_retrycount++;
+				}		
+			}
+			else {
+				// Have DWM timestamps: Assign 'em:
+				vbltimestampquery_retrycount = 0;
+				postflip_vbltimestamp = dwmOnsetVBLTime;
+				postflip_vblcount = dwmPostOnsetVBLCount;
+				if (verbosity > 5) printf("PTB-DEBUG: Will use timestamps from DWM: VBLCount = %i  : PostOnsetTime = %15.6f : PostFlipFrameId = %i : CompositionRate = %f Hz.\n", (int) dwmPostOnsetVBLCount, dwmOnsetVBLTime, (int) postFlipFrameId, dwmCompositionRate);
+			}
         }
-        
+		
         // Calculate estimate of real time of VBL, based on our post glFinish() timestamp, post glFinish() beam-
         // position and the roughly known height of image and duration of IFI. The corrected time_at_vbl
         // contains time at start of VBL. This value is crucial for control stimulus presentation timing.
@@ -3121,7 +3191,15 @@ void PsychPreFlipOperations(PsychWindowRecordType *windowRecord, int clearmode)
     
     // We stop processing here if window is a texture, aka offscreen window...
     if (windowRecord->windowType==kPsychTexture) return;
-    
+
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
+		// make MS-Windows GUI event processing happy. Not strictly related to preflip operations, but couldn't
+		// think of a better place to guarantee periodic execution of this function without screwing too much with
+		// timing:
+		PsychGetMouseButtonState(NULL);
+	#endif
+	
 	// Disable any shaders:
 	PsychSetShader(windowRecord, 0);
 	

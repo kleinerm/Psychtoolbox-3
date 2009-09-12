@@ -229,8 +229,10 @@ void InitCGDisplayIDList(void)
 	else {
 		// On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
 		// Users are free to override the default. This behaviour will be changed in the future when multi-display support
-		// for DirectDraw has been properly implemented and tested:
-		PsychPrefStateSet_VBLTimestampingMode(-1);
+		// for DirectDraw has been properly implemented and tested. We allow to use a fallback implementation though, if one
+		// is available: Mode 3 means "use whatever's available except the beamposition query mechanism". on Vista et al. with
+		// DWM enabled, this would enable DWM timestamping:
+		PsychPrefStateSet_VBLTimestampingMode(3);
 		printf("PTB-INFO: This setup is either a pre-Vista (Win2k or WinXP) setup, or it has more than two displays connected, or\n");
 		printf("PTB-INFO: it is a dual-display Vista/Windows-7 setup, but display settings for the displays are not identical.\n\n");
 		printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
@@ -240,7 +242,9 @@ void InitCGDisplayIDList(void)
 		printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
 		printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n");
 		printf("PTB-INFO: Make also sure that the 'primary monitor' in the display settings is set to your main stimulus \n");
-		printf("PTB-INFO: presentation displayfor more reliable timing and generally less problems.\n\n");
+		printf("PTB-INFO: presentation displayfor more reliable timing and generally less problems.\n");
+		printf("PTB-INFO: If an alternative mechanism for high-precision timestamping is available on your system, it will be used.\n");
+		printf("PTB-INFO: Vista and later Windows systems provide precise DWM timestamping under certain circumstances.\n\n");
 	}
   }
 

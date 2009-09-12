@@ -55,6 +55,8 @@ void	PsychOSSetUserGLContext(PsychWindowRecordType *windowRecord, psych_bool cop
 double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount);
 void    PsychGetMouseButtonState(double* buttonArray);
 psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate);
+psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psych_uint64 targetVBL, unsigned int queueLength, double rateDuration);
+int		PsychOSIsDWMEnabled(void);
 
 //end include once
 #endif

@@ -58,13 +58,7 @@ end
 
 driftsync = driftsync * 2;
 
-% On OS/X we can also test the VBL Interrupt based method, on Windows this
-% doesn't exist:
-if IsOSX
-    testvblirqs = 1;
-else
-    testvblirqs = 0;
-end
+testvblirqs = 1;
 
 % Open windows:
 w(1) = Screen('OpenWindow', screenids(1), 0, []);
