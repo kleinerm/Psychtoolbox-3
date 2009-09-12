@@ -3574,7 +3574,7 @@ PsychError PSYCHPORTAUDIOGetDevices(void)
 		filteredcount = count;
 		if (devicetype!=-1) {
 			filteredcount = 0;
-			// Filtering bz host API requested: Do it.
+			// Filtering by host API requested: Do it.
 			for (i=0; i<count; i++) {
 				padev = Pa_GetDeviceInfo((PaDeviceIndex) i);
 				hainfo = Pa_GetHostApiInfo(padev->hostApi);
@@ -4257,6 +4257,7 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 	int pahandle = -1;
 	int enable, inputChannel, outputChannel, rc;
 	double gain, stereoPan;
+	PaDeviceInfo* padev = NULL;
 
 	// Setup online help: 
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -4279,7 +4280,9 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 
 	// Copy in optional inputChannel id:
 	if (PsychCopyInIntegerArg(3, kPsychArgOptional, &inputChannel)) {
-		if (inputChannel < -1 || inputChannel >= (int) audiodevices[pahandle].inchannels) PsychErrorExitMsg(PsychError_user, "Invalid inputChannel provided. No such input channel available on device!");		
+		// Find out how many real input channels the device has and check provided index against them:
+		padev = Pa_GetDeviceInfo((PaDeviceIndex) audiodevices[pahandle].indeviceidx);
+		if (inputChannel < -1 || inputChannel >= (int) padev->maxInputChannels) PsychErrorExitMsg(PsychError_user, "Invalid inputChannel provided. No such input channel available on device!");		
 	}
 	else {
 		inputChannel = -1;
@@ -4287,7 +4290,9 @@ PsychError PSYCHPORTAUDIODirectInputMonitoring(void)
 
 	// Copy in optional outputChannel id:
 	if (PsychCopyInIntegerArg(4, kPsychArgOptional, &outputChannel)) {
-		if (outputChannel < 0 || outputChannel >= (int) audiodevices[pahandle].outchannels) PsychErrorExitMsg(PsychError_user, "Invalid outputChannel provided. No such outputChannel channel available on device!");		
+		// Find out how many real output channels the device has and check provided index against them:
+		padev = Pa_GetDeviceInfo((PaDeviceIndex) audiodevices[pahandle].outdeviceidx);
+		if (outputChannel < 0 || outputChannel >= (int) padev->maxOutputChannels) PsychErrorExitMsg(PsychError_user, "Invalid outputChannel provided. No such outputChannel channel available on device!");		
 	}
 	else {
 		outputChannel = 0;

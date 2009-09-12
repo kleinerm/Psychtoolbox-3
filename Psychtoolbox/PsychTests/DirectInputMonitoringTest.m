@@ -12,11 +12,15 @@ function DirectInputMonitoringTest
 % Use ESCape to exit. Space to toggle mute/unmute. 'i' key to change input
 % channel to monitor, 'o' key to select output channel for monitoring. Use
 % Cursor Up/Down to increase and decrease amplifier gain. Use Left/Right
-% cursor keys to change stereo panning.
+% cursor keys to change stereo panning. The 'p' key puts the device into a
+% fake playback mode.
 %
 
 % History:
 % 2.8.2009  mk  Written.
+
+% Preinit driver:
+InitializePsychSound(1);
 
 % Open auto-detected audio device in full-duplex mode for audio capture &
 % playback, with lowlatency mode 1. Lowlatency mode is not strictly
@@ -26,12 +30,19 @@ function DirectInputMonitoringTest
 % monitoring to work:
 pa = PsychPortAudio('Open', [], 1+2, 1, 44100, 2);
 
+% Create a fake playback buffer and recording buffer, in case we need to do
+% fake playback/recording:
+PsychPortAudio('Fillbuffer', pa, zeros(2, 10));
+PsychPortAudio('GetAudioData', pa, 1);
+
 % Retrieve number of input- and output soundchannels for device pa:
 status = PsychPortAudio('GetStatus', pa);
 outdev = PsychPortAudio('GetDevices', [], status.OutDeviceIndex);
 noutputs = outdev.NrOutputChannels;
 inpdev = PsychPortAudio('GetDevices', [], status.InDeviceIndex);
 ninputs = inpdev.NrInputChannels;
+
+fprintf('\n\nDevice has %i input channels and %i output channels.\n\n', ninputs, noutputs);
 
 % Select all inputchannels (-1) for monitoring. Could also spec a specific
 % channel number >=0 to set monitoring settings on a per-channel basis:
@@ -56,6 +67,7 @@ uKey = KbName('UpArrow');
 dKey = KbName('DownArrow');
 oKey = KbName('o');
 iKey = KbName('i');
+pKey = KbName('p');
 space = KbName('space');
 esc = KbName('ESCAPE');
 
@@ -81,6 +93,16 @@ while diResult == 0
     if keyCode(esc)
         % Exit:
         break;
+    end
+
+    if keyCode(pKey)
+        % Trigger fake playback & recording, in case this is needed:
+        fprintf('\n\n == Fake playback & recording started: == \n\n');
+        PsychPortAudio('Start', pa, 0, 0, 1);
+        KbReleaseWait;
+
+        % Disable pKey for further iterations:
+        pKey = 1;
     end
     
     if keyCode(space)
