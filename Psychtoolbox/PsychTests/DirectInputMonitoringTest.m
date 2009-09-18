@@ -28,7 +28,7 @@ InitializePsychSound(1);
 % latency audio device, which is an installed ASIO card on Windows or the
 % ALSA audio system on Linux -- both are required for direct input
 % monitoring to work:
-pa = PsychPortAudio('Open', [], 1+2, 1, 44100, 2);
+pa = PsychPortAudio('Open', [], 1+2, 1, 48000, 2);
 
 % Create a fake playback buffer and recording buffer, in case we need to do
 % fake playback/recording:

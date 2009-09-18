@@ -1,4 +1,4 @@
-function PsychCV(varargin)
+function varargout = PsychCV(varargin)
 % PsychCV is a MEX file for computer-vision applications. PsychCV has
 % many functions; type "PsychCV" for a list:
 % 	PsychCV

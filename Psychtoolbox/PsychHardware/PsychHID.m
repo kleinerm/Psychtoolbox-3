@@ -1,4 +1,4 @@
-function PsychHID(varargin) 
+function varargout = PsychHID(varargin) 
 % 
 % returnValues=PsychHID(subcommand, arg1 [,arg2] ...)
 %  

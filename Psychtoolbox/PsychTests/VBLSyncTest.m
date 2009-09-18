@@ -455,7 +455,7 @@ try
     if (numifis==0)
         ni=1;
     end;
-    plot(ones(1,n)*ifi*ni*1000, 'g');
+    plot(ones(1,n)*ifi*ni*1000);
     title('Delta between successive Flips in milliseconds:');
     hold off
     
@@ -469,7 +469,7 @@ try
     figure
     hold on
     plot(missest*1000);
-    plot(zeros(1,n), 'g');
+    plot(zeros(1,n));
     title('Estimate of missed deadlines in milliseconds (negative == no miss):');
     hold off
     
