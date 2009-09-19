@@ -270,9 +270,9 @@ PsychError SCREENGetWindowInfo(void)
 		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate)) {
 			// Query success:
 			PsychAllocOutStructArray(1, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
-			PsychSetStructArrayDoubleElement("DroppedCount", 0, (double) onsetVBLCount, s);
+			PsychSetStructArrayDoubleElement("DroppedCount", 0, (double) (psych_int64) onsetVBLCount, s);
 			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
-			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) frameId, s);			
+			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) (psych_int64) frameId, s);			
 			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);
 			
 			if ( (infoType == 3) && PsychCopyInDoubleArg(3, FALSE, &auxArg1) && PsychCopyInDoubleArg(4, FALSE, &auxArg2)) {
@@ -347,7 +347,7 @@ PsychError SCREENGetWindowInfo(void)
 		// vbl timestamp of last flip -- better than nothing...
 		if (lastvbl < 0) lastvbl = windowRecord->time_at_last_vbl;
 		PsychSetStructArrayDoubleElement("LastVBLTime", 0, lastvbl, s);
-		PsychSetStructArrayDoubleElement("VBLCount", 0, (double) postflip_vblcount, s);
+		PsychSetStructArrayDoubleElement("VBLCount", 0, (double) (psych_int64) postflip_vblcount, s);
         
 		// Misc. window parameters:
 		PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);

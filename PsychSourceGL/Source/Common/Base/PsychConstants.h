@@ -134,6 +134,7 @@ typedef unsigned char		psych_bool;
 
 //abstract up simple data types. 
 #if PSYCH_SYSTEM == PSYCH_LINUX
+        typedef long long						psych_int64;
         typedef unsigned long long              psych_uint64;
         typedef unsigned int                    psych_uint32;
         typedef unsigned char                   psych_uint8;
@@ -163,6 +164,7 @@ typedef unsigned char		psych_bool;
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
+        typedef LONGLONG						psych_int64;
         typedef ULONGLONG                       psych_uint64;
         typedef DWORD                           psych_uint32;
         typedef BYTE                            psych_uint8;
@@ -221,6 +223,7 @@ typedef unsigned char		psych_bool;
 		typedef UInt16				psych_uint16;
         typedef UInt32				psych_uint32;
         typedef unsigned long long	psych_uint64;
+        typedef long long			psych_int64;
 
 		// Datatype for condition variables:
 		typedef pthread_cond_t		psych_condition;

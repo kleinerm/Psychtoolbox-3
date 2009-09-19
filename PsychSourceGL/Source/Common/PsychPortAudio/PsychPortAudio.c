@@ -750,7 +750,7 @@ static int paCallback( const void *inputBuffer, void *outputBuffer,
 		double  tickssec;
 		PsychGetPrecisionTimerTicksPerSecond(&tickssec);
 		PsychGetPrecisionTimerTicks(&ticks);
-		printf("AudioHostClock: %lf   vs. System clock: %lf\n", ((double) ticks) / tickssec, now); 
+		printf("AudioHostClock: %lf   vs. System clock: %lf\n", ((double) (psych_int64) ticks) / tickssec, now); 
 	}
 	
 	// End of timestamp computation:

@@ -199,7 +199,7 @@ void PsychYieldIntervalSeconds(double delaySecs)
 
 double	PsychGetKernelTimebaseFrequencyHz(void)
 {
-  return((double) kernelTimebaseFrequencyHz);
+  return((double) (psych_int64) kernelTimebaseFrequencyHz);
 }
 
 /* Returns TRUE on MS-Vista and later, FALSE otherwise: */
@@ -349,7 +349,7 @@ void PsychGetPrecisionTimerTicksPerSecond(double *frequency)
 double PsychMapPrecisionTimerTicksToSeconds(psych_uint64 ticks)
 {
 	if (!Timertrouble) {
-		return((double) ticks / (double) kernelTimebaseFrequencyHz);
+		return((double) (psych_int64) ticks / (double) (psych_int64) kernelTimebaseFrequencyHz);
 	}
 	else {
 		return(-1);
@@ -511,7 +511,7 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	EnterCriticalSection(&time_lock);
 
 	// Convert to ticks in seconds for further processing:
-	ticks = ((double) curRawticks) * 0.001;
+	ticks = ((double) (psych_int64) curRawticks) * 0.001;
 	tickInSecsAtLastQuery = ticks;
 	
 	

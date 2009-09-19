@@ -232,7 +232,7 @@ PsychError SCREENPreference(void)
 		if(PsychMatch(preferenceName, "Process")){
 			if(numInputArgs==2)
 				PsychErrorExit(PsychError_extraInputArg);
-			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double)getpid());
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, (double) (psych_int64) getpid());
 			preferenceNameArgumentValid=TRUE;
 
 

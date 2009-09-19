@@ -179,8 +179,8 @@ try
       
       if doublebuffer>1
          % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-%         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
-         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, 1, multiflip);
+         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+%         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, 1, multiflip);
       	%beampos=400 + 100 * sin(GetSecs);   
       else
          % Just wait a bit in non-buffered case:
