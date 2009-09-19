@@ -3003,10 +3003,58 @@ extern "C"
 */
 PaError DirectInputMonitoring(PaStream *s, int enable, int inputChannel, int outputChannel, double gain, double pan)
 {
-	ASIOError err;
-	ASIOInputMonitor monitor;
+	ASIOError			err;
+	ASIOInputMonitor	monitor;
+	ASIOChannelInfo		channelInfo;
+	long				i, numInputChannels, numOutputChannels;
+	static int			firstTime = 1;
 
+	// Get stream pointer:
     PaAsioStream *stream = (PaAsioStream*) s;
+
+	// On first invocation, enumerate all audio input & output channels:
+	if (firstTime) {
+		// Don't reenumerate at next invocation:
+		firstTime = 0;
+
+		// Retrieve count of available channels:
+		numInputChannels = 0;
+		numOutputChannels = 0;
+		ASIOGetChannels(&numInputChannels, &numOutputChannels);
+		
+		// Iterate through all input channels:
+		PA_DEBUG(("DirectInputMonitoring: Enumerating all %3i input channels:\n", (int) numInputChannels));
+		PA_DEBUG(("----------------------------------------------------------\n"));
+		for (i = 0; i < numInputChannels; i++) {
+			// Query input channel i:
+			channelInfo.channel = i;
+			channelInfo.isInput = ASIOTrue;
+			
+			// Get channel info:
+			ASIOGetChannelInfo(&channelInfo);
+			
+			// Success: Output info about this one:
+			PA_DEBUG(("Inputchannel with id %i is '%s' \n", (int) i, channelInfo.name ));
+		}
+		PA_DEBUG(("\n"));
+
+		// Iterate through all output channels:
+		PA_DEBUG(("DirectInputMonitoring: Enumerating all %3i output channels:\n", (int) numOutputChannels));
+		PA_DEBUG(("-----------------------------------------------------------\n"));
+		for (i = 0; i < numOutputChannels; i++) {
+			// Query input channel i:
+			channelInfo.channel = i;
+			channelInfo.isInput = ASIOFalse;
+			
+			// Get channel info:
+			ASIOGetChannelInfo(&channelInfo);
+			
+			// Success: Output info about this one:
+			PA_DEBUG(("Outputchannel with id %i is '%s' \n", (int) i, channelInfo.name ));
+		}
+		PA_DEBUG(("\n"));
+		PA_DEBUG(("DirectInputMonitoring: One time enumeration done.\n\n"));
+	}
 
 	/* Validate outputChannel to be an even index, otherwise abort: */
 	if ((outputChannel % 2) == 1) return(paInvalidFlag);

@@ -22,6 +22,9 @@ function DirectInputMonitoringTest
 % Preinit driver:
 InitializePsychSound(1);
 
+% Choose high level of debug output:
+oldverbosity = PsychPortAudio('Verbosity', 10);
+
 % Open auto-detected audio device in full-duplex mode for audio capture &
 % playback, with lowlatency mode 1. Lowlatency mode is not strictly
 % required, but has the nice side-effect to automatically assing the lowest
@@ -52,9 +55,18 @@ inputchannel = -1;
 % Any even number would do:
 outputchannel = 0;
 
-% Start with 0 dB gain: Values between -1 and +1 are valid on ASIO hardware
-% for attenuation (-1 = -inf dB) or amplification (+1 = +12 dB).
-gain = 0.0;
+% Start with maximum 12 dB gain: On Windows, values between -1 and +1 are
+% valid on ASIO hardware for attenuation (-1 = -inf dB) or amplification
+% (+1 = +12 dB).
+if IsWin
+    gain = 1.0;
+end
+
+% On OS/X we also set 12 dB gain, here the value actually specifies the
+% requested dB value:
+if IsOSX
+    gain = 12.0;
+end
 
 % Sterat with centered output on a stero channel: Values between 0.0 and
 % 1.0 select left <-> right stereo panning, 0.5 is centered:
@@ -77,18 +89,17 @@ unmute = 1;
 % Set initial 'DirectInputMonitoring mode':
 diResult = PsychPortAudio('DirectInputMonitoring', pa, unmute, inputchannel, outputchannel, gain, pan);
 
+% Lower level of debug output:
+PsychPortAudio('Verbosity', oldverbosity);
+
 % Repeat parameter change loop until user presses ESCape or error:
-while diResult == 0
+while 1
     % Wait for user keypress:
     [secs, keyCode] = KbStrokeWait;
     
     % Disable old setting - Mute current configuration:
     % Don't know if this is really needed or not, but let's start safe...
     diResult = PsychPortAudio('DirectInputMonitoring', pa, 0, inputchannel, outputchannel, gain, pan);
-    if diResult > 0
-        % Exit if unsupported or error:
-        break;
-    end
     
     if keyCode(esc)
         % Exit:
@@ -146,7 +157,7 @@ while diResult == 0
     
     % Set a new 'DirectInputMonitoring mode':
     diResult = PsychPortAudio('DirectInputMonitoring', pa, unmute, inputchannel, outputchannel, gain, pan);
-    fprintf('Unmuted: %i Inchannel: %i, OutChannel: %i, gain %f, stereopan %f, RC = %i\n', unmute, inputchannel, outputchannel, gain, pan, diResult);
+    fprintf('Enabled: %i Inchannel: %i, OutChannel: %i, gain %f, stereopan %f, RC = %i\n', unmute, inputchannel, outputchannel, gain, pan, diResult);
 end
 
 % Done. Try to mute setup. Don't care about error flag...
