@@ -19,22 +19,29 @@ function wrappedString=WrapString(string,maxLineLength)
 
 % 6/30/02 dgp Wrote it.
 % 10/2/02 dgp Make it clear that maxLineLength is in characters, not pixels.
+% 09/20/09 mk Improve argument handling as per suggestion of Peter April.
 
-if nargin>2 | nargout>1
+if nargin>2 | nargout>1 %#ok<OR2>
 	error('Usage: wrappedString=WrapString(string,[maxLineLength])\n');
 end
-if nargin<2 | isempty(maxLineLength) | isnan(maxLineLength)
+
+if nargin<2
+    maxLineLength=[];
+end
+
+if isempty(maxLineLength) | isnan(maxLineLength) %#ok<OR2>
 	maxLineLength=74;
 end
+
 eol=sprintf('\n');
 wrapped='';
 while length(string)>maxLineLength
-	l=min([findstr(eol,string) length(string)+1]);
+	l=min([findstr(eol,char(string)) length(string)+1]);
 	if l<maxLineLength
 		% line is already short enough
 		[wrapped,string]=onewrap(wrapped,string,l);
 	else
-		s=findstr(' ',string);
+		s=findstr(' ',char(string));
 		n=find(s<maxLineLength);
 		if ~isempty(n)
 			% ignore spaces before the furthest one before maxLineLength

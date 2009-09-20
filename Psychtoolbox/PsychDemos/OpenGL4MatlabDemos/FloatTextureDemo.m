@@ -21,11 +21,6 @@ InitializeMatlabOpenGL(1);
 % Open a double-buffered full-screen window on the main displays screen.
 [win , winRect] = Screen('OpenWindow', screenid);
 
-% Setup the OpenGL rendering context of the onscreen window for use by
-% OpenGL wrapper. After this command, all following OpenGL commands will
-% draw into the onscreen window 'win':
-Screen('BeginOpenGL', win);
-
 % Read test input image...
 impath = [PsychtoolboxRoot '/PsychDemos/konijntjes1024x768.jpg']
 %impath = [PsychtoolboxRoot '/PsychDemos/OpenGL4MatlabDemos/earth_512by256.jpg']
@@ -44,6 +39,11 @@ inputtex = Screen('MakeTexture', win, inputimage);
 
 % Retrieve an OpenGL handle to it:
 texin = Screen('GetOpenGLTexture', win, inputtex);
+
+% Setup the OpenGL rendering context of the onscreen window for use by
+% OpenGL wrapper. After this command, all following OpenGL commands will
+% draw into the onscreen window 'win':
+Screen('BeginOpenGL', win);
 
 % Use 
 if glGetIntegerv(GL.MAX_COLOR_ATTACHMENTS_EXT)<2 | singlefbo==0

@@ -27,7 +27,7 @@
 #include "Screen.h"
 
 // If you change the useString then also change the corresponding synopsis string in ScreenSynopsis.c
-static char useString[] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
+static char useString[] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=Screen('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
 //																									1            2				   3						4
 static char synopsisString[] = 
 	"Return or set the current alpha-blending mode and the color buffer writemask for window 'windowIndex'.\n"

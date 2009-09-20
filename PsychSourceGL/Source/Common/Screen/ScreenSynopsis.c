@@ -103,7 +103,7 @@ void InitializeSynopsis()
 	synopsis[i++] = "Screen('gluDisk', windowPtr, color, x, y [,size]);";
 	synopsis[i++] = "Screen('DrawDots', windowPtr, xy [,size] [,color] [,center] [,dot_type]);";
 	synopsis[i++] = "Screen('DrawLines', windowPtr, xy [,width] [,colors] [,center] [,smooth]);";
-	synopsis[i++] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
+	synopsis[i++] = "[sourceFactorOld, destinationFactorOld, colorMaskOld]=Screen('BlendFunction', windowIndex, [sourceFactorNew], [destinationFactorNew], [colorMaskNew]);";
 
 	// Draw Text in windows
 	synopsis[i++] = "\n% Draw Text in windows";

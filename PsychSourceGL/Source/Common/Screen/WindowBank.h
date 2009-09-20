@@ -283,6 +283,7 @@ typedef struct _PsychWindowRecordType_{
         psych_bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
         psych_bool                                    vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
+		double									rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
 
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
 	// They default to NULL and get possibly set in Screen('LoadNormalizedGammaTable'):

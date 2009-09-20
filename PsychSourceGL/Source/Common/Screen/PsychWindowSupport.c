@@ -2613,6 +2613,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // Update timestamp of last vbl:
         windowRecord->time_at_last_vbl = time_at_vbl;
+
+		// Store raw-timestamp of swap completion, mostly for benchmark purposes:
+		windowRecord->rawtime_at_swapcompletion = time_at_swapcompletion;
     }
     else {
         // syncing to vbl is disabled, time_at_vbl becomes meaningless, so we set it to a
@@ -2623,8 +2626,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         
         // Invalidate timestamp of last vbl:
         windowRecord->time_at_last_vbl = 0;
+		windowRecord->rawtime_at_swapcompletion = 0;
     }
-    
+
     // The remaining code will run asynchronously on the GPU again and prepares the back-buffer
     // for drawing of next stim.
     PsychPostFlipOperations(windowRecord, dont_clear);

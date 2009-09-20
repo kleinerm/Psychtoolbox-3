@@ -78,7 +78,7 @@ try
 
     % Import image and and convert it, stored in
     % MATLAB matrix, into a Psychtoolbox OpenGL texture using 'MakeTexture';
-    myimgfile= 'konijntjes1024x768';
+    myimgfile = [ PsychtoolboxRoot 'PsychDemos' filesep 'AlphaImageDemo' filesep 'konijntjes1024x768.jpg'];
     fprintf('Using image ''%s''\n', myimgfile);
     imdata=imread(myimgfile, 'jpg');
     

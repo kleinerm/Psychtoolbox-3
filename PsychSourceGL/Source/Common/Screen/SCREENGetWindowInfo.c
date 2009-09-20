@@ -160,6 +160,7 @@ static char synopsisString[] =
 	"----------------------------------------------\n\n"
 	"BeamPosition: Current rasterbeam position of the video scanout cycle.\n"
 	"LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
+	"RawSwapTimeOfFlip: Raw (uncorrected by high-precision timestamping) timestamp of last finished Screen('Flip') operation.\n"
 	"LastVBLTime: System time when last vertical blank happened, or the same as "
 	"LastVBLTimeOfFlip if the system doesn't support queries of this property (currently only OS/X does.)\n"
 	"VBLCount: Running count of vertical blank intervals since (graphics)system startup. Or zero if not"
@@ -194,12 +195,12 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 
 PsychError SCREENGetWindowInfo(void) 
 {
-    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "RawSwapTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent" };
 							   
-	const int  fieldCount = 24;
+	const int  fieldCount = 25;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -332,6 +333,9 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Time of last vertical blank when a double-buffer swap occured:
 		PsychSetStructArrayDoubleElement("LastVBLTimeOfFlip", 0, windowRecord->time_at_last_vbl, s);
+
+		// Uncorrected timestamp of flip swap completion:
+		PsychSetStructArrayDoubleElement("RawSwapTimeOfFlip", 0, windowRecord->rawtime_at_swapcompletion, s);
 
 		// Try to determine system time of last VBL on display, independent of any
 		// flips / bufferswaps.

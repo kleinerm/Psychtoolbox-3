@@ -21,7 +21,7 @@ function SpriteDemo
 % 6/20/02 dgp  Cosmetic.  Renamed SpriteDemo.
 % 8/25/06 rhh  Added noise to the sprite.  Expanded comments.
 % 10/14/06 dhb Save and restore altered prefs, more extensive comments for them
-
+% 09/20/09 mk  Improve screenNumber selection as per suggestion of Peter April.
 
 % ------ Parameters ------
 spriteSize = 100; % The height and width of the sprite in pixels (the sprite is square)
@@ -32,7 +32,7 @@ try
     % ------ Screen and Color Setup ------
 
     % Choose a screen
-    screenNumber = 0;
+    screenNumber = max(Screen('Screens'));
 
     % Get colors
     backgroundColor = BlackIndex(screenNumber);
@@ -49,7 +49,7 @@ try
     oldSupressAllWarnings = Screen('Preference', 'SuppressAllWarnings', 1);
     
     % Open a window and paint the background white
-    window = Screen('OpenWindow', 0, foregroundColor);
+    window = Screen('OpenWindow', screenNumber, foregroundColor);
 
     % Hide the mouse cursor.
     HideCursor;

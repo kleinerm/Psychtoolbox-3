@@ -38,13 +38,15 @@ if nargin < 2
     ms=200;
 end;
 
+basepath = [ PsychtoolboxRoot 'PsychDemos' filesep ];
+
 % Use default demo images, if no special image was provided.
 if nargin < 3
-    myimgfile= 'konijntjes1024x768.jpg';
+    myimgfile= [basepath 'konijntjes1024x768.jpg'];
 end;
 
-myblurimgfile= 'konijntjes1024x768blur.jpg';
-mygrayimgfile= 'konijntjes1024x768gray.jpg';
+myblurimgfile= [basepath 'konijntjes1024x768blur.jpg'];
+mygrayimgfile= [basepath 'konijntjes1024x768gray.jpg'];
 
 try
     fprintf('GazeContingentDemo (%s)\n', datestr(now));

@@ -50,7 +50,7 @@
 %    GarboriumDemo           - Demonstrate superimposed drawing of many Gabors by use of alpha-
 %                              blending, 'DrawTextures' batch drawing and PTB imaging pipeline.
 %    GazeContingentDemo      - Implementation of a simple gaze contingent display 
-%    GLSLClutAnimDemo        - Demonstrates use of function moglClutBlit to
+%    GLSLCLUTAnimDemo        - Demonstrates use of function moglClutBlit to
 %                              perform CLUT animation with GLSL in an OS independent way.
 %    GratingDemo             - Basic display of a grating on the screen.
 %    IsomerizationsInDishDemo - Compute photoreceptor isomerizations for retina in a dish.
@@ -64,7 +64,7 @@
 %    MovieDemo               - Animation without offscreen windows.
 %    MovingLineDemo          - Shows some horizontally moving lines to demonstrate flat panel display artifacts.
 %    NomogramDemo            - Compute photoreceptor nomograms.
-%    OldNewRecogDemo         - A full old-new recognition experiment.
+%    OldNewRecogExp          - A full old-new recognition experiment.
 %    OpenGL4MatlabDemos      - Subfolder: Demos on how to use MOGL OpenGL functions.
 %    ProceduralGaborDemo     - Demo for fast drawing of Gabors via procedural textures.
 %    ProceduralGarboriumDemo - Same as GarboriumDemo, just with procedural gabor drawing.

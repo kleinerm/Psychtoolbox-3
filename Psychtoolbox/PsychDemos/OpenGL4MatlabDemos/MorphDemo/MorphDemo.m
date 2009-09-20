@@ -39,6 +39,7 @@ function MorphDemo(textureon, dotson, normalson, stereomode, usefastoffscreenwin
 %
 % This demo and the morpheable OBJ shapes were contributed by
 % Dr. Quoc C. Vuong, MPI for Biological Cybernetics, Tuebingen, Germany.
+
 morphnormals = 1;
 global win;
 
@@ -47,33 +48,33 @@ AssertOpenGL;
 
 % Should per pixel lighting via OpenGL shading language be used? This doesnt work
 % well yet.
-perpixellighting = 0
+perpixellighting = 0;
 
 % Some default settings for rendering flags:
-if nargin < 1 | isempty(textureon)
+if nargin < 1 || isempty(textureon)
     textureon = 0;  % turn texture mapping on (1) or off (0) -- only sphere and face has textures
 end
-textureon
+textureon %#ok<NOPRT>
 
-if nargin < 2 | isempty(dotson)
+if nargin < 2 || isempty(dotson)
     dotson = 0;     % turn reference dots: off(0), on (1) or show reference lines (2)
 end
-dotson
+dotson %#ok<NOPRT>
 
-if nargin < 3 | isempty(normalson)
+if nargin < 3 || isempty(normalson)
     normalson = 0;     % turn reference dots: off(0), on (1) or show reference lines (2)
 end
-normalson
+normalson %#ok<NOPRT>
 
-if nargin < 4 | isempty(stereomode)
+if nargin < 4 || isempty(stereomode)
     stereomode = 0;
 end;
-stereomode
+stereomode %#ok<NOPRT>
 
-if nargin < 5 | isempty(usefastoffscreenwindows)
+if nargin < 5 || isempty(usefastoffscreenwindows)
     usefastoffscreenwindows = 0;
 end
-usefastoffscreenwindows
+usefastoffscreenwindows %#ok<NOPRT>
 
 % Response keys: Mapping of keycodes to keynames.
 closer = KbName('a');
@@ -100,7 +101,7 @@ InitializeMatlabOpenGL(0,1);
 
 % Open a double-buffered full-screen window: Everything is left at default
 % settings, except stereomode:
-if dotson~=3 & dotson~=4
+if dotson~=3 & dotson~=4 %#ok<AND2>
    rect = [];
 else
    rect = [0 0 500 500];
@@ -145,11 +146,11 @@ for i=1:size(objs,2)
     if ( textureon==1 )
         objs{i}.texcoords = texcoords; % Add modified texture coords.
     end
-    meshid(i) = moglmorpher('addMesh', objs{i});
+    meshid(i) = moglmorpher('addMesh', objs{i}); %#ok<AGROW,NASGU>
 end
 
 % Output count of morph shapes:
-count = moglmorpher('getMeshCount')
+count = moglmorpher('getMeshCount') %#ok<NOPRT,NASGU>
 
 % Setup the OpenGL rendering context of the onscreen window for use by
 % OpenGL wrapper. After this command, all following OpenGL commands will
@@ -351,27 +352,27 @@ while ((GetSecs - t) < 60)
     % Check for keyboard press:
     [KeyIsDown, endrt, KeyCode] = KbCheck;
     if KeyIsDown
-        if ( KeyIsDown==1 & KeyCode(closer)==1 )
+        if ( KeyIsDown==1 & KeyCode(closer)==1 ) %#ok<AND2>
             zz=zz-0.1;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(farther)==1 )
+        if ( KeyIsDown==1 & KeyCode(farther)==1 ) %#ok<AND2>
             zz=zz+0.1;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(rotateright)==1 )
+        if ( KeyIsDown==1 & KeyCode(rotateright)==1 ) %#ok<AND2>
             ang=ang+1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(rotateleft)==1 )
+        if ( KeyIsDown==1 & KeyCode(rotateleft)==1 ) %#ok<AND2>
             ang=ang-1.0;
             KeyIsDown=0;
         end
 
-        if ( KeyIsDown==1 & KeyCode(quitkey)==1 )
+        if ( KeyIsDown==1 & KeyCode(quitkey)==1 ) %#ok<AND2>
             break;
         end
     end
@@ -390,7 +391,7 @@ end
 vbl = Screen('Flip', win);
 
 % Calculate and display average framerate:
-fps = framecount / (vbl - tstart)
+fps = framecount / (vbl - tstart) %#ok<NOPRT,NASGU>
 
 % Reset moglmorpher:
 moglmorpher('reset');
@@ -427,7 +428,7 @@ glScalef(a,a,a);
 moglmorpher('render');
 
 % Some extra visualizsation code for normals, mesh and vertices:
-if (dotson == 1 | dotson == 3)
+if (dotson == 1 | dotson == 3) %#ok<OR2>
     % Draw some dot-markers at positions of vertices:
     % We disable lighting for this purpose:
     glDisable(GL.LIGHTING);
@@ -471,7 +472,7 @@ if (normalson > 0)
     glColor3f(0,0,1);
  end;
  
-if (dotson == 3 | dotson == 4)
+if (dotson == 3 | dotson == 4) %#ok<OR2>
    % Compute and retrieve projected screen-space vertex positions:
    vpos = moglmorpher('getVertexPositions', win);
    

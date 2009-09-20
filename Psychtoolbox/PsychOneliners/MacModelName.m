@@ -22,7 +22,8 @@ function modelName=MacModelName
 % 1/29/05 dgp Cosmetic.
 % 3/14/05 dgp Fixed handling of model names that end in "\"".
 % 3/5/06  awi Added note explaining new bug and how to repair.
-% 5/29/06 mk  Added dumb fix for endian issue on new Intel-Macs.
+% 5/29/06  mk Added dumb fix for endian issue on new Intel-Macs.
+% 9/20/09  mk Don't fail with name 'Unknown' but output raw model name then. 
 
 % NOTES
 %
@@ -162,7 +163,7 @@ if IsOSX
         surroundingQuoteIndices=strfind(rawName,'"');
         modelName=rawName(surroundingQuoteIndices(1)+1:surroundingQuoteIndices(end)-1);
     else
-        modelName='Unknown';
+        modelName=c.hw.model;
     end
     if modelName(end-1)=='\'
         modelName=modelName([1:end-2 end]);

@@ -86,6 +86,7 @@ void PsychGiveHelp(void)
 	// No, standard path: Print to console of runtime system:
 	printf("\nUsage:\n\n%s\n",functionUseHELP);
 	if (functionSynopsisHELP != NULL) printf("\n%s\n", BreakLines(functionSynopsisHELP, 80));
+	if (functionSeeAlsoHELP  != NULL) printf("\nSee also: %s\n", BreakLines(functionSeeAlsoHELP, 80));
 }
 
 void PsychGiveUsage(void)

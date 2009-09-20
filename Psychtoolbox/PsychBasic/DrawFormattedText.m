@@ -41,6 +41,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 11/22/06  More 3D handling: Save/restore backface cull state (MK).
 % 05/14/07  Return a more meaningful end cursor position (printf - semantics) (MK)
 % 01/31/09  Add optional vSpacing parameter (Alex Leykin).
+% 09/20/09  Add some char() casts, so Octave can handle Unicode encoded text strings as well.
 
 
 if nargin < 1 || isempty(win)
@@ -85,7 +86,7 @@ if nargin < 9 || isempty(vSpacing)
 end
 
 % Convert all conventional linefeeds into C-style newlines:
-newlinepos = strfind(tstring, '\n');
+newlinepos = strfind(char(tstring), '\n');
 
 % If '\n' is already encoded as a char(10) as in Octave, then
 % there's no need for replacemet.
@@ -97,7 +98,7 @@ while ~isempty(newlinepos)
     % Replace first occurence of '\n' by ASCII code 10:
     tstring = [ tstring(1:min(newlinepos)-1) char(10) tstring(min(newlinepos)+2:end)];
     % Search next occurence of linefeed (if any) in new expanded string:
-    newlinepos = strfind(tstring, '\n');
+    newlinepos = strfind(char(tstring), '\n');
 end
 
 % Text wrapping requested?
@@ -119,7 +120,7 @@ if ischar(sy) && strcmpi(sy, 'center')
     % Compute vertical centering:
     
     % Compute height of text box:
-    numlines = length(strfind(tstring, char(10))) + 1;
+    numlines = length(strfind(char(tstring), char(10))) + 1;
     bbox = SetRect(0,0,1,numlines * theight);
     % Center box in window:
     [rect,dh,dv] = CenterRect(bbox, Screen('Rect', win));
@@ -156,7 +157,7 @@ end
 % Parse string, break it into substrings at line-feeds:
 while ~isempty(tstring)
     % Find next substring to process:
-    crpositions = strfind(tstring, char(10));
+    crpositions = strfind(char(tstring), char(10));
     if ~isempty(crpositions)
         curstring = tstring(1:min(crpositions)-1);
         tstring = tstring(min(crpositions)+1:end);
