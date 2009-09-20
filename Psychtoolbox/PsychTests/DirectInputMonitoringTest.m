@@ -88,6 +88,7 @@ unmute = 1;
 
 % Set initial 'DirectInputMonitoring mode':
 diResult = PsychPortAudio('DirectInputMonitoring', pa, unmute, inputchannel, outputchannel, gain, pan);
+fprintf('Enabled: %i Inchannel: %i, OutChannel: %i, gain %f, stereopan %f, RC = %i\n', unmute, inputchannel, outputchannel, gain, pan, diResult);
 
 % Lower level of debug output:
 PsychPortAudio('Verbosity', oldverbosity);
@@ -99,7 +100,7 @@ while 1
     
     % Disable old setting - Mute current configuration:
     % Don't know if this is really needed or not, but let's start safe...
-    diResult = PsychPortAudio('DirectInputMonitoring', pa, 0, inputchannel, outputchannel, gain, pan);
+    % MK: Disabled for test purpose: diResult = PsychPortAudio('DirectInputMonitoring', pa, 0, inputchannel, outputchannel, gain, pan);
     
     if keyCode(esc)
         % Exit:

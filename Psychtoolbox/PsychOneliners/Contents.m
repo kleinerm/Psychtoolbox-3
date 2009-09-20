@@ -71,6 +71,7 @@
 %   Resolute                - Cuts from and adds to a matrix to make it the specified dimensions.
 %   RestoreCluts            - Restore original CLUT's for all monitors from backups made during LoadIdentityClut().
 %   Rot3d                   - Rotates a matrix in 3D space (around the x, y or z axis) in 90 degrees steps.
+%   SaveIdentityClut        - Store current or given CLUT as identity LUT for use with LoadIdentityClut.
 %   SaveMovieFrames         - Displays a GUI in which a movie can be played and from which screenshots can be saved.
 %   sca                     - Shorthand for Screen('CloseAll').  Using this is a good way to make your code obscure.
 %   ScreenDacBits           - What is precision of the graphics boardDACs. Currently returns 8 always.

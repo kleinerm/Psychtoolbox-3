@@ -1,6 +1,5 @@
-function osNameStr=OSName
-
-% sysNameStr=OSName
+function osNameStr = OSName
+% sysNameStr = OSName
 %
 % Return the convential English-language name for your operating system (OS).
 % OSName is useful in constructing error message strings which refer to
@@ -8,33 +7,23 @@ function osNameStr=OSName
 % command "computer" are unsuitable for this purpose because they are
 % abbreviations, not names.  
 % 
-% see also: computer, IsOS9, IsOSX, IsWin, MacModelName, DescribeComputer
+% Currently possible returned namestrings are 'Windows', 'Linux' or 'OSX'.
+%
+% see also: computer, IsOS9, IsOSX, IsWin, IsLinux, MacModelName, DescribeComputer
 
 % HISTORY
 %
 % 3/5/06  awi  Wrote it.  For use in ListenChar.
+% 9/20/09  mk  Updated.
 
-
-cNameStr=computer;
-if streq(cNameStr, 'PCWIN')
+if IsWin
     osNameStr='Windows';
-elseif streq(cNameStr, 'SOL2')
-    osNameStr='Solaris';
-elseif streq(cNameStr, 'HPUX')
-    osNameStr='HPUX';
-elseif streq(cNameStr, 'GLNX86')
+elseif IsLinux
     osNameStr='Linux';
-elseif streq(cNameStr, 'GLNXA64')
-    osNameStr='Linux';
-elseif streq(cNameStr, 'MAC')
-    osNameStr='OS X';
-elseif streq(cNameStr, 'MACI')
-    osNameStr='OS X';
-elseif streq(cNameStr, 'MAC2')
-    osNameStr='OS 9';
+elseif IsOSX
+    osNameStr='OSX';
 else
     osNameStr='Unknown OS';
 end
 
-
-
+return;
