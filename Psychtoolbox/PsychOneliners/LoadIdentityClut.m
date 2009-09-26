@@ -218,7 +218,7 @@ if gfxhwtype == 3 & IsOSX %#ok<AND2>
     oldClut = Screen('LoadNormalizedGammaTable', windowPtr, loadlut, loadOnNextFlip);
 end
 
-if ~exist('oldClut', 'var')
+if ~ismember(gfxhwtype, [-1,0,1,2,3])
     sca;
     error('Could not upload identity CLUT to GPU! Invalid LUT or invalid LUT id or other invalid arguments passed?!?');
 end

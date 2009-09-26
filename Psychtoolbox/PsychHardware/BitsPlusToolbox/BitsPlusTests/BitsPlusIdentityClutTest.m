@@ -74,6 +74,9 @@ if nargin < 1 || isempty(whichScreen)
     whichScreen = max(Screen('Screens'));
 end
 
+% Disable text anti-aliasing for this test:
+oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
+
 try
     % Setup imaging pipeline:
     PsychImaging('PrepareConfiguration');
@@ -126,7 +129,7 @@ try
     hdrtexIndex= Screen('MakeTexture', win, theImage, [], [], 2);
 
     % Create static image in overlay window:
-    Screen('TextSize', overlaywin, 24);
+    Screen('TextSize', overlaywin, 18);
     mytext = ['This is what you should see if everything works correctly:\n\n' ...
         'This text should be shown in blue.\n' ...
         'The "COLORFUL" couple of lines below should cycle through different\n' ...
@@ -143,11 +146,10 @@ try
 
     [nx, ny] = DrawFormattedText(overlaywin, mytext, 'center', 30, 255);
 
-    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL1\n', 'center', ny, 250);
-    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL2\n', 'center', ny, 251);
-    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL3\n', 'center', ny, 252);
-    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL4\n', 'center', ny, 253);
-    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL5\n', 'center', ny, 254);
+    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL1\n', 'center', ny, 251);
+    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL2\n', 'center', ny, 252);
+    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL3\n', 'center', ny, 253);
+    [nx, ny] = DrawFormattedText(overlaywin, 'COLORFUL4\n', 'center', ny, 254);
 
     xpos = round((RectWidth(screenRect) - 150*4) / 2);
     for x=100:249
@@ -176,11 +178,11 @@ try
     ovllut(101:250, 1) = linspace(0,1,150)';
     ovllut(101:250, 2:3) = 0;
 
-    % Build random colors in slots 251:255:
-    ovllut(251:255,:) = rand(5,3);
+    % Build random colors in slots 251:254:
+    ovllut(251:254,:) = rand(4,3);
 
     % Last slot is blue:
-    ovllut(256, :) = [0 , 0, 1];
+    ovllut(255, :) = [0 , 0, 1];
 
     angle = 0;
     lutidx = -1;
@@ -210,7 +212,7 @@ try
 
         % Colored text cycles every 30 frames:
         if mod(angle, 30) == 0
-            ovllut(251:255, :) = circshift(ovllut(251:255, :), 1);
+            ovllut(251:254, :) = circshift(ovllut(251:254, :), 1);
         end
 
         % Color in low slots gets re-randomized:
@@ -244,14 +246,23 @@ try
         end
     end
 
+    % Load identity CLUT into Bits++ to restore proper display:
+    BitsPlusPlus('LoadIdentityClut', win);
+
+    % This flip is needed for the 'LoadIdentityClut' to take effect:
+    Screen('Flip', win);
+    
     % Done. Close everything down:
     ShowCursor;
     Screen('CloseAll');
     RestoreCluts;
+    Screen('Preference', 'TextAntiAliasing', oldAntialias);
+
     fprintf('Finished. Bye.\n\n');
 
 catch
     sca;
+    Screen('Preference', 'TextAntiAliasing', oldAntialias);
     psychrethrow(psychlasterror);
 end
 
