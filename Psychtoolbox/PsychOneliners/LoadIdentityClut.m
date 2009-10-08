@@ -205,7 +205,7 @@ end
 
 if gfxhwtype == 3 & IsOSX %#ok<AND2>
     % This works on OS/X 10.6.0 with NVidia Geforce-9200M according to CRS
-    % and with 10.5.8 with Geforce-8800  in the MacPro according to
+    % and with 10.6.0 with Geforce-8800  in the MacPro according to
     % me. We assume this works on all G80 et al. GPU's:
     for i=0:1023
         if ((i / 1024.0) < 0.5)

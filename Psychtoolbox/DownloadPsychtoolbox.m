@@ -253,6 +253,9 @@ function DownloadPsychtoolbox(targetdirectory,downloadmethod,targetRevision,flav
 %              chance to reconsider.
 % 03/22/09 mk  Update help text again. Rename 'stable' into 'unsupported'.
 % 05/31/09 mk  Add support for Octave-3.
+% 10/05/09 mk  Strip trailing fileseperator from targetDirectory, as
+%              suggested by Erik Flister to avoid trouble with new svn
+%              clients.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -291,6 +294,11 @@ if isempty(targetdirectory)
         fprintf('path as the first argument to this script, e.g. DownloadPsychtoolbox(''C:\\Toolboxes\\'').\n');
         error('For Windows and Linux, the call to %s must specify a full path for the location of installation.',mfilename);
     end     
+end
+
+% Strip trailing fileseperator, if any:
+if targetdirectory(end) == filesep
+    targetdirectory = targetdirectory(1:end-1);
 end
 
 % Override for download method provided?

@@ -44,6 +44,9 @@ function UpdatePsychtoolbox(targetdirectory, targetRevision)
 %              security certificates...
 % 01/05/09 mk  Remove && or || to make old Matlab versions happier.
 % 05/31/09 mk  Add support for Octave-3.
+% 10/05/09 mk  Strip trailing fileseperator from targetDirectory, as
+%              suggested by Erik Flister to avoid trouble with new svn
+%              clients.
 
 % Flush all MEX files: This is needed at least on M$-Windows for SVN to
 % work if Screen et al. are still loaded.
@@ -55,6 +58,11 @@ end
 
 if isempty(targetdirectory)
     targetdirectory=PsychtoolboxRoot;
+end
+
+% Strip trailing fileseperator, if any:
+if targetdirectory(end) == filesep
+    targetdirectory = targetdirectory(1:end-1);
 end
 
 if nargin<2
