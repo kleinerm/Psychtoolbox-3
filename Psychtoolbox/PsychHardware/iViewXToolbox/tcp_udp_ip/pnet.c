@@ -956,6 +956,14 @@ int tcp_udp_socket(int port,int dgram_f)
     int sockfd;
     struct sockaddr_in my_addr;    /* my address information */
     const int on=1;
+
+    #ifndef WIN32
+        #ifndef IPTOS_LOWDELAY
+        #define IPTOS_LOWDELAY          0x10
+        #endif
+        int tos = IPTOS_LOWDELAY;
+    #endif
+
     if(dgram_f)
 	sockfd = socket(AF_INET, SOCK_DGRAM, 0);
     else
@@ -974,6 +982,14 @@ int tcp_udp_socket(int port,int dgram_f)
     }
     listen(sockfd,BACKLOG);
     nonblockingsocket(sockfd);
+
+    /* Try to enable low-latency send/receive operations on socket: */
+    #ifndef WIN32
+    if (-1 == setsockopt(sockfd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos))) {
+        mexPrintf("pnet: Warning: Could not enable low-latency mode on socket! [%s]\n", strerror(errno));
+    }
+    #endif
+
     return sockfd;
 }
 
