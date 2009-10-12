@@ -98,14 +98,18 @@ function varargout = PsychColorCorrection(cmd, varargin)
 %   your stimulation scripts, not for running them on your subjects!
 %
 %
-% * 'SimpleGamma' : Apply simple power-law gamma correction:
+% * 'SimpleGamma' : Apply some power-law based gamma correction:
 %
-%   Simple gamma correction means: Apply a simple power-law to incoming
+%   Simple gamma correction means: Apply a power-law to incoming
 %   values: outcolor = incolor ^ EncodingGamma. incolor is the uncorrected
 %   input color or intensity, outcolor the corrected one, EncodingGamma is
 %   encoding gamma value to apply. See PsychColorCorrection('SetEncodingGamma')
 %   for how to set the gamma values. After gamma correction, output values
 %   are clamped against the range set via PsychColorCorrection('SetColorClampingRange').
+%
+%   See PsychColorCorrection('SetExtendedGammaParameters') on how to supply
+%   additional parameters for use of a more complex gamma correction function.
+%
 %
 % * 'LookupTable' : Apply color correction by color table lookup, ie. a CLUT.
 %
@@ -157,6 +161,26 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % Example: If your monitor has a "decoding gamma" of 1.8, the proper
 % setting for 'gamma' would be gamma = 1/1.8. For a decoding gamma of 2.2,
 % you'd choose gamma = 1/2.2 ...
+%
+%
+% PsychColorCorrection('SetExtendedGammaParameters', window, minL, maxL, gain, bias [,viewId]);
+% - Set the additional (optional) parameters to fine-tune gamma correction on
+% window 'window'. All these parameters have reasonable defaults. All
+% parameters can be supplied as a scalar value if the same setting shall
+% apply to all color channels (or a single luminance channel), or you can
+% provide 3-component vectors with one component for each color channel:
+%
+% After this function has been called at least once, the following formula
+% will be used to map input values to output values ['gamma' is as set by
+% the 'SetEncodingGamma' function, 'in' is input, 'out' is output value]:
+%
+% out = bias + gain * ( ((in-minL) / (maxL-minL)) ^ gamma )
+%
+% Required parameters:
+% 'minL' Minimum expected input luminance/intensity value (Default is 0.0).
+% 'maxL' Maximum expected input luminance/intensity value (Default is 1.0).
+% 'gain' Gain factor to apply after power-law mapping (Default is 1.0).
+% 'bias' Bias/Offset to apply to final result before output (Default is 0.0).
 %
 %
 % PsychColorCorrection('SetLookupTable', window, clut [, viewId][, maxinput=1][, scalefactor]);
@@ -234,6 +258,7 @@ function varargout = PsychColorCorrection(cmd, varargin)
 % 16.04.2008 Written (MK).
 % 18.05.2008 Revised, improved help text, fine-tuning etc. (MK)
 % 04.07.2009 Add CLUT based color correction. (MK)
+% 10.10.2009 Add 'SetExtendedGammaParameters' for extended gamma correction. (MK)
 
 % GL is needed for shader setup and parameter changes:
 global GL;
@@ -383,6 +408,15 @@ if strcmpi(cmd, 'ApplyPostGLSLLinkSetup')
             case {'SimpleGamma'}
                 % Set default encoding gamma for power-law shader to (1.0, 1.0, 1.0):
                 glUniform3f(glGetUniformLocation(glsl, 'ICMEncodingGamma'), 1.0, 1.0, 1.0);
+                % Default min and max luminance is 0.0 to 1.0, therefore reciprocal 1/range is also 1.0:
+                glUniform3f(glGetUniformLocation(glsl, 'ICMMinInLuminance'), 0.0, 0.0, 0.0);
+                glUniform3f(glGetUniformLocation(glsl, 'ICMMaxInLuminance'), 1.0, 1.0, 1.0);
+                glUniform3f(glGetUniformLocation(glsl, 'ICMReciprocalLuminanceRange'), 1.0, 1.0, 1.0);
+                % Default gain to postmultiply is 1.0:
+                glUniform3f(glGetUniformLocation(glsl, 'ICMOutputGain'), 1.0, 1.0, 1.0);
+                % Default bias to is 0.0:
+                glUniform3f(glGetUniformLocation(glsl, 'ICMOutputBias'), 0.0, 0.0, 0.0);
+                
             case {'LookupTable'}
                 % Set CLUT texture unit to 2:
                 glUniform1i(glGetUniformLocation(glsl, 'ICMCLUT'), 2);
@@ -415,7 +449,7 @@ if strcmpi(cmd, 'SetColorClampingRange')
     
     % Need GL from here on...
     if isempty(GL)
-        error('No internal GL struct defined in "SetXXX" routine?!? This is a bug - Check code!!');
+        error('No internal GL struct defined in "SetColorClampingRange" routine?!? This is a bug - Check code!!');
     end
     
     if nargin < 2
@@ -471,7 +505,7 @@ if strcmpi(cmd, 'SetEncodingGamma')
     
     % Need GL from here on...
     if isempty(GL)
-        error('No internal GL struct defined in "SetXXX" routine?!? This is a bug - Check code!!');
+        error('No internal GL struct defined in "SetEncodingGamma" routine?!? This is a bug - Check code!!');
     end
     
     if nargin < 2
@@ -525,6 +559,175 @@ if strcmpi(cmd, 'SetEncodingGamma')
         else
             error('Tried to set encoding gamma for color correction, but color correction not configured for use of encoding gamma!');
         end
+    catch
+        % Empty...
+        psychrethrow(psychlasterror);
+    end
+    
+    % Unbind shader:
+    glUseProgram(0);
+    
+    return;
+end
+
+if strcmpi(cmd, 'SetExtendedGammaParameters')
+    
+    % Need GL from here on...
+    if isempty(GL)
+        error('No internal GL struct defined in "SetExtendedGammaParameters" routine?!? This is a bug - Check code!!');
+    end
+    
+    if nargin < 2
+        error('Must provide window handle to onscreen window as 2nd argument!');
+    end
+
+    if nargin < 3
+        error('Must provide minimum input intensity value or vector of 3 minimum intensity values for R,G,B in 3rd argument!');
+    end
+
+    if nargin < 4
+        error('Must provide maximum input intensity value or vector of 3 maximum intensity values for R,G,B in 4th argument!');
+    end
+
+    if nargin < 5
+        error('Must provide output gain value or vector of 3 output gain values for R,G,B in 5th argument!');
+    end
+
+    if nargin < 6
+        error('Must provide output bias value or vector of 3 output bias values for R,G,B in 5th argument!');
+    end
+
+    % Fetch window handle:
+    win = varargin{1};
+    
+    % Fetch values:
+    minL = varargin{2};
+    
+    if ~isnumeric(minL)
+        error('Minimum input intensity value(s) must be number(s)!');
+    end
+    
+    if length(minL)~=1 && length(minL)~=3
+        error('Minimum input intensity value must be a single scalar or a 3 component vector of separate values for the Red, Green and Blue color channel!');
+    end
+    
+
+    if length(minL) == 1
+        % Replicate to all three channels:
+        minL = [minL, minL, minL];
+    end
+    
+    % Fetch values:
+    maxL = varargin{3};
+    
+    if ~isnumeric(maxL)
+        error('Maximum input intensity value(s) must be number(s)!');
+    end
+    
+    if length(maxL)~=1 && length(maxL)~=3
+        error('Maximum input intensity value must be a single scalar or a 3 component vector of separate values for the Red, Green and Blue color channel!');
+    end
+    
+
+    if length(maxL) == 1
+        % Replicate to all three channels:
+        maxL = [maxL, maxL, maxL];
+    end
+    
+    % Sanity check:
+    if any((maxL - minL) <= 0)
+        warning(sprintf('In at least one of the components of the provided minimum and maximum intensity vectors the provided\nminimum is *bigger or equal* than/to the maximum!\nThis will result in undefined behaviour and is likely not what you want.')); %#ok<WNTAG,SPWRN>
+    end
+    
+    % Compute reciprocal:
+    recL = 1 ./ abs(maxL - minL);
+    
+    gain = varargin{4};
+    
+    if ~isnumeric(gain)
+        error('Output gain value(s) must be number(s)!');
+    end
+    
+    if length(gain)~=1 && length(gain)~=3
+        error('Output gain value must be a single scalar or a 3 component vector of separate values for the Red, Green and Blue color channel!');
+    end
+    
+
+    if length(gain) == 1
+        % Replicate to all three channels:
+        gain = [gain, gain, gain];
+    end
+    
+    % Sanity check:
+    if any(gain <= 0)
+        warning(sprintf('At least one of the components of the provided gain vector is negative or zero!\nThis will result in undefined behaviour and is likely not what you want.')); %#ok<WNTAG,SPWRN>
+    end
+
+    obias = varargin{5};
+    
+    if ~isnumeric(obias)
+        error('Output bias value(s) must be number(s)!');
+    end
+    
+    if length(obias)~=1 && length(obias)~=3
+        error('Output bias value must be a single scalar or a 3 component vector of separate values for the Red, Green and Blue color channel!');
+    end
+    
+
+    if length(obias) == 1
+        % Replicate to all three channels:
+        obias = [obias, obias, obias];
+    end
+
+    if nargin < 7
+        viewId = [];
+    else
+        viewId = varargin{6};
+    end
+    
+    % Retrieve all params for 'win'dow and given icmSpec, bind shader. The
+    % 'icmSpec' string is empty - This will expand into the general 'ICM:'
+    % string, so we use the first slot/shader with the ICM: token.
+    icmId = '';
+    [slot shaderid blittercfg voidptr glsl luttexid] = GetSlotForTypeAndBind(win, icmId, viewId); %#ok<NASGU>
+    
+    try
+        % Set parameters for power-law shader:
+        uloc = glGetUniformLocation(glsl, 'ICMMinInLuminance');
+        if uloc >= 0
+            glUniform3f(uloc, minL(1), minL(2), minL(3));
+        else
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+        end
+        
+        uloc = glGetUniformLocation(glsl, 'ICMMaxInLuminance');
+        if uloc >= 0
+            glUniform3f(uloc, maxL(1), maxL(2), maxL(3));
+        else
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+        end
+        
+        uloc = glGetUniformLocation(glsl, 'ICMReciprocalLuminanceRange');
+        if uloc >= 0
+            glUniform3f(uloc, recL(1), recL(2), recL(3));
+        else
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+        end
+        
+        uloc = glGetUniformLocation(glsl, 'ICMOutputGain');
+        if uloc >= 0
+            glUniform3f(uloc, gain(1), gain(2), gain(3));
+        else
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+        end
+
+        uloc = glGetUniformLocation(glsl, 'ICMOutputBias');
+        if uloc >= 0
+            glUniform3f(uloc, obias(1), obias(2), obias(3));
+        else
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+        end
+
     catch
         % Empty...
         psychrethrow(psychlasterror);
