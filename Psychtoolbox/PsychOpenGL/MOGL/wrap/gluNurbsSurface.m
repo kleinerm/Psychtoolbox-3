@@ -11,7 +11,7 @@ function gluNurbsSurface( nurb, sKnotCount, sKnots, tKnotCount, tKnots, sStride,
 % ---allocate---
 % ---protected---
 
-if nargin~=8,
+if nargin~=11,
     error('invalid number of arguments');
 end
 

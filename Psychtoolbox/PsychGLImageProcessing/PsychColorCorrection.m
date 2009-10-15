@@ -697,35 +697,35 @@ if strcmpi(cmd, 'SetExtendedGammaParameters')
         if uloc >= 0
             glUniform3f(uloc, minL(1), minL(2), minL(3));
         else
-            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of extended gamma!');
         end
         
         uloc = glGetUniformLocation(glsl, 'ICMMaxInLuminance');
         if uloc >= 0
             glUniform3f(uloc, maxL(1), maxL(2), maxL(3));
         else
-            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of extended gamma!');
         end
         
         uloc = glGetUniformLocation(glsl, 'ICMReciprocalLuminanceRange');
         if uloc >= 0
             glUniform3f(uloc, recL(1), recL(2), recL(3));
         else
-            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of extended gamma!');
         end
         
         uloc = glGetUniformLocation(glsl, 'ICMOutputGain');
         if uloc >= 0
             glUniform3f(uloc, gain(1), gain(2), gain(3));
         else
-            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of extended gamma!');
         end
 
         uloc = glGetUniformLocation(glsl, 'ICMOutputBias');
         if uloc >= 0
             glUniform3f(uloc, obias(1), obias(2), obias(3));
         else
-            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of encoding gamma!');
+            error('Tried to set extended gamma parameters for color correction, but color correction not configured for use of extended gamma!');
         end
 
     catch

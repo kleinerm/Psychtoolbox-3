@@ -11,7 +11,7 @@ function gluNurbsCurve( nurb, knotCount, knots, stride, control, order, type )
 % ---allocate---
 % ---protected---
 
-if nargin~=5,
+if nargin~=7,
     error('invalid number of arguments');
 end
 
