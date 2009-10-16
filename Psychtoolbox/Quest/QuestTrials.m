@@ -15,29 +15,40 @@ function trial=QuestTrials(q,binsize)
 % 10/13/04 dgp Added optional binsize argument
 % 10/13/04 dgp The orientations of the returned vectors was inconsistent. They are now rows.
 % Copyright (c) 1996-1999 Denis Pelli
+% 10/16/09 mk  Bugfixes & Improvements to input argument checking, as proposed by Todd Horowitz.
 
-if nargin~=1
+if nargin < 1
 	error('Usage: trial=QuestTrials(q,[binsize])')
 end
-if nargin==2 & binsize<0
-	error('binsize cannot be negative')
+
+if nargin < 2
+    binsize = [];
 end
-if nargin<2 | isempty(binsize) | ~isfinite(binsize) 
+
+if isempty(binsize) | ~isfinite(binsize)  %#ok<OR2>
 	binsize=0;
 end
+
+if binsize < 0
+	error('binsize cannot be negative')
+end
+
 if length(q)>1
 	for i=1:length(q(:))
-		trial(i)=QuestTrials(q(i));
+		trial(i)=QuestTrials(q(i)); %#ok<AGROW>
 	end
 	return
 end
+
 % sort
 [intensity,i]=sort(q.intensity);
 response(1:length(i))=q.response(i);
+
 % quantize
 if binsize>0
 	intensity=round(intensity/binsize)*binsize;
 end
+
 % compact
 j=1;
 trial.intensity(1,j)=intensity(1);

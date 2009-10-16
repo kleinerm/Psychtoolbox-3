@@ -100,8 +100,8 @@ end
 
 % Initialize the persistent variables.
 if isempty(okNames)
-    okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'LNX86', 'MAC',    'MAC2', 'MACI', 'i486-pc-linux-gnu'};
-    mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex', 'mexmaci', 'oct'};
+    okNames = {'PCWIN', 'PCWIN64', 'SOL2', 'HPUX', 'HP700', 'ALPHA', 'IBM_RS', 'SGI', 'GLNX86', 'MAC',    'MAC2', 'MACI', 'i486-pc-linux-gnu', 'MACI64', 'GLNXA64' };
+    mexExtensions = {'dll', 'dll',  '*',    '*',    '*',     '*',     '*',      '*',   '*',     'mexmac', 'mex', 'mexmaci', 'oct', 'mexmaci64', '*' };
 end
 
 inputNames = [];
@@ -175,6 +175,35 @@ if isempty(inputNames) | ismember(computer, inputNames) %#ok<OR2>
                 fprintf('options for Windows.\n\n');
             end
         end
-    end    
+        
+        if IsOSX & strcmp(computer,'MACI64') %#ok<AND2>
+            % 64 bit Matlab running on 64 bit OS/X?!? That won't work.
+            fprintf('And another possible reason for failure:\n\n');
+            fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');
+            fprintf('That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
+            fprintf('of Matlab.\n');
+            fprintf('You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
+            fprintf('make Psychtoolbox work on your 64 bit OS/X. You do this by adding the\n');
+            fprintf('startup option -maci to the matlab start command, ie.\n');
+            fprintf('matlab -maci\n');
+            fprintf('If you do not know how to do this, consult the Matlab help about startup\n');
+            fprintf('options for OS/X.\n\n');
+        end
+
+        if IsLinux & strcmp(computer,'GLNXA64') %#ok<AND2>
+            % 64 bit Matlab running on 64 bit Linux?!? That won't work.
+            fprintf('And another possible reason for failure:\n\n');
+            fprintf('It seems that you are running a 64-bit version of Matlab on your system.\n');
+            fprintf('That won''t work at all! Psychtoolbox currently only supports 32-bit versions\n');
+            fprintf('of Matlab.\n');
+            fprintf('You can try to exit Matlab and then restart it in 32-bit emulation mode to\n');
+            fprintf('make Psychtoolbox work on your 64 bit Linux.\n'); % You do this by adding the\n');
+            %             fprintf('startup option -maci to the matlab start command, ie.\n');
+            %             fprintf('matlab -maci\n');
+            fprintf('If you do not know how to do this, consult the Matlab help about startup\n');
+            fprintf('options for Linux.\n\n');
+        end
+
+    end
     error('Missing or dysfunctional Psychtoolbox Mex file for this operating system. Read the help text above carefully!!');
 end

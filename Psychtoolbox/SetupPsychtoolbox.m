@@ -48,6 +48,13 @@ function SetupPsychtoolbox
 % work if Screen et al. are still loaded.
 clear mex
 
+% Check if this is a 64-bit Matlab, which we don't support at all:
+if strcmp(computer,'PCWIN64') | strcmp(computer,'MACI64') | strcmp(computer,'GLNXA64') %#ok<OR2>
+    fprintf('Psychtoolbox does not work on a 64 bit version of Matlab or Octave.\n');
+    fprintf('You need to install a 32 bit Matlab or Octave to install & use Psychtoolbox.\n');
+    error('Tried to setup on a 64 bit version of Matlab or Octave, which is not supported.');
+end
+
 % Check OS
 isWin=strcmp(computer,'PCWIN')| strcmp(computer, 'i686-pc-mingw32');
 isOSX=strcmp(computer,'MAC') | strcmp(computer,'MACI') | ~isempty(findstr(computer, 'apple-darwin'));
