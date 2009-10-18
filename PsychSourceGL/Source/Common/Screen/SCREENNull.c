@@ -59,6 +59,13 @@ PsychError SCREENNull(void)
 	PsychPushHelp(useString, synopsisString, seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
+	#if PSYCH_SYSTEM == PSYCH_WINDOWS
+		PsychWindowRecordType *windowRecord;
+		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
+		PsychOSFlipWindowBuffers(windowRecord);
+		return(PsychError_none);
+	#endif
+
 	#if PSYCH_SYSTEM == PSYCH_OSX
 	char pbuf[1024];
 	int residualLength = 1024;

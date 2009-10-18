@@ -634,13 +634,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     // the whole dynamic library detection code once for performance reasons:
     if (!hInstance) {
         // First time. Check if we can load the dwmapi.dll:
-		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Checking for Aero desktop compositor support... "); 
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: Checking for DWM Aero desktop compositor support... "); 
 		
         dwmSupported = FALSE;
         dwmlibrary = LoadLibrary("dwmapi.dll");
         if (dwmlibrary) {
             // Load success. Dynamically bind the relevant functions:
-			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager available on a Vista or later system. Binding controls ..."); 
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager available on this Vista (or later) system. Binding controls ..."); 
             PsychDwmIsCompositionEnabled = (DwmIsCompositionEnabledPROC) GetProcAddress(dwmlibrary, "DwmIsCompositionEnabled");
             PsychDwmEnableComposition    = (DwmEnableCompositionPROC) GetProcAddress(dwmlibrary, "DwmEnableComposition");
             PsychDwmEnableMMCSS          = (DwmEnableMMCSSPROC) GetProcAddress(dwmlibrary, "DwmEnableMMCSS");
@@ -660,7 +660,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 			}
         }
 		else {
-			if (PsychPrefStateGet_Verbosity() > 5) printf(" ...Aero desktop compositing window manager unsupported. Running on Pre-Vista system.\n"); 
+			if (PsychPrefStateGet_Verbosity() > 5) printf(" ... DWM Aero desktop compositing window manager unsupported. Running on a Pre-Vista system.\n"); 
 		}
     }
     
@@ -710,7 +710,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
 
         if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Will try to %s Windows Aero desktop compositor.\n", (compositorEnabled) ? "enable" : "disable");
+            printf("PTB-INFO: Will %s Windows Aero desktop compositor aka DWM.\n", (compositorEnabled) ? "enable" : "disable");
         }
         
         // Set new compositor state:
@@ -729,7 +729,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             }
         }
         else {
-            if (PsychPrefStateGet_Verbosity() > 2) {
+            if (PsychPrefStateGet_Verbosity() > 3) {
                 printf("PTB-INFO: Aero desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
             }
         }
@@ -1602,6 +1602,9 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
   DestroyWindow(windowRecord->targetSpecific.windowHandle);
   windowRecord->targetSpecific.windowHandle=NULL;
 
+  // Restore video settings from the defaults in the Windows registry:
+  ChangeDisplaySettings(NULL, 0);
+
   // Was this the last window?
   win32_windowcount--;
 
@@ -1613,17 +1616,25 @@ void PsychOSCloseWindow(PsychWindowRecordType *windowRecord)
       UnregisterClass("PTB-OpenGL", hInstance);
       hInstance=NULL;
       
-      // Free dwmapi.dll if loaded:
+      // Detach from and release dwmapi.dll if loaded and attached:
       if (dwmSupported && dwmlibrary) {
+		  // Reenable DWM if it was disabled (by us or others):
+		  if (!PsychOSIsDWMEnabled()) {
+	          // Enable compositor:
+			  if (PsychDwmEnableComposition(1)) {
+				  if (PsychPrefStateGet_Verbosity() > 1) {
+					  printf("PTB-WARNING: PsychOSCloseWindow: Failed to reenable DWM Aero Windows desktop compositor!\n");
+				  }
+			  }
+		  }
+		  
+		  // Detach and free:
           FreeLibrary(dwmlibrary);
           dwmlibrary = 0;
           dwmSupported = FALSE;
       }
     }
   }
-
-  // Restore video settings from the defaults in the Windows registry:
-  ChangeDisplaySettings(NULL, 0);
 
   // Done.
   return;
@@ -1658,7 +1669,6 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		// Yes. Supported, enabled, and we got timing info from it. Extract:
 		
 		// VBLCount of last VBL:
-		// *vblCount = (psych_uint64) dwmtiming.cDXRefresh;
 		*vblCount = (psych_uint64) dwmtiming.cRefresh;
 		
 		// VBLTime of last VBL in QPC, ie., as query performance counter 64-bit psych_uint64 value:
@@ -1705,7 +1715,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	Returns true on success, false on error.
 
 */
-psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate)
+psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord, psych_bool postSwap, unsigned int flags, psych_uint64* onsetVBLCount, double* onsetVBLTime, psych_uint64* frameId, double* compositionRate, int fullStateStructReturnArgPos)
 {
 	DWM_TIMING_INFO	dwmtiming;	
 	psych_uint64 qpcFrameDisplayed, qpcFrameComplete;
@@ -1740,29 +1750,37 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 	if ( IsDWMEnabled && ((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ) {
 		// Yes. Supported, enabled, and we got valid timing info from it. Extract:
 
-		// qpcFrameComplete seems to correspond almost perfectly to our concept of stimulus onset time, so use this:
-		qpcFrameComplete = (psych_uint64) dwmtiming.qpcFrameComplete;
+		// Only qpcRefreshPeriod requested?
+		if (flags == 1) {
+			// Yes. Only return this in compositionRate:
+			*compositionRate = PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod);
+			return(TRUE);
+		}
+
+		// qpcFrameDisplayed seems to correspond almost perfectly to our concept of stimulus onset time, so use this:
+		qpcFrameDisplayed = (psych_uint64) dwmtiming.qpcFrameDisplayed;
 		
 		// Convert to GetSecs() time:
-		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameComplete);
+		*onsetVBLTime = PsychMapPrecisionTimerTicksToSeconds(qpcFrameDisplayed);
 		
 		// VBL count of stimulus onset:
 		*onsetVBLCount = (psych_uint64) dwmtiming.cRefreshFrameDisplayed;
 		
 		// Assumed frame id: Basically a flip count - Very first bufferswap is id 0, and so on -- A unique
 		// serial number for each Screen('Flip') request: This is the id of the most recently completed flip:
-		*frameId = (psych_uint64) dwmtiming.cFrameComplete;
+		*frameId = (psych_uint64) dwmtiming.cFramesDisplayed;
 
 		// Current composition rate of the DWM: Ideally at least our video refresh rate.
 		*compositionRate = (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator;
 
-		if (PsychPrefStateGet_Verbosity() > 6) {
+		if (PsychPrefStateGet_Verbosity() > 15) {
 			printf("PTB-DEBUG: === PsychDwmGetCompositionTimingInfo returned data follows: ===\n\n");
 			printf("qpcFrameDisplayed       : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed));
 			printf("qpcRefreshPeriod        : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod));
 			printf("qpcFrameComplete        : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete));
 			printf("cFrameComplete          : %i \n", (psych_uint64) dwmtiming.cFrameComplete);
 			printf("cFramePending           : %i \n", (psych_uint64) dwmtiming.cFramePending);
+			printf("cFramesDisplayed        : %i \n", (psych_uint64) dwmtiming.cFramesDisplayed);
 			printf("qpcFramePending         : %15.6f \n", PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFramePending));
 			printf("cRefreshFrameDisplayed  : %i \n", (psych_uint64) dwmtiming.cRefreshFrameDisplayed);
 			printf("cRefreshStarted         : %i \n", (psych_uint64) dwmtiming.cRefreshStarted);
@@ -1772,6 +1790,63 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 			printf("cBuffersEmpty           : %i \n", (psych_uint64) dwmtiming.cBuffersEmpty);
 			
 			printf("PTB-DEBUG: === End of PsychDwmGetCompositionTimingInfo returned data.  ===\n\n");
+		}
+		
+		// Return of complete info structure with all retrieved data requested by caller?
+		if (fullStateStructReturnArgPos > 0) {
+			// Yes. Create a structure with all info:
+			const char *DWMGraphicsFieldNames[]={ "rateRefresh", "qpcRefreshPeriod", "rateCompose", "qpcVBlank", "cRefresh", "cDXRefresh",
+				"qpcCompose", "cFrame", "cDXPresent", "cRefreshFrame", "cFrameSubmitted", "cDXPresentSubmitted",
+				"cFrameConfirmed", "cDXPresentConfirmed", "cRefreshConfirmed", "cDXRefreshConfirmed", "cFramesLate",
+				"cFramesOutstanding", "cFrameDisplayed", "qpcFrameDisplayed", "cRefreshFrameDisplayed", "cFrameComplete", 
+				"qpcFrameComplete", "cFramePending", "qpcFramePending", "cFramesDisplayed", "cFramesComplete",
+				"cFramesPending", "cFramesAvailable", "cFramesDropped", "cFramesMissed", "cRefreshNextDisplayed",
+				"cRefreshNextPresented", "cRefreshesDisplayed", "cRefreshesPresented", "cRefreshStarted",
+				"cPixelsReceived", "cPixelsDrawn", "cBuffersEmpty" };
+			const int DWMGraphicsFieldCount = 39;
+			PsychGenericScriptType	*s;
+			
+			// Alloc struct and return it as return argument at position 'fullStateStructReturnArgPos':
+			PsychAllocOutStructArray(fullStateStructReturnArgPos, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
+			PsychSetStructArrayDoubleElement("rateRefresh", 0, (double) dwmtiming.rateRefresh.uiNumerator / (double) dwmtiming.rateRefresh.uiDenominator, s);
+			PsychSetStructArrayDoubleElement("qpcRefreshPeriod", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod), s);
+			PsychSetStructArrayDoubleElement("rateCompose", 0, (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator, s);
+			PsychSetStructArrayDoubleElement("qpcVBlank", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcVBlank), s);
+			PsychSetStructArrayDoubleElement("cRefresh", 0, (double) (psych_int64) cRefresh, s);
+			PsychSetStructArrayDoubleElement("cDXRefresh", 0, (double) (psych_int64) cDXRefresh, s);
+			PsychSetStructArrayDoubleElement("qpcCompose", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcCompose), s);
+			PsychSetStructArrayDoubleElement("cFrame", 0, (double) (psych_int64) cFrame, s);
+			PsychSetStructArrayDoubleElement("cDXPresent", 0, (double) (psych_int64) cDXPresent, s);
+			PsychSetStructArrayDoubleElement("cRefreshFrame", 0, (double) (psych_int64) cRefreshFrame, s);
+			PsychSetStructArrayDoubleElement("cFrameSubmitted", 0, (double) (psych_int64) cFrameSubmitted, s);
+			PsychSetStructArrayDoubleElement("cDXPresentSubmitted", 0, (double) (psych_int64) cDXPresentSubmitted, s);
+			PsychSetStructArrayDoubleElement("cFrameConfirmed", 0, (double) (psych_int64) cFrameConfirmed, s);
+			PsychSetStructArrayDoubleElement("cDXPresentConfirmed", 0, (double) (psych_int64) cDXPresentConfirmed, s);
+			PsychSetStructArrayDoubleElement("cRefreshConfirmed", 0, (double) (psych_int64) cRefreshConfirmed, s);
+			PsychSetStructArrayDoubleElement("cDXRefreshConfirmed", 0, (double) (psych_int64) cDXRefreshConfirmed, s);
+			PsychSetStructArrayDoubleElement("cFramesLate", 0, (double) (psych_int64) cFramesLate, s);
+			PsychSetStructArrayDoubleElement("cFramesOutstanding", 0, (double) (psych_int64) cFramesOutstanding, s);
+			PsychSetStructArrayDoubleElement("cFrameDisplayed", 0, (double) (psych_int64) cFrameDisplayed, s);
+			PsychSetStructArrayDoubleElement("qpcFrameDisplayed", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed), s);
+			PsychSetStructArrayDoubleElement("cRefreshFrameDisplayed", 0, (double) (psych_int64) cRefreshFrameDisplayed, s);
+			PsychSetStructArrayDoubleElement("cFrameComplete", 0, (double) (psych_int64) cFrameComplete, s);
+			PsychSetStructArrayDoubleElement("qpcFrameComplete", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete), s);
+			PsychSetStructArrayDoubleElement("cFramePending", 0, (double) (psych_int64) cFramePending, s);
+			PsychSetStructArrayDoubleElement("qpcFramePending", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFramePending), s);
+			PsychSetStructArrayDoubleElement("cFramesDisplayed", 0, (double) (psych_int64) cFramesDisplayed, s);
+			PsychSetStructArrayDoubleElement("cFramesComplete", 0, (double) (psych_int64) cFramesComplete, s);
+			PsychSetStructArrayDoubleElement("cFramesPending", 0, (double) (psych_int64) cFramesPending, s);
+			PsychSetStructArrayDoubleElement("cFramesAvailable", 0, (double) (psych_int64) cFramesAvailable, s);
+			PsychSetStructArrayDoubleElement("cFramesDropped", 0, (double) (psych_int64) cFramesDropped, s);
+			PsychSetStructArrayDoubleElement("cFramesMissed", 0, (double) (psych_int64) cFramesMissed, s);
+			PsychSetStructArrayDoubleElement("cRefreshNextDisplayed", 0, (double) (psych_int64) cRefreshNextDisplayed, s);
+			PsychSetStructArrayDoubleElement("cRefreshNextPresented", 0, (double) (psych_int64) cRefreshNextPresented, s);
+			PsychSetStructArrayDoubleElement("cRefreshesDisplayed", 0, (double) (psych_int64) cRefreshesDisplayed, s);
+			PsychSetStructArrayDoubleElement("cRefreshesPresented", 0, (double) (psych_int64) cRefreshesPresented, s);
+			PsychSetStructArrayDoubleElement("cRefreshStarted", 0, (double) (psych_int64) cRefreshStarted, s);
+			PsychSetStructArrayDoubleElement("cPixelsReceived", 0, (double) (psych_int64) cPixelsReceived, s);
+			PsychSetStructArrayDoubleElement("cPixelsDrawn", 0, (double) (psych_int64) cPixelsDrawn, s);
+			PsychSetStructArrayDoubleElement("cBuffersEmpty", 0, (double) (psych_int64) cBuffersEmpty, s);
 		}
 		
 		// Return success:
@@ -1796,6 +1871,30 @@ int	PsychOSIsDWMEnabled(void)
 	return(IsDWMEnabled);
 }
 
+/* PsychOSSetPresentParameters()
+ *
+ * Set presentation timing parameters for DWM that affect PsychOSFlipWindowBuffers()
+ * presentation timing.
+ *
+ * 'targetVBL'	VSYNC count at which the framebuffer (backbuffer) content of the next PsychOSFlipWindowBuffers()
+ *				call after this call should be displayed - a target "deadline" for stimulus onset, expressed in
+ *				video refreshes. As far as i understand, this value affects the first bufferswap after the call.
+ *				After the first bufferswap, successive bufferswaps will be timed wrt. each other and the DWM
+ *				cycle, according to the following present parameters.
+ *
+ * 'rateDuration'	If set to a positive value (>0), defines the target refresh rate for swapbuffers ops, ie.
+ *					a value of 100 would want the DWM to schedule swaps at a rate of 100 Hz. If set to a value
+ *					<=0, the abs(rateDuration) encodes the delta between successive bufferswaps in refresh cycles,
+ *					e.g., -10 == Execute next bufferswap 10 refresh cycles after the previous one.
+ *					The most useful settings for us would be either rateDuration == nominal video refresh rate of
+ *					display (Hz), or -1 for "swap each refresh" or maybe 0 for "swap immediately" (if zero is a valid setting?).
+ *
+ * 'queueLength"	Number of available buffers in flipqueue, ie., how many frames can be queued up. Valid range is
+ *					between 2 and 8 for Vista and Windows-7.
+ *
+ * Returns TRUE on success, FALSE on error, or if the DWM is disabled or unsupported on pre-Vista systems.
+ *
+ */
 psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psych_uint64 targetVBL, unsigned int queueLength, double rateDuration)
 {
 	int rc;
@@ -1803,7 +1902,7 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
 	UNSIGNED_RATIO rateSource;
 	
 	// Map positive rateDuration to some refresh rate:
-	if (rateDuration >= 0) {
+	if (rateDuration > 0) {
 		rateSource.uiNumerator = (int) rateDuration;
 	}
 	else {
@@ -1815,9 +1914,9 @@ psych_bool PsychOSSetPresentParameters(PsychWindowRecordType *windowRecord, psyc
 	dwmPresentParams.fQueue = (targetVBL > 0) ? TRUE : FALSE;
 	dwmPresentParams.cRefreshStart = targetVBL;
 	dwmPresentParams.cBuffer = queueLength;
-	dwmPresentParams.fUseSourceRate = (rateDuration >= 0) ? TRUE : FALSE;
+	dwmPresentParams.fUseSourceRate = (rateDuration > 0) ? TRUE : FALSE;
 	dwmPresentParams.rateSource = rateSource;
-	dwmPresentParams.cRefreshesPerFrame = (int) (rateDuration < 0) ? -rateDuration : 0;
+	dwmPresentParams.cRefreshesPerFrame = (int) (rateDuration <= 0) ? -rateDuration : 0;
 	dwmPresentParams.eSampling = DWM_SOURCE_FRAME_SAMPLING_POINT;
 	
 	// Call function if DWM is supported and enabled:

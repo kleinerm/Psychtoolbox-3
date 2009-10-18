@@ -118,12 +118,14 @@ TO DO:
 #define kPsychHalfHeightWindow		   8192 // This flag is also used as 'specialflag' for onscreen windows. Ask for windows with half-height, e.g., for interleaved stereo...
 #define kPsychNative10bpcFBActive	   1024 // Setting for 'specialflags' field of windowRecords: Means that this windowRecord is attached to a native 10bpc system framebuffer
 											// and needs some special handling it init, shutdown and during operation.
+// Value 32768 is defined in ScreenTypes.h as kPsychBusyWaitForVBLBeforeBufferSwapRequest and is also used as a 'specialflags' setting to define
+// this behaviour on a per-window basis.
 
 // The following numbers are allocated to imagingMode flag above: A (S) means, shared with specialFlags:
-// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192. --> Flags above 32768 and higher are available...
+// 1,2,4,8,16,32,64,128,256,512,1024,S-2048,4096,S-8192. --> Flags of 32768 and higher are available...
 
 // The following numbers are allocated to specialFlags flag above: A (S) means, shared with imagingMode:
-// 1,2,1024,S-2048,S-8192. --> Flags above 16384 and higher are available, as well as 4,8,16,32,64,128,256,512,4096
+// 1,2,1024,S-2048,S-8192, 32768. --> Flags of 65536 and higher are available, as well as 4,8,16,32,64,128,256,512,4096, 16384
 
 // Definition of a single hook function spec:
 typedef struct PsychHookFunction*	PtrPsychHookFunction;

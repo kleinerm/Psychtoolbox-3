@@ -206,7 +206,7 @@ PsychError SCREENGetWindowInfo(void)
     PsychWindowRecordType *windowRecord;
     double beamposition, lastvbl;
 	int infoType = 0, retIntArg;
-	double auxArg1, auxArg2;
+	double auxArg1, auxArg2, auxArg3;
 	CGDirectDisplayID displayId;
 	psych_uint64 postflip_vblcount;
 	double vbl_startline;
@@ -217,7 +217,7 @@ PsychError SCREENGetWindowInfo(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
-    PsychErrorExit(PsychCapNumInputArgs(4));     //The maximum number of inputs
+    PsychErrorExit(PsychCapNumInputArgs(5));     //The maximum number of inputs
     PsychErrorExit(PsychRequireNumInputArgs(1)); //The required number of inputs	
     PsychErrorExit(PsychCapNumOutputArgs(1));    //The maximum number of outputs
 
@@ -259,28 +259,23 @@ PsychError SCREENGetWindowInfo(void)
 		#endif
 		
 		#if PSYCH_SYSTEM == PSYCH_WINDOWS
-
-		const char *DWMGraphicsFieldNames[]={ "DroppedCount", "OnsetVBLTime", "GlitchCount", "CompositionFPS" };
-		const int DWMGraphicsFieldCount = 4;
-
 		psych_uint64 onsetVBLCount, frameId;
 		double onsetVBLTime, compositionRate;
 		psych_uint64 targetVBL;
 		
 		PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &windowRecord);
-		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate)) {
-			// Query success:
-			PsychAllocOutStructArray(1, FALSE, 1, DWMGraphicsFieldCount, DWMGraphicsFieldNames, &s);
-			PsychSetStructArrayDoubleElement("DroppedCount", 0, (double) (psych_int64) onsetVBLCount, s);
-			PsychSetStructArrayDoubleElement("OnsetVBLTime", 0 , (double) onsetVBLTime, s);
-			PsychSetStructArrayDoubleElement("GlitchCount", 0      , (double) (psych_int64) frameId, s);			
-			PsychSetStructArrayDoubleElement("CompositionFPS", 0      , (double) compositionRate, s);
+		// Query all DWM presentation timing info, return full info as struct in optional return argument '1':
+		if (PsychOSGetPresentationTimingInfo(windowRecord, TRUE, 0, &onsetVBLCount, &onsetVBLTime, &frameId, &compositionRate, 1)) {
+			// Query success: Info struct has been created and returned by PsychOSGetPresentationTimingInfo()...
+			auxArg1 = auxArg2 = 0;
+			auxArg3 = 2;
 			
-			if ( (infoType == 3) && PsychCopyInDoubleArg(3, FALSE, &auxArg1) && PsychCopyInDoubleArg(4, FALSE, &auxArg2)) {
+			// Want us to change settings?
+			if ( (infoType == 3) && PsychCopyInDoubleArg(3, FALSE, &auxArg1) && PsychCopyInDoubleArg(4, FALSE, &auxArg2) && PsychCopyInDoubleArg(5, FALSE, &auxArg3)) {
 				if (auxArg1 < 0) auxArg1 = 0;
 				targetVBL = auxArg1;
-				if (PsychOSSetPresentParameters(windowRecord, targetVBL, 8, auxArg2)) {
-					if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to PsychOSSetPresentParameters(%i, %f) SUCCESS!\n", (int) auxArg1, auxArg2);
+				if (PsychOSSetPresentParameters(windowRecord, targetVBL, (int) auxArg3, auxArg2)) {
+					if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: GetWindowInfo: Call to PsychOSSetPresentParameters(%i, %i, %f) SUCCESS!\n", (int) auxArg1, (int) auxArg3, auxArg2);
 				}
 				else {
 					if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: GetWindowInfo: Call to PsychOSSetPresentParameters() failed!\n");
