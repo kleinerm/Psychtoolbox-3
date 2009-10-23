@@ -1,11 +1,11 @@
-function PsychDebugWindowConfiguration(opaqueForHID)
+function PsychDebugWindowConfiguration(opaqueForHID, opacity)
 % Switch PTB's onscreen window into a display mode suitable for easy debugging on single-screen setups.
 %
 % This function (only on OS/X) allows to setup Screen onscreen windows to be
 % half-transparent, so one can simultaneously see the stimulus display and
 % the Matlab window and other GUI windows.
 %
-% Usage: PsychDebugWindowConfiguration([opaqueForHID=0])
+% Usage: PsychDebugWindowConfiguration([opaqueForHID=0][, opacity=0.5])
 %
 % To enable: Call PsychDebugWindowConfiguration before the Screen('OpenWindow',...) call!
 % To disable: Type "clear Screen"
@@ -16,6 +16,10 @@ function PsychDebugWindowConfiguration(opaqueForHID)
 %
 % A setting of -1 will disable the debug mode again.
 %
+% The optional parameter 'opacity' controls how opaque the onscreen window
+% is, in a range of 0.0 to 1.0 for 0% to 100% opacity. By default the
+% window is 50% opaque (or 50% transparent if you like).
+%
 % Stimulus onset timing and timestamping will be inaccurate in this mode
 % and graphics performance will be reduced! Don't use for timing tests or
 % during real experiment sessions!
@@ -25,7 +29,15 @@ function PsychDebugWindowConfiguration(opaqueForHID)
 % 30.7.2009 mk  Written.
 
 if nargin < 1
+    opaqueForHID = [];
+end
+
+if isempty(opaqueForHID)
     opaqueForHID = 0;
+end
+
+if nargin < 2
+    opacity=0.5;
 end
 
 if IsOSX | IsWin %#ok<OR2>
@@ -41,18 +53,22 @@ if IsOSX | IsWin %#ok<OR2>
         Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
     end
 
+    % Map range 0.0 - 1.0 to 0 - 499:
+    opacity = floor(opacity * 499);
+    opacity = max(min(opacity, 499), 0);
+    
     if opaqueForHID
         % Set windows to be transparent, but not for mouse and keyboard:
-        Screen('Preference', 'WindowShieldingLevel', 1750);
+        Screen('Preference', 'WindowShieldingLevel', 1500 + opacity);
     else
         % Set windows to be transparent, also for mouse and keyboard:
-        Screen('Preference', 'WindowShieldingLevel', 1250);
+        Screen('Preference', 'WindowShieldingLevel', 1000 + opacity);
     end
-	
-	if opaqueForHID == -1
+
+    if opaqueForHID == -1
         % Set windows to be normal, i.e., completely opaque:
         Screen('Preference', 'WindowShieldingLevel', 2000);
-	end
+    end
 end
 
 return;

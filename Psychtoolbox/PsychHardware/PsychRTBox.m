@@ -2624,17 +2624,17 @@ function RTboxWarn(err,varargin)
     switch err
         case 'invalidEvent'
             str=sprintf('%4i',varargin{1});
-            str=sprintf('Events not recognized: %s.\nPlease do PsychRTBox(''clear'') before showing stimulus.\nGetSecs = %.1f',str,GetSecs);
+            str=sprintf('PsychRTBox: Events not recognized: %s.\nPlease do PsychRTBox(''clear'') before showing stimulus.\nGetSecs = %.1f',str,GetSecs);
         case 'noTrigger'
-            str=sprintf('Trigger ''%s'' not detected. GetSecs = %.1f', varargin{1}, GetSecs);
+            str=sprintf('PsychRTBox: Trigger ''%s'' not detected. GetSecs = %.1f', varargin{1}, GetSecs);
         case 'poorSync'
-            str=sprintf('Unreliable synchronization detected (variation range %.1f ms).\nGetSecs = %.1f', varargin{1}*1000,GetSecs);
+            str=sprintf('PsychRTBox: Unreliable synchronization detected (variation range %.1f ms).\nGetSecs = %.1f', varargin{1}*1000,GetSecs);
         case 'allDisabled'
-            str=sprintf('All event detection has been disabled for %s.', varargin{1});
+            str=sprintf('PsychRTBox: All event detection has been disabled for %s.', varargin{1});
         case 'openError'
-            str=sprintf('Some unknown error occured while trying to open port. The IOPOrt driver says: %s', varargin{1});            
+            str=sprintf('PsychRTBox: Some unknown error occured while trying to open port. The IOPOrt driver says: %s', varargin{1});            
         otherwise
-            str=sprintf('%s. GetSecs = %.1f',err,GetSecs);
+            str=sprintf('PsychRTBox: %s. GetSecs = %.1f',err,GetSecs);
     end
     warning(['PsychRTBox:' err], str);
 end
