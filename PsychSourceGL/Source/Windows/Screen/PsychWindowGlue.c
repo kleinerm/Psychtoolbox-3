@@ -358,14 +358,22 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 				SetPriorityClass(currentProcess, HIGH_PRIORITY_CLASS);
 				if ((GetPriorityClass(currentProcess)!=HIGH_PRIORITY_CLASS) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Could not enable HIGH_PRIORITY_CLASS scheduling. OS malfunction? Timing may be noisy...\n");
 			}
+			
+			// Additionally try to schedule us MMCSS: This will lift us roughly into the
+			// same scheduling range as REALTIME_PRIORITY_CLASS, even if we are non-admin users
+			// on Vista and Windows-7 and later, however with a scheduler safety net applied.
+			PsychSetThreadPriority(0x1, 10, 0);			
       }
     }
     else {
       // Transition from RT to whatever-it-was-before scheduling requested: We just reestablish the backed-up old
       // policy: If the old policy wasn't Non-RT, then we don't switch back...
-      SetPriorityClass(currentProcess, oldPriority);      
+      SetPriorityClass(currentProcess, oldPriority);
+	  
+	  // Disable any MMCSS scheduling for us if new priority class is non-RT, bog-standard normal scheduling:
+	  if (oldPriority == NORMAL_PRIORITY_CLASS) PsychSetThreadPriority(0x1, 0, 0);
     }
-    
+
     // Success.
     return(TRUE);
 }
@@ -444,9 +452,12 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 			if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
 	    		 windowRecordArray[i]->targetSpecific.windowHandle == hWnd &&
 				 windowRecordArray[i]->stereomode == 0) {
-	  			// This is it! Initiate bufferswap twice:
-	  			PsychOSFlipWindowBuffers(windowRecordArray[i]);
-	  			PsychOSFlipWindowBuffers(windowRecordArray[i]);
+	  			// This is it! Initiate bufferswap twice: DISABLE FOR NOW! May do more harm than good
+				// on MS-Vista, Windows-7 et al. and is not very useful on WinXP et al. either...
+				if (0) {
+					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+				}
 			}
       }
       PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
@@ -541,6 +552,10 @@ psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int 
   // All provided values should be honored: We need to spec the refresh explicitely,
   // because otherwise the system will select the lowest fps for a given display mode.
   dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
+
+  if (PsychPrefStateGet_Verbosity() > 4) {
+	printf("PTB-DEBUG: Switching display for screen %i to fullscreen mode with resolution %i x %i with bpc = %i @ %i Hz.\n", screenNumber, (int) dmScreenSettings.dmPelsWidth, (int) dmScreenSettings.dmPelsHeight, (int) dmScreenSettings.dmBitsPerPel, (int) dmScreenSettings.dmDisplayFrequency);
+  }
 
   // Perform the change:
   if (ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), &dmScreenSettings, NULL, CDS_FULLSCREEN, NULL) != DISP_CHANGE_SUCCESSFUL) {
@@ -701,7 +716,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             // Compositor shall be off:
             compositorEnabled = FALSE;            
             if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Will disable Aero desktop compositor on user request, because the kPsychDisableAeroWDM flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
+				printf("PTB-INFO: Will disable DWM because the kPsychDisableAeroWDM flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
 			}
         }
         else {
@@ -769,8 +784,8 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     if (PsychGetNumDisplays()>2 && screenSettings->screenNumber == 0) fullscreen = TRUE;
 
     if (fullscreen) {
-      windowStyle = WS_POPUP;		      // Set The WindowStyle To WS_POPUP (Popup Window without borders)
-      windowExtendedStyle |= WS_EX_TOPMOST;   // Set The Extended Window Style To WS_EX_TOPMOST
+      windowStyle |= WS_POPUP;					// Set The WindowStyle To WS_POPUP (Popup Window without borders)
+      windowExtendedStyle |= WS_EX_TOPMOST;		// Set The Extended Window Style To WS_EX_TOPMOST
 	  
 	  // Copy absolute screen location and area of window to 'globalrect',
 	  // so functions like Screen('GlobalRect') can still query the real
@@ -862,6 +877,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         return(FALSE);
     }
 
+	if (PsychPrefStateGet_Verbosity() > 4) {
+		printf("PTB-DEBUG: Created onscreen window has position %i x %i and a size of %i x %i.\n", x, y, width, height);
+	}
+	
 	// Setup transparency level for eligible non-fullscreen windows:
 	if (!fullscreen && (windowLevel >= 1000) && (windowLevel < 2000)) {
 		// For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
@@ -916,7 +935,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attribs[attribcount++]=WGL_BLUE_BITS_ARB;
     attribs[attribcount++]=bpc;
     attribs[attribcount++]=WGL_ALPHA_BITS_ARB;
-    // Alpha channel has only 2 bpc in the fixed point bpc=10 case, i.e. RGBA=8882.
+    // Alpha channel has only 2 bpc in the fixed point bpc=10 case, i.e. RGBA=1010102.
     attribs[attribcount++]=(bpc == 10) ? 2 : bpc;
     
     
@@ -1662,7 +1681,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
 	
-	if ( IsDWMEnabled && (NULL != PsychDwmGetCompositionTimingInfo) && (
+	if ( PsychOSIsDWMEnabled() && (NULL != PsychDwmGetCompositionTimingInfo) && (
 		((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ||
 		((rc2 = PsychDwmGetCompositionTimingInfo(NULL, &dwmtiming)) == 0)
 		)) {
@@ -1682,7 +1701,7 @@ double  PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uin
 		return(PsychMapPrecisionTimerTicksToSeconds(ust));
 	}
 	else {
-		 if (IsDWMEnabled && PsychPrefStateGet_Verbosity()>6) {
+		 if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity()>6) {
 			 printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo(%i) failed with rc1 = %x, rc2 = %x, GetLastError() = %i\n", dwmtiming.cbSize, rc1, rc2, GetLastError());
 		}
 	}
@@ -1747,7 +1766,7 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 
 	// Windows Vista DWM available, supported and enabled?
 	dwmtiming.cbSize = sizeof(dwmtiming);
-	if ( IsDWMEnabled && ((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ) {
+	if ( PsychOSIsDWMEnabled() && ((rc1 = PsychDwmGetCompositionTimingInfo(windowRecord->targetSpecific.windowHandle, &dwmtiming)) == 0) ) {
 		// Yes. Supported, enabled, and we got valid timing info from it. Extract:
 
 		// Only qpcRefreshPeriod requested?
@@ -1812,48 +1831,48 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
 			PsychSetStructArrayDoubleElement("qpcRefreshPeriod", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcRefreshPeriod), s);
 			PsychSetStructArrayDoubleElement("rateCompose", 0, (double) dwmtiming.rateCompose.uiNumerator / (double) dwmtiming.rateCompose.uiDenominator, s);
 			PsychSetStructArrayDoubleElement("qpcVBlank", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcVBlank), s);
-			PsychSetStructArrayDoubleElement("cRefresh", 0, (double) (psych_int64) cRefresh, s);
-			PsychSetStructArrayDoubleElement("cDXRefresh", 0, (double) (psych_int64) cDXRefresh, s);
+			PsychSetStructArrayDoubleElement("cRefresh", 0, (double) (psych_int64) dwmtiming.cRefresh, s);
+			PsychSetStructArrayDoubleElement("cDXRefresh", 0, (double) (psych_int64) dwmtiming.cDXRefresh, s);
 			PsychSetStructArrayDoubleElement("qpcCompose", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcCompose), s);
-			PsychSetStructArrayDoubleElement("cFrame", 0, (double) (psych_int64) cFrame, s);
-			PsychSetStructArrayDoubleElement("cDXPresent", 0, (double) (psych_int64) cDXPresent, s);
-			PsychSetStructArrayDoubleElement("cRefreshFrame", 0, (double) (psych_int64) cRefreshFrame, s);
-			PsychSetStructArrayDoubleElement("cFrameSubmitted", 0, (double) (psych_int64) cFrameSubmitted, s);
-			PsychSetStructArrayDoubleElement("cDXPresentSubmitted", 0, (double) (psych_int64) cDXPresentSubmitted, s);
-			PsychSetStructArrayDoubleElement("cFrameConfirmed", 0, (double) (psych_int64) cFrameConfirmed, s);
-			PsychSetStructArrayDoubleElement("cDXPresentConfirmed", 0, (double) (psych_int64) cDXPresentConfirmed, s);
-			PsychSetStructArrayDoubleElement("cRefreshConfirmed", 0, (double) (psych_int64) cRefreshConfirmed, s);
-			PsychSetStructArrayDoubleElement("cDXRefreshConfirmed", 0, (double) (psych_int64) cDXRefreshConfirmed, s);
-			PsychSetStructArrayDoubleElement("cFramesLate", 0, (double) (psych_int64) cFramesLate, s);
-			PsychSetStructArrayDoubleElement("cFramesOutstanding", 0, (double) (psych_int64) cFramesOutstanding, s);
-			PsychSetStructArrayDoubleElement("cFrameDisplayed", 0, (double) (psych_int64) cFrameDisplayed, s);
+			PsychSetStructArrayDoubleElement("cFrame", 0, (double) (psych_int64) dwmtiming.cFrame, s);
+			PsychSetStructArrayDoubleElement("cDXPresent", 0, (double) (psych_int64) dwmtiming.cDXPresent, s);
+			PsychSetStructArrayDoubleElement("cRefreshFrame", 0, (double) (psych_int64) dwmtiming.cRefreshFrame, s);
+			PsychSetStructArrayDoubleElement("cFrameSubmitted", 0, (double) (psych_int64) dwmtiming.cFrameSubmitted, s);
+			PsychSetStructArrayDoubleElement("cDXPresentSubmitted", 0, (double) (psych_int64) dwmtiming.cDXPresentSubmitted, s);
+			PsychSetStructArrayDoubleElement("cFrameConfirmed", 0, (double) (psych_int64) dwmtiming.cFrameConfirmed, s);
+			PsychSetStructArrayDoubleElement("cDXPresentConfirmed", 0, (double) (psych_int64) dwmtiming.cDXPresentConfirmed, s);
+			PsychSetStructArrayDoubleElement("cRefreshConfirmed", 0, (double) (psych_int64) dwmtiming.cRefreshConfirmed, s);
+			PsychSetStructArrayDoubleElement("cDXRefreshConfirmed", 0, (double) (psych_int64) dwmtiming.cDXRefreshConfirmed, s);
+			PsychSetStructArrayDoubleElement("cFramesLate", 0, (double) (psych_int64) dwmtiming.cFramesLate, s);
+			PsychSetStructArrayDoubleElement("cFramesOutstanding", 0, (double) (psych_int64) dwmtiming.cFramesOutstanding, s);
+			PsychSetStructArrayDoubleElement("cFrameDisplayed", 0, (double) (psych_int64) dwmtiming.cFrameDisplayed, s);
 			PsychSetStructArrayDoubleElement("qpcFrameDisplayed", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameDisplayed), s);
-			PsychSetStructArrayDoubleElement("cRefreshFrameDisplayed", 0, (double) (psych_int64) cRefreshFrameDisplayed, s);
-			PsychSetStructArrayDoubleElement("cFrameComplete", 0, (double) (psych_int64) cFrameComplete, s);
+			PsychSetStructArrayDoubleElement("cRefreshFrameDisplayed", 0, (double) (psych_int64) dwmtiming.cRefreshFrameDisplayed, s);
+			PsychSetStructArrayDoubleElement("cFrameComplete", 0, (double) (psych_int64) dwmtiming.cFrameComplete, s);
 			PsychSetStructArrayDoubleElement("qpcFrameComplete", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFrameComplete), s);
-			PsychSetStructArrayDoubleElement("cFramePending", 0, (double) (psych_int64) cFramePending, s);
+			PsychSetStructArrayDoubleElement("cFramePending", 0, (double) (psych_int64) dwmtiming.cFramePending, s);
 			PsychSetStructArrayDoubleElement("qpcFramePending", 0, PsychMapPrecisionTimerTicksToSeconds(dwmtiming.qpcFramePending), s);
-			PsychSetStructArrayDoubleElement("cFramesDisplayed", 0, (double) (psych_int64) cFramesDisplayed, s);
-			PsychSetStructArrayDoubleElement("cFramesComplete", 0, (double) (psych_int64) cFramesComplete, s);
-			PsychSetStructArrayDoubleElement("cFramesPending", 0, (double) (psych_int64) cFramesPending, s);
-			PsychSetStructArrayDoubleElement("cFramesAvailable", 0, (double) (psych_int64) cFramesAvailable, s);
-			PsychSetStructArrayDoubleElement("cFramesDropped", 0, (double) (psych_int64) cFramesDropped, s);
-			PsychSetStructArrayDoubleElement("cFramesMissed", 0, (double) (psych_int64) cFramesMissed, s);
-			PsychSetStructArrayDoubleElement("cRefreshNextDisplayed", 0, (double) (psych_int64) cRefreshNextDisplayed, s);
-			PsychSetStructArrayDoubleElement("cRefreshNextPresented", 0, (double) (psych_int64) cRefreshNextPresented, s);
-			PsychSetStructArrayDoubleElement("cRefreshesDisplayed", 0, (double) (psych_int64) cRefreshesDisplayed, s);
-			PsychSetStructArrayDoubleElement("cRefreshesPresented", 0, (double) (psych_int64) cRefreshesPresented, s);
-			PsychSetStructArrayDoubleElement("cRefreshStarted", 0, (double) (psych_int64) cRefreshStarted, s);
-			PsychSetStructArrayDoubleElement("cPixelsReceived", 0, (double) (psych_int64) cPixelsReceived, s);
-			PsychSetStructArrayDoubleElement("cPixelsDrawn", 0, (double) (psych_int64) cPixelsDrawn, s);
-			PsychSetStructArrayDoubleElement("cBuffersEmpty", 0, (double) (psych_int64) cBuffersEmpty, s);
+			PsychSetStructArrayDoubleElement("cFramesDisplayed", 0, (double) (psych_int64) dwmtiming.cFramesDisplayed, s);
+			PsychSetStructArrayDoubleElement("cFramesComplete", 0, (double) (psych_int64) dwmtiming.cFramesComplete, s);
+			PsychSetStructArrayDoubleElement("cFramesPending", 0, (double) (psych_int64) dwmtiming.cFramesPending, s);
+			PsychSetStructArrayDoubleElement("cFramesAvailable", 0, (double) (psych_int64) dwmtiming.cFramesAvailable, s);
+			PsychSetStructArrayDoubleElement("cFramesDropped", 0, (double) (psych_int64) dwmtiming.cFramesDropped, s);
+			PsychSetStructArrayDoubleElement("cFramesMissed", 0, (double) (psych_int64) dwmtiming.cFramesMissed, s);
+			PsychSetStructArrayDoubleElement("cRefreshNextDisplayed", 0, (double) (psych_int64) dwmtiming.cRefreshNextDisplayed, s);
+			PsychSetStructArrayDoubleElement("cRefreshNextPresented", 0, (double) (psych_int64) dwmtiming.cRefreshNextPresented, s);
+			PsychSetStructArrayDoubleElement("cRefreshesDisplayed", 0, (double) (psych_int64) dwmtiming.cRefreshesDisplayed, s);
+			PsychSetStructArrayDoubleElement("cRefreshesPresented", 0, (double) (psych_int64) dwmtiming.cRefreshesPresented, s);
+			PsychSetStructArrayDoubleElement("cRefreshStarted", 0, (double) (psych_int64) dwmtiming.cRefreshStarted, s);
+			PsychSetStructArrayDoubleElement("cPixelsReceived", 0, (double) (psych_int64) dwmtiming.cPixelsReceived, s);
+			PsychSetStructArrayDoubleElement("cPixelsDrawn", 0, (double) (psych_int64) dwmtiming.cPixelsDrawn, s);
+			PsychSetStructArrayDoubleElement("cBuffersEmpty", 0, (double) (psych_int64) dwmtiming.cBuffersEmpty, s);
 		}
 		
 		// Return success:
 		return(TRUE);
 	}
 	else {
-		if (IsDWMEnabled && PsychPrefStateGet_Verbosity() > 6) {
+		if (PsychOSIsDWMEnabled() && PsychPrefStateGet_Verbosity() > 6) {
 			printf("PTB-DEBUG: Call to PsychDwmGetCompositionTimingInfo() failed with rc1 = %x, GetLastError() = %i\n", rc1, GetLastError());			
 		}
 	}
@@ -1868,6 +1887,14 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  */
 int	PsychOSIsDWMEnabled(void)
 {
+	BOOL compositorEnabled;
+	if (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled))) {
+		IsDWMEnabled = (psych_bool) compositorEnabled;
+	}
+	else {
+		IsDWMEnabled = FALSE;
+	}
+
 	return(IsDWMEnabled);
 }
 
