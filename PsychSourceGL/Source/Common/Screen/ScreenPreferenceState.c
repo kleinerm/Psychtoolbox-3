@@ -102,6 +102,12 @@ static psych_bool						suppressAllWarnings;
 // 5 = Extreme debug output.
 static int								Verbosity;
 
+// Thresholds used during VBL sync tests and refresh rate measurement and calibration
+// in PsychOpenOnscreenWindow()
+static double							sync_maxStddev;					// Maximum standard deviation from mean duration in seconds.
+static double							sync_maxDeviation;				// Maximum deviation (in percent) between measured and OS reported reference frame duration.
+static double							sync_maxDuration;				// Maximum duration of a calibration run in seconds.
+static int								sync_minSamples;				// Minimum number of valid measurement samples needed.
 
 //All state checking goes through accessors located in this file.
 
@@ -132,6 +138,11 @@ void PrepareScreenPreferences(void)
 	suppressAllWarnings=FALSE;
 	Verbosity=3;
 
+	// Default synctest settings: 1 msec allowable max standard deviation from measured
+	// mean flip duration, at least 50 valid sync samples, at most 10% deviation between
+	// measured duration and reference duration (os reported or other), at most 5 seconds
+	// worst-case duration per calibration run:
+	PsychPrefStateSet_SynctestThresholds(0.001, 50, 0.1, 5);
 	return;
 }
 
@@ -408,6 +419,26 @@ double PsychPrefStateGet_FrameRectCorrection(void)
 	return(frameRectLadderCorrection);
 }
 
+// Tweakable parameters for VBL sync tests and refresh rate calibration:
+void PsychPrefStateSet_SynctestThresholds(double maxStddev, int minSamples, double maxDeviation, double maxDuration)
+{
+	if (maxStddev <= 0.0) PsychErrorExitMsg(PsychError_user, "Invalid (<= 0) maximum standard deviation provided!");
+	if (maxDeviation <= 0.0 || maxDeviation > 1.0) PsychErrorExitMsg(PsychError_user, "Invalid (not in range 0.0 - 1.0) maximum deviation from reference framerate provided!");
+	if (maxDuration <= 0.0) PsychErrorExitMsg(PsychError_user, "Invalid (<= 0) maximum duration of calibration procedure provided!");
+	if (minSamples < 0) PsychErrorExitMsg(PsychError_user, "Invalid (negative) minimum number of samples provided!");
+	sync_maxStddev = maxStddev;
+	sync_maxDeviation = maxDeviation;
+	sync_maxDuration = maxDuration;
+	sync_minSamples = minSamples;
+}
+
+void PsychPrefStateGet_SynctestThresholds(double* maxStddev, int* minSamples, double* maxDeviation, double* maxDuration)
+{
+	*maxStddev    = sync_maxStddev;
+	*maxDeviation = sync_maxDeviation; 
+	*maxDuration  = sync_maxDuration; 
+	*minSamples   = sync_minSamples; 
+}
 
 //****************************************************************************************************************
 //Debug preferences
@@ -446,7 +477,3 @@ void PsychPrefStateSet_Verbosity(int level)
 {
 	Verbosity = level;
 }
-
-
-
-

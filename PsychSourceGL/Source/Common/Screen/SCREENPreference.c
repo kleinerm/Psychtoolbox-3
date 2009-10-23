@@ -109,6 +109,7 @@ static char synopsisString[] =
 	"\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable, 2 = EnableHighQuality]);"
 	"\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Default OS-specific [fast]), 1 = HighQ OS-specific]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
+	"\n[maxStddev, minSamples, maxDeviation, maxDuration] = Screen('Preference', 'SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);"
 	"\noldEnableFlag = Screen('Preference', 'FrameRectCorrection', [enableFlag=1]);"
 	"\noldLevel = Screen('Preference', 'VisualDebugLevel', level);"
 	"\n\nWorkaround flags to work around all kind of deficient drivers and hardware:\n"
@@ -162,18 +163,20 @@ PsychError SCREENPreference(void)
 	PsychArgFormatType		arg1Type;
 	char					*preferenceName, *newFontName;
 	const char				*tableCreator, *oldDefaultFontName;
-	psych_bool					preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
+	psych_bool				preferenceNameArgumentValid, booleanInput, ignoreCase, tempFlag, textAlphaBlendingFlag, suppressAllWarningsFlag;
 	int						numInputArgs, i, newFontStyleNumber, newFontSize, tempInt, tempInt2, tempInt3;
 	double					returnDoubleValue, inputDoubleValue;
-	
+	double					maxStddev, maxDeviation, maxDuration;
+	int						minSamples;
+
 	//all sub functions should have these two lines
 	PsychPushHelp(useString, synopsisString,seeAlsoString);
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 	
 	//check for superfluous or missing arguments
-	PsychErrorExit(PsychCapNumInputArgs(3));			
+	PsychErrorExit(PsychCapNumInputArgs(5));			
 	PsychErrorExit(PsychRequireNumInputArgs(1));		   
-	PsychErrorExit(PsychCapNumOutputArgs(1));
+	PsychErrorExit(PsychCapNumOutputArgs(4));
 	
 	numInputArgs=PsychGetNumInputArgs();
 	arg1Type=PsychGetArgType(1);
@@ -316,6 +319,21 @@ PsychError SCREENPreference(void)
 			if(numInputArgs>=2){
                             PsychCopyInIntegerArg(2, kPsychArgRequired, &tempInt);
                             PsychPrefStateSet_VBLTimestampingMode(tempInt);
+			}
+			preferenceNameArgumentValid=TRUE;
+		}else 
+			if(PsychMatch(preferenceName, "SyncTestSettings")){
+			PsychPrefStateGet_SynctestThresholds(&maxStddev, &minSamples, &maxDeviation, &maxDuration);
+			PsychCopyOutDoubleArg(1, kPsychArgOptional, maxStddev);
+			PsychCopyOutDoubleArg(2, kPsychArgOptional, minSamples);
+			PsychCopyOutDoubleArg(3, kPsychArgOptional, maxDeviation);
+			PsychCopyOutDoubleArg(4, kPsychArgOptional, maxDuration);
+			if(numInputArgs>=2){
+							PsychCopyInDoubleArg( 2, kPsychArgOptional, &maxStddev);
+                            PsychCopyInIntegerArg(3, kPsychArgOptional, &minSamples);
+							PsychCopyInDoubleArg( 4, kPsychArgOptional, &maxDeviation);
+							PsychCopyInDoubleArg( 5, kPsychArgOptional, &maxDuration);
+							PsychPrefStateSet_SynctestThresholds(maxStddev, minSamples, maxDeviation, maxDuration);
 			}
 			preferenceNameArgumentValid=TRUE;
 		}else 

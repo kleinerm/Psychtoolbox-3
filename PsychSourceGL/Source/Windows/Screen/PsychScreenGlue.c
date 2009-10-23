@@ -520,10 +520,13 @@ void PsychGetScreenSize(int screenNumber, long *width, long *height)
 
 void PsychGetGlobalScreenRect(int screenNumber, double *rect)
 {
-  // Create an empty rect:
-  PsychMakeRect(rect, 0, 0, 1, 1);
-  // Fill it with meaning by PsychGetScreenRect():
-  PsychGetScreenRect(screenNumber, rect);
+    long width, height; 
+	
+    PsychGetScreenSize(screenNumber, &width, &height);
+    rect[kPsychLeft]= (int) displayDeviceStartX[screenNumber];
+    rect[kPsychTop]= (int) displayDeviceStartY[screenNumber];
+    rect[kPsychRight]=rect[kPsychLeft] + (int) width;
+    rect[kPsychBottom]=rect[kPsychTop] + (int) height;	
 }
 
 
@@ -532,10 +535,10 @@ void PsychGetScreenRect(int screenNumber, double *rect)
     long width, height; 
 
     PsychGetScreenSize(screenNumber, &width, &height);
-    rect[kPsychLeft]= (int) displayDeviceStartX[screenNumber];
-    rect[kPsychTop]= (int) displayDeviceStartY[screenNumber];
-    rect[kPsychRight]=rect[kPsychLeft] + (int) width;
-    rect[kPsychBottom]=rect[kPsychTop] + (int) height; 
+    rect[kPsychLeft]=0;
+    rect[kPsychTop]=0;
+    rect[kPsychRight]=(int)width;
+    rect[kPsychBottom]=(int)height; 
 } 
 
 

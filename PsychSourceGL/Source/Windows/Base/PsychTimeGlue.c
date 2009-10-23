@@ -276,7 +276,7 @@ void PsychInitTimeGlue(void)
 	if (Avrtlibrary) {
 		// Load success. Dynamically bind the relevant functions:
 		PsychAvSetMmThreadPriority				= (AvSetMmThreadPriorityPROC) GetProcAddress(Avrtlibrary, "AvSetMmThreadPriority");
-		PsychAvSetMmMaxThreadCharacteristics	= (AvSetMmMaxThreadCharacteristicsPROC) GetProcAddress(Avrtlibrary, "AvSetMmMaxThreadCharacteristics");
+		PsychAvSetMmMaxThreadCharacteristics	= (AvSetMmMaxThreadCharacteristicsPROC) GetProcAddress(Avrtlibrary, "AvSetMmMaxThreadCharacteristicsA");
 		PsychAvRevertMmThreadCharacteristics	= (AvRevertMmThreadCharacteristicsPROC) GetProcAddress(Avrtlibrary, "AvRevertMmThreadCharacteristics");
 		
 		if (PsychAvSetMmThreadPriority && PsychAvSetMmMaxThreadCharacteristics && PsychAvRevertMmThreadCharacteristics) {
@@ -291,8 +291,7 @@ void PsychInitTimeGlue(void)
 			PsychAvSetMmMaxThreadCharacteristics = NULL;
 			PsychAvSetMmThreadPriority = NULL;
 		}
-	}
-	
+	}	
 }
 
 /* Called at module shutdown/jettison time: */
@@ -953,11 +952,12 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 						// Success! Apply tweakPriority as well...
 						PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
 						rc = 0;
+						// printf("PTB-DEBUG: CLASS 2 Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling SUCCESS for threadhandle %p.\n", threadhandle);
 					}
 					else {
 						// Failed! Retry with HIGHEST priority:
 						rc = SetThreadPriority(thread, THREAD_PRIORITY_HIGHEST);
-						printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
+						// printf("PTB-WARNING: Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling failed for threadhandle %p. Setting thread priority to HIGHEST as a work-around...\n", threadhandle);
 					}
 				}
 				else {
@@ -983,6 +983,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 					// Success! Apply tweakPriority as well...
 					PsychAvSetMmThreadPriority((*threadhandle)->taskHandleMMCS, tweakPriority);
 					rc = 0;
+					// printf("PTB-DEBUG: CLASS 10 Call to PsychAvSetMmMaxThreadCharacteristics() for Vista-MMCSS scheduling SUCCESS for threadhandle %p.\n", threadhandle);
 				}
 				else {
 					// Failed! Retry with HIGHEST priority:

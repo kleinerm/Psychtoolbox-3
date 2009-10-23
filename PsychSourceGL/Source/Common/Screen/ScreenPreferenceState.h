@@ -111,5 +111,9 @@ int PsychPrefStateGet_WindowShieldingLevel(void);
 void PsychPrefStateSet_FrameRectCorrection(double level);
 double PsychPrefStateGet_FrameRectCorrection(void);
 
+// Tweakable parameters for VBL sync tests and refresh rate calibration:
+void PsychPrefStateSet_SynctestThresholds(double maxStddev, int minSamples, double maxDeviation, double maxDuration);
+void PsychPrefStateGet_SynctestThresholds(double* maxStddev, int* minSamples, double* maxDeviation, double* maxDuration);
+
 //end include once
 #endif
