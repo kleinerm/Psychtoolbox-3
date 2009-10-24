@@ -55,11 +55,13 @@
 % workaround for some broken MS-Windows graphics drivers to make the 3D +
 % imaging combo work at least when no stencil buffer is needed.
 %
+%
 % 32 == kPsychDontShareContextRessources: Do not share ressources between
 % different onscreen windows. Usually you want PTB to share all ressources
 % like offscreen windows, textures and GLSL shaders among all open onscreen
 % windows. If that causes trouble for some weird reason, you can prevent
 % automatic sharing with this flag.
+%
 %
 % 64 == kPsychUseSoftwareRenderer: Request use of a software implemented
 % renderer instead of the GPU hardware renderer. This request is silently
@@ -70,12 +72,21 @@
 % hardware that doesn't support this. Not generally useful for production
 % use.
 %
+%
 % 128 == kPsychEnforceForegroundWindow: Request application of the Windows
 % GDI calls SetForegroundWindow() and SetFocus() on each created onscreen
 % window on MS-Windows. This may improve reliabilty of onscreen windows
 % staying in front of all other windows, but is incompatible with the use
 % of GetChar, CharAvail and ListenChar, so it must be requested with this
-% flag.
+% flag. These calls are unfortunately absolutely crucial on MS-Vista and
+% later operating systems to guarantee artifact free (tear-free) and timing
+% accuratestimulus onset and robust and accurate stimulus onset
+% timestamping. Therefore they are automatically applied to all fullscreen
+% windows on Windows Vista and later operating systems. See the option
+% kPsychPreventForegroundWindow to forcefully disable/prevent use of these
+% options, if use of GetChar() et al. is more important than artifact free
+% stimulus presentation.
+%
 %
 % 256 == kPsychUseWindowsContextSharingWorkaround1
 % On MS-Windows, skip a few not too essential setup steps when creating a
@@ -83,6 +94,7 @@
 % of kPsychDisableContextIsolation -- Less intrusive as it doesn't disable
 % context isolation completely, but only a subset. May be able to
 % work-around an NVidia driver bug reported in March 2008 on GF8xxx series.
+%
 %
 % 512 == kPsychAvoidCPUGPUSync: Avoid any internal calls (if possible) that
 % could cause a synchronization of the CPU and GPU. Synchronization is a
@@ -96,6 +108,7 @@
 % hardware, driver and operating system. It may give a large speedup, or no
 % speedup at all, but it will always reduce robustness!
 %
+%
 % 1024 == kPsychTextureUploadFormatOverride
 % Tell PTB to use the opposite texture format of what its auto-detection
 % thinks is optimal. Screen contains code to auto-detect certain type of
@@ -107,6 +120,7 @@
 % MS-Windows which cause miserable texture creation performance with the
 % standard optimized settings.
 %
+%
 % 2048 == kPsychAvoidFramebufferBlitIfPossible
 % Tell PTB to not use the EXT_framebuffer_blit extension if a lower-speed
 % workaround solution exists. This will mostly affect the operation of
@@ -114,11 +128,13 @@
 % flexible, capable, faster method would be used, unless you set this flag
 % to fall back to the old solution.
 %
+%
 % 4096 == kPsychUseBeampositionQueryWorkaround
 % Tell PTB to always use the workaround for broken beamposition queries in
 % VBL on MS-Windows, even if the automatic startup test does not detect any
 % problems. This for rare cases where the test fails to detect broken
 % setups.
+%
 %
 % 8192 == kPsychUseAGLForFullscreenWindows
 % Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
@@ -126,15 +142,34 @@
 % PTB would use the CGL API for fullscreen windows, but this is broken for
 % dual-display operations on some systems running 10.5.3 - 10.5.6 at least.
 %
-% 16384 == kPsychUseAGLCompositorForFullscreenWindows
-% Tell PTB on Mac OS/X to always use the AGL API for OpenGL system setup,
-% and to always use Quartz composited regular windows instead of fullscreen
-% contexts, even if the requested onscreen window is a fullscreen window.
-% Normally PTB would use the CGL API for fullscreen windows, but this is
-% broken for dual-display operations on some systems running 10.5.3 -
-% 10.5.6 at least. Stimulus onset timing, animations and timestamping
-% precision will be horrible in this mode. Only suitable for presentation
-% of mostly static stimuli with no requirements for frame-accurate timing.
+%
+% 16384 == kPsychUseCompositorForFullscreenWindows
+% Tell PTB to use a compositing window manager for stimulus display if such
+% a desktop compositor is supported on your operating system. Currently
+% this flags affects operation on MacOS/X and on Microsoft Windows Vista
+% and later versions of Windows.
+%
+% On Windows Vista and Windows-7, it will enforce use of the Windows Aero
+% desktop compositor (aka DWM or Desktop Window Manager). Accuracy and
+% reliability of visual stimulus onset timing and the accuracy and
+% reliability of stimulus onset timestamps will be greatly reduced in this
+% mode - up to the point of being completely useless for timed stimulus
+% presentation. The mode may however be useful for debugging and code
+% development as a convenience feature. By default, PTB disables the DWM as
+% soon as a fullscreen window is opened, unless the
+% PsychDebugWindowConfiguration() function was used to switch to debug
+% mode.
+%
+% On Mac OS/X this will cause PTB to always use the AGL API for OpenGL
+% system setup, and to always use Quartz composited regular windows instead
+% of fullscreen contexts, even if the requested onscreen window is a
+% fullscreen window. Normally PTB would use the CGL API for fullscreen
+% windows, but this is broken for dual-display operations on some systems
+% running OS/X Leopard 10.5 with all modern NVidia cards. Stimulus onset
+% timing, animations and timestamping precision will be horrible in this
+% mode. Only suitable for presentation of mostly static stimuli with no
+% requirements for frame-accurate timing.
+%
 %
 % 32768 == kPsychBusyWaitForVBLBeforeBufferSwapRequest
 % If Screen('Flip') in sync with vertical retrace is requested and
@@ -148,19 +183,27 @@
 % may have negative side effects on system timing. Use as last resort!
 %
 %
-% 65536 == kPsychDontUseNativeBeamposQuery
+% 65536 (= 2^16) == kPsychDontUseNativeBeamposQuery
 % Do not use operating system native beamposition queries, but try to use
 % own mechanism, or none at all. This to work around bugs in OS native
 % beamposition query mechanisms, e.g., Leopard 10.5.7 + ATI GPU's.
 %
 %
-% 131072 == kPsychDisableAeroWDM 
-% Disable the Aero WDM desktop composition manager on Windows Vista and
+% 131072 (= 2^17) == kPsychDisableAeroDWM 
+% Disable the Aero DWM desktop composition manager on Windows Vista and
 % later. By default, Psychtoolbox will try to keep the WDM running,
 % actually enforce use of it, as this provides better timing behaviour. If
 % you find otherwise on your setup or have special needs, specify this flag
-% to force the WDM off.
+% to force the DWM off.
 %
+%
+% 262144 (= 2^18) == kPsychPreventForegroundWindow
+% Prevent calls to the Windows GDI functions SetForegroundWindow() and
+% SetFocus() on each created fullscreen onscreen window on MS-Windows.
+% These calls would prevent proper use of GetChar(), but are needed on
+% MS-Vista and later for proper visual stimulus onset timing. With this
+% flag you can make a conscious decision between proper stimulus display
+% and use of GetChar.
 %
 % --> It's always better to update your graphics drivers with fixed
 % versions or buy proper hardware than using these workarounds. They are
