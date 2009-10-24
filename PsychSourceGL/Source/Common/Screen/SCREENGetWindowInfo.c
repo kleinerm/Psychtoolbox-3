@@ -198,9 +198,9 @@ PsychError SCREENGetWindowInfo(void)
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "RawSwapTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
-							   "GLSupportsFP32Shading", "BitsPerColorComponent" };
+							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags" };
 							   
-	const int  fieldCount = 25;
+	const int  fieldCount = 27;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -351,6 +351,8 @@ PsychError SCREENGetWindowInfo(void)
 		// Misc. window parameters:
 		PsychSetStructArrayDoubleElement("StereoMode", 0, windowRecord->stereomode, s);
 		PsychSetStructArrayDoubleElement("ImagingMode", 0, windowRecord->imagingMode, s);
+		PsychSetStructArrayDoubleElement("SpecialFlags", 0, windowRecord->specialflags, s);
+		PsychSetStructArrayDoubleElement("IsFullscreen", 0, (windowRecord->specialflags & kPsychIsFullscreenWindow) ? 1 : 0, s);
 		PsychSetStructArrayDoubleElement("MultiSampling", 0, windowRecord->multiSample, s);
 		PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);

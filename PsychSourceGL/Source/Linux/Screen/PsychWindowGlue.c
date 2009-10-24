@@ -154,6 +154,9 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     
     // Switch system to fullscreen-mode without changing any settings:
     fullscreen = TRUE;
+
+	// Mark this window as fullscreen window:
+	windowRecord->specialflags |= kPsychIsFullscreenWindow;
 	
 	// Copy absolute screen location and area of window to 'globalrect',
 	// so functions like Screen('GlobalRect') can still query the real

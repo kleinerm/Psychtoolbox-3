@@ -201,7 +201,9 @@ typedef struct {
 #define kPsychUseAGLForFullscreenWindows 8192
 
 // On OS/X enforce use of regular composited Quartz windows for fullscreen
-// displays via AGL, instead of AGL or CGL fullscreen contexts:
+// displays via AGL, instead of AGL or CGL fullscreen contexts. On Windows Vista
+// and later it will also enforce use of the DWM. A future version may enforce
+// use of Compiz on Linux as well:
 #define kPsychUseAGLCompositorForFullscreenWindows 16384
 
 // Wait for onset of VBL before emitting a PsychOSFlipWindowBuffers() request, by
@@ -212,11 +214,15 @@ typedef struct {
 
 // Don't use native beamposition query mechanism but either our own
 // homegrown solution, or no beampos query at all:
-// Currently used to work around bugs in Leopard 10.5.7 + ATI gfx:
+// Currently used to work around bugs in Leopard 10.5.x + ATI gfx:
 #define kPsychDontUseNativeBeamposQuery 65536
 
-// Disable the Aero WDM desktop composition manager on Windows Vista and later:
-#define kPsychDisableAeroWDM 131072
+// Disable the Aero DWM desktop composition manager on Windows Vista and later:
+#define kPsychDisableAeroDWM 131072
+
+// Disable SetForegroundWindow() and SetFocus() calls on Windows for onscreen windows:
+#define kPsychPreventForegroundWindow 262144
+
 
 //function protoptypes
 

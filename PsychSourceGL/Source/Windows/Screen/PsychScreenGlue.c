@@ -244,7 +244,6 @@ void InitCGDisplayIDList(void)
 		printf("PTB-INFO: Make also sure that the 'primary monitor' in the display settings is set to your main stimulus \n");
 		printf("PTB-INFO: presentation displayfor more reliable timing and generally less problems.\n");
 		printf("PTB-INFO: If an alternative mechanism for high-precision timestamping is available on your system, it will be used.\n");
-		printf("PTB-INFO: Vista and later Windows systems provide precise DWM timestamping under certain circumstances.\n\n");
 	}
   }
 

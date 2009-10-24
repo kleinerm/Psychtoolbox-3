@@ -1052,8 +1052,13 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     // Autodetect and setup type of texture extension to use for high-perf texture mapping:
     PsychDetectTextureTarget(*windowRecord);
 
-	if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && PsychOSIsDWMEnabled()) printf("PTB-WARNING: WINDOWS DWM AERO DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE GROSSLY INACCURATE!\n");
-
+	if ((PsychPrefStateGet_Verbosity() > 1) && PsychIsMSVista() && PsychOSIsDWMEnabled()) {
+		printf("PTB-WARNING: ============================================================================================================================\n");
+		printf("PTB-WARNING: WINDOWS DWM AERO DESKTOP COMPOSITOR IS ACTIVE! ALL FLIP STIMULUS ONSET TIMESTAMPS WILL BE GROSSLY INACCURATE AND UNRELIABLE!\n");
+		printf("PTB-WARNING: DO NOT USE THIS MODE FOR RUNNING EXPERIMENT SESSIONS WITH ANY REQUIREMENTS FOR ACCURATE TIMING!\n");
+		printf("PTB-WARNING: ============================================================================================================================\n");
+	}
+	
     if (skip_synctests < 2) {
       // Reliable estimate? These are our minimum requirements...
       if (numSamples< minSamples || stddev> maxStddev) {

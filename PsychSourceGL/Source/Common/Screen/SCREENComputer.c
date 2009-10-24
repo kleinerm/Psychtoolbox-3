@@ -434,14 +434,18 @@ PsychError SCREENComputer(void)
 // information. MAC query does not work yet - We do not have the neccessary libraries to compile the code :(
 PsychError SCREENComputer(void)
 {
+	// Info struct for queries to OS:
+	OSVERSIONINFO osvi;
+	char	versionString[256];
+	
     // const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "kern", "hw", "processUserLongName", 
     //      "processUserShortName", "consoleUserName", "machineName", "localHostName", "location", "MACAddress", "system" };
-    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "MACAddress"};
+    const char *majorStructFieldNames[]={"macintosh", "windows", "osx" ,"linux", "system", "MACAddress"};
 
     const char *kernStructFieldNames[]={"ostype", "osrelease", "osrevision", "version","hostname"};
     const char *hwStructFieldNames[]={"machine", "model", "ncpu", "physmem", "usermem", "busfreq", "cpufreq"};
     int numMajorStructDimensions=1, numKernStructDimensions=1, numHwStructDimensions=1;
-    int numMajorStructFieldNames=4, numKernStructFieldNames=5, numHwStructFieldNames=7;
+    int numMajorStructFieldNames=5, numKernStructFieldNames=5, numHwStructFieldNames=7;
     // char ethernetMACStr[20];
     // unsigned char MACData[6];
     // UUID uuid;
@@ -461,6 +465,18 @@ PsychError SCREENComputer(void)
     PsychSetStructArrayDoubleElement("windows", 0, 1, majorStruct);
     PsychSetStructArrayDoubleElement("linux", 0, 0, majorStruct);
     PsychSetStructArrayDoubleElement("osx", 0, 0, majorStruct);
+
+	// Query info about Windows version:
+	versionString[0]=0;
+	memset(&osvi, 0, sizeof(OSVERSIONINFO));
+	osvi.dwOSVersionInfoSize = sizeof(OSVERSIONINFO);
+	GetVersionEx(&osvi);
+
+	// Convert into string with major.minor.buildnumber - Name of service packs (max 128 chars) etc.:
+	// Versions to products: 6.1 = Windows-7, 6.0  = Vista, 5.2 = Windows Server 2003, 5.1 = WindowsXP, 5.0 = Windows 2000, 4.x = NT
+	sprintf(versionString, "%i.%i.%i - %s", osvi.dwMajorVersion, osvi.dwMinorVersion, osvi.dwBuildNumber, (char*) osvi.szCSDVersion);
+	PsychSetStructArrayStringElement("system", 0, versionString, majorStruct);
+
     
     // Query hardware MAC address of primary ethernet interface: This is a unique id of the computer,
     // good enough to disambiguate our statistics:

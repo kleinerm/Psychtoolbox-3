@@ -247,7 +247,13 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
 	if (PsychMatchRect(screenrect, windowRecord->rect)) useAGL=FALSE;
 
-	// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.6 with NVidia GF 8800 GPU's:
+	// FALSE means: This is a fullscreen window:
+	if (!useAGL) {
+	  // Mark this window as fullscreen window:
+	  windowRecord->specialflags |= kPsychIsFullscreenWindow;
+	}
+
+	// Override for use on f$%#$Fd OS/X 10.5.3 - 10.5.8 with NVidia GF 8800 GPU's:
 	// If requested, always use AGL API and regular (non-fullscreen) windows via the
 	// Quartz compositor. These are just borderless fullscreen windows.
 	// This works with the NVidia GF 8800 driver bug on dual-display setups,

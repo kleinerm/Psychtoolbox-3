@@ -53,6 +53,7 @@ PsychError SCREENNull(void)
 	int i, m,n, p, numInArgs, numOutArgs, numNamedOutArgs;
 	char *str;
 	PsychArgFormatType format;
+	PsychWindowRecordType *windowRecord;
 	const char defaultString[] = "I am the default string\n";
 
 	//all sub functions should have these two lines
@@ -60,7 +61,6 @@ PsychError SCREENNull(void)
 	if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
-		PsychWindowRecordType *windowRecord;
 		PsychAllocInWindowRecordArg(1, TRUE, &windowRecord);
 		PsychOSFlipWindowBuffers(windowRecord);
 		return(PsychError_none);

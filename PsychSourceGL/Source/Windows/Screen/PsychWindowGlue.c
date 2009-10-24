@@ -38,11 +38,17 @@
 
 	NOTES:
 	
+		Technical information about the Windows-Vista display driver model (WDDM 1.0) and later: http://msdn.microsoft.com/en-us/library/ms796755.aspx
+		Contains details about driver interfaces, memory management, GPU scheduling, swap control etc.
+		Official name: "Windows Vista Display Driver Model Design Guide"
+
+		Useful information about the Vista et al. Direct-X Graphics kernel subsystem: http://msdn.microsoft.com/en-us/library/ee415671(VS.85).aspx
+		OpenGL ICD's on Vista and later communicate with the GPU (or more accurately, the Display Miniport Driver of the GPU) through the
+		Direct-X Graphics kernel subsystem. For that reason it is helpful to understand its internal working, as some of its properties and
+		of the DirectX/Direct3D driver settings may also affect OpenGL rendering and stimulus presentation.
+
 	TO DO: 
-	
-		¥ The "glue" files should should be suffixed with a platform name.  The original (bad) plan was to distingish platform-specific files with the same 
-		name by their placement in a directory tree.
- 
+
 */
 
 #include "Screen.h"
@@ -289,9 +295,6 @@ HMODULE dwmlibrary = 0;
 // dwmSupported is true if DWM is supported and library is linked:
 static psych_bool dwmSupported = FALSE;
 
-// Store enabled state of DWM: TRUE == Is enabled, FALSE == Is disabled or non-existent:
-psych_bool IsDWMEnabled = FALSE;
-
 // DWM function definitions and procpointers:
 typedef HRESULT (APIENTRY *DwmIsCompositionEnabledPROC)(BOOL *pfEnabled);
 typedef HRESULT (APIENTRY *DwmEnableCompositionPROC)(UINT enable);
@@ -305,13 +308,52 @@ DwmEnableMMCSSPROC					PsychDwmEnableMMCSS = NULL;
 DwmGetCompositionTimingInfoPROC		PsychDwmGetCompositionTimingInfo = NULL;
 DwmSetPresentParametersPROC			PsychDwmSetPresentParameters = NULL;
 
-// Definitions for dynamic binding of VSYNC extension:
-//typedef void (APIENTRY *PFNWGLEXTSWAPCONTROLPROC) (int);
-//PFNWGLEXTSWAPCONTROLPROC wglSwapIntervalEXT = NULL;
+char hostwinName[512];
+HWND hostwinHandle = 0;	
 
-// Definitions for dynamic binding of wglChoosePixelformat extension:
-// typedef BOOL (APIENTRY *PFNWGLCHOOSEPIXELFORMATPROC) (HDC,const int*, const FLOAT *, UINT, int*, UINT*);
-// PFNWGLCHOOSEPIXELFORMATPROC wglChoosePixelFormatARB = NULL;
+/** PsychHostWindowEnumFunc(): Called by EnumWindows() in PsychOpenOnscreenWindow()
+ *  as callback function for window enumeration. This is meant to filter out the
+ *  main window of Matlab or Octave from the enumerated candidate windows.
+ *
+ *  If it finds the target window, it assigns its handle to 'hostwinHandle' for
+ *  later use and stops enumeration.
+ */
+BOOL CALLBACK PsychHostWindowEnumFunc(HWND hwnd, LPARAM passId)
+{
+	// Get text in title bar of Window hwnd as string for pattern matching:
+    GetWindowText(hwnd, hostwinName, sizeof(hostwinName) - 1);
+	if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration: Pass %i, HWND = %p Current: %s\n", passId, hwnd, hostwinName);
+
+	// Which runtime?
+	#ifndef PTBOCTAVE3MEX
+		// Running on Matlab: Use Matlab name matching:
+		// Pass 1: Scan for Matlab in GUI mode:
+		if ((passId == 1) && strstr(hostwinName, "MATLAB  ")) {
+			// Found something that looks ok:
+			hostwinHandle = hwnd;
+			return(FALSE);
+		}
+		
+		// Pass 2: Scan for Matlab in Console mode:
+		if ((passId == 2) && strstr(hostwinName, "MATLAB Command Window")) {
+			// Found something that looks ok:
+			hostwinHandle = hwnd;
+			return(FALSE);
+		}
+	#else
+		// Running on Octave: Use Octave name matching:
+		// Pass 1: Scan for Octave in Console mode or for QtOctave in GUI mode:
+		if ((passId == 1) && strstr(hostwinName, "Octave")) {
+			// Found something that looks ok:
+			hostwinHandle = hwnd;
+			return(FALSE);
+		}
+	#endif
+	
+	// Nothing yet? Continue enumeration:
+    return(TRUE);
+}
+
 
 /** PsychRealtimePriority: Temporarily boost priority to highest available priority in M$-Windows.
     PsychRealtimePriority(true) enables realtime-scheduling (like Priority(2) would do in Matlab).
@@ -381,119 +423,131 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 // Callback handler for Window manager: Handles some events
 LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 {
-  static PAINTSTRUCT ps;
-  PsychWindowRecordType	**windowRecordArray;
-  int i, numWindows;
-  int verbosity = PsychPrefStateGet_Verbosity();
-
-  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): Called!\n");
-  
-  // What event happened?
-  switch(uMsg) {
-	case WM_MOUSEACTIVATE:
-		// Mouseclick into our inactive window (non-fullscreen) received. Eat it:
-		if (verbosity > 6) printf("PTB-DEBUG: WndProc(): MOUSE ACTIVATION!\n");
-		return(MA_NOACTIVATEANDEAT);
-	break;
+	static PAINTSTRUCT ps;
+	PsychWindowRecordType	**windowRecordArray;
+	int i, numWindows;
+	int verbosity = PsychPrefStateGet_Verbosity();
 	
-    case WM_SYSCOMMAND:
-      // System command received: We intercept system commands that would start
-      // the screensaver or put the display into powersaving sleep-mode:
-	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SYSCOMMAND!\n");
-      switch(wParam) {
-			case SC_SCREENSAVE:
-			case SC_MONITORPOWER:
-	  		return(0);
-		}
-    break;
+	if (verbosity > 6) printf("PTB-DEBUG: WndProc(): Called!\n");
 	
-	 case WM_LBUTTONDOWN:
-		// Left mouse button depressed:
-		mousebutton_l = TRUE;
-	 break;
-
-	 case WM_LBUTTONUP:
-		// Left mouse button released:
-		mousebutton_l = FALSE;
-	 break;
-
-	 case WM_MBUTTONDOWN:
-		// Middle mouse button depressed:
-		mousebutton_m = TRUE;
-	 break;
-
-	 case WM_MBUTTONUP:
-		// Middle mouse button released:
-		mousebutton_m = FALSE;
-	 break;
-
-	 case WM_RBUTTONDOWN:
-		// Right mouse button depressed:
-		mousebutton_r = TRUE;
-	 break;
-
-	 case WM_RBUTTONUP:
-		// Right mouse button released:
-		mousebutton_r = FALSE;
-	 break;
-	 
-    case WM_PAINT:
-      // Repaint event: This happens if a previously covered non-fullscreen window
-      // got uncovered, so part of it needs to be redrawn. PTB's rendering model
-      // doesn't have a concept of redrawing a stimulus. As this is mostly useful
-      // for debugging, we just do a double doublebuffer swap in the hope that this
-      // will restore the frontbuffer...
-	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-      BeginPaint(hWnd, &ps);
-      EndPaint(hWnd, &ps);
-      // Scan the list of windows to find onscreen window with handle hWnd:
-      PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
-      for(i = 0; i < numWindows; i++) {
-			if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
-	    		 windowRecordArray[i]->targetSpecific.windowHandle == hWnd &&
-				 windowRecordArray[i]->stereomode == 0) {
-	  			// This is it! Initiate bufferswap twice: DISABLE FOR NOW! May do more harm than good
-				// on MS-Vista, Windows-7 et al. and is not very useful on WinXP et al. either...
-				if (0) {
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
-					PsychOSFlipWindowBuffers(windowRecordArray[i]);
+	// What event happened?
+	switch(uMsg) {
+		case WM_MOUSEACTIVATE:
+			// Mouseclick into our inactive window (non-fullscreen) received. Eat it:
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): MOUSE ACTIVATION!\n");
+			return(MA_NOACTIVATEANDEAT);
+			break;
+			
+		case WM_SYSCOMMAND:
+			// System command received: We intercept system commands that would start
+			// the screensaver or put the display into powersaving sleep-mode:
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SYSCOMMAND!\n");
+			switch(wParam) {
+				case SC_SCREENSAVE:
+				case SC_MONITORPOWER:
+					return(0);
+			}
+				break;
+			
+		case WM_LBUTTONDOWN:
+			// Left mouse button depressed:
+			mousebutton_l = TRUE;
+			break;
+			
+		case WM_LBUTTONUP:
+			// Left mouse button released:
+			mousebutton_l = FALSE;
+			break;
+			
+		case WM_MBUTTONDOWN:
+			// Middle mouse button depressed:
+			mousebutton_m = TRUE;
+			break;
+			
+		case WM_MBUTTONUP:
+			// Middle mouse button released:
+			mousebutton_m = FALSE;
+			break;
+			
+		case WM_RBUTTONDOWN:
+			// Right mouse button depressed:
+			mousebutton_r = TRUE;
+			break;
+			
+		case WM_RBUTTONUP:
+			// Right mouse button released:
+			mousebutton_r = FALSE;
+			break;
+			
+		case WM_PAINT:
+			// Repaint event: This happens if a previously covered non-fullscreen window
+			// got uncovered, so part of it needs to be redrawn. PTB's rendering model
+			// doesn't have a concept of redrawing a stimulus. As this is mostly useful
+			// for debugging, we just do a double doublebuffer swap in the hope that this
+			// will restore the frontbuffer...
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
+			BeginPaint(hWnd, &ps);
+			EndPaint(hWnd, &ps);
+			// Scan the list of windows to find onscreen window with handle hWnd:
+			PsychCreateVolatileWindowRecordPointerList(&numWindows, &windowRecordArray);
+			for(i = 0; i < numWindows; i++) {
+				if (PsychIsOnscreenWindow(windowRecordArray[i]) &&
+					windowRecordArray[i]->targetSpecific.windowHandle == hWnd &&
+					windowRecordArray[i]->stereomode == 0) {
+					// This is it! Initiate bufferswap twice: DISABLE FOR NOW! May do more harm than good
+					// on MS-Vista, Windows-7 et al. and is not very useful on WinXP et al. either...
+					if (0) {
+						PsychOSFlipWindowBuffers(windowRecordArray[i]);
+						PsychOSFlipWindowBuffers(windowRecordArray[i]);
+					}
 				}
 			}
-      }
-      PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
-      // Done.
-      return 0;
-
-    case WM_SIZE:
-      // Window resize event: Only happens in debug-mode (non-fullscreen).
-      // We resize the viewport accordingly and then trigger a repaint-op.
-	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
-
-      glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
-      PostMessage(hWnd, WM_PAINT, 0, 0);
-      // printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
-      return 0;
-
-    case WM_CLOSE:
-      // WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
-      // -> Manually closing an onscreen window does the same as pressing the Abort-key.
-	  if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
-      wParam='@';
-    case WM_CHAR:
-      // Character received. We only care about one key, the '@' key.
-      // Pressing '@' will immediately close all onscreen windows, show
-      // the cursor and such. It is the emergency stop key.
-      if (wParam=='@') {
-	// Emergency shutdown:
-	printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
-	printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
-	printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
-	ScreenCloseAllWindows();
-	return(0);
-      }
-      break;
-    }
-
+				PsychDestroyVolatileWindowRecordPointerList(windowRecordArray);
+			// Done.
+			return 0;
+			
+		case WM_SIZE:
+			// Window resize event: Only happens in debug-mode (non-fullscreen).
+			// We resize the viewport accordingly and then trigger a repaint-op.
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_SIZE!\n");
+			
+			glViewport(0, 0, LOWORD(lParam), HIWORD(lParam));
+			PostMessage(hWnd, WM_PAINT, 0, 0);
+			// printf("\nPTB-INFO: Onscreen window resized to: %i x %i.\n", (int) LOWORD(lParam), (int) HIWORD(lParam));
+			return 0;
+			
+		case WM_CLOSE:
+			// WM_CLOSE falls through to WM_CHAR and emulates an Abort-key press.
+			// -> Manually closing an onscreen window does the same as pressing the Abort-key.
+			if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_PAINT!\n");
+			wParam='@';
+		case WM_CHAR:
+			// Character received. We only care about one key, the '@' key.
+			// Pressing '@' will immediately close all onscreen windows, show
+			// the cursor and such. It is the emergency stop key.
+			if (wParam=='@') {
+				// Emergency shutdown:
+				printf("\nPTB-INFO: Master-Abort key '@' pressed by user.\n");
+				printf("PTB-INFO: Enforcing script abortion and restoring desktop by executing Screen('CloseAll') now!\n");
+				printf("PTB-INFO: Please ignore the false error message (INTERNAL PSYCHTOOLBOX ERROR) caused by this...\n");
+				ScreenCloseAllWindows();
+				return(0);
+			}
+			else {
+				// Other character received. Can we redispatch it to our host applications window?
+				if (hostwinHandle) {
+					// We have its window handle! Post a message to its message queue. This way,
+					// CharAvail() and GetChar() may be able to indirectly receive characters that
+					// were typed into our onscreen window's due to us stealing the keyboard input focus.
+					// Especially important on MS-Vista and later due to our need to steal keyboard focus:
+					if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) redispatched to hostapp-window.\n", (char) wParam, (int) lParam);
+					//PostMessage(hostwinHandle, WM_CHAR, wParam, lParam);
+					SendMessage(hostwinHandle, WM_CHAR, wParam, 0);
+				}
+			}
+			break;
+	}
+	
     return DefWindowProc(hWnd, uMsg, wParam, lParam);
 }
 
@@ -610,10 +664,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // the new Java-GetChar can do its job.
   DWORD windowExtendedStyle = WS_EX_APPWINDOW | 0x08000000; // const int WS_EX_NOACTIVATE = 0x08000000;
 
-	 if (PsychPrefStateGet_Verbosity()>6) {
-		 printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
-		 fflush(NULL);
-	 }
+	if (PsychPrefStateGet_Verbosity()>6) {
+		printf("PTB-DEBUG: PsychOSOpenOnscreenWindow: Entering Win32 specific window setup...\n");
+		fflush(NULL);
+	}
 
 	// Retrieve windowLevel, an indicator of where non-fullscreen windows should
 	// be located wrt. to other windows. 0 = Behind everything else, occluded by
@@ -709,29 +763,61 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
                 printf("PTB-INFO: Aero desktop compositor is currently %s.\n", (compositorEnabled) ? "enabled" : "disabled");
             }
         }
-        
-        // Should the compositor be enabled?
-        // It should always be enabled, unless it is forced off via kPsychDisableAeroWDM conserveVRAM setting,
-        if (conserveVRAM & kPsychDisableAeroWDM) {
+		
+		// Determine if we want the DWM to be enabled or disabled.
+		// These are our rules in priority order:
+		
+		// Disable unconditionally if it is forced off via kPsychDisableAeroWDM conserveVRAM setting:
+        if (conserveVRAM & kPsychDisableAeroDWM) {
             // Compositor shall be off:
             compositorEnabled = FALSE;            
+			
             if (PsychPrefStateGet_Verbosity() > 2) {
-				printf("PTB-INFO: Will disable DWM because the kPsychDisableAeroWDM flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
+				printf("PTB-INFO: Will disable DWM because the kPsychDisableAeroDWM flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
 			}
         }
         else {
-            // Compositor shall be on:
-            compositorEnabled = TRUE;
+			// Enable unconditionally if it is forced on via kPsychUseAGLCompositorForFullscreenWindows conserveVRAM setting:
+			if (conserveVRAM & kPsychUseAGLCompositorForFullscreenWindows) {
+				// Compositor shall be on:
+				compositorEnabled = TRUE;            
+				
+				if (PsychPrefStateGet_Verbosity() > 2) {
+					printf("PTB-INFO: Will enable DWM because the kPsychUseCompositorForFullscreenWindows flag was set via a call to Screen('Preference', 'ConserveVRAM').\n");
+				}
+			}
+			else {
+				// Disable if a fullscreen window at windowShieldingLevel >= 2000 (i.e., standard, non-transparent, on top of everything else)
+				// is requested:
+				if (fullscreen && (windowLevel >= 2000)) {
+					compositorEnabled = FALSE;            
+					
+					if (PsychPrefStateGet_Verbosity() > 2) {
+						printf("PTB-INFO: Will disable DWM because a regular fullscreen onscreen window is opened -> We want best timing and performance.\n");
+					}
+				}
+				else {
+					// Enable if a window with windowShieldingLevel < 2000, i.e. a transparent debug window, is opened:
+					if (windowLevel < 2000) {
+						compositorEnabled = TRUE;
+						
+						if (PsychPrefStateGet_Verbosity() > 2) {
+							printf("PTB-INFO: Will enable DWM because a special transparent fullscreen onscreen window in debug mode is opened -> Reduced timing precision and performance!\n");
+						}
+					}
+					else {
+						// Regular "windowed" non-fullscreen GUI window and no special conditions or overrides.
+						// We don't do anything wrt. DWM, just leave it as it is:
+						goto dwmdontcare;
+					}
+				}
+			}
         }
 
-        if (PsychPrefStateGet_Verbosity() > 2) {
-            printf("PTB-INFO: Will %s Windows Aero desktop compositor aka DWM.\n", (compositorEnabled) ? "enable" : "disable");
-        }
-        
         // Set new compositor state:
         if (PsychDwmEnableComposition((compositorEnabled) ? 1 : 0)) {
             if (PsychPrefStateGet_Verbosity() > 1) {
-                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to change state of Windows desktop compositor! Expect timing and performance problems!!\n");
+                printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to change state of Windows desktop compositor! Expect timing or performance problems!!\n");
             }
         }
 
@@ -745,7 +831,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
         }
         else {
             if (PsychPrefStateGet_Verbosity() > 3) {
-                printf("PTB-INFO: Aero desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
+                printf("PTB-INFO: Aero DWM desktop compositor is now %s.\n", (compositorPostEnabled) ? "enabled" : "disabled");
             }
         }
 		
@@ -761,15 +847,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
             if (PsychPrefStateGet_Verbosity() > 1) {
                 printf("PTB-WARNING: PsychOSOpenOnscreenWindow: Failed to switch Windows desktop compositor to realtime scheduling! Expect timing and performance problems!!\n");
             }
-        }
-		
-		// Store state globally:
-		IsDWMEnabled = compositorPostEnabled;
+        }		
     }
-    else {
-		// Store globally that DWM is unsupported and therefore off on this system:
-		IsDWMEnabled = FALSE;
-	}
+
+// goto target jump label for skipping DWM state changes in the "Don't care" case:
+dwmdontcare:
 
     // Wanna fullscreen?
     if (fullscreen) {
@@ -790,7 +872,10 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  // Copy absolute screen location and area of window to 'globalrect',
 	  // so functions like Screen('GlobalRect') can still query the real
 	  // bounding gox of a window onscreen:
-	  PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);	  
+	  PsychGetGlobalScreenRect(screenSettings->screenNumber, windowRecord->globalrect);
+	  
+	  // Mark this window as fullscreen window:
+	  windowRecord->specialflags |= kPsychIsFullscreenWindow;
     }
     else {
       windowStyle |= WS_OVERLAPPEDWINDOW;
@@ -829,29 +914,48 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 		 fflush(NULL);
 	 }
 
-    // Register our own window class for Psychtoolbox onscreen windows:
-    // Only register the window class once - use hInstance as a flag.
-    if (!hInstance) {
-      hInstance = GetModuleHandle(NULL);
-      wc.style         = ((windowLevel >= 1000) && (windowLevel <  2000)) ? 0 : CS_OWNDC;
-      wc.lpfnWndProc   = WndProc;
-      wc.cbClsExtra    = 0;
-      wc.cbWndExtra    = 0;
-      wc.hInstance     = hInstance;
-      wc.hIcon         = LoadIcon(hInstance, IDI_WINLOGO);
-      wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
-      wc.hbrBackground = NULL;
-      wc.lpszMenuName  = NULL;
-      wc.lpszClassName = "PTB-OpenGL";
+	 // Register our own window class for Psychtoolbox onscreen windows:
+	 // Only register the window class once - use hInstance as a flag.
+	 if (!hInstance) {
+		 // Invalidate name and handle of host applications main window:
+		 hostwinName[0] = 0;
+		 hostwinHandle  = NULL;
 
-      if (!RegisterClass(&wc)) {
-		  hInstance = 0;
-        printf("\nPTB-ERROR[Register Windowclass failed]: Unknown error, Win32 specific.\n\n");
-        return(FALSE);
-      }
-    }
-
-    //if (PSYCH_DEBUG == PSYCH_ON) printf("Creating Window...\n");
+		 hInstance = GetModuleHandle(NULL);
+		 wc.style         = ((windowLevel >= 1000) && (windowLevel <  2000)) ? 0 : CS_OWNDC;
+		 wc.lpfnWndProc   = WndProc;
+		 wc.cbClsExtra    = 0;
+		 wc.cbWndExtra    = 0;
+		 wc.hInstance     = hInstance;
+		 wc.hIcon         = LoadIcon(hInstance, IDI_WINLOGO);
+		 wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
+		 wc.hbrBackground = NULL;
+		 wc.lpszMenuName  = NULL;
+		 wc.lpszClassName = "PTB-OpenGL";
+		 
+		 if (!RegisterClass(&wc)) {
+			 hInstance = 0;
+			 printf("\nPTB-ERROR[Register Windowclass failed]: Unknown error, Win32 specific.\n\n");
+			 return(FALSE);
+		 }
+		 
+		 // Try to find the window handle of the main window of our runtime environment, i.e.,
+		 // the main Matlab GUI window, Matlab console window, or Octave console window. We
+		 // use an enumeration and pattern matching procedure to find this. The purpose is to
+		 // be able to post WM_CHAR messages received in our own WndProc() handler into the event queue
+		 // of the host applications window. This way we can forward characters that were received by
+		 // one of our onscreen window (e.g., due to it having the keyboard input focus) to the host
+		 // app. Then the CharAvail() and GetChar() functions should be able to dequeue keystrokes from
+		 // there and keep working properly if we steal keyboard focus:
+		 if (PsychPrefStateGet_Verbosity() > 15) printf("PTB-DEBUG: Window enumeration running...\n");
+		 for (i = 1; (hostwinHandle == NULL) && (i <= 2); i++) EnumWindows(PsychHostWindowEnumFunc, i);
+		 if (hostwinHandle) {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Window enumeration done. Our hostwindow is HWND=%p, Name: '%s'\n\n", hostwinHandle, hostwinName);
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Host application window enumeration failed! This may cause trouble with CharAvail() and GetChar() :-(\n\n");
+		}
+	 }
 
     // Adjust window bounds to account for the window borders if we are in non-fullscreen mode:
     if (!fullscreen) {
@@ -912,14 +1016,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     attribs[attribcount++]=0x2013; // WGL_PIXEL_TYPE_ARB
     
     // Select either floating point or fixed point framebuffer:
-//    if (windowRecord->depth == 64 || windowRecord->depth == 128) {
-//      // Request a floating point drawable instead of a fixed-point one:
-//      attribs[attribcount++]=WGL_TYPE_RGBA_FLOAT_ARB;
-//    }
-//    else {
+    if (windowRecord->depth == 64 || windowRecord->depth == 128) {
+      // Request a floating point drawable instead of a fixed-point one:
+      attribs[attribcount++]=WGL_TYPE_RGBA_FLOAT_ARB;
+    }
+    else {
       // Request standard fixed point drawable:
       attribs[attribcount++]=0x202B; // WGL_TYPE_RGBA_ARB
-//    }
+	}
     
     // Select requested depth per color component 'bpc' for each channel:
     bpc = 8; // We default to 8 bpc == RGBA8
@@ -1479,16 +1583,47 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	// Following settings enforce the onscreen window being and staying the
 	// foreground window with keyboard focus. However they interfere with our
 	// Java based GetChar implementation, so use of GetChar and of this feature
-	// is mutually exclusive. A special 'Preference'-'ConserveVRAM' flag allows
-	// to enable this feature:
-	if (conserveVRAM & kPsychEnforceForegroundWindow) {
+	// is mutually exclusive. This mode is needed on some degenerated Windows-2000 and
+	// Windows-XP systems under some weird conditions. It is also crucially needed on
+	// MS-Vista, Windows-7 and later to achieve tear-free double-buffered stimulus onset via
+	// page-flipping that is hardware-sychronized to VSYNC. Without this flag, the window is
+	// not considered a "real", unoccluded fullscreen window, with the consequence that if
+	// the DWM is enabled, it will not auto-suspend but stay in the loop and perform compositing
+	// (--> bad performance), and if the DWM is disabled in "Classic mode", the DirectX
+	// graphics kernel subsystem will prevent use of VSYNC'ed page-flipping, but revert to
+	// VSYNC-IRQ triggered BitBlt's --> Tearing and timing trouble on systems with bad ISR timing!
+	//
+	// The documentation for the DirectX function "IDXGISwapChain::SetFullscreenState", to be found
+	// at http://msdn.microsoft.com/en-us/library/ee421963(VS.85).aspx contains the conditions for
+	// "true" fullscreen mode. Swapchains are the underlying DirectX mechanism for OpenGL double-buffers
+	// and the bufferswap operations. A SwapBuffers() OpenGL call eventually results in a DirectX
+	// Present() call to enqueue the backbuffer in the swapchain which will perform the actual swap.
+	// Only swapchains in fullscreen mode will use page-flipping with hardware VSYNC triggers, this is
+	// why it is important that our windows satisfy above documented fullscreen conditions.
+	//
+	//
+	// Soo, these are the rules for enabling this mode:
+	// 1. If the kPsychPreventForegroundWindow flag is set, we won't enable --> This is a master-off switch.
+	// 2. If the kPsychEnforceForegroundWindow flag is set, we will enable unconditionally.
+	// 3. If neither of the above is true, we will not enable on WinXP, Win2000 and earlier, but
+	//    we will enable on Vista, Windows-7 and later iff a regular, non-transparent (windowLevel >= 2000)
+	//    fullscreen window is opened.
+	//
+	// A special 'Preference'-'ConserveVRAM' flag allows
+	// to enable this feature: kPsychPreventForegroundWindow
+	if (!(conserveVRAM & kPsychPreventForegroundWindow) && ((conserveVRAM & kPsychEnforceForegroundWindow) || (fullscreen && (windowLevel >= 2000) && PsychIsMSVista()))) {
 		// Give it higher priority than other applications windows:
 		SetForegroundWindow(hWnd);
 
 		// Set the focus on it:
 		SetFocus(hWnd);
+		
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Executed SetForegroundWindow() and SetFocus() on window to optimize pageflipping and timing.\n");
 	}
-	
+	else {
+		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: No call to SetForegroundWindow() and SetFocus() on window, because trigger-conditions not satisfied.\n");
+	}
+
     // Capture the window if it is a fullscreen one: This window will receive all
     // mouse move and mouse button press events. Important for GetMouse() to work
     // properly...
@@ -1498,25 +1633,24 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     win32_windowcount++;
 
     // Some info for the user regarding non-fullscreen and ATI hw:
-    if ((glGetString(GL_VENDOR)) && !fullscreen && (strstr(glGetString(GL_VENDOR), "ATI"))) {
+    if (!PsychOSIsDWMEnabled() && (glGetString(GL_VENDOR)) && !fullscreen && (strstr(glGetString(GL_VENDOR), "ATI"))) {
       printf("PTB-INFO: Some ATI graphics cards may not support proper syncing to vertical retrace when\n");
       printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
       printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
       printf("PTB-INFO: You won't get proper stimulus onset timestamps though, so windowed mode may be of limited use.\n");
     }
 
-    // Dynamically bind the VSYNC extension:
-    //if (strstr(glGetString(GL_EXTENSIONS), "WGL_EXT_swap_control")) {
-      // Bind it:
-      // wglSwapIntervalEXT=(PFNWGLEXTSWAPCONTROLPROC) wglGetProcAddress("wglSwapIntervalEXT");
-    //}
-    //else {
-	 if (wglSwapIntervalEXT == NULL) {
-      wglSwapIntervalEXT = NULL;
-      printf("PTB-WARNING: Your graphics driver doesn't allow me to control syncing wrt. vertical retrace!\n");
-      printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this.\n");
-      printf("PTB-WARNING: Until then, you can manually enable syncing to VBL somewhere in the display settings\n");
-      printf("PTB-WARNING: tab of your machine.\n");
+    // Check for the VSYNC extension:
+	if (wglSwapIntervalEXT == NULL) {
+		wglSwapIntervalEXT = NULL;
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: Your graphics driver doesn't allow me to control if bufferswaps should be synchronized to the vertical retrace!\n");
+			printf("PTB-WARNING: This can cause massive stimulus timing problems, failure of the sync tests and calibrations and severe visual tearing artifacts!\n");
+			printf("PTB-WARNING: Please update your display graphics driver as soon as possible to fix this and make sure this functionality is not disabled in\n");
+			printf("PTB-WARNING: the display settings control panel of your graphics card.\n");
+			printf("PTB-WARNING: If everything else fails, you can usually manually enable synchronization to vertical retrace somewhere in the display settings\n");
+			printf("PTB-WARNING: control panel of your machine.\n");
+		}
     }
 
 	// Enforce a one-shot GUI event queue dispatch via this dummy call to PsychGetMouseButtonState() to
@@ -1887,11 +2021,16 @@ psych_bool PsychOSGetPresentationTimingInfo(PsychWindowRecordType *windowRecord,
  */
 int	PsychOSIsDWMEnabled(void)
 {
+	psych_bool IsDWMEnabled;
 	BOOL compositorEnabled;
+
+	// If DWM is supported, query and assign its effective enable state:
 	if (dwmSupported && (0 == PsychDwmIsCompositionEnabled(&compositorEnabled))) {
+		// DWM and query success:
 		IsDWMEnabled = (psych_bool) compositorEnabled;
 	}
 	else {
+		// No DWM, so naturally it is "disabled":
 		IsDWMEnabled = FALSE;
 	}
 
