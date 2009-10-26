@@ -24,3 +24,4 @@ function ticks=GetTicks
 %               argument. Added GetBusTicks, GetBusTicksTick and
 %               GetTicksTick to see also.
 
+AssertMex('GetTicks.m');
