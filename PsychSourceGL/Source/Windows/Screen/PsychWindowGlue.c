@@ -534,16 +534,29 @@ LONG FAR PASCAL WndProc(HWND hWnd, unsigned uMsg, unsigned wParam, LONG lParam)
 				return(0);
 			}
 			else {
-				// Other character received. Can we redispatch it to our host applications window?
-				if (hostwinHandle) {
-					// We have its window handle! Post a message to its message queue. This way,
-					// CharAvail() and GetChar() may be able to indirectly receive characters that
-					// were typed into our onscreen window's due to us stealing the keyboard input focus.
-					// Especially important on MS-Vista and later due to our need to steal keyboard focus:
-					if (verbosity > 6) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) redispatched to hostapp-window.\n", (char) wParam, (int) lParam);
-					//PostMessage(hostwinHandle, WM_CHAR, wParam, lParam);
-					SendMessage(hostwinHandle, WM_CHAR, wParam, 0);
+				// The next failed good idea :-( Transmitting keystrokes (characters) that we received in the
+				// queue of our onscreen windows (due to us having keyboard focus) to the runtime (Matlab or Octave)
+				// by simply posting/injecting the character events into the host apps window event queue doesn't work.
+				// Well, the actual posting/injection of events does work, but the runtimes don't like this "alien"
+				// events out of nowhere and don't handle them as expected: Octave does receive them almost properly,
+				// but loses repeated characters, e.g., sequence mmm turns into a single m. Matlab in nojvm mode doesn't
+				// work at all this way. Matlab in jmv/gui mode does receive them only after huge delays, so it totally
+				// breaks tons of existing GetChar() code, including our GetCharTest correctness test.
+				//
+				// For this reason, we disable this new method by setting the following if(FALSE):
+				if (FALSE) {
+						// Other character received. Can we redispatch it to our host applications window?
+						if (hostwinHandle) {
+							// We have its window handle! Post a message to its message queue. This way,
+							// CharAvail() and GetChar() may be able to indirectly receive characters that
+							// were typed into our onscreen window's due to us stealing the keyboard input focus.
+							// Especially important on MS-Vista and later due to our need to steal keyboard focus:
+							if (PsychPrefStateGet_Verbosity() > 6) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) redispatched to hostapp-window.\n", (char) wParam, (int) lParam);
+							PostMessage(hostwinHandle, WM_CHAR, wParam, lParam);
+							//SendMessage(hostwinHandle, WM_CHAR, wParam, lParam);
+						}
 				}
+				if (PsychPrefStateGet_Verbosity() > 16) printf("PTB-DEBUG: WndProc(): WM_CHAR '%c' (lParam = %i) received.\n", (char) wParam, (int) lParam);
 			}
 			break;
 	}
@@ -562,7 +575,7 @@ void PsychGetMouseButtonState(double* buttonArray)
 	// which is effectively dead and useless for OpenGL rendering and display. See "About Messages and Message Queues"
 	// at MSDN: http://msdn.microsoft.com/en-us/library/ms644927(VS.85).aspx for explanation of this braindead
 	// mechanism...
-	while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+	while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {		
 		// Translate event in case it is a keyboard event that needs translation:
 		TranslateMessage(&msg);
 		
@@ -734,7 +747,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     }
     
     // Check if this should be a fullscreen window:
-    PsychGetScreenRect(screenSettings->screenNumber, screenrect);
+    PsychGetGlobalScreenRect(screenSettings->screenNumber, screenrect);
     if (PsychMatchRect(screenrect, windowRecord->rect) && (windowLevel >= 2000)) {
       // This is supposed to be a fullscreen window with the dimensions of
       // the current display/desktop:
@@ -802,7 +815,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 						compositorEnabled = TRUE;
 						
 						if (PsychPrefStateGet_Verbosity() > 2) {
-							printf("PTB-INFO: Will enable DWM because a special transparent fullscreen onscreen window in debug mode is opened -> Reduced timing precision and performance!\n");
+							printf("PTB-INFO: Will enable DWM because a special transparent onscreen window in debug mode is opened -> Reduced timing precision and performance!\n");
 						}
 					}
 					else {

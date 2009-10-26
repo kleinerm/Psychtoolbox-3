@@ -163,7 +163,7 @@ PsychError SCREENOpenWindow(void)
         PsychCopyDepthStruct(&useDepth, &currentDepth);
 
     // Initialize the rect argument to the screen rectangle:
-    PsychGetScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
+    PsychGetGlobalScreenRect(screenNumber, rect); 	//get the rect describing the screen bounds.  This is the default Rect.  
 
     // Override it with a user supplied rect, if one was supplied:
     isArgThere=PsychCopyInRectArg(kPsychUseDefaultArgPosition, FALSE, rect );

@@ -56,6 +56,7 @@
 #endif
 
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
+//#ifndef MATLAB_R11
 #include "ptbstartlogo.h"
 #else
 /* This is a placeholder for ptbstartlogo.h until the fu%&$ing M$-Compiler can handle it.
@@ -2293,7 +2294,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 		
 		// Compute expected real stimulus onset time and update flipwhen accordingly - we'll need it later on:
-		flipwhen  = ((targetVBL - preflip_vblcount) * windowRecord->VideoRefreshInterval) + preflip_vbltimestamp;
+		flipwhen  = (((psych_int64)(targetVBL - preflip_vblcount)) * windowRecord->VideoRefreshInterval) + preflip_vbltimestamp;
 
 		// Tell DWM about the requested onset interval, and that that frame should be presented for 1 video refresh.
 		// Buffercount is arbitrarily set to the maximum of 8 for now...
