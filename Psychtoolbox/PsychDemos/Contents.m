@@ -10,6 +10,8 @@
 %    AlphaImageDemo          - Simple demo of OpenGL alpha blending.
 %    AlphaRotateDemo         - A variant of AlphaImageDemoOSX, demonstrates rotated drawing.
 %    ArcDemo                 - Demonstrate the 'FrameArc', 'FillArc' functions.
+%    AudioTunnel3DDemo       - Very sketchy demo on how to use OpenAL for 3D spatialized sound.
+%    AudioTunnel3DDemo       - Another sketchy demo on how to use OpenAL for 3D spatialized sound.
 %    BasicSoundFeedbackDemo  - Demonstrates a audio feedback loop via PsychPortAudio(). See DelayedSoundFeedbackDemo for a more research grade approach.
 %    BasicSoundInputDemo     - Demonstrate basic usage of PsychPortAudio() for sound capture.
 %    BasicSoundOutputDemo    - Demonstrate basic usage of PsychPortAudio() for sound playback.
@@ -23,6 +25,7 @@
 %    ContrastModulatedNoiseTheElegantStyleDemo - Demonstrate creation of contrast modulated noise.
 %                                                Elegant and efficient, but needs recent hardware.
 %
+%    DatarecordingFromISCANDemo - Template for asynchronous data collection and timestamping of gaze samples from ISCAN eye tracker.
 %    DatarecordingFromSerialPortDemo - Template for asynchronous data collection and timestamping from serial port.
 %    DelayedSoundFeedbackDemo - Demonstrates a audio feedback loop via PsychPortAudio() with exactly controlled latency.
 %    DotDemo                 - Animate dots with Screen('DrawDots).
