@@ -77,5 +77,4 @@
 %    StereoViewer            - A simple viewer for stereo image pairs.
 %    StoreBit                - Not at all clear why this is here
 %    ValetonVanNorrenDemo    - Exercise our code that implements the V-VN (1983) cone adaptation model.
-
-
+%    VideoCaptureDemo        - Simple demo for video capture functions.
