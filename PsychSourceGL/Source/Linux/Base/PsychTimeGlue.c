@@ -455,7 +455,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	struct sched_param sp;
 	pthread_t thread;
 
-	if ((NULL != threadhandle) && (0x1 != threadhandle)) {
+	if ((NULL != threadhandle) && (0x1 != (int) threadhandle)) {
 		// Retrieve thread handle of thread to change:
 		thread = *threadhandle;
 	}
