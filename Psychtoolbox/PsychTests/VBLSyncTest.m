@@ -242,12 +242,10 @@ try
 	% a best guess about where you want the stimulus displayed.  
 	screens=Screen('Screens');
 	screenNumber=max(screens);
-%    screenNumber = 2
     screensize=Screen('Rect', screenNumber);
 
     % Query size of screen:
-    screenwidth=screensize(3)
-    screenheight=screensize(4)
+    screenheight=screensize(4);
 
     % Open double-buffered window: Optionally enable stereo output if
     % stereo == 1.
@@ -364,16 +362,18 @@ try
         % they just indicate either a slower machine or some types of flat-panels...
         [ tvbl so(i) flipfin(i) missest(i) beampos(i)]=Screen('Flip', w, tdeadline, clearmode);
 
-        if IsWin
+        % Special code for debugging: Disabled by default - Not for pure
+        % mortals!
+        if IsWin & 0 %#ok<AND2>
 			while 1
-				winfo = Screen('GetWindowInfo', w);
-%				fprintf('QUERY %i : t = %0.10f  : LastVBL = %0.10f  : VBLCount = %i\n', i, GetSecs, winfo.LastVBLTime, winfo.VBLCount);
-				wdminfo = Screen('GetWindowInfo', w, 2);
+				winfo = Screen('GetWindowInfo', w); %#ok<NASGU>
+                %				fprintf('QUERY %i : t = %0.10f  : LastVBL = %0.10f  : VBLCount = %i\n', i, GetSecs, winfo.LastVBLTime, winfo.VBLCount);
+				wdminfo = Screen('GetWindowInfo', w, 2) %#ok<NOPRT>
 				
 
 				if isstruct(wdminfo)
 					if (i > 1) && (tSecondary(i-1) == wdminfo.OnsetVBLTime)
-%						fprintf('DELAYED: %i %0.10f \n', i, wdminfo.OnsetVBLTime);
+                        %						fprintf('DELAYED: %i %0.10f \n', i, wdminfo.OnsetVBLTime);
 						continue;
 					else
 						if (i>1)
@@ -437,7 +437,7 @@ try
     end; % Draw next frame...
 	
     % Shutdown realtime scheduling:
-    finalprio = Priority(0)
+    Priority(0)
 
     % Close display: If we skipped/missed any presentation deadline during
     % Flip, Psychtoolbox will automatically display some warning message on the Matlab
@@ -528,7 +528,7 @@ catch
     % shuts down realtime-scheduling of Matlab:
     Screen('CloseAll');
     % Disable realtime-priority in case of errors.
-    finalprio = Priority(0);
+    Priority(0);
     psychrethrow(psychlasterror);
 end %try..catch..
 

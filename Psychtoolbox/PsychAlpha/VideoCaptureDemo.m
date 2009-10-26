@@ -35,7 +35,7 @@ function VideoCaptureDemo(fullscreen, fullsize, roi)
 % Written sometimes 2006 by MK.
 
 AssertOpenGL;
-screen=max(Screen('Screens'));
+
 if nargin < 1
     fullscreen=[];
 end
@@ -60,9 +60,9 @@ screenid=max(Screen('Screens'));
 
 try
     if fullscreen<1
-        win=Screen('OpenWindow', screen, screenid, [0 0 800 600]);
+        win=Screen('OpenWindow', screenid, 0, [0 0 800 600]);
     else
-        win=Screen('OpenWindow', screen, screenid);
+        win=Screen('OpenWindow', screenid, 0);
     end;
 
     % Initial flip to a blank screen:
@@ -138,15 +138,15 @@ try
             % Show it.
             Screen('Flip', win);
             Screen('Close', tex);
-            tex=0;
+            tex=0; %#ok<NASGU>
         end;        
         count = count + 1;
     end;
-    telapsed = GetSecs - t
+    telapsed = GetSecs - t %#ok<NOPRT>
     Screen('StopVideoCapture', grabber);
     Screen('CloseVideoCapture', grabber);
     Screen('CloseAll');
-    avgfps = count / telapsed
+    avgfps = count / telapsed %#ok<NOPRT,NASGU>
 catch
    Screen('CloseAll');
 end;
