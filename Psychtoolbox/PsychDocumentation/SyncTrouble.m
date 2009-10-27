@@ -87,25 +87,112 @@
 %
 % REASONS FOR FAILING THE SYNC TESTS AND HOW TO FIX THEM:
 %
-% There are multiple classes of possible causes for sync failure:
+% There are multiple classes of possible causes for sync failure. Work down this
+% list of causes and solutions down until your problem is resolved or you
+% hit the bottom of the list:
 %
-% 1. Driver bugs: The graphics card device drivers can have bugs that cause synchronization
-% to fail: The MacOS-X drivers for ATI graphics adapters had such a bug up to and including
-% MacOS-X 10.4.2 and earlier. While synchronization worked properly on single display setups,
-% when connected to a dual display setup, the driver/hardware did not synchronize bufferswaps
-% to the vertical retrace of the display device on which the onscreen window was presented, but
-% always to the device connected to the first display connector. This could be diagnosed by
-% running both displays at different refresh rates, so Psychtoolbox could find out, if it was
-% syncing to the proper display by comparing the measurements taken with the nominal framerate
-% reported by the operating system. It could be solved by physically switching the display
-% connectors on the computer. This bug is resolved in the latest releases of MacOS-X, i.e.,
-% 10.4.5 and later.
+% 1. Wrong configuration settings: This usually only affects MS-Windows
+% systems, where the display settings control panel for your graphics card
+% allows to customize a couple of graphics driver parameters. Some of these
+% settings can cause sync failure if they are wrong:
 %
-% Troubleshooting: Update to the latest graphics drivers for your graphics
-% card and operating system. A large number of problems can be resolved by
-% a simple driver update!
+% -> Make sure the "Synchronize bufferswaps to the vertical retrace" option
+% is set to "Application controlled" or "Application controlled, default to
+% on". The wording of the option differs between different graphics cards,
+% search for something like that. Examples of other names: "Wait for
+% vertical sync", "Wait for vertical refresh" ...
+% If this setting is forced to off and *not* application controlled, then
+% the sync tests will fail because the hardware doesn't synchronize its
+% image onset (bufferswap) to the video refresh cycle of your display.
 %
-% 2. Driver/Hardware limitations: On Microsoft Windows, some ATI graphics adapters are only
+% -> Make sure the "Triple buffering" setting is off, or if you can select
+% some "Multibuffering" setting, that it is set to "double buffering" or
+% "wait for 1 video refresh" or "swap every refresh". This option may not
+% exist, but if it does, any other setting will cause the sync tests to
+% possibly succeed, but later stimulus onset timestamping to fail with
+% errors.
+%
+% -> If there is an option "Buffer swap mode" or "Bufferswap strategy", it
+% should be set to "Auto select" or "Page flipping" or "Exchange buffers".
+% The so called "Copy buffers" or "Blitting" option would result in lower
+% performance and inaccurate timing.
+%
+% -> On dual/multi display setups MS-Windows allows you to assign one
+% monitor the role of the "primary monitor" or "primary display". It is
+% important that the display device which you use for stimulus presentation
+% is the "primary display", otherwise random things may go wrong wrt. sync
+% tests and timing.
+%
+% -> If you have the choice to set your multi-monitor configuration to
+% either "dual display mode"/"dual display performance mode"/"separate
+% displays" or instead to "extended desktop mode" or "horizontal spanning",
+% you should choose "extended desktop mode" or "horizontal spanning" modes
+% for best timing and stimulus quality. Please note that this choice
+% doesn't exist anymore on Windows-Vista and later.
+%
+% -> On all operating systems in dual display or multi display mode it is
+% important that you configure both displays for exactly the same color
+% depths, resolution and refresh rate. If there is some option you can
+% choose for "genlocked modes" or "genlocked modes only", choose or enable
+% that one. Failing to configure dual display setups like this will cause
+% massive timing problems or tearing artifacts on one of the display if you
+% do dual display stimulation. It may also cause failures in timetamping.
+%
+%
+% 2. Temporary timing glitches or system malfunction: It may help to
+% restart Matlab/Octave, or to reboot your machine. Sometimes this resolves
+% intermittent problems on your system, especially after the system was
+% running without reboot for a long time, on high load, or if display
+% settings or display configuration has been changed frequently.
+%
+%
+% 3. Driver bugs: Many graphics card device drivers have bugs that cause
+% synchronization to fail. If none of the above steps resolves your
+% problems, check the website of your computer vendor or graphics card
+% vendor, or use the "Check for driver updates" function of some operating
+% systems to find out if new, more recent graphics drivers have been
+% released for your graphics card. If so, update to them. A tremendeously
+% large number of problems can be resolved by a simple driver update!
+%
+% 4. Driver/Hardware limitations:
+%
+% Many systems can't provide reliable research grade timing if you don't
+% display your stimuli in fullscreen windows, but use windowed mode
+% instead. This can lead to sync failures, problems with timestamping and
+% other performance problems. Only use non-fullscreen windows for
+% development, debugging and leisure, not for running your studies!
+%
+% Some systems have serious problems if more than one graphics card is
+% connected and enabled on the computer. They only work well in
+% single-display mode or dual display mode from a single dual-output
+% graphics card.
+%
+% Microsoft Windows Vista and Windows-7 may provide poor performance on
+% dual display setups if you present on both displays simultaneously,
+% although your mileage may vary widely depending on exact setup.
+%
+% On Vista and Windows-7, you may run into drastic timing and performance
+% problems if the stimulus presentation window loses the "keyboard focus".
+% The window with the "keyboard focus" is the one which is in the
+% foreground (in front of all other windows), has its titlebar highlighted
+% instead of shaded (assuming it has a titlebar) and receives all keyboard
+% input, i.e., key presses. Therefore we assign "keyboard focus" to our
+% onscreen windows automatically. However, if the user clicks into windows
+% other than our window with the mouse, or onto the desktop background, or
+% uses key combos like ALT+TAB or Windows+TAB to switch between windows,
+% our window will "lose" the keyboard focus and severe timing and
+% performance problems may occur. Obviously if any window on the screen is
+% highlighted, this means it *has stolen* the keyboard focus from our
+% window. This weird keyboard focus problem is an unfortunate design
+% decision (or rather design flaw) of the Windows Vista/Win-7 graphics
+% subsystem. There isn't anything we or the graphics cards vendors could do
+% about it, so you'll have to accept it and work-around it. Of course this
+% becomes mostly a problem on dual-display setups where one display shows
+% the desktop and GUI, so avoid such configurations if you can.
+%
+% Further examples:
+%
+% On Microsoft Windows, some ATI graphics adapters are only
 % capable of syncing to retrace, if the onscreen window is a full-screen window. Synchronization
 % fails if the onscreen window only covers part of the screen (i.e., when providing a 'rect'
 % argument to Screen('OpenWindow') other than the default full-screen rect). Solution is to
@@ -122,7 +209,7 @@
 % have to try, as it has been found to be highly dependent on hardware, driver and operating system,
 % which combinations work and which don't.
 %
-% 3. Graphics system overload: If you ask too much from your poor graphics hardware, the system
+% 5. Graphics system overload: If you ask too much from your poor graphics hardware, the system
 % may enter a state where the electronics is not capable of performing drawing operations in
 % hardware, either because it runs out of video memory ressources, or because it is lacking the
 % neccessary features. In that case, some drivers (e.g., on Microsoft Windows or MacOS-X) may
@@ -142,7 +229,7 @@
 % Troubleshooting: Try lower display resolutions and multisampling levels, switch dual display
 % setups into mirror-mode if possible, or buy a graphics adapter with more onboard memory.
 %
-% 4. General system overload: If you run too many applications on your system in parallel to
+% 6. General system overload: If you run too many applications on your system in parallel to
 % your Psychtoolbox+Matlab/Octave session, then these applications may cause significant timing
 % jitter in your system, so the execution of Psychtoolbox - and its measurement loops - becomes
 % non-deterministic up to the point of being unuseable.
@@ -151,11 +238,22 @@
 % then retry. The usual suspects are: Virus scanners, applications accessing the network or
 % the harddiscs, applications like iTunes, system software update...
 %
-% 5. Triple buffering: Some graphics drivers - especially on Microsoft Windows - allow you to
-% enable a mechanism that is called "triple buffering". This is off by default and can be enabled
-% and disabled via the display settings panel. If enabled, it will completely screw any kind of
-% tests and prevent any reasonable timing. This special mode is only useful for a few computer
-% games. Troubleshooting: Make sure this is disabled.
+% 7. Bad drivers or hardware in your system that interferes with general
+% system timing: This is difficult to diagnose. At least on MS-Windows, you
+% can download a free tool "dpclat.exe" from the internet (Use Google to
+% find it). If you run it, it will tell you if there are potential problems
+% with your systems timing and give hints on how to resolve them.
+%
+% 8. Other: Search the FAQ pages on the www.psychtoolbox.org Wiki and (via
+% Google search) the Psychtoolbox forum for other problems and solutions.
+%
+% 9. If everything else fails, post on the forum for help, but read our
+% instructions on how to ask questions on the forum properly. You can find
+% these instructions on the "Forum" and "Bugs" pages of our Wiki. If we
+% find that you didn't read the instructions and you're basically wasting
+% our time due to your omissions, we will simply ignore your request for
+% help.
+%
 %
 % HOW TO OVERRIDE THE SYNC TESTS:
 %
@@ -171,6 +269,37 @@
 % nag about the issue by showing the red flashing warning sign for one second.
 % You can disable all visual alerts via Screen('Preference','VisualDebugLevel', 0);
 % You can disable all output to the command window via Screen('Preference', 'SuppressAllWarnings', 1);
+%
+% If your graphics system basically works, but your computer has just very
+% noisy timing you can adjust the threshold settings we use for our tests via the
+% setting:
+%
+% Screen('Preference','SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);
+%
+% 'maxStddev' selects the amount of tolerable noisyness, the standard
+% deviation of measured timing samples from the computed mean. We default
+% to 0.001, ie., 1 msec.
+%
+% 'minSamples' controls the minimum amount of valid measurements to be
+% taken for successfull tests: We require at least 50 valid samples by
+% default.
+%
+% 'maxDeviation' sets a tolerance threshold for the maximum percentual
+% deviation of the measured video refresh interval duration from the
+% duration suggested by the operating system (the nominal value). Our
+% default setting of 0.1 allows for +/- 10% of tolerance between
+% measurement and expectation before we fail our tests.
+%
+% 'maxDuration' Controls the maximum duration of a single test run in
+% seconds. We default to 5 seconds per run, with 3 repetitions if
+% neccessary. A well working system will complete the tests in less than 1
+% second though.
+%
+% Empirically we've found that especially Microsoft Windows Vista and
+% Windows-7 may need some tweaking of these parameters, as some of those
+% setups do have rather noisy timing.
+%
+%
 %
 % MORE WAYS TO TEST:
 %
