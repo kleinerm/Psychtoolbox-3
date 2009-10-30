@@ -59,16 +59,21 @@
 
 // Maybe use NULLs in the settings arrays to mark entries invalid instead of using psych_bool flags in a different array.   
 static psych_bool			displayLockSettingsFlags[kPsychMaxPossibleDisplays];
-static CFDictionaryRef	displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
+static CFDictionaryRef		displayOriginalCGSettings[kPsychMaxPossibleDisplays];        	//these track the original video state before the Psychtoolbox changed it.  
 static psych_bool			displayOriginalCGSettingsValid[kPsychMaxPossibleDisplays];
-static CFDictionaryRef	displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
+static CFDictionaryRef		displayOverlayedCGSettings[kPsychMaxPossibleDisplays];        	//these track settings overlayed with 'Resolutions'.  
 static psych_bool			displayOverlayedCGSettingsValid[kPsychMaxPossibleDisplays];
 static CGDisplayCount 		numDisplays;
-static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];    
-static char*                    displayDeviceName[kPsychMaxPossibleDisplays];   // Windows internal monitor device name. Default display has NULL
-static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays]; // Top-Left corner of display on virtual screen. Default display has (0,0).
+static CGDirectDisplayID 	displayCGIDs[kPsychMaxPossibleDisplays];				// DC device contexts for displays.
+static char*                displayDeviceName[kPsychMaxPossibleDisplays];			// Windows internal monitor device name. Default display has NULL
+static int 	                displayDeviceStartX[kPsychMaxPossibleDisplays];			// Top-Left corner of display on virtual screen. Default display has (0,0).
 static int 	                displayDeviceStartY[kPsychMaxPossibleDisplays];
-static LPDIRECTDRAW             displayDeviceDDrawObject[kPsychMaxPossibleDisplays]; // Pointer to associated DirectDraw object, if any. NULL otherwise.
+static LPDIRECTDRAW         displayDeviceDDrawObject[kPsychMaxPossibleDisplays];	// Pointer to associated DirectDraw object, if any. NULL otherwise.
+static HMONITOR				displayDevicehMonitor[kPsychMaxPossibleDisplays];		// HMonitor handle of associated monitor, NULL otherwise.
+static GUID					displayDeviceGUID[kPsychMaxPossibleDisplays];			// GUID for DDRAW display device, unless displayDevicelpGUIDValid < 2.
+static int					displayDeviceGUIDValid[kPsychMaxPossibleDisplays];		// GUID for DDRAW display device valid? 0 = No, 1 = Must be NULL, 2 = Valid.
+static int					ddrawnumDisplays;
+
 static psych_bool enableVBLBeamposWorkaround = FALSE;	// Is the special workaround for beamposition queries needed?
 
 //file local functions
@@ -77,7 +82,7 @@ void PsychLockScreenSettings(int screenNumber);
 void PsychUnlockScreenSettings(int screenNumber);
 psych_bool PsychCheckScreenSettingsLock(int screenNumber);
 psych_bool PsychGetCGModeFromVideoSetting(CFDictionaryRef *cgMode, PsychScreenSettingsType *setting);
-void PsychTestDDrawBeampositionQueries(void);
+void PsychTestDDrawBeampositionQueries(int screenNumber);
 
 // This is actually a function in PsychWindowGlue.c, we redefine the prototype here to make compiler happy:
 extern psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps);
@@ -89,10 +94,12 @@ void InitializePsychDisplayGlue(void)
     
     //init the display settings flags.
     for(i=0;i<kPsychMaxPossibleDisplays;i++){
-        displayLockSettingsFlags[i]=FALSE;
-        displayOriginalCGSettingsValid[i]=FALSE;
-        displayOverlayedCGSettingsValid[i]=FALSE;
-		displayDeviceDDrawObject[i]=NULL;
+        displayLockSettingsFlags[i] = FALSE;
+        displayOriginalCGSettingsValid[i] = FALSE;
+        displayOverlayedCGSettingsValid[i] = FALSE;
+		displayDeviceDDrawObject[i] = NULL;
+		displayDevicehMonitor[i] = NULL;
+		displayDeviceGUIDValid[i] = 0;
     }
  
 	// Disable beampos workaround by default:
@@ -108,6 +115,7 @@ void InitializePsychDisplayGlue(void)
 // need to pass this name string to a variety of Windows-Functions to refer to the monitor
 // of interest.
 psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData);
+BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor);
 
 psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lprcMonitor, LPARAM dwData)
 {
@@ -128,16 +136,46 @@ psych_bool CALLBACK MonitorEnumProc(HMONITOR hMonitor, HDC hdcMonitor, LPRECT lp
 	// Create a device context for this display and store it in our displayCGIDs array:
 	displayCGIDs[numDisplays] = CreateDC(displayDeviceName[numDisplays], displayDeviceName[numDisplays], NULL, NULL);
 
-	// EXPERIMENTAL: Replicate DirectDraw object pointer of primary display device to all display devices.
-	// This is not the correct solution for multi-display setups, but at least it allows for basic testing
-	// on some multi display setups to find the proper solution. On multi-display setups we disable the new
-	// beamposition query mechanism by default, so it is up to the user to take the risk:
-	displayDeviceDDrawObject[numDisplays] = displayDeviceDDrawObject[0];
+	// Store HMONITOR handle for DirectDraw device enumeration:
+	displayDevicehMonitor[numDisplays] = hMonitor;
 
 	// Increase global counter of available separate displays:
 	numDisplays++;
 
 	// Return and ask system to continue display enumeration:
+	return(TRUE);
+}
+
+// Callback for DirectDraw display enumeration which complements monitor enumeration above:
+// Called by DirectDrawEnumerateEx() below...
+BOOL WINAPI PsychDirectDrawEnumProc(GUID FAR* lpGUID, LPSTR lpDriverDescription, LPSTR lpDriverName, LPVOID displayIdx, HMONITOR hMonitor)
+{
+	// Retrieve index into our display array for the display to enumerate / map in this callback:
+	int idx = (int) displayIdx;
+	
+	// Is the passed in hMonitor identical to the hMonitor of target display "idx"?
+	if (hMonitor == displayDevicehMonitor[idx]) {
+		// Bingo! Store the GUID globally unique display device handle for this display. We'll need this
+		// to create the matching DDRAW device for that display:
+		if (lpGUID) {
+			// Matched, with unique GUID: Assign it.
+			displayDeviceGUID[idx] = *lpGUID;
+			displayDeviceGUIDValid[idx] = 2;
+		}
+		else {
+			// Matched, but lpGUID is NULL:
+			displayDeviceGUIDValid[idx] = 1;
+		}
+		// printf("PTB-DEBUG: In DDRAW enumeration: Screenid %i: '%s' and '%s' -> lpGUID %p.\n", idx, (char*) lpDriverDescription, (char*) lpDriverName, lpGUID);
+		
+		// Finalize enumeration pass:
+		return(FALSE);
+	}
+	else {
+		// printf("PTB-DEBUG: In enum call for screenid %i: FAIL for '%s' , '%s'\n", idx, (char*) lpDriverDescription, (char*) lpDriverName);
+	}
+
+	// Nope. Continue enumeration:
 	return(TRUE);
 }
 
@@ -153,15 +191,15 @@ void InitCGDisplayIDList(void)
   // Opening an onscreen window on screen 0 will always yield a window covering the full
   // desktop, possibly spanning multiple physical display devices. Very useful for standard
   // dual display stereo applications in stereoMode 4.
+  ddrawnumDisplays = 0;
   numDisplays=1;
   displayCGIDs[0]=GetDC(GetDesktopWindow());
   displayDeviceName[0] = NULL;
   displayDeviceStartX[0] = 0;
   displayDeviceStartY[0] = 0;
 
-  // EXPERIMENTAL: Create a DirectDraw object for the primary display device, i.e.
-  // the single display on a single display setup or the display device corresponding to
-  // the desktop on a multi-display setup:
+  // Create a DirectDraw object for the primary display device, i.e. the single display on a
+  // single display setup or the display device corresponding to the desktop on a multi-display setup:
   if (DirectDrawCreate(DDCREATE_HARDWAREONLY, &(displayDeviceDDrawObject[0]), NULL)!=DD_OK) {
     // Failed to create Direct Draw object:
     displayDeviceDDrawObject[0]=NULL;
@@ -180,6 +218,10 @@ void InitCGDisplayIDList(void)
 				printf("PTB-INFO: Beamposition query test failed: Direct Draw Error.\n");
 		}
     }
+	else {
+		// Mark at least basic beamposition queries for primary display as ok:
+		ddrawnumDisplays = 1;
+	}
   }
   // Now call M$-Windows monitor enumeration routine. It will call our callback-function
   // MonitorEnumProc() for each detected display device...
@@ -221,29 +263,64 @@ void InitCGDisplayIDList(void)
     
     printf("\n"); fflush(NULL);
 
-	if ((numDisplays == 3) && (w1 == w2) && (h1 == h2) && (PsychGetNominalFramerate(1) == PsychGetNominalFramerate(2)) && PsychIsMSVista()) {
-		printf("PTB-INFO: This setup is running on a MS-Vista system or later with two displays of same resolution and refresh rate.\n");
-		printf("PTB-INFO: I believe it is safe under this conditions to keep high-precision timestamping enabled, but you should run the\n");
-		printf("PTB-INFO: 'PerceptualVBLSyncTest' script at least once after any big change in display configuration to verify this.\n\n");
+	// Try to enumerate all DirectDraw devices for all our enumerated display monitors:
+	// We'd like to create one DDRAW object per display, so we have per-display beamposition queries available.
+	for (i = 1; i < numDisplays; i++) {
+		// Enumerate for display screen 'i':
+		rc = 0;
+		if (((rc = DirectDrawEnumerateEx(PsychDirectDrawEnumProc, (LPVOID) i, DDENUM_ATTACHEDSECONDARYDEVICES)) == DD_OK) && (displayDeviceGUIDValid[i] > 1)) {
+			// Success: Create corresponding DDRAW device interface for this screen:
+			if ((rc = DirectDrawCreate(&displayDeviceGUID[i], &(displayDeviceDDrawObject[i]), NULL)) != DD_OK) {
+				// Failed to create Direct Draw object for this screen:
+				// We use the primary display DDRAW object [0] as a fallback:
+				displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
+				printf("PTB-WARNING: Failed to create DirectDraw interface specific to display screen %i [rc = %x]. Will use primary display DirectDraw object as backup and hope for the best.\n", i, rc);
+				printf("PTB-WARNING: This means that beamposition queries for high-precision timestamping may not work correctly on your multi-display setup. We'll see...\n");
+			}
+			else {
+				// Mark this displays beamposition query mechanism as ready:
+				ddrawnumDisplays++;
+			}
+		}
+		else {
+			// Failed to enumerate/detect Direct Draw object for this screen:
+			// We use the primary display DDRAW object [0] as a fallback:
+			displayDeviceDDrawObject[i] = displayDeviceDDrawObject[0];
+			printf("PTB-WARNING: Failed to detect specific DirectDraw interface GUID for display screen %i [rc = %x]. Will use primary display DirectDraw object as backup and hope for the best.\n", i, rc);
+			printf("PTB-WARNING: This means that beamposition queries for high-precision timestamping may not work correctly on your multi-display setup. We'll see...\n");
+		}
+		// Done with this one. Init next display...
 	}
-	else {
-		// On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
-		// Users are free to override the default. This behaviour will be changed in the future when multi-display support
-		// for DirectDraw has been properly implemented and tested.
-		PsychPrefStateSet_VBLTimestampingMode(-1);
-		printf("PTB-INFO: This setup is either a pre-Vista (Win2k or WinXP) setup, or it has more than two displays connected, or\n");
-		printf("PTB-INFO: it is a dual-display Vista/Windows-7 setup, but display settings for the displays are not identical.\n\n");
-		printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
-		printf("PTB-INFO: default on such MS-Windows multi-display setups. If you want to use them, first run the 'PerceptualVBLSyncTest'\n");
-		printf("PTB-INFO: script to verify they're working correctly on your setup. Then you can add the command:\n");
-		printf("PTB-INFO: Screen('Preference', 'VBLTimestampingMode', 1); at the top of your script to manually enable them.\n");
-		printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
-		printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n");
-		printf("PTB-INFO: Make also sure that the 'primary monitor' in the display settings is set to your main stimulus \n");
-		printf("PTB-INFO: presentation display for more reliable timing and generally less problems.\n");
+
+	// Do we have per-display beamposition queries available via corresponding DDRAW objects?
+	// If ddrawnumDisplays < numDisplays, then we missed some out. In that case use of the beamposition
+	// mechanism may be unsafe and we have to use our heuristic to decide if we cope or fail...
+	if (ddrawnumDisplays < numDisplays) {
+		// Individual per-display queries unavailable! We basically have one query for all displays, which is
+		// only safe to use if all displays are configured in exactly the same way on Windows Vista and later:
+		if ((numDisplays == 3) && (w1 == w2) && (h1 == h2) && (PsychGetNominalFramerate(1) == PsychGetNominalFramerate(2)) && PsychIsMSVista()) {
+			// Vista baby! Keep common beampos mechanism enabled:
+			printf("PTB-INFO: This setup is running on a MS-Vista system or later with two displays of same resolution and refresh rate.\n");
+			printf("PTB-INFO: I believe it is safe under this conditions to keep high-precision timestamping enabled, but you should run the\n");
+			printf("PTB-INFO: 'PerceptualVBLSyncTest' script at least once after any big change in display configuration to verify this.\n\n");
+		}
+		else {
+			// On a multi-display setup in explicit multi-display mode, we disable beamposition queries by default for now.
+			// Users are free to override the default though...
+			PsychPrefStateSet_VBLTimestampingMode(-1);
+			printf("PTB-INFO: This setup is either a pre-Vista (Win2k or WinXP) setup, or it has more than two displays connected, or\n");
+			printf("PTB-INFO: it is a dual-display Vista/Windows-7 setup, but display settings for the displays are not identical.\n\n");
+			printf("PTB-INFO: Please note that beamposition queries for accurate Screen('Flip') timestamping are disabled by\n");
+			printf("PTB-INFO: default on such MS-Windows multi-display setups. If you want to use them, first run the 'PerceptualVBLSyncTest'\n");
+			printf("PTB-INFO: script to verify they're working correctly on your setup. Then you can add the command:\n");
+			printf("PTB-INFO: Screen('Preference', 'VBLTimestampingMode', 1); at the top of your script to manually enable them.\n");
+			printf("PTB-INFO: Usually beamposition queries work correctly if both of your displays are set to the same resolution,\n");
+			printf("PTB-INFO: color depths and video refresh rate, but you *must verify this*.\n");
+			printf("PTB-INFO: Make also sure that the 'primary monitor' in the display settings is set to your main stimulus \n");
+			printf("PTB-INFO: presentation display for more reliable timing and generally less problems.\n");
+		}
 	}
   }
-
   // Ready.
   return;
 }
@@ -300,7 +377,7 @@ void PsychCaptureScreen(int screenNumber)
     PsychLockScreenSettings(screenNumber);
 
 	// However we do call the testing/workaround routine for working beamposition queries here:
-	PsychTestDDrawBeampositionQueries();
+	PsychTestDDrawBeampositionQueries(screenNumber);
 }
 
 /*
@@ -814,17 +891,17 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 	
 	// EXPERIMENTAL: For now this only queries the primary display device and
 	// probably only works properly on single-display setups and some multi-setups.
-	if(displayDeviceDDrawObject[0]) {
+	if(displayDeviceDDrawObject[screenNumber]) {
 		// We have a Direct draw object: Try to use GetScanLine():
 		if (enableVBLBeamposWorkaround) {
 			// Beamposition queries don't work within vertical blank interval. We need to
 			// spin-wait in a busy waiting loop as long as the query status reports
 			// DDERR_VERTICALBLANKINPROGRESS aka "display in retrace state":
-			while((rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos)) == DDERR_VERTICALBLANKINPROGRESS);
+			while((rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos)) == DDERR_VERTICALBLANKINPROGRESS);
 		}
 		else {
 			// No known problems with query in VBL. Do a one-time query:
-			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos);
 		}
 		
 		// Mask returned beampos with 0xffff: This will not allow any
@@ -852,7 +929,7 @@ psych_bool PsychOSIsKernelDriverAvailable(int screenId)
 // Internal helper routine, called from PsychCaptureScreen(), which in turn is called from
 // SCREENOpenWindow(). Give the DDRAW beamposition query routines a serious workout to find
 // some possible bugs. Enable proper workarounds if bugs should be encountered:
-void PsychTestDDrawBeampositionQueries(void)
+void PsychTestDDrawBeampositionQueries(int screenNumber)
 {
 	int w1, w2, h1, h2, vbldetectcount, bogusvaluecount, bogusvalueinvblcount, totalcount;
 	psych_uint32 maxvpos;
@@ -862,7 +939,7 @@ void PsychTestDDrawBeampositionQueries(void)
 	int verbosity = PsychPrefStateGet_Verbosity();
 	
 	// Check how beamposition query behaves inside the vertical blanking interval:
-	if((displayDeviceDDrawObject[0]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
+	if((displayDeviceDDrawObject[screenNumber]) && (PsychPrefStateGet_VBLTimestampingMode()>=0)) {
 		// We have a Direct draw object and beampos queries are enabled: Try to test GetScanLine():
 		
 		// First find reference height values for display, aka start of vertical blank.
@@ -873,11 +950,16 @@ void PsychTestDDrawBeampositionQueries(void)
 		// or lower values, then that likely means that the gfx-driver doesn't report meaningful
 		// beampos values during VBL, but does overwrite our default 0xdeadbeef canary with some
 		// random trash.
-		if (numDisplays == 1) {
-			PsychGetScreenSize(0, &w1, &h1);
+		
+		// Do all screens have their own individual beampos query DDRAW object assigned?
+		if ((ddrawnumDisplays == numDisplays) || (numDisplays == 1)) {
+			// Yes. Our reference maxvpos is the screen height of the target screen 'screenNumber':
+			PsychGetScreenSize(screenNumber, &w1, &h1);
 			maxvpos = (psych_uint32) h1;
 		}
 		else {
+			// No. A common beampos query object for all displays. We choose the bigger vertical
+			// height of the first two displays:
 			PsychGetScreenSize(1, &w1, &h1);
 			PsychGetScreenSize(2, &w2, &h2);
 			maxvpos = (psych_uint32) ((h1 > h2) ? h1 : h2);
@@ -902,7 +984,7 @@ void PsychTestDDrawBeampositionQueries(void)
 			
 			// Query beam position:
 			beampos = 0xdeadbeef;
-			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[0], (LPDWORD) &beampos);
+			rc=IDirectDraw_GetScanLine(displayDeviceDDrawObject[screenNumber], (LPDWORD) &beampos);
 			if (rc==DD_OK || rc==DDERR_VERTICALBLANKINPROGRESS) {
 				// Some sample returned...
 				totalcount++;
