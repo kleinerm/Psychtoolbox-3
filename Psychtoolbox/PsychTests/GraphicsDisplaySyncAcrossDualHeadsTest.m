@@ -135,9 +135,9 @@ end
 timinginfo = timinginfo(:,:,1:i);
 nrtrials = i;
 
-Beeper(800);
+%Beeper(800);
 Screen('CloseAll');
-Beeper(1200);
+%Beeper(1200);
 
 if driftsync
     % Restore original display settings:
