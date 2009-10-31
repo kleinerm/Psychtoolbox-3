@@ -600,37 +600,78 @@ void PsychGetMouseButtonState(double* buttonArray)
 
 psych_bool ChangeScreenResolution (int screenNumber, int width, int height, int bitsPerPixel, int fps)	// Change The Screen Resolution
 {
-  DEVMODE dmScreenSettings; // Device mode structure
+	DEVMODE dmScreenSettings; // Device mode structure
+	int rc;
+	
+	// Clear structure:
+	memset (&dmScreenSettings, 0, sizeof (DEVMODE));
+	dmScreenSettings.dmSize		= sizeof (DEVMODE);
+	dmScreenSettings.dmDriverExtra	= 0;
+	
+	// Query current display settings and init struct with them:
+	EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), ENUM_CURRENT_SETTINGS, &dmScreenSettings);
+	
+	// Override current settings with the requested settings, if any:
+	if (width>0)  dmScreenSettings.dmPelsWidth  = width;  // Select Screen Width
+	if (height>0) dmScreenSettings.dmPelsHeight = height; // Select Screen Height
+	if (bitsPerPixel>0) dmScreenSettings.dmBitsPerPel = bitsPerPixel; // Select Bits Per Pixel
+	if (fps>0) dmScreenSettings.dmDisplayFrequency = fps; // Select display refresh rate in Hz
+	
+	// All provided values should be honored: We need to spec the refresh explicitely,
+	// because otherwise the system will select the lowest fps for a given display mode.
+	dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
+	
+	if (PsychPrefStateGet_Verbosity() > 4) {
+		printf("PTB-DEBUG: Switching display for screen %i to fullscreen mode with resolution %i x %i with bpc = %i @ %i Hz.\n", screenNumber, (int) dmScreenSettings.dmPelsWidth, (int) dmScreenSettings.dmPelsHeight, (int) dmScreenSettings.dmBitsPerPel, (int) dmScreenSettings.dmDisplayFrequency);
+	}
+	
+	#ifndef DISP_CHANGE_BADDUALVIEW
+	#define DISP_CHANGE_BADDUALVIEW -6 
+	#endif
+	
+	// Perform the change:
+	if ((rc = (int) ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), &dmScreenSettings, NULL, CDS_FULLSCREEN, NULL)) != DISP_CHANGE_SUCCESSFUL) {
+		if (PsychPrefStateGet_Verbosity() > 4) {
+			printf("PTB-DEBUG: Fullscreen switch of display for screen %i FAILED! Reason given by OS: ", screenNumber);
+			switch(rc) {
+				case DISP_CHANGE_BADDUALVIEW:
+					printf("DISP_CHANGE_BADDUALVIEW	 The settings change was unsuccessful because system is DualView capable.\n");
+				break;
+				
+				case DISP_CHANGE_BADFLAGS:
+					printf("DISP_CHANGE_BADFLAGS	An invalid set of flags was passed in.\n");
+				break;
+				
+				case DISP_CHANGE_BADMODE:
+					printf("DISP_CHANGE_BADMODE	The graphics mode is not supported.\n");
+				break;
+				
+				case DISP_CHANGE_BADPARAM:
+					printf("DISP_CHANGE_BADPARAM	An invalid parameter was passed in. This can include an invalid flag or combination of flags.\n");
+				break; 
+				
+				case DISP_CHANGE_FAILED:
+					printf("DISP_CHANGE_FAILED	The display driver failed the specified graphics mode.\n");
+				break;
+				
+				case DISP_CHANGE_RESTART:
+					printf("DISP_CHANGE_RESTART	The computer must be restarted in order for the graphics mode to work.\n");
+				break;
 
-  // Clear structure:
-  memset (&dmScreenSettings, 0, sizeof (DEVMODE));
-  dmScreenSettings.dmSize		= sizeof (DEVMODE);
-  dmScreenSettings.dmDriverExtra	= 0;
+				case DISP_CHANGE_NOTUPDATED:
+					printf("DISP_CHANGE_NOTUPDATED	 Unable to write settings to the registry.\n");
+				break;
 
-  // Query current display settings and init struct with them:
-  EnumDisplaySettings(PsychGetDisplayDeviceName(screenNumber), ENUM_CURRENT_SETTINGS, &dmScreenSettings);
+				default:
+					printf("Unknown error condition.\n");
+			}
+		}
+		
+		return(FALSE);	// Display Change Failed, Return False
+	}
 
-  // Override current settings with the requested settings, if any:
-  if (width>0)  dmScreenSettings.dmPelsWidth  = width;  // Select Screen Width
-  if (height>0) dmScreenSettings.dmPelsHeight = height; // Select Screen Height
-  if (bitsPerPixel>0) dmScreenSettings.dmBitsPerPel = bitsPerPixel; // Select Bits Per Pixel
-  if (fps>0) dmScreenSettings.dmDisplayFrequency = fps; // Select display refresh rate in Hz
-  
-  // All provided values should be honored: We need to spec the refresh explicitely,
-  // because otherwise the system will select the lowest fps for a given display mode.
-  dmScreenSettings.dmFields = DM_BITSPERPEL | DM_PELSWIDTH | DM_PELSHEIGHT | DM_DISPLAYFREQUENCY;
-
-  if (PsychPrefStateGet_Verbosity() > 4) {
-	printf("PTB-DEBUG: Switching display for screen %i to fullscreen mode with resolution %i x %i with bpc = %i @ %i Hz.\n", screenNumber, (int) dmScreenSettings.dmPelsWidth, (int) dmScreenSettings.dmPelsHeight, (int) dmScreenSettings.dmBitsPerPel, (int) dmScreenSettings.dmDisplayFrequency);
-  }
-
-  // Perform the change:
-  if (ChangeDisplaySettingsEx(PsychGetDisplayDeviceName(screenNumber), &dmScreenSettings, NULL, CDS_FULLSCREEN, NULL) != DISP_CHANGE_SUCCESSFUL) {
-    return(FALSE);	// Display Change Failed, Return False
-  }
-
-  // Display Change Was Successful, Return True
-  return(TRUE);
+	// Display Change Was Successful, Return True
+	return(TRUE);
 }
 
 /*
@@ -868,10 +909,22 @@ dwmdontcare:
 
     // Wanna fullscreen?
     if (fullscreen) {
-      // Switch system to fullscreen-mode without changing any settings:
-      fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
+		// Switch system to fullscreen-mode without changing any settings:
+		
+		// Special case "dualdisplay window"? If number of screens is greater than 2, then we've
+		// got a multi-display (at least dual-display) setup and screenNumber zero means to open
+		// a window that covers both displays 1 and 2 in fullscreen mode:
+		if (PsychGetNumDisplays()>2 && screenSettings->screenNumber == 0) {
+			// Dual-Display fullscreen mode: Switch both display heads 1 and 2 into fullscreen mode:
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Dual-display operation on logical screen zero --> Switching both screens 1 and 2 into fullscreen mode.\n");
+			fullscreen = ChangeScreenResolution(1, 0, 0, 0, 0) && ChangeScreenResolution(2, 0, 0, 0, 0);
+		}
+		else {
+			// Single display case: Just change resolution on that screen:
+			fullscreen = ChangeScreenResolution(screenSettings->screenNumber, 0, 0, 0, 0);
+		}
     }
-    
+
 	 // Special case for explicit multi-display setup under Windows when opening a window on
 	 // screen zero. We enforce the fullscreen - flag, aka a borderless top level window. This way,
     // if anything of our automatic full-desktop window emulation code goes wrong on exotic setups,
@@ -1224,6 +1277,9 @@ dwmdontcare:
       
       // return(FALSE);
     }
+
+	// Check for pageflipping for bufferswaps and output warning if we don't get it:
+    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will not be able to use pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
     
 	// Special debug override for faulty drivers with non-working extension:
 	if (conserveVRAM & kPsychOverrideWglChoosePixelformat) wglChoosePixelFormatARB = NULL;
@@ -1641,6 +1697,11 @@ dwmdontcare:
     // mouse move and mouse button press events. Important for GetMouse() to work
     // properly...
     if (fullscreen) SetCapture(hWnd);
+
+	// Recheck for pageflipping for bufferswaps and output warning if we don't get it:
+	pf = GetPixelFormat(windowRecord->targetSpecific.deviceContext);
+    DescribePixelFormat(windowRecord->targetSpecific.deviceContext, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
+    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
 
     // Increase our own open window counter:
     win32_windowcount++;

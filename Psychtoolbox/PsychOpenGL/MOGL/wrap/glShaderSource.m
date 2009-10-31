@@ -40,6 +40,10 @@ if size(shadersource,1)==1
     shadersource = transpose(shadersource);
 end
 
+% Replace all CR's by LF's:
+repidx = find(double(shadersource) == 13);
+shadersource(repidx) = char(10);
+
 moglcore('glShaderSource', shader, transpose(shadersource), debug);
 
 return

@@ -95,6 +95,9 @@ RestrictKeysForKbCheck(KbName('ESCAPE'));
 
 % Find the screen to use for display:
 screenid=max(Screen('Screens'));
+if ismember(stereoMode, [4,5]) & IsWin
+	screenid = 0;
+end
 
 try
     % Setup Psychtoolbox for OpenGL 3D rendering support and initialize the
