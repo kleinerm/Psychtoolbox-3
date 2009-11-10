@@ -61,6 +61,11 @@ else
 end
 
 % Need to find first VBL after 'when':
+if when <= 0
+    % Special case: Swap at next VSYNC:
+    % Convert into something we can handle...
+    when = lastvbl + 0.5 * ifi;
+end
 
 % Compute time delta in units of video refresh intervals between 'when' and
 % the last known flip:

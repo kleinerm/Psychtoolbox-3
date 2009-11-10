@@ -84,10 +84,10 @@ end
 
 fprintf('Will setup working copy of the Psychtoolbox folder inside: %s\n',targetdirectory);
 fprintf('\n');
-if any(isspace(targetdirectory))
-    fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
-    error('Cannot be any spaces in "targetdirectory" name.');
-end
+% if any(isspace(targetdirectory))
+%     fprintf('Sorry. There cannot be any spaces in the target directory name:\n%s\n',targetdirectory);
+%     error('Cannot be any spaces in "targetdirectory" name.');
+% end
 
 % Does SAVEPATH work?
 if exist('savepath') %#ok<EXIST>

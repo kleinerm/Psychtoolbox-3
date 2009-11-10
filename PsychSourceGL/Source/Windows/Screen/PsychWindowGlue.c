@@ -1019,7 +1019,7 @@ dwmdontcare:
 			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-DEBUG: Window enumeration done. Our hostwindow is HWND=%p, Name: '%s'\n\n", hostwinHandle, hostwinName);
 		}
 		else {
-			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: Host application window enumeration failed! This may cause trouble with CharAvail() and GetChar() :-(\n\n");
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-WARNING: Host application window enumeration failed! This may cause trouble with CharAvail() and GetChar() :-(\n\n");
 		}
 	 }
 
@@ -1279,7 +1279,7 @@ dwmdontcare:
     }
 
 	// Check for pageflipping for bufferswaps and output warning if we don't get it:
-    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will not be able to use pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
+    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (pfd.dwFlags & PFD_SWAP_COPY) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will probably not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
     
 	// Special debug override for faulty drivers with non-working extension:
 	if (conserveVRAM & kPsychOverrideWglChoosePixelformat) wglChoosePixelFormatARB = NULL;
@@ -1687,6 +1687,9 @@ dwmdontcare:
 		// Set the focus on it:
 		SetFocus(hWnd);
 		
+		// Make sure it is the topmost window:
+		SetWindowPos(hWnd, HWND_TOPMOST, 0, 0, 0, 0, (SWP_NOMOVE | SWP_NOSIZE));
+		
 		if (PsychPrefStateGet_Verbosity()>4) printf("PTB-DEBUG: Executed SetForegroundWindow() and SetFocus() on window to optimize pageflipping and timing.\n");
 	}
 	else {
@@ -1701,7 +1704,7 @@ dwmdontcare:
 	// Recheck for pageflipping for bufferswaps and output warning if we don't get it:
 	pf = GetPixelFormat(windowRecord->targetSpecific.deviceContext);
     DescribePixelFormat(windowRecord->targetSpecific.deviceContext, pf, sizeof(PIXELFORMATDESCRIPTOR), &pfd);
-    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
+    if (!(pfd.dwFlags & PFD_SWAP_EXCHANGE) && (pfd.dwFlags & PFD_SWAP_COPY) && (PsychPrefStateGet_Verbosity() > 1)) printf("PTB-WARNING: Created onscreen window on screenid %i will probably not be able to use GPU pageflipping for Screen('Flip')! May cause tearing artifacts...", screenSettings->screenNumber);
 
     // Increase our own open window counter:
     win32_windowcount++;

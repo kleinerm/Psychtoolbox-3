@@ -1434,6 +1434,12 @@ void PsychReleaseFlipInfoStruct(PsychWindowRecordType *windowRecord)
 	if (flipRequest->flipperThread) {
 		// Yes. Cancel and destroy / release it, also release all mutex locks:
 
+		// Disable realtime scheduling, e.g., Vista-MMCSS: Important to do this,
+		// as at least Vista et al. does not reset MMCSS scheduling, even if the
+		// thread dies later on, causing wreakage for all future calls of this
+		// function in a running session! (WTF?!?)
+		PsychSetThreadPriority(&(flipRequest->flipperThread), 0, 0);
+
 		// Set opmode to "terminate please":
 		flipRequest->opmode = -1;
 
@@ -1760,6 +1766,10 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// Additionally try to schedule flipperThread MMCSS: This will lift it roughly into the
 			// same scheduling range as HIGH_PRIORITY_CLASS, even if we are non-admin users
 			// on Vista and Windows-7 and later, however with a scheduler safety net applied.
+			// For some braindead reasons, apparently only one thread can be scheduled in class 10,
+			// so we need to make sure the masterthread is not MMCSS scheduled, otherwise our new
+			// request will fail:
+			PsychSetThreadPriority(0x1, 0, 0);
 			PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
 			
 			//printf("ENTERING THREADCREATEFINISHED MUTEX\n"); fflush(NULL);

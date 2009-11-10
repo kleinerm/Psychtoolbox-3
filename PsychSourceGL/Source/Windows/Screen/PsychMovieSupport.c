@@ -181,6 +181,7 @@ void PsychCreateMovie(PsychWindowRecordType *win, const char* moviename, double 
         // QT isn't installed on the Windows machine...
         error = InitializeQTML(0);
         if (error!=noErr) {
+			printf("PTB-ERROR: Call to InitializeQTML(0) failed with Quicktime error code %i!\n", (int) error);
             PsychErrorExitMsg(PsychError_user, "Quicktime Media Layer initialization failed: Do you have a recent version of Apple's Quicktime-7 properly installed on your system?!?");
         }
 		else {
