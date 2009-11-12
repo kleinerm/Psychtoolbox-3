@@ -416,14 +416,17 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 		// readings from different TSCs due to our thread jumping between cpu's. TSC's on
 		// a multi-core system are not guaranteed to be synchronized, so if TSC is our timebase,
 		// this could lead to time inconsistencies - even time going backwards between queries!!!
-		// Drawback: We may not make optimal use of a multi-core system.
-		if (SetThreadAffinityMask(GetCurrentThread(), 1)==0) {
-		  	// Binding failed! Output warning on first failed invocation...
-		  	schedulingtrouble = TRUE;
-        	printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() failed!!! Timing could be inaccurate.\n");
-        	printf("PTBCRITICAL -ERROR: Time measurement may be highly unreliable - or even false!!!\n");
-        	printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
-        	printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
+		// Drawback: We may not make optimal use of a multi-core system. On Vista and later, we assume
+		// everything will be fine, but still perform consistency checks at each call to PsychGetPrecisionTimerSeconds():
+		if (!PsychIsMSVista()) {
+			if (SetThreadAffinityMask(GetCurrentThread(), 1)==0) {
+				// Binding failed! Output warning on first failed invocation...
+				schedulingtrouble = TRUE;
+				printf("PTBCRITICAL -ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() failed!!! Timing could be inaccurate.\n");
+				printf("PTBCRITICAL -ERROR: Time measurement may be highly unreliable - or even false!!!\n");
+				printf("PTBCRITICAL -ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
+				printf("PTBCRITICAL -ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
+			}
 		}
 		
 		// Sleep us at least 10 msecs, so the system will reschedule us, with the
@@ -506,17 +509,8 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 	// Query system time of low resolution counter:
 	curRawticks = timeGetTime();
 
-	// Need to acquire our timelock before we continue, as we will soon access shared data structures:
-	EnterCriticalSection(&time_lock);
-
-	// Convert to ticks in seconds for further processing:
-	ticks = ((double) (psych_int64) curRawticks) * 0.001;
-	tickInSecsAtLastQuery = ticks;
-	
-	
-  if (counterExists) {
-	// Query Performance counter:
-	if (0 == QueryPerformanceCounter(&count)) {
+	// Query Performance counter if it is supported:
+	if ((counterExists) && (0 == QueryPerformanceCounter(&count))) {
 			Timertrouble = TRUE;
 			printf("PTB-CRITICAL WARNING! Timing code detected problems with the high precision TIMER in your system hardware!\n");
 			printf("PTB-CRITICAL WARNING! A call to QueryPerformanceCounter() failed!\n");
@@ -528,6 +522,19 @@ void PsychGetPrecisionTimerSeconds(double *secs)
 			printf("PTB-CRITICAL WARNING! It may also help to restart the machine to see if the problem is transient.\n");
 			printf("PTB-CRITICAL WARNING! Also check the FAQ section of the Psychtoolbox Wiki for more information.\n\n");
 	}
+
+	// Need to acquire our timelock before we continue, as we will soon access shared data structures:
+	EnterCriticalSection(&time_lock);
+
+	// Convert to ticks in seconds for further processing:
+	ticks = ((double) (psych_int64) curRawticks) * 0.001;
+	tickInSecsAtLastQuery = ticks;
+	
+  // Start actual processing of result of QueryPerformanceCounter(). We do this here,
+  // deferred under protection of the time_lock lock. The Query has been done above,
+  // outside of the critical section, so multiple threads can't collide on a contended
+  // time_lock and get delayed needlessly:
+  if (counterExists) {
 
    ss = ((double)count.QuadPart)/((double)counterFreq.QuadPart);
    timeInSecsAtLastQuery = ss;
@@ -774,9 +781,32 @@ int PsychCreateThread(psych_thread* threadhandle, void* threadparams, void *(*st
 
 	// Create thread, running, with default system settings, assign thread handle:
 	(*threadhandle)->handle = CreateThread(NULL, 0, (LPTHREAD_START_ROUTINE) start_routine, arg, 0, &((*threadhandle)->threadId));
+
+	// Successfully created?
+	if ((*threadhandle)->handle != NULL) {
+		// Yes. On pre-MS-Vista systems, we lock the thread to cpu core 0 to prevent possible TSC multi-core sync
+		// problems. On Vista and later, we faithfully hope that Microsoft and the vendors of "MS-Vista-Ready"
+		// PC hardware have actually solved that mess, i.e., non-broken hardware (or hardware with a HPET as primary
+		// time source) and proper HPET support and error handling in Vista et al's timing core. On such systems we
+		// don't lock to a core, so we can benefit from multi-core processing. Our consistency checks in PsychGetPrecisionTimerSeconds()
+		// should be able to eventually detect multi-core sync problems if they happen:
+		if (!PsychIsMSVista()) {
+			// Pre-Vista - Lock to single core:
+			if (SetThreadAffinityMask(GetCurrentThread(), 1) == 0) {
+				// Binding failed! Output warning:
+				printf("PTBCRITICAL-ERROR: PsychTimeGlue - Win32 syscall SetThreadAffinityMask() for new child thread failed!!! Timing could be inaccurate.\n");
+				printf("PTBCRITICAL-ERROR: Time measurement may be highly unreliable - or even false!!!\n");
+				printf("PTBCRITICAL-ERROR: FIX YOUR SYSTEM! In its current state its not useable for conduction of studies!!!\n");
+				printf("PTBCRITICAL-ERROR: Check the FAQ section of the Psychtoolbox Wiki for more information.\n");
+			}
+		}
+
+		// Return success:
+		return(0);
+	}
 	
-	// Return result code: If successfull, return 0. Otherwise return 1:
-	return( ((*threadhandle)->handle != NULL) ? 0 : 1);
+	// Failed! Return 1:
+	return(1);
 }
 
 /* Join a parallel thread - Wait for its termination, then return its result code: */

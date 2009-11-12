@@ -57,6 +57,7 @@
 #include <ApplicationServices/ApplicationServices.h>
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <IOKit/graphics/IOFramebufferShared.h>
+#include <libkern/OSAtomic.h>
 
 static struct {
     io_connect_t        connect;
@@ -841,14 +842,31 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 double PsychOSGetVBLTimeAndCount(PsychWindowRecordType *windowRecord, psych_uint64* vblCount)
 {
 	unsigned int screenid = windowRecord->screenNumber;
+	double t1, t2;
+	psych_uint64 refvblcount;
 	
     // Do we have a valid shared mapping?
     if (fbsharedmem[screenid].shmem) {
-        // Retrieve absolute count of vbls since startup:
-        *vblCount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
-        
+		// We query each value twice and repeat this double-query until both readings of
+		// both variables show the same values. This because our read access to this kernel
+		// data structure is not protected by a lock, so the kernel might modify the values
+		// while we are reading them, causing inconsistent readings between the two values and
+		// within a value. We use memory barriers to prevent compiler optimizations or cache
+		// coherency issues:
+		do {
+			// Retrieve absolute count of vbls since startup:
+			*vblCount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
+			OSMemoryBarrier();
+			t1 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
+			OSMemoryBarrier();
+			t2 = ((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0;
+			OSMemoryBarrier();
+			refvblcount = (psych_uint64) fbsharedmem[screenid].shmem->vblCount;
+			OSMemoryBarrier();
+		} while ((*vblCount != refvblcount) || (t1 != t2));
+		
         // Retrieve absolute system time of last retrace, convert into PTB standard time system and return it:
-	return(((double) UnsignedWideToUInt64(AbsoluteToNanoseconds(fbsharedmem[screenid].shmem->vblTime))) / 1000000000.0);
+		return(t1);
     }
     else {
         // Unsupported :(

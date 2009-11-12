@@ -124,7 +124,9 @@ static int    numKernelDrivers = 0;
 static unsigned int radeon_get(unsigned int offset)
 {
     unsigned int value;
-    value = *(unsigned int * volatile)(gfx_cntl_mem + offset);  
+    value = *(unsigned int * volatile)(gfx_cntl_mem + offset);
+	// Enforce a full memory barrier: This is a gcc intrinsic:
+	__sync_synchronize();  
     return(value);
 }
 
@@ -133,6 +135,8 @@ static unsigned int radeon_get(unsigned int offset)
 static void radeon_set(unsigned int offset, unsigned int value)
 {
     *(unsigned int* volatile)(gfx_cntl_mem + offset) = value;  
+	// Enforce a full memory barrier: This is a gcc intrinsic:
+	__sync_synchronize();  
 }
 
 // Helper routine: mmap() the MMIO memory mapped I/O PCI register space of

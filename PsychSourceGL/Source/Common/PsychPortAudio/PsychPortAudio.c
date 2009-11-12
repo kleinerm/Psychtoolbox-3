@@ -1326,6 +1326,13 @@ void PsychPortAudioInitialize(void)
 		bufferList = NULL;
 		PsychInitMutex(&bufferListmutex);
 
+		// On Vista systems and later, we assume everything will be fine wrt. to timing and multi-core
+		// systems, but still perform consistency checks at each call to PsychGetPrecisionTimerSeconds().
+		// Therefore we don't lock our threads to a single core by default. On pre-Vista systems, we
+		// lock all threads to core 1 by default:
+		lockToCore1 = (PsychIsMSVista()) ? FALSE : TRUE;
+
+
 		pa_initialized = TRUE;
 	}
 }
