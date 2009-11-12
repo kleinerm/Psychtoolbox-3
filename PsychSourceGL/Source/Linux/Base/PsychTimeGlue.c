@@ -490,8 +490,12 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	}
 
 	// Try to apply new priority and scheduling method:
-	if (rc == 0) rc = pthread_setschedparam(thread, policy, &sp);
-	
+	if (rc == 0) {
+		rc = pthread_setschedparam(thread, policy, &sp);
+		if (rc != 0) printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
+							basePriority, tweakPriority, sp.sched_priority, (policy = SCHED_RR) ? "REALTIME" : "NORMAL", (void*) threadhandle);
+	}
+
 	// rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:
 	return(rc);
 }
