@@ -26,7 +26,7 @@ try
     % Break the path list into individual path elements.
     if IsOctave
         pathElements = cell(0,0);
-        mypath = path;
+        mypath = pathList;
         while ~isempty(mypath)
             [pathElements{end+1}, mypath] = strtok(mypath, pathsep); %#ok<STTOK,AGROW>
         end;
