@@ -690,7 +690,12 @@ global rtbox_global;
     end
     
     % Deal with variable number of inputs:
-    nIn = max(nargin - 1, 0);
+    if nargin - 1 > 0 
+        nIn = nargin - 1;
+    else
+        nIn = 0;
+    end
+    
     if nIn > 1
         in2=varargin{3};
     end
@@ -843,20 +848,22 @@ global rtbox_global;
                 return;
             end
 
-            % Map event id to human readable label string:
-            for i=1:nevent % extract each event and time
-                ind=min(find(evid(i)==rtbox_global.eventcodes)); %#ok<MXFND> % which event
-                if isempty(ind)
-                    RTboxWarn('invalidEvent',evid(i));
-                    break; % not continue, rest must be messed up
-                end                
-                event{i} = rtbox_info(id).events{ind}; %#ok event name
+            if nargout > 1 || cmdInd < 13
+                % Map event id to human readable label string:
+                for i=1:nevent % extract each event and time
+                    ind=min(find(evid(i)==rtbox_global.eventcodes)); %#ok<MXFND> % which event
+                    if isempty(ind)
+                        RTboxWarn('invalidEvent',evid(i));
+                        break; % not continue, rest must be messed up
+                    end
+                    event{i} = rtbox_info(id).events{ind}; %#ok event name
+                end
             end
 
             if isempty(timing), return; end
 
             % Convert boxtiming and/or map it to host clock time:
-            if cmdInd==15 | cmdInd==13 %#ok<OR2>
+            if cmdInd==15 || cmdInd==13
                 % Convert into computer time: MK-Style
 
                 % First return optional "raw" array with boxtimes:
@@ -874,10 +881,14 @@ global rtbox_global;
                 if isempty(event), return; end % if only trigger event, return empty
                 timing=timing-trigT;   % relative to trigger time
             end
-            if length(event)==1, event=event{1}; end % if only 1 event, use string
-            varargout{1} = timing;
-            varargout{2} = event;
 
+            varargout{1} = timing;
+
+            if nargout > 1
+                if length(event)==1, event=event{1}; end % if only 1 event, use string
+                varargout{2} = event;
+            end
+            
         case 'boxinfo'
             % Return complete device info struct:
             varargout{1} = rtbox_info(id);
@@ -2061,7 +2072,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
     tcurrent = GetSecs;
     timeOut  = tcurrent + timeOut;
     tInterTimeout = tcurrent + interEventDelay;
-    
+
     % Parse until timeOut reached, or minimum number of requested events
     % dequeued, whatever comes first:
     while (tcurrent <= timeOut) && (minEvents > 0) && (tcurrent <= tInterTimeout)
@@ -2186,7 +2197,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
             % Next iteration:
             continue;
         end
-        
+
         % Any acknowledge tokens to wait for?
         if ~isempty(rtbox_info(handle).ackTokens)
             % Is current event the next expected token?
@@ -2231,7 +2242,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
 
         % Next parse iteration:
     end
-    
+
     % Done.
     return;
 end
@@ -2259,7 +2270,7 @@ function [evts, boxtimes] = getEvents(handle, minItems, maxItems, timeOut, maxIn
     tdeadline = tcurrent + timeOut;
     tInterdeadline = tcurrent + maxInterEvent;
     evAvail   = 0;
-    
+
     % Box in scanning mode?
     % If box is not in active scanning mode then all serial receive buffers
     % are empty and the box won't produce new data. All we can ever get is
@@ -2278,7 +2289,11 @@ function [evts, boxtimes] = getEvents(handle, minItems, maxItems, timeOut, maxIn
             % Need any?
             if needMore > 0
                 % Need to fetch from serial queue:
-                tscandeadline = min(tdeadline - tcurrent, tInterdeadline - tcurrent);
+                if tdeadline - tcurrent < tInterdeadline - tcurrent
+                    tscandeadline = tdeadline - tcurrent;
+                else
+                    tscandeadline = tInterdeadline - tcurrent;
+                end
                 [nadded, tlastadd] = parseQueue(handle, needMore, tscandeadline, maxInterEvent);
             else
                 nadded = 0;
@@ -2301,7 +2316,7 @@ function [evts, boxtimes] = getEvents(handle, minItems, maxItems, timeOut, maxIn
             % Check again.
         end
     end
-    
+
     % How many events are stored in our own filtered, debounced event Queue?
     evAvail = size(rtbox_info(handle).recQueue, 1);
 
