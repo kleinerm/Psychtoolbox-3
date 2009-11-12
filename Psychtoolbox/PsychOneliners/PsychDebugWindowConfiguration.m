@@ -40,7 +40,7 @@ if nargin < 2
     opacity=0.5;
 end
 
-if IsOSX | IsWin %#ok<OR2>
+if 1 | IsOSX | IsWin %#ok<OR2>
     if IsOSX
         % Disable high precision timestamping:
         Screen('Preference', 'VBLTimestampingMode', -1);
@@ -51,6 +51,11 @@ if IsOSX | IsWin %#ok<OR2>
         % Use AGL + Carbon, even for fullscreen windows:
         oldconserve = Screen('Preference', 'ConserveVRAM');
         Screen('Preference', 'ConserveVRAM', bitor(oldconserve, 16384));
+    end
+
+    if IsLinux
+        % Skip sync tests:
+        Screen('Preference', 'SkipSyncTests', 2);
     end
 
     % Map range 0.0 - 1.0 to 0 - 499:

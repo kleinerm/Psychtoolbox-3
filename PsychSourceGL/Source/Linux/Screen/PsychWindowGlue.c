@@ -34,6 +34,9 @@
 #include <sched.h>
 #include <errno.h>
 
+/* XAtom support for setup of transparent windows: */
+#include <X11/Xatom.h>
+
 // Number of currently open onscreen windows:
 static int x11_windowcount = 0;
 
@@ -129,7 +132,16 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   int attrib[38];
   int attribcount=0;
   int depth, bpc;
+  int windowLevel;
 
+  // Retrieve windowLevel, an indicator of where non-fullscreen windows should
+  // be located wrt. to other windows. 0 = Behind everything else, occluded by
+  // everything else. 1 - 999 = At layer windowLevel -> Occludes stuff on layers "below" it.
+  // 1000 - 1999 = At highest level, but partially translucent / alpha channel allows to make
+  // regions transparent. 2000 or higher: Above everything, fully opaque, occludes everything.
+  // 2000 is the default.
+  windowLevel = PsychPrefStateGet_WindowShieldingLevel();
+  
   // Init userspace GL context to safe default:
   windowRecord->targetSpecific.glusercontextObject = NULL;
   	 
@@ -351,6 +363,11 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
     return(FALSE);
   }
 
+  // Set window to non-fullscreen mode if it is a transparent or otherwise special window.
+  // This will prevent setting the override_redirect attribute, which would lock out the
+  // desktop window compositor:
+  if (windowLevel < 2000) fullscreen = FALSE;
+  
   // Setup window attributes:
   attr.background_pixel = 0;  // Background color defaults to black.
   attr.border_pixel = 0;      // Border color as well.
@@ -410,6 +427,21 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Release visual info:
   XFree(visinfo);
 
+  if ((windowLevel >= 1000) && (windowLevel < 2000)) {
+	  // For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
+	  // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
+	  
+	  // Levels 1000 - 1499 and 1500 to 1999 map to a master opacity level of 0.0 - 1.0:	  
+	  unsigned int opacity = (unsigned int) (0xffffffff * (((float) (windowLevel % 500)) / 499.0));
+	  
+	  // Get handle on opacity property of X11:
+	  Atom atom_window_opacity = XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
+	  
+	  // Assign new value for property:
+	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
+  }
+
+
   // Show our new window:
   XMapWindow(dpy, win);
 
@@ -442,7 +474,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   }
 
   // Some info for the user regarding non-fullscreen and ATI hw:
-  if (!fullscreen && (strstr(glGetString(GL_VENDOR), "ATI"))) {
+  if (!(windowRecord->specialflags & kPsychIsFullscreenWindow) && (strstr(glGetString(GL_VENDOR), "ATI"))) {
     printf("PTB-INFO: Some ATI graphics cards may not support proper syncing to vertical retrace when\n");
     printf("PTB-INFO: running in windowed mode (non-fullscreen). If PTB aborts with 'Synchronization failure'\n");
     printf("PTB-INFO: you can disable the sync test via call to Screen('Preference', 'SkipSyncTests', 1); .\n");
