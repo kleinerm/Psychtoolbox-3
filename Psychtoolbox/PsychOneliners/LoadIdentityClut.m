@@ -152,7 +152,7 @@ else
                 % At least the Radeon HD 3470 under Windows Vista and Linux needs type 0
                 % LUT's. Let's assume for the moment this is true for all R600
                 % cores, ie., all Radeon HD series cards.
-                fprintf('ATI Radeon HD-2000 or later on MS-Windows detected. Enabling special type-0 LUT hacks for totally broken drivers.\n');
+                fprintf('ATI Radeon HD-2000 or later detected. Enabling special type-0 LUT hacks for totally broken drivers.\n');
                 gfxhwtype = 0;
             end
         else
