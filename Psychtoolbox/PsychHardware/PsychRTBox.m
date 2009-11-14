@@ -735,15 +735,6 @@ global rtbox_global;
     % Assign serial port handle:
     s = rtbox_info(id).handle;
 
-    % Check for invalid commands:
-    if ~any(strmatch(cmd,[rtbox_global.cmds read],'exact')) % if invalid cmd, we won't open device
-        if ~isempty(id)
-            RTboxError('unknownCmd',cmd,rtbox_global.cmds,rtbox_info(id).events); % invalid command
-        else
-            RTboxError('unknownCmd',cmd,rtbox_global.cmds,{''}); % invalid command
-        end
-    end
-
     % Subcommand dispatch:
     switch cmd
         case 'verbosity'
