@@ -2346,6 +2346,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// Take postswap request timestamp:
 	PsychGetAdjustedPrecisionTimerSeconds(&time_post_swaprequest);
 
+	// Store timestamp of swaprequest submission:
+	windowRecord->time_at_swaprequest = time_at_swaprequest;
+	
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
 		// Skip our classic sync-token-pixelwrite + glFinish() method etc. on a

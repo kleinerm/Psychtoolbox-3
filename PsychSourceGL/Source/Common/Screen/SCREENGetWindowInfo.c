@@ -160,6 +160,7 @@ static char synopsisString[] =
 	"----------------------------------------------\n\n"
 	"BeamPosition: Current rasterbeam position of the video scanout cycle.\n"
 	"LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
+	"TimeAtSwapRequest: Timestamp taken prior to submission of the low-level swap command. Useful for micro-benchmarking.\n"
 	"RawSwapTimeOfFlip: Raw (uncorrected by high-precision timestamping) timestamp of last finished Screen('Flip') operation.\n"
 	"LastVBLTime: System time when last vertical blank happened, or the same as "
 	"LastVBLTimeOfFlip if the system doesn't support queries of this property (currently only OS/X does.)\n"
@@ -195,12 +196,12 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 
 PsychError SCREENGetWindowInfo(void) 
 {
-    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "RawSwapTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "RawSwapTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags" };
 							   
-	const int  fieldCount = 27;
+	const int  fieldCount = 28;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -331,6 +332,9 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Uncorrected timestamp of flip swap completion:
 		PsychSetStructArrayDoubleElement("RawSwapTimeOfFlip", 0, windowRecord->rawtime_at_swapcompletion, s);
+
+		// Timestamp immediately prior to call to PsychOSFlipWindowBuffers(), i.e., time at swap request submission:
+		PsychSetStructArrayDoubleElement("TimeAtSwapRequest", 0, windowRecord->time_at_swaprequest, s);
 
 		// Try to determine system time of last VBL on display, independent of any
 		// flips / bufferswaps.

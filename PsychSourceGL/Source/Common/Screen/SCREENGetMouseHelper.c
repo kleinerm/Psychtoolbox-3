@@ -651,9 +651,9 @@ PsychError SCREENGetMouseHelper(void)
 			if (priorityLevel > 99 || priorityLevel < 0) PsychErrorExitMsg(PsychErorr_argumentValueOutOfRange, "Invalid Priority level: Requested Priority() level must be between zero and 99!");
 
 			if (priorityLevel > 0) {
-				// Realtime RoundRobin scheduling and all pages of Matlab/Octave locked into memory:
+				// Realtime FIFO scheduling and all pages of Matlab/Octave locked into memory:
 				schedulingparam.sched_priority = priorityLevel;
-				priorityLevel = sched_setscheduler(0, SCHED_RR, &schedulingparam);
+				priorityLevel = sched_setscheduler(0, SCHED_FIFO, &schedulingparam);
 				if (priorityLevel == -1) {
 					// Failed!
 					if(!PsychPrefStateGet_SuppressAllWarnings()) {

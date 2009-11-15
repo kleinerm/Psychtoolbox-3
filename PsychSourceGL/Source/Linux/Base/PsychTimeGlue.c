@@ -474,12 +474,12 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 		break;
 		
 		case 1:   // High priority / Round robin realtime.
-		case 10:  // Multimedia class scheduling emulation for non-Windows:
 			policy = SCHED_RR;
 			sp.sched_priority = sp.sched_priority + tweakPriority;		
 		break;
 		
-		case 2: // Highest priority: FIFO scheduling
+		case 2:	  // Highest priority: FIFO scheduling
+		case 10:  // Multimedia class scheduling emulation for non-Windows:
 			policy = SCHED_FIFO;
 			sp.sched_priority = sp.sched_priority + tweakPriority;
 		break;
@@ -493,7 +493,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	if (rc == 0) {
 		rc = pthread_setschedparam(thread, policy, &sp);
 		if (rc != 0) printf("PTB-CRITICAL: In call to PsychSetThreadPriority(): Failed to set new basePriority %i, tweakPriority %i, effective %i [%s] for thread %p provided!\n",
-							basePriority, tweakPriority, sp.sched_priority, (policy = SCHED_RR) ? "REALTIME" : "NORMAL", (void*) threadhandle);
+							basePriority, tweakPriority, sp.sched_priority, (policy != SCHED_OTHER) ? "REALTIME" : "NORMAL", (void*) threadhandle);
 	}
 
 	// rc is either zero for success, or 2 for invalid arg, or some other non-zero failure code:

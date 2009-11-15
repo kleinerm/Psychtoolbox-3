@@ -52,7 +52,7 @@ psych_bool PsychRealtimePriority(psych_bool enable_realtime)
 {
     static psych_bool old_enable_realtime = FALSE;
     static int   oldPriority = SCHED_OTHER;
-    const  int   realtime_class = SCHED_RR;
+    const  int   realtime_class = SCHED_FIFO;
     struct sched_param param, oldparam;
 
     if (old_enable_realtime == enable_realtime) {
@@ -427,6 +427,7 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
   // Release visual info:
   XFree(visinfo);
 
+  // Setup window transparency:
   if ((windowLevel >= 1000) && (windowLevel < 2000)) {
 	  // For windowLevels between 1000 and 1999, make the window background transparent, so standard GUI
 	  // would be visible, wherever nothing is drawn, i.e., where alpha channel is zero:
@@ -441,9 +442,14 @@ psych_bool PsychOSOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Ps
 	  XChangeProperty(dpy, win, atom_window_opacity, XA_CARDINAL, 32, PropModeReplace, (unsigned char *) &opacity, 1);
   }
 
-
   // Show our new window:
   XMapWindow(dpy, win);
+
+  // Setup window transparency for user input (keyboard and mouse events):
+  if (windowLevel < 1500) {
+	// Need to try to be transparent for keyboard events and mouse clicks:
+	XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);	
+  }
 
   // Activate the associated rendering context:
   PsychOSSetGLContext(windowRecord);
