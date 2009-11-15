@@ -470,7 +470,7 @@ int PsychSetThreadPriority(psych_thread* threadhandle, int basePriority, int twe
 	switch(basePriority) {
 		case 0:	// Normal priority. No change to scheduling priority:
 			policy = SCHED_OTHER;
-			sp.sched_priority = sp.sched_priority;
+			sp.sched_priority = 0;
 		break;
 		
 		case 1:   // High priority / Round robin realtime.
