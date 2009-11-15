@@ -451,7 +451,7 @@ if strcmpi(cmd, 'Shutdown')
     reassign = 1;
 
     % Shutdown complete, we're offline:
-    online = 0;    
+    online = [];    
     return;
 end
 
