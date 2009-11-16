@@ -266,7 +266,7 @@ void* PsychSerialUnixGlueReaderThreadMain(volatile void* deviceToCast)
 			// Clear the O_NONBLOCK flag so subsequent I/O will block.
 			// See fcntl(2) ("man 2 fcntl") for details.
 			// We do this in a cached, lazy way b'cause it can be expensive:
-			PsychSerialUnixGlueFcntl(device->fileDescriptor, 0);
+			PsychSerialUnixGlueFcntl(device, 0);
 		}
 
 		// Zerofill the space we're gonna read in next read() request, so we have a nice
@@ -1220,7 +1220,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 		// Yep. Set filedescriptor to non-blocking mode:
 		// Set the O_NONBLOCK flag so subsequent I/O will not block.
 		// See fcntl(2) ("man 2 fcntl") for details.
-		if (PsychSerialUnixGlueFcntl(device->fileDescriptor, O_NONBLOCK) == -1)
+		if (PsychSerialUnixGlueFcntl(device, O_NONBLOCK) == -1)
 		{
 			sprintf(errmsg, "Error setting O_NONBLOCK on device %s for non-blocking writes - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
@@ -1240,7 +1240,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 		// Nope. Set filedescriptor to blocking mode:
 		// Clear the O_NONBLOCK flag so subsequent I/O will block.
 		// See fcntl(2) ("man 2 fcntl") for details.
-		if (PsychSerialUnixGlueFcntl(device->fileDescriptor, 0) == -1)
+		if (PsychSerialUnixGlueFcntl(device, 0) == -1)
 		{
 			sprintf(errmsg, "Error clearing O_NONBLOCK on device %s for blocking writes - %s(%d).\n", device->portSpec, strerror(errno), errno);
 			return(-1);
@@ -1351,7 +1351,7 @@ int PsychIOOSReadSerialPort(volatile PsychSerialDeviceRecord* device, void** rea
 			// Set filedescriptor to non-blocking mode:
 			// Set the O_NONBLOCK flag so subsequent I/O will not block.
 			// See fcntl(2) ("man 2 fcntl") for details.
-			if (PsychSerialUnixGlueFcntl(device->fileDescriptor, O_NONBLOCK) == -1)
+			if (PsychSerialUnixGlueFcntl(device, O_NONBLOCK) == -1)
 			{
 				sprintf(errmsg, "Error setting O_NONBLOCK on device %s for non-blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
 				return(-1);
@@ -1394,7 +1394,7 @@ int PsychIOOSReadSerialPort(volatile PsychSerialDeviceRecord* device, void** rea
 			// Set filedescriptor to blocking mode:
 			// Clear the O_NONBLOCK flag so subsequent I/O will block.
 			// See fcntl(2) ("man 2 fcntl") for details.
-			if (PsychSerialUnixGlueFcntl(device->fileDescriptor, 0) == -1)
+			if (PsychSerialUnixGlueFcntl(device, 0) == -1)
 			{
 				sprintf(errmsg, "Error clearing O_NONBLOCK on device %s for blocking read - %s(%d).\n", device->portSpec, strerror(errno), errno);
 				return(-1);
