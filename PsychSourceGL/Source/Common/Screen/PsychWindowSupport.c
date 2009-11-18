@@ -134,7 +134,12 @@ void PsychRebindARBExtensionsToCore(void)
     if (NULL == glGetShaderInfoLog) glGetShaderInfoLog = glGetInfoLogARB;
     if (NULL == glGetProgramInfoLog) glGetProgramInfoLog = glGetInfoLogARB;
     if (NULL == glValidateProgram) glValidateProgram = glValidateProgramARB;
-    
+    if (NULL == glGenQueries) glGenQueries = glGenQueriesARB;
+    if (NULL == glDeleteQueries) glDeleteQueries = glDeleteQueriesARB;
+    if (NULL == glBeginQuery) glBeginQuery = glBeginQueryARB;
+    if (NULL == glEndQuery) glEndQuery = glEndQueryARB;
+    if (NULL == glGetQueryObjectuiv) glGetQueryObjectuiv = glGetQueryObjectuivARB;
+	
     // Misc other stuff to remap...
     if (NULL == glDrawRangeElements) glDrawRangeElements = glDrawRangeElementsEXT;
     return;
@@ -2011,6 +2016,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	double dwmPreOnsetVBLTime, dwmOnsetVBLTime;
 	double dwmCompositionRate = 0;
 	int	   dwmrc;
+	unsigned int gpuTimeElapsed;			// Elapsed GPU render time in Nanoseconds.
 	psych_bool flipcondition_satisfied;	
     int vbltimestampmode = PsychPrefStateGet_VBLTimestampingMode();
     PsychWindowRecordType **windowRecordArray=NULL;
@@ -2123,6 +2129,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         glDrawPixels(1,1,GL_RED,GL_UNSIGNED_BYTE, &id);
     }
  
+	// End time measurement for any previously submitted rendering commands if a
+	// GPU rendertime query was requested (See Screen('GetWindowInfo', ..); for infoType 5.
+	if (windowRecord->gpuRenderTimeQuery) glEndQuery(GL_TIME_ELAPSED_EXT);
+
     // Pausing until a specific deadline requested?
     if (flipwhen>0) {
         // We shall not swap at next VSYNC, but at the VSYNC immediately following the
@@ -2348,6 +2358,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 
 	// Store timestamp of swaprequest submission:
 	windowRecord->time_at_swaprequest = time_at_swaprequest;
+	windowRecord->time_post_swaprequest = time_post_swaprequest;
 	
     // Pause execution of application until start of VBL, if requested:
     if (sync_to_vbl) {
@@ -2835,6 +2846,19 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		windowRecord->inTableSize = 0;
 		windowRecord->loadGammaTableOnNextFlip = 0;
 	 }
+
+	// Any GPU rendertime queries submitted whose results we shall collect?
+	if (windowRecord->gpuRenderTimeQuery) {
+		// Yes: Wait blocking on query object to return results:
+		glGetQueryObjectuiv(windowRecord->gpuRenderTimeQuery, GL_QUERY_RESULT, &gpuTimeElapsed);
+		
+		// Destory query object:
+		glDeleteQueries(1, &windowRecord->gpuRenderTimeQuery);
+		windowRecord->gpuRenderTimeQuery = 0;
+
+		// Convert result in Nanoseconds back to seconds, and assign it:
+		windowRecord->gpuRenderTime = (double) gpuTimeElapsed / (double) 1e9;
+	}
 
     // We take a second timestamp here to mark the end of the Flip-routine and return it to "userspace"
     PsychGetAdjustedPrecisionTimerSeconds(time_at_flipend);

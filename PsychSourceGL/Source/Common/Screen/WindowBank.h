@@ -289,6 +289,9 @@ typedef struct _PsychWindowRecordType_{
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
 		double									rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
 		double									time_at_swaprequest;	// Timestamp taken immediately before call to PsychOSFlipWindowBuffers(); - Before swaprequest submission.
+		double									time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();
+		double									gpuRenderTime;			// GPU time spent on rendering. Only returned if a query object is successfully generated.
+		GLint									gpuRenderTimeQuery;		// Handle to the GPU time query object. 0 if none assigned.
 		
 	// Pointers to temporary arrays with gamma tables to upload to the gfx-card at next Screen('Flip'):
 	// They default to NULL and get possibly set in Screen('LoadNormalizedGammaTable'):

@@ -326,6 +326,8 @@ void PsychCreateWindowRecord(PsychWindowRecordType **winRec)
 
 	// No GPU core id assigned yet:
 	(*winRec)->gpuCoreId[0] = 0;
+	(*winRec)->gpuRenderTimeQuery = 0;
+	(*winRec)->gpuRenderTime = 0.0;
 
 	return;
 }

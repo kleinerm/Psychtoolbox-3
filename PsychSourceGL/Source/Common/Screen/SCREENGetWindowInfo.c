@@ -148,7 +148,12 @@ static char synopsisString[] =
 	"If set to 2, information about the window server is returned (or -1 if unsupported).\n"
 	"If set to 3, low-level window server settings are changed according to 'auxArg1'. Do *not* use, "
 	"unless you really know what you're doing and have read the relevant PTB source code!\n"
-    "If set to 4, returns a single value with the current activity status of asynchronous flips. "
+    "If set to 4, returns a single value with the current activity status of asynchronous flips.\n"
+	"If set to 5, will start measurement of GPU time for render operations. The clock will start "
+	"on the next drawing command after this call. The clock will stop at next bufferswap with call "
+	"to Screen('Flip', ..); After the flip, the elapsed rendertime will be returned in the 'GPULastFrameRenderTime' "
+	"field of the struct that you get when calling with infoType=0. Not all GPU's support this function. If the "
+	"function is unsupported, a value of zero will be returned in the info struct.\n"
 	"1 if a Screen('AsyncFlipBegin') was called and the flip is still active, ie., hasn't "
 	"been finished with a matching Screen('AsyncFlipEnd') or Screen('AsyncFlipCheckEnd');, 0 otherwise."
     "You can call this function with an infoType of zero only if no async flips are active. This is why "
@@ -161,6 +166,8 @@ static char synopsisString[] =
 	"BeamPosition: Current rasterbeam position of the video scanout cycle.\n"
 	"LastVBLTimeOfFlip: VBL timestamp of last finished Screen('Flip') operation.\n"
 	"TimeAtSwapRequest: Timestamp taken prior to submission of the low-level swap command. Useful for micro-benchmarking.\n"
+	"TimePostSwapRequest: Timestamp taken after submission of the low-level swap command. Useful for micro-benchmarking.\n"
+	"GPULastFrameRenderTime: Duration of all rendering operations in the last frame, as measured by GPU, if infoType 5 was used.\n"
 	"RawSwapTimeOfFlip: Raw (uncorrected by high-precision timestamping) timestamp of last finished Screen('Flip') operation.\n"
 	"LastVBLTime: System time when last vertical blank happened, or the same as "
 	"LastVBLTimeOfFlip if the system doesn't support queries of this property (currently only OS/X does.)\n"
@@ -196,12 +203,13 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 	 
 PsychError SCREENGetWindowInfo(void) 
 {
-    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "RawSwapTimeOfFlip", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+    const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "TimePostSwapRequest", "RawSwapTimeOfFlip",
+							   "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags" };
 							   
-	const int  fieldCount = 28;
+	const int  fieldCount = 30;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -224,7 +232,7 @@ PsychError SCREENGetWindowInfo(void)
 
     // Query infoType flag: Defaults to zero.
     PsychCopyInIntegerArg(2, FALSE, &infoType);
-	if (infoType < 0 || infoType > 4) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3 and 4.");
+	if (infoType < 0 || infoType > 5) PsychErrorExitMsg(PsychError_user, "Invalid 'infoType' argument specified! Valid are 0, 1, 2, 3, 4 and 5.");
 
 	// Windowserver info requested?
 	if (infoType == 2 || infoType == 3) {
@@ -291,8 +299,20 @@ PsychError SCREENGetWindowInfo(void)
 		#endif
 
 		#if PSYCH_SYSTEM == PSYCH_LINUX
-		// Unsupported:
-		PsychCopyOutDoubleArg(1, FALSE, -1);
+			if (infoType == 2) {
+				// MMIO register Read for screenid "auxArg1", register offset "auxArg2":
+				PsychCopyInDoubleArg(3, TRUE, &auxArg1);
+				PsychCopyInDoubleArg(4, TRUE, &auxArg2);
+				PsychCopyOutDoubleArg(1, FALSE, (double) PsychOSKDReadRegister((int) auxArg1, (unsigned int) auxArg2, NULL));
+			}
+			
+			if (infoType == 3) {
+				// MMIO register Write for screenid "auxArg1", register offset "auxArg2", to value "auxArg3":
+				PsychCopyInDoubleArg(3, TRUE, &auxArg1);
+				PsychCopyInDoubleArg(4, TRUE, &auxArg2);
+				PsychCopyInDoubleArg(5, TRUE, &auxArg3);
+				PsychOSKDWriteRegister((int) auxArg1, (unsigned int) auxArg2, (unsigned int) auxArg3, NULL);
+			}
 		#endif
 
 		// Done.
@@ -320,6 +340,31 @@ PsychError SCREENGetWindowInfo(void)
         // Return async flip state: 1 = Active, 0 = Inactive.
         PsychCopyOutDoubleArg(1, FALSE, (((NULL != windowRecord->flipInfo) && (0 != windowRecord->flipInfo->asyncstate)) ? 1 : 0));
     }
+	else if (infoType == 5) {
+		// Create a GL_EXT_timer_query object for this window:
+		if (glewIsSupported("GL_EXT_timer_query")) {
+			// Pending queries finished?
+			if (windowRecord->gpuRenderTimeQuery > 0) {
+				PsychErrorExitMsg(PsychError_user, "Tried to create a new GPU rendertime query, but last query not yet finished! Call Screen('Flip') first!");
+			}
+			
+			// Enable our rendering context by selecting this window as drawing target:
+			PsychSetDrawingTarget(windowRecord);
+			
+			// Generate Query object:
+			glGenQueries(1, &windowRecord->gpuRenderTimeQuery);
+			
+			// Emit Query: GPU will measure elapsed processing time in Nanoseconds, starting
+			// with the first GL command executed after this command:
+			glBeginQuery(GL_TIME_ELAPSED_EXT, windowRecord->gpuRenderTimeQuery);
+			
+			// Reset last measurement:
+			windowRecord->gpuRenderTime = 0;
+		}
+		else {
+			if (PsychPrefStateGet_Verbosity() > 4) printf("PTB-INFO: GetWindowInfo for infoType 5: GPU timer query objects are unsupported on this platform and GPU. Call ignored!\n");
+		}
+	}
 	else {
 		// Return all information:
 		PsychAllocOutStructArray(1, FALSE, 1, fieldCount, FieldNames, &s);
@@ -335,6 +380,12 @@ PsychError SCREENGetWindowInfo(void)
 
 		// Timestamp immediately prior to call to PsychOSFlipWindowBuffers(), i.e., time at swap request submission:
 		PsychSetStructArrayDoubleElement("TimeAtSwapRequest", 0, windowRecord->time_at_swaprequest, s);
+
+		// Timestamp immediately after call to PsychOSFlipWindowBuffers() returns, i.e., time at swap request submission completion:
+		PsychSetStructArrayDoubleElement("TimePostSwapRequest", 0, windowRecord->time_post_swaprequest, s);
+
+		// Result from last GPU rendertime query as triggered by infoType 5: Zero if undefined.
+		PsychSetStructArrayDoubleElement("GPULastFrameRenderTime", 0, windowRecord->gpuRenderTime, s);
 
 		// Try to determine system time of last VBL on display, independent of any
 		// flips / bufferswaps.
