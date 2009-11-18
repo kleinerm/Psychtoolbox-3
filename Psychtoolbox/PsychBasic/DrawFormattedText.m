@@ -94,9 +94,16 @@ if char(10) == '\n' %#ok<STCMP>
    newlinepos = [];
 end
 
+% Need different encoding for repchar that matches class of input tstring:
+if isa(tstring, 'double')
+    repchar = 10;
+else
+    repchar = char(10);
+end
+
 while ~isempty(newlinepos)
-    % Replace first occurence of '\n' by ASCII code 10:
-    tstring = [ tstring(1:min(newlinepos)-1) char(10) tstring(min(newlinepos)+2:end)];
+    % Replace first occurence of '\n' by ASCII or double code 10 aka 'repchar':
+    tstring = [ tstring(1:min(newlinepos)-1) repchar tstring(min(newlinepos)+2:end)];
     % Search next occurence of linefeed (if any) in new expanded string:
     newlinepos = strfind(char(tstring), '\n');
 end
