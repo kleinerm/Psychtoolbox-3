@@ -8,6 +8,9 @@
 % 9/26/08  dhb, ijk, tyl  Simplify naming possibilities.  Add some better help.
 % 9/27/08  dhb      Fix up dacsize fitting.
 %                   Clearer prompts (show default values).
+% 11/19/09 dhb      Added crtSumPow option.  This works great for our FrontRoom monitor, which
+%                   was not well fit by the traditional gamma model.  The work is done in
+%                   function CalibrateFitGamma.  See comments there.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -39,13 +42,16 @@ fprintf('Current (September 25, 2008) options are:\n');
 fprintf('\tsimplePower\n');
 fprintf('\tcrtPolyLinear\n');
 fprintf('\tcrtGamma\n');
+fprintf('\tcrtSumPow\n');
 fprintf('\tsigmoid\n');
 fprintf('\tweibull\n');
 
-cal.describe.gamma.fitType = input(sprintf('Enter new fit type: [%s]: ',oldType),'s');
-if (isempty(cal.describe.gamma.fitType))
-	cal.describe.gamma.fitType = oldType;
+fitType = input(sprintf('Enter new fit type: [%s]: ',oldType),'s');
+if (isempty(fitType))
+	fitType = oldType;
 end
+gamma.fitType = fitType;
+cal.describe.gamma = gamma;
 
 % Get new number of bits
 fprintf('Old DAC bits was: %d\n',cal.describe.dacsize);

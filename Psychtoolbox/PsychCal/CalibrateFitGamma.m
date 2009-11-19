@@ -6,10 +6,15 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %    simplePower
 %    crtPolyLinear
 %    crtGamma
+%    crtSumPow
 %    sigmoid
 %    weibull
 %
-% Underlying fit routine is FitGamma.
+% Underlying fit routine is FitGamma for functional forms originally supported,
+% and these rely on the optimization toolbox.
+%
+% Newer functions (e.g, crtSumPow) use the curvefit toolbox and that's just
+% done locally in this routine.  Much less cumbersome.
 %
 % See also PsychGamma.
 %
@@ -20,6 +25,7 @@ function cal = CalibrateFitGamma(cal,nInputLevels)
 %          dhb  Don't allow a long string of zeros at the start.
 %          dhb  Reduce redundant code for higher order terms by pulling out of switch
 % 08/03/07 dhb  Debug.  Add call to MakeMonotonic for first three components.
+% 11/19/09 dhb  Added crtSumPow option, coded to [0-1] world and using curve fit toolbox.
 
 % Set nInputLevels
 if (nargin < 2 | isempty(nInputLevels))
@@ -79,6 +85,36 @@ switch(cal.describe.gamma.fitType)
         fitType = 2;
         [mGammaFit1a,cal.gammaInput,mGammaCommenta] = FitDeviceGamma(...
             mGammaMassaged,cal.rawdata.rawGammaInput,fitType,nInputLevels);
+        mGammaFit1 = mGammaFit1a;
+        
+    case 'crtSumPow',
+        if (~exist('fit','file'))
+            error('Fitting with the sum of exponentials requires the curve fitting toolbox\n');
+        end
+        if (max(cal.rawdata.rawGammaInput) > 1)
+            error('crtSumPower option assumes [0-1] specification of input\n');
+        end
+        mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
+        for i = 1:cal.nDevices
+            mGammaMassaged(:,i) = MakeMonotonic(HalfRect(mGammaMassaged(:,i)));
+        end
+        
+        fitEqStr = 'a*x^b + (1-a)*x^c';
+        a = 1;
+        b = 2;
+        c = 0;
+        startPoint = [a b c];
+        lowerBounds = [0 0.1 0.01];
+        upperBounds = [1 10 10];
+
+        
+        % Fit and predictions
+        fOptions = fitoptions('Method','NonlinearLeastSquares','Robust','on');
+        fOptions1 = fitoptions(fOptions,'StartPoint',startPoint,'Lower',lowerBounds,'Upper',upperBounds);
+        for i = 1:cal.nDevices
+        	fitstruct = fit(cal.rawdata.rawGammaInput,mGammaMassaged(:,i),fitEqStr,fOptions1);
+            mGammaFit1a(:,i) = feval(fitstruct,linspace(0,1,nInputLevels));
+        end
         mGammaFit1 = mGammaFit1a;
         
     case 'sigmoid',
