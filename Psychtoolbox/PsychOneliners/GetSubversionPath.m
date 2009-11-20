@@ -14,7 +14,7 @@ function svnpath = GetSubversionPath
 % and returns a proper path-spec. If it isn't found in the Matlab path, it
 % tries default path locations for OS-X and Windows. If that doesn't work,
 % it returns an empty string.
-%
+
 % History:
 % 11/21/06 Written (MK).
 % 01/19/09 Update to search in /bin and /usr/bin as well on OS/X.
@@ -40,6 +40,10 @@ else
 	% Currently, we only know how to check this for Mac OSX.
 	if IsOSX
 		svnpath = '';
+		
+		if isempty(svnpath) & exist('/opt/subversion/bin/svn', 'file') %#ok<AND2>
+			svnpath = '/opt/subversion/bin/';
+		end
 
 		if isempty(svnpath) & exist('/usr/local/bin/svn','file') %#ok<AND2>
 			svnpath='/usr/local/bin/';
