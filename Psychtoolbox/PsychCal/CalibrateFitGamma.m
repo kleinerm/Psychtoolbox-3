@@ -52,6 +52,8 @@ switch(cal.describe.gamma.fitType)
         % using the latter for low measurement values.  The fit break point is
         % given by fitBreakThresh.   This technique was developed
         % through bitter experience and is not theoretically driven.
+        cal.describe.gamma.contrastThresh = 0.001;
+        cal.describe.gamma.fitBreakThresh = 0.02;
         mGammaMassaged = cal.rawdata.rawGammaTable(:,1:cal.nDevices);
         massIndex = find(mGammaMassaged < cal.describe.gamma.contrastThresh);
         mGammaMassaged(massIndex) = zeros(length(massIndex),1);

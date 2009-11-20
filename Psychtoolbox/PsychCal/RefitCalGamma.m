@@ -11,6 +11,7 @@
 % 11/19/09 dhb      Added crtSumPow option.  This works great for our FrontRoom monitor, which
 %                   was not well fit by the traditional gamma model.  The work is done in
 %                   function CalibrateFitGamma.  See comments there.
+% 11/20/09 dhb      More terms in crtSumPow.
 
 % Enter load code
 defaultFileName = 'monitor';
