@@ -387,8 +387,8 @@ psych_bool PsychWaitForBufferswapPendingOrFinished(PsychWindowRecordType* window
 			printf("PTB-DEBUG: Head %i: primarySurface=%p : secondarySurface=%p : updateStatus=%i\n", ((screenId <=0) ? 0:1), primarySurface, secondarySurface, updateStatus);
 		}
 
-		// Sleep 200 microseconds, then retry:
-		PsychWaitIntervalSeconds(0.0002);
+		// Sleep slacky at least 200 microseconds, then retry:
+		PsychYieldIntervalSeconds(0.0002);
 	};
 	
 	// Take timestamp and beamposition:

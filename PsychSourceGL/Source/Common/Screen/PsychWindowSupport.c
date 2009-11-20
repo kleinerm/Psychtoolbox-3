@@ -1774,8 +1774,30 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 			// For some braindead reasons, apparently only one thread can be scheduled in class 10,
 			// so we need to make sure the masterthread is not MMCSS scheduled, otherwise our new
 			// request will fail:
-			PsychSetThreadPriority(0x1, 0, 0);
-			PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
+			#if PSYCH_SYSTEM == PSYCH_WINDOWS
+				// On Windows, we have to set flipperThread to +2 RT priority levels while
+				// throwing ourselves off RT priority scheduling. This is a brain-dead requirement
+				// of Vista et al's MMCSS scheduler which only allows one of our threads being
+				// scheduled like that :(
+				PsychSetThreadPriority(0x1, 0, 0);
+				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, 2);
+			#else
+				// Boost priority of flipperThread wrt. to us, ie., the PTB master thread
+				// by at least 2 units:
+				
+				// Query our (masterthread) schedulingmode and priority:
+				int policy;
+				struct sched_param sp;
+				pthread_getschedparam(pthread_self(), &policy, &sp);
+				
+				// If we're a regular SCHED_OTHER non-RT thread, then flipperThread will be
+				// RT scheduled with priority 0 + 2. Otherwise it will be RT scheduled with
+				// whatever our priority is + 2, so it can preempt us whenever this is needed:
+				if (policy == SCHED_OTHER) sp.sched_priority = 0;
+				
+				// Set final priority as RT with 2 levels above our priority:
+				PsychSetThreadPriority(&(flipRequest->flipperThread), 10, sp.sched_priority + 2);
+			#endif
 			
 			//printf("ENTERING THREADCREATEFINISHED MUTEX\n"); fflush(NULL);
 			
