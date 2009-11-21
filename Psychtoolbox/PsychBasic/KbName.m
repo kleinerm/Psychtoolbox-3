@@ -164,6 +164,8 @@ function kbNameResult = KbName(arg)
 %    6.04.09    mk      In KbName('UnifyKeyNames') Override
 %                       'LockingNumLock' to become 'NumLock' on OS/X.
 %   13.06.09    mk      Remove special code for Octave on all platforms except Windows.
+%   21.11.09    mk      Add bugfix for failures with multiple 'Return' keys,
+%                       provided by Jochen Laubrock.
 
 %   TO DO
 %
@@ -834,8 +836,15 @@ elseif ischar(arg)      % argument is a character, so find the code
 % we have a cell arry of strings so iterate over the cell array and recur on each element.    
 elseif isa(arg, 'cell')
     kbNameResult = [];
+	cnt = 1;
     for i = 1:length(arg)
-        kbNameResult(i)=KbName(arg{i});
+		codes = KbName(arg{i});
+		ncodes = numel(codes);
+		kbNameResult(cnt) = codes(1);
+		if ncodes>1
+			kbNameResult(cnt+1:cnt+ncodes-1) = codes(2:ncodes);
+		end
+		cnt = cnt + ncodes;		
     end
 else
     error('KbName can not handle the supplied argument. Please check your code or read the "help KbName".');
