@@ -65,8 +65,9 @@ winfo = Screen('GetWindowInfo', windowPtr);
 % Raw renderer string, with leading or trailing whitespace trimmed:
 gpuname = strtrim(winfo.GLRenderer);
 
-% Replace blanks with underscores:
+% Replace blanks and '/' with underscores:
 gpuname(isspace(gpuname)) = '_';
+gpuname = regexprep( gpuname, '/', '_' );
 
 % Same game for version string:
 glversion = strtrim(winfo.GLVersion);
