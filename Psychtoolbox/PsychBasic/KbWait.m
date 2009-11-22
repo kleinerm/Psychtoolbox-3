@@ -90,7 +90,7 @@ if nargin == 0
 end
 
 % Wait for keystroke?
-if (forWhat == 2) | (forWhat == 3)
+if (forWhat == 2) | (forWhat == 3) %#ok<OR2>
     % Wait for keystroke, ie., first make sure all keys are released, then
     % wait for a keypress:
     
@@ -118,10 +118,10 @@ if isempty(deviceNumber)
             return;
         end
         % Wait for yieldInterval to prevent system overload.
-        WaitSecs(yieldInterval);
+        WaitSecs('YieldSecs', yieldInterval);
     end
 else
-    if deviceNumber == -1 & IsOSX
+    if deviceNumber == -1 & IsOSX %#ok<AND2>
         if isempty(kbs) % only poll for keyboards on the first function call
             devices=PsychHID('Devices');
             kbs = find([devices(:).usageValue] == 6);
@@ -138,7 +138,7 @@ else
                 end
             end
             % Wait for yieldInterval to prevent system overload.
-            WaitSecs(yieldInterval);
+            WaitSecs('YieldSecs', yieldInterval);
         end
     else
         while(1)
@@ -147,7 +147,7 @@ else
                 return;
             end
             % Wait for yieldInterval to prevent system overload.
-            WaitSecs(yieldInterval);
+            WaitSecs('YieldSecs', yieldInterval);
         end
     end
 end
