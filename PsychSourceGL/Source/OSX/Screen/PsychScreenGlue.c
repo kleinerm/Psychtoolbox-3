@@ -808,6 +808,15 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
 
 	if (repeatedZeroBeamcount[screenNumber] == -20000) {
 		// OS/X native beamposition queries verified to work: Use 'em:
+		
+		// Beampositionquery workaround requested?
+		if (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) {
+			// Yes: Avoid queries that return zero -- If query result is zero, retry
+			// until it becomes non-zero:
+			// There might be a bug in 10.6.2 on NVidia hardware that needs this to resolve...
+			while (0 == (int) CGDisplayBeamPosition(cgDisplayId));
+		}
+		
 		return((int) CGDisplayBeamPosition(cgDisplayId));
 	}
 
