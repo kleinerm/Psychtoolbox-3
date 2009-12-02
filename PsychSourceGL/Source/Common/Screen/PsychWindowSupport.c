@@ -2755,9 +2755,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 			// of VBL, get acknowledged and timestamped by us somewhere in the middle of VBL, but
 			// the postflip timestamping via IRQ may carry a timestamp at end of VBL.
 			// ==> Swap would have happened correctly within VBL and postflip timestamp would
-			// be valid, just the order would be unexpected. We set a slack of 2 msecs, because
+			// be valid, just the order would be unexpected. We set a slack of 2.5 msecs, because
 			// the duration of a VBL interval is usually no longer than that.
-			if (postflip_vbltimestamp - time_at_swapcompletion > 0.002) {
+			if (postflip_vbltimestamp - time_at_swapcompletion > 0.0025) {
 				// VBL irq queries broken! Disable them.
 				if (verbosity > 0) {
 					printf("PTB-ERROR: VBL kernel-level timestamp queries broken on your setup [Impossible order of events]!\n");
