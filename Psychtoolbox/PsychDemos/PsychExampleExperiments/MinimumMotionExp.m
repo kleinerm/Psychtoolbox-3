@@ -42,6 +42,7 @@ function MinimumMotionExp
 
 % History:
 % 03/03/08  Initial checking by MK on behalf of Don MacLeod.
+% 12/20/09  Add support for VPixx DataPixx. (MK)
 
 clear all;
 clc;
@@ -172,7 +173,12 @@ try
         % codes and draw them in the top line of the frame at each
         % Screen('Flip').
         PsychImaging('PrepareConfiguration');
-        PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+        useDPIXXString = input('Do you want to use the DataPixx box instead of Bits++ box for stimulation [y/n]? ', 's');
+        if strcmpi(useDPIXXString, 'y')
+            PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+        else
+            PsychImaging('AddTask', 'General', 'EnableBits++Bits++Output');
+        end
         wptr = PsychImaging('OpenWindow',screenid);
     else
         % Use standard graphics output. Simply open window as usual:

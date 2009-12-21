@@ -1,5 +1,5 @@
-function DrawingSpeedTest(n,primitivetype,mode)
-% DrawingSpeedTest([n=800][,primitivetype=0][,mode=0])
+function DrawingSpeedTest(n,primitivetype,mode,gpumeasure)
+% DrawingSpeedTest([n=800][,primitivetype=0][,mode=0][,gpumeasure=0])
 %
 % Tests batch-drawing performance of some Screen functions. Batch drawing
 % is a way to submit multiple primitives, e.g., Filled Rects, at once. This
@@ -21,9 +21,16 @@ function DrawingSpeedTest(n,primitivetype,mode)
 % 'mode' type of drawing: 0 = One by one submission (slowest), 1 = batch
 % submission, 2 = texture mapping for drawing, 3 = texture mapping with
 % batch submission of textures.
+%
+% 'gpumeasure' measurement type: 0 = Only on cpu. 1 = Measure exact
+% execution time of drawing commands on GPU's that support this feature.
+% Plot result at end of run.
+%
 
 % History:
 % 04/30/07 mk Wrote it.
+% 12/21/09 mk Add support for GPU measurement via EXT_timer_query on
+%             supported hardware.
 
 if nargin < 1 || isempty(n)
     n = 800;
@@ -35,6 +42,10 @@ end
 
 if nargin < 3 || isempty(mode)
     mode = 0;
+end
+
+if nargin < 4 || isempty(gpumeasure)
+    gpumeasure = 0;
 end
 
 % Check proper PTB installation:
@@ -91,11 +102,18 @@ end
 colors = transpose(colors);
 myrect = transpose(myrect);
 
+gpudur = zeros(1, 1000);
+
 % Initially sync us to retrace, take start time t1:
 t1 = Screen('Flip', win);
 
 % Timing loop, 1000 trials:
 for i=1:1000
+    if gpumeasure    
+        % Start GPU timer:
+        Screen('GetWindowInfo', win, 5);
+    end
+    
     % Batch draw:
     if mode < 2
         switch primitivetype
@@ -161,6 +179,16 @@ for i=1:1000
     % Flip it. Don't clear buffers, don't sync to retrace. We want the raw
     % speed, nothing limited by monitor refresh:
     Screen('Flip', win, 0, 2, 2);
+
+    if gpumeasure
+        % Retrieve results from GPU load measurement:
+        winfo = Screen('GetWindowInfo', win);
+
+        % Store it:
+        gpudur(i) = winfo.GPULastFrameRenderTime;
+    end
+    
+    % Next iteration.
 end
 
 % Make sure the GPU is idle:
@@ -176,5 +204,11 @@ fprintf('Total time %6.6f seconds. Time per rectangle %6.6f msecs.\n', telapsed,
 
 %Done.
 Screen('CloseAll');
+
+if any(gpudur)
+    gpudur = 1000 * gpudur;
+    plot(gpudur);
+    fprintf('Mean drawtime on GPU is %f msecs, stddev = %f msecs.\n', mean(gpudur), std(gpudur));
+end
 
 return;
