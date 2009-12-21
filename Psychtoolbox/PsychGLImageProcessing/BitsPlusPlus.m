@@ -245,12 +245,24 @@ function [win, winRect] = BitsPlusPlus(cmd, arg, dummy, varargin)
 % 17.04.2008 Add support for overlay windows in Mono++ mode, and for color
 %            correction/gamma correction via PsychColorCorrection (MK).
 %  4.07.2009 Add support for other color correction methods like CLUT (MK).
+% 14.12.2009 Add support for other target devices, e.g., DataPixx (MK).
 
 global GL;
 
 % Flag for validation: If not set to one, then this routine will check if
 % proper operation of Bitsplusplus with GPU imaging has been verified.
 persistent validated;
+
+% Type of box: 0 = Bits+, 1 = Datapixx:
+persistent targetdevicetype;
+
+% Name strings:
+persistent devname;
+persistent drivername;
+persistent bplusname;
+persistent mononame;
+persistent colorname; %#ok<PUSE>
+persistent devbits;
 
 % Vector that assigns overlay window handles to onscreen window handles:
 persistent OverlayWindows;
@@ -301,6 +313,13 @@ if isempty(validated)
     blitTLockCode = 0;
     tlockXOffset = 0;
     OverlayWindows = [];
+    targetdevicetype = 0;
+    drivername = 'BitsPlusPlus';
+    devname = 'Bits+';
+    bplusname = 'Bits++';
+    mononame = 'Mono++';
+    colorname = 'Color++';
+    devbits = 14;
 end
 
 if strcmpi(cmd, 'DIOCommand')
@@ -384,6 +403,41 @@ if strcmpi(cmd, 'DIOCommandReset')
     return;
 end
 
+if strcmpi(cmd, 'SetTargetDeviceType')
+    if nargin < 2
+        error('targetdevicetype parameter missing!');
+    end
+    
+    % Assign targetdevicetype to internal persistent variable:
+    % A zero means: It is a regular CRS Bits+ box.
+    % A 1 means: It is a VPixx DataPixx box which is sharing setup code
+    % with Bits+ in this file:
+    targetdevicetype = arg;
+    
+    switch (targetdevicetype)
+        case 0,
+            drivername = 'BitsPlusPlus';
+            devname = 'Bits+';
+            bplusname = 'Bits++';
+            mononame = 'Mono++';
+            colorname = 'Color++';
+            devbits = 14;
+            
+        case 1,
+            drivername = 'PsychDatapixx';
+            devname = 'DataPixx';
+            bplusname = 'L48-Mode';
+            mononame = 'M16-Mode';
+            colorname = 'C48-Mode';
+            devbits = 16;
+            
+        otherwise
+            error('Unknown targetdevicetype assigned in call to "SetTargetDeviceType"!');
+    end
+    
+    return;
+end
+
 if strcmpi(cmd, 'ForceUnvalidatedRun')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
@@ -396,7 +450,7 @@ if strcmpi(cmd, 'StoreValidation')
     % Enforce use of this routine without verification of correct function
     % of the imaging pipeline. This is used by the correctness test itself
     % in order to be able to run the validation.
-    ValidateBitsPlusImaging(arg, 1);
+    ValidateBitsPlusImaging(arg, 1, devname);
     return;
 end
 
@@ -405,7 +459,7 @@ if strcmpi(cmd, 'LoadIdentityClut')
     % just a little convenience wrapper around 'LoadNormalizedGammaTable':
     % Restore Bits++ Identity CLUT so it can be used as normal display:
     if nargin < 2 || isempty(arg)
-        error('window handle for Bits++ onscreen window missing!');
+        error('window handle for %s onscreen window missing!', devname);
     end
     linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
     Screen('LoadNormalizedGammaTable', arg, linear_lut, 2);
@@ -420,7 +474,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
         
     % Assign screen index:
     if nargin < 2 || isempty(arg) || ~isa(arg, 'double')
-        error('BitsPlusPlus: "OpenWindow..." called without valid screen handle.');
+        error('%s: "OpenWindow..." called without valid screen handle.', drivername);
     end
     screenid = arg;
 
@@ -448,7 +502,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
         stereomode = [];
     end
 
-    % multiSample gets overriden for now... Would probably interfere
+    % multiSample gets forced to zero, as it would interfere
     % with Bits++ display controller:
     multiSample = 0;
 
@@ -476,11 +530,11 @@ if strcmpi(cmd, 'OpenWindowBits++')
 
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win);
+    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername);
         
     if rpix~=0
         tlockXOffset = -rpix;
-        fprintf('OpenWindowBits++: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', tlockXOffset);        
+        fprintf('OpenWindow%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, tlockXOffset);        
     end
     
     % Now enable finalizer hook chains and load them with the special Bits++
@@ -488,25 +542,43 @@ if strcmpi(cmd, 'OpenWindowBits++')
     if vix~=0
         % vix is wrong offset, therefore negate it to get corrective offset:
         vix = -vix;
-        fprintf('OpenWindowBits++: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', vix);
+        fprintf('OpenWindow%s: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', bplusname, vix);
         offsetstring = sprintf('xPosition=%i', vix);
     else
         offsetstring = '';
     end
     
-    Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);    
+    if targetdevicetype == 0
+        Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+    end
+    
+    if targetdevicetype == 1
+        rclutcmd = 'PsychDataPixx(1, ';
+        Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
+    end
+    
     Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
     if (~isempty(stereomode) && stereomode == 1)
-        % This is only needed on quad-buffered stereo contexts. Enable CLUT
-        % updates via T-Lock on right stereo buffer as well:
-        Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        % This is only needed on quad-buffered stereo contexts for Bits+.
+        % Enable CLUT updates via T-Lock on right stereo buffer as well:
+
+        if targetdevicetype == 0
+            Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        end
+        
+        if targetdevicetype == 1
+            Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutViaRuntime', rclutcmd);
+        end
+        
         Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
     end
 
-    % Setup finalizer callback for DIO T-Lock updates:
-    tlockhandle = SetupDIOFinalizer(win, stereomode);
-
+    if targetdevicetype == 0
+        % Setup finalizer callback for DIO T-Lock updates:
+        tlockhandle = SetupDIOFinalizer(win, stereomode);
+    end
+    
     % Load an identity CLUT into the Bits++ to start with:
     linear_lut =  repmat(linspace(0, 1, 256)', 1, 3);
     Screen('LoadNormalizedGammaTable', win, linear_lut, 2);
@@ -516,7 +588,7 @@ if strcmpi(cmd, 'OpenWindowBits++')
         % MK: Actually, don't! Validation code doesn't check/validate
         % anything in Bits++ mode, so this is pointless... Leave it here
         % for documentation.
-        % ValidateBitsPlusImaging(win, 0);
+        % ValidateBitsPlusImaging(win, 0, devname);
     end
     
     % Reset validation flag after first run:
@@ -534,7 +606,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Assign screen index:
     if nargin < 2 || isempty(arg) || ~isa(arg, 'double')
-        error('BitsPlusPlus: "OpenWindow..." called without valid screen handle.');
+        error('%s: "OpenWindow..." called without valid screen handle.', drivername);
     end
     screenid = arg;
 
@@ -545,6 +617,10 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         clearcolor = dummy;
     end
 
+    if isempty(clearcolor)
+        clearcolor = 1.0;
+    end
+    
     % windowRect is always full screen -- Anything else would make the
     % Bits++ display fail.
     winRect = [];
@@ -562,11 +638,12 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         stereomode = [];
     end
 
-    % multiSample gets overriden for now... Would probably interfere
-    % with Bits++ display controller:
-    % TODO: Once we have EXT_framebuffer_multisample support, we can
-    % reenable this in a safe way on our virtual FBO backed framebuffer...
-    multiSample = 0;
+    % Retrieve multiSample setting:
+    if nargin >= 8
+        multiSample = varargin{5};
+    else
+        multiSample = [];
+    end
 
     % Imaging mode we take - and combine it with our own requirements:
     if nargin >= 9
@@ -625,42 +702,42 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
             % Conditional use of 32 bpc float buffers requested, but GPU
             % doesn't support 32 bpc float blending --> drawBuffer will only be
             % 16 bpc -- Loss of precision!
-            fprintf('BitsPlusPlus - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
-            fprintf('BitsPlusPlus - Info: script requested support for simultaneous alpha-blending and high precision, but your hardware is not\n');
-            fprintf('BitsPlusPlus - Info: capable of supporting highest precision with alpha-blending enabled. You will therefore only\n');
-            fprintf('BitsPlusPlus - Info: be able to use about 11 bits out of the 14 bits precision that Bits++ provides for stimulus definition.\n');
-            fprintf('BitsPlusPlus - Info: Stimulus postprocessing, e.g., gamma correction, will still make good use of all 14 bits though.\n');
-            fprintf('BitsPlusPlus - Info: You can either live with this limitation, or do not use alpha-blending or upgrade your graphics\n');
-            fprintf('BitsPlusPlus - Info: hardware to Direct3D-10 compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
+            fprintf('PTB - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
+            fprintf('PTB - Info: script requested support for simultaneous alpha-blending and high precision, but your hardware is not\n');
+            fprintf('PTB - Info: capable of supporting highest precision with alpha-blending enabled. You will therefore only\n');
+            fprintf('PTB - Info: be able to use about 11 bits out of the %i bits precision that %s provides for stimulus definition.\n', devbits, devname);
+            fprintf('PTB - Info: Stimulus postprocessing, e.g., gamma correction, will still make good use of all %i bits though.\n', devbits);
+            fprintf('PTB - Info: You can either live with this limitation, or do not use alpha-blending or upgrade your graphics\n');
+            fprintf('PTB - Info: hardware to Direct3D-10 compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
             havespoken = 1;
         end
 
         if bitand(imagingmode, kPsychNeed16BPCFloat)
-            fprintf('BitsPlusPlus - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
-            fprintf('BitsPlusPlus - Info: script requested only 16 bpc float precision. You will therefore only be able to use\n');
-            fprintf('BitsPlusPlus - Info: about 11 bits out of the 14 bits precision that Bits++ provides for stimulus drawing.\n');
-            fprintf('BitsPlusPlus - Info: If you want to use the full 14 bit precision, you will need to request a 32 bpc float framebuffer.\n\n');
+            fprintf('PTB - Info: Your framebuffer is only configured to provide about 10-11 bits of precision, because your\n');
+            fprintf('PTB - Info: script requested only 16 bpc float precision. You will therefore only be able to use\n');
+            fprintf('PTB - Info: about 11 bits out of the %i bits precision that %s provides for stimulus drawing.\n', devbits, devname);
+            fprintf('PTB - Info: If you want to use the full %i bit precision, you will need to request a 32 bpc float framebuffer.\n\n', devbits);
             havespoken = 1;
         end
 
         if bitand(imagingmode, kPsychNeed16BPCFixed)
-            fprintf('BitsPlusPlus - Info: Your framebuffer is configured to provide 16 bits of precision, because your\n');
-            fprintf('BitsPlusPlus - Info: script requested 16 bits fixed precision. Bits++ will be able to finally output 14 bits precision.\n');
-            fprintf('BitsPlusPlus - Info: Alpha-blending will not work at this configuration with your hardware though. Choose a different\n');            
-            fprintf('BitsPlusPlus - Info: mode if you need alpha-blending and high precision.\n\n');
+            fprintf('PTB - Info: Your framebuffer is configured to provide 16 bits of precision, because your\n');
+            fprintf('PTB - Info: script requested 16 bits fixed precision. %s will be able to finally output %i bits precision.\n', devname, devbits);
+            fprintf('PTB - Info: Alpha-blending will not work at this configuration with your hardware though. Choose a different\n');            
+            fprintf('PTB - Info: mode if you need alpha-blending and high precision.\n\n');
             havespoken = 1;
         end
     end
 
     if (havespoken == 0) && (bitand(imagingmode, kPsychNeed32BPCFloat) || bitand(imagingmode, kPsychUse32BPCFloatAsap))
-        fprintf('BitsPlusPlus - Info: Your framebuffer is configured for maximum precision. All internal processing will be done\n');
-        fprintf('BitsPlusPlus - Info: with about 23 bits of precision -- Bits++ will be able to finally output with 14 bits precision.\n');
+        fprintf('PTB - Info: Your framebuffer is configured for maximum precision. All internal processing will be done\n');
+        fprintf('PTB - Info: with about 23 bits of precision -- %s will be able to finally output with %i bits precision.\n', devname, devbits);
         if winfo.GLSupportsBlendingUpToBpc < 32
-            fprintf('BitsPlusPlus - Info: Alpha-blending will not work at this precision with your hardware though.\n');
-            fprintf('BitsPlusPlus - Info: You can either live with this limitation, or upgrade your graphics hardware to Direct3D-10\n');
-            fprintf('BitsPlusPlus - Info: compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
+            fprintf('PTB - Info: Alpha-blending will not work at this precision with your hardware though.\n');
+            fprintf('PTB - Info: You can either live with this limitation, or upgrade your graphics hardware to Direct3D-10\n');
+            fprintf('PTB - Info: compliant hardware, e.g., ATI Radeon HD-3000 or NVidia Geforce-8000 and later.\n\n');
         else
-            fprintf('BitsPlusPlus - Info: Alpha-blending should be fully supported at this precision by your hardware.\n\n');            
+            fprintf('PTB - Info: Alpha-blending should be fully supported at this precision by your hardware.\n\n');            
         end
     end
     
@@ -779,11 +856,11 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Test accuracy/correctness of GPU's rasterizer for different output
     % positioning methods: Return (non-zero) dx,dy offsets, if any:
-    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win);
+    [rpfx, rpfy, rpix, rpiy, vix] = RasterizerOffsets(win, drivername);
         
     if rpix~=0
         tlockXOffset = -rpix;
-        fprintf('BitsPlusPlus: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', tlockXOffset);        
+        fprintf('%s: Applying corrective horizontal DIO T-Lock offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', drivername, tlockXOffset);        
     end
 
     % Enable framebuffer output formatter: From this point on, all visual
@@ -793,26 +870,47 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     Screen('HookFunction', win, 'Enable', 'FinalOutputFormattingBlit');
 
     % When using the overlay, we need to allow for CLUT updates as well, so
-    % usecode can define and change overlay colors:
+    % usercode can define and change overlay colors:
     if useOverlay
         % Now enable finalizer hook chains and load them with the special Bits++
         % command for T-Lock based Bits++ internal CLUT updates:
         if vix~=0
             % vix is wrong offset, therefore negate it to get corrective offset:
             vix = -vix;
-            fprintf('OpenWindowMono++WithOverlay: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', vix);
+            fprintf('OpenWindow%sWithOverlay: Applying corrective horizontal offset of %i pixels for buggy graphics card driver. Will hopefully fix it...\n', mononame, vix);
             offsetstring = sprintf('xPosition=%i', vix);
         else
             offsetstring = '';
         end
 
-        Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        if targetdevicetype == 0
+            Screen('HookFunction', win, 'PrependBuiltin', 'LeftFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+        end
+
+        if targetdevicetype == 1
+            % We need this weird evalin('base', ...); wrapper so the
+            % function gets called from the base-workspace, where the
+            % IMAGINGPIPE_GAMMATABLE variable is defined. We can only
+            % define it there reliably due to incompatibilities between
+            % Matlab and Octave in variable assignment inside Screen() :-(
+            rclutcmd = 'evalin(''base'', ''PsychDataPixx(1, IMAGINGPIPE_GAMMATABLE);'');';
+            Screen('HookFunction', win, 'PrependMFunction', 'LeftFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
+        end
+
         Screen('HookFunction', win, 'Enable', 'LeftFinalizerBlitChain');
 
         if (~isempty(stereomode) && stereomode == 1)
-            % This is only needed on quad-buffered stereo contexts. Enable CLUT
-            % updates via T-Lock on right stereo buffer as well:
-            Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+            % This is only needed on quad-buffered stereo contexts for Bits+.
+            % Enable CLUT updates via T-Lock on right stereo buffer as well:
+
+            if targetdevicetype == 0
+                Screen('HookFunction', win, 'PrependBuiltin', 'RightFinalizerBlitChain', 'Builtin:RenderClutBits++', offsetstring);
+            end
+
+            if targetdevicetype == 1
+                Screen('HookFunction', win, 'PrependMFunction', 'RightFinalizerBlitChain', 'Upload new clut into DataPixx callback', rclutcmd);
+            end
+
             Screen('HookFunction', win, 'Enable', 'RightFinalizerBlitChain');
         end
         
@@ -821,8 +919,10 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         Screen('LoadNormalizedGammaTable', win, linear_lut, 2);
     end
     
-    % Setup finalizer callback for DIO T-Lock updates:
-    tlockhandle = SetupDIOFinalizer(win, stereomode);
+    if targetdevicetype == 0
+        % Setup finalizer callback for DIO T-Lock updates:
+        tlockhandle = SetupDIOFinalizer(win, stereomode);
+    end
     
     % Restore old graphics preferences:
     Screen('Preference', 'Enable3DGraphics', ogl);
@@ -838,7 +938,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
         % Looks like someone's feeding old style 0-255 integer values as
         % clearcolor. Output a warning to tell about the expected 0.0 - 1.0
         % range of values:
-        warning(sprintf('\n\nBitsPlusPlus: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.')); %#ok<WNTAG,SPWRN>
+        warning(sprintf('\n\n%s: You specified a ''clearcolor'' argument for the OpenWindow command that looks \nlike an old 0-255 value instead of the wanted value in the 0.0-1.0 range. Please update your code for correct behaviour.', drivername)); %#ok<WNTAG,SPWRN>
     end
     
     % Set the background clear color via old fullscreen 'FillRect' trick,
@@ -848,7 +948,7 @@ if strcmpi(cmd, 'OpenWindowMono++') || strcmpi(cmd, 'OpenWindowMono++WithOverlay
     
     % Check validation:
     if ~validated
-        ValidateBitsPlusImaging(win, 0);
+        ValidateBitsPlusImaging(win, 0, devname);
     end
 
     % Reset validation flag after first run:
@@ -861,16 +961,16 @@ end
 if strcmpi(cmd, 'GetOverlayWindow')
     % Assign onscreen window index:
     if nargin < 2 || isempty(arg) || ~isa(arg, 'double')
-        error('BitsPlusPlus: "GetOverlayWindow" called without valid onscreen window handle.');
+        error('%s: "GetOverlayWindow" called without valid onscreen window handle.', drivername);
     end
     win = arg;
     
     if win < 1 || win > length(OverlayWindows)
-        error('BitsPlusPlus: "GetOverlayWindow": No overlay associated with given onscreen window.');
+        error('%s: "GetOverlayWindow": No overlay associated with given onscreen window.', drivername);
     end
 
     if OverlayWindows(win) == 0
-        error('BitsPlusPlus: "GetOverlayWindow": No overlay associated with given onscreen window.');
+        error('%s: "GetOverlayWindow": No overlay associated with given onscreen window.', drivername);
     end
 
     % Ok, this 'win'dow has an overlay: Return its offscreen 'win'dow handle:
@@ -881,11 +981,11 @@ if strcmpi(cmd, 'GetOverlayWindow')
     return;
 end
 
-error('BitsPlusPlus: Unknown subcommand provided. Read "help BitsPlusPlus".');
+error('%s: Unknown subcommand provided. Read "help BitsPlusPlus".', drivername);
 end
 
 % Helper function: Check if system already validated for current settings:
-function ValidateBitsPlusImaging(win, writefile)
+function ValidateBitsPlusImaging(win, writefile, devname)
     
     % Compute fingerprint of this system configuration:
     validated = 0;
@@ -911,13 +1011,13 @@ function ValidateBitsPlusImaging(win, writefile)
                     break;
                 end
             end
-            fclose(fid)
+            fclose(fid);
         end
 
         if ~validated
             fprintf('\n\n------------------------------------------------------------------------------------------------------------------\n')
             fprintf('\n\nThis specific configuration of graphics hardware, graphics driver and Psychtoolbox version has not yet been tested\n');
-            fprintf('for correct working with Bits++ for the given display screen, screen resolution and color depths.\n\n');
+            fprintf('for correct working with %s for the given display screen, screen resolution and color depths.\n\n', devname);
             fprintf('Please run the test script "BitsPlusImagingPipelineTest(%i);" once, so this configuration can be verified.\n', Screen('WindowScreenNumber', win));
             fprintf('After that test script suceeded, re-run your experiment script.\nThanks.\n');
             fprintf('\n');
@@ -965,7 +1065,7 @@ function displist = SetupDIOFinalizer(win, stereomode)
 
 end
 
-function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win)
+function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win, drivername)
 
     global GL;
 
@@ -1011,7 +1111,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win)
 
     % At expected location?
     if rpfx~=0
-        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glRasterPos2f() command draws at wrong position (Offset %i, %i)!\n', rpfx, rpfy);
+        fprintf('%s:GPU-Rasterizertest: Warning: glRasterPos2f() command draws at wrong position (Offset %i, %i)!\n', drivername, rpfx, rpfy);
     end
 
     % glRasterPos2i(): Used by our DIO T-Lock blitter for output-positioning:
@@ -1053,7 +1153,7 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win)
 
     % At expected location?
     if rpix~=0
-        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glRasterPos2i() command draws at wrong position (Offset %i, %i)!\n', rpix, rpiy);
+        fprintf('%s:GPU-Rasterizertest: Warning: glRasterPos2i() command draws at wrong position (Offset %i, %i)!\n', drivername, rpix, rpiy);
     end
 
     % glVertex2i(): Used by Screen's CLUT T-Lock blitter for output-positioning:
@@ -1096,6 +1196,6 @@ function [rpfx, rpfy, rpix, rpiy, vix, viy] = RasterizerOffsets(win)
 
     % At expected location?
     if vix~=0
-        fprintf('BitsPlusPlus:GPU-Rasterizertest: Warning: glVertex2i() command draws at wrong position (Offset %i, %i)!\n', vix, viy);
+        fprintf('%s:GPU-Rasterizertest: Warning: glVertex2i() command draws at wrong position (Offset %i, %i)!\n', drivername, vix, viy);
     end
 end

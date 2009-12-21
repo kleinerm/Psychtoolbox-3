@@ -1,5 +1,5 @@
-function ImagingStereoDemo(stereoMode)
-% ImagingStereoDemo(stereoMode)
+function ImagingStereoDemo(stereoMode, usedatapixx)
+% ImagingStereoDemo([stereoMode=8][, usedatapixx = 0])
 %
 % Demo on how to use OpenGL-Psychtoolbox to present stereoscopic stimuli
 % when the Psychtoolbox imaging pipeline is enabled. Use of the imaging
@@ -62,8 +62,16 @@ inverted = 0;
 
 % Default to stereoMode 8 -- Red-Green stereo:
 if nargin < 1
-    stereoMode=8;
+    stereoMode = [];
+end
+
+if isempty(stereoMode)
+    stereoMode = 8;
 end;
+
+if nargin < 2
+    usedatapixx = 0;
+end
 
 % This script calls Psychtoolbox commands available only in OpenGL-based
 % versions of the Psychtoolbox. (So far, the OS X Psychtoolbox is the
@@ -119,6 +127,11 @@ escape = KbName('ESCAPE');
     % Prepare pipeline for configuration. This marks the start of a list of
     % requirements/tasks to be met/executed in the pipeline:
     PsychImaging('PrepareConfiguration');
+    
+    if usedatapixx
+        % Tell PTB we want to display on a DataPixx device:
+        PsychImaging('AddTask', 'General', 'UseDataPixx');
+    end
     
     % Ask to restrict stimulus processing to some subarea (ROI) of the
     % display. This will only generate the stimulus in the selected ROI and
@@ -235,12 +248,14 @@ escape = KbName('ESCAPE');
         
         % Draw left stim:
         Screen('DrawDots', windowPtr, dots(1:2, :) + [dots(3, :)/2; zeros(1, numDots)], dotSize, col1, [windowRect(3:4)/2], 1);
+        Screen('FrameRect', windowPtr, [255 0 0], [], 5);
 
         % Select right-eye image buffer for drawing:
         Screen('SelectStereoDrawBuffer', windowPtr, 1);
         
         % Draw right stim:
         Screen('DrawDots', windowPtr, dots(1:2, :) - [dots(3, :)/2; zeros(1, numDots)], dotSize, col2, [windowRect(3:4)/2], 1);
+        Screen('FrameRect', windowPtr, [0 255 0], [], 5);
         
         % Tell PTB drawing is finished for this frame:
         Screen('DrawingFinished', windowPtr);

@@ -1,4 +1,4 @@
-function BitsPlusIdentityClutTest(whichScreen)
+function BitsPlusIdentityClutTest(whichScreen, dpixx)
 % Test proper function of the T-Lock mechanism, proper loading of identity
 % gamma tables into the GPU, and for bad interference of dithering hardware
 % with the DVI stream. This test is meant for Mono++ mode of Bits+, it
@@ -15,7 +15,7 @@ function BitsPlusIdentityClutTest(whichScreen)
 %
 % Usage:
 %
-% BitsPlusIdentityClutTest([whichScreen=max]);
+% BitsPlusIdentityClutTest([whichScreen=max][usedpixx=0]);
 %
 % How to test:
 %
@@ -74,6 +74,10 @@ if nargin < 1 || isempty(whichScreen)
     whichScreen = max(Screen('Screens'));
 end
 
+if nargin < 2
+    dpixx = 0;
+end
+
 % Disable text anti-aliasing for this test:
 oldAntialias = Screen('Preference', 'TextAntiAliasing', 0);
 
@@ -90,14 +94,19 @@ try
     % from previously running scripts can bleed through:
     PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'ClampOnly');
 
-    % Use Mono++ mode with overlay:
-    PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
-
+    if dpixx
+        % Use Mono++ mode with overlay:
+        PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+    else
+        % Use Mono++ mode with overlay:
+        PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
+    end
+    
     % Open the window, assign a gray background color with a 50% intensity gray:
     [win, screenRect] = PsychImaging('OpenWindow', whichScreen, 0.5);
 
     % Get handle to overlay:
-    overlaywin = BitsPlusPlus('GetOverlayWindow', win);
+    overlaywin = PsychImaging('GetOverlayWindow', win);
 
     HideCursor;
 

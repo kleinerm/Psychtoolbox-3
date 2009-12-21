@@ -305,6 +305,68 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %   Usage: PsychImaging('AddTask', 'General', 'EnableBrightSideHDROutput');
 %
 %
+% * 'UseDataPixx' Tell Psychtoolbox that additional functionality for
+%   displaying the onscreen window on a VPixx Technologies DataPixx device
+%   should be enabled.
+%
+%   This command is implied by enabling a DataPixx video mode by one of the
+%   commands for the DataPixx in the following sections.
+%
+%   'UseDataPixx' mostly prepares use of a variety of subfunctions in the
+%   DataPixxToolbox ("help DataPixxToolbox") and in the PsychDataPixx()
+%   high-level driver ("help PsychDataPixx").
+%
+%
+% * 'EnableDataPixxL48Output' Setup Psychtoolbox for L48 mode of the VPixx
+%   Technologies DataPixx device. This loads the graphics hardwares gamma
+%   table with an identity mapping so it can't interfere with DPixx video
+%   processing. It also sets up automatic generation of control signals to
+%   support the features of DPixx that are available via the functions in
+%   PsychDataPixx(). You will be able to upload new CLUT's into the DPixx
+%   by use of the Screen('LoadNormalizedGammaTable', window, clut, 2);
+%   command. CLUT updates will be synchronized with Screen('Flip') commands.
+%   Please note that while L48 CLUT mode works even with very old
+%   graphics hardware, this is a pretty cumbersome way of driving the
+%   DPixx. On recent hardware, you will want to use M16 or C48 mode
+%   (see below). That allows to draw arbitrarily complex stimuli with as
+%   many colors as you want and PTB will take care of conversion into the
+%   M16 or C48 format for DataPixx.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxL48Output');
+%
+%
+% * 'EnableDataPixxM16Output' Enable the high-performance driver for M16
+%   mode of the VPixx Technologies DataPixx device. This is the fastest and
+%   most elegant way of driving the DPixx box with 16 bit luminance output
+%   precision. See "help DataPixx" for more information. Selecting this
+%   mode implies use of 32 bit floating point framebuffers, unless you
+%   specify use of a 16 bit floating point framebuffer via
+%   'FloatingPoint16Bit' explicitely. If you do that, you will not be able
+%   to use the full 16 bit output precision, but only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxM16Output');
+%
+%   If you want to make use of the color overlay plane in M16 mode, then
+%   call the function like this:
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+%   See the explanation of color overlays in the section
+%   'EnableBits++Mono++OutputWithOverlay' - behaviour of color overlays is
+%   identical for the CRS Bits++ and the VPixx DataPixx.
+%
+%
+% * 'EnableDataPixxC48Output' Enable the high-performance driver for the
+%   C48 mode of VPixx technologies DataPixx box. This is the fastest and
+%   most elegant way of driving the DataPixx box with 16 bit per color
+%   channel output precision. See "help DataPixx" for more information.
+%   Selecting this mode implies use of 32 bit floating point framebuffers,
+%   unless you specify use of a 16 bit floating point framebuffer via
+%   'FloatingPoint16Bit' explicitely. If you do that, you will not be able
+%   to use the full 16 bit output precision, but only approximately 10 bits.
+%
+%   Usage: PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output');
+%
+%
 % * 'EnableBits++Bits++Output' Setup Psychtoolbox for Bits++ mode of the
 %   Cambridge Research Systems Bits++ box. This loads the graphics
 %   hardwares gamma table with an identity mapping so it can't interfere
@@ -343,7 +405,7 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 %
 %   Then you can query the window handle of the overlay window via:
 %
-%   overlayWin = BitsPlusPlus('GetOverlayWindow', window);
+%   overlayWin = PsychImaging('GetOverlayWindow', window);
 %
 %   'overlayWin' is the handle to the overlay window associated with the
 %   overlay of onscreen window 'window'. The overlay window is a standard
@@ -549,9 +611,22 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % subarea. Can be called anytime during your scripts execution.
 %
 %
+% [overlaywin, overlaywinRect] = PsychImaging('GetOverlayWindow', win);
+% - Will return the handle to the 'overlaywin'dow associated with the
+% given 'win'dow, if any. Will abort with an error message if the 'win'dow
+% doesn't have an associated overylay window.
+% Currently, only the CRS Bits+ box in Mono++ mode and the VPixx DataPixx
+% box in M16 mode does support overlays. Other output drivers don't support
+% such a feature. See "help BitsPlusPlus" for subfunction
+% 'GetOverlayWindow' for more explanations of the purpose and properties of
+% overlay windows. The explanations apply to the DPixx device as well if it
+% is opened in videomode 'M16WithOverlay'.
+%
+%
+%
 % The following commands are only for specialists:
 %
-% imagingMode = PsychImaging('FinalizeConfiguration');
+% [imagingMode, needStereomode] = PsychImaging('FinalizeConfiguration');
 % - Finish the configuration phase for this window. This will compute an
 % optimal configuration for all stages of the pipeline, but won't apply it
 % yet. You'll have to call Screen('OpenWindow', windowPtr, ......,
@@ -579,23 +654,31 @@ function [rc, winRect] = PsychImaging(cmd, varargin)
 % a powerful implementation that works for both runtime environments, so we
 % reimplemented in in a portable way.
 %
-% 19.7.2007 Added initial support for display geometry correction. (MK).
+% 19.7.2007   Added initial support for display geometry correction. (MK).
 %
-% 27.9.2007 Added support for floating point framebuffer, Bits++ and
-%           Brightside-HDR. Documentation cleanup. (MK).
+% 27.9.2007   Added support for floating point framebuffer, Bits++ and
+%             Brightside-HDR. Documentation cleanup. (MK).
 %
-% 13.1.2008 Support for 10 bpc native framebuffer of ATI Radeons. (MK).
-% 17.4.2008 Support for a few new subcommands, and description of overlay
-%           planes setup with Bits++ in Mono++ mode. (MK).
-% 18.5.2008 A few bug fixes and support for 'DisplayColorCorrection' setup
-%           code: Now a central solution that will work for all current and
-%           future output devices (hopefully). (MK).
-% 02.7.2009 Add CLUT configuration support for ICM color correction (MK).
+% 13.1.2008   Support for 10 bpc native framebuffer of ATI Radeons. (MK).
+%
+% 17.4.2008   Support for a few new subcommands, and description of overlay
+%             planes setup with Bits++ in Mono++ mode. (MK).
+%
+% 18.5.2008   A few bug fixes and support for 'DisplayColorCorrection' setup
+%             code: Now a central solution that will work for all current and
+%             future output devices (hopefully). (MK).
+%
+% 02.7.2009   Add CLUT configuration support for ICM color correction (MK).
+%
+% 18.12.2009  Add support for VPixx Technologies DataPixx device for video
+%             processing modes L48, M16, C48 and color overlays in M16
+%             mode, mostly via calls into the new PsychDataPixx() driver.
+%             Also support a new 'General' task 'UseDataPixx'. (MK)
 
 persistent configphase_active;
 persistent reqs;
 
-% This flag is global - needed in subfunctions as well (ugly ugly coding):
+% These flags are global - needed in subfunctions as well (ugly ugly coding):
 global ptb_outputformatter_icmAware;
 
 if isempty(configphase_active)
@@ -624,10 +707,9 @@ if strcmp(cmd, 'PrepareConfiguration')
     end
     
     configphase_active = 1;
-    clear reqs;
+    % MK: This clear reqs causes malfunctions on Octave 3.2.0 for some reason, so don't use it! clear reqs;
     reqs = [];
     ptb_outputformatter_icmAware = 0;
-    
     rc = 0;
     return;
 end
@@ -651,7 +733,7 @@ if strcmp(cmd, 'AddTask')
             x{i}='';
         end
     end
-
+    
     % First use of 'reqs' array?
     if isempty(reqs)
         % Yes: Initialize the array with content of 'x':
@@ -679,7 +761,10 @@ if strcmp(cmd, 'FinalizeConfiguration')
     
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
-    rc = FinalizeConfiguration(reqs);
+    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs);
+    rc = imagingMode;
+    winRect = needStereoMode;
+    
     return;
 end
 
@@ -750,7 +835,7 @@ if strcmp(cmd, 'OpenWindow')
         
     % Compute correct imagingMode - Settings for current configuration and
     % return it:
-    [imagingMode needStereoMode] = FinalizeConfiguration(reqs, stereomode);
+    [imagingMode, needStereoMode, reqs] = FinalizeConfiguration(reqs, stereomode);
 
     % Override stereomode derived from requirements?
     if needStereoMode ~= -1
@@ -1136,6 +1221,17 @@ if strcmp(cmd, 'UnrestrictProcessing')
     return;
 end
 
+if strcmpi(cmd, 'GetOverlayWindow')
+    % Pass this call through to BitsPlusPlus.m driver -- the only one which
+    % currently supports such overlays.
+    % MK: May need to do something more clever in the future...
+    
+    % rc is the 'win'dowhandle, winRect is its Screen('Rect'):
+    [rc, winRect] = BitsPlusPlus('GetOverlayWindow', varargin{:});
+    
+    return;
+end
+
 % Catch all for unknown commands:
 error('Unknown subcommand specified! Read "help PsychImaging" for usage info.');
 return;
@@ -1145,7 +1241,7 @@ return;
 % FinalizeConfiguration consolidates the current set of requirements and
 % derives the needed stereoMode settings and imagingMode setting to pass to
 % Screen('OpenWindow') for pipeline preconfiguration.
-function [imagingMode, stereoMode] = FinalizeConfiguration(reqs, userstereomode)
+function [imagingMode, stereoMode, reqs] = FinalizeConfiguration(reqs, userstereomode)
 global ptb_outputformatter_icmAware;
 
 if nargin < 2
@@ -1168,6 +1264,82 @@ imagingMode = 0;
 % Set stereoMode to don't care:
 stereoMode = -1;
 
+% No datapixx by default:
+datapixxmode = 0;
+
+% Remap Datapixx L48 mode to equivalent Bits++ mode:
+floc = find(mystrcmp(reqs, 'EnableDataPixxL48Output'));
+if ~isempty(floc)
+    reqs{floc} = 'EnableBits++Bits++Output';
+    reqs(end+1, :) = cell(1, size(reqs, 2));
+    reqs{end, 2} = 'UseDataPixx';
+    datapixxmode = 1;
+    
+    % Initialize connection, switch immediately to L48 mode:
+    PsychDataPixx('Open');
+    PsychDataPixx('SetVideoMode', 1);
+end
+
+% Remap Datapixx M16 mode to equivalent Mono++ mode:
+floc = find(mystrcmp(reqs, 'EnableDataPixxM16Output'));
+if ~isempty(floc)
+    reqs{floc} = 'EnableBits++Mono++Output';
+    reqs(end+1, :) = cell(1, size(reqs, 2));
+    reqs{end, 2} = 'UseDataPixx';
+    datapixxmode = 1;
+
+    % Initialize connection, switch immediately to M16 mode:
+    PsychDataPixx('Open');
+    PsychDataPixx('SetVideoMode', 2);
+end
+
+% Remap Datapixx M16 mode to equivalent Mono++ mode with overlay:
+floc = find(mystrcmp(reqs, 'EnableDataPixxM16OutputWithOverlay'));
+if ~isempty(floc)
+    reqs{floc} = 'EnableBits++Mono++OutputWithOverlay';
+    reqs(end+1, :) = cell(1, size(reqs, 2));
+    reqs{end, 2} = 'UseDataPixx';
+    datapixxmode = 1;
+
+    % Initialize connection, switch immediately to M16 mode:
+    PsychDataPixx('Open');
+    PsychDataPixx('SetVideoMode', 2);
+end
+
+% Remap Datapixx C48 mode to equivalent Color++ mode:
+floc = find(mystrcmp(reqs, 'EnableDataPixxC48Output'));
+if ~isempty(floc)
+    reqs{floc} = 'EnableBits++Color++Output';
+    reqs(end+1, :) = cell(1, size(reqs, 2));
+    reqs{end, 2} = 'UseDataPixx';
+    datapixxmode = 1;
+
+    % Initialize connection, switch immediately to C48 mode:
+    PsychDataPixx('Open');
+    PsychDataPixx('SetVideoMode', 3);
+end
+
+% Assign opmode to BitsPlusPlus driver: It unifies code for Bits+ and
+% Datapixx:
+BitsPlusPlus('SetTargetDeviceType', datapixxmode);
+
+% Are we setting up for a Datapixx display?
+if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
+    % Yes. Device connection already open from video mode setup above?
+    % If not, open connection now.
+    if datapixxmode == 0
+        % Open connection:
+        PsychDataPixx('Open');
+        
+        % As no other special high precision output mode is requested, set
+        % video mode to "normal passthrough":
+        PsychDataPixx('SetVideoMode', 0);
+        
+        % Mark as online:
+        datapixxmode = 1;
+    end
+end
+
 % FBO backed framebuffer needed?
 if ~isempty(find(mystrcmp(reqs, 'UseVirtualFramebuffer')))
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
@@ -1183,6 +1355,33 @@ end
 if userstereomode > 0
     % Enable imaging pipeline based stereo,ie., kPsychNeedFastBackingStore:
     imagingMode = mor(imagingMode, kPsychNeedFastBackingStore);
+    
+    % Datapixx - if any - needs special setup:
+    if datapixxmode
+        % Datapixx device active:
+        
+        % Frame sequential style mode via top-down "sync-doubling" mode?
+        if ismember(userstereomode, [2])
+            % Switch Datapixx to sync-doubling stereo mode:
+            PsychDataPixx('SetVideoVerticalStereo', 1);
+            % Reduce height of virtual framebuffer to effective half height:
+            % Nope... imagingMode = mor(imagingMode, kPsychNeedHalfHeightWindow);
+        else
+            % Switch Datapixx to non stereo mode:
+            PsychDataPixx('SetVideoVerticalStereo', 0);
+        end
+        
+        % Dual-Display stereo via left-right stereo?
+        if ismember(userstereomode, [4,5])
+            % Switch Datapixx to stereo mode by splitting display
+            % horizontally onto 2 displays:
+            PsychDataPixx('SetVideoHorizontalSplit', 1);
+        else
+            % Switch Datapixx to non stereo mode, aka auto mode:
+            PsychDataPixx('SetVideoHorizontalSplit', 2);
+        end
+        
+    end
 end
 
 % Stereomode 6 for interleaved line stereo needed?
@@ -2467,6 +2666,13 @@ if ~isempty(find(mystrcmp(reqs, 'MirrorDisplayTo2ndOutputHead')))
 end
 % --- End of GPU based mirroring of onscreen window to secondary display head requested? ---
 
+% --- Datapixx in use? ---
+if ~isempty(find(mystrcmp(reqs, 'UseDataPixx')))
+    % Yes: Need to call into high level DataPixx driver for final setup:
+    PsychDataPixx('PerformPostWindowOpenSetup', win);    
+end
+
+% --- End of Datapixx in use? ---
 
 % Do we need identity gamma tables / CLUT's loaded into the graphics card?
 if needsIdentityCLUT

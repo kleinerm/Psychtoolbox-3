@@ -36,7 +36,8 @@ try
     
     % Size of window: Default to fullscreen:
     roi = CenterRect([0 0 640 480], Screen('Rect',screenid));
-
+    roi = [];
+    
     % Use imaging pipeline to flip image horizontally to avoid confusing
     % the viewer due to mirror view:
     PsychImaging('PrepareConfiguration');

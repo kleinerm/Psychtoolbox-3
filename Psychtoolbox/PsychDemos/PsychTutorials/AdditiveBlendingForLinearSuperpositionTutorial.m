@@ -65,6 +65,16 @@ function AdditiveBlendingForLinearSuperpositionTutorial(outputdevice, overlay, c
 %
 % 'Color++' - User 14 bits per color component mode.
 %
+% Then we have support for the different modes of operation of the
+% VPixx Technologies DPixx (DataPixx) box:
+%
+% 'M16' - Use 16 bit mono output mode, either with color index overlay
+% (if the optional 2nd 'overlay' flag is set to 1, which is the default),
+% or without color index overlay.
+%
+% 'C48' - User 16 bits per color component mode.
+%
+%
 % 'BrightSide' - Enable drivers for BrightSide's HDR display. This only
 % works if you have a BrightSide HDR display + the proper driver libraries
 % installed on MS-Windows. On other operating systems it just uses a simple
@@ -182,6 +192,20 @@ try
             PsychImaging('AddTask', 'General', 'EnableBits++Color++Output');
             overlay = 0;
 
+        case {'M16'}
+            if overlay
+                % Use M16 mode of Datapixx with color index overlay support:
+                PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+            else
+                % Use M16 mode of Datapixx without color overlay:
+                PsychImaging('AddTask', 'General', 'EnableDataPixxM16Output');
+            end
+
+        case {'C48'}
+            % Use C48 mode of Datapixx:
+            PsychImaging('AddTask', 'General', 'EnableDataPixxC48Output');
+            overlay = 0;
+
         case {'Attenuator'}
             % Use the standard Pelli & Zhang style attenuator driver. This
             % uses a simple 3 row (for the three color channels Red, Green,
@@ -281,11 +305,11 @@ try
     % luminance:
     [w, wRect]=PsychImaging('OpenWindow',screenNumber, 0.5, lrect);
     
-    % Use of overlay in Bits++ box Mono++ mode wanted?
+    % Use of overlay in Bits++ box Mono++ mode or DPixx box M16 mode wanted?
     if overlay
         % Get overlay window handle: Drawing into this window will affect
         % the overlay:
-        wo = BitsPlusPlus('GetOverlayWindow', w);
+        wo = PsychImaging('GetOverlayWindow', w);
     else
         wo = 0;
     end
@@ -311,7 +335,7 @@ try
             case 3,
                 % A simple inverted one channel (luminance) map with only two slots
                 % for linearly interpolated values inbetween:
-                clut = 1 - (0:1)'
+                clut = 1 - (0:1)';
             case 4,
                 % Extreme amplification CLUT: Only meaningful on the
                 % BrightSide HDR:

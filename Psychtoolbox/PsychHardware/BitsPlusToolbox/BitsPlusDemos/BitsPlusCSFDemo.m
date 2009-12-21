@@ -1,5 +1,5 @@
 function BitsPlusCSFDemo(screenid, gamma, method, charttype)
-% BitsPlusCSFDemo([screenid=max] [, gamma = 2.2][, method=3][, charttype=0])
+% BitsPlusCSFDemo([screenid=max] [, gamma = 2.2][, method=0][, charttype=0])
 %
 % This demo utilizes the Psychtoolbox imaging pipeline. Therefore it won't
 % work on gfx-hardware older than ATI Radeon X1000 or NVidia Geforce 6000.
@@ -13,6 +13,9 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % The optional 'method' argument selects among different display output
 % modes:
 %
+% A 'method' of 0 outputs to a regular 8 bit framebuffer. This is the
+% default, if no method argument is provided.
+%
 % A 'method' of 1 tries to utilize the native 10 bpc framebuffers of recent
 % ATI hardware on OS/X and Linux, if the PsychtoolboxKernelDriver is
 % loaded.
@@ -20,11 +23,12 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % A 'method' of 2 uses a method known as "PseudoGray" or "Bitstealing" for
 % output.
 %
-% In 'method' == 3, the Mono++ display mode of the Bits++ box is used. This
-% is the default, if no method argument is provided.
+% In 'method' == 3, the Mono++ display mode of the Bits++ box is used.
 %
 % A 'method' == 4 uses the Xiangrui Li et al. "VideoSwitcher", video
 % attenuator device.
+%
+% In 'method' == 5, the M16 display mode of the VPixx - DataPixx box is used.
 %
 % The optional 'gamma' parameter allows to select the initial gamma value
 % of your display to correct for. This can be changed interactively later
@@ -37,7 +41,7 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % Keyboard control keys:
 % ----------------------
 %
-% At each press of space key, the display alternates between a 14 bpc
+% At each press of space key, the display alternates between a high bpc
 % version and a 8 bpc version to hopefully show a perceptible difference in
 % contrast resolution. The ESCape key exits the demo.
 %
@@ -62,6 +66,7 @@ function BitsPlusCSFDemo(screenid, gamma, method, charttype)
 % 16.4.2008  Written - Derived/Converted from CRS sample code (MK).
 % 01.11.2008 Extended for pseudogray, videoswitcher and ati output, as well
 %            as for display of alternate luminance gradient (MK).
+% 14.12.2009 Extended for DataPixx. (MK)
 
 global screenShot;
 
@@ -96,7 +101,7 @@ if nargin < 3
 end
 
 if isempty(method)
-    method = 3;
+    method = 0;
 end
 
 if nargin < 4
@@ -115,15 +120,12 @@ ToggleModes = KbName('space');
 Escape = KbName('ESCAPE');
 Screen('Preference', 'VisualDebugLevel', 0);
 
-% Store backup of old GPU gamma table, so we can restore it at end of demo:
-% oldGammaTable = Screen('ReadNormalizedGammaTable', screenid);
-
 % Define requirements for onscreen window - Setup imaging pipeline:
 PsychImaging('PrepareConfiguration');
 
 % Want a full 32 bit floating point precision framebuffer:
 % This will provide an effective resolution of 23 bits in the displayable
-% luminance range -- Plenty of headroom for the 14 bits output device.
+% luminance range -- Plenty of headroom for the up-to 16 bits output devices.
 % Hardware older than NVidia Geforce 8000 or ATI Radeon HD 2000 won't be
 % able to do alpha-blending at this mode though. Not an issue here, as we
 % don't need alpha-blending...
@@ -147,6 +149,12 @@ if method == 4
     PsychImaging('AddTask', 'General', 'EnableVideoSwitcherSimpleLuminanceOutput');
 end
 
+if method == 5
+    % Want to use M16 mode: The appendix "WithOverlay" enables the color
+    % overlay in M16 mode, so we can display colorful text:
+    PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+end
+
 % Want to have simple power-law gamma correction of stims: We choose the
 % method here. After opening the onscreen window, we can set and change
 % encoding gamma via PsychColorCorrection() function...
@@ -157,17 +165,17 @@ PsychImaging('AddTask', 'FinalFormatting', 'DisplayColorCorrection', 'SimpleGamm
 [win, winRect] = PsychImaging('OpenWindow', screenid, 0);
 
 % Get a window handle for the overlay window - This only makes sense for
-% Bits++ Mono++ mode though:
-if method == 3 
-    overlay = BitsPlusPlus('GetOverlayWindow', win);
+% Bits++ Mono++ mode and DataPixx M16 mode though:
+if method == 3 || method == 5
+    overlay = PsychImaging('GetOverlayWindow', win);
 else
     % In any other mode, our main 'win'dow and overlay window are the same:
     overlay = win;
     LoadIdentityClut(win);
 end
 
-if method == 3
-    % Upload a CLUT palette into the Bits++ box for definition of overlay
+if method == 3 || method == 5
+    % Upload a CLUT palette into the Bits++ or DPixx box for definition of overlay
     % colors. We define a nice "blue intensity ramp", this way our text, which
     % is anti-aliased, will look beautiful.
     clut = zeros(256,3);
@@ -230,12 +238,12 @@ Screen('Flip', win);
 % Wait for keystroke to start CSF display:
 KbStrokeWait;
 
-% Start with 14 bits mode toggled on:
+% Start with high bits mode toggled on:
 toggle = 1;
 
 % Our display loop:
 while 1
-    % toggle set to 1 for 14 bits or low for 8 bits?
+    % toggle set to 1 for max bits or low for 8 bits?
     if toggle
         % Draw 14 bpc texture: We use 'filterMode' == 0 to disable any kind
         % of filtering so we really get a pixel-exact representation. This
@@ -243,7 +251,7 @@ while 1
         % better safe than sorry...
         Screen('DrawTexture', win, CSF14Tex, [], [], [], 0);
         
-        txt2 = 'Resolution: 14 bits per pixel - Space to toggle.';
+        txt2 = 'Resolution: Maximum bits per pixel - Space to toggle.';
     else
         % Draw 8 bpc texture:
         Screen('DrawTexture', win, CSF8Tex, [], [], [], 0);
@@ -252,17 +260,17 @@ while 1
     
     % Text for the overlay:
     if charttype == 0
-        txt1 = sprintf('Campbell-Robson CSF Chart\nDemo for Bits++ Mono++ mode and others - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
+        txt1 = sprintf('Campbell-Robson CSF Chart\nDemo for high precision display devices - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
     else
-        txt1 = sprintf('Luminance gradient Chart\nDemo for Bits++ Mono++ mode and others  - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
+        txt1 = sprintf('Luminance gradient Chart\nDemo for high precision display devices - ESCape to exit.\nGamma: %f - Left/Right cursor to change.\n', gamma);
     end
     
-    if method == 3 
+    if method == 3 || method == 5
         % Clear the overlay to transparent "background color":
         Screen('FillRect', overlay, 0);
     end
     
-    % Draw horizontal line denoting the 8 bits vs. 14 bits contrast
+    % Draw horizontal line denoting the 8 bits vs. max bits contrast
     % resolution boundary into the overlay at color index 2:
     Screen('DrawLine', overlay, 255, 0, limitLine, RectWidth(winRect), limitLine);
     DrawFormattedText(overlay, 'Not much to see above this line in 8 bit mode...', 0, limitLine, 255);
@@ -272,7 +280,7 @@ while 1
 
     if doScreenshot
         % Store a screenshot of the final output formatted byte image - as
-        % Bits++ will see it - in the global variable screenShot.
+        % device will see it - in the global variable screenShot.
         Screen('DrawingFinished', win, 0, 0);
         screenShot=Screen('GetImage', win, [1 1 800 800], 'backBuffer');
     end
@@ -312,14 +320,15 @@ while 1
     % Next loop iteration - Show updated settings...
 end
 
-% Load identity CLUT into Bits++ to restore proper display:
-BitsPlusPlus('LoadIdentityClut', win);
+if method == 3
+    % Load identity CLUT into Bits++ to restore proper display:
+    BitsPlusPlus('LoadIdentityClut', win);
+end
 
 % This flip is needed for the 'LoadIdentityClut' to take effect:
 Screen('Flip', win);
 
 % Load old gamma tables into gfx-card:
-%Screen('LoadNormalizedGammaTable', screenid, oldGammaTable);
 RestoreCluts;
 
 % Demo done. Close Screen...
