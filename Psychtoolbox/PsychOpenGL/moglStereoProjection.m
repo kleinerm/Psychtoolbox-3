@@ -4,7 +4,11 @@ function moglStereoProjection(left, top, right, bottom, near, far, zero_plane, d
 % Set up the stereo projection matrices for binocular stereo projection.
 % Taken verbatim from Quoc Vuong's class on Computer Graphics for Vision Research, 
 % http://www.kyb.mpg.de/bu/people/qvuong/CGV05.html
-
+%
+% Requires: glMatrixMode(GL.PROJECTION) being set before call. Backup your
+% matrices if you need'em later!
+%
+%
 %
 % Perform the perspective projection for one eye's subfield.
 % 

@@ -208,7 +208,7 @@ function varargout = PsychRTBox(varargin)
 % 'release' = Report push-button release.
 % 'pulse' = Report electronic trigger events on external input port.
 % 'light' = Report reception of light flashes by photo-diode on light port.
-% 'lightoff' = Report offset of light on photo-diode.
+% 'tr' = Report reception of scanner trigger "TR" (TTL input from pin 7 of DB-9 port).
 % 'all' = Enable all events.
 %
 % If called without the 'eventspec' parameter, the function will return the
@@ -306,8 +306,10 @@ function varargout = PsychRTBox(varargin)
 % '4' = 4th button pressed, '4up' = 4th button released.
 % 'pulse' = electronic pulse received on electronic pulse input port.
 % 'light' = Light pulse received by photo-diode connected to light input port.
-% 'lightoff' = Light pulse offset on photo-diode connected to light input port.
+% 'tr' = Scanner trigger "TR" (TTL input from pin 7 of DB-9 port) received.
 % 'serial' = PsychRTBox('Trigger') Softwaretrigger signal received on USB-Serial port.
+%
+% Note: 'tr' is only supported on boxes with Firmware version 3.0 or later.
 %
 % However, you can assign arbitrary names to the buttons and events if you
 % don't like this nomenclature via the PsychRTBox('ButtonNames') command.
@@ -374,16 +376,19 @@ function varargout = PsychRTBox(varargin)
 %
 %
 % sendTime = PsychRTBox('EngageLightTrigger [, handle]);
-% -- Engage light trigger input on the box for reception of a light trigger
+% sendTime = PsychRTBox('EngagePulseTrigger [, handle]);
+% sendTime = PsychRTBox('EngageTRTrigger [, handle]);
+% 
+% -- Engage trigger input on the box for reception of a one-shot trigger
 % signal. This function will return immediately after submitting the
 % request to the box. It may take up to 5 msecs worst-case until the
 % trigger input is really enabled. If you want to wait for the trigger to
-% be really enabled, call PsychRTBox('Enable', handle, 'lighton'); instead,
-% as this function will wait until the trigger is really active.
+% be really enabled, call, e.g., PsychRTBox('Enable', handle, 'lighton'); instead,
+% as that function will wait until the trigger is really active.
 %
-% Light trigger events are special: If a light pulse has been received, the
-% box auto-disables the light trigger input, preventing reception of any
-% further light events, until the trigger gets reenabled. The trigger gets
+% Trigger events are special: If a trigger has been received, the
+% box auto-disables the trigger input, preventing reception of any
+% further trigger events, until the trigger gets reenabled. The trigger gets
 % reenabled on many occasions if it has been enabled once via the
 % PsychRTBox('Enable', ...); command, e.g., at each call to
 % PsychRTBox('Start'); or PsychRTBox('Clear'). If you want to enable the
@@ -395,6 +400,8 @@ function varargout = PsychRTBox(varargin)
 % Hz. Usually you only want to know one defined timestamp of initial
 % stimulus onset, therefore the box prevents reception of all but the
 % first light trigger.
+%
+% Similar reasoning applies to Pulse and TR triggers.
 %
 %
 % oldNames = PsychRTBox('ButtonNames' [, handle] [, newNames]);
@@ -446,9 +453,25 @@ function varargout = PsychRTBox(varargin)
 % function.
 %
 % Please also note that there is another hardware debouncer with a duration
-% of 0.3 msecs which can't be disabled, so even if you'd set a zero
-% interval here, you'd still get a minimum 0.3 msecs debounce period.
+% of 0.3 msecs on RTBox versions with firmware versions 1.3 and older, which
+% can't be disabled, so even if you'd set a zero interval here, you'd still
+% get a minimum 0.3 msecs debounce period from the hardware itself.
 %
+% Later versions of the firmware support the following
+% PsychRTBox('HardwareDebounce') command to control the hardware debounce
+% interval more fine-grained.
+%
+%
+% [oldValue] = PsychRTBox('HardwareDebounce' [, handle] [, scanNum]);
+% -- Set/get hardware debouncer setting. The hardware will treat a button
+% event as valid only if the button state stays stable for at least
+% 'scanNum' scanning iterations of the firmware. The scan interval is about
+% 67 microseconds. The valid scanNum is from 1 through 255, with a default
+% setting of 16 cycles for 1.072 msecs debounce interval.
+%
+% For software debouncing at the driver level, see PsychRTBox('DebounceInterval')
+% above. 
+% 
 %
 % buttonState = PsychRTBox('ButtonDown' [, handle] [, whichButtons]);
 % -- This reports the current button state of all response buttons of box
@@ -482,6 +505,42 @@ function varargout = PsychRTBox(varargin)
 % released. If 'whichButtons' is omitted, all buttons are tested.
 %
 %
+% [timeSent, confidence] = PsychRTBox('TTL' [, handle] [, eventCode=1]);
+% -- Set 4-bit TTL pulse on pins 5-8 of the DB-25 port (pin 8 is bit 0).
+% 'eventCode' is a value from 0 to 15 (defaults to 1 if omitted).
+% It can also be a 4-bit binary string, such as '0011'. The 4 TTL pins will
+% be set to corresponding logic levels. E.g., eventCode = 1 is the same as
+% '0001', eventCode = 15 == '1111'.
+%
+% The optional return arguments are the 'timeSent' when the TTL update was performed,
+% and an upper bound on the uncertainty 'confidence' of 'timeSent'.
+%
+% The width (duration) of the TTL pulse is controlled by the
+% PsychRTBox('TTLWidth') command.
+%
+% This function is only supported for v3.0 RTBoxes and later, the ones with
+% EEG event code support.
+%
+% 
+% [oldValue] = PsychRTBox('TTLWidth' [, handle][, widthSecs]);
+% - Set/get TTL pulse width in seconds. The default width is 0.97e-3, ie.
+% 97 microseconds when the device is opened. The actual width may have some
+% small variation. The supported width ranges from 0.14e-3 to 35e-3 secs. A
+% infinite width 'inf' is also supported. Infinite width means the TTL will
+% stay until it is changed by the next PsychRTBox('TTL') command, such as
+% PsychRTBox('TTL',0).
+%
+% This function is only supported for v3.0 RTBoxes and later, the ones with
+% EEG event code port support.
+%
+%
+% [oldValue] = RTBox('TTLResting' [, handle][, newLevel]);
+% - Set/get TTL polarity. The default is 0, meaning the TTL resting level is
+% logical low. If you set newLevel to a nonzero value, the resting TTL
+% level will be a logic high level. This function is only supported with
+% firmware version 3.1 and later.
+%
+%
 
 % TODO:
 %
@@ -500,6 +559,30 @@ function varargout = PsychRTBox(varargin)
 % 06/07/2009 Check for ambiguous assignment of buttonnames to avoid errors.
 %            Bug found by Vinzenz Schoenfelder (MK).
 % 06/14/2009 Remove special case code for Octave. No longer needed (MK).
+% 12/14/2009 Update for RTBox'es with firmware v1.4 and later:
+%
+%            * Store box firmware version numerically for easier comparison.
+%
+%            * v >= 1.4 sends '?' acknowledge for live button query before
+%              the byte that reports buttons state --> Handle this.
+%
+%            * Detect clock frequency of RTBox and adapt our bytes2secs() mapping
+%              accordingly for V1.4 and later.
+%
+%            * 'lightoff' event is dead, now its called 'tr' instead for TR
+%              scanner trigger reception on new V3.0 firmware boxes.
+%
+%            * Switch v1.3 and later boxes back to 'x' simple E-Prime et
+%              al. compatible mode at PsychRTBox('close') time.
+%
+%            * Support new 'hardwaredebounce' command on v1.4+
+%
+%            * Support new 'ttlwidth' for v3.0, 'ttlresting' for v3.1+
+%
+%            * Support 4-bit TTL out port for v3.0+
+%
+%            * Add fast-engage commands for pulse and TR triggers as well.
+%
 
 % Global variables: Need to be persistent across driver invocation and
 % shared with internal subfunctions:
@@ -516,20 +599,22 @@ global rtbox_global;
         % CAUTION: Same settings are reassigned in the openRTBox()
         % subfunction each time PsychRTBox('Open') is called! The settings
         % made there override the settings made here!!!
-        rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
+        rtbox_info=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'tr' 'serial'}},...
                               'enabled',[], 'ID','','handle',-1,'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
-                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], 'syncSamples', [], 'recQueue', []);
+                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0 0 0 0], ...
+                              'syncSamples', [], 'recQueue', [], 'boxClockTickIntervalSecs', 1/115200);
 
         % Setup event codes:
         rtbox_global.eventcodes=[49:2:55 50:2:56 97 48 57 89]; % code for 12 events
         
         % List of supported subcommands:
-        rtbox_global.cmds={'close' 'closeall' 'clear' 'stop' 'start' 'test' 'buttondown' 'buttonnames' 'enable' 'disable' 'clockratio' 'syncclocks' ...
-              'box2getsecs' 'boxinfo' 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger' ...
-              'debounceinterval', 'engagelighttrigger', 'waitbuttondown', 'waitbuttonup' };
+        rtbox_global.cmds={'close', 'closeall', 'clear', 'stop', 'start', 'test', 'buttondown', 'buttonnames', 'enable', 'disable', 'clockratio', 'syncclocks', ...
+              'box2getsecs', 'boxinfo', 'getcurrentboxtime','verbosity','syncconstraints', 'boxsecstogetsecs', 'serialtrigger', ...
+              'debounceinterval', 'engagelighttrigger', 'waitbuttondown', 'waitbuttonup', 'ttlwidth', 'ttlresting', 'hardwaredebounce', ...
+              'ttl', 'engagepulsetrigger', 'engagetrtrigger' };
           
         % Names of events that can be enabled/disabled for reporting:
-        rtbox_global.events4enable={'press' 'release' 'pulse' 'light' 'lightoff' 'all'};
+        rtbox_global.events4enable={'press' 'release' 'pulse' 'light' 'tr' 'all'};
         
         % Low-level protocol codes corresponding to the events:
         rtbox_global.enableCode='DUPOFA'; % char to enable above events, lower case to disable
@@ -754,8 +839,51 @@ global rtbox_global;
             
         case 'engagelighttrigger'
             % Enable light on trigger quickly.
-            tWritten = engageLightTrigger(id);
+            tWritten = engageTrigger(id, 'O');
             if nargout, varargout{1}=tWritten; end
+            
+        case 'engagepulsetrigger'
+            % Enable pulsetrigger quickly.
+            tWritten = engageTrigger(id, 'P');
+            if nargout, varargout{1}=tWritten; end
+            
+        case 'engagetrtrigger'
+            % Enable TR-Trigger quickly.
+            tWritten = engageTrigger(id, 'F');
+            if nargout, varargout{1}=tWritten; end
+            
+        case 'ttl'
+            % Send TTL 4 bit event to output port on supported hardware:
+            if rtbox_info(id).version < 3
+                RTBoxWarn('notSupported', in1, 3);
+                return;
+            end
+            
+            % Default event code is 1:
+            if isempty(in2), in2 = 1; end
+
+            % Can be a binary string:
+            if ischar(in2), in2=bin2dec(in2); end
+            
+            % Range check:
+            if in2<0 || in2>15 || in2~=round(in2)
+                RTBoxError('invalidTTL');
+            end
+            
+            % Decode to final trigger byte:
+            in2 = dec2bin(in2,4);
+            in2 = uint8(bin2dec(in2(4:-1:1))); % reverse bit order
+            
+            % Emit via blocking write:
+            [tsend twin] = sendTTLPortEvent(id, in2);
+            if nargout
+                varargout={tsend twin};
+            end
+
+            if twin > 0.003
+                fprintf('PsychRTBox: Warning! TTL 4-bit trigger, send timestamp uncertainty %f msecs exceeds 3 msecs!\n', twin * 1000);
+            end
+            
             
         case 'debounceinterval'            
             % Return old debouncer settings for each button:
@@ -1071,6 +1199,164 @@ global rtbox_global;
             end
             if nargout, varargout{1}=oldNames; end
 
+            
+        case 'ttlwidth'
+            % One of the commands that change Firmware device settings.
+            % Need to stop event processing and drain the event queue, as
+            % the protocol doesn't implement proper acknowledge tokens:
+            if rtbox_info(id).version < 3
+                RTBoxWarn('notSupported', in1, 3);
+                return;
+            end
+            
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+
+            % Perform active query for current firmware settings:
+            b8=get8bytes(id);
+            
+            % TTL width unit in s, not very accurate:
+            wUnit=0.139e-3; 
+            
+            % Return old/current setting as 1st argument:
+            varargout{1} = b8(1) * wUnit;
+
+            % New settings provided?
+            if nIn >= 2
+                if isempty(in2)
+                    % Default to 0.00097 seconds:
+                    in2=0.00097;
+                end
+
+                % Infinity means: Disable TTL-width, hold setting until
+                % manually changed:
+                if in2 == inf
+                    in2 = 0;
+                end
+
+                % Range check:
+                if (in2 < wUnit * 0.9 || in2 > wUnit * 255 * 1.1) && (in2>0)
+                    RTBoxWarn('invalidTTLwidth', wUnit);
+                    return;
+                end
+
+                width = double(uint8(in2 / wUnit)) * wUnit;
+                b8(1) = width / wUnit;
+
+                % Writeback new firmware settings:
+                set8bytes(id, b8);
+                
+                if (in2 > 0) && (abs(width - in2) / in2 > 0.1)
+                    RTBoxWarn('widthOffset', width);
+                end
+                
+                if width==0
+                    width=inf;
+                end
+                
+                % Return new / current setting as 1st argument:
+                varargout{1} = width;
+            end
+            
+            if boxActive
+                % Restart box if it was running:
+                startBox(id, 1);
+            end
+            
+        case 'ttlresting'
+            % One of the commands that change Firmware device settings.
+            % Need to stop event processing and drain the event queue, as
+            % the protocol doesn't implement proper acknowledge tokens:
+            if rtbox_info(id).version < 3.1
+                RTBoxWarn('notSupported', in1, 3.1);
+                return;
+            end
+            
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+
+            % Perform active query for current firmware settings:
+            b8=get8bytes(id);
+            
+            % Return current setting as 1st return argument:
+            varargout{1} = (b8(3) > 0);
+            
+            % New settings provided?
+            if nIn >= 2
+                if isempty(in2)
+                    % Default to 0:
+                    in2 = 0;
+                end
+                                
+                % Assign valid new setting:
+                in2 = (in2 ~= 0);
+                b8(3) = uint8(in2 * 255);
+
+                % Writeback new firmware settings:
+                set8bytes(id, b8);
+            end
+                        
+            if boxActive
+                % Restart box if it was running:
+                startBox(id, 1);
+            end
+            
+            
+        case 'hardwaredebounce'
+            % One of the commands that change Firmware device settings.
+            % Need to stop event processing and drain the event queue, as
+            % the protocol doesn't implement proper acknowledge tokens:
+            if rtbox_info(id).version < 1.4
+                RTBoxWarn('notSupported', in1, 1.4);
+                return;
+            end
+            
+            % Stop event processing on box, if active:
+            boxActive = rtbox_info(id).boxScanning;
+            if boxActive
+                % This will store all pending events in internal queue:
+                stopBox(id);
+            end
+
+            % Perform active query for current firmware settings:
+            b8=get8bytes(id);
+
+            % Return current setting as 1st return argument:
+            varargout{1} = b8(2);
+            
+            % New settings provided?
+            if nIn >= 2
+                if isempty(in2)
+                    % Default to 16 firmware scancycles:
+                    in2 = 16;
+                end
+                
+                % Range check:
+                if in2 < 1 || in2 > 255
+                    % Invalid: Warn & Ignore:
+                    RTBoxWarn('invalidScanNum');
+                else
+                    % Assign valid new setting:
+                    b8(2) = uint8(in2);
+
+                    % Writeback new firmware settings:
+                    set8bytes(id, b8);
+                end                
+            end
+            
+            if boxActive
+                % Restart box if it was running:
+                startBox(id, 1);
+            end
+            
         case {'enable' 'disable'} % enable/disable event detection
             if nIn<2 % no event, return current state
                 varargout{1}=rtbox_global.events4enable(rtbox_info(id).enabled);
@@ -1209,7 +1495,7 @@ global rtbox_global;
             fprintf(' GetSecs-BoxSecs: %.4f\n',rtbox_info(id).sync(1));
             fprintf(' Number of events: %g\n',nevent);
             if nevent==0, return; end
-            t0=bytes2secs(data(2:7,1)); % first event time
+            t0=bytes2secs(data(2:7,1), id); % first event time
             fprintf(' BoxSecs of event 1 (t0): %.3f s\n\n',t0);
             fprintf('  Data (7 bytes each)%19s  BoxSecs-t0\n','Events');
             for i=1:nevent  % disp each event and time
@@ -1218,7 +1504,7 @@ global rtbox_global;
                     event=''; t=nan; % no error complain
                 else
                     event=rtbox_info(id).events{ind}; % event ID
-                    t=bytes2secs(data(2:7,i)); % device time
+                    t=bytes2secs(data(2:7,i), id); % device time
                 end
                 fprintf('%4g',data(:,i));
                 fprintf('%12s%8.3f\n',event,t-t0); % relative to first event
@@ -1231,6 +1517,24 @@ global rtbox_global;
                     % Disable all scanning on box before close:
                     stopBox(id);
 
+                    % Box with firmware version 1.3 or later?
+                    if rtbox_info(id).version > 1.3
+                        % Yes. This one supports "simple mode" for E-Prime
+                        % compatibility as well, so switch it into that
+                        % mode:
+                        
+                        % Enable all events
+                        WaitSecs(0.1);
+                        IOPort('Write', s, 'A');
+
+                        % Switch to simple mode for E-Prime et al.:
+                        WaitSecs(0.1);
+                        IOPort('Write',s,'x');
+                        
+                        % Give some time to settle:
+                        WaitSecs(0.1);
+                    end
+                    
                     % Close connection:
                     IOPort('Close', s);
                 end
@@ -1464,17 +1768,16 @@ function syncClocks(id)
         % average delay between reception of the sync token byte, and the
         % timestamping on the box. Delay is:
         % 1. Transmission delay from FTDI chip to Microprocessor over
-        % serial link at 112200 baud with 10 bits (1 start + 8 data + 1
-        % stop): 1000/112200*10 msecs = 0.089 msecs.
+        % serial link at 115200 baud with 10 bits (1 start + 8 data + 1
+        % stop): 1000/115200*10 msecs = 0.087 msecs.
         % 2. Average scanning delay by firmware scanning loop: Interval is
         % 0.01 msecs, expected delay therefore 0.01/2 = 0.005 msecs.
         % 3. Time taken for firmware to take a snapshot of current box
         % clock time: 0.060 msecs.
         %
-        % == 0.154126559714795 msecs. To account for minimal other delays,
-        % we round up to 0.16 msecs aka 0.00016 secs and subtract this
-        % expected delay:
-        tbox = bytes2secs(b7(2:7)) - 0.00016;
+        % == 0.152 msecs. To account for minimal other delays, we round up
+        % to 0.16 msecs aka 0.00016 secs and subtract this expected delay:
+        tbox = bytes2secs(b7(2:7), id) - 0.00016;
         
         % Compute confidence interval for this sample:
         % For each measurement, the time window tpost - tpre defines a
@@ -1808,6 +2111,72 @@ function enableEvent(handle, str)
     return;
 end
 
+% Retrieve firmware internal settings:
+function b8 = get8bytes(handle)
+    global rtbox_info;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Write query command blocking:
+    IOPort('Write', s, 's');
+    
+    % Wait blocking for 8 byte response:
+    b8=IOPort('Read',s,1,8);
+    
+    return;
+end
+
+% Set/Update firmware internal settings:
+function set8bytes(handle, b8)
+    global rtbox_info;
+    global rtbox_global;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+
+    % Write 'S'et command blocking:
+    IOPort('Write',s,'S');
+
+    % Wait blocking for 1 byte ack:
+    IOPort('Read', s, 1, 1);
+    
+    % Write blocking new 8 byte settings:
+    [nw tpost] = IOPort('Write', s, uint8(b8));
+
+    % Command submission completed at time 'tpost'. Set a new busyUntil
+    % time. After that time, the box should have completed command at the latest:
+    rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
+    
+    return;
+end
+
+function [tsend, twin] = sendTTLPortEvent(handle, ecode)
+    global rtbox_info;
+    global rtbox_global;
+    
+    % Get handle to serial port:
+    s = rtbox_info(handle).handle;
+    
+    % Wait until we can be sure that the box is ready to receive new
+    % commands. The deadline is computed so that in the worst conceivable
+    % case the box will be ready to receive at least 1 new command byte:
+    WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
+
+    % Submit event code to RTbox:
+    [nw tpost err tpre] = IOPort('Write', s, ecode); % send
+
+    % Compute tsend time approximation and confidence window twin:
+    twin = tpost - tpre;
+    tsend = tpre;
+    
+    % Command submission completed at time 'tpost'. Set a new busyUntil
+    % time. After that time, the box should have completed command at the latest:
+    rtbox_info(handle).busyUntil = tpost + rtbox_global.maxbusy;
+
+    return;
+end
+
 % Send a 'Y' serial trigger command to box:
 function tpost = sendTrigger(handle)
     global rtbox_info;
@@ -1832,8 +2201,8 @@ function tpost = sendTrigger(handle)
     return;
 end
 
-% Send a "enable optical trigger" command to box:
-function tpost = engageLightTrigger(handle)
+% Send a "enable optical/pulse/TTL trigger" command evType to box:
+function tpost = engageTrigger(handle, evType)
     global rtbox_info;
     global rtbox_global;
     
@@ -1846,8 +2215,8 @@ function tpost = engageLightTrigger(handle)
     WaitSecs('UntilTime', rtbox_info(handle).busyUntil);
     
     % Box ready to receive our enable light trigger command code
-    % 'O'. Send it blocking:
-    [nw, tpost] = IOPort('Write', s, 'O');
+    % evType. Send it blocking:
+    [nw, tpost] = IOPort('Write', s, evType);
     
     % Command submission completed at time 'tpost'. Set a new busyUntil
     % time. After that time, the box should have stopped at the latest:
@@ -1896,8 +2265,11 @@ function bState = buttonQuery(handle)
             % and idle. We perform a synchronous query:
             IOPort('write',s,'?'); % ask button state: '4321'*16 63
             b2=IOPort('read',s, 1, 2); % ? returns 2 bytes
-            if length(b2)~=2 || b2(2)~=63 || mod(b2(1),16)~=0
-                warning('PsychRTBox: Corrupt 2-byte response received in explicit buttonQuery()!'); %#ok<WNTAG>
+            if length(b2)~=2 || ...
+               ((rtbox_info(handle).version  < 1.4) && (b2(2)~=63 || mod(b2(1),16)~=0)) || ...
+               ((rtbox_info(handle).version >= 1.4) && (b2(1)~=63 || mod(b2(2),16)~=0))
+                   % Failed! Corrupt response:
+                   warning('PsychRTBox: Corrupt 2-byte response received in explicit buttonQuery()!'); %#ok<WNTAG>
             else
                 % Uppermost 4 bits are button states:
                 rtbox_info(handle).buttons(1, :) = [ 0, 0, 0, 0 ];
@@ -2126,7 +2498,7 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
                 % packet with a b6 6 byte box timestamp.
                 
                 % Decode timestamp into uncorrected box time in seconds:
-                secs=bytes2secs(b6);
+                secs=bytes2secs(b6, handle);
                                 
                 % Buttonstate update needed?
                 if (evid >= 49 && evid <= 56)
@@ -2211,6 +2583,9 @@ function [nadded, tlastadd] = parseQueue(handle, minEvents, timeOut, interEventD
         % while the box is in scanning mode, so this event can't ever
         % happen. -- We use lot's of ugly magic in buttonQuery() to work
         % around this synchronously...
+        %
+        % Note: The bug is fixed in firmware v1.4 and later, but that
+        % doesn't help us anymore, so we keep the current strategy...
         %
         %
         %         if evid == 63
@@ -2362,11 +2737,12 @@ function purgeRTbox(handle)
     return;    
 end
 
-% Convert 6-byte raw box timestamp x into seconds: 1/115200 is the time
-% unit of the device clock, i.e., the device clock increments with a
-% granularity of 1/115200 of a second:
-function secs=bytes2secs(b6)
-    secs = (256.^(5:-1:0)*b6(:)/115200);
+% Convert 6-byte raw box timestamp x into seconds: boxClockTickIntervalSecs
+% is the time unit of the device clock, i.e., the device clock increments
+% with a granularity of boxClockTickIntervalSecs:
+function secs=bytes2secs(b6, handle)
+    global rtbox_info;
+    secs = (256.^(5:-1:0) * b6(:) * rtbox_info(handle).boxClockTickIntervalSecs);
 end
 
 % Open first available (not yet opened) RT-Box if no specific 'deviceID' is
@@ -2464,7 +2840,13 @@ function openRTBox(deviceID, handle)
                 % Read out whatever junk maybe in the input buffer:
                 IOPort('Read', s, 0);
 
-                % Write the 'X' command code to ask box for its identity:
+                % Write the 'X' command code to ask box for its identity and to
+                % switch it into advanced mode with the clever protocol we
+                % use. The box powers up in "simple" mode, where most cool
+                % functionality and protocol is disabled but it acts in a
+                % way that is compatible to E-Prime et al. -- Just sends 1
+                % Byte event code whenever some button or input port
+                % changes state:
                 IOPort('Write', s, 'X');
 
                 % Wait blocking with 1 sec timeout (see above) for id string response from box:
@@ -2519,9 +2901,10 @@ function openRTBox(deviceID, handle)
     % Ok, found a box and opened connection. Setup its device info structure:
     
     % First the default settings...
-    rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'lightoff' 'serial'}},...
+    rtbox_info(handle)=struct('events',{{'1' '2' '3' '4' '1up' '2up' '3up' '4up' 'pulse' 'light' 'tr' 'serial'}},...
                               'enabled',[], 'ID','','handle',-1,'portname',[],'sync',[],'version',[],'clkRatio',1,'verbosity',3, ...
-                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], 'syncSamples', [], 'recQueue', []);
+                              'busyUntil', 0, 'boxScanning', 0, 'ackTokens', [], 'buttons', [0 0 0 0; 0 0 0 0; 0.05 0.05 0.05 0.05], ...
+                              'syncSamples', [], 'recQueue', [], 'boxClockTickIntervalSecs', 1/115200);
 
     % Enabled events at start:
     rtbox_info(handle).enabled=logical([1 0 0 0 0]);
@@ -2532,7 +2915,17 @@ function openRTBox(deviceID, handle)
     % Portname:
     rtbox_info(handle).portname=port;
     % Box version:
-    rtbox_info(handle).version=char(idn(18:21));
+    ind = strfind(idn, ',v') + 2;
+    rtbox_info(handle).version = str2double(char(idn(ind + (0:2))));
+    
+    % Duration of a single clock tick of the RTBox microprocessor clock:
+    % Defaults to 1/115200 second, but will be overridden to 1/921600 second
+    % if the spec string is found as part of the idn string. This finer
+    % resolution is present in the latest RTBox devices (Firmware v1.4:
+    if strfind(idn,'921600')
+        rtbox_info(handle).boxClockTickIntervalSecs = 1/921600;
+    end
+    
     % Init clock-ratio to an uncalibrated 1.0:
     rtbox_info(handle).clkRatio=1;
     
@@ -2580,6 +2973,8 @@ function RTboxError(err,varargin)
     global rtbox_global;
 
     switch err
+        case 'invalidTTL'
+            str='TTL output must be integer from 0 to 15, or bits from ''0000'' to ''1111''.';
         case 'noUSBserial'
             str=' No connected USB-Serial devices found. Is your device connected and the USB-Serial driver properly installed?';
         case 'noDevice'
@@ -2622,12 +3017,20 @@ function RTboxError(err,varargin)
         otherwise, str=err;
     end
     
-    error(sprintf('PsychRTBox:%s %s', err, str)); %#ok<SPERR>
+    error(sprintf('PsychRTBox:%s %s', err, WrapString(str) )); %#ok<SPERR>
 end
 
 % Show warning message, but code will keep running
 function RTboxWarn(err,varargin)
     switch err
+        case 'invalidTTLwidth'
+            str=sprintf('Supported TTL width is from %.2fe-3 to %.2fe-3 s .',[1 255]*varargin{1}*1000);
+        case 'widthOffset'
+            str=sprintf('TTL width will be about %.5f s', varargin{1});
+        case 'invalidScanNum'
+            str=sprintf('The scan number for HardwareDebounce must be an integer from 1 to 255.');
+        case 'notSupported'
+            str=sprintf('The command %s is supported only for Firmware version V%.1f or later.',varargin{1:2});
         case 'invalidEvent'
             str=sprintf('%4i',varargin{1});
             str=sprintf('PsychRTBox: Events not recognized: %s.\nPlease do PsychRTBox(''clear'') before showing stimulus.\nGetSecs = %.1f',str,GetSecs);
@@ -2642,6 +3045,8 @@ function RTboxWarn(err,varargin)
         otherwise
             str=sprintf('PsychRTBox: %s. GetSecs = %.1f',err,GetSecs);
     end
+
+    str=WrapString(str);
     warning(['PsychRTBox:' err], str);
 end
 
