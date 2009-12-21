@@ -45,6 +45,9 @@ double PsychGetNanValue(void);
 // Simple function evaluation by scripting environment via feval() style functions:
 int		PsychRuntimeEvaluateString(const char* cmdstring);
 
+// Put variable in native PsychGenericScriptType into workspace of runtime:
+int		PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent);
+
 //for integers
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value);
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array);

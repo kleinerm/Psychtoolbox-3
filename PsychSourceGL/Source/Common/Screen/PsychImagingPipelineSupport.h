@@ -50,7 +50,8 @@ typedef enum {
 	kPsychUserDefinedBlit=							12, // User defined image processing, e.g., for Screen('TransformTexture').
 	kPsychFinalOutputFormattingBlit0 =				13,	// Performs final data conversion/image processing on output view 0 immediately before hitting framebuffer.
 	kPsychFinalOutputFormattingBlit1 =				14,	// Performs final data conversion/image processing on output view 1 immediately before hitting framebuffer.
-	
+	kPsychScreenFlipImpliedOperations =				15, // Performs synchronous operations on the masterthread at time of execution of Screen('Flip'), Screen('FlipCheckEnd') and Screen('AsyncFlipEnd') after a flip is truly finished.
+	kPsychPreSwapbuffersOperations =				16, // Called before emitting the PsychOSFlipWindowBuffers() call, ie., less than 1 video refresh from flipdeadline away. No OpenGL ops allowed!
 } PsychHookType;
 
 // API for PTB core:
@@ -72,6 +73,7 @@ void	PsychPipelineAddShaderToHook(PsychWindowRecordType *windowRecord, const cha
 
 psych_bool	PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hookId, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
 psych_bool	PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo);
+int		PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdString);
 
 // Internal helper functions:
 
@@ -105,6 +107,8 @@ psych_bool PsychAssignHighPrecisionTextureShaders(PsychWindowRecordType* texture
 psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 // PsychPipelineBuiltinRenderStereoSyncLine - Rendering of blue-sync lines for stereo shutter glasses in quad-buffered stereo mode:
 psych_bool PsychPipelineBuiltinRenderStereoSyncLine(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
+// PsychPipelineBuiltinRenderClutViaRuntime - Encode CLUT via callback to runtime environment.
+psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc);
 
 // Blitter functions: Assignable to a function pointer of type PsychBlitterFunc:
 // =============================================================================

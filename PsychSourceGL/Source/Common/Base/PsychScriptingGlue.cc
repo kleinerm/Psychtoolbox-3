@@ -2608,7 +2608,8 @@ void PsychClearFlagListElement(int index, PsychFlagListType flagList)
         - Its handle,  which is specified when nesting the native matrix nesting withing other native types.
         - A handle to the C array of doubles enclosed by the native type.
         
-    If (*cArray != NULL) we copy m*n*p elements from cArray into the native matrix. 
+    If (*cArray != NULL) we copy m*n*p elements from cArray into the native matrix, otherwise not.
+	In any case, *cArray will point to the C array of doubles enclosed by the native type in the end.
 
 */
 void 	PsychAllocateNativeDoubleMat(int m, int n, int p, double **cArray, PsychGenericScriptType **nativeElement)
@@ -2617,10 +2618,8 @@ void 	PsychAllocateNativeDoubleMat(int m, int n, int p, double **cArray, PsychGe
 	
     *nativeElement = mxCreateDoubleMatrix3D(m,n,p);
     cArrayTemp = mxGetPr(*nativeElement);
-    if(*cArray != NULL)
-        memcpy(cArrayTemp, *cArray, sizeof(double)*m*n*maxInt(1,p));
+    if(*cArray != NULL) memcpy(cArrayTemp, *cArray, sizeof(double)*m*n*maxInt(1,p));
     *cArray=cArrayTemp; 
-
 }
 
 
@@ -2628,6 +2627,48 @@ double PsychGetNanValue(void)
 {
 	return(mxGetNaN());
 }
+
+/* PsychRuntimePutVariable()
+ *
+ * Copy a given native variable of type PsychGenericScriptType, e.g., as created by PsychAllocateNativeDoubleMat()
+ * in case of a double matrix, as a new variable into a specified workspace.
+ *
+ * 'workspace'	Namestring of workspace: "base" copy to base workspace. "caller" copy into calling functions workspace,
+ *				'global' create new global variable with given name. "caller" is needed to make the variable accessible
+ *				by code executed by PsychRuntimeEvaluateString(), e.g., callbacks from the imaging pipeline.
+ *
+ * 'variable'	Name of the new variable.
+ *
+ * 'pcontent'	The actual content that should be copied into the variable.
+ *
+ *
+ * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the calling
+ *          M-Functions workspace and initialize it with content from the double array mycontent:
+ *
+ *          PsychGenericScriptType* newvar = NULL;
+ *			double* newvarcontent = mycontent; // mycontent is double* onto existing data.
+ *          PsychAllocateNativeDoubleMat(m, n, p, &newvarcontent, &newvar);
+ *			At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
+ *			the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
+ *
+ *			Create the corresponding variable in the calling scripts workspace:
+ *			PsychRuntimePutVariable("caller", "myvar", newvar);
+ *
+ *          The calling M-File etc. can access the content newvarcontent under the variable name 'myvar'.
+ *
+ *			As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
+ *			but the variable 'myvar' will remain valid in the calling script until it goes out of scope there.
+ *
+ * Returns zero on success, non-zero on failure.
+ */
+int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
+{
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		return(mexPutVariable(workspace, variable, pcontent));
+	#else
+		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
+	#endif
+} 
 
 /* PsychRuntimeEvaluateString()
  *

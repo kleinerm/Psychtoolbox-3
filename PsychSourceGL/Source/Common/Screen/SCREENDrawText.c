@@ -50,6 +50,25 @@ static char seeAlsoString[] = "";
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 
+// Test include for external renderplugin:
+#include <dlfcn.h>
+static void* drawtext_plugin = NULL;
+static psych_bool drawtext_plugin_firstcall = TRUE;
+
+// Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
+int PsychInitText(void);
+int PsychShutdownText(void);
+int PsychRebuiltFont(void);
+int PsychSetTextFont(const char* fontName);
+int PsychSetTextStyle(unsigned int fontStyle);
+int PsychSetTextSize(double fontSize);
+void PsychSetTextFGColor(double* color);
+void PsychSetTextBGColor(double* color);
+void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
+void PsychSetTextViewPort(double xs, double ys, double w, double h);
+int PsychDrawText(double xStart, double yStart, int textLen, double* text);
+int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
+
 #define CHAR_TO_UNICODE_LENGTH_FACTOR		4			//Apple recommends 3 or 4 even though 2 makes more sense.
 #define USE_ATSU_TEXT_RENDER			1
 
@@ -181,7 +200,7 @@ PsychError SCREENDrawText(void)
 		uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
 		textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
 		//Using a TextEncoding type describe the encoding of the text to be converteed.  
-		textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kMacRomanDefaultVariant, kTextEncodingDefaultFormat);
+		textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
 		//Create a structure holding conversion information from the text encoding type we just created.
 		callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
 		//Convert the text to a unicode string
@@ -194,6 +213,106 @@ PsychError SCREENDrawText(void)
 		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
 		textUniString=(UniChar*) malloc(sizeof(UniChar) * stringLengthChars);
 		for (dummy1=0; dummy1<stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) unicodedoubles[dummy1];
+	}
+
+	// Does usercode want us to use a text rendering plugin instead of our standard ATSU renderer?
+	if (PsychPrefStateGet_TextRenderer() == 2) {
+		// Use external dynamically loaded plugin:
+		
+		// Try to load plugin if not already loaded: The dlopen call will search in all standard system
+		// search paths, the $HOME/lib directory if any, and relative to the current working directory.
+		// The functions in the plugin will be linked immediately and if successfull, made available
+		// directly for use within the code, with no need to dlsym() manually bind'em:
+		if (NULL == drawtext_plugin) {
+			drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
+			drawtext_plugin_firstcall = TRUE;
+		}
+		else {
+			drawtext_plugin_firstcall = FALSE;
+		}
+		
+		// Successfully loaded and bound?
+		if (NULL == drawtext_plugin) {
+			// Failed! Revert to standard text rendering code below:
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
+		}
+		else {
+			// Success! Now we can safely call into the plugin functions for text rendering:
+			
+			// Perform first time init, if needed:
+			if (drawtext_plugin_firstcall) {
+				if (PsychInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
+
+				// Disable use of plugins internal fontMapper:
+				PsychSetTextUseFontmapper(0, 0);
+			}
+			
+			// Assign text attributes like fontName, style and size:
+			PsychFontStructType	*fontRecord;
+			if (!PsychGetFontRecordFromFontFamilyNameAndFontStyle(winRec->textAttributes.textFontName, winRec->textAttributes.textStyle, &fontRecord)) {
+				PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, Could not find font for given fontName and style!");
+			}
+
+			PsychSetTextFont(fontRecord->fontFile);
+			PsychSetTextStyle(winRec->textAttributes.textStyle);
+			PsychSetTextSize((double) winRec->textAttributes.textSize);
+			PsychSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
+
+			PsychCoerceColorMode(&(winRec->textAttributes.textBackgroundColor));
+			PsychConvertColorToDoubleVector(&(winRec->textAttributes.textBackgroundColor), winRec, backgroundColorVector);
+			//by default override the background alpha value, setting alpha transparecy. Only when DrawText obeys the
+			// alpha blend function setting do we need or want the the alpha argument for the background.
+			if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
+			PsychSetTextBGColor(backgroundColorVector);
+
+			double colorVector[4];
+			PsychCoerceColorMode(&(winRec->textAttributes.textColor));
+			PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
+			PsychSetTextFGColor(colorVector);
+
+			// Convert UniChar textUniString to double string:
+			double* textUniDoubleString = (double*) malloc(sizeof(double) * stringLengthChars);
+			for (ix = 0; ix < stringLengthChars; ix++) textUniDoubleString[ix] = (double) textUniString[ix];
+
+			// Enable this windowRecords framebuffer as current drawingtarget:
+			PsychSetDrawingTarget(winRec);
+			
+			// Save all state:
+			glPushAttrib(GL_ALL_ATTRIB_BITS);
+			
+			// Disable draw shader:
+			PsychSetShader(winRec, 0);
+			
+			if(!PsychPrefStateGet_TextAlphaBlending()){
+				PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
+				PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+			}
+			PsychUpdateAlphaBlendingFactorLazily(winRec);
+			
+			glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+			
+			// Draw it:
+			PsychDrawText(winRec->textAttributes.textPositionX, winRec->rect[kPsychBottom] - winRec->textAttributes.textPositionY, stringLengthChars, textUniDoubleString);
+			
+			if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
+			glPopAttrib();
+
+			// Compute bounding box of drawn string:
+			float xmin, ymin, xmax, ymax;
+			PsychMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
+			//printf("BBOX: %f,%f --> %f,%f\n", xmin, ymin, xmax, ymax);
+			
+			// Update x position of text drawing cursor:
+			winRec->textAttributes.textPositionX += (xmax - xmin + 1);
+			
+			// Free temporary Unicode strings:
+			free((void*) textUniDoubleString);
+			free((void*) textUniString);
+			
+			// This jump will copy out the new updated textcursor position and return control
+			// to the runtime:
+			goto drawtext_skipped;
+		}
 	}
 	
 	//create the text layout object
@@ -413,7 +532,6 @@ PsychError SCREENDrawText(void)
     
     if(!PsychPrefStateGet_TextAlphaBlending())
         PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
-//	PsychUpdateAlphaBlendingFactorLazily(winRec);
    
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 

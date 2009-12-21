@@ -180,7 +180,9 @@ char PsychHookPointNames[MAX_SCREEN_HOOKS][MAX_HOOKNAME_LENGTH] = {
 	"RightFinalizerBlitChain",
 	"UserDefinedBlit",
 	"FinalOutputFormattingBlit0",
-	"FinalOutputFormattingBlit1"
+	"FinalOutputFormattingBlit1",
+	"ScreenFlipImpliedOperations",
+	"PreSwapbuffersOperations"
 };
 
 char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
@@ -198,7 +200,9 @@ char PsychHookPointSynopsis[MAX_SCREEN_HOOKS][MAX_HOOKSYNOPSIS_LENGTH] = {
 	"Internal(preinitialized): Perform last time operation on right channel, e.g., draw blue-sync lines.",
 	"Defines a user defined image processing operation for the Screen('TransformTexture') command.",
 	"Perform post-processing on 1st (left) output channel, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
-	"Perform post-processing on 2nd (right) output channel, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators..."
+	"Perform post-processing on 2nd (right) output channel, e.g., special data formatting for devices like BrightSideHDR, Bits++, Video attenuators...",
+	"This is called after a bufferswap has truly completed by Screen('Flip'), Screen('AsyncFlipCheckEnd') or Screen('AsyncFlipEnd'). Use of OpenGL commands and Matlab commands is allowed here.",
+	"Called before emitting the PsychOSFlipWindowBuffers() call, ie., less than 1 video refresh from flipdeadline away. No OpenGL ops allowed!"
 };
 
 /* PsychInitImagingPipelineDefaultsForWindowRecord()
@@ -2535,12 +2539,133 @@ psych_bool PsychPipelineExecuteHook(PsychWindowRecordType *windowRecord, int hoo
 	return(TRUE);
 }
 
+/* PsychPipelineProcessMacros()
+ * Expand given cmdString, based on info in given windowRecord, return expanded string.
+ * The expanded string is returned as a char* and the caller is responsible for freeing
+ * the allocated memory.
+ *
+ * Returns 1 on succcess, 0 on error.
+ */
+int PsychPipelineProcessMacros(PsychWindowRecordType *windowRecord, char* cmdString)
+{
+	psych_bool repeatit = TRUE;
+	char  varName[256];
+	char* pCurrent		= cmdString;
+	char* pToken		= NULL;
+	int   i, j, k, count;
+	
+	double* dbltarget	= NULL;
+	PsychGenericScriptType*	newvar = NULL;
+	
+	while ((repeatit) && (pCurrent) && (pCurrent[0]!=0)) {
+		// Reset repeatit. Will be set by following code again if another parse-iteration is needed:
+		repeatit	= FALSE;
+		dbltarget	= NULL;
+		newvar		= NULL;
+
+		if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: cmd = %s\n", pCurrent); 
+		
+		// Check current remaining command string for certain keywords to process:
+		// -----------------------------------------------------------------------
+		
+		// Return of current gammatable requested?
+		sprintf(varName, "IMAGINGPIPE_GAMMATABLE");
+		if ((pToken = strstr(pCurrent, varName))) {
+			// Wants us to assign current gammatable from Screen('LoadNormalizedGammatable', ..., 2) call
+			// to the variable IMAGINGPIPE_GAMMATABLE:
+			
+			// Advance to position behind the varName:
+			pCurrent = &pToken[strlen(varName)];
+			repeatit = TRUE;
+			
+			// Any pending gammatable stored internally for update? If not, we skip further processing:
+			if (windowRecord->inRedTable == NULL) {
+				if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed. No suitable CLUT set in Screen('LoadNormalizedGammaTable'). Skipped slot!\n");
+
+				// Return error code zero to abort processing of this hook slot:
+				return(0);
+			}
+			
+			if (windowRecord->inTableSize < 1) {
+				if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed. CLUT has less than the required 1 slots. Skipped slot!\n");
+
+				// Return error code zero to abort processing of this hook slot:
+				return(0);
+			}
+			
+			// Allocate runtime double matrix of sufficient size: 'newvar' is the handle of it,
+			// dbltarget is a pointer to the target double matrix we need to fill with the clut:
+			PsychAllocateNativeDoubleMat(windowRecord->inTableSize, 3, 1, &dbltarget, &newvar);
+			
+			for (i = 0; i < windowRecord->inTableSize; i++) *(dbltarget++) = (double) windowRecord->inRedTable[i];
+			for (i = 0; i < windowRecord->inTableSize; i++) *(dbltarget++) = (double) windowRecord->inGreenTable[i];
+			for (i = 0; i < windowRecord->inTableSize; i++) *(dbltarget++) = (double) windowRecord->inBlueTable[i];
+			
+			// Release the gamma table:
+			free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+			free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+			free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+			windowRecord->inTableSize = 0;
+			windowRecord->loadGammaTableOnNextFlip = 0;
+			
+			// Copy to base workspace:
+			// N.B. caller workspace would be cleaner, but there's an incompatibility between Octave and
+			// Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
+			if (PsychRuntimePutVariable("base", varName, newvar)) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment failed in runtime! Skipped slot!\n");
+				return(0);
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: IMAGINGPIPE_GAMMATABLE variable assignment success in runtime!\n");
+			}
+
+			// Next parseloop iteration:
+			continue;
+		}
+
+		// Return of current flipcount requested?
+		sprintf(varName, "IMAGINGPIPE_FLIPCOUNT");
+		if ((pToken = strstr(pCurrent, varName))) {
+			// Wants us to assign current flipCount to the variable IMAGINGPIPE_FLIPCOUNT:
+			
+			// Advance to position behind the varName:
+			pCurrent = &pToken[strlen(varName)];
+			repeatit = TRUE;
+
+			// Allocate runtime double matrix of scalar size: 'newvar' is the handle of it,
+			// dbltarget is a pointer to the target double matrix we need to fill with the clut:
+			PsychAllocateNativeDoubleMat(1, 1, 1, &dbltarget, &newvar);
+			*dbltarget = (double) windowRecord->flipCount;
+
+			// Copy to base workspace:
+			// N.B. caller workspace would be cleaner, but there's an incompatibility between Octave and
+			// Matlab which causes trouble if you do so, so stick to "base" for sanity of mind!
+			if (PsychRuntimePutVariable("base", varName, newvar)) {
+				if (PsychPrefStateGet_Verbosity() > 0) printf("PTB-ERROR: PsychPipelineProcessMacros: IMAGINGPIPE_FLIPCOUNT variable assignment failed in runtime! Skipped slot!\n");
+				return(0);
+			}
+			else {
+				if (PsychPrefStateGet_Verbosity() > 10) printf("PTB-DEBUG: PsychPipelineProcessMacros: ASSIGNED %f\n", (float) *dbltarget); 
+			}
+
+			// Next parseloop iteration:
+			continue;			
+		}
+		
+		// Next parse loop iteration, if any...
+	}	// Parse loop.
+	
+	// Successfully processed string:
+	return(1);
+}
+
 /* PsychPipelineExecuteHookSlot()
  * Execute a single hookfunction slot in a hook chain for a specific window.
  */
 psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int hookId, PsychHookFunction* hookfunc, void* hookUserData, void* hookBlitterFunction, psych_bool srcIsReadonly, psych_bool allowFBOSwizzle, PsychFBO** srcfbo1, PsychFBO** srcfbo2, PsychFBO** dstfbo, PsychFBO** bouncefbo)
 {
 	psych_bool dispatched = FALSE;
+	char* execString = NULL;
 
 	// Dispatch by hook function type:
 	switch(hookfunc->hookfunctype) {
@@ -2567,8 +2692,12 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
 			// Care has to be taken that the called functions do not invoke any Screen
 			// subfunctions! Screen is not reentrant, so that would likely screw seriously!
 
-			// TODO: Substitute specific placeholders in pString1 by parameters from us.
-			PsychRuntimeEvaluateString(hookfunc->pString1);
+			// Process certain macro keywords inside pString1 before calling the pString itself:
+			if (PsychPipelineProcessMacros(windowRecord, hookfunc->pString1)) {
+				// Call the runtime environment to process the command string:
+				if (PsychRuntimeEvaluateString(hookfunc->pString1)) {
+				}
+			}
 			dispatched=TRUE;
 		break;
 			
@@ -2586,11 +2715,22 @@ psych_bool PsychPipelineExecuteHookSlot(PsychWindowRecordType *windowRecord, int
 				}
 				dispatched=TRUE;
 			}
+
 			if (strcmp(hookfunc->idString, "Builtin:RenderClutBits++")==0) {
 				// Compute the T-Lock encoded CLUT for Cambridge Research Bits++ system in Bits++ mode. The CLUT
 				// is set via the standard Screen('LoadNormalizedGammaTable', ..., loadOnNextFlip) call by setting
 				// loadOnNextFlip to a value of 2.
 				if (!PsychPipelineBuiltinRenderClutBitsPlusPlus(windowRecord, hookfunc)) {
+					// Operation failed!
+					return(FALSE);
+				}
+				dispatched=TRUE;
+			}
+
+			if (strcmp(hookfunc->idString, "Builtin:RenderClutViaRuntime")==0) {
+				// Pass the last CLUT that was set via the standard Screen('LoadNormalizedGammaTable', ..., loadOnNextFlip) call by setting
+				// loadOnNextFlip to a value of 2 to the runtime environment.
+				if (!PsychPipelineBuiltinRenderClutViaRuntime(windowRecord, hookfunc)) {
 					// Operation failed!
 					return(FALSE);
 				}
@@ -2905,7 +3045,8 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	int w, h, x, y;
 	float sx, sy;
 	char* strp;
-	
+	psych_bool bilinearfiltering;
+
 	// Child protection:
 	if (!(srcfbo1 && (*srcfbo1))) {
 		PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): srcfbo1 is a NULL - Pointer!!!");
@@ -2923,6 +3064,17 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 		if (sscanf(strp, "OvrSize:%i:%i", &w, &h)!=2) {
 			PsychErrorExitMsg(PsychError_internal, "In PsychBlitterIdentity(): OvrSize: blit string parameter is invalid! Parse error...\n");
 		}
+	}
+
+	// Bilinear filtering of srcfbo1 texture requested?
+	if (strstr(hookfunc->pString1, "Bilinear")) {
+		// Yes. Enable it.
+		bilinearfiltering = TRUE;
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	}
+	else {
+		bilinearfiltering = FALSE;
 	}
 
 	// Check for offset parameter in the blitterString: An integral (x,y)
@@ -2989,6 +3141,12 @@ psych_bool PsychBlitterIdentity(PsychWindowRecordType *windowRecord, PsychHookFu
 	
 	if (x!=0 || y!=0 || sx!=1.0 || sy!=1.0) {
 		glPopMatrix();
+	}
+
+	if (bilinearfiltering) {
+		// Disable filtering again:
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_RECTANGLE_EXT, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 	}
 
 	// Done.
@@ -3197,6 +3355,67 @@ psych_bool PsychPipelineBuiltinRenderClutBitsPlusPlus(PsychWindowRecordType *win
 		glFinish();
 		PsychGetAdjustedPrecisionTimerSeconds(&t2);
 		printf("PTB-DEBUG: Execution time of built-in Bits++ CLUT encoder was %lf ms.\n", (t2 - t1) * 1000.0f);
+	}
+
+	// Done.
+	return(TRUE);
+}
+
+/* PsychPipelineBuiltinRenderClutViaRuntime() - Encode CLUT via callback to runtime environment.
+ * 
+ * This builtin routine takes the current gamma table for this windowRecord and calls back into
+ * the runtime environment to execute some function and passes it the CLUT.
+ */
+psych_bool PsychPipelineBuiltinRenderClutViaRuntime(PsychWindowRecordType *windowRecord, PsychHookFunction* hookfunc)
+{
+	char* strp;
+	char* outcmd = NULL;
+	int i, cmdlen;
+	double t1, t2;
+	
+	// Be lazy: Only execute call if there is actually a pending CLUT for update:
+	if (windowRecord->inRedTable == NULL) {
+		if (PsychPrefStateGet_Verbosity()>10) printf("PTB-DEBUG: PsychPipelineBuiltinRenderClutViaRuntime: No new CLUT set via Screen('LoadNormalizedGammaTable'). Skipped!\n");
+		return(TRUE);
+	}
+	
+	if (windowRecord->inTableSize < 1) {
+		if (PsychPrefStateGet_Verbosity()>0) printf("PTB-ERROR: PsychPipelineBuiltinRenderClutViaRuntime: CLUT encoding failed. CLUT has less than the required 1 entries. Skipped!\n");
+		return(FALSE);
+	}
+	
+	if (PsychPrefStateGet_Verbosity() > 4) {  
+		PsychGetAdjustedPrecisionTimerSeconds(&t1);
+	}
+
+	cmdlen = strlen(hookfunc->pString1);
+	outcmd = (char*) calloc(cmdlen + 10 + (windowRecord->inTableSize * 3 * 10), sizeof(char));
+	sprintf(outcmd, "%s [", hookfunc->pString1);
+	strp = &outcmd[strlen(outcmd)];
+	
+	for (i = 0; i < windowRecord->inTableSize; i++) {
+		sprintf(strp, "%06f %06f %06f ; ", windowRecord->inRedTable[i], windowRecord->inGreenTable[i], windowRecord->inBlueTable[i]);
+		strp = &outcmd[strlen(outcmd)];		
+		// printf("%06f %06f %06f ; ", windowRecord->inRedTable[i], windowRecord->inGreenTable[i], windowRecord->inBlueTable[i]);
+	}
+
+	strp = &outcmd[strlen(outcmd)];
+	sprintf(strp, "]); ");
+	
+	// Release the gamma table:
+	free(windowRecord->inRedTable); windowRecord->inRedTable = NULL;
+	free(windowRecord->inGreenTable); windowRecord->inGreenTable = NULL;
+	free(windowRecord->inBlueTable); windowRecord->inBlueTable = NULL;
+	windowRecord->inTableSize = 0;
+	windowRecord->loadGammaTableOnNextFlip = 0;
+	
+	// Execute callback into runtime:
+	PsychRuntimeEvaluateString(outcmd);
+	free(outcmd);
+	
+	if (PsychPrefStateGet_Verbosity() > 4) {  
+		PsychGetAdjustedPrecisionTimerSeconds(&t2);
+		printf("PTB-DEBUG: PsychPipelineBuiltinRenderClutViaRuntime: Execution time was %lf ms.\n", (t2 - t1) * 1000.0f);
 	}
 
 	// Done.

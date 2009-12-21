@@ -63,7 +63,7 @@ TO DO:
 #define PSYCH_INVALID_SCUMBER				-1
 
 // Maximum number of different hook chains:
-#define MAX_SCREEN_HOOKS 15
+#define MAX_SCREEN_HOOKS 17
 
 // Maximum number of slots in windowRecords fboTable:
 #define MAX_FBOTABLE_SLOTS 2+2+3+3+2
@@ -276,17 +276,18 @@ typedef struct _PsychWindowRecordType_{
 		PsychWindowRecordPntrType				slaveWindow;			// MK: In stereomode 10 (dual-window stereo) Either NULL or windowrecord of right view window.
 		PsychWindowRecordPntrType				parentWindow;			// MK: Ptr. to windowRecord of the parent window, or NULL if this window doesn't have a parent.
 		int										targetFlipFieldType;	// MK: Usually == -1 (=Don't care). Can select that bufferswap should always happen in even frames (=0) or odd frames (=1). Useful for frame sequential stereo.
-        psych_bool                                    auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
+        psych_bool                              auxbuffer_dirty[2];     // MK: State of auxbuffers 0 and 1: Dirty or not? (For stereo algs.)
         int                                     nrIFISamples;           // MK: nrIFISamples and IFIRunningSum are used to calculate an
         double                                  IFIRunningSum;          // MK: accurate estimate of the real interframe interval (IFI) in Flip.
 		double                                  time_at_last_vbl;       // MK: Timestamp (system-time) at last VBL detected by Flip.
         double                                  VideoRefreshInterval;   // MK: Estimated video refresh interval of display. Can be different to IFI.
 		double									ifi_beamestimate;		// MK: Yet another video refresh estimate, based on beamposition method (or 0 if invalid).
         int                                     VBL_Endline;            // MK: Estimated scanline which marks end of VBL area.
-        psych_bool                                    PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
-        psych_bool                                    backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
-        psych_bool                                    vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
+        psych_bool                              PipelineFlushDone;      // MK: Will be set by SCREENDrawingFinished to signal pipeline flush.
+        psych_bool                              backBufferBackupDone;   // MK: Will be set by SCREENDrawingFinished to signal backbuffer backup.
+        psych_bool                              vSynced;				// MK: Flag that stores VSYNC enable state: TRUE = Sync to VBL, FALSE = Don't.
         int                                     nr_missed_deadlines;    // MK: Counter, incremented by Flip if it detects a missed/skipped frame.
+		int										flipCount;				// Counter of total number of finished flip operations - A swapcounter.
 		double									rawtime_at_swapcompletion; // Raw timestamp of swapcompletion (result without high-precision timestamping).
 		double									time_at_swaprequest;	// Timestamp taken immediately before call to PsychOSFlipWindowBuffers(); - Before swaprequest submission.
 		double									time_post_swaprequest;  // Timestamp taken immediately after call PsychOSFlipWindowBuffers();

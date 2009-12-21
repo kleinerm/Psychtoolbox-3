@@ -436,6 +436,9 @@ PsychError SCREENOpenWindow(void)
 
     PsychTestForGLErrors();
 
+	// Reset flipcounter to zero:
+	windowRecord->flipCount = 0;
+	
     //Return the window index and the rect argument.
     PsychCopyOutDoubleArg(1, FALSE, windowRecord->windowIndex);
 

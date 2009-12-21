@@ -180,6 +180,7 @@ static char synopsisString[] =
 	"ImagingMode: Currently selected imging pipeline mode, as requested in call to Screen('OpenWindow', ...);\n"
 	"MultiSampling: Currently selected multisample anti-aliasing mode, as requested in call to Screen('OpenWindow', ...);\n"
 	"MissedDeadlines: Number of missed Screen('Flip') stimulus onset deadlines, according to internal skip detector.\n"
+	"FlipCount: Total number of flip command executions, ie., of stimulus updates.\n"
 	"GuesstimatedMemoryUsageMB: Estimated memory usage of window or texture in Megabytes. Can be very inaccurate or unavailable!\n"
 	"VBLStartLine, VBLEndline: Start/Endline of vertical blanking interval. The VBLEndline value is not available/valid on all GPU's.\n"
 	"\n"
@@ -204,12 +205,12 @@ static char seeAlsoString[] = "OpenWindow, Flip, NominalFrameRate";
 PsychError SCREENGetWindowInfo(void) 
 {
     const char *FieldNames[]={ "Beamposition", "LastVBLTimeOfFlip", "LastVBLTime", "VBLCount", "TimeAtSwapRequest", "TimePostSwapRequest", "RawSwapTimeOfFlip",
-							   "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "StereoDrawBuffer",
+							   "GPULastFrameRenderTime", "StereoMode", "ImagingMode", "MultiSampling", "MissedDeadlines", "FlipCount", "StereoDrawBuffer",
 							   "GuesstimatedMemoryUsageMB", "VBLStartline", "VBLEndline", "VideoRefreshFromBeamposition", "GLVendor", "GLRenderer", "GLVersion", "GPUCoreId", 
 							   "GLSupportsFBOUpToBpc", "GLSupportsBlendingUpToBpc", "GLSupportsTexturesUpToBpc", "GLSupportsFilteringUpToBpc", "GLSupportsPrecisionColors",
 							   "GLSupportsFP32Shading", "BitsPerColorComponent", "IsFullscreen", "SpecialFlags" };
 							   
-	const int  fieldCount = 30;
+	const int  fieldCount = 31;
 	PsychGenericScriptType	*s;
 
     PsychWindowRecordType *windowRecord;
@@ -410,6 +411,7 @@ PsychError SCREENGetWindowInfo(void)
 		PsychSetStructArrayDoubleElement("IsFullscreen", 0, (windowRecord->specialflags & kPsychIsFullscreenWindow) ? 1 : 0, s);
 		PsychSetStructArrayDoubleElement("MultiSampling", 0, windowRecord->multiSample, s);
 		PsychSetStructArrayDoubleElement("MissedDeadlines", 0, windowRecord->nr_missed_deadlines, s);
+		PsychSetStructArrayDoubleElement("FlipCount", 0, windowRecord->flipCount, s);
 		PsychSetStructArrayDoubleElement("StereoDrawBuffer", 0, windowRecord->stereodrawbuffer, s);
 		PsychSetStructArrayDoubleElement("GuesstimatedMemoryUsageMB", 0, (double) windowRecord->surfaceSizeBytes / 1024 / 1024, s);
 		PsychSetStructArrayDoubleElement("BitsPerColorComponent", 0, (double) windowRecord->bpc, s);

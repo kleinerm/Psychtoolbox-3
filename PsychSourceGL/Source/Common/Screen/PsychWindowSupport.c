@@ -536,6 +536,7 @@ psych_bool PsychOpenOnscreenWindow(PsychScreenSettingsType *screenSettings, Psyc
     (*windowRecord)->PipelineFlushDone = false;
     (*windowRecord)->backBufferBackupDone = false;
     (*windowRecord)->nr_missed_deadlines = 0;
+	(*windowRecord)->flipCount = 0;
     (*windowRecord)->IFIRunningSum = 0;
     (*windowRecord)->nrIFISamples = 0;
     (*windowRecord)->VBL_Endline = -1;
@@ -1326,8 +1327,8 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 	// Output count of missed deadlines. Don't bother for 1 missed deadline -- that's an expected artifact of the measurement...
     if (PsychIsOnscreenWindow(windowRecord) && (windowRecord->nr_missed_deadlines>1)) {
 		if(PsychPrefStateGet_Verbosity()>1) {
-			printf("\n\nINFO: PTB's Screen('Flip') command seems to have missed the requested stimulus presentation deadline\n");
-			printf("INFO: a total of %i times during this session.\n\n", windowRecord->nr_missed_deadlines);
+			printf("\n\nINFO: PTB's Screen('Flip', %i) command seems to have missed the requested stimulus presentation deadline\n", windowRecord->windowIndex);
+			printf("INFO: a total of %i times out of a total of %i flips during this session.\n\n", windowRecord->nr_missed_deadlines, windowRecord->flipCount);
 			printf("INFO: This number is fairly accurate (and indicative of real timing problems in your own code or your system)\n");
 			printf("INFO: if you provided requested stimulus onset times with the 'when' argument of Screen('Flip', window [, when]);\n");
 			printf("INFO: If you called Screen('Flip', window); without the 'when' argument, this count is more of a ''mild'' indicator\n");
@@ -1719,6 +1720,9 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		// Unpack struct and execute synchronous flip:
 		flipRequest->vbl_timestamp = PsychFlipWindowBuffers(windowRecord, flipRequest->multiflip, flipRequest->vbl_synclevel, flipRequest->dont_clear, flipRequest->flipwhen, &(flipRequest->beamPosAtFlip), &(flipRequest->miss_estimate), &(flipRequest->time_at_flipend), &(flipRequest->time_at_onset));
 
+		// Call hookchain with callbacks to be performed after successfull flip completion:
+		PsychPipelineExecuteHook(windowRecord, kPsychScreenFlipImpliedOperations, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+
 		// Done, and all return values filled in struct. We leave asyncstate at its zero setting, ie., idle and simply return:
 		return(TRUE);
 	}
@@ -1958,6 +1962,9 @@ psych_bool PsychFlipWindowBuffersIndirect(PsychWindowRecordType *windowRecord)
 		
 		// Decrement the asyncFlipOpsActive count:
 		asyncFlipOpsActive--;
+
+		// Call hookchain with callbacks to be performed after successfull flip completion:
+		PsychPipelineExecuteHook(windowRecord, kPsychScreenFlipImpliedOperations, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
 		// Now we are in the same condition as after first time init. The thread is waiting for new work,
 		// we hold the lock so we can read out the flipRequest struct or fill it with a new request,
@@ -2278,6 +2285,10 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 		}
 	#endif
     
+	// Execute the hookchain for non-OpenGL operations that need to happen immediately before the bufferswap, e.g.,
+	// sending out control signals or commands to external hardware to somehow sync it up to imminent bufferswaps:
+	PsychPipelineExecuteHook(windowRecord, kPsychPreSwapbuffersOperations, NULL, NULL, FALSE, FALSE, NULL, NULL, NULL, NULL);
+	
 	// Take a measurement of the beamposition at time of swap request:
 	line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
 
@@ -2801,6 +2812,9 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
         windowRecord->time_at_last_vbl = 0;
 		windowRecord->rawtime_at_swapcompletion = 0;
     }
+
+	// Increment the "flips successfully completed" counter:
+	windowRecord->flipCount++;
 
     // The remaining code will run asynchronously on the GPU again and prepares the back-buffer
     // for drawing of next stim.

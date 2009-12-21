@@ -71,8 +71,12 @@ PsychError SCREENTextStyle(void)
 	  // Need to update font name and number from changed style on OS/X:
 	  foundFont = PsychGetFontRecordFromFontFamilyNameAndFontStyle(windowRecord->textAttributes.textFontName, windowRecord->textAttributes.textStyle, &fontRecord);
 	  if (foundFont) {
-		  strncpy(windowRecord->textAttributes.textFontName, fontRecord->fontFMFamilyName, 255);
-		  windowRecord->textAttributes.textFontNumber= fontRecord->fontNumber;
+		strncpy(windowRecord->textAttributes.textFontName, fontRecord->fontFMFamilyName, 255);
+		windowRecord->textAttributes.textFontNumber= fontRecord->fontNumber;
+	  }
+	  else {
+		// Failed! Revert to old setting:
+		windowRecord->textAttributes.textStyle = oldTextStyle;
 	  }
 	  
 	  #endif
