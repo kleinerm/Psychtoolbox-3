@@ -554,7 +554,7 @@ if strcmpi(cmd, 'GetTimestampLog')
             % We perform a - expensive - high precision remapping of the
             % raw timestamps in row 1 of the current log and store the
             % resulting "best fit" GetSecs timestamps in row 2:
-            [timing, sd, clockratio] = box2GetSecsTimePostHoc(dpx.onsetTimestampLog(2, 1:dpx.timestampLogCount));
+            [timing, sd, clockratio] = box2GetSecsTimePostHoc(dpx.onsetTimestampLog(1, 1:dpx.timestampLogCount));
             dpx.onsetTimestampLog(2, 1:dpx.timestampLogCount) = timing;
             varargout{2} = sd;
             varargout{3} = clockratio;
