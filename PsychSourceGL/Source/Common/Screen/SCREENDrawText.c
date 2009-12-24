@@ -243,8 +243,8 @@ PsychError SCREENDrawText(void)
 			if (drawtext_plugin_firstcall) {
 				if (PsychInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
 
-				// Disable use of plugins internal fontMapper:
-				PsychSetTextUseFontmapper(0, 0);
+				// Enable use of plugins internal fontMapper:
+				PsychSetTextUseFontmapper(1, 0);
 			}
 			
 			// Assign text attributes like fontName, style and size:
@@ -253,7 +253,7 @@ PsychError SCREENDrawText(void)
 				PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, Could not find font for given fontName and style!");
 			}
 
-			PsychSetTextFont(fontRecord->fontFile);
+			PsychSetTextFont(fontRecord->fontFMFamilyName);
 			PsychSetTextStyle(winRec->textAttributes.textStyle);
 			PsychSetTextSize((double) winRec->textAttributes.textSize);
 			PsychSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
@@ -290,7 +290,7 @@ PsychError SCREENDrawText(void)
 			PsychUpdateAlphaBlendingFactorLazily(winRec);
 			
 			glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-			
+
 			// Draw it:
 			PsychDrawText(winRec->textAttributes.textPositionX, winRec->rect[kPsychBottom] - winRec->textAttributes.textPositionY, stringLengthChars, textUniDoubleString);
 			
@@ -944,13 +944,10 @@ PsychError SCREENDrawText(void)
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
-// New GDI based text-renderer for MS-Windows. This one is disabled by
-// default, but can get enabled by the user via a Screen Preference setting,
-// i.e. if 'TextRenderer' is set to 1.
+// GDI based text-renderer for MS-Windows:
 //
-// Reason this one is not used by default: It's sloooow. However it provides
-// accurate text positioning, Unicode rendering, anti-aliasing, proper text
-// size and a higher quality text output in general.
+// It's sloooow. However it provides accurate text positioning, Unicode rendering,
+// anti-aliasing, proper text size and a higher quality text output in general.
 //
 // It uses GDI text renderer to render text to a memory device context,
 // backed by a DIB device independent memory bitmap. Then it converts the
