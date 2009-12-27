@@ -74,8 +74,12 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
 % 3/03/08   mk   Added option 'forWhat' to optionally wait for key release
 %                or isolated keystrokes, and optional return argument 'keyCode'
 %                to return keyCode vector, just as KbCheck does.
-
-persistent kbs
+%
+% 12/27/09  mk   Remove all the redundant code for 'deviceNumber' specific
+%                behaviour. This is already covered by code in KbCheck!
+%                This also fixes a bug reported in forum message 10468
+%                where KbReleaseWait(-1) didn't wait for all keys on all
+%                keyboards to be released.
 
 % Time (in seconds) to wait between "failed" checks, in order to not
 % overload the system in realtime mode. 5 msecs seems to be an ok value...
@@ -111,43 +115,12 @@ if (forWhat == 2) | (forWhat == 3) %#ok<OR2>
     end
 end
 
-if isempty(deviceNumber)
-    while(1)
-        [isDown, secs, keyCode, deltaSecs] = KbCheck;
-        if isDown == ~forWhat
-            return;
-        end
-        % Wait for yieldInterval to prevent system overload.
-        WaitSecs('YieldSecs', yieldInterval);
+while(1)
+    [isDown, secs, keyCode, deltaSecs] = KbCheck(deviceNumber);
+    if isDown == ~forWhat
+        return;
     end
-else
-    if deviceNumber == -1 & IsOSX %#ok<AND2>
-        if isempty(kbs) % only poll for keyboards on the first function call
-            devices=PsychHID('Devices');
-            kbs = find([devices(:).usageValue] == 6);
-            if isempty(kbs)
-                error('No keyboard devices were found.')
-            end
-        end
-        
-        while(1)
-            for i = kbs
-                [isDown, secs, keyCode, deltaSecs] = KbCheck(i);
-                if isDown == ~forWhat
-                    return;
-                end
-            end
-            % Wait for yieldInterval to prevent system overload.
-            WaitSecs('YieldSecs', yieldInterval);
-        end
-    else
-        while(1)
-            [isDown, secs, keyCode, deltaSecs] = KbCheck(deviceNumber);
-            if isDown == ~forWhat
-                return;
-            end
-            % Wait for yieldInterval to prevent system overload.
-            WaitSecs('YieldSecs', yieldInterval);
-        end
-    end
+
+    % Wait for yieldInterval to prevent system overload.
+    WaitSecs('YieldSecs', yieldInterval);
 end
