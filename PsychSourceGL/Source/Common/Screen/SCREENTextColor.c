@@ -4,11 +4,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu			awi 
+  		mario.kleiner@tuebingen.mpg.de	mk
+
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
 
 	HISTORY:
@@ -37,13 +38,11 @@ static char seeAlsoString[] = "";
 
 PsychError SCREENTextColor(void) 
 {
-
-    psych_bool					doSetColor;
+    psych_bool				doSetColor;
     PsychWindowRecordType	*winRec;
 	PsychColorType			colorArg;
-	
-    
-    //all subfunctions should have these two lines.  
+
+    // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
@@ -56,24 +55,12 @@ PsychError SCREENTextColor(void)
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &winRec);
 	
 	//Coerce the current color record to the correct type in case it has not been accessed yet.
-	//  and return it. 
 	PsychSetTextColorInWindowRecord(&(winRec->textAttributes.textColor),  winRec);
 	PsychCopyOutColorArg(1, kPsychArgOptional, &(winRec->textAttributes.textColor));
 	
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(2, kPsychArgOptional, &colorArg);
-	if(doSetColor)
-		PsychSetTextColorInWindowRecord(&colorArg,  winRec);
-        
-    return(PsychError_none);
-
-}
-
-
+	if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
 	
-
-
-
-
-
-
+    return(PsychError_none);
+}

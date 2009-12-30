@@ -2410,9 +2410,9 @@ psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired,
 	matchError=PsychMatchDescriptors();
 	acceptArg=PsychAcceptInputArgumentDecider(isRequired, matchError);
 	if(acceptArg){
-		mxPtr = PsychGetInArgMxPtr(position);
-		strLen = (mxGetM(mxPtr) * mxGetNOnly(mxPtr)) + 1;
-		*str = (char *)PsychCallocTemp(strLen, sizeof(char));
+		mxPtr  = PsychGetInArgMxPtr(position);
+		strLen = (mxGetM(mxPtr) * mxGetNOnly(mxPtr) * sizeof(mxChar)) + 1;
+		*str   = (char *) PsychCallocTemp(strLen, sizeof(char));
 		status = mxGetString(mxPtr, *str, strLen); 
 		if(status!=0)
 			PsychErrorExitMsg(PsychError_internal, "mxGetString failed to get the string");

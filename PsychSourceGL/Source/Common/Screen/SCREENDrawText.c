@@ -3,12 +3,12 @@
   
     AUTHORS:
     
-		Allen.Ingling@nyu.edu					awi
+		Allen.Ingling@nyu.edu				awi
 		mario.kleiner at tuebingen.mpg.de	mk
   
     PLATFORMS:
 		
-		All.
+		All. With OS specific #ifdefs...
     
     HISTORY:
 	
@@ -22,7 +22,12 @@
 		11/01/05    mk      Removal of dead code + beautification.
 		11/21/05    mk      Code for updating the "Drawing Cursor" and returning NewX, NewY values added.
 		01/01/06    mk      Code branch for M$-Windoze implementation of DrawText added.
-		11/11/07		mk		  New GDI based Windoze text renderer implemented.
+		11/11/07	mk		New GDI based Windoze text renderer implemented.
+		12/27/09	mk		Massive refactoring of code for all platforms and support for plugin-based textrenderers.
+							-> Cleans up the mess of duplicated code and special cases. We share as much code as possible accross platforms.
+							-> Allows for unicode support on all platforms.
+							-> Allows for plugin renderer on Linux and OS/X for unicode, anti-aliasing etc.
+							-> Allows for better handling of unicode and multibyte character encodings.
 
     DESCRIPTION:
 
@@ -32,28 +37,27 @@
 	
 		http://oss.sgi.com/projects/ogl-sample/registry/APPLE/client_storage.txt
 		http://developer.apple.com/samplecode/Sample_Code/Graphics_3D/TextureRange.htm
-  
+		
+		http://www.cl.cam.ac.uk/~mgk25/unicode.html - A good FAQ about Unicode, UTF-8 with a special emphasis on Linux and Posix systems.
+
     TO DO:
 
 		Platform specific code should be in the platform folders, not here in the Common folder! Sort this out some time.
-		This file is in need for extensive cleanup and refactoring!!!
 							
 */
 
 
 #include "Screen.h"
 
-
-// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
-static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline]);";
-static char seeAlsoString[] = "";
-
-#if PSYCH_SYSTEM == PSYCH_OSX
-
-// Test include for external renderplugin:
-#include <dlfcn.h>
+// Reference to external dynamically loaded text renderer plugin:
 static void* drawtext_plugin = NULL;
 static psych_bool drawtext_plugin_firstcall = TRUE;
+
+// External renderplugins not yet supported on MS-Windows:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+
+// Include for dynamic loading of external renderplugin:
+#include <dlfcn.h>
 
 // Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
 int PsychInitText(void);
@@ -68,35 +72,79 @@ void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags)
 void PsychSetTextViewPort(double xs, double ys, double w, double h);
 int PsychDrawText(double xStart, double yStart, int textLen, double* text);
 int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
+void PsychSetTextVerbosity(unsigned int verbosity);
+void PsychSetTextAntiAliasing(int antiAliasing);
 
-#define CHAR_TO_UNICODE_LENGTH_FACTOR		4			//Apple recommends 3 or 4 even though 2 makes more sense.
-#define USE_ATSU_TEXT_RENDER			1
+#endif
 
+// If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
+static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline]);";
+//							1	 2						  1			 2		3	 4	  5		   6				  7
+
+// Synopsis string for DrawText:
 static char synopsisString[] = 
-    "Draw text. \"text\" may include two-byte (16 bit) Unicode characters (e.g. Chinese). "
-	"A standard Matlab/Octave text string is interpreted as 8 bit ASCII string. If you "
-	"want to pass a string which contains 16 bit UTF-16 unicode characters, convert the "
-	"text to a double matrix, ie, mytext = double(myunicodetext); then pass the double "
-	"matrix to this function.\n"
-    "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
-    "g b] triplet) that you want to poke into each pixel; default produces black with "
-    "the standard CLUT for this window's pixelSize. \"backgroundColor\" is the color of "
-	"the text background. \"yPositionIsBaseline\" If specified, will override the global "
-	"preference setting for text positioning: It defaults to off. If it is set to 1, the y "
-	"pen location defines the base line of drawn text, otherwise it defines the top of the "
-	"drawn text. Old PTB's had a behaviour equivalent to setting 1, unfortunately this behaviour "
-	"wasn't replicated in pre 3.0.8 PTB's so now we stick to the new behaviour by default. "
-	"\"newX, newY\" return the final pen location.\n"
+    "Draw text. \"text\" may include Unicode characters (e.g. Chinese).\n"
+	"A standard Matlab/Octave char()acter text string is interpreted according to Screen's "
+	"current character encoding setting. By default this is the \"system default locale\", as "
+	"selected in the language settings of your user account. You can change the encoding "
+	"anytime via a call to Screen('Preference', 'TextEncodingLocale', newencoding); "
+	"E.g., for UTF-8 multibyte character encoding you'd call Screen('Preference','TextEncodingLocale','UTF-8');\n"
+	"If you want to pass a string which contains unicode characters directly, convert the "
+	"text to a double matrix, e.g., mytext = double(myunicodetext); then pass the double "
+	"matrix to this function. Screen will interpret all double numbers directly as unicode "
+	"code points.\n"
+	"Unicode text drawing is supported on all operating systems if you select the default "
+	"high quality text renderer. Of course you also have to select a text font which contains "
+	"the unicode character sets you want to draw - not all fonts contain all unicode characters.\n"
+	"With the optionally selectable fast, low quality renderer, neither anti-aliasing nor Unicode "
+	"are supported and text positioning may be less accurate, but it is a good choice if "
+	"you are in need for speed over everything else. Select it via the command:\n"
+	"Screen('Preference', 'TextRenderer', 0); inserted at the top of your script.\n"
+	"The following optional parameters allow to control location and color of the drawn text:\n"
+    "\"x\" \"y\" defines the text pen startlocation. Default is the location of the pen from "
+	"previous draw text commands, or (0,0) at startup. \"color\" is the CLUT index (scalar or [r "
+    "g b] triplet or [r g b a] quadruple) for drawing the text; default produces black.\n"
+    "\"backgroundColor\" is the color of the background area behind the text. By default, "
+	"text is drawn transparent in front of whatever image content is stored in the window. "
+	"You need to set an explicit backgroundColor and possibly enable user defined alpha-blending "
+	"with Screen('Preference', 'TextAlphaBlending', 1); and Screen('Blendfunction', ...) to make "
+	"use of text background drawing. Appearance of the background + text may be different accross "
+	"different operating systems and text renderers, or it may not be supported at all, so this is "
+	"not a feature to rely on.\n"
+	"\"yPositionIsBaseline\" If specified, will override the global preference setting for text "
+	"positioning: It defaults to off. If it is set to 1, then the \"y\" pen start location defines "
+	"the base line of drawn text, otherwise it defines the top of the drawn text. Old PTB's had a "
+	"behaviour equivalent to setting 1, unfortunately this behaviour wasn't replicated in early "
+	"versions of Psychtoolbox-3, so now we stick to the new behaviour by default.\n"
+	"\"newX, newY\" optionally return the final pen location.\n"
 	"Btw.: Screen('Preference', ...); provides a couple of interesting text preference "
-	"settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.";
+	"settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.\n"
+	"Selectable text renderers: The Screen('Preference', 'TextRenderer', Type); command allows "
+	"to select among different text rendering engines with different properties:\n"
+	"Type 0 is the fast OS specific text renderer: No unicode support, no anti-aliasing, low flexibility "
+	"but high speed for fast text drawing. Supported on Windows and Linux as a OpenGL display list renderer.\n"
+	"Type 1 is the OS specific high quality renderer: Slower, but supports unicode, anti-aliasing, and "
+	"many interesting features. On Windows, this is a GDI based renderer, on OS/X it is Apple's ATSU "
+	"text renderer which is also used for Type 0 on OS/X. On Linux it is a renderer based on FTGL.\n"
+	"Type 2 is a renderer based on FTGL, the same as type 1 on Linux, also available on OS/X, not supported "
+	"on Windows.\n"
+	"This function doesn't provide support for text layout. Use the higher level DrawFormattedText() function "
+	"if you need basic support for text layout, e.g, centered text output, line wrapping etc.\n";
+
+static char seeAlsoString[] = "TextBounds TextSize TextFont TextStyle TextColor TextBackgroundColor Preference";
+
+// OS/X specific default renderer:
+#if PSYCH_SYSTEM == PSYCH_OSX
+
+#define USE_ATSU_TEXT_RENDER	1
 
 //Specify arguments to glTexImage2D when creating a texture to be held in client RAM. The choices are dictated  by our use of Apple's 
 //GL_UNPACK_CLIENT_STORAGE_APPLE constant, an argument to glPixelStorei() which specifies the packing format of pixel the data passed to 
 //glTexImage2D().  
 #define texImage_target			GL_TEXTURE_2D
 #define texImage_level			0
-#define	texImage_internalFormat		GL_RGBA
-#define texImage_sourceFormat		GL_BGRA
+#define	texImage_internalFormat	GL_RGBA
+#define texImage_sourceFormat	GL_BGRA
 #define texImage_sourceType		GL_UNSIGNED_INT_8_8_8_8_REV
 
 //Specify arguments to CGBitmapContextCreate() when creating a CG context which matches the pixel packing of the texture stored in client memory.
@@ -104,216 +152,44 @@ static char synopsisString[] =
 #define cg_RGBA_32_BitsPerPixel		32
 #define cg_RGBA_32_BitsPerComponent	8
 
-PsychError SCREENDrawText(void) 
+PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
 {
 	char			errmsg[1000];
-    PsychWindowRecordType 	*winRec;
-    CGContextRef		cgContext;
-    unsigned int		memoryTotalSizeBytes, memoryRowSizeBytes;
+    CGContextRef	cgContext;
+    unsigned int	memoryTotalSizeBytes, memoryRowSizeBytes;
     UInt32			*textureMemory;
     GLuint			myTexture;
-    CGColorSpaceRef		cgColorSpace;
-    PsychRectType		windowRect;
-    //	double			textureSizeX, textureSizeY;
-    char			*textString;
-    psych_bool			doSetColor, doSetBackgroundColor;
-    PsychColorType		colorArg, backgroundColorArg;
-    //	CGImageAlphaInfo	quartzAlphaMode, correctQuartzAlphaMode, correctQuartzAlphaModeMaybe;
+    CGColorSpaceRef	cgColorSpace;
     CGRect			quartzRect;
-    GLdouble			backgroundColorVector[4];
-    //for creating the layout object and setting the run attributes.  (we can get rid of these after we unify parts of DrawText and TextBounds).
-    char			*textCString;
-    int				stringLengthChars;
-    Str255			textPString;
-    int				uniCharBufferLengthElements, uniCharBufferLengthChars, uniCharBufferLengthBytes;
+    GLdouble		backgroundColorVector[4];
     UniChar			*textUniString;
-    TextEncoding                textEncoding;
-    OSStatus			callError;
-    TextToUnicodeInfo		textToUnicodeInfo;
-    ByteCount			uniCharStringLengthBytes;
-    ATSUStyle			atsuStyle;
-    ATSUTextLayout		textLayout;				//layout is a pointer to an opaque struct.
-    
+    OSStatus		callError;
+    ATSUStyle		atsuStyle;
+    ATSUTextLayout	textLayout;
     Rect			textBoundsQRect;
     double			textBoundsPRect[4], textBoundsPRectOrigin[4], textureRect[4];
     double			textureWidth, textureHeight, textHeight, textWidth, textureTextFractionY, textureTextFractionXLeft,textureTextFractionXRight, textHeightToBaseline;
     double			quadLeft, quadRight, quadTop, quadBottom;
-    int				yPositionIsBaseline;
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
 	int				dummy1, dummy2;
-	double*			unicodedoubles;
-	int ix;
-	GLubyte* rpb;
-	psych_bool bigendian;
+	int				ix;
+	GLubyte			*rpb;
+	psych_bool		bigendian;
 	
 	// Detect endianity (byte-order) of machine:
-    ix=255;
-    rpb=(GLubyte*) &ix;
+    ix = 255;
+    rpb = (GLubyte*) &ix;
     bigendian = ( *rpb == 255 ) ? FALSE : TRUE;
     ix = 0; rpb = NULL;
-	textCString = NULL;
     
-    //for layout attributes.  (not the same as run style attributes set by PsychSetATSUTStyleAttributes or line attributes which we do not set.) 	
-    ATSUAttributeTag		saTags[] =  {kATSUCGContextTag };
-    ByteCount			saSizes[] = {sizeof(CGContextRef)};
+    // For layout attributes.  (not the same as run style attributes set by PsychSetATSUTStyleAttributes or line attributes which we do not set.) 	
+    ATSUAttributeTag			saTags[] =  {kATSUCGContextTag };
+    ByteCount					saSizes[] = {sizeof(CGContextRef)};
     ATSUAttributeValuePtr       saValue[] = {&cgContext};
-    
-    //all subfunctions should have these two lines.  
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    
-    //Get the window structure for the onscreen window.  It holds the onscreein GL context which we will need in the
-    //final step when we copy the texture from system RAM onto the screen.
-    PsychErrorExit(PsychCapNumInputArgs(7));   	
-    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(2));  
-    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
-    
-    //Get the dimensions of the target window
-    PsychGetRectFromWindowRecord(windowRect, winRec);
-    
-    //Get the text string (it is required)
-    //PsychAllocInCharArg(2, kPsychArgRequired, &textString);
-    
-    //Get the X and Y positions.
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
-    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
-    
-    //Get the color
-    //Get the new color record, coerce it to the correct mode, and store it.  
-    doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
-    if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
-    
-    doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
-    if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
-    
-    /////////////common to TextBounds and DrawText:create the layout object////////////////// 
-    //read in the string and get its length and convert it to a unicode string.
-    if (PsychGetArgType(2) == PsychArgType_char) {
-		PsychAllocInCharArg(2, TRUE, &textCString);
-		stringLengthChars=strlen(textCString);
-		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.
-		if(stringLengthChars > 255) PsychErrorExitMsg(PsychError_unimplemented, "Cut corners and TextBounds will not accept a string longer than 255 characters");
-		CopyCStringToPascal(textCString, textPString);
-		uniCharBufferLengthChars= stringLengthChars * CHAR_TO_UNICODE_LENGTH_FACTOR;
-		uniCharBufferLengthElements= uniCharBufferLengthChars + 1;		
-		uniCharBufferLengthBytes= sizeof(UniChar) * uniCharBufferLengthElements;
-		textUniString=(UniChar*)malloc(uniCharBufferLengthBytes);
-		//Using a TextEncoding type describe the encoding of the text to be converteed.  
-		textEncoding=CreateTextEncoding(kTextEncodingMacRoman, kTextEncodingDefaultVariant, kTextEncodingDefaultFormat);
-		//Create a structure holding conversion information from the text encoding type we just created.
-		callError=CreateTextToUnicodeInfoByEncoding(textEncoding,&textToUnicodeInfo);
-		//Convert the text to a unicode string
-		callError=ConvertFromPStringToUnicode(textToUnicodeInfo, textPString, (ByteCount)uniCharBufferLengthBytes,	&uniCharStringLengthBytes,	textUniString);
-	}
-	else {
-		// Not a character string: Check if it's a double matrix for Unicode text encoding:
-		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
-		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
-		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
-		textUniString=(UniChar*) malloc(sizeof(UniChar) * stringLengthChars);
-		for (dummy1=0; dummy1<stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) unicodedoubles[dummy1];
-	}
 
-	// Does usercode want us to use a text rendering plugin instead of our standard ATSU renderer?
-	if (PsychPrefStateGet_TextRenderer() == 2) {
-		// Use external dynamically loaded plugin:
-		
-		// Try to load plugin if not already loaded: The dlopen call will search in all standard system
-		// search paths, the $HOME/lib directory if any, and relative to the current working directory.
-		// The functions in the plugin will be linked immediately and if successfull, made available
-		// directly for use within the code, with no need to dlsym() manually bind'em:
-		if (NULL == drawtext_plugin) {
-			drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
-			drawtext_plugin_firstcall = TRUE;
-		}
-		else {
-			drawtext_plugin_firstcall = FALSE;
-		}
-		
-		// Successfully loaded and bound?
-		if (NULL == drawtext_plugin) {
-			// Failed! Revert to standard text rendering code below:
-			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
-		}
-		else {
-			// Success! Now we can safely call into the plugin functions for text rendering:
-			
-			// Perform first time init, if needed:
-			if (drawtext_plugin_firstcall) {
-				if (PsychInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
-
-				// Enable use of plugins internal fontMapper:
-				PsychSetTextUseFontmapper(1, 0);
-			}
-			
-			// Assign text attributes like fontName, style and size:
-			PsychFontStructType	*fontRecord;
-			if (!PsychGetFontRecordFromFontFamilyNameAndFontStyle(winRec->textAttributes.textFontName, winRec->textAttributes.textStyle, &fontRecord)) {
-				PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, Could not find font for given fontName and style!");
-			}
-
-			PsychSetTextFont(fontRecord->fontFMFamilyName);
-			PsychSetTextStyle(winRec->textAttributes.textStyle);
-			PsychSetTextSize((double) winRec->textAttributes.textSize);
-			PsychSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
-
-			PsychCoerceColorMode(&(winRec->textAttributes.textBackgroundColor));
-			PsychConvertColorToDoubleVector(&(winRec->textAttributes.textBackgroundColor), winRec, backgroundColorVector);
-			//by default override the background alpha value, setting alpha transparecy. Only when DrawText obeys the
-			// alpha blend function setting do we need or want the the alpha argument for the background.
-			if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
-			PsychSetTextBGColor(backgroundColorVector);
-
-			double colorVector[4];
-			PsychCoerceColorMode(&(winRec->textAttributes.textColor));
-			PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, colorVector);
-			PsychSetTextFGColor(colorVector);
-
-			// Convert UniChar textUniString to double string:
-			double* textUniDoubleString = (double*) malloc(sizeof(double) * stringLengthChars);
-			for (ix = 0; ix < stringLengthChars; ix++) textUniDoubleString[ix] = (double) textUniString[ix];
-
-			// Enable this windowRecords framebuffer as current drawingtarget:
-			PsychSetDrawingTarget(winRec);
-			
-			// Save all state:
-			glPushAttrib(GL_ALL_ATTRIB_BITS);
-			
-			// Disable draw shader:
-			PsychSetShader(winRec, 0);
-			
-			if(!PsychPrefStateGet_TextAlphaBlending()){
-				PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
-				PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-			}
-			PsychUpdateAlphaBlendingFactorLazily(winRec);
-			
-			glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
-
-			// Draw it:
-			PsychDrawText(winRec->textAttributes.textPositionX, winRec->rect[kPsychBottom] - winRec->textAttributes.textPositionY, stringLengthChars, textUniDoubleString);
-			
-			if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
-			glPopAttrib();
-
-			// Compute bounding box of drawn string:
-			float xmin, ymin, xmax, ymax;
-			PsychMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
-			//printf("BBOX: %f,%f --> %f,%f\n", xmin, ymin, xmax, ymax);
-			
-			// Update x position of text drawing cursor:
-			winRec->textAttributes.textPositionX += (xmax - xmin + 1);
-			
-			// Free temporary Unicode strings:
-			free((void*) textUniDoubleString);
-			free((void*) textUniString);
-			
-			// This jump will copy out the new updated textcursor position and return control
-			// to the runtime:
-			goto drawtext_skipped;
-		}
-	}
+	// Convert input text string from double-vector encoding to OS/X UniChar encoding:
+	textUniString = (UniChar*) PsychMallocTemp(sizeof(UniChar) * stringLengthChars);
+	for (dummy1 = 0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (UniChar) textUniDoubleString[dummy1];
 	
 	//create the text layout object
     callError=ATSUCreateTextLayout(&textLayout);
@@ -327,14 +203,9 @@ PsychError SCREENDrawText(void)
     /////////////end common to TextBounds and DrawText//////////////////
     
 	// Define the meaning of the y position of the specified drawing cursor.
-	// We get the global setting from the Screen preference, but allow to override
-	// it on a per-invocation basis via the optional 7th argument to 'DrawText':
-	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
-	 
 	if (yPositionIsBaseline) {
 		// Y position of drawing cursor defines distance between top of text and
-		// baseline of text, i.e. the textheight excluding descenders of letters:
+		// baseline of text, i.e. the textheight excluding descenders of letters.
 
 		// Need to compute offset via ATSU:
 		ATSUTextMeasurement mleft, mright, mtop, mbottom;
@@ -354,13 +225,14 @@ PsychError SCREENDrawText(void)
 		textHeightToBaseline = 0;
 	}
 
-    //Get the bounds for our text so that and create a texture of sufficient size to containt it. 
+    // Get the bounds for our text and create a texture of sufficient size to contain it. 
     ATSTrapezoid trapezoid;
     ItemCount oActualNumberOfBounds = 0;
     callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 0, NULL, &oActualNumberOfBounds);
     if (callError || oActualNumberOfBounds!=1) {
         PsychErrorExitMsg(PsychError_internal, "Failed to compute bounding box in call 1 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
     }
+	
     callError=ATSUGetGlyphBounds(textLayout, 0, 0, kATSUFromTextBeginning, kATSUToTextEnd, kATSUseDeviceOrigins, 1, &trapezoid, &oActualNumberOfBounds);
     if (callError || oActualNumberOfBounds!=1) {
         PsychErrorExitMsg(PsychError_internal, "Failed to retrieve bounding box in call 2 to ATSUGetGlyphBounds() (nrbounds!=1)\n");    
@@ -373,6 +245,23 @@ PsychError SCREENDrawText(void)
     
     // printf("Top %lf x Bottom %lf :: ",textBoundsPRect[kPsychTop], textBoundsPRect[kPsychBottom]); 
     PsychNormalizeRect(textBoundsPRect, textBoundsPRectOrigin);
+
+	// Only text boundingbox in absolute coordinates requested?
+	if (boundingbox) {
+		// Yes. Compute and assign it:
+		(*boundingbox)[kPsychLeft]   = textBoundsPRectOrigin[kPsychLeft]   + *xp;
+		(*boundingbox)[kPsychRight]  = textBoundsPRectOrigin[kPsychRight]  + *xp;
+		(*boundingbox)[kPsychTop]    = textBoundsPRectOrigin[kPsychTop]    + *yp - textHeightToBaseline;
+		(*boundingbox)[kPsychBottom] = textBoundsPRectOrigin[kPsychBottom] + *yp - textHeightToBaseline;
+		
+		// Release resources:
+		ATSUDisposeStyle(atsuStyle);
+		ATSUDisposeTextLayout(textLayout);
+
+		// Done.
+		return(PsychError_none);
+	}
+
     // printf("N: Top %lf x Bottom %lf :: ",textBoundsPRectOrigin[kPsychTop], textBoundsPRectOrigin[kPsychBottom]);
 	// Denis found an off-by-one bug in the text width. Don't know where it should come from in our code, but
 	// my "solution" is to simply extend the width by one: 
@@ -385,6 +274,7 @@ PsychError SCREENDrawText(void)
 
     // printf("N: Width %lf x Height %lf :: ", textWidth, textHeight); 
     PsychFindEnclosingTextureRect(textBoundsPRectOrigin, textureRect);
+
     //Allocate memory the size of the texture.  The CG context is the same size.  It could be smaller, because Core Graphics surfaces don't have the power-of-two
     //constraint requirement.   
     textureWidth=PsychGetWidthFromRect(textureRect);
@@ -398,58 +288,55 @@ PsychError SCREENDrawText(void)
     memoryTotalSizeBytes= memoryRowSizeBytes * textureHeight;
     textureMemory=(UInt32 *)valloc(memoryTotalSizeBytes);
     if(!textureMemory) PsychErrorExitMsg(PsychError_internal, "Failed to allocate surface memory\n");
+
     // printf("N: TexWidth %lf x TexHeight %lf :: ", textureWidth, textureHeight);
 	
 	// This zero-fill of memory should not be neccessary, but it is, as a workaround for some bug introduced
 	// by Apple into OS/X 10.6.0 -- Apparently fails to initialize memory properly, so pixeltrash gets through...
     memset(textureMemory, 0, memoryTotalSizeBytes);
 
-    //Create the Core Graphics bitmap graphics context.  We can tell CoreGraphics to use the same memory storage format as will our GL texture, and in fact use
-    //  the idential memory for both.   
+    // Create the Core Graphics bitmap graphics context.  We can tell CoreGraphics to use the same memory storage format as will our GL texture, and in fact use
+    // the idential memory for both.   
     cgColorSpace=CGColorSpaceCreateDeviceRGB();
-    //there is a bug here.  the format constant should be ARGB not RBGA to agree with the texture format.           
+
+    // There is another OSX bug here.  the format constant should be ARGB not RBGA to agree with the texture format.           
     cgContext= CGBitmapContextCreate(textureMemory, textureWidth, textureHeight, 8, memoryRowSizeBytes, cgColorSpace, kCGImageAlphaPremultipliedFirst);
     if(!cgContext){
         free((void *)textureMemory);
-		printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i, textCString=%s\n", textureWidth, textureHeight, memoryRowSizeBytes, textCString);
-		printf("PTB-ERROR: In Screen('DrawText'): xPos=%lf yPos=%lf StringLength=%i\nDecoded Unicode-String:\n", winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY, stringLengthChars);
+		printf("PTB-ERROR: In Screen('DrawText'): Failed to allocate CG Bitmap Context for: texWidth=%i, texHeight=%i, memRowSize=%i\n", textureWidth, textureHeight, memoryRowSizeBytes);
+		printf("PTB-ERROR: In Screen('DrawText'): xPos=%lf yPos=%lf StringLength=%i\nDecoded Unicode-String:\n", *xp, *yp, stringLengthChars);
 		for (ix=0; ix < stringLengthChars; ix++) printf("%i, ", (int) textUniString[ix]);
 		printf("\nPTB-ERROR: In Screen('DrawText'): Text corrupt?!?\n");
 		
-		free((void*)textUniString);
         goto drawtext_skipped;
     }
+	
     CGContextSetFillColorSpace (cgContext,cgColorSpace);
-    
-    //check that we are in the correct alpha mode (for the debugger... should change this to exit with error)
-    //correctQuartzAlphaMode= kCGImageAlphaPremultipliedLast;
-    //correctQuartzAlphaModeMaybe=kCGImageAlphaPremultipliedFirst;
-    //quartzAlphaMode=CGBitmapContextGetAlphaInfo(cgContext);
-    
-    //fill in the text background.  It's stored in the Window record in PsychColor format.  We convert it to an OpenGL color vector then into a quartz 
-    // vector	
+        
+    // Fill in the text background.  It's stored in the Window record in PsychColor format.  We convert it to an OpenGL color vector then into a quartz vector:
     quartzRect.origin.x=(float)0;
     quartzRect.origin.y=(float)0;
     quartzRect.size.width=(float)textureWidth;
     quartzRect.size.height=(float)textureHeight;
-    PsychCoerceColorMode(&(winRec->textAttributes.textBackgroundColor));
-    PsychConvertColorToDoubleVector(&(winRec->textAttributes.textBackgroundColor), winRec, backgroundColorVector);
-    //by default override the background alpha value, setting alpha transparecy. Only when DrawText obeys the alpha blend function setting do we need or want the the alpha argument for the background.
-    if(!PsychPrefStateGet_TextAlphaBlending())
-        backgroundColorVector[3]=0;
+    PsychCoerceColorMode(backgroundColor);
+    PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
+
+	// Override alpha-blending settings if needed:
+    if(!PsychPrefStateGet_TextAlphaBlending()) backgroundColorVector[3]=0;
     
     CGContextSetRGBFillColor(cgContext, (float)(backgroundColorVector[0]), (float)(backgroundColorVector[1]), (float)(backgroundColorVector[2]), (float)(backgroundColorVector[3])); 
     CGContextFillRect(cgContext, quartzRect);
     
-    //now draw the text and close up the CoreGraphics shop before we proceed to textures.
-    //associate the core graphics context with text layout object holding our unicode string.
+    // Now draw the text and close up the CoreGraphics shop before we proceed to textures.
+    // associate the core graphics context with text layout object holding our unicode string.
     callError=ATSUSetLayoutControls (textLayout, 1, saTags, saSizes, saValue);
     ATSUDrawText(textLayout, kATSUFromTextBeginning, kATSUToTextEnd, Long2Fix((long)0), Long2Fix((long) textBoundsPRect[kPsychBottom]));
-    CGContextFlush(cgContext); 	//this might not be necessary but do it just in case.
-                                //free  stuff
-    free((void*)textUniString);
-    callError=ATSUDisposeStyle(atsuStyle);
-    //TO DO: we need to get the new text location and put it back into the window record's X and Y locations.
+    CGContextFlush(cgContext);
+
+	// Free ATSUI stuff that is no longer needed:
+    ATSUDisposeStyle(atsuStyle);
+	ATSUDisposeTextLayout(textLayout);
+
     //Remove references from Core Graphics to the texture memory.  CG and OpenGL can share concurrently, but we don't won't need this anymore.
     CGColorSpaceRelease (cgColorSpace);
     CGContextRelease(cgContext);	
@@ -493,19 +380,17 @@ PsychError SCREENDrawText(void)
     
     //The texture holding the text is >=  the bounding rect for the text because of the requirement for textures that they have sides 2^(integer)x.  
     //Therefore we texture only from the region of the texture which contains the text, not the entire texture.  Therefore the rect which we texture is the dimensions
-    //of the text, not the dimensions of the texture.
-    
-    //texture locations
-    textureTextFractionXLeft=0/textureWidth;
-    textureTextFractionXRight=textWidth / textureWidth;
-    textureTextFractionY= 1.0 - textHeight/textureHeight;
-    
+    //of the text, not the dimensions of the texture.    
+    textureTextFractionXLeft = 0 / textureWidth;
+    textureTextFractionXRight = textWidth / textureWidth;
+    textureTextFractionY = 1.0 - textHeight / textureHeight;
+
     // Final screen position of the textured text-quad:
-    quadLeft=winRec->textAttributes.textPositionX;
-    quadRight=winRec->textAttributes.textPositionX + textWidth;
+    quadLeft  = *xp;
+    quadRight = *xp + textWidth;
 	// quadTop needs to be adjusted by textHeightToBaseline, see above:
-    quadTop=winRec->textAttributes.textPositionY - textHeightToBaseline;
-    quadBottom=quadTop + textHeight;
+    quadTop = *yp - textHeightToBaseline;
+    quadBottom = quadTop + textHeight;
     
     // Submit quad to pipeline:
     glBegin(GL_QUADS);
@@ -530,9 +415,8 @@ PsychError SCREENDrawText(void)
     }
     PsychTestForGLErrors();
     
-    if(!PsychPrefStateGet_TextAlphaBlending())
-        PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
-   
+    if(!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
+
     // Remove references from gl to the texture memory  & free gl's associated resources
     glDeleteTextures(1, &myTexture);	 
     
@@ -540,14 +424,10 @@ PsychError SCREENDrawText(void)
 	
     // Update drawing cursor: Place cursor so that text could
     // be appended right-hand of the drawn text.
-    winRec->textAttributes.textPositionX = quadRight;
+    *xp = quadRight;
 
-// We jump directly to this position in the code if the textstring is empty --> No op.
-drawtext_skipped:    
-    // Copy out new, updated "cursor position":
-    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
-    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
-    
+	// We jump directly to this position in the code if the textstring is empty --> No op.
+drawtext_skipped:        
     return(PsychError_none);
 }
 
@@ -557,8 +437,8 @@ drawtext_skipped:
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 
-// Define function prototype which is needed later:
-PsychError SCREENDrawTextGDI(PsychRectType* boundingbox);
+// Protototype of internal GDI text renderer to be called later in this file:
+PsychError PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
 
 // Microsoft-Windows implementation of DrawText...
 // The code below will need to be restructured and moved to the proper
@@ -768,113 +648,50 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
 #endif
 
 
-// The DrawText implementation itself is identical on Windows and Linux:
-
-// Synopsis string for Windows & Linux DrawText is different from OS-X...
-static char synopsisString[] = 
-    "Draw text. On MS-Windows, \"text\" may include two-byte (16 bit) Unicode characters (e.g. Chinese). "
-	"A standard Matlab/Octave text string is interpreted as 8 bit ASCII string. If you "
-	"want to pass a string which contains 16 bit UTF-16 unicode characters, convert the "
-	"text to a double matrix, ie, mytext = double(myunicodetext); then pass the double "
-	"matrix to this function. Unicode text drawing is supported if you select the default "
-	"high quality, but slower GDI text renderer on Windows.\n"
-	"With the optional fast, low quality renderer, neither anti-aliasing nor Unicode are "
-	"supported and text positioning may be a bit less accurate, but it is a good choice if "
-	"you are in need for speed over everything else. Select it via the command:\n"
-	"Screen('Preference', 'TextRenderer', 0); inserted at the top of your script.\n"
-	"On Linux, Unicode and anti-aliasing aren't supported yet.\n"
-    "Default \"x\" \"y\" is current pen location. \"color\" is the CLUT index (scalar or [r "
-    "g b] triplet) that you want to poke into each pixel; default produces black with "
-    "the standard CLUT for this window's pixelSize.  \"yPositionIsBaseline\" If specified, "
-	"will override the global preference setting for text positioning: It defaults to off. "
-	"If it is set to 1, the y pen location defines the base line of drawn text, otherwise "
-	"it defines the top of the drawn text. Old PTB's had a behaviour equivalent to setting 1, "
-	"unfortunately this behaviour wasn't replicated in pre 3.0.8 PTB's so now we stick to the "
-	"new behaviour by default.\n"
-	"\"newX, newY\" return the final pen location. On GNU/Linux the font renderer is currently "
-	"a very simple bitmap renderer which doesn't allow for Unicode rendering or anti-aliasing."
-	"Btw.: Screen('Preference', ...); provides a couple of interesting text preference "
-	"settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.";
-
-PsychError SCREENDrawText(void)
+// The DrawText implementation itself is identical on Windows and Linux for the simple displaylist-based renderers:
+PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
 {
-    PsychWindowRecordType *winRec;
-    PsychRectType		     windowRect;
-    char			           *textString;
-    int                   stringl;
-    psych_bool			        doSetColor, doSetBackgroundColor;
-    PsychColorType		  colorArg, backgroundColorArg;
-    int				        i, yPositionIsBaseline;
-    float                 accumWidth, maxHeight, textHeightToBaseline, scalef; 
+    char			*textString;
+    unsigned int	i;
+    float			accumWidth, maxHeight, textHeightToBaseline, scalef; 
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
 		 // Use GDI based text renderer on Windows, instead of display list based one?
-		 if (PsychPrefStateGet_TextRenderer()==1) {
+		 if (PsychPrefStateGet_TextRenderer() == 1) {
 			// Call the GDI based renderer instead:
-			return(SCREENDrawTextGDI(NULL));
+			return(PsychOSDrawUnicodeTextGDI(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
 	 	 }
 	#endif
-    
-    // All subfunctions should have these two lines.  
-    PsychPushHelp(useString, synopsisString, seeAlsoString);
-    if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-    
-    PsychErrorExit(PsychCapNumInputArgs(7));   	
-    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-    PsychErrorExit(PsychCapNumOutputArgs(2));  
 
-    //Get the window structure for the onscreen window.
-    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
-    
-    //Get the dimensions of the target window
-    PsychGetRectFromWindowRecord(windowRect, winRec);
-    
-    //Get the text string (it is required)
-    PsychAllocInCharArg(2, kPsychArgRequired, &textString);
-    
-    //Get the X and Y positions.
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
-    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
-    
-    //Get the new color record, coerce it to the correct mode, and store it.  
-    doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
-    if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
+	// Malloc charstring and convert unicode string to char string:
+	textString = (char*) PsychMallocTemp(stringLengthChars * sizeof(char));
+    for (i = 0; i < stringLengthChars; i++) textString[i] = (char) textUniDoubleString[i];
 
-    // Same for background color: FIXME This is currently a no-op. Don't know yet how to
-    // map this to the Windows way of font rendering...
-    doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
-    if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
-
-	// Special handling of offset for y position correction:
-	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
-
-    // Enable this windowRecords framebuffer as current drawingtarget:
-    PsychSetDrawingTarget(winRec);
-
-	// Set default draw shader on Windows, but disable on Linux, as glBitmapped rendering doesn't work with it:
-	PsychSetShader(winRec, (PSYCH_SYSTEM == PSYCH_LINUX) ? 0 : -1);
-
-	PsychUpdateAlphaBlendingFactorLazily(winRec);
-	PsychCoerceColorMode( &(winRec->textAttributes.textColor));
-    PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
-
+	// Boundingbox computation or real text drawing?
+	if (boundingbox) {
+		// Enable this windowRecords OpenGL context:
+		PsychSetGLContext(winRec);
+	}
+	else {
+		// Enable this windowRecords framebuffer as current drawingtarget:
+		PsychSetDrawingTarget(winRec);
+	}
+	
     // Does the font (better, its display list) need to be build or rebuild, because
     // font name, size or settings have changed?
     // This routine will check it and perform all necessary ops if so...
     PsychOSRebuildFont(winRec);
 
     // Compute text-bounds as x and y increments:
-    stringl=strlen(textString);
     accumWidth=0;
     maxHeight=0;
-    for (i=0; i<stringl; i++) {
-      accumWidth+=winRec->textAttributes.glyphWidth[textString[i]];
-      maxHeight=(winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
+    for (i = 0; i < stringLengthChars; i++) {
+      accumWidth += winRec->textAttributes.glyphWidth[textString[i]];
+      maxHeight   = (winRec->textAttributes.glyphHeight[textString[i]] > maxHeight) ? winRec->textAttributes.glyphHeight[textString[i]] : maxHeight;
     }
 
-    accumWidth*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
-    maxHeight*=(PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+    accumWidth *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
+    maxHeight  *= (PSYCH_SYSTEM == PSYCH_WINDOWS) ? winRec->textAttributes.textSize : 1.0;
 
 	if (yPositionIsBaseline) {
 		// Y position of drawing cursor defines distance between top of text and
@@ -887,30 +704,55 @@ PsychError SCREENDrawText(void)
 		textHeightToBaseline = 0;
 	}
 
-    // Draw the text string to window by execution of the display lists in
-    // proper order:
+	// Boundingbox computation or real text drawing?
+	if (boundingbox) {
+		// Only computation of bounding box requested, no real text drawing:
+
+        // Top-Left bounds of text are current (x,y) position of text drawing cursor:
+		(*boundingbox)[kPsychLeft]  = *xp;
+		(*boundingbox)[kPsychTop]   = *yp;
+		(*boundingbox)[kPsychRight] = *xp + accumWidth;
+		// MK: This should work according to spec, but f%$!*g Windows only returns zero values
+		// for glyphHeight, so maxHeight is always zero :(
+		// (*boundingbox)[kPsychBottom] = *yp + maxHeight;
+		//
+		// As fallback, we use this: It gives correct Bottom-Bound for character strings with characters that
+		// don't contain descenders. The extra height of characters with descenders is not taken into account.
+		(*boundingbox)[kPsychBottom] = *yp + winRec->textAttributes.textSize;
+		
+		// Done.
+		return(PsychError_none);
+	}
+
+	// Set default draw shader on Windows, but disable on Linux, as glBitmapped rendering doesn't work with it:
+	PsychSetShader(winRec, (PSYCH_SYSTEM == PSYCH_LINUX) ? 0 : -1);
+
+	// Set proper alpha-blending mode:
+	PsychUpdateAlphaBlendingFactorLazily(winRec);
+
+	// Set proper color:
+    PsychSetGLColor(textColor, winRec);
 
     // Backup modelview matrix:
     glMatrixMode(GL_MODELVIEW);
     glPushMatrix();
 
     #if PSYCH_SYSTEM == PSYCH_WINDOWS
-    // Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
-    glTranslatef(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY - textHeightToBaseline + winRec->textAttributes.textSize, -0.5f);
+		// Position our "cursor": These are 3D fonts where the glyphs are represented by 3D geometry.
+		glTranslatef(*xp, *yp - textHeightToBaseline + winRec->textAttributes.textSize, -0.5f);
 
-    // Scale to final size:
-    // glScalef(winRec->textAttributes.textSize, -1 * winRec->textAttributes.textSize, 1);
-	 scalef = MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
-    glScalef(scalef, -1 * scalef, 1);
+		// Scale to final size:
+		scalef = MulDiv(winRec->textAttributes.textSize, GetDeviceCaps(winRec->targetSpecific.deviceContext, LOGPIXELSY), 72);
+		glScalef(scalef, -1 * scalef, 1);
     #endif
 
     #if PSYCH_SYSTEM == PSYCH_LINUX
-    // Position our "cursor": The X11 implementation uses glBitmap()'ed fonts, so we need to position
-    // the rasterposition cursor. We need the glColor4dv() here to handle a special case when using
-    // HDR framebuffers and HDR draw shaders -- this is not compatible with Linux glBitmapped() rendering...
-    glColor4dv(winRec->currentColor);
-    glRasterPos2f(winRec->textAttributes.textPositionX, winRec->textAttributes.textPositionY  - textHeightToBaseline + winRec->textAttributes.textSize);
-    glPixelZoom(1,1);
+		// Position our "cursor": The X11 implementation uses glBitmap()'ed fonts, so we need to position
+		// the rasterposition cursor. We need the glColor4dv() here to handle a special case when using
+		// HDR framebuffers and HDR draw shaders -- this is not compatible with Linux glBitmapped() rendering...
+		glColor4dv(winRec->currentColor);
+		glRasterPos2f(*xp, *yp  - textHeightToBaseline + winRec->textAttributes.textSize);
+		glPixelZoom(1,1);
     #endif
 
     // Backup display list state and state of glFrontFace(): The display lists on M$-Windows
@@ -922,7 +764,7 @@ PsychError SCREENDrawText(void)
     glListBase(winRec->textAttributes.DisplayList);
 
     // Render it...
-    glCallLists(strlen(textString), GL_UNSIGNED_BYTE, textString);
+    glCallLists(stringLengthChars, GL_UNSIGNED_BYTE, textString);
 
     // Restore state:
     glPopAttrib();
@@ -931,14 +773,10 @@ PsychError SCREENDrawText(void)
     // Mark end of drawing op. This is needed for single buffered drawing:
     PsychFlushGL(winRec);
 
-    // Update drawing cursor: Place cursor so that text could
-    // be appended right-hand of the drawn text.
-    winRec->textAttributes.textPositionX += accumWidth;
+    // Update drawing cursor: Place cursor so that text could be appended right-hand of the drawn text.
+    *xp = *xp + accumWidth;
 
-    // Copy out new, updated "cursor position":
-    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
-    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
-
+	// Done.
     return(PsychError_none);
 }
 
@@ -961,7 +799,7 @@ PsychError SCREENDrawText(void)
 // is slow due to hostmemory -> VRAM copy.
 
 // The following variables must be released at Screen flush time the latest.
-// The exit routine CleanupDrawTextGDI() does this when invoked
+// The exit routine PsychCleanupTextRenderer() does this when invoked
 // from the ScreenCloseAllWindows() function, as part of a Screen flush,
 // error abort, or Screen('CloseAll').
 
@@ -980,12 +818,12 @@ static int					oldWidth=-1;	// Size of last target window for drawtext.
 static int					oldHeight=-1;	// dto.
 static PsychWindowRecordType* oldWin = NULL; // Last window to which text was drawn to.
 
-void CleanupDrawTextGDI(void)
+void CleanupDrawtextGDI(void)
 {
-	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In CleanupDrawTextGDI: Releasing GDI ressources for DrawTextGDI.\n");
+	if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In CleanupDrawtextGDI: Releasing GDI ressources for DrawTextGDI.\n");
 
 	if (font) {
-		if (!DeleteObject(font)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release font! Expect memory leaks!!!\n");
+		if (!DeleteObject(font)) printf("PTB-WARNING: In CleanupDrawtextGDI: Failed to release font! Expect memory leaks!!!\n");
 	}
 	font = NULL;
 	
@@ -994,10 +832,10 @@ void CleanupDrawTextGDI(void)
 		SelectObject(dc, defaultDIB);
 
 		// Release now detached hbmBuffer:
-		if (!DeleteObject((HGDIOBJ) hbmBuffer)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release DIB buffer! Expect memory leaks!!!\n");
+		if (!DeleteObject((HGDIOBJ) hbmBuffer)) printf("PTB-WARNING: In CleanupDrawtextGDI: Failed to release DIB buffer! Expect memory leaks!!!\n");
 
 		// Delete device context:
-		if (!DeleteDC(dc)) printf("PTB-WARNING: In CleanupDrawTextGDI: Failed to release device context DC! Expect memory leaks!!!\n");
+		if (!DeleteDC(dc)) printf("PTB-WARNING: In CleanupDrawtextGDI: Failed to release device context DC! Expect memory leaks!!!\n");
 
 		hbmBuffer = NULL;
 		pBits = NULL;
@@ -1012,18 +850,11 @@ void CleanupDrawTextGDI(void)
 	return;
 }
 
-PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
+PsychError	PsychOSDrawUnicodeTextGDI(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
 {
-    PsychWindowRecordType		*winRec;
-    PsychRectType				windowRect, boundingRect;
-    char						*textString;
-	double*						unicodedoubles;
-	int							stringLengthChars;
+    PsychRectType				boundingRect;
 	WCHAR*						textUniString;
-	int							dummy1, dummy2;
-    psych_bool						doSetColor, doSetBackgroundColor;
-    PsychColorType				colorArg, backgroundColorArg;
-    int							i, yPositionIsBaseline;
+    int							i;
 	GLdouble					incolors[4];
 	unsigned char				bincolors[4];
     GLenum						normalSourceBlendFactor, normalDestinationBlendFactor;
@@ -1035,77 +866,22 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	HFONT						defaultFont;
 	unsigned char				colorkeyvalue;
 	unsigned char*				scanptr;
-	int skiplines, renderheight;	
-	DWORD outputQuality;
-	textUniString = NULL;
-	
-	if (boundingbox == NULL) {
-		// All subfunctions should have these two lines.  
-		PsychPushHelp(useString, synopsisString, seeAlsoString);
-		if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
-		
-		PsychErrorExit(PsychCapNumInputArgs(7));   	
-		PsychErrorExit(PsychRequireNumInputArgs(2)); 	
-		PsychErrorExit(PsychCapNumOutputArgs(2));  
-	}
-	
-    //Get the window structure for the onscreen window.
-    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
-    
-    //Get the dimensions of the target window
-    PsychGetRectFromWindowRecord(windowRect, winRec);
-	
-    // Standard 1 byte ASCII or UTF-16 Unicode?
-	if (PsychGetArgType(2) == PsychArgType_char) {
-    	// Get standard 1 byte ASCII string:
-    	PsychAllocInCharArg(2, kPsychArgRequired, &textString);
-		if((strlen(textString) < 1) && boundingbox) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
-		if(strlen(textString) < 1) goto drawtext_skipped; // We skip most of the code if string is empty.	
-		unicodedoubles = NULL;
-	}
-	else {
-		// Not a character string: Check if it's a double matrix for Unicode text encoding:
-		PsychAllocInDoubleMatArg(2, TRUE, &dummy1, &stringLengthChars, &dummy2, &unicodedoubles);
-		if (dummy1!=1 || dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 1 row by character columns!");
-		if((stringLengthChars < 1) && boundingbox) PsychErrorExitMsg(PsychError_user, "You asked me to compute the bounding box of an empty text string?!? Sorry, that's a no no...");
-		if(stringLengthChars < 1) goto drawtext_skipped; // We skip most of the code if string is empty.		
-		textUniString=(WCHAR*) malloc(sizeof(WCHAR) * stringLengthChars);
-		for (dummy1=0; dummy1 < stringLengthChars; dummy1++) textUniString[dummy1] = (WCHAR) unicodedoubles[dummy1];
-	}
-	
-    //Get the X and Y positions.
-    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
-    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
-	
+	int							skiplines, renderheight;	
+	DWORD						outputQuality;
+
+	// Convert input double unicode string into WCHAR unicode string for Windows renderer:
+	textUniString = (WCHAR*) PsychMallocTemp(sizeof(WCHAR) * stringLengthChars);
+	for (i = 0; i < stringLengthChars; i++) textUniString[i] = (WCHAR) textUniDoubleString[i];
+
 	// 'DrawText' mode?
 	if (boundingbox == NULL) {
 		// DRAWTEXT mode:
-		
-		//Get the new color record, coerce it to the correct mode, and store it.  
-		doSetColor=PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
-		if(doSetColor) PsychSetTextColorInWindowRecord(&colorArg,  winRec);
-		
-		// Same for background color: FIXME This is currently a no-op. Don't know yet how to
-		// map this to the Windows way of font rendering...
-		doSetBackgroundColor=PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
-		if(doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg,  winRec);
-		
-		// Special handling of offset for y position correction:
-		yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-		PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
 
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(winRec);
-		
-		PsychCoerceColorMode( &(winRec->textAttributes.textColor));
-		PsychSetGLColor(&(winRec->textAttributes.textColor), winRec);
-	}
-	else {
-		// TEXTBOUNDS mode:
-		// Special handling of offset for y position correction: In 'TextBounds' mode,
-		// this is the 5th argument, instead of the 7th in 'DrawText' mode:
-		yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
-		PsychCopyInIntegerArg(5, kPsychArgOptional, &yPositionIsBaseline);	
+
+		// Set OpenGL drawing color:
+		PsychSetGLColor(textColor, winRec);
 	}
 		
 	// Reallocate device context and bitmap if needed:
@@ -1155,7 +931,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		defaultDIB = (HBITMAP) SelectObject(dc, hbmBuffer);
 	}
 	
-    // Does the font (better, its display list) need to be build or rebuild, because
+    // Does the font need to be build or rebuild, because
     // font name, size or settings have changed? Or is the current window
 	// winRec not identical to the last target window oldWin? In that case,
 	// we'll need to reassign the font as well, as fonts are not cached
@@ -1241,7 +1017,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	trect.bottom = oldHeight-1;
 	
 	// Convert PTB color into text RGBA color and set it as text color:
-	PsychConvertColorToDoubleVector(&(winRec->textAttributes.textColor), winRec, incolors);
+	PsychConvertColorToDoubleVector(textColor, winRec, incolors);
 	
 	// Text drawing shall be transparent where no text pixels are drawn:
 	SetBkMode(dc, TRANSPARENT);
@@ -1250,22 +1026,14 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	SetTextColor(dc, RGB(255, 255, 255));
 	
 	// Set drawing cursor to requested position:
-	MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
+	MoveToEx(dc, (int) *xp, (int) *yp, NULL);
 
 	brect = trect;
 	// printf("PRE: ltrb %d %d %d %d\n", brect.left, brect.top, brect.right, brect.bottom);
 
 	// Pseudo-Draw the textString: Don't rasterize, just find bounding box.
-	if (unicodedoubles) {
-		// Drawing of Unicode text:
-		DrawTextW(dc, textUniString, stringLengthChars, &brect, DT_CALCRECT);
-		MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
-	 }
-	else {
-		// Drawing of standard ASCII text:
-		DrawText(dc, textString, -1, &brect, DT_CALCRECT);
-		MoveToEx(dc, (int) winRec->textAttributes.textPositionX, (int) winRec->textAttributes.textPositionY, NULL);
-	 }
+	DrawTextW(dc, textUniString, stringLengthChars, &brect, DT_CALCRECT);
+	MoveToEx(dc, (int) *xp, (int) *yp, NULL);
 
 	// renderheight is the total height of the rendered textbox, not taking clipping into account.
 	// Its the number of pixelrows to process...
@@ -1275,26 +1043,23 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	// bottom of targetwindow. Need to take into account, what the y position actually means:
 	if (yPositionIsBaseline) {
 		// y-Position is the baseline of text: Take height of "descender" area into account:
-		skiplines = oldHeight - ((renderheight - winRec->textAttributes.textSize) + (int) winRec->textAttributes.textPositionY);
+		skiplines = oldHeight - ((renderheight - winRec->textAttributes.textSize) + (int) *yp);
 	}
 	else {
 		// y-Position is top of texts bounding box:
-		skiplines = oldHeight - (renderheight + (int) winRec->textAttributes.textPositionY);
+		skiplines = oldHeight - (renderheight + (int) *yp);
 	}
 
 	// Calculate and store bounding rectangle:
 	boundingRect[kPsychTop]    = oldHeight - 1 - skiplines - renderheight;
 	boundingRect[kPsychBottom] = oldHeight - 1 - skiplines;
-	boundingRect[kPsychLeft]   = winRec->textAttributes.textPositionX;
-	boundingRect[kPsychRight]  = winRec->textAttributes.textPositionX + (double) ((int) brect.right - (int) brect.left);
+	boundingRect[kPsychLeft]   = *xp;
+	boundingRect[kPsychRight]  = *xp + (double) ((int) brect.right - (int) brect.left);
 
 	// Is this a 'Textbounds' op?
 	if (boundingbox) {
-		// 'Textbounds" op, no real text drawing. Assign final bounding box, then return:
+		// "Textbounds" op, no real text drawing. Assign final bounding box, then return:
 		PsychCopyRect(boundingbox, boundingRect);
-
-		// Release unicode textstring, if any:
-		if (textUniString) free(textUniString);
 		
 		// Restore to default font after text drawing:
 		SelectObject(dc, defaultFont);
@@ -1331,14 +1096,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 	memset((void*) scanptr, 0, oldWidth * renderheight * 4);
 	
 	// Really draw the textString: Rasterize!
-	if (unicodedoubles) {
-		// Drawing of Unicode text:
-		DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP);
-	 }
-	else {
-		// Drawing of standard ASCII text:
-		DrawText(dc, textString, -1, &trect, DT_NOCLIP);
-	 }
+	DrawTextW(dc, textUniString, stringLengthChars, &trect, DT_NOCLIP);
 
 	// Sync the GDI so we have a final valid bitmap after this call:
 	GdiFlush();
@@ -1385,8 +1143,7 @@ PsychError SCREENDrawTextGDI(PsychRectType* boundingbox)
 		// Draw a background color quad:
 		
 		// Set GL drawing color:
-		PsychCoerceColorMode( &(winRec->textAttributes.textBackgroundColor));
-		PsychSetGLColor(&(winRec->textAttributes.textBackgroundColor), winRec);
+		PsychSetGLColor(backgroundColor, winRec);
 
 		// Set default draw shader:
 		PsychSetShader(winRec, -1);
@@ -1431,24 +1188,514 @@ drawtext_noop:
     // be appended right-hand of the drawn text.
     // Get updated "cursor position":
 	GetCurrentPositionEx(dc, &xy);
-    winRec->textAttributes.textPositionX = xy.x;
-    winRec->textAttributes.textPositionY = xy.y;
+    *xp = xy.x;
+    *yp = xy.y;
 	
 	// Restore to default font after text drawing:
 	SelectObject(dc, defaultFont);
 	
-	// We jump directly to this position in the code if the textstring is empty --> No op.
-drawtext_skipped:    
-	PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
-    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
-	
-	// Release unicode textstring, if any:
-	if (textUniString) free(textUniString);
-	
+	// Done.
     return(PsychError_none);
 }
 
 // End of Windows specific part...
 #endif
 
+// End of non-OS/X (= Linux & Windows) specific part...
 #endif
+
+// Load and initialize an external text renderer plugin: Called while OpenGL
+// context from 'windowRecord' is bound and active. Returns true on success,
+// false on error. Reverts to builtin text renderer on error:
+psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
+{
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+	// Try to load plugin if not already loaded: The dlopen call will search in all standard system
+	// search paths, the $HOME/lib directory if any, and relative to the current working directory.
+	// The functions in the plugin will be linked immediately and if successfull, made available
+	// directly for use within the code, with no need to dlsym() manually bind'em:
+	if (NULL == drawtext_plugin) {
+		drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
+		drawtext_plugin_firstcall = TRUE;
+	}
+	else {
+		drawtext_plugin_firstcall = FALSE;
+	}
+
+	// Successfully loaded and bound?
+	if (NULL == drawtext_plugin) {
+		// Failed! Revert to standard text rendering code below:
+		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
+
+		// Switch to renderer zero, which is the default renderer on OS/X and Linux:
+		PsychPrefStateSet_TextRenderer(0);
+		
+		// Return failure code:
+		return(FALSE);
+	}
+
+	// Plugin loaded. Perform first time init, if needed:
+	if (drawtext_plugin_firstcall) {
+		// Assign current level of verbosity:
+		PsychSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
+
+		// Try to initialize plugin:
+		if (PsychInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
+		
+		// Enable use of plugins internal fontMapper for selection of font file, face type and rendering
+		// parameters, based on the font/text spec provided by us:
+		PsychSetTextUseFontmapper(1, 0);
+	}
+
+#else
+	if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [Not supported on MS-Windows yet]. Reverting to standard text renderer.\n");
+	
+	// Switch to renderer one, which is the default renderer on Windows:
+	PsychPrefStateSet_TextRenderer(1);
+	
+	// Return failure:
+	return(FALSE);
+#endif
+
+	// Return success:
+	return(TRUE);
+}
+
+// Common cleanup routine for all text renderers: Called from PsychCloseWindow() during
+// window destruction while OpenGL context of 'windowRecord' is bound and active. Has to
+// decide if any ressource cleanup work for window(s) has to be done and call into the
+// OS/Engine specific cleanup routines:
+void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
+{
+	// Do we have allocated display lists for the display list renderers on MS-Windows or Linux
+	// for this onscreen window?
+	if (windowRecord->textAttributes.DisplayList > 0) {
+		// Yep. Destroy them:
+		if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing display list text renderer resources for window %i.\n", windowRecord->windowIndex);
+		glDeleteLists(windowRecord->textAttributes.DisplayList, 256);
+		windowRecord->textAttributes.DisplayList=0;
+	}
+	
+	// Is this the last open onscreen window about to be destroyed, ie., after closing this one, will there be
+	// no further onscreen windows?
+	if ((PsychCountOpenWindows(kPsychDoubleBufferOnscreen) + PsychCountOpenWindows(kPsychSingleBufferOnscreen)) == 1) {
+		// Yes. Time to shutdown the text renderer(s) and release all associated resources:
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// Release GDI based MS-Windows text renderer:
+			CleanupDrawtextGDI();
+		#endif
+
+		// Do we have an external text rendering plugin installed and initialized?
+		if (drawtext_plugin) {
+			// Yes.
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing text renderer plugin.\n");
+
+			// Call plugin shutdown routine:
+			PsychShutdownText();
+			
+			// Jettison plugin:
+			dlclose(drawtext_plugin);
+			drawtext_plugin = NULL;
+		}
+	}
+
+	return;
+}
+
+#if PSYCH_SYSTEM == PSYCH_WINDOWS
+// MS-Windows:
+#include <locale.h>
+
+static	_locale_t	drawtext_locale = NULL;
+static	char		drawtext_localestring[256] = { 0 };
+
+// Define mbstowcs_l (Posix) to the corresponding name on Windows CRT:
+#define	mbstowcs_l	_mbstowcs_l
+
+// PsychSetUnicodeTextConversionLocale():
+//
+// Set the character encoding locale setting which is used by PsychAllocInTextAsUnicode(),
+// e.g., when Screen('DrawText') is called with a char() string argument.
+//
+// The locale setting defines how to map the given (multibyte-)sequence of byte-characters
+// into unicode codepoints, i.e., how the given string is translated into unicode.
+//
+// 'mnewlocale' can be one of the following:
+// NULL -- Shutdown conversion routines, free all associated resources. Called at Screen exit time.
+// ""   -- An empty string: Set locale to the system default locale, as defined by system settings or
+//         environment variables at application startup time. E.g., $LANG, $LC_CTYPE, $LC_ALL on Posix...
+// "xx" -- Some text string with the name of a locale supported by the system, e.g., "C" for default C
+//         language locale, "en_US.ISO8859-1" for ISO8859-1 (Latin-1) encoding, "UTF-8" for UTF-8 multibyte
+//         unicode encoding. On Unix, see "man xlocale", "man multibyte" for explanation.
+//         See e.g., <http://msdn.microsoft.com/en-us/library/wyzd2bce(VS.80).aspx> for locale support on
+//         MS-Windows.
+//
+// Returns TRUE on success, FALSE on error.
+psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
+{
+	_locale_t		myloc = NULL;
+
+	// Was only destruction/release of current locale requested?
+	if (NULL == mnewlocale) {
+		// Destroy/Release old locale, if any:
+		if (drawtext_locale) {
+			_free_locale(drawtext_locale);
+			drawtext_locale = NULL;
+		}
+		drawtext_localestring[0] = 0;
+		
+		// Done after destruction:
+		return(TRUE);
+	}
+	
+	// Setting of a new locale requested:
+	myloc = _create_locale(LC_CTYPE, mnewlocale);
+	if (myloc) {
+		// Destroy/Release old locale, if any:
+		if (drawtext_locale) {
+			_free_locale(drawtext_locale);
+			drawtext_locale = NULL;
+		}
+
+		drawtext_localestring[0] = 0;
+		if (strlen(mnewlocale)) {
+			// Special locale "" given: Set namestring to current system
+			// default locale:
+			strcpy(drawtext_localestring, setlocale(LC_CTYPE, NULL));
+		}
+		else {
+			// Named locale given: Assign its namestring:
+			strcpy(drawtext_localestring, mnewlocale);
+		}
+		drawtext_locale = myloc;
+		
+		return(TRUE);
+	}
+	
+	// Failed! No settings changed:
+	return(FALSE);
+}
+
+// PsychGetUnicodeTextConversionLocale(): 
+//
+// Get the character encoding locale setting string which is used by PsychAllocInTextAsUnicode(),
+// e.g., when Screen('DrawText') is called with a char() string argument.
+//
+// Returns NULL on error, a const char* string with the current locale setting on success.
+const char* PsychGetUnicodeTextConversionLocale(void)
+{
+	return(&drawtext_localestring[0]);
+}
+
+#else
+// POSIX systems Linux and OS/X:
+#include <locale.h>
+#include <xlocale.h>
+
+static	locale_t	drawtext_locale = NULL;
+
+psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
+{
+	locale_t		myloc = NULL;
+
+	// Was only destruction/release of current locale requested?
+	if (NULL == mnewlocale) {
+		// Destroy/Release old locale, if any:
+		if (drawtext_locale) {
+			freelocale(drawtext_locale);
+			drawtext_locale = NULL;
+		}
+		
+		// Done after destruction:
+		return(TRUE);
+	}
+	
+	// Setting of a new locale requested:
+	myloc = newlocale(LC_CTYPE_MASK, mnewlocale, NULL);
+	if (myloc) {
+		// Destroy/Release old locale, if any:
+		if (drawtext_locale) {
+			freelocale(drawtext_locale);
+			drawtext_locale = NULL;
+		}
+
+		drawtext_locale = myloc;
+		
+		return(TRUE);
+	}
+	
+	// Failed! No settings changed:
+	return(FALSE);
+}
+
+const char* PsychGetUnicodeTextConversionLocale(void)
+{
+	return(querylocale(LC_CTYPE_MASK, drawtext_locale));
+}
+
+#endif
+
+// Allocate in a text string argument, either in some string or bytestring format or as double-vector.
+// Return the strings representation as a double vector in Unicode encoding.
+//
+// 'position' the position of the string argument.
+// 'isRequired' Is the string required or optional, or required to be of a specific type?
+// 'textLength' On return, store length of text string in characters at the int pointer target location.
+// 'unicodeText' On return, the double* to which unicodeText points, shall contain the start adress of a vector of
+//               doubles. Each double encodes the unicode value of one unicode character in the string. Length of
+//               the array as given in 'textLength'.
+//
+//  Returns TRUE on successfull allocation of an input string in unicode format. FALSE on any error.
+//
+psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText)
+{
+	int				dummy1, dummy2;
+    char			*textCString = NULL;
+	wchar_t			*textUniString = NULL;
+	int				stringLengthBytes = 0;
+
+	// Anything provided as argument? This checks for presence of the required arg. If an arg
+	// of mismatching type (not char or double) is detected, it errors-out. Otherwise it returns
+	// true on presence of a correct argument, false if argument is absent and optional.
+	if (!PsychCheckInputArgType(position, isRequired, (PsychArgType_char | PsychArgType_double))) {
+		// The optional argument isn't present. That means there ain't any work for us to do:
+		goto allocintext_skipped;
+	}
+
+	// Some text string available, either double vector or char vector.
+	
+	// Text string at 'position' passed as C-language encoded character string?
+    if (PsychGetArgType(position) == PsychArgType_char) {
+		// C-Language text string ie., a sequence of bytes. Get it:
+		PsychAllocInCharArg(position, TRUE, &textCString);
+		
+		// Get length in bytes:
+		stringLengthBytes = strlen(textCString);
+		
+		// Empty string? If so, we skip processing:
+		if (stringLengthBytes < 1) goto allocintext_skipped;
+		
+		// Compute number of Unicode wchar_t chars after conversion of multibyte C-String:
+		*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+		if (*textLength < 0) PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string for DrawText!");
+		
+		// Empty string provided? Skip, if so.
+		if (*textLength < 1) goto allocintext_skipped;
+		
+		// Allocate wchar_t buffer of sufficient size to hold converted unicode string:
+		textUniString = (wchar_t*) PsychMallocTemp((*textLength + 1) * sizeof(wchar_t));
+		
+		// Perform conversion of multibyte character sequence to Unicode wchar_t:
+		mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
+
+		// Allocate temporary output vector of doubles and copy unicode string into it:
+		*unicodeText = (double*) PsychMallocTemp((*textLength + 1) * sizeof(double));
+		for (dummy1 = 0; dummy1 < (*textLength + 1); dummy1++) (*unicodeText)[dummy1] = (double) textUniString[dummy1];
+	}
+	else {
+		// Not a character string: Check if it is a double matrix which directly encodes Unicode text:
+		PsychAllocInDoubleMatArg(position, TRUE, &dummy1, &stringLengthBytes, &dummy2, unicodeText);
+		if (dummy2!=1) PsychErrorExitMsg(PsychError_user, "Unicode text matrices must be 2D matrices!");
+		stringLengthBytes = stringLengthBytes * dummy1;
+		
+		// Empty string? If so, we skip processing:
+		if(stringLengthBytes < 1) goto allocintext_skipped;
+
+		// Nope. Assign output arguments. We can pass-through the unicode double vector as it is
+		// already in the proper format:
+		*textLength = stringLengthBytes;
+	}
+
+	// Successfully allocated a text string as Unicode double vector:
+	return(TRUE);
+
+// We reach this jump-label via goto if there isn't any text string to return:
+allocintext_skipped:
+	*textLength = 0;
+	*unicodeText = NULL;
+	return(FALSE);
+}
+
+void PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, PsychRectType* boundingbox)
+{
+	// Convert textString to Unicode format double vector:
+	int ix;
+	unsigned int textLength = (unsigned int) strlen(textString);
+	double* unicodeText = (double*) PsychCallocTemp(textLength + 1, sizeof(double));
+	for (ix = 0; ix < textLength; ix++) unicodeText[ix] = (double) textString[ix];
+	
+	// Call Unicode text renderer:
+	PsychDrawUnicodeText(winRec, boundingbox, textLength, unicodeText, xp, yp, yPositionIsBaseline, (textColor) ? textColor :  &(winRec->textAttributes.textColor), (backgroundColor) ? backgroundColor :  &(winRec->textAttributes.textBackgroundColor));
+
+	// Done.
+	return;
+}
+
+PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
+{
+	GLdouble		backgroundColorVector[4];
+	GLdouble		colorVector[4];
+    GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
+	float			xmin, ymin, xmax, ymax;
+	double			myyp;
+	int				rc = 0;
+
+	// Does usercode want us to use a text rendering plugin instead of our standard OS specific renderer?
+	// If so, load it if not already loaded:
+	if ((PsychPrefStateGet_TextRenderer() == 2) && PsychLoadTextRendererPlugin(winRec)) {
+		// Use external dynamically loaded plugin:
+
+		// Assign current level of verbosity:
+		PsychSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
+
+		// Assign current anti-aliasing settings:
+		PsychSetTextAntiAliasing(PsychPrefStateGet_TextAntiAliasing());
+
+		// Assign font family name of requested font:
+		PsychSetTextFont(winRec->textAttributes.textFontName);
+
+		// Assign style settings, e.g., bold, italic etc.:
+		PsychSetTextStyle(winRec->textAttributes.textStyle);
+
+		// Assign text size in pixels:
+		PsychSetTextSize((double) winRec->textAttributes.textSize);
+
+		// Assign viewport settings for rendering:
+		PsychSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
+		
+		// Compute and assign text background color:
+		PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
+		PsychSetTextBGColor(backgroundColorVector);
+		
+		// Compute and assign text foreground color - the actual color of the glyphs:
+		PsychConvertColorToDoubleVector(textColor, winRec, colorVector);
+		PsychSetTextFGColor(colorVector);
+		
+		// Enable this windowRecords framebuffer as current drawingtarget:
+		PsychSetDrawingTarget(winRec);
+		
+		// Save all state:
+		glPushAttrib(GL_ALL_ATTRIB_BITS);
+		
+		// Disable draw shader:
+		PsychSetShader(winRec, 0);
+		
+		// Override current alpha blending settings to GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA unless
+		// usercode explicitely requested to use the regular Screen('Blendfunction') settings.
+		// This is needed to perform proper text anti-aliasing via alpha-blending:
+		if (!PsychPrefStateGet_TextAlphaBlending()) {
+			PsychGetAlphaBlendingFactorsFromWindow(winRec, &normalSourceBlendFactor, &normalDestinationBlendFactor);
+			PsychStoreAlphaBlendingFactorsForWindow(winRec, GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		}
+		
+		// Apply blending settings:
+		PsychUpdateAlphaBlendingFactorLazily(winRec);
+		
+		// Disable apple client storage - it could interfere:
+		#if PSYCH_SYSTEM == PSYCH_OSX
+			glPixelStorei(GL_UNPACK_CLIENT_STORAGE_APPLE, GL_FALSE);
+		#endif
+		
+		// Compute bounding box of drawn string:
+		rc = PsychMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
+
+		// Handle definition of yp properly: Is it the text baseline, or the top of the text bounding box?
+		if (yPositionIsBaseline) {
+			myyp = *yp;
+		}
+		else {
+			myyp = *yp + ymax;
+		}
+
+		// Only bounding box requested?
+		if (boundingbox) {
+			// Yes. Return it:
+			PsychMakeRect(boundingbox, xmin + *xp, myyp - ymax, xmax + *xp, myyp - ymin);
+		}
+		else {
+			// Draw text by calling into the plugin:
+			rc += PsychDrawText(*xp, winRec->rect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+		}
+		
+		// Restore alpha-blending settings if needed:
+		if (!PsychPrefStateGet_TextAlphaBlending()) PsychStoreAlphaBlendingFactorsForWindow(winRec, normalSourceBlendFactor, normalDestinationBlendFactor);
+
+		// Restore GL state:
+		glPopAttrib();
+		
+		// Mark end of drawing op. This is needed for single buffered drawing:
+		PsychFlushGL(winRec);
+		
+		// Plugin rendering successfull?
+		if (0 == rc) {
+			// Yes. Update x position of text drawing cursor:
+			*xp = *xp + (xmax - xmin + 1);
+			
+			// Return control to calling function:
+			return(PsychError_none);
+		}
+		
+		// If we reach this point then the plugin failed to render text:
+		PsychErrorExitMsg(PsychError_user, "The external text renderer plugin failed to render the text string for some reason!");
+	}
+	
+	// If we reach this point then either text rendering via OS specific renderer is requested, or
+	// the external rendering plugin failed to load and we use the OS specific renderer as fallback.
+	return(PsychOSDrawUnicodeText(winRec, boundingbox, stringLengthChars, textUniDoubleString, xp, yp, yPositionIsBaseline, textColor, backgroundColor));
+}
+
+
+// Unified 'DrawText' routine, as called by Screen('DrawText', ...);
+PsychError SCREENDrawText(void)
+{
+    PsychWindowRecordType	*winRec;
+    psych_bool				doSetColor, doSetBackgroundColor;
+    PsychColorType			colorArg, backgroundColorArg;
+    int						i, yPositionIsBaseline;
+    int						stringLengthChars;
+	double*					textUniDoubleString = NULL;
+
+    // All subfunctions should have these two lines.  
+    PsychPushHelp(useString, synopsisString, seeAlsoString);
+    if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
+
+    PsychErrorExit(PsychCapNumInputArgs(7));   	
+    PsychErrorExit(PsychRequireNumInputArgs(2)); 	
+    PsychErrorExit(PsychCapNumOutputArgs(2));  
+
+    //Get the window structure for the onscreen window.
+    PsychAllocInWindowRecordArg(1, TRUE, &winRec);
+	
+	// Check if input text string is present, valid and non-empty, get it as double vector
+	// of unicode characters: If this returns false then there ain't any work for us to do:
+	if(!PsychAllocInTextAsUnicode(2, kPsychArgRequired, &stringLengthChars, &textUniDoubleString)) goto drawtext_skipped;
+
+    // Get the X and Y positions.
+    PsychCopyInDoubleArg(3, kPsychArgOptional, &(winRec->textAttributes.textPositionX));
+    PsychCopyInDoubleArg(4, kPsychArgOptional, &(winRec->textAttributes.textPositionY));
+    
+    //Get the new color record, coerce it to the correct mode, and store it.  
+    doSetColor = PsychCopyInColorArg(5, kPsychArgOptional, &colorArg);
+    if (doSetColor) PsychSetTextColorInWindowRecord(&colorArg, winRec);
+
+    // Same for background color:
+	doSetBackgroundColor = PsychCopyInColorArg(6, kPsychArgOptional, &backgroundColorArg);
+	if (doSetBackgroundColor) PsychSetTextBackgroundColorInWindowRecord(&backgroundColorArg, winRec);
+
+	// Special handling of offset for y position correction:
+	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
+	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
+
+	// Call Unicode text renderer: This will update the current text cursor positions as well.
+	PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor));
+
+	// We jump directly to this position in the code if the textstring is empty --> No op.
+drawtext_skipped:    
+
+    // Copy out new, potentially updated, "cursor position":
+    PsychCopyOutDoubleArg(1, FALSE, winRec->textAttributes.textPositionX);
+    PsychCopyOutDoubleArg(2, FALSE, winRec->textAttributes.textPositionY);
+    
+	// Done.
+    return(PsychError_none);
+}

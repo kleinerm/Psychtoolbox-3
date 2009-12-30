@@ -1263,6 +1263,9 @@ void PsychCloseWindow(PsychWindowRecordType *windowRecord)
 				// hook-chains:
 				PsychShutdownImagingPipeline(windowRecord, TRUE);
 				
+				// Call cleanup routine of text renderers to cleanup anything text related for this windowRecord:
+				PsychCleanupTextRenderer(windowRecord);
+
 				// Sync and idle the pipeline again:
                 glFinish();
 

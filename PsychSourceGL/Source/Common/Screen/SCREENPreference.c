@@ -105,9 +105,13 @@ static char synopsisString[] =
 	"\nproc = Screen('Preference', 'Process', signature);"
 	"\nproc = Screen('Preference', 'DebugMakeTexture', enableDebugging);"
 	"\noldEnableFlag = Screen('Preference', 'TextAlphaBlending', [enableFlag]);"
+	"\noldSize = Screen('Preference', 'DefaultFontSize', [fontSize]);"
+	"\noldStyleFlag = Screen('Preference', 'DefaultFontStyle', [styleFlag]);"
+	"\noldfontName = Screen('Preference', 'DefaultFontName', [fontName]);"
 	"\noldEnableFlag = Screen('Preference', 'DefaultTextYPositionIsBaseline', [enableFlag]);"
 	"\noldEnableFlag = Screen('Preference', 'TextAntiAliasing', [enableFlag=-1 (System setting), 0 = Disable, 1 = Enable, 2 = EnableHighQuality]);"
 	"\noldEnableFlag = Screen('Preference', 'TextRenderer', [enableFlag=0 (Default OS-specific [fast]), 1 = HighQ OS-specific]);"
+	"\noldLocaleNameString = Screen('Preference', 'TextEncodingLocale', [newLocalenNameString]);"
 	"\noldEnableFlag = Screen('Preference', 'SkipSyncTests', [enableFlag]);"
 	"\n[maxStddev, minSamples, maxDeviation, maxDuration] = Screen('Preference', 'SyncTestSettings' [, maxStddev=0.001 secs][, minSamples=50][, maxDeviation=0.1][, maxDuration=5 secs]);"
 	"\noldEnableFlag = Screen('Preference', 'FrameRectCorrection', [enableFlag=1]);"
@@ -247,8 +251,15 @@ PsychError SCREENPreference(void)
 				PsychAllocInCharArg(2, kPsychArgRequired, &newFontName);
 				PsychPrefStateSet_DefaultFontName(newFontName);
 			}
-			preferenceNameArgumentValid=TRUE;
-			
+			preferenceNameArgumentValid=TRUE;			
+		}else 
+		if(PsychMatch(preferenceName, "TextEncodingLocale")){
+			PsychCopyOutCharArg(1, kPsychArgOptional, PsychGetUnicodeTextConversionLocale());
+			if(numInputArgs==2){
+				PsychAllocInCharArg(2, kPsychArgRequired, &newFontName);
+				if (!PsychSetUnicodeTextConversionLocale(newFontName)) PsychErrorExitMsg(PsychError_user, "Setting the 'TextEncodingLocale' failed, most likely because you provided an invalid/unknown locale setting string.");
+			}
+			preferenceNameArgumentValid=TRUE;			
 		}else 
 		if(PsychMatch(preferenceName, "DefaultFontStyle")){
 			PsychCopyOutDoubleArg(1, kPsychArgOptional, PsychPrefStateGet_DefaultTextStyle());

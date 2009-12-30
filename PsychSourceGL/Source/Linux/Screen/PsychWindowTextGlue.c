@@ -40,15 +40,16 @@ const PsychTextDrawingModeType PsychTextDrawingModes[]= {kPsychTextFill, kPsychT
 
 void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 {
-	char tryFontName[]="Times";
-	psych_bool foundFont;
+	char*		tryFontName;
+	psych_bool	foundFont;
 	// FIXME	PsychFontStructType	*initFontRecord;
+	PsychPrefStateGet_DefaultFontName(&tryFontName);
 
 	settings->textMode=kPsychTextFill;
 	settings->textPositionX=0;
 	settings->textPositionY=0;
-	settings->textSize=24;		      // Should be read from preferences but for now we just make it up.
-	settings->textStyle=1+2;	      // 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
+	settings->textSize= PsychPrefStateGet_DefaultTextSize();
+	settings->textStyle= PsychPrefStateGet_DefaultTextStyle();	// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend	
 
 #ifdef COMMENTEDOUT
 	// FIXME!
@@ -62,7 +63,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	//	settings->textFontNumber=initFontRecord->fontNumber;
 	settings->textFontNumber=0; // FIXME: Don't know yet how to assign a reasonable value. 
 	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0);  //index type which may be coerced into anything.
-	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychIndexColor,  0);  //index type which may be coerced into anything.
+	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0, 0, 0, 0); // Assign black with zero alpha -- transparent.
 
 	settings->DisplayList=0;        // Initially no font display list assigned.
 	settings->needsRebuild=TRUE;    // We need to build the display list on first invocation of DrawText.

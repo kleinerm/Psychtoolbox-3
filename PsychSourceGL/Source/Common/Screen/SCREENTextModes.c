@@ -3,11 +3,12 @@
   
 	AUTHORS:
   
-		Allen.Ingling@nyu.edu		awi 
-  
+		Allen.Ingling@nyu.edu			awi
+  		mario.kleiner@tuebingen.mpg.de	mk
+
 	PLATFORMS:
   
-		Only OSX for now.
+		All.
     
 	HISTORY:
   
@@ -22,7 +23,6 @@
 		of how the font is rendered. 
   
 	NOTES:
-  
 
 */
 
@@ -31,17 +31,15 @@
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] = "textModes = Screen('TextModes');";
-static char synopsisString[] = 
-    "Return a cell array of strings naming allowable text modes";
-static char seeAlsoString[] = "";
-
+static char synopsisString[] =	"Return a cell array of strings naming allowable text modes.\n"
+								"Please note that none of this modes is supported in the current Psychtoolbox, "
+								"so whatever 'TextMode' you set will be silently ignored and have no effect. ";
+static char seeAlsoString[] = "TextMode";
 
 PsychError SCREENTextModes(void) 
 {
-
     int							i;
     PsychGenericScriptType		*cellVector;
-    
 
     //all subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
@@ -57,15 +55,4 @@ PsychError SCREENTextModes(void)
         PsychSetCellVectorStringElement(i, PsychTextDrawingModeNames[i], cellVector);
         
     return(PsychError_none);
-
 }
-
-
-	
-	
-
-
-
-
-
-

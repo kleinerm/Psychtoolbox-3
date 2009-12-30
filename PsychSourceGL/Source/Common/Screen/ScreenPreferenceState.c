@@ -34,39 +34,43 @@
 
 // Default textrenderer already defined? E.g., Compile time options?
 #ifndef PTB_DEFAULT_TEXTRENDERER
-// Nope: Set it, depending on OS...
-#if PSYCH_SYSTEM == PSYCH_WINDOWS
-// Windows: We default to the new GDI based slower, but high quality and flexible renderer:
+// Nope: Default to the high-quality OS specific renderer.
+// This setting of 1 maps to GDI renderer on Windows, ATSU on OS/X and the FTGL plugin on Linux, if available.
+// A setting of zero would map to ATSU on OS/X and display list renderers on Windows and Linux, as they are faster.
+// A setting of 2 would map to the FTGL plugin on Linux, OS/X and Windows, if available.
 #define PTB_DEFAULT_TEXTRENDERER 1
-#else
-// OS/X and Linux: Only one renderer available (renderer 0)
-// Which is a high quality render on OS/X and what we've got on Linux:
-#define PTB_DEFAULT_TEXTRENDERER 0
-#endif
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_LINUX
 // Linux: Default capture engine is LibDC1394 V2:
 #define PTB_DEFAULTVIDCAPENGINE 1
+#define INITIAL_DEFAULT_FONT_NAME		"Times"
+#define INITIAL_DEFAULT_FONT_SIZE		24
+#define INITIAL_DEFAULT_FONT_STYLE		3
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_OSX
 // OS/X: Default engine is Quicktime SequenceGrabbers:
 #define PTB_DEFAULTVIDCAPENGINE 0
+#define INITIAL_DEFAULT_FONT_NAME		"Geneva"
+#define INITIAL_DEFAULT_FONT_SIZE		12
+#define INITIAL_DEFAULT_FONT_STYLE		0
 #endif
 
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // MS-Windows: Default capture engine is ARVideo, aka DirectShow:
 #define PTB_DEFAULTVIDCAPENGINE 2
+#define INITIAL_DEFAULT_FONT_NAME		"Courier New"
+#define INITIAL_DEFAULT_FONT_SIZE		18
+#define INITIAL_DEFAULT_FONT_STYLE		1
 #endif
 
 //PsychTable preference state
 static int								psychTableVersion;				//there is no psych table yet, this is provided for the future. 
 static char								PsychTableCreator[]="Screen";   //there is no psych table yet, this is provided for the future.
 //Text preference state
-#define MAX_DEFAULT_FONT_NAME_LENGTH    256
-#define INITIAL_DEFAULT_FONT_NAME		"Courier"
 static int								defaultTextYPositionIsBaseline; // Use new style of text positioning by default: y-pos is top of text.
+#define MAX_DEFAULT_FONT_NAME_LENGTH    256
 static char								defaultFontName[MAX_DEFAULT_FONT_NAME_LENGTH];
 static int								defaultTextSize;
 static int								defaultTextStyle;				// 0=normal,1=bold,2=italic,4=underline,8=outline,32=condense,64=extend
@@ -119,8 +123,8 @@ void PrepareScreenPreferences(void)
 	psychTableVersion=20;
 	sprintf(PsychTableCreator, "Screen");
 	defaultTextYPositionIsBaseline=0;
-	defaultTextSize=12;
-	defaultTextStyle=0;
+	defaultTextSize=INITIAL_DEFAULT_FONT_SIZE;
+	defaultTextStyle=INITIAL_DEFAULT_FONT_STYLE;
 	textAlphaBlending=FALSE;
 	textAntiAliasing=-1;
 	textRenderer=PTB_DEFAULT_TEXTRENDERER;
@@ -143,6 +147,15 @@ void PrepareScreenPreferences(void)
 	// measured duration and reference duration (os reported or other), at most 5 seconds
 	// worst-case duration per calibration run:
 	PsychPrefStateSet_SynctestThresholds(0.001, 50, 0.1, 5);
+	
+	// Initialize our locale setting for multibyte/singlebyte to unicode character conversion
+	// for Screen('DrawText') et al. to be the current default system locale, as defined by
+	// system settings and environment variables at startup of Matlab/Octave:
+	// N.B. This function is special as the affected state setting and routines are not defined
+	// here, but inside the Screen text handling routines, currently in SCREENDrawText.c
+	PsychSetUnicodeTextConversionLocale("");
+	PsychPrefStateSet_DefaultFontName(INITIAL_DEFAULT_FONT_NAME);
+	
 	return;
 }
 
@@ -210,12 +223,6 @@ preference: DefaultFontName
 */
 void PsychPrefStateGet_DefaultFontName(const char **fontName )
 {
-	static psych_bool  firstTime=TRUE;
-	
-	if(firstTime){
-		strcpy(defaultFontName, INITIAL_DEFAULT_FONT_NAME);
-		firstTime=TRUE;
-	}
 	*fontName=defaultFontName;
 }
 

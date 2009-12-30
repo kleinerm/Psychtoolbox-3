@@ -123,8 +123,15 @@ void		PsychPrepareRenderBatch(PsychWindowRecordType *windowRecord, int coords_po
 int PsychSwitchCompressedStereoDrawBuffer(PsychWindowRecordType *windowRecord, int newbuffer);
 void PsychComposeCompressedStereoBuffer(PsychWindowRecordType *windowRecord);
 
-
-
+// Helper routines for text renderers:
+void		PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord);
+psych_bool	PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord);
+void		PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, PsychRectType* boundingbox);
+PsychError	PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
+PsychError	PsychOSDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor);
+psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText);
+psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale);
+const char* PsychGetUnicodeTextConversionLocale(void);
 
 //functions implementing Screen subcommands. 
 PsychError	SCREENNull(void);					

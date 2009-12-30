@@ -4,13 +4,13 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu			awi
+		mario.kleiner@tuebingen.mpg.de	mk
   
 	PLATFORMS:	
 	
-		Only OS X for now.
+		All.
     
-
 	HISTORY:
 	
 		3/11/04		awi		Wrote it.
@@ -30,19 +30,22 @@
 static char useString[] ="oldTextBackgroundColor=Screen('TextBackgroundColor', windowPtr [,colorVector]);";
 //                                                        1           2
 static char synopsisString[] = 
-    "Read/Set the text background color for the specified window";
+    "Read/Set the text background color for the specified window.\n"
+	"The background color defaults to [0,0,0,0], i.e., a fully transparent black. "
+	"This means that the background is invisible. You'll need to assign at least a "
+	"non-zero alpha-value for the background to be drawn. With some text renderers "
+	"you'll also need to enable user-controlled text alpha-blending via a call to "
+	"Screen('Preference', 'TextAlphaBlending', 1); for text background to be drawn. ";
+	
 static char seeAlsoString[] = "";
-
 
 PsychError SCREENTextBackgroundColor(void) 
 {
-
-    psych_bool					doSetColor;
+    psych_bool				doSetColor;
     PsychWindowRecordType	*winRec;
 	PsychColorType			colorArg;
-	
-    
-    //all subfunctions should have these two lines.  
+
+    // All subfunctions should have these two lines.  
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
     
@@ -54,25 +57,13 @@ PsychError SCREENTextBackgroundColor(void)
     //Get the window record
     PsychAllocInWindowRecordArg(kPsychUseDefaultArgPosition, TRUE, &winRec);
 	
-	//Coerce the current color record to the correct type in case it has not been accessed yet.
-	//  and return it. 
+	// Coerce the current color record to the correct type in case it has not been accessed yet.
 	PsychSetTextBackgroundColorInWindowRecord(&(winRec->textAttributes.textBackgroundColor),  winRec);
 	PsychCopyOutColorArg(1, kPsychArgOptional, &(winRec->textAttributes.textBackgroundColor));
-	
+
     //Get the new color record, coerce it to the correct mode, and store it.  
     doSetColor=PsychCopyInColorArg(2, kPsychArgOptional, &colorArg);
-	if(doSetColor)
-		PsychSetTextBackgroundColorInWindowRecord(&colorArg,  winRec);
-        
-    return(PsychError_none);
-
-}
-
-
+	if(doSetColor) PsychSetTextBackgroundColorInWindowRecord(&colorArg,  winRec);
 	
-
-
-
-
-
-
+    return(PsychError_none);
+}

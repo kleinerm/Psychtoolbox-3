@@ -3,11 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu			awi
+		mario.kleiner@tuebingen.mpg.de	mk
   
 	PLATFORMS:	
   
-		Only OS X for now.
+		All.
     
 	HISTORY:
 
@@ -28,10 +29,10 @@
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.c
 static char useString[] ="oldCopyMode=Screen('TextMode', windowPtr [,textMode]);";
 //                                            0          1           2
-static char synopsisString[] = 
-    "Set the text mode for the specified window";
+static char synopsisString[] =	"Set or get the text mode for the specified window. This function currently hasn't "
+								"any effect whatsoever. It is not even clear what kind of effects the different "
+								"text modes should have or if this feature will be ever implemented.";
 static char seeAlsoString[] = "TextModes";
-
 
 PsychError SCREENTextMode(void) 
 {
@@ -65,19 +66,9 @@ PsychError SCREENTextMode(void)
         nameError=PsychGetTextDrawingModeConstantFromTextDrawingModeName(&newCopyMode, newCopyModeName);
         if(nameError)
             PsychErrorExitMsg(PsychError_user, "Invalid text copy mode.  See Screen('TextModes') for a list of allowable modes");
-	windowRecord->textAttributes.needsRebuild|=(windowRecord->textAttributes.textMode != newCopyMode) ? TRUE : FALSE;
+		windowRecord->textAttributes.needsRebuild|=(windowRecord->textAttributes.textMode != newCopyMode) ? TRUE : FALSE;
         windowRecord->textAttributes.textMode=newCopyMode;	
     }
-        
-    return(PsychError_none);
-
-}
-
-
 	
-
-
-
-
-
-
+    return(PsychError_none);
+}

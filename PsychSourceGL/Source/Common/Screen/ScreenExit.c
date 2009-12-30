@@ -73,7 +73,10 @@ PsychError ScreenExitFunction(void)
 	// Cleanup internal data structures of SCREEN('FillPoly');
 	// This is defined in Common/Screen/SCREENFillPoly.c
 	PsychCleanupSCREENFillPoly();
-	
+
+	// Release our internal locale object for character <-> unicode conversion:
+	PsychSetUnicodeTextConversionLocale(NULL);
+
 	return(PsychError_none);
 }
 

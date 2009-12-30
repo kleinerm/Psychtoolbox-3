@@ -3,12 +3,12 @@
   
 	AUTHORS:
 
-		Allen.Ingling@nyu.edu		awi 
+		Allen.Ingling@nyu.edu			awi
+		mario.kleiner@tuebingen.mpg.de	mk
   
 	PLATFORMS:
 	
-		Only OS X for now.
-    
+		All.
 
 	HISTORY:
 
@@ -30,16 +30,17 @@
 static char useString[] ="oldTextSize=Screen('TextSize', windowPtr [,textSize]);";
 //                                            0          1           2
 static char synopsisString[] = 
-    "Read/Set the text size for the specified window. The OS-X and M$-Windows versions accept "
-    "any text size as they use TrueType fonts for representing text. The GNU/Linux version "
-    "currently is pretty picky. You need to supply one of a limited number of available text "
-    "sizes for the current font, otherwise Screen('DrawText') will fail with an error message. ";
+    "Read/Set the text size for the specified window.\n"
+	"You can assign a default font size for new windows via a call to "
+	"Screen('Preference', 'DefaultFontSize'). The initial default font "
+	"size is operating system dependent.\n";
+	
 static char seeAlsoString[] = "";
 
 PsychError SCREENTextSize(void) 
 {
 
-    psych_bool						doSetSize;
+    psych_bool					doSetSize;
     PsychWindowRecordType		*windowRecord;
     int							oldTextSize, newTextSize;
     
@@ -67,14 +68,4 @@ PsychError SCREENTextSize(void)
     }
 
     return(PsychError_none);
-
 }
-
-
-	
-
-
-
-
-
-
