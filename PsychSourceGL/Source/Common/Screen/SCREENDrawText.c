@@ -1379,7 +1379,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 		}
 
 		drawtext_localestring[0] = 0;
-		if (strlen(mnewlocale)) {
+		if (strlen(mnewlocale) < 1) {
 			// Special locale "" given: Set namestring to current system
 			// default locale:
 			strcpy(drawtext_localestring, setlocale(LC_CTYPE, NULL));
@@ -1414,6 +1414,32 @@ const char* PsychGetUnicodeTextConversionLocale(void)
 #include <xlocale.h>
 
 static	locale_t	drawtext_locale = NULL;
+static	char		drawtext_localestring[256] = { 0 };
+
+#if PSYCH_SYSTEM == PSYCH_LINUX
+
+size_t mbstowcs_l(wchar_t *dest, const char *src, size_t n, locale_t theLocale);
+
+/* mbstowcs_l reimplementation, because mbstowcs_l is only supported on OS/X,
+ * not on Linux :-(
+ */
+size_t mbstowcs_l(wchar_t *dest, const char *src, size_t n, locale_t theLocale)
+{
+	size_t		rcsize;
+	locale_t	oldloc;
+
+	// Query current locale of this thread, store it in oldloc, set new
+	// locale theLocale:
+	oldloc = uselocale(theLocale);
+	// Execute mbstowcs with theLocale assigned:
+	rcsize = mbstowcs(dest, src, n);
+	// Restore old locale setting oldloc:
+	uselocale(oldloc);
+	// Return whatever mbstowcs returned:
+	return(rcsize);
+}
+
+#endif
 
 psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 {
@@ -1426,6 +1452,8 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 			freelocale(drawtext_locale);
 			drawtext_locale = NULL;
 		}
+
+		drawtext_localestring[0] = 0;
 		
 		// Done after destruction:
 		return(TRUE);
@@ -1439,6 +1467,17 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 			freelocale(drawtext_locale);
 			drawtext_locale = NULL;
 		}
+		drawtext_localestring[0] = 0;
+
+		if (strlen(mnewlocale) < 1) {
+			// Special locale "" given: Set namestring to current system
+			// default locale:
+			strcpy(drawtext_localestring, setlocale(LC_CTYPE, NULL));
+		}
+		else {
+			// Named locale given: Assign its namestring:
+			strcpy(drawtext_localestring, mnewlocale);
+		}
 
 		drawtext_locale = myloc;
 		
@@ -1451,7 +1490,11 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 
 const char* PsychGetUnicodeTextConversionLocale(void)
 {
+	#if PSYCH_SYSTEM == PSYCH_OSX
 	return(querylocale(LC_CTYPE_MASK, drawtext_locale));
+	#else
+	return(&drawtext_localestring[0]);
+	#endif
 }
 
 #endif
@@ -1563,7 +1606,9 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 
 	// Does usercode want us to use a text rendering plugin instead of our standard OS specific renderer?
 	// If so, load it if not already loaded:
-	if ((PsychPrefStateGet_TextRenderer() == 2) && PsychLoadTextRendererPlugin(winRec)) {
+	if (((PsychPrefStateGet_TextRenderer() == 2) || ((PsychPrefStateGet_TextRenderer() == 1) && (PSYCH_SYSTEM == PSYCH_LINUX))) &&	
+	    PsychLoadTextRendererPlugin(winRec)) {
+
 		// Use external dynamically loaded plugin:
 
 		// Assign current level of verbosity:
