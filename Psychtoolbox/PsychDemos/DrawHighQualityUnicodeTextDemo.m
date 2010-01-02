@@ -28,10 +28,6 @@
 
 % 11/26/07  mk      Wrote it. Derived from Allens DrawSomeTextDemo.
 
-if IsLinux
-    error('Sorry, high quality text rendering demo not yet supported on GNU/Linux.');
-end
-
 try
     % Choosing the display with the highest display number is
     % a best guess about where you want the stimulus displayed.
@@ -158,6 +154,22 @@ try
         Screen('TextFont', w, allFonts(idx).number);        
     end
 
+    if IsLinux
+	% On Linux, we can also auto-select fonts by their supported languages,
+	% e.g., we simply require a font with...
+	if 1
+		% ... support for the 'ja'panese language, whatever fits best:
+		Screen('TextFont', w, '-:lang=ja');
+	else
+		% ... support for the 'he'brew language, whatever fits best:
+		Screen('TextFont', w, '-:lang=he');
+		% Of course we also need to supply a text string with some
+		% hebrew characters (unicode code points) then:
+		japanesetext = [1488:1514];
+	end
+	% ... this would also work on OS/X if 'TextRenderer', type 2 is selected ...
+    end
+
     % Let's draw the text once with the low-level Screen command at
     % location (20, 300) in color black (==0) ...
     y = 200;
@@ -183,8 +195,7 @@ try
     Screen('Flip',w);
 
     % Wait for keypress, then for key release:
-    KbWait;
-    while KbCheck; end;
+    KbStrokeWait;
     
     % Some funny little animation loop. Text scrolls down from top to
     % bottom of screen - or until key press...
@@ -207,9 +218,6 @@ try
     end
     
     Screen('Flip', w);
-    
-    % Wait for key release...
-    while KbCheck; end;
 
     % Some nice good bye message in blue and at 24 pts text size:
     Screen('TextSize',w, 24);
@@ -217,7 +225,7 @@ try
     Screen('Flip', w);
     
     % Wait for keypress, then flip a last time:
-    KbWait;
+    KbStrokeWait;
     Screen('Flip', w);
     
     Screen('Preference', 'DefaultTextYPositionIsBaseline', 0);

@@ -20,13 +20,10 @@ try
     % Open window with default settings:
     w=Screen('OpenWindow', screenNumber);
 
-    % Select specific text font, style and size, unless we're on Linux
-    % where this combo is not available:
-    if IsLinux==0
-        Screen('TextFont',w, 'Courier New');
-        Screen('TextSize',w, 14);
-        Screen('TextStyle', w, 1+2);
-    end;
+    % Select specific text font, style and size:
+    Screen('TextFont',w, 'Courier New');
+    Screen('TextSize',w, 14);
+    Screen('TextStyle', w, 1+2);
 
     % Read some text file:
     fd = fopen([PsychtoolboxRoot 'Contents.m'], 'rt');

@@ -20,16 +20,12 @@ try
     screenNumber=max(screens);
     w=Screen('OpenWindow', screenNumber);
     Screen('FillRect', w);
-    if IsLinux==0
-        Screen('TextFont',w, 'Courier New');
-        Screen('TextSize',w, 50);
-        Screen('TextStyle', w, 1+2);
-    end;
+    Screen('TextFont',w, 'Courier New');
+    Screen('TextSize',w, 50);
+    Screen('TextStyle', w, 1+2);
     Screen('DrawText', w, 'Hello World!', 100, 100, [0, 0, 255, 255]);
-    if IsLinux==0
-        Screen('TextFont',w, 'Times');
-        Screen('TextSize',w, 30);
-    end;
+    Screen('TextFont',w, 'Times');
+    Screen('TextSize',w, 30);
     Screen('DrawText', w, 'Hit any key to exit.', 100, 300, [255, 0, 0, 255]);
     Screen('Flip',w);
     KbWait;

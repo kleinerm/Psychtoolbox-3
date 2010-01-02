@@ -21,7 +21,7 @@ function DrawManuallyAntiAliasedTextDemo(ts)
 % 7/13/04   awi     Added comments section.  
 % 9/8/04    awi     Added Try/Catch, cosmetic changes to documentation.
 % 1/21/05   awi     Replaced call to GetChar with call to KbWait. 
-% 10/6/05	awi		Note here cosmetic changes by dgp between 1/21/05 and 10/6/05	.
+% 10/6/05   awi	    Note here cosmetic changes by dgp between 1/21/05 and 10/6/05	.
 % 08/24/09  mk      Derived from DrawSomeTextDemo.
 
 AssertOpenGL;
@@ -56,13 +56,11 @@ try
     % alternatively compute your own 5 x 5 kernel matrix with a gaussian
     % convolution kernel inside:
     kernel = fspecial('gaussian', 5, 1.5);
-    shader = EXPCreateStatic2DConvolutionShader(kernel, 4, 4, 0, 1);
+    shader = EXPCreateStatic2DConvolutionShader(kernel, 4, 4, 0, 2);
     
-    if IsLinux==0
-        Screen('TextFont',w, 'Courier New');
-        Screen('TextSize',w, ts);
-        Screen('TextStyle', w, 1+2);
-    end;
+    Screen('TextFont',w, 'Courier New');
+    Screen('TextSize',w, ts);
+    Screen('TextStyle', w, 1+2);
     
     % Compute bounding box of textstring:
     bbox = ceil(Screen('TextBounds', w, 'Hello World!'));

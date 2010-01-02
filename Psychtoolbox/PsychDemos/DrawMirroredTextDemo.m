@@ -74,10 +74,6 @@ function DrawMirroredTextDemo(upsideDown)
 % 9/8/04    awi     Added Try/Catch, cosmetic changes to documentation.
 % 11/1/05   mk      Derived from DrawSomeTextOSX.
 
-if IsLinux
-    error('DrawMirroredTextDemoOSX does not work yet on GNU/Linux.');
-end;
-
 if nargin < 1
     upsideDown = [];
 end
@@ -91,7 +87,11 @@ x = 100;
 y = 100;
 
 % This demo only works with the old textrenderer on Windows: Enable it.
-oldRenderer = Screen('Preference', 'TextRenderer', 0);
+if IsWin
+    oldRenderer = Screen('Preference', 'TextRenderer', 0);
+else
+    oldRenderer = Screen('Preference', 'TextRenderer');
+end
 
 try
     % Choosing the display with the highest dislay number is
