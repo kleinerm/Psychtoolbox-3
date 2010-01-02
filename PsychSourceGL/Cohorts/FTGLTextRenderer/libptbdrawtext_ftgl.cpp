@@ -5,22 +5,60 @@
  * This works on OS/X but is mostly intended for GNU/Linux.
  *
  * Features:
+ *
  * - Texture mapped renderer, like on OS/X with ATSU Drawtext.
  * - Fast due to texture object and display list caching for fast glyph recycling.
- * - Good text layoutting.
- * - Supports all Freetype2 supported fonts, e.g., vectorgraphics TrueType fonts.
- * - Anti-Aliased via Alpha-Blending.
- * - Unicode support.
- * - Text measuring.
+ * - Good text layouting.
+ * - Supports all Freetype-2 supported fonts, e.g., vectorgraphics TrueType fonts.
+ * - Anti-Aliased drawing via Alpha-Blending.
+ * - Full Unicode support.
+ * - Text measuring support, e.g., bounding boxes.
  *
  * Building for OS/X:
  *
- * Needs libfreetype2, fontconfig, oglft, QT4 installed:
+ * Old style: Needs runtimes and development headers of libfreetype2, libfontconfig, libglft build with Unicode+QT4 support, and the QT4 SDK installed:
  *
- * g++ -framework QtCore -DQT_CORE_LIB -DQT_GUI_LIB -DOGLFT_QT_VERSION=4 -I /usr/local/include/OGLFT/ -I/opt/local/include/ -I /usr/X11R6/include/freetype2/ -I /Library/Frameworks/QtGui.framework/Headers/ -I /Library/Frameworks/QtCore.framework/Headers/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l oglft -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp 
+ * g++ -g -framework QtCore -DQT_CORE_LIB -DQT_GUI_LIB -DOGLFT_QT_VERSION=4 -I /usr/local/include/OGLFT/ -I/opt/local/include/ -I /usr/X11R6/include/freetype2/ -I /Library/Frameworks/QtGui.framework/Headers/ -I /Library/Frameworks/QtCore.framework/Headers/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l oglft -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp 
+ *
+ * New style:	Includes our own - slightly modified - version of OGLFT.h/cpp for libglft support, thereby avoiding runtime
+ *				dependencies on a properly configured & built libglft (Many binary installs of this library are built without unicode support).
+ *
+ *				Includes qstringqcharemulation.cpp - our own super-minimalistic reimplementation of QT-4 QChar and QString and QRgb support. This
+ *				reimplementation only contains the functionality and C++ functions that are needed for OGLFT's internal Unicode character and string
+ *				processing and for communication of Unicode strings from libptbdrawtext_ftgl.cpp to OGLFT. The few exported interfaces are API compatible
+ *				with QT-4, so one can choose to compile either against this wrapper or the real QT-4 toolkit, but the implementation is not based on or
+ *				ABI compatible with QT-4, it just emulates its behaviour. Also almost all functionality is missing, except the few bits that we need.
+ *
+ *				Rationale:	Requiring users to install a multiple-hundred megabyte size toolkit and paying the cost of linking against a 15 MB library,
+ *							plus possible version conflicts if the runtime (Octave or Matlab) should use QT itself is just too much trouble and overhead
+ *							for simple Unicode string handling.
+ *
+ *
+ * The OS/X build assumes you have libfreetype2 and libfontconfig from the OS/X DarwinPorts project installed. See: http://darwinports.com/
+ * 
+ * g++ -g -DHAVE_OPENGL_DIR -DGLU_TESS_CALLBACK_TRIPLEDOT -I.  -I/opt/local/include/ -I/opt/local/include/freetype2/ -L/opt/local/lib/ -framework OpenGL -l fontconfig -l freetype -dynamiclib -o libptbdrawtext_ftgl.dylib libptbdrawtext_ftgl.cpp qstringqcharemulation.cpp OGLFT.cpp
+ *
  *
  * Building for Linux:
  * TODO...
+ *
+ * libptbdrawtext_ftgl is copyright (c) 2010 by Mario Kleiner.
+ * It is licensed to you under the LGPL license as follows:
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *
  */
 
 // Standard libs for debug output:
@@ -50,7 +88,8 @@ double _fontSize = 0.0;
 GLfloat _fgcolor[4];
 GLfloat _bgcolor[4];
 
-static OGLFT::TranslucentTexture *face = NULL;
+OGLFT::TranslucentTexture	*faceT = NULL;
+OGLFT::MonochromeTexture	*faceM = NULL;
 static FT_Face ft_face = NULL;
 
 extern "C" {
@@ -78,6 +117,8 @@ void PsychSetTextVerbosity(unsigned int verbosity)
 
 void PsychSetTextAntiAliasing(int antiAliasing)
 {
+	if (_antiAliasing != antiAliasing) _needsRebuild = true;
+	
 	_antiAliasing = antiAliasing;
 	return;
 }
@@ -85,11 +126,14 @@ void PsychSetTextAntiAliasing(int antiAliasing)
 int PsychRebuildFont(void)
 {
 	// Destroy old font object, if any:
-	if (face) {
+	if (faceT || faceM) {
 		// Delete OGLFT face object:
-		delete(face);
-		face = NULL;
+		if (faceT) delete(faceT);
+		faceT = NULL;
 		
+		if (faceM) delete(faceM);
+		faceM = NULL;
+
 		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Destroying old font face...\n");
 		
 		// Delete underlying FreeType representation:
@@ -106,6 +150,9 @@ int PsychRebuildFont(void)
 			// fontspec string in FontConfig's special format. It contains many possible required font
 			// properties encoded in the string. Parse it into a font matching pattern:
 			target = FcNameParse((FcChar8*) &(_fontName[1]));
+			
+			// Need to manually add the current _fontSize, otherwise inconsistent stuff may happen:
+			FcPatternAddDouble(target, FC_PIXEL_SIZE, _fontSize);
 		}
 		else {
 			// _fontName contains only font family name: Build matching pattern based on _fontSize and
@@ -117,8 +164,11 @@ int PsychRebuildFont(void)
 									 FC_WIDTH, FcTypeInteger, ( (_fontStyle & 32) ?  FC_WIDTH_CONDENSED : ((_fontStyle & 64) ?  FC_WIDTH_EXPANDED : FC_WIDTH_NORMAL) ),
 									 FC_DPI, FcTypeDouble, (double) 72.0,
 									 FC_SCALABLE, FcTypeBool, true,
+									 FC_ANTIALIAS, FcTypeBool, ((_antiAliasing != 0) ? true : false), 
 									 NULL);
 		}
+
+		FcDefaultSubstitute(target);
 		
 		// Have a matching pattern:
 		if (_verbosity > 3) {
@@ -132,6 +182,7 @@ int PsychRebuildFont(void)
 		if (result == FcResultNoMatch) {
 			// Failed!
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig failed to find a matching font for family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			FcPatternDestroy(target);
 			return(1);
 		}
 
@@ -146,6 +197,8 @@ int PsychRebuildFont(void)
 		if (FcPatternGetString(matched, FC_FILE, 0, (FcChar8**) &localfontFileName) != FcResultMatch) {
 			// Failed!
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find filename for font with family %s, size %f pts and style flags %i.\n", _fontName, (float) _fontSize, _fontStyle);
+			FcPatternDestroy(target);
+			FcPatternDestroy(matched);
 			return(1);
 		}
 
@@ -155,6 +208,8 @@ int PsychRebuildFont(void)
 		if (FcPatternGetInteger(matched, FC_INDEX, 0, &_faceIndex) != FcResultMatch)  {
 			// Failed!
 			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: FontConfig did not find faceIndex for font file %s, family %s, size %f pts and style flags %i.\n", _fontFileName, _fontName, (float) _fontSize, _fontStyle);
+			FcPatternDestroy(target);
+			FcPatternDestroy(matched);
 			return(1);
 		}
 
@@ -181,14 +236,23 @@ int PsychRebuildFont(void)
 	}
 
 	// Create FTGL face from Freetype face with given size and a 72 DPI resolution, aka _fontSize == pixelsize:
-	face = new OGLFT::TranslucentTexture(ft_face, _fontSize, 72);
-	
-	// Test the created face to make sure it will work correctly:
-	if (!face->isValid()) {
-		if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
-		return(1);
+	if (_antiAliasing != 0) {
+		faceT = new OGLFT::TranslucentTexture(ft_face, _fontSize, 72);
+		// Test the created face to make sure it will work correctly:
+		if (!faceT->isValid()) {
+			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+			return(1);
+		}
 	}
-	
+	else {
+		faceM = new OGLFT::MonochromeTexture(ft_face, _fontSize, 72);
+		// Test the created face to make sure it will work correctly:
+		if (!faceM->isValid()) {
+			if (_verbosity > 1) fprintf(stderr, "libptbdrawtext_ftgl: Freetype did not recognize %s as a font file.\n", _fontName);
+			return(1);
+		}
+	}
+
 	// Ready!
 	_needsRebuild = false;
 	
@@ -267,7 +331,7 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 {
 	int i;
 	GLuint ti;
-	QString	uniCodeText;
+	QChar* myUniChars = new QChar[textLen];
 	
 	// On first invocation after init we need to generate a useless texture object.
 	// This is a weird workaround for some weird bug somewhere in FTGL...
@@ -282,8 +346,10 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 
 	// Synthesize Unicode QString from double vector:
 	for(i = 0; i < textLen; i++) {
-		uniCodeText += QChar((unsigned int) text[i]);
-	}
+		myUniChars[i] = QChar((unsigned int) text[i]); 
+	}	
+	QString	uniCodeText = QString(myUniChars, textLen);  
+	delete [] myUniChars;
 	
 	glPushClientAttrib(GL_CLIENT_ALL_ATTRIB_BITS);
 	glPushAttrib(GL_ALL_ATTRIB_BITS);
@@ -298,7 +364,12 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	glMatrixMode(GL_MODELVIEW);
 	
 	// Set text color: This will be filtered by OGLFT for redundant settings:
-	face->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
+	if (faceT) {
+		faceT->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
+	}
+	else {
+		faceM->setForegroundColor( _fgcolor[0], _fgcolor[1], _fgcolor[2], _fgcolor[3]);
+	}
 
 	// Rendering of background quad requested? -- True if background alpha > 0.
 	if (_bgcolor[3] > 0) {
@@ -310,8 +381,13 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 	}
 	
 	// Draw the text at selected start location:
-	face->draw(xStart, yStart, uniCodeText);
-
+	if (faceT) {
+		faceT->draw(xStart, yStart, uniCodeText);
+	}
+	else {
+		faceM->draw(xStart, yStart, uniCodeText);
+	}
+	
 	glMatrixMode(GL_PROJECTION);
 	glPopMatrix();
 	glMatrixMode(GL_MODELVIEW);
@@ -326,7 +402,7 @@ int PsychDrawText(double xStart, double yStart, int textLen, double* text)
 int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax)
 {
 	int i;
-	QString	uniCodeText;
+	QChar* myUniChars = new QChar[textLen];
 	
 	// Check if rebuild of font face needed due to parameter
 	// chage. Reload/Rebuild font face if so, check for errors:
@@ -334,11 +410,13 @@ int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float*
 
 	// Synthesize Unicode QString from double vector:
 	for(i = 0; i < textLen; i++) {
-		uniCodeText += QChar((unsigned int) text[i]);
-	}
+		myUniChars[i] = QChar((unsigned int) text[i]); 
+	}	
+	QString	uniCodeText = QString(myUniChars, textLen);  
+	delete [] myUniChars;
 
 	// Compute its bounding box:
-	OGLFT::BBox box = face->measure(uniCodeText);
+	OGLFT::BBox box = (faceT) ? faceT->measure(uniCodeText) : faceM->measure(uniCodeText);
 	
 	*xmin = box.x_min_;
 	*ymin = box.y_min_;
@@ -352,7 +430,8 @@ int PsychInitText(void)
 {
 	_firstCall = true;
 	_needsRebuild = true;
-	face = NULL;
+	faceT = NULL;
+	faceM = NULL;
 
 	// Try to initialize libfontconfig - our fontMapper library for font matching and selection:
 	if (!FcInit()) {
@@ -360,15 +439,31 @@ int PsychInitText(void)
 		return(1);
 	}
 	
-	if (_verbosity > 3)	fprintf(stderr, "libptbdrawtext_ftgl: Initialized.\n");
+	if (_verbosity > 2)	{
+		fprintf(stderr, "libptbdrawtext_ftgl: External 'DrawText' text rendering plugin initialized.\n");
+		fprintf(stderr, "libptbdrawtext_ftgl: This plugin uses multiple excellent free software libraries to do its work:\n");
+		fprintf(stderr, "libptbdrawtext_ftgl: OGLFT (http://oglft.sourceforge.net/) the OpenGL-FreeType library.\n");
+		fprintf(stderr, "libptbdrawtext_ftgl: The FreeType-2 (http://freetype.sourceforge.net/) library.\n");
+		fprintf(stderr, "libptbdrawtext_ftgl: The FontConfig (http://www.fontconfig.org) library.\n");
+		fprintf(stderr, "libptbdrawtext_ftgl: Thanks!\n\n");
+	}
+
 	return(0);
 }
 
 int PsychShutdownText(void)
 {
-	if (face) {
-		delete(face);
-		face = NULL;
+	if (faceT || faceM) {
+		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: In shutdown: faceT = %p faceM = %p\n", faceT, faceM);
+	
+		// Delete OGLFT face objects:
+		if (faceT) delete(faceT);
+		faceT = NULL;
+		
+		if (faceM) delete(faceM);
+		faceM = NULL;
+
+		// Delete Freetype face object:
 		FT_Done_Face(ft_face);
 		ft_face = NULL;
 		if (_verbosity > 3) fprintf(stderr, "libptbdrawtext_ftgl: Shutting down.\n");

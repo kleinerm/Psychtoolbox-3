@@ -60,20 +60,20 @@ static psych_bool drawtext_plugin_firstcall = TRUE;
 #include <dlfcn.h>
 
 // Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
-int PsychInitText(void);
-int PsychShutdownText(void);
-int PsychRebuiltFont(void);
-int PsychSetTextFont(const char* fontName);
-int PsychSetTextStyle(unsigned int fontStyle);
-int PsychSetTextSize(double fontSize);
-void PsychSetTextFGColor(double* color);
-void PsychSetTextBGColor(double* color);
-void PsychSetTextUseFontmapper(unsigned int useMapper, unsigned int mapperFlags);
-void PsychSetTextViewPort(double xs, double ys, double w, double h);
-int PsychDrawText(double xStart, double yStart, int textLen, double* text);
-int PsychMeasureText(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax);
-void PsychSetTextVerbosity(unsigned int verbosity);
-void PsychSetTextAntiAliasing(int antiAliasing);
+int (*PsychInitText)(void) = NULL;
+int (*PsychShutdownText)(void) = NULL;
+int (*PsychRebuiltFont)(void) = NULL;
+int (*PsychSetTextFont)(const char* fontName) = NULL;
+int (*PsychSetTextStyle)(unsigned int fontStyle) = NULL;
+int (*PsychSetTextSize)(double fontSize) = NULL;
+void (*PsychSetTextFGColor)(double* color) = NULL;
+void (*PsychSetTextBGColor)(double* color) = NULL;
+void (*PsychSetTextUseFontmapper)(unsigned int useMapper, unsigned int mapperFlags) = NULL;
+void (*PsychSetTextViewPort)(double xs, double ys, double w, double h) = NULL;
+int (*PsychDrawText)(double xStart, double yStart, int textLen, double* text) = NULL;
+int (*PsychMeasureText)(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
+void (*PsychSetTextVerbosity)(unsigned int verbosity) = NULL;
+void (*PsychSetTextAntiAliasing)(int antiAliasing) = NULL;
 
 #endif
 
@@ -1215,7 +1215,11 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 	// The functions in the plugin will be linked immediately and if successfull, made available
 	// directly for use within the code, with no need to dlsym() manually bind'em:
 	if (NULL == drawtext_plugin) {
-		drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
+		#if PSYCH_SYSTEM == PSYCH_OSX
+			drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
+		#else
+			drawtext_plugin = dlopen("libptbdrawtext_ftgl.so", RTLD_NOW | RTLD_GLOBAL);
+		#endif
 		drawtext_plugin_firstcall = TRUE;
 	}
 	else {
@@ -1236,6 +1240,23 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 
 	// Plugin loaded. Perform first time init, if needed:
 	if (drawtext_plugin_firstcall) {
+
+		// Dynamically bind all functions to their proper plugin entry points:
+		PsychInitText = dlsym(drawtext_plugin, "PsychInitText");
+		PsychShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
+		PsychRebuiltFont = dlsym(drawtext_plugin, "PsychRebuiltFont");
+		PsychSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
+		PsychSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
+		PsychSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
+		PsychSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
+		PsychSetTextBGColor = dlsym(drawtext_plugin, "PsychSetTextBGColor");
+		PsychSetTextUseFontmapper = dlsym(drawtext_plugin, "PsychSetTextUseFontmapper");
+		PsychSetTextViewPort = dlsym(drawtext_plugin, "PsychSetTextViewPort");
+		PsychDrawText = dlsym(drawtext_plugin, "PsychDrawText");
+		PsychMeasureText = dlsym(drawtext_plugin, "PsychMeasureText");
+		PsychSetTextVerbosity = dlsym(drawtext_plugin, "PsychSetTextVerbosity");
+		PsychSetTextAntiAliasing = dlsym(drawtext_plugin, "PsychSetTextAntiAliasing");
+		
 		// Assign current level of verbosity:
 		PsychSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
