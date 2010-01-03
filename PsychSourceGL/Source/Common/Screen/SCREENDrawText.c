@@ -1210,16 +1210,39 @@ drawtext_noop:
 psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 {
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
+	char pluginPath[FILENAME_MAX];
+
+	// Assign name of plugin shared library based on target OS:
+	#if PSYCH_SYSTEM == PSYCH_OSX
+	// OS/X:
+	char pluginName[] = "libptbdrawtext_ftgl.dylib";
+	#else
+	// Linux:
+	char pluginName[] = "libptbdrawtext_ftgl.so.1";
+	#endif
+
 	// Try to load plugin if not already loaded: The dlopen call will search in all standard system
 	// search paths, the $HOME/lib directory if any, and relative to the current working directory.
 	// The functions in the plugin will be linked immediately and if successfull, made available
 	// directly for use within the code, with no need to dlsym() manually bind'em:
 	if (NULL == drawtext_plugin) {
-		#if PSYCH_SYSTEM == PSYCH_OSX
-			drawtext_plugin = dlopen("libptbdrawtext_ftgl.dylib", RTLD_NOW | RTLD_GLOBAL);
-		#else
-			drawtext_plugin = dlopen("libptbdrawtext_ftgl.so", RTLD_NOW | RTLD_GLOBAL);
-		#endif
+		// Try to auto-detect install location of plugin inside the Psychtoolbox/PsychBasic folder.
+		// If we manage to find the path to that folder, we can load with absolute path and thereby
+		// don't need the plugin to be installed in a system folder -- No need for user to manually
+		// install it, works plug & play :-)
+		if (strlen(PsychRuntimeGetPsychtoolboxRoot()) > 0) {
+			// Yes! Assemble full path name to plugin:
+			sprintf(pluginPath, "%s/PsychBasic/PsychPlugins/%s", PsychRuntimeGetPsychtoolboxRoot(), pluginName);
+			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: DrawText: Trying to load external text renderer plugin from following file: [ %s ]\n", pluginPath);
+		}
+		else {
+			// Failed! Assign only plugin name and hope the user installed the plugin into
+			// a folder on the system library search path:
+			sprintf(pluginPath, "%s", pluginName);
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to find installation directory for text renderer plugin [ %s ].\nHoping it is somewhere in the library search path...\n", pluginPath);
+		}
+		
+		drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
 		drawtext_plugin_firstcall = TRUE;
 	}
 	else {
@@ -1229,9 +1252,13 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 	// Successfully loaded and bound?
 	if (NULL == drawtext_plugin) {
 		// Failed! Revert to standard text rendering code below:
-		if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
+		if (PsychPrefStateGet_Verbosity() > 1) {
+			printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Reverting to standard text renderer.\n", (const char*) dlerror());
+			printf("PTB-WARNING: DrawText: Functionality of Screen('DrawText') and Screen('TextBounds') may be limited and text quality may be impaired.\n");
+			printf("PTB-WARNING: DrawText: Type 'help DrawTextPlugin' at the command prompt to receive instructions for troubleshooting.\n\n");
+		}
 
-		// Switch to renderer zero, which is the default renderer on OS/X and Linux:
+		// Switch to renderer zero, which is the fast fallback renderer on all operating systems:
 		PsychPrefStateSet_TextRenderer(0);
 		
 		// Return failure code:

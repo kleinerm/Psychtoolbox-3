@@ -43,6 +43,7 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	PsychFontStructType	*initFontRecord;
 	PsychPrefStateGet_DefaultFontName(&tryFontName);
 
+	settings->DisplayList=0;
     settings->textMode=kPsychTextFill;
     settings->textPositionX=0;
     settings->textPositionY=0;
