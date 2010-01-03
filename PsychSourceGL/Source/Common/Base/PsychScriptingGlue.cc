@@ -2628,22 +2628,93 @@ double PsychGetNanValue(void)
 	return(mxGetNaN());
 }
 
+/* PsychAllocInCharFromNativeArg()
+ *
+ * Given a pointer to a native PsychGenericScriptType datatype which represents character
+ * strings in the runtime's native encoding, try to extract a standard char-string of it and
+ * return it in the referenced char *str. Return TRUE on success, FALSE on failure, e.g., because
+ * the nativeCharElement didn't contain a parseable string.
+ *
+ */
+psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str)
+{
+	mxArray	*mxPtr;
+	int		status, strLen;	
+
+	*str = NULL;
+	mxPtr  = (mxArray*) nativeCharElement;
+	strLen = (mxGetM(mxPtr) * mxGetNOnly(mxPtr) * sizeof(mxChar)) + 1;
+	*str   = (char *) PsychCallocTemp(strLen, sizeof(char));
+	status = mxGetString(mxPtr, *str, strLen); 
+	if(status!=0) return(FALSE);
+	return(TRUE);
+}
+
+/* PsychRuntimeGetPsychtoolboxRoot()
+ *
+ * Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave)
+ * from runtime. The result, if any, will be cached for later fast lookup.
+ *
+ * This function may fail to retrieve the path, in which case it returns an empty null-terminated string, i.e., strlen() == 0.
+ * On successfull recovery of the path, returns a const char* to a readonly string which encodes the path.
+ *
+ */
+const char* PsychRuntimeGetPsychtoolboxRoot(void)
+{
+	static psych_bool firstTime = TRUE;
+	static char	psychtoolboxRootPath[FILENAME_MAX+1];
+	PsychGenericScriptType* myPathvar = NULL;
+	char*	myPathvarChar = NULL;
+
+	if (firstTime) {
+		// Reset firstTime flag:
+		firstTime = FALSE;
+		
+		// Init to null-terminated empty string, so it is well-defined in case of error:
+		psychtoolboxRootPath[0] = 0;
+	
+		// Call into runtime to persuade it to create a global ptb_RootPath variable with
+		// the path to the root folder: This will return zero on success.
+		if (0 == PsychRuntimeEvaluateString("global ptb_RootPath; ptb_RootPath = ''; if exist('PsychtoolboxRoot', 'file'), ptb_RootPath = PsychtoolboxRoot; end;")) {
+			// Success. Try to retrieve global ptb_RootPath from runtime:
+			if (PsychRuntimeGetVariablePtr("global", "ptb_RootPath", &myPathvar)) {
+				// Success, got a read-only pointer to variable. Try to convert into char* string:
+				if (PsychAllocInCharFromNativeArg(myPathvar, &myPathvarChar)) {
+					// Success. myPathvarChar is a temporary char string, so copy it to our persistent memory:
+					strncpy(psychtoolboxRootPath, myPathvarChar, FILENAME_MAX);
+				}
+			}
+		}
+		
+		// At this point we did our best and psychtoolboxRootPath is valid: Either a path string,
+		// or an empty string signalling failure to get the path.
+	}
+
+	// Return whatever we've got:
+	return(&psychtoolboxRootPath[0]);
+}
+
 /* PsychRuntimePutVariable()
+ *
+ * CAUTION: Not supported on Matlab R2006b or earlier on the MS-Windows platform! Function will fail on such
+ *			runtimes. PTB functions that rely on this function will not work on pre R2007a on Windows!
  *
  * Copy a given native variable of type PsychGenericScriptType, e.g., as created by PsychAllocateNativeDoubleMat()
  * in case of a double matrix, as a new variable into a specified workspace.
  *
  * 'workspace'	Namestring of workspace: "base" copy to base workspace. "caller" copy into calling functions workspace,
- *				'global' create new global variable with given name. "caller" is needed to make the variable accessible
- *				by code executed by PsychRuntimeEvaluateString(), e.g., callbacks from the imaging pipeline.
+ *				'global' create new global variable with given name.
+ *
+ *				CAUTION:	Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
+ *							recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
  *
  * 'variable'	Name of the new variable.
  *
  * 'pcontent'	The actual content that should be copied into the variable.
  *
  *
- * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the calling
- *          M-Functions workspace and initialize it with content from the double array mycontent:
+ * Example: You want to create a double matrix with (m,n,p) rows/cols/layers as a variable 'myvar' in the base
+ *          workspace and initialize it with content from the double array mycontent:
  *
  *          PsychGenericScriptType* newvar = NULL;
  *			double* newvarcontent = mycontent; // mycontent is double* onto existing data.
@@ -2651,22 +2722,104 @@ double PsychGetNanValue(void)
  *			At this point, newvar contains the content of 'mycontent' and 'newvarcontent' points to
  *			the copy. You could alter mycontent now without affecting the content of newvarcontent or newvar.
  *
- *			Create the corresponding variable in the calling scripts workspace:
- *			PsychRuntimePutVariable("caller", "myvar", newvar);
+ *			Create the corresponding variable in the base workspace:
+ *			PsychRuntimePutVariable("base", "myvar", newvar);
  *
  *          The calling M-File etc. can access the content newvarcontent under the variable name 'myvar'.
  *
  *			As usual, the double matrix newvarcontent will be auto-destroyed when returning to the runtime,
- *			but the variable 'myvar' will remain valid in the calling script until it goes out of scope there.
+ *			but the variable 'myvar' will remain valid until it goes out of scope.
  *
  * Returns zero on success, non-zero on failure.
  */
 int PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent)
 {
 	#if PSYCH_LANGUAGE == PSYCH_MATLAB
-		return(mexPutVariable(workspace, variable, pcontent));
+		#ifndef MATLAB_R11
+			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
+			return(mexPutVariable(workspace, variable, pcontent));
+		#else
+			return(1);
+		#endif
 	#else
 		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimePutVariable() not yet supported for this runtime system!");
+	#endif
+} 
+
+/* PsychRuntimeGetVariable()
+ *
+ * CAUTION: Not supported on Matlab R2006b or earlier on the MS-Windows platform! Function will fail on such
+ *			runtimes. PTB functions that rely on this function will not work on pre R2007a on Windows!
+ *
+ * Copy a given native variable of type PsychGenericScriptType, as a new variable from a specified workspace.
+ *
+ * 'workspace'	Namestring of workspace: "base" copy from base workspace. "caller" copy from calling functions workspace,
+ *				'global' get global variable with given name.
+ *
+ *				CAUTION:	Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
+ *							recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *
+ * 'variable'	Name of the variable to get a copy of.
+ *
+ * 'pcontent'	Pointer to a PsychGenericScriptType* where the location of the new variables content should be stored.
+ *				The pointed to pointer will be set to NULL on failure.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, PsychGenericScriptType** pcontent)
+{
+	// Init to empty default:
+	*pcontent = NULL;
+
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		#ifndef MATLAB_R11
+			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
+			*pcontent = mexGetVariable(workspace, variable);
+		#endif
+
+		// Return true on success, false on failure:
+		return((*pcontent) ? TRUE : FALSE);
+	#else
+		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariable() not yet supported for this runtime system!");
+	#endif
+} 
+
+/* PsychRuntimeGetVariablePtr()
+ *
+ * CAUTION: Not supported on Matlab R2006b or earlier on the MS-Windows platform! Function will fail on such
+ *			runtimes. PTB functions that rely on this function will not work on pre R2007a on Windows!
+ *
+ * Retrieve a *read-only* pointer to a given native variable of type PsychGenericScriptType in the specified workspace.
+ * The variable is not copied, just referenced, so you *must not modify/write to the location* only perform read access!
+ *
+ * 'workspace'	Namestring of workspace: "base" get from base workspace. "caller" get from calling functions workspace,
+ *				'global' get global variable with given name.
+ *
+ *				CAUTION:	Matlab and Octave show different behaviour when using the "caller" workspace! It is strongly
+ *							recommended to avoid the "caller" workspace to avoid ugly compatibility bugs!!
+ *
+ * 'variable'	Name of the variable to get a reference.
+ *
+ * 'pcontent'	Pointer to a PsychGenericScriptType* where the location of the variables content should be stored.
+ *				The pointed to pointer will be set to NULL on failure.
+ *
+ * Returns TRUE on success, FALSE on failure.
+ */
+psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variable, PsychGenericScriptType** pcontent)
+{
+	// Init to empty default:
+	*pcontent = NULL;
+
+	#if PSYCH_LANGUAGE == PSYCH_MATLAB
+		#ifndef MATLAB_R11
+			// Post R11 Matlab or Octave 3.2.x: New method for putting variables...
+			*pcontent = (PsychGenericScriptType*) mexGetVariablePtr(workspace, variable);
+		#endif
+
+		// Return true on success, false on failure:
+		return((*pcontent) ? TRUE : FALSE);
+	#else
+		PsychErrorExitMsg(PsychError_unimplemented, "Function PsychRuntimeGetVariablePtr() not yet supported for this runtime system!");
 	#endif
 } 
 

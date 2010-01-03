@@ -48,6 +48,15 @@ int		PsychRuntimeEvaluateString(const char* cmdstring);
 // Put variable in native PsychGenericScriptType into workspace of runtime:
 int		PsychRuntimePutVariable(const char* workspace, const char* variable, PsychGenericScriptType* pcontent);
 
+// Get read-only variable in native PsychGenericScriptType from workspace of runtime:
+psych_bool PsychRuntimeGetVariablePtr(const char* workspace, const char* variable, PsychGenericScriptType** pcontent);
+
+// Get copy of variable in native PsychGenericScriptType from workspace of runtime:
+psych_bool PsychRuntimeGetVariable(const char* workspace, const char* variable, PsychGenericScriptType** pcontent);
+
+// Try to retrieve filesystem path to Psychtoolbox root folder (the result from PsychtoolboxRoot() in Matlab/Octave) from runtime:
+const char* PsychRuntimeGetPsychtoolboxRoot(void);
+
 //for integers
 psych_bool PsychCopyInIntegerArg(int position, PsychArgRequirementType isRequired, int *value);
 psych_bool PsychAllocInIntegerListArg(int position, PsychArgRequirementType isRequired, int *numElements, int **array);
@@ -88,6 +97,7 @@ psych_bool PsychAllocOutUnsignedByteMatArg(int position, PsychArgRequirementType
 //for strings
 psych_bool PsychAllocInCharArg(int position, PsychArgRequirementType isRequired, char **str);
 psych_bool PsychCopyOutCharArg(int position, PsychArgRequirementType isRequired, const char *str);
+psych_bool PsychAllocInCharFromNativeArg(PsychGenericScriptType *nativeCharElement, char **str);
 
 
 //query and govern argumuments.  Use these sparingly, usually you can let the "PsychAlloc*" and "PsychCopy*" functions above will do the work for you.  
