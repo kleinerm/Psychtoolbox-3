@@ -4502,7 +4502,7 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	// so use at most 7 letters!
 	memset(&(windowRecord->gpuCoreId[0]), 0, 8);
 	
-	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
+	if (strstr(glGetString(GL_VENDOR), "ATI") || strstr(glGetString(GL_VENDOR), "AMD") || strstr(glGetString(GL_RENDERER), "AMD")) { ati = TRUE; sprintf(windowRecord->gpuCoreId, "R100"); }
 	if (strstr(glGetString(GL_VENDOR), "NVIDIA")) { nvidia = TRUE; sprintf(windowRecord->gpuCoreId, "NV10"); }
 	
 	while (glGetError());
@@ -4520,8 +4520,8 @@ void PsychDetectAndAssignGfxCapabilities(PsychWindowRecordType *windowRecord)
 	
 	if (verbose) {
 		printf("PTB-DEBUG: Interrogating Low-level renderer capabilities for onscreen window with handle %i:\n", windowRecord->windowIndex);
-		printf("Indicator variables: FBO's %i, ATI_texture_float %i, ARB_texture_float %i, Vendor %s.\n",
-				glewIsSupported("GL_EXT_framebuffer_object"),glewIsSupported("GL_ATI_texture_float"), glewIsSupported("GL_ARB_texture_float"), glGetString(GL_VENDOR));
+		printf("Indicator variables: FBO's %i, ATI_texture_float %i, ARB_texture_float %i, Vendor %s, Renderer %s.\n",
+				glewIsSupported("GL_EXT_framebuffer_object"),glewIsSupported("GL_ATI_texture_float"), glewIsSupported("GL_ARB_texture_float"), glGetString(GL_VENDOR), glGetString(GL_RENDERER));
 		printf("Indicator variables: maxcolorattachments = %i, maxrectangletexturesize = %i, maxnativealuinstructions = %i.\n", maxcolattachments, maxtexsize, maxaluinst);
 	}
 	

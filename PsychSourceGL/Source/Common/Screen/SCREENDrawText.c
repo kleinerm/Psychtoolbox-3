@@ -587,28 +587,29 @@ psych_bool PsychOSRebuildFont(PsychWindowRecordType *winRec)
   for(i=0; i<strlen(fontname); i++) fontname[i]=tolower(fontname[i]);
 
   // Try to load font:
-  font = XLoadFont(winRec->targetSpecific.deviceContext, fontname);
+  fontstruct = XLoadQueryFont(winRec->targetSpecific.deviceContext, fontname); 
 
-  // Successfull?
-  fontstruct = XQueryFont(winRec->targetSpecific.deviceContext, font); 
-
-  // Child-protection:
+  // Child-protection against invalid fontNames or unavailable/unknown fonts:
   if (fontstruct == NULL) {
     // Something went wrong...
     printf("Failed to load X11 font with name %s.\n\n", winRec->textAttributes.textFontName);
     fontnames = XListFonts(winRec->targetSpecific.deviceContext, "*", 1000, &actual_count_return);
     if (fontnames) {
-      printf("Available X11 fonts are:\n");
+      printf("Available X11 fonts are:\n\n");
       for (i=0; i<actual_count_return; i++) printf("%s\n", (char*) fontnames[i]);
       printf("\n\n");
       XFreeFontNames(fontnames);
       fontnames=NULL;
     }
 
-    printf("Failed to load X11 font with name %s.\n\n", fontname);
+    printf("Failed to load X11 font with name %s.\n", fontname);
+    printf("Try a Screen('TextFont') name according to one of the listed available fonts above.\n\n");
     PsychErrorExitMsg(PsychError_user, "Couldn't select the requested font with the requested font settings from X11 system!");
     return(FALSE);
   }
+
+  // Get font handle from struct:
+  font = fontstruct->fid;
 
   // Activate OpenGL context:
   PsychSetGLContext(winRec);
@@ -1243,6 +1244,15 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 		}
 		
 		drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
+		if (NULL == drawtext_plugin) {
+			// First try failed:
+			if (PsychPrefStateGet_Verbosity() > 1) {
+				printf("PTB-WARNING: DrawText: Failed to load external drawtext plugin [%s]. Retrying under generic name [%s].\n", (const char*) dlerror(), pluginName);
+			}
+
+			sprintf(pluginPath, "%s", pluginName);
+			drawtext_plugin = dlopen(pluginPath, RTLD_NOW | RTLD_GLOBAL);
+		}
 		drawtext_plugin_firstcall = TRUE;
 	}
 	else {
