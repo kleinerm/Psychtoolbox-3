@@ -32,6 +32,7 @@ function PsychtoolboxPostInstallRoutine(isUpdate, flavor)
 % 16/04/2008 Write/Read PTB flavor to/from users PsychtoolboxConfigDir as well for higher robustness (MK).
 % 15/04/2009 Add warning about unsupported OS/X systems older than Tiger (MK).
 % 15/06/2009 Add support for postinstall for Octave-3.2.x, remove Octave-2 support (MK).
+% 03/01/2010 Extend Matlab R2007 vs. earlier detection for Windows up to year 2014 (MK).
 
 fprintf('\n\nRunning post-install routine...\n\n');
 
@@ -287,7 +288,11 @@ if IsWin & ~IsOctave
         rmpath([PsychtoolboxRoot 'PsychBasic\MatlabWindowsFilesR2007a\']);
         
         % Is this a Release2007a or later Matlab?
-        if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008')) | ~isempty(strfind(version, '2009')) | ~isempty(strfind(version, '2010'))
+        if ~isempty(strfind(version, '2007')) | ~isempty(strfind(version, '2008')) | ...
+           ~isempty(strfind(version, '2009')) | ~isempty(strfind(version, '2010')) | ...
+           ~isempty(strfind(version, '2011')) | ~isempty(strfind(version, '2012')) | ...
+           ~isempty(strfind(version, '2013')) | ~isempty(strfind(version, '2014'))
+           
             % This is a R2007a or post R2007a Matlab:
             % Add PsychBasic/MatlabWindowsFilesR2007a/ subfolder to Matlab
             % path:
