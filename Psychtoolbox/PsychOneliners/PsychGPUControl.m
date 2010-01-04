@@ -92,6 +92,7 @@ end
 
 error('Invalid subfunction provided. Read the help for valid commands!');
 return;
+end
 
 function rc = executeRadeoncmd(cmdpostfix)
 	% Default to a return code of 1 for success:

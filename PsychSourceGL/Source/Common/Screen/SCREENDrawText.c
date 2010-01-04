@@ -53,12 +53,6 @@
 static void* drawtext_plugin = NULL;
 static psych_bool drawtext_plugin_firstcall = TRUE;
 
-// External renderplugins not yet supported on MS-Windows:
-#if PSYCH_SYSTEM != PSYCH_WINDOWS
-
-// Include for dynamic loading of external renderplugin:
-#include <dlfcn.h>
-
 // Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
 int (*PsychInitText)(void) = NULL;
 int (*PsychShutdownText)(void) = NULL;
@@ -75,6 +69,10 @@ int (*PsychMeasureText)(int textLen, double* text, float* xmin, float* ymin, flo
 void (*PsychSetTextVerbosity)(unsigned int verbosity) = NULL;
 void (*PsychSetTextAntiAliasing)(int antiAliasing) = NULL;
 
+// External renderplugins not yet supported on MS-Windows:
+#if PSYCH_SYSTEM != PSYCH_WINDOWS
+// Include for dynamic loading of external renderplugin:
+#include <dlfcn.h>
 #endif
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
@@ -1350,9 +1348,12 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 
 			// Call plugin shutdown routine:
 			PsychShutdownText();
-			
+
+			#if PSYCH_SYSTEM != PSYCH_WINDOWS
 			// Jettison plugin:
 			dlclose(drawtext_plugin);
+			#endif
+			
 			drawtext_plugin = NULL;
 		}
 	}
@@ -1363,6 +1364,20 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 #if PSYCH_SYSTEM == PSYCH_WINDOWS
 // MS-Windows:
 #include <locale.h>
+
+// The usual ugliness: When building against R11, we don't have support for
+// _locale_t datatype and associated functions like mbstowcs_l. Therefore
+// we use setlocale() and mbstowcs() instead to set/query/use the global
+// process-wide locale instead. This could possibly wreak-havoc with Matlabs
+// own locale processing. Otoh, only R2006b became locale aware, earlier releases
+// don't use locales at all, and later releases R2007a et al. use the non R11
+// build procedure where everything is fine.
+// -> If there is potential for trouble at all, then probably only for
+// R2006b. Cross your fingers...
+
+#ifdef MATLAB_R11
+#define _locale_t	char*
+#endif
 
 static	_locale_t	drawtext_locale = NULL;
 static	char		drawtext_localestring[256] = { 0 };
@@ -1391,6 +1406,7 @@ static	char		drawtext_localestring[256] = { 0 };
 // Returns TRUE on success, FALSE on error.
 psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 {
+#ifndef MATLAB_R11
 	_locale_t		myloc = NULL;
 
 	// Was only destruction/release of current locale requested?
@@ -1432,6 +1448,18 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	
 	// Failed! No settings changed:
 	return(FALSE);
+#else
+	// Was only destruction/release of current locale requested?
+	if (NULL == mnewlocale) {
+		// Revert process global locale to system default:
+		setlocale(LC_CTYPE, "");
+		return(TRUE);
+	}
+	
+	// Setting of a new locale requested: Try to set it globally for the
+	// whole process, return success status:
+	return( (setlocale(LC_CTYPE, mnewlocale) == NULL) ? FALSE : TRUE );
+#endif
 }
 
 // PsychGetUnicodeTextConversionLocale(): 
@@ -1442,10 +1470,16 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 // Returns NULL on error, a const char* string with the current locale setting on success.
 const char* PsychGetUnicodeTextConversionLocale(void)
 {
+#ifndef MATLAB_R11
 	return(&drawtext_localestring[0]);
+#else
+	// Query process global locale:
+	return(setlocale(LC_CTYPE, NULL));
+#endif
 }
 
 #else
+
 // POSIX systems Linux and OS/X:
 #include <locale.h>
 #include <xlocale.h>
@@ -1577,7 +1611,12 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		if (stringLengthBytes < 1) goto allocintext_skipped;
 		
 		// Compute number of Unicode wchar_t chars after conversion of multibyte C-String:
-		*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+		#ifdef MATLAB_R11
+			*textLength = mbstowcs(NULL, textCString, 0);
+		#else
+			*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+		#endif
+		
 		if (*textLength < 0) PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string for DrawText!");
 		
 		// Empty string provided? Skip, if so.
@@ -1587,8 +1626,12 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		textUniString = (wchar_t*) PsychMallocTemp((*textLength + 1) * sizeof(wchar_t));
 		
 		// Perform conversion of multibyte character sequence to Unicode wchar_t:
-		mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
-
+		#ifdef MATLAB_R11
+			mbstowcs(textUniString, textCString, (*textLength + 1));
+		#else
+			mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
+		#endif
+		
 		// Allocate temporary output vector of doubles and copy unicode string into it:
 		*unicodeText = (double*) PsychMallocTemp((*textLength + 1) * sizeof(double));
 		for (dummy1 = 0; dummy1 < (*textLength + 1); dummy1++) (*unicodeText)[dummy1] = (double) textUniString[dummy1];

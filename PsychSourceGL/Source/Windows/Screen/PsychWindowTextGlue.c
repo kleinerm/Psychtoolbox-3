@@ -63,6 +63,8 @@ void PsychInitTextRecordSettings(PsychTextAttributes *settings)
 	settings->textFontNumber=0; // FIXME: Don't know yet how to assign a reasonable value. 
 	PsychLoadColorStruct(&(settings->textColor), kPsychIndexColor,  0);  //index type which may be coerced into anything.
 	PsychLoadColorStruct(&(settings->textBackgroundColor), kPsychRGBAColor, 0, 0, 0, 0); // Assign black with zero alpha -- transparent.
+	PsychCoerceColorMode(&(settings->textColor));
+	PsychCoerceColorMode(&(settings->textBackgroundColor));
 
 	settings->DisplayList=0;        // Initially no font display list assigned.
 	settings->needsRebuild=TRUE;    // We need to build the display list on first invocation of DrawText.
