@@ -64,6 +64,7 @@
 %   PackColorImage          - Pack three color planes into one m by n by three matrix.
 %   ProgressBar             - Displays a progress bar in MATLAB's command window.
 %   PsychDebugWindowConfiguration - Enable special debug window configuration to aid single display debugging.
+%   PsychGPUControl         - Control low-level operating parameters of certain supported GPU's.
 %   PsychNumel              - Drop-in replacement for numel() on old Matlab versions that don't support it.
 %   PsychtoolboxRoot        - Robust way to get path to Psychtoolbox folder, even if renamed.
 %   RemoveSVNPaths          - Removes .svn folders from the path.

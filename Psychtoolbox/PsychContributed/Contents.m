@@ -1,13 +1,32 @@
 % Psychtoolbox:PsychContributed
 %
-% Scripts and software contributed by Psychtoolbox users and free software
+% Scripts and software contributed by Psychtoolbox users and
 % third-party tools and software that are used in Psychtoolbox. These
-% third-party tools are covered by the same GNU General Public License GPL
-% v2 as Psychtoolbox itself. See the License.txt file in the Psychtoolbox
-% root folder for licensing conditions.
+% third-party tools are covered by different licenses which allow distribution
+% with Psychtoolbox, but are not neccessarily free-software or open-source.
+% See the descriptions below or the help files of the functions for
+% exact licensing conditions of individual contributions.
 %
 % help Psychtoolbox % For an overview, triple-click me & hit enter.
 %
+%
+% ATIRadeonperf                ATIRadeonperf_Linux and ATIRadeonperf_Windows.exe are
+%                              compiled Linux and Windows executables that are called
+%                              as helpers from the function PsychGPUControl() via a
+%                              system() call, ie., they execute in the system shell as
+%                              separate processes.
+%
+%                              These binaries perform the actual GPU setup work on behalf
+%                              of PsychGPUControl() using ATI/AMD proprietary low-level
+%                              API's. The API's are available to registered developers from
+%                              AMD/ATI as "ADL SDK" without royalty fees. While the SDK
+%                              license does allow redistribution of executables using the
+%                              SDK, it doesn't allow redistribution in source code form.
+%                              For that reason, these tools are only made available as
+%                              precompiled binaries for your use, not under any open-source
+%                              or free-software license. The tools were compiled by Mario
+%                              Kleiner, so contact him if you have further questions about
+%                              the tools.
 %
 % simplepsychtoolboxsetup.sh   Configure OS X priority.  Call from Unix shell, not MATLAB.
 %
@@ -43,6 +62,5 @@
 %                              tablets via the WinTab API on Microsoft
 %                              Windows operating systems. It also contains
 %                              some basic usage instructions and two M-File
-%                              demos, contributed by Andrew Wilson. The
-%                              code is contributed under GPLv2.
+%                              demos, contributed by Andrew Wilson.
 %
