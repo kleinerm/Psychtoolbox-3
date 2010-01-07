@@ -54,20 +54,20 @@ static void* drawtext_plugin = NULL;
 static psych_bool drawtext_plugin_firstcall = TRUE;
 
 // Function prototypes for functions exported by drawtext plugins: Will be dynamically bound & linked:
-int (*PsychInitText)(void) = NULL;
-int (*PsychShutdownText)(void) = NULL;
-int (*PsychRebuiltFont)(void) = NULL;
-int (*PsychSetTextFont)(const char* fontName) = NULL;
-int (*PsychSetTextStyle)(unsigned int fontStyle) = NULL;
-int (*PsychSetTextSize)(double fontSize) = NULL;
-void (*PsychSetTextFGColor)(double* color) = NULL;
-void (*PsychSetTextBGColor)(double* color) = NULL;
-void (*PsychSetTextUseFontmapper)(unsigned int useMapper, unsigned int mapperFlags) = NULL;
-void (*PsychSetTextViewPort)(double xs, double ys, double w, double h) = NULL;
-int (*PsychDrawText)(double xStart, double yStart, int textLen, double* text) = NULL;
-int (*PsychMeasureText)(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
-void (*PsychSetTextVerbosity)(unsigned int verbosity) = NULL;
-void (*PsychSetTextAntiAliasing)(int antiAliasing) = NULL;
+int (*PsychPluginInitText)(void) = NULL;
+int (*PsychPluginShutdownText)(void) = NULL;
+int (*PsychPluginRebuiltFont)(void) = NULL;
+int (*PsychPluginSetTextFont)(const char* fontName) = NULL;
+int (*PsychPluginSetTextStyle)(unsigned int fontStyle) = NULL;
+int (*PsychPluginSetTextSize)(double fontSize) = NULL;
+void (*PsychPluginSetTextFGColor)(double* color) = NULL;
+void (*PsychPluginSetTextBGColor)(double* color) = NULL;
+void (*PsychPluginSetTextUseFontmapper)(unsigned int useMapper, unsigned int mapperFlags) = NULL;
+void (*PsychPluginSetTextViewPort)(double xs, double ys, double w, double h) = NULL;
+int (*PsychPluginDrawText)(double xStart, double yStart, int textLen, double* text) = NULL;
+int (*PsychPluginMeasureText)(int textLen, double* text, float* xmin, float* ymin, float* xmax, float* ymax) = NULL;
+void (*PsychPluginSetTextVerbosity)(unsigned int verbosity) = NULL;
+void (*PsychPluginSetTextAntiAliasing)(int antiAliasing) = NULL;
 
 // External renderplugins not yet supported on MS-Windows:
 #if PSYCH_SYSTEM != PSYCH_WINDOWS
@@ -76,8 +76,8 @@ void (*PsychSetTextAntiAliasing)(int antiAliasing) = NULL;
 #endif
 
 // If you change useString then also change the corresponding synopsis string in ScreenSynopsis.
-static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline]);";
-//							1	 2						  1			 2		3	 4	  5		   6				  7
+static char useString[] = "[newX,newY]=Screen('DrawText', windowPtr, text [,x] [,y] [,color] [,backgroundColor] [,yPositionIsBaseline] [,swapTextDirection]);";
+//							1	 2						  1			 2		3	 4	  5		   6				  7						8
 
 // Synopsis string for DrawText:
 static char synopsisString[] = 
@@ -114,6 +114,9 @@ static char synopsisString[] =
 	"the base line of drawn text, otherwise it defines the top of the drawn text. Old PTB's had a "
 	"behaviour equivalent to setting 1, unfortunately this behaviour wasn't replicated in early "
 	"versions of Psychtoolbox-3, so now we stick to the new behaviour by default.\n"
+	"\"swapTextDirection\" If specified and set to 1, then the direction of the text is swapped "
+	"from the default left-to-right to the swapped right-to-left direction, e.g., to handle scripts "
+	"with right-to-left writing order like hebrew.\n"
 	"\"newX, newY\" optionally return the final pen location.\n"
 	"Btw.: Screen('Preference', ...); provides a couple of interesting text preference "
 	"settings that affect text drawing, e.g., setting alpha blending and anti-aliasing modes.\n"
@@ -1277,30 +1280,30 @@ psych_bool PsychLoadTextRendererPlugin(PsychWindowRecordType* windowRecord)
 	if (drawtext_plugin_firstcall) {
 
 		// Dynamically bind all functions to their proper plugin entry points:
-		PsychInitText = dlsym(drawtext_plugin, "PsychInitText");
-		PsychShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
-		PsychRebuiltFont = dlsym(drawtext_plugin, "PsychRebuiltFont");
-		PsychSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
-		PsychSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
-		PsychSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
-		PsychSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
-		PsychSetTextBGColor = dlsym(drawtext_plugin, "PsychSetTextBGColor");
-		PsychSetTextUseFontmapper = dlsym(drawtext_plugin, "PsychSetTextUseFontmapper");
-		PsychSetTextViewPort = dlsym(drawtext_plugin, "PsychSetTextViewPort");
-		PsychDrawText = dlsym(drawtext_plugin, "PsychDrawText");
-		PsychMeasureText = dlsym(drawtext_plugin, "PsychMeasureText");
-		PsychSetTextVerbosity = dlsym(drawtext_plugin, "PsychSetTextVerbosity");
-		PsychSetTextAntiAliasing = dlsym(drawtext_plugin, "PsychSetTextAntiAliasing");
+		PsychPluginInitText = dlsym(drawtext_plugin, "PsychInitText");
+		PsychPluginShutdownText = dlsym(drawtext_plugin, "PsychShutdownText");
+		PsychPluginRebuiltFont = dlsym(drawtext_plugin, "PsychRebuiltFont");
+		PsychPluginSetTextFont = dlsym(drawtext_plugin, "PsychSetTextFont");
+		PsychPluginSetTextStyle = dlsym(drawtext_plugin, "PsychSetTextStyle");
+		PsychPluginSetTextSize = dlsym(drawtext_plugin, "PsychSetTextSize");
+		PsychPluginSetTextFGColor = dlsym(drawtext_plugin, "PsychSetTextFGColor");
+		PsychPluginSetTextBGColor = dlsym(drawtext_plugin, "PsychSetTextBGColor");
+		PsychPluginSetTextUseFontmapper = dlsym(drawtext_plugin, "PsychSetTextUseFontmapper");
+		PsychPluginSetTextViewPort = dlsym(drawtext_plugin, "PsychSetTextViewPort");
+		PsychPluginDrawText = dlsym(drawtext_plugin, "PsychDrawText");
+		PsychPluginMeasureText = dlsym(drawtext_plugin, "PsychMeasureText");
+		PsychPluginSetTextVerbosity = dlsym(drawtext_plugin, "PsychSetTextVerbosity");
+		PsychPluginSetTextAntiAliasing = dlsym(drawtext_plugin, "PsychSetTextAntiAliasing");
 		
 		// Assign current level of verbosity:
-		PsychSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
+		PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
 		// Try to initialize plugin:
-		if (PsychInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
+		if (PsychPluginInitText()) PsychErrorExitMsg(PsychError_internal, "Drawtext plugin, PsychInitText() failed!");
 		
 		// Enable use of plugins internal fontMapper for selection of font file, face type and rendering
 		// parameters, based on the font/text spec provided by us:
-		PsychSetTextUseFontmapper(1, 0);
+		PsychPluginSetTextUseFontmapper(1, 0);
 	}
 
 #else
@@ -1347,7 +1350,7 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 			if (PsychPrefStateGet_Verbosity() > 5) printf("PTB-DEBUG: In PsychCleanupTextRenderer: Releasing text renderer plugin.\n");
 
 			// Call plugin shutdown routine:
-			PsychShutdownText();
+			PsychPluginShutdownText();
 
 			#if PSYCH_SYSTEM != PSYCH_WINDOWS
 			// Jettison plugin:
@@ -1375,12 +1378,13 @@ void PsychCleanupTextRenderer(PsychWindowRecordType* windowRecord)
 // -> If there is potential for trouble at all, then probably only for
 // R2006b. Cross your fingers...
 
-#ifdef MATLAB_R11
+#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
 #define _locale_t	char*
 #endif
 
 static	_locale_t	drawtext_locale = NULL;
 static	char		drawtext_localestring[256] = { 0 };
+unsigned int		drawtext_codepage = 0;
 
 // Define mbstowcs_l (Posix) to the corresponding name on Windows CRT:
 #define	mbstowcs_l	_mbstowcs_l
@@ -1406,7 +1410,9 @@ static	char		drawtext_localestring[256] = { 0 };
 // Returns TRUE on success, FALSE on error.
 psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 {
-#ifndef MATLAB_R11
+	unsigned int	mycodepage;
+
+#if !defined(MATLAB_R11) && !defined(PTBOCTAVE3MEX)
 	_locale_t		myloc = NULL;
 
 	// Was only destruction/release of current locale requested?
@@ -1417,9 +1423,27 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 			drawtext_locale = NULL;
 		}
 		drawtext_localestring[0] = 0;
+		drawtext_codepage = 0;
 		
 		// Done after destruction:
 		return(TRUE);
+	}
+
+	// Special # symbol to directly set a codepage provided?
+	if (strstr(mnewlocale, "#") && (sscanf("#%i", &mycodepage) > 0)) {
+		// Yes, parse numeric codepage id and assign it:
+		strcpy(drawtext_localestring, mnewlocale);
+		drawtext_codepage = mycodepage;
+		return(TRUE);
+	}
+	else {
+		// Special case "UTF-8" string provided?
+		if (PsychMatch(mnewlocale, "UTF-8")) {
+			// Yes: Switch to UTF-8 codepage:
+			strcpy(drawtext_localestring, mnewlocale);
+			drawtext_codepage = CP_UTF8;
+			return(TRUE);
+		}
 	}
 	
 	// Setting of a new locale requested:
@@ -1431,6 +1455,7 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 			drawtext_locale = NULL;
 		}
 
+		drawtext_codepage = 0;
 		drawtext_localestring[0] = 0;
 		if (strlen(mnewlocale) < 1) {
 			// Special locale "" given: Set namestring to current system
@@ -1453,11 +1478,30 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 	if (NULL == mnewlocale) {
 		// Revert process global locale to system default:
 		setlocale(LC_CTYPE, "");
+		drawtext_codepage = 0;
 		return(TRUE);
+	}
+
+	// Special # symbol to directly set a codepage provided?
+	if (strstr(mnewlocale, "#") && (sscanf("#%i", &mycodepage) > 0)) {
+		// Yes, parse numeric codepage id and assign it:
+		strcpy(drawtext_localestring, mnewlocale);
+		drawtext_codepage = mycodepage;
+		return(TRUE);
+	}
+	else {
+		// Special case "UTF-8" string provided?
+		if (PsychMatch(mnewlocale, "UTF-8")) {
+			// Yes: Switch to UTF-8 codepage:
+			strcpy(drawtext_localestring, mnewlocale);
+			drawtext_codepage = CP_UTF8;
+			return(TRUE);
+		}
 	}
 	
 	// Setting of a new locale requested: Try to set it globally for the
 	// whole process, return success status:
+	drawtext_codepage = 0;
 	return( (setlocale(LC_CTYPE, mnewlocale) == NULL) ? FALSE : TRUE );
 #endif
 }
@@ -1470,9 +1514,12 @@ psych_bool	PsychSetUnicodeTextConversionLocale(const char* mnewlocale)
 // Returns NULL on error, a const char* string with the current locale setting on success.
 const char* PsychGetUnicodeTextConversionLocale(void)
 {
-#ifndef MATLAB_R11
+#if !defined(MATLAB_R11) && !defined(PTBOCTAVE3MEX)
 	return(&drawtext_localestring[0]);
 #else
+	// Return encoded codepage:
+	if (drawtext_codepage) return(&drawtext_localestring[0]);
+
 	// Query process global locale:
 	return(setlocale(LC_CTYPE, NULL));
 #endif
@@ -1610,14 +1657,31 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		// Empty string? If so, we skip processing:
 		if (stringLengthBytes < 1) goto allocintext_skipped;
 		
-		// Compute number of Unicode wchar_t chars after conversion of multibyte C-String:
-		#ifdef MATLAB_R11
-			*textLength = mbstowcs(NULL, textCString, 0);
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// Windows:
+			// Compute number of Unicode wchar_t chars after conversion of multibyte C-String:
+			if (drawtext_codepage) {
+				// Codepage-based text conversion:
+				*textLength = MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, NULL, 0);
+				if (*textLength <= 0) {
+					printf("PTB-ERROR: MultiByteToWideChar() returned conversion error code %i.", (int) GetLastError());
+					PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string to Unicode for DrawText!");
+				}
+			}
+			else {
+				// Locale-based text conversion:
+				#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
+						*textLength = mbstowcs(NULL, textCString, 0);
+				#else
+						*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
+				#endif
+			}
 		#else
+			// Unix: OS/X, Linux:
 			*textLength = mbstowcs_l(NULL, textCString, 0, drawtext_locale);
 		#endif
 		
-		if (*textLength < 0) PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string for DrawText!");
+		if (*textLength < 0) PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string to Unicode for DrawText!");
 		
 		// Empty string provided? Skip, if so.
 		if (*textLength < 1) goto allocintext_skipped;
@@ -1626,10 +1690,23 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		textUniString = (wchar_t*) PsychMallocTemp((*textLength + 1) * sizeof(wchar_t));
 		
 		// Perform conversion of multibyte character sequence to Unicode wchar_t:
-		#ifdef MATLAB_R11
-			mbstowcs(textUniString, textCString, (*textLength + 1));
+		#if PSYCH_SYSTEM == PSYCH_WINDOWS
+			// Windows:
+			if (drawtext_codepage) {
+				// Codepage-based text conversion:
+				MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, textUniString, (*textLength + 1));				
+			}
+			else {
+				// Locale-based text conversion:
+				#if defined(MATLAB_R11) || defined(PTBOCTAVE3MEX)
+					mbstowcs(textUniString, textCString, (*textLength + 1));
+				#else
+					mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
+				#endif
+			}
 		#else
-			mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);
+			// Unix:
+			mbstowcs_l(textUniString, textCString, (*textLength + 1), drawtext_locale);			
 		#endif
 		
 		// Allocate temporary output vector of doubles and copy unicode string into it:
@@ -1669,21 +1746,32 @@ void PsychDrawCharText(PsychWindowRecordType* winRec, const char* textString, do
 	for (ix = 0; ix < textLength; ix++) unicodeText[ix] = (double) textString[ix];
 	
 	// Call Unicode text renderer:
-	PsychDrawUnicodeText(winRec, boundingbox, textLength, unicodeText, xp, yp, yPositionIsBaseline, (textColor) ? textColor :  &(winRec->textAttributes.textColor), (backgroundColor) ? backgroundColor :  &(winRec->textAttributes.textBackgroundColor));
+	PsychDrawUnicodeText(winRec, boundingbox, textLength, unicodeText, xp, yp, yPositionIsBaseline, (textColor) ? textColor :  &(winRec->textAttributes.textColor), (backgroundColor) ? backgroundColor :  &(winRec->textAttributes.textBackgroundColor), 0);
 
 	// Done.
 	return;
 }
 
-PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor)
+PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* boundingbox, unsigned int stringLengthChars, double* textUniDoubleString, double* xp, double* yp, unsigned int yPositionIsBaseline, PsychColorType *textColor, PsychColorType *backgroundColor, int swapTextDirection)
 {
 	GLdouble		backgroundColorVector[4];
 	GLdouble		colorVector[4];
     GLenum			normalSourceBlendFactor, normalDestinationBlendFactor;
 	float			xmin, ymin, xmax, ymax;
 	double			myyp;
+	double			dummy;
+	int				i;
 	int				rc = 0;
 
+	// Invert text string (read it "backwards") if swapTextDirection is requested:
+	if (swapTextDirection) {
+		for(i = 0; i < stringLengthChars/2; i++) {
+			dummy = textUniDoubleString[i];
+			textUniDoubleString[i] = textUniDoubleString[stringLengthChars - i - 1];
+			textUniDoubleString[stringLengthChars - i - 1] = dummy;
+		}
+	}
+	
 	// Does usercode want us to use a text rendering plugin instead of our standard OS specific renderer?
 	// If so, load it if not already loaded:
 	if (((PsychPrefStateGet_TextRenderer() == 2) || ((PsychPrefStateGet_TextRenderer() == 1) && (PSYCH_SYSTEM == PSYCH_LINUX))) &&	
@@ -1692,30 +1780,30 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		// Use external dynamically loaded plugin:
 
 		// Assign current level of verbosity:
-		PsychSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
+		PsychPluginSetTextVerbosity((unsigned int) PsychPrefStateGet_Verbosity());
 
 		// Assign current anti-aliasing settings:
-		PsychSetTextAntiAliasing(PsychPrefStateGet_TextAntiAliasing());
+		PsychPluginSetTextAntiAliasing(PsychPrefStateGet_TextAntiAliasing());
 
 		// Assign font family name of requested font:
-		PsychSetTextFont(winRec->textAttributes.textFontName);
+		PsychPluginSetTextFont(winRec->textAttributes.textFontName);
 
 		// Assign style settings, e.g., bold, italic etc.:
-		PsychSetTextStyle(winRec->textAttributes.textStyle);
+		PsychPluginSetTextStyle(winRec->textAttributes.textStyle);
 
 		// Assign text size in pixels:
-		PsychSetTextSize((double) winRec->textAttributes.textSize);
+		PsychPluginSetTextSize((double) winRec->textAttributes.textSize);
 
 		// Assign viewport settings for rendering:
-		PsychSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
+		PsychPluginSetTextViewPort(winRec->rect[kPsychLeft], winRec->rect[kPsychTop], winRec->rect[kPsychRight] - winRec->rect[kPsychLeft], winRec->rect[kPsychBottom] - winRec->rect[kPsychTop]);	
 		
 		// Compute and assign text background color:
 		PsychConvertColorToDoubleVector(backgroundColor, winRec, backgroundColorVector);
-		PsychSetTextBGColor(backgroundColorVector);
+		PsychPluginSetTextBGColor(backgroundColorVector);
 		
 		// Compute and assign text foreground color - the actual color of the glyphs:
 		PsychConvertColorToDoubleVector(textColor, winRec, colorVector);
-		PsychSetTextFGColor(colorVector);
+		PsychPluginSetTextFGColor(colorVector);
 		
 		// Enable this windowRecords framebuffer as current drawingtarget:
 		PsychSetDrawingTarget(winRec);
@@ -1743,7 +1831,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		#endif
 		
 		// Compute bounding box of drawn string:
-		rc = PsychMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
+		rc = PsychPluginMeasureText(stringLengthChars, textUniDoubleString, &xmin, &ymin, &xmax, &ymax);
 
 		// Handle definition of yp properly: Is it the text baseline, or the top of the text bounding box?
 		if (yPositionIsBaseline) {
@@ -1760,7 +1848,7 @@ PsychError PsychDrawUnicodeText(PsychWindowRecordType* winRec, PsychRectType* bo
 		}
 		else {
 			// Draw text by calling into the plugin:
-			rc += PsychDrawText(*xp, winRec->rect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
+			rc += PsychPluginDrawText(*xp, winRec->rect[kPsychBottom] - myyp, stringLengthChars, textUniDoubleString);
 		}
 		
 		// Restore alpha-blending settings if needed:
@@ -1797,7 +1885,7 @@ PsychError SCREENDrawText(void)
     PsychWindowRecordType	*winRec;
     psych_bool				doSetColor, doSetBackgroundColor;
     PsychColorType			colorArg, backgroundColorArg;
-    int						i, yPositionIsBaseline;
+    int						i, yPositionIsBaseline, swapTextDirection;
     int						stringLengthChars;
 	double*					textUniDoubleString = NULL;
 
@@ -1805,7 +1893,7 @@ PsychError SCREENDrawText(void)
     PsychPushHelp(useString, synopsisString, seeAlsoString);
     if (PsychIsGiveHelp()) { PsychGiveHelp(); return(PsychError_none); };
 
-    PsychErrorExit(PsychCapNumInputArgs(7));   	
+    PsychErrorExit(PsychCapNumInputArgs(8));   	
     PsychErrorExit(PsychRequireNumInputArgs(2)); 	
     PsychErrorExit(PsychCapNumOutputArgs(2));  
 
@@ -1832,8 +1920,12 @@ PsychError SCREENDrawText(void)
 	yPositionIsBaseline = PsychPrefStateGet_TextYPositionIsBaseline();
 	PsychCopyInIntegerArg(7, kPsychArgOptional, &yPositionIsBaseline);
 
+	// Get optional text writing direction flag: Defaults to left->right aka 0:
+	swapTextDirection = 0;
+	PsychCopyInIntegerArg(8, kPsychArgOptional, &swapTextDirection);
+	
 	// Call Unicode text renderer: This will update the current text cursor positions as well.
-	PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor));
+	PsychDrawUnicodeText(winRec, NULL, stringLengthChars, textUniDoubleString, &(winRec->textAttributes.textPositionX), &(winRec->textAttributes.textPositionY), yPositionIsBaseline, &(winRec->textAttributes.textColor), &(winRec->textAttributes.textBackgroundColor), swapTextDirection);
 
 	// We jump directly to this position in the code if the textstring is empty --> No op.
 drawtext_skipped:    
