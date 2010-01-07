@@ -176,6 +176,34 @@ void PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndi
     }
 }
  
+/*
+ PsychHIDGetDeviceListByUsages()
+ 
+ 
+ */ 
+void PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords)
+{
+    pRecDevice 			currentDevice;
+    int				currentDeviceIndex;
+    int				currentUsage;
+    long 			*usagePage;
+    long			*usage;
+	
+    PsychHIDVerifyInit();
+    *numDeviceIndices=0;
+    for(usagePage=usagePages, usage=usages, currentUsage=0; currentUsage<numUsages; usagePage++, usage++, currentUsage++){
+		currentDeviceIndex=0;
+		for(currentDevice=HIDGetFirstDevice(); currentDevice != NULL; currentDevice=HIDGetNextDevice(currentDevice)){    
+			++currentDeviceIndex;     
+			if(currentDevice->usagePage==*usagePage && currentDevice->usage==*usage){
+				deviceRecords[*numDeviceIndices]=currentDevice;
+				deviceIndices[*numDeviceIndices]=currentDeviceIndex;  //the array is 0-indexed, devices are 1-indexed.   
+				++(*numDeviceIndices);
+			}
+		}
+	}
+}
+
 
 
 

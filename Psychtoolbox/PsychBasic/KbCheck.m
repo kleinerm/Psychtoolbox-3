@@ -78,11 +78,14 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % keyboard devices and return their "merged state" - The 'keyCode' vector
 % will represent the state of all keys of all keyboards, and the
 % 'keyIsDown' flag will be equal to one if at least one key on any of the
-% keyboards is pressed. When 'deviceNumber' is greater than 0, it will
-% query only the specified HID keyboard device corresponding to that
+% keyboards is pressed. When 'deviceNumber' is -2, KbCheck will query all
+% keypad devices (if any) and return their "merged state", and when
+% 'deviceNumber' is -3, KbCheck will query all keyboard and keypad devices
+% and return their "merged state". When 'deviceNumber' is greater than 0, it
+% will query only the specified HID keyboard device corresponding to that
 % 'deviceNumber'. The function GetKeyboardIndices() allows to query the
 % device numbers of all attached keyboards, or keyboards matching specific
-% criteria.
+% criteria, and the function GetKeypadIndices() allows the same for keypads.
 % 
 % Windows/Linux: __________________________________________________________
 %
@@ -124,6 +127,9 @@ function [keyIsDown,secs, keyCode, deltaSecs] = KbCheck(deviceNumber)
 % 03/03/9  mk Bugfix for "white-list" code on old Matlab releases. Need to
 %             cast to double and back to uint8, as old Matlabs don't
 %             support .* operation on uint8 class arrays.
+% 12/18/09 rpw Added support for polling keypads on OSX via deviceNumber of -2 or -3
+% 01/07/10 mk Code refactoring: Unified check-code for all deviceIndex
+%             values.
 
 % ptb_kbcheck_disabledKeys is a vector of keyboard scancodes. It allows
 % to define keys which should never be reported as 'down', i.e. disabled
@@ -143,7 +149,7 @@ persistent oldSecs;
 % Cache operating system type to speed up the code below:
 persistent macosx;
 % ...and all keyboard indices as well:
-persistent kbs;
+persistent kbs kps;
 
 if isempty(macosx)
     % First time invocation: Query and cache type of OS:
@@ -155,6 +161,7 @@ if isempty(macosx)
     % Query indices of all attached keyboards, in case we need'em:
     if macosx
         kbs=GetKeyboardIndices;
+        kps=GetKeypadIndices;
         
         % Init ptb_kbcheck_enabledKeys to empty, if it hasn't been set
         % externally already:
@@ -167,17 +174,31 @@ end
 if macosx
     if nargin==1
         if deviceNumber==-1
-            % Query all attached keyboards
+            % Query all attached keyboards:
+            keyt = kbs;
+        elseif deviceNumber==-2
+            % Query all attached keypads:
+            keyt = kps; 
+        elseif deviceNumber==-3
+            % Query all attached keyboards and keypads:
+            keyt = [kbs kps]; 
+        else
+            % Query a specific keyboard device number:
+            keyt = deviceNumber;
+        end
+
+        if ~isempty(keyt)
+            % Check all devices in vector keyt and merge their state:
             keyIsDown=0; keyCode=zeros(1,256);  % preallocate these variables
-            for i=kbs
+            for i=keyt
                 [DeviceKeyIsDown, secs, DeviceKeyCode]= PsychHID('KbCheck', i, ptb_kbcheck_enabledKeys);
                 keyIsDown = keyIsDown | DeviceKeyIsDown;
                 keyCode = keyCode | DeviceKeyCode;
             end
         else
-            % Query a specific keyboard device #
-            [keyIsDown, secs, keyCode]= PsychHID('KbCheck', deviceNumber, ptb_kbcheck_enabledKeys);
+            [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);
         end
+        
     elseif nargin == 0
         % Query primary keyboard:
         [keyIsDown, secs, keyCode]= PsychHID('KbCheck', [], ptb_kbcheck_enabledKeys);

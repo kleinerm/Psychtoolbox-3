@@ -15,6 +15,7 @@
 		3/15/05  dgp        Added missing prototypes from PsychHIDHelpers.c to make compiler happy.
         4/3/05   dgp        Added prototype for PsychHIDReceiveReportsCleanup.
 		8/23/07  rpw		Added prototypes for PsychHIDKbTriggerWait and PsychHIDKbQueue suite.
+		12/17/09 rpw		Added prototype for PsychHIDGetDeviceListByUsages.
 
 	TO DO:
 
@@ -143,6 +144,7 @@ pRecElement 	PsychHIDGetCollectionRecordFromDeviceRecordAndCollectionIndex(pRecD
 int 		PsychHIDCountCollectionElements(pRecElement collectionRecord, HIDElementTypeMask elementTypeMask);		// PsychHIDHelpers.c
 int 		PsychHIDFindCollectionElements(pRecElement collectionRecord, HIDElementTypeMask elementTypeMask, pRecElement *collectionMembers, int maxListElements);  // PsychHIDHelpers.c
 void 		PsychHIDGetDeviceListByUsage(long usagePage, long usage, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
+void 		PsychHIDGetDeviceListByUsages(int numUsages, long *usagePages, long *usages, int *numDeviceIndices, int *deviceIndices, pRecDevice *deviceRecords);  //// PsychHIDHelpers.c
 void InitializeSynopsis();
 PsychError PsychDisplayPsychHIDSynopsis(void);
 psych_bool PsychHIDQueryOpenDeviceInterfaceFromDeviceIndex(int deviceIndex);	// PsychHIDHelpers.c

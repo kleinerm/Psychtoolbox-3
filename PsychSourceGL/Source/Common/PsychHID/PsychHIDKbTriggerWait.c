@@ -15,6 +15,7 @@
       
 	HISTORY:
 		8/9/07  rpw		Created.
+		12/17/09 rpw	Added keypad support
   
 	NOTES:
 	
@@ -54,11 +55,14 @@
 #include "PsychHID.h"
 #include "PsychHIDKbQueue.h"
 
+#define NUMDEVICEUSAGES 2
+
 static char useString[]= "secs=PsychHID('KbTriggerWait', KeysUsage, [deviceNumber])";
 static char synopsisString[] = 
-        "Scan a keyboard device and wait for a trigger key press "
+        "Scan a keyboard or keypad device and wait for a trigger key press "
         "By default the first keyboard device (the one with the lowest device number) is "
-        "scanned.  Optionally, the device number of any keyboard may be specified. ";
+        "scanned. If no keyboard is found, the first keypad device is "
+        "scanned.  Optionally, the device number of any keyboard or keypad may be specified. ";
         
 static char seeAlsoString[] = "";
 
@@ -71,7 +75,8 @@ PsychError PSYCHHIDKbTriggerWait(void)
     int			i, deviceIndex, numDeviceIndices;
     long		KeysUsagePage=0x07;									// This is the keyboard usage page
 	long		KeysUsage;											// This will contain the key code of the trigger key
-    long		KbDeviceUsagePage=0x01, KbDeviceUsage=0x06;			// Generic Desktop page (0x01), keyboard (0x06)
+    long		KbDeviceUsagePages[NUMDEVICEUSAGES]= {0x01,0x01}, KbDeviceUsages[NUMDEVICEUSAGES]={0x06,0x07}; // Generic Desktop page (0x01), keyboard (0x06), keypad (0x07)
+    int 		numDeviceUsages=NUMDEVICEUSAGES;
     int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
     psych_bool		isDeviceSpecified, foundUserSpecifiedDevice;
@@ -89,7 +94,7 @@ PsychError PSYCHHIDKbTriggerWait(void)
     if(PsychIsGiveHelp()){PsychGiveHelp();return(PsychError_none);};
 
     PsychErrorExit(PsychCapNumOutputArgs(1));
-    PsychErrorExit(PsychCapNumInputArgs(2));  	//Specify trigger key code and the deviceNumber of the keyboard to scan.  
+    PsychErrorExit(PsychCapNumInputArgs(2));  	//Specify trigger key code and the deviceNumber of the keyboard or keypad to scan.  
     
     PsychHIDVerifyInit();
 	
@@ -105,19 +110,19 @@ PsychError PSYCHHIDKbTriggerWait(void)
 	}
 	
     //Choose the device index and its record
-    PsychHIDGetDeviceListByUsage(KbDeviceUsagePage, KbDeviceUsage, &numDeviceIndices, deviceIndices, deviceRecords);  
+    PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);  
     isDeviceSpecified=PsychCopyInIntegerArg(2, FALSE, &deviceIndex);
-    if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard.
+    if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard or keypad.
         for(i=0;i<numDeviceIndices;i++){
             if(foundUserSpecifiedDevice=(deviceIndices[i]==deviceIndex))
                 break;
         }
         if(!foundUserSpecifiedDevice)
-            PsychErrorExitMsg(PsychError_user, "Specified device number is not a keyboard device.");
-    }else{ // set the keyboard device to be the first keyboard device
+            PsychErrorExitMsg(PsychError_user, "Specified device number is not a keyboard or keypad device.");
+    }else{ // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
         i=0;
         if(numDeviceIndices==0)
-            PsychErrorExitMsg(PsychError_user, "No keyboard devices detected.");
+            PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
         else{
             deviceIndex=deviceIndices[i];
         }

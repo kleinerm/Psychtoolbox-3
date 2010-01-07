@@ -50,7 +50,9 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
 % KbWait tests the first USB-HID keyboard device by default. Optionally
 % you can pass in a 'deviceNumber' to test a different keyboard if multiple
 % keyboards are connected to your machine.  If deviceNumber is -1, all
-% keyboard devices will be checked.  The device numbers to be checked are
+% keyboard devices will be checked.  If deviceNumber is -2, all keypad
+% devices (if any) will be checked. If deviceNumber is -3, all keyboard and
+% keypad devices will be checked. The device numbers to be checked are
 % determined only on the first call to the function.  If these numbers
 % change, the function can be reset using "clear KbWait".
 % _________________________________________________________________________
@@ -80,6 +82,7 @@ function [secs, keyCode, deltaSecs] = KbWait(deviceNumber, forWhat)
 %                This also fixes a bug reported in forum message 10468
 %                where KbReleaseWait(-1) didn't wait for all keys on all
 %                keyboards to be released.
+% 12/18/09  rpw  Added documentation about keypad devices on OS/X.
 
 % Time (in seconds) to wait between "failed" checks, in order to not
 % overload the system in realtime mode. 5 msecs seems to be an ok value...

@@ -10,6 +10,7 @@
       
   HISTORY:
   5/12/03  awi		Created.
+  12/17/09 rpw		Added keypad support
   
   TO DO:
   
@@ -22,11 +23,14 @@
 
 #include "PsychHID.h"
 
+#define NUMDEVICEUSAGES 2
+
 static char useString[]= "[keyIsDown,secs,keyCode]=PsychHID('KbCheck' [, deviceNumber][, scanList])";
 static char synopsisString[] = 
-        "Scan a keyboard device and return a vector of logical values indicating the "
+        "Scan a keyboard or keypad device and return a vector of logical values indicating the "
         "state of each key.  By default the first keyboard device (the one with the lowest device number) is "
-        "scanned.  Optionally, the device number of any keyboard may be specified in the argument "
+        "scanned. If no keyboard is found, the first keypad device is "
+        "scanned.  Optionally, the device number of any keyboard or keypad may be specified in the argument "
 		"'deviceNumber'. As checking all potentially 256 keys on a HID device is a time consuming process, "
 		"which can easily take up to 1 msec on modern hardware, you can restrict the scan to a subset of "
 		"the 256 keys by providing the optional 'scanList' parameter: 'scanList' must be a vector of 256 "
@@ -39,6 +43,7 @@ static char synopsisString[] =
         
 static char seeAlsoString[] = "";
 
+
  
 PsychError PSYCHHIDKbCheck(void) 
 {
@@ -47,7 +52,8 @@ PsychError PSYCHHIDKbCheck(void)
     int					i, deviceIndex, debuglevel = 0;
 	static int			numDeviceIndices = -1;
     long				KeysUsagePage=7;
-    long				KbDeviceUsagePage= 1, KbDeviceUsage=6; 
+    int 				numDeviceUsages=NUMDEVICEUSAGES;
+    long				KbDeviceUsagePages[NUMDEVICEUSAGES]= {1,1}, KbDeviceUsages[NUMDEVICEUSAGES]={6,7}; // Keyboards and keypads
     static int			deviceIndices[PSYCH_HID_MAX_KEYBOARD_DEVICES]; 
     static pRecDevice	deviceRecords[PSYCH_HID_MAX_KEYBOARD_DEVICES];
     psych_bool				isDeviceSpecified, foundUserSpecifiedDevice;
@@ -63,15 +69,15 @@ PsychError PSYCHHIDKbCheck(void)
     PsychErrorExit(PsychCapNumOutputArgs(3));
     PsychErrorExit(PsychCapNumInputArgs(2));
 	
-	// We query keyboard devices only on first invocation, then cache and recycle the data:
+	// We query keyboard and keypad devices only on first invocation, then cache and recycle the data:
 	if (numDeviceIndices == -1) {
 		PsychHIDVerifyInit();
-        PsychHIDGetDeviceListByUsage(KbDeviceUsagePage, KbDeviceUsage, &numDeviceIndices, deviceIndices, deviceRecords);
+        PsychHIDGetDeviceListByUsages(numDeviceUsages, KbDeviceUsagePages, KbDeviceUsages, &numDeviceIndices, deviceIndices, deviceRecords);
 	}
 	
     // Choose the device index and its record
     isDeviceSpecified=PsychCopyInIntegerArg(1, FALSE, &deviceIndex);
-    if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard.
+    if(isDeviceSpecified){  //make sure that the device number provided by the user is really a keyboard or keypad.
 		if (deviceIndex < 0) {
 			debuglevel = 1;
 			deviceIndex = -deviceIndex;
@@ -82,11 +88,11 @@ PsychError PSYCHHIDKbCheck(void)
                 break;
         }
         if(!foundUserSpecifiedDevice)
-            PsychErrorExitMsg(PsychError_user, "Specified device number is not a keyboard device.");
-    }else{ // set the keyboard device to be the first keyboard device
+            PsychErrorExitMsg(PsychError_user, "Specified device number is not a keyboard or keypad device.");
+    }else{ // set the keyboard or keypad device to be the first keyboard device or, if no keyboard, the first keypad
         i=0;
         if(numDeviceIndices==0)
-            PsychErrorExitMsg(PsychError_user, "No keyboard devices detected.");
+            PsychErrorExitMsg(PsychError_user, "No keyboard or keypad devices detected.");
         else{
             deviceIndex=deviceIndices[i];
         }

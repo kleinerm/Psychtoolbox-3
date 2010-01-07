@@ -20,11 +20,11 @@ function [mouseIndices, productNames]= GetMouseIndices;
 % 
 % _________________________________________________________________________
 %
-% see also: GetKeyboardIndices, GetGamepadIndices
+% see also: GetKeyboardIndices, GetKeypadIndices, GetGamepadIndices
 
 % HISTORY
 % 10/15/04  awi     Wrote it.  Based on GetGamepadIndices
-
+% 12/17/09  rpw		Added see also for GetKeypadIndices
 
 mouseIndices=[];
 productNames=cell(0);
