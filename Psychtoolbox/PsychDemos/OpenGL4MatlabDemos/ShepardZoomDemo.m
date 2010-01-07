@@ -254,11 +254,10 @@ drawhelp = 1;
 helptext = ['Daniel Bergers "Shepard Zoom"\n\n' ...
             'Keys and their meaning:\n\n(h) - Toggle display of this help text\n(1) to (5) - Toggle texture layer 1 to 5\n' ...
             'Left/Right Cursor keys - Rotate ccw/cw\nUp/Down Cursor keys - Zoom in/out\nESCape key - Quit demo\n'];
-if ~IsLinux
-    Screen('TextSize', win, 24);
-    Screen('TextStyle', win, 1);
-    Screen('TextColor', win, [255 0 0]);
-end
+
+Screen('TextSize', win, 24);
+Screen('TextStyle', win, 1);
+Screen('TextColor', win, [255 0 0]);
 
 % Setup initial rotation speed:
 rotpos=0.0;

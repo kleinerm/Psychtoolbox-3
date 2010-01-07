@@ -1,4 +1,4 @@
-function data=DaqDIn(daq,NumberOfPorts)
+function data=DaqDIn(daq,NumberOfPorts, port)
 % data=DaqDIn([DeviceIndex],[NumberOfPorts])
 % USB-1208FS: Read digital ports. This command reads the current state of
 % the DIO ports.  The return value will be the value seen at the port pins.
@@ -41,11 +41,11 @@ end
 reportId = 3;
 TheReport = uint8(0);
 
-if ~nargin | isempty(daq)
+if ~nargin || isempty(daq)
   daq=DaqFind;
 end
 
-if nargin < 2 | isempty(NumberOfPorts)
+if nargin < 2 || isempty(NumberOfPorts)
   if strcmp(TheDevices(daq).product(1:6),'USB-16')
     NumberOfPorts = 1;
   else
