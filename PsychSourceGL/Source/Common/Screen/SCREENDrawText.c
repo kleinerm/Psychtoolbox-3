@@ -1662,7 +1662,7 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 			// Compute number of Unicode wchar_t chars after conversion of multibyte C-String:
 			if (drawtext_codepage) {
 				// Codepage-based text conversion:
-				*textLength = MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, NULL, 0);
+				*textLength = MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, NULL, 0) - 1;
 				if (*textLength <= 0) {
 					printf("PTB-ERROR: MultiByteToWideChar() returned conversion error code %i.", (int) GetLastError());
 					PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string to Unicode for DrawText!");
@@ -1694,7 +1694,10 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 			// Windows:
 			if (drawtext_codepage) {
 				// Codepage-based text conversion:
-				MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, textUniString, (*textLength + 1));				
+				if (MultiByteToWideChar(drawtext_codepage, 0, textCString, -1, textUniString, (*textLength + 1)) <= 0) {
+					printf("PTB-ERROR: MultiByteToWideChar() II returned conversion error code %i.", (int) GetLastError());
+					PsychErrorExitMsg(PsychError_user, "Invalid multibyte character sequence detected! Can't convert given char() string to Unicode for DrawText!");
+				}
 			}
 			else {
 				// Locale-based text conversion:
@@ -1725,6 +1728,12 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 		// Nope. Assign output arguments. We can pass-through the unicode double vector as it is
 		// already in the proper format:
 		*textLength = stringLengthBytes;
+	}
+
+	if (PsychPrefStateGet_Verbosity() > 9) {
+		printf("PTB-DEBUG: Allocated unicode string: ");
+		for (dummy1 = 0; dummy1 < *textLength; dummy1++) printf("%f ", (float) (*unicodeText)[dummy1]);	
+		printf("\n");
 	}
 
 	// Successfully allocated a text string as Unicode double vector:

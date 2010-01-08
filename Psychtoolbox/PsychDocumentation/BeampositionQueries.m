@@ -107,9 +107,11 @@
 %  3 = Always use kernel-level timestamping, fall back to noisy stamps if it fails.
 %
 % The default on OS-X, Linux and Windows with single display setups is "1". On Windows in
-% explicit multi-display mode, we default to "-1" ie. noisy timestamps, as the current
-% beamposition mechanism is not yet mature and tested enough for multi-display mode on
-% Windows, or better said: The operating system is not mature enough ;-)
+% explicit multi-display mode, we default to "-1" ie. noisy timestamps if you
+% are running Psychtoolbox under a Matlab version older than R2007a, as the current
+% beamposition mechanism is not capable of supporting multi-display setups
+% due to some limitations imposed by old Matlab versions. On modern
+% Matlab's or Octave, the accurate mode "1" is used as well.
 %
 % If the beampos query test fails, you will see some warning message about
 % "SYNCHRONIZATION TROUBLE" in the Matlab/Octave command window or other
