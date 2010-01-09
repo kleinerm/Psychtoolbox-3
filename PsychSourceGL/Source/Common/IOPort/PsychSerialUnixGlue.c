@@ -613,7 +613,7 @@ void PsychIOOSCloseSerialPort(PsychSerialDeviceRecord* device)
     // Block until all written output has been sent from the device.
     // Note that this call is simply passed on to the serial device driver. 
 	// See tcsendbreak(3) ("man 3 tcsendbreak") for details.
-    if (tcdrain(device->fileDescriptor) == -1)
+    if ((!device->dontFlushOnWrite) && (tcdrain(device->fileDescriptor) == -1))
     {
         if (verbosity > 1) printf("IOPort: WARNING: While trying to close serial port: Error waiting for drain - %s(%d).\n", strerror(errno), errno);
     }
@@ -1190,6 +1190,14 @@ PsychError PsychIOOSConfigureSerialPort(volatile PsychSerialDeviceRecord* device
 		}
 	}
 
+	if ((p = strstr(configString, "DontFlushOnWrite="))) {
+		if (1!=sscanf(p, "DontFlushOnWrite=%i", &inint)) {
+			if (verbosity > 0) printf("Invalid parameter for DontFlushOnWrite= set!\n");
+			return(PsychError_invalidIntegerArg);
+		}
+		device->dontFlushOnWrite = inint;
+	}
+
 	// Done.
 	return(PsychError_none);
 }
@@ -1296,7 +1304,7 @@ int PsychIOOSWriteSerialPort(PsychSerialDeviceRecord* device, void* writedata, u
 			PsychGetAdjustedPrecisionTimerSeconds(&timestamp[3]);
 			
 			// Flush the write buffer and wait for write completion on physical hardware:
-			if (tcdrain(device->fileDescriptor) == -1) {
+			if ((!device->dontFlushOnWrite) && (tcdrain(device->fileDescriptor) == -1)) {
 				sprintf(errmsg, "Error during write to device %s while draining the write buffers - %s(%d).\n", device->portSpec, strerror(errno), errno);
 				return(-1);
 			}

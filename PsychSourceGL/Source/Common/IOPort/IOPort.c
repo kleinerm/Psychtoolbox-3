@@ -392,6 +392,9 @@ PsychError IOPORTOpenSerialPort(void)
 		"ReceiveLatency=0.000001 -- Latency in seconds for processing of new input bytes. Only used on OS/X.\n\n"
 		"PollLatency=0.0005 (0.001 on Windows) -- Latency between polls in seconds for polling in some 'Read' operations.\n\n"
 		"ProcessingMode=Raw -- Mode of input/output processing: Raw or Cooked. On Windows, only Raw (binary) mode is supported.\n\n"
+		"DontFlushOnWrite=0 -- Do not flush the serial port write buffer at device close time or during blocking writes. "
+		"This can be set to 1 to work around broken serial port drivers, but it may disrupt any kind of timing sensitive "
+		"algorithms that interact with the serial port! Only use if you really know what you're doing!\n\n"
 		"StartBackgroundRead=readGranularity -- Enable asynchronous background read operations on the port. "
 		"A parallel background thread is started which tries to fetch 'readGranularity' bytes of data, "
 		"polling the port every 'PollLatency' seconds for at least 'readGranularity' bytes of data. 'InputBufferSize' must be an "
@@ -417,9 +420,9 @@ PsychError IOPORTOpenSerialPort(void)
   	
 	#if PSYCH_SYSTEM == PSYCH_WINDOWS
 	// Difference to Unices: PollLatency defaults to 1 msecs instead of 0.5 msecs due to shoddy windows scheduler:
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.001 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.001 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0"; 
 	#else
-	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096"; 
+	static char defaultConfig[] = "BaudRate=9600 Parity=None DataBits=8 StopBits=1 FlowControl=None PollLatency=0.0005 ReceiveLatency=0.000001 SendTimeout=1.0 ReceiveTimeout=1.0 ProcessingMode=Raw BreakBehaviour=Ignore OutputBufferSize=4096 InputBufferSize=4096 DontFlushOnWrite=0"; 
 	#endif
 	
 	char		finalConfig[2000];

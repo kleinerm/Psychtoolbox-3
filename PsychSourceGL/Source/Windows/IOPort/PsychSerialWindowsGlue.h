@@ -55,6 +55,7 @@ typedef volatile struct PsychSerialDeviceRecord {
 	int					asyncReadBytesCount;	// Counter of total bytes read via async thread so far. [Updates not mutex protected!]
 	unsigned char		lineTerminator;			// Line terminator byte, if any.
 	unsigned char		eventCharEnabled;		// 0 = Waiting for "event character received" event is disabled. Otherwise it is enabled.
+	int					dontFlushOnWrite;		// If set to 1, don't tcdrain() after blocking writes, otherwise do.	
 } PsychSerialDeviceRecord;
 
 #endif
