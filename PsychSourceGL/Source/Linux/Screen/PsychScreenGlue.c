@@ -1178,6 +1178,14 @@ int PsychGetDisplayBeamPosition(CGDirectDisplayID cgDisplayId, int screenNumber)
   // hardware register specs. See top of this file for the setup and
   // shutdown code for the memory mapped access mechanism.
   if (gfx_cntl_mem) {
+	  // Beampositionquery workaround requested?
+	  if (PsychPrefStateGet_ConserveVRAM() & kPsychUseBeampositionQueryWorkaround) {
+		  // Yes: Avoid queries that return zero -- If query result is zero, retry
+		  // until it becomes non-zero:
+		  // Some hardware may needs this to resolve...
+		  while (0 == (int) ( radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK) );
+	  }
+
 	  // Ok, supported chip and setup worked. Read the mmapped register,
 	  // either for CRTC-1 if pipe for this screen is zero, or CRTC-2 otherwise:
 	  beampos = radeon_get((displayScreensToPipes[screenNumber] == 0) ? RADEON_D1CRTC_STATUS_POSITION : RADEON_D2CRTC_STATUS_POSITION) & RADEON_VBEAMPOSITION_BITMASK;
