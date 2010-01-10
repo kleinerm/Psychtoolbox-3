@@ -87,6 +87,8 @@ static char synopsisString[] =
 	"selected in the language settings of your user account. You can change the encoding "
 	"anytime via a call to Screen('Preference', 'TextEncodingLocale', newencoding); "
 	"E.g., for UTF-8 multibyte character encoding you'd call Screen('Preference','TextEncodingLocale','UTF-8');\n"
+	"If you have a non-ASCII text string and want to make sure that Matlab or Octave doesn't "
+	"meddle with your string, convert it into a uint8() datatype before passing to this function.\n"
 	"If you want to pass a string which contains unicode characters directly, convert the "
 	"text to a double matrix, e.g., mytext = double(myunicodetext); then pass the double "
 	"matrix to this function. Screen will interpret all double numbers directly as unicode "
@@ -1632,6 +1634,7 @@ const char* PsychGetUnicodeTextConversionLocale(void)
 psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isRequired, int *textLength, double **unicodeText)
 {
 	int				dummy1, dummy2;
+	unsigned char	*textByteString = NULL;
     char			*textCString = NULL;
 	wchar_t			*textUniString = NULL;
 	int				stringLengthBytes = 0;
@@ -1639,19 +1642,42 @@ psych_bool	PsychAllocInTextAsUnicode(int position, PsychArgRequirementType isReq
 	// Anything provided as argument? This checks for presence of the required arg. If an arg
 	// of mismatching type (not char or double) is detected, it errors-out. Otherwise it returns
 	// true on presence of a correct argument, false if argument is absent and optional.
-	if (!PsychCheckInputArgType(position, isRequired, (PsychArgType_char | PsychArgType_double))) {
+	if (!PsychCheckInputArgType(position, isRequired, (PsychArgType_char | PsychArgType_double | PsychArgType_uint8))) {
 		// The optional argument isn't present. That means there ain't any work for us to do:
 		goto allocintext_skipped;
 	}
 
 	// Some text string available, either double vector or char vector.
 	
-	// Text string at 'position' passed as C-language encoded character string?
-    if (PsychGetArgType(position) == PsychArgType_char) {
-		// C-Language text string ie., a sequence of bytes. Get it:
-		PsychAllocInCharArg(position, TRUE, &textCString);
+	// Text string at 'position' passed as C-language encoded character string or string of uint8 bytes?
+    if ((PsychGetArgType(position) == PsychArgType_char) || (PsychGetArgType(position) == PsychArgType_uint8)) {
+		// Try to allocate in as unsigned byte string:
+		if (PsychAllocInUnsignedByteMatArg(position, kPsychArgAnything, &dummy1, &stringLengthBytes, &dummy2, &textByteString)) {
+			// Yep: Convert to null-terminated string for further processing:
+			if (dummy2!=1) PsychErrorExitMsg(PsychError_user, "Byte text matrices must be 2D matrices!");
+			stringLengthBytes = stringLengthBytes * dummy1;
+			
+			// Nothing to do on empty string:
+			if (stringLengthBytes < 1 || textByteString[0] == 0) goto allocintext_skipped;
+			
+			// A bytestring. Is it null-terminated? If not we need to make it so:
+			if (textByteString[stringLengthBytes-1] != 0) {
+				// Not null-terminated: Create a 1 byte larger temporary copy which is null-terminated:
+				textCString = (char*) PsychMallocTemp(stringLengthBytes + 1);
+				memcpy((void*) textCString, (void*) textByteString, stringLengthBytes);
+				textCString[stringLengthBytes] = 0;
+			}
+			else {
+				// Already null-terminated: Nice :-)
+				textCString = (char*) textByteString;
+			}
+		}
+		else {
+			// Null terminated C-Language text string ie., a sequence of bytes. Get it:
+			PsychAllocInCharArg(position, TRUE, &textCString);
+		}
 		
-		// Get length in bytes:
+		// Get length in bytes, derived from location of null-terminator character:
 		stringLengthBytes = strlen(textCString);
 		
 		// Empty string? If so, we skip processing:

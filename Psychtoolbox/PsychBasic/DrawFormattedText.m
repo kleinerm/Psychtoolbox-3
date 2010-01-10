@@ -1,5 +1,5 @@
-function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing)
-% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing])
+function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, wrapat, flipHorizontal, flipVertical, vSpacing, righttoleft)
+% [nx, ny, textbounds] = DrawFormattedText(win, tstring [, sx][, sy][, color][, wrapat][, flipHorizontal][, flipVertical][, vSpacing][, righttoleft])
 %
 % Draws a string of text 'tstring' into Psychtoolbox window 'win'. Allows
 % some basic formatting. The text string 'tstring' may contain newline
@@ -17,7 +17,9 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % text drawing commands is used. 'wrapat', if provided, will automatically
 % break text strings longer than 'wrapat' characters into newline separated
 % strings of roughly 'wrapat' characters. This is done by calling the
-% WrapString function (See 'help WrapString').
+% WrapString function (See 'help WrapString'). 'wrapat' mode may not work
+% reliably with non-ASCII text strings, e.g., UTF-8 encoded uint8 strings
+% on all systems.
 %
 % The optional flag 'flipHorizontal' if set to 1 will mirror the text
 % horizontally, whereas the optional flag 'flipVertical' if set to 1 will
@@ -25,6 +27,10 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 %
 % The optional argument 'vSpacing' sets the spacing between the lines. Default
 % value is 1.
+%
+% The optional argument 'righttoleft' if set to 1, will ask to draw the
+% text string in right-to-left reading direction, e.g., for scripts which
+% read right to left
 %
 % The function returns the new (nx, ny) position of the text drawing cursor
 % and the bounding rectangle 'textbounds' of the drawn string. (nx,ny) can
@@ -42,7 +48,7 @@ function [nx, ny, textbounds] = DrawFormattedText(win, tstring, sx, sy, color, w
 % 05/14/07  Return a more meaningful end cursor position (printf - semantics) (MK)
 % 01/31/09  Add optional vSpacing parameter (Alex Leykin).
 % 09/20/09  Add some char() casts, so Octave can handle Unicode encoded text strings as well.
-
+% 01/10/10  Add support for 'righttoleft' flag and for uint8 tstring types (MK).
 
 if nargin < 1 || isempty(win)
     error('DrawFormattedText: Windowhandle missing!');
@@ -85,6 +91,10 @@ if nargin < 9 || isempty(vSpacing)
     vSpacing = 1;
 end
 
+if nargin < 10 || isempty(righttoleft)
+    righttoleft = 0;
+end
+
 % Convert all conventional linefeeds into C-style newlines:
 newlinepos = strfind(char(tstring), '\n');
 
@@ -97,6 +107,8 @@ end
 % Need different encoding for repchar that matches class of input tstring:
 if isa(tstring, 'double')
     repchar = 10;
+elseif isa(tstring, 'uint8')
+    repchar = uint8(10);    
 else
     repchar = char(10);
 end
@@ -200,13 +212,13 @@ while ~isempty(tstring)
     
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
-
+class(curstring)
     % Any string to draw?
     if ~isempty(curstring)
         % Need bounding box?
         if xcenter || flipHorizontal || flipVertical
             % Compute text bounding box for this substring:
-            bbox=Screen('TextBounds', win, curstring);
+            bbox=Screen('TextBounds', win, curstring, [], [], [], righttoleft);
         end
         
         % Horizontally centered output required?
@@ -240,10 +252,10 @@ while ~isempty(tstring)
 
             % We need to undo the translations...
             Screen('glTranslate', win, -xc, -yc, 0);
-            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color);
+            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
             Screen('glPopMatrix', win);
         else
-            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color);
+            [nx ny] = Screen('DrawText', win, curstring, xp, yp, color, [], [], righttoleft);
         end
     else
         % This is an empty substring (pure linefeed). Just update cursor
