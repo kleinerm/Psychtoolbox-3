@@ -8,7 +8,7 @@ end;
 
 if mode==0
     % Build Screen.mexglx:
-    mex -v -outdir ../Projects/Linux/build/ -output Screen -DPTBVIDEOCAPTURE_LIBDC -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -lGL -lX11 -lXext /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a
+    mex -v -outdir ../Projects/Linux/build/ -output Screen -DPTBVIDEOCAPTURE_LIBDC -I/usr/X11R6/include -ICommon/Base -ICommon/Screen -ILinux/Base -ILinux/Screen -L/usr/X11R6/lib Common/Base/*.cc Linux/Base/*.c Linux/Screen/*.c Common/Screen/*.c Common/Base/*.c -lc -lrt -ldl -lGL -lX11 -lXext /usr/lib/libXxf86vm.a /usr/lib/libGLU.a /usr/local/lib/libdc1394.a /usr/local/lib/libraw1394.a
     unix('cp /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/PsychSourceGL/Projects/Linux/build/Screen.mexglx /home/kleinerm/projects/OpenGLPsychtoolbox/trunk/Psychtoolbox/PsychBasic/');
 end;
 
