@@ -710,6 +710,10 @@ if strcmpi(cmd, 'PerformPostWindowOpenSetup')
     % Retrieve window handle to onscreen window:
     win = varargin{1};
 
+    % Load the graphics hardwares gamma table with an identity mapping,
+    % so it doesn't interfere with PSYNC code recognition:
+    LoadIdentityClut(win);
+
     % Retrieve window status:
     winfo = Screen('GetWindowInfo', win);
     

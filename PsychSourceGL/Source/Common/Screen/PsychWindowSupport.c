@@ -2042,7 +2042,7 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	double time_at_swapcompletion=0;		// Timestamp taken after swap completion -- initially identical to time_at_vbl.
 	int line_pre_swaprequest = -1;			// Scanline of display immediately before swaprequest.
 	int line_post_swaprequest = -1;			// Scanline of display immediately after swaprequest.
-	int min_line_allowed = 20;				// The scanline up to which "out of VBL" swaps are accepted: A fudge factor for broken drivers...
+	int min_line_allowed = 50;				// The scanline up to which "out of VBL" swaps are accepted: A fudge factor for broken drivers...
 	psych_uint64 dwmPreOnsetVBLCount, preFlipFrameId; 
 	psych_uint64 dwmPostOnsetVBLCount, postFlipFrameId; 
 	double dwmPreOnsetVBLTime, dwmOnsetVBLTime;
@@ -2302,18 +2302,30 @@ double PsychFlipWindowBuffers(PsychWindowRecordType *windowRecord, int multiflip
 	// should pass between consecutive bufferswaps. 2 msecs is chosen because the VBL period of most displays
 	// at most settings does not last longer than 2 msecs (usually way less than 1 msec), and this would still allow
 	// for an update rate of 500 Hz -- more than any current display can do.
-	if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) && (time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002)) {
+	// We also don't allow swap submission in the top area of the video scanout cycle between scanline 1 and
+	// scanline min_line_allowed: Some broken drivers would still execute a swap within this forbidden top area
+	// of the video display although video scanout has already started - resulting in tearing!
+	if ((windowRecord->time_at_last_vbl > 0) && (vbl_synclevel!=2) &&
+		((time_at_swaprequest - windowRecord->time_at_last_vbl < 0.002) || ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0)))) {
 		// Less than 2 msecs passed since last bufferswap, although swap in sync with retrace requested.
 		// Some drivers seem to have a bug where a bufferswap happens anywhere in the VBL period, even
 		// if already a swap happened in a VBL --> Multiple swaps per refresh cycle if this routine is
 		// called fast enough, ie. multiple times during one single VBL period. Not good!
 		// An example is the ATI Mobility Radeon X1600 in 2nd generation MacBookPro's under OS/X 10.4.10
 		// and 10.4.11 -- probably most cards operated by the same driver have the same problem...
-		if (verbosity > 9) printf("PTB-DEBUG: Swaprequest too close to last swap vbl (%f secs). Delaying...\n", time_at_swaprequest - windowRecord->time_at_last_vbl);
+		if (verbosity > 9) printf("PTB-DEBUG: Swaprequest too close to last swap vbl (%f secs) or between forbidden scanline 1 and %i. Delaying...\n", time_at_swaprequest - windowRecord->time_at_last_vbl, min_line_allowed);
 
 		// We try to enforce correct behaviour by waiting until at least 2 msecs have elapsed before the next
 		// bufferswap:
 		PsychWaitUntilSeconds(windowRecord->time_at_last_vbl + 0.002);
+
+		// We also wait until beam leaves the forbidden area between scanline 1 and min_line_allowed, where
+		// some broken drivers allow a swap to happen although the beam is already scanning out active
+		// parts of the display:
+		do {
+			// Query beampos again:
+			line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
+		} while ((line_pre_swaprequest < min_line_allowed) && (line_pre_swaprequest > 0));
 
 		// Take a measurement of the beamposition at time of swap request:
 		line_pre_swaprequest = (int) PsychGetDisplayBeamPosition(displayID, windowRecord->screenNumber);
