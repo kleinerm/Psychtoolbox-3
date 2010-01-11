@@ -1,4 +1,4 @@
-% DrawTextTextEncodingLocaleSettings
+% DrawTextEncodingLocaleSettings
 %
 % If you are just concerned with drawing "standard" ASCII text with the 
 % Screen('DrawText', window, text); command, i.e. text that only contains
@@ -79,6 +79,11 @@
 % font that supports japanese script. See some more examples in the code of
 % DrawHighQualityUnicodeTextDemo.m. The same works on OS/X with text
 % renderer type 2.
+%
+% If you type DrawTextEncodingLocaleSettings to run this script, you may
+% see some hebrew characters rendered if your systems fonts and text
+% renderers do support this. This code also acts as a sample on how to pass
+% UTF-8 unicode strings to 'DrawText'.
 %
 
 AssertOpenGL;

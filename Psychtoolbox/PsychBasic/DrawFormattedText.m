@@ -212,7 +212,7 @@ while ~isempty(tstring)
     
     % tstring contains the remainder of the input string to process in next
     % iteration, curstring is the string we need to draw now.
-class(curstring)
+
     % Any string to draw?
     if ~isempty(curstring)
         % Need bounding box?
