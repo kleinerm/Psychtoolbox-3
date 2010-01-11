@@ -80,3 +80,28 @@
 % DrawHighQualityUnicodeTextDemo.m. The same works on OS/X with text
 % renderer type 2.
 %
+
+AssertOpenGL;
+
+screenid = max(Screen('Screens'));
+w = Screen('Openwindow', screenid, 255);
+Screen('TextSize', w, 48);
+if ~IsWin
+    Screen('Preference', 'TextRenderer', 2);
+    Screen('TextFont', w, '-:lang=he');
+end
+
+% Some uint8 vector with UTF-8 encoded hebrew characters:
+y = uint8([215  148  215  169  215  160  215  153  215  157   44   32  215  149  215  160 215  162  215  169  215  148]);
+
+if ~IsLinux
+    Screen('Preference', 'TextEncodingLocale', 'UTF-8');
+end
+
+Screen('DrawText', w, y, 10, 100);
+Screen('Flip', w);
+
+KbStrokeWait;
+Screen('CloseAll');
+
+return;
