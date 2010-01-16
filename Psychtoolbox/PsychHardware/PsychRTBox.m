@@ -1357,7 +1357,7 @@ global rtbox_global;
                 startBox(id, 1);
             end
             
-        case {'enable' 'disable'} % enable/disable event detection
+        case {'enable', 'disable'} % enable/disable event detection
             if nIn<2 % no event, return current state
                 varargout{1}=rtbox_global.events4enable(rtbox_info(id).enabled);
                 return;

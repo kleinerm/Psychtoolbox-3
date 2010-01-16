@@ -1731,6 +1731,7 @@ double PsychQTVideoCaptureSetParameter(int capturehandle, const char* pname, dou
     VideoDigitizerComponent vd;
     ComponentDescription    desc;
     ComponentResult         result = noErr;
+	FSSpec					recfile;
 	
 	// Valid handle provided?
 	if (capturehandle < 0 || capturehandle >= PSYCH_MAX_CAPTUREDEVICES) {
@@ -1742,6 +1743,35 @@ double PsychQTVideoCaptureSetParameter(int capturehandle, const char* pname, dou
         PsychErrorExitMsg(PsychError_user, "Invalid capturehandle provided. No capture device associated with this handle !!!");
     }
 
+	// Set a new target movie name for video recordings:
+	if (strstr(pname, "SetNewMoviename=")) {
+		// Find start of movie namestring and assign to pname:
+		pname = strstr(pname, "=");
+		pname++;
+		
+		// Convert to QT format:
+		NativePathNameToFSSpec(pname, &recfile, 0);
+
+		// If recordingflags & 1, then we request capture to memory with writeout at end of capture operation. Otherwise
+		// we request immediate capture to disk. We always append to an existing movie file, instead of overwriting it.
+		result = SGSetDataOutput(vidcapRecordBANK[capturehandle].seqGrab, &recfile, ((vidcapRecordBANK[capturehandle].recordingflags & 1) ? seqGrabToMemory : seqGrabToDisk));
+		if (result != noErr) {
+			printf("PTB-ERROR: 'SetVideoCaptureParameter for device %i: While trying to set new output movie name %s. Quicktime returned error code %i! Failed!\n", capturehandle, pname, (int) result);
+			PsychErrorExitMsg(PsychError_user, "Selecting a new output movie file for video recording failed!");
+		}
+		
+		if (!(vidcapRecordBANK[capturehandle].recordingflags & 8)) result = SGPrepare(vidcapRecordBANK[capturehandle].seqGrab, false, true);
+		if (result !=noErr) {
+			if (PsychPrefStateGet_Verbosity() > 1) printf("PTB-WARNING: 'SetVideoCaptureParameter for device %i: While trying to set new output movie name %s. SGPrepare() for capture device failed with error code %i! Failed!\n", capturehandle, pname, (int) result);
+
+			// Try to get over it and hope for the best...
+			return(0);
+		}
+
+		// Return success:
+		if (PsychPrefStateGet_Verbosity() > 3) printf("PTB-INFO: 'SetVideoCaptureParameter for device %i: Set new output movie filename to '%s'.\n", capturehandle, pname);
+		return(0);
+	}
 	
 	// Return current framerate:
 	if (strcmp(pname, "GetFramerate")==0) {

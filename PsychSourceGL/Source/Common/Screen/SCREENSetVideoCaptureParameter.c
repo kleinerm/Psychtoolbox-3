@@ -41,7 +41,11 @@ static char synopsisString[] = "Set video capture parameter 'parameterName' on v
                                "return the name of the device vendor, resp. the device model name. 'GetROI' returns "
                                "the capture region of interest (ROI), which can deviate from the ROI requested in "
                                "Screen('OpenVideoCapture'), depending on the capabilities of the capture device. "
-                               "'GetFramerate' Returns the nominal capture rate of the capture device. ";
+                               "'GetFramerate' Returns the nominal capture rate of the capture device.\n"
+							   "'SetNewMoviename=xxx' Will change the name of the videofile used for video "
+							   "recording to xxx. This allows you to change target files for video recordings "
+							   "without the need to close and reopen the capture device. You must stop capture "
+							   "though and then restart it after assigning a new filename. ";
 
 static char seeAlsoString[] = "OpenVideoCapture CloseVideoCapture StartVideoCapture StopVideoCapture GetCapturedImage";
 	 
