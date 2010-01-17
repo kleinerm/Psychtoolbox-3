@@ -10,6 +10,7 @@
 %                           integral positions. Vectorized.
 %     CenterRectOnPointd  - Center rect around an x,y coordinate. Vectorized.
 %     ClipRect            - Return intersection of two rects.
+%     GrowRect            - Grow a rect by a certain number of pixels.
 %     InsetRect           - Shrink/expand rect by additive insets.
 %     IsEmptyRect         - Returns 1 if empty, returns 0 otherwise.
 %     IsInRect            - Is the point inside the rect?
@@ -30,5 +31,5 @@
 %                           corresponding image's MATLAB array size.
 %     UnionRect           - Smallest rect containing two given rects.
 
-% Copyright (c) 1997-2006 by David Brainard & Denis Pelli
-
+% Copyright (c) 1997-2010 by David Brainard & Denis Pelli and the PTB
+% developers.
