@@ -97,6 +97,10 @@ try
     if dpixx
         % Use Mono++ mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableDataPixxM16OutputWithOverlay');
+        
+        % Reduce timeout for recognition of PSYNC code to about 1 second on
+        % a 100 Hz display:
+        oldpsynctimeout = PsychDataPixx('PsyncTimeoutFrames', 100);
     else
         % Use Mono++ mode with overlay:
         PsychImaging('AddTask', 'General', 'EnableBits++Mono++OutputWithOverlay');
@@ -268,11 +272,21 @@ try
     RestoreCluts;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
 
+    % Restore psync timeout on Datapixx, if any in use:
+    if exist('oldpsynctimeout', 'var')
+        PsychDataPixx('PsyncTimeoutFrames', oldpsynctimeout);
+    end
+    
     fprintf('Finished. Bye.\n\n');
 
 catch
     sca;
     Screen('Preference', 'TextAntiAliasing', oldAntialias);
+
+    % Restore psync timeout on Datapixx, if any in use:
+    if exist('oldpsynctimeout', 'var')
+        PsychDataPixx('PsyncTimeoutFrames', oldpsynctimeout);
+    end
     psychrethrow(psychlasterror);
 end
 
