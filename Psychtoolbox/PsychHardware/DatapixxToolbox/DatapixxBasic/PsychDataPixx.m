@@ -455,6 +455,9 @@ if strcmpi(cmd, 'ResetOnWindowClose')
     doDatapixx('SetVideoHorizontalSplit', 2);
     doDatapixx('SetVideoVerticalStereo', 2);
     
+    % Disable Pixelsyncline:
+    doDatapixx('SetVideoPixelSyncLine', 0, 0, 0);
+    
     % Apply all changes immediately:
     doDatapixx('RegWrRd');
 
