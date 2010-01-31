@@ -33,14 +33,17 @@
 %   JavaClockTest                   - Timing test of clock used by Java functions (e.g. GetChar)
 %   KeyboardLatencyTest             - Get a feeling for keyboard and mouse latency via some sound-based measurement procedure.
 %   LabLuvTest                      - Test routines that convert to CIELAB and CIELUV.
+%   LoadGenerator                   - Create cpu load by spinning in an infinite loop.
 %   MakeTextureTimingTest           - Time memory allocation by MakeTexture
 %   MakeTextureTimingTest2          - Time texture creation -> upload -> destruction for given texture by MakeTexture et al.
 %   MatlabTimingTest                - Test for MATLAB timing glitch caused by sigsetjmp().
 %   MexTimingLoopTest               - Test for MATLAB timing glitch without return to MATLAB.
 %   OSAUCSTest                      - Test OSA UCS <-> XYZ conversion routines.
+%   OSSchedulingAccuracyTest        - Test timing accuracy of operating system scheduler for timed waits.
 %   PsychHIDTest                    - PsychHID MEX file for HID-compliant USB devices.
 %   PupilDiameterTest               - Test functions that compute pupil diameter from luminance.
-%   PsychPortAudioTimingTest        - Test signal generator for test of PsychPortAudios timing with external measurement equipment.
+%   PsychPortAudioDataPixxTimingTest - Test PsychPortAudio's timing with a DataPixx device and a audio line cable.
+%   PsychPortAudioTimingTest        - Testsignal generator for test of PsychPortAudios timing with external measurement equipment.
 %   QuestTest                       - Some Quest simulations, more elaborate than QuestDemo.
 %   ResolutionTest                  - Use Screen Resolutions to print table of display resolutions.
 %   ScreenTest                      - Thorough test of hardware/software performance.

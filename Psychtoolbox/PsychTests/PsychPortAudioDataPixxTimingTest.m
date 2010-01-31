@@ -1,5 +1,5 @@
-function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, useDPixx)
-% PsychPortAudioTimingTest([exactstart=1] [, deviceid=-1] [, latbias=0] [, waitframes=1] [,useDPixx=0])
+function PsychPortAudioDataPixxTimingTest(waitTime, exactstart, deviceid, latbias)
+% PsychPortAudioDataPixxTimingTest([waitTime = 1][, exactstart=1] [, deviceid=-1] [, latbias=0])
 %
 % Test script for sound onset timing reliability and sound onset
 % latency of the PsychPortAudio sound driver.
@@ -8,10 +8,12 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % precision, then executes ten trials where it tries to emit a beep sound,
 % starting in exact sync to a black-white transition on the display.
 %
-% You'll need measurement equipment to use this: A photo-diode attached to
-% the top-left corner of your CRT display, a microphone attached to your
-% speakers, some oszillograph to record and measure the signals from the
-% diode and microphone.
+% You'll need measurement equipment to use this: A DataPixx device from
+% VPixx technologies, connected to your computer via the USB connection
+% cable. Also a connection between the line-out jack of your soundcard and
+% the line-in jack of the DataPixx to transmit the sound data. The DataPixx
+% will receive the audio output of PsychPortAudio/Your Soundcard, timestamp
+% it and send the computed timing data to your computer via USB.
 %
 % Some parameters may need tweaking. Make sure you got the special driver
 % plugin as described in 'help InitializePsychSound' for best results.
@@ -19,6 +21,9 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 % This is early alpha code, expect some rough edges...
 %
 % Optional parameters:
+%
+% 'waitTime'   = Time to wait (in seconds) before playing sound. Defaults
+%                to 1 second if omitted.
 %
 % 'exactstart' = 0 -- Start immediately, measure absolute latency.
 %              = 1 -- Test accuracy of scheduled sound onset. (Default)
@@ -32,31 +37,31 @@ function PsychPortAudioTimingTest(exactstart, deviceid, latbias, waitframes, use
 %                Unit is seconds. Defaults to zero on MS-Windows, defaults
 %                to the expected bias of a Intel MacBookPro on OS/X.
 %
-% 'waitframes' = Time to wait (in video refresh intervals) before emitting beep + flash.
-%                Defaults to a value of 1, may need to be set higher for
-%                high latency sound hardware (where absolute latency > 1
-%                video refresh duration).
-%
-% 'useDPixx'   = 1 -- Use DataPixx device to automatically measure the true
-%                     audio onset time wrt. to visual stimulus onset.
-%                0 -- Don't use DataPixx. This is the default.
-%
+
+nTrials = 10;
 
 % Initialize driver, request low-latency preinit:
 InitializePsychSound(1);
 
 if ~IsLinux
-  PsychPortAudio('Verbosity', 10);
+    PsychPortAudio('Verbosity', 10);
 end
 
 % Force GetSecs and WaitSecs into memory to avoid latency later on:
-GetSecs;
-WaitSecs(0.1);
+GetSecs; WaitSecs(0.1);
+
+if nargin < 1
+    waitTime = [];
+end
+
+if isempty(waitTime)
+    waitTime = 1;
+end
 
 % If 'exactstart' wasn't provided, assume user wants to test exact sync of
 % audio and video onset, instead of testing total onset latency:
-if nargin < 1 
-   exactstart = [];
+if nargin < 2
+    exactstart = [];
 end
 
 if isempty(exactstart)
@@ -77,8 +82,8 @@ else
 end
 
 % Default to auto-selected default output device if none specified:
-if nargin < 2 
-   deviceid = [];
+if nargin < 3
+    deviceid = [];
 end
 
 if isempty(deviceid)
@@ -114,13 +119,13 @@ buffersize = 0;     % Pointless to set this. Auto-selected to be optimal.
 suggestedLatencySecs = [];
 
 if IsWin
-	 suggestedLatencySecs = 0.015 %#ok<NOPRT>
+    suggestedLatencySecs = 0.015 %#ok<NOPRT>
 end
- 
+
 % Needs to determined via measurement once for each piece of audio
 % hardware:
-if nargin < 3 
-   latbias = [];
+if nargin < 4
+    latbias = [];
 end
 
 if isempty(latbias)
@@ -140,24 +145,6 @@ if isempty(latbias)
     end
 end
 
-if nargin < 4
-    waitframes = [];
-end
-
-if isempty(waitframes)
-    waitframes = 1;
-end
-
-waitframes %#ok<NOPRT>
-
-if nargin < 5
-    useDPixx = [];
-end
-
-if isempty(useDPixx)
-    useDPixx = 0;
-end
-
 % Open audio device for low-latency output:
 pahandle = PsychPortAudio('Open', deviceid, [], reqlatencyclass, freq, 2, buffersize, suggestedLatencySecs);
 
@@ -174,151 +161,103 @@ mynoise(2,:) = mynoise(1,:);
 % Fill buffer with data:
 PsychPortAudio('FillBuffer', pahandle, mynoise);
 
-% Setup display:
-screenid = max(Screen('Screens'));
+% Switch to realtime scheduling at maximum allowable Priority:
+Priority(MaxPriority(0));
 
-% Shall we use the DataPixx for measurement?
-if useDPixx
-    % Yes!
-    
-    % Initialize audio capture subsystem of Datapixx:
-    % 96 KhZ sampling rate, Mono capture: Average across channels (0), Audio
-    % input is line in (2), Gain is 1.0 (1):
-    DatapixxAudioKey('Open', 96000, 0, 2, 1);
-    
-    % Check settings by printing them:
-    dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
+% Initialize audio capture subsystem of Datapixx:
+% 96 KhZ sampling rate, Mono capture: Average across channels (0), Audio
+% input is line-in (2), Gain is 1.0 (1):
+DatapixxAudioKey('Open', 96000, 0, 2, 1);
 
-    % Triggerlevel shall be 10% aka 0.1:
-    DatapixxAudioKey('TriggerLevel', 0.1);
+% Check settings by printing them:
+dpixstatus = Datapixx('GetMicrophoneStatus') %#ok<NOPRT,NASGU>
 
-    % DataPixx: Setup Screen imagingpipeline to support measurement:
-    PsychImaging('PrepareConfiguration');
-    PsychImaging('AddTask', 'General', 'UseDataPixx');
-    win = PsychImaging('OpenWindow', screenid, 0);
-else
-    % Default: No need for imaging pipeline:
-    win = Screen('OpenWindow', screenid, 0);
-end
-ifi = Screen('GetFlipInterval', win);
+% Triggerlevel shall be 10% aka 0.1:
+DatapixxAudioKey('TriggerLevel', 0.1);
 
 % Wait for keypress.
-while KbCheck; end;
-KbWait;
+fprintf('\n\nPress any key to start measurement.\n\n');
+KbStrokeWait;
 
-% Realtime scheduling:
-% Priority(MaxPriority(win));
-
-% Ten measurement trials:
-for i=1:10
-
+% nTrials measurement trials:
+for i=1:nTrials
     % Start the playback engine with an infinite start deadline, ie.,
     % start hardware, but don't play sound:
     PsychPortAudio('Start', pahandle, 1, inf, 0);
 
     % Wait a bit, say 100 msecs, so hardware is certainly running and settled:
     WaitSecs(0.1);
-
-    if useDPixx
-        % Schedule start of audio capture on DataPixx at next Screen('Flip'):
-        DatapixxAudioKey('CaptureAtFlip');
-    end
     
-    % This flip clears the display to black and returns timestamp of black
-    % onset:
-    [vbl1 visonset1]= Screen('Flip', win);
-
-    % Prepare black white transition:
-    Screen('FillRect', win, 255);
-    Screen('DrawingFinished', win);
-
+    % Start audio capture on DataPixx now. Return true 'tStartBox'
+    % timestamp of start in box clock time:
+    tStartBox = DatapixxAudioKey('CaptureNow');
+    
     if exactstart
-        % Schedule start of audio at exactly the predicted visual
-        % stimulus onset caused by the next flip command:
-        PsychPortAudio('RescheduleStart', pahandle, visonset1 + waitframes * ifi, 0);
-    end
-
-    % Ok, the next flip will do a black-white transition...
-    [vbl visual_onset t1] = Screen('Flip', win, vbl1 + (waitframes - 0.5) * ifi);
-
-    if ~exactstart
+        % Schedule start of audio at exactly 'waitTime' seconds ahead:
+        PsychPortAudio('RescheduleStart', pahandle, GetSecs + waitTime, 0);
+    else
         % No test of scheduling, but of absolute latency: Start audio
         % playback immediately:
         PsychPortAudio('RescheduleStart', pahandle, 0, 0);
     end
 
-    t2 = GetSecs;
-
-    % Spin-Wait until hw reports the first sample is played...
-    offset = 0;
-    while offset == 0
-        status = PsychPortAudio('GetStatus', pahandle);
-        offset = status.PositionSecs;
-        t3=GetSecs;
-        plat = status.PredictedLatency;
-        fprintf('Predicted Latency: %6.6f msecs.\n', plat*1000);
-        if offset>0
-            break;
-        end
-        WaitSecs('YieldSecs', 0.001);
-    end
-
-    audio_onset = status.StartTime;
-    status.TotalCalls
-
-    %fprintf('Expected visual onset at %6.6f secs.\n', visual_onset);
-    %fprintf('Sound started between %6.6f and  %6.6f\n', t1, t2);
-    %fprintf('Expected latency sound - visual = %6.6f\n', t2 - visual_onset);
-    %fprintf('First sound buffer played at %6.6f\n', t3);
-    fprintf('Flip delay = %6.6f secs.  Flipend vs. VBL %6.6f\n', vbl - vbl1, t1-vbl);
-    fprintf('Delay start vs. played: %6.6f secs, offset %f\n', t3 - t2, offset);
-
-    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
-    fprintf('Screen    expects visual onset at %6.6f secs.\n', visual_onset);
-    fprintf('PortAudio expects audio onset  at %6.6f secs.\n', audio_onset);
-    fprintf('Expected audio-visual delay    is %6.6f msecs.\n', (audio_onset - visual_onset)*1000.0);
-
-    if useDPixx
-        % 'visonset1' is the GetSecs() time of start of capture on DataPixx.
-        % 'audio_onset' is reported GetSecs() onset time according to PsychPortAudio.
-        %
-        % 'expectedAudioDelta' is therefore the expected delay for the
-        % measured audio onset by DataPixx:
-        expectedAudioDelta = audio_onset - visonset1;
-        
-        % Retrieve true delay from DataPixx measurement and stop recording
-        % on the device:
-        [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', [], [], 1);
-        fprintf('DPixx: Expected audio onset delta is %6.6f secs.\n', expectedAudioDelta);
-        fprintf('DPixx: Measured audio onset delta is %6.6f secs.\n', measuredAudioDelta);
-        fprintf('DPixx: PsychPortAudio measured onset error is therefore %6.6f msecs.\n', 1000 * (measuredAudioDelta - expectedAudioDelta));
-        if useDPixx > 1
-            figure;
-            plot(audiodata);
+    if 0
+        % Spin-Wait until hw reports the first sample is played...
+        offset = 0;
+        while offset == 0
+            status = PsychPortAudio('GetStatus', pahandle);
+            offset = status.PositionSecs;
+            plat = status.PredictedLatency;
+            fprintf('Predicted Latency: %6.6f msecs.\n', plat*1000);
+            if offset>0
+                break;
+            end
+            WaitSecs('YieldSecs', 0.001);
         end
     end
     
+    % Retrieve true delay from DataPixx measurement and stop recording on the device:
+    [audiodata, measuredAudioDelta] = DatapixxAudioKey('GetResponse', waitTime + 1, [], 1);
+
+    % Compute expected delay based on audio onset time as predicted/measured by
+    % PsychPortAudio:
+    status = PsychPortAudio('GetStatus', pahandle);
+    tPortAudio(i) = status.StartTime; %#ok<AGROW>
+    tDataPixx(i)  = tStartBox + measuredAudioDelta; %#ok<AGROW>
+    
+    fprintf('Buffersize %i, xruns = %i, playpos = %6.6f secs.\n', status.BufferSize, status.XRuns, status.PositionSecs);
+
+    if 0
+        figure;
+        plot(audiodata);
+    end
+
     % Stop playback:
     PsychPortAudio('Stop', pahandle, 1);
-
-    WaitSecs(0.3);
-
-    Screen('FillRect', win, 0);
-    telapsed = Screen('Flip', win) - visual_onset; %#ok<NASGU>
-    WaitSecs(0.6);
-
 end
 
-% Done, close driver and display:
+% Remap Datapixx clock timestamps to Psychtoolbox GetSecs() timestamps:
+tDataPixx = PsychDataPixx('BoxsecsToGetsecs', tDataPixx);
+
+% Done: Back to normal scheduling:
 Priority(0);
 
-if useDPixx
-    % Close Datapixx audio subsystem:
-    DatapixxAudioKey('Close');
+% Close Datapixx audio subsystem:
+DatapixxAudioKey('Close');
+
+% Close PsychPortAudio:
+PsychPortAudio('Close');
+
+fprintf('\n\n');
+for i =1:nTrials
+    audioDelta(i) = 1000 * (tDataPixx(i) - tPortAudio(i)); %#ok<AGROW>
+    fprintf('%i. PsychPortAudio measured onset error is %6.6f msecs.\n', i, audioDelta(i));
 end
 
-PsychPortAudio('Close');
-Screen('CloseAll');
+% Discard 1st trial:
+audioDelta = audioDelta(2:end);
+
+fprintf('\nAvg error %6.6f msecs, Stddev %6.6f msecs, Range %6.6f msecs.\n\n', mean(audioDelta), std(audioDelta), range(audioDelta));
 
 % Done. Bye.
 return;
