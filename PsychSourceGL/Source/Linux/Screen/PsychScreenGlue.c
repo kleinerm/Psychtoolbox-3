@@ -380,6 +380,7 @@ static int x11VidModeErrorHandler(Display* dis, XErrorEvent* err)
 //Initialization functions
 void InitializePsychDisplayGlue(void)
 {
+	static psych_bool firstTime = TRUE;
     int i;
     
     //init the display settings flags.
@@ -390,6 +391,14 @@ void InitializePsychDisplayGlue(void)
 	displayScreensToPipes[i]=i;
     }
     
+	if (firstTime) {
+		firstTime = FALSE;
+		
+		// We must initialize XLib for multi-threaded operations / access on first
+		// call:
+		XInitThreads();
+	}
+	
     //init the list of Core Graphics display IDs.
     InitCGDisplayIDList();
 
