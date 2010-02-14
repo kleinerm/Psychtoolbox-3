@@ -797,7 +797,13 @@ elseif ischar(arg)      % argument is a character, so find the code
             kk{find(strcmp(kkLinux, 'Tab'))} = 'tab';
             kk{find(strcmp(kkLinux, 'period'))} = '.>';
             kk{find(strcmp(kkLinux, 'comma'))} = ',<';
-            kk{find(strcmp(kkLinux, 'slash'))} = '/?';
+            try
+                % This one is try-catch protected because it seems to fail
+                % on some systems. On failure, just turn into a no-op.
+                kk{find(strcmp(kkLinux, 'slash'))} = '/?';
+            catch
+                psychlasterror('reset');
+            end
             kk{find(strcmp(kkLinux, '0'))} = '0)';
             kk{find(strcmp(kkLinux, '1'))} = '1!';
             kk{find(strcmp(kkLinux, '2'))} = '2@';
