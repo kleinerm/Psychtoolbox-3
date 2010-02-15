@@ -9,6 +9,7 @@
 % 1/20/05	dhb, bx		Wrote it.
 % 2/12/10   dhb         Don't ask for load code, just prompt for name.
 %           dhb         Better plots.  And, ask for which times to compare.
+% 2/15/10   dhb         Fix input, not a string.
 
 %% Clear and close
 clear; close all;
@@ -41,7 +42,7 @@ end
 %% Get which to compare
 defaultNow = length(cals);
 defaultThen = length(cals)-1;
-thenIndex = input(sprintf('Enter number of earlier calibration to compare [%d]: ',defaultThen),'s');
+thenIndex = input(sprintf('Enter number of earlier calibration to compare [%d]: ',defaultThen));
 if (isempty(thenIndex))
     thenIndex = defaultThen;
 end
@@ -49,7 +50,7 @@ if (thenIndex < 1 || thenIndex > length(cals))
     error('Calibration number out of range\n');
 end
 
-nowIndex = input(sprintf('\nEnter number of later calibration to compare [%d]: ',defaultNow),'s');
+nowIndex = input(sprintf('\nEnter number of later calibration to compare [%d]: ',defaultNow));
 if (isempty(nowIndex))
     nowIndex = defaultNow;
 end
