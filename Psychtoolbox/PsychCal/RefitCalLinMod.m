@@ -5,6 +5,7 @@
 % 3/27/02  dhb  Wrote it.
 % 9/26/08  dhb, ijk, tyl  Simplify naming possibilities. 
 % 9/27/08  dhb            Clearer defaults for prompts.  Pass number of levels to dacsize routine.
+% 2/15/10  dhb            Plot all components of gamma functions.
 
 % Enter load code
 defaultFileName = 'monitor';
@@ -47,12 +48,12 @@ title('Phosphor spectra', 'Fontsize', 13, 'Fontname', 'helvetica', 'Fontweight',
 axis([380,780,-Inf,Inf]);
 
 figure(2); clf;
-plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable(:,1:cal.nDevices),'+');
+plot(cal.rawdata.rawGammaInput,cal.rawdata.rawGammaTable,'+');
 xlabel('Input value', 'Fontweight', 'bold');
 ylabel('Normalized output', 'Fontweight', 'bold');
 title('Gamma functions', 'Fontsize', 13, 'Fontname', 'helvetica', 'Fontweight', 'bold');
 hold on
-plot(cal.gammaInput,cal.gammaTable(:,1:cal.nDevices));
+plot(cal.gammaInput,cal.gammaTable);
 hold off
 figure(gcf);
 drawnow;
