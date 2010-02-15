@@ -93,7 +93,7 @@ if (DUMPALL)
 	figure(2+cal_CT.nDevices+1); clf; hold on
 	load T_xyz1931
 	nDontPlotLowPower = 3;
-	T_xyz1931 = SplineCmf(S_xyz1931,T_xyz1931,cal_CT.describe.S);
+	T_xyz1931 = SplineCmf(S_xyz1931,683*T_xyz1931,cal_CT.describe.S);
 	
 	for j = 1:cal_CT.nDevices
 		% Get channel measurements into columns of a matrix from raw data in calibration file.
@@ -108,6 +108,11 @@ if (DUMPALL)
 		
 		% Compute phosphor chromaticities
 		xyYMon = XYZToxyY(T_xyz1931*tempMon);
+        
+        % Dump out min and max luminance
+        minLum = min(xyYMon(3,:));
+        maxLum = max(xyYMon(3,:));
+        fprintf('Primary %d, max luminance %0.2f cd/m2, min %0.2f cd/m2\n',j,maxLum,minLum);
 		
 		% Plot raw spectra
 		figure(2+j); clf
