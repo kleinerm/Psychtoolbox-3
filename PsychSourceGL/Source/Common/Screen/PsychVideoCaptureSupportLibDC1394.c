@@ -1230,6 +1230,16 @@ int PsychDCGetTextureFromCapture(PsychWindowRecordType *win, int capturehandle, 
 			// Query capture timestamp (in microseconds) and convert to seconds. This comes from the capture
 			// engine with (theroretically) microsecond precision and is assumed to be pretty accurate:
 			capdev->current_pts = ((double) capdev->frame->timestamp) / 1000000.0f;
+			
+			// On OS/X, current_pts is in gettimeofday() time, just as on Linux, but PTB's GetSecs
+			// clock represents host uptime, not gettimeofday() time. Therefore we need to remap
+			// on OS/X from  gettimeofday() time to regular PTB GetSecs() time, via an instant
+			// clock calibration between both clocks and offset correction:
+			#if PSYCH_SYSTEM == PSYCH_OSX
+				struct timeval tv;
+				gettimeofday(&tv, NULL);
+				capdev->current_pts -= (((double) ((psych_uint64) tv.tv_sec * 1000000 + (psych_uint64) tv.tv_usec)) / 1000000.0f) - tend;
+			#endif
 		}
 		
 		// Return availability status: 0 = new frame ready for retrieval. -1 = No new frame ready yet.
