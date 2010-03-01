@@ -2,67 +2,105 @@
 %
 % Compare two calibrations of a display.
 %
-% Assumes calibration features (e.g., number of primaries, linear model dimension)
-% don't change across calibrations.  This is probably safe, but an error will
-% probably occur if the assumption is violated.
+% Refits all files to with common number of primary bases and gamma fitting method.
+% These are prompted for.
 %
 % 1/20/05	dhb, bx		Wrote it.
 % 2/12/10   dhb         Don't ask for load code, just prompt for name.
 %           dhb         Better plots.  And, ask for which times to compare.
 % 2/15/10   dhb         Fix input, not a string.
+% 3/1/10    dhb         Allow drawing from different files, refitting data, etc.
 
 %% Clear and close
 clear; close all;
 
-%% Get calibration file
-loadCode = 1;
-if (loadCode == 1)
-    defaultFileName = 'BitsPlusScreen1';
-    thePrompt = sprintf('Enter calibration filename [%s]: ',defaultFileName);
-    newFileName = input(thePrompt,'s');
-    if (isempty(newFileName))
-        newFileName = defaultFileName;
-    end
-    fprintf(1,'\nLoading from %s.mat\n',newFileName);
-    [cal,cals] = LoadCalFile(newFileName);
-    fprintf('Calibration file %s read\n\n',newFileName);
+%% Get first calibration file and extract desired calibration
+defaultFileName = 'LCDScreen';
+thePrompt = sprintf('Enter first calibration filename [%s]: ',defaultFileName);
+thenFileName = input(thePrompt,'s');
+if (isempty(thenFileName))
+    thenFileName = defaultFileName;
 end
+fprintf(1,'\nLoading from %s.mat\n',thenFileName);
+[cal,cals] = LoadCalFile(thenFileName);
+fprintf('Calibration file %s read\n',thenFileName);
 
-if (length(cals) == 1)
-	error('Only one calibration in the file.  Exiting.\n');
-end
-
-%% Print out available dates
+% Print out available dates
 fprintf('Calibration file contains %d calibrations\n',length(cals));
 fprintf('Dates:\n');
 for i = 1:length(cals)
     fprintf('\tCalibration %d, date %s\n',i,cals{i}.describe.date);
 end
 
-%% Get which to compare
-defaultNow = length(cals);
+% Get which to compare
 defaultThen = length(cals)-1;
-thenIndex = input(sprintf('Enter number of earlier calibration to compare [%d]: ',defaultThen));
+thenIndex = input(sprintf('Enter number of first calibration to compare [%d]: ',defaultThen));
 if (isempty(thenIndex))
     thenIndex = defaultThen;
 end
 if (thenIndex < 1 || thenIndex > length(cals))
     error('Calibration number out of range\n');
 end
+calThen = cals{thenIndex};
 
-nowIndex = input(sprintf('\nEnter number of later calibration to compare [%d]: ',defaultNow));
+%% Get second calibration file and extract desired calibration.
+% This can be the same file, or a different one.
+defaultFileName = thenFileName;
+thePrompt = sprintf('\nEnter second calibration filename [%s]: ',defaultFileName);
+nowFileName = input(thePrompt,'s');
+if (isempty(nowFileName))
+    nowFileName = defaultFileName;
+end
+fprintf(1,'\nLoading from %s.mat\n',nowFileName);
+[cal,cals] = LoadCalFile(nowFileName);
+fprintf('Calibration file %s read\n',nowFileName);
+
+% Print out available dates
+fprintf('Calibration file contains %d calibrations\n',length(cals));
+fprintf('Dates:\n');
+for i = 1:length(cals)
+    fprintf('\tCalibration %d, date %s\n',i,cals{i}.describe.date);
+end
+
+defaultNow = length(cals);
+nowIndex = input(sprintf('Enter number of second calibration to compare [%d]: ',defaultNow));
 if (isempty(nowIndex))
     nowIndex = defaultNow;
 end
 if (nowIndex < 1 || nowIndex > length(cals))
     error('Calibration number out of range\n');
 end
-
 calNow = cals{nowIndex};
-calThen = cals{thenIndex};
+
+%% Put them on common fitting basis, so that we are comparing the underlying
+% data and not how it happened to be fit.
+%
+% Linear model basis
+defaultNPrimaryBases = calNow.nPrimaryBases;
+nPrimaryBases = input(sprintf('\nEnter number of primary bases [%d]: ',defaultNPrimaryBases));
+if (isempty(nPrimaryBases))
+    nPrimaryBases = defaultNPrimaryBases;
+end
+calThen.nPrimaryBases = nPrimaryBases;
+calNow.nPrimaryBases = nPrimaryBases;
+calThen = CalibrateFitLinMod(calThen);
+calNow = CalibrateFitLinMod(calNow);
+
+% Gamma type
+defaultFitType = calNow.describe.gamma.fitType;
+fitType = input(sprintf('Enter gamma fit type [%s]: ',defaultFitType),'s');
+if (isempty(fitType))
+    fitType = defaultFitType;
+end
+calThen.describe.gamma.fitType = fitType;
+calNow.describe.gamma.fitType = fitType;
+calThen = CalibrateFitGamma(calThen);
+calNow = CalibrateFitGamma(calNow);
+
+%% Say what we're doing
 fprintf('\nComparing calibrations:\n');
-fprintf('\t%d, %s\n',thenIndex,calThen.describe.date);
-fprintf('\t%d, %s\n',nowIndex,calNow.describe.date);
+fprintf('\t%s, %d, %s\n',thenFileName,thenIndex,calThen.describe.date);
+fprintf('\t%s, %d, %s\n',nowFileName,nowIndex,calNow.describe.date);
 
 %% Plot spectral power distributions.
 %
@@ -119,6 +157,7 @@ if (size(calNow.gammaTable,2) <= calNow.nDevices)
     xlabel('Input');
     ylabel('Output');
     title('Gamma');
+    ylim([0 1.2]);
 else
     figure; clf;
     subplot(1,2,1); hold on
@@ -127,22 +166,36 @@ else
     xlabel('Input');
     ylabel('Output');
     title('Gamma');
+    ylim([0 1.2]);
     subplot(1,2,2); hold on
     plot(calThen.gammaInput,calThen.gammaTable(:,calNow.nDevices+1:end),'r');
     plot(calNow.gammaInput,calNow.gammaTable(:,calNow.nDevices+1:end),'g-');
     xlabel('Input');
     ylabel('Output');
     title('Gamma (high order)');
+    ylim([-1.2 1.2]);
 end
 
 %% Let's print some luminance information
 load T_xyzJuddVos;
 T_xyz = SplineCmf(S_xyzJuddVos,683*T_xyzJuddVos,calThen.S_device);
+S_xyz = calThen.S_device;
 lumsThen = T_xyz(2,:)*calThen.P_device;
-maxLumThen = sum(lumsThen);
+maxLumThen = sum(lumsThen(1:calNow.nDevices));
 lumsNow = T_xyz(2,:)*calNow.P_device;
-maxLumNow = sum(lumsNow);
-fprintf('Maximum luminance: then %0.3g; now %0.3g\n',maxLumThen,maxLumNow);
+maxLumNow = sum(lumsNow(1:calNow.nDevices));
+fprintf('Maximum luminance summing primaries: then %0.3g; now %0.3g\n',maxLumThen,maxLumNow);
 minLumThen = T_xyz(2,:)*calThen.P_ambient;
 minLumNow = T_xyz(2,:)*calNow.P_ambient;
 fprintf('Minimum luminance: then %0.3g; now %0.3g\n',minLumThen,minLumNow);
+
+%% Get max lum using calibration routines
+calThen = SetSensorColorSpace(calThen,T_xyz,S_xyz);
+calNow = SetSensorColorSpace(calNow,T_xyz,S_xyz);
+maxXYZThen1 = SettingsToSensor(calThen,[1 1 1]');
+maxXYZThen2 = SettingsToSensorAcc(calThen,[1 1 1]');
+maxXYZNow1 = SettingsToSensor(calNow,[1 1 1]');
+maxXYZNow2 = SettingsToSensorAcc(calNow,[1 1 1]');
+fprintf('Maximum luminance SettingsToSensor: then %0.3g; now %0.3g\n',maxXYZThen1(2),maxXYZNow1(2));
+fprintf('Maximum luminance SettingsToSensorAcc: then %0.3g; now %0.3g\n',maxXYZThen2(2),maxXYZNow2(2));
+
