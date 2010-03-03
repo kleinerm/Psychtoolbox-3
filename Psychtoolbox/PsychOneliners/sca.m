@@ -13,6 +13,14 @@ function sca
 % Unhide the cursor if it was hidden:
 ShowCursor;
 
+for win = Screen('Windows')
+    if Screen('WindowKind', win) == 1
+        if Screen('GetWindowInfo', win, 4) > 0
+            Screen('AsyncFlipEnd', win);
+        end
+    end
+end
+
 % Close all windows, release all Screen() ressources:
 Screen('CloseAll');
 

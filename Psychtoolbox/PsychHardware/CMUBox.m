@@ -1,10 +1,16 @@
 function varargout = CMUBox(cmd, handle, varargin)
 % CMUBox - Access CMU response button box or PST serial response button box.
 %
+% This allows to query button response boxes of type CMU (Carnegie Mellon
+% University box) and PST (E-Prime response box). It also allows to use a
+% UBW32/Bitwhacker device to be used as a response box if the device is
+% loaded with the StickOS firmware from http://cpustick.com.
+%
+%
 % Commands and their syntax:
 % --------------------------
 %
-% handle = CMUBox('Open', boxtype [, portName] [, options]);
+% handle = CMUBox('Open', boxtype [, portName] [, options] [, debounceSecs=0.030]);
 % - Open response box connected to serial port 'portName', or the first
 % serial port found, if 'portName' is omitted. Initialize it, return a
 % 'handle' to it. You'll have to pass 'handle' to all following functions
@@ -20,6 +26,13 @@ function varargout = CMUBox(cmd, handle, varargin)
 % 'ftdi' - Tells the driver that it is connecting to a Serial-over-USB port
 % and that the converter/driver is from FTDI Inc., or a compatible device.
 % Allows for certain optimizations in timing accuracy.
+%
+%
+% The optional parameter 'debounceSecs' sets the debounce interval for
+% button debouncing if the Bitwhacker is used as response box. After a
+% button press, the device will wait for all the buttons to be released for
+% at least 'debounceSecs' seconds. Only then will it accept new button
+% presses. The default setting is 30 msecs if this option is omitted.
 %
 %
 % The mandatory parameter 'boxtype' is a name string defining the
@@ -64,7 +77,10 @@ function varargout = CMUBox(cmd, handle, varargin)
 % evt.state = 1 Byte value which encodes the new status of the response
 % buttons and input lines of the box. A 1-bit means button pressed/signal
 % active. A 0-bit means button released/signal inactive. See the
-% documentation of your box for meaning of the single bits.
+% documentation of your box for meaning of the single bits. If you use the
+% Bitwhacker then evt.state does directly encode the button number of a
+% pressed button: 0 == All buttons released, 1-9 == Button 1-9 pressed.
+% Bitwhacker can only report 1 pressed button at a time.
 %
 % evt.time  = Psychtoolbox GetSecs() timestamp of the time when the event
 % was received from the box.
@@ -102,6 +118,7 @@ function varargout = CMUBox(cmd, handle, varargin)
 %
 % History:
 % 9.08.2009  mk  Written. Initial prototype.
+% 3.03.2010  mk  Update to properly use Bitwhacker as response box.
 
 % Cell array of structs for our boxes: One cell for each open box.
 persistent boxes;
@@ -167,6 +184,11 @@ if strcmpi(cmd, 'GetEvent')
             error('CMUBox: GetEvent: I/O ERROR!! System says: %s\n', err);
         end
 
+        % No data returned due to read timeout? Just repeat loop.
+        if isempty(inpkt)
+            continue;
+        end
+        
         % Box status byte:
         data = inpkt(1);
         
@@ -182,15 +204,15 @@ if strcmpi(cmd, 'GetEvent')
         box.deltaScan = (inpkt(6) * 256^0 + inpkt(7) * 256^1 + inpkt(8) * 256^2 + inpkt(9) * 256^3) / 1e6;
 
         % Special case for Bitwhacker emulation: Filter out codes 10 and
-        % 13, they're an artifact of the emulation:
-        if box.useBitwhacker & ismember(data, [10, 13]) %#ok<AND2>
+        % 13, as well as 0 as they're an artifact of the emulation:
+        if box.useBitwhacker & ismember(data, [0, 10, 13]) %#ok<AND2>
             continue;
         end
         
         % Timestamps at least 0.5 msecs apart and no more than 2 msecs
         % apart? This window should be sufficient for the CMU and PST box
         % in all streaming modes:
-        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | (box.deltaScan > 0.002) %#ok<OR2>
+        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | ((box.deltaScan > 0.002) & (box.useBitwhacker == 0)) %#ok<AND2,OR2>
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
             fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); %#ok<WNTAG>
@@ -207,7 +229,7 @@ if strcmpi(cmd, 'GetEvent')
         box.tTrouble = box.tTrouble + tTrouble;
 
         % Box status changed since last query?
-        if data ~= oldState
+        if (data ~= oldState) %#ok<OR2>
             % Yes. We have a new event. Store it and break out of loop:
             
             % USB-Serial converter type?
@@ -231,6 +253,13 @@ if strcmpi(cmd, 'GetEvent')
                         t = t - 0.001;
                     end
                 end
+            end
+
+            % For Bitwhacker, remap ASCII character codes for symbols "0"
+            % to "9" back to values 0 to 9. A 0 means "No button pressed",
+            % whereas 1-9 mean button 1 to 9 pressed:
+            if box.useBitwhacker
+                data = data - 48;
             end
             
             evt.time = t;
@@ -270,7 +299,7 @@ if strcmpi(cmd, 'Open')
     switch(lower(boxtype))
         case {'bitwhacker'},
             % No special options for UBW32/Bitwhacker:
-            pString = '';
+            pString = ''; % 'ReceiveTimeout=10.0';
             box.useBitwhacker = 1;
             box.type = 1;
             fprintf('CMUBox: Using Bitwhacker/StickOS emulated box!\n');
@@ -328,7 +357,7 @@ if strcmpi(cmd, 'Open')
     end
     
     % Try to open connection: Allocate an input buffer of a size of
-    % 1600 * 1 * 3600 = 5760000 Bytes. This is sufficient for 1 hour of
+    % 1600 * 9 * 3600 = 51840000 Bytes. This is sufficient for 1 hour of
     % uninterrupted box operation without ever reading out events from the
     % queue at highest box operating speed.
     % On MS-Windows, we set the driver receivebuffer seize to 32 kB.
@@ -345,7 +374,7 @@ if strcmpi(cmd, 'Open')
     % low-latency for button transitions, as long as they are from none to
     % some and some to none.
     box.portName = portName;
-    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=5760000 HardwareBufferSizes=32768,32768 Terminator=0 ' pString]);
+    box.port = IOPort('OpenSerialPort', portName, ['InputBufferSize=51840000 HardwareBufferSizes=32768,32768 Terminator=0 ' pString]);
     
     
     % Is this a testrun with an emulated CMU/PST box by use of the
@@ -361,22 +390,73 @@ if strcmpi(cmd, 'Open')
         Command(box.port, 'echo off');
         % Delete current program, upload a fresh one:
         Command(box.port, 'new');
-        % Infinite while-loop, runs until program termination:
-        Command(box.port, '5 dim t');
-        Command(box.port, '10 while 1 do');
-        % Print a character - Send 1 Byte to host computer:
-        Command(box.port, '15 let t = seconds % 10');
-        Command(box.port, '20 print t');
-        % Sleep for 500 microseconds...
-        %        Command(box.port, '30 sleep 1 ms');
-        % Print a character - Send 1 Byte to host computer:
-        %        Command(box.port, '35 let t = seconds % 10');
-        %        Command(box.port, '40 print t');
-        % Sleep for 500 microseconds...
-        %        Command(box.port, '50 sleep 1 ms');
-        % Then repeat.
-        Command(box.port, '60 endwhile');
 
+        if 1
+            if length(varargin) >= 3
+                deadTimeSecs = varargin{3};
+            else
+                deadTimeSecs = [];
+            end
+
+            if isempty(deadTimeSecs)
+                deadTimeSecs = 0.030;
+            end
+
+            deadTimeSecs = max(ceil(deadTimeSecs * 1000), 0);
+            fprintf('Bitwhacker: Debounce: Will ignore new button presses for %i msecs after previous button release.\n', deadTimeSecs);
+            
+            % Infinite while-loop, runs until program termination:
+            Command(box.port, '100 dim ttl1 as pin ra1 for digital input debounced inverted');
+            Command(box.port, '101 dim ttl2 as pin ra2 for digital input debounced inverted');
+            Command(box.port, '102 dim ttl3 as pin ra3 for digital input debounced inverted');
+            Command(box.port, '103 dim ttl4 as pin ra4 for digital input debounced inverted');
+            Command(box.port, '104 dim ttl5 as pin ra5 for digital input debounced inverted');
+            Command(box.port, '105 dim ttl6 as pin ra6 for digital input debounced inverted');
+            Command(box.port, '106 dim but1 as pin re6 for digital input  inverted');
+            Command(box.port, '107 dim but2 as pin re7 for digital input  inverted');
+            Command(box.port, '110 dim deadline');
+            Command(box.port, '120 dim deadtime');
+            Command(box.port, '130 dim ttlsum');
+            Command(box.port, sprintf('140 let deadtime = %i', deadTimeSecs));
+            Command(box.port, '200 while 1 do');
+            Command(box.port, '210   let ttlsum = ttl1 * 1 + ttl2 * 2 + ttl3 * 3 + ttl4 * 4');
+            Command(box.port, '220   let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + but1 * 7');
+            Command(box.port, '230   let ttlsum = ttlsum + but2 * 8');
+            Command(box.port, '300   if ttlsum > 0 then');
+            Command(box.port, '400     print ttlsum');
+            Command(box.port, '410     let deadline = msecs + deadtime');
+            Command(box.port, '420     while msecs < deadline do');
+            Command(box.port, '422       let ttlsum = ttl1 * 1 + ttl2 * 2 + ttl3 * 3 + ttl4 * 4');
+            Command(box.port, '423       let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + but1 * 7');
+            Command(box.port, '424       let ttlsum = ttlsum + but2 * 8');
+            Command(box.port, '430       if ttlsum > 0 then');
+            Command(box.port, '440         let deadline = msecs + deadtime');
+            Command(box.port, '450       endif');
+            Command(box.port, '460     endwhile');
+            Command(box.port, '470     print "0"');
+            Command(box.port, '500   endif');
+            Command(box.port, '600 endwhile');
+        else
+            % Test code for MK's internal debugging:
+            
+            % Infinite while-loop, runs until program termination:
+            Command(box.port, '5 dim t');
+            Command(box.port, '10 while 1 do');
+            % Print a character - Send 1 Byte to host computer:
+            Command(box.port, '15 let t = seconds % 10');
+            Command(box.port, '20 print t');
+            % Sleep for 500 microseconds...
+            %        Command(box.port, '30 sleep 1 ms');
+            % Print a character - Send 1 Byte to host computer:
+            %        Command(box.port, '35 let t = seconds % 10');
+            %        Command(box.port, '40 print t');
+            % Sleep for 500 microseconds...
+            %        Command(box.port, '50 sleep 1 ms');
+            % Then repeat.
+            Command(box.port, '60 endwhile');
+        end
+        
+        % Print out whole program as debug output:
         Command(box.port, 'list');
 
         % Wait a second, then drain the input buffers:
@@ -507,6 +587,9 @@ if strcmpi(cmd, 'Open')
                 box.dt = 1/1000;
             end
         end
+    else
+        % Don't use interbyte interval on non CMU and non PST:
+        box.dt = 0;
     end
 
     % Setup Async-Reads with blocking background read behaviour. This also
@@ -539,6 +622,11 @@ if strcmpi(cmd, 'Open')
     % Fetch 1st sample synchronously, so we don't get a skewed box.baseTime
     % due to startup latencies of the async reader thread:
     [box.oldState, box.baseTime, box.olderr] = IOPort('Read', box.port, 1, 1);
+    
+    % Make sure we have a non-empty oldState:
+    if isempty(box.oldState)
+        box.oldState = -1;
+    end
     
     % Start background read operation, try to fetch and timestamp data at a
     % granularity of 9 Byte -- Each single status byte from the box gets
@@ -697,4 +785,5 @@ end
 % Helper function for sending commands to Bitwhacker:
 function Command(p, cmd)
     IOPort('Write', p, [cmd char(13)]);
+    % WaitSecs(0.010);
 end

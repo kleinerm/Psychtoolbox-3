@@ -1,5 +1,5 @@
-function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration)
-% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration)
+function PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync)
+% PerceptualVBLSyncTest(screen, stereomode, fullscreen, doublebuffer, maxduration, vblSync)
 %
 % Perceptual synchronization test for synchronization of Screen('Flip') and
 % Screen('WaitBlanking') to the vertical retrace.
@@ -104,8 +104,22 @@ if isempty(screen)
 end;
 
 if nargin < 5
+    maxduration = [];
+end
+
+if isempty(maxduration)
     maxduration = 10;
 end
+
+if nargin < 6
+    vblSync = [];
+end
+
+if isempty(vblSync)
+    vblSync = 1;
+end
+
+thickness = (1-vblSync) * 5 + 1;
 
 try
     if fullscreen
@@ -159,11 +173,11 @@ try
       % Draw alternating black/white rectangle:
       Screen('FillRect', win, color, flickerRect);
       % If beamposition is available (on OS-X), visualize it via yellow horizontal line:
-      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos); end;
+      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       % Same for right-eye view...
       Screen('SelectStereoDrawBuffer', win, 1);
       Screen('FillRect', win, color, flickerRect);
-      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos); end;
+      if (beampos>=0) Screen('DrawLine', win, [255 255 0], 0, beampos, winRect(3), beampos, thickness); end;
       
       if stereomode == 0 & length(screen)>1
           Screen('FillRect', win2, color, flickerRect);
@@ -178,13 +192,23 @@ try
       color=255 - color;
       
       if doublebuffer>1
-         % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
-         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
-%         [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, 1, multiflip);
-      	%beampos=400 + 100 * sin(GetSecs);   
+          if vblSync
+              % Flip buffer on next vertical retrace, query rasterbeam position on flip, if available:
+              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 2, [], multiflip);
+          else
+              % Flip immediately without sync to vertical retrace, do clear
+              % backbuffer after flip for visualization purpose:
+              [VBLTimestamp, StimulusOnsetTime, FlipTimestamp, Missed, beampos] = Screen('Flip', win, VBLTimestamp + ifi/2, 0, 2, multiflip);
+              % Above flip won't return a 'beampos' in non-VSYNC'ed mode,
+              % so we query it manually:
+              beampos = Screen('GetWindowInfo', win, 1);
+              
+              % Throttle a little bit for visualization purpose:
+              WaitSecs('YieldSecs', 0.005);
+          end
       else
-         % Just wait a bit in non-buffered case:
-         pause(0.001);
+          % Just wait a bit in non-buffered case:
+          pause(0.001);
       end;
    end;
    

@@ -1,25 +1,32 @@
-function BeampositionTest(n, screenid)
+function BeampositionTest(n, screenid, synced)
 
 
 AssertOpenGL;
 
 if nargin < 1
-   n = 10000;
+    n = 10000;
 end
 
 if nargin < 2
-   screenid = max(Screen('Screens'));
+    screenid = max(Screen('Screens'));
 end
 
 screenid
+
+if nargin < 3
+    synced = 0;
+end
 
 w=Screen('OpenWindow', screenid, 0);
 Screen('Flip',w);
 beampos = zeros(n, 1);
 t = zeros(n, 1);
 for i=1:n
-   beampos(i) = Screen('GetWindowInfo', w, 1);
-   t(i) = GetSecs;
+    if synced
+        Screen('Flip', w);
+    end
+    beampos(i) = Screen('GetWindowInfo', w, 1);
+    t(i) = GetSecs;
 end
 
 while Screen('GetWindowInfo', w, 1) < 500; end;
@@ -28,7 +35,6 @@ while Screen('GetWindowInfo', w, 1)< 515; end;
 te=GetSecs;
 
 tel = (te - ta) * 1000
-
 
 Screen('CloseAll');
 
@@ -42,5 +48,3 @@ figure;
 plot(t, beampos);
 
 return;
-
-
