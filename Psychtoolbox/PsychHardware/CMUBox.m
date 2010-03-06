@@ -1,10 +1,12 @@
 function varargout = CMUBox(cmd, handle, varargin)
-% CMUBox - Access CMU response button box or PST serial response button box.
+% CMUBox - Access CMU response button box or PST serial response button box as well as fORP and Bitwhacker devices.
+% 
 %
 % This allows to query button response boxes of type CMU (Carnegie Mellon
 % University box) and PST (E-Prime response box). It also allows to use a
 % UBW32/Bitwhacker device to be used as a response box if the device is
-% loaded with the StickOS firmware from http://cpustick.com.
+% loaded with the StickOS firmware from http://cpustick.com. It also allows
+% to use the Curdes fORP devices if connected via serial port.
 %
 %
 % Commands and their syntax:
@@ -26,6 +28,9 @@ function varargout = CMUBox(cmd, handle, varargin)
 % 'ftdi' - Tells the driver that it is connecting to a Serial-over-USB port
 % and that the converter/driver is from FTDI Inc., or a compatible device.
 % Allows for certain optimizations in timing accuracy.
+%
+% 'norelease' - Tells the driver it shouldn't report button release / TTL
+% transition to low events, but only button presses and TTL onsets.
 %
 %
 % The optional parameter 'debounceSecs' sets the debounce interval for
@@ -60,6 +65,24 @@ function varargout = CMUBox(cmd, handle, varargin)
 % exactly the same as a PST box running with 800 Samples/Sec streaming
 % rate.
 %
+% 'forpserial-0', 'forpserial-2', 'forpserial-4', 'forpserial-6'
+% Connect to a fORP interface unit type FIU-005 on the serial port,
+% configured with a program switch setting of 0, 2, 4 or 6. In this mode,
+% similar to the Bitwhacker, the device will only send a single byte if the
+% status of the buttons or triggers changes. This is more efficient than
+% mode 'forpserial-1', so one of these settings is recommended.
+%
+% Modes 0, 4 and 6 will only report button presses or trigger reception,
+% but not button releases, whereas mode 2 will report any status change,
+% ie., it will also report and timestamp button releases. The mapping of
+% the returned status value to corresponding button / trigger states is
+% dependent on the selected mode. Modes 0, 4 and 6 report ASCII codes that
+% identify the pressed button, whereas mode 2 returns a status byte where
+% each bit encodes the current (updated) status of a single button, similar
+% to the PST and CMU response boxes. For the specifics, see the fORP manual
+% at http://www.curdes.com/ForpUserGuide.html
+%
+%
 % CMUBox('Close', handle);
 % - Close connection to response box 'handle'. The 'handle' is invalid
 % thereafter.
@@ -68,9 +91,9 @@ function varargout = CMUBox(cmd, handle, varargin)
 % evt = CMUBox('GetEvent', handle [, waitForEvent=0]);
 % - Retrieve next queued event received from the box in the struct 'evt'.
 % If no new events are available and the optional 'waitForEvent' is set to
-% 1, then the function will wait until at least one event becomes
-% available, or until a timeout of 10 seconds elapses. Otherwise it will
-% return an empty struct, ie., evt = [].
+% 1, then the function will wait until at least one valid event becomes
+% available and return that event. Otherwise it will return an empty struct,
+% ie., evt = [] to signal that no new events are available.
 %
 % The following subfields are available in 'evt' if 'evt' is non-empty:
 %
@@ -79,19 +102,30 @@ function varargout = CMUBox(cmd, handle, varargin)
 % active. A 0-bit means button released/signal inactive. See the
 % documentation of your box for meaning of the single bits. If you use the
 % Bitwhacker then evt.state does directly encode the button number of a
-% pressed button: 0 == All buttons released, 1-9 == Button 1-9 pressed.
-% Bitwhacker can only report 1 pressed button at a time.
+% pressed button: 0 == All buttons released and all TTL inputs low.
+% Values 1-7 correspond to a low->high transition of TTL input pins A1 - A7.
+% Values 8 and 9 correspond to a button press of onboard buttons "USER" or
+% "PRG". Bitwhacker can only report one active button or TTL line at a time.
+%
+% The fORP device will encode evt.state differently depending on selected
+% mode, either like a Bitwhacker device or like a CMU/PST response box.
 %
 % evt.time  = Psychtoolbox GetSecs() timestamp of the time when the event
-% was received from the box.
+% was received from the box. The accuracy depends on the properties of your
+% serial port device and system load. For a native serial port and a
+% normally loaded system, you can expect about 1-2 msec delay. For a
+% Serial-over-USB port, it depends on the converter type and driver
+% settings but can be 2-3 msecs at best.
 %
 % evt.trouble = If zero, then evt is probably valid and good. If non-zero,
 % then the timestamp is likely screwed and useless, as are probably all
-% following timestamps!
+% following timestamps, at least for CMU/PST boxes and fORP's in mode 1!
+% For the Bitwhacker or fORP's in modes 0,2,4 or 6, only the current 'evt'
+% will be invalid, but later events will recover and thereby be unaffected.
 %
 %
 % status = CMUBox('Status', handle);
-% - Retrieve internal status of response box 'handle'.
+% - Retrieve internal status of response box 'handle' as a struct.
 %
 %
 
@@ -118,7 +152,8 @@ function varargout = CMUBox(cmd, handle, varargin)
 %
 % History:
 % 9.08.2009  mk  Written. Initial prototype.
-% 3.03.2010  mk  Update to properly use Bitwhacker as response box.
+% 3.03.2010  mk  Update to properly use Bitwhacker as response box as well
+%                as the Curdes fORP devices when connected via serial port.
 
 % Cell array of structs for our boxes: One cell for each open box.
 persistent boxes;
@@ -189,6 +224,11 @@ if strcmpi(cmd, 'GetEvent')
             continue;
         end
         
+        % No valid data returned due to read timeout? Just repeat loop.
+        if ~any(inpkt)
+            continue;
+        end
+        
         % Box status byte:
         data = inpkt(1);
         
@@ -212,7 +252,7 @@ if strcmpi(cmd, 'GetEvent')
         % Timestamps at least 0.5 msecs apart and no more than 2 msecs
         % apart? This window should be sufficient for the CMU and PST box
         % in all streaming modes:
-        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | ((box.deltaScan > 0.002) & (box.useBitwhacker == 0)) %#ok<AND2,OR2>
+        if (t - box.oldTime < 0.0005) | (box.deltaScan < 0.0005) | ((box.deltaScan > 0.002) & (box.Streaming > 0)) %#ok<AND2,OR2>
             % Too close to each other! Timestamp is not reliable!
             tTrouble = 1;
             fprintf('CMUBox: GetEvent: Timestamp trouble!! Delta %f msecs, ScanInterval %f msecs.\n', 1000 * (t - box.oldTime), 1000 * box.deltaScan); %#ok<WNTAG>
@@ -262,12 +302,26 @@ if strcmpi(cmd, 'GetEvent')
                 data = data - 48;
             end
             
-            evt.time = t;
-            evt.streamTime = refTime;
-            evt.state = data;
-            evt.trouble = tTrouble;
-            evt.deltaScan = box.deltaScan;
-            break;
+            % Should we discard "release" events and this is one?
+            if (box.norelease == 0) | (data ~= 0) %#ok<OR2>
+                % Nope. Either no release event or don't discard'em.
+                % Build 'evt' struct and return:                
+
+                if ~box.Streaming
+                    % streamTime is meaningless in non-streaming mode:
+                    refTime = 0;
+                end
+                
+                evt.time = t;
+                evt.streamTime = refTime;
+                evt.state = data;
+                evt.trouble = tTrouble;
+                evt.deltaScan = box.deltaScan;
+                break;
+            else
+                % This is a release event that shall be discarded:
+                evt = [];
+            end
         end
         
         % Repeat scanloop until we find a new event or no new data
@@ -299,10 +353,29 @@ if strcmpi(cmd, 'Open')
     switch(lower(boxtype))
         case {'bitwhacker'},
             % No special options for UBW32/Bitwhacker:
-            pString = ''; % 'ReceiveTimeout=10.0';
+            pString = '';
             box.useBitwhacker = 1;
+            box.Streaming = 0;
             box.type = 1;
             fprintf('CMUBox: Using Bitwhacker/StickOS emulated box!\n');
+            
+        case {'forpserial-0', 'forpserial-4', 'forpserial-6'},
+            % % BaudRate is 19.2 KiloBaud, 8-N-1 config without flow
+            % control:
+            pString = 'BaudRate=19200';
+            box.useBitwhacker = 0;
+            box.Streaming = 0;
+            box.type = 1;
+            fprintf('CMUBox: Using fORP interface program "%s" as serial response button box!\n', lower(boxtype));
+
+        case {'forpserial-2'},
+            % % BaudRate is 57.6 KiloBaud, 8-N-1 config without flow
+            % control:
+            pString = 'BaudRate=57600';
+            box.useBitwhacker = 0;
+            box.Streaming = 0;
+            box.type = 1;
+            fprintf('CMUBox: Using fORP interface program 2 as serial response button box!\n');
             
         case {'cmu'},
             % BaudRate is 19.2 KiloBaud, 8-Odd-1 config without flow control:
@@ -310,6 +383,7 @@ if strcmpi(cmd, 'Open')
             % Firmware V.1.x.
             pString = 'BaudRate=19200 Parity=Odd ReceiveTimeout=10.0';
             box.useBitwhacker = 0;
+            box.Streaming = 1;
             box.type = 2;
             fprintf('CMUBox: Using CMU serial response button box!\n');
             
@@ -317,6 +391,7 @@ if strcmpi(cmd, 'Open')
             % BaudRate is 19.2 KiloBaud, 8-N-1 config without flow control:
             pString = 'BaudRate=19200 ReceiveTimeout=10.0';
             box.useBitwhacker = 0;
+            box.Streaming = 1;
             box.type = 3;
             fprintf('CMUBox: Using PST serial response button box!\n');
             
@@ -324,6 +399,7 @@ if strcmpi(cmd, 'Open')
             % BaudRate is 19.2 KiloBaud, 8-N-1 config without flow control:
             pString = 'BaudRate=19200 ReceiveTimeout=10.0';
             box.useBitwhacker = 0;
+            box.Streaming = 1;
             box.type = 3;
             fprintf('CMUBox: Using fORP interface program 1 as serial response button box!\n');
 
@@ -355,7 +431,15 @@ if strcmpi(cmd, 'Open')
         % Default to non-FTDI:
         box.ftdiusbserialtype = 0;
     end
-    
+
+    if ~isempty(findstr(specialOptions, 'norelease'))
+        % Don't report button release events:
+        box.norelease = 1;
+    else
+        % Default is to report release events if supported:
+        box.norelease = 0;
+    end
+
     % Try to open connection: Allocate an input buffer of a size of
     % 1600 * 9 * 3600 = 51840000 Bytes. This is sufficient for 1 hour of
     % uninterrupted box operation without ever reading out events from the
@@ -406,34 +490,48 @@ if strcmpi(cmd, 'Open')
             fprintf('Bitwhacker: Debounce: Will ignore new button presses for %i msecs after previous button release.\n', deadTimeSecs);
             
             % Infinite while-loop, runs until program termination:
-            Command(box.port, '100 dim ttl1 as pin ra1 for digital input debounced inverted');
-            Command(box.port, '101 dim ttl2 as pin ra2 for digital input debounced inverted');
-            Command(box.port, '102 dim ttl3 as pin ra3 for digital input debounced inverted');
-            Command(box.port, '103 dim ttl4 as pin ra4 for digital input debounced inverted');
-            Command(box.port, '104 dim ttl5 as pin ra5 for digital input debounced inverted');
-            Command(box.port, '105 dim ttl6 as pin ra6 for digital input debounced inverted');
-            Command(box.port, '106 dim but1 as pin re6 for digital input  inverted');
-            Command(box.port, '107 dim but2 as pin re7 for digital input  inverted');
+            Command(box.port, '70  dim led0 as pin re3 for digital output inverted');
+            Command(box.port, '80  dim led1 as pin re2 for digital output inverted');
+            Command(box.port, '90  dim busyled as pin re1 for digital output inverted');
+            Command(box.port, '100 dim ttl1 as pin ra1 for digital input inverted');
+            Command(box.port, '101 dim ttl2 as pin ra2 for digital input inverted');
+            Command(box.port, '102 dim ttl3 as pin ra3 for digital input inverted');
+            Command(box.port, '103 dim ttl4 as pin ra4 for digital input inverted');
+            Command(box.port, '104 dim ttl5 as pin ra5 for digital input inverted');
+            Command(box.port, '105 dim ttl6 as pin ra6 for digital input inverted');
+            Command(box.port, '106 dim ttl7 as pin ra7 for digital input inverted');
+            Command(box.port, '107 dim but1 as pin re6 for digital input inverted');
+            Command(box.port, '108 dim but2 as pin re7 for digital input inverted');
             Command(box.port, '110 dim deadline');
             Command(box.port, '120 dim deadtime');
             Command(box.port, '130 dim ttlsum');
             Command(box.port, sprintf('140 let deadtime = %i', deadTimeSecs));
+            Command(box.port, '160 print "0"');
+            Command(box.port, '170 let led0 = 0');            
+            Command(box.port, '180 let led1 = 0');            
+            Command(box.port, '190 let busyled = 0');            
             Command(box.port, '200 while 1 do');
             Command(box.port, '210   let ttlsum = ttl1 * 1 + ttl2 * 2 + ttl3 * 3 + ttl4 * 4');
-            Command(box.port, '220   let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + but1 * 7');
-            Command(box.port, '230   let ttlsum = ttlsum + but2 * 8');
+            Command(box.port, '220   let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + ttl7 * 7');
+            Command(box.port, '230   let ttlsum = ttlsum + but1 * 8 + but2 * 9');
             Command(box.port, '300   if ttlsum > 0 then');
             Command(box.port, '400     print ttlsum');
+            Command(box.port, '405     let busyled = 1');
+            Command(box.port, '407     let led0 = but2 + ttl1 + ttl3 + ttl5 + ttl7');
+            Command(box.port, '408     let led1 = but1 + ttl2 + ttl4 + ttl6');
             Command(box.port, '410     let deadline = msecs + deadtime');
             Command(box.port, '420     while msecs < deadline do');
             Command(box.port, '422       let ttlsum = ttl1 * 1 + ttl2 * 2 + ttl3 * 3 + ttl4 * 4');
-            Command(box.port, '423       let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + but1 * 7');
-            Command(box.port, '424       let ttlsum = ttlsum + but2 * 8');
+            Command(box.port, '423       let ttlsum = ttlsum + ttl5 * 5 + ttl6 * 6 + ttl7 * 7');
+            Command(box.port, '424       let ttlsum = ttlsum + but1 * 8 + but2 * 9');
+            Command(box.port, '427       let led0 = but2 + ttl1 + ttl3 + ttl5 + ttl7');
+            Command(box.port, '428       let led1 = but1 + ttl2 + ttl4 + ttl6');
             Command(box.port, '430       if ttlsum > 0 then');
             Command(box.port, '440         let deadline = msecs + deadtime');
             Command(box.port, '450       endif');
             Command(box.port, '460     endwhile');
             Command(box.port, '470     print "0"');
+            Command(box.port, '480     let busyled = 0');
             Command(box.port, '500   endif');
             Command(box.port, '600 endwhile');
         else
@@ -473,18 +571,15 @@ if strcmpi(cmd, 'Open')
         % situation where the box streams uncontrollably after power-up...
         WaitSecs(2);
         
-        % Ok, this is as realistic as it gets for an emulated CMU box.
-        box.useBitwhacker = 1;
-        
         % Set input filter to discard CR and LF characters as well as
-        % redundant data:
+        % redundant data and attach a total streamcount tag and dT tag of
+        % 32 bit size to each read datum, i.e., 2 * 32 bit = 8 bytes:
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=3');
     else
         % Set input filter to discard redundant data and attach a total
         % streamcount tag and dT tag of 32 bit size to each read datum,
         % i.e., 2 * 32 bit = 8 bytes:
         IOPort('ConfigureSerialPort', box.port, 'ReadFilterFlags=1');
-        box.useBitwhacker = 0;
     end
     
     if box.type == 3

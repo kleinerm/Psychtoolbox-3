@@ -10,7 +10,9 @@
 % CedrusResponseBox   - All: Support for RB-x30 response boxes by Cedrus.
 % CMCheckInit         - All: Turn on and connect to color meter.
 % CMClose             - All: Turn off color meter.
-% CMUBox              - All: Access CMUBox or PST (E-Prime) serial port button response boxes. 
+% CMUBox              - All: Access CMUBox or PST (E-Prime) serial port
+%                            button response boxes, as well as Bitwhacker
+%                            and fORP serial port response boxes.
 % FindSerialPort      - All: Find port number associated with a particular input string.
 % MeasSpd             - All: Use color meter to measure a spectral power 
 %                            distribution.

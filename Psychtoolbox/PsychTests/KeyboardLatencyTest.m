@@ -40,6 +40,15 @@ function KeyboardLatencyTest(triggerlevel, modality, submode, portString)
 % Setting 'submode' to 1 will optimize for use with FTDI serial-USB
 % converters.
 %
+% A 'modality' of 8 will exercise the Bitwhacker emulated response button box.
+% Setting 'submode' to 1 will optimize for use with FTDI serial-USB
+% converters.
+%
+% A 'modality' of 9 will exercise the fORP serial response button box in
+% program mode 0.
+% Setting 'submode' to 1 will optimize for use with FTDI serial-USB
+% converters.
+%
 %
 % The optional 'portString' argument can be set to define the serial port
 % to connect to for response devices that are connected via serial port.
@@ -112,19 +121,25 @@ if modality == 5
 end
 
 % CMU or PST serial response button box?
-if ismember(modality, [6,7])
+if ismember(modality, [6,7,8,9])
     if submode > 0
-        foption = 'ftdi';
+        foption = 'ftdi norelease';
     else
-        foption = '';
+        foption = 'norelease';
     end
     
     if modality == 6
         % Open PST box, calibrate, start response collection:
         hcmu = CMUBox('Open', 'pst', portString, foption);
-    else
+    elseif modality == 7
         % Open CMU box, calibrate, start response collection:
         hcmu = CMUBox('Open', 'cmu', portString, foption);
+    elseif modality == 8
+        % Open Bitwhacker box, calibrate, start response collection:
+        hcmu = CMUBox('Open', 'bitwhacker', portString, foption);
+    elseif modality == 9
+        % Open forpserial-0 box, calibrate, start response collection:
+        hcmu = CMUBox('Open', 'forpserial-0', portString, foption);
     end
 else
     % None of these...
@@ -251,8 +266,8 @@ for trial = 1:10
             while ~isempty(evt)
                 evt = CedrusResponseBox('GetButtons', hcedrus);
             end
-        case {6, 7}
-            % CMU or PST box, handled by CMUBox driver:
+        case {6, 7, 8, 9}
+            % CMU or PST box, Bitwhacker, forpserial-0 handled by CMUBox driver:
 
             % Drain the event queue of the box to remove any stale events:
             while 1
